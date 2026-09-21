@@ -44,6 +44,7 @@ ALLOWED_LIFECYCLE_TRANSITIONS: dict[_L, frozenset[_L]] = {
             _L.OPEN_PROTECTED,
             _L.CANCEL_PENDING,
             _L.FLAT_PENDING_RECONCILIATION,
+            _L.RECOVERY_REQUIRED,
         }
     ),
     _L.PARTIALLY_FILLED: frozenset(
@@ -53,6 +54,7 @@ ALLOWED_LIFECYCLE_TRANSITIONS: dict[_L, frozenset[_L]] = {
             _L.CANCEL_PENDING,
             _L.EXIT_PENDING,
             _L.FLAT_PENDING_RECONCILIATION,
+            _L.RECOVERY_REQUIRED,
         }
     ),
     _L.OPEN_UNPROTECTED: frozenset({_L.OPEN_PROTECTED, _L.EXIT_PENDING, _L.RECOVERY_REQUIRED}),
@@ -72,6 +74,7 @@ ALLOWED_LIFECYCLE_TRANSITIONS: dict[_L, frozenset[_L]] = {
             _L.OPEN_PROTECTED,
             _L.EXIT_PENDING,
             _L.FLAT_PENDING_RECONCILIATION,
+            _L.RECOVERY_REQUIRED,
         }
     ),
     _L.EXIT_PENDING: frozenset(

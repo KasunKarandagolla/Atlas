@@ -15,8 +15,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from atlas.domain.time import ensure_utc_ns
+
+if TYPE_CHECKING:
+    from atlas.persistence.sqlite import SQLiteJournal
 
 
 @dataclass(frozen=True)
@@ -116,9 +120,22 @@ class FillDeduplicator:
     - Append-only corrections for out-of-order status
     """
 
-    def __init__(self) -> None:
+    def __init__(self, journal: SQLiteJournal | None = None) -> None:
+        self._journal = journal
         self._seen_execution_ids: set[str] = set()
+        self._seen_fills: dict[str, FillRecord] = {}
         self._intent_cumulative_qty: dict[str, Decimal] = {}
+        self._status_observations: list[OrderStatusRecord] = []
+        if journal is not None:
+            for existing in journal.load_execution_evidence():
+                self._remember(existing)
+
+    def _remember(self, fill: FillRecord) -> None:
+        self._seen_execution_ids.add(fill.execution_id)
+        self._seen_fills[fill.execution_id] = fill
+        self._intent_cumulative_qty[fill.intent_id] = (
+            self._intent_cumulative_qty.get(fill.intent_id, Decimal("0")) + fill.qty
+        )
 
     def try_record_fill(self, fill: FillRecord) -> FillDedupResult:
         """Record a fill if not already seen.
@@ -127,6 +144,9 @@ class FillDeduplicator:
         accepted=False if duplicate (with duplicate_of set).
         """
         if fill.execution_id in self._seen_execution_ids:
+            existing = self._seen_fills.get(fill.execution_id)
+            if existing is not None and existing != fill:
+                raise ValueError(f"conflicting execution payload for {fill.execution_id}")
             return FillDedupResult(
                 accepted=False,
                 fill_record=None,
@@ -134,13 +154,14 @@ class FillDeduplicator:
                 reason=f"duplicate execution_id {fill.execution_id}",
             )
 
-        # Verify cumulative quantity doesn't regress for this intent
-        current_cum = self._intent_cumulative_qty.get(fill.intent_id, Decimal("0"))
-        new_cum = current_cum + fill.qty
-
-        # Accept the fill
-        self._seen_execution_ids.add(fill.execution_id)
-        self._intent_cumulative_qty[fill.intent_id] = new_cum
+        # Persist before changing the in-memory projection.  A persistence
+        # failure is a hard failure, never an accepted fill.
+        if self._journal is not None:
+            try:
+                self._journal.append_execution_evidence(fill)
+            except Exception:
+                raise
+        self._remember(fill)
 
         return FillDedupResult(
             accepted=True,
@@ -155,8 +176,14 @@ class FillDeduplicator:
         Does NOT update cumulative quantities - status messages are not fills.
         Used for reconciliation and audit trail only.
         """
-        # Status records are append-only evidence
-        pass
+        if self._journal is not None:
+            self._journal.append_order_status_observation(status)
+        self._status_observations.append(status)
+
+    def load_status_observations(self) -> tuple[OrderStatusRecord, ...]:
+        if self._journal is not None:
+            return tuple(self._journal.load_order_status_observations())
+        return tuple(self._status_observations)
 
     def get_cumulative_qty(self, intent_id: str) -> Decimal:
         """Get cumulative filled quantity for an intent."""
@@ -207,6 +234,9 @@ def build_execution_evidence(
     sorted_fills = tuple(sorted(fills, key=lambda f: f.trade_time_ns))
     sorted_status = tuple(sorted(status_observations, key=lambda s: s.receive_time_ns))
 
+    execution_ids = [f.execution_id for f in sorted_fills]
+    if len(execution_ids) != len(set(execution_ids)):
+        raise ValueError("execution evidence contains duplicate execution IDs")
     cum_qty = sum((f.qty for f in sorted_fills), Decimal("0"))
     cum_fee = sum((f.fee for f in sorted_fills), Decimal("0"))
 

@@ -13,11 +13,63 @@ from enum import StrEnum
 from atlas.domain.enums import ReconciliationHealth
 from atlas.domain.time import ensure_utc_ns
 
+from .reconciliation_evidence import Completeness, QueryStatus, ReconciliationEvidenceBundle
+
 
 class RecoveryDecision(StrEnum):
     READY = "READY"
     REMAIN_RECOVERING = "REMAIN_RECOVERING"
     RECOVERY_REQUIRED = "RECOVERY_REQUIRED"
+
+
+@dataclass(frozen=True)
+class RecoveryIncident:
+    """Append-only record for an uncertainty/recovery episode."""
+
+    incident_id: str
+    recovery_run_id: str
+    category: str
+    status: str
+    evidence_refs: tuple[str, ...]
+    opened_at_ns: int
+    resolved_at_ns: int | None = None
+
+    def __post_init__(self) -> None:
+        for name in ("incident_id", "recovery_run_id", "category", "status"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} must be non-blank")
+        object.__setattr__(self, "evidence_refs", tuple(self.evidence_refs))
+        if not self.evidence_refs or any(
+            not isinstance(ref, str)
+            or not ref.strip()
+            or ref.strip().upper() in {"REQUIRED", "REQUIRED_AT_INSTALL", "PLACEHOLDER"}
+            for ref in self.evidence_refs
+        ):
+            raise ValueError("incident evidence_refs must be non-empty")
+        ensure_utc_ns(self.opened_at_ns, field="opened_at_ns")
+        if self.resolved_at_ns is not None:
+            ensure_utc_ns(self.resolved_at_ns, field="resolved_at_ns")
+            if self.resolved_at_ns < self.opened_at_ns:
+                raise ValueError("resolved_at cannot precede opened_at")
+
+
+@dataclass(frozen=True)
+class RecoveryProtectionEvidence:
+    """Positive protection prerequisite for a READY recovery certificate."""
+
+    certified_flat: bool
+    current_protection: bool
+    evidence_refs: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.certified_flat, bool) or not isinstance(self.current_protection, bool):
+            raise ValueError("recovery protection flags must be bool")
+        object.__setattr__(self, "evidence_refs", tuple(self.evidence_refs))
+        if not (self.certified_flat or self.current_protection):
+            raise ValueError("recovery requires certified flatness or current protection")
+        if not self.evidence_refs or any(not isinstance(ref, str) or not ref.strip() for ref in self.evidence_refs):
+            raise ValueError("recovery protection evidence_refs must be non-empty")
 
 
 @dataclass(frozen=True)
@@ -37,6 +89,7 @@ class RecoveryCertificate:
     venue_observations_obtained: bool
     venue_evidence_refs: tuple[str, ...]
     decision: RecoveryDecision
+    protection_evidence: RecoveryProtectionEvidence | None = None
 
     def __post_init__(self) -> None:
         for f in (
@@ -76,6 +129,10 @@ class RecoveryCertificate:
                 )
             if self.reconciliation_health != ReconciliationHealth.CURRENT:
                 raise ValueError("READY requires reconciliation_health=CURRENT")
+            if self.protection_evidence is None:
+                raise ValueError("READY requires certified flatness or current protection evidence")
+            if not (self.protection_evidence.certified_flat or self.protection_evidence.current_protection):
+                raise ValueError("READY requires positive flat/protection evidence")
 
 
 def run_recovery(
@@ -94,6 +151,8 @@ def run_recovery(
     venue_observations_obtained: bool,
     venue_evidence_refs: tuple[str, ...],
     prerequisites_ok: bool,
+    protection_evidence: RecoveryProtectionEvidence | None = None,
+    reconciliation_evidence: ReconciliationEvidenceBundle | None = None,
 ) -> RecoveryCertificate:
     """Deterministic recovery classification.
 
@@ -103,6 +162,18 @@ def run_recovery(
       positively satisfied, and venue observations with evidence refs exist.
     - Conflicted reconciliation => RECOVERY_REQUIRED.
     """
+    evidence_refs = tuple(
+        query.evidence_hash for query in reconciliation_evidence.queries
+    ) if reconciliation_evidence is not None else ()
+    if reconciliation_evidence is not None:
+        if reconciliation_evidence.overall_status != QueryStatus.SUCCESS:
+            reconciliation_health = ReconciliationHealth.STALE
+        if reconciliation_evidence.overall_completeness != Completeness.COMPLETE:
+            reconciliation_health = ReconciliationHealth.STALE
+        if not venue_evidence_refs:
+            venue_evidence_refs = evidence_refs
+        venue_observations_obtained = venue_observations_obtained or bool(reconciliation_evidence.queries)
+
     has_unresolved = (
         unresolved_intent_ids
         or unresolved_command_ids
@@ -117,6 +188,10 @@ def run_recovery(
             decision = RecoveryDecision.RECOVERY_REQUIRED
         else:
             decision = RecoveryDecision.REMAIN_RECOVERING
+    elif protection_evidence is None or not (
+        protection_evidence.certified_flat or protection_evidence.current_protection
+    ):
+        decision = RecoveryDecision.REMAIN_RECOVERING
     else:
         decision = RecoveryDecision.READY
     return RecoveryCertificate(
@@ -131,8 +206,9 @@ def run_recovery(
         protection_uncertainty_summary=protection_uncertainty_summary,
         started_at_ns=started_at_ns,
         ended_at_ns=ended_at_ns,
-        evidence_refs=("journal-restore",),
+        evidence_refs=("journal-restore",) + evidence_refs,
         venue_observations_obtained=venue_observations_obtained,
         venue_evidence_refs=tuple(venue_evidence_refs),
         decision=decision,
+        protection_evidence=protection_evidence,
     )

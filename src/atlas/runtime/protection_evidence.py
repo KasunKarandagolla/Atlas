@@ -26,6 +26,15 @@ from atlas.domain.enums import ProtectionStatus
 from atlas.domain.execution import ProtectionObservation
 from atlas.domain.time import ensure_utc_ns
 
+_PLACEHOLDER_REFS = frozenset({"", "REQUIRED", "REQUIRED_AT_INSTALL", "PLACEHOLDER"})
+
+
+def _valid_evidence_refs(refs: tuple[str, ...]) -> bool:
+    return bool(refs) and all(
+        isinstance(ref, str) and ref.strip() and ref.strip().upper() not in _PLACEHOLDER_REFS
+        for ref in refs
+    )
+
 
 @dataclass(frozen=True)
 class ProtectionEvidence:
@@ -77,8 +86,8 @@ class ProtectionEvidence:
             raise ValueError("closing_only_behavior must be bool")
         ensure_utc_ns(self.observation_time_ns, field="observation_time_ns")
         ensure_utc_ns(self.receive_time_ns, field="receive_time_ns")
-        if self.receive_time_ns < self.observation_time_ns:
-            raise ValueError("receive_time_ns cannot precede observation_time_ns")
+        # An unconfirmed future observation is representable evidence. The
+        # verifier, not construction, marks it fail-closed.
         if not isinstance(self.status, ProtectionStatus):
             raise ValueError("status must be ProtectionStatus")
         if not isinstance(self.freshness_ns, int) or isinstance(self.freshness_ns, bool) or self.freshness_ns < 0:
@@ -116,6 +125,11 @@ def verify_protection(
     expected_trigger_basis: str,
     now_ns: int,
     max_staleness_ns: int,
+    *,
+    account_ref: str,
+    instrument: str,
+    conditional_order_evidence_ids: tuple[str, ...] = (),
+    conditional_order_view_available: bool = False,
 ) -> ProtectionVerificationResult:
     """Verify protection observation matches expected state.
 
@@ -133,10 +147,13 @@ def verify_protection(
     if observation.position_epoch != expected_position_epoch:
         mismatches.append(f"position_epoch {observation.position_epoch} != expected {expected_position_epoch}")
 
-    # Qty check: observed must cover expected (venue qty may briefly lag)
-    # Use absolute values for comparison
-    if abs(observation.qty) < abs(expected_signed_qty):
-        mismatches.append(f"observed qty {observation.qty} < expected {expected_signed_qty}")
+    # Protection proof is exact current signed coverage.  A lagging quantity
+    # observation is not evidence for the new fill and opposite sign is never
+    # coverage.
+    if observation.qty != expected_signed_qty:
+        mismatches.append(f"observed signed qty {observation.qty} != expected {expected_signed_qty}")
+    if expected_signed_qty == 0:
+        mismatches.append("protection proof requires known non-zero exposure")
 
     if observation.stop_price != expected_stop_price:
         mismatches.append(f"stop_price {observation.stop_price} != expected {expected_stop_price}")
@@ -144,32 +161,45 @@ def verify_protection(
     if observation.trigger_basis != expected_trigger_basis:
         mismatches.append(f"trigger_basis {observation.trigger_basis} != expected {expected_trigger_basis}")
 
-    if "Full" not in observation.semantics:
+    semantics_lower = observation.semantics.lower()
+    if "full" not in semantics_lower:
         mismatches.append(f"semantics {observation.semantics!r} not full-position")
+    if "market" not in semantics_lower:
+        mismatches.append("protection semantics are not market execution")
+    if not ("reduce" in semantics_lower or "close" in semantics_lower):
+        mismatches.append("protection semantics are not closing-only")
+    if observation.trigger_basis != "MarkPrice":
+        mismatches.append("V1 protection requires MarkPrice trigger basis")
+    if not _valid_evidence_refs(observation.evidence_ids):
+        mismatches.append("position-view evidence references are missing or placeholders")
+    if conditional_order_view_available and not _valid_evidence_refs(conditional_order_evidence_ids):
+        mismatches.append("conditional-order-view evidence references are missing or placeholders")
 
     freshness = now_ns - observation.observed_at_ns
-    if freshness > max_staleness_ns:
+    if freshness < 0:
+        mismatches.append("observation timestamp is in the future")
+    elif freshness > max_staleness_ns:
         mismatches.append(f"evidence stale: {freshness}ns > {max_staleness_ns}ns")
 
     verified = len(mismatches) == 0
 
     # Build evidence record
     evidence = ProtectionEvidence(
-        account_ref="",  # Filled by caller
-        instrument="",   # Filled by caller
+        account_ref=account_ref,
+        instrument=instrument,
         position_epoch=observation.position_epoch,
         desired_stop_version=observation.desired_stop_version,
         observed_signed_qty=observation.qty,
-        full_position_semantics="Full" in observation.semantics,
+        full_position_semantics="full" in semantics_lower,
         stop_price=observation.stop_price,
         trigger_basis=observation.trigger_basis,
-        closing_only_behavior="reduce" in observation.semantics.lower() or "close" in observation.semantics.lower(),
+        closing_only_behavior="reduce" in semantics_lower or "close" in semantics_lower,
         position_view_evidence_ids=observation.evidence_ids,
-        conditional_order_view_evidence_ids=(),  # Would need separate query
+        conditional_order_view_evidence_ids=conditional_order_evidence_ids,
         observation_time_ns=observation.observed_at_ns,
-        receive_time_ns=now_ns,
+        receive_time_ns=max(now_ns, observation.observed_at_ns),
         status=ProtectionStatus.CONFIRMED if verified else ProtectionStatus.UNCONFIRMED,
-        freshness_ns=freshness,
+        freshness_ns=max(0, freshness),
     )
 
     return ProtectionVerificationResult(

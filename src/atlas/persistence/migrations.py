@@ -1,4 +1,4 @@
-"""Deterministic schema migration/bootstrap (v1 -> v2)."""
+"""Deterministic schema migration/bootstrap (v1 -> v3)."""
 
 from __future__ import annotations
 
@@ -63,6 +63,21 @@ def _migrate_v1_to_v2(conn: sqlite3.Connection) -> None:
         cur.execute("ALTER TABLE economic_events_new RENAME TO economic_events")
 
 
+def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
+    """Create the append-only execution/status evidence tables."""
+    cur = conn.cursor()
+    for stmt in DDL_STATEMENTS:
+        if (
+            "CREATE TABLE IF NOT EXISTS execution_evidence" in stmt
+            or "CREATE TABLE IF NOT EXISTS order_status_observations" in stmt
+            or "CREATE TABLE IF NOT EXISTS reconciliation_query_evidence" in stmt
+            or "CREATE TABLE IF NOT EXISTS recovery_incidents" in stmt
+            or "CREATE TABLE IF NOT EXISTS capability_evidence_log" in stmt
+            or "CREATE TABLE IF NOT EXISTS capability_qualification_log" in stmt
+        ):
+            cur.execute(stmt)
+
+
 def bootstrap(conn: sqlite3.Connection) -> int:
     """Create schema idempotently; migrate v1->v2 deterministically. Returns version."""
     cur = conn.cursor()
@@ -84,6 +99,9 @@ def bootstrap(conn: sqlite3.Connection) -> int:
             else:
                 cur.execute(stmt)
         _migrate_v1_to_v2(conn)
+        _migrate_v2_to_v3(conn)
+    elif existing == 2:
+        _migrate_v2_to_v3(conn)
     else:
         for stmt in DDL_STATEMENTS:
             cur.execute(stmt)

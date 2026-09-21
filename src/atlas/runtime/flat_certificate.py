@@ -17,6 +17,7 @@ Late contradictory fill/evidence must reopen recovery incident, never silently m
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import StrEnum
 
 from atlas.domain.time import ensure_utc_ns
@@ -54,6 +55,16 @@ class FlatCertificate:
     decision: FlatCertificationDecision
     certified_at_ns: int
     mismatch_details: tuple[str, ...]
+    current_signed_position_qty: Decimal = Decimal("0")
+    current_position_evidence_complete: bool = False
+    terminal_opening_order_certainty: bool = False
+    no_unresolved_opening_command: bool = False
+    reservation_release_evidence: bool = False
+    writer_identity_current: bool = False
+    account_identity_current: bool = False
+    required_query_windows_complete: bool = False
+    late_contradictory_evidence: bool = False
+    intent_id: str | None = None
 
     def __post_init__(self) -> None:
         for f in ("certification_id", "reconciliation_run_id", "writer_id", "account_identity_hash", "instrument"):
@@ -81,6 +92,18 @@ class FlatCertificate:
         ensure_utc_ns(self.certified_at_ns, field="certified_at_ns")
         if not isinstance(self.mismatch_details, tuple):
             raise ValueError("mismatch_details must be tuple")
+        if not isinstance(self.current_signed_position_qty, Decimal):
+            raise ValueError("current_signed_position_qty must be Decimal")
+        if self.intent_id is not None and not self.intent_id.strip():
+            raise ValueError("intent_id must be non-blank when supplied")
+        for name in (
+            "current_position_evidence_complete", "terminal_opening_order_certainty",
+            "no_unresolved_opening_command", "reservation_release_evidence",
+            "writer_identity_current", "account_identity_current",
+            "required_query_windows_complete", "late_contradictory_evidence",
+        ):
+            if not isinstance(getattr(self, name), bool):
+                raise ValueError(f"{name} must be bool")
 
     @property
     def is_flat(self) -> bool:
@@ -109,6 +132,16 @@ def certify_flat(
     execution_evidence: ExecutionEvidence,
     economic_evidence: ReconciliationQueryEvidence,
     now_ns: int,
+    current_signed_position_qty: Decimal = Decimal("0"),
+    current_position_evidence_complete: bool = False,
+    terminal_opening_order_certainty: bool = False,
+    no_unresolved_opening_command: bool = False,
+    reservation_release_evidence: bool = False,
+    writer_identity_current: bool = False,
+    account_identity_current: bool = False,
+    required_query_windows_complete: bool = False,
+    late_contradictory_evidence: bool = False,
+    intent_id: str | None = None,
 ) -> FlatCertificate:
     """Certify flat state with complete evidence chain.
 
@@ -119,7 +152,13 @@ def certify_flat(
     """
     mismatches: list[str] = []
 
-    # 1. Zero position evidence must be complete and empty
+    # 1. Positive current flatness, not historical fill quantity.
+    if current_signed_position_qty != Decimal("0"):
+        mismatches.append(f"current signed position is not zero: {current_signed_position_qty}")
+    if not current_position_evidence_complete:
+        mismatches.append("current position evidence is not complete/current")
+    # The query is still required to be complete and interval-covered; its
+    # empty result is supporting evidence, not the whole certificate.
     if not zero_position_evidence.can_certify_absence:
         if zero_position_evidence.status != QueryStatus.SUCCESS:
             mismatches.append(f"zero position query failed: {zero_position_evidence.status.value}")
@@ -131,6 +170,10 @@ def certify_flat(
             mismatches.append("zero position query retention coverage insufficient")
 
     # 2. All opening commands must have terminal evidence
+    if not terminal_opening_order_certainty:
+        mismatches.append("opening command/order terminal certainty is absent")
+    if not no_unresolved_opening_command:
+        mismatches.append("an opening command remains unresolved")
     for ev in opening_commands_evidence:
         if ev.status != QueryStatus.SUCCESS:
             mismatches.append(f"opening command query failed: {ev.status.value}")
@@ -161,15 +204,29 @@ def certify_flat(
         else:
             mismatches.append("protection orders query retention coverage insufficient")
 
-    # 5. Execution deduplication coverage
-    if execution_evidence.cumulative_qty != 0:
-        mismatches.append(f"execution evidence shows non-zero cumulative qty: {execution_evidence.cumulative_qty}")
+    # 5. Historical executions may be non-zero.  Require complete, unique
+    # execution evidence instead of incorrectly requiring no historical fills.
+    execution_ids = [fill.execution_id for fill in execution_evidence.fills]
+    if len(execution_ids) != len(set(execution_ids)):
+        mismatches.append("execution evidence contains duplicate execution IDs")
+    if not execution_evidence.fills and execution_evidence.cumulative_qty != Decimal("0"):
+        mismatches.append("execution cumulative quantity is inconsistent with fills")
+
+    if not reservation_release_evidence:
+        mismatches.append("reservation release eligibility is not evidenced")
+    if not writer_identity_current:
+        mismatches.append("writer identity is not current")
+    if not account_identity_current:
+        mismatches.append("account identity is not current")
+    if not required_query_windows_complete:
+        mismatches.append("required query windows are incomplete")
+    if late_contradictory_evidence:
+        mismatches.append("late contradictory evidence reopened recovery")
 
     # 6. Economic reconciliation (funding/fees)
-    if economic_evidence.status != QueryStatus.SUCCESS:
-        mismatches.append(f"economic reconciliation query failed: {economic_evidence.status.value}")
-    if economic_evidence.completeness != Completeness.COMPLETE:
-        mismatches.append(f"economic reconciliation incomplete: {economic_evidence.completeness.value}")
+    # Funding/fee posting may remain pending after execution risk is flat.
+    # It is retained as evidence but is not a prerequisite for releasing the
+    # execution reservation.
 
     # Decision
     if not mismatches:
@@ -196,4 +253,14 @@ def certify_flat(
         decision=decision,
         certified_at_ns=now_ns,
         mismatch_details=tuple(mismatches),
+        current_signed_position_qty=current_signed_position_qty,
+        current_position_evidence_complete=current_position_evidence_complete,
+        terminal_opening_order_certainty=terminal_opening_order_certainty,
+        no_unresolved_opening_command=no_unresolved_opening_command,
+        reservation_release_evidence=reservation_release_evidence,
+        writer_identity_current=writer_identity_current,
+        account_identity_current=account_identity_current,
+        required_query_windows_complete=required_query_windows_complete,
+        late_contradictory_evidence=late_contradictory_evidence,
+        intent_id=intent_id,
     )

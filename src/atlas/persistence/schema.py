@@ -4,15 +4,16 @@ Append/audit-friendly: rows are inserted, never updated except for explicit
 state-transition columns (approval consumption, command dispatch/outcome,
 intent lifecycle). History is preserved via observations/economic events.
 
-Schema v2 (Session 002 repairs):
+Schema v3 (Session 004 repairs):
 - intents.state_version: monotonically increasing local state version (freeze §1.5).
 - economic_events: composite identity (account, venue_transaction_id) per freeze
   (venue IDs are not globally unique across accounts).
+- execution_evidence and order_status_observations are append-only durable evidence.
 """
 
 from __future__ import annotations
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 DDL_STATEMENTS = [
     """
@@ -121,6 +122,99 @@ DDL_STATEMENTS = [
         event_type TEXT NOT NULL,
         revision TEXT NOT NULL,
         PRIMARY KEY (account, venue_transaction_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS execution_evidence (
+        execution_id TEXT PRIMARY KEY,
+        order_id TEXT NOT NULL,
+        client_order_id TEXT NOT NULL,
+        intent_id TEXT NOT NULL,
+        instrument TEXT NOT NULL,
+        side TEXT NOT NULL,
+        qty TEXT NOT NULL,
+        price TEXT NOT NULL,
+        fee TEXT NOT NULL,
+        fee_currency TEXT NOT NULL,
+        trade_time_ns INTEGER NOT NULL,
+        receive_time_ns INTEGER NOT NULL,
+        source TEXT NOT NULL,
+        raw_hash TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS order_status_observations (
+        observation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id TEXT NOT NULL,
+        client_order_id TEXT NOT NULL,
+        intent_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        cum_exec_qty TEXT NOT NULL,
+        cum_exec_fee TEXT NOT NULL,
+        cum_exec_value TEXT NOT NULL,
+        avg_exec_price TEXT,
+        receive_time_ns INTEGER NOT NULL,
+        source TEXT NOT NULL,
+        raw_hash TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS reconciliation_query_evidence (
+        query_id TEXT PRIMARY KEY,
+        query_type TEXT NOT NULL,
+        account TEXT NOT NULL,
+        instrument TEXT,
+        requested_interval_start_ns INTEGER,
+        requested_interval_end_ns INTEGER,
+        pagination_cursors_json TEXT NOT NULL,
+        pages_observed INTEGER NOT NULL,
+        total_records_returned INTEGER NOT NULL,
+        completeness TEXT NOT NULL,
+        status TEXT NOT NULL,
+        source_time_ns INTEGER,
+        receipt_time_ns INTEGER NOT NULL,
+        request_ids_json TEXT NOT NULL,
+        retention_coverage_start_ns INTEGER,
+        retention_coverage_end_ns INTEGER,
+        evidence_hash TEXT NOT NULL,
+        error_message TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS recovery_incidents (
+        incident_id TEXT PRIMARY KEY,
+        recovery_run_id TEXT NOT NULL,
+        category TEXT NOT NULL,
+        status TEXT NOT NULL,
+        evidence_refs_json TEXT NOT NULL,
+        opened_at_ns INTEGER NOT NULL,
+        resolved_at_ns INTEGER
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS capability_evidence_log (
+        evidence_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        capability_name TEXT NOT NULL,
+        state TEXT NOT NULL,
+        test_run_id TEXT,
+        evidence_refs_json TEXT NOT NULL,
+        test_timestamp_ns INTEGER,
+        environment TEXT NOT NULL,
+        notes TEXT NOT NULL,
+        target_profile_hash TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS capability_qualification_log (
+        qualification_id TEXT PRIMARY KEY,
+        capability_name TEXT NOT NULL,
+        previous_state TEXT NOT NULL,
+        new_state TEXT NOT NULL,
+        test_run_id TEXT NOT NULL,
+        evidence_refs_json TEXT NOT NULL,
+        qualified_by TEXT NOT NULL,
+        qualified_at_ns INTEGER NOT NULL,
+        target_profile_hash TEXT NOT NULL
     )
     """,
 ]

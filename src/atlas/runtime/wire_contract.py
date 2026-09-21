@@ -115,8 +115,9 @@ class ExitWireContract:
     time_in_force: str = "IOC"
     side: str = ""  # "Buy" | "Sell" (opposite of entry)
     quantity: Decimal = Decimal("0")
-    price: Decimal = Decimal("0")
+    price: Decimal | None = Decimal("0")
     reduce_only: bool = True
+    position_idx: int = 0
 
     def __post_init__(self) -> None:
         if not self.instrument or not self.instrument.strip():
@@ -129,10 +130,14 @@ class ExitWireContract:
             raise ValueError("side must be Buy or Sell")
         if not isinstance(self.quantity, Decimal) or self.quantity <= 0:
             raise ValueError("quantity must be positive Decimal (explicit, never zero)")
-        if not isinstance(self.price, Decimal) or self.price <= 0:
-            raise ValueError("price must be positive Decimal")
+        if self.order_type == "LIMIT" and (not isinstance(self.price, Decimal) or self.price <= 0):
+            raise ValueError("LIMIT exit price must be positive Decimal")
+        if self.order_type == "MARKET" and self.price is not None:
+            raise ValueError("MARKET exit must not contain a synthetic price")
         if not isinstance(self.reduce_only, bool) or not self.reduce_only:
             raise ValueError("reduce_only must be True for exit")
+        if self.position_idx != 0:
+            raise ValueError("V1 exit requires position_idx=0")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -141,21 +146,25 @@ class ExitWireContract:
             "time_in_force": self.time_in_force,
             "side": self.side,
             "quantity": canonical_decimal_str(self.quantity),
-            "price": canonical_decimal_str(self.price),
+            "price": canonical_decimal_str(self.price) if self.price is not None else None,
             "reduce_only": self.reduce_only,
+            "position_idx": self.position_idx,
         }
 
     def to_bybit_params(self) -> dict[str, Any]:
         """Format as expected Bybit V5 order parameters."""
-        return {
+        result: dict[str, Any] = {
             "symbol": self.instrument,
             "side": self.side,
             "orderType": self.order_type,
             "timeInForce": self.time_in_force,
             "qty": canonical_decimal_str(self.quantity),
-            "price": canonical_decimal_str(self.price),
             "reduceOnly": self.reduce_only,
+            "positionIdx": self.position_idx,
         }
+        if self.price is not None:
+            result["price"] = canonical_decimal_str(self.price)
+        return result
 
 
 def build_entry_wire_contract(
@@ -205,5 +214,5 @@ def build_market_exit_wire_contract(
         time_in_force="IOC",
         side=exit_side,
         quantity=quantity,
-        price=Decimal("0"),  # Not used for market orders
+        price=None,
     )

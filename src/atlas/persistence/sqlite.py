@@ -4,7 +4,7 @@
 - stdlib sqlite3 with explicit SQL (no ORM).
 - Transactional writes; persistence failure raises PersistenceError (never success).
 - Unique client-order-ID constraint enforced by schema.
-- Schema v2: intents.state_version + economic_events composite (account, venue_transaction_id).
+- Schema v3: durable execution and order-status evidence in addition to the v2 records.
 """
 
 from __future__ import annotations
@@ -40,6 +40,15 @@ from atlas.domain.transitions import (
     validate_lifecycle_transition,
     validate_outcome_transition,
 )
+from atlas.runtime.capability_ledger import CapabilityEvidence, EvidenceState, QualificationRecord
+from atlas.runtime.fill_dedup import FillRecord, OrderStatusRecord
+from atlas.runtime.reconciliation_evidence import (
+    Completeness,
+    QueryStatus,
+    QueryType,
+    ReconciliationQueryEvidence,
+)
+from atlas.runtime.recovery import RecoveryIncident
 
 from .migrations import bootstrap, current_version
 
@@ -56,17 +65,25 @@ class SQLiteJournal:
     def __init__(self, path: str | Path, *, timeout: float = 10.0) -> None:
         self._path = str(path)
         self._lock = threading.Lock()
+        self._closed = False
+        self._conn: sqlite3.Connection
+        conn: sqlite3.Connection | None = None
         try:
-            self._conn = sqlite3.connect(
+            conn = sqlite3.connect(
                 self._path, timeout=timeout, isolation_level=None, check_same_thread=False
             )
+            self._conn = conn
             self._conn.row_factory = sqlite3.Row
             self._apply_pragmas()
             self._verify_pragmas_fail_closed()
             bootstrap(self._conn)
         except PersistenceError:
+            if conn is not None:
+                conn.close()
             raise
         except sqlite3.Error as exc:
+            if conn is not None:
+                conn.close()
             raise PersistenceError(f"failed to open journal at {self._path}: {exc}") from exc
 
     def _apply_pragmas(self) -> None:
@@ -99,6 +116,8 @@ class SQLiteJournal:
             raise PersistenceError(f"foreign_keys must be ON, got {foreign_keys!r}")
 
     def pragmas(self) -> dict[str, Any]:
+        if self._closed:
+            raise PersistenceError("journal is closed")
         cur = self._conn.cursor()
         out: dict[str, Any] = {}
         for name in ("journal_mode", "synchronous", "foreign_keys"):
@@ -111,6 +130,8 @@ class SQLiteJournal:
         return out
 
     def schema_version(self) -> int | None:
+        if self._closed:
+            raise PersistenceError("journal is closed")
         try:
             return current_version(self._conn)
         except sqlite3.Error as exc:
@@ -118,6 +139,8 @@ class SQLiteJournal:
 
     @contextmanager
     def _tx(self) -> Iterator[sqlite3.Cursor]:
+        if self._closed:
+            raise PersistenceError("journal is closed")
         with self._lock:
             cur = self._conn.cursor()
             try:
@@ -942,8 +965,7 @@ class SQLiteJournal:
         self._wrap("append_protection_observation", _op)
 
     def append_economic_event(self, ev: EconomicEvent) -> None:
-        """Composite identity (account, venue_transaction_id); same tx across
-        different accounts allowed, same account+tx rejected."""
+        """Append an economic event using account/transaction identity."""
 
         def _op() -> None:
             with self._tx() as cur:
@@ -963,7 +985,302 @@ class SQLiteJournal:
                     ),
                 )
 
-        self._wrap("append_economic_event", _op)
+        return self._wrap("append_economic_event", _op)
+
+    # ---- Durable execution/status evidence ----
+    def append_execution_evidence(self, fill: FillRecord) -> bool:
+        """Append one execution, returning False for an exact duplicate.
+
+        Exchange execution IDs are the durable deduplication key. Reusing an
+        ID with a different payload is a contradiction, never a replacement.
+        """
+        def _op() -> bool:
+            with self._tx() as cur:
+                cur.execute("SELECT * FROM execution_evidence WHERE execution_id=?", (fill.execution_id,))
+                row = cur.fetchone()
+                if row is not None:
+                    fields = {
+                        "order_id": fill.order_id,
+                        "client_order_id": fill.client_order_id,
+                        "intent_id": fill.intent_id,
+                        "instrument": fill.instrument,
+                        "side": fill.side,
+                        "qty": canonical_decimal_str(fill.qty),
+                        "price": canonical_decimal_str(fill.price),
+                        "fee": canonical_decimal_str(fill.fee),
+                        "fee_currency": fill.fee_currency,
+                        "trade_time_ns": fill.trade_time_ns,
+                        "receive_time_ns": fill.receive_time_ns,
+                        "source": fill.source,
+                        "raw_hash": fill.raw_hash,
+                    }
+                    if any(row[k] != v for k, v in fields.items()):
+                        raise PersistenceError(
+                            f"conflicting execution evidence for execution_id={fill.execution_id}"
+                        )
+                    return False
+                cur.execute(
+                    "INSERT INTO execution_evidence(execution_id, order_id, client_order_id, intent_id,"
+                    " instrument, side, qty, price, fee, fee_currency, trade_time_ns, receive_time_ns, source, raw_hash)"
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        fill.execution_id, fill.order_id, fill.client_order_id, fill.intent_id,
+                        fill.instrument, fill.side, canonical_decimal_str(fill.qty),
+                        canonical_decimal_str(fill.price), canonical_decimal_str(fill.fee),
+                        fill.fee_currency, fill.trade_time_ns, fill.receive_time_ns,
+                        fill.source, fill.raw_hash,
+                    ),
+                )
+                return True
+
+        return self._wrap("append_execution_evidence", _op)
+
+    @staticmethod
+    def _fill_from_row(row: sqlite3.Row) -> FillRecord:
+        return FillRecord(
+            execution_id=row["execution_id"], order_id=row["order_id"],
+            client_order_id=row["client_order_id"], intent_id=row["intent_id"],
+            instrument=row["instrument"], side=row["side"], qty=Decimal(row["qty"]),
+            price=Decimal(row["price"]), fee=Decimal(row["fee"]),
+            fee_currency=row["fee_currency"], trade_time_ns=int(row["trade_time_ns"]),
+            receive_time_ns=int(row["receive_time_ns"]), source=row["source"],
+            raw_hash=row["raw_hash"],
+        )
+
+    def get_execution_evidence(self, execution_id: str) -> FillRecord | None:
+        def _op() -> FillRecord | None:
+            cur = self._conn.cursor()
+            cur.execute("SELECT * FROM execution_evidence WHERE execution_id=?", (execution_id,))
+            row = cur.fetchone()
+            return self._fill_from_row(row) if row is not None else None
+
+        return self._wrap("get_execution_evidence", _op)
+
+    def load_execution_evidence(
+        self, *, intent_id: str | None = None, client_order_id: str | None = None
+    ) -> list[FillRecord]:
+        def _op() -> list[FillRecord]:
+            cur = self._conn.cursor()
+            clauses: list[str] = []
+            params: list[str] = []
+            if intent_id is not None:
+                clauses.append("intent_id=?")
+                params.append(intent_id)
+            if client_order_id is not None:
+                clauses.append("client_order_id=?")
+                params.append(client_order_id)
+            where = " WHERE " + " AND ".join(clauses) if clauses else ""
+            cur.execute(f"SELECT * FROM execution_evidence{where} ORDER BY trade_time_ns, execution_id", params)
+            return [self._fill_from_row(row) for row in cur.fetchall()]
+
+        return self._wrap("load_execution_evidence", _op)
+
+    def append_order_status_observation(self, status: OrderStatusRecord) -> None:
+        def _op() -> None:
+            with self._tx() as cur:
+                cur.execute(
+                    "INSERT INTO order_status_observations(order_id, client_order_id, intent_id, status,"
+                    " cum_exec_qty, cum_exec_fee, cum_exec_value, avg_exec_price, receive_time_ns, source, raw_hash)"
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        status.order_id, status.client_order_id, status.intent_id, status.status,
+                        canonical_decimal_str(status.cum_exec_qty), canonical_decimal_str(status.cum_exec_fee),
+                        canonical_decimal_str(status.cum_exec_value),
+                        canonical_decimal_str(status.avg_exec_price) if status.avg_exec_price is not None else None,
+                        status.receive_time_ns, status.source, status.raw_hash,
+                    ),
+                )
+
+        self._wrap("append_order_status_observation", _op)
+
+    def load_order_status_observations(self, *, intent_id: str | None = None) -> list[OrderStatusRecord]:
+        def _op() -> list[OrderStatusRecord]:
+            cur = self._conn.cursor()
+            if intent_id is None:
+                cur.execute("SELECT * FROM order_status_observations ORDER BY receive_time_ns, observation_id")
+            else:
+                cur.execute(
+                    "SELECT * FROM order_status_observations WHERE intent_id=? ORDER BY receive_time_ns, observation_id",
+                    (intent_id,),
+                )
+            return [
+                OrderStatusRecord(
+                    order_id=row["order_id"], client_order_id=row["client_order_id"], intent_id=row["intent_id"],
+                    status=row["status"], cum_exec_qty=Decimal(row["cum_exec_qty"]),
+                    cum_exec_fee=Decimal(row["cum_exec_fee"]), cum_exec_value=Decimal(row["cum_exec_value"]),
+                    avg_exec_price=Decimal(row["avg_exec_price"]) if row["avg_exec_price"] is not None else None,
+                    receive_time_ns=int(row["receive_time_ns"]), source=row["source"], raw_hash=row["raw_hash"],
+                ) for row in cur.fetchall()
+            ]
+
+        return self._wrap("load_order_status_observations", _op)
+
+    def append_reconciliation_query_evidence(self, evidence: ReconciliationQueryEvidence) -> bool:
+        """Persist one immutable typed query result; exact replays are ignored."""
+        def _op() -> bool:
+            with self._tx() as cur:
+                cur.execute("SELECT evidence_hash FROM reconciliation_query_evidence WHERE query_id=?", (evidence.query_id,))
+                row = cur.fetchone()
+                if row is not None:
+                    if row["evidence_hash"] != evidence.evidence_hash:
+                        raise PersistenceError(f"conflicting reconciliation evidence for {evidence.query_id}")
+                    return False
+                cur.execute(
+                    "INSERT INTO reconciliation_query_evidence(query_id, query_type, account, instrument,"
+                    " requested_interval_start_ns, requested_interval_end_ns, pagination_cursors_json, pages_observed,"
+                    " total_records_returned, completeness, status, source_time_ns, receipt_time_ns, request_ids_json,"
+                    " retention_coverage_start_ns, retention_coverage_end_ns, evidence_hash, error_message)"
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        evidence.query_id, evidence.query_type.value, evidence.account, evidence.instrument,
+                        evidence.requested_interval_start_ns, evidence.requested_interval_end_ns,
+                        json.dumps(list(evidence.pagination_cursors), sort_keys=True), evidence.pages_observed,
+                        evidence.total_records_returned, evidence.completeness.value, evidence.status.value,
+                        evidence.source_time_ns, evidence.receipt_time_ns,
+                        json.dumps(list(evidence.request_ids), sort_keys=True), evidence.retention_coverage_start_ns,
+                        evidence.retention_coverage_end_ns, evidence.evidence_hash, evidence.error_message,
+                    ),
+                )
+                return True
+
+        return self._wrap("append_reconciliation_query_evidence", _op)
+
+    def load_reconciliation_query_evidence(self, query_id: str | None = None) -> list[ReconciliationQueryEvidence]:
+        def _op() -> list[ReconciliationQueryEvidence]:
+            cur = self._conn.cursor()
+            if query_id is None:
+                cur.execute("SELECT * FROM reconciliation_query_evidence ORDER BY receipt_time_ns, query_id")
+            else:
+                cur.execute("SELECT * FROM reconciliation_query_evidence WHERE query_id=?", (query_id,))
+            rows = cur.fetchall()
+            return [
+                ReconciliationQueryEvidence(
+                    query_id=row["query_id"], query_type=QueryType(row["query_type"]), account=row["account"],
+                    instrument=row["instrument"], requested_interval_start_ns=row["requested_interval_start_ns"],
+                    requested_interval_end_ns=row["requested_interval_end_ns"],
+                    pagination_cursors=tuple(json.loads(row["pagination_cursors_json"])),
+                    pages_observed=int(row["pages_observed"]), total_records_returned=int(row["total_records_returned"]),
+                    completeness=Completeness(row["completeness"]), status=QueryStatus(row["status"]),
+                    source_time_ns=row["source_time_ns"], receipt_time_ns=int(row["receipt_time_ns"]),
+                    request_ids=tuple(json.loads(row["request_ids_json"])),
+                    retention_coverage_start_ns=row["retention_coverage_start_ns"],
+                    retention_coverage_end_ns=row["retention_coverage_end_ns"], evidence_hash=row["evidence_hash"],
+                    error_message=row["error_message"],
+                ) for row in rows
+            ]
+
+        return self._wrap("load_reconciliation_query_evidence", _op)
+
+    def append_recovery_incident(self, incident: RecoveryIncident) -> None:
+        def _op() -> None:
+            with self._tx() as cur:
+                cur.execute(
+                    "INSERT INTO recovery_incidents(incident_id, recovery_run_id, category, status,"
+                    " evidence_refs_json, opened_at_ns, resolved_at_ns) VALUES(?,?,?,?,?,?,?)",
+                    (
+                        incident.incident_id, incident.recovery_run_id, incident.category, incident.status,
+                        json.dumps(list(incident.evidence_refs), sort_keys=True), incident.opened_at_ns,
+                        incident.resolved_at_ns,
+                    ),
+                )
+
+        self._wrap("append_recovery_incident", _op)
+
+    def load_recovery_incidents(self, recovery_run_id: str | None = None) -> list[RecoveryIncident]:
+        def _op() -> list[RecoveryIncident]:
+            cur = self._conn.cursor()
+            if recovery_run_id is None:
+                cur.execute("SELECT * FROM recovery_incidents ORDER BY opened_at_ns, incident_id")
+            else:
+                cur.execute("SELECT * FROM recovery_incidents WHERE recovery_run_id=? ORDER BY opened_at_ns, incident_id", (recovery_run_id,))
+            return [
+                RecoveryIncident(
+                    incident_id=row["incident_id"], recovery_run_id=row["recovery_run_id"], category=row["category"],
+                    status=row["status"], evidence_refs=tuple(json.loads(row["evidence_refs_json"])),
+                    opened_at_ns=int(row["opened_at_ns"]), resolved_at_ns=row["resolved_at_ns"],
+                ) for row in cur.fetchall()
+            ]
+
+        return self._wrap("load_recovery_incidents", _op)
+
+    def append_capability_evidence(self, evidence: CapabilityEvidence) -> None:
+        def _op() -> None:
+            with self._tx() as cur:
+                cur.execute(
+                    "INSERT INTO capability_evidence_log(capability_name, state, test_run_id, evidence_refs_json,"
+                    " test_timestamp_ns, environment, notes, target_profile_hash) VALUES(?,?,?,?,?,?,?,?)",
+                    (
+                        evidence.capability_name, evidence.state.value, evidence.test_run_id,
+                        json.dumps(list(evidence.evidence_refs), sort_keys=True), evidence.test_timestamp_ns,
+                        evidence.environment, evidence.notes, evidence.target_profile_hash,
+                    ),
+                )
+
+        self._wrap("append_capability_evidence", _op)
+
+    def load_latest_capability_evidence(self) -> dict[str, CapabilityEvidence]:
+        def _op() -> dict[str, CapabilityEvidence]:
+            cur = self._conn.cursor()
+            cur.execute(
+                "SELECT * FROM capability_evidence_log WHERE evidence_id IN "
+                "(SELECT MAX(evidence_id) FROM capability_evidence_log GROUP BY capability_name)"
+            )
+            return {
+                row["capability_name"]: CapabilityEvidence(
+                    capability_name=row["capability_name"], state=EvidenceState(row["state"]),
+                    test_run_id=row["test_run_id"], evidence_refs=tuple(json.loads(row["evidence_refs_json"])),
+                    test_timestamp_ns=row["test_timestamp_ns"], environment=row["environment"], notes=row["notes"],
+                    target_profile_hash=row["target_profile_hash"],
+                ) for row in cur.fetchall()
+            }
+
+        return self._wrap("load_latest_capability_evidence", _op)
+
+    def append_capability_qualification(self, record: QualificationRecord) -> None:
+        def _op() -> None:
+            with self._tx() as cur:
+                cur.execute(
+                    "INSERT INTO capability_qualification_log(qualification_id, capability_name, previous_state,"
+                    " new_state, test_run_id, evidence_refs_json, qualified_by, qualified_at_ns, target_profile_hash)"
+                    " VALUES(?,?,?,?,?,?,?,?,?)",
+                    (
+                        record.qualification_id, record.capability_name, record.previous_state.value,
+                        record.new_state.value, record.test_run_id, json.dumps(list(record.evidence_refs), sort_keys=True),
+                        record.qualified_by, record.qualified_at_ns, record.target_profile_hash,
+                    ),
+                )
+
+        self._wrap("append_capability_qualification", _op)
+
+    def release_reservation_from_flat_certificate(self, certificate: Any) -> Reservation:
+        """Release only after a valid positive flat certificate."""
+        if not getattr(certificate, "can_release_reservation", False):
+            raise PersistenceError("reservation release requires a certified flat certificate")
+        intent_id = getattr(certificate, "intent_id", None)
+        if not intent_id:
+            raise PersistenceError("flat certificate is not bound to an intent")
+
+        def _op() -> Reservation:
+            with self._tx() as cur:
+                cur.execute("SELECT * FROM reservations WHERE intent_id=?", (intent_id,))
+                row = cur.fetchone()
+                if row is None:
+                    raise PersistenceError(f"reservation not found for {intent_id}")
+                version = int(row["version"])
+                cur.execute(
+                    "UPDATE reservations SET remaining_open_qty=?, version=? WHERE intent_id=? AND version=?",
+                    ("0", version + 1, intent_id, version),
+                )
+                if cur.rowcount != 1:
+                    raise PersistenceError("reservation release version conflict")
+                return Reservation(
+                    reservation_id=row["reservation_id"], intent_id=row["intent_id"], remaining_open_qty=Decimal("0"),
+                    normal_loss=Decimal(row["normal_loss"]), stress_loss=Decimal(row["stress_loss"]),
+                    notional=Decimal(row["notional"]), beta_adjusted_notional=Decimal(row["beta_adjusted_notional"]),
+                    margin=Decimal(row["margin"]), es_contribution=Decimal(row["es_contribution"]), version=version + 1,
+                )
+
+        return self._wrap("release_reservation_from_flat_certificate", _op)
 
     def count(self, table: str) -> int:
         allowed = {
@@ -975,6 +1292,12 @@ class SQLiteJournal:
             "observations",
             "protection_observations",
             "economic_events",
+            "execution_evidence",
+            "order_status_observations",
+            "reconciliation_query_evidence",
+            "recovery_incidents",
+            "capability_evidence_log",
+            "capability_qualification_log",
         }
         if table not in allowed:
             raise PersistenceError(f"unknown table: {table}")
@@ -988,7 +1311,14 @@ class SQLiteJournal:
         return self._wrap(f"count({table})", _op)
 
     def close(self) -> None:
+        if self._closed:
+            return
         try:
             self._conn.close()
+            self._closed = True
         except sqlite3.Error as exc:
             raise PersistenceError(f"close failed: {exc}") from exc
+
+    @property
+    def is_open(self) -> bool:
+        return not self._closed

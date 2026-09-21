@@ -39,11 +39,10 @@ class IdentityExpectation:
     required_instruments: tuple[str, ...] = ("BTCUSDT", "ETHUSDT")
 
     def __post_init__(self) -> None:
-        if _is_placeholder(self.expected_account_identity_hash):
-            raise ValueError(
-                f"expected_account_identity_hash holds placeholder {self.expected_account_identity_hash!r}; "
-                "production readiness requires real evidence"
-            )
+        # Configuration may intentionally be a placeholder while the safe
+        # runtime is being brought up.  Readiness validation below rejects it;
+        # construction must not force callers to invent account evidence.
+        _nonblank(self.expected_account_identity_hash, "expected_account_identity_hash")
 
 
 @dataclass(frozen=True)
@@ -69,11 +68,6 @@ class ObservedAccountState:
             "account_identity_hash",
         ):
             _nonblank(getattr(self, f), f"observed.{f}")
-        if _is_placeholder(self.account_identity_hash):
-            raise ValueError(
-                f"observed account_identity_hash holds placeholder {self.account_identity_hash!r}; "
-                "production readiness requires real evidence"
-            )
         if not isinstance(self.private_verified, bool):
             raise ValueError("private_verified must be bool")
         object.__setattr__(
@@ -111,6 +105,10 @@ def check_identity(
         )
     if observed.account_identity_hash != expected.expected_account_identity_hash:
         reasons.append("account identity hash mismatch")
+    if _is_placeholder(expected.expected_account_identity_hash):
+        reasons.append("expected account identity is a configuration placeholder")
+    if _is_placeholder(observed.account_identity_hash):
+        reasons.append("observed account identity is a configuration placeholder")
     missing = [
         s for s in expected.required_instruments if s not in observed.instruments_with_metadata
     ]

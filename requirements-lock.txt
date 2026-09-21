@@ -1,38 +1,31 @@
-# ATLAS reproducible dependency lock for Python 3.12
-# Generated: 2026-09-21
-# Python version: 3.12.13
-# Nautilus version: 2.0.0rc5 (pinned per freeze §1.1)
-# Nautilus source commit: 1b0a49d2792a9432a3aca3fcb617ce7a630d905e
-
-# Core runtime dependencies
-nautilus_trader==2.0.0rc5
-pyyaml==6.0.3
-
-# Development dependencies
-pytest==9.1.1
-hypothesis==6.168.0
-ruff==0.16.8
-mypy==2.3.1
-rich==14.3.2
-click==8.3.1
-typer==0.23.0
-python-dotenv==1.2.1
-typing_extensions==4.15.0
-packaging==26.0
-tomli==2.2.1
-tomlkit==0.13.3
-
-# Nautilus transitive dependencies (pinned to versions compatible with nautilus_trader 2.0.0rc5)
-# These are recorded for reproducibility; actual resolution may vary by platform
-# click>=8.0
-# cython>=3.0
-# fsspec>=2023.0
-# msgspec>=0.18
-# numpy>=1.24
-# pandas>=2.0
-# pyarrow>=14.0
-# pytz>=2023.0
-# setuptools>=68
-# toml>=0.10
-# tqdm>=4.66
-# uvloop>=0.19
+# ATLAS fully resolved Python 3.12 lock
+# Python: 3.12.13; platform ABI: cpython-312-x86_64-linux-gnu; Linux x86-64
+# Nautilus: nautilus_trader==2.0.0rc5, source commit 1b0a49d2792a9432a3aca3fcb617ce7a630d905e
+# The Nautilus wheel has no base Requires-Dist entries; these are the complete
+# runtime and development resolution used by ATLAS.
+annotated-doc==0.0.5 --hash=sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101
+ast_serialize==0.11.2 --hash=sha256:a7004ba572f09be34342ccb98dcd4bad5707d3d81adc8cb4c3f685d2a2c51bbc
+click==8.3.1 --hash=sha256:981153a64e25f12d547d3426c367a4857371575ee7ad18df2a6183ab0545b2a6
+hypothesis==6.168.0 --hash=sha256:5920d267f7d8cfd376672f2bde5905cdf284d47519582e41ce7c142d48ee46c4
+iniconfig==2.3.0 --hash=sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12
+librt==0.15.0 --hash=sha256:89cc46cfd15022e35084355478c9ac809d90b1152222706ac9a7655ec21df6fa
+markdown-it-py==4.2.0 --hash=sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a
+mdurl==0.1.2 --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8
+mypy==2.3.1 --hash=sha256:858fc57d3d91fa728e33e7ad71def60fc6272694607b306cd3292db53ae39080
+mypy_extensions==1.1.0 --hash=sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505
+nautilus-trader==2.0.0rc5 --hash=sha256:eab45fafd2312deda1236554c49a9798bfc76bc8465af864878e2f70189ebebe
+packaging==26.0 --hash=sha256:b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529
+pathspec==1.1.1 --hash=sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189
+pluggy==1.6.0 --hash=sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
+pytest==9.1.1 --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
+Pygments==2.21.0 --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9
+python-dotenv==1.2.1 --hash=sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61
+PyYAML==6.0.3 --hash=sha256:ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc
+rich==14.3.2 --hash=sha256:08e67c3e90884651da3239ea668222d19bea7b589149d8014a21c633420dbb69
+ruff==0.16.8 --hash=sha256:15e7d226246961db9235098333caa13063906d3851136b84c2900b82f5daa1df
+shellingham==1.5.4 --hash=sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686
+sortedcontainers==2.4.0 --hash=sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0
+tomli==2.2.1 --hash=sha256:db2b95f9de79181805df90bedc5a5ab4c165e6ec3fe99f970d0e302f384ad222
+tomlkit==0.13.3 --hash=sha256:c89c649d79ee40629a9fda55f8ace8c6a1b42deb912b2a8fd8d942ddadb606b0
+typer==0.23.0 --hash=sha256:79f4bc262b6c37872091072a3cb7cb6d7d79ee98c0c658b4364bdcde3c42c913
+typing_extensions==4.15.0 --hash=sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548

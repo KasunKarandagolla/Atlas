@@ -125,6 +125,28 @@ def test_manifest_missing_capability_fails():
         )
 
 
+def test_capability_evidence_binds_gate_run_and_profile_and_survives_restart(tmp_path):
+    from atlas.persistence.sqlite import SQLiteJournal
+    from atlas.runtime.capability_ledger import CapabilityEvidenceLedger, EvidenceState
+
+    capability = CapabilityEvidenceLedger.REQUIRED_CAPABILITIES[0]
+    profile_hash = "a" * 64
+    path = tmp_path / "capability.db"
+    journal = SQLiteJournal(path)
+    ledger = CapabilityEvidenceLedger(journal)
+    gate = ledger.record_testnet_gate(capability, "run-1", ("immutable-observation-1",), 1_700_000_000_000_000_000, True, target_profile_hash=profile_hash)
+    assert gate.state == EvidenceState.TEST_GATE_TESTNET
+    with pytest.raises(ValueError, match="test_run_id"):
+        ledger.qualify_capability(capability, "qual-1", "run-2", ("immutable-observation-1",), "reviewer", 1_700_000_000_000_000_001, profile_hash)
+    record = ledger.qualify_capability(capability, "qual-1", "run-1", ("immutable-observation-1",), "reviewer", 1_700_000_000_000_000_001, profile_hash)
+    assert record.target_profile_hash == profile_hash
+    journal.close()
+    restarted = SQLiteJournal(path)
+    restored = CapabilityEvidenceLedger(restarted)
+    assert restored.get_evidence(capability).state == EvidenceState.PASSED_TESTNET
+    restarted.close()
+
+
 def test_unknown_status_string_fails():
     with pytest.raises(ValueError, match="unknown status"):
         capability_contract_from_manifest(

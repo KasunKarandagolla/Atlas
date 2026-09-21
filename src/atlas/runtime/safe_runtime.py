@@ -17,13 +17,16 @@ from __future__ import annotations
 import signal
 import sys
 import threading
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
+from atlas.domain.capability import CapabilityContract
 from atlas.domain.time import now_ns
+from atlas.persistence.sqlite import SQLiteJournal
 
 from .connectivity import PrivateVerification, PublicVenueHealth
-from .coordinator import BootResult, boot
+from .coordinator import BootResult, RiskPolicyDecision, boot
 from .prerequisites import IdentityExpectation, ObservedAccountState
 from .status import RuntimeStatus, publish_status
 from .writer_lock import WriterLock, WriterOwnership
@@ -44,6 +47,8 @@ class SafeRuntimeConfig:
     max_public_staleness_ns: int
     clock_uncertainty_ns: int = 0
     tick_interval_ns: int = 10_000_000_000  # 10 seconds default
+    capability_contract: CapabilityContract | None = None
+    risk_policy: RiskPolicyDecision | None = None
 
 
 class SafeRuntime:
@@ -53,6 +58,8 @@ class SafeRuntime:
         self._config = config
         self._writer: WriterLock | None = None
         self._ownership: WriterOwnership | None = None
+        self._journal: SQLiteJournal | None = None
+        self._runtime_instance_id = uuid.uuid4().hex
         self._journal_path = Path(config.journal_path)
         self._status_path = Path(config.status_path)
         self._shutdown_event = threading.Event()
@@ -73,14 +80,30 @@ class SafeRuntime:
             raise RuntimeError("SafeRuntime already started")
 
         self._writer = WriterLock(self._config.lock_path)
-        self._ownership = self._writer.acquire()
-
-        # Run initial boot
-        result = self._run_boot()
-        self._last_boot_result = result
-        self._publish_status(result)
-
-        return result
+        try:
+            self._ownership = self._writer.acquire()
+            self._journal = SQLiteJournal(self._journal_path)
+            result = self._run_boot()
+            self._last_boot_result = result
+            self._publish_status(result)
+            return result
+        except Exception:
+            # Startup is transactional from the process-boundary perspective:
+            # release anything acquired before re-raising the real failure.
+            if self._journal is not None:
+                try:
+                    self._journal.close()
+                except Exception:
+                    pass
+                self._journal = None
+            if self._writer is not None:
+                try:
+                    self._writer.release()
+                except Exception:
+                    pass
+                self._writer = None
+                self._ownership = None
+            raise
 
     def _run_boot(self) -> BootResult:
         """Run a single boot/health evaluation cycle."""
@@ -98,6 +121,10 @@ class SafeRuntime:
             max_public_staleness_ns=self._config.max_public_staleness_ns,
             clock_uncertainty_ns=self._config.clock_uncertainty_ns,
             writer=self._writer,
+            journal=self._journal,
+            capability_contract=self._config.capability_contract,
+            risk_policy=self._config.risk_policy,
+            runtime_instance_id=self._runtime_instance_id,
         )
 
     def _publish_status(self, result: BootResult) -> None:
@@ -140,6 +167,12 @@ class SafeRuntime:
     def shutdown(self) -> None:
         """Clean shutdown: close journal, release writer lock."""
         self._shutdown_event.set()
+        if self._journal is not None:
+            try:
+                self._journal.close()
+            except Exception:
+                pass
+            self._journal = None
         if self._writer is not None:
             try:
                 self._writer.release()
@@ -147,6 +180,15 @@ class SafeRuntime:
                 pass
             self._writer = None
             self._ownership = None
+
+    @property
+    def journal(self) -> SQLiteJournal | None:
+        """The process-lifetime journal, retained for bounded-runtime tests."""
+        return self._journal
+
+    @property
+    def runtime_instance_id(self) -> str:
+        return self._runtime_instance_id
 
     def run_forever(self) -> None:
         """Run the main loop until shutdown signal received."""

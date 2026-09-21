@@ -28,6 +28,16 @@ class NautilusEvidence:
     detail: str
 
 
+@dataclass(frozen=True)
+class OfflineBybitConfigs:
+    """Constructed rc5 configs; construction performs no connection or order."""
+
+    data: Any
+    execution: Any
+    data_factory: Any
+    execution_factory: Any
+
+
 def verify_installation() -> NautilusEvidence:
     try:
         import nautilus_trader  # type: ignore[import-not-found]
@@ -81,3 +91,36 @@ class ReconciliationHandler(Protocol):
 
 def build_public_config(environment: str = "testnet") -> LiveNodeConfig:
     return LiveNodeConfig(environment=environment, testnet=True)
+
+
+def build_offline_rc5_bybit_configs() -> OfflineBybitConfigs:
+    """Build the exact pinned rc5 testnet/linear/isolated config objects.
+
+    Position mode is intentionally not supplied: rc5 exposes no execution
+    constructor argument for it. One-way mode remains a separate account
+    verification prerequisite and is never auto-mutated here.
+    """
+    from nautilus_trader.adapters.bybit import (
+        BybitDataClientConfig,
+        BybitDataClientFactory,
+        BybitEnvironment,
+        BybitExecutionClientConfig,
+        BybitExecutionClientFactory,
+        BybitMarginMode,
+        BybitProductType,
+    )
+
+    products = [BybitProductType.LINEAR]
+    environment = BybitEnvironment.TESTNET
+    data = BybitDataClientConfig(product_types=products, environment=environment)
+    execution = BybitExecutionClientConfig(
+        product_types=products,
+        environment=environment,
+        margin_mode=BybitMarginMode.ISOLATED_MARGIN,
+    )
+    return OfflineBybitConfigs(
+        data=data,
+        execution=execution,
+        data_factory=BybitDataClientFactory(),
+        execution_factory=BybitExecutionClientFactory(),
+    )

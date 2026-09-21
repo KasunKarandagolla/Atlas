@@ -14,10 +14,15 @@ In THIS session, all six live Bybit capabilities MUST remain UNVERIFIED.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from atlas.domain.enums import CapabilityStatus
+
+if TYPE_CHECKING:
+    from atlas.persistence.sqlite import SQLiteJournal
 
 
 class EvidenceState(StrEnum):
@@ -28,6 +33,17 @@ class EvidenceState(StrEnum):
     PASSED_TESTNET = "PASSED_TESTNET"
     FAILED = "FAILED"
     BLOCKED_BY_ENVIRONMENT = "BLOCKED_BY_ENVIRONMENT"
+
+
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _valid_profile_hash(value: str | None) -> bool:
+    return isinstance(value, str) and bool(_SHA256_RE.fullmatch(value))
+
+
+def _valid_ref(value: str) -> bool:
+    return bool(value.strip()) and value.strip().upper() not in {"PASSED", "FAILED", "REQUIRED", "PLACEHOLDER"}
 
 
 @dataclass(frozen=True)
@@ -41,6 +57,7 @@ class CapabilityEvidence:
     test_timestamp_ns: int | None
     environment: str
     notes: str
+    target_profile_hash: str | None = None
 
     def __post_init__(self) -> None:
         if not self.capability_name or not self.capability_name.strip():
@@ -54,6 +71,8 @@ class CapabilityEvidence:
                 raise ValueError("test_timestamp_ns must be positive int if present")
         if not self.environment or not self.environment.strip():
             raise ValueError("environment must be non-blank")
+        if self.target_profile_hash is not None and not _valid_profile_hash(self.target_profile_hash):
+            raise ValueError("target_profile_hash must be a 64 lowercase hex SHA256")
 
 
 @dataclass(frozen=True)
@@ -99,7 +118,8 @@ class CapabilityEvidenceLedger:
         "native_position_stop_read_and_repair_port",
     )
 
-    def __init__(self) -> None:
+    def __init__(self, journal: SQLiteJournal | None = None) -> None:
+        self._journal = journal
         self._evidence: dict[str, CapabilityEvidence] = {}
         self._qualification_history: list[QualificationRecord] = []
         # Initialize all as UNVERIFIED
@@ -113,6 +133,10 @@ class CapabilityEvidenceLedger:
                 environment="testnet",
                 notes="Initial state - no testing performed",
             )
+        if journal is not None:
+            for name, evidence in journal.load_latest_capability_evidence().items():
+                if name in self._evidence:
+                    self._evidence[name] = evidence
 
     def get_evidence(self, capability_name: str) -> CapabilityEvidence | None:
         return self._evidence.get(capability_name)
@@ -148,6 +172,8 @@ class CapabilityEvidenceLedger:
             notes=notes or f"Offline test {'passed' if passed else 'failed'}",
         )
         self._evidence[capability_name] = evidence
+        if self._journal is not None:
+            self._journal.append_capability_evidence(evidence)
         return evidence
 
     def record_testnet_gate(
@@ -158,6 +184,7 @@ class CapabilityEvidenceLedger:
         timestamp_ns: int,
         passed: bool,
         notes: str = "",
+        target_profile_hash: str | None = None,
     ) -> CapabilityEvidence:
         """Record a testnet gate result (TEST_GATE_TESTNET or FAILED)."""
         if capability_name not in self.REQUIRED_CAPABILITIES:
@@ -176,8 +203,11 @@ class CapabilityEvidenceLedger:
             test_timestamp_ns=timestamp_ns,
             environment="testnet",
             notes=notes or f"Testnet gate {'passed' if passed else 'failed'}",
+            target_profile_hash=target_profile_hash,
         )
         self._evidence[capability_name] = evidence
+        if self._journal is not None:
+            self._journal.append_capability_evidence(evidence)
         return evidence
 
     def qualify_capability(
@@ -202,8 +232,18 @@ class CapabilityEvidenceLedger:
         if current.state != EvidenceState.TEST_GATE_TESTNET:
             raise ValueError(f"Cannot qualify capability in state {current.state.value}; must be TEST_GATE_TESTNET")
 
-        if not all("passed" in ref.lower() for ref in evidence_refs):
-            raise ValueError("Qualification requires passing testnet evidence refs")
+        if not target_profile_hash or not _valid_profile_hash(target_profile_hash):
+            raise ValueError("qualification requires an exact non-placeholder target profile hash")
+        if current.test_run_id != test_run_id:
+            raise ValueError("qualification test_run_id does not match the testnet gate evidence")
+        if current.environment != "testnet":
+            raise ValueError("qualification requires testnet gate evidence")
+        if not evidence_refs or any(not _valid_ref(ref) for ref in evidence_refs):
+            raise ValueError("qualification requires nonempty immutable evidence references")
+        if tuple(evidence_refs) != current.evidence_refs:
+            raise ValueError("qualification evidence references must exactly match the gate evidence")
+        if current.target_profile_hash != target_profile_hash:
+            raise ValueError("qualification target profile does not match gate evidence")
 
         evidence = CapabilityEvidence(
             capability_name=capability_name,
@@ -213,6 +253,7 @@ class CapabilityEvidenceLedger:
             test_timestamp_ns=timestamp_ns,
             environment="testnet",
             notes=f"Qualified by {qualified_by}",
+            target_profile_hash=target_profile_hash,
         )
         self._evidence[capability_name] = evidence
 
@@ -228,6 +269,9 @@ class CapabilityEvidenceLedger:
             target_profile_hash=target_profile_hash,
         )
         self._qualification_history.append(record)
+        if self._journal is not None:
+            self._journal.append_capability_evidence(evidence)
+            self._journal.append_capability_qualification(record)
         return record
 
     def get_qualification_history(self, capability_name: str | None = None) -> list[QualificationRecord]:

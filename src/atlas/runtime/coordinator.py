@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 
-from atlas.domain.capability import initial_unverified_fixture
+from atlas.domain.capability import CapabilityContract
 from atlas.domain.enums import (
     CommandOutcome,
     HealthState,
@@ -58,42 +58,74 @@ class BootResult:
     unresolved_commands: int
 
 
+@dataclass(frozen=True)
+class RiskPolicyDecision:
+    """Typed, injected permission for current RiskPolicy evidence."""
+
+    approved: bool
+    policy_hash: str | None = None
+    evidence_ref: str | None = None
+    reason: str = ""
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.approved, bool):
+            raise ValueError("risk policy approval must be bool")
+        if self.approved and (not self.policy_hash or not self.evidence_ref):
+            raise ValueError("approved risk policy requires policy hash and evidence reference")
+
+
+def _valid_sha256(value: str) -> bool:
+    return len(value) == 64 and all(ch in "0123456789abcdef" for ch in value)
+
+
 def _check_capability_gate(
+    capability_contract: CapabilityContract | None,
     capability_hash: str,
     all_qualified: bool,
     assisted_enabled: bool,
     now_ns: int,
 ) -> tuple[bool, list[str]]:
-    """Check capability/assisted gate. Phase 1: always blocks new risk."""
+    """Validate the supplied contract and its binding hash fail-closed."""
     reasons: list[str] = []
+    if capability_contract is None:
+        reasons.append("typed capability contract not supplied")
+        return False, reasons
+    if capability_hash != capability_contract.contract_hash():
+        reasons.append("supplied capability hash does not bind to supplied contract")
+    runtime = capability_contract.runtime
+    venue = capability_contract.venue
+    if runtime.distribution != "nautilus_trader":
+        reasons.append("runtime distribution mismatch (expected nautilus_trader)")
+    if runtime.version != "2.0.0rc5":
+        reasons.append("runtime version mismatch (expected 2.0.0rc5)")
+    if runtime.source_commit != "1b0a49d2792a9432a3aca3fcb617ce7a630d905e":
+        reasons.append("runtime source commit mismatch")
+    if not _valid_sha256(runtime.installed_artifact_sha256):
+        reasons.append("installed artifact SHA256 is not valid")
+    if not _valid_sha256(runtime.dependency_lock_sha256):
+        reasons.append("dependency lock SHA256 is not valid")
+    if runtime.python_platform_abi != "cpython-312-x86_64-linux-gnu":
+        reasons.append("Python 3.12 platform ABI mismatch")
+    if venue.environment != "testnet":
+        reasons.append("venue environment must be testnet")
+    if venue.product != "linear":
+        reasons.append("venue product must be linear")
+    if venue.position_mode != "one_way":
+        reasons.append("venue position mode must be one_way")
+    if tuple(venue.supported_symbols) != ("BTCUSDT", "ETHUSDT"):
+        reasons.append("venue symbols must be exactly BTCUSDT + ETHUSDT")
+    if "isolated" not in venue.account_generation_and_margin_mode.lower():
+        reasons.append("account profile is not isolated-compatible")
+    if not venue.account_identity_hash.strip() or venue.account_identity_hash.startswith("REQUIRED"):
+        reasons.append("venue account identity is a placeholder")
+    if not capability_contract.capabilities.all_supported():
+        reasons.extend(capability_contract.capabilities.blocking_reasons())
+    if not capability_contract.assisted_enabled:
+        reasons.append("capability contract assisted_enabled must be true for positive gate")
     if not all_qualified:
         reasons.append("not all capabilities qualified (all_qualified=False)")
     if not assisted_enabled:
         reasons.append("assisted execution disabled (assisted_enabled=False)")
-    # Phase 1: capabilities are UNVERIFIED, assisted is false => always blocks
-    # Even if both were true, Phase 1 has no venue evidence => still blocks
-    fixture = initial_unverified_fixture()
-    if not fixture.capabilities.all_supported():
-        reasons.append("required capabilities not SUPPORTED (Phase 1: all UNVERIFIED)")
-    if fixture.assisted_enabled:
-        reasons.append("assisted_enabled must be false in Phase 1")
-    # Capability contract identity must match frozen V1 (distribution, version, commit)
-    if fixture.runtime.distribution != "nautilus_trader":
-        reasons.append("runtime distribution mismatch (expected nautilus_trader)")
-    if fixture.runtime.version != "2.0.0rc5":
-        reasons.append("runtime version mismatch (expected 2.0.0rc5)")
-    if fixture.runtime.source_commit != "1b0a49d2792a9432a3aca3fcb617ce7a630d905e":
-        reasons.append("runtime source commit mismatch (expected frozen V1 commit)")
-    # Placeholder evidence fields must not be placeholders for production READY
-    for field_name, val in (
-        ("runtime.installed_artifact_sha256", fixture.runtime.installed_artifact_sha256),
-        ("runtime.dependency_lock_sha256", fixture.runtime.dependency_lock_sha256),
-        ("runtime.python_platform_abi", fixture.runtime.python_platform_abi),
-        ("venue.account_identity_hash", fixture.venue.account_identity_hash),
-        ("venue.account_generation_and_margin_mode", fixture.venue.account_generation_and_margin_mode),
-    ):
-        if val in ("REQUIRED", "REQUIRED_AT_INSTALL", "CONFIGURED") or not val.strip():
-            reasons.append(f"capability contract {field_name} holds placeholder {val!r}")
     return len(reasons) == 0, reasons
 
 
@@ -112,6 +144,10 @@ def boot(
     max_public_staleness_ns: int,
     clock_uncertainty_ns: int = 0,
     writer: WriterLock | None = None,
+    journal: SQLiteJournal | None = None,
+    capability_contract: CapabilityContract | None = None,
+    risk_policy: RiskPolicyDecision | None = None,
+    runtime_instance_id: str | None = None,
 ) -> BootResult:
     """Run the deterministic Phase 1 boot sequence. Raises on fatal errors."""
     owned = writer if writer is not None else WriterLock(lock_path)
@@ -129,8 +165,9 @@ def boot(
         if ownership_opt is None:
             raise PersistenceError("passed writer has no ownership; must acquire before calling boot")
         ownership = ownership_opt
+    close_journal = journal is None
     try:
-        journal = SQLiteJournal(journal_path)
+        journal = journal or SQLiteJournal(journal_path)
     except Exception:
         if close_writer:
             try:
@@ -160,7 +197,7 @@ def boot(
         prereq_ok = bool(ident.ok) and private_verification.state.value == "VERIFIED"
         # Phase 1: private never VERIFIED without credentials => prereq_ok False.
         cert = run_recovery(
-            recovery_run_id=uuid.uuid4().hex,
+            recovery_run_id=runtime_instance_id or uuid.uuid4().hex,
             writer_id=ownership.writer_id,
             writer_epoch=ownership.writer_epoch,
             journal_schema_version=schema_version,
@@ -174,11 +211,19 @@ def boot(
             venue_observations_obtained=False,
             venue_evidence_refs=(),
             prerequisites_ok=prereq_ok and recon == ReconciliationHealth.CURRENT,
+            protection_evidence=None,
         )
         # Capability/assisted gate: must pass for any new risk allowance
         cap_gate_ok, cap_reasons = _check_capability_gate(
-            capability_hash, all_qualified, assisted_enabled, now_ns
+            capability_contract, capability_hash, all_qualified, assisted_enabled, now_ns
         )
+        if capability_contract is not None:
+            if capability_contract.venue.account_identity_hash != identity_observed.account_identity_hash:
+                cap_gate_ok = False
+                cap_reasons.append("observed account identity does not match capability contract")
+        policy = risk_policy or RiskPolicyDecision(approved=False, reason="no current RiskPolicy evidence supplied")
+        if not policy.approved:
+            cap_reasons.append(policy.reason or "current RiskPolicy permission denied")
         if cert.decision == RecoveryDecision.READY:
             state = HealthState.READY
         elif cert.decision == RecoveryDecision.RECOVERY_REQUIRED:
@@ -200,7 +245,7 @@ def boot(
         gate = new_risk_allowed(snap)
         # Combine all gates: recovery gate AND capability/assisted gate
         all_reasons = list(gate.reasons) + cap_reasons
-        new_risk = gate.allowed and cap_gate_ok
+        new_risk = gate.allowed and cap_gate_ok and policy.approved
         return BootResult(
             state=state,
             certificate=cert,
@@ -211,10 +256,11 @@ def boot(
             unresolved_commands=len(unresolved_commands_list),
         )
     finally:
-        try:
-            journal.close()
-        except Exception:
-            pass
+        if close_journal:
+            try:
+                journal.close()
+            except Exception:
+                pass
         if close_writer:
             try:
                 owned.release()

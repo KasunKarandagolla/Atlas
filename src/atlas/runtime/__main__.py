@@ -12,6 +12,8 @@ from __future__ import annotations
 import argparse
 import sys
 
+from atlas.domain.capability import initial_unverified_fixture
+
 from .connectivity import PrivateVerification, PublicState, PublicVenueHealth
 from .prerequisites import IdentityExpectation, ObservedAccountState
 from .safe_runtime import SafeRuntime, SafeRuntimeConfig
@@ -27,21 +29,23 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     # Build configuration
+    capability_contract = initial_unverified_fixture()
     config = SafeRuntimeConfig(
         journal_path=args.journal,
         lock_path=args.lock,
         status_path=args.status,
-        capability_hash="unverified",
+        capability_hash=capability_contract.contract_hash(),
         all_qualified=False,
         assisted_enabled=False,
-        identity_expected=IdentityExpectation(expected_account_identity_hash="test-acct-hash-123"),
+        capability_contract=capability_contract,
+        identity_expected=IdentityExpectation(expected_account_identity_hash="REQUIRED"),
         identity_observed=ObservedAccountState(
             environment="testnet",
             venue="BYBIT",
             product="linear",
             position_mode="one_way",
             margin_profile="isolated",
-            account_identity_hash="test-acct-hash-123",
+            account_identity_hash="REQUIRED",
             instruments_with_metadata=("BTCUSDT", "ETHUSDT"),
             private_verified=False,
         ),

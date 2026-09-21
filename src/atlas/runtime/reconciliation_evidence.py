@@ -90,6 +90,12 @@ class ReconciliationQueryEvidence:
             ensure_utc_ns(self.requested_interval_start_ns, field="requested_interval_start_ns")
         if self.requested_interval_end_ns is not None:
             ensure_utc_ns(self.requested_interval_end_ns, field="requested_interval_end_ns")
+        if (
+            self.requested_interval_start_ns is not None
+            and self.requested_interval_end_ns is not None
+            and self.requested_interval_end_ns < self.requested_interval_start_ns
+        ):
+            raise ValueError("requested interval end cannot precede start")
         if not isinstance(self.pages_observed, int) or isinstance(self.pages_observed, bool) or self.pages_observed < 0:
             raise ValueError("pages_observed must be int >= 0")
         if not isinstance(self.total_records_returned, int) or isinstance(self.total_records_returned, bool) or self.total_records_returned < 0:
@@ -105,6 +111,12 @@ class ReconciliationQueryEvidence:
             ensure_utc_ns(self.retention_coverage_start_ns, field="retention_coverage_start_ns")
         if self.retention_coverage_end_ns is not None:
             ensure_utc_ns(self.retention_coverage_end_ns, field="retention_coverage_end_ns")
+        if (
+            self.retention_coverage_start_ns is not None
+            and self.retention_coverage_end_ns is not None
+            and self.retention_coverage_end_ns < self.retention_coverage_start_ns
+        ):
+            raise ValueError("retention coverage end cannot precede start")
         if not self.evidence_hash or not self.evidence_hash.strip():
             raise ValueError("evidence_hash must be non-blank")
         if len(self.evidence_hash) != 64:
@@ -131,8 +143,12 @@ class ReconciliationQueryEvidence:
             self.status == QueryStatus.SUCCESS
             and self.completeness == Completeness.COMPLETE
             and self.is_empty_result
+            and self.requested_interval_start_ns is not None
+            and self.requested_interval_end_ns is not None
             and self.retention_coverage_start_ns is not None
             and self.retention_coverage_end_ns is not None
+            and self.retention_coverage_start_ns <= self.requested_interval_start_ns
+            and self.retention_coverage_end_ns >= self.requested_interval_end_ns
         )
 
 
@@ -189,6 +205,11 @@ def merge_query_evidence(
             raise ValueError("cannot merge different account")
         if e.instrument != first.instrument:
             raise ValueError("cannot merge different instrument")
+        if (
+            e.requested_interval_start_ns != first.requested_interval_start_ns
+            or e.requested_interval_end_ns != first.requested_interval_end_ns
+        ):
+            raise ValueError("cannot merge inconsistent requested intervals")
 
     # Merge paginated results
     all_cursors: list[str] = []
@@ -200,14 +221,19 @@ def merge_query_evidence(
         total_records += e.total_records_returned
 
     # Overall completeness is the worst of all
-    completeness_order = [
-        Completeness.COMPLETE,
-        Completeness.INCOMPLETE_PAGINATED,
-        Completeness.INCOMPLETE_TRUNCATED,
-        Completeness.INCOMPLETE_RETENTION_LIMIT,
-        Completeness.UNKNOWN,
-    ]
-    worst_completeness = min((e.completeness for e in evidence_list), key=lambda c: completeness_order.index(c))
+    # Larger severity wins.  The previous min() selected COMPLETE when any
+    # page was incomplete, which could incorrectly certify a negative lookup.
+    completeness_severity = {
+        Completeness.COMPLETE: 0,
+        Completeness.INCOMPLETE_PAGINATED: 1,
+        Completeness.INCOMPLETE_TRUNCATED: 2,
+        Completeness.INCOMPLETE_RETENTION_LIMIT: 3,
+        Completeness.UNKNOWN: 4,
+    }
+    worst_completeness = max(
+        (e.completeness for e in evidence_list),
+        key=lambda c: completeness_severity[c],
+    )
 
     # Overall status: if any failed, mark partial
     overall_status = QueryStatus.SUCCESS
@@ -239,8 +265,18 @@ def merge_query_evidence(
         source_time_ns=first.source_time_ns,
         receipt_time_ns=max(e.receipt_time_ns for e in evidence_list),
         request_ids=tuple(all_request_ids),
-        retention_coverage_start_ns=first.retention_coverage_start_ns,
-        retention_coverage_end_ns=first.retention_coverage_end_ns,
+        retention_coverage_start_ns=(
+            min(e.retention_coverage_start_ns for e in evidence_list
+                if e.retention_coverage_start_ns is not None)
+            if all(e.retention_coverage_start_ns is not None for e in evidence_list)
+            else None
+        ),
+        retention_coverage_end_ns=(
+            max(e.retention_coverage_end_ns for e in evidence_list
+                if e.retention_coverage_end_ns is not None)
+            if all(e.retention_coverage_end_ns is not None for e in evidence_list)
+            else None
+        ),
         evidence_hash=merged_hash,
         error_message=None,
     )

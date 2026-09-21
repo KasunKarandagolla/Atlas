@@ -203,12 +203,17 @@ def check_late_entry_reopening(
     close_executions: list[tuple[Decimal, str]],
     late_entry_qty: Decimal,
     late_entry_side: str,
+    *,
+    prior_epoch_closed: bool = False,
 ) -> tuple[bool, str]:
     """Check late-entry reopening prevention.
 
     After close executions, a late entry on the same side as original
     should be treated as new epoch, not reversal.
     """
+    if not prior_epoch_closed:
+        return False, "late fill belongs to prior unresolved epoch/recovery incident"
+
     results = check_no_reversal_partial(original_signed_qty, close_executions)
     final_qty = results[-1].resulting_qty if results else original_signed_qty
 
