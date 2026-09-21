@@ -1,142 +1,106 @@
-# Session 003 Handoff
+# Session 003 Handoff — Review Repair and Phase 2 Offline Qualification
 
-## Branch Inheritance
+## Branch and inherited commits
 
-**Corrected Session 002 SHA:** `64ff179`
+- Branch: `impl/session-003-phase2-offline-qualification`
+- Inherited reviewed Session 003 base: `adaa3036f80a3de3d954495b4e4fdc339f6292d1`
+- Inherited corrected Session 002: `64ff179`
+- Session 003 repair commit: `55a4173b0d4bd9f5630c6c5aaad09f9e728d0333`
 
-## Session 002 Repairs Summary
+The repair commit corrects the prior handoff's unsupported `TESTED_OFFLINE` claims. No live orders, test orders, authenticated mutations, or Bybit capability promotions were performed.
 
-| Fix | Description | Status |
-|-----|-------------|--------|
-| A1 | Capability/assisted flags gate new risk in `coordinator.boot()` | ✅ |
-| A2 | Any unresolved command (UNSENT/UNKNOWN/DEFINITE_ACCEPT) blocks READY | ✅ |
-| A3 | READY requires positive venue reconciliation evidence (`venue_evidence_refs`) | ✅ |
-| A4 | `PrivateVerification.VERIFIED` requires real evidence (timestamp, env, venue binding) | ✅ |
-| A5 | Placeholder account identity (`CONFIGURED`, `REQUIRED`, etc.) rejected | ✅ |
-| A6 | Frozen Nautilus/V1 capability identity enforced (distribution, version, commit, product, position_mode, symbols) | ✅ |
-| A7 | `LiveNodeConfig` rejects `testnet=False` | ✅ |
-| A8 | Clock skew/future timestamps fail closed in `PublicVenueHealth.is_fresh()` | ✅ |
-| A9 | `SafeRuntime` long-lived process skeleton (start/tick/status/shutdown/run_forever) | ✅ |
-| A10 | `RECOVERY_REQUIRED` maps to `ENTRY_HALTED` not `EMERGENCY_EXIT` | ✅ |
-| A11 | `RuntimeStatus` includes freshness metadata (schema_version, generated_at_ns, runtime_instance_id, writer_id) | ✅ |
-| A12 | Reproducible Python 3.12 dependency lock with SHA256 | ✅ |
-| A13 | `LiveNodeConfig` enforces frozen V1 contract | ✅ |
+## Review corrections implemented
 
-## Phase 2 Offline Implementation (Session 003)
+- `SafeRuntime` now acquires one `WriterLock` and opens one `SQLiteJournal` for its full process lifetime. Ticks reuse both; shutdown closes the journal before releasing the writer; partial startup failures clean up.
+- Integrated new-risk eligibility now consumes the supplied typed `CapabilityContract`, verifies its exact hash and frozen Nautilus/profile/artifact/lock/account prerequisites, and includes an injected fail-closed `RiskPolicyDecision`.
+- Placeholder identity is constructible for safe startup but is rejected by readiness checks. Production entrypoint configuration remains explicitly placeholder/unverified.
+- Recovery READY requires current reconciliation, positive venue evidence, no unresolved intents/commands/UNKNOWN state, all prerequisites, and typed certified-flat or current-protection evidence.
+- Protection evidence preserves account/instrument identity and validates current exact signed quantity coverage, stop semantics, MarkPrice, full-position behavior, closing-only behavior, evidence references, and clock freshness.
+- Reconciliation merge severity, interval coverage, retention coverage, and absence certification are fail-closed.
+- Flat certificates model current flatness and terminal order certainty; historical fills may be nonzero. Late contradictory evidence reopens recovery, and delayed funding is not made an execution-risk prerequisite.
+- Entry/exit wire builders implement the frozen logical contract. Emergency MARKET exits omit price rather than emitting a fake zero price.
+- The two-second protection deadline schedules durable cancel/repair/explicit-quantity flatten actions and projects `RECOVERY_REQUIRED`; it never claims flatten execution or removes native protection.
+- Execution evidence and order-status observations are durable and append-only. Duplicate execution IDs are deduplicated; conflicting payloads quarantine/fail; statuses do not create fills.
+- Capability promotion requires a prior gate state, exact capability, non-placeholder target profile hash, matching test-run identity, immutable references, explicit qualification, and exact environment/profile binding. No capability was promoted.
+- Late fills remain in the prior unresolved epoch until a valid CLOSED certificate exists.
+- The fault harness no longer contains hard-coded success assertions; collected tests drive real journal, transition, reservation, fill, reconciliation, protection, certificate, recovery, and lifecycle mechanics.
 
-### Modules Implemented
+## Schema and dependency artifacts
 
-| Module | Purpose | Freeze Ref |
-|--------|---------|------------|
-| `src/atlas/runtime/protection_port.py` | C1: Narrow `BybitProtectionPort` (read_protection, ensure_full_stop, read_economic_events) | §1.2, §1.3, §9.7 |
-| `src/atlas/runtime/protection_evidence.py` | C2: Upgraded protection evidence model (full-position semantics, raw evidence IDs, freshness) | §1.3, §1.4 |
-| `src/atlas/runtime/fill_dedup.py` | C3: Durable execution/fill dedup evidence (exchange execution ID, monotonic qty, append-only corrections) | §1.4 |
-| `src/atlas/runtime/reconciliation_evidence.py` | C4: REST/reconciliation query evidence types (query completeness, retention coverage, evidence hash) | §1.4, §1.6 |
-| `src/atlas/runtime/flat_certificate.py` | C5: Flat reconciliation certificate (zero position, terminal commands, no residual orders, dedup coverage) | §1.6, §9.8 |
-| `tests/support/fault_injection.py` | C6: Offline fault-injection harness (all 17 §1.8 scenarios as deterministic fixtures) | §1.8 |
-| `src/atlas/runtime/capability_ledger.py` | C7: Capability evidence ledger (UNVERIFIED → TESTED_OFFLINE → TEST_GATE_TESTNET → PASSED_TESTNET) | §1.8 |
-| `src/atlas/runtime/wire_contract.py` | C8: Logical wire contract builder (entry/exit contracts from immutable plan data) | §1.3 |
-| `src/atlas/runtime/protection_deadline.py` | C9: Protection deadline state machine (2s unconfirmed → cancel leaves → repair → flatten) | §1.3 |
-| `src/atlas/runtime/no_reversal.py` | C10: No-reversal invariant (q·Δq≤0, |Δq|≤|q|, sign preservation) | §1.7 |
+- SQLite schema migration: schema v3, including durable execution evidence, order-status observations, reconciliation query evidence, recovery incidents, and capability evidence/qualification records.
+- Full Python 3.12 lock SHA256: `f96c2a44760f1dd95f05b93857afab4af9a8cb5554a69f56b82e8e7ac09f0a54`
+- Nautilus artifact: `nautilus_trader-2.0.0rc5-cp312-cp312-manylinux_2_34_x86_64.whl`
+- Nautilus wheel SHA256: `eab45fafd2312deda1236554c49a9798bfc76bc8465af864878e2f70189ebebe`
+- Nautilus source commit: `1b0a49d2792a9432a3aca3fcb617ce7a630d905e`
+- Python/platform ABI: `cpython-312-x86_64-linux-gnu`
+- The lock was installed into a clean Python 3.12 virtual environment and the exact rc5 offline Bybit config construction/import test passed. The base environment's rc5 test is `BLOCKED BY ENVIRONMENT` because its externally managed interpreter does not have the wheel installed; this does not change the clean-lock result.
 
-## Qualification Matrix Status (Freeze §1.8)
+## Freeze §1.8 qualification matrix
 
-| # | Test | Status |
-|---|------|--------|
+Only the labels below are used. `TESTED_OFFLINE` means a collected test exercised deterministic local mechanics; it does not qualify Bybit behavior.
+
+| # | Scenario | Status |
+|---:|---|---|
 | 1 | Identity and mode | IMPLEMENTED |
-| 2 | Wire contract | IMPLEMENTED |
-| 3 | Crash before send | TESTED_OFFLINE |
-| 4 | Lost submit response | TESTED_OFFLINE |
+| 2 | Wire contract | TESTED |
+| 3 | Crash after journal commit before transport | TESTED_OFFLINE |
+| 4 | Lost response after simulated acceptance | TESTED_OFFLINE |
 | 5 | Definite reject | TESTED_OFFLINE |
 | 6 | Partial fills | TESTED_OFFLINE |
 | 7 | Kill after full fill | TESTED_OFFLINE |
-| 8 | Duplicates/reordering | TESTED_OFFLINE |
-| 9 | Native-stop repair | TESTED_OFFLINE |
-| 10 | Stop/close race | TESTED_OFFLINE |
+| 8 | Duplicate/reordered execution and statuses | TESTED_OFFLINE |
+| 9 | Native-stop repair | TEST GATE |
+| 10 | Stop/close race | TEST GATE |
 | 11 | Late-entry race | TESTED_OFFLINE |
-| 12 | Private disconnect | TESTED_OFFLINE |
-| 13 | Incomplete REST | TESTED_OFFLINE |
-| 14 | Residual orders | TESTED_OFFLINE |
-| 15 | Amendment race | TESTED_OFFLINE |
-| 16 | Exit failure | TESTED_OFFLINE |
-| 17 | Storage/clock failure | TESTED_OFFLINE |
-| 18 | Cash and external events | TESTED_OFFLINE |
+| 12 | Private disconnect then reconciliation | TESTED_OFFLINE |
+| 13 | Incomplete/paginated REST | TESTED_OFFLINE |
+| 14 | Residual opening order with zero position | TESTED_OFFLINE |
+| 15 | Amendment/cancel/fill race | TESTED_OFFLINE |
+| 16 | Exit remains unresolved | TESTED_OFFLINE |
+| 17 | Storage/clock fault response | TESTED_OFFLINE |
+| 18 | Funding/fee/external-event dedup | TESTED_OFFLINE |
 | 19 | Approval replay | TESTED_OFFLINE |
-| 20 | Restore/fencing | TESTED_OFFLINE |
+| 20 | Restore with unresolved command/fencing | TEST GATE |
 
-**Note:** All testnet-online tests remain TEST GATE. All offline fixtures are TESTED_OFFLINE only.
+The collected fault-injection module exercised all 17 deterministic offline scenarios requested by the freeze. Actual Bybit matching, authenticated reads, stop visibility/resizing, and fencing against a live venue remain TEST GATE.
 
-## Capability Status
+## Capability status
 
-| Capability | Status |
-|------------|--------|
-| entry_ioc_with_attached_full_mark_market_stop | UNVERIFIED |
-| native_stop_visible_and_resizes_on_partial_fill | UNVERIFIED |
-| reduce_only_wire_and_matching_enforcement | UNVERIFIED |
-| ambiguous_submit_not_treated_as_definite_rejection | UNVERIFIED |
-| external_native_stop_fill_reconciliation | UNVERIFIED |
-| native_position_stop_read_and_repair_port | UNVERIFIED |
-| **assisted_enabled** | **false** |
+All six capabilities remain `UNVERIFIED`:
 
-## Test Results
+- `entry_ioc_with_attached_full_mark_market_stop`
+- `native_stop_visible_and_resizes_on_partial_fill`
+- `reduce_only_wire_and_matching_enforcement`
+- `ambiguous_submit_not_treated_as_definite_rejection`
+- `external_native_stop_fill_reconciliation`
+- `native_position_stop_read_and_repair_port`
 
-```bash
-PYTHONPATH=src python3.12 -m pytest tests/ -v
-# 113 passed, 1 skipped
+`assisted_enabled`: `false`.
 
-python3.12 -m ruff check src tests
-# All checks passed
+## Verification results
 
-python3.12 -m mypy src tests
-# Success: no issues found in 43 source files
+Collected verification on the repaired branch:
+
+```text
+PYTHONPATH=src:. python3.12 -m pytest -ra
+142 passed, 2 skipped
+
+PYTHONPATH=src:. python3.12 -m ruff check src tests
+All checks passed!
+
+PYTHONPATH=src:. python3.12 -m mypy src tests
+Success: no issues found in 64 source files
 ```
 
-## Network Evidence
+The two skips are the base-environment Nautilus import test described above and the opt-in public testnet test, which has no credentials and was not enabled. The clean-lock Python 3.12 environment passed the exact rc5 offline configuration test.
 
-- **No orders sent** to any venue
-- **No authenticated mutation** performed
-- **No reduce-only matching** claim
-- **No stop race** qualification
-- **No assisted capability** enabled
-- All tests are deterministic offline fixtures (TESTED_OFFLINE)
+The bounded SafeRuntime test proves that the journal, writer, and runtime instance ID remain stable across multiple ticks; status timestamps advance; new risk remains false; and shutdown releases both resources. Secret scanning found no `.env`, API key, token, secret, account identifier, signed payload, CCXT dependency, mainnet setting, or order transport.
 
-## Remaining Phase 2 Work
+## Remaining Phase 2 work
 
-### Code/Harness Remaining
-- [ ] Integration tests for fault injection scenarios with real journal persistence
-- [ ] Protection port TEST GATE binding to Nautilus/Bybit REST (when credentials available)
-- [ ] Reconciliation query evidence integration with actual REST pagination
+- TEST GATE: authenticated Bybit reads for private order/position/wallet streams, native protection observations, transaction-log pagination, and external stop reconciliation.
+- TEST GATE: actual Bybit stop visibility/resizing, stop/close races, reduce-only matching, ambiguous-submit behavior, and live fencing.
+- Finish any further restart/reconciliation integration only with persisted venue observations; no transport or qualification promotion is authorized.
+- Keep the target profile, account identity, writer identity, and RiskPolicy evidence fail-closed until independently supplied and verified.
 
-### Public Read-Only Testing
-- [ ] Public market data feed validation (bar integrity, freshness)
-- [ ] Instrument metadata snapshot (tick/lot, risk tier)
-
-### Authenticated Read Testing (Requires Credentials)
-- [ ] Private order/position/wallet stream validation
-- [ ] Native protection observation (read_protection)
-- [ ] Transaction log pagination and deduplication
-
-### Bybit Testnet Mutation/Order Qualification (Requires Explicit Authorization)
-- [ ] IOC entry with attached full-position mark-market stop
-- [ ] Native stop visible and resizes on partial fill
-- [ ] Reduce-only wire and matching enforcement
-- [ ] Ambiguous submit not treated as definite rejection
-- [ ] External native stop fill reconciliation
-- [ ] Native position stop read and repair port
-
-**Authorization Required:** All six capabilities remain UNVERIFIED. Testnet mutation qualification requires explicit user approval and live RiskPolicy.
-
-## Key Artifacts
-
-- **Dependency Lock SHA256:** `49036ec357c04ea6d101a6a8cc4aa9f40b6038e229cb325ec3cb7db7b35f4085`
-- **Nautilus Pin:** `nautilus_trader==2.0.0rc5` (source commit `1b0a49d2792a9432a3aca3fcb617ce7a630d905e`)
-- **Python/Platform ABI:** `cpython-312-x86_64-linux-gnu`
-- **Capability Manifest:** `docs/capability/bybit-v1.yaml` (updated with real lock SHA, pending artifact SHA)
-
-## Exact Next Recommended Task
-
-**Create Session 004 branch for Phase 3 (Causal Data Foundation):**
-- Immutable BTC/ETH forward archives (bars, 1m last/mark/index, quotes/depth, trades, funding/OI)
-- ACTUAL_SYSTEM and RECONSTRUCTED_MARKET replay views
-- Prefix-invariance tests
-- Requires: Running public testnet WebSocket/REST collection (no credentials needed)
+Phase 3 was not started. No strategy, scanner, model, market archive, or foundation-model work was added.
