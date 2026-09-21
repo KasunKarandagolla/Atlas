@@ -20,6 +20,14 @@ def _nonblank(value: str, name: str) -> str:
     return value.strip()
 
 
+PLACEHOLDER_VALUES = frozenset({"CONFIGURED", "REQUIRED", "REQUIRED_AT_INSTALL", ""})
+
+
+def _is_placeholder(value: str) -> bool:
+    s = value.strip() if isinstance(value, str) else ""
+    return not s or s in PLACEHOLDER_VALUES or s.startswith("REQUIRED")
+
+
 @dataclass(frozen=True)
 class IdentityExpectation:
     environment: str = "testnet"
@@ -29,6 +37,13 @@ class IdentityExpectation:
     expected_margin_profile: str = "isolated"
     expected_account_identity_hash: str = "CONFIGURED"
     required_instruments: tuple[str, ...] = ("BTCUSDT", "ETHUSDT")
+
+    def __post_init__(self) -> None:
+        if _is_placeholder(self.expected_account_identity_hash):
+            raise ValueError(
+                f"expected_account_identity_hash holds placeholder {self.expected_account_identity_hash!r}; "
+                "production readiness requires real evidence"
+            )
 
 
 @dataclass(frozen=True)
@@ -54,6 +69,11 @@ class ObservedAccountState:
             "account_identity_hash",
         ):
             _nonblank(getattr(self, f), f"observed.{f}")
+        if _is_placeholder(self.account_identity_hash):
+            raise ValueError(
+                f"observed account_identity_hash holds placeholder {self.account_identity_hash!r}; "
+                "production readiness requires real evidence"
+            )
         if not isinstance(self.private_verified, bool):
             raise ValueError("private_verified must be bool")
         object.__setattr__(

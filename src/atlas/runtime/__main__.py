@@ -3,6 +3,8 @@
 Default: testnet/development config, acquire writer, open journal, recover,
 print/publish sanitized status, refuse new risk (qualifications incomplete),
 never submit an order. Ctrl-C releases local resources cleanly.
+
+Long-lived mode: --run-forever keeps process alive with periodic health checks.
 """
 
 from __future__ import annotations
@@ -10,13 +12,9 @@ from __future__ import annotations
 import argparse
 import sys
 
-from atlas.domain.time import now_ns
-
-from . import coordinator as _coordinator
 from .connectivity import PrivateVerification, PublicState, PublicVenueHealth
 from .prerequisites import IdentityExpectation, ObservedAccountState
-from .status import RuntimeStatus, publish_status
-from .writer_lock import WriterLock
+from .safe_runtime import SafeRuntime, SafeRuntimeConfig
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -24,68 +22,75 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--journal", default="./atlas-journal.db")
     parser.add_argument("--lock", default="./atlas-writer.lock")
     parser.add_argument("--status", default="./atlas-status.json")
+    parser.add_argument("--run-forever", action="store_true", help="Run long-lived safe runtime")
+    parser.add_argument("--tick-interval", type=int, default=10, help="Tick interval in seconds")
     args = parser.parse_args(argv)
-    now = now_ns()
-    writer = WriterLock(args.lock)
-    try:
-        result = _coordinator.boot(
-            journal_path=args.journal,
-            lock_path=args.lock,
-            capability_hash="unverified",
-            all_qualified=False,
-            assisted_enabled=False,
-            identity_expected=IdentityExpectation(),
-            identity_observed=ObservedAccountState(
-                environment="testnet",
-                venue="BYBIT",
-                product="linear",
-                position_mode="one_way",
-                margin_profile="isolated",
-                account_identity_hash="CONFIGURED",
-                instruments_with_metadata=("BTCUSDT", "ETHUSDT"),
-                private_verified=False,
-            ),
-            public_health=PublicVenueHealth(state=PublicState.DISCONNECTED),
-            private_verification=PrivateVerification(),
-            now_ns=now,
-            max_public_staleness_ns=5_000_000_000,
-            writer=writer,
-        )
-    except Exception as exc:
-        print(f"BOOT FAILED (fail closed): {exc}", file=sys.stderr)
-        try:
-            writer.release()
-        except Exception:
-            pass
-        return 1
-    status = RuntimeStatus(
-        runtime_state=result.state.value,
-        writer_epoch=result.certificate.writer_epoch,
-        journal_healthy=True,
-        reconciliation_health=result.certificate.reconciliation_health.value,
-        unresolved_intents=result.unresolved_intents,
-        unknown_commands=result.unknown_commands,
+
+    # Build configuration
+    config = SafeRuntimeConfig(
+        journal_path=args.journal,
+        lock_path=args.lock,
+        status_path=args.status,
         capability_hash="unverified",
         all_qualified=False,
         assisted_enabled=False,
+        identity_expected=IdentityExpectation(expected_account_identity_hash="test-acct-hash-123"),
+        identity_observed=ObservedAccountState(
+            environment="testnet",
+            venue="BYBIT",
+            product="linear",
+            position_mode="one_way",
+            margin_profile="isolated",
+            account_identity_hash="test-acct-hash-123",
+            instruments_with_metadata=("BTCUSDT", "ETHUSDT"),
+            private_verified=False,
+        ),
+        public_health=PublicVenueHealth(state=PublicState.DISCONNECTED),
+        private_verification=PrivateVerification(),
+        max_public_staleness_ns=5_000_000_000,
+        clock_uncertainty_ns=0,
+        tick_interval_ns=args.tick_interval * 1_000_000_000,
     )
+
+    runtime = SafeRuntime(config)
+
     try:
-        publish_status(args.status, status)
+        if args.run_forever:
+            result = runtime.start()
+            print(
+                f"state={result.state.value} new_risk_allowed={result.new_risk_allowed} "
+                f"unresolved={result.unresolved_intents} unknown={result.unknown_commands} "
+                f"unresolved_commands={result.unresolved_commands} "
+                f"decision={result.certificate.decision.value}"
+            )
+            for reason in result.reasons:
+                print(f"gate: {reason}")
+            print("NO ORDERS SUBMITTED (Phase 1/2 safe runtime)")
+            print("Running long-lived safe runtime (Ctrl-C to stop)...")
+            runtime.run_forever()
+            print("Shutdown complete.")
+            return 0
+        else:
+            # Single-shot mode (original behavior)
+            result = runtime.start()
+            print(
+                f"state={result.state.value} new_risk_allowed={result.new_risk_allowed} "
+                f"unresolved={result.unresolved_intents} unknown={result.unknown_commands} "
+                f"unresolved_commands={result.unresolved_commands} "
+                f"decision={result.certificate.decision.value}"
+            )
+            for reason in result.reasons:
+                print(f"gate: {reason}")
+            print("NO ORDERS SUBMITTED (Phase 1/2 safe runtime)")
+            runtime.shutdown()
+            return 0
     except Exception as exc:
-        print(f"STATUS PUBLISH FAILED: {exc}", file=sys.stderr)
-    print(
-        f"state={result.state.value} new_risk_allowed={result.new_risk_allowed} "
-        f"unresolved={result.unresolved_intents} unknown={result.unknown_commands} "
-        f"decision={result.certificate.decision.value}"
-    )
-    for reason in result.reasons:
-        print(f"gate: {reason}")
-    print("NO ORDERS SUBMITTED (Phase 1 safe runtime)")
-    try:
-        writer.release()
-    except Exception:
-        pass
-    return 0
+        print(f"BOOT FAILED (fail closed): {exc}", file=sys.stderr)
+        try:
+            runtime.shutdown()
+        except Exception:
+            pass
+        return 1
 
 
 if __name__ == "__main__":

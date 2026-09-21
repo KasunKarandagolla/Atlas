@@ -6,9 +6,9 @@ runtime:
   distribution: nautilus_trader
   version: 2.0.0rc5
   source_commit: 1b0a49d2792a9432a3aca3fcb617ce7a630d905e
-  installed_artifact_sha256: REQUIRED_AT_INSTALL
-  dependency_lock_sha256: REQUIRED_AT_INSTALL
-  python_platform_abi: REQUIRED_AT_INSTALL
+  installed_artifact_sha256: PENDING_NAUTILUS_RC5_INSTALL
+  dependency_lock_sha256: 49036ec357c04ea6d101a6a8cc4aa9f40b6038e229cb325ec3cb7db7b35f4085
+  python_platform_abi: cpython-312-x86_64-linux-gnu
 venue:
   environment: testnet
   account_identity_hash: REQUIRED

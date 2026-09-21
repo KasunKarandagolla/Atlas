@@ -1,0 +1,38 @@
+# ATLAS reproducible dependency lock for Python 3.12
+# Generated: 2026-09-21
+# Python version: 3.12.13
+# Nautilus version: 2.0.0rc5 (pinned per freeze §1.1)
+# Nautilus source commit: 1b0a49d2792a9432a3aca3fcb617ce7a630d905e
+
+# Core runtime dependencies
+nautilus_trader==2.0.0rc5
+pyyaml==6.0.3
+
+# Development dependencies
+pytest==9.1.1
+hypothesis==6.168.0
+ruff==0.16.8
+mypy==2.3.1
+rich==14.3.2
+click==8.3.1
+typer==0.23.0
+python-dotenv==1.2.1
+typing_extensions==4.15.0
+packaging==26.0
+tomli==2.2.1
+tomlkit==0.13.3
+
+# Nautilus transitive dependencies (pinned to versions compatible with nautilus_trader 2.0.0rc5)
+# These are recorded for reproducibility; actual resolution may vary by platform
+# click>=8.0
+# cython>=3.0
+# fsspec>=2023.0
+# msgspec>=0.18
+# numpy>=1.24
+# pandas>=2.0
+# pyarrow>=14.0
+# pytz>=2023.0
+# setuptools>=68
+# toml>=0.10
+# tqdm>=4.66
+# uvloop>=0.19

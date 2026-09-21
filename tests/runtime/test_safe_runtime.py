@@ -108,7 +108,7 @@ def _fresh_public(now: int) -> PublicVenueHealth:
 
 
 def _observed_ok(**over) -> ObservedAccountState:
-    base = {"environment": "testnet", "venue": "BYBIT", "product": "linear", "position_mode": "one_way", "margin_profile": "isolated", "account_identity_hash": "CONFIGURED", "instruments_with_metadata": ("BTCUSDT", "ETHUSDT"), "private_verified": False}
+    base = {"environment": "testnet", "venue": "BYBIT", "product": "linear", "position_mode": "one_way", "margin_profile": "isolated", "account_identity_hash": "test-acct-hash-123", "instruments_with_metadata": ("BTCUSDT", "ETHUSDT"), "private_verified": False}
     base.update(over)
     return ObservedAccountState(**base)  # type: ignore[arg-type]  # noqa: C408
 
@@ -121,7 +121,7 @@ def test_boot_empty_journal_recovering_not_ready(tmp_path):
         capability_hash="x",
         all_qualified=False,
         assisted_enabled=False,
-        identity_expected=IdentityExpectation(),
+        identity_expected=IdentityExpectation(expected_account_identity_hash="test-acct-hash-123"),
         identity_observed=_observed_ok(),
         public_health=PublicVenueHealth(state=PublicState.DISCONNECTED),
         private_verification=PrivateVerification(),
@@ -154,7 +154,7 @@ def test_unsent_command_stays_unsent_only_without_marker(tmp_path):
         capability_hash="x",
         all_qualified=False,
         assisted_enabled=False,
-        identity_expected=IdentityExpectation(),
+        identity_expected=IdentityExpectation(expected_account_identity_hash="test-acct-hash-123"),
         identity_observed=_observed_ok(),
         public_health=_fresh_public(T0 + 10_000_000_000),
         private_verification=PrivateVerification(),
@@ -189,7 +189,7 @@ def test_dispatch_started_reloads_unknown_and_blocks_ready(tmp_path):
         capability_hash="x",
         all_qualified=False,
         assisted_enabled=False,
-        identity_expected=IdentityExpectation(),
+        identity_expected=IdentityExpectation(expected_account_identity_hash="test-acct-hash-123"),
         identity_observed=_observed_ok(),
         public_health=_fresh_public(T0 + 10_000_000_000),
         private_verification=PrivateVerification(),
@@ -214,7 +214,7 @@ def test_duplicate_local_writer_rejected(tmp_path):
             capability_hash="x",
             all_qualified=False,
             assisted_enabled=False,
-            identity_expected=IdentityExpectation(),
+            identity_expected=IdentityExpectation(expected_account_identity_hash="test-acct-hash-123"),
             identity_observed=_observed_ok(),
             public_health=PublicVenueHealth(state=PublicState.DISCONNECTED),
             private_verification=PrivateVerification(),
@@ -239,7 +239,7 @@ def test_restart_reuses_client_order_identity(tmp_path):
 def test_recovery_certificate_never_claims_venue_without_observations():
     from atlas.runtime.recovery import RecoveryCertificate
 
-    with pytest.raises(ValueError, match="venue observations"):
+    with pytest.raises(ValueError, match="venue_observations_obtained"):
         RecoveryCertificate(
             recovery_run_id="r",
             writer_id="w",
@@ -254,6 +254,7 @@ def test_recovery_certificate_never_claims_venue_without_observations():
             ended_at_ns=T0,
             evidence_refs=("journal-restore",),
             venue_observations_obtained=False,
+            venue_evidence_refs=(),
             decision=RecoveryDecision.READY,
         )
 
@@ -272,13 +273,13 @@ def test_recovery_certificate_never_claims_venue_without_observations():
 )
 def test_identity_mismatches_fail(field, value):
     kw = {field: value}
-    res = check_identity(IdentityExpectation(), _observed_ok(**kw))
+    res = check_identity(IdentityExpectation(expected_account_identity_hash="test-acct-hash-123"), _observed_ok(**kw))
     assert not res.ok
 
 
 def test_missing_instrument_metadata_fails():
     obs = _observed_ok(instruments_with_metadata=("BTCUSDT",))
-    res = check_identity(IdentityExpectation(), obs)
+    res = check_identity(IdentityExpectation(expected_account_identity_hash="test-acct-hash-123"), obs)
     assert not res.ok
     assert any("ETHUSDT" in r or "metadata" in r for r in res.reasons)
 
@@ -319,6 +320,7 @@ def test_conflicted_blocks_ready_in_recovery():
         started_at_ns=T0,
         ended_at_ns=T0,
         venue_observations_obtained=True,
+        venue_evidence_refs=("venue-obs-1",),
         prerequisites_ok=True,
     )
     assert cert.decision == RecoveryDecision.RECOVERY_REQUIRED
@@ -327,6 +329,7 @@ def test_conflicted_blocks_ready_in_recovery():
 # Ops boundary
 def test_status_sanitized_and_atomic(tmp_path):
     path = tmp_path / "status.json"
+    from atlas.domain.time import now_ns
     st = RuntimeStatus(
         runtime_state="RECOVERING",
         writer_epoch=3,
@@ -334,9 +337,13 @@ def test_status_sanitized_and_atomic(tmp_path):
         reconciliation_health="STALE",
         unresolved_intents=1,
         unknown_commands=1,
+        unresolved_commands=1,
         capability_hash="abc",
         all_qualified=False,
         assisted_enabled=False,
+        generated_at_ns=now_ns(),
+        runtime_instance_id="test-instance",
+        writer_id="test-writer",
     )
     publish_status(path, st)
     loaded = load_status(path)
