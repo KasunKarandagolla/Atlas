@@ -1,0 +1,28 @@
+# Bybit capability manifest v1 (freeze §1.1).
+# All exchange behaviors that have not been tested MUST be UNVERIFIED.
+# Do NOT mark anything supported based only on documentation.
+contract_version: "1.0"
+runtime:
+  distribution: nautilus_trader
+  version: 2.0.0rc5
+  source_commit: 1b0a49d2792a9432a3aca3fcb617ce7a630d905e
+  installed_artifact_sha256: REQUIRED_AT_INSTALL
+  dependency_lock_sha256: REQUIRED_AT_INSTALL
+  python_platform_abi: REQUIRED_AT_INSTALL
+venue:
+  environment: testnet
+  account_identity_hash: REQUIRED
+  account_generation_and_margin_mode: REQUIRED
+  product: linear
+  position_mode: one_way
+  symbols: [BTCUSDT, ETHUSDT]
+  # Profile assumption (freeze §0, §1.1): one-way linear, isolated-margin assumption/profile field.
+  margin_profile: isolated-margin-assumption
+capabilities:
+  entry_ioc_with_attached_full_mark_market_stop: UNVERIFIED
+  native_stop_visible_and_resizes_on_partial_fill: UNVERIFIED
+  reduce_only_wire_and_matching_enforcement: UNVERIFIED
+  ambiguous_submit_not_treated_as_definite_rejection: UNVERIFIED
+  external_native_stop_fill_reconciliation: UNVERIFIED
+  native_position_stop_read_and_repair_port: UNVERIFIED
+assisted_enabled: false

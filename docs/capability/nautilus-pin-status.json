@@ -1,0 +1,11 @@
+{
+  "candidate": "nautilus_trader==2.0.0rc5",
+  "source_commit": "1b0a49d2792a9432a3aca3fcb617ce7a630d905e",
+  "result": "BLOCKED_BY_ENVIRONMENT",
+  "detail": "pip download --pre --no-deps nautilus_trader==2.0.0rc5 failed: no matching distribution (only 1.202.0 visible on this index). No substitute version installed; freeze unchanged; all capabilities remain UNVERIFIED.",
+  "python": "3.10.12 (GCC 11.4.0)",
+  "platform": "Linux-5.15.0-177-generic-x86_64-with-glibc2.35",
+  "installed_artifact_sha256": "REQUIRED_AT_INSTALL",
+  "dependency_lock_sha256": "REQUIRED_AT_INSTALL",
+  "date_utc": "2026-09-21"
+}
