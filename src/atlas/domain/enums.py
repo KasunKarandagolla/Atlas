@@ -5,12 +5,7 @@ All enums are explicit strings. Unknown must never imply supported/passed.
 
 from __future__ import annotations
 
-from enum import Enum
-
-
-class StrEnum(str, Enum):
-    def __str__(self) -> str:  # pragma: no cover - trivial
-        return self.value
+from enum import StrEnum
 
 
 class LifecycleState(StrEnum):

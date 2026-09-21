@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -141,7 +141,7 @@ def test_time_rejects_naive_and_negative():
 
 
 def test_time_roundtrip_aware():
-    dt = datetime(2026, 1, 2, 3, 4, 5, 123456, tzinfo=timezone.utc)
+    dt = datetime(2026, 1, 2, 3, 4, 5, 123456, tzinfo=UTC)
     ns = datetime_to_ns(dt)
     assert isinstance(ns, int) and ns > 0
     back = ns_to_datetime(ns)

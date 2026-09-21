@@ -38,6 +38,16 @@ class HealthSnapshot:
             raise ValueError("reconciliation must be ReconciliationHealth")
         if not isinstance(self.protection, ProtectionStatus):
             raise ValueError("protection must be ProtectionStatus")
+        for name in (
+            "writer_owned",
+            "account_matched",
+            "data_current",
+            "has_open_exposure",
+            "drawdown_stop_active",
+        ):
+            val = getattr(self, name)
+            if not isinstance(val, bool):
+                raise ValueError(f"{name} must be bool, got {val!r}")
 
 
 @dataclass(frozen=True)

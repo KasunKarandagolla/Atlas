@@ -93,12 +93,14 @@ class RiskPolicy:
             "drawdown_reduce_recovery",
             "drawdown_stop_recovery",
         ):
-            _frac(getattr(self, name), name)
+            object.__setattr__(self, name, _frac(getattr(self, name), name))
 
         alpha = ensure_decimal(self.portfolio_es_alpha, field="portfolio_es_alpha")
+        object.__setattr__(self, "portfolio_es_alpha", alpha)
         if not (Decimal("0") < alpha < Decimal("1")):
             raise ValueError("portfolio_es_alpha must be in (0,1)")
         lev = ensure_decimal(self.max_contract_leverage, field="max_contract_leverage")
+        object.__setattr__(self, "max_contract_leverage", lev)
         if lev <= 0:
             raise ValueError("max_contract_leverage must be positive")
         if not isinstance(self.max_simultaneous_new_risk_intents, int) or isinstance(

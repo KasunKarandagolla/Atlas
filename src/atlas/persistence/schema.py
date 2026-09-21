@@ -3,11 +3,16 @@
 Append/audit-friendly: rows are inserted, never updated except for explicit
 state-transition columns (approval consumption, command dispatch/outcome,
 intent lifecycle). History is preserved via observations/economic events.
+
+Schema v2 (Session 002 repairs):
+- intents.state_version: monotonically increasing local state version (freeze §1.5).
+- economic_events: composite identity (account, venue_transaction_id) per freeze
+  (venue IDs are not globally unique across accounts).
 """
 
 from __future__ import annotations
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 DDL_STATEMENTS = [
     """
@@ -48,7 +53,8 @@ DDL_STATEMENTS = [
         lifecycle TEXT NOT NULL,
         protection_status TEXT NOT NULL,
         reconciliation_health TEXT NOT NULL,
-        created_at_ns INTEGER NOT NULL
+        created_at_ns INTEGER NOT NULL,
+        state_version INTEGER NOT NULL DEFAULT 0
     )
     """,
     """
@@ -106,14 +112,15 @@ DDL_STATEMENTS = [
     """,
     """
     CREATE TABLE IF NOT EXISTS economic_events (
-        venue_transaction_id TEXT PRIMARY KEY,
         account TEXT NOT NULL,
+        venue_transaction_id TEXT NOT NULL,
         currency TEXT NOT NULL,
         amount TEXT NOT NULL,
         effective_time_ns INTEGER NOT NULL,
         received_at_ns INTEGER NOT NULL,
         event_type TEXT NOT NULL,
-        revision TEXT NOT NULL
+        revision TEXT NOT NULL,
+        PRIMARY KEY (account, venue_transaction_id)
     )
     """,
 ]

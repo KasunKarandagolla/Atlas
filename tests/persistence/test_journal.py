@@ -98,7 +98,7 @@ def test_pragmas_wal_full_fk(tmp_path):
     # synchronous=FULL maps to 2
     assert str(p["synchronous"]) == "2", p
     assert str(p["foreign_keys"]) == "1", p
-    assert j.schema_version() == 1
+    assert j.schema_version() == 2
     j.close()
 
 
@@ -107,7 +107,7 @@ def test_schema_creation_idempotent(tmp_path):
     j1 = SQLiteJournal(path)
     j1.close()
     j2 = SQLiteJournal(path)
-    assert j2.schema_version() == 1
+    assert j2.schema_version() == 2
     j2.close()
 
 
@@ -256,10 +256,15 @@ def test_persist_command_before_dispatch_flow(tmp_path):
     j.persist_command(cmd)
     loaded = j.load_command("cmd-1")
     assert loaded.outcome == CommandOutcome.UNSENT
+    assert loaded.send_started_at_ns is None
     j.mark_send_started("cmd-1", T0 + 5)
-    assert j.load_command("cmd-1").send_started_at_ns == T0 + 5
-    j.update_command_outcome("cmd-1", CommandOutcome.UNKNOWN)
-    assert j.load_command("cmd-1").outcome == CommandOutcome.UNKNOWN
+    # FIX1: dispatch marker atomically produces UNKNOWN (no second op needed)
+    reloaded = j.load_command("cmd-1")
+    assert reloaded.send_started_at_ns == T0 + 5
+    assert reloaded.outcome == CommandOutcome.UNKNOWN
+    # Second marker must fail
+    with pytest.raises(PersistenceError):
+        j.mark_send_started("cmd-1", T0 + 6)
     # UNKNOWN preserved: explicit transition required
     j.update_command_outcome("cmd-1", CommandOutcome.DEFINITE_ACCEPT)
     assert j.load_command("cmd-1").outcome == CommandOutcome.DEFINITE_ACCEPT

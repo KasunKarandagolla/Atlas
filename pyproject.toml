@@ -7,7 +7,7 @@ name = "atlas"
 version = "0.1.0"
 description = "ATLAS V1 foundation: typed execution/protection contracts and SQLite durable journal (Phase 0/1, no live orders)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "UNLICENSED - private research foundation" }
 dependencies = [
   "pyyaml>=6.0",
@@ -31,14 +31,14 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B", "C4", "SIM"]
 ignore = ["E501", "SIM102", "SIM105"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 strict = false
 ignore_missing_imports = true
 warn_unused_configs = true

@@ -19,9 +19,10 @@ def test_initial_fixture_all_unverified_and_no_assisted():
     for f in REQUIRED_CAPABILITY_FIELDS:
         assert getattr(c.capabilities, f) == CapabilityStatus.UNVERIFIED
     assert c.assisted_enabled is False
-    # Unknown never implies supported
+    # Unknown never implies supported (capability blockers + placeholder blockers)
     assert c.validate_for_assisted() != []
-    assert len(c.validate_for_assisted()) == len(REQUIRED_CAPABILITY_FIELDS)
+    assert len(c.validate_for_assisted()) >= len(REQUIRED_CAPABILITY_FIELDS)
+    assert any("entry_ioc_with_attached_full_mark_market_stop" in r for r in c.validate_for_assisted())
 
 
 def test_assisted_enabled_rejected_while_unverified():
@@ -65,11 +66,19 @@ def test_capability_rejects_bare_booleans():
 
 
 def test_all_supported_allows_assisted_and_hash_deterministic():
-    caps = Capabilities(**dict.fromkeys(REQUIRED_CAPABILITY_FIELDS, CapabilityStatus.SUPPORTED))  # type: ignore[arg-type]
-    c1 = initial_unverified_fixture()
     import dataclasses
 
-    c2 = dataclasses.replace(c1, capabilities=caps, assisted_enabled=True)
+    from atlas.domain.capability import RuntimeInfo, VenueInfo
+
+    caps = Capabilities(**dict.fromkeys(REQUIRED_CAPABILITY_FIELDS, CapabilityStatus.SUPPORTED))  # type: ignore[arg-type]
+    real = initial_unverified_fixture(
+        installed_artifact_sha256="a" * 64,
+        dependency_lock_sha256="b" * 64,
+        python_platform_abi="cpython-312-x86_64-linux-gnu",
+        account_identity_hash="acct-hash-001",
+        account_generation_and_margin_mode="gen1-isolated",
+    )
+    c2 = dataclasses.replace(real, capabilities=caps, assisted_enabled=True)
     assert c2.validate_for_assisted() == []
     assert c2.contract_hash() == c2.contract_hash()
     # Any single FAILED/UNSUPPORTED blocks
@@ -77,8 +86,17 @@ def test_all_supported_allows_assisted_and_hash_deterministic():
         d = dict.fromkeys(REQUIRED_CAPABILITY_FIELDS, CapabilityStatus.SUPPORTED)
         d[f] = CapabilityStatus.FAILED
         bad = Capabilities(**d)  # type: ignore[arg-type]
-        c3 = dataclasses.replace(c1, capabilities=bad)
+        c3 = dataclasses.replace(real, capabilities=bad)
         assert any(f in r for r in c3.validate_for_assisted())
+    # All SUPPORTED but placeholder identity still blocks (FIX7)
+    c4 = dataclasses.replace(
+        initial_unverified_fixture(), capabilities=caps, assisted_enabled=False
+    )
+    assert any("placeholder" in r for r in c4.validate_for_assisted())
+    with pytest.raises(ValueError, match="placeholder"):
+        dataclasses.replace(c4, assisted_enabled=True)
+
+    _ = (RuntimeInfo, VenueInfo)
 
 
 def test_manifest_missing_capability_fails():

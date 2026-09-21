@@ -87,6 +87,7 @@ class Intent:
     protection_status: ProtectionStatus
     reconciliation_health: ReconciliationHealth
     created_at_ns: int
+    state_version: int = 0
 
     def __post_init__(self) -> None:
         _nonblank(self.intent_id, "intent_id")
@@ -108,6 +109,10 @@ class Intent:
             raise ValueError("protection_status must be ProtectionStatus")
         if not isinstance(self.reconciliation_health, ReconciliationHealth):
             raise ValueError("reconciliation_health must be ReconciliationHealth")
+        if not isinstance(self.state_version, int) or isinstance(self.state_version, bool):
+            raise ValueError("state_version must be int")
+        if self.state_version < 0:
+            raise ValueError("state_version must be >= 0")
         # Protection and reconciliation are independent dimensions: no cross-constraint.
 
 
@@ -268,9 +273,11 @@ class ProtectionObservation:
             self.desired_stop_version, bool
         ):
             raise ValueError("desired_stop_version must be int")
-        ensure_decimal(self.qty, field="qty")
+        qty = ensure_decimal(self.qty, field="qty")
+        object.__setattr__(self, "qty", qty)
         _nonblank(self.trigger_basis, "trigger_basis")
         sp = ensure_decimal(self.stop_price, field="stop_price")
+        object.__setattr__(self, "stop_price", sp)
         if sp <= 0:
             raise ValueError("stop_price must be positive")
         _nonblank(self.semantics, "semantics")
@@ -293,7 +300,8 @@ class EconomicEvent:
         _nonblank(self.account, "account")
         _nonblank(self.venue_transaction_id, "venue_transaction_id")
         _nonblank(self.currency, "currency")
-        ensure_decimal(self.amount, field="amount")
+        amount = ensure_decimal(self.amount, field="amount")
+        object.__setattr__(self, "amount", amount)
         ensure_utc_ns(self.effective_time_ns, field="effective_time_ns")
         ensure_utc_ns(self.received_at_ns, field="received_at_ns")
         _nonblank(self.event_type, "event_type")

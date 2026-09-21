@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re as _re
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,6 +27,22 @@ REQUIRED_CAPABILITY_FIELDS: tuple[str, ...] = (
     "external_native_stop_fill_reconciliation",
     "native_position_stop_read_and_repair_port",
 )
+
+
+PLACEHOLDER_VALUES = frozenset({"REQUIRED", "REQUIRED_AT_INSTALL"})
+
+_SHA256_RE = _re.compile(r"^[0-9a-f]{64}$")
+
+
+def _is_placeholder(value: str) -> bool:
+    s = value.strip()
+    return not s or s in PLACEHOLDER_VALUES or s.startswith("REQUIRED")
+
+
+def _require_real(value: str, field_name: str) -> str:
+    if _is_placeholder(value):
+        raise ValueError(f"{field_name} still holds placeholder {value!r}; assisted impossible")
+    return value
 
 
 def _require_nonblank(value: str, field_name: str) -> str:
@@ -150,11 +167,10 @@ class CapabilityContract:
         if not isinstance(self.assisted_enabled, bool):
             raise ValueError("assisted_enabled must be bool")
         if self.assisted_enabled:
-            blockers = self.capabilities.blocking_reasons()
+            blockers = self.assisted_blockers()
             if blockers:
                 raise ValueError(
-                    "assisted_enabled=true requires all capabilities SUPPORTED; blockers: "
-                    + "; ".join(blockers)
+                    "assisted_enabled=true blocked: " + "; ".join(blockers)
                 )
 
     def to_dict(self) -> dict[str, Any]:
@@ -174,7 +190,36 @@ class CapabilityContract:
 
     def validate_for_assisted(self) -> list[str]:
         """Return structured blocking reasons (empty means eligible on capability grounds)."""
-        return self.capabilities.blocking_reasons()
+        return self.assisted_blockers()
+
+    def assisted_blockers(self) -> list[str]:
+        """Capability blockers PLUS placeholder/identity evidence blockers.
+
+        Assisted execution is impossible while install/account identity fields
+        still contain placeholders (REQUIRED / REQUIRED_AT_INSTALL).
+        """
+        reasons: list[str] = list(self.capabilities.blocking_reasons())
+        r = self.runtime
+        v = self.venue
+        for field_name, val in (
+            ("runtime.installed_artifact_sha256", r.installed_artifact_sha256),
+            ("runtime.dependency_lock_sha256", r.dependency_lock_sha256),
+            ("runtime.python_platform_abi", r.python_platform_abi),
+            ("venue.account_identity_hash", v.account_identity_hash),
+            ("venue.account_generation_and_margin_mode", v.account_generation_and_margin_mode),
+            ("venue.environment", v.environment),
+            ("venue.product", v.product),
+            ("venue.position_mode", v.position_mode),
+        ):
+            if _is_placeholder(val):
+                reasons.append(f"{field_name} holds placeholder {val!r}")
+        for field_name, val in (
+            ("runtime.installed_artifact_sha256", r.installed_artifact_sha256),
+            ("runtime.dependency_lock_sha256", r.dependency_lock_sha256),
+        ):
+            if not _is_placeholder(val) and not _SHA256_RE.match(val.strip()):
+                reasons.append(f"{field_name} must be 64 lowercase hex SHA256")
+        return reasons
 
 
 def initial_unverified_fixture(
@@ -223,9 +268,14 @@ def capability_contract_from_manifest(data: dict[str, Any]) -> CapabilityContrac
         runtime = data["runtime"]
         venue = data["venue"]
         caps = data["capabilities"]
-        assisted = bool(data.get("assisted_enabled", False))
+        raw_assisted = data.get("assisted_enabled", False)
     except KeyError as exc:
         raise ValueError(f"manifest missing section: {exc}") from exc
+    if not isinstance(raw_assisted, bool):
+        raise ValueError(
+            f"assisted_enabled must be a real YAML boolean, got {raw_assisted!r}"
+        )
+    assisted = raw_assisted
 
     def _status(name: str, raw: Any) -> CapabilityStatus:
         try:

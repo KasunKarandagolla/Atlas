@@ -10,7 +10,7 @@ Canonical domain representation: UTC integer nanoseconds since Unix epoch (int).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 NANOS_PER_SECOND = 1_000_000_000
 
@@ -30,7 +30,7 @@ def datetime_to_ns(dt: datetime, *, field: str = "datetime") -> int:
         raise ValueError(f"{field}: must be datetime, got {type(dt).__name__}")
     if dt.tzinfo is None:
         raise ValueError(f"{field}: naive datetime rejected; require tz-aware UTC")
-    utc = dt.astimezone(timezone.utc)
+    utc = dt.astimezone(UTC)
     seconds = int(utc.timestamp())
     # Preserve microsecond precision deterministically.
     micros = utc.microsecond
@@ -41,11 +41,11 @@ def ns_to_datetime(ns: int) -> datetime:
     ns = ensure_utc_ns(ns)
     seconds, rem = divmod(ns, NANOS_PER_SECOND)
     micros, _ = divmod(rem, 1000)
-    return datetime.fromtimestamp(seconds, tz=timezone.utc).replace(microsecond=micros)
+    return datetime.fromtimestamp(seconds, tz=UTC).replace(microsecond=micros)
 
 
 def now_ns() -> int:
-    return datetime_to_ns(datetime.now(tz=timezone.utc))
+    return datetime_to_ns(datetime.now(tz=UTC))
 
 
 def ensure_after(a_ns: int, b_ns: int, *, field_a: str = "a", field_b: str = "b") -> None:
