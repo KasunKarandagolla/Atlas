@@ -4,7 +4,7 @@
 - stdlib sqlite3 with explicit SQL (no ORM).
 - Transactional writes; persistence failure raises PersistenceError (never success).
 - Unique client-order-ID constraint enforced by schema.
-- Schema v3: durable execution and order-status evidence in addition to the v2 records.
+- Schema v4: durable execution/status/query evidence and typed recovery certificates.
 """
 
 from __future__ import annotations
@@ -46,9 +46,15 @@ from atlas.runtime.reconciliation_evidence import (
     Completeness,
     QueryStatus,
     QueryType,
+    ReconciliationEvidenceBundle,
     ReconciliationQueryEvidence,
 )
-from atlas.runtime.recovery import RecoveryIncident
+from atlas.runtime.recovery import (
+    RecoveryCertificate,
+    RecoveryDecision,
+    RecoveryIncident,
+    RecoveryProtectionEvidence,
+)
 
 from .migrations import bootstrap, current_version
 
@@ -1171,6 +1177,128 @@ class SQLiteJournal:
 
         return self._wrap("load_reconciliation_query_evidence", _op)
 
+    def load_reconciliation_evidence_bundle(
+        self,
+        *,
+        reconciliation_run_id: str,
+        account: str,
+        instrument: str | None,
+        query_ids: tuple[str, ...],
+        started_at_ns: int,
+        completed_at_ns: int,
+    ) -> ReconciliationEvidenceBundle:
+        """Reconstruct one typed reconciliation bundle after restart.
+
+        Query rows are immutable and intentionally do not carry mutable run
+        state. The caller supplies the persisted query IDs belonging to the
+        run, then this method derives the aggregate status/completeness from
+        those rows without inventing venue evidence.
+        """
+        if not query_ids:
+            raise PersistenceError("reconciliation bundle requires persisted query IDs")
+        persisted = {e.query_id: e for e in self.load_reconciliation_query_evidence()}
+        missing = [query_id for query_id in query_ids if query_id not in persisted]
+        if missing:
+            raise PersistenceError(f"reconciliation query evidence missing: {missing}")
+        queries = tuple(persisted[query_id] for query_id in query_ids)
+        if any(e.account != account or e.instrument != instrument for e in queries):
+            raise PersistenceError("reconciliation evidence identity does not match requested bundle")
+        severity = {
+            Completeness.COMPLETE: 0,
+            Completeness.INCOMPLETE_PAGINATED: 1,
+            Completeness.INCOMPLETE_TRUNCATED: 2,
+            Completeness.INCOMPLETE_RETENTION_LIMIT: 3,
+            Completeness.UNKNOWN: 4,
+        }
+        if any(e.status in (QueryStatus.FAILED, QueryStatus.TIMEOUT) for e in queries):
+            overall_status = QueryStatus.FAILED
+        elif any(e.status in (QueryStatus.PARTIAL, QueryStatus.RATE_LIMITED) for e in queries):
+            overall_status = QueryStatus.PARTIAL
+        else:
+            overall_status = QueryStatus.SUCCESS
+        return ReconciliationEvidenceBundle(
+            reconciliation_run_id=reconciliation_run_id,
+            account=account,
+            instrument=instrument,
+            started_at_ns=started_at_ns,
+            completed_at_ns=completed_at_ns,
+            queries=queries,
+            overall_status=overall_status,
+            overall_completeness=max(
+                (e.completeness for e in queries), key=lambda item: severity[item]
+            ),
+        )
+
+    def append_recovery_certificate(self, certificate: RecoveryCertificate) -> None:
+        """Persist the immutable typed recovery decision and evidence chain."""
+        protection = certificate.protection_evidence
+
+        def _op() -> None:
+            with self._tx() as cur:
+                cur.execute(
+                    "INSERT INTO recovery_certificates(recovery_run_id, writer_id, writer_epoch,"
+                    " journal_schema_version, unresolved_intents_json, unresolved_commands_json,"
+                    " unknown_commands_json, reconciliation_health, protection_uncertainty_summary,"
+                    " started_at_ns, ended_at_ns, evidence_refs_json, venue_observations_obtained,"
+                    " venue_evidence_refs_json, decision, protection_certified_flat, protection_current,"
+                    " protection_evidence_refs_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        certificate.recovery_run_id,
+                        certificate.writer_id,
+                        certificate.writer_epoch,
+                        certificate.journal_schema_version,
+                        json.dumps(list(certificate.unresolved_intents), sort_keys=True),
+                        json.dumps(list(certificate.unresolved_commands), sort_keys=True),
+                        json.dumps(list(certificate.unknown_commands), sort_keys=True),
+                        certificate.reconciliation_health.value,
+                        certificate.protection_uncertainty_summary,
+                        certificate.started_at_ns,
+                        certificate.ended_at_ns,
+                        json.dumps(list(certificate.evidence_refs), sort_keys=True),
+                        int(certificate.venue_observations_obtained),
+                        json.dumps(list(certificate.venue_evidence_refs), sort_keys=True),
+                        certificate.decision.value,
+                        int(protection.certified_flat) if protection is not None else None,
+                        int(protection.current_protection) if protection is not None else None,
+                        json.dumps(list(protection.evidence_refs), sort_keys=True)
+                        if protection is not None else None,
+                    ),
+                )
+
+        self._wrap("append_recovery_certificate", _op)
+
+    def load_recovery_certificate(self, recovery_run_id: str) -> RecoveryCertificate | None:
+        """Load the exact recovery certificate persisted for a run."""
+        def _op() -> RecoveryCertificate | None:
+            cur = self._conn.cursor()
+            cur.execute("SELECT * FROM recovery_certificates WHERE recovery_run_id=?", (recovery_run_id,))
+            row = cur.fetchone()
+            if row is None:
+                return None
+            protection: RecoveryProtectionEvidence | None = None
+            if row["protection_certified_flat"] is not None:
+                protection = RecoveryProtectionEvidence(
+                    certified_flat=bool(row["protection_certified_flat"]),
+                    current_protection=bool(row["protection_current"]),
+                    evidence_refs=tuple(json.loads(row["protection_evidence_refs_json"])),
+                )
+            return RecoveryCertificate(
+                recovery_run_id=row["recovery_run_id"], writer_id=row["writer_id"],
+                writer_epoch=int(row["writer_epoch"]), journal_schema_version=int(row["journal_schema_version"]),
+                unresolved_intents=tuple(json.loads(row["unresolved_intents_json"])),
+                unresolved_commands=tuple(json.loads(row["unresolved_commands_json"])),
+                unknown_commands=tuple(json.loads(row["unknown_commands_json"])),
+                reconciliation_health=ReconciliationHealth(row["reconciliation_health"]),
+                protection_uncertainty_summary=row["protection_uncertainty_summary"],
+                started_at_ns=int(row["started_at_ns"]), ended_at_ns=int(row["ended_at_ns"]),
+                evidence_refs=tuple(json.loads(row["evidence_refs_json"])),
+                venue_observations_obtained=bool(row["venue_observations_obtained"]),
+                venue_evidence_refs=tuple(json.loads(row["venue_evidence_refs_json"])),
+                decision=RecoveryDecision(row["decision"]), protection_evidence=protection,
+            )
+
+        return self._wrap("load_recovery_certificate", _op)
+
     def append_recovery_incident(self, incident: RecoveryIncident) -> None:
         def _op() -> None:
             with self._tx() as cur:
@@ -1296,6 +1424,7 @@ class SQLiteJournal:
             "order_status_observations",
             "reconciliation_query_evidence",
             "recovery_incidents",
+            "recovery_certificates",
             "capability_evidence_log",
             "capability_qualification_log",
         }

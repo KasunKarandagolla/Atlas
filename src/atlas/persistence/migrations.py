@@ -1,4 +1,4 @@
-"""Deterministic schema migration/bootstrap (v1 -> v3)."""
+"""Deterministic schema migration/bootstrap (v1 -> v4)."""
 
 from __future__ import annotations
 
@@ -78,6 +78,14 @@ def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
             cur.execute(stmt)
 
 
+def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
+    """Create the durable typed recovery-certificate table."""
+    cur = conn.cursor()
+    for stmt in DDL_STATEMENTS:
+        if "CREATE TABLE IF NOT EXISTS recovery_certificates" in stmt:
+            cur.execute(stmt)
+
+
 def bootstrap(conn: sqlite3.Connection) -> int:
     """Create schema idempotently; migrate v1->v2 deterministically. Returns version."""
     cur = conn.cursor()
@@ -100,8 +108,12 @@ def bootstrap(conn: sqlite3.Connection) -> int:
                 cur.execute(stmt)
         _migrate_v1_to_v2(conn)
         _migrate_v2_to_v3(conn)
+        _migrate_v3_to_v4(conn)
     elif existing == 2:
         _migrate_v2_to_v3(conn)
+        _migrate_v3_to_v4(conn)
+    elif existing == 3:
+        _migrate_v3_to_v4(conn)
     else:
         for stmt in DDL_STATEMENTS:
             cur.execute(stmt)

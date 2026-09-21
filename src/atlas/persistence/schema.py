@@ -4,16 +4,17 @@ Append/audit-friendly: rows are inserted, never updated except for explicit
 state-transition columns (approval consumption, command dispatch/outcome,
 intent lifecycle). History is preserved via observations/economic events.
 
-Schema v3 (Session 004 repairs):
+Schema v4 (Session 004 repairs):
 - intents.state_version: monotonically increasing local state version (freeze §1.5).
 - economic_events: composite identity (account, venue_transaction_id) per freeze
   (venue IDs are not globally unique across accounts).
 - execution_evidence and order_status_observations are append-only durable evidence.
+- recovery_certificates preserve the typed recovery decision and evidence chain.
 """
 
 from __future__ import annotations
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 DDL_STATEMENTS = [
     """
@@ -189,6 +190,28 @@ DDL_STATEMENTS = [
         evidence_refs_json TEXT NOT NULL,
         opened_at_ns INTEGER NOT NULL,
         resolved_at_ns INTEGER
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS recovery_certificates (
+        recovery_run_id TEXT PRIMARY KEY,
+        writer_id TEXT NOT NULL,
+        writer_epoch INTEGER NOT NULL,
+        journal_schema_version INTEGER NOT NULL,
+        unresolved_intents_json TEXT NOT NULL,
+        unresolved_commands_json TEXT NOT NULL,
+        unknown_commands_json TEXT NOT NULL,
+        reconciliation_health TEXT NOT NULL,
+        protection_uncertainty_summary TEXT NOT NULL,
+        started_at_ns INTEGER NOT NULL,
+        ended_at_ns INTEGER NOT NULL,
+        evidence_refs_json TEXT NOT NULL,
+        venue_observations_obtained INTEGER NOT NULL,
+        venue_evidence_refs_json TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        protection_certified_flat INTEGER,
+        protection_current INTEGER,
+        protection_evidence_refs_json TEXT
     )
     """,
     """

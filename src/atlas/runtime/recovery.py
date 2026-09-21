@@ -9,11 +9,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from atlas.domain.enums import ReconciliationHealth
 from atlas.domain.time import ensure_utc_ns
 
 from .reconciliation_evidence import Completeness, QueryStatus, ReconciliationEvidenceBundle
+
+if TYPE_CHECKING:
+    from atlas.persistence.sqlite import SQLiteJournal
 
 
 class RecoveryDecision(StrEnum):
@@ -212,3 +216,71 @@ def run_recovery(
         decision=decision,
         protection_evidence=protection_evidence,
     )
+
+
+def recover_from_persisted_evidence(
+    *,
+    journal: SQLiteJournal,
+    recovery_run_id: str,
+    writer_id: str,
+    writer_epoch: int,
+    unresolved_intent_ids: tuple[str, ...],
+    unresolved_command_ids: tuple[str, ...],
+    unknown_command_ids: tuple[str, ...],
+    account: str,
+    instrument: str | None,
+    query_ids: tuple[str, ...],
+    reconciliation_started_at_ns: int,
+    reconciliation_completed_at_ns: int,
+    protection_uncertainty_summary: str,
+    started_at_ns: int,
+    ended_at_ns: int,
+    prerequisites_ok: bool,
+    protection_evidence: RecoveryProtectionEvidence | None = None,
+) -> RecoveryCertificate:
+    """Run and persist recovery from immutable journal evidence.
+
+    After restart this reconstructs a typed reconciliation bundle from
+    persisted query observations, applies the fail-closed gate, stores the
+    certificate, and records an incident for every non-READY result. It never
+    contacts a venue or infers missing evidence.
+    """
+    bundle = journal.load_reconciliation_evidence_bundle(
+        reconciliation_run_id=recovery_run_id,
+        account=account,
+        instrument=instrument,
+        query_ids=query_ids,
+        started_at_ns=reconciliation_started_at_ns,
+        completed_at_ns=reconciliation_completed_at_ns,
+    )
+    certificate = run_recovery(
+        recovery_run_id=recovery_run_id,
+        writer_id=writer_id,
+        writer_epoch=writer_epoch,
+        journal_schema_version=journal.schema_version() or 0,
+        unresolved_intent_ids=unresolved_intent_ids,
+        unresolved_command_ids=unresolved_command_ids,
+        unknown_command_ids=unknown_command_ids,
+        reconciliation_health=ReconciliationHealth.CURRENT,
+        protection_uncertainty_summary=protection_uncertainty_summary,
+        started_at_ns=started_at_ns,
+        ended_at_ns=ended_at_ns,
+        venue_observations_obtained=True,
+        venue_evidence_refs=(),
+        prerequisites_ok=prerequisites_ok,
+        protection_evidence=protection_evidence,
+        reconciliation_evidence=bundle,
+    )
+    journal.append_recovery_certificate(certificate)
+    if certificate.decision != RecoveryDecision.READY:
+        journal.append_recovery_incident(
+            RecoveryIncident(
+                incident_id=f"{recovery_run_id}-incident",
+                recovery_run_id=recovery_run_id,
+                category="recovery_gate",
+                status=certificate.decision.value,
+                evidence_refs=certificate.evidence_refs,
+                opened_at_ns=ended_at_ns,
+            )
+        )
+    return certificate

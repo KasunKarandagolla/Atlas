@@ -8,7 +8,7 @@ T0 = 1_700_000_000_000_000_000
 
 def _kwargs():
     return {
-        "recovery_run_id": "recovery-1", "writer_id": "writer-1", "writer_epoch": 1, "journal_schema_version": 3,
+        "recovery_run_id": "recovery-1", "writer_id": "writer-1", "writer_epoch": 1, "journal_schema_version": 4,
         "unresolved_intent_ids": (), "unresolved_command_ids": (), "unknown_command_ids": (),
         "reconciliation_health": ReconciliationHealth.CURRENT, "protection_uncertainty_summary": "diagnostic only",
         "started_at_ns": T0, "ended_at_ns": T0, "venue_observations_obtained": True,
