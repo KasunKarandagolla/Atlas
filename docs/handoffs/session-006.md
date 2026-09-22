@@ -70,6 +70,33 @@ implementation defects:
 Every repair reuses an existing authoritative Phase-4 function; no parallel
 feature, OOF, bootstrap, funding, risk or execution implementation was added.
 
+### Final repair record
+
+```text
+starting SHA:       82d22a3d721a1476de02071fcfb99d9192b5b4bb
+implementation SHA: 1f458ee47ec8072783403b2146d1dd281742cbfe  (fix: finalize phase 4 causal evaluation)
+final branch SHA:   recorded in the documentation commit that follows this document
+```
+
+Closed acceptance matrix for this repair (all evaluated offline):
+
+```text
+1. CHRONOLOGICAL BOOTSTRAP OOF          PASS
+2. LOCKED BOOTSTRAP RIDGE               PASS
+3. DYNAMIC SIMULATED FEATURE STATE      PASS
+4. CAUSAL FUNDING FORECAST REPLAY       PASS
+5. SAME-BLOCK EXECUTION EVIDENCE        PASS
+6. STRESS/RISK ACTION BINDING           PASS
+7. EXACT FROZEN BLOCK SELECTION         PASS
+```
+
+Single clean tracked-only validation of `1f458ee` (fresh Python 3.12.13 venv,
+`pip install --require-hashes -r requirements-lock.txt`, PyArrow
+25.0.1): `328 passed, 1 skipped`; Ruff PASS; mypy PASS (136 source files);
+`compileall` PASS; `git diff --check` clean; working tree clean; dependency lock
+SHA256 unchanged at
+`0d7b5cc6129aab127f07a1b5bce4b7794eec5c48db0f99451eba675031ca2b39`.
+
 ## Independent review of `6d974c49db1127aff2b02f5db0092471bf1a46b7`
 
 Independent review rejected that checkpoint for Phase-4 completion because of:
