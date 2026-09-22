@@ -16,6 +16,31 @@ class FundingSettlement:
     mark: Decimal
 
 
+@dataclass(frozen=True)
+class FundingForecast:
+    next_settlement_at_ns: int
+    rates: tuple[Decimal, ...]
+    anchor_kind: str
+    downgrade: str | None = None
+
+
+def forecast_funding(
+    *, next_settlement_at_ns: int, latest_predicted_rate: Decimal | None, latest_settled_rate: Decimal | None,
+    historical_settlement_changes: tuple[Decimal, ...], horizon_settlements: int,
+) -> FundingForecast:
+    """Causal settlement-change forecast; never accepts realized future rates."""
+    if horizon_settlements < 1 or next_settlement_at_ns < 0:
+        raise ValueError("known next settlement and positive horizon required")
+    if latest_predicted_rate is not None:
+        anchor, kind, downgrade = latest_predicted_rate, "PREDICTED", None
+    elif latest_settled_rate is not None:
+        anchor, kind, downgrade = latest_settled_rate, "SETTLED", "PREDICTED_HISTORY_UNAVAILABLE"
+    else:
+        raise ValueError("NOT_ESTIMABLE: no observable funding anchor")
+    mean_change = sum(historical_settlement_changes, Decimal("0")) / Decimal(len(historical_settlement_changes)) if historical_settlement_changes else Decimal("0")
+    return FundingForecast(next_settlement_at_ns, tuple(anchor + Decimal(i) * mean_change for i in range(horizon_settlements)), kind, downgrade)
+
+
 def funding_cashflow(side: Side, quantity: Decimal, settlement: FundingSettlement) -> Decimal:
     """Positive result is a cost; positive funding costs a long and credits a short."""
     sign = Decimal("1") if side is Side.LONG else Decimal("-1")

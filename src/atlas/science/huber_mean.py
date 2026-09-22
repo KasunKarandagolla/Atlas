@@ -26,6 +26,16 @@ class MeanObservation:
     sigma: float
     next_return: float | None
 
+    def __post_init__(self) -> None:
+        if self.instrument not in {"BTCUSDT", "ETHUSDT"}:
+            raise ValueError("frozen V1 universe is BTCUSDT/ETHUSDT")
+        if self.origin_at_ns < 0 or self.origin_at_ns % HOUR_NS:
+            raise ValueError("origin must be an UTC hour")
+        if not math.isfinite(self.z) or not math.isfinite(self.sigma) or self.sigma <= 0:
+            raise ValueError("finite z and positive finite sigma required")
+        if self.next_return is not None and not math.isfinite(self.next_return):
+            raise ValueError("finite label required")
+
     @property
     def label_at_ns(self) -> int:
         return self.origin_at_ns + HOUR_NS
@@ -47,6 +57,8 @@ class HuberRidgeModel:
     ridge: float
     training_start_ns: int
     training_end_ns: int
+    fit_at_ns: int
+    validation_intervals: tuple[tuple[int, int], ...] = ()
     solver: str = "deterministic_irls"
     tolerance: float = SOLVER_TOLERANCE
 
@@ -57,6 +69,7 @@ class HuberRidgeModel:
     def manifest(self) -> dict[str, object]:
         return {"solver": self.solver, "solver_tolerance": self.tolerance, "python": platform.python_version(),
                 "ridge": self.ridge, "training_start_ns": self.training_start_ns, "training_end_ns": self.training_end_ns,
+                "fit_at_ns": self.fit_at_ns, "validation_intervals": self.validation_intervals,
                 "scaler_mean": self.z_mean, "scaler_std": self.z_std,
                 "coefficients": [self.intercept, self.beta_eth, self.beta_z]}
 
@@ -67,6 +80,14 @@ class HuberRidgeModel:
 def huber_loss(residual: float, transition: float = HUBER_TRANSITION) -> float:
     absolute = abs(residual)
     return 0.5 * residual * residual if absolute <= transition else transition * (absolute - 0.5 * transition)
+
+
+def huber_ridge_objective(model: HuberRidgeModel, rows: Iterable[MeanObservation]) -> float:
+    """The exact frozen mean-loss plus (unpenalized-intercept) ridge objective."""
+    values = [huber_loss(x.y - model.forecast(x.instrument, x.z)) for x in rows if x.next_return is not None]
+    if not values:
+        raise ValueError("matured observations required")
+    return fmean(values) + model.ridge * (model.beta_eth**2 + model.beta_z**2) / 2
 
 
 def _solve_3x3(a: list[list[float]], b: list[float]) -> list[float]:
@@ -87,7 +108,10 @@ def _solve_3x3(a: list[list[float]], b: list[float]) -> list[float]:
     return [m[i][3] for i in range(3)]
 
 
-def fit_huber_ridge(rows: Sequence[MeanObservation], ridge: float) -> HuberRidgeModel:
+def fit_huber_ridge(
+    rows: Sequence[MeanObservation], ridge: float, *, fit_at_ns: int | None = None,
+    validation_intervals: tuple[tuple[int, int], ...] = (),
+) -> HuberRidgeModel:
     matured = sorted((x for x in rows if x.next_return is not None), key=lambda x: (x.origin_at_ns, x.instrument))
     if not matured:
         raise ValueError("matured observations required")
@@ -113,8 +137,10 @@ def fit_huber_ridge(rows: Sequence[MeanObservation], ridge: float) -> HuberRidge
                 rhs[i] += w * x[i] * y
                 for j in range(3):
                     a[i][j] += w * x[i] * x[j]
-        a[1][1] += ridge
-        a[2][2] += ridge
+        # Normal equations above are sums; the specified *mean* loss means the
+        # lambda ridge contribution is multiplied by the sample count.
+        a[1][1] += len(matured) * ridge
+        a[2][2] += len(matured) * ridge
         new_beta = _solve_3x3(a, rhs)
         if max(abs(a - b) for a, b in zip(new_beta, beta, strict=True)) <= SOLVER_TOLERANCE:
             beta = new_beta
@@ -126,6 +152,8 @@ def fit_huber_ridge(rows: Sequence[MeanObservation], ridge: float) -> HuberRidge
         intercept=beta[0], beta_eth=beta[1], beta_z=beta[2], z_mean=z_mean,
         z_std=z_std if use_z else 0.0, ridge=ridge, training_start_ns=matured[0].origin_at_ns,
         training_end_ns=matured[-1].label_at_ns,
+        fit_at_ns=fit_at_ns if fit_at_ns is not None else matured[-1].label_at_ns,
+        validation_intervals=validation_intervals,
     )
 
 
@@ -165,10 +193,10 @@ def weekly_refit(rows: Sequence[MeanObservation], fit_at_ns: int) -> WeeklyFit:
             valid = [r for r in eligible if start <= r.label_at_ns < end]
             if not train or min(r.label_at_ns for r in train) > start - 60 * DAY_NS or not valid:
                 raise ValueError("NOT_ESTIMABLE: fold has fewer than 60 preceding days")
-            fold_losses.append(mean_huber_loss(fit_huber_ridge(train, ridge), valid))
+            fold_losses.append(mean_huber_loss(fit_huber_ridge(train, ridge, fit_at_ns=start), valid))
         losses[ridge] = fmean(fold_losses)
     best = min(losses.values())
     # Freeze tie resolution within 1e-8 to larger lambda.
     selected = max(ridge for ridge, loss in losses.items() if loss <= best + 1e-8)
-    final = fit_huber_ridge(eligible, selected)
+    final = fit_huber_ridge(eligible, selected, fit_at_ns=fit_at_ns, validation_intervals=folds)
     return WeeklyFit(final, selected, folds, fit_at_ns)

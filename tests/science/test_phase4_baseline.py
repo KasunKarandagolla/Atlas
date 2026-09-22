@@ -43,8 +43,8 @@ def test_finite_ewma_floor_and_decimal_policy():
     assert entry_collar(Side.LONG, Decimal("99"), Decimal("100.03"), filters.tick) == Decimal("100.1")
     assert entry_collar(Side.SHORT, Decimal("99.97"), Decimal("101"), filters.tick) == Decimal("99.9")
     assert round_down(Decimal("1.239"), Decimal(".01")) == Decimal("1.23")
-    assert time_exit_collar(Side.LONG, Decimal("100"), Decimal("101"), filters.tick) == Decimal("99.7")
-    p = fixed_policy(Side.LONG, Decimal("1"), Decimal("100"), Decimal("100.1"), Decimal("100"), .01, filters, 0)
+    assert time_exit_collar(Side.LONG, Decimal("100"), Decimal("101"), filters.tick) == Decimal("99.8")
+    p = fixed_policy(Side.LONG, Decimal("1"), Decimal("100"), Decimal("100.1"), Decimal("100"), .01, filters, 0, 0)
     assert p.stop < p.mark_reference and p.horizon_end_ns == 24 * HOUR_NS
 
 

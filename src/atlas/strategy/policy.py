@@ -43,6 +43,7 @@ class FixedPolicy:
     stop: Decimal
     mark_reference: Decimal
     h: float
+    decision_slot_at_ns: int
     created_at_ns: int
     horizon_end_ns: int
     time_exit_bps: Decimal = Decimal("0.0025")
@@ -61,7 +62,12 @@ def stop_distance(sigma: float) -> float:
     return 2 * sigma * sqrt(24)
 
 
-def fixed_policy(side: Side, qty: Decimal, bid: Decimal, ask: Decimal, mark: Decimal, sigma: float, filters: VenueFilters, created_at_ns: int) -> FixedPolicy:
+def fixed_policy(
+    side: Side, qty: Decimal, bid: Decimal, ask: Decimal, mark: Decimal, sigma: float,
+    filters: VenueFilters, decision_slot_at_ns: int, created_at_ns: int,
+) -> FixedPolicy:
+    if created_at_ns < decision_slot_at_ns or created_at_ns > decision_slot_at_ns + 60_000_000_000:
+        raise PolicyRejected("plan creation must be in frozen decision-slot TTL")
     h = stop_distance(sigma)
     if h < 0.0025 or h > 0.10:
         raise PolicyRejected("stop distance outside frozen eligibility")
@@ -76,11 +82,14 @@ def fixed_policy(side: Side, qty: Decimal, bid: Decimal, ask: Decimal, mark: Dec
         stop = round_down(mark * Decimal(str(exp(h))), filters.tick)
         if stop <= mark:
             raise PolicyRejected("rounded short stop not protective")
-    return FixedPolicy(side, quantity, entry_collar(side, bid, ask, filters.tick), stop, mark, h, created_at_ns, created_at_ns + HORIZON_NS)
+    return FixedPolicy(
+        side, quantity, entry_collar(side, bid, ask, filters.tick), stop, mark, h,
+        decision_slot_at_ns, created_at_ns, decision_slot_at_ns + HORIZON_NS,
+    )
 
 
 def time_exit_collar(side: Side, bid: Decimal, ask: Decimal, tick: Decimal) -> Decimal:
     """Protective 25 bp IOC exit collar beyond the current opposite quote."""
     if side is Side.LONG:
-        return round_down(bid * Decimal("0.9975"), tick)
-    return round_up(ask * Decimal("1.0025"), tick)
+        return round_up(bid * Decimal("0.9975"), tick)
+    return round_down(ask * Decimal("1.0025"), tick)

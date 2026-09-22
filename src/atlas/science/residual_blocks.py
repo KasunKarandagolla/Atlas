@@ -24,6 +24,18 @@ class JointResidualHour:
     complete: bool = True
     calendar_identity: str = ""
     universe_identity: str = "BTCUSDT_ETHUSDT_V1"
+    # Immutable synchronized raw/replay evidence.  Empty means genuinely absent,
+    # never synthesized candle/depth/fill information.
+    btc_last_ohlc: tuple[tuple[float, float, float, float], ...] = ()
+    eth_last_ohlc: tuple[tuple[float, float, float, float], ...] = ()
+    btc_mark_ohlc: tuple[tuple[float, float, float, float], ...] = ()
+    eth_mark_ohlc: tuple[tuple[float, float, float, float], ...] = ()
+    btc_index_ohlc: tuple[tuple[float, float, float, float], ...] = ()
+    eth_index_ohlc: tuple[tuple[float, float, float, float], ...] = ()
+    source_class: str = ""
+    funding_publication_at_ns: int | None = None
+    funding_settlement_at_ns: int | None = None
+    execution_missing: bool = True
 
 
 def eligible_starts(hours: Sequence[JointResidualHour], length: int) -> tuple[int, ...]:
@@ -61,3 +73,48 @@ def select_block_length(validation_energy_scores: dict[int, float], *, effective
             raise ValueError("NOT_ESTIMABLE: inadequate block validation support")
     best = min(validation_energy_scores.values())
     return max(length for length, score in validation_energy_scores.items() if score <= best + 1e-12)
+
+
+def _energy_score(samples: Sequence[tuple[float, float]], observation: tuple[float, float]) -> float:
+    """Standard finite-sample multivariate energy score (deterministic O(n²))."""
+    if not samples:
+        raise ValueError("samples required")
+    def distance(a: tuple[float, float], b: tuple[float, float]) -> float:
+        return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+    first = sum(distance(x, observation) for x in samples) / len(samples)
+    second = sum(distance(a, b) for a in samples for b in samples) / (2 * len(samples) ** 2)
+    return first - second
+
+
+def chronological_energy_scores(
+    training: Sequence[JointResidualHour], validation: Sequence[JointResidualHour], *, training_btc_sigma: float, training_eth_sigma: float,
+) -> dict[int, float]:
+    """Frozen 4h/24h equal-weight joint-return validation objective.
+
+    Each candidate's empirical scenarios are contiguous training blocks.  Cost
+    and barrier observations are intentionally not included in this objective.
+    """
+    if training_btc_sigma <= 0 or training_eth_sigma <= 0:
+        raise ValueError("positive training volatility required")
+    scores: dict[int, float] = {}
+    for length in BLOCK_CANDIDATES:
+        starts = eligible_starts(training, length)
+        if len(starts) < 2:
+            raise ValueError("NOT_ESTIMABLE: insufficient effectively independent block history")
+        component_scores = []
+        for horizon in (4, 24):
+            if len(validation) < horizon or length < horizon:
+                raise ValueError("NOT_ESTIMABLE: validation horizon unavailable")
+            samples = [
+                (sum(x.btc_residual * x.btc_sigma for x in training[s : s + horizon]) / training_btc_sigma,
+                 sum(x.eth_residual * x.eth_sigma for x in training[s : s + horizon]) / training_eth_sigma)
+                for s in starts
+            ]
+            for begin in range(0, len(validation) - horizon + 1, horizon):
+                actual = (
+                    sum(x.btc_residual * x.btc_sigma for x in validation[begin : begin + horizon]) / training_btc_sigma,
+                    sum(x.eth_residual * x.eth_sigma for x in validation[begin : begin + horizon]) / training_eth_sigma,
+                )
+                component_scores.append(_energy_score(samples, actual))
+        scores[length] = sum(component_scores) / len(component_scores)
+    return scores

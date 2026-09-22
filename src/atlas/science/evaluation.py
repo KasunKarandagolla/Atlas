@@ -24,6 +24,12 @@ class DecisionStatus(StrEnum):
     NO_TRADE_EVENT = "NO_TRADE_EVENT"
     NO_TRADE_RISK = "NO_TRADE_RISK"
     NO_TRADE_NO_EDGE = "NO_TRADE_NO_EDGE"
+    NO_FILL = "NO_FILL"
+    PARTIAL_FILL = "PARTIAL_FILL"
+    FULL_FILL = "FULL_FILL"
+    STOP_EXIT = "STOP_EXIT"
+    TIME_EXIT = "TIME_EXIT"
+    EXTENDED_EXIT = "EXTENDED_EXIT"
 
 
 @dataclass(frozen=True)
@@ -61,3 +67,13 @@ def evaluate_baseline(*, baseline: str, signal: Signal, gates_ok: bool, support_
     if lcb <= 0 or j <= 1e-5:
         return EvaluationResult(baseline, DecisionStatus.NO_TRADE_NO_EDGE, "LCB/J gate", signal, lcb, j)
     return EvaluationResult(baseline, DecisionStatus.TRADE_CANDIDATE, "A0 LCB/ES qualified", signal, lcb, j)
+
+
+def evaluate_actions_and_portfolio(*, signal: Signal, gates_ok: bool, scenario_support_ok: bool, hard_risk_ok: bool,
+                                   a0_lcb: float | None, a0_j: float | None) -> tuple[EvaluationResult, EvaluationResult, tuple[Signal, Signal, Signal]]:
+    """Frozen A0/B0 selector: LONG/SHORT/FLAT are diagnostics, never direction search."""
+    diagnostics = (Signal.LONG, Signal.SHORT, Signal.FLAT)
+    b0 = evaluate_baseline(baseline="B0", signal=signal, gates_ok=gates_ok, support_ok=scenario_support_ok, risk_ok=hard_risk_ok)
+    a0 = evaluate_baseline(baseline="A0", signal=signal, gates_ok=gates_ok, support_ok=scenario_support_ok,
+                           risk_ok=hard_risk_ok, lcb=a0_lcb, j=a0_j)
+    return b0, a0, diagnostics

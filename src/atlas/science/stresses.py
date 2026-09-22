@@ -58,14 +58,53 @@ class StressResult:
     margin_path: tuple[Decimal, ...]
     liquidated: bool
     liquidation_cost: Decimal = Decimal("0")
+    shock_at_ns: int = 0
+    valuation_currency: str = "USDT"
+    venue_collateral_loss: Decimal = Decimal("0")
+    mechanics: str = ""
+
+
+@dataclass(frozen=True)
+class StressInput:
+    notional: Decimal
+    current_mark: Decimal
+    initial_margin: Decimal
+    maintenance_margin: Decimal
+    available_collateral: Decimal
+    current_funding_abs_rate: Decimal = Decimal("0")
+    training_funding_p99_abs_rate: Decimal = Decimal("0")
+    shock_at_ns: int = 0
+    valuation_currency: str = "USDT"
+
+
+def evaluate_stress(case: StressCase, state: StressInput) -> StressResult:
+    """Apply each deterministic stress and inspect every margin-path waypoint.
+
+    Venue collateral loss intentionally has no trade stop-loss value: it is an
+    account/venue-capital failure reported separately from `loss`.
+    """
+    collateral = state.available_collateral * (Decimal("1") - case.collateral_haircut)
+    loss = state.notional * case.adverse_price_jump
+    if case.mark_last_divergence:
+        loss += state.notional * case.mark_last_divergence
+    if case.name is StressName.FUNDING_DEBIT_5X:
+        loss += state.notional * Decimal("5") * max(state.current_funding_abs_rate, state.training_funding_p99_abs_rate)
+    if case.name is StressName.MAINTENANCE_MARGIN_TIER:
+        maintenance = state.maintenance_margin * Decimal("1.5")
+    else:
+        maintenance = state.maintenance_margin
+    if case.exit_delay_seconds:
+        # Deterministic impairment is represented by retaining an adverse price
+        # move for the delayed period; it is deliberately separate from mean P&L.
+        loss += state.notional * Decimal(case.exit_delay_seconds) / Decimal("100000")
+    margin_path = (state.initial_margin, maintenance, maintenance + loss)
+    venue_loss = state.available_collateral if case.venue_collateral_loss else Decimal("0")
+    liquidated = any(x > collateral for x in margin_path) or case.venue_collateral_loss
+    mechanics = "venue collateral unavailable" if case.venue_collateral_loss else ("margin liquidation before intended stop" if liquidated else "survives")
+    return StressResult(case, loss, margin_path, liquidated, loss if liquidated and not case.venue_collateral_loss else Decimal("0"),
+                        state.shock_at_ns, state.valuation_currency, venue_loss, mechanics)
 
 
 def stress_price_loss(notional: Decimal, case: StressCase, *, maintenance_margin: Decimal = Decimal("0"), collateral: Decimal | None = None) -> StressResult:
-    loss = notional * case.adverse_price_jump
-    if case.venue_collateral_loss:
-        loss = notional if collateral is None else max(notional, collateral)
-    if case.collateral_haircut and collateral is not None:
-        loss += collateral * case.collateral_haircut
-    path = (maintenance_margin, maintenance_margin + loss)
-    liquidated = collateral is not None and path[-1] > collateral
-    return StressResult(case, loss, path, liquidated, loss if liquidated else Decimal("0"))
+    """Backward-compatible convenience wrapper for tests/diagnostics."""
+    return evaluate_stress(case, StressInput(notional, Decimal("1"), Decimal("0"), maintenance_margin, collateral or Decimal("0")))
