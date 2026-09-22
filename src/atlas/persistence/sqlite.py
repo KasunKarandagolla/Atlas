@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from decimal import Decimal
@@ -32,6 +33,7 @@ class SQLiteJournal:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._closed = False
+        self._transaction_lock = threading.RLock()
         try:
             self._conn = sqlite3.connect(self.path, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
@@ -73,14 +75,15 @@ class SQLiteJournal:
 
     @contextmanager
     def _tx(self) -> Iterator[sqlite3.Cursor]:
-        cur = self._conn.cursor()
-        try:
-            cur.execute("BEGIN IMMEDIATE")
-            yield cur
-            self._conn.commit()
-        except Exception:
-            self._conn.rollback()
-            raise
+        with self._transaction_lock:
+            cur = self._conn.cursor()
+            try:
+                cur.execute("BEGIN IMMEDIATE")
+                yield cur
+                self._conn.commit()
+            except Exception:
+                self._conn.rollback()
+                raise
 
     def _wrap(self, name: str, fn):
         if self._closed:
