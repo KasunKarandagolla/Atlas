@@ -16,6 +16,7 @@ history and evaluates the *same immutable current action*:
 from __future__ import annotations
 
 import math
+from bisect import bisect_right
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
@@ -233,16 +234,15 @@ def replicate_oof_hours(hours: Sequence[JointResidualHour], *, locked_ridge: flo
     if not sampled:
         raise NotEstimable("NOT_ESTIMABLE: empty bootstrap replicate")
     refits = replicate_refits(sampled, locked_ridge=locked_ridge)
+    refit_instants = tuple(instant for instant, _ in refits)
     rebuilt: list[JointResidualHour] = []
-    index = 0
     for hour in sampled:
-        while index + 1 < len(refits) and refits[index + 1][0] <= hour.at_ns:
-            index += 1
-        instant, model = refits[index]
-        if instant > hour.at_ns:
+        index = bisect_right(refit_instants, hour.at_ns) - 1
+        if index < 0:
             # No matured causal fit exists at this origin yet: the replicate OOF
             # archive simply does not contain that hour (never a back-filled forecast).
             continue
+        instant, model = refits[index]
         btc_forecast = model.forecast("BTCUSDT", hour.btc_z)
         eth_forecast = model.forecast("ETHUSDT", hour.eth_z)
         rebuilt.append(replace(hour, btc_forecast=btc_forecast,

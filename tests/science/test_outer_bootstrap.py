@@ -270,6 +270,34 @@ def test_final_replicate_fit_cannot_rewrite_earlier_oof_forecasts():
     assert tuple((hour.at_ns, hour.btc_forecast, hour.btc_residual) for hour in rebuilt[:240]) == baseline
 
 
+def test_replicate_oof_lookup_is_timestamp_causal_for_nonchronological_blocks():
+    rows = history()
+    # Deliberately later -> earlier -> later sampled blocks.
+    sampled = rows[:100 * 24] + rows[92 * 24:95 * 24] + rows[110 * 24:114 * 24]
+    oof_hours, refits = replicate_oof_hours(sampled, locked_ridge=LOCKED_RIDGE)
+    refit_instants = tuple(instant for instant, _ in refits)
+
+    assert len(oof_hours) == sum(1 for row in sampled if row.at_ns >= refit_instants[0])
+    for row in oof_hours:
+        eligible = [refit for refit in refits if refit[0] <= row.at_ns]
+        assert eligible
+        instant, model = eligible[-1]
+        assert instant <= row.at_ns
+        assert row.btc_forecast == pytest.approx(model.forecast("BTCUSDT", row.btc_z))
+
+    earlier = rows[92 * 24]
+    expected_instant, expected_model = max((refit for refit in refits if refit[0] <= earlier.at_ns),
+                                           key=lambda refit: refit[0])
+    later_instant, later_model = refits[-1]
+    assert expected_instant < later_instant
+    earlier_forecasts = [row.btc_forecast for row in oof_hours if row.at_ns == earlier.at_ns]
+    assert earlier_forecasts
+    assert all(value == pytest.approx(expected_model.forecast("BTCUSDT", earlier.btc_z))
+               for value in earlier_forecasts)
+    assert all(value != pytest.approx(later_model.forecast("BTCUSDT", earlier.btc_z))
+               for value in earlier_forecasts)
+
+
 def test_cost_and_execution_evidence_are_required_and_never_invented():
     rows = history(30)
     estimate = estimate_cost_assumptions(rows, minimum_observations=24)
