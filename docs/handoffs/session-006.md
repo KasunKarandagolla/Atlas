@@ -8,7 +8,20 @@
   - `09908939d877c4e85d8943573e36cb177c280fb7`
   - `0e56db64f1bedc7fd1338e68d31ab03044f0b511`
   - `6d974c49db1127aff2b02f5db0092471bf1a46b7` — REJECTED for Phase-4 completion.
-- FINAL SHA: `RECORDED_AFTER_COMMIT` (the commit that follows this document).
+- FINAL IMPLEMENTATION SHA: `32de28695870afd4adb0c05e43bf011130b9a8b7`
+  (`fix: close phase 4 integration review gaps`).  This document is recorded in
+  the documentation commit that immediately follows it.
+
+## Validation of `32de28695870afd4adb0c05e43bf011130b9a8b7`
+
+- Python 3.12.13; locked environment with PyArrow 25.0.1.
+- Full suite (clean hashed install): `315 passed, 1 skipped`.
+- Ruff: PASS (0 errors).  mypy: PASS (136 source files, no issues).
+- compileall: PASS.  `git diff --check`: clean.
+- Tracked-only clean clone of the branch + fresh hashed install: `315 passed,
+  1 skipped`, Ruff PASS, mypy PASS, working tree clean.
+- Secret scan: no credentials, API keys, tokens, `.env`, CCXT or order transport
+  introduced by this patch.
 
 ## Independent review of `6d974c49db1127aff2b02f5db0092471bf1a46b7`
 
