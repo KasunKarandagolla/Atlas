@@ -93,8 +93,12 @@ Nautilus or causal test.
 
 ## TRACKED-ONLY REPRODUCIBILITY
 
-- Repair implementation commit: `48b52c4fbb3b3a691ab687135ceccb439a3a72cd`.
-- A tracked-only clone from that commit contained all eight
+- Repair implementation commits: `48b52c4fbb3b3a691ab687135ceccb439a3a72cd`
+  and `99d5156201a58fa5c19774e619b31207584636ec`.  The latter serializes
+  transactions on the shared SQLite journal connection after the tracked-only
+  validation exposed an intermittent existing concurrency-test failure.
+- A tracked-only clone from `99d5156201a58fa5c19774e619b31207584636ec`
+  contained all eight
   `src/atlas/data/*.py` files, all five `tests/data/*.py` files, the migration
   integration test and the authority adversarial tests.
 - The tracked-only clone installed `requirements-lock.txt` with
