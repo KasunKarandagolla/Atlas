@@ -7,18 +7,26 @@
 - Authoritative base: `3ca43f7ff270d617cb1a4dd98863e0a6e7cd3a57`
 - Supplied package SHA256: `def76651bedf21aee1a040f011ea10499ec58f27c3bdae9b6e4fbe4476e9f4b4`
 - Previously reviewed checkpoints: `93c1fd092c1f822c604abeeb978f367221b10220`
-  and `b0a1ec1f2ed9e2db40d84b05573340049a8b58d1`
+  and `b0a1ec1f2ed9e2db40d84b05573340049a8b58d1`.  The current repair
+  implementation commit is `f0a308e`.
 
-Checkpoint `93c1fd092c1f822c604abeeb978f367221b10220` failed reproducibility
+Checkpoint `93c1fd092c1f822c604abeeb978f367221b10220` failed independent
 review because `.gitignore` contained `data/`, which ignored the nested Python
 packages `src/atlas/data/` and `tests/data/`.  The original Session-005 ZIP
-contained those files, but that commit did not.  Checkpoint
-`b0a1ec1f2ed9e2db40d84b05573340049a8b58d1` then failed an independent
-tracked-only revalidation when an existing SQLite approval-concurrency test
-intermittently produced two winners on the shared connection.  That race was
-fixed in `99d5156201a58fa5c19774e619b31207584636ec`.  Both failed-checkpoint
-histories are retained; this handoff records the repairs rather than rewriting
-them.
+contained those files, but that commit did not; it also retained Phase-2
+evidence weaknesses.  During the subsequent repair/tracked-only validation,
+an intermittent SQLite shared-connection concurrency issue was discovered and
+fixed in `99d5156201a58fa5c19774e619b31207584636ec`.
+
+Checkpoint `b0a1ec1f2ed9e2db40d84b05573340049a8b58d1` was independently
+rejected for caller-controlled temporal recovery binding, insufficient
+positive native-protection proof, insufficient history-retention enforcement,
+and causal record identity using content hash rather than a full immutable
+causal fingerprint.  Checkpoint
+`1bd3e5bc180972a0f3827801cc55f1b94ed657c5` repaired those issues except for
+durable one-use reconciliation-run/recovery-cycle authority.  Both failed
+checkpoint histories are retained; this handoff records the repairs rather
+than rewriting them.
 
 The archive manifest passed with `sha256sum -c MANIFEST.sha256`.  The ZIP was
 used as an overlay source only; the Git checkout, older tests, documents and
@@ -51,6 +59,11 @@ Git metadata were preserved.
   native-stop visibility facts and native-protection semantics; `status=CONFIRMED`
   alone, zero quantity or empty facts are insufficient.
 - Positive residual opening/conditional risk prevents recovery `READY`.
+- Recovery certificate persistence now uses the transactional
+  `recovery_reconciliation_bindings` table.  A reconciliation run can be
+  claimed by at most one recovery cycle and a recovery cycle can claim exactly
+  one run; exact same-ID retries are idempotent, while distinct recovery IDs,
+  replayed timestamps and runtime/writer identity mismatches fail closed.
 - Deadline monotonicity, late contradiction incidents, runtime/recovery identity
   separation and future-schema fail-closed behavior remain covered.
 
@@ -85,14 +98,16 @@ Git metadata were preserved.
 - Nautilus: `2.0.0rc5`
 - Nautilus source commit: `1b0a49d2792a9432a3aca3fcb617ce7a630d905e`
 - Nautilus wheel SHA256: `eab45fafd2312deda1236554c49a9798bfc76bc8465af864878e2f70189ebebe`
-- Full working-tree pytest: **189 passed, 1 skipped**
+- Full working-tree pytest: **190 passed, 1 skipped**
 - Ruff: **passed** under the previous policy; E701/E702/E703 are not suppressed
 - Mypy: **passed**, `Success: no issues found in 88 source files`
 - Compileall: **passed**
 - `git diff --check`: **passed**
 - Fresh Python 3.12 hashed-lock install: **passed**
-- Fresh-install full pytest: **189 passed, 1 skipped**
-- New temporal run-binding, recovery-cycle, protection-positive-evidence,
+- Fresh-install full pytest: **190 passed, 1 skipped**
+- New durable one-use reconciliation binding, idempotent retry, replayed-
+  timestamp and runtime/writer identity tests, plus existing temporal
+  run-binding, recovery-cycle, protection-positive-evidence,
   retention-coverage and causal-fingerprint tests: **TESTED**
 - Real Parquet/Arrow round-trip, deterministic partitioning, idempotency,
   conflict rejection and append-only checks: **TESTED**
@@ -109,15 +124,16 @@ Nautilus or causal test.
 
 - Repair implementation commits: `48b52c4fbb3b3a691ab687135ceccb439a3a72cd`,
   `99d5156201a58fa5c19774e619b31207584636ec` and
-  `90b85127b56482668b21533740d3f5b0f052607b`.
+  `90b85127b56482668b21533740d3f5b0f052607b`; the durable authority repair
+  is `f0a308e`.
 - A tracked-only clone from
-  `90b85127b56482668b21533740d3f5b0f052607b`
+  `f0a308e`
   contained all eight
   `src/atlas/data/*.py` files, all five `tests/data/*.py` files, the migration
   integration test and the authority adversarial tests.
 - The tracked-only clone installed `requirements-lock.txt` with
   `pip install --require-hashes` under Python 3.12.13 and passed the complete
-  suite: **189 passed, 1 skipped**.  The skip was the same explicit,
+  suite: **190 passed, 1 skipped**.  The skip was the same explicit,
   credentialed public-testnet check documented above.
 
 ## TEST GATE / UNVERIFIED
