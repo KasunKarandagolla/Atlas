@@ -180,9 +180,7 @@ def test_migration_from_v1(tmp_path):
     # Build a genuine v1 database (old DDL, version stamp 1).
     path = tmp_path / "v1.db"
     conn = sqlite3.connect(str(path))
-    conn.execute(
-        "CREATE TABLE schema_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-    )
+    conn.execute("CREATE TABLE schema_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute(
         "CREATE TABLE trade_plans (plan_id TEXT PRIMARY KEY, version TEXT NOT NULL,"
         " canonical_json TEXT NOT NULL, plan_hash TEXT NOT NULL,"
@@ -229,9 +227,7 @@ def test_migration_from_v1(tmp_path):
         " effective_time_ns INTEGER NOT NULL, received_at_ns INTEGER NOT NULL,"
         " event_type TEXT NOT NULL, revision TEXT NOT NULL)"
     )
-    conn.execute(
-        "INSERT INTO schema_metadata(key, value) VALUES('schema_version', '1')"
-    )
+    conn.execute("INSERT INTO schema_metadata(key, value) VALUES('schema_version', '1')")
     conn.commit()
     conn.close()
     j = SQLiteJournal(path)
@@ -284,9 +280,7 @@ def test_atomic_approval_intent_reservation_rollback(tmp_path):
         )
     # All effects rolled back: approval unused, no intent, no reservation
     # Approval must still be consumable (proves it remained unused after failure).
-    consumed = j.consume_approval(
-        approval_id="ap-5", plan_id="plan-1", plan_version="v1", now_ns=T0 + 2
-    )
+    consumed = j.consume_approval(approval_id="ap-5", plan_id="plan-1", plan_version="v1", now_ns=T0 + 2)
     assert consumed.is_consumed()
     assert j.count("intents") == 1  # only i-pre; failed i-5 left nothing
     j.close()

@@ -53,9 +53,7 @@ def test_legal_transitions_sample():
     validate_lifecycle_transition(LifecycleState.SUBMITTING, LifecycleState.SUBMIT_UNKNOWN)
     validate_lifecycle_transition(LifecycleState.OPEN_UNPROTECTED, LifecycleState.OPEN_PROTECTED)
     validate_lifecycle_transition(LifecycleState.OPEN_PROTECTED, LifecycleState.EXIT_PENDING)
-    validate_lifecycle_transition(
-        LifecycleState.FLAT_PENDING_RECONCILIATION, LifecycleState.CLOSED
-    )
+    validate_lifecycle_transition(LifecycleState.FLAT_PENDING_RECONCILIATION, LifecycleState.CLOSED)
     validate_lifecycle_transition(LifecycleState.CLOSED, LifecycleState.RECOVERY_REQUIRED)
 
 
@@ -107,12 +105,8 @@ def test_outcome_unknown_resolves_only_with_evidence_states():
     # UNKNOWN must not regress to UNSENT
     assert not is_allowed_outcome_transition(CommandOutcome.UNKNOWN, CommandOutcome.UNSENT)
     # Contradictory terminal overwrite rejected
-    assert not is_allowed_outcome_transition(
-        CommandOutcome.DEFINITE_ACCEPT, CommandOutcome.DEFINITE_REJECT
-    )
-    assert not is_allowed_outcome_transition(
-        CommandOutcome.DEFINITE_REJECT, CommandOutcome.DEFINITE_ACCEPT
-    )
+    assert not is_allowed_outcome_transition(CommandOutcome.DEFINITE_ACCEPT, CommandOutcome.DEFINITE_REJECT)
+    assert not is_allowed_outcome_transition(CommandOutcome.DEFINITE_REJECT, CommandOutcome.DEFINITE_ACCEPT)
 
 
 # FIX7: placeholder evidence blocks assisted
@@ -283,7 +277,16 @@ def test_health_snapshot_rejects_truthy_non_bools():
     from atlas.domain.enums import HealthState, ProtectionStatus, ReconciliationHealth
     from atlas.runtime.health import HealthSnapshot
 
-    base = {"state": HealthState.READY, "writer_owned": True, "account_matched": True, "data_current": True, "reconciliation": ReconciliationHealth.CURRENT, "protection": ProtectionStatus.NONE, "has_open_exposure": False, "drawdown_stop_active": False}
+    base = {
+        "state": HealthState.READY,
+        "writer_owned": True,
+        "account_matched": True,
+        "data_current": True,
+        "reconciliation": ReconciliationHealth.CURRENT,
+        "protection": ProtectionStatus.NONE,
+        "has_open_exposure": False,
+        "drawdown_stop_active": False,
+    }
     HealthSnapshot(**base)  # type: ignore[arg-type]
     for field in (
         "writer_owned",

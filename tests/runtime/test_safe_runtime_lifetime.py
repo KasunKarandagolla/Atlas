@@ -9,16 +9,27 @@ from atlas.runtime.safe_runtime import SafeRuntime, SafeRuntimeConfig
 def _config(tmp_path):
     contract = initial_unverified_fixture()
     return SafeRuntimeConfig(
-        journal_path=str(tmp_path / "journal.db"), lock_path=str(tmp_path / "writer.lock"),
-        status_path=str(tmp_path / "status.json"), capability_hash=contract.contract_hash(),
-        all_qualified=False, assisted_enabled=False, capability_contract=contract,
+        journal_path=str(tmp_path / "journal.db"),
+        lock_path=str(tmp_path / "writer.lock"),
+        status_path=str(tmp_path / "status.json"),
+        capability_hash=contract.contract_hash(),
+        all_qualified=False,
+        assisted_enabled=False,
+        capability_contract=contract,
         identity_expected=IdentityExpectation(expected_account_identity_hash="REQUIRED"),
         identity_observed=ObservedAccountState(
-            environment="testnet", venue="BYBIT", product="linear", position_mode="one_way",
-            margin_profile="isolated", account_identity_hash="REQUIRED",
-            instruments_with_metadata=("BTCUSDT", "ETHUSDT"), private_verified=False,
-        ), public_health=PublicVenueHealth(state=PublicState.DISCONNECTED),
-        private_verification=PrivateVerification(), max_public_staleness_ns=5_000_000_000,
+            environment="testnet",
+            venue="BYBIT",
+            product="linear",
+            position_mode="one_way",
+            margin_profile="isolated",
+            account_identity_hash="REQUIRED",
+            instruments_with_metadata=("BTCUSDT", "ETHUSDT"),
+            private_verified=False,
+        ),
+        public_health=PublicVenueHealth(state=PublicState.DISCONNECTED),
+        private_verification=PrivateVerification(),
+        max_public_staleness_ns=5_000_000_000,
         tick_interval_ns=1,
     )
 

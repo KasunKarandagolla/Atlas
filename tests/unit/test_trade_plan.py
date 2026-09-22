@@ -105,9 +105,7 @@ def test_stop_side_compatibility():
     with pytest.raises(ValueError, match="LONG stop must be below"):
         make_valid_plan(side=Side.LONG, stop=Decimal("50000"), reference_price=Decimal("49000"))
     with pytest.raises(ValueError, match="SHORT stop must be above"):
-        make_valid_plan(
-            side=Side.SHORT, stop=Decimal("48000"), reference_price=Decimal("49000")
-        )
+        make_valid_plan(side=Side.SHORT, stop=Decimal("48000"), reference_price=Decimal("49000"))
     # Compatible SHORT passes construction
     make_valid_plan(side=Side.SHORT, stop=Decimal("50000"), reference_price=Decimal("49000"))
 

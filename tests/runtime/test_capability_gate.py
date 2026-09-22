@@ -33,5 +33,8 @@ def test_current_unverified_contract_can_never_pass_gate():
     contract = initial_unverified_fixture()
     allowed, reasons = _check_capability_gate(contract, contract.contract_hash(), True, True, 1)
     assert not allowed
-    assert all(getattr(contract.capabilities, field).value == "UNVERIFIED" for field in contract.capabilities.__dataclass_fields__)
+    assert all(
+        getattr(contract.capabilities, field).value == "UNVERIFIED"
+        for field in contract.capabilities.__dataclass_fields__
+    )
     assert any("SUPPORTED" in reason for reason in reasons)

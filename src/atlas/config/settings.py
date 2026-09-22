@@ -17,7 +17,5 @@ class Settings:
         return cls(
             environment=os.environ.get("ATLAS_ENVIRONMENT", "testnet"),
             journal_path=os.environ.get("ATLAS_JOURNAL_PATH", "./atlas-journal.db"),
-            writer_lock_path=os.environ.get(
-                "ATLAS_WRITER_LOCK_PATH", "./atlas-writer.lock"
-            ),
+            writer_lock_path=os.environ.get("ATLAS_WRITER_LOCK_PATH", "./atlas-writer.lock"),
         )

@@ -108,7 +108,16 @@ def _fresh_public(now: int) -> PublicVenueHealth:
 
 
 def _observed_ok(**over) -> ObservedAccountState:
-    base = {"environment": "testnet", "venue": "BYBIT", "product": "linear", "position_mode": "one_way", "margin_profile": "isolated", "account_identity_hash": "test-acct-hash-123", "instruments_with_metadata": ("BTCUSDT", "ETHUSDT"), "private_verified": False}
+    base = {
+        "environment": "testnet",
+        "venue": "BYBIT",
+        "product": "linear",
+        "position_mode": "one_way",
+        "margin_profile": "isolated",
+        "account_identity_hash": "test-acct-hash-123",
+        "instruments_with_metadata": ("BTCUSDT", "ETHUSDT"),
+        "private_verified": False,
+    }
     base.update(over)
     return ObservedAccountState(**base)  # type: ignore[arg-type]  # noqa: C408
 
@@ -330,6 +339,7 @@ def test_conflicted_blocks_ready_in_recovery():
 def test_status_sanitized_and_atomic(tmp_path):
     path = tmp_path / "status.json"
     from atlas.domain.time import now_ns
+
     st = RuntimeStatus(
         runtime_state="RECOVERING",
         writer_epoch=3,

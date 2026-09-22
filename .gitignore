@@ -39,6 +39,12 @@ checkpoints/
 models/
 # Local market-data archives
 data/
+!src/atlas/data/
+!src/atlas/data/**
+!tests/data/
+!tests/data/**
+src/atlas/data/__pycache__/
+tests/data/__pycache__/
 *.parquet
 *.h5
 *.hdf5

@@ -8,7 +8,7 @@ from atlas.runtime.reconciliation_evidence import (
     QueryStatus,
     QueryType,
     ReconciliationQueryEvidence,
-    compute_evidence_hash,
+    make_query_evidence,
 )
 from atlas.runtime.recovery import (
     RecoveryDecision,
@@ -21,7 +21,7 @@ T0 = 1_700_000_000_000_000_000
 
 def _query(query_id: str, *, complete: bool = True) -> ReconciliationQueryEvidence:
     completeness = Completeness.COMPLETE if complete else Completeness.INCOMPLETE_PAGINATED
-    return ReconciliationQueryEvidence(
+    return make_query_evidence(
         query_id=query_id,
         query_type=QueryType.POSITIONS,
         account="acct-hash",
@@ -38,7 +38,6 @@ def _query(query_id: str, *, complete: bool = True) -> ReconciliationQueryEviden
         request_ids=(query_id,),
         retention_coverage_start_ns=T0 - 10,
         retention_coverage_end_ns=T0 + 10,
-        evidence_hash=compute_evidence_hash({"query_id": query_id, "complete": complete}),
         error_message=None,
     )
 

@@ -144,14 +144,10 @@ def test_approval_consumed_once(tmp_path):
         expires_at_ns=T_EXP,
     )
     j.create_approval(ap)
-    out = j.consume_approval(
-        approval_id="ap-1", plan_id="plan-1", plan_version="v1", now_ns=T0 + 1
-    )
+    out = j.consume_approval(approval_id="ap-1", plan_id="plan-1", plan_version="v1", now_ns=T0 + 1)
     assert out.is_consumed()
     with pytest.raises(PersistenceError, match="already consumed"):
-        j.consume_approval(
-            approval_id="ap-1", plan_id="plan-1", plan_version="v1", now_ns=T0 + 2
-        )
+        j.consume_approval(approval_id="ap-1", plan_id="plan-1", plan_version="v1", now_ns=T0 + 2)
     j.close()
 
 
@@ -168,13 +164,9 @@ def test_approval_expired_and_wrong_plan_fail(tmp_path):
     )
     j.create_approval(ap)
     with pytest.raises(PersistenceError, match="expired"):
-        j.consume_approval(
-            approval_id="ap-e", plan_id="plan-1", plan_version="v1", now_ns=T_EXP
-        )
+        j.consume_approval(approval_id="ap-e", plan_id="plan-1", plan_version="v1", now_ns=T_EXP)
     with pytest.raises(PersistenceError, match="bound to"):
-        j.consume_approval(
-            approval_id="ap-e", plan_id="other", plan_version="v1", now_ns=T0 + 1
-        )
+        j.consume_approval(approval_id="ap-e", plan_id="other", plan_version="v1", now_ns=T0 + 1)
     j.close()
 
 
@@ -195,9 +187,7 @@ def test_concurrent_double_approval_consumption(tmp_path):
 
     def _try():
         try:
-            j.consume_approval(
-                approval_id="ap-c", plan_id="plan-1", plan_version="v1", now_ns=T0 + 1
-            )
+            j.consume_approval(approval_id="ap-c", plan_id="plan-1", plan_version="v1", now_ns=T0 + 1)
             results.append("ok")
         except PersistenceError:
             results.append("fail")
@@ -280,9 +270,7 @@ def test_unresolved_intent_retrieval(tmp_path):
     j.create_intent_with_reservation(i2, r2)
     unresolved = j.load_unresolved_intents()
     assert {i.intent_id for i in unresolved} == {"i-u1", "i-u2"}
-    j.update_intent_lifecycle(
-        "i-u1", LifecycleState.CLOSED, ProtectionStatus.NONE, ReconciliationHealth.CURRENT
-    )
+    j.update_intent_lifecycle("i-u1", LifecycleState.CLOSED, ProtectionStatus.NONE, ReconciliationHealth.CURRENT)
     unresolved2 = j.load_unresolved_intents()
     assert {i.intent_id for i in unresolved2} == {"i-u2"}
     j.close()

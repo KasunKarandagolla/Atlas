@@ -60,7 +60,26 @@ def test_drawdown_scaling_bounded(dd):
 
 
 def test_policy_rejects_nonsensical_ordering_and_negatives():
-    base_kwargs = {"policy_version": "t", "policy_effective_at_ns": 1, "eligible_equity_definition": "E", "normal_loss_per_trade_frac": D("0.001"), "aggregate_open_normal_loss_frac": D("0.005"), "stress_loss_per_trade_frac": D("0.0025"), "portfolio_es_alpha": D("0.975"), "portfolio_es_limit_frac": D("0.01"), "account_gross_notional_limit": D("1.0"), "instrument_notional_limit": D("0.5"), "correlated_crypto_beta_limit": D("0.75"), "venue_collateral_limit": D("1.0"), "min_free_margin_reserve_frac": D("0.5"), "drawdown_reduce_threshold": D("0.05"), "drawdown_stop_threshold": D("0.10"), "drawdown_reduce_recovery": D("0.04"), "drawdown_stop_recovery": D("0.08"), "max_contract_leverage": D("2.0")}
+    base_kwargs = {
+        "policy_version": "t",
+        "policy_effective_at_ns": 1,
+        "eligible_equity_definition": "E",
+        "normal_loss_per_trade_frac": D("0.001"),
+        "aggregate_open_normal_loss_frac": D("0.005"),
+        "stress_loss_per_trade_frac": D("0.0025"),
+        "portfolio_es_alpha": D("0.975"),
+        "portfolio_es_limit_frac": D("0.01"),
+        "account_gross_notional_limit": D("1.0"),
+        "instrument_notional_limit": D("0.5"),
+        "correlated_crypto_beta_limit": D("0.75"),
+        "venue_collateral_limit": D("1.0"),
+        "min_free_margin_reserve_frac": D("0.5"),
+        "drawdown_reduce_threshold": D("0.05"),
+        "drawdown_stop_threshold": D("0.10"),
+        "drawdown_reduce_recovery": D("0.04"),
+        "drawdown_stop_recovery": D("0.08"),
+        "max_contract_leverage": D("2.0"),
+    }
     from atlas.domain.risk import RiskPolicy
 
     RiskPolicy(**base_kwargs)  # type: ignore[arg-type]
@@ -71,7 +90,9 @@ def test_policy_rejects_nonsensical_ordering_and_negatives():
     with pytest.raises(ValueError):
         RiskPolicy(**{**base_kwargs, "normal_loss_per_trade_frac": D("-0.001")})  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="cannot exceed aggregate"):
-        RiskPolicy(**{**base_kwargs, "normal_loss_per_trade_frac": D("0.01"), "aggregate_open_normal_loss_frac": D("0.005")})  # type: ignore[arg-type]
+        RiskPolicy(
+            **{**base_kwargs, "normal_loss_per_trade_frac": D("0.01"), "aggregate_open_normal_loss_frac": D("0.005")}
+        )  # type: ignore[arg-type]
     with pytest.raises(ValueError):
         RiskPolicy(**{**base_kwargs, "max_simultaneous_new_risk_intents": 0})  # type: ignore[arg-type]
 

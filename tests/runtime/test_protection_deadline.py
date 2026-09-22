@@ -17,17 +17,35 @@ T1 = T0 + 1_000_000_000
 
 def _fill(execution_id: str, qty: str, time_ns: int) -> FillRecord:
     return FillRecord(
-        execution_id=execution_id, order_id="order-1", client_order_id="a" * 32,
-        intent_id="intent-1", instrument="BTCUSDT", side="Buy", qty=Decimal(qty),
-        price=Decimal("49000"), fee=Decimal("0"), fee_currency="USDT",
-        trade_time_ns=time_ns, receive_time_ns=time_ns + 1, source="private_stream", raw_hash=execution_id,
+        execution_id=execution_id,
+        order_id="order-1",
+        client_order_id="a" * 32,
+        intent_id="intent-1",
+        instrument="BTCUSDT",
+        side="Buy",
+        qty=Decimal(qty),
+        price=Decimal("49000"),
+        fee=Decimal("0"),
+        fee_currency="USDT",
+        trade_time_ns=time_ns,
+        receive_time_ns=time_ns + 1,
+        source="private_stream",
+        raw_hash=execution_id,
     )
 
 
-def _observation(qty: str, *, stop: str = "48000", trigger: str = "MarkPrice", at: int = T0 + 1_000_000_000) -> ProtectionObservation:
+def _observation(
+    qty: str, *, stop: str = "48000", trigger: str = "MarkPrice", at: int = T0 + 1_000_000_000
+) -> ProtectionObservation:
     return ProtectionObservation(
-        position_epoch=0, desired_stop_version=1, qty=Decimal(qty), trigger_basis=trigger,
-        stop_price=Decimal(stop), semantics="Full Market ReduceOnly", evidence_ids=("position-1",), observed_at_ns=at,
+        position_epoch=0,
+        desired_stop_version=1,
+        qty=Decimal(qty),
+        trigger_basis=trigger,
+        stop_price=Decimal(stop),
+        semantics="Full Market ReduceOnly",
+        evidence_ids=("position-1",),
+        observed_at_ns=at,
     )
 
 
@@ -61,10 +79,19 @@ def test_wrong_semantics_stale_and_future_observations_do_not_confirm():
     machine.on_fill("intent-1", 0, _fill("exec-1", "0.010", T0), 1, Decimal("48000"))
     wrong = _observation("0.010", stop="47000")
     future = _observation("0.010", at=T0 + 3_000_000_000)
-    assert machine.on_protection_observation("intent-1", wrong, T0 + 1_000_000_000).state != ProtectionDeadlineState.CONFIRMED
-    assert machine.on_protection_observation("intent-1", future, T0 + 1_000_000_000).state != ProtectionDeadlineState.CONFIRMED
+    assert (
+        machine.on_protection_observation("intent-1", wrong, T0 + 1_000_000_000).state
+        != ProtectionDeadlineState.CONFIRMED
+    )
+    assert (
+        machine.on_protection_observation("intent-1", future, T0 + 1_000_000_000).state
+        != ProtectionDeadlineState.CONFIRMED
+    )
     valid = _observation("0.010")
-    assert machine.on_protection_observation("intent-1", valid, T0 + 1_000_000_000).state == ProtectionDeadlineState.CONFIRMED
+    assert (
+        machine.on_protection_observation("intent-1", valid, T0 + 1_000_000_000).state
+        == ProtectionDeadlineState.CONFIRMED
+    )
 
 
 def test_deadline_actions_are_durable_unsent_commands_without_transport():

@@ -6,7 +6,7 @@ from atlas.runtime.reconciliation_evidence import (
     QueryStatus,
     QueryType,
     ReconciliationQueryEvidence,
-    compute_evidence_hash,
+    make_query_evidence,
     merge_query_evidence,
 )
 from atlas.runtime.recovery import RecoveryIncident
@@ -14,20 +14,39 @@ from atlas.runtime.recovery import RecoveryIncident
 T0 = 1_700_000_000_000_000_000
 
 
-def _query(*, complete: Completeness, records: int = 0, retention_start: int | None = T0 - 10, retention_end: int | None = T0 + 10, query_id: str = "q") -> ReconciliationQueryEvidence:
-    return ReconciliationQueryEvidence(
-        query_id=query_id, query_type=QueryType.ORDER_HISTORY, account="acct", instrument="BTCUSDT",
-        requested_interval_start_ns=T0, requested_interval_end_ns=T0 + 10,
-        pagination_cursors=(query_id,), pages_observed=1, total_records_returned=records,
-        completeness=complete, status=QueryStatus.SUCCESS, source_time_ns=T0, receipt_time_ns=T0 + 1,
-        request_ids=(query_id,), retention_coverage_start_ns=retention_start,
+def _query(
+    *,
+    complete: Completeness,
+    records: int = 0,
+    retention_start: int | None = T0 - 10,
+    retention_end: int | None = T0 + 10,
+    query_id: str = "q",
+) -> ReconciliationQueryEvidence:
+    return make_query_evidence(
+        query_id=query_id,
+        query_type=QueryType.ORDER_HISTORY,
+        account="acct",
+        instrument="BTCUSDT",
+        requested_interval_start_ns=T0,
+        requested_interval_end_ns=T0 + 10,
+        pagination_cursors=(query_id,),
+        pages_observed=1,
+        total_records_returned=records,
+        completeness=complete,
+        status=QueryStatus.SUCCESS,
+        source_time_ns=T0,
+        receipt_time_ns=T0 + 1,
+        request_ids=(query_id,),
+        retention_coverage_start_ns=retention_start,
         retention_coverage_end_ns=retention_end,
-        evidence_hash=compute_evidence_hash({"query": query_id}), error_message=None,
+        error_message=None,
     )
 
 
 def test_complete_plus_incomplete_never_certifies_absence():
-    merged = merge_query_evidence([_query(complete=Completeness.COMPLETE), _query(complete=Completeness.INCOMPLETE_PAGINATED, query_id="q2")])
+    merged = merge_query_evidence(
+        [_query(complete=Completeness.COMPLETE), _query(complete=Completeness.INCOMPLETE_PAGINATED, query_id="q2")]
+    )
     assert merged is not None
     assert merged.completeness == Completeness.INCOMPLETE_PAGINATED
     assert not merged.can_certify_absence

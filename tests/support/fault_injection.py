@@ -28,7 +28,7 @@ from atlas.runtime.reconciliation_evidence import (
     QueryStatus,
     QueryType,
     ReconciliationQueryEvidence,
-    compute_evidence_hash,
+    make_query_evidence,
     merge_query_evidence,
 )
 
@@ -80,15 +80,31 @@ def _raw(label: str) -> str:
 
 def _plan() -> TradePlan:
     return TradePlan(
-        plan_id="fault-plan", version="v1", policy_hash="policy", snapshot_hash="snapshot",
-        expires_at_ns=T0 + 60_000_000_000, market="BYBIT", account_scope="offline-test-account",
-        instrument="BTCUSDT", side=Side.LONG, qty_limit=Decimal("0.010"),
-        entry_policy="IOC_LIMIT_FULL_STOP", collar=Decimal("50000"), stop=Decimal("48000"),
-        stop_trigger_basis="MarkPrice", management_policy="FIXED_STOP_TIME_EXIT_24H",
-        horizon_end_ns=T0 + 86_400_000_000_000, cost_distribution_ref="offline-costs",
-        normal_risk=Decimal("10"), stress_risk=Decimal("20"), margin=Decimal("100"),
-        leverage_bound=Decimal("2"), risk_config_hash="risk", created_at_ns=T0,
-        available_at_ns=T0, reference_price=Decimal("49000"),
+        plan_id="fault-plan",
+        version="v1",
+        policy_hash="policy",
+        snapshot_hash="snapshot",
+        expires_at_ns=T0 + 60_000_000_000,
+        market="BYBIT",
+        account_scope="offline-test-account",
+        instrument="BTCUSDT",
+        side=Side.LONG,
+        qty_limit=Decimal("0.010"),
+        entry_policy="IOC_LIMIT_FULL_STOP",
+        collar=Decimal("50000"),
+        stop=Decimal("48000"),
+        stop_trigger_basis="MarkPrice",
+        management_policy="FIXED_STOP_TIME_EXIT_24H",
+        horizon_end_ns=T0 + 86_400_000_000_000,
+        cost_distribution_ref="offline-costs",
+        normal_risk=Decimal("10"),
+        stress_risk=Decimal("20"),
+        margin=Decimal("100"),
+        leverage_bound=Decimal("2"),
+        risk_config_hash="risk",
+        created_at_ns=T0,
+        available_at_ns=T0,
+        reference_price=Decimal("49000"),
     )
 
 
@@ -110,29 +126,44 @@ class DeterministicVenueSimulator:
         self._journal = SQLiteJournal(path)
         self._journal.create_trade_plan(_plan())
         intent = Intent(
-            intent_id="intent-fault", position_epoch=0, plan_id="fault-plan", plan_version="v1",
-            client_order_id=generate_client_order_id(), writer_epoch=1,
-            lifecycle=LifecycleState.INTENT_PERSISTED, protection_status=ProtectionStatus.NONE,
-            reconciliation_health=ReconciliationHealth.CURRENT, created_at_ns=T0,
+            intent_id="intent-fault",
+            position_epoch=0,
+            plan_id="fault-plan",
+            plan_version="v1",
+            client_order_id=generate_client_order_id(),
+            writer_epoch=1,
+            lifecycle=LifecycleState.INTENT_PERSISTED,
+            protection_status=ProtectionStatus.NONE,
+            reconciliation_health=ReconciliationHealth.CURRENT,
+            created_at_ns=T0,
         )
         reservation = Reservation(
-            reservation_id="reservation-fault", intent_id=intent.intent_id,
-            remaining_open_qty=Decimal("0.010"), normal_loss=Decimal("10"), stress_loss=Decimal("20"),
-            notional=Decimal("490"), beta_adjusted_notional=Decimal("490"), margin=Decimal("100"),
+            reservation_id="reservation-fault",
+            intent_id=intent.intent_id,
+            remaining_open_qty=Decimal("0.010"),
+            normal_loss=Decimal("10"),
+            stress_loss=Decimal("20"),
+            notional=Decimal("490"),
+            beta_adjusted_notional=Decimal("490"),
+            margin=Decimal("100"),
             es_contribution=Decimal("5"),
         )
         self._journal.create_intent_with_reservation(intent, reservation)
         self._journal.persist_command(
             make_command(
-                command_id="command-entry", intent_id=intent.intent_id,
+                command_id="command-entry",
+                intent_id=intent.intent_id,
                 command_type=CommandType.SUBMIT_ENTRY,
                 payload_dict={"client_order_id": intent.client_order_id, "qty": "0.010"},
-                expected_state_version=0, created_at_ns=T0,
+                expected_state_version=0,
+                created_at_ns=T0,
             )
         )
         self._journal.update_intent_state(
-            intent_id=intent.intent_id, lifecycle=LifecycleState.SUBMITTING,
-            protection=ProtectionStatus.UNCONFIRMED, health=ReconciliationHealth.CURRENT,
+            intent_id=intent.intent_id,
+            lifecycle=LifecycleState.SUBMITTING,
+            protection=ProtectionStatus.UNCONFIRMED,
+            health=ReconciliationHealth.CURRENT,
             expected_version=0,
         )
         self._fill_dedup = FillDeduplicator(self._journal)
@@ -153,12 +184,20 @@ class DeterministicVenueSimulator:
 
     def _fill(self, execution_id: str, qty: str, trade_time_ns: int = T1, side: str = "Buy") -> FillRecord:
         fill = FillRecord(
-            execution_id=execution_id, order_id="exchange-entry",
+            execution_id=execution_id,
+            order_id="exchange-entry",
             client_order_id=self.journal.load_intent("intent-fault").client_order_id,
-            intent_id="intent-fault", instrument="BTCUSDT", side=side, qty=Decimal(qty),
-            price=Decimal("49000"), fee=Decimal("0.10"), fee_currency="USDT",
-            trade_time_ns=trade_time_ns, receive_time_ns=trade_time_ns + 1,
-            source="offline-rest" if side == "Buy" else "offline-private", raw_hash=_raw(execution_id),
+            intent_id="intent-fault",
+            instrument="BTCUSDT",
+            side=side,
+            qty=Decimal(qty),
+            price=Decimal("49000"),
+            fee=Decimal("0.10"),
+            fee_currency="USDT",
+            trade_time_ns=trade_time_ns,
+            receive_time_ns=trade_time_ns + 1,
+            source="offline-rest" if side == "Buy" else "offline-private",
+            raw_hash=_raw(execution_id),
         )
         if self._fill_dedup is None:
             raise RuntimeError("deduplicator is not open")
@@ -166,8 +205,10 @@ class DeterministicVenueSimulator:
         self._position += fill.qty if side == "Buy" else -fill.qty
         if self.journal.load_intent("intent-fault").lifecycle == LifecycleState.SUBMITTING:
             self.journal.update_intent_state(
-                intent_id="intent-fault", lifecycle=LifecycleState.PARTIALLY_FILLED,
-                protection=ProtectionStatus.UNCONFIRMED, health=ReconciliationHealth.CURRENT,
+                intent_id="intent-fault",
+                lifecycle=LifecycleState.PARTIALLY_FILLED,
+                protection=ProtectionStatus.UNCONFIRMED,
+                health=ReconciliationHealth.CURRENT,
                 expected_version=1,
             )
         return fill
@@ -180,27 +221,52 @@ class DeterministicVenueSimulator:
     def _status(self, status: str, qty: str, time_ns: int = T1) -> None:
         self.journal.append_order_status_observation(
             OrderStatusRecord(
-                order_id="exchange-entry", client_order_id=self.journal.load_intent("intent-fault").client_order_id,
-                intent_id="intent-fault", status=status, cum_exec_qty=Decimal(qty),
-                cum_exec_fee=Decimal("0.10"), cum_exec_value=Decimal(qty) * Decimal("49000"),
+                order_id="exchange-entry",
+                client_order_id=self.journal.load_intent("intent-fault").client_order_id,
+                intent_id="intent-fault",
+                status=status,
+                cum_exec_qty=Decimal(qty),
+                cum_exec_fee=Decimal("0.10"),
+                cum_exec_value=Decimal(qty) * Decimal("49000"),
                 avg_exec_price=Decimal("49000") if Decimal(qty) else None,
-                receive_time_ns=time_ns, source="offline-private", raw_hash=_raw(status + qty + str(time_ns)),
+                receive_time_ns=time_ns,
+                source="offline-private",
+                raw_hash=_raw(status + qty + str(time_ns)),
             )
         )
 
-    def _query(self, query_type: QueryType, *, empty: bool = True,
-               complete: Completeness = Completeness.COMPLETE, status: QueryStatus = QueryStatus.SUCCESS,
-               retention_start: int | None = INTERVAL_START, retention_end: int | None = INTERVAL_END,
-               query_id: str = "q") -> ReconciliationQueryEvidence:
+    def _query(
+        self,
+        query_type: QueryType,
+        *,
+        empty: bool = True,
+        complete: Completeness = Completeness.COMPLETE,
+        status: QueryStatus = QueryStatus.SUCCESS,
+        retention_start: int | None = INTERVAL_START,
+        retention_end: int | None = INTERVAL_END,
+        query_id: str = "q",
+    ) -> ReconciliationQueryEvidence:
         records = 0 if empty else 1
-        payload = {"query_id": query_id, "records": records, "complete": complete.value, "status": status.value}
-        return ReconciliationQueryEvidence(
-            query_id=query_id, query_type=query_type, account="offline-test-account", instrument="BTCUSDT",
-            requested_interval_start_ns=INTERVAL_START, requested_interval_end_ns=INTERVAL_END,
-            pagination_cursors=(query_id,), pages_observed=1, total_records_returned=records,
-            completeness=complete, status=status, source_time_ns=T1, receipt_time_ns=T1 + 1,
-            request_ids=(query_id,), retention_coverage_start_ns=retention_start,
-            retention_coverage_end_ns=retention_end, evidence_hash=compute_evidence_hash(payload), error_message=None,
+        return make_query_evidence(
+            query_id=query_id,
+            query_type=query_type,
+            account="offline-test-account",
+            instrument="BTCUSDT",
+            requested_interval_start_ns=INTERVAL_START,
+            requested_interval_end_ns=INTERVAL_END,
+            pagination_cursors=(query_id,),
+            pages_observed=1,
+            total_records_returned=records,
+            completeness=complete,
+            status=status,
+            source_time_ns=T1,
+            receipt_time_ns=T1 + 1,
+            request_ids=(query_id,),
+            retention_coverage_start_ns=retention_start,
+            retention_segments=()
+            if retention_start is None or retention_end is None
+            else ((retention_start, retention_end),),
+            error_message=None,
         )
 
     def run_scenario(self, scenario: FaultScenario) -> FaultInjectionResult:
@@ -226,7 +292,8 @@ class DeterministicVenueSimulator:
             "unknown_preserved": command.outcome == CommandOutcome.UNKNOWN and command.send_started_at_ns == T1,
             "one_client_order_identity": len({self.journal.load_intent("intent-fault").client_order_id}) == 1,
             "no_fill_invented": self._cumulative() == 0,
-            "reservation_conservative": self.journal.load_reservation("intent-fault").remaining_open_qty == Decimal("0.010"),
+            "reservation_conservative": self.journal.load_reservation("intent-fault").remaining_open_qty
+            == Decimal("0.010"),
         }
 
     def _scenario_lost_response_after_accept(self) -> dict[str, bool]:
@@ -239,7 +306,8 @@ class DeterministicVenueSimulator:
         return {
             "original_identity_resolved": len(self._order_ids) == 1,
             "reservation_retained": self.journal.load_reservation("intent-fault").remaining_open_qty > 0,
-            "duplicate_not_counted": not duplicate.accepted and restarted.get_cumulative_qty("intent-fault") == Decimal("0.010"),
+            "duplicate_not_counted": not duplicate.accepted
+            and restarted.get_cumulative_qty("intent-fault") == Decimal("0.010"),
         }
 
     def _scenario_definite_reject(self) -> dict[str, bool]:
@@ -249,7 +317,8 @@ class DeterministicVenueSimulator:
         return {
             "definite_reject_recorded": command.outcome == CommandOutcome.DEFINITE_REJECT,
             "no_fill_invented": self._cumulative() == 0,
-            "reservation_not_released_by_reject_alone": self.journal.load_reservation("intent-fault").remaining_open_qty == Decimal("0.010"),
+            "reservation_not_released_by_reject_alone": self.journal.load_reservation("intent-fault").remaining_open_qty
+            == Decimal("0.010"),
         }
 
     def _scenario_partial_fills(self) -> dict[str, bool]:
@@ -262,7 +331,8 @@ class DeterministicVenueSimulator:
         return {
             "aggregate_position": self._position == Decimal("0.010"),
             "aggregate_execution_evidence": self._cumulative() == Decimal("0.010"),
-            "protection_stale_after_second_fill": snap is not None and snap.state == ProtectionDeadlineState.UNCONFIRMED_POST_FILL,
+            "protection_stale_after_second_fill": snap is not None
+            and snap.state == ProtectionDeadlineState.UNCONFIRMED_POST_FILL,
             "opening_identity_unique": len({self.journal.load_intent("intent-fault").client_order_id}) == 1,
         }
 
@@ -312,16 +382,23 @@ class DeterministicVenueSimulator:
             "rest_fill_durable": self.journal.count("execution_evidence") == 1,
             "private_gap_does_not_invent_flat": self._position != 0,
             "evidence_records_present": position_query.evidence_hash != execution_query.evidence_hash,
-            "different_query_types_not_merged": merge_query_evidence([position_query, execution_query]) is None if position_query.query_type == execution_query.query_type else True,
+            "different_query_types_not_merged": merge_query_evidence([position_query, execution_query]) is None
+            if position_query.query_type == execution_query.query_type
+            else True,
         }
 
     def _scenario_incomplete_paginated_rest(self) -> dict[str, bool]:
         complete_empty = self._query(QueryType.ORDER_HISTORY, query_id="page-1")
-        incomplete_empty = self._query(QueryType.ORDER_HISTORY, complete=Completeness.INCOMPLETE_PAGINATED, query_id="page-2")
+        incomplete_empty = self._query(
+            QueryType.ORDER_HISTORY, complete=Completeness.INCOMPLETE_PAGINATED, query_id="page-2"
+        )
         merged = merge_query_evidence([complete_empty, incomplete_empty])
-        narrow_retention = self._query(QueryType.ORDER_HISTORY, retention_start=T0, retention_end=T0 + 1, query_id="narrow")
+        narrow_retention = self._query(
+            QueryType.ORDER_HISTORY, retention_start=T0, retention_end=T0 + 1, query_id="narrow"
+        )
         return {
-            "complete_plus_incomplete_is_incomplete": merged is not None and merged.completeness == Completeness.INCOMPLETE_PAGINATED,
+            "complete_plus_incomplete_is_incomplete": merged is not None
+            and merged.completeness == Completeness.INCOMPLETE_PAGINATED,
             "zero_incomplete_cannot_certify_absence": merged is not None and not merged.can_certify_absence,
             "retention_must_cover_requested_interval": not narrow_retention.can_certify_absence,
         }
@@ -355,15 +432,20 @@ class DeterministicVenueSimulator:
         return {
             "fill_wins_as_economic_fact": self._cumulative() == Decimal("0.005"),
             "cancel_status_not_fill": self.journal.count("execution_evidence") == 1,
-            "unknown_not_silently_rejected": self.journal.load_command("command-entry").outcome == CommandOutcome.UNKNOWN,
+            "unknown_not_silently_rejected": self.journal.load_command("command-entry").outcome
+            == CommandOutcome.UNKNOWN,
         }
 
     def _scenario_exit_unresolved(self) -> dict[str, bool]:
         self._fill("exec-open", "0.010")
         self.journal.persist_command(
             make_command(
-                command_id="command-exit", intent_id="intent-fault", command_type=CommandType.SUBMIT_EXIT,
-                payload_dict={"qty": "0.010", "reduce_only": True}, expected_state_version=2, created_at_ns=T2,
+                command_id="command-exit",
+                intent_id="intent-fault",
+                command_type=CommandType.SUBMIT_EXIT,
+                payload_dict={"qty": "0.010", "reduce_only": True},
+                expected_state_version=2,
+                created_at_ns=T2,
             )
         )
         self.journal.mark_send_started("command-exit", T2)
@@ -401,10 +483,16 @@ class DeterministicVenueSimulator:
     def _scenario_approval_replay(self) -> dict[str, bool]:
         from atlas.domain.execution import Approval
 
-        self.journal.create_approval(Approval("approval-1", "offline-reviewer", "fault-plan", "v1", T0, T0 + 10_000_000_000))
-        first = self.journal.consume_approval(approval_id="approval-1", plan_id="fault-plan", plan_version="v1", now_ns=T1)
+        self.journal.create_approval(
+            Approval("approval-1", "offline-reviewer", "fault-plan", "v1", T0, T0 + 10_000_000_000)
+        )
+        first = self.journal.consume_approval(
+            approval_id="approval-1", plan_id="fault-plan", plan_version="v1", now_ns=T1
+        )
         try:
-            self.journal.consume_approval(approval_id="approval-1", plan_id="fault-plan", plan_version="v1", now_ns=T1 + 1)
+            self.journal.consume_approval(
+                approval_id="approval-1", plan_id="fault-plan", plan_version="v1", now_ns=T1 + 1
+            )
         except PersistenceError:
             replay_rejected = True
         else:

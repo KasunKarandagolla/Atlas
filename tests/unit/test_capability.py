@@ -89,9 +89,7 @@ def test_all_supported_allows_assisted_and_hash_deterministic():
         c3 = dataclasses.replace(real, capabilities=bad)
         assert any(f in r for r in c3.validate_for_assisted())
     # All SUPPORTED but placeholder identity still blocks (FIX7)
-    c4 = dataclasses.replace(
-        initial_unverified_fixture(), capabilities=caps, assisted_enabled=False
-    )
+    c4 = dataclasses.replace(initial_unverified_fixture(), capabilities=caps, assisted_enabled=False)
     assert any("placeholder" in r for r in c4.validate_for_assisted())
     with pytest.raises(ValueError, match="placeholder"):
         dataclasses.replace(c4, assisted_enabled=True)
@@ -134,11 +132,28 @@ def test_capability_evidence_binds_gate_run_and_profile_and_survives_restart(tmp
     path = tmp_path / "capability.db"
     journal = SQLiteJournal(path)
     ledger = CapabilityEvidenceLedger(journal)
-    gate = ledger.record_testnet_gate(capability, "run-1", ("immutable-observation-1",), 1_700_000_000_000_000_000, True, target_profile_hash=profile_hash)
+    gate = ledger.record_testnet_gate(
+        capability,
+        "run-1",
+        ("immutable-observation-1",),
+        1_700_000_000_000_000_000,
+        True,
+        target_profile_hash=profile_hash,
+    )
     assert gate.state == EvidenceState.TEST_GATE_TESTNET
     with pytest.raises(ValueError, match="test_run_id"):
-        ledger.qualify_capability(capability, "qual-1", "run-2", ("immutable-observation-1",), "reviewer", 1_700_000_000_000_000_001, profile_hash)
-    record = ledger.qualify_capability(capability, "qual-1", "run-1", ("immutable-observation-1",), "reviewer", 1_700_000_000_000_000_001, profile_hash)
+        ledger.qualify_capability(
+            capability,
+            "qual-1",
+            "run-2",
+            ("immutable-observation-1",),
+            "reviewer",
+            1_700_000_000_000_000_001,
+            profile_hash,
+        )
+    record = ledger.qualify_capability(
+        capability, "qual-1", "run-1", ("immutable-observation-1",), "reviewer", 1_700_000_000_000_000_001, profile_hash
+    )
     assert record.target_profile_hash == profile_hash
     journal.close()
     restarted = SQLiteJournal(path)

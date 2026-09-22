@@ -109,9 +109,7 @@ def test_revised_no_vintage_cannot_carry_replay():
 
 
 def test_dependency_causality():
-    actual_observed(
-        source_id="bybit", data_type="bar", received_at_ns=T0, available_at_ns=T1
-    )
+    actual_observed(source_id="bybit", data_type="bar", received_at_ns=T0, available_at_ns=T1)
     derived = InformationContract(
         contract_version="1.0",
         source_id="atlas",
@@ -156,12 +154,8 @@ def test_revision_provenance_combinations():
 
 
 def test_deterministic_serialization_stable_across_field_order():
-    a = actual_observed(
-        source_id="bybit", data_type="trade", received_at_ns=T0, available_at_ns=T1
-    )
-    b = actual_observed(
-        source_id="bybit", data_type="trade", received_at_ns=T0, available_at_ns=T1
-    )
+    a = actual_observed(source_id="bybit", data_type="trade", received_at_ns=T0, available_at_ns=T1)
+    b = actual_observed(source_id="bybit", data_type="trade", received_at_ns=T0, available_at_ns=T1)
     assert a.to_canonical_json() == b.to_canonical_json()
     assert a.compute_content_hash() == b.compute_content_hash()
 
@@ -171,7 +165,5 @@ def test_deterministic_serialization_stable_across_field_order():
     delta=st.integers(min_value=0, max_value=1_000_000_000),
 )
 def test_available_gte_received_property(recv, delta):
-    r = actual_observed(
-        source_id="s", data_type="d", received_at_ns=recv, available_at_ns=recv + delta
-    )
+    r = actual_observed(source_id="s", data_type="d", received_at_ns=recv, available_at_ns=recv + delta)
     assert r.available_at_ns >= r.received_at_ns  # type: ignore[operator]

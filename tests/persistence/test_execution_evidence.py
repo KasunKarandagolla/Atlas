@@ -12,19 +12,36 @@ T0 = 1_700_000_000_000_000_000
 
 def _fill(execution_id: str, qty: str = "0.010") -> FillRecord:
     return FillRecord(
-        execution_id=execution_id, order_id="order-1", client_order_id="a" * 32,
-        intent_id="intent-1", instrument="BTCUSDT", side="Buy", qty=Decimal(qty),
-        price=Decimal("49000"), fee=Decimal("0.1"), fee_currency="USDT",
-        trade_time_ns=T0, receive_time_ns=T0 + 1, source="rest_query", raw_hash=execution_id,
+        execution_id=execution_id,
+        order_id="order-1",
+        client_order_id="a" * 32,
+        intent_id="intent-1",
+        instrument="BTCUSDT",
+        side="Buy",
+        qty=Decimal(qty),
+        price=Decimal("49000"),
+        fee=Decimal("0.1"),
+        fee_currency="USDT",
+        trade_time_ns=T0,
+        receive_time_ns=T0 + 1,
+        source="rest_query",
+        raw_hash=execution_id,
     )
 
 
 def _status(qty: str) -> OrderStatusRecord:
     return OrderStatusRecord(
-        order_id="order-1", client_order_id="a" * 32, intent_id="intent-1", status="Filled",
-        cum_exec_qty=Decimal(qty), cum_exec_fee=Decimal("0.1"),
-        cum_exec_value=Decimal(qty) * Decimal("49000"), avg_exec_price=Decimal("49000"),
-        receive_time_ns=T0 + 2, source="private_stream", raw_hash="status-1",
+        order_id="order-1",
+        client_order_id="a" * 32,
+        intent_id="intent-1",
+        status="Filled",
+        cum_exec_qty=Decimal(qty),
+        cum_exec_fee=Decimal("0.1"),
+        cum_exec_value=Decimal(qty) * Decimal("49000"),
+        avg_exec_price=Decimal("49000"),
+        receive_time_ns=T0 + 2,
+        source="private_stream",
+        raw_hash="status-1",
     )
 
 
