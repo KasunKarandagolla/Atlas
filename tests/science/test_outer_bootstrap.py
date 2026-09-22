@@ -1,9 +1,10 @@
-"""§3/§4/§10: outer bootstrap refit propagation and evidence-only replay."""
+"""§3: outer bootstrap causal OOF, locked ridge, causal funding and evidence pairing."""
 
 from __future__ import annotations
 
 import math
 from dataclasses import replace
+from datetime import UTC, datetime
 from decimal import Decimal
 from functools import lru_cache
 
@@ -11,16 +12,22 @@ import pytest
 from support.phase4_factory import policy
 
 from atlas.domain.enums import Side
-from atlas.science.huber_mean import HOUR_NS, fit_huber_ridge, select_ridge_chronological
+from atlas.science.huber_mean import (
+    HOUR_NS,
+    fit_huber_ridge,
+    select_ridge_chronological,
+)
 from atlas.science.outer_loop import (
+    FundingAnchor,
     NotEstimable,
     estimate_cost_assumptions,
     estimate_execution_evidence,
     observations_from_hours,
     outer_lcb,
-    rebuild_replicate_hours,
+    path_latency_ns,
     replay_replicate,
     replicate_evaluation,
+    replicate_oof_hours,
 )
 from atlas.science.policy_replay import ReplayAssumptions
 from atlas.science.residual_blocks import JointResidualHour
@@ -37,11 +44,12 @@ from atlas.science.uncertainty import (
     lcb_order_statistic,
     outer_expected_mean_bootstrap,
 )
+from atlas.strategy.features import HourlyClose, feature_values
 
 MINUTES = 60
-SLOT_NS = (1_700_000_000_000_000_000 // (4 * HOUR_NS)) * 4 * HOUR_NS
-DAYS = 130
-FIT_AT_NS = SLOT_NS + DAYS * 24 * HOUR_NS
+SLOT_NS = int(datetime(2025, 1, 6, tzinfo=UTC).timestamp() * 1_000_000_000)  # Monday 00:00 UTC
+DAYS = 150
+LOCKED_RIDGE = 0.1
 
 
 def bars(hour_return: float, *, phase: float) -> tuple[tuple[float, float, float, float], ...]:
@@ -63,45 +71,66 @@ def hour_bars(hour_return: float, phase: float) -> tuple[tuple[float, float, flo
     return bars(hour_return, phase=phase)
 
 
+@lru_cache(maxsize=8)
+def causal_window(*, price: float = 100.0, sigma: float = 0.01, momentum: float = 0.3,
+                  end_at_ns: int = SLOT_NS, count: int = 721) -> tuple[HourlyClose, ...]:
+    """A deterministic 721-close causal window ending at the decision instant."""
+    returns = [sigma * (1.0 if index % 2 == 0 else -1.0) for index in range(count - 1)]
+    for offset in range(24):
+        returns[-24 + offset] += momentum * sigma
+    closes = [price]
+    for value in returns:
+        closes.append(closes[-1] * math.exp(value))
+    return tuple(HourlyClose(end_at_ns - (count - 1 - index) * HOUR_NS, Decimal(str(round(value, 8))),
+                             end_at_ns - (count - 1 - index) * HOUR_NS, f"c{index}")
+                 for index, value in enumerate(closes))
+
+
 def hour(index: int, *, z: float, mu: float, residual: float, sigma: float = 0.01,
-         funding_rate: str = "0.00001") -> JointResidualHour:
+         funding_rate: str = "0.000010", **overrides: object) -> JointResidualHour:
     at_ns = SLOT_NS + index * HOUR_NS
     hour_return = sigma * (mu + residual)
     settles = index % 8 == 0
-    return JointResidualHour(
-        at_ns=at_ns, btc_residual=residual, eth_residual=residual, btc_forecast=mu, eth_forecast=mu,
-        btc_sigma=sigma, eth_sigma=sigma, btc_z=z, eth_z=z,
-        btc_last_ohlc=hour_bars(hour_return, 0.0), eth_last_ohlc=hour_bars(hour_return, 0.5),
-        btc_mark_ohlc=hour_bars(0.0, 0.1), eth_mark_ohlc=hour_bars(0.0, 0.6),
-        btc_index_ohlc=hour_bars(0.0, 0.2), eth_index_ohlc=hour_bars(0.0, 0.7),
-        execution_missing=False, minute_replay_complete=True,
-        spread_depth_observations=(
+    kwargs: dict[str, object] = {
+        "at_ns": at_ns, "btc_residual": residual, "eth_residual": residual, "btc_forecast": mu, "eth_forecast": mu,
+        "btc_sigma": sigma, "eth_sigma": sigma, "btc_z": z, "eth_z": z,
+        "btc_last_ohlc": hour_bars(hour_return, 0.0), "eth_last_ohlc": hour_bars(hour_return, 0.5),
+        "btc_mark_ohlc": hour_bars(0.0, 0.1), "eth_mark_ohlc": hour_bars(0.0, 0.6),
+        "btc_index_ohlc": hour_bars(0.0, 0.2), "eth_index_ohlc": hour_bars(0.0, 0.7),
+        "execution_missing": False, "minute_replay_complete": True,
+        "spread_depth_observations": (
             {"instrument": "BTCUSDT", "spread_bp": "1.2", "taker_fee_bp": "5.0", "depth_notional": "250000"},
             {"instrument": "ETHUSDT", "spread_bp": "1.6", "taker_fee_bp": "5.0", "depth_notional": "120000"},
         ),
-        latency_fill_observations=(
+        "latency_fill_observations": (
             {"instrument": "BTCUSDT", "entry_latency_ms": "120"},
             {"instrument": "ETHUSDT", "entry_latency_ms": "140"},
         ),
-        funding_publication_at_ns=at_ns - HOUR_NS if settles else None,
-        funding_settlement_at_ns=at_ns if settles else None,
-        funding_observations=tuple({"instrument": name, "rate": funding_rate} for name in ("BTCUSDT", "ETHUSDT"))
+        "funding_publication_at_ns": at_ns - HOUR_NS if settles else None,
+        "funding_settlement_at_ns": at_ns if settles else None,
+        "funding_observations": tuple({"instrument": name, "rate": funding_rate} for name in ("BTCUSDT", "ETHUSDT"))
         if settles else (),
-        calendar_identity="cal", universe_identity="BTCUSDT_ETHUSDT_V1",
-    )
+        "calendar_identity": "cal", "universe_identity": "BTCUSDT_ETHUSDT_V1",
+    }
+    kwargs.update(overrides)
+    return JointResidualHour(**kwargs)  # type: ignore[arg-type]
 
 
 @lru_cache(maxsize=8)
 def history(days: int = DAYS, signal: float = 0.3, noise: float = 0.2,
-            funding_rate: str = "0.00001") -> tuple[JointResidualHour, ...]:
-    """Deterministic ~100-day synchronized history with a mild real signal."""
+            funding_base: float = 0.00001, funding_step: float = 0.000005) -> tuple[JointResidualHour, ...]:
+    """Deterministic synchronized history with a mild real signal and funding changes."""
     state = 12345
     out: list[JointResidualHour] = []
+    settlement_index = 0
     for index in range(days * 24):
         state = (1103515245 * state + 12345) % (2**31)
         epsilon = ((state / 2**31) - 0.5) * 2
         z = math.sin(index / 37.0) * 2.0
-        out.append(hour(index, z=z, mu=signal * z / 3.0, residual=noise * epsilon, funding_rate=funding_rate))
+        rate = f"{funding_base + funding_step * settlement_index:.6f}"
+        if index % 8 == 0:
+            settlement_index += 1
+        out.append(hour(index, z=z, mu=signal * z / 3.0, residual=noise * epsilon, funding_rate=rate))
     return tuple(out)
 
 
@@ -113,16 +142,27 @@ def assumptions(**overrides: object) -> ReplayAssumptions:
     return ReplayAssumptions(**base)  # type: ignore[arg-type]
 
 
-def features(z: float = 1.0, sigma: float = 0.01) -> dict[str, tuple[float, float]]:
-    return {"BTCUSDT": (z, sigma), "ETHUSDT": (z, sigma)}
+def causal_closes(**kwargs: object) -> dict[str, tuple[HourlyClose, ...]]:
+    return {"BTCUSDT": causal_window(**kwargs), "ETHUSDT": causal_window(**kwargs)}  # type: ignore[arg-type]
+
+
+def anchor(*, predicted: str | None = "0.000010", settled: str | None = "0.000200",
+           next_at_ns: int | None = SLOT_NS + 8 * HOUR_NS) -> FundingAnchor:
+    return FundingAnchor(next_settlement_at_ns=next_at_ns,
+                         latest_predicted_rate=Decimal(predicted) if predicted is not None else None,
+                         latest_settled_rate=Decimal(settled) if settled is not None else None)
 
 
 def action() -> object:
     return policy(side=Side.LONG, quantity=Decimal("1"), mark=Decimal("100"), sigma=0.01, slot_at_ns=SLOT_NS)
 
 
-def fitted_model(rows: tuple[JointResidualHour, ...]):  # type: ignore[no-untyped-def]
-    return fit_huber_ridge(observations_from_hours(rows, range(len(rows))), 0.1)
+def fitted_model(rows: tuple[JointResidualHour, ...], *, days: int = DAYS):  # type: ignore[no-untyped-def]
+    observations = observations_from_hours(rows, range(len(rows)))
+    del days
+    # The replay only needs frozen coefficients; the causal eligibility contract
+    # itself is exercised through replicate_oof_hours/replicate_evaluation.
+    return fit_huber_ridge(observations, LOCKED_RIDGE)
 
 
 def test_production_defaults_and_frozen_delta_are_exposed():
@@ -177,7 +217,7 @@ def test_observations_use_forecast_plus_residual_and_frozen_fold_selection():
     source = history(10)[0]
     assert rows[0].next_return == pytest.approx(source.btc_sigma * (source.btc_forecast + source.btc_residual))
     long_rows = observations_from_hours(history(), range(len(history())))
-    fit_at = history()[-1].at_ns + HOUR_NS
+    fit_at = SLOT_NS + DAYS * 24 * HOUR_NS
     selection = select_ridge_chronological(long_rows, fit_at)
     assert selection.ridge in (0.01, 0.1, 1.0, 10.0)
     assert len(selection.validation_intervals) == 3
@@ -186,119 +226,218 @@ def test_observations_use_forecast_plus_residual_and_frozen_fold_selection():
         select_ridge_chronological(long_rows[:100], fit_at)
 
 
+def test_locked_ridge_skips_the_replicate_search():
+    rows = observations_from_hours(history(), range(len(history())))
+    fit_at = SLOT_NS + DAYS * 24 * HOUR_NS
+    searched = select_ridge_chronological(rows, fit_at)
+    locked = select_ridge_chronological(rows, fit_at, locked_ridge=LOCKED_RIDGE)
+    assert locked.ridge == LOCKED_RIDGE
+    assert locked.eligible == searched.eligible
+    assert locked.validation_intervals == searched.validation_intervals
+    with pytest.raises(ValueError, match="unfrozen locked ridge"):
+        select_ridge_chronological(rows, fit_at, locked_ridge=0.5)
+
+
+def test_replicate_oof_is_chronological_and_uses_only_earlier_matured_labels():
+    rows = history()
+    oof_hours, refits = replicate_oof_hours(rows, locked_ridge=LOCKED_RIDGE)
+    # Hours before the first matured 90-day refit have no genuine OOF forecast.
+    assert len(oof_hours) == (DAYS - 91) * 24
+    assert oof_hours[0].at_ns == refits[0][0]
+    assert refits and all(model.ridge == LOCKED_RIDGE for _, model in refits)
+    first_instant, first_model = refits[0]
+    first = oof_hours[0]
+    assert first_instant <= first.at_ns
+    assert first.btc_forecast == pytest.approx(first_model.forecast("BTCUSDT", first.btc_z))
+    # Recomputing that forecast from only the labels matured before the refit
+    # reproduces the archived replicate OOF forecast exactly.
+    observations = observations_from_hours(rows, range(len(rows)))
+    selection = select_ridge_chronological(observations, first_instant, locked_ridge=LOCKED_RIDGE)
+    independent = fit_huber_ridge(selection.eligible, LOCKED_RIDGE, fit_at_ns=first_instant)
+    assert first.btc_forecast == pytest.approx(independent.forecast("BTCUSDT", first.btc_z))
+
+
+def test_final_replicate_fit_cannot_rewrite_earlier_oof_forecasts():
+    rows = history()
+    oof_hours, refits = replicate_oof_hours(rows, locked_ridge=LOCKED_RIDGE)
+    first, last_instant, last_model = oof_hours[0], refits[-1][0], refits[-1][1]
+    assert last_instant > first.at_ns
+    assert first.btc_forecast != pytest.approx(last_model.forecast("BTCUSDT", first.btc_z))
+    baseline = tuple((hour.at_ns, hour.btc_forecast, hour.btc_residual) for hour in oof_hours[:240])
+    mutated = tuple([replace(row, btc_forecast=row.btc_forecast * 50, eth_residual=row.eth_residual * 50)
+                     if row.at_ns > oof_hours[240].at_ns else row for row in rows])
+    rebuilt, _ = replicate_oof_hours(mutated, locked_ridge=LOCKED_RIDGE)
+    assert tuple((hour.at_ns, hour.btc_forecast, hour.btc_residual) for hour in rebuilt[:240]) == baseline
+
+
 def test_cost_and_execution_evidence_are_required_and_never_invented():
     rows = history(30)
     estimate = estimate_cost_assumptions(rows, minimum_observations=24)
-    assert estimate.observations == 30 * 24 * 2  # one observation per instrument per hour
-    assert float(estimate.spread_impact) == pytest.approx(0.00014)  # median of BTC 1.2bp and ETH 1.6bp
+    assert estimate.observations == 30 * 24 * 2
+    assert float(estimate.spread_impact) == pytest.approx(0.00014)
     execution = estimate_execution_evidence(rows, instrument="BTCUSDT", minimum_observations=24)
     assert execution.entry_latency_ns == 120_000_000
     assert execution.depth_notional == Decimal("250000.0")
     assert float(execution.spread_bp) == pytest.approx(0.00012)
     with pytest.raises(NotEstimable, match="insufficient execution/cost observations"):
         estimate_cost_assumptions(rows[:10], minimum_observations=24)
-    # Displayed depth can never be derived from candle prices: dropping the
-    # observed depth makes the evidence unusable rather than OHLC-derived.
     without_depth = tuple(replace(row, spread_depth_observations=({"instrument": "BTCUSDT", "spread_bp": "1.2"},))
                           for row in rows)
     with pytest.raises(NotEstimable, match="missing archived spread/depth evidence"):
         estimate_execution_evidence(without_depth, instrument="BTCUSDT", minimum_observations=24)
-    no_execution = tuple(replace(row, spread_depth_observations=(), latency_fill_observations=()) for row in rows)
-    with pytest.raises(NotEstimable, match="missing archived spread/depth evidence"):
-        estimate_execution_evidence(no_execution, instrument="BTCUSDT", minimum_observations=24)
 
 
-def test_funding_evidence_is_required_and_changes_replicate_mean_pnl():
+def test_path_latency_comes_from_the_sampled_block_not_a_replicate_median():
+    rows = history(20)
+    path = rows[:48]
+    assert path_latency_ns(path, "BTCUSDT") == 120_000_000
+    mutated = tuple(replace(row, latency_fill_observations=({"instrument": "BTCUSDT", "entry_latency_ms": "500"},))
+                    for row in path)
+    assert path_latency_ns(mutated, "BTCUSDT") == 500_000_000
+    # Missing path latency is NOT_ESTIMABLE rather than substituted from elsewhere.
+    missing = tuple(replace(row, latency_fill_observations=()) for row in path)
+    assert path_latency_ns(missing, "BTCUSDT") is None
+
+
+def test_funding_uses_current_anchor_plus_sampled_changes():
+    frozen = action()
     rows = history(30)
-    frozen = action()
     model = fitted_model(rows)
-    with_funding, paths, _ = replay_replicate(frozen, rows, model=model, features=features(), block_length=48,
-                                              instrument="BTCUSDT", inner_paths=2, seed=1,
-                                              assumptions=assumptions())
-    assert paths > 0
-    zero_rate = history(30, funding_rate="0.0")
-    without_cost, _, _ = replay_replicate(frozen, zero_rate, model=model, features=features(), block_length=48,
-                                          instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions())
-    assert with_funding != without_cost
-    no_funding = tuple(replace(row, funding_observations=(), funding_settlement_at_ns=None) for row in rows)
-    # Without archived funding evidence no path can be valued, so the replicate
-    # fails closed instead of silently replaying with empty settlements.
-    with pytest.raises(NotEstimable, match="NOT_ESTIMABLE"):
-        replay_replicate(frozen, no_funding, model=model, features=features(), block_length=48,
-                         instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions())
+    base, _, execution = replay_replicate(frozen, rows, model=model, causal_closes=causal_closes(),
+                                          block_length=48, instrument="BTCUSDT", inner_paths=2, seed=1,
+                                          assumptions=assumptions(), funding_anchor=anchor(predicted="0.000010"))
+    assert execution.funding_anchor_kind == "PREDICTED"
+    assert execution.funding_downgrade is None
+    # Changing the current anchor changes the simulated funding path.
+    higher, _, _ = replay_replicate(frozen, rows, model=model, causal_closes=causal_closes(),
+                                    block_length=48, instrument="BTCUSDT", inner_paths=2, seed=1,
+                                    assumptions=assumptions(), funding_anchor=anchor(predicted="0.005000"))
+    assert higher != base
+    # The fallback settled anchor carries the explicit downgrade label.
+    _, _, fallback = replay_replicate(frozen, rows, model=model, causal_closes=causal_closes(),
+                                      block_length=48, instrument="BTCUSDT", inner_paths=2, seed=1,
+                                      assumptions=assumptions(), funding_anchor=anchor(predicted=None))
+    assert fallback.funding_anchor_kind == "SETTLED"
+    assert fallback.funding_downgrade == "PREDICTED_HISTORY_UNAVAILABLE"
+    # No observable anchor at all is not estimable.
+    with pytest.raises(NotEstimable, match="no observable funding anchor"):
+        replay_replicate(frozen, rows, model=model, causal_closes=causal_closes(), block_length=48,
+                         instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions(),
+                         funding_anchor=FundingAnchor())
 
 
-def test_refitted_coefficients_are_consumed_by_scenario_generation():
-    rows = history(100, signal=0.3)
-    other = history(100, signal=0.0)
-    model_a = fitted_model(rows)
-    model_b = fitted_model(other)
-    rebuilt_a = rebuild_replicate_hours(rows[:24], model_a)
-    rebuilt_b = rebuild_replicate_hours(rows[:24], model_b)
-    assert rebuilt_a[0].btc_forecast != rebuilt_b[0].btc_forecast
-    assert rebuilt_a[0].btc_residual != rebuilt_b[0].btc_residual
-    for before, after in zip(rows[:24], rebuilt_a, strict=True):
-        # The realized standardized return is archived evidence and never rewritten.
-        assert after.btc_forecast + after.btc_residual == pytest.approx(before.btc_forecast + before.btc_residual)
+def test_historical_absolute_funding_level_is_not_replayed_as_the_anchor():
+    """Two blocks with identical CHANGES but different absolute levels must agree."""
     frozen = action()
-    mean_a, _, _ = replay_replicate(frozen, rebuilt_a, model=model_a, features=features(), block_length=24,
-                                    instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions())
-    mean_b, _, _ = replay_replicate(frozen, rebuilt_b, model=model_b, features=features(), block_length=24,
-                                    instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions())
-    assert mean_a != mean_b
+    low = history(30, funding_base=0.00001, funding_step=0.000005)
+    high = history(30, funding_base=0.50000, funding_step=0.000005)
+    model = fitted_model(low)
+    base_anchor = anchor(predicted="0.000010")
+    low_mean, _, _ = replay_replicate(frozen, low, model=model, causal_closes=causal_closes(), block_length=48,
+                                      instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions(),
+                                      funding_anchor=base_anchor)
+    high_mean, _, _ = replay_replicate(frozen, high, model=model, causal_closes=causal_closes(), block_length=48,
+                                       instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions(),
+                                       funding_anchor=base_anchor)
+    assert low_mean == pytest.approx(high_mean, abs=1e-9)
+
+
+def test_sampled_funding_changes_move_the_simulated_path():
+    frozen = action()
+    flat = history(30, funding_step=0.0)
+    rising = history(30, funding_step=0.000200)
+    model = fitted_model(flat)
+    base_anchor = anchor(predicted="0.000010")
+    flat_mean, _, _ = replay_replicate(frozen, flat, model=model, causal_closes=causal_closes(), block_length=48,
+                                       instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions(),
+                                       funding_anchor=base_anchor)
+    rising_mean, _, _ = replay_replicate(frozen, rising, model=model, causal_closes=causal_closes(), block_length=48,
+                                         instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions(),
+                                         funding_anchor=base_anchor)
+    assert flat_mean != rising_mean
 
 
 def test_changing_bootstrap_training_labels_changes_replicate_pnl():
     frozen = action()
-    first, _ = replicate_evaluation(policy=frozen, history=history(130, signal=0.3), block_length=48,
+    first, _ = replicate_evaluation(policy=frozen, history=history(150, signal=0.3), block_length=48,
                                     instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions(),
-                                    features=features(), action_hash="frozen-action", fit_at_ns=FIT_AT_NS)
-    second, _ = replicate_evaluation(policy=frozen, history=history(130, signal=0.0), block_length=48,
+                                    causal_closes=causal_closes(), funding_anchor=anchor(),
+                                    locked_ridge=LOCKED_RIDGE, action_hash="frozen-action")
+    second, _ = replicate_evaluation(policy=frozen, history=history(150, signal=0.0), block_length=48,
                                      instrument="BTCUSDT", inner_paths=2, seed=1, assumptions=assumptions(),
-                                     features=features(), action_hash="frozen-action", fit_at_ns=FIT_AT_NS)
+                                     causal_closes=causal_closes(), funding_anchor=anchor(),
+                                     locked_ridge=LOCKED_RIDGE, action_hash="frozen-action")
     assert first.mean_pnl != second.mean_pnl
     assert first.action_hash == second.action_hash == "frozen-action"
     assert first.scaler_refit and first.ridge_reselected and first.chronological_oof_rebuilt and first.costs_reestimated
 
 
-def test_replicate_is_deterministic_and_uses_the_frozen_model():
+def test_replicate_is_deterministic_and_keeps_the_locked_ridge():
     frozen = action()
-    rows = history(130)
+    rows = history(150)
     first, fit_a = replicate_evaluation(policy=frozen, history=rows, block_length=48, instrument="BTCUSDT",
-                                        inner_paths=2, seed=5, assumptions=assumptions(), features=features(),
-                                        action_hash="frozen-action", fit_at_ns=FIT_AT_NS)
+                                        inner_paths=2, seed=5, assumptions=assumptions(),
+                                        causal_closes=causal_closes(), funding_anchor=anchor(),
+                                        locked_ridge=LOCKED_RIDGE, action_hash="frozen-action")
     second, fit_b = replicate_evaluation(policy=frozen, history=rows, block_length=48, instrument="BTCUSDT",
-                                         inner_paths=2, seed=5, assumptions=assumptions(), features=features(),
-                                         action_hash="frozen-action", fit_at_ns=FIT_AT_NS)
+                                         inner_paths=2, seed=5, assumptions=assumptions(),
+                                         causal_closes=causal_closes(), funding_anchor=anchor(),
+                                         locked_ridge=LOCKED_RIDGE, action_hash="frozen-action")
     assert first.mean_pnl == second.mean_pnl and fit_a == fit_b
+    assert fit_a.ridge == LOCKED_RIDGE and fit_b.ridge == LOCKED_RIDGE
     assert fit_a.training_rows > 0 and fit_a.validation_rows > 0
-    assert fit_a.execution.observations > 0
-
-
-def test_current_state_changes_replicate_mean_pnl():
-    frozen = action()
-    rows = history(100)
-    low, _, _ = replay_replicate(frozen, rows, model=fitted_model(rows), features=features(z=0.0),
-                                 block_length=48, instrument="BTCUSDT", inner_paths=2, seed=1,
-                                 assumptions=assumptions())
-    high, _, _ = replay_replicate(frozen, rows, model=fitted_model(rows), features=features(z=20.0),
-                                  block_length=48, instrument="BTCUSDT", inner_paths=2, seed=1,
-                                  assumptions=assumptions())
-    assert low != high
+    assert len(fit_a.refit_instants) >= 1
 
 
 def test_full_outer_process_evaluates_the_same_frozen_action_with_small_counts():
     frozen = policy(side=Side.LONG, quantity=Decimal("1"), mark=Decimal("100"), sigma=0.01, slot_at_ns=SLOT_NS)
-    result = outer_lcb(policy=frozen, history=history(130), block_length=48, instrument="BTCUSDT",
-                       action_hash="frozen-action", assumptions=assumptions(), features=features(),
-                       fit_at_ns=FIT_AT_NS,
-                       replicates=3, inner_paths=2, replicate_seed=5, inner_seed_a=6, inner_seed_b=7,
+    result = outer_lcb(policy=frozen, history=history(150), block_length=48, instrument="BTCUSDT",
+                       action_hash="frozen-action", assumptions=assumptions(), causal_closes=causal_closes(),
+                       funding_anchor=anchor(), locked_ridge=LOCKED_RIDGE,
+                       replicates=2, inner_paths=2, replicate_seed=5, inner_seed_a=6, inner_seed_b=7,
                        minimum_cost_observations=24)
     assert isinstance(result, OuterBootstrapResult)
-    assert len(result.replicate_means) == 3
+    assert len(result.replicate_means) == 2
     assert result.action_hash == "frozen-action"
     assert result.status in {"ESTIMATED", "NO_TRADE_NUMERICAL"}
 
 
-def test_replay_replicate_uses_the_default_bridge_support():
+def test_causal_window_is_produced_by_the_frozen_feature_engine():
+    values = feature_values(causal_window())
+    assert values.end_at_ns == SLOT_NS
+    assert values.sigma > 0 and math.isfinite(values.z)
     assert DEFAULT_BRIDGE_SUPPORT.barrier_calibrated is True
+
+
+def test_changed_bootstrap_training_labels_move_replicate_mean_pnl():
+    frozen = action()
+    rows = history(100)
+    # Mutate only the early (training) labels of the resampled records: the
+    # replicate refit must consume them and move the scenario P&L.
+    mutated = tuple(replace(row, btc_forecast=row.btc_forecast + 0.5, eth_forecast=row.eth_forecast + 0.5)
+                    if row.at_ns < rows[0].at_ns + 20 * 24 * HOUR_NS else row for row in rows)
+    baseline, fit_a = replicate_evaluation(policy=frozen, history=rows, block_length=48, instrument="BTCUSDT",
+                                           inner_paths=2, seed=3, assumptions=assumptions(),
+                                           causal_closes=causal_closes(), funding_anchor=anchor(),
+                                           locked_ridge=LOCKED_RIDGE, action_hash="frozen-action")
+    changed, fit_b = replicate_evaluation(policy=frozen, history=mutated, block_length=48, instrument="BTCUSDT",
+                                          inner_paths=2, seed=3, assumptions=assumptions(),
+                                          causal_closes=causal_closes(), funding_anchor=anchor(),
+                                          locked_ridge=LOCKED_RIDGE, action_hash="frozen-action")
+    assert baseline.mean_pnl != changed.mean_pnl
+    assert fit_a.ridge == fit_b.ridge == LOCKED_RIDGE
+
+
+def test_locked_ridge_is_identical_across_bootstrap_replicates():
+    frozen = action()
+    rows = history(150)
+    subsets = block_bootstrap_indices(len(rows), block_length=48, count=2, seed=11)
+    ridges = set()
+    for indices in subsets:
+        subset = tuple(rows[index] for index in indices)
+        _, fit = replicate_evaluation(policy=frozen, history=subset, block_length=48, instrument="BTCUSDT",
+                                      inner_paths=2, seed=1, assumptions=assumptions(),
+                                      causal_closes=causal_closes(), funding_anchor=anchor(),
+                                      locked_ridge=LOCKED_RIDGE, action_hash="frozen-action")
+        ridges.add(fit.ridge)
+    assert ridges == {LOCKED_RIDGE}

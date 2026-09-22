@@ -10,8 +10,6 @@ from dataclasses import dataclass
 BLOCK_CANDIDATES = (24, 48, 72)
 MIN_OOF_HOURS = 60 * 24
 ENERGY_HORIZONS = (4, 24)
-DEFAULT_CANDIDATE_STRIDE = 24
-DEFAULT_MAX_SCENARIOS = 48
 
 
 @dataclass(frozen=True)
@@ -109,13 +107,37 @@ def _energy_score(samples: Sequence[tuple[float, float]], observation: tuple[flo
     def distance(a: tuple[float, float], b: tuple[float, float]) -> float:
         return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
     first = sum(distance(x, observation) for x in samples) / len(samples)
-    second = sum(distance(a, b) for a in samples for b in samples) / (2 * len(samples) ** 2)
-    return first - second
+    return first - pairwise_cloud_distance(samples)
+
+
+def pairwise_cloud_distance(samples: Sequence[tuple[float, float]]) -> float:
+    """Exact ``ΣΣ ||a-b|| / (2 n²)`` term of the frozen energy score.
+
+    The cloud term does not depend on the observation, so it is computed once per
+    candidate/horizon/window instead of once per validation window.  The frozen
+    definition, eligible starts and weighting are unchanged; only the summation
+    order is symmetric (ordered pairs == 2 × unordered pairs, diagonal is zero).
+    """
+    count = len(samples)
+    if count < 1:
+        raise ValueError("samples required")
+    xs = [point[0] for point in samples]
+    ys = [point[1] for point in samples]
+    total = 0.0
+    sqrt = math.sqrt
+    for index in range(count):
+        x = xs[index]
+        y = ys[index]
+        for other in range(index + 1, count):
+            dx = x - xs[other]
+            dy = y - ys[other]
+            total += sqrt(dx * dx + dy * dy)
+    return total / (count * count)
 
 
 def chronological_energy_scores(
     training: Sequence[JointResidualHour], validation: Sequence[JointResidualHour], *, training_btc_sigma: float, training_eth_sigma: float,
-    candidate_stride: int | None = None, max_scenarios: int | None = DEFAULT_MAX_SCENARIOS,
+    candidate_stride: int | None = None, max_scenarios: int | None = None,
 ) -> dict[int, float]:
     """Frozen 4h/24h equal-weight joint-return validation objective.
 
@@ -146,15 +168,17 @@ def chronological_energy_scores(
             if max_scenarios is not None:
                 if max_scenarios < 2:
                     raise ValueError("at least two energy scenarios required")
-                # The most recent non-overlapping candidate scenarios bound the
-                # quadratic objective without touching the frozen energy math.
                 samples = samples[-max_scenarios:]
+            # The observation-independent cloud term is computed once per
+            # candidate/horizon/window: identical frozen definition, no truncation.
+            cloud = pairwise_cloud_distance(samples)
             for begin in range(0, len(validation) - horizon + 1, horizon):
                 actual = (
                     sum(x.btc_sigma * (x.btc_forecast + x.btc_residual) for x in validation[begin : begin + horizon]) / training_btc_sigma,
                     sum(x.eth_sigma * (x.eth_forecast + x.eth_residual) for x in validation[begin : begin + horizon]) / training_eth_sigma,
                 )
-                component_scores.append(_energy_score(samples, actual))
+                first = sum(math.dist(sample, actual) for sample in samples) / len(samples)
+                component_scores.append(first - cloud)
         scores[length] = sum(component_scores) / len(component_scores)
     return scores
 
@@ -172,8 +196,7 @@ class BlockSelectionResult:
 
 def select_block_length_frozen(
     hours: Sequence[JointResidualHour], *, fit_at_ns: int, training_btc_sigma: float, training_eth_sigma: float,
-    candidate_stride: int | None = DEFAULT_CANDIDATE_STRIDE, max_scenarios: int | None = DEFAULT_MAX_SCENARIOS,
-    min_support_days: int = 60,
+    candidate_stride: int | None = None, max_scenarios: int | None = None, min_support_days: int = 60,
 ) -> BlockSelectionResult:
     """Select the block length using the SAME frozen windows as the mean model.
 
@@ -181,6 +204,10 @@ def select_block_length_frozen(
     window has adequate preceding training support, and the frozen 4h/24h
     equal-weight energy objective scores each candidate block length on the same
     orchestration used by the weekly mean-model refit.
+
+    Production defaults evaluate the frozen eligible history exactly: no
+    candidate stride and no scenario truncation.  ``candidate_stride`` /
+    ``max_scenarios`` exist only for explicitly-declared diagnostic fixtures.
     """
     from .huber_mean import DAY_NS, frozen_validation_windows
 

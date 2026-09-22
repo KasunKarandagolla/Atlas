@@ -4,15 +4,13 @@ Each replicate re-runs the whole causal chain on block-resampled synchronized
 history and evaluates the *same immutable current action*:
 
 1. resample the synchronized records;
-2. keep the frozen chronological train/validation structure (three 7-day windows);
-3. rebuild the replicate scaler/model/calibration through the shared frozen
-   ridge-selection contract;
-4. derive replicate-consistent scenario inputs (replicate ``mu``/residual applied
-   to the archived minute innovations) so the refit materially moves P&L;
-5. replay the same immutable action using only archived execution evidence.
-
-Execution quotes/depth/spread, latency and funding always come from the SAME
-sampled block that produced the return path.  Nothing is derived from OHLC.
+2. refit the scaler/model with the LOCKED penalty (no per-replicate search);
+3. rebuild genuine chronological OOF forecasts — every historical forecast uses
+   only labels that matured before its origin and is never rewritten by a later
+   fit;
+4. replay the same immutable action with the simulated feature state evolving
+   hourly through the frozen feature engine, causal funding forecasts and the
+   same block's execution evidence.
 """
 
 from __future__ import annotations
@@ -24,15 +22,21 @@ from decimal import Decimal
 from statistics import fmean, median
 
 from atlas.science.execution_replay import ReplayMinute
-from atlas.science.funding import FundingSettlement
-from atlas.science.huber_mean import HOUR_NS, MeanObservation, fit_huber_ridge, select_ridge_chronological
+from atlas.science.funding import FundingForecast, FundingSettlement, forecast_funding
+from atlas.science.huber_mean import (
+    HOUR_NS,
+    HuberRidgeModel,
+    MeanObservation,
+    fit_huber_ridge,
+    is_monday_midnight,
+    select_ridge_chronological,
+)
 from atlas.science.policy_replay import PolicyReplayResult, ReplayAssumptions, replay_policy
 from atlas.science.residual_blocks import JointResidualHour, eligible_starts, sample_blocks
 from atlas.science.scenarios import (
     DEFAULT_BRIDGE_SUPPORT,
     HORIZON_HOURS,
     BridgeSupport,
-    CurrentModelState,
     JointMinutePaths,
     ScenarioNotEstimable,
     SynchronizedPrices,
@@ -46,12 +50,12 @@ from atlas.science.uncertainty import (
     block_bootstrap_indices,
     bootstrap_lcb,
 )
+from atlas.strategy.features import HourlyClose
 from atlas.strategy.policy import FixedPolicy
 
 MINIMUM_COST_OBSERVATIONS = 24
 MIN_ESTIMABLE_PATH_FRACTION = 0.90
-MAX_REPLICATE_HOURS = 24 * 130
-FUNDING_SETTLEMENT_INTERVAL_NS = 8 * HOUR_NS
+MAX_REPLICATE_HOURS = 24 * 180
 
 
 class NotEstimable(ValueError):
@@ -67,12 +71,23 @@ class CostEstimate:
 
 @dataclass(frozen=True)
 class ExecutionEvidence:
-    """Archived per-hour execution evidence used by the replicate replay."""
+    """Archived execution evidence summary used by the replicate replay."""
 
     spread_bp: Decimal
     depth_notional: Decimal
     entry_latency_ns: int
     observations: int
+    funding_anchor_kind: str = ""
+    funding_downgrade: str | None = None
+
+
+@dataclass(frozen=True)
+class FundingAnchor:
+    """Decision-time funding evidence: observable anchor plus known settlement."""
+
+    next_settlement_at_ns: int | None = None
+    latest_predicted_rate: Decimal | None = None
+    latest_settled_rate: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -82,6 +97,7 @@ class ReplicateFit:
     validation_rows: int
     cost: CostEstimate
     execution: ExecutionEvidence
+    refit_instants: tuple[int, ...]
 
 
 def observations_from_hours(hours: Sequence[JointResidualHour], indices: Sequence[int]) -> list[MeanObservation]:
@@ -122,31 +138,62 @@ def _instrument_observation(observation: dict[str, str], instrument: str) -> boo
     return tagged is None or tagged == instrument
 
 
+def path_spread_depth(hour: JointResidualHour, instrument: str) -> tuple[Decimal, Decimal] | None:
+    """Displayed spread/depth for one sampled hour strictly from archived evidence."""
+    if hour.execution_missing:
+        return None
+    for observation in hour.spread_depth_observations:
+        if not _instrument_observation(observation, instrument):
+            continue
+        spread = observation.get("spread_bp")
+        depth = observation.get("depth_notional")
+        if spread is None or depth is None:
+            continue
+        if float(spread) <= 0 or float(depth) <= 0 or not math.isfinite(float(spread)):
+            return None
+        return Decimal(spread), Decimal(depth)
+    return None
+
+
+def path_latency_ns(hours: Sequence[JointResidualHour], instrument: str) -> int | None:
+    """Entry latency observed on THIS sampled path (never a replicate-wide median)."""
+    observed: list[float] = []
+    for hour in hours:
+        found = None
+        for observation in hour.latency_fill_observations:
+            if not _instrument_observation(observation, instrument):
+                continue
+            found = observation.get("entry_latency_ms")
+            if found is not None:
+                break
+        if found is None:
+            return None
+        observed.append(float(found))
+    if not observed or not all(math.isfinite(x) and x >= 0 for x in observed):
+        return None
+    return int(median(observed) * 1_000_000)
+
+
 def estimate_execution_evidence(hours: Sequence[JointResidualHour], *, instrument: str,
-                                minimum_observations: int = MINIMUM_COST_OBSERVATIONS) -> ExecutionEvidence:
-    """Displayed spread/depth and entry latency strictly from archived observations."""
+                                minimum_observations: int = MINIMUM_COST_OBSERVATIONS,
+                                funding_anchor_kind: str = "", funding_downgrade: str | None = None) -> ExecutionEvidence:
+    """Aggregate archived spread/depth/latency for evidence reporting only."""
     spreads: list[float] = []
     depths: list[float] = []
     latencies: list[float] = []
     for hour in hours:
         if hour.execution_missing:
             continue
-        for observation in hour.spread_depth_observations:
-            if not _instrument_observation(observation, instrument):
-                continue
-            spread = observation.get("spread_bp")
-            depth = observation.get("depth_notional")
-            if spread is None or depth is None:
-                continue
-            spreads.append(float(spread))
-            depths.append(float(depth))
+        evidence = path_spread_depth(hour, instrument)
+        if evidence is not None:
+            spreads.append(float(evidence[0]))
+            depths.append(float(evidence[1]))
         for observation in hour.latency_fill_observations:
             if not _instrument_observation(observation, instrument):
                 continue
             latency = observation.get("entry_latency_ms")
-            if latency is None:
-                continue
-            latencies.append(float(latency))
+            if latency is not None:
+                latencies.append(float(latency))
     if len(spreads) < minimum_observations or len(depths) < minimum_observations:
         raise NotEstimable("NOT_ESTIMABLE: missing archived spread/depth evidence")
     if not all(math.isfinite(x) and x > 0 for x in spreads + depths):
@@ -154,41 +201,73 @@ def estimate_execution_evidence(hours: Sequence[JointResidualHour], *, instrumen
     if not latencies:
         raise NotEstimable("NOT_ESTIMABLE: missing archived latency evidence")
     return ExecutionEvidence(Decimal(str(median(spreads) / 10_000.0)), Decimal(str(median(depths))),
-                             int(median(latencies) * 1_000_000), len(spreads))
+                             int(median(latencies) * 1_000_000), len(spreads), funding_anchor_kind, funding_downgrade)
 
 
-def rebuild_replicate_hours(hours: Sequence[JointResidualHour], model: object) -> tuple[JointResidualHour, ...]:
-    """Derive replicate-consistent ``mu``/residual scenario inputs from a refit model.
+def replicate_refits(hours: Sequence[JointResidualHour], *, locked_ridge: float,
+                     ) -> tuple[tuple[int, HuberRidgeModel], ...]:
+    """Frozen Monday refits inside the replicate sample, using the LOCKED penalty."""
+    rows = observations_from_hours(hours, range(len(hours)))
+    refits: list[tuple[int, HuberRidgeModel]] = []
+    for instant in sorted({hour.at_ns for hour in hours if is_monday_midnight(hour.at_ns)}):
+        try:
+            selection = select_ridge_chronological(rows, instant, locked_ridge=locked_ridge)
+        except ValueError:
+            continue
+        refits.append((instant, fit_huber_ridge(selection.eligible, locked_ridge, fit_at_ns=instant,
+                                                validation_intervals=selection.validation_intervals)))
+    if not refits:
+        raise NotEstimable("NOT_ESTIMABLE: replicate has no matured causal refit")
+    return tuple(refits)
 
-    The realized standardized return is archived evidence; the replicate model
-    only changes the conditional mean, so the residual is recomputed from the
-    refitted coefficients.  Coefficients stay frozen for the whole path.
+
+def replicate_oof_hours(hours: Sequence[JointResidualHour], *, locked_ridge: float,
+                        ) -> tuple[tuple[JointResidualHour, ...], tuple[tuple[int, HuberRidgeModel], ...]]:
+    """Genuine chronological OOF: every forecast uses only earlier matured labels.
+
+    Weekly refits follow the frozen Monday cadence inside the replicate sample and
+    reuse the frozen eligibility/fold contract with the LOCKED penalty.  A later
+    fit never rewrites an earlier archived forecast.
     """
+    sampled = tuple(hours)
+    if not sampled:
+        raise NotEstimable("NOT_ESTIMABLE: empty bootstrap replicate")
+    refits = replicate_refits(sampled, locked_ridge=locked_ridge)
     rebuilt: list[JointResidualHour] = []
-    for hour in hours:
-        btc_forecast = model.forecast("BTCUSDT", hour.btc_z)  # type: ignore[attr-defined]
-        eth_forecast = model.forecast("ETHUSDT", hour.eth_z)  # type: ignore[attr-defined]
+    index = 0
+    for hour in sampled:
+        while index + 1 < len(refits) and refits[index + 1][0] <= hour.at_ns:
+            index += 1
+        instant, model = refits[index]
+        if instant > hour.at_ns:
+            # No matured causal fit exists at this origin yet: the replicate OOF
+            # archive simply does not contain that hour (never a back-filled forecast).
+            continue
+        btc_forecast = model.forecast("BTCUSDT", hour.btc_z)
+        eth_forecast = model.forecast("ETHUSDT", hour.eth_z)
         rebuilt.append(replace(hour, btc_forecast=btc_forecast,
                                btc_residual=(hour.btc_forecast + hour.btc_residual) - btc_forecast,
                                eth_forecast=eth_forecast,
                                eth_residual=(hour.eth_forecast + hour.eth_residual) - eth_forecast))
-    return tuple(rebuilt)
+    if not rebuilt:
+        raise NotEstimable("NOT_ESTIMABLE: replicate has no hours with a matured causal fit")
+    return tuple(rebuilt), refits
 
 
-def current_state(model: object, features: dict[str, tuple[float, float]]) -> dict[str, CurrentModelState]:
-    """Current decision model state per instrument: observed sigma, refit mean."""
-    return {instrument: CurrentModelState(sigma=sigma, mu=model.forecast(instrument, z))  # type: ignore[attr-defined]
-            for instrument, (z, sigma) in features.items()}
+def _causal_window(causal_closes: dict[str, tuple[HourlyClose, ...]], instrument: str) -> tuple[HourlyClose, ...]:
+    if instrument not in causal_closes:
+        raise NotEstimable("NOT_ESTIMABLE: missing causal close window for the instrument")
+    return causal_closes[instrument]
 
 
 def _funding_settlements(hours: Sequence[JointResidualHour], *, instrument: str, base_offset_ns: int,
-                         minutes: Sequence[ReplayMinute]) -> tuple[FundingSettlement, ...]:
-    """Sampled funding settlements rebased onto the replay timeline."""
-    if not any(hour.funding_observations or hour.funding_settlement_at_ns is not None for hour in hours):
-        raise NotEstimable("NOT_ESTIMABLE: missing archived funding evidence")
-    price_at = {minute.at_ns: minute for minute in minutes}
-    marks = sorted(price_at)
-    settlements = []
+                         minutes: Sequence[ReplayMinute], anchor: FundingAnchor,
+                         ) -> tuple[tuple[FundingSettlement, ...], FundingForecast]:
+    """Current causal anchor plus sampled historical settlement CHANGES."""
+    if anchor.latest_predicted_rate is None and anchor.latest_settled_rate is None:
+        raise NotEstimable("NOT_ESTIMABLE: no observable funding anchor")
+    rates_seen: list[Decimal] = []
+    instants: list[int] = []
     for hour in hours:
         if hour.funding_settlement_at_ns is None:
             continue
@@ -199,130 +278,140 @@ def _funding_settlements(hours: Sequence[JointResidualHour], *, instrument: str,
                 break
         if rate is None:
             continue
-        at_ns = hour.funding_settlement_at_ns + base_offset_ns
-        candidate = next((mark for mark in marks if mark >= at_ns), None)
-        if candidate is None:
+        rates_seen.append(Decimal(rate))
+        instants.append(hour.funding_settlement_at_ns + base_offset_ns)
+    if not instants:
+        raise NotEstimable("NOT_ESTIMABLE: sampled block carries no funding settlement evidence")
+    # Historical evidence supplies settlement-to-settlement changes only; the
+    # absolute level is never replayed as if it were observable today.
+    changes = tuple(rates_seen[index + 1] - rates_seen[index] for index in range(len(rates_seen) - 1))
+    known_next = anchor.next_settlement_at_ns if anchor.next_settlement_at_ns is not None else instants[0]
+    forecast = forecast_funding(next_settlement_at_ns=known_next,
+                                latest_predicted_rate=anchor.latest_predicted_rate,
+                                latest_settled_rate=anchor.latest_settled_rate,
+                                historical_settlement_changes=changes,
+                                horizon_settlements=len(instants))
+    price_at = {minute.at_ns: minute for minute in minutes}
+    available = sorted(price_at)
+    settlements: list[FundingSettlement] = []
+    for forecast_rate, settlement_at_ns in zip(forecast.rates, instants, strict=True):
+        minute_at = next((candidate for candidate in available if candidate >= settlement_at_ns), None)
+        if minute_at is None:
             continue
-        settlements.append(FundingSettlement(candidate, Decimal(rate), price_at[candidate].mark_low))
+        settlements.append(FundingSettlement(minute_at, forecast_rate, price_at[minute_at].mark_low))
     if not settlements:
-        raise NotEstimable("NOT_ESTIMABLE: no usable funding settlement evidence on the replay path")
-    return tuple(settlements)
+        raise NotEstimable("NOT_ESTIMABLE: no usable funding settlement on the replay path")
+    return tuple(settlements), forecast
 
 
-def _replay_minutes(paths: JointMinutePaths, instrument: str, *, hours: Sequence[JointResidualHour],
-                    start_at_ns: int | None = None) -> tuple[ReplayMinute, ...]:
-    """Build replay minutes whose quotes/depth come only from archived evidence."""
+def replay_minutes(paths: JointMinutePaths, instrument: str, *, hours: Sequence[JointResidualHour],
+                   start_at_ns: int | None = None) -> tuple[ReplayMinute, ...]:
+    """Replay minutes whose quotes/depth come only from the sampled block's evidence."""
     minutes = paths.btc if instrument == "BTCUSDT" else paths.eth
     offset = 0 if start_at_ns is None else start_at_ns - minutes[0].at_ns
     output: list[ReplayMinute] = []
     for index, minute in enumerate(minutes):
-        hour_index = min(index // 60, len(hours) - 1)
-        hour = hours[hour_index]
-        spread = None
-        depth = None
-        for observation in hour.spread_depth_observations:
-            if _instrument_observation(observation, instrument):
-                spread = observation.get("spread_bp")
-                depth = observation.get("depth_notional")
-                break
-        if hour.execution_missing or spread is None or depth is None:
+        hour = hours[min(index // 60, len(hours) - 1)]
+        evidence = path_spread_depth(hour, instrument)
+        if evidence is None:
             raise NotEstimable("NOT_ESTIMABLE: sampled hour lacks displayed quote/depth evidence")
+        spread, depth = evidence
         mid = Decimal(str(minute.last.close))
-        bid = mid * (Decimal("1") - Decimal(spread) / Decimal("20000"))
-        ask = mid * (Decimal("1") + Decimal(spread) / Decimal("20000"))
-        depth_qty = Decimal(depth) / mid
+        bid = mid * (Decimal("1") - spread / Decimal("20000"))
+        ask = mid * (Decimal("1") + spread / Decimal("20000"))
+        depth_qty = depth / mid
         output.append(ReplayMinute(minute.at_ns + offset, bid, ask, depth_qty, depth_qty,
                                    Decimal(str(minute.mark.low)), Decimal(str(minute.mark.high)),
                                    Decimal(str(minute.last.low)), Decimal(str(minute.last.high))))
     return tuple(output)
 
 
-def replay_replicate(policy: FixedPolicy, hours: Sequence[JointResidualHour], *, model: object,
-                     features: dict[str, tuple[float, float]], block_length: int, instrument: str,
-                     inner_paths: int, seed: int, assumptions: ReplayAssumptions,
+def replay_replicate(policy: FixedPolicy, hours: Sequence[JointResidualHour], *, model: HuberRidgeModel,
+                     causal_closes: dict[str, tuple[HourlyClose, ...]], block_length: int, instrument: str,
+                     inner_paths: int, seed: int, assumptions: ReplayAssumptions, funding_anchor: FundingAnchor,
                      support: BridgeSupport = DEFAULT_BRIDGE_SUPPORT,
-                     minimum_observations: int = MINIMUM_COST_OBSERVATIONS) -> tuple[float, int, ExecutionEvidence]:
-    """Mean P&L over inner paths for one already-frozen action and one replicate model."""
+                     minimum_observations: int = MINIMUM_COST_OBSERVATIONS,
+                     cost: CostEstimate | None = None) -> tuple[float, int, ExecutionEvidence]:
+    """Mean P&L over inner paths for one frozen action and one replicate model."""
     starts = eligible_starts(hours, block_length)
     if not starts:
         raise NotEstimable("NOT_ESTIMABLE: no contiguous synchronized blocks")
-    execution = estimate_execution_evidence(hours, instrument=instrument, minimum_observations=minimum_observations)
-    cost = estimate_cost_assumptions(hours, minimum_observations=minimum_observations)
-    # Archived latency and cost evidence override unsupported caller assumptions.
-    effective = replace(assumptions, decision_to_venue_ns=assumptions.decision_to_venue_ns + execution.entry_latency_ns,
-                        taker_fee_rate=cost.taker_fee_rate)
-    states = current_state(model, features)
+    window = _causal_window(causal_closes, instrument)
+    if funding_anchor.latest_predicted_rate is None and funding_anchor.latest_settled_rate is None:
+        raise NotEstimable("NOT_ESTIMABLE: no observable funding anchor")
+    cost = cost or estimate_cost_assumptions(hours, minimum_observations=minimum_observations)
+    anchor_kind = "PREDICTED" if funding_anchor.latest_predicted_rate is not None else "SETTLED"
     anchor = SynchronizedPrices(float(policy.mark_reference), float(policy.mark_reference),
                                 float(policy.mark_reference))
     sampled = sample_blocks(hours, length=block_length, horizon_hours=HORIZON_HOURS + 1,
                             paths=inner_paths, seed=seed)
     replays: list[PolicyReplayResult] = []
+    downgrade: str | None = None
     for path in sampled:
+        latency_ns = path_latency_ns(path, instrument)
+        if latency_ns is None:
+            continue
         try:
-            minute_paths = joint_minute_paths(path, initial={instrument: anchor}, current={instrument: states[instrument]},
-                                              support=support)
+            minute_paths = joint_minute_paths(path, initial={instrument: anchor},
+                                              causal_closes={instrument: window}, model=model, support=support)
             first_minute = minute_paths.btc[0] if instrument == "BTCUSDT" else minute_paths.eth[0]
             base_offset = policy.decision_slot_at_ns - first_minute.at_ns
-            minutes = _replay_minutes(minute_paths, instrument, hours=path,
-                                      start_at_ns=policy.decision_slot_at_ns)
-            settlements = _funding_settlements(path, instrument=instrument, base_offset_ns=base_offset,
-                                               minutes=minutes)
+            minutes = replay_minutes(minute_paths, instrument, hours=path,
+                                     start_at_ns=policy.decision_slot_at_ns)
+            settlements, forecast = _funding_settlements(path, instrument=instrument, base_offset_ns=base_offset,
+                                                         minutes=minutes, anchor=funding_anchor)
+            downgrade = forecast.downgrade
         except ScenarioNotEstimable:
             continue
         except NotEstimable:
             continue
+        effective = replace(assumptions, decision_to_venue_ns=assumptions.decision_to_venue_ns + latency_ns,
+                            taker_fee_rate=cost.taker_fee_rate)
         replays.append(replay_policy(policy, minutes, settlements, effective))
     if not replays or len(replays) < MIN_ESTIMABLE_PATH_FRACTION * len(sampled):
         raise NotEstimable("NOT_ESTIMABLE: insufficient estimable replay paths")
     pnls = [float(result.pnl) for result in replays if result.pnl is not None]
     if len(pnls) < MIN_ESTIMABLE_PATH_FRACTION * len(replays):
         raise NotEstimable("NOT_ESTIMABLE: unbounded replay outcomes")
+    execution = estimate_execution_evidence(hours, instrument=instrument, minimum_observations=minimum_observations,
+                                            funding_anchor_kind=anchor_kind, funding_downgrade=downgrade)
     return fmean(pnls), len(pnls), execution
 
 
 def replicate_evaluation(
     *, policy: FixedPolicy, history: Sequence[JointResidualHour], block_length: int, instrument: str,
-    inner_paths: int, seed: int, assumptions: ReplayAssumptions, features: dict[str, tuple[float, float]],
-    fit_at_ns: int,
-    action_hash: str, support: BridgeSupport = DEFAULT_BRIDGE_SUPPORT,
+    inner_paths: int, seed: int, assumptions: ReplayAssumptions, causal_closes: dict[str, tuple[HourlyClose, ...]],
+    funding_anchor: FundingAnchor, locked_ridge: float, action_hash: str,
+    support: BridgeSupport = DEFAULT_BRIDGE_SUPPORT,
     minimum_cost_observations: int = MINIMUM_COST_OBSERVATIONS,
 ) -> tuple[ReplicateEvaluation, ReplicateFit]:
-    """One full frozen replicate: refit, ridge selection, OOF rebuild, replay.
-
-    ``history`` is the replicate's already-resampled record set; the caller owns
-    the block bootstrap so the same replicate sample feeds every stage.
-    """
+    """One full frozen replicate: resample, locked refit, causal OOF, replay."""
     if not history:
         raise NotEstimable("NOT_ESTIMABLE: empty bootstrap replicate")
-    sampled_hours = tuple(history)
-    if len(sampled_hours) > MAX_REPLICATE_HOURS:
-        sampled_hours = sampled_hours[-MAX_REPLICATE_HOURS:]
+    sampled_hours = tuple(history)[-MAX_REPLICATE_HOURS:]
+    oof_hours, refits = replicate_oof_hours(sampled_hours, locked_ridge=locked_ridge)
+    current_model = refits[-1][1]
     rows = observations_from_hours(sampled_hours, range(len(sampled_hours)))
-    if len(rows) < 2:
-        raise NotEstimable("NOT_ESTIMABLE: replicate lacks matured rows")
-    selection = select_ridge_chronological(rows, fit_at_ns)
-    # Same frozen contract as the weekly refit: the fold structure selects the
-    # ridge and the final coefficients are fit on all matured eligible labels.
+    selection = select_ridge_chronological(rows, refits[-1][0], locked_ridge=locked_ridge)
     window_start = selection.validation_intervals[0][0]
-    training_rows = [row for row in selection.eligible if row.label_at_ns < window_start]
-    validation_rows = [row for row in selection.eligible if row.label_at_ns >= window_start]
-    model = fit_huber_ridge(selection.eligible, selection.ridge, fit_at_ns=fit_at_ns,
-                            validation_intervals=selection.validation_intervals)
-    # Replicate-consistent scenario inputs: the refit changes mu and therefore the
-    # residual that is applied to the archived minute innovations.
-    replicate_hours = rebuild_replicate_hours(sampled_hours, model)
-    cost = estimate_cost_assumptions(sampled_hours, minimum_observations=minimum_cost_observations)
-    mean_pnl, paths, execution = replay_replicate(policy, replicate_hours, model=model, features=features,
-                                                  block_length=block_length, instrument=instrument,
-                                                  inner_paths=inner_paths, seed=seed, assumptions=assumptions,
-                                                  support=support, minimum_observations=minimum_cost_observations)
-    fit = ReplicateFit(selection.ridge, len(training_rows), len(validation_rows), cost, execution)
+    training_rows = sum(1 for row in selection.eligible if row.label_at_ns < window_start)
+    validation_rows = len(selection.eligible) - training_rows
+    cost = estimate_cost_assumptions(oof_hours, minimum_observations=minimum_cost_observations)
+    mean_pnl, paths, execution = replay_replicate(policy, oof_hours, model=current_model,
+                                                  causal_closes=causal_closes, block_length=block_length,
+                                                  instrument=instrument, inner_paths=inner_paths, seed=seed,
+                                                  assumptions=assumptions, funding_anchor=funding_anchor,
+                                                  support=support,
+                                                  minimum_observations=minimum_cost_observations, cost=cost)
+    fit = ReplicateFit(locked_ridge, training_rows, validation_rows, cost, execution,
+                       tuple(instant for instant, _ in refits))
     return ReplicateEvaluation(mean_pnl, action_hash, True, True, True, True), fit
 
 
 def outer_lcb(
     *, policy: FixedPolicy, history: Sequence[JointResidualHour], block_length: int, instrument: str,
-    action_hash: str, assumptions: ReplayAssumptions, features: dict[str, tuple[float, float]], fit_at_ns: int,
+    action_hash: str, assumptions: ReplayAssumptions, causal_closes: dict[str, tuple[HourlyClose, ...]],
+    funding_anchor: FundingAnchor, locked_ridge: float,
     replicates: int, inner_paths: int, replicate_seed: int, inner_seed_a: int, inner_seed_b: int,
     delta: float = INSTRUMENT_DELTA, support: BridgeSupport = DEFAULT_BRIDGE_SUPPORT,
     minimum_cost_observations: int = MINIMUM_COST_OBSERVATIONS,
@@ -337,14 +426,16 @@ def outer_lcb(
         subset = tuple(history[index] for index in indices)
         first, _ = replicate_evaluation(policy=policy, history=subset, block_length=block_length,
                                         instrument=instrument, inner_paths=inner_paths, seed=inner_seed_a,
-                                        assumptions=assumptions, features=features, action_hash=action_hash,
-                                        fit_at_ns=fit_at_ns,
-                                        support=support, minimum_cost_observations=minimum_cost_observations)
+                                        assumptions=assumptions, causal_closes=causal_closes,
+                                        funding_anchor=funding_anchor, locked_ridge=locked_ridge,
+                                        action_hash=action_hash, support=support,
+                                        minimum_cost_observations=minimum_cost_observations)
         second, _ = replicate_evaluation(policy=policy, history=subset, block_length=block_length,
                                          instrument=instrument, inner_paths=inner_paths, seed=inner_seed_b,
-                                         assumptions=assumptions, features=features, action_hash=action_hash,
-                                         fit_at_ns=fit_at_ns,
-                                         support=support, minimum_cost_observations=minimum_cost_observations)
+                                         assumptions=assumptions, causal_closes=causal_closes,
+                                         funding_anchor=funding_anchor, locked_ridge=locked_ridge,
+                                         action_hash=action_hash, support=support,
+                                         minimum_cost_observations=minimum_cost_observations)
         if first.action_hash != action_hash or second.action_hash != action_hash:
             raise ValueError("bootstrap changed immutable current action")
         means_a.append(first.mean_pnl)

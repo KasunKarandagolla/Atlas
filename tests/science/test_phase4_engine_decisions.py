@@ -242,3 +242,27 @@ def test_unit_per_unit_risk_separates_venue_and_trade_losses():
 def test_venue_collateral_limit_is_checked_against_account_evidence():
     over = decision_input(risk_inputs=candidate_risk_inputs(venue_collateral=Decimal("100000000")))
     assert evaluate_phase4(over).status is DecisionStatus.NO_TRADE_RISK
+
+
+def test_stress_evidence_must_belong_to_the_same_action():
+    baseline = decision_input()
+    assert evaluate_phase4(baseline).status is DecisionStatus.TRADE_CANDIDATE
+
+    # LONG policy with a SHORT stress template cannot qualify.
+    short_stress = complete_stress_input(side=Side.SHORT, quantity=Decimal("1"), mark=Decimal("100"))
+    opposite = replace(baseline.scenario, stress_template=short_stress)
+    assert evaluate_phase4(replace(baseline, scenario=opposite)).status is DecisionStatus.NOT_ESTIMABLE
+
+    # Different stressed mark reference cannot qualify.
+    other_mark = complete_stress_input(side=Side.LONG, quantity=Decimal("1"), mark=Decimal("101"))
+    wrong_mark = replace(baseline.scenario, stress_template=other_mark)
+    assert evaluate_phase4(replace(baseline, scenario=wrong_mark)).status is DecisionStatus.NOT_ESTIMABLE
+
+    # Candidate risk inputs are bound by canonical hash.
+    other_risk = candidate_risk_inputs(mark=Decimal("100"), beta=Decimal("0.5"))
+    assert evaluate_phase4(replace(baseline, risk_inputs=other_risk)).status is DecisionStatus.NOT_ESTIMABLE
+
+    # A stress template built for a different quantity cannot authorise this one.
+    stale_quantity = complete_stress_input(side=Side.LONG, quantity=Decimal("2"), mark=Decimal("100"))
+    mismatched = replace(baseline.scenario, stress_template=stale_quantity)
+    assert evaluate_phase4(replace(baseline, scenario=mismatched)).status is DecisionStatus.NOT_ESTIMABLE

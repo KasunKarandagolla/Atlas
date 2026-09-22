@@ -22,14 +22,17 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 
+from atlas.strategy.features import HOUR_NS, HourlyClose, feature_values
+
+from .huber_mean import HuberRidgeModel
 from .residual_blocks import JointResidualHour, sample_blocks
 
 PRODUCTION_PATHS = 2_048
 HORIZON_HOURS = 24
 MINUTES_PER_HOUR = 60
 MINUTE_NS = 60_000_000_000
-HOUR_NS = 3_600_000_000_000
 RECONSTRUCTION_TOLERANCE = 1e-6
 INSTRUMENTS = ("BTCUSDT", "ETHUSDT")
 
@@ -219,23 +222,44 @@ def bridge_hour(hour: JointResidualHour, instrument: str, *, previous: Synchroni
     return tuple(output)
 
 
+def simulated_feature_state(closes: Sequence[HourlyClose], model: HuberRidgeModel, instrument: str) -> CurrentModelState:
+    """Current sigma^*/mu^* from the frozen finite-window feature engine."""
+    values = feature_values(closes)
+    return CurrentModelState(sigma=values.sigma, mu=model.forecast(instrument, values.z))
+
+
+def append_simulated_close(closes: Sequence[HourlyClose], close: float, *, record_id: str) -> tuple[HourlyClose, ...]:
+    """Evolve the causal 721-close window with one simulated completed hour."""
+    last = closes[-1]
+    appended = HourlyClose(last.end_at_ns + HOUR_NS, Decimal(str(close)), last.end_at_ns + HOUR_NS, record_id)
+    return tuple(closes[1:]) + (appended,)
+
+
 def joint_minute_paths(block: Sequence[JointResidualHour], *, initial: dict[str, SynchronizedPrices],
-                       current: dict[str, CurrentModelState],
+                       causal_closes: dict[str, tuple[HourlyClose, ...]], model: HuberRidgeModel,
                        support: BridgeSupport = DEFAULT_BRIDGE_SUPPORT) -> JointMinutePaths:
-    """Bridge one sampled BTC/ETH block under the current decision model state."""
+    """Bridge one sampled BTC/ETH block with the simulated feature state evolving hourly.
+
+    Model coefficients stay frozen; the 721-close window, EWMA sigma and momentum z
+    are recomputed from the simulated hourly closes using the frozen feature engine.
+    """
     if not block:
         raise ScenarioNotEstimable("empty sampled block")
-    if not initial or set(initial) - set(INSTRUMENTS) or set(initial) != set(current):
-        raise ScenarioNotEstimable("frozen instrument set requires matching causal anchors and current state")
+    if not initial or set(initial) - set(INSTRUMENTS) or set(initial) != set(causal_closes):
+        raise ScenarioNotEstimable("frozen instrument set requires matching causal anchors and close windows")
     built: dict[str, list[SynchronizedMinute]] = {"BTCUSDT": [], "ETHUSDT": []}
     prices = dict(initial)
+    windows = {instrument: tuple(causal_closes[instrument]) for instrument in initial}
     base_at_ns = block[0].at_ns
     for index, hour in enumerate(block):
+        states = {instrument: simulated_feature_state(windows[instrument], model, instrument) for instrument in initial}
         for instrument in initial:
-            minutes = bridge_hour(hour, instrument, previous=prices[instrument], current=current[instrument],
+            minutes = bridge_hour(hour, instrument, previous=prices[instrument], current=states[instrument],
                                   support=support, start_at_ns=base_at_ns + index * HOUR_NS)
             built[instrument].extend(minutes)
             final = minutes[-1]
+            windows[instrument] = append_simulated_close(windows[instrument], final.last.close,
+                                                         record_id=f"sim-{instrument}-{index}")
             prices[instrument] = SynchronizedPrices(final.last.close, final.mark.close, final.index.close)
     return JointMinutePaths(tuple(built["BTCUSDT"]), tuple(built["ETHUSDT"]))
 

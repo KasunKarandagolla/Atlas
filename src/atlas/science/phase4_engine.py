@@ -102,6 +102,13 @@ class CandidateRiskInputs:
     venue_collateral: Decimal
     adverse_funding_reserve_per_unit: Decimal = Decimal("0")
 
+    def evidence_hash(self) -> str:
+        return canonical_hash({name: str(getattr(self, name)) for name in self.__dataclass_fields__})
+
+
+def candidate_risk_inputs_hash(risk_inputs: CandidateRiskInputs) -> str:
+    return risk_inputs.evidence_hash()
+
 
 @dataclass(frozen=True)
 class Phase4ScenarioEvaluation:
@@ -117,6 +124,7 @@ class Phase4ScenarioEvaluation:
     seed_identity: str
     candidate_path_hash: str
     portfolio_path_hash: str
+    risk_inputs_hash: str
     bootstrap: OuterBootstrapResult
     pi0_path_pnl: tuple[float, ...]
     candidate_path_pnl: tuple[float, ...]
@@ -319,6 +327,14 @@ def evaluate_phase4(value: Phase4DecisionInput) -> Phase4Evaluation:
         conflicts.append("scenario belongs to a different block manifest")
     if scenario.scenario_config_hash != value.scenario_config_hash:
         conflicts.append("scenario belongs to a different scenario configuration")
+    if scenario.risk_inputs_hash != candidate_risk_inputs_hash(value.risk_inputs):
+        conflicts.append("scenario belongs to different candidate risk inputs")
+    if scenario.stress_template.side is not value.policy.side:
+        conflicts.append("stress evidence belongs to the opposite direction")
+    if scenario.stress_template.current_mark != value.policy.mark_reference:
+        conflicts.append("stress evidence belongs to a different mark reference")
+    if scenario.stress_template.quantity != scenario.quantity:
+        conflicts.append("stress evidence quantity does not match the bound quantity")
     if conflicts:
         not_estimable.extend(conflicts)
         return finish(DecisionStatus.NOT_ESTIMABLE, conflicts[0])

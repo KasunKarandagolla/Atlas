@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import replace
+from decimal import Decimal
 
 import pytest
 
-from atlas.science.huber_mean import HOUR_NS
+from atlas.science.huber_mean import HOUR_NS, MeanObservation, fit_huber_ridge
 from atlas.science.residual_blocks import JointResidualHour
 from atlas.science.scenarios import (
     BridgeSupport,
@@ -16,13 +17,16 @@ from atlas.science.scenarios import (
     MinuteOHLC,
     ScenarioNotEstimable,
     SynchronizedPrices,
+    append_simulated_close,
     bridge_hour,
     bridge_minute,
     bridge_return,
     joint_minute_paths,
+    simulated_feature_state,
 )
+from atlas.strategy.features import HourlyClose, feature_values
 
-BASE = 1_700_000_000_000_000_000
+BASE = (1_700_000_000_000_000_000 // HOUR_NS) * HOUR_NS  # UTC hour-aligned decision instant
 MINUTES_PER_HOUR = 60
 
 
@@ -62,6 +66,26 @@ def hour(*, sigma: float = 0.01, mu: float = 0.2, residual: float = 0.3, phase: 
 
 def anchor(price: float = 100.0) -> SynchronizedPrices:
     return SynchronizedPrices(price, price, price)
+
+
+def close_window(*, price: float = 100.0, count: int = 721, sigma: float = 0.01, momentum: float = 0.3,
+                 end_at_ns: int = BASE) -> tuple[HourlyClose, ...]:
+    returns = [sigma * (1.0 if index % 2 == 0 else -1.0) for index in range(count - 1)]
+    for offset in range(24):
+        returns[-24 + offset] += momentum * sigma
+    closes = [price]
+    for value in returns:
+        closes.append(closes[-1] * math.exp(value))
+    return tuple(HourlyClose(end_at_ns - (count - 1 - index) * HOUR_NS, Decimal(str(round(value, 8))),
+                             end_at_ns - (count - 1 - index) * HOUR_NS, f"c{index}")
+                 for index, value in enumerate(closes))
+
+
+def frozen_model(rows: tuple[JointResidualHour, ...]):  # type: ignore[no-untyped-def]
+    observations = [MeanObservation(row.at_ns, instrument, row.btc_z, row.btc_sigma,
+                                    row.btc_sigma * (row.btc_forecast + row.btc_residual))
+                    for row in rows for instrument in ("BTCUSDT", "ETHUSDT")]
+    return fit_huber_ridge(observations, 0.1)
 
 
 def test_current_mu_changes_the_simulated_path_for_the_same_archive_block():
@@ -145,14 +169,56 @@ def test_missing_or_incoherent_evidence_is_not_estimable():
 
 def test_joint_paths_stay_paired_with_the_same_sampled_block():
     block = (hour(), hour(at_ns=BASE + HOUR_NS, phase=0.4))
+    model = frozen_model(block)
     paths = joint_minute_paths(block, initial={"BTCUSDT": anchor(100.0), "ETHUSDT": anchor(50.0)},
-                               current={"BTCUSDT": CurrentModelState(0.01, 0.2),
-                                        "ETHUSDT": CurrentModelState(0.01, -0.1)})
+                               causal_closes={"BTCUSDT": close_window(price=100.0),
+                                              "ETHUSDT": close_window(price=50.0)},
+                               model=model)
     assert isinstance(paths, JointMinutePaths)
     assert len(paths.btc) == len(paths.eth) == 120
     assert all(a.at_ns == b.at_ns for a, b in zip(paths.btc, paths.eth, strict=True))
     assert paths.btc[0].last.open == pytest.approx(100.0)
     assert paths.eth[0].last.open == pytest.approx(50.0)
     assert paths.btc[60].at_ns == BASE + HOUR_NS
-    with pytest.raises(ScenarioNotEstimable, match="matching causal anchors and current state"):
-        joint_minute_paths(block, initial={"BTCUSDT": anchor()}, current={})
+    with pytest.raises(ScenarioNotEstimable, match="matching causal anchors and close windows"):
+        joint_minute_paths(block, initial={"BTCUSDT": anchor()}, causal_closes={}, model=model)
+
+
+def test_simulated_feature_state_evolves_from_simulated_hourly_closes():
+    block = (hour(mu=0.2, residual=0.3), hour(at_ns=BASE + HOUR_NS, mu=0.1, residual=0.25, phase=0.4))
+    model = frozen_model(block)
+    window = close_window()
+    eth_window = close_window(price=50.0)
+    paths = joint_minute_paths(block, initial={"BTCUSDT": anchor(100.0), "ETHUSDT": anchor(50.0)},
+                               causal_closes={"BTCUSDT": window, "ETHUSDT": eth_window}, model=model)
+    # The second simulated hour must use the state produced by the frozen feature
+    # engine from the FIRST simulated hourly close (coefficients stay frozen).
+    first = paths.btc[59]
+    evolved = append_simulated_close(window, first.last.close, record_id="probe")
+    expected = simulated_feature_state(evolved, model, "BTCUSDT")
+    manual = bridge_hour(block[1], "BTCUSDT",
+                         previous=SynchronizedPrices(first.last.close, first.mark.close, first.index.close),
+                         current=expected, start_at_ns=BASE + HOUR_NS)
+    assert [minute.last.close for minute in paths.btc[60:]] == pytest.approx(
+        [minute.last.close for minute in manual], rel=1e-12)
+    assert expected.sigma != simulated_feature_state(window, model, "BTCUSDT").sigma
+    # Same coefficients, different simulated first-hour close => different second-hour state.
+    other = append_simulated_close(window, first.last.close * 1.01, record_id="probe")
+    assert simulated_feature_state(other, model, "BTCUSDT") != expected
+    assert model.ridge == 0.1 and model.beta_z == pytest.approx(model.beta_z)
+
+
+def test_future_real_world_closes_cannot_influence_the_simulated_path():
+    block = (hour(), hour(at_ns=BASE + HOUR_NS, phase=0.4))
+    model = frozen_model(block)
+    window = close_window()
+    eth_window = close_window(price=50.0)
+    # Only the causal 721-close window and the already-simulated closes matter:
+    # later archive hours cannot change earlier simulated minutes.
+    first_only = joint_minute_paths(block[:1], initial={"BTCUSDT": anchor(100.0), "ETHUSDT": anchor(50.0)},
+                                    causal_closes={"BTCUSDT": window, "ETHUSDT": eth_window}, model=model)
+    full = joint_minute_paths(block, initial={"BTCUSDT": anchor(100.0), "ETHUSDT": anchor(50.0)},
+                              causal_closes={"BTCUSDT": window, "ETHUSDT": eth_window}, model=model)
+    assert [minute.last.close for minute in first_only.btc] == [minute.last.close for minute in full.btc[:60]]
+    assert [minute.at_ns for minute in full.btc[:60]] == [minute.at_ns for minute in first_only.btc]
+    assert feature_values(window).end_at_ns == BASE

@@ -15,6 +15,7 @@ from atlas.science.phase4_engine import (
     Phase4DecisionInput,
     Phase4ScenarioEvaluation,
     ScenarioSupport,
+    candidate_risk_inputs_hash,
     path_hash,
     phase4_action_hash,
     seed_identity,
@@ -158,7 +159,8 @@ def scenario_evaluation(*, snapshot: FeatureSnapshot, policy: FixedPolicy, risk_
                         pi0_path_pnl: tuple[float, ...] = (0.0, 0.0),
                         candidate_path_pnl: tuple[float, ...] = (2.0, 0.5),
                         stress_template: StressInput | None = None,
-                        action_hash: str | None = None) -> Phase4ScenarioEvaluation:
+                        action_hash: str | None = None,
+                        risk_inputs_hash: str | None = None) -> Phase4ScenarioEvaluation:
     support = support or ScenarioSupport(True, (), 8, 24, 1)
     resolved_action = action_hash if action_hash is not None else phase4_action_hash(policy, snapshot, quantity)
     template = stress_template if stress_template is not None else complete_stress_input(
@@ -172,6 +174,8 @@ def scenario_evaluation(*, snapshot: FeatureSnapshot, policy: FixedPolicy, risk_
         block_manifest_hash=block_manifest_hash, scenario_config_hash=scenario_config_hash,
         seed_identity=seed_identity(support), candidate_path_hash=path_hash(candidate_path_pnl),
         portfolio_path_hash=path_hash(pi0_path_pnl),
+        risk_inputs_hash=risk_inputs_hash if risk_inputs_hash is not None else candidate_risk_inputs_hash(
+            candidate_risk_inputs(mark=policy.mark_reference)),
         bootstrap=resolved_bootstrap,
         pi0_path_pnl=pi0_path_pnl, candidate_path_pnl=candidate_path_pnl, scenario_support=support,
         stress_template=template)
@@ -185,7 +189,7 @@ def decision_input(**overrides: object) -> Phase4DecisionInput:
     market_value = overrides.pop("market_inputs", market_inputs())
     event_value = overrides.pop("event_inputs", event_inputs())
     default_mark = policy_value.mark_reference if policy_value is not None else Decimal("100")
-    risk_inputs_value = overrides.pop("risk_inputs", candidate_risk_inputs(mark=default_mark))
+    risk_inputs_value: CandidateRiskInputs = overrides.pop("risk_inputs", candidate_risk_inputs(mark=default_mark))  # type: ignore[assignment]
     venue_maximum: Decimal = overrides.pop("venue_maximum_quantity", Decimal("10"))  # type: ignore[assignment]
     model_hash: str = overrides.pop("model_manifest_hash", "m")  # type: ignore[assignment]
     block_hash: str = overrides.pop("block_manifest_hash", "b")  # type: ignore[assignment]
@@ -202,7 +206,8 @@ def decision_input(**overrides: object) -> Phase4DecisionInput:
             pi0_path_pnl=overrides.pop("pi0_path_pnl", (0.0, 0.0)),  # type: ignore[arg-type]
             candidate_path_pnl=overrides.pop("candidate_path_pnl", (2.0, 0.5)),  # type: ignore[arg-type]
             stress_template=overrides.pop("stress_template", None),  # type: ignore[arg-type]
-            action_hash=overrides.pop("action_hash", None))  # type: ignore[arg-type]
+            action_hash=overrides.pop("action_hash", None),  # type: ignore[arg-type]
+            risk_inputs_hash=candidate_risk_inputs_hash(risk_inputs_value))
     base: dict[str, object] = {
         "now_ns": SLOT + 1_000_000,
         "snapshot": snapshot_value,

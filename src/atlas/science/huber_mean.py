@@ -217,12 +217,16 @@ def select_ridge_chronological(
     rows: Sequence[MeanObservation], fit_at_ns: int, *, folds: int = FROZEN_FOLD_COUNT, days: int = FROZEN_FOLD_DAYS,
     min_support_days: int = FROZEN_MIN_SUPPORT_DAYS, eligible_days: int = FROZEN_ELIGIBLE_DAYS,
     min_training_days: int = FROZEN_MIN_TRAINING_DAYS,
+    locked_ridge: float | None = None,
 ) -> FrozenRidgeSelection:
     """Frozen weekly ridge-selection contract: three chronological 7-day folds.
 
     Only labels matured at ``fit_at_ns`` are eligible, every fold trains on the
     records that strictly precede its validation window with adequate preceding
     support, and ties resolve to the larger ridge within the frozen tolerance.
+
+    ``locked_ridge`` reuses the same eligibility/fold structure without another
+    hyper-parameter search (outer-bootstrap replicates use the locked penalty).
     """
     eligible = tuple(sorted((row for row in rows
                              if row.next_return is not None and row.label_at_ns <= fit_at_ns
@@ -231,6 +235,10 @@ def select_ridge_chronological(
     if not eligible or eligible[0].label_at_ns > fit_at_ns - min_training_days * DAY_NS:
         raise ValueError(f"NOT_ESTIMABLE: fewer than {min_training_days} days matured labels")
     windows = frozen_validation_windows(fit_at_ns, folds=folds, days=days)
+    if locked_ridge is not None:
+        if locked_ridge not in RIDGE_CANDIDATES:
+            raise ValueError("unfrozen locked ridge penalty")
+        return FrozenRidgeSelection(locked_ridge, windows, eligible)
     losses: dict[float, float] = {}
     for ridge in RIDGE_CANDIDATES:
         fold_losses: list[float] = []

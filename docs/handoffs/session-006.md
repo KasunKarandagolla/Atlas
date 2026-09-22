@@ -23,6 +23,53 @@
 - Secret scan: no credentials, API keys, tokens, `.env`, CCXT or order transport
   introduced by this patch.
 
+## Final closed-scope Phase-4 repair (starting SHA `82d22a3d721a1476de02071fcfb99d9192b5b4bb`)
+
+Independent review of the `82d22a3` branch tip closed the remaining five
+implementation defects:
+
+1. **Genuine chronological OOF in the outer bootstrap.** `replicate_oof_hours()`
+   now refits the scaler/model at the frozen Monday cadence *inside the replicate
+   sample*, so every historical forecast uses only labels that matured before its
+   origin; the final replicate fit never rewrites an earlier forecast.  The
+   replicate rebuilds `residual = realized_standardized_target − stored_forecast`
+   from those causal forecasts.  The already selected penalty is passed in as
+   `locked_ridge` (via the shared `select_ridge_chronological` contract), so no
+   replicate performs another hyper-parameter search.  `rebuild_replicate_hours()`
+   was removed.
+2. **Simulated features evolve through the 24h path.** `joint_minute_paths()` now
+   takes the actual causal 721-close window per instrument plus the frozen model
+   instead of a loose `(z, sigma)` pair.  After each simulated completed hour the
+   window is advanced (`append_simulated_close`) and `sigma*`, `z*`, `mu*` are
+   recomputed with the existing frozen feature engine (`feature_values` +
+   `finite_window_variance`); the model coefficients stay frozen for the whole
+   path.
+3. **Causal funding forecast in the outer replay.** Settlements come from the
+   existing `forecast_funding()`: the current decision-time anchor (latest
+   observable predicted rate, or the latest settled rate with the explicit
+   downgrade label) plus the *settlement-to-settlement changes* sampled from the
+   replay block.  Historical absolute rates are never replayed as future rates.
+   Entry latency is read from the same sampled path (`path_latency_ns`) instead
+   of a replicate-wide median; missing path latency/spread/depth/funding evidence
+   is `NOT_ESTIMABLE`.
+4. **Stress/risk evidence bound to the frozen action.** `Phase4ScenarioEvaluation`
+   gained a `risk_inputs_hash` (canonical hash of the deterministic
+   `CandidateRiskInputs`), and `evaluate_phase4()` now also rejects a stress
+   template whose side, `current_mark` or quantity does not match the frozen
+   policy/selected quantity.  All mismatches fail closed with `NOT_ESTIMABLE`
+   before any TradePlan can be created.
+5. **Exact frozen block selection.** `select_block_length_frozen()` and
+   `chronological_energy_scores()` default to `candidate_stride=None` and
+   `max_scenarios=None`, so production evaluates every eligible start of the
+   frozen history.  The exact pairwise cloud term of the energy score
+   (`pairwise_cloud_distance`) is computed once per candidate/horizon/window —
+   identical definition, eligible starts, BTC/ETH and 4h/24h weighting,
+   training-vol standardization and tie-breaking — only the summation is
+   symmetric and the redundant per-observation recomputation removed.
+
+Every repair reuses an existing authoritative Phase-4 function; no parallel
+feature, OOF, bootstrap, funding, risk or execution implementation was added.
+
 ## Independent review of `6d974c49db1127aff2b02f5db0092471bf1a46b7`
 
 Independent review rejected that checkpoint for Phase-4 completion because of:
