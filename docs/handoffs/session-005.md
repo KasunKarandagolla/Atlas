@@ -93,11 +93,14 @@ Nautilus or causal test.
 
 ## TRACKED-ONLY REPRODUCIBILITY
 
-- Repair commit: to be filled with the final repair commit SHA after staging.
-- A clone containing only committed Git files must include:
-  `src/atlas/data/*.py`, `tests/data/*.py`, the migration integration test and
-  the authority adversarial tests.
-- The tracked-only clone validation result will be recorded here before push.
+- Repair implementation commit: `48b52c4fbb3b3a691ab687135ceccb439a3a72cd`.
+- A tracked-only clone from that commit contained all eight
+  `src/atlas/data/*.py` files, all five `tests/data/*.py` files, the migration
+  integration test and the authority adversarial tests.
+- The tracked-only clone installed `requirements-lock.txt` with
+  `pip install --require-hashes` under Python 3.12.13 and passed the complete
+  suite: **178 passed, 1 skipped**.  The skip was the same explicit,
+  credentialed public-testnet check documented above.
 
 ## TEST GATE / UNVERIFIED
 
