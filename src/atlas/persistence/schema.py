@@ -275,6 +275,16 @@ DDL_STATEMENTS = [
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS recovery_reconciliation_bindings (
+        reconciliation_run_id TEXT PRIMARY KEY REFERENCES reconciliation_runs(run_id),
+        recovery_run_id TEXT NOT NULL UNIQUE REFERENCES recovery_certificates(recovery_run_id),
+        runtime_instance_id TEXT NOT NULL,
+        writer_id TEXT NOT NULL,
+        writer_epoch INTEGER NOT NULL,
+        claimed_at_ns INTEGER NOT NULL
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS capability_evidence_log (
         evidence_id INTEGER PRIMARY KEY AUTOINCREMENT,
         capability_name TEXT NOT NULL,

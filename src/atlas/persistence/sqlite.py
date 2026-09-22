@@ -1525,7 +1525,18 @@ class SQLiteJournal:
 
         self._wrap("append_recovery_incident", op)
 
-    def append_recovery_certificate(self, cert: Any) -> None:
+    def append_recovery_certificate(self, cert: Any, *, reconciliation_run_id: str | None = None) -> bool:
+        """Persist a certificate while durably consuming its reconciliation run.
+
+        The binding and certificate share one SQLite transaction.  An exact
+        retry returns ``False`` and leaves the original certificate untouched;
+        any different recovery cycle, runtime or writer is rejected.
+
+        The legacy evidence-only recovery entry point may persist a
+        non-authoritative non-READY certificate without a reconciliation run.
+        A READY certificate always requires an explicit completed run binding.
+        """
+
         compatibility = {
             "compatibility_metadata": dict(getattr(cert, "compatibility_metadata", {}) or {}),
             "protection_uncertainty_summary": getattr(cert, "protection_uncertainty_summary", ""),
@@ -1538,33 +1549,131 @@ class SQLiteJournal:
                 "evidence_refs": list(cert.protection_evidence.evidence_refs),
             },
         }
+        values = (
+            cert.recovery_run_id,
+            cert.runtime_instance_id,
+            cert.writer_id,
+            cert.writer_epoch,
+            cert.journal_schema_version,
+            json.dumps(list(cert.unresolved_intents)),
+            json.dumps(list(cert.unresolved_commands)),
+            json.dumps(list(cert.unknown_commands)),
+            cert.reconciliation_health.value,
+            cert.started_at_ns,
+            cert.ended_at_ns,
+            json.dumps(list(cert.evidence_refs)),
+            json.dumps(list(cert.venue_evidence_refs)),
+            cert.decision.value,
+            cert.flat_certificate_id,
+            cert.protection_evidence_id,
+            json.dumps(compatibility, sort_keys=True),
+        )
+        certificate_columns = (
+            "recovery_run_id",
+            "runtime_instance_id",
+            "writer_id",
+            "writer_epoch",
+            "journal_schema_version",
+            "unresolved_intents_json",
+            "unresolved_commands_json",
+            "unknown_commands_json",
+            "reconciliation_health",
+            "started_at_ns",
+            "ended_at_ns",
+            "evidence_refs_json",
+            "venue_evidence_refs_json",
+            "decision",
+            "flat_certificate_id",
+            "protection_evidence_id",
+            "compatibility_json",
+        )
 
         def op():
             with self._tx() as c:
+                def insert_certificate() -> None:
+                    c.execute(
+                        """INSERT INTO recovery_certificates(
+                            recovery_run_id,runtime_instance_id,writer_id,writer_epoch,
+                            journal_schema_version,unresolved_intents_json,
+                            unresolved_commands_json,unknown_commands_json,
+                            reconciliation_health,started_at_ns,ended_at_ns,
+                            evidence_refs_json,venue_evidence_refs_json,decision,
+                            flat_certificate_id,protection_evidence_id,compatibility_json
+                        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        values,
+                    )
+
+                existing = c.execute(
+                    "SELECT * FROM recovery_certificates WHERE recovery_run_id=?", (cert.recovery_run_id,)
+                ).fetchone()
+                if reconciliation_run_id is None:
+                    if cert.decision.value == "READY":
+                        raise PersistenceError("READY recovery certificate lacks reconciliation run binding")
+                    if existing is not None:
+                        if any(
+                            existing[column] != value
+                            for column, value in zip(certificate_columns, values, strict=True)
+                        ):
+                            raise PersistenceError("recovery certificate retry conflicts with persisted authority")
+                        return False
+                    insert_certificate()
+                    return True
+
+                run = c.execute(
+                    "SELECT state,completed_at_ns FROM reconciliation_runs WHERE run_id=?",
+                    (reconciliation_run_id,),
+                ).fetchone()
+                if run is None:
+                    raise PersistenceError("reconciliation run missing for recovery binding")
+                binding_by_run = c.execute(
+                    "SELECT * FROM recovery_reconciliation_bindings WHERE reconciliation_run_id=?",
+                    (reconciliation_run_id,),
+                ).fetchone()
+                binding_by_recovery = c.execute(
+                    "SELECT * FROM recovery_reconciliation_bindings WHERE recovery_run_id=?",
+                    (cert.recovery_run_id,),
+                ).fetchone()
+                if binding_by_run is not None or binding_by_recovery is not None:
+                    binding = binding_by_run or binding_by_recovery
+                    if (
+                        binding["reconciliation_run_id"] != reconciliation_run_id
+                        or binding["recovery_run_id"] != cert.recovery_run_id
+                        or binding["runtime_instance_id"] != cert.runtime_instance_id
+                        or binding["writer_id"] != cert.writer_id
+                        or binding["writer_epoch"] != cert.writer_epoch
+                    ):
+                        raise PersistenceError("reconciliation run already bound to another recovery cycle")
+                    existing = c.execute(
+                        "SELECT * FROM recovery_certificates WHERE recovery_run_id=?", (cert.recovery_run_id,)
+                    ).fetchone()
+                    if existing is None:
+                        raise PersistenceError("recovery binding exists without its certificate")
+                    if any(existing[column] != value for column, value in zip(certificate_columns, values, strict=True)):
+                        raise PersistenceError("recovery certificate retry conflicts with persisted authority")
+                    return False
+                if existing is not None:
+                    raise PersistenceError("recovery certificate exists without a durable reconciliation binding")
+                if run["state"] != "COMPLETE" or run["completed_at_ns"] is None:
+                    if cert.decision.value == "READY":
+                        raise PersistenceError("READY recovery binding requires a completed reconciliation run")
+                insert_certificate()
                 c.execute(
-                    """INSERT INTO recovery_certificates(recovery_run_id,runtime_instance_id,writer_id,writer_epoch,journal_schema_version,unresolved_intents_json,unresolved_commands_json,unknown_commands_json,reconciliation_health,started_at_ns,ended_at_ns,evidence_refs_json,venue_evidence_refs_json,decision,flat_certificate_id,protection_evidence_id,compatibility_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    """INSERT INTO recovery_reconciliation_bindings(
+                        reconciliation_run_id,recovery_run_id,runtime_instance_id,
+                        writer_id,writer_epoch,claimed_at_ns
+                    ) VALUES(?,?,?,?,?,?)""",
                     (
+                        reconciliation_run_id,
                         cert.recovery_run_id,
                         cert.runtime_instance_id,
                         cert.writer_id,
                         cert.writer_epoch,
-                        cert.journal_schema_version,
-                        json.dumps(list(cert.unresolved_intents)),
-                        json.dumps(list(cert.unresolved_commands)),
-                        json.dumps(list(cert.unknown_commands)),
-                        cert.reconciliation_health.value,
-                        cert.started_at_ns,
                         cert.ended_at_ns,
-                        json.dumps(list(cert.evidence_refs)),
-                        json.dumps(list(cert.venue_evidence_refs)),
-                        cert.decision.value,
-                        cert.flat_certificate_id,
-                        cert.protection_evidence_id,
-                        json.dumps(compatibility, sort_keys=True),
                     ),
                 )
+                return True
 
-        self._wrap("append_recovery_certificate", op)
+        return self._wrap("append_recovery_certificate", op)
 
     def load_recovery_certificate(self, recovery_run_id: str) -> Any | None:
         from atlas.runtime.recovery import RecoveryCertificate, RecoveryDecision, RecoveryProtectionEvidence

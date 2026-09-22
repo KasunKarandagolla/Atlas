@@ -323,7 +323,12 @@ def recover_from_persisted_run(
         flat_certificate_id,
         protection_evidence_id,
     )
-    journal.append_recovery_certificate(cert)
+    persisted = journal.append_recovery_certificate(cert, reconciliation_run_id=reconciliation_run_id)
+    if not persisted:
+        existing = journal.load_recovery_certificate(recovery_run_id)
+        if existing is None:
+            raise PersistenceError("recovery certificate binding exists without its certificate")
+        return existing
     if decision != RecoveryDecision.READY:
         journal.append_recovery_incident(
             RecoveryIncident(
@@ -453,7 +458,12 @@ def recover_from_persisted_evidence(
         prerequisites_ok=prerequisites_ok and complete,
         protection_evidence=protection_evidence,
     )
-    journal.append_recovery_certificate(cert)
+    persisted = journal.append_recovery_certificate(cert)
+    if not persisted:
+        existing = journal.load_recovery_certificate(recovery_run_id)
+        if existing is None:
+            raise PersistenceError("recovery certificate exists without its persisted row")
+        return existing
     if cert.decision != RecoveryDecision.READY:
         journal.append_recovery_incident(
             RecoveryIncident(

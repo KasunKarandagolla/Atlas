@@ -9,7 +9,7 @@ from conftest import T0, add_intent, completed_run, terminal_entry
 from atlas.domain.enums import LifecycleState, ProtectionStatus, ReconciliationHealth
 from atlas.persistence.migrations import bootstrap
 from atlas.persistence.schema import SCHEMA_VERSION
-from atlas.persistence.sqlite import PersistenceError
+from atlas.persistence.sqlite import PersistenceError, SQLiteJournal
 from atlas.runtime.fill_dedup import FillRecord
 from atlas.runtime.flat_certificate import (
     FlatCertificationDecision,
@@ -17,7 +17,7 @@ from atlas.runtime.flat_certificate import (
     persist_and_release_if_flat,
 )
 from atlas.runtime.protection_deadline import ProtectionDeadlineMachine, ProtectionDeadlineState
-from atlas.runtime.recovery import RecoveryDecision, recover_from_persisted_run
+from atlas.runtime.recovery import RecoveryCertificate, RecoveryDecision, recover_from_persisted_run
 
 
 def fill(t=T0, qty="0.01"):
@@ -153,11 +153,11 @@ def test_recovery_requires_persisted_flat_artifact(journal):
         health=ReconciliationHealth.CURRENT,
         expected_version=0,
     )
-    completed_run(journal)
+    completed_run(journal, run_id="run-missing")
     cert = recover_from_persisted_run(
         journal=journal,
         recovery_run_id="recovery-1",
-        reconciliation_run_id="run-1",
+        reconciliation_run_id="run-missing",
         runtime_instance_id="runtime",
         writer_id="writer",
         writer_epoch=1,
@@ -173,6 +173,7 @@ def test_recovery_requires_persisted_flat_artifact(journal):
         flat_certificate_id="does-not-exist",
     )
     assert cert.decision == RecoveryDecision.REMAIN_RECOVERING
+    completed_run(journal, run_id="run-1")
     flat = certify_flat_from_journal(
         journal=journal,
         certification_id="flat",
@@ -206,10 +207,14 @@ def test_recovery_requires_persisted_flat_artifact(journal):
         flat_certificate_id="flat",
     )
     assert cert2.decision == RecoveryDecision.READY
+    path = journal.path
+    journal.close()
+    journal = SQLiteJournal(path)
+    assert journal.count("recovery_reconciliation_bindings") == 2
 
-    later = recover_from_persisted_run(
+    retry = recover_from_persisted_run(
         journal=journal,
-        recovery_run_id="recovery-3",
+        recovery_run_id="recovery-2",
         reconciliation_run_id="run-1",
         runtime_instance_id="runtime",
         writer_id="writer",
@@ -220,12 +225,115 @@ def test_recovery_requires_persisted_flat_artifact(journal):
         account="acct",
         instrument="BTCUSDT",
         position_epoch=0,
-        started_at_ns=T0 + 100,
-        ended_at_ns=T0 + 120,
+        started_at_ns=T0,
+        ended_at_ns=T0 + 22,
         prerequisites_ok=True,
         flat_certificate_id="flat",
     )
-    assert later.decision == RecoveryDecision.RECOVERY_REQUIRED
+    assert retry == cert2
+
+    with pytest.raises(PersistenceError, match="already bound"):
+        recover_from_persisted_run(
+            journal=journal,
+            recovery_run_id="recovery-3",
+            reconciliation_run_id="run-1",
+            runtime_instance_id="runtime",
+            writer_id="writer",
+            writer_epoch=1,
+            unresolved_intent_ids=(),
+            unresolved_command_ids=(),
+            unknown_command_ids=(),
+            account="acct",
+            instrument="BTCUSDT",
+            position_epoch=0,
+            started_at_ns=T0,
+            ended_at_ns=T0 + 22,
+            prerequisites_ok=True,
+            flat_certificate_id="flat",
+        )
+
+    with pytest.raises(PersistenceError, match="identity mismatch"):
+        recover_from_persisted_run(
+            journal=journal,
+            recovery_run_id="recovery-4",
+            reconciliation_run_id="run-1",
+            runtime_instance_id="different-runtime",
+            writer_id="writer",
+            writer_epoch=1,
+            unresolved_intent_ids=(),
+            unresolved_command_ids=(),
+            unknown_command_ids=(),
+            account="acct",
+            instrument="BTCUSDT",
+            position_epoch=0,
+            started_at_ns=T0,
+            ended_at_ns=T0 + 22,
+            prerequisites_ok=True,
+            flat_certificate_id="flat",
+        )
+
+    with pytest.raises(PersistenceError, match="identity mismatch"):
+        recover_from_persisted_run(
+            journal=journal,
+            recovery_run_id="recovery-5",
+            reconciliation_run_id="run-1",
+            runtime_instance_id="runtime",
+            writer_id="different-writer",
+            writer_epoch=1,
+            unresolved_intent_ids=(),
+            unresolved_command_ids=(),
+            unknown_command_ids=(),
+            account="acct",
+            instrument="BTCUSDT",
+            position_epoch=0,
+            started_at_ns=T0,
+            ended_at_ns=T0 + 22,
+            prerequisites_ok=True,
+            flat_certificate_id="flat",
+        )
+
+
+def test_reconciliation_binding_is_transactional_and_one_to_one(journal):
+    completed_run(journal)
+    first = RecoveryCertificate(
+        recovery_run_id="binding-recovery-1",
+        runtime_instance_id="runtime",
+        writer_id="writer",
+        writer_epoch=1,
+        journal_schema_version=5,
+        unresolved_intents=(),
+        unresolved_commands=(),
+        unknown_commands=(),
+        reconciliation_health=ReconciliationHealth.CONFLICTED,
+        started_at_ns=T0,
+        ended_at_ns=T0 + 20,
+        evidence_refs=("evidence-1",),
+        venue_evidence_refs=(),
+        decision=RecoveryDecision.RECOVERY_REQUIRED,
+    )
+    assert journal.append_recovery_certificate(first, reconciliation_run_id="run-1") is True
+    assert journal.append_recovery_certificate(first, reconciliation_run_id="run-1") is False
+
+    second = RecoveryCertificate(
+        recovery_run_id="binding-recovery-2",
+        runtime_instance_id="runtime",
+        writer_id="writer",
+        writer_epoch=1,
+        journal_schema_version=5,
+        unresolved_intents=(),
+        unresolved_commands=(),
+        unknown_commands=(),
+        reconciliation_health=ReconciliationHealth.CONFLICTED,
+        started_at_ns=T0,
+        ended_at_ns=T0 + 21,
+        evidence_refs=("evidence-2",),
+        venue_evidence_refs=(),
+        decision=RecoveryDecision.RECOVERY_REQUIRED,
+    )
+    with pytest.raises(PersistenceError, match="already bound"):
+        journal.append_recovery_certificate(second, reconciliation_run_id="run-1")
+    assert journal.count("recovery_certificates") == 1
+    assert journal.count("recovery_reconciliation_bindings") == 1
 
 
 def test_future_sqlite_schema_fails_closed(tmp_path):
