@@ -5,7 +5,17 @@ from __future__ import annotations
 import random
 from collections.abc import Sequence
 
-from .models import BlindSpotMetrics, BlindSpotObservation, BlindSpotStatus
+from .models import (
+    BlindSpotMetrics,
+    BlindSpotObservation,
+    BlindSpotStatus,
+    DeadlineStatus,
+    EligibilityStatus,
+    RankBand,
+    ScannerCalendarRow,
+    ScannerMaturation,
+    WarmupState,
+)
 
 DEFAULT_BOOTSTRAP_REPLICATES = 200
 DEFAULT_BLOCK_SLOTS = 6
@@ -119,9 +129,13 @@ def blindspot_metrics(observations: Sequence[BlindSpotObservation], *, tolerance
             missed_upper = _ratio_upper(outside_by_slot, denominator, replicates=replicates,
                                         block_slots=block_slots, seed=seed + 2)
 
-    total = len(materialized)
-    warmup_rate = None if total == 0 else sum(1 for item in materialized if not item.warmup_available) / total
-    deadline_rate = None if total == 0 else sum(1 for item in materialized if not item.deadline_met) / total
+    warmup_required = [item for item in materialized if item.warmup_required]
+    deadline_applicable = [item for item in materialized if item.deadline_applicable]
+    warmup_rate = (None if not warmup_required
+                   else sum(1 for item in warmup_required if not item.warmup_available) / len(warmup_required))
+    deadline_rate = (None if not deadline_applicable
+                     else sum(1 for item in deadline_applicable if not item.deadline_met)
+                     / len(deadline_applicable))
 
     paired_by_slot: dict[int, float] = {}
     for slot_at_ns in sorted({item.slot_at_ns for item in known}):
@@ -152,3 +166,32 @@ def blindspot_metrics(observations: Sequence[BlindSpotObservation], *, tolerance
     return BlindSpotMetrics(status, coverage, coverage_upper, missed_share, missed_upper, warmup_rate,
                             deadline_rate, selection_lift, lift_interval, support_slots,
                             probability_support, tuple(reasons))
+
+
+def observations_from_matured(rows: Sequence[ScannerCalendarRow],
+                              maturations: Sequence[ScannerMaturation],
+                              ) -> tuple[BlindSpotObservation, ...]:
+    """Build blind-spot inputs only from appended matured outcome evidence."""
+    matured = {(item.scan_slot_at_ns, item.instrument): item for item in maturations}
+    observations: list[BlindSpotObservation] = []
+    for row in sorted(rows, key=lambda item: (item.scan_slot_at_ns, item.instrument)):
+        if row.eligibility_status is not EligibilityStatus.ELIGIBLE:
+            continue
+        outcome = matured.get((row.scan_slot_at_ns, row.instrument))
+        if outcome is None:
+            continue
+        required = row.deep_selected or row.exploration_selected
+        observations.append(BlindSpotObservation(
+            slot_at_ns=row.scan_slot_at_ns,
+            instrument=row.instrument,
+            rank_band=row.rank_band or RankBand.UNRANKED,
+            top_k_selected=row.top_k_selected,
+            exploration_selected=row.exploration_selected,
+            inclusion_probability=row.exploration_probability or 0.0,
+            counterfactual_value=outcome.counterfactual_value,
+            warmup_available=row.warmup_state is WarmupState.WARM_AVAILABLE,
+            deadline_met=row.model_deadline_status is DeadlineStatus.MET,
+            warmup_required=required,
+            deadline_applicable=required,
+        ))
+    return tuple(observations)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
@@ -135,6 +136,9 @@ class UniverseEntry:
     exclusion_reason: str | None
     source_ref: str
     capital_enabled: bool
+    contract_spec_ref: str = ""
+    contract_spec_hash: str = ""
+    contract_spec_available_at_ns: int | None = None
     causal_return_history: tuple[float, ...] = ()
 
     def __post_init__(self) -> None:
@@ -144,6 +148,14 @@ class UniverseEntry:
             raise ValueError("universe timestamps must be UTC nanoseconds")
         if self.available_at_ns < self.observed_at_ns:
             raise ValueError("universe availability precedes observation")
+        if not self.contract_spec_ref.strip() or not self.contract_spec_hash.strip():
+            raise ValueError("universe entry requires a causal contract-spec binding")
+        if self.contract_spec_available_at_ns is None:
+            raise ValueError("contract-spec availability is required")
+        if self.contract_spec_available_at_ns < 0:
+            raise ValueError("contract-spec availability must be UTC nanoseconds")
+        if self.contract_spec_available_at_ns > self.available_at_ns:
+            raise ValueError("contract specification is not available by the universe cutoff")
         if self.eligibility_status is EligibilityStatus.EXCLUDED and not self.exclusion_reason:
             raise ValueError("excluded universe entries require an exclusion reason")
         if self.eligibility_status is EligibilityStatus.ELIGIBLE and self.exclusion_reason is not None:
@@ -436,6 +448,39 @@ class BlindSpotObservation:
     counterfactual_value: float | None
     warmup_available: bool
     deadline_met: bool
+    warmup_required: bool = False
+    deadline_applicable: bool = False
+
+
+@dataclass(frozen=True)
+class ScannerMaturation:
+    """Append-only matured scanner outcome bound to one original calendar row."""
+
+    scan_slot_at_ns: int
+    instrument: str
+    original_row_hash: str
+    matured_counterfactual_label_id: str
+    realized_policy_outcome_id: str
+    counterfactual_value: float | None
+    outcome_status: str
+    matured_at_ns: int
+    horizon_end_ns: int
+    evidence_ref: str
+    evidence_hash: str
+
+    def __post_init__(self) -> None:
+        if not all((self.instrument, self.original_row_hash, self.matured_counterfactual_label_id,
+                    self.realized_policy_outcome_id, self.outcome_status, self.evidence_ref, self.evidence_hash)):
+            raise ValueError("scanner maturation identity fields required")
+        if min(self.scan_slot_at_ns, self.matured_at_ns, self.horizon_end_ns) < 0:
+            raise ValueError("scanner maturation timestamps must be UTC nanoseconds")
+        if self.matured_at_ns < self.horizon_end_ns:
+            raise ValueError("scanner maturation occurs before the outcome horizon")
+        if self.counterfactual_value is not None and not math.isfinite(self.counterfactual_value):
+            raise ValueError("scanner maturation counterfactual value must be finite")
+
+    def hash(self) -> str:
+        return content_hash(self)
 
 
 @dataclass(frozen=True)

@@ -98,6 +98,9 @@ def universe_for(slot_at_ns: int) -> UniverseSnapshot:
             exclusion_reason=None,
             source_ref=f"universe-source-{instrument}-{slot_at_ns}",
             capital_enabled=instrument in CAPITAL_ENABLED,
+            contract_spec_ref=f"contract-spec-{instrument}-{slot_at_ns}",
+            contract_spec_hash=f"contract-spec-hash-{instrument}",
+            contract_spec_available_at_ns=slot_at_ns - HOUR_NS,
             causal_return_history=return_history(instrument),
         ))
     for instrument in EXCLUDED:
@@ -113,6 +116,9 @@ def universe_for(slot_at_ns: int) -> UniverseSnapshot:
             exclusion_reason="DELISTED_RETAINED_IN_HISTORICAL_UNIVERSE",
             source_ref=f"universe-source-{instrument}-{slot_at_ns}",
             capital_enabled=False,
+            contract_spec_ref=f"contract-spec-{instrument}-{slot_at_ns}",
+            contract_spec_hash=f"contract-spec-hash-{instrument}",
+            contract_spec_available_at_ns=slot_at_ns - HOUR_NS,
             causal_return_history=return_history(instrument),
         ))
     return build_universe_snapshot(

@@ -92,8 +92,7 @@ def _phase4_result(*, request: Phase4HandoffRequest, warmup: WarmupStatus, evalu
 def _calendar_row(*, universe: UniverseSnapshot, observation: CheapScanObservation | None,
                   ranked: RankedObservation | None, selection: ScannerSelection | None,
                   exploration: ExplorationSelection, warmup: WarmupStatus, result: Phase4ScannerResult | None,
-                  policy: ScannerPolicy, counterfactual_value: float | None,
-                  availability_cutoff_ns: int) -> ScannerCalendarRow:
+                  policy: ScannerPolicy, availability_cutoff_ns: int) -> ScannerCalendarRow:
     rejection_reason = None
     not_estimable_reason = None
     if result is not None and result.status is not DecisionStatus.TRADE_CANDIDATE:
@@ -137,7 +136,7 @@ def _calendar_row(*, universe: UniverseSnapshot, observation: CheapScanObservati
         phase4_evaluation_ref=result.evaluation_ref if result is not None else None,
         trade_plan_id=result.plan_id() if result is not None else None,
         trade_plan_hash=result.plan_hash() if result is not None else None,
-        counterfactual_value=counterfactual_value,
+        counterfactual_value=None,
         selection_reason=selection.selection_reason if selection is not None else None,
     )
 
@@ -186,7 +185,6 @@ def run_scan_slot(*, slot_at_ns: int, universe: UniverseSnapshot, cheap_inputs: 
                   alert_transport: AlertTransport | None = None,
                   archive: ResearchArtifactArchive | None = None, calendar: ScannerCalendar | None = None,
                   return_histories: Mapping[str, Sequence[float]] | None = None,
-                  counterfactual_values: Mapping[str, float] | None = None,
                   now_ns: int | None = None, persist: bool = True) -> ScanSlotResult:
     """Run one four-hour scanner slot without execution or capital authority."""
     if slot_at_ns % SLOT_NS:
@@ -227,7 +225,6 @@ def run_scan_slot(*, slot_at_ns: int, universe: UniverseSnapshot, cheap_inputs: 
     observation_map = {item.instrument: item for item in observations}
     ranked_map = {item.instrument: item for item in ranked}
     selection_map = {item.instrument: item for item in selections}
-    counterfactual_values = counterfactual_values or {}
 
     rows: list[ScannerCalendarRow] = []
     for entry in universe.entries:
@@ -244,8 +241,7 @@ def run_scan_slot(*, slot_at_ns: int, universe: UniverseSnapshot, cheap_inputs: 
                                 top_k_selected=selection.top_k_selected)
         rows.append(_calendar_row(universe=universe, observation=observation, ranked=ranked_map[entry.instrument],
                                   selection=selection, exploration=exploration, warmup=warmup, result=result,
-                                  policy=policy, counterfactual_value=counterfactual_values.get(entry.instrument),
-                                  availability_cutoff_ns=observation.availability_cutoff_ns))
+                                  policy=policy, availability_cutoff_ns=observation.availability_cutoff_ns))
 
     scanner_calendar = calendar or ScannerCalendar(archive if persist else None)
     for row in rows:
@@ -259,9 +255,12 @@ def run_scan_slot(*, slot_at_ns: int, universe: UniverseSnapshot, cheap_inputs: 
         top_k_selected=selection_map[item.instrument].top_k_selected,
         exploration_selected=exploration.instrument == item.instrument,
         inclusion_probability=(exploration.inclusion_probability if exploration.instrument == item.instrument else 0.0),
-        counterfactual_value=counterfactual_values.get(item.instrument),
+        counterfactual_value=None,
         warmup_available=warmup_map[item.instrument].state is WarmupState.WARM_AVAILABLE,
         deadline_met=warmup_map[item.instrument].deadline_status is DeadlineStatus.MET,
+        warmup_required=(selection_map[item.instrument].deep_selected or exploration.instrument == item.instrument),
+        deadline_applicable=(selection_map[item.instrument].deep_selected
+                             or exploration.instrument == item.instrument),
     ) for item in ranked)
     metrics = blindspot_metrics(blind_observations, tolerance=policy.blindspot_tolerance)
 

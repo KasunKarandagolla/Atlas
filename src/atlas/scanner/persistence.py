@@ -18,6 +18,7 @@ SCANNER_DECISION_CALENDAR = "scanner_decision_calendar"
 SCANNER_HEALTH = "scanner_health"
 SCANNER_ALERT = "scanner_alert"
 BLINDSPOT_METRICS = "blindspot_metrics"
+SCANNER_OUTCOME_MATURATION = "scanner_outcome_maturation"
 SCANNER_REVISION_COMPARISON = "scanner_revision_comparison"
 
 
@@ -49,3 +50,8 @@ def persist_scanner_artifacts(archive: ResearchArtifactArchive, *, universe: Any
 def persist_scanner_revision_comparison(archive: ResearchArtifactArchive, comparison: Any) -> Path:
     """Persist a paired full-calendar revision comparison in the same archive."""
     return archive.append(SCANNER_REVISION_COMPARISON, comparison)
+
+
+def persist_scanner_maturation(archive: ResearchArtifactArchive, maturation: Any) -> Path:
+    """Persist appended matured scanner evidence; original rows stay immutable."""
+    return archive.append(SCANNER_OUTCOME_MATURATION, maturation)

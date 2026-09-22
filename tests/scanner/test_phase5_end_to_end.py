@@ -4,6 +4,7 @@ from support.phase4_factory import SLOT, decision_input
 from support.scanner_fixture import EPOCH_NS, HOUR_NS, phase4_trade_plan, scanner_fixture
 
 from atlas.scanner import (
+    BlindSpotStatus,
     CheapScanInput,
     EligibilityStatus,
     ListingStatus,
@@ -44,6 +45,10 @@ def test_phase5_end_to_end_scanner_orchestration_and_persistence(tmp_path):
     assert [item.instrument for item in first.ranked[:3]] == ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
     assert first.exploration.instrument is not None
     assert first.exploration.inclusion_probability > 0
+    assert all(row.counterfactual_value is None and row.matured_counterfactual_label_id is None
+               for row in first.calendar_rows)
+    assert all(item.counterfactual_value is None for item in first.blind_observations)
+    assert first.blindspots.status is BlindSpotStatus.INCONCLUSIVE
 
     # Phase-4 is reused only for capital-enabled, deep-warm BTC/ETH.
     assert sorted(instrument for _, instrument in calls) == ["BTCUSDT", "BTCUSDT", "BTCUSDT",
@@ -119,12 +124,14 @@ def test_exploration_candidate_has_no_phase4_capital_authority():
     entries = [
         UniverseEntry(slot - HOUR_NS, slot - HOUR_NS // 2, slot - HOUR_NS // 2, "BYBIT", instrument,
                       "PERP", ListingStatus.LISTED, EligibilityStatus.ELIGIBLE, None, f"ref-{instrument}",
-                      False, (0.01, 0.0, -0.01))
+                      False, f"contract-{instrument}", f"contract-hash-{instrument}", slot - HOUR_NS,
+                      (0.01, 0.0, -0.01))
         for instrument in ("AAAUSDT", "BBBUSDT", "CCCUSDT")
     ]
     entries.append(UniverseEntry(slot - HOUR_NS, slot - HOUR_NS // 2, slot - HOUR_NS // 2, "BYBIT",
                                  "BTCUSDT", "PERP", ListingStatus.LISTED, EligibilityStatus.ELIGIBLE,
-                                 None, "ref-BTC", True, (0.01, 0.0, -0.01)))
+                                 None, "ref-BTC", True, "contract-BTC", "contract-hash-BTC", slot - HOUR_NS,
+                                 (0.01, 0.0, -0.01)))
     universe = build_universe_snapshot(snapshot_id="u", observed_at_ns=slot - HOUR_NS,
                                        available_at_ns=slot - HOUR_NS // 2, venue="BYBIT", version="V1",
                                        entries=tuple(entries), source_ref="u")

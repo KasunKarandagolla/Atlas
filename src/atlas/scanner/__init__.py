@@ -6,7 +6,7 @@ It never submits orders, reserves capital or consumes approvals.
 """
 
 from .alerts import AlertDelivery, AlertTransport, RecordingAlertTransport, alerts_from_rows
-from .blindspots import BlindSpotObservation, blindspot_metrics
+from .blindspots import BlindSpotObservation, blindspot_metrics, observations_from_matured
 from .calendar import ScannerCalendar
 from .cheap_scan import CHEAP_SCANNER_VERSION, SCANNER_PRIORITY_LABEL, cheap_scan
 from .engine import ScanSlotResult, run_scan_slot
@@ -28,6 +28,7 @@ from .models import (
     ScannerAlert,
     ScannerCalendarRow,
     ScannerHealth,
+    ScannerMaturation,
     ScannerPolicy,
     ScannerRevisionComparison,
     ScannerSelection,
@@ -37,8 +38,17 @@ from .models import (
     WarmupState,
     WarmupStatus,
 )
+from .persistence import persist_scanner_maturation, persist_scanner_revision_comparison
 from .ranking import rank_observations
 from .revision import compare_scanner_revisions
+from .runner import (
+    CheapInputProvider,
+    RunnerReceipt,
+    ScannerRunner,
+    UniverseProvider,
+    WarmupEvidenceProvider,
+    due_slot,
+)
 from .selection import (
     CAPITAL_ENABLED_INSTRUMENTS,
     DEFAULT_DEEP_K,
@@ -60,6 +70,7 @@ __all__ = [
     "CHEAP_SCANNER_VERSION",
     "CheapScanInput",
     "CheapScanObservation",
+    "CheapInputProvider",
     "DEFAULT_DEEP_K",
     "DEFAULT_TOP_K",
     "DeadlineStatus",
@@ -78,12 +89,17 @@ __all__ = [
     "ScannerCalendar",
     "ScannerCalendarRow",
     "ScannerHealth",
+    "ScannerMaturation",
     "ScannerPolicy",
     "ScannerRevisionComparison",
+    "ScannerRunner",
     "ScannerSelection",
+    "RunnerReceipt",
     "UniverseEntry",
     "UniverseSnapshot",
+    "UniverseProvider",
     "WarmupEvidence",
+    "WarmupEvidenceProvider",
     "WarmupState",
     "WarmupStatus",
     "alerts_from_rows",
@@ -93,6 +109,10 @@ __all__ = [
     "compare_scanner_revisions",
     "evaluator_from_phase4",
     "evaluate_warmup",
+    "due_slot",
+    "observations_from_matured",
+    "persist_scanner_maturation",
+    "persist_scanner_revision_comparison",
     "rank_observations",
     "result_from_evaluation",
     "run_scan_slot",
