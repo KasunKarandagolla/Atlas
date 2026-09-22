@@ -9,6 +9,9 @@ from dataclasses import dataclass
 
 BLOCK_CANDIDATES = (24, 48, 72)
 MIN_OOF_HOURS = 60 * 24
+ENERGY_HORIZONS = (4, 24)
+DEFAULT_CANDIDATE_STRIDE = 24
+DEFAULT_MAX_SCENARIOS = 48
 
 
 @dataclass(frozen=True)
@@ -112,6 +115,7 @@ def _energy_score(samples: Sequence[tuple[float, float]], observation: tuple[flo
 
 def chronological_energy_scores(
     training: Sequence[JointResidualHour], validation: Sequence[JointResidualHour], *, training_btc_sigma: float, training_eth_sigma: float,
+    candidate_stride: int | None = None, max_scenarios: int | None = DEFAULT_MAX_SCENARIOS,
 ) -> dict[int, float]:
     """Frozen 4h/24h equal-weight joint-return validation objective.
 
@@ -123,10 +127,15 @@ def chronological_energy_scores(
     scores: dict[int, float] = {}
     for length in BLOCK_CANDIDATES:
         starts = eligible_starts(training, length)
+        if candidate_stride is not None:
+            if candidate_stride < 1:
+                raise ValueError("positive candidate stride required")
+            # Non-overlapping candidate scenarios bound the quadratic objective.
+            starts = tuple(start for start in starts if start % candidate_stride == 0)
         if len(starts) < 2:
             raise ValueError("NOT_ESTIMABLE: insufficient effectively independent block history")
         component_scores = []
-        for horizon in (4, 24):
+        for horizon in ENERGY_HORIZONS:
             if len(validation) < horizon or length < horizon:
                 raise ValueError("NOT_ESTIMABLE: validation horizon unavailable")
             samples = [
@@ -134,6 +143,12 @@ def chronological_energy_scores(
                  sum(x.eth_sigma * (x.eth_forecast + x.eth_residual) for x in training[s : s + horizon]) / training_eth_sigma)
                 for s in starts
             ]
+            if max_scenarios is not None:
+                if max_scenarios < 2:
+                    raise ValueError("at least two energy scenarios required")
+                # The most recent non-overlapping candidate scenarios bound the
+                # quadratic objective without touching the frozen energy math.
+                samples = samples[-max_scenarios:]
             for begin in range(0, len(validation) - horizon + 1, horizon):
                 actual = (
                     sum(x.btc_sigma * (x.btc_forecast + x.btc_residual) for x in validation[begin : begin + horizon]) / training_btc_sigma,
@@ -142,3 +157,52 @@ def chronological_energy_scores(
                 component_scores.append(_energy_score(samples, actual))
         scores[length] = sum(component_scores) / len(component_scores)
     return scores
+
+
+@dataclass(frozen=True)
+class BlockSelectionResult:
+    """Frozen block-length selection over the shared chronological validation windows."""
+
+    selected_block: int
+    energy_scores: dict[int, float]
+    validation_windows: tuple[tuple[int, int], ...]
+    effectively_independent_blocks: dict[int, int]
+    fit_at_ns: int
+
+
+def select_block_length_frozen(
+    hours: Sequence[JointResidualHour], *, fit_at_ns: int, training_btc_sigma: float, training_eth_sigma: float,
+    candidate_stride: int | None = DEFAULT_CANDIDATE_STRIDE, max_scenarios: int | None = DEFAULT_MAX_SCENARIOS,
+    min_support_days: int = 60,
+) -> BlockSelectionResult:
+    """Select the block length using the SAME frozen windows as the mean model.
+
+    Three non-overlapping 7-day validation windows end at the fit instant, every
+    window has adequate preceding training support, and the frozen 4h/24h
+    equal-weight energy objective scores each candidate block length on the same
+    orchestration used by the weekly mean-model refit.
+    """
+    from .huber_mean import DAY_NS, frozen_validation_windows
+
+    hour_ns = 3_600_000_000_000
+    windows = frozen_validation_windows(fit_at_ns)
+    per_window: dict[int, list[float]] = {length: [] for length in BLOCK_CANDIDATES}
+    for start, end in windows:
+        train = [hour for hour in hours if hour.at_ns < start]
+        valid = [hour for hour in hours if start <= hour.at_ns < end]
+        if not valid:
+            raise ValueError("NOT_ESTIMABLE: validation window has no synchronized hours")
+        if not train or train[0].at_ns > start - min_support_days * DAY_NS:
+            raise ValueError(f"NOT_ESTIMABLE: window has fewer than {min_support_days} preceding days")
+        contiguous = all(b.at_ns == a.at_ns + hour_ns for a, b in zip(train, train[1:], strict=False))
+        if not contiguous:
+            raise ValueError("NOT_ESTIMABLE: training support is not contiguous")
+        window_scores = chronological_energy_scores(train, valid, training_btc_sigma=training_btc_sigma,
+                                                    training_eth_sigma=training_eth_sigma,
+                                                    candidate_stride=candidate_stride, max_scenarios=max_scenarios)
+        for length, score in window_scores.items():
+            per_window[length].append(score)
+    scores = {length: sum(values) / len(values) for length, values in per_window.items()}
+    independent = {length: len(eligible_starts(hours, length)) for length in BLOCK_CANDIDATES}
+    selected = select_block_length(scores, effectively_independent_blocks=independent)
+    return BlockSelectionResult(selected, scores, windows, independent, fit_at_ns)

@@ -9,7 +9,7 @@ from decimal import Decimal
 
 import pytest
 from support.phase4_factory import SLOT, decision_input
-from test_outer_bootstrap import history, hour
+from test_outer_bootstrap import history
 
 from atlas.science.decision_calendar import record_from_evaluation
 from atlas.science.execution_replay import ReplayMinute
@@ -18,7 +18,7 @@ from atlas.science.huber_mean import HOUR_NS, MeanObservation, weekly_refit
 from atlas.science.oof import OOFArchive
 from atlas.science.outer_loop import estimate_cost_assumptions
 from atlas.science.phase4_engine import evaluate_phase4
-from atlas.science.scenarios import BridgeSupport, SynchronizedPrices, bridge_hour
+from atlas.science.scenarios import CurrentModelState, SynchronizedPrices, bridge_hour
 from atlas.strategy.features import HourlyClose, feature_values
 
 EPOCH_NS = int(datetime(2025, 1, 6, tzinfo=UTC).timestamp() * 1_000_000_000)  # Monday 00:00 UTC
@@ -90,21 +90,25 @@ def test_oof_forecasts_never_rewrite_or_leak_forward_labels():
 
 
 def test_bridge_for_an_earlier_hour_is_unaffected_by_later_archive_mutation():
-    block = history(48)
+    block = list(history(2))[:48]
     target = block[0]
     after = block[1]
-    mutated = tuple([target, replace(after, btc_last_ohlc=after.btc_last_ohlc[::-1])] + list(block[2:]))
+    mutated_after = replace(after, btc_last_ohlc=after.btc_last_ohlc[::-1])
     anchor = SynchronizedPrices(100.0, 100.0, 100.0)
-    original = bridge_hour(target, "BTCUSDT", previous=anchor, archive_sigma=0.01, support=BridgeSupport())
-    replay = bridge_hour(mutated[0], "BTCUSDT", previous=anchor, archive_sigma=0.01, support=BridgeSupport())
+    current = CurrentModelState(0.01, 0.1)
+    original = bridge_hour(target, "BTCUSDT", previous=anchor, current=current)
+    replay = bridge_hour(target, "BTCUSDT", previous=anchor, current=current)
     assert [minute.last.close for minute in original] == [minute.last.close for minute in replay]
+    assert mutated_after.btc_last_ohlc != after.btc_last_ohlc
 
 
 def test_cost_re_estimation_for_an_earlier_cutoff_ignores_later_depth_observations():
-    early = history(48)
+    full = history(3)[:72]
+    early = full[:48]
     baseline = estimate_cost_assumptions(early, minimum_observations=24)
-    mutated = tuple(list(early) + [replace(hour(index), spread_depth_observations=({"spread_bp": "99", "taker_fee_bp": "99"},))
-                                   for index in range(48, 60)])
+    mutated = tuple(list(early) + [replace(full[index],
+                                           spread_depth_observations=({"spread_bp": "99", "taker_fee_bp": "99"},))
+                                   for index in range(48, 72)])
     assert estimate_cost_assumptions(mutated[:48], minimum_observations=24) == baseline
     assert estimate_cost_assumptions(mutated, minimum_observations=24) != baseline
 

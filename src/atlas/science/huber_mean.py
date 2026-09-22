@@ -16,6 +16,12 @@ RIDGE_CANDIDATES = (0.01, 0.1, 1.0, 10.0)
 SOLVER_TOLERANCE = 1e-10
 HOUR_NS = 3_600_000_000_000
 DAY_NS = 24 * HOUR_NS
+FROZEN_FOLD_COUNT = 3
+FROZEN_FOLD_DAYS = 7
+FROZEN_MIN_SUPPORT_DAYS = 60
+FROZEN_ELIGIBLE_DAYS = 180
+FROZEN_MIN_TRAINING_DAYS = 90
+TIE_TOLERANCE = 1e-8
 
 
 @dataclass(frozen=True)
@@ -188,26 +194,62 @@ class WeeklyFit:
     fit_at_ns: int
 
 
-def weekly_refit(rows: Sequence[MeanObservation], fit_at_ns: int) -> WeeklyFit:
-    if not is_monday_midnight(fit_at_ns):
-        raise ValueError("frozen refit is Monday 00:00 UTC")
-    # labels must have matured at the fit instant.  Last 180 days, and 90 days minimum.
-    eligible = [r for r in rows if r.next_return is not None and r.label_at_ns <= fit_at_ns and r.label_at_ns > fit_at_ns - 180 * DAY_NS]
-    if not eligible or min(r.label_at_ns for r in eligible) > fit_at_ns - 90 * DAY_NS:
-        raise ValueError("NOT_ESTIMABLE: fewer than 90 days matured labels")
-    folds = tuple((fit_at_ns - (3 - n) * 7 * DAY_NS, fit_at_ns - (2 - n) * 7 * DAY_NS) for n in range(3))
+@dataclass(frozen=True)
+class FrozenRidgeSelection:
+    """Frozen chronological selection contract shared by production and replicates."""
+
+    ridge: float
+    validation_intervals: tuple[tuple[int, int], ...]
+    eligible: tuple[MeanObservation, ...]
+
+
+def frozen_validation_windows(fit_at_ns: int, *, folds: int = FROZEN_FOLD_COUNT,
+                              days: int = FROZEN_FOLD_DAYS) -> tuple[tuple[int, int], ...]:
+    """The frozen non-overlapping validation windows ending at the fit instant."""
+    if folds < 1 or days < 1:
+        raise ValueError("frozen folds/days must be positive")
+    window_ns = days * DAY_NS
+    return tuple((fit_at_ns - (folds - index) * window_ns, fit_at_ns - (folds - index - 1) * window_ns)
+                 for index in range(folds))
+
+
+def select_ridge_chronological(
+    rows: Sequence[MeanObservation], fit_at_ns: int, *, folds: int = FROZEN_FOLD_COUNT, days: int = FROZEN_FOLD_DAYS,
+    min_support_days: int = FROZEN_MIN_SUPPORT_DAYS, eligible_days: int = FROZEN_ELIGIBLE_DAYS,
+    min_training_days: int = FROZEN_MIN_TRAINING_DAYS,
+) -> FrozenRidgeSelection:
+    """Frozen weekly ridge-selection contract: three chronological 7-day folds.
+
+    Only labels matured at ``fit_at_ns`` are eligible, every fold trains on the
+    records that strictly precede its validation window with adequate preceding
+    support, and ties resolve to the larger ridge within the frozen tolerance.
+    """
+    eligible = tuple(sorted((row for row in rows
+                             if row.next_return is not None and row.label_at_ns <= fit_at_ns
+                             and row.label_at_ns > fit_at_ns - eligible_days * DAY_NS),
+                            key=lambda row: (row.origin_at_ns, row.instrument)))
+    if not eligible or eligible[0].label_at_ns > fit_at_ns - min_training_days * DAY_NS:
+        raise ValueError(f"NOT_ESTIMABLE: fewer than {min_training_days} days matured labels")
+    windows = frozen_validation_windows(fit_at_ns, folds=folds, days=days)
     losses: dict[float, float] = {}
     for ridge in RIDGE_CANDIDATES:
-        fold_losses = []
-        for start, end in folds:
-            train = [r for r in eligible if r.label_at_ns < start]
-            valid = [r for r in eligible if start <= r.label_at_ns < end]
-            if not train or min(r.label_at_ns for r in train) > start - 60 * DAY_NS or not valid:
-                raise ValueError("NOT_ESTIMABLE: fold has fewer than 60 preceding days")
+        fold_losses: list[float] = []
+        for start, end in windows:
+            train = [row for row in eligible if row.label_at_ns < start]
+            valid = [row for row in eligible if start <= row.label_at_ns < end]
+            if not train or train[0].label_at_ns > start - min_support_days * DAY_NS or not valid:
+                raise ValueError(f"NOT_ESTIMABLE: fold has fewer than {min_support_days} preceding days")
             fold_losses.append(mean_huber_loss(fit_huber_ridge(train, ridge, fit_at_ns=start), valid))
         losses[ridge] = fmean(fold_losses)
     best = min(losses.values())
-    # Freeze tie resolution within 1e-8 to larger lambda.
-    selected = max(ridge for ridge, loss in losses.items() if loss <= best + 1e-8)
-    final = fit_huber_ridge(eligible, selected, fit_at_ns=fit_at_ns, validation_intervals=folds)
-    return WeeklyFit(final, selected, folds, fit_at_ns)
+    selected = max(ridge for ridge, loss in losses.items() if loss <= best + TIE_TOLERANCE)
+    return FrozenRidgeSelection(selected, windows, eligible)
+
+
+def weekly_refit(rows: Sequence[MeanObservation], fit_at_ns: int) -> WeeklyFit:
+    if not is_monday_midnight(fit_at_ns):
+        raise ValueError("frozen refit is Monday 00:00 UTC")
+    selection = select_ridge_chronological(rows, fit_at_ns)
+    final = fit_huber_ridge(selection.eligible, selection.ridge, fit_at_ns=fit_at_ns,
+                            validation_intervals=selection.validation_intervals)
+    return WeeklyFit(final, selection.ridge, selection.validation_intervals, fit_at_ns)

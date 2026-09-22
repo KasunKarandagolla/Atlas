@@ -11,6 +11,24 @@ from atlas.science.evaluation import DecisionStatus
 from atlas.science.phase4_engine import Phase4Evaluation
 from atlas.science.research_archive import ResearchArtifactArchive
 
+FROZEN_SLOT_HOURS = (0, 4, 8, 12, 16, 20)
+INSTRUMENTS = ("BTCUSDT", "ETHUSDT")
+HOUR_NS = 3_600_000_000_000
+SLOT_NS = 4 * HOUR_NS
+DAY_NS = 24 * HOUR_NS
+
+
+def frozen_slot_grid(start_ns: int, end_ns: int) -> tuple[int, ...]:
+    """Every frozen BTC/ETH four-hour slot in ``[start_ns, end_ns)``.
+
+    The interval must start at UTC midnight and end on a four-hour boundary, so
+    a "complete" calendar can never silently omit 20:00 UTC or any other slot.
+    """
+    if start_ns % DAY_NS or end_ns % SLOT_NS or end_ns <= start_ns:
+        raise ValueError("complete calendar interval must start at UTC midnight and end on a four-hour boundary")
+    return tuple(slot for slot in range(start_ns, end_ns, SLOT_NS)
+                 if (slot // HOUR_NS) % 24 in FROZEN_SLOT_HOURS)
+
 
 @dataclass(frozen=True)
 class DecisionCalendarRecord:
@@ -69,6 +87,15 @@ class DecisionCalendar:
     def records(self) -> tuple[DecisionCalendarRecord, ...]:
         return tuple(self._records[key] for key in sorted(self._records))
 
+    def missing(self, start_ns: int, end_ns: int) -> tuple[tuple[int, str], ...]:
+        return tuple((slot, instrument) for slot in frozen_slot_grid(start_ns, end_ns) for instrument in INSTRUMENTS
+                     if (slot, instrument) not in self._records)
+
+    def assert_complete(self, start_ns: int, end_ns: int) -> None:
+        missing = self.missing(start_ns, end_ns)
+        if missing:
+            raise ValueError(f"incomplete decision calendar: {len(missing)} missing slot/instrument outcomes")
+
     def mature(self, slot_at_ns: int, instrument: str, outcome_ref: str, pnl: str, *,
                fill_status: str | None = None, exit_status: str | None = None) -> DecisionCalendarRecord:
         """Attach the later matured outcome; the earlier decision stays immutable."""
@@ -108,4 +135,18 @@ def evaluate_complete_calendar(slot_times_ns: Sequence[int], evaluator: Callable
             if record.slot_at_ns != slot_at_ns or record.instrument != instrument:
                 raise ValueError("calendar evaluator returned mismatched slot/instrument")
             calendar.append(record)
+    return calendar.records()
+
+
+def evaluate_calendar_interval(start_ns: int, end_ns: int, evaluator: Callable[[int, str], DecisionCalendarRecord],
+                               calendar: DecisionCalendar) -> tuple[DecisionCalendarRecord, ...]:
+    """Production entry point: evaluate and completeness-check a calendar interval."""
+    grid = frozen_slot_grid(start_ns, end_ns)
+    for slot_at_ns in grid:
+        for instrument in INSTRUMENTS:
+            record = evaluator(slot_at_ns, instrument)
+            if record.slot_at_ns != slot_at_ns or record.instrument != instrument:
+                raise ValueError("calendar evaluator returned mismatched slot/instrument")
+            calendar.append(record)
+    calendar.assert_complete(start_ns, end_ns)
     return calendar.records()

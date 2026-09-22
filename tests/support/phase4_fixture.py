@@ -16,19 +16,20 @@ from decimal import Decimal
 
 from atlas.science.huber_mean import DAY_NS, HOUR_NS, MeanObservation
 from atlas.science.oof import OOFArchive
-from atlas.science.residual_blocks import JointResidualHour
+from atlas.science.residual_blocks import BlockSelectionResult, JointResidualHour
 from atlas.strategy.features import HourlyClose, finite_window_variance
 
 EPOCH_NS = int(datetime(2025, 1, 6, tzinfo=UTC).timestamp() * 1_000_000_000)  # Monday 00:00 UTC
-TOTAL_DAYS = 153
+TOTAL_DAYS = 179
 FIRST_REFIT_DAY = 91
-EVALUATION_DAY = 151
+BLOCK_FIT_DAY = 175  # Monday
+EVALUATION_DAY = 176
 RETENTION_DAYS = 91
 INSTRUMENTS = ("BTCUSDT", "ETHUSDT")
 MINUTE_NS = 60_000_000_000
 MINUTES_PER_HOUR = 60
 BASE_PRICE = {"BTCUSDT": 100.0, "ETHUSDT": 50.0}
-BASE_HOURLY_VOL = 0.0035
+BASE_HOURLY_VOL = 0.0025
 
 
 def day_ns(day: int) -> int:
@@ -64,6 +65,11 @@ class SyntheticMarket:
 
 
 _PATTERN_CACHE: dict[tuple[str, str], tuple[tuple[float, float, float, float], ...]] = {}
+SHAPE_PHASE = {
+    "last": 0.0,
+    "mark": 0.7,
+    "index": 1.3,
+}
 
 
 def minute_pattern(instrument: str, kind: str) -> tuple[tuple[float, float, float, float], ...]:
@@ -87,9 +93,28 @@ def minute_pattern(instrument: str, kind: str) -> tuple[tuple[float, float, floa
     return _PATTERN_CACHE[key]
 
 
-def scaled_pattern(instrument: str, kind: str, level: float) -> tuple[tuple[float, float, float, float], ...]:
-    return tuple((o * level, h * level, low * level, c * level)
-                 for o, h, low, c in minute_pattern(instrument, kind))
+def hour_minute_bars(hour: int, kind: str, hour_return: float, *, level: float = 1.0,
+                     instrument: str = "BTCUSDT") -> tuple[tuple[float, float, float, float], ...]:
+    """Deterministic 60-minute bars whose total log return is exactly ``hour_return``.
+
+    The per-minute innovation is centered on the hourly return, so the archived
+    minute evidence and the recorded hourly residual describe the same hour.
+    """
+    phase = SHAPE_PHASE[kind] + (hour % 17) / 17.0
+    shape = [0.0006 * math.sin(2 * math.pi * (index / 17.0 + phase)) for index in range(MINUTES_PER_HOUR)]
+    mean_shape = sum(shape) / MINUTES_PER_HOUR
+    bars: list[tuple[float, float, float, float]] = []
+    price = level
+    for index in range(MINUTES_PER_HOUR):
+        ret = hour_return / MINUTES_PER_HOUR + (shape[index] - mean_shape)
+        open_price = price
+        close_price = open_price * math.exp(ret)
+        excursion = 0.0002 * (1.0 + abs(math.sin(index / 5.0 + phase)))
+        bars.append((open_price, max(open_price, close_price) * math.exp(excursion),
+                     min(open_price, close_price) * math.exp(-excursion), close_price))
+        price = close_price
+    del instrument  # the instrument only selects the call site; shapes are shared
+    return tuple(bars)
 
 
 def _build_hourly(seed: int) -> SyntheticMarket:
@@ -114,7 +139,7 @@ def _build_hourly(seed: int) -> SyntheticMarket:
             # Saturate the momentum feedback so the synthetic process stays stable.
             # Fixed return scale avoids a self-referential volatility feedback loop;
             # sigma/z are still computed by the frozen finite-window estimator below.
-            realized = BASE_HOURLY_VOL * (0.3 * math.tanh(zs[-1] / 4.0) + 0.5 * rng.gauss(0, 1)) if hour >= 25 else 0.0
+            realized = BASE_HOURLY_VOL * (0.3 * math.tanh(zs[-1] / 4.0) + 0.25 * rng.gauss(0, 1)) if hour >= 25 else 0.0
             rets.append(realized)
             price = float(previous.close) * math.exp(realized)
             series.append(HourlyClose(hour_ns(hour), Decimal(str(round(price, 8))), hour_ns(hour), f"{instrument}-{hour}"))
@@ -142,31 +167,43 @@ def residual_hour(market: SyntheticMarket, hour: int, forecast: dict[str, float]
     at_ns = hour_ns(hour)
     btc = market.features["BTCUSDT"]
     eth = market.features["ETHUSDT"]
-    observations = ({"spread_bp": "1.2", "taker_fee_bp": "5.5", "depth_usdt": "250000"},)
+    btc_return = btc.next_return[hour]
+    eth_return = eth.next_return[hour]
+    observations = (
+        {"instrument": "BTCUSDT", "spread_bp": "1.2", "taker_fee_bp": "5.5", "depth_notional": "250000"},
+        {"instrument": "ETHUSDT", "spread_bp": "1.6", "taker_fee_bp": "5.5", "depth_notional": "120000"},
+    )
+    latency = (
+        {"instrument": "BTCUSDT", "entry_latency_ms": "120", "fill_ratio": "1.0"},
+        {"instrument": "ETHUSDT", "entry_latency_ms": "140", "fill_ratio": "1.0"},
+    )
+    settles = hour % 8 == 0
+    funding = tuple({"instrument": instrument, "rate": "0.00001", "mark": "100"}
+                    for instrument in INSTRUMENTS) if settles else ()
     return JointResidualHour(
         at_ns=at_ns,
-        btc_residual=btc.next_return[hour] / btc.sigma[hour] - forecast["BTCUSDT"],
-        eth_residual=eth.next_return[hour] / eth.sigma[hour] - forecast["ETHUSDT"],
+        btc_residual=btc_return / btc.sigma[hour] - forecast["BTCUSDT"],
+        eth_residual=eth_return / eth.sigma[hour] - forecast["ETHUSDT"],
         btc_forecast=forecast["BTCUSDT"], eth_forecast=forecast["ETHUSDT"],
         btc_sigma=btc.sigma[hour], eth_sigma=eth.sigma[hour],
         btc_z=btc.z[hour], eth_z=eth.z[hour],
         # Shared, deterministic minute shapes: the bridge re-anchors them to the
         # current causal snapshot, so absolute archive level is irrelevant here.
-        btc_last_ohlc=minute_pattern("BTCUSDT", "last"),
-        eth_last_ohlc=minute_pattern("ETHUSDT", "last"),
+        btc_last_ohlc=hour_minute_bars(hour, "last", btc_return, instrument="BTCUSDT"),
+        eth_last_ohlc=hour_minute_bars(hour, "last", eth_return, instrument="ETHUSDT"),
         btc_mark_ohlc=minute_pattern("BTCUSDT", "mark"),
         eth_mark_ohlc=minute_pattern("ETHUSDT", "mark"),
         btc_index_ohlc=minute_pattern("BTCUSDT", "index"),
         eth_index_ohlc=minute_pattern("ETHUSDT", "index"),
         source_class="SYNTHETIC_FIXTURE",
-        funding_publication_at_ns=at_ns - 3_600_000_000_000,
-        funding_settlement_at_ns=at_ns,
+        funding_publication_at_ns=at_ns - 3_600_000_000_000 if settles else None,
+        funding_settlement_at_ns=at_ns if settles else None,
         execution_missing=False,
         btc_feature_ref=f"btc-feature-{hour}", eth_feature_ref=f"eth-feature-{hour}",
         opening_gaps=(0.0,), excursions=(0.0001,),
         spread_depth_observations=observations,
-        latency_fill_observations=({"entry_latency_ms": "120", "fill_ratio": "1.0"},),
-        funding_observations=({"rate": "0.00001", "mark": "100"},),
+        latency_fill_observations=latency,
+        funding_observations=funding,
         availability_class="RECONSTRUCTED_MARKET", replay_mode="MINUTE_REPLAY",
         evidence_hashes=(f"hash-{hour}",),
         calendar_identity=_hour_calendar_identity(at_ns), universe_identity="BTCUSDT_ETHUSDT_V1",
@@ -180,11 +217,10 @@ class Phase4Fixture:
     oof: OOFArchive
     hours: tuple[JointResidualHour, ...]
     start_hour: int
-    training_hours: tuple[JointResidualHour, ...]
-    validation_hours: tuple[JointResidualHour, ...]
     selected_block: int
     energy_scores: dict[int, float]
     training_sigma: dict[str, float]
+    block_selection: BlockSelectionResult
 
 
 _FIXTURE_CACHE: dict[int, Phase4Fixture] = {}
@@ -195,7 +231,7 @@ def build_fixture(seed: int = 11) -> Phase4Fixture:
     if cached is not None:
         return cached
     from atlas.science.huber_mean import weekly_refit
-    from atlas.science.residual_blocks import chronological_energy_scores, eligible_starts, select_block_length
+    from atlas.science.residual_blocks import select_block_length_frozen
 
     market = _build_hourly(seed)
     rows = market.observations("BTCUSDT") + market.observations("ETHUSDT")
@@ -222,22 +258,17 @@ def build_fixture(seed: int = 11) -> Phase4Fixture:
             archive.forecast(observation, model)
             archive.mature(instrument, hour_ns(hour), market.features[instrument].next_return[hour],
                            hour_ns(hour + 1))
-    split = len(hours) - 30 * 24
-    training = tuple(hours[:split])
-    validation = tuple(hours[split:])
+    archived = tuple(hours)
     training_sigma = {
-        "BTCUSDT": math.sqrt(sum(h.btc_sigma**2 for h in training) / len(training)),
-        "ETHUSDT": math.sqrt(sum(h.eth_sigma**2 for h in training) / len(training)),
+        "BTCUSDT": math.sqrt(sum(h.btc_sigma**2 for h in archived) / len(archived)),
+        "ETHUSDT": math.sqrt(sum(h.eth_sigma**2 for h in archived) / len(archived)),
     }
-    # Injected small counts: block selection uses a reduced contiguous window so the
-    # quadratic energy objective stays cheap; the frozen objective itself is unchanged.
-    selection_training = training[-8 * 24 :]
-    selection_validation = validation[: 24]
-    scores = chronological_energy_scores(selection_training, selection_validation,
-                                         training_btc_sigma=training_sigma["BTCUSDT"],
-                                         training_eth_sigma=training_sigma["ETHUSDT"])
-    independent = {length: len(eligible_starts(selection_training, length)) for length in (24, 48, 72)}
-    selected = select_block_length(scores, effectively_independent_blocks=independent)
-    fixture = Phase4Fixture(market, archive, tuple(hours), start_hour, training, validation, selected, scores, training_sigma)
+    # Production orchestration: the frozen three 7-day validation windows ending at
+    # the last Monday refit, with non-overlapping candidate scenarios.
+    selection: BlockSelectionResult = select_block_length_frozen(archived, fit_at_ns=day_ns(BLOCK_FIT_DAY),
+                                           training_btc_sigma=training_sigma["BTCUSDT"],
+                                           training_eth_sigma=training_sigma["ETHUSDT"])
+    fixture = Phase4Fixture(market, archive, archived, start_hour, selection.selected_block,
+                            selection.energy_scores, training_sigma, selection)
     _FIXTURE_CACHE[seed] = fixture
     return fixture

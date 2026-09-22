@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 
 from atlas.domain.enums import Side
 from atlas.domain.risk import RiskPolicy, engineering_default_policy
 from atlas.risk.engine import AccountState, RiskVector
-from atlas.risk.sizing import PerUnitRisk
-from atlas.science.execution_replay import ReplayMinute
+from atlas.science.execution_replay import MINUTE_NS, ReplayMinute
 from atlas.science.gates import EventGateInput, MarketGateInput
-from atlas.science.phase4_engine import Phase4DecisionInput, ScenarioSupport
+from atlas.science.phase4_engine import (
+    CandidateRiskInputs,
+    Phase4DecisionInput,
+    Phase4ScenarioEvaluation,
+    ScenarioSupport,
+    path_hash,
+    phase4_action_hash,
+    seed_identity,
+)
 from atlas.science.stresses import (
     FROZEN_STRESSES,
     StressCollateralAssumptions,
@@ -29,6 +37,7 @@ from atlas.strategy.policy import FixedPolicy, VenueFilters, fixed_policy
 SLOT = 4 * 3_600_000_000_000
 TICK = Decimal("0.1")
 LOT = Decimal("0.01")
+MINUTE_NS = MINUTE_NS
 
 
 def filters() -> VenueFilters:
@@ -52,7 +61,7 @@ def policy(*, side: Side = Side.LONG, quantity: Decimal = Decimal("1"), mark: De
                         slot_at_ns, slot_at_ns)
 
 
-def replay_minutes(prices: tuple[Decimal, ...], *, start_ns: int = 0, step_ns: int = 60_000_000_000,
+def replay_minutes(prices: tuple[Decimal, ...], *, start_ns: int = 0, step_ns: int = MINUTE_NS,
                    depth: Decimal = Decimal("100")) -> tuple[ReplayMinute, ...]:
     minutes = []
     for index, price in enumerate(prices):
@@ -104,12 +113,16 @@ def complete_stress_input(*, side: Side = Side.LONG, quantity: Decimal = Decimal
                        StressCollateralAssumptions(Decimal("500")))
 
 
-def bootstrap(*, lcb: float = 1.0, unstable: bool = False) -> OuterBootstrapResult:
-    return OuterBootstrapResult((lcb,) * 10, lcb, unstable, "NO_TRADE_NUMERICAL" if unstable else "ESTIMATED", 1, 2, 3)
+def bootstrap(*, lcb: float = 1.0, unstable: bool = False, action_hash: str = "") -> OuterBootstrapResult:
+    return OuterBootstrapResult((lcb,) * 10, lcb, unstable, "NO_TRADE_NUMERICAL" if unstable else "ESTIMATED",
+                                1, 2, 3, action_hash)
 
 
-def shared(minutes: tuple[ReplayMinute, ...]) -> tuple[ReplayMinute, ...]:
-    return minutes
+def candidate_risk_inputs(*, mark: Decimal = Decimal("100"), beta: Decimal = Decimal("1"),
+                          venue_collateral: Decimal = Decimal("10")) -> CandidateRiskInputs:
+    return CandidateRiskInputs(beta=beta, taker_fee_rate=Decimal("0.0005"),
+                               maintenance_margin_per_unit=mark / Decimal("5"),
+                               venue_collateral=venue_collateral)
 
 
 def account(equity: Decimal = Decimal("100000")) -> AccountState:
@@ -125,14 +138,11 @@ def risk_vector(*, normal: Decimal = Decimal("10"), stress: Decimal = Decimal("2
     return RiskVector(normal, stress, notional, notional, notional / Decimal("2"), es)
 
 
-def per_unit(*, normal: Decimal = Decimal("2"), stress: Decimal = Decimal("4"),
-             mark: Decimal = Decimal("100"), margin: Decimal = Decimal("20")) -> PerUnitRisk:
-    return PerUnitRisk(normal, stress, mark, mark, margin, Decimal("0"), Decimal("10"))
-
-
 def market_inputs(*, quantity: Decimal = Decimal("1"), now_ns: int = SLOT + 1_000_000,
                   mark: Decimal = Decimal("100")) -> MarketGateInput:
-    bid, ask = mark - Decimal("0.01"), mark + Decimal("0.01")
+    # Two basis points of relative spread keeps the market gate meaningful for
+    # instruments at any price level.
+    bid, ask = mark * Decimal("0.9999"), mark * Decimal("1.0001")
     return MarketGateInput(now_ns, now_ns - 1_000_000, now_ns - 1_000_000, now_ns - 1_000_000, bid, ask, mark, mark,
                            Decimal("100"), quantity, Decimal("0.0001"), True, True, True, True)
 
@@ -141,33 +151,80 @@ def event_inputs() -> EventGateInput:
     return EventGateInput(True, ())
 
 
+def scenario_evaluation(*, snapshot: FeatureSnapshot, policy: FixedPolicy, risk_policy_hash: str,
+                        quantity: Decimal, model_manifest_hash: str = "m", block_manifest_hash: str = "b",
+                        scenario_config_hash: str = "s", support: ScenarioSupport | None = None,
+                        bootstrap_result: OuterBootstrapResult | None = None,
+                        pi0_path_pnl: tuple[float, ...] = (0.0, 0.0),
+                        candidate_path_pnl: tuple[float, ...] = (2.0, 0.5),
+                        stress_template: StressInput | None = None,
+                        action_hash: str | None = None) -> Phase4ScenarioEvaluation:
+    support = support or ScenarioSupport(True, (), 8, 24, 1)
+    resolved_action = action_hash if action_hash is not None else phase4_action_hash(policy, snapshot, quantity)
+    template = stress_template if stress_template is not None else complete_stress_input(
+        side=policy.side, quantity=quantity, mark=policy.mark_reference)
+    resolved_bootstrap = bootstrap_result if bootstrap_result is not None else bootstrap(action_hash=resolved_action)
+    if not resolved_bootstrap.action_hash:
+        resolved_bootstrap = replace(resolved_bootstrap, action_hash=resolved_action)
+    return Phase4ScenarioEvaluation(
+        snapshot_hash=snapshot.snapshot_hash(), action_hash=resolved_action, quantity=quantity,
+        risk_policy_hash=risk_policy_hash, model_manifest_hash=model_manifest_hash,
+        block_manifest_hash=block_manifest_hash, scenario_config_hash=scenario_config_hash,
+        seed_identity=seed_identity(support), candidate_path_hash=path_hash(candidate_path_pnl),
+        portfolio_path_hash=path_hash(pi0_path_pnl),
+        bootstrap=resolved_bootstrap,
+        pi0_path_pnl=pi0_path_pnl, candidate_path_pnl=candidate_path_pnl, scenario_support=support,
+        stress_template=template)
+
+
 def decision_input(**overrides: object) -> Phase4DecisionInput:
+    snapshot_value: FeatureSnapshot | None = overrides.pop("snapshot", signal_snapshot(Signal.LONG))  # type: ignore[assignment]
+    policy_value: FixedPolicy | None = overrides.pop("policy", policy())  # type: ignore[assignment]
+    risk_policy_value: RiskPolicy = overrides.pop("risk_policy", risk_policy())  # type: ignore[assignment]
+    account_value = overrides.pop("account", account())
+    market_value = overrides.pop("market_inputs", market_inputs())
+    event_value = overrides.pop("event_inputs", event_inputs())
+    default_mark = policy_value.mark_reference if policy_value is not None else Decimal("100")
+    risk_inputs_value = overrides.pop("risk_inputs", candidate_risk_inputs(mark=default_mark))
+    venue_maximum: Decimal = overrides.pop("venue_maximum_quantity", Decimal("10"))  # type: ignore[assignment]
+    model_hash: str = overrides.pop("model_manifest_hash", "m")  # type: ignore[assignment]
+    block_hash: str = overrides.pop("block_manifest_hash", "b")  # type: ignore[assignment]
+    scenario_hash: str = overrides.pop("scenario_config_hash", "s")  # type: ignore[assignment]
+    scenario_value = overrides.pop("scenario", "AUTO")
+    if scenario_value == "AUTO" and snapshot_value is not None and policy_value is not None:
+        quantity: Decimal = overrides.pop("quantity", None) or min(venue_maximum, policy_value.quantity)  # type: ignore[assignment]
+        scenario_value = scenario_evaluation(
+            snapshot=snapshot_value, policy=policy_value, risk_policy_hash=risk_policy_value.policy_hash(),
+            quantity=quantity, model_manifest_hash=model_hash, block_manifest_hash=block_hash,
+            scenario_config_hash=scenario_hash,
+            support=overrides.pop("scenario_support", None),  # type: ignore[arg-type]
+            bootstrap_result=overrides.pop("bootstrap", None),  # type: ignore[arg-type]
+            pi0_path_pnl=overrides.pop("pi0_path_pnl", (0.0, 0.0)),  # type: ignore[arg-type]
+            candidate_path_pnl=overrides.pop("candidate_path_pnl", (2.0, 0.5)),  # type: ignore[arg-type]
+            stress_template=overrides.pop("stress_template", None),  # type: ignore[arg-type]
+            action_hash=overrides.pop("action_hash", None))  # type: ignore[arg-type]
     base: dict[str, object] = {
         "now_ns": SLOT + 1_000_000,
-        "snapshot": signal_snapshot(Signal.LONG),
-        "policy": policy(),
-        "risk_policy": risk_policy(),
-        "account": account(),
+        "snapshot": snapshot_value,
+        "policy": policy_value,
+        "risk_policy": risk_policy_value,
+        "account": account_value,
         "pending_reservations": (),
-        "market_inputs": market_inputs(),
-        "event_inputs": event_inputs(),
-        "scenario_support": ScenarioSupport(True, (), 8, 24, 1),
-        "bootstrap": bootstrap(),
-        "pi0_path_pnl": (0.0, 0.0),
-        "candidate_path_pnl": (2.0, 0.5),
-        "per_unit_risk": per_unit(),
-        "venue_maximum_quantity": Decimal("5"),
+        "market_inputs": market_value,
+        "event_inputs": event_value,
+        "scenario": scenario_value if scenario_value != "AUTO" else None,
+        "risk_inputs": risk_inputs_value,
+        "model_manifest_hash": model_hash,
+        "block_manifest_hash": block_hash,
+        "scenario_config_hash": scenario_hash,
+        "venue_maximum_quantity": venue_maximum,
         "lot": LOT,
         "minimum_quantity": Decimal("0.01"),
         "leverage": Decimal("1"),
-        "model_manifest_hash": "m",
-        "block_manifest_hash": "b",
-        "scenario_config_hash": "s",
         "cost_evidence_ref": "cost-1",
         "account_scope": "OFFLINE_RESEARCH",
         "plan_id": "plan-1",
         "availability_cutoff_ns": SLOT + SNAPSHOT_DEADLINE_NS,
-        "stress_input": complete_stress_input(),
     }
     base.update(overrides)
     return Phase4DecisionInput(**base)  # type: ignore[arg-type]

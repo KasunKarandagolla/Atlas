@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from support.phase4_factory import account, per_unit
+from support.phase4_factory import account
 
 from atlas.domain.risk import engineering_default_policy
 from atlas.risk.engine import AccountState, RiskVector
@@ -18,6 +18,11 @@ from atlas.risk.sizing import (
     deterministic_risk_quantity,
     largest_feasible_quantity,
 )
+
+
+def per_unit(*, normal: Decimal = Decimal("2"), stress: Decimal = Decimal("4"),
+             mark: Decimal = Decimal("100"), margin: Decimal = Decimal("20")) -> PerUnitRisk:
+    return PerUnitRisk(normal, stress, mark, mark, margin, Decimal("0"), Decimal("10"))
 
 
 def test_empirical_es_is_the_frozen_rockafellar_uryasev_minimisation():

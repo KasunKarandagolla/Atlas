@@ -76,6 +76,7 @@ class OuterBootstrapResult:
     replicate_seed: int
     inner_seed_a: int
     inner_seed_b: int
+    action_hash: str = ""
 
 
 def outer_expected_mean_bootstrap[T](
@@ -103,4 +104,4 @@ def outer_expected_mean_bootstrap[T](
     lcb, unstable = bootstrap_lcb(means_a, delta=delta, seed_a_means=means_a, seed_b_means=means_b)
     return OuterBootstrapResult(tuple(means_a), lcb, unstable,
                                 "NO_TRADE_NUMERICAL" if unstable else "ESTIMATED",
-                                replicate_seed, inner_seed_a, inner_seed_b)
+                                replicate_seed, inner_seed_a, inner_seed_b, action_hash)

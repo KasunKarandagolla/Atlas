@@ -7,7 +7,86 @@
 - REVIEWED PARTIAL CHECKPOINTS (not completion):
   - `09908939d877c4e85d8943573e36cb177c280fb7`
   - `0e56db64f1bedc7fd1338e68d31ab03044f0b511`
+  - `6d974c49db1127aff2b02f5db0092471bf1a46b7` — REJECTED for Phase-4 completion.
 - FINAL SHA: `RECORDED_AFTER_COMMIT` (the commit that follows this document).
+
+## Independent review of `6d974c49db1127aff2b02f5db0092471bf1a46b7`
+
+Independent review rejected that checkpoint for Phase-4 completion because of:
+
+1. current-state bridge mismatch — the bridge replayed the archived realized
+   hour return instead of applying the frozen current-state bridge
+   (`epsilon = archive_return / archive_sigma - archive_mu / 60`, then
+   `r*_minute = sigma_current * (mu_current / 60 + epsilon)`);
+2. bootstrap refit not propagated into scenario P&L — refitted coefficients and
+   rebuilt OOF residuals were computed but the replay still used the archived
+   forecast/residual unchanged;
+3. fabricated bootstrap microstructure and omitted funding — outer replay
+   synthesized bid/ask/depth from candle prices and called the replay with empty
+   settlements;
+4. hard-risk evidence not bound to the actual stress/ES results — caller-supplied
+   per-unit stress loss and ES contribution could size optimistically;
+5. unbound scenario evidence artifacts — bootstrap, paths, manifests, policy and
+   snapshot could be mixed without proof they belong together;
+6. execution timing gaps — stop latency was exposed but not applied, entry could
+   use an in-progress minute, and the T+24h escalation skipped the refreshed
+   bounded retry;
+7. non-frozen block-validation orchestration — block selection used an arbitrary
+   8-day/24-hour window instead of the frozen three 7-day windows;
+8. incomplete decision-calendar coverage — an arbitrary slot list could claim
+   complete coverage while omitting 20:00 UTC.
+
+## Targeted repair (this patch)
+
+1. **Current-state bridge** (`scenarios.py`): `bridge_hour`/`joint_minute_paths`
+   take an explicit `CurrentModelState(sigma, mu)` per instrument. Historical
+   blocks supply archive sigma, archive OOF mu and the archived minute
+   innovation; the simulated minute return is
+   `current_sigma * (current_mu/60 + innovation/archive_sigma + residual/60)`,
+   which is algebraically the frozen epsilon formula. Archived-hour coherence
+   (`realized/sigma == mu + residual`) is validated; mark/index stay paired with
+   the same sampled block and keep the sampled relative basis bounded.
+2. **Bootstrap refit propagation** (`outer_loop.py`, `huber_mean.py`): the frozen
+   three-window ridge-selection contract was extracted once and reused by both
+   the weekly refit and each replicate (`select_ridge_chronological`). Replicates
+   rebuild ``mu``/residual from the refitted coefficients via
+   `rebuild_replicate_hours`, so refit uncertainty now moves the scenario inputs
+   and the replicate P&L. Dead OOF-residual calculations were removed.
+3. **Evidence-only execution replay** (`outer_loop.py`): quotes, displayed depth,
+   entry latency, taker fee and funding settlements are read from the SAME
+   sampled block; missing spread/depth/latency/funding evidence is
+   `NOT_ESTIMABLE`. Nothing is derived from OHLC, and the replay is never called
+   with empty settlements when funding evidence is required.
+4. **Hard-risk binding** (`phase4_engine.py`, `risk/sizing.py`): the caller no
+   longer supplies a `PerUnitRisk`. The engine derives deterministic scalable
+   per-unit values, sizes once, re-evaluates the actual stress suite at the
+   SELECTED quantity, builds the final risk vector from that actual stress loss,
+   checks the venue-collateral limit against account evidence, and enforces the
+   portfolio ES hard limit from `ES_after` of the common-path calculation.
+   Failures return `NO_TRADE_RISK` without any smaller-size search.
+5. **Action/evidence binding** (`phase4_engine.py`): new immutable
+   `Phase4ScenarioEvaluation` carrying snapshot hash, action hash, quantity,
+   RiskPolicy hash, model/block/scenario manifests, seed identity, candidate and
+   portfolio path hashes, the bootstrap result and the stress template. The
+   engine verifies every binding (including `bootstrap.action_hash`) and fails
+   closed with `NOT_ESTIMABLE` on any conflict.
+6. **Execution timing** (`execution_replay.py`, `policy_replay.py`): stops now
+   execute at `trigger + resolution + supplied latency` (never on the trigger
+   bar); entry uses the first complete minute after arrival (a bar already in
+   progress at send/arrival is not fillable); the T+24h exit is a bounded IOC,
+   then a refreshed bounded retry, then the two-second market escalation, then a
+   declared bound or `NOT_ESTIMABLE`. A stop whose execution falls at/after the
+   horizon defers to the frozen time exit instead of a fabricated fill.
+7. **Frozen block-validation windows** (`residual_blocks.py`): new
+   `select_block_length_frozen` uses the same three non-overlapping 7-day
+   windows that end at the Monday refit instant with 60 days of preceding
+   support, plus non-overlapping candidate scenarios bounding the quadratic
+   energy objective. The end-to-end fixture now exercises that production
+   orchestration.
+8. **Complete decision calendar** (`decision_calendar.py`): `frozen_slot_grid`
+   plus `evaluate_calendar_interval`/`assert_complete` require every 00/04/08/12/
+   16/20 UTC slot for BTCUSDT and ETHUSDT; the end-to-end test now covers all six
+   daily slots, and a missing 20:00 UTC slot fails completeness validation.
 
 ## Independent review of `0e56db64f1bedc7fd1338e68d31ab03044f0b511`
 
@@ -163,7 +242,8 @@ typed decision status, never a substituted numeric alpha estimate.
 - Previous reviewed partial checkpoints (kept for history):
   - `09908939d877c4e85d8943573e36cb177c280fb7`: `199 passed, 1 skipped` (clean locked suite).
   - `0e56db64f1bedc7fd1338e68d31ab03044f0b511`: `212 passed, 1 skipped` (clean locked suite).
-- This continuation (locked environment with PyArrow, clean hashed install):
+  - `6d974c49db1127aff2b02f5db0092471bf1a46b7`: `296 passed, 1 skipped` (clean locked suite), rejected on review.
+- Targeted repair (locked environment with PyArrow, clean hashed install):
   see the final report for exact pytest/Ruff/mypy/compileall counts.
 
 The existing engineering defaults remain `ENGINEERING_DEFAULTS_ONLY_NOT_SAFE_FOR_LIVE`.

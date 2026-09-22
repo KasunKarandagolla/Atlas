@@ -68,25 +68,29 @@ def test_partial_entry_partial_stop_and_partial_time_exit_stay_conserved():
     long_policy = policy(side=Side.LONG, quantity=Decimal("10"), mark=Decimal("100"))
     entry = replay_minutes((Decimal("100"),), start_ns=START_NS, depth=Decimal("5"))  # 10% participation -> 0.5 filled
     stop = replay_minutes((Decimal("90"),), start_ns=START_NS + MINUTE_NS, depth=Decimal("0.2"))
+    execution = replay_minutes((Decimal("90"),), start_ns=START_NS + 2 * MINUTE_NS, depth=Decimal("0.2"))
     horizon = replay_minutes((Decimal("101"),), start_ns=HORIZON_AT, depth=Decimal("0.1"))
-    result = replay_policy(long_policy, entry + stop + horizon, (), assumptions(extension_bound_supported=True))
+    retry = replay_minutes((Decimal("101"),), start_ns=HORIZON_AT + MINUTE_NS, depth=Decimal("0.2"))
+    result = replay_policy(long_policy, entry + stop + execution + horizon + retry, (), assumptions())
     assert result.status is FillStatus.PARTIAL_FILL
     assert result.filled_qty == Decimal("0.5")
     assert result.stop_fills and result.time_exit_fills
     assert [fill.quantity for fill in result.exit_fills] == [Decimal("0.2"), Decimal("0.1"), Decimal("0.2")]
     assert sum(fill.quantity for fill in result.exit_fills) == result.filled_qty
     assert result.remaining_qty == 0
-    assert result.bounded_extension is True
+    assert result.bounded_extension is False
 
 
 def test_stop_fills_at_the_adverse_gap_bound_and_never_reverses():
     long_policy = policy(side=Side.LONG, quantity=Decimal("1"), mark=Decimal("100"))
-    gap = replay_minutes((Decimal("90"),), start_ns=START_NS + MINUTE_NS)
-    result = replay_policy(long_policy, replay_minutes((Decimal("100"),), start_ns=START_NS) + gap, (),
-                           assumptions(stop_spread_impact=Decimal("0.5")))
+    trigger = replay_minutes((Decimal("90"),), start_ns=START_NS + MINUTE_NS)
+    execution = replay_minutes((Decimal("89"),), start_ns=START_NS + 2 * MINUTE_NS)
+    result = replay_policy(long_policy, replay_minutes((Decimal("100"),), start_ns=START_NS) + trigger + execution,
+                           (), assumptions(stop_spread_impact=Decimal("0.5")))
     assert result.outcome_status() is FillStatus.STOP_EXIT
-    assert result.stop_fills[0].price == Decimal("89.4")  # min(bid 89.9, last_low 90) - 0.5
-    assert result.pnl == Decimal("89.4") - Decimal("100.1")
+    # The fill uses the later execution bar, never the trigger bar's price.
+    assert result.stop_fills[0].price == Decimal("88.4")  # min(bid 88.9, last_low 89) - 0.5
+    assert result.pnl == Decimal("88.4") - Decimal("100.1")
     assert result.remaining_qty == 0
 
 
@@ -104,8 +108,12 @@ def test_no_fill_and_missing_execution_evidence_are_distinct():
 def test_stop_time_race_prefers_the_stop_and_extension_is_bounded_or_not_estimable():
     long_policy = policy(side=Side.LONG, quantity=Decimal("1"), mark=Decimal("100"))
     race = (replay_minutes((Decimal("100"),), start_ns=START_NS)
-            + replay_minutes((Decimal("90"),), start_ns=HORIZON_AT - MINUTE_NS))
-    assert replay_policy(long_policy, race, (), assumptions()).outcome_status() is FillStatus.STOP_EXIT
+            + replay_minutes((Decimal("90"),), start_ns=HORIZON_AT - MINUTE_NS)
+            + replay_minutes((Decimal("100"),), start_ns=HORIZON_AT))
+    # The trigger's execution minute falls at the horizon, so the frozen T+24h exit
+    # applies instead of a fabricated trigger-minute stop fill.
+    raced = replay_policy(long_policy, race, (), assumptions())
+    assert raced.stop_fills == () and raced.outcome_status() is FillStatus.TIME_EXIT
 
     blocked = (replay_minutes((Decimal("100"),), start_ns=START_NS)
                + replay_minutes((Decimal("101"),), start_ns=HORIZON_AT, depth=ZERO))
@@ -118,7 +126,13 @@ def test_stop_time_race_prefers_the_stop_and_extension_is_bounded_or_not_estimab
     assert bounded.outcome_status() is FillStatus.EXTENDED_EXIT
     assert bounded.bounded_extension is True and bounded.remaining_qty == 0 and bounded.pnl is not None
 
-    escalated_path = blocked + replay_minutes((Decimal("99"),), start_ns=HORIZON_AT + 3_000_000_000)
+    retry_path = blocked + replay_minutes((Decimal("101"),), start_ns=HORIZON_AT + MINUTE_NS)
+    retried = replay_policy(long_policy, retry_path, (), assumptions(time_exit_market_escalation_supported=True))
+    assert retried.time_exit_retry_fills and retried.outcome_status() is FillStatus.TIME_EXIT
+
+    escalated_path = (blocked
+                      + replay_minutes((Decimal("101"),), start_ns=HORIZON_AT + 3_000_000_000, depth=ZERO)
+                      + replay_minutes((Decimal("99"),), start_ns=HORIZON_AT + 2 * MINUTE_NS))
     escalated = replay_policy(long_policy, escalated_path, (), assumptions(time_exit_market_escalation_supported=True))
     assert escalated.outcome_status() is FillStatus.EXTENDED_EXIT
     assert escalated.escalation_fills and escalated.remaining_qty == 0
@@ -150,3 +164,28 @@ def test_linear_pnl_sign_conventions():
     assert linear_pnl(Side.LONG, (entry,), (exit_fill,)) == Decimal("19")
     assert linear_pnl(Side.SHORT, (entry,), (exit_fill,)) == Decimal("-21")
     assert linear_pnl(Side.LONG, (entry,), (exit_fill,), (Decimal("3"),)) == Decimal("16")
+
+
+def test_entry_never_uses_a_minute_already_in_progress_at_arrival():
+    long_policy = policy(side=Side.LONG, quantity=Decimal("1"), mark=Decimal("100"))
+    minutes = (replay_minutes((Decimal("100"),), start_ns=START_NS)
+               + replay_minutes((Decimal("100"),), start_ns=START_NS + MINUTE_NS))
+    immediate = replay_policy(long_policy, minutes, (), assumptions())
+    assert immediate.entry_fill is not None and immediate.entry_fill.at_ns == START_NS
+    mid_bar = replay_policy(long_policy, minutes, (), assumptions(decision_to_venue_ns=30_000_000_000))
+    assert mid_bar.entry_fill is not None and mid_bar.entry_fill.at_ns == START_NS + MINUTE_NS
+    assert mid_bar.entry_fill.price == Decimal("100.1")
+
+
+def test_stop_latency_delays_execution_and_can_miss_the_horizon():
+    long_policy = policy(side=Side.LONG, quantity=Decimal("1"), mark=Decimal("100"))
+    entry = replay_minutes((Decimal("100"),), start_ns=START_NS)
+    trigger = replay_minutes((Decimal("90"),), start_ns=START_NS + MINUTE_NS)
+    later = replay_minutes((Decimal("89"),), start_ns=START_NS + 4 * MINUTE_NS)
+    delayed = replay_policy(long_policy, entry + trigger + later, (),
+                            assumptions(stop_latency_ns=2 * MINUTE_NS))
+    # trigger + one-minute resolution + two minutes of supplied latency.
+    assert delayed.stop_fills and delayed.stop_fills[0].at_ns == START_NS + 4 * MINUTE_NS
+    too_slow = replay_policy(long_policy, entry + trigger + later, (),
+                             assumptions(stop_latency_ns=60 * MINUTE_NS, extension_bound_supported=True))
+    assert too_slow.stop_fills == ()

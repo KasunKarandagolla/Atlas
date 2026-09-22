@@ -8,6 +8,8 @@ from enum import StrEnum
 
 from atlas.domain.enums import Side
 
+MINUTE_NS = 60_000_000_000
+
 
 class FillStatus(StrEnum):
     NO_FILL = "NO_FILL"
@@ -87,7 +89,7 @@ class StopBounds:
 
 def executable_stop_bounds(
     side: Side, qty: Decimal, stop: Decimal, minute: ReplayMinute, *, spread_impact: Decimal = Decimal("0"),
-    taker_fee_rate: Decimal = Decimal("0"), latency_minutes: int = 0,
+    taker_fee_rate: Decimal = Decimal("0"),
 ) -> StopBounds:
     """Replay a triggered mark stop after the trigger, retaining bar-order bounds."""
     if not stop_triggered(side, stop, minute):
@@ -111,6 +113,35 @@ def executable_stop_bounds(
         Fill(qty, favorable_price, qty * favorable_price * taker_fee_rate, minute.at_ns),
         ExecutionEvidenceStatus.EXECUTABLE, True,
     )
+
+
+def first_complete_minute(minutes: tuple[ReplayMinute, ...], *, arrival_ns: int,
+                          minute_ns: int = MINUTE_NS) -> ReplayMinute | None:
+    """First minute bar that was not already in progress at arrival.
+
+    Frozen minute-only convention: a bar that started before arrival was in
+    progress when the decision was sent, so its price may not be fillable.  The
+    first eligible bar therefore starts on the next resolution boundary at or
+    after arrival.
+    """
+    if minute_ns <= 0:
+        raise ValueError("positive minute resolution required")
+    boundary = -(-arrival_ns // minute_ns) * minute_ns
+    return next((minute for minute in minutes if minute.at_ns >= boundary), None)
+
+
+def stop_execution_minute(minutes: tuple[ReplayMinute, ...], *, trigger: ReplayMinute, latency_ns: int = 0,
+                          minute_ns: int = MINUTE_NS) -> ReplayMinute | None:
+    """First minute bar whose own completed information may execute a triggered stop.
+
+    The trigger is observed from the trigger bar; execution cannot reuse that
+    bar's price.  Execution therefore happens at the first bar at or after
+    ``trigger + resolution + supplied latency``.
+    """
+    if latency_ns < 0 or minute_ns <= 0:
+        raise ValueError("non-negative latency and positive resolution required")
+    earliest = trigger.at_ns + minute_ns + latency_ns
+    return next((minute for minute in minutes if minute.at_ns >= earliest), None)
 
 
 def executable_stop(side: Side, qty: Decimal, minute: ReplayMinute, taker_fee_rate: Decimal = Decimal("0")) -> Fill | None:
