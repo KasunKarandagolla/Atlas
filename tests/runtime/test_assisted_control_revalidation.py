@@ -175,3 +175,27 @@ def test_conflicting_pending_reservation_risk_blocks(tmp_path):
     assert any(reason in result.reasons for reason in ("gross-notional", "instrument-notional", "aggregate-normal-loss"))
     assert journal.load_approval(approval.approval_id).consumed_at_ns is None
     journal.close()
+
+
+def test_shell_identity_mismatch_and_account_snapshot_freshness_block_before_consumption(tmp_path):
+    journal = SQLiteJournal(tmp_path / "revalidation.db")
+    persist_ready_recovery(journal)
+    plan = make_plan(journal)
+    approval = make_approval(journal, plan)
+    shell = _shell(journal)
+    cases = [
+        {"runtime_instance_id": "other-runtime"},
+        {"writer_id": "other-writer"},
+        {"writer_epoch": 99},
+        {"account_at_ns": NOW_NS - 2_000_000_000},
+        {"account_at_ns": NOW_NS + 1},
+    ]
+    for case in cases:
+        result = shell.prepare_entry(plan=plan, approval_id=approval.approval_id, user_identity="user-1",
+                                     evidence=evidence(plan, **case))
+        assert result.status == "REVALIDATION_BLOCKED", case
+        assert journal.load_approval(approval.approval_id).consumed_at_ns is None
+    fresh = shell.prepare_entry(plan=plan, approval_id=approval.approval_id, user_identity="user-1",
+                                evidence=evidence(plan, account_at_ns=NOW_NS - 500_000_000))
+    assert fresh.status == "DISPATCH_BLOCKED"
+    journal.close()

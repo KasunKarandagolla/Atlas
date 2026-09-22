@@ -4,7 +4,8 @@ from decimal import Decimal
 
 import pytest
 
-from atlas.domain.enums import Side
+from atlas.domain.enums import CommandType, Side
+from atlas.domain.execution import make_command
 from atlas.domain.trade_plan import TradePlan
 from atlas.runtime.wire_contract import (
     build_entry_wire_contract,
@@ -44,7 +45,9 @@ def _plan() -> TradePlan:
 
 
 def test_entry_contract_has_frozen_fields():
-    entry = build_entry_wire_contract(_plan(), Decimal("50000"), Decimal("48000"), Decimal("0.01"))
+    client_order_id = "a" * 32
+    entry = build_entry_wire_contract(_plan(), Decimal("50000"), Decimal("48000"), Decimal("0.01"),
+                                      client_order_id)
     assert entry.to_bybit_params() == {
         "symbol": "BTCUSDT-LINEAR.BYBIT",
         "side": "Buy",
@@ -55,10 +58,29 @@ def test_entry_contract_has_frozen_fields():
         "reduceOnly": False,
         "positionIdx": 0,
         "stopLoss": "48000",
+        "orderLinkId": client_order_id,
         "slTriggerBy": "MarkPrice",
         "slOrderType": "Market",
         "tpslMode": "Full",
     }
+
+
+def test_entry_payload_identity_changes_with_client_order_id():
+    first = build_entry_wire_contract(_plan(), Decimal("50000"), Decimal("48000"), Decimal("0.01"), "a" * 32)
+    second = build_entry_wire_contract(_plan(), Decimal("50000"), Decimal("48000"), Decimal("0.01"), "b" * 32)
+    assert first.to_bybit_params()["orderLinkId"] != second.to_bybit_params()["orderLinkId"]
+    with pytest.raises(ValueError):
+        build_entry_wire_contract(_plan(), Decimal("50000"), Decimal("48000"), Decimal("0.01"), "NOT-HEX")
+
+
+def test_entry_command_hash_binds_client_order_id():
+    first = make_command(command_id="c1", intent_id="i1", command_type=CommandType.SUBMIT_ENTRY,
+                         payload_dict={"orderLinkId": "a" * 32, "qty": "0.01"}, expected_state_version=0,
+                         created_at_ns=1)
+    second = make_command(command_id="c2", intent_id="i1", command_type=CommandType.SUBMIT_ENTRY,
+                          payload_dict={"orderLinkId": "b" * 32, "qty": "0.01"}, expected_state_version=0,
+                          created_at_ns=1)
+    assert first.exact_payload_hash != second.exact_payload_hash
 
 
 def test_exit_has_explicit_quantity_and_market_has_no_fake_price():

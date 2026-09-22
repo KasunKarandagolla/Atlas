@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 
 from atlas.domain.enums import Side
+from atlas.domain.execution import validate_client_order_id
 from atlas.domain.money import canonical_decimal_str
 from atlas.domain.trade_plan import TradePlan
 
@@ -18,6 +19,7 @@ class EntryWireContract:
     quantity: Decimal
     price: Decimal
     stop_loss: Decimal
+    client_order_id: str
     order_type: str = "LIMIT"
     time_in_force: str = "IOC"
     reduce_only: bool = False
@@ -39,6 +41,7 @@ class EntryWireContract:
             raise ValueError("entry contract violates frozen V1")
         if self.side not in ("Buy", "Sell") or min(self.quantity, self.price, self.stop_loss) <= 0:
             raise ValueError("invalid entry values")
+        validate_client_order_id(self.client_order_id)
 
     def to_bybit_params(self) -> dict[str, Any]:
         return {
@@ -51,6 +54,7 @@ class EntryWireContract:
             "reduceOnly": False,
             "positionIdx": 0,
             "stopLoss": canonical_decimal_str(self.stop_loss),
+            "orderLinkId": self.client_order_id,
             "slTriggerBy": "MarkPrice",
             "slOrderType": "Market",
             "tpslMode": "Full",
@@ -94,7 +98,7 @@ class ExitWireContract:
 
 
 def build_entry_wire_contract(
-    plan: TradePlan, collar_price: Decimal, stop_price: Decimal, quantity: Decimal
+    plan: TradePlan, collar_price: Decimal, stop_price: Decimal, quantity: Decimal, client_order_id: str
 ) -> EntryWireContract:
     return EntryWireContract(
         f"{plan.instrument}-LINEAR.BYBIT",
@@ -102,6 +106,7 @@ def build_entry_wire_contract(
         quantity,
         collar_price,
         stop_price,
+        client_order_id,
     )
 
 

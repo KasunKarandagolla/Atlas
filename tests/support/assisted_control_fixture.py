@@ -2,19 +2,29 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 
 from conftest import T0, add_intent, completed_run, terminal_entry
 
+from atlas.domain.capability import CapabilityContract, initial_unverified_fixture
 from atlas.domain.enums import (
+    CapabilityStatus,
     HealthState,
     LifecycleState,
     ProtectionStatus,
     ReconciliationHealth,
     Side,
 )
-from atlas.domain.execution import Approval, Command, Intent, Reservation, generate_client_order_id
+from atlas.domain.execution import (
+    Approval,
+    Command,
+    Intent,
+    ProtectionObservation,
+    Reservation,
+    generate_client_order_id,
+)
 from atlas.domain.risk import engineering_default_policy
 from atlas.domain.trade_plan import TradePlan
 from atlas.persistence.sqlite import SQLiteJournal
@@ -26,7 +36,6 @@ from atlas.runtime.assisted_control import (
 )
 from atlas.runtime.flat_certificate import certify_flat_from_journal
 from atlas.runtime.health import HealthSnapshot
-from atlas.runtime.protection_evidence import ProtectionEvidence
 from atlas.runtime.recovery import RecoveryCertificate, recover_from_persisted_run
 
 PLAN_EXPIRY_NS = T0 + 60_000_000_000
@@ -135,6 +144,7 @@ def evidence(plan: TradePlan, *, now_ns: int = NOW_NS, recovery_run_id: str = "r
              account_scope: str = "acct", instrument: str = "BTCUSDT",
              bid: Decimal = Decimal("48999"), ask: Decimal = Decimal("49001"), mark: Decimal = Decimal("49000"),
              quote_at_ns: int | None = None, mark_at_ns: int | None = None,
+             account_at_ns: int | None = None,
              account: AccountState | None = None, signed_position_qty: Decimal = Decimal("0"),
              health: HealthSnapshot | None = None, requested_quantity: Decimal | None = None,
              policy=None):
@@ -170,6 +180,7 @@ def evidence(plan: TradePlan, *, now_ns: int = NOW_NS, recovery_run_id: str = "r
         mark=mark,
         quote_at_ns=quote_at_ns if quote_at_ns is not None else now_ns - 500_000_000,
         mark_at_ns=mark_at_ns if mark_at_ns is not None else now_ns - 500_000_000,
+        account_at_ns=account_at_ns if account_at_ns is not None else now_ns - 500_000_000,
         tick=Decimal("1"),
         risk_policy=policy or engineering_default_policy(),
         signed_position_qty=signed_position_qty,
@@ -214,6 +225,7 @@ class FakeNautilusPort:
     journal: SQLiteJournal | None = None
     calls: list[str] = field(default_factory=list, init=False)
     observed: list[tuple[str, str, int]] = field(default_factory=list, init=False)
+    observed_client_order_ids: list[str | None] = field(default_factory=list, init=False)
 
     def dispatch(self, command: Command) -> DispatchAck:
         if self.journal is not None:
@@ -228,35 +240,81 @@ class FakeNautilusPort:
                 raise AssertionError("reservation missing at port call")
             self.observed.append((stored.command_id, intent.lifecycle.value, reservation.version))
         self.calls.append(command.command_id)
+        self.observed_client_order_ids.append(json.loads(command.payload).get("orderLinkId"))
         return self.ack
 
 
 @dataclass
 class FakeProtectionPort:
-    calls: list[tuple[int, Decimal, Decimal, str]] = field(default_factory=list, init=False)
+    journal: SQLiteJournal | None = None
+    command_id: str | None = None
+    intent_id: str | None = None
+    position_epoch: int = 0
+    qty: Decimal = Decimal("0.01")
+    stop: Decimal = Decimal("48000")
+    trigger_basis: str = "MarkPrice"
+    semantics: str = "FULL_POSITION_MARKET_STOP_REDUCE_ONLY"
+    observed_at_ns: int = T0 + 1
+    evidence_ids: tuple[str, ...] = ("position-view-1",)
+    ensure_calls: list[tuple[int, Decimal, Decimal, str]] = field(default_factory=list, init=False)
+    read_calls: list[tuple[str, str, int]] = field(default_factory=list, init=False)
 
     def ensure_full_stop(self, position_epoch: int, expected_signed_qty, stop_price, trigger_basis: str):
-        self.calls.append((position_epoch, Decimal(expected_signed_qty), Decimal(stop_price), trigger_basis))
-        return ProtectionEvidence(
-            account_ref="acct",
-            instrument="BTCUSDT",
-            position_epoch=position_epoch,
-            desired_stop_version=1,
-            observed_signed_qty=Decimal(expected_signed_qty),
-            full_position_semantics=True,
-            stop_price=Decimal(stop_price),
-            trigger_basis=trigger_basis,
-            closing_only_behavior=True,
-            position_view_evidence_ids=("fake-position",),
-            conditional_order_view_evidence_ids=("fake-conditional",),
-            observation_time_ns=T0 + 1,
-            receive_time_ns=T0 + 2,
-            status=ProtectionStatus.CONFIRMED,
-            market_stop_semantics=True,
-        )
+        command = None
+        journal = self.journal
+        if journal is not None and self.command_id is not None:
+            command = journal.load_command(self.command_id)
+        elif journal is not None and self.intent_id is not None:
+            commands = [item for item in journal.load_commands_for_intent(self.intent_id)
+                        if item.command_type.value == "REPAIR_STOP"]
+            command = commands[-1] if commands else None
+        if command is not None:
+            assert journal is not None
+            intent = journal.load_intent(command.intent_id)
+            if command.command_type.value != "REPAIR_STOP":
+                raise AssertionError("repair command not durable before protection side effect")
+            if command.send_started_at_ns is None:
+                raise AssertionError("send marker not durable before protection side effect")
+            if intent.position_epoch != position_epoch:
+                raise AssertionError("protection port received a different position epoch")
+        self.ensure_calls.append((position_epoch, Decimal(expected_signed_qty), Decimal(stop_price), trigger_basis))
+        return {"acknowledged": True}
 
-    def read_protection(self, account: str, instrument: str, position_idx: int = 0):
-        raise AssertionError("read_protection not used in Phase-6 offline shell tests")
+    def read_protection(self, account: str, instrument: str, position_idx: int = 0) -> ProtectionObservation:
+        self.read_calls.append((account, instrument, position_idx))
+        return ProtectionObservation(
+            position_epoch=self.position_epoch,
+            desired_stop_version=1,
+            qty=self.qty,
+            trigger_basis=self.trigger_basis,
+            stop_price=self.stop,
+            semantics=self.semantics,
+            evidence_ids=self.evidence_ids,
+            observed_at_ns=self.observed_at_ns,
+        )
 
     def read_economic_events(self, cursor: str | None, overlap_start: int):
         return ()
+
+
+def qualified_contract(*, reduce_only: bool | None = None,
+                       protection: bool | None = None) -> CapabilityContract:
+    """Test-only typed capability contract; repository production states stay UNVERIFIED."""
+    contract = initial_unverified_fixture()
+    capabilities = contract.capabilities
+    if reduce_only is not None:
+        capabilities = replace(
+            capabilities,
+            reduce_only_wire_and_matching_enforcement=(
+                CapabilityStatus.SUPPORTED if reduce_only else capabilities.reduce_only_wire_and_matching_enforcement
+            ),
+        )
+    if protection is not None:
+        capabilities = replace(
+            capabilities,
+            native_position_stop_read_and_repair_port=(
+                CapabilityStatus.SUPPORTED if protection
+                else capabilities.native_position_stop_read_and_repair_port
+            ),
+        )
+    return replace(contract, capabilities=capabilities)

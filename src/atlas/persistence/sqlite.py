@@ -263,6 +263,7 @@ class SQLiteJournal:
         now_ns: int,
         intent: Intent,
         reservation: Reservation,
+        expected_position_epoch: int | None = None,
     ) -> Approval:
         if (
             intent.intent_id != reservation.intent_id
@@ -284,6 +285,11 @@ class SQLiteJournal:
                     )
                 if now_ns >= r["expires_at_ns"]:
                     raise PersistenceError("approval expired")
+                if expected_position_epoch is not None:
+                    epoch_row = c.execute("SELECT MAX(position_epoch) FROM intents").fetchone()
+                    next_epoch = 0 if epoch_row[0] is None else int(epoch_row[0]) + 1
+                    if intent.position_epoch != expected_position_epoch or expected_position_epoch != next_epoch:
+                        raise PersistenceError("position epoch is no longer the expected next epoch")
                 c.execute(
                     "UPDATE approvals SET consumed_at_ns=? WHERE approval_id=? AND consumed_at_ns IS NULL",
                     (now_ns, approval_id),
@@ -332,6 +338,14 @@ class SQLiteJournal:
                 )
 
         return self._wrap("consume_approval_with_intent_reservation", op)
+
+    def next_position_epoch(self) -> int:
+        """Smallest durable monotonic epoch not yet used by any persisted intent."""
+        def op():
+            row = self._conn.execute("SELECT MAX(position_epoch) FROM intents").fetchone()
+            return 0 if row[0] is None else int(row[0]) + 1
+
+        return self._wrap("next_position_epoch", op)
 
     def create_intent_with_reservation(self, intent: Intent, res: Reservation) -> None:
         if intent.intent_id != res.intent_id:

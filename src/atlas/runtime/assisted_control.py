@@ -32,6 +32,7 @@ from atlas.persistence.sqlite import PersistenceError, SQLiteJournal
 from atlas.risk.engine import AccountState, RiskVector, evaluate_reservation
 from atlas.runtime.health import HealthSnapshot, new_risk_allowed
 from atlas.runtime.no_reversal import check_no_reversal
+from atlas.runtime.protection_evidence import verify_protection
 from atlas.runtime.protection_port import BybitProtectionPort
 from atlas.runtime.recovery import RecoveryCertificate, RecoveryDecision
 from atlas.runtime.wire_contract import (
@@ -43,6 +44,7 @@ from atlas.runtime.wire_contract import (
 from atlas.strategy.policy import entry_collar
 
 MAX_QUOTE_AGE_NS = 1_000_000_000
+MAX_PROTECTION_STALENESS_NS = 2_000_000_000
 
 
 class DispatchAck(StrEnum):
@@ -85,6 +87,7 @@ class AssistedRevalidationEvidence:
     risk_policy: RiskPolicy
     signed_position_qty: Decimal
     health: HealthSnapshot
+    account_at_ns: int
     requested_quantity: Decimal | None = None
     existing_reservations: tuple[RiskVector, ...] = ()
 
@@ -92,6 +95,7 @@ class AssistedRevalidationEvidence:
         ensure_utc_ns(self.now_ns, field="now_ns")
         ensure_utc_ns(self.quote_at_ns, field="quote_at_ns")
         ensure_utc_ns(self.mark_at_ns, field="mark_at_ns")
+        ensure_utc_ns(self.account_at_ns, field="account_at_ns")
         for name in ("runtime_instance_id", "writer_id", "recovery_run_id", "instrument", "account_scope",
                      "account_snapshot_hash"):
             value = getattr(self, name)
@@ -200,6 +204,10 @@ def revalidate_plan(*, journal: SQLiteJournal, plan: TradePlan,
         reasons.append("stale quote")
     if evidence.mark_at_ns > evidence.now_ns or evidence.now_ns - evidence.mark_at_ns > MAX_QUOTE_AGE_NS:
         reasons.append("stale mark")
+    if evidence.account_at_ns > evidence.now_ns:
+        reasons.append("future account snapshot")
+    elif evidence.now_ns - evidence.account_at_ns > MAX_QUOTE_AGE_NS:
+        reasons.append("stale account snapshot")
     if evidence.signed_position_qty != 0:
         reasons.append("instrument is not flat/reconciled for a new opening intent")
     quantity = plan.qty_limit if evidence.requested_quantity is None else min(plan.qty_limit,
@@ -362,6 +370,13 @@ class AssistedControlShell:
                       ) -> AssistedControlResult:
         if self.paused:
             return AssistedControlResult("PAUSED", ("pause latch blocks new opening risk",))
+        identity_reasons = []
+        if evidence.runtime_instance_id != self.runtime_instance_id:
+            identity_reasons.append("evidence runtime instance does not match shell runtime instance")
+        if evidence.writer_id != self.writer_id or evidence.writer_epoch != self.writer_epoch:
+            identity_reasons.append("evidence writer identity/epoch does not match shell writer")
+        if identity_reasons:
+            return AssistedControlResult("REVALIDATION_BLOCKED", tuple(identity_reasons))
         try:
             approval = validate_approval(journal=self.journal, plan=plan, approval_id=approval_id,
                                          user_identity=user_identity, now_ns=evidence.now_ns)
@@ -370,9 +385,10 @@ class AssistedControlShell:
         revalidation = revalidate_plan(journal=self.journal, plan=plan, evidence=evidence)
         if not revalidation.ok:
             return AssistedControlResult("REVALIDATION_BLOCKED", revalidation.reasons, approval=approval)
+        next_epoch = self.journal.next_position_epoch()
         intent = Intent(
             intent_id=intent_id or uuid.uuid4().hex,
-            position_epoch=0,
+            position_epoch=next_epoch,
             plan_id=plan.plan_id,
             plan_version=plan.version,
             client_order_id=generate_client_order_id(),
@@ -403,10 +419,12 @@ class AssistedControlShell:
                 now_ns=evidence.now_ns,
                 intent=intent,
                 reservation=reservation,
+                expected_position_epoch=next_epoch,
             )
         except PersistenceError as exc:
             return AssistedControlResult("PERSISTENCE_BLOCKED", (str(exc),), approval=approval)
-        wire = build_entry_wire_contract(plan, revalidation.entry_price, plan.stop, revalidation.quantity)
+        wire = build_entry_wire_contract(plan, revalidation.entry_price, plan.stop, revalidation.quantity,
+                                         intent.client_order_id)
         command = self.journal.prepare_dispatch(
             intent_id=intent.intent_id,
             expected_state_version=intent.state_version,
@@ -434,10 +452,26 @@ class AssistedControlShell:
                                      revalidation.quantity, revalidation.entry_price)
 
     def _risk_reduction_gate(self) -> tuple[str, ...]:
-        reasons = list(self.dispatch_gate_reasons())
-        if self.capability_contract is not None:
+        reasons: list[str] = []
+        if self.capability_contract is None:
+            reasons.append("typed capability contract not supplied")
+        else:
+            if self.capability_hash != self.capability_contract.contract_hash():
+                reasons.append("capability hash does not bind contract")
             if self.capability_contract.capabilities.reduce_only_wire_and_matching_enforcement.value != "SUPPORTED":
                 reasons.append("reduce-only capability UNVERIFIED")
+        return tuple(dict.fromkeys(reasons))
+
+    def _protection_gate(self) -> tuple[str, ...]:
+        reasons: list[str] = []
+        if self.capability_contract is None:
+            reasons.append("typed capability contract not supplied")
+        else:
+            if self.capability_hash != self.capability_contract.contract_hash():
+                reasons.append("capability hash does not bind contract")
+            if (self.capability_contract.capabilities.native_position_stop_read_and_repair_port.value
+                    != "SUPPORTED"):
+                reasons.append("protection repair capability UNVERIFIED")
         return tuple(dict.fromkeys(reasons))
 
     def _prepare_exit(self, *, intent_id: str, reconciled_signed_qty: Decimal, quantity: Decimal,
@@ -489,7 +523,8 @@ class AssistedControlShell:
                                   market=True)
 
     def protect(self, *, intent_id: str, reconciled_signed_qty: Decimal, expected_signed_qty: Decimal,
-                stop_price: Decimal, protection_port: BybitProtectionPort, now_ns: int) -> AssistedControlResult:
+                stop_price: Decimal, protection_port: BybitProtectionPort | None, now_ns: int,
+                ) -> AssistedControlResult:
         intent = self.journal.load_intent(intent_id)
         plan = self.journal.load_trade_plan(intent.plan_id)
         reconciled = ensure_decimal(reconciled_signed_qty, field="reconciled_signed_qty")
@@ -505,20 +540,77 @@ class AssistedControlShell:
             return AssistedControlResult("PROTECTION_BLOCKED", ("LONG stop is not below reference",))
         if plan.side is Side.SHORT and stop <= (plan.reference_price or stop - 1):
             return AssistedControlResult("PROTECTION_BLOCKED", ("SHORT stop is not above reference",))
-        gate = list(self.dispatch_gate_reasons())
+        reservation = self.journal.load_reservation(intent.intent_id)
+        payload = {"position_epoch": intent.position_epoch, "expected_signed_qty": canonical_decimal_str(qty),
+                   "stop_price": canonical_decimal_str(stop), "trigger_basis": "MarkPrice"}
+        try:
+            command = self.journal.prepare_dispatch(
+                intent_id=intent.intent_id,
+                expected_state_version=intent.state_version,
+                expected_reservation_version=reservation.version,
+                command_id=uuid.uuid4().hex,
+                command_type=CommandType.REPAIR_STOP,
+                payload_dict=payload,
+                created_at_ns=now_ns,
+                next_lifecycle=intent.lifecycle,
+            )
+        except PersistenceError as exc:
+            return AssistedControlResult("PROTECTION_BLOCKED", (str(exc),), intent=intent)
+        gate = self._protection_gate()
         if gate:
-            return AssistedControlResult("PROTECTION_BLOCKED", tuple(gate), intent=intent)
-        return _ensure_stop_with_port(journal=self.journal, plan=plan, intent=intent, expected_signed_qty=qty,
-                                      stop_price=stop, protection_port=protection_port, now_ns=now_ns)
+            return AssistedControlResult("PROTECTION_BLOCKED", gate, intent=intent, command=command,
+                                         command_outcome=command.outcome, quantity=qty, entry_price=stop)
+        if protection_port is None:
+            return AssistedControlResult("PROTECTION_BLOCKED", ("protection port not supplied",), intent=intent,
+                                         command=command, command_outcome=command.outcome, quantity=qty,
+                                         entry_price=stop)
+        return _execute_protection_repair(journal=self.journal, plan=plan, intent=intent,
+                                          command_id=command.command_id, expected_signed_qty=qty,
+                                          stop_price=stop, protection_port=protection_port, now_ns=now_ns)
 
 
-def _ensure_stop_with_port(*, journal: SQLiteJournal, plan: TradePlan, intent: Intent,
-                           expected_signed_qty: Decimal, stop_price: Decimal,
-                           protection_port: BybitProtectionPort, now_ns: int) -> AssistedControlResult:
-    """Internal protection-port path used by offline fake-port tests."""
-    observation = protection_port.ensure_full_stop(intent.position_epoch, expected_signed_qty, stop_price,
-                                                   "MarkPrice")
-    if hasattr(observation, "observed_at_ns"):
-        journal.append_protection_observation(observation)
-    return AssistedControlResult("PROTECTED", (), intent=intent, quantity=expected_signed_qty,
+def _execute_protection_repair(*, journal: SQLiteJournal, plan: TradePlan, intent: Intent,
+                               command_id: str, expected_signed_qty: Decimal, stop_price: Decimal,
+                               protection_port: BybitProtectionPort, now_ns: int) -> AssistedControlResult:
+    """Durable repair then positive read-back verification; acknowledgement is not proof."""
+    command = journal.load_command(command_id)
+    if command.send_started_at_ns is None:
+        command = journal.mark_send_started(command_id, now_ns)
+    try:
+        protection_port.ensure_full_stop(intent.position_epoch, expected_signed_qty, stop_price, "MarkPrice")
+        observation = protection_port.read_protection(plan.account_scope, plan.instrument, 0)
+    except Exception as exc:  # noqa: BLE001 - any port uncertainty stays unconfirmed
+        return AssistedControlResult("PROTECTION_UNCONFIRMED", (f"protection port uncertainty: {exc}",),
+                                     intent=intent, command=journal.load_command(command_id),
+                                     command_outcome=CommandOutcome.UNKNOWN, quantity=expected_signed_qty,
+                                     entry_price=stop_price)
+    if observation is None:
+        return AssistedControlResult("PROTECTION_UNCONFIRMED", ("protection read-back unavailable",),
+                                     intent=intent, command=journal.load_command(command_id),
+                                     command_outcome=CommandOutcome.UNKNOWN, quantity=expected_signed_qty,
+                                     entry_price=stop_price)
+    verification = verify_protection(
+        observation,
+        expected_position_epoch=intent.position_epoch,
+        expected_signed_qty=expected_signed_qty,
+        expected_stop_price=stop_price,
+        expected_trigger_basis="MarkPrice",
+        now_ns=now_ns,
+        max_staleness_ns=MAX_PROTECTION_STALENESS_NS,
+        account_ref=plan.account_scope,
+        instrument=plan.instrument,
+        conditional_order_evidence_ids=tuple(observation.evidence_ids),
+        conditional_order_view_available=True,
+    )
+    evidence_id = f"protection-{command.command_id}"
+    journal.append_protection_evidence(evidence_id, verification.evidence,
+                                       verification.evidence.expected_evidence_hash())
+    if not verification.verified:
+        return AssistedControlResult("PROTECTION_UNCONFIRMED", verification.mismatch_details, intent=intent,
+                                     command=journal.load_command(command_id),
+                                     command_outcome=CommandOutcome.UNKNOWN, quantity=expected_signed_qty,
+                                     entry_price=stop_price)
+    reconciled = journal.update_command_outcome(command_id, CommandOutcome.RECONCILED)
+    return AssistedControlResult("PROTECTED", (), intent=intent, command=reconciled,
+                                 command_outcome=reconciled.outcome, quantity=expected_signed_qty,
                                  entry_price=stop_price)

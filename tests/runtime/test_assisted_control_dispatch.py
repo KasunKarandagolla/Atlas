@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from decimal import Decimal
 
 import pytest
@@ -41,11 +42,14 @@ def test_durable_command_ordering_precedes_port_call(tmp_path):
     port = FakeNautilusPort(ack=DispatchAck.DEFINITE_ACCEPT, journal=journal)
     _, _, _, result = _prepared_shell(journal, port=port)
     assert result.command is not None and result.command.send_started_at_ns is None
+    assert result.intent is not None
+    assert json.loads(result.command.payload)["orderLinkId"] == result.intent.client_order_id
     dispatched = _dispatch_with_port(journal=journal, command_id=result.command.command_id, port=port,
                                      now_ns=NOW_NS)
     assert dispatched.outcome.value == "DEFINITE_ACCEPT"
     assert journal.load_command(result.command.command_id).send_started_at_ns == NOW_NS
     assert port.calls == [result.command.command_id]
+    assert port.observed_client_order_ids == [result.intent.client_order_id]
     assert port.observed == [(result.command.command_id, "SUBMITTING", 1)]
     journal.close()
 
@@ -62,6 +66,7 @@ def test_unknown_dispatch_retains_same_identity_and_reservation(tmp_path):
     intent = journal.load_intent(result.intent.intent_id)
     assert intent.lifecycle is LifecycleState.SUBMIT_UNKNOWN
     assert intent.client_order_id == client_order_id
+    assert json.loads(dispatched.payload)["orderLinkId"] == client_order_id
     assert journal.load_reservation(intent.intent_id).remaining_open_qty == Decimal("0.01")
     assert [command.command_type for command in journal.load_commands_for_intent(intent.intent_id)
             if command.command_type is CommandType.SUBMIT_ENTRY] == [CommandType.SUBMIT_ENTRY]
@@ -72,6 +77,63 @@ def test_unknown_dispatch_retains_same_identity_and_reservation(tmp_path):
     assert retry.status == "REVALIDATION_BLOCKED"
     assert "existing unresolved intent" in retry.reasons
     assert journal.load_approval(second_approval.approval_id).consumed_at_ns is None
+    journal.close()
+
+
+def test_monotonic_position_epoch_advances_after_closed_cycle(tmp_path):
+    journal = SQLiteJournal(tmp_path / "dispatch.db")
+    persist_ready_recovery(journal)
+    plan = make_plan(journal)
+    approval = make_approval(journal, plan)
+    shell = AssistedControlShell(journal=journal, runtime_instance_id="runtime", writer_id="writer",
+                                 writer_epoch=1)
+    first = shell.prepare_entry(plan=plan, approval_id=approval.approval_id, user_identity="user-1",
+                                evidence=evidence(plan))
+    assert first.status == "DISPATCH_BLOCKED" and first.intent is not None
+    assert first.intent.position_epoch == 1
+    reject_port = FakeNautilusPort(ack=DispatchAck.DEFINITE_REJECT, journal=journal)
+    assert first.command is not None
+    _dispatch_with_port(journal=journal, command_id=first.command.command_id, port=reject_port, now_ns=NOW_NS)
+    current = journal.load_intent(first.intent.intent_id)
+    journal.update_intent_state(intent_id=current.intent_id, lifecycle=LifecycleState.CLOSED,
+                                protection=ProtectionStatus.NONE, health=ReconciliationHealth.CURRENT,
+                                expected_version=current.state_version)
+    second_approval = make_approval(journal, plan, approval_id="approval-2")
+    second = shell.prepare_entry(plan=plan, approval_id=second_approval.approval_id, user_identity="user-1",
+                                 evidence=evidence(plan))
+    assert second.status == "DISPATCH_BLOCKED" and second.intent is not None
+    assert second.intent.position_epoch == 2
+    journal.close()
+
+
+def test_atomic_epoch_claim_allows_only_one_concurrent_winner(tmp_path):
+    journal = SQLiteJournal(tmp_path / "dispatch.db")
+    plan = make_plan(journal)
+    first_approval = make_approval(journal, plan, approval_id="epoch-a")
+    second_approval = make_approval(journal, plan, approval_id="epoch-b")
+    epoch = journal.next_position_epoch()
+
+    def preparation(intent_id: str):
+        intent = Intent(intent_id, epoch, plan.plan_id, plan.version, generate_client_order_id(), 1,
+                        LifecycleState.INTENT_PERSISTED, ProtectionStatus.NONE, ReconciliationHealth.CURRENT,
+                        NOW_NS)
+        reservation = Reservation(f"res-{intent_id}", intent_id, Decimal("0.01"), Decimal("10"), Decimal("25"),
+                                  Decimal("490"), Decimal("490"), Decimal("100"), Decimal("0"))
+        return intent, reservation
+
+    first_intent, first_reservation = preparation("epoch-intent-a")
+    second_intent, second_reservation = preparation("epoch-intent-b")
+    journal.consume_approval_with_intent_reservation(
+        approval_id=first_approval.approval_id, plan_id=plan.plan_id, plan_version=plan.version, now_ns=NOW_NS,
+        intent=first_intent, reservation=first_reservation, expected_position_epoch=epoch)
+    with pytest.raises(PersistenceError, match="expected next epoch"):
+        journal.consume_approval_with_intent_reservation(
+            approval_id=second_approval.approval_id, plan_id=plan.plan_id, plan_version=plan.version,
+            now_ns=NOW_NS, intent=second_intent, reservation=second_reservation,
+            expected_position_epoch=epoch)
+    assert journal.load_approval(second_approval.approval_id).consumed_at_ns is None
+    with pytest.raises(PersistenceError, match="intent not found"):
+        journal.load_intent("epoch-intent-b")
     journal.close()
 
 
