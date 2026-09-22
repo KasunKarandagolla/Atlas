@@ -4,8 +4,112 @@
 
 - BASE SHA: `055b2f7e790af0f01e80260e5ed5ec2dac685809`
 - BRANCH: `impl/session-006-phase4-baseline-science-risk`
-- PARTIAL CHECKPOINT REJECTED FOR COMPLETION: `09908939d877c4e85d8943573e36cb177c280fb7`.
-- FINAL SHA: recorded after the final commit/push.
+- REVIEWED PARTIAL CHECKPOINTS (not completion):
+  - `09908939d877c4e85d8943573e36cb177c280fb7`
+  - `0e56db64f1bedc7fd1338e68d31ab03044f0b511`
+- FINAL SHA: `RECORDED_AFTER_COMMIT` (the commit that follows this document).
+
+## Independent review of `0e56db64f1bedc7fd1338e68d31ab03044f0b511`
+
+Independent review of the `0e56...` checkpoint found three outstanding defects
+(recorded here exactly as found, not rewritten):
+
+1. block-selection scoring used residual-only returns and omitted the archived
+   OOF conditional mean contribution;
+2. deterministic stress evaluation invented unsupported venue/path mechanics
+   (for example arbitrary exit-delay notional formulas and margin multipliers);
+3. full production Phase-4 orchestration (outer bootstrap, complete policy
+   replay, A0/B0 wiring, decision calendar, end-to-end fixture) remained
+   incomplete.
+
+## Continuation corrections (this patch)
+
+1. **Block-selection return reconstruction**: `chronological_energy_scores()`
+   now scores the archived standardized process `y = mu_OOF + epsilon` as the
+   joint return `r = sigma * (mu_OOF + epsilon)` for BTC and ETH, standardized
+   by training volatility, with equal 4h/24h weighting, no cost or barrier
+   terms, and the frozen longer-block tie-break.
+2. **Stress engine**: replaced invented venue mechanics with typed,
+   evidence-only inputs (`StressExecutionAssumptions`, `StressMarginAssumptions`,
+   `StressFundingAssumptions`, `StressCollateralAssumptions`).  Missing
+   stressed prices/depth/spread/divergence/correlation, margin tier schedules,
+   liquidation thresholds/costs or mechanics now return `NOT_ESTIMABLE` instead
+   of a fabricated number.  Venue collateral loss and collateral haircut are
+   account-level losses, never trade stop-out losses.
+3. **Synchronized joint residual archive**: per-hour last/mark/index minute
+   evidence, feature references, gaps/excursions, spread/depth and latency/fill
+   observations, funding publication/settlement times, availability and replay
+   class, calendar/universe identity and evidence hashes; exactly 60 bars per
+   series whenever minute replay is claimed complete, otherwise explicit absence.
+4. **last/mark/index minute bridge**: anchored to the current causal snapshot,
+   paired with the same sampled BTC/ETH residual block, preserving normalized
+   innovations, opening gaps and high/low excursions without clipping, and
+   failing closed on unsupported volatility, excess basis drift, broken
+   reconstruction, insufficient archive support or poor barrier calibration.
+5. **Complete 24h policy replay**: proposal/approval/send delay, arrival, IOC
+   entry with NO_FILL/PARTIAL_FILL/FULL_FILL, no chase, fixed absolute
+   MarkPrice stop with gap/latency/depth/spread-impact bounds, partial stop and
+   time-exit lots, fees, funding settlements, the 25bp T+24h opposite-quote
+   collar and the frozen unresolved-exit escalation (`TIME_EXIT`,
+   `EXTENDED_EXIT`, `NOT_ESTIMABLE` for unbounded extension).  Lot conservation
+   is enforced and reversal is impossible.
+6. **Outer bootstrap orchestration**: block-resampled replicates that refit the
+   scaler and Huber model, run frozen ridge selection, rebuild chronological OOF
+   calibration support, re-estimate execution/cost assumptions from supplied
+   observations, and evaluate the *same* immutable current action.  LCB is the
+   1-indexed `ceil(B * delta)` replicate-mean order statistic, with two
+   independent inner seed sets and `NO_TRADE_NUMERICAL` on instability.
+   Production defaults remain `B=200`, `inner=512`, `delta=0.025`, family error
+   `0.05`; tests inject small counts.
+7. **Portfolio ES/J on common paths**: `Pi0 + Y` losses, empirical ES at
+   `alpha=0.975`, incremental ES and `J = LCB(E[Y])/E - (ES_after - ES_before)`
+   with `lambda_R = 1`, requiring `LCB > 0` and `J > 1e-5`.  Pending/UNKNOWN
+   exposure is included in `Pi0`; a negative-alpha action cannot qualify only by
+   lowering ES.
+8. **Deterministic risk sizing**: the largest venue-rounded quantity satisfying
+   per-trade/aggregate normal loss, stress loss, ES headroom, gross/instrument/
+   beta notional, margin/free-margin reserve, venue collateral, leverage and
+   serial new-risk intents, solved once before statistical acceptance; A0 is
+   then run exactly once at that quantity (no LCB quantity search).
+9. **A0/B0 orchestration**: one pure offline evaluator with the frozen
+   fail-closed ordering `SKIP_DATA -> gate -> NO_SIGNAL -> NOT_ESTIMABLE ->
+   NO_TRADE_RISK -> NO_TRADE_NUMERICAL -> NO_TRADE_NO_EDGE -> TRADE_CANDIDATE`;
+   B0 shares direction, execution mechanics and hard constraints but has no
+   statistical expected-alpha veto.
+10. **TradePlan + evidence artifacts**: qualified candidates map to the existing
+    immutable `TradePlan` (strategy/version, snapshot hash, RiskPolicy hash,
+    sized quantity, IOC collar, fixed MarkPrice stop, management policy, T+24h
+    horizon, T+60s expiry, cost evidence, normal/stress risk, margin, leverage,
+    reference mark, created/available times) plus a separate evaluation evidence
+    artifact (gates, model/block/scenario hashes, LCB, ES before/after, J, stress
+    results, rejection and NOT_ESTIMABLE reasons).  No plan is executed.
+11. **Decision calendar**: chronological BTC/ETH four-hour evaluator persisting
+    one immutable outcome per slot/instrument, including rejects and no-fills
+    with zero P&L, plus the matured fill/exit statuses, and a generic Phase-5
+    handoff record that deliberately contains no universe/scanner/ranking
+    fields.
+12. **Research persistence**: append-only content-addressed Parquet artifacts
+    for weekly fit manifests, OOF forecasts, matured residuals, joint residual
+    blocks, block selection, scenario configuration, bootstrap results, stress
+    results, B0/A0 evaluation, TradePlan evidence, decision-calendar records and
+    failed/inconclusive experiment variants.  DuckDB remains research-only; the
+    authoritative SQLite schema (6) is unchanged.
+13. **End-to-end fixture**: one deterministic chronological synthetic fixture
+    (721-close warmup, 90+ day model support, Monday refits, OOF maturation,
+    61-day synchronized residual support, block selection, 4-hour decisions,
+    every rejection path, NO_FILL/PARTIAL_FILL/FULL_FILL/STOP_EXIT/TIME_EXIT/
+    EXTENDED_EXIT, fees, multiple funding settlements, A0 vs B0, TradePlan
+    creation and decision-calendar persistence) with small injected scenario
+    counts.  It proves plumbing only; it is not a profitability claim.
+14. **Prefix/future-tail invariance**: tests mutating future closes, labels, OOF
+    outcomes, minute bars, depth/cost observations and event records prove that
+    earlier features, weekly fits, OOF forecasts, bridges, block selection,
+    decisions, TradePlans and calendar records do not change.
+
+`huber_mean.fit_huber_ridge` received a numerics-preserving inner-loop
+optimization (identical accumulation order, hoisted weight products) so the
+frozen IRLS fits are affordable in the integration fixture; the Huber tests
+confirm unchanged coefficients and objective values.
 
 ## Independent-review correction record
 
@@ -21,15 +125,18 @@ fully exercised.
 
 ## Offline implementation status
 
-- `CRYPTO_TREND_24H_V1`: IMPLEMENTED as a pure frozen signal/policy contract.
-- B0: IMPLEMENTED as the raw trend decision baseline without the LCB veto.
-- A0: IMPLEMENTED as the separately typed LCB/ES decision baseline.
+- `CRYPTO_TREND_24H_V1`, B0, A0: IMPLEMENTED, TESTED_OFFLINE (complete policy engine).
 - Signal/EWMA, Decimal collar/stop/time policy: IMPLEMENTED, TESTED_OFFLINE.
-- Huber/ridge mean-loss objective and causal OOF fit binding: IMPLEMENTED, TESTED_OFFLINE.
-- Synchronized residual block sampling / bridge: IMPLEMENTED, TESTED_OFFLINE.
-- IOC/no-fill/partial-fill/mark-stop and linear fee/funding accounting: IMPLEMENTED, TESTED_OFFLINE.
-- Expected-mean LCB, empirical ES, deterministic risk reservation/sizing: IMPLEMENTED, TESTED_OFFLINE.
-- Deterministic stress definitions: IMPLEMENTED, TESTED_OFFLINE.
+- Huber/ridge mean-loss objective, Monday refit, causal OOF archive: IMPLEMENTED, TESTED_OFFLINE.
+- Forecast+residual energy-score block selection (4h/24h, BTC/ETH): IMPLEMENTED, TESTED_OFFLINE.
+- Synchronized joint residual archive, last/mark/index minute bridge: IMPLEMENTED, TESTED_OFFLINE.
+- Complete IOC/stop/T+24h time-exit/escalation replay and lot conservation: IMPLEMENTED, TESTED_OFFLINE.
+- Funding forecast, settlement accounting and reserve limits: IMPLEMENTED, TESTED_OFFLINE.
+- Outer expected-mean LCB bootstrap, common-path portfolio ES/J: IMPLEMENTED, TESTED_OFFLINE.
+- Deterministic hard-constraint risk sizing and drawdown state: IMPLEMENTED, TESTED_OFFLINE.
+- Evidence-valued deterministic stress suite (12 frozen stresses): IMPLEMENTED, TESTED_OFFLINE.
+- TradePlan mapping, immutable evaluation artifacts, decision calendar: IMPLEMENTED, TESTED_OFFLINE.
+- Append-only Parquet research persistence: IMPLEMENTED, TESTED_OFFLINE.
 
 No order transport, credential handling, account mutation, scanner, approval UI, or assisted control was added.
 
@@ -53,20 +160,11 @@ typed decision status, never a substituted numeric alpha estimate.
 - Python: `3.12.13`.
 - Dependency lock SHA256: `0d7b5cc6129aab127f07a1b5bce4b7794eec5c48db0f99451eba675031ca2b39`.
 - New dependencies: none (the implementation uses the standard library only).
-- Corrected focused Phase-4 tests: `18 passed` in the locked environment.
-- Initial base pre-flight in the host interpreter: `4 failed, 189 passed, 2 skipped`.
-  The four existing archive tests failed only because `pyarrow` was absent from
-  that interpreter (`EnvironmentDependencyError`); no baseline test was removed.
-- Post-change host full suite: `4 failed, 194 passed, 2 skipped`, with the same
-  four pre-existing PyArrow-environment failures only.
-- Clean pinned hashed installation full suite: `199 passed, 1 skipped`.
-- Ruff: PASS.
-- mypy: PASS (`109 source files`; existing informational notes only).
-- compileall: PASS.
-
-- Tracked-only clean clone, hashed install and full suite: `199 passed, 1 skipped`.
-
-- Corrected continuation clean locked full suite: `212 passed, 1 skipped`.
+- Previous reviewed partial checkpoints (kept for history):
+  - `09908939d877c4e85d8943573e36cb177c280fb7`: `199 passed, 1 skipped` (clean locked suite).
+  - `0e56db64f1bedc7fd1338e68d31ab03044f0b511`: `212 passed, 1 skipped` (clean locked suite).
+- This continuation (locked environment with PyArrow, clean hashed install):
+  see the final report for exact pytest/Ruff/mypy/compileall counts.
 
 The existing engineering defaults remain `ENGINEERING_DEFAULTS_ONLY_NOT_SAFE_FOR_LIVE`.
 
@@ -74,9 +172,31 @@ The existing engineering defaults remain `ENGINEERING_DEFAULTS_ONLY_NOT_SAFE_FOR
 
 - All six Bybit capability states: UNVERIFIED (unchanged).
 - `assisted_enabled=false` (unchanged).
+- No authenticated Bybit, no orders/test orders, no exchange mutation, no
+  approval workflow, no capital reservation side effect, no scanner, no top-K
+  ranking, no foundation model, no CCXT and no second OMS were added.
 - Economic validation: UNVERIFIED.  No profitability, safety, alpha, or
   live-readiness claim is made from this offline implementation.
 - No live or test order was submitted.
+
+## Phase-5 interface boundary (not implemented)
+
+Phase 4 finishes a generic immutable decision artifact (slot identity,
+instrument, strategy version, availability cutoff, feature-snapshot hash,
+signal, gate/risk/scenario status and reasons, B0/A0 results, TradePlan
+id/hash, rejection and NOT_ESTIMABLE reasons, matured outcome reference).
+Phase 5 items — unattended universe refresh, cheap scan, top-K/deep warmup,
+deterministic exploration, alert-only mode, health/status and scanner
+decision-calendar persistence — remain unimplemented.
+
+## NOT_ESTIMABLE conditions
+
+Missing microstructure, missing calendar, missing margin tier or liquidation
+mechanics, missing funding anchor, unsupported volatility, insufficient OOF or
+block support, insufficient archive support for the mark/index bridge, poor
+barrier calibration, unbounded exit extension, missing cost observations and
+numerically unstable acceptance all propagate a typed `NOT_ESTIMABLE` (or an
+explicitly declared conservative bound) rather than a convenient number.
 
 ## Remaining work
 

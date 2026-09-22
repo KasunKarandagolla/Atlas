@@ -3,7 +3,14 @@ from decimal import Decimal
 from atlas.domain.enums import Side
 from atlas.science.execution_replay import ExecutionEvidenceStatus, ReplayMinute, executable_stop_bounds, ioc_entry
 from atlas.science.gates import EventGateInput, GateStatus, MarketGateInput, event_gate, market_gate
-from atlas.science.stresses import FROZEN_STRESSES, StressInput, StressName, evaluate_stress
+from atlas.science.stresses import (
+    FROZEN_STRESSES,
+    StressCollateralAssumptions,
+    StressInput,
+    StressName,
+    StressStatus,
+    evaluate_stress,
+)
 from atlas.strategy.policy import VenueFilters, fixed_policy, time_exit_collar
 
 
@@ -28,9 +35,15 @@ def test_missing_depth_is_not_a_benign_no_fill_and_stop_has_adverse_bound():
 
 def test_all_stresses_exist_and_venue_loss_is_not_trade_stop_loss():
     assert len(FROZEN_STRESSES) == 12
-    state = StressInput(Decimal("100"), Decimal("100"), Decimal("10"), Decimal("5"), Decimal("50"))
+    state = StressInput(
+        Side.LONG, Decimal("1"), Decimal("100"), 0,
+        collateral=StressCollateralAssumptions(Decimal("50")),
+    )
     venue = evaluate_stress(next(x for x in FROZEN_STRESSES if x.name is StressName.VENUE_COLLATERAL_LOSS), state)
-    assert venue.loss == 0 and venue.venue_collateral_loss == Decimal("50") and venue.liquidated
+    assert venue.trade_loss == 0 and venue.venue_collateral_loss == Decimal("50") and venue.liquidated
+    # Missing versioned mechanics are never replaced by an invented formula.
+    jump = evaluate_stress(next(x for x in FROZEN_STRESSES if x.name is StressName.JUMP_5_LIQUIDITY), state)
+    assert jump.status is StressStatus.NOT_ESTIMABLE and jump.trade_loss is None
 
 
 def test_market_and_event_gates_fail_closed():

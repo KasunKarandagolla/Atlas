@@ -30,6 +30,7 @@ class Fill:
     quantity: Decimal
     price: Decimal
     fee: Decimal = Decimal("0")
+    at_ns: int | None = None
 
 
 @dataclass(frozen=True)
@@ -69,7 +70,7 @@ def ioc_entry(side: Side, qty: Decimal, collar: Decimal, minute: ReplayMinute, p
     if filled <= 0:
         return ReplayResult(FillStatus.NO_FILL, None, None, qty, None, "depth exhausted")
     fee = filled * price * taker_fee_rate
-    return ReplayResult(FillStatus.FULL_FILL if filled == qty else FillStatus.PARTIAL_FILL, Fill(filled, price, fee), None, qty - filled, None)
+    return ReplayResult(FillStatus.FULL_FILL if filled == qty else FillStatus.PARTIAL_FILL, Fill(filled, price, fee, minute.at_ns), None, qty - filled, None)
 
 
 def stop_triggered(side: Side, stop: Decimal, minute: ReplayMinute) -> bool:
@@ -106,8 +107,8 @@ def executable_stop_bounds(
     if adverse_price <= 0 or favorable_price <= 0:
         return StopBounds(None, None, ExecutionEvidenceStatus.NOT_ESTIMABLE, True)
     return StopBounds(
-        Fill(qty, adverse_price, qty * adverse_price * taker_fee_rate),
-        Fill(qty, favorable_price, qty * favorable_price * taker_fee_rate),
+        Fill(qty, adverse_price, qty * adverse_price * taker_fee_rate, minute.at_ns),
+        Fill(qty, favorable_price, qty * favorable_price * taker_fee_rate, minute.at_ns),
         ExecutionEvidenceStatus.EXECUTABLE, True,
     )
 
@@ -119,7 +120,7 @@ def executable_stop(side: Side, qty: Decimal, minute: ReplayMinute, taker_fee_ra
     if not minute.available or minute.bid is None or minute.ask is None:
         return None
     price = min(minute.bid, minute.last_low) if side is Side.LONG else max(minute.ask, minute.last_high)
-    return Fill(qty, price, qty * price * taker_fee_rate)
+    return Fill(qty, price, qty * price * taker_fee_rate, minute.at_ns)
 
 
 def linear_pnl(side: Side, entries: tuple[Fill, ...], exits: tuple[Fill, ...], funding: tuple[Decimal, ...] = ()) -> Decimal:

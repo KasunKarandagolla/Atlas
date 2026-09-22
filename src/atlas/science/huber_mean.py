@@ -128,15 +128,26 @@ def fit_huber_ridge(
     for _ in range(200):
         weights = []
         for x, y in zip(features, labels, strict=True):
-            residual = y - sum(a * b for a, b in zip(x, beta, strict=True))
+            # Explicit sum keeps the exact frozen arithmetic order (0 + a0b0 + a1b1 + a2b2).
+            residual = y - (x[0] * beta[0] + x[1] * beta[1] + x[2] * beta[2])
             weights.append(1.0 if abs(residual) <= HUBER_TRANSITION else HUBER_TRANSITION / abs(residual))
         a = [[0.0] * 3 for _ in range(3)]
         rhs = [0.0] * 3
         for x, y, w in zip(features, labels, weights, strict=True):
-            for i in range(3):
-                rhs[i] += w * x[i] * y
-                for j in range(3):
-                    a[i][j] += w * x[i] * x[j]
+            # Same accumulation order as w * x[i] * x[j]; the weight product is hoisted.
+            w0, w1, w2 = w * x[0], w * x[1], w * x[2]
+            rhs[0] += w0 * y
+            rhs[1] += w1 * y
+            rhs[2] += w2 * y
+            a[0][0] += w0 * x[0]
+            a[0][1] += w0 * x[1]
+            a[0][2] += w0 * x[2]
+            a[1][0] += w1 * x[0]
+            a[1][1] += w1 * x[1]
+            a[1][2] += w1 * x[2]
+            a[2][0] += w2 * x[0]
+            a[2][1] += w2 * x[1]
+            a[2][2] += w2 * x[2]
         # Normal equations above are sums; the specified *mean* loss means the
         # lambda ridge contribution is multiplied by the sample count.
         a[1][1] += len(matured) * ridge

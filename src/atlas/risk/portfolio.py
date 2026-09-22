@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from statistics import fmean
+
+MATERIALITY_FLOOR = 1e-5
 
 
 def empirical_es(losses: Sequence[float], alpha: float = 0.975) -> float:
@@ -22,3 +25,29 @@ def decision_value(lcb_expected_pnl: float, equity: float, existing_pnl: Sequenc
     before = empirical_es([-p / equity for p in existing_pnl])
     after = empirical_es([-(p + y) / equity for p, y in zip(existing_pnl, candidate_pnl, strict=True)])
     return lcb_expected_pnl / equity - lambda_r * (after - before)
+
+
+@dataclass(frozen=True)
+class PortfolioDecision:
+    es_before: float
+    es_after: float
+    incremental_es: float
+    j: float
+    qualified: bool
+    reason: str
+
+
+def common_path_portfolio_decision(lcb_expected_pnl: float, equity: float, pi0: Sequence[float], candidate: Sequence[float],
+                                   alpha: float = 0.975) -> PortfolioDecision:
+    """Compute ES before/after on paired paths; Pi0 includes pending/UNKNOWN exposure."""
+    if equity <= 0 or not pi0 or len(pi0) != len(candidate):
+        raise ValueError("positive equity and paired common paths required")
+    before = empirical_es([-value / equity for value in pi0], alpha)
+    after = empirical_es([-(value + pnl) / equity for value, pnl in zip(pi0, candidate, strict=True)], alpha)
+    incremental = after - before
+    j = lcb_expected_pnl / equity - incremental
+    if lcb_expected_pnl <= 0:
+        return PortfolioDecision(before, after, incremental, j, False, "LCB_NONPOSITIVE")
+    if j <= MATERIALITY_FLOOR:
+        return PortfolioDecision(before, after, incremental, j, False, "J_BELOW_MATERIALITY")
+    return PortfolioDecision(before, after, incremental, j, True, "")

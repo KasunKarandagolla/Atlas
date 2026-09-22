@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -36,6 +37,29 @@ class JointResidualHour:
     funding_publication_at_ns: int | None = None
     funding_settlement_at_ns: int | None = None
     execution_missing: bool = True
+    btc_feature_ref: str = ""
+    eth_feature_ref: str = ""
+    opening_gaps: tuple[float, ...] = ()
+    excursions: tuple[float, ...] = ()
+    spread_depth_observations: tuple[dict[str, str], ...] = ()
+    latency_fill_observations: tuple[dict[str, str], ...] = ()
+    funding_observations: tuple[dict[str, str], ...] = ()
+    availability_class: str = ""
+    replay_mode: str = ""
+    evidence_hashes: tuple[str, ...] = ()
+    minute_replay_complete: bool = False
+
+    def __post_init__(self) -> None:
+        values = (self.btc_residual, self.eth_residual, self.btc_forecast, self.eth_forecast,
+                  self.btc_sigma, self.eth_sigma, self.btc_z, self.eth_z)
+        if not all(math.isfinite(x) for x in values) or self.btc_sigma <= 0 or self.eth_sigma <= 0:
+            raise ValueError("finite residual/forecast/features and positive sigmas required")
+        minute_series = (self.btc_last_ohlc, self.eth_last_ohlc, self.btc_mark_ohlc,
+                         self.eth_mark_ohlc, self.btc_index_ohlc, self.eth_index_ohlc)
+        if self.minute_replay_complete and any(len(series) != 60 for series in minute_series):
+            raise ValueError("complete minute replay requires exactly 60 last/mark/index bars per instrument")
+        if any(series and len(series) != 60 for series in minute_series):
+            raise ValueError("minute evidence must be absent or exactly 60 bars")
 
 
 def eligible_starts(hours: Sequence[JointResidualHour], length: int) -> tuple[int, ...]:
@@ -106,14 +130,14 @@ def chronological_energy_scores(
             if len(validation) < horizon or length < horizon:
                 raise ValueError("NOT_ESTIMABLE: validation horizon unavailable")
             samples = [
-                (sum(x.btc_residual * x.btc_sigma for x in training[s : s + horizon]) / training_btc_sigma,
-                 sum(x.eth_residual * x.eth_sigma for x in training[s : s + horizon]) / training_eth_sigma)
+                (sum(x.btc_sigma * (x.btc_forecast + x.btc_residual) for x in training[s : s + horizon]) / training_btc_sigma,
+                 sum(x.eth_sigma * (x.eth_forecast + x.eth_residual) for x in training[s : s + horizon]) / training_eth_sigma)
                 for s in starts
             ]
             for begin in range(0, len(validation) - horizon + 1, horizon):
                 actual = (
-                    sum(x.btc_residual * x.btc_sigma for x in validation[begin : begin + horizon]) / training_btc_sigma,
-                    sum(x.eth_residual * x.eth_sigma for x in validation[begin : begin + horizon]) / training_eth_sigma,
+                    sum(x.btc_sigma * (x.btc_forecast + x.btc_residual) for x in validation[begin : begin + horizon]) / training_btc_sigma,
+                    sum(x.eth_sigma * (x.eth_forecast + x.eth_residual) for x in validation[begin : begin + horizon]) / training_eth_sigma,
                 )
                 component_scores.append(_energy_score(samples, actual))
         scores[length] = sum(component_scores) / len(component_scores)
