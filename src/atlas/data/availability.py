@@ -58,8 +58,9 @@ class ReplayAvailabilityRule:
 
 def reconstruct_public(record: MarketRecord, rule: ReplayAvailabilityRule) -> MarketRecord:
     replay = rule.derive(record)
+    derived_id = f"{record.record_id}:replay:{rule.rule_id}@{rule.version}:{rule.hash()}"
     return make_record(
-        record_id=record.record_id,
+        record_id=derived_id,
         source_id=record.source_id,
         venue=record.venue,
         instrument=record.instrument,
@@ -70,7 +71,7 @@ def reconstruct_public(record: MarketRecord, rule: ReplayAvailabilityRule) -> Ma
         available_at_ns=record.available_at_ns,
         data_ingested_at_ns=record.data_ingested_at_ns,
         recorded_at_ns=record.recorded_at_ns,
-        evidence_ref=record.evidence_ref,
+        evidence_ref=f"{record.evidence_ref}:replay:{rule.hash()}",
         source_event_at_ns=record.source_event_at_ns,
         bar_start_ns=record.bar_start_ns,
         bar_end_ns=record.bar_end_ns,

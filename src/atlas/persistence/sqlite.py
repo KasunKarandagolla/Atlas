@@ -28,6 +28,40 @@ class PersistenceError(RuntimeError):
     pass
 
 
+def _query_evidence_from_row(row: sqlite3.Row) -> Any:
+    """Reconstruct immutable query evidence for transactional validation."""
+
+    from atlas.runtime.reconciliation_evidence import (
+        Completeness,
+        QueryScope,
+        QueryStatus,
+        QueryType,
+        ReconciliationQueryEvidence,
+    )
+
+    return ReconciliationQueryEvidence(
+        row["query_id"],
+        QueryType(row["query_type"]),
+        QueryScope(row["scope"]),
+        row["account"],
+        row["instrument"],
+        row["requested_interval_start_ns"],
+        row["requested_interval_end_ns"],
+        tuple(json.loads(row["pagination_cursors_json"])),
+        row["pages_observed"],
+        row["total_records_returned"],
+        Completeness(row["completeness"]),
+        QueryStatus(row["status"]),
+        row["source_time_ns"],
+        row["receipt_time_ns"],
+        tuple(json.loads(row["request_ids_json"])),
+        tuple(tuple(segment) for segment in json.loads(row["retention_segments_json"])),
+        dict(json.loads(row["facts_json"])),
+        row["evidence_hash"],
+        row["error_message"],
+    )
+
+
 class SQLiteJournal:
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -892,14 +926,6 @@ class SQLiteJournal:
         return self._wrap("append_reconciliation_query_evidence", op)
 
     def load_reconciliation_query_evidence(self, query_id: str | None = None) -> list[Any]:
-        from atlas.runtime.reconciliation_evidence import (
-            Completeness,
-            QueryScope,
-            QueryStatus,
-            QueryType,
-            ReconciliationQueryEvidence,
-        )
-
         def op():
             rows = self._conn.execute(
                 "SELECT * FROM reconciliation_query_evidence"
@@ -909,30 +935,7 @@ class SQLiteJournal:
             ).fetchall()
             if query_id is not None and not rows:
                 raise PersistenceError("query evidence missing")
-            return [
-                ReconciliationQueryEvidence(
-                    r["query_id"],
-                    QueryType(r["query_type"]),
-                    QueryScope(r["scope"]),
-                    r["account"],
-                    r["instrument"],
-                    r["requested_interval_start_ns"],
-                    r["requested_interval_end_ns"],
-                    tuple(json.loads(r["pagination_cursors_json"])),
-                    r["pages_observed"],
-                    r["total_records_returned"],
-                    Completeness(r["completeness"]),
-                    QueryStatus(r["status"]),
-                    r["source_time_ns"],
-                    r["receipt_time_ns"],
-                    tuple(json.loads(r["request_ids_json"])),
-                    tuple(tuple(x) for x in json.loads(r["retention_segments_json"])),
-                    dict(json.loads(r["facts_json"])),
-                    r["evidence_hash"],
-                    r["error_message"],
-                )
-                for r in rows
-            ]
+            return [_query_evidence_from_row(r) for r in rows]
 
         return self._wrap("load_reconciliation_query_evidence", op)
 
@@ -972,19 +975,24 @@ class SQLiteJournal:
         # query must exist; binding immutable
         def op():
             with self._tx() as c:
-                q = c.execute(
-                    "SELECT account,instrument,scope FROM reconciliation_query_evidence WHERE query_id=?", (query_id,)
-                ).fetchone()
+                q = c.execute("SELECT * FROM reconciliation_query_evidence WHERE query_id=?", (query_id,)).fetchone()
                 run = c.execute(
-                    "SELECT account,instrument FROM reconciliation_runs WHERE run_id=?", (run_id,)
+                    "SELECT account,instrument,started_at_ns,state FROM reconciliation_runs WHERE run_id=?", (run_id,)
                 ).fetchone()
                 if not q:
                     raise PersistenceError("query missing")
                 if not run:
                     raise PersistenceError("reconciliation run missing")
-                if q["account"] != run["account"]:
+                evidence = _query_evidence_from_row(q)
+                if not evidence.hash_binds_payload:
+                    raise PersistenceError("reconciliation evidence hash does not bind its immutable payload")
+                if run["state"] != "OPEN":
+                    raise PersistenceError("cannot bind evidence to a completed reconciliation run")
+                if evidence.receipt_time_ns < run["started_at_ns"]:
+                    raise PersistenceError("query evidence was received before reconciliation run started")
+                if evidence.account != run["account"]:
                     raise PersistenceError("query account does not match run")
-                if q["scope"] == "instrument" and q["instrument"] != run["instrument"]:
+                if evidence.scope.value == "instrument" and evidence.instrument != run["instrument"]:
                     raise PersistenceError("query instrument does not match run")
                 try:
                     c.execute("INSERT INTO reconciliation_run_queries VALUES(?,?)", (run_id, query_id))
@@ -1000,6 +1008,7 @@ class SQLiteJournal:
         with self._tx() as c:
             from atlas.runtime.reconciliation_evidence import (
                 DEFAULT_EXECUTION_RISK_QUERIES,
+                HISTORY_COVERAGE_QUERY_TYPES,
                 Completeness,
                 QueryStatus,
                 QueryType,
@@ -1008,13 +1017,24 @@ class SQLiteJournal:
             row = c.execute("SELECT * FROM reconciliation_runs WHERE run_id=?", (run_id,)).fetchone()
             if row is None or row["state"] != "OPEN":
                 raise PersistenceError("run missing/not OPEN")
+            if at < row["started_at_ns"]:
+                raise PersistenceError("reconciliation completion precedes run start")
             query_rows = c.execute(
                 """SELECT q.* FROM reconciliation_run_queries rq
                    JOIN reconciliation_query_evidence q ON q.query_id=rq.query_id
                    WHERE rq.run_id=?""",
                 (run_id,),
             ).fetchall()
-            by_type = {QueryType(item["query_type"]): item for item in query_rows}
+            try:
+                evidence_rows = [_query_evidence_from_row(item) for item in query_rows]
+            except (TypeError, ValueError, KeyError) as exc:
+                raise PersistenceError(f"invalid reconciliation evidence: {exc}") from exc
+            for evidence in evidence_rows:
+                if not evidence.hash_binds_payload:
+                    raise PersistenceError(f"evidence hash is not bound: {evidence.query_id}")
+                if not row["started_at_ns"] <= evidence.receipt_time_ns <= at:
+                    raise PersistenceError(f"query receipt is outside reconciliation run: {evidence.query_id}")
+            by_type = {evidence.query_type: evidence for evidence in evidence_rows}
             required = {QueryType(item) for item in json.loads(row["required_query_types_json"])}
             missing = set(DEFAULT_EXECUTION_RISK_QUERIES) - required
             missing.update(query for query in DEFAULT_EXECUTION_RISK_QUERIES if query not in by_type)
@@ -1023,11 +1043,12 @@ class SQLiteJournal:
                 raise PersistenceError(f"cannot complete reconciliation run; missing evidence: {names}")
             for query_type in DEFAULT_EXECUTION_RISK_QUERIES:
                 evidence = by_type[query_type]
-                if (
-                    evidence["status"] != QueryStatus.SUCCESS.value
-                    or evidence["completeness"] != Completeness.COMPLETE.value
-                ):
+                if evidence.status != QueryStatus.SUCCESS or evidence.completeness != Completeness.COMPLETE:
                     raise PersistenceError(f"cannot complete reconciliation run; {query_type.value} is incomplete")
+                if query_type in HISTORY_COVERAGE_QUERY_TYPES and not evidence.has_retention_coverage:
+                    raise PersistenceError(
+                        f"cannot complete reconciliation run; {query_type.value} retention is incomplete"
+                    )
             c.execute(
                 "UPDATE reconciliation_runs SET completed_at_ns=?,state='COMPLETE' WHERE run_id=? AND state='OPEN'",
                 (at, run_id),
@@ -1114,6 +1135,8 @@ class SQLiteJournal:
             if raw_hash != expected_hash:
                 raise PersistenceError("protection evidence hash does not bind its immutable payload")
             if e.status.value == "CONFIRMED":
+                if e.observed_signed_qty == 0:
+                    raise PersistenceError("confirmed protection cannot describe a flat position")
                 if not e.full_position_semantics or not e.market_stop_semantics:
                     raise PersistenceError("confirmed protection requires full-position market-stop semantics")
                 if e.trigger_basis != "MarkPrice" or not e.closing_only_behavior:
@@ -1218,6 +1241,8 @@ class SQLiteJournal:
             or evidence.position_epoch != position_epoch
         ):
             reasons.append("protection evidence identity mismatch")
+        if evidence.observed_signed_qty == 0:
+            reasons.append("protection evidence describes a flat position")
         if evidence.receive_time_ns > now_ns or now_ns - evidence.receive_time_ns > max_staleness_ns:
             reasons.append("protection evidence stale or clock-conflicted")
         stored_hash = self._conn.execute(
@@ -1238,8 +1263,12 @@ class SQLiteJournal:
             try:
                 if Decimal(str(positions.facts.get("signed_qty"))) != evidence.observed_signed_qty:
                     reasons.append("protection quantity does not match current position")
+                if "position_epoch" not in positions.facts:
+                    reasons.append("position-view evidence lacks position epoch")
+                elif int(positions.facts["position_epoch"]) != evidence.position_epoch:
+                    reasons.append("position-view evidence epoch does not match protection")
             except (ArithmeticError, TypeError, ValueError):
-                reasons.append("position-view evidence lacks signed quantity")
+                reasons.append("position-view evidence lacks valid signed quantity or epoch")
         if not evidence.conditional_order_view_evidence_ids:
             reasons.append("conditional-order evidence is missing")
         for ref in evidence.conditional_order_view_evidence_ids:
@@ -1251,6 +1280,20 @@ class SQLiteJournal:
                 or query.completeness != Completeness.COMPLETE
             ):
                 reasons.append("conditional-order evidence is not bound to the current run")
+            else:
+                facts = query.facts
+                if facts.get("native_stop_visible") is not True:
+                    reasons.append("conditional/native-stop evidence lacks positive visibility")
+                representation = str(facts.get("protection_representation", "")).lower()
+                if representation == "conditional_order":
+                    order_ids = facts.get("protection_order_ids", ())
+                    if not order_ids or query.total_records_returned <= 0:
+                        reasons.append("conditional-order evidence lacks a visible protection order")
+                elif representation == "position_level_native_stop":
+                    if not str(facts.get("native_stop_reference", "")).strip():
+                        reasons.append("position-level native-stop evidence lacks a reference")
+                else:
+                    reasons.append("conditional/native-stop representation is not positively identified")
         trading_stop = next((query for query in queries if query.query_type == QueryType.TRADING_STOP), None)
         if (
             trading_stop is None
@@ -1260,16 +1303,32 @@ class SQLiteJournal:
             reasons.append("native protection query is incomplete")
         else:
             expected = {
+                "position_epoch": evidence.position_epoch,
+                "signed_qty": str(evidence.observed_signed_qty),
                 "desired_stop_version": evidence.desired_stop_version,
                 "stop_price": str(evidence.stop_price),
                 "trigger_basis": evidence.trigger_basis,
                 "market_stop_semantics": True,
                 "full_position_semantics": True,
                 "closing_only_behavior": True,
+                "native_stop_visible": True,
             }
             for key, value in expected.items():
-                if key in trading_stop.facts and str(trading_stop.facts[key]).lower() != str(value).lower():
-                    reasons.append(f"native protection fact mismatch: {key}")
+                if key not in trading_stop.facts:
+                    reasons.append(f"native protection fact missing: {key}")
+                else:
+                    actual = trading_stop.facts[key]
+                    try:
+                        if key in {"signed_qty", "stop_price"}:
+                            mismatch = Decimal(str(actual)) != Decimal(str(value))
+                        elif key in {"position_epoch", "desired_stop_version"}:
+                            mismatch = int(actual) != int(value)
+                        else:
+                            mismatch = str(actual).lower() != str(value).lower()
+                    except (ArithmeticError, TypeError, ValueError):
+                        mismatch = True
+                    if mismatch:
+                        reasons.append(f"native protection fact mismatch: {key}")
         return not reasons, tuple(reasons)
 
     def _flat_authority_reasons(self, data: dict[str, Any], *, expected_intent_id: str | None = None) -> list[str]:
@@ -1318,10 +1377,14 @@ class SQLiteJournal:
                 reasons.append("position evidence lacks a valid signed quantity")
             if positions.completeness != Completeness.COMPLETE or positions.status != QueryStatus.SUCCESS:
                 reasons.append("position evidence is incomplete")
-            if "position_epoch" in positions.facts and int(data.get("position_epoch", -1)) != int(
-                positions.facts["position_epoch"]
-            ):
-                reasons.append("position epoch evidence mismatch")
+            if "position_epoch" not in positions.facts:
+                reasons.append("position evidence lacks position epoch")
+            else:
+                try:
+                    if int(data.get("position_epoch", -1)) != int(positions.facts["position_epoch"]):
+                        reasons.append("position epoch evidence mismatch")
+                except (TypeError, ValueError):
+                    reasons.append("position evidence has invalid position epoch")
         residual_keys = (
             "remaining_open_qty",
             "remaining_open_orders",
@@ -1350,11 +1413,7 @@ class SQLiteJournal:
             query = by_type.get(query_type)
             if query is None or query.status != QueryStatus.SUCCESS or query.completeness != Completeness.COMPLETE:
                 reasons.append(f"{query_type.value} evidence is incomplete")
-            elif (
-                query.requested_interval_start_ns is None
-                or query.requested_interval_end_ns is None
-                or not query.retention_segments
-            ):
+            elif not query.has_retention_coverage:
                 reasons.append(f"{query_type.value} retention window is not covered")
         if intent_id:
             try:

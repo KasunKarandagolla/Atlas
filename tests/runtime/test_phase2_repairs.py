@@ -207,6 +207,26 @@ def test_recovery_requires_persisted_flat_artifact(journal):
     )
     assert cert2.decision == RecoveryDecision.READY
 
+    later = recover_from_persisted_run(
+        journal=journal,
+        recovery_run_id="recovery-3",
+        reconciliation_run_id="run-1",
+        runtime_instance_id="runtime",
+        writer_id="writer",
+        writer_epoch=1,
+        unresolved_intent_ids=(),
+        unresolved_command_ids=(),
+        unknown_command_ids=(),
+        account="acct",
+        instrument="BTCUSDT",
+        position_epoch=0,
+        started_at_ns=T0 + 100,
+        ended_at_ns=T0 + 120,
+        prerequisites_ok=True,
+        flat_certificate_id="flat",
+    )
+    assert later.decision == RecoveryDecision.RECOVERY_REQUIRED
+
 
 def test_future_sqlite_schema_fails_closed(tmp_path):
     p = tmp_path / "future.db"

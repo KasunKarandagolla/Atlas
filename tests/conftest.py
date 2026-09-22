@@ -85,6 +85,10 @@ def q(
     facts=None,
     complete=True,
     status=QueryStatus.SUCCESS,
+    receipt_time_ns=T0 + 1,
+    requested_interval_start_ns=T0 - 100,
+    requested_interval_end_ns=T0 + 100,
+    retention_segments=((T0 - 200, T0 + 200),),
 ):
     scope = (
         QueryScope.ACCOUNT if kind in (QueryType.WALLET_BALANCE, QueryType.TRANSACTION_LOG) else QueryScope.INSTRUMENT
@@ -96,17 +100,17 @@ def q(
         scope=scope,
         account=account,
         instrument=inst,
-        requested_interval_start_ns=T0 - 100,
-        requested_interval_end_ns=T0 + 100,
+        requested_interval_start_ns=requested_interval_start_ns,
+        requested_interval_end_ns=requested_interval_end_ns,
         pagination_cursors=(query_id,),
         pages_observed=1,
         total_records_returned=records,
         completeness=Completeness.COMPLETE if complete else Completeness.INCOMPLETE_PAGINATED,
         status=status,
         source_time_ns=T0,
-        receipt_time_ns=T0 + 1,
+        receipt_time_ns=receipt_time_ns,
         request_ids=(query_id,),
-        retention_segments=((T0 - 200, T0 + 200),),
+        retention_segments=retention_segments,
         facts=facts or {},
         error_message=None,
     )
@@ -120,6 +124,7 @@ def completed_run(
     writer_id="writer",
     writer_epoch=1,
     runtime="runtime",
+    extra_queries=(),
 ):
     run = ReconciliationRun(
         run_id,
@@ -135,8 +140,11 @@ def completed_run(
     )
     j.create_reconciliation_run(run)
     for kind in DEFAULT_EXECUTION_RISK_QUERIES:
-        facts = {"signed_qty": "0"} if kind == QueryType.POSITIONS else {}
+        facts = {"signed_qty": "0", "position_epoch": 0} if kind == QueryType.POSITIONS else {}
         e = q(kind, f"{run_id}-{kind.value}", account=account, instrument=instrument, facts=facts)
+        j.append_reconciliation_query_evidence(e)
+        j.bind_query_to_run(run_id, e.query_id)
+    for e in extra_queries:
         j.append_reconciliation_query_evidence(e)
         j.bind_query_to_run(run_id, e.query_id)
     j.complete_reconciliation_run(run_id, T0 + 10)

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .models import MarketRecord
+from .models import MarketRecord, hash_payload
 
 
 class EnvironmentDependencyError(RuntimeError):
@@ -43,6 +43,19 @@ class ParquetArchive:
             / f"date={self._day(record.source_event_at_ns or record.received_at_ns)}"
         )
 
+    @staticmethod
+    def _stored_fingerprint(row: dict[str, object]) -> str:
+        fingerprint = row.get("record_fingerprint")
+        if isinstance(fingerprint, str) and fingerprint:
+            return fingerprint
+        legacy = dict(row)
+        legacy.pop("record_fingerprint", None)
+        if "payload_json" in legacy:
+            legacy["payload"] = json.loads(str(legacy.pop("payload_json")))
+        if "dependency_ids_json" in legacy:
+            legacy["dependency_ids"] = json.loads(str(legacy.pop("dependency_ids_json")))
+        return hash_payload(legacy)
+
     def write_batch(self, records: list[MarketRecord]) -> ArchiveWriteResult:
         if not records:
             raise ValueError("records required")
@@ -58,8 +71,6 @@ class ParquetArchive:
         d = self._partition(records[0])
         d.mkdir(parents=True, exist_ok=True)
         path = d / f"part-{h}.parquet"
-        if path.exists():
-            return ArchiveWriteResult(str(path), h, len(rows), False)
         try:
             import pyarrow as pa
             import pyarrow.parquet as pq
@@ -70,19 +81,27 @@ class ParquetArchive:
         # silently coexisting in an immutable partition.
         batch_ids: dict[str, str] = {}
         for row in rows:
+            fingerprint = row["record_fingerprint"]
             previous = batch_ids.get(row["record_id"])
-            if previous is not None and previous != row["content_hash"]:
+            if previous is not None and previous != fingerprint:
                 raise ValueError(f"conflicting logical identity for record_id={row['record_id']}")
-            batch_ids[row["record_id"]] = row["content_hash"]
-        existing_ids = {}
+            batch_ids[row["record_id"]] = fingerprint
+        existing_ids: dict[str, str] = {}
         for existing in self.root.rglob("part-*.parquet"):
-            table = pq.read_table(existing, columns=["record_id", "content_hash"])
+            table = pq.read_table(existing)
             for row in table.to_pylist():
-                existing_ids[row["record_id"]] = row["content_hash"]
+                record_id = str(row["record_id"])
+                fingerprint = self._stored_fingerprint(row)
+                previous = existing_ids.get(record_id)
+                if previous is not None and previous != fingerprint:
+                    raise ValueError(f"conflicting logical identity for record_id={record_id}")
+                existing_ids[record_id] = fingerprint
         for row in rows:
             old = existing_ids.get(row["record_id"])
-            if old is not None and old != row["content_hash"]:
+            if old is not None and old != row["record_fingerprint"]:
                 raise ValueError(f"conflicting logical identity for record_id={row['record_id']}")
+        if path.exists():
+            return ArchiveWriteResult(str(path), h, len(rows), False)
         # Payload/dependency IDs are encoded as canonical JSON strings for a stable flat Arrow schema.
         flat = []
         for row in rows:

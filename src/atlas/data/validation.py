@@ -17,15 +17,15 @@ class ValidationResult:
 
 class CausalRecordValidator:
     def __init__(self):
-        self._hash_by_id = {}
+        self._fingerprint_by_id = {}
         self._known_ids = set()
         self._available = {}
 
     def validate(self, r: MarketRecord) -> ValidationResult:
         reasons = []
-        old = self._hash_by_id.get(r.record_id)
-        if old is not None and old != r.content_hash:
-            reasons.append("duplicate record identity with conflicting content")
+        old = self._fingerprint_by_id.get(r.record_id)
+        if old is not None and old != r.record_fingerprint:
+            reasons.append("duplicate record identity with conflicting content or immutable causal metadata")
         if r.source_event_at_ns is not None and r.source_event_at_ns > r.received_at_ns + r.source_clock_uncertainty_ns:
             reasons.append("source event clock conflicts with actual receipt")
         if (
@@ -45,7 +45,7 @@ class CausalRecordValidator:
     def accept(self, r: MarketRecord) -> ValidationResult:
         result = self.validate(r)
         if result.accepted:
-            self._hash_by_id[r.record_id] = r.content_hash
+            self._fingerprint_by_id[r.record_id] = r.record_fingerprint
             self._known_ids.add(r.record_id)
             self._available[r.record_id] = r.available_at_ns
         return result
@@ -63,6 +63,7 @@ class QuarantineStore:
                     {
                         "record_id": r.record_id,
                         "content_hash": r.content_hash,
+                        "record_fingerprint": r.record_fingerprint,
                         "reasons": list(reasons),
                         "recorded_at_ns": r.recorded_at_ns,
                     },

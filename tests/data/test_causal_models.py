@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from atlas.data.availability import AvailabilityRuleKind, ReplayAvailabilityRule, historical_import, reconstruct_public
@@ -36,6 +38,9 @@ def test_actual_and_reconstructed_views_are_separate():
     r = actual(received=T0 + 1000)
     rule = ReplayAvailabilityRule("bar-close", "v1", AvailabilityRuleKind.BAR_END_PLUS_LAG, 5, "conservative bar lag")
     rr = reconstruct_public(r, rule)
+    assert rr.record_id != r.record_id
+    assert r.record_id in rr.record_id
+    assert rule.rule_id in rr.record_id and rule.version in rr.record_id and rule.hash() in rr.record_id
     assert r.received_at_ns == rr.received_at_ns == T0 + 1000
     assert rr.replay_available_at_ns == T0 + 5
     assert available_for_decision([rr], T0 + 10, ReplayMode.ACTUAL_SYSTEM) == []
@@ -88,3 +93,36 @@ def test_replay_rule_hash_is_deterministic():
     a = ReplayAvailabilityRule("r", "1", AvailabilityRuleKind.BAR_END_PLUS_LAG, 100, "x")
     b = ReplayAvailabilityRule("r", "1", AvailabilityRuleKind.BAR_END_PLUS_LAG, 100, "x")
     assert a.hash() == b.hash()
+
+
+def test_validator_rejects_same_id_with_any_changed_causal_identity():
+    original = actual()
+    validator = CausalRecordValidator()
+    assert validator.accept(original).accepted
+    candidates = (
+        replace(
+            original,
+            received_at_ns=T0 + 20,
+            processed_at_ns=T0 + 21,
+            available_at_ns=T0 + 21,
+            data_ingested_at_ns=T0 + 20,
+            recorded_at_ns=T0 + 21,
+        ),
+        replace(original, available_at_ns=T0 + 22, processed_at_ns=T0 + 21, recorded_at_ns=T0 + 22),
+        replace(
+            original,
+            availability_class=AvailabilityClass.RECONSTRUCTED_PUBLIC,
+            availability_lower_ns=T0 + 5,
+            availability_upper_ns=T0 + 5,
+            replay_available_at_ns=T0 + 5,
+            availability_method="rule@v1:hash",
+        ),
+        replace(original, dependency_ids=("dependency-1",)),
+        replace(original, evidence_ref="different-evidence"),
+        replace(original, pipeline_version="phase3-v2"),
+        replace(original, source_clock_precision_ns=2_000_000),
+    )
+    for candidate in candidates:
+        result = validator.validate(candidate)
+        assert not result.accepted
+        assert any("immutable causal metadata" in reason for reason in result.reasons)

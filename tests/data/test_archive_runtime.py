@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from atlas.data.archive import DuckDBResearchCatalog, ParquetArchive
@@ -78,6 +79,44 @@ def test_parquet_arrow_schema_and_canonical_json_round_trip(tmp_path: Path):
     assert (
         json.dumps(rows[0]["payload"], sort_keys=True, separators=(",", ":")) == '{"close":"50000","symbol":"BTCUSDT"}'
     )
+    assert rows[0]["record_fingerprint"] == item.record_fingerprint
+
+
+def test_archive_rejects_causal_identity_conflicts_not_just_content_conflicts(tmp_path: Path):
+    archive = ParquetArchive(tmp_path / "archive")
+    item = record("causal-1", "BTCUSDT", "50000")
+    written = archive.write_batch([item])
+    before = hashlib.sha256(Path(written.path).read_bytes()).hexdigest()
+    candidates = (
+        replace(
+            item,
+            received_at_ns=T0 + 2_000,
+            processed_at_ns=T0 + 3_000,
+            available_at_ns=T0 + 3_000,
+            data_ingested_at_ns=T0 + 2_000,
+            recorded_at_ns=T0 + 3_000,
+        ),
+        replace(item, available_at_ns=T0 + 4_000),
+        replace(
+            item,
+            availability_class=AvailabilityClass.RECONSTRUCTED_PUBLIC,
+            availability_lower_ns=T0 + 500,
+            availability_upper_ns=T0 + 500,
+            replay_available_at_ns=T0 + 500,
+            availability_method="rule@v1:hash",
+        ),
+        replace(item, dependency_ids=("other-dependency",)),
+        replace(item, evidence_ref="different-evidence"),
+        replace(item, pipeline_version="phase3-v2"),
+    )
+    for candidate in candidates:
+        try:
+            archive.write_batch([candidate])
+        except ValueError as exc:
+            assert "conflicting logical identity" in str(exc)
+        else:
+            raise AssertionError("causal identity conflict was accepted")
+    assert hashlib.sha256(Path(written.path).read_bytes()).hexdigest() == before
 
 
 def test_duckdb_reads_only_archive_and_does_not_mutate_sqlite(tmp_path: Path):

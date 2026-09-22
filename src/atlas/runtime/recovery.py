@@ -241,6 +241,8 @@ def recover_from_persisted_run(
     protection_evidence_id: str | None = None,
     max_protection_staleness_ns: int = 2_000_000_000,
 ) -> RecoveryCertificate:
+    if ended_at_ns < started_at_ns:
+        raise PersistenceError("recovery ended_at precedes recovery started_at")
     run = journal.load_reconciliation_run(reconciliation_run_id)
     queries = journal.load_run_queries(reconciliation_run_id)
     bundle = build_reconciliation_bundle(run, queries)
@@ -252,6 +254,13 @@ def recover_from_persisted_run(
         or run.runtime_instance_id != runtime_instance_id
     ):
         raise PersistenceError("reconciliation run identity mismatch")
+    cycle_reasons: list[str] = []
+    if run.started_at_ns < started_at_ns:
+        cycle_reasons.append("reconciliation run started before this recovery cycle")
+    if run.completed_at_ns is None:
+        cycle_reasons.append("reconciliation run has no completion time")
+    elif run.completed_at_ns > ended_at_ns:
+        cycle_reasons.append("reconciliation run completed after this recovery cycle")
     artifact_ok, artifact_reasons = _validate_resolution_artifact(
         journal=journal,
         flat_certificate_id=flat_certificate_id,
@@ -281,9 +290,15 @@ def recover_from_persisted_run(
             raise PersistenceError(f"caller {label} do not match durable journal")
     unresolved_intent_ids, unresolved_command_ids, unknown_command_ids = actual_intents, actual_commands, actual_unknown
     unresolved = bool(actual_intents or actual_commands or actual_unknown)
-    health = ReconciliationHealth.CURRENT if bundle.complete_for_recovery else ReconciliationHealth.STALE
+    health = (
+        ReconciliationHealth.CONFLICTED
+        if cycle_reasons
+        else ReconciliationHealth.CURRENT
+        if bundle.complete_for_recovery
+        else ReconciliationHealth.STALE
+    )
     residual_reasons = _residual_risk_reasons(bundle)
-    if unresolved or not bundle.complete_for_recovery or residual_reasons:
+    if cycle_reasons or unresolved or not bundle.complete_for_recovery or residual_reasons:
         decision = RecoveryDecision.RECOVERY_REQUIRED
     elif not prerequisites_ok or not artifact_ok:
         decision = RecoveryDecision.REMAIN_RECOVERING
@@ -302,7 +317,7 @@ def recover_from_persisted_run(
         health,
         started_at_ns,
         ended_at_ns,
-        ("reconciliation-run:" + reconciliation_run_id,) + tuple(artifact_reasons),
+        ("reconciliation-run:" + reconciliation_run_id,) + tuple(cycle_reasons) + tuple(artifact_reasons),
         refs,
         decision,
         flat_certificate_id,

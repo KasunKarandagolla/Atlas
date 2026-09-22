@@ -72,6 +72,13 @@ DEFAULT_EXECUTION_RISK_QUERIES = (
     QueryType.TRADING_STOP,
 )
 
+HISTORY_COVERAGE_QUERY_TYPES = frozenset(
+    {
+        QueryType.ORDER_HISTORY,
+        QueryType.EXECUTION_HISTORY,
+    }
+)
+
 
 def compute_evidence_hash(payload: dict[str, Any]) -> str:
     """Hash a canonical JSON payload for compatibility and test fixtures."""
@@ -259,6 +266,18 @@ class ReconciliationQueryEvidence:
         return self.retention_segments[-1][1] if self.retention_segments else None
 
     @property
+    def has_retention_coverage(self) -> bool:
+        return (
+            self.requested_interval_start_ns is not None
+            and self.requested_interval_end_ns is not None
+            and covers_interval(
+                self.retention_segments,
+                self.requested_interval_start_ns,
+                self.requested_interval_end_ns,
+            )
+        )
+
+    @property
     def can_certify_absence(self) -> bool:
         return (
             self.hash_binds_payload
@@ -267,11 +286,7 @@ class ReconciliationQueryEvidence:
             and self.is_empty_result
             and self.requested_interval_start_ns is not None
             and self.requested_interval_end_ns is not None
-            and covers_interval(
-                self.retention_segments,
-                self.requested_interval_start_ns,
-                self.requested_interval_end_ns,
-            )
+            and self.has_retention_coverage
         )
 
 
@@ -422,6 +437,7 @@ class ReconciliationEvidenceBundle:
     def complete_for_recovery(self) -> bool:
         return (
             self.run.state == ReconciliationRunState.COMPLETE
+            and self.run.completed_at_ns is not None
             and self.overall_status == QueryStatus.SUCCESS
             and self.overall_completeness == Completeness.COMPLETE
             and not self.missing_required_types
@@ -440,6 +456,10 @@ def build_reconciliation_bundle(
         else tuple(query_type for query_type in run.required_query_types if query_type not in query_types)
     )
     invalid: list[str] = []
+    if run.state == ReconciliationRunState.COMPLETE and (
+        run.completed_at_ns is None or run.completed_at_ns < run.started_at_ns
+    ):
+        invalid.append("run:completion-outside-run")
     for evidence in queries:
         if evidence.account != run.account:
             raise ValueError("query account does not match run")
@@ -447,6 +467,13 @@ def build_reconciliation_bundle(
             raise ValueError("query instrument does not match run")
         if not evidence.hash_binds_payload:
             invalid.append(evidence.query_id)
+        if run.state == ReconciliationRunState.COMPLETE:
+            if run.completed_at_ns is None or not (
+                run.started_at_ns <= evidence.receipt_time_ns <= run.completed_at_ns
+            ):
+                invalid.append(f"{evidence.query_id}:receipt-outside-run")
+            if evidence.query_type in HISTORY_COVERAGE_QUERY_TYPES and not evidence.has_retention_coverage:
+                invalid.append(f"{evidence.query_id}:retention-coverage")
     statuses = {evidence.status for evidence in queries}
     completeness_values = {evidence.completeness for evidence in queries}
     if statuses & {QueryStatus.FAILED, QueryStatus.TIMEOUT}:

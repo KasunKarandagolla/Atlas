@@ -160,11 +160,25 @@ class MarketRecord:
     def compute_content_hash(self) -> str:
         return hash_payload(self.content_dict())
 
-    def to_dict(self) -> dict[str, Any]:
-        d = {f: getattr(self, f) for f in self.__dataclass_fields__}
+    def immutable_dict(self) -> dict[str, Any]:
+        """Canonical causal identity, excluding the derived fingerprint itself."""
+
+        d = {field: getattr(self, field) for field in self.__dataclass_fields__}
         d["data_kind"] = self.data_kind.value
         d["availability_class"] = self.availability_class.value
         d["dependency_ids"] = list(self.dependency_ids)
+        return d
+
+    def compute_record_fingerprint(self) -> str:
+        return hash_payload(self.immutable_dict())
+
+    @property
+    def record_fingerprint(self) -> str:
+        return self.compute_record_fingerprint()
+
+    def to_dict(self) -> dict[str, Any]:
+        d = self.immutable_dict()
+        d["record_fingerprint"] = self.record_fingerprint
         return d
 
 
