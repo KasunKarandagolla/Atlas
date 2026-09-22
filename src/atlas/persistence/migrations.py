@@ -1,9 +1,10 @@
-"""Transactional SQLite bootstrap and the v4-to-v5 migration.
+"""Transactional SQLite bootstrap and the v4-to-v6 migrations.
 
 Migration is intentionally explicit.  A v4 recovery certificate is not a v5
 runtime artifact: its missing runtime identity and missing typed artifacts are
 preserved as legacy compatibility metadata and cannot silently authorize a new
-recovery decision.
+recovery decision.  Schema 6 adds durable one-use recovery-cycle claims and
+backfills historical schema-5 consumption before exposing the new version.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from typing import Any
 from .schema import (
     DDL_STATEMENTS,
     SCHEMA_VERSION,
+    recovery_binding_ddl,
 )
 
 LEGACY_RUNTIME_INSTANCE_ID = "legacy-v4-runtime-unavailable"
@@ -248,6 +250,102 @@ def _add_v5_columns(conn: sqlite3.Connection) -> None:
             conn.execute("ALTER TABLE protection_evidence ADD COLUMN market_stop_semantics INTEGER NOT NULL DEFAULT 0")
 
 
+def _add_v6_columns(conn: sqlite3.Connection) -> None:
+    if not _table_exists(conn, "recovery_reconciliation_bindings"):
+        return
+    columns = _columns(conn, "recovery_reconciliation_bindings")
+    if "legacy_multi_use" not in columns:
+        conn.execute(
+            "ALTER TABLE recovery_reconciliation_bindings "
+            "ADD COLUMN legacy_multi_use INTEGER NOT NULL DEFAULT 0"
+        )
+    if "legacy_recovery_ids_json" not in columns:
+        conn.execute(
+            "ALTER TABLE recovery_reconciliation_bindings "
+            "ADD COLUMN legacy_recovery_ids_json TEXT NOT NULL DEFAULT '[]'"
+        )
+
+
+def _decode_evidence_refs(value: Any, recovery_run_id: str) -> tuple[str, ...]:
+    decoded = _decode_json(value)
+    if not isinstance(decoded, list) or any(not isinstance(item, str) for item in decoded):
+        raise RuntimeError(f"v5 recovery certificate {recovery_run_id} has invalid evidence_refs_json")
+    refs = []
+    for item in decoded:
+        if item.startswith("reconciliation-run:"):
+            referenced_run_id = item.removeprefix("reconciliation-run:")
+            if not referenced_run_id:
+                raise RuntimeError(f"v5 recovery certificate {recovery_run_id} has an empty reconciliation run ref")
+            refs.append(referenced_run_id)
+    return tuple(dict.fromkeys(refs))
+
+
+def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
+    """Create durable run claims and account for all historical v5 claims.
+
+    Historical certificates remain byte-for-byte unchanged.  If schema 5
+    allowed multiple certificates to reference one run, the first
+    deterministic certificate owns the blocking binding and the complete
+    historical set is recorded on that binding as a legacy conflict.
+    """
+
+    conn.execute(recovery_binding_ddl())
+    _add_v6_columns(conn)
+    rows = conn.execute(
+        "SELECT recovery_run_id,runtime_instance_id,writer_id,writer_epoch,ended_at_ns,evidence_refs_json "
+        "FROM recovery_certificates ORDER BY recovery_run_id"
+    ).fetchall()
+    consumers: dict[str, list[sqlite3.Row]] = {}
+    for row in rows:
+        for reconciliation_run_id in _decode_evidence_refs(row["evidence_refs_json"], row["recovery_run_id"]):
+            consumers.setdefault(reconciliation_run_id, []).append(row)
+
+    for reconciliation_run_id, historical_rows in sorted(consumers.items()):
+        run = conn.execute(
+            "SELECT run_id FROM reconciliation_runs WHERE run_id=?", (reconciliation_run_id,)
+        ).fetchone()
+        if run is None:
+            raise RuntimeError(
+                f"v5 recovery certificate references missing reconciliation run {reconciliation_run_id}"
+            )
+        historical_ids = tuple(sorted({row["recovery_run_id"] for row in historical_rows}))
+        existing = conn.execute(
+            "SELECT * FROM recovery_reconciliation_bindings WHERE reconciliation_run_id=?",
+            (reconciliation_run_id,),
+        ).fetchone()
+        if existing is not None:
+            if existing["recovery_run_id"] not in historical_ids:
+                raise RuntimeError(
+                    f"v5 binding for {reconciliation_run_id} does not match historical recovery evidence"
+                )
+            legacy_multi_use = int(existing["legacy_multi_use"]) or len(historical_ids) > 1
+            conn.execute(
+                "UPDATE recovery_reconciliation_bindings "
+                "SET legacy_multi_use=?,legacy_recovery_ids_json=? WHERE reconciliation_run_id=?",
+                (legacy_multi_use, json.dumps(historical_ids), reconciliation_run_id),
+            )
+            continue
+
+        selected = next(row for row in historical_rows if row["recovery_run_id"] == historical_ids[0])
+        conn.execute(
+            """INSERT INTO recovery_reconciliation_bindings(
+                reconciliation_run_id,recovery_run_id,runtime_instance_id,
+                writer_id,writer_epoch,claimed_at_ns,legacy_multi_use,
+                legacy_recovery_ids_json
+            ) VALUES(?,?,?,?,?,?,?,?)""",
+            (
+                reconciliation_run_id,
+                selected["recovery_run_id"],
+                selected["runtime_instance_id"],
+                selected["writer_id"],
+                selected["writer_epoch"],
+                selected["ended_at_ns"],
+                int(len(historical_ids) > 1),
+                json.dumps(historical_ids),
+            ),
+        )
+
+
 def bootstrap(conn: sqlite3.Connection) -> int:
     """Create or migrate the journal, committing schema metadata last."""
 
@@ -262,14 +360,24 @@ def bootstrap(conn: sqlite3.Connection) -> int:
 
     conn.execute("BEGIN IMMEDIATE")
     try:
-        migrate_recovery, migrate_queries = _rename_legacy_tables(conn)
-        for statement in DDL_STATEMENTS:
-            conn.execute(statement)
-        if migrate_recovery:
-            _copy_v4_recovery_certificates(conn)
-        if migrate_queries:
-            _copy_v4_query_evidence(conn)
-        _add_v5_columns(conn)
+        binding_statement = recovery_binding_ddl()
+        if existing == 5:
+            # A pre-binding v5 journal must not acquire an empty v6 table
+            # through ordinary CREATE IF NOT EXISTS processing.
+            for statement in DDL_STATEMENTS:
+                if statement != binding_statement:
+                    conn.execute(statement)
+            _add_v5_columns(conn)
+            _migrate_v5_to_v6(conn)
+        else:
+            migrate_recovery, migrate_queries = _rename_legacy_tables(conn)
+            for statement in DDL_STATEMENTS:
+                conn.execute(statement)
+            if migrate_recovery:
+                _copy_v4_recovery_certificates(conn)
+            if migrate_queries:
+                _copy_v4_query_evidence(conn)
+            _add_v5_columns(conn)
         conn.execute(
             "INSERT INTO schema_metadata(key, value) VALUES('schema_version', ?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",

@@ -2,12 +2,12 @@
 
 The schema is deliberately boring: durable control facts are relational, while
 raw/evidence payloads remain immutable JSON or content hashes. Foreign keys that
-were part of the v4 journal are retained in fresh v5 databases.
+were part of the v4 journal are retained in fresh v6 databases.
 """
 
 from __future__ import annotations
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 DDL_STATEMENTS = [
     """
@@ -281,7 +281,9 @@ DDL_STATEMENTS = [
         runtime_instance_id TEXT NOT NULL,
         writer_id TEXT NOT NULL,
         writer_epoch INTEGER NOT NULL,
-        claimed_at_ns INTEGER NOT NULL
+        claimed_at_ns INTEGER NOT NULL,
+        legacy_multi_use INTEGER NOT NULL DEFAULT 0,
+        legacy_recovery_ids_json TEXT NOT NULL DEFAULT '[]'
     )
     """,
     """
@@ -314,7 +316,7 @@ DDL_STATEMENTS = [
 
 
 def recovery_certificate_ddl() -> str:
-    """Return the v5 recovery-certificate DDL without relying on list indices."""
+    """Return the recovery-certificate DDL without relying on list indices."""
 
     return next(
         statement for statement in DDL_STATEMENTS if "CREATE TABLE IF NOT EXISTS recovery_certificates" in statement
@@ -324,4 +326,14 @@ def recovery_certificate_ddl() -> str:
 def protection_evidence_ddl() -> str:
     return next(
         statement for statement in DDL_STATEMENTS if "CREATE TABLE IF NOT EXISTS protection_evidence" in statement
+    )
+
+
+def recovery_binding_ddl() -> str:
+    """Return the v6 recovery binding DDL without relying on list indices."""
+
+    return next(
+        statement
+        for statement in DDL_STATEMENTS
+        if "CREATE TABLE IF NOT EXISTS recovery_reconciliation_bindings" in statement
     )

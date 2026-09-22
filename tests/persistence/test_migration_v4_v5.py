@@ -76,7 +76,7 @@ def test_v4_recovery_certificates_migrate_and_remain_usable_after_restart(tmp_pa
     _create_v4_database(path)
 
     journal = SQLiteJournal(path)
-    assert journal.schema_version() == 5
+    assert journal.schema_version() == 6
     historical = journal.load_recovery_certificate("legacy-recovery")
     assert historical is not None
     assert historical.runtime_instance_id == LEGACY_RUNTIME_INSTANCE_ID

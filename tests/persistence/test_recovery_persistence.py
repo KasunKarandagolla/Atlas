@@ -74,7 +74,7 @@ def test_restart_reconstructs_query_evidence_and_persists_ready_certificate(tmp_
     restored = restarted.load_recovery_certificate("recovery-ready")
     assert restored == certificate
     assert len(restarted.load_recovery_incidents("recovery-ready")) == 1
-    assert restarted.schema_version() == 5
+    assert restarted.schema_version() == 6
     restarted.close()
 
 
