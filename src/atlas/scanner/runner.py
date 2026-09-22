@@ -8,7 +8,7 @@ from typing import Protocol
 
 from atlas.science.research_archive import ResearchArtifactArchive
 
-from .alerts import AlertTransport
+from .alerts import AlertTransport, RecordingAlertTransport
 from .calendar import ScannerCalendar
 from .engine import Phase4Evaluator, ScanSlotResult, run_scan_slot
 from .models import (
@@ -48,10 +48,15 @@ class RunnerReceipt:
     reasons: tuple[str, ...] = ()
 
 
-def _assert_causal_inputs(*, slot_at_ns: int, universe: UniverseSnapshot,
+def _assert_ordered(*, instrument: str, first: int | None, second: int | None, field: str) -> None:
+    if first is not None and second is not None and first > second:
+        raise ValueError(f"invalid warmup timestamp ordering for {instrument}: {field}")
+
+
+def _assert_causal_inputs(*, slot_at_ns: int, now_ns: int, universe: UniverseSnapshot,
                           cheap_inputs: Sequence[CheapScanInput],
                           warmup_evidence: Sequence[WarmupEvidence]) -> None:
-    """Refuse any provider evidence that was not known by the requested slot."""
+    """Refuse decision-time evidence not known by the slot, or warmup evidence not yet known now."""
     if universe.observed_at_ns > slot_at_ns or universe.available_at_ns > slot_at_ns:
         raise ValueError("future universe snapshot cannot be used for an earlier scanner slot")
     for entry in universe.entries:
@@ -66,8 +71,14 @@ def _assert_causal_inputs(*, slot_at_ns: int, universe: UniverseSnapshot,
         if item.slot_at_ns != slot_at_ns:
             raise ValueError("warmup evidence belongs to a different scanner slot")
         for timestamp in (item.job_enqueued_at_ns, item.job_started_at_ns, item.job_finished_at_ns):
-            if timestamp is not None and timestamp > slot_at_ns:
-                raise ValueError("future warmup evidence cannot be used for an earlier scanner slot")
+            if timestamp is not None and timestamp > now_ns:
+                raise ValueError("future warmup evidence cannot be used before it exists")
+        _assert_ordered(instrument=item.instrument, first=item.job_enqueued_at_ns,
+                        second=item.job_started_at_ns, field="enqueued>started")
+        _assert_ordered(instrument=item.instrument, first=item.job_started_at_ns,
+                        second=item.job_finished_at_ns, field="started>finished")
+        _assert_ordered(instrument=item.instrument, first=item.job_enqueued_at_ns,
+                        second=item.job_finished_at_ns, field="enqueued>finished")
 
 
 class ScannerRunner:
@@ -99,19 +110,23 @@ class ScannerRunner:
         now = self._now(now_ns)
         if mode == "LIVE" and slot_at_ns != due_slot(now):
             raise ValueError("LIVE runner may only process the latest due slot; use CATCH_UP diagnostics")
-        existing = self.calendar.slot_rows(slot_at_ns)
-        if existing:
+        if mode == "LIVE" and self.calendar.slot_rows(slot_at_ns):
             return RunnerReceipt(slot_at_ns, mode, "ALREADY_COMPLETED", None, ("SLOT_ALREADY_PERSISTED",))
         universe = self.universe_provider(slot_at_ns)
         cheap_inputs = tuple(self.cheap_input_provider(slot_at_ns))
         warmup_evidence = tuple(self.warmup_evidence_provider(slot_at_ns))
-        _assert_causal_inputs(slot_at_ns=slot_at_ns, universe=universe, cheap_inputs=cheap_inputs,
+        _assert_causal_inputs(slot_at_ns=slot_at_ns, now_ns=now, universe=universe, cheap_inputs=cheap_inputs,
                               warmup_evidence=warmup_evidence)
+        diagnostic = mode == "CATCH_UP"
+        target_calendar = ScannerCalendar() if diagnostic else self.calendar
+        target_archive = None if diagnostic else self.archive
+        target_transport = RecordingAlertTransport() if diagnostic else self.alert_transport
         result = run_scan_slot(slot_at_ns=slot_at_ns, universe=universe, cheap_inputs=cheap_inputs,
                                policy=self.policy, warmup_evidence=warmup_evidence,
-                               evaluator=self.evaluator, alert_transport=self.alert_transport,
-                               archive=self.archive, calendar=self.calendar, now_ns=now)
-        return RunnerReceipt(slot_at_ns, mode, "COMPLETED", result)
+                               evaluator=self.evaluator, alert_transport=target_transport,
+                               archive=target_archive, calendar=target_calendar, now_ns=now,
+                               persist=not diagnostic)
+        return RunnerReceipt(slot_at_ns, mode, "DIAGNOSTIC_ONLY" if diagnostic else "COMPLETED", result)
 
     def run_due_slot(self, now_ns: int | None = None) -> RunnerReceipt:
         now = self._now(now_ns)
