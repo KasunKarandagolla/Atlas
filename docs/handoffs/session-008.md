@@ -159,3 +159,77 @@ No profitability claim is made. Economic validation remains UNVERIFIED. No
 live/test order was submitted. All six Bybit capabilities remain UNVERIFIED.
 `assisted_enabled=false`. Actual assisted execution remains blocked by the
 frozen §8.2 qualification gates and a user-approved live RiskPolicy.
+
+---
+
+# Final Phase-6 completion patch
+
+## Identity
+
+- STARTING SHA: `a7935d944c242642d9c189cf47e7b048267d2db9`
+- IMPLEMENTATION SHA: `62f03676ecfdf4b5e02348e6756cf185e29d2378`
+  (`fix: finalize phase 6 control invariants`)
+- FINAL BRANCH SHA: the documentation commit immediately following the
+  implementation SHA; reported in the session final report.
+
+## Repaired control invariants
+
+1. **Durable, positively verified protection repair.** `protect` now persists an
+   exact `REPAIR_STOP` command before any side effect, durably marks dispatch
+   start, calls `ensure_full_stop()`, immediately reads protection back, and
+   uses the existing `verify_protection()` for epoch, quantity, approved stop,
+   MarkPrice, full-position market semantics, closing-only semantics,
+   freshness and evidence-reference checks. Only positive verified read-back
+   reconciles `REPAIR_STOP` and returns `PROTECTED`. Timeouts, missing/stale
+   read-back and semantic/quantity/stop mismatches remain
+   `PROTECTION_UNCONFIRMED` with the command unresolved/`UNKNOWN`.
+2. **Risk-reduction gates separated from new-risk enablement.** Close/flatten
+   now require only owned/reconciled exposure, explicit bounded quantity,
+   no-reversal and a supported reduce-only capability. Protect requires only
+   the narrow protection repair/read capability plus positive verification.
+   `assisted_enabled=false` still blocks all opening entry dispatch.
+3. **Client order ID bound into the durable opening payload.** The existing
+   entry wire contract now carries the persisted `Intent.client_order_id` as
+   Bybit `orderLinkId`; the command payload hash, intent and transport observe
+   the same 32-lowercase-hex identity. UNKNOWN recovery cannot rebuild the
+   opening payload with another ID.
+4. **Shell identity and fresh account evidence bound.** Revalidation evidence
+   must match the shell runtime instance, writer ID and writer epoch before
+   approval consumption, and now carries `account_at_ns`; future or stale
+   account snapshots block while the account snapshot hash remains bound to
+   the typed `AccountState`.
+5. **Monotonic durable position epoch.** New Phase-6 openings allocate
+   `SQLiteJournal.next_position_epoch()`. The atomic approval+intent+
+   reservation transaction validates that the proposed epoch is still the next
+   durable epoch, so one concurrent claim may win and the other rolls back.
+   Closed epochs are never reused, and protection verification remains bound
+   to the intent's epoch.
+
+## Tests and validation
+
+Focused Phase-6/wire tests passed, including durable repair ordering, positive
+and negative protection read-back, timeout uncertainty, risk-reduction gate
+separation, client-order-ID payload binding, shell identity/account freshness,
+monotonic epoch advancement and atomic competing epoch claims.
+
+One clean tracked-only worktree at implementation SHA
+`62f03676ecfdf4b5e02348e6756cf185e29d2378`, one fresh Python 3.12.13 venv, one
+hashed lock install:
+
+```text
+PYTHONPATH=src:. python -m pytest -ra     408 passed, 1 skipped
+PYTHONPATH=src:. python -m ruff check     PASS
+PYTHONPATH=src:. python -m mypy src tests PASS
+PYTHONPATH=src:. python -m compileall     PASS
+git diff --check                           clean
+```
+
+Protection, close and flatten positive behavior was exercised only through
+explicit offline fake ports and test-only typed capability contracts. No
+authenticated Bybit protection, close, flatten or order action was performed.
+No live or testnet order was submitted.
+
+No profitability claim is made. Economic validation remains UNVERIFIED. All six
+Bybit capabilities remain UNVERIFIED. `assisted_enabled=false`. Actual assisted
+execution remains blocked by the frozen §8.2 qualification gates and a
+user-approved live RiskPolicy.
