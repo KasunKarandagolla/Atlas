@@ -190,6 +190,23 @@ class SQLiteJournal:
     def create_approval(self, a: Approval) -> None:
         self._wrap("create_approval", lambda: self._insert_approval(a))
 
+    def load_approval(self, approval_id: str) -> Approval:
+        def op():
+            r = self._conn.execute("SELECT * FROM approvals WHERE approval_id=?", (approval_id,)).fetchone()
+            if not r:
+                raise PersistenceError("approval not found")
+            return Approval(
+                r["approval_id"],
+                r["user_identity"],
+                r["plan_id"],
+                r["plan_version"],
+                r["approved_at_ns"],
+                r["expires_at_ns"],
+                r["consumed_at_ns"],
+            )
+
+        return self._wrap("load_approval", op)
+
     def _insert_approval(self, a: Approval) -> None:
         with self._tx() as c:
             c.execute(
