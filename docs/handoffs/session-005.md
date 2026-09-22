@@ -8,7 +8,7 @@
 - Supplied package SHA256: `def76651bedf21aee1a040f011ea10499ec58f27c3bdae9b6e4fbe4476e9f4b4`
 - Previously reviewed checkpoints: `93c1fd092c1f822c604abeeb978f367221b10220`
   and `b0a1ec1f2ed9e2db40d84b05573340049a8b58d1`.  The current repair
-  implementation commit is `f0a308e`.
+  implementation commit is `4f5d136`.
 
 Checkpoint `93c1fd092c1f822c604abeeb978f367221b10220` failed independent
 review because `.gitignore` contained `data/`, which ignored the nested Python
@@ -28,6 +28,12 @@ durable one-use reconciliation-run/recovery-cycle authority.  Both failed
 checkpoint histories are retained; this handoff records the repairs rather
 than rewriting them.
 
+Checkpoint `d9004283bc354bbffc701c70b5b29d52c9ae6749` was independently
+rejected only because its new durable binding table was not a real schema
+migration: pre-binding schema-5 journals could open with an empty table and
+reuse a historically consumed reconciliation run.  Its new-journal binding,
+temporal checks and idempotent retry behavior remain preserved here.
+
 The archive manifest passed with `sha256sum -c MANIFEST.sha256`.  The ZIP was
 used as an overlay source only; the Git checkout, older tests, documents and
 Git metadata were preserved.
@@ -36,10 +42,20 @@ Git metadata were preserved.
 
 - Real transactional v4-to-v5 migration for `recovery_certificates`, including
   historical v4 field preservation in `compatibility_json`.
+- Schema version is now **6**.  The explicit transactional v5-to-v6 migration
+  creates `recovery_reconciliation_bindings` only after scanning historical
+  v5 certificate evidence refs for `reconciliation-run:<run_id>` consumption.
+  Single-use history is backfilled deterministically; historical certificates
+  remain unchanged.
+- Legacy v5 multi-use of one reconciliation run is preserved as an explicit
+  `legacy_multi_use` binding with the complete historical recovery-ID list.
+  The selected blocking binding and this compatibility evidence prevent any
+  new recovery cycle from using that run.  Missing/invalid historical run
+  references roll back the migration and leave schema metadata at 5.
 - Historical v4 runtime identity is explicitly `legacy-v4-runtime-unavailable`
   and is not treated as current runtime evidence.
 - Migration failures roll back table changes and leave `schema_metadata` at v4.
-- Fresh v5 foreign-key relationships from the v4 journal are retained.
+- Fresh v6 foreign-key relationships from the v4 journal are retained.
 - Recovery runs are created OPEN with no completion timestamp.  The mandatory
   V1 execution-risk query set cannot be reduced, and completion verifies every
   required query is bound to that exact run, temporally within the run and
@@ -98,17 +114,19 @@ Git metadata were preserved.
 - Nautilus: `2.0.0rc5`
 - Nautilus source commit: `1b0a49d2792a9432a3aca3fcb617ce7a630d905e`
 - Nautilus wheel SHA256: `eab45fafd2312deda1236554c49a9798bfc76bc8465af864878e2f70189ebebe`
-- Full working-tree pytest: **190 passed, 1 skipped**
+- Full working-tree pytest: **194 passed, 1 skipped**
 - Ruff: **passed** under the previous policy; E701/E702/E703 are not suppressed
-- Mypy: **passed**, `Success: no issues found in 88 source files`
+- Mypy: **passed**, `Success: no issues found in 89 source files`
 - Compileall: **passed**
 - `git diff --check`: **passed**
 - Fresh Python 3.12 hashed-lock install: **passed**
-- Fresh-install full pytest: **190 passed, 1 skipped**
+- Fresh-install full pytest: **194 passed, 1 skipped**
 - New durable one-use reconciliation binding, idempotent retry, replayed-
   timestamp and runtime/writer identity tests, plus existing temporal
   run-binding, recovery-cycle, protection-positive-evidence,
   retention-coverage and causal-fingerprint tests: **TESTED**
+- v5-to-v6 single-consumption backfill, legacy multi-use quarantine,
+  migration rollback and fresh-v6 schema tests: **TESTED**
 - Real Parquet/Arrow round-trip, deterministic partitioning, idempotency,
   conflict rejection and append-only checks: **TESTED**
 - Real DuckDB BTCUSDT/ETHUSDT archive filtering and research-only boundary:
@@ -125,15 +143,15 @@ Nautilus or causal test.
 - Repair implementation commits: `48b52c4fbb3b3a691ab687135ceccb439a3a72cd`,
   `99d5156201a58fa5c19774e619b31207584636ec` and
   `90b85127b56482668b21533740d3f5b0f052607b`; the durable authority repair
-  is `f0a308e`.
+  is `f0a308e`; the v5-to-v6 migration repair is `4f5d136`.
 - A tracked-only clone from
-  `f0a308e`
+  `4f5d136`
   contained all eight
   `src/atlas/data/*.py` files, all five `tests/data/*.py` files, the migration
   integration test and the authority adversarial tests.
 - The tracked-only clone installed `requirements-lock.txt` with
   `pip install --require-hashes` under Python 3.12.13 and passed the complete
-  suite: **190 passed, 1 skipped**.  The skip was the same explicit,
+  suite: **194 passed, 1 skipped**.  The skip was the same explicit,
   credentialed public-testnet check documented above.
 
 ## TEST GATE / UNVERIFIED
