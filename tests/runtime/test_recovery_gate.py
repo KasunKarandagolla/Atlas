@@ -22,4 +22,6 @@ def test_recovery_ready_requires_positive_flat_or_current_protection_evidence():
     with_flat = run_recovery(
         **_kwargs(), protection_evidence=RecoveryProtectionEvidence(True, False, ("flat-cert-1",))
     )
-    assert with_flat.decision == RecoveryDecision.READY
+    # A legacy caller-supplied flag/reference is diagnostic only. V5 READY
+    # requires a persisted artifact bound to a complete reconciliation run.
+    assert with_flat.decision == RecoveryDecision.REMAIN_RECOVERING

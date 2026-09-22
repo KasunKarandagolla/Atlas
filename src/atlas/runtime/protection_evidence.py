@@ -1,22 +1,4 @@
-"""Upgraded protection evidence model (freeze §1.3, §1.4).
-
-Records more than minimal protection proof:
-- account reference/hash
-- instrument
-- position epoch
-- desired stop version
-- observed signed quantity
-- full-position semantics
-- stop price, trigger basis
-- closing-only behavior/evidence
-- observation time
-- raw evidence IDs (position view + conditional order view)
-- freshness/currentness
-
-Unknown/conflicting evidence => UNCONFIRMED.
-Stop acknowledgement is NOT protection proof.
-"""
-
+"""Typed protection evidence; acknowledgements alone are never proof."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,184 +8,41 @@ from atlas.domain.enums import ProtectionStatus
 from atlas.domain.execution import ProtectionObservation
 from atlas.domain.time import ensure_utc_ns
 
-_PLACEHOLDER_REFS = frozenset({"", "REQUIRED", "REQUIRED_AT_INSTALL", "PLACEHOLDER"})
-
-
-def _valid_evidence_refs(refs: tuple[str, ...]) -> bool:
-    return bool(refs) and all(
-        isinstance(ref, str) and ref.strip() and ref.strip().upper() not in _PLACEHOLDER_REFS
-        for ref in refs
-    )
-
-
+_PLACEHOLDERS={'','REQUIRED','PLACEHOLDER','TEST_GATE','UNVERIFIED'}
+def _valid_refs(refs:tuple[str,...])->bool:return bool(refs) and all(isinstance(x,str) and x.strip() and x.strip().upper() not in _PLACEHOLDERS for x in refs)
 @dataclass(frozen=True)
 class ProtectionEvidence:
-    """Complete protection evidence record for audit/reconciliation."""
-
-    # Identity
-    account_ref: str
-    instrument: str
-    position_epoch: int
-
-    # Desired state
-    desired_stop_version: int
-
-    # Observed state
-    observed_signed_qty: Decimal
-    full_position_semantics: bool  # True = venue adjusts qty with position size
-    stop_price: Decimal
-    trigger_basis: str  # "MarkPrice" | "LastPrice" | "IndexPrice"
-    closing_only_behavior: bool  # True = stop only reduces position
-
-    # Evidence
-    position_view_evidence_ids: tuple[str, ...]
-    conditional_order_view_evidence_ids: tuple[str, ...]
-    observation_time_ns: int
-    receive_time_ns: int
-
-    # Derived status
-    status: ProtectionStatus
-    freshness_ns: int  # observation_time_ns relative to now
-
-    def __post_init__(self) -> None:
-        if not self.account_ref or not self.account_ref.strip():
-            raise ValueError("account_ref must be non-blank")
-        if not self.instrument or not self.instrument.strip():
-            raise ValueError("instrument must be non-blank")
-        if not isinstance(self.position_epoch, int) or isinstance(self.position_epoch, bool) or self.position_epoch < 0:
-            raise ValueError("position_epoch must be int >= 0")
-        if not isinstance(self.desired_stop_version, int) or isinstance(self.desired_stop_version, bool) or self.desired_stop_version < 0:
-            raise ValueError("desired_stop_version must be int >= 0")
-        if not isinstance(self.observed_signed_qty, Decimal):
-            raise ValueError("observed_signed_qty must be Decimal")
-        if not isinstance(self.full_position_semantics, bool):
-            raise ValueError("full_position_semantics must be bool")
-        if not isinstance(self.stop_price, Decimal) or self.stop_price <= 0:
-            raise ValueError("stop_price must be positive Decimal")
-        if not self.trigger_basis or not self.trigger_basis.strip():
-            raise ValueError("trigger_basis must be non-blank")
-        if not isinstance(self.closing_only_behavior, bool):
-            raise ValueError("closing_only_behavior must be bool")
-        ensure_utc_ns(self.observation_time_ns, field="observation_time_ns")
-        ensure_utc_ns(self.receive_time_ns, field="receive_time_ns")
-        # An unconfirmed future observation is representable evidence. The
-        # verifier, not construction, marks it fail-closed.
-        if not isinstance(self.status, ProtectionStatus):
-            raise ValueError("status must be ProtectionStatus")
-        if not isinstance(self.freshness_ns, int) or isinstance(self.freshness_ns, bool) or self.freshness_ns < 0:
-            raise ValueError("freshness_ns must be int >= 0")
-
+    account_ref:str; instrument:str; position_epoch:int; desired_stop_version:int; observed_signed_qty:Decimal; full_position_semantics:bool; stop_price:Decimal; trigger_basis:str; closing_only_behavior:bool; position_view_evidence_ids:tuple[str,...]; conditional_order_view_evidence_ids:tuple[str,...]; observation_time_ns:int; receive_time_ns:int; status:ProtectionStatus
+    def __post_init__(self):
+        if not self.account_ref.strip() or not self.instrument.strip(): raise ValueError('protection identity required')
+        ensure_utc_ns(self.observation_time_ns,field='observation_time_ns');ensure_utc_ns(self.receive_time_ns,field='receive_time_ns')
+        if self.receive_time_ns<0: raise ValueError('invalid receive time')
+        if self.stop_price<=0: raise ValueError('positive stop required')
     @property
-    def is_confirmed(self) -> bool:
-        """Protection is CONFIRMED only if status=CONFIRMED and evidence is current."""
-        return self.status == ProtectionStatus.CONFIRMED
-
-    @property
-    def has_conflicting_evidence(self) -> bool:
-        """Check for conflicting evidence between position view and conditional order view."""
-        # If both views exist but disagree on key fields, mark as conflicted
-        return self.status == ProtectionStatus.BREACHED
-
-
+    def is_confirmed(self)->bool:return self.status==ProtectionStatus.CONFIRMED
 @dataclass(frozen=True)
 class ProtectionVerificationResult:
-    """Result of protection verification attempt."""
-
-    evidence: ProtectionEvidence
-    verified: bool
-    mismatch_details: tuple[str, ...]  # Empty if verified
-
-    def __bool__(self) -> bool:
-        return self.verified
-
-
-def verify_protection(
-    observation: ProtectionObservation,
-    expected_position_epoch: int,
-    expected_signed_qty: Decimal,
-    expected_stop_price: Decimal,
-    expected_trigger_basis: str,
-    now_ns: int,
-    max_staleness_ns: int,
-    *,
-    account_ref: str,
-    instrument: str,
-    conditional_order_evidence_ids: tuple[str, ...] = (),
-    conditional_order_view_available: bool = False,
-) -> ProtectionVerificationResult:
-    """Verify protection observation matches expected state.
-
-    Returns verified=True only if:
-    - position_epoch matches
-    - observed qty covers expected (within venue propagation tolerance)
-    - stop_price matches expected
-    - trigger_basis matches expected
-    - semantics indicate full-position closing-only
-    - evidence is fresh (within max_staleness_ns)
-    - no conflicting evidence between views
-    """
-    mismatches: list[str] = []
-
-    if observation.position_epoch != expected_position_epoch:
-        mismatches.append(f"position_epoch {observation.position_epoch} != expected {expected_position_epoch}")
-
-    # Protection proof is exact current signed coverage.  A lagging quantity
-    # observation is not evidence for the new fill and opposite sign is never
-    # coverage.
-    if observation.qty != expected_signed_qty:
-        mismatches.append(f"observed signed qty {observation.qty} != expected {expected_signed_qty}")
-    if expected_signed_qty == 0:
-        mismatches.append("protection proof requires known non-zero exposure")
-
-    if observation.stop_price != expected_stop_price:
-        mismatches.append(f"stop_price {observation.stop_price} != expected {expected_stop_price}")
-
-    if observation.trigger_basis != expected_trigger_basis:
-        mismatches.append(f"trigger_basis {observation.trigger_basis} != expected {expected_trigger_basis}")
-
-    semantics_lower = observation.semantics.lower()
-    if "full" not in semantics_lower:
-        mismatches.append(f"semantics {observation.semantics!r} not full-position")
-    if "market" not in semantics_lower:
-        mismatches.append("protection semantics are not market execution")
-    if not ("reduce" in semantics_lower or "close" in semantics_lower):
-        mismatches.append("protection semantics are not closing-only")
-    if observation.trigger_basis != "MarkPrice":
-        mismatches.append("V1 protection requires MarkPrice trigger basis")
-    if not _valid_evidence_refs(observation.evidence_ids):
-        mismatches.append("position-view evidence references are missing or placeholders")
-    if conditional_order_view_available and not _valid_evidence_refs(conditional_order_evidence_ids):
-        mismatches.append("conditional-order-view evidence references are missing or placeholders")
-
-    freshness = now_ns - observation.observed_at_ns
-    if freshness < 0:
-        mismatches.append("observation timestamp is in the future")
-    elif freshness > max_staleness_ns:
-        mismatches.append(f"evidence stale: {freshness}ns > {max_staleness_ns}ns")
-
-    verified = len(mismatches) == 0
-
-    # Build evidence record
-    evidence = ProtectionEvidence(
-        account_ref=account_ref,
-        instrument=instrument,
-        position_epoch=observation.position_epoch,
-        desired_stop_version=observation.desired_stop_version,
-        observed_signed_qty=observation.qty,
-        full_position_semantics="full" in semantics_lower,
-        stop_price=observation.stop_price,
-        trigger_basis=observation.trigger_basis,
-        closing_only_behavior="reduce" in semantics_lower or "close" in semantics_lower,
-        position_view_evidence_ids=observation.evidence_ids,
-        conditional_order_view_evidence_ids=conditional_order_evidence_ids,
-        observation_time_ns=observation.observed_at_ns,
-        receive_time_ns=max(now_ns, observation.observed_at_ns),
-        status=ProtectionStatus.CONFIRMED if verified else ProtectionStatus.UNCONFIRMED,
-        freshness_ns=max(0, freshness),
-    )
-
-    return ProtectionVerificationResult(
-        evidence=evidence,
-        verified=verified,
-        mismatch_details=tuple(mismatches),
-    )
+    evidence:ProtectionEvidence; verified:bool; mismatch_details:tuple[str,...]
+def verify_protection(observation:ProtectionObservation,expected_position_epoch:int,expected_signed_qty:Decimal,expected_stop_price:Decimal,expected_trigger_basis:str,now_ns:int,max_staleness_ns:int,*,account_ref:str,instrument:str,receive_time_ns:int|None=None,conditional_order_evidence_ids:tuple[str,...]=(),conditional_order_view_available:bool=False)->ProtectionVerificationResult:
+    m=[]; sem=observation.semantics.lower()
+    if observation.position_epoch!=expected_position_epoch:m.append('position epoch mismatch')
+    if observation.qty!=expected_signed_qty or expected_signed_qty==0:m.append('signed quantity not exact current exposure')
+    if observation.stop_price!=expected_stop_price:m.append('stop price mismatch')
+    if observation.trigger_basis!=expected_trigger_basis or observation.trigger_basis!='MarkPrice':m.append('trigger basis mismatch')
+    if 'full' not in sem or 'market' not in sem:m.append('not full-position market semantics')
+    if not ('reduce' in sem or 'close' in sem):m.append('not closing-only semantics')
+    if not _valid_refs(observation.evidence_ids):m.append('position evidence refs invalid')
+    if conditional_order_view_available and not _valid_refs(conditional_order_evidence_ids):m.append('conditional evidence refs invalid')
+    # Older callers supplied the local evaluation time as ``now_ns`` and had
+    # no separate receipt field.  Preserve that API while keeping the v5
+    # path explicit: new ingestion code must pass the genuine local receipt
+    # timestamp and is never allowed to derive it from source time.
+    if receive_time_ns is None:
+        receive_time_ns=now_ns
+    ensure_utc_ns(receive_time_ns,field='receive_time_ns');ensure_utc_ns(now_ns,field='now_ns')
+    if receive_time_ns>now_ns:m.append('receive time is in the future')
+    age=now_ns-observation.observed_at_ns
+    if age<0:m.append('source clock conflict/future observation')
+    elif age>max_staleness_ns:m.append('protection evidence stale')
+    e=ProtectionEvidence(account_ref,instrument,observation.position_epoch,observation.desired_stop_version,observation.qty,'full' in sem,observation.stop_price,observation.trigger_basis,('reduce' in sem or 'close' in sem),tuple(observation.evidence_ids),tuple(conditional_order_evidence_ids),observation.observed_at_ns,receive_time_ns,ProtectionStatus.CONFIRMED if not m else ProtectionStatus.UNCONFIRMED)
+    return ProtectionVerificationResult(e,not m,tuple(m))

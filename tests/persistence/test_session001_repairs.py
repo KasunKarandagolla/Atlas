@@ -139,7 +139,7 @@ def test_unsent_without_marker_stays_unsent(tmp_path):
 # FIX2: state version + migration
 def test_state_version_increment_and_stale_rejection(tmp_path):
     j = SQLiteJournal(tmp_path / "fix2.db")
-    assert j.schema_version() == 4
+    assert j.schema_version() == 5
     j.create_trade_plan(make_plan())
     intent, res = make_intent_res("i-fix2")
     j.create_intent_with_reservation(intent, res)
@@ -235,7 +235,7 @@ def test_migration_from_v1(tmp_path):
     conn.commit()
     conn.close()
     j = SQLiteJournal(path)
-    assert j.schema_version() == 4
+    assert j.schema_version() == 5
     # v1 rows remain readable with default state_version 0
     j.close()
 

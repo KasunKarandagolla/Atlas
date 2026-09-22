@@ -1,18 +1,9 @@
 {
   "candidate": "nautilus_trader==2.0.0rc5",
   "source_commit": "1b0a49d2792a9432a3aca3fcb617ce7a630d905e",
-  "result": "INSTALLED_FOR_BOUNDARY_ONLY",
-  "detail": "Exact cp312 manylinux wheel installed and import/config-construction verified in a clean Python 3.12 environment. Installation does NOT qualify any Bybit wire behavior; all six capabilities remain UNVERIFIED.",
-  "resolved_version": "2.0.0rc5",
+  "result": "PIN_IDENTITY_VERIFIED_OFFLINE_BY_PRIOR_SESSION",
   "wheel_filename": "nautilus_trader-2.0.0rc5-cp312-cp312-manylinux_2_34_x86_64.whl",
   "wheel_sha256": "eab45fafd2312deda1236554c49a9798bfc76bc8465af864878e2f70189ebebe",
-  "python": "3.12.13",
-  "platform_abi": "cpython-312-x86_64-linux-gnu",
-  "platform": "linux-x86_64",
-  "dist_info_metadata_sha256": "0143114d5ac3d40c326403dcd496b1f7a892fe434c29081913ea538a29d84ae2",
-  "dependency_lock_sha256": "f96c2a44760f1dd95f05b93857afab4af9a8cb5554a69f56b82e8e7ac09f0a54",
-  "import_check": "nautilus_trader.__version__ == 2.0.0rc5 and offline Bybit config construction under clean Python 3.12.13",
-  "installed_artifact_sha256": "eab45fafd2312deda1236554c49a9798bfc76bc8465af864878e2f70189ebebe",
-  "capability_effect": "NONE: all Bybit behaviors remain UNVERIFIED; assisted_enabled remains false",
-  "date_utc": "2026-09-22"
+  "dependency_lock_sha256": "0d7b5cc6129aab127f07a1b5bce4b7794eec5c48db0f99451eba675031ca2b39",
+  "capability_effect": "NONE: all six Bybit capabilities remain UNVERIFIED; assisted_enabled remains false"
 }

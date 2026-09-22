@@ -69,11 +69,13 @@ def test_restart_reconstructs_query_evidence_and_persists_ready_certificate(tmp_
         prerequisites_ok=True,
         protection_evidence=RecoveryProtectionEvidence(True, False, ("flat-cert-1",)),
     )
-    assert certificate.decision == RecoveryDecision.READY
+    # Session-005 requires the complete execution-risk query set; one
+    # positions observation and a caller-supplied label cannot authorize READY.
+    assert certificate.decision != RecoveryDecision.READY
     restored = restarted.load_recovery_certificate("recovery-ready")
     assert restored == certificate
-    assert restarted.load_recovery_incidents("recovery-ready") == []
-    assert restarted.schema_version() == 4
+    assert len(restarted.load_recovery_incidents("recovery-ready")) == 1
+    assert restarted.schema_version() == 5
     restarted.close()
 
 

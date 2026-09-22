@@ -1,23 +1,4 @@
-"""Logical wire contract builder (freeze §1.3).
-
-Deterministic builder for expected entry/exit wire fields from immutable plan data.
-NOT transport - produces expected-wire evidence for later real adapter qualification.
-
-Entry expectation (freeze §1.3):
-- LIMIT, IOC, position_idx=0
-- stop_loss = approved absolute stop
-- sl_trigger_by = MarkPrice
-- sl_order_type = Market
-- tpsl_mode = Full
-- reduce_only = false
-
-Exit contract expectation:
-- Explicit quantity, opposite side
-- reduce_only = true
-- Never zero-quantity "close all"
-- No reversal semantics
-"""
-
+"""Logical Bybit V1 wire contracts only; no transport."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,188 +12,23 @@ from atlas.domain.trade_plan import TradePlan
 
 @dataclass(frozen=True)
 class EntryWireContract:
-    """Expected logical entry order fields for wire qualification."""
-
-    instrument: str
-    order_type: str = "LIMIT"
-    time_in_force: str = "IOC"
-    side: str = ""  # "Buy" | "Sell"
-    quantity: Decimal = Decimal("0")
-    price: Decimal = Decimal("0")
-    reduce_only: bool = False
-    position_idx: int = 0
-    stop_loss: Decimal = Decimal("0")
-    sl_trigger_by: str = "MarkPrice"
-    sl_order_type: str = "Market"
-    tpsl_mode: str = "Full"
-
-    def __post_init__(self) -> None:
-        if not self.instrument or not self.instrument.strip():
-            raise ValueError("instrument must be non-blank")
-        if self.order_type not in ("LIMIT", "MARKET"):
-            raise ValueError("order_type must be LIMIT or MARKET")
-        if self.time_in_force not in ("IOC", "GTC", "FOK"):
-            raise ValueError("time_in_force must be IOC, GTC, or FOK")
-        if self.side not in ("Buy", "Sell"):
-            raise ValueError("side must be Buy or Sell")
-        if not isinstance(self.quantity, Decimal) or self.quantity <= 0:
-            raise ValueError("quantity must be positive Decimal")
-        if not isinstance(self.price, Decimal) or self.price <= 0:
-            raise ValueError("price must be positive Decimal")
-        if not isinstance(self.reduce_only, bool):
-            raise ValueError("reduce_only must be bool")
-        if not isinstance(self.position_idx, int) or isinstance(self.position_idx, bool) or self.position_idx < 0:
-            raise ValueError("position_idx must be int >= 0")
-        if not isinstance(self.stop_loss, Decimal) or self.stop_loss <= 0:
-            raise ValueError("stop_loss must be positive Decimal")
-        if self.sl_trigger_by not in ("MarkPrice", "LastPrice", "IndexPrice"):
-            raise ValueError("sl_trigger_by must be MarkPrice, LastPrice, or IndexPrice")
-        if self.sl_order_type not in ("Market", "Limit"):
-            raise ValueError("sl_order_type must be Market or Limit")
-        if self.tpsl_mode not in ("Full", "Partial"):
-            raise ValueError("tpsl_mode must be Full or Partial")
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "instrument": self.instrument,
-            "order_type": self.order_type,
-            "time_in_force": self.time_in_force,
-            "side": self.side,
-            "quantity": canonical_decimal_str(self.quantity),
-            "price": canonical_decimal_str(self.price),
-            "reduce_only": self.reduce_only,
-            "position_idx": self.position_idx,
-            "stop_loss": canonical_decimal_str(self.stop_loss),
-            "sl_trigger_by": self.sl_trigger_by,
-            "sl_order_type": self.sl_order_type,
-            "tpsl_mode": self.tpsl_mode,
-        }
-
-    def to_bybit_params(self) -> dict[str, Any]:
-        """Format as expected Bybit V5 order parameters."""
-        return {
-            "symbol": self.instrument,
-            "side": self.side,
-            "orderType": self.order_type,
-            "timeInForce": self.time_in_force,
-            "qty": canonical_decimal_str(self.quantity),
-            "price": canonical_decimal_str(self.price),
-            "reduceOnly": self.reduce_only,
-            "positionIdx": self.position_idx,
-            "stopLoss": canonical_decimal_str(self.stop_loss),
-            "slTriggerBy": self.sl_trigger_by,
-            "slOrderType": self.sl_order_type,
-            "tpslMode": self.tpsl_mode,
-        }
-
-
+    instrument:str; side:str; quantity:Decimal; price:Decimal; stop_loss:Decimal; order_type:str='LIMIT'; time_in_force:str='IOC'; reduce_only:bool=False; position_idx:int=0; sl_trigger_by:str='MarkPrice'; sl_order_type:str='Market'; tpsl_mode:str='Full'
+    def __post_init__(self):
+        if self.order_type!='LIMIT' or self.time_in_force!='IOC' or self.reduce_only or self.position_idx!=0 or self.sl_trigger_by!='MarkPrice' or self.sl_order_type!='Market' or self.tpsl_mode!='Full':raise ValueError('entry contract violates frozen V1')
+        if self.side not in ('Buy','Sell') or min(self.quantity,self.price,self.stop_loss)<=0:raise ValueError('invalid entry values')
+    def to_bybit_params(self)->dict[str,Any]:return {'symbol':self.instrument,'side':self.side,'orderType':'LIMIT','timeInForce':'IOC','qty':canonical_decimal_str(self.quantity),'price':canonical_decimal_str(self.price),'reduceOnly':False,'positionIdx':0,'stopLoss':canonical_decimal_str(self.stop_loss),'slTriggerBy':'MarkPrice','slOrderType':'Market','tpslMode':'Full'}
 @dataclass(frozen=True)
 class ExitWireContract:
-    """Expected logical exit order fields for wire qualification."""
-
-    instrument: str
-    order_type: str = "LIMIT"
-    time_in_force: str = "IOC"
-    side: str = ""  # "Buy" | "Sell" (opposite of entry)
-    quantity: Decimal = Decimal("0")
-    price: Decimal | None = Decimal("0")
-    reduce_only: bool = True
-    position_idx: int = 0
-
-    def __post_init__(self) -> None:
-        if not self.instrument or not self.instrument.strip():
-            raise ValueError("instrument must be non-blank")
-        if self.order_type not in ("LIMIT", "MARKET"):
-            raise ValueError("order_type must be LIMIT or MARKET")
-        if self.time_in_force not in ("IOC", "GTC", "FOK"):
-            raise ValueError("time_in_force must be IOC, GTC, or FOK")
-        if self.side not in ("Buy", "Sell"):
-            raise ValueError("side must be Buy or Sell")
-        if not isinstance(self.quantity, Decimal) or self.quantity <= 0:
-            raise ValueError("quantity must be positive Decimal (explicit, never zero)")
-        if self.order_type == "LIMIT" and (not isinstance(self.price, Decimal) or self.price <= 0):
-            raise ValueError("LIMIT exit price must be positive Decimal")
-        if self.order_type == "MARKET" and self.price is not None:
-            raise ValueError("MARKET exit must not contain a synthetic price")
-        if not isinstance(self.reduce_only, bool) or not self.reduce_only:
-            raise ValueError("reduce_only must be True for exit")
-        if self.position_idx != 0:
-            raise ValueError("V1 exit requires position_idx=0")
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "instrument": self.instrument,
-            "order_type": self.order_type,
-            "time_in_force": self.time_in_force,
-            "side": self.side,
-            "quantity": canonical_decimal_str(self.quantity),
-            "price": canonical_decimal_str(self.price) if self.price is not None else None,
-            "reduce_only": self.reduce_only,
-            "position_idx": self.position_idx,
-        }
-
-    def to_bybit_params(self) -> dict[str, Any]:
-        """Format as expected Bybit V5 order parameters."""
-        result: dict[str, Any] = {
-            "symbol": self.instrument,
-            "side": self.side,
-            "orderType": self.order_type,
-            "timeInForce": self.time_in_force,
-            "qty": canonical_decimal_str(self.quantity),
-            "reduceOnly": self.reduce_only,
-            "positionIdx": self.position_idx,
-        }
-        if self.price is not None:
-            result["price"] = canonical_decimal_str(self.price)
-        return result
-
-
-def build_entry_wire_contract(
-    plan: TradePlan,
-    collar_price: Decimal,
-    stop_price: Decimal,
-    quantity: Decimal,
-) -> EntryWireContract:
-    """Build entry wire contract from approved plan data."""
-    side_str = "Buy" if plan.side == Side.LONG else "Sell"
-    return EntryWireContract(
-        instrument=f"{plan.instrument}-LINEAR.BYBIT",
-        side=side_str,
-        quantity=quantity,
-        price=collar_price,
-        stop_loss=stop_price,
-    )
-
-
-def build_exit_wire_contract(
-    plan: TradePlan,
-    exit_price: Decimal,
-    quantity: Decimal,
-) -> ExitWireContract:
-    """Build exit wire contract from approved plan data.
-
-    Exit side is opposite of entry side.
-    """
-    exit_side = "Sell" if plan.side == Side.LONG else "Buy"
-    return ExitWireContract(
-        instrument=f"{plan.instrument}-LINEAR.BYBIT",
-        side=exit_side,
-        quantity=quantity,
-        price=exit_price,
-    )
-
-
-def build_market_exit_wire_contract(
-    plan: TradePlan,
-    quantity: Decimal,
-) -> ExitWireContract:
-    """Build market exit wire contract (no price, MARKET order type)."""
-    exit_side = "Sell" if plan.side == Side.LONG else "Buy"
-    return ExitWireContract(
-        instrument=f"{plan.instrument}-LINEAR.BYBIT",
-        order_type="MARKET",
-        time_in_force="IOC",
-        side=exit_side,
-        quantity=quantity,
-        price=None,
-    )
+    instrument:str; side:str; quantity:Decimal; order_type:str='LIMIT'; time_in_force:str='IOC'; price:Decimal|None=None; reduce_only:bool=True; position_idx:int=0
+    def __post_init__(self):
+        if self.side not in ('Buy','Sell') or self.quantity<=0 or not self.reduce_only or self.position_idx!=0:raise ValueError('invalid exit contract')
+        if self.order_type=='LIMIT' and (self.price is None or self.price<=0):raise ValueError('LIMIT requires price')
+        if self.order_type=='MARKET' and self.price is not None:raise ValueError('MARKET must not contain fake price')
+        if self.order_type not in ('LIMIT','MARKET'):raise ValueError('unsupported order type')
+    def to_bybit_params(self)->dict[str,Any]:
+        d={'symbol':self.instrument,'side':self.side,'orderType':self.order_type,'timeInForce':self.time_in_force,'qty':canonical_decimal_str(self.quantity),'reduceOnly':True,'positionIdx':0}
+        if self.price is not None:d['price']=canonical_decimal_str(self.price)
+        return d
+def build_entry_wire_contract(plan:TradePlan,collar_price:Decimal,stop_price:Decimal,quantity:Decimal)->EntryWireContract:return EntryWireContract(f'{plan.instrument}-LINEAR.BYBIT','Buy' if plan.side==Side.LONG else 'Sell',quantity,collar_price,stop_price)
+def build_exit_wire_contract(plan:TradePlan,exit_price:Decimal,quantity:Decimal)->ExitWireContract:return ExitWireContract(f'{plan.instrument}-LINEAR.BYBIT','Sell' if plan.side==Side.LONG else 'Buy',quantity,'LIMIT','IOC',exit_price)
+def build_market_exit_wire_contract(plan:TradePlan,quantity:Decimal)->ExitWireContract:return ExitWireContract(f'{plan.instrument}-LINEAR.BYBIT','Sell' if plan.side==Side.LONG else 'Buy',quantity,'MARKET','IOC',None)

@@ -27,14 +27,15 @@ def test_runtime_retains_writer_and_exact_journal_until_shutdown(tmp_path):
     runtime = SafeRuntime(_config(tmp_path))
     first = runtime.start()
     journal = runtime.journal
-    instance_id = first.certificate.recovery_run_id
+    instance_id = first.certificate.runtime_instance_id
     assert journal is not None and journal.is_open
     assert runtime.writer_held
     second = runtime.tick()
     assert runtime.journal is journal
     assert journal.is_open
     assert runtime.writer_held
-    assert second.certificate.recovery_run_id == instance_id
+    assert second.certificate.runtime_instance_id == instance_id
+    assert second.certificate.recovery_run_id != first.certificate.recovery_run_id
     assert second.new_risk_allowed is False
     assert second.certificate.ended_at_ns >= first.certificate.ended_at_ns
     runtime.shutdown()
