@@ -28,6 +28,7 @@ from atlas.domain.money import canonical_decimal_str, ensure_decimal
 from atlas.domain.risk import RiskPolicy
 from atlas.domain.time import ensure_utc_ns
 from atlas.domain.trade_plan import TradePlan
+from atlas.domain.transitions import is_allowed_lifecycle_transition
 from atlas.persistence.sqlite import PersistenceError, SQLiteJournal
 from atlas.risk.engine import AccountState, RiskVector, evaluate_reservation
 from atlas.runtime.health import HealthSnapshot, new_risk_allowed
@@ -580,13 +581,15 @@ def _execute_protection_repair(*, journal: SQLiteJournal, plan: TradePlan, inten
         protection_port.ensure_full_stop(intent.position_epoch, expected_signed_qty, stop_price, "MarkPrice")
         observation = protection_port.read_protection(plan.account_scope, plan.instrument, 0)
     except Exception as exc:  # noqa: BLE001 - any port uncertainty stays unconfirmed
+        updated = _update_intent_protection_state(journal, intent.intent_id, verified=False)
         return AssistedControlResult("PROTECTION_UNCONFIRMED", (f"protection port uncertainty: {exc}",),
-                                     intent=intent, command=journal.load_command(command_id),
+                                     intent=updated, command=journal.load_command(command_id),
                                      command_outcome=CommandOutcome.UNKNOWN, quantity=expected_signed_qty,
                                      entry_price=stop_price)
     if observation is None:
+        updated = _update_intent_protection_state(journal, intent.intent_id, verified=False)
         return AssistedControlResult("PROTECTION_UNCONFIRMED", ("protection read-back unavailable",),
-                                     intent=intent, command=journal.load_command(command_id),
+                                     intent=updated, command=journal.load_command(command_id),
                                      command_outcome=CommandOutcome.UNKNOWN, quantity=expected_signed_qty,
                                      entry_price=stop_price)
     verification = verify_protection(
@@ -606,11 +609,38 @@ def _execute_protection_repair(*, journal: SQLiteJournal, plan: TradePlan, inten
     journal.append_protection_evidence(evidence_id, verification.evidence,
                                        verification.evidence.expected_evidence_hash())
     if not verification.verified:
-        return AssistedControlResult("PROTECTION_UNCONFIRMED", verification.mismatch_details, intent=intent,
+        updated = _update_intent_protection_state(journal, intent.intent_id, verified=False)
+        return AssistedControlResult("PROTECTION_UNCONFIRMED", verification.mismatch_details, intent=updated,
                                      command=journal.load_command(command_id),
                                      command_outcome=CommandOutcome.UNKNOWN, quantity=expected_signed_qty,
                                      entry_price=stop_price)
+    updated = _update_intent_protection_state(journal, intent.intent_id, verified=True)
+    if updated.protection_status is not ProtectionStatus.CONFIRMED:
+        return AssistedControlResult("PROTECTION_UNCONFIRMED", ("no legal durable protected lifecycle",),
+                                     intent=updated, command=journal.load_command(command_id),
+                                     command_outcome=CommandOutcome.UNKNOWN, quantity=expected_signed_qty,
+                                     entry_price=stop_price)
     reconciled = journal.update_command_outcome(command_id, CommandOutcome.RECONCILED)
-    return AssistedControlResult("PROTECTED", (), intent=intent, command=reconciled,
+    return AssistedControlResult("PROTECTED", (), intent=updated, command=reconciled,
                                  command_outcome=reconciled.outcome, quantity=expected_signed_qty,
                                  entry_price=stop_price)
+
+
+def _update_intent_protection_state(journal: SQLiteJournal, intent_id: str, *, verified: bool) -> Intent:
+    current = journal.load_intent(intent_id)
+    if verified:
+        target = (LifecycleState.OPEN_PROTECTED
+                  if current.lifecycle is LifecycleState.OPEN_PROTECTED
+                  or is_allowed_lifecycle_transition(current.lifecycle, LifecycleState.OPEN_PROTECTED)
+                  else LifecycleState.RECOVERY_REQUIRED)
+        protection = (ProtectionStatus.CONFIRMED if target is LifecycleState.OPEN_PROTECTED
+                      else ProtectionStatus.UNCONFIRMED)
+    else:
+        target = (LifecycleState.OPEN_UNPROTECTED
+                  if current.lifecycle is LifecycleState.OPEN_UNPROTECTED
+                  or is_allowed_lifecycle_transition(current.lifecycle, LifecycleState.OPEN_UNPROTECTED)
+                  else LifecycleState.RECOVERY_REQUIRED)
+        protection = ProtectionStatus.UNCONFIRMED
+    return journal.update_intent_state(intent_id=intent_id, lifecycle=target, protection=protection,
+                                      health=ReconciliationHealth.CURRENT,
+                                      expected_version=current.state_version)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from decimal import Decimal
 
 from support.assisted_control_fixture import (
@@ -8,6 +9,7 @@ from support.assisted_control_fixture import (
     open_intent,
 )
 
+from atlas.domain.enums import LifecycleState, ProtectionStatus
 from atlas.persistence.sqlite import SQLiteJournal
 from atlas.runtime.assisted_control import (
     AssistedControlShell,
@@ -43,8 +45,13 @@ def test_valid_read_back_after_durable_repair_is_protected_and_persisted(tmp_pat
     assert journal.load_command(command.command_id).send_started_at_ns is None
     result = _run(journal, intent, plan, command, port)
     assert result.status == "PROTECTED"
+    durable = journal.load_intent(intent.intent_id)
+    assert durable.lifecycle is LifecycleState.OPEN_PROTECTED
+    assert durable.protection_status is ProtectionStatus.CONFIRMED
     assert journal.load_command(command.command_id).outcome.value == "RECONCILED"
-    assert journal.load_protection_evidence(f"protection-{command.command_id}").is_confirmed
+    evidence = journal.load_protection_evidence(f"protection-{command.command_id}")
+    assert evidence.is_confirmed and evidence.position_epoch == durable.position_epoch
+    assert json.loads(command.payload)["position_epoch"] == durable.position_epoch
     assert port.ensure_calls and port.read_calls
     assert not [item for item in journal.load_commands_for_intent(intent.intent_id)
                 if item.command_type.value == "SUBMIT_ENTRY"]
@@ -58,6 +65,9 @@ def test_acknowledgement_without_valid_read_back_is_not_protected(tmp_path):
                               stop=Decimal("48000"), observed_at_ns=NOW_NS - 100_000_000)
     result = _run(journal, intent, plan, command, port)
     assert result.status == "PROTECTION_UNCONFIRMED"
+    durable = journal.load_intent(intent.intent_id)
+    assert durable.protection_status is ProtectionStatus.UNCONFIRMED
+    assert durable.lifecycle is LifecycleState.OPEN_UNPROTECTED
     assert "signed quantity not exact current exposure" in result.reasons
     assert journal.load_command(command.command_id).outcome.value == "UNKNOWN"
     assert not journal.load_protection_evidence(f"protection-{command.command_id}").is_confirmed
@@ -87,6 +97,7 @@ def test_wrong_stop_trigger_semantics_and_stale_evidence_are_unconfirmed(tmp_pat
                                   position_epoch=intent.position_epoch, **defaults)
         result = _run(journal, intent, plan, blocked.command, port)
         assert result.status == "PROTECTION_UNCONFIRMED", overrides
+        assert journal.load_intent(intent.intent_id).protection_status is ProtectionStatus.UNCONFIRMED
         assert journal.load_command(blocked.command.command_id).outcome.value == "UNKNOWN"
         journal.close()
 
@@ -104,6 +115,48 @@ def test_timeout_stays_unconfirmed_unknown_and_never_protected(tmp_path):
     result = _run(journal, intent, plan, command, _TimeoutProtectionPort())
     assert result.status == "PROTECTION_UNCONFIRMED"
     assert journal.load_command(command.command_id).outcome.value == "UNKNOWN"
+    journal.close()
+
+
+def test_open_unprotected_valid_readback_transitions_to_open_protected(tmp_path):
+    journal = SQLiteJournal(tmp_path / "protection-open.db")
+    intent = open_intent(journal, lifecycle=LifecycleState.OPEN_UNPROTECTED)
+    shell = AssistedControlShell(journal=journal, runtime_instance_id="runtime", writer_id="writer",
+                                 writer_epoch=1)
+    blocked = shell.protect(intent_id=intent.intent_id, reconciled_signed_qty=Decimal("0.01"),
+                            expected_signed_qty=Decimal("0.01"), stop_price=Decimal("48000"),
+                            protection_port=None, now_ns=NOW_NS)
+    assert blocked.command is not None
+    plan = journal.load_trade_plan(intent.plan_id)
+    port = FakeProtectionPort(journal=journal, command_id=blocked.command.command_id,
+                              position_epoch=intent.position_epoch, qty=Decimal("0.01"),
+                              stop=Decimal("48000"), observed_at_ns=NOW_NS - 100_000_000)
+    result = _run(journal, intent, plan, blocked.command, port)
+    assert result.status == "PROTECTED"
+    durable = journal.load_intent(intent.intent_id)
+    assert durable.lifecycle is LifecycleState.OPEN_PROTECTED
+    assert durable.protection_status is ProtectionStatus.CONFIRMED
+    journal.close()
+
+
+def test_open_unprotected_invalid_readback_records_unconfirmed(tmp_path):
+    journal = SQLiteJournal(tmp_path / "protection-open.db")
+    intent = open_intent(journal, lifecycle=LifecycleState.OPEN_UNPROTECTED)
+    shell = AssistedControlShell(journal=journal, runtime_instance_id="runtime", writer_id="writer",
+                                 writer_epoch=1)
+    blocked = shell.protect(intent_id=intent.intent_id, reconciled_signed_qty=Decimal("0.01"),
+                            expected_signed_qty=Decimal("0.01"), stop_price=Decimal("48000"),
+                            protection_port=None, now_ns=NOW_NS)
+    assert blocked.command is not None
+    plan = journal.load_trade_plan(intent.plan_id)
+    port = FakeProtectionPort(journal=journal, command_id=blocked.command.command_id,
+                              position_epoch=intent.position_epoch, qty=Decimal("0.02"),
+                              stop=Decimal("48000"), observed_at_ns=NOW_NS - 100_000_000)
+    result = _run(journal, intent, plan, blocked.command, port)
+    assert result.status == "PROTECTION_UNCONFIRMED"
+    durable = journal.load_intent(intent.intent_id)
+    assert durable.lifecycle is LifecycleState.OPEN_UNPROTECTED
+    assert durable.protection_status is ProtectionStatus.UNCONFIRMED
     journal.close()
 
 
