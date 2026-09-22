@@ -51,8 +51,9 @@ typed decision status, never a substituted numeric alpha estimate.
 - mypy: PASS (`109 source files`; existing informational notes only).
 - compileall: PASS.
 
-The final tracked-only result is appended after the final local commit.  The existing engineering defaults remain
-`ENGINEERING_DEFAULTS_ONLY_NOT_SAFE_FOR_LIVE`.
+- Tracked-only clean clone, hashed install and full suite: `199 passed, 1 skipped`.
+
+The existing engineering defaults remain `ENGINEERING_DEFAULTS_ONLY_NOT_SAFE_FOR_LIVE`.
 
 ## Safety / economics
 
