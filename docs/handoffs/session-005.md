@@ -6,13 +6,19 @@
 - Branch: `impl/session-005-phase3-causal-data-foundation`
 - Authoritative base: `3ca43f7ff270d617cb1a4dd98863e0a6e7cd3a57`
 - Supplied package SHA256: `def76651bedf21aee1a040f011ea10499ec58f27c3bdae9b6e4fbe4476e9f4b4`
-- Reviewed checkpoint repaired: `93c1fd092c1f822c604abeeb978f367221b10220`
+- Previously reviewed checkpoints: `93c1fd092c1f822c604abeeb978f367221b10220`
+  and `b0a1ec1f2ed9e2db40d84b05573340049a8b58d1`
 
-The reviewed checkpoint failed reproducibility review because `.gitignore` contained
-`data/`, which ignored the nested Python packages `src/atlas/data/` and
-`tests/data/`.  The original Session-005 ZIP contained those files, but commit
-`93c1fd092c1f822c604abeeb978f367221b10220` did not.  That failed-checkpoint
-history is retained; this handoff records the repair rather than rewriting it.
+Checkpoint `93c1fd092c1f822c604abeeb978f367221b10220` failed reproducibility
+review because `.gitignore` contained `data/`, which ignored the nested Python
+packages `src/atlas/data/` and `tests/data/`.  The original Session-005 ZIP
+contained those files, but that commit did not.  Checkpoint
+`b0a1ec1f2ed9e2db40d84b05573340049a8b58d1` then failed an independent
+tracked-only revalidation when an existing SQLite approval-concurrency test
+intermittently produced two winners on the shared connection.  That race was
+fixed in `99d5156201a58fa5c19774e619b31207584636ec`.  Both failed-checkpoint
+histories are retained; this handoff records the repairs rather than rewriting
+them.
 
 The archive manifest passed with `sha256sum -c MANIFEST.sha256`.  The ZIP was
 used as an overlay source only; the Git checkout, older tests, documents and
@@ -28,7 +34,10 @@ Git metadata were preserved.
 - Fresh v5 foreign-key relationships from the v4 journal are retained.
 - Recovery runs are created OPEN with no completion timestamp.  The mandatory
   V1 execution-risk query set cannot be reduced, and completion verifies every
-  required query is bound to that exact run and complete.
+  required query is bound to that exact run, temporally within the run and
+  complete, including continuous history retention coverage.
+- A completed reconciliation run must belong to the current recovery cycle;
+  earlier completed runs cannot authorize a later recovery evaluation.
 - Reconciliation evidence hashes are recomputed from the complete immutable
   payload before persistence.  Legacy migrated hashes are marked unverified and
   fail closed for new recovery authority.
@@ -38,8 +47,9 @@ Git metadata were preserved.
   evidence.  The complete reservation vector and immutable release audit remain.
 - Durable protection evidence now persists explicit full-position market-stop
   semantics and a canonical evidence hash.  Restart recovery validates the
-  persisted artifact against current run-bound position, conditional-order and
-  native-protection evidence; `status=CONFIRMED` alone is insufficient.
+  persisted artifact against current run-bound position, positive conditional/
+  native-stop visibility facts and native-protection semantics; `status=CONFIRMED`
+  alone, zero quantity or empty facts are insufficient.
 - Positive residual opening/conditional risk prevents recovery `READY`.
 - Deadline monotonicity, late contradiction incidents, runtime/recovery identity
   separation and future-schema fail-closed behavior remain covered.
@@ -55,9 +65,11 @@ Git metadata were preserved.
   lineage, source-clock conflict quarantine and prefix/future-tail invariance
   are tested.
 - Parquet/Arrow archive writes are deterministic and append-only.  Exact writes
-  are idempotent; conflicting logical `record_id` content is rejected across
-  partitions before commitment.  Payload and dependency JSON round-trip through
-  real Parquet files.
+  are idempotent; a full causal `record_fingerprint` rejects conflicting
+  logical `record_id` metadata across partitions before commitment.  Payload
+  and dependency JSON round-trip through real Parquet files.
+- Reconstructed replay views use deterministic derived IDs bound to the source
+  record and replay rule identity; they do not overwrite an actual record ID.
 - DuckDB executes real archive-only research queries.  It does not receive a
   writable authoritative SQLite connection or become live state.
 - Public Bybit/Nautilus translation is credential-free, read-only and limited to
@@ -73,13 +85,15 @@ Git metadata were preserved.
 - Nautilus: `2.0.0rc5`
 - Nautilus source commit: `1b0a49d2792a9432a3aca3fcb617ce7a630d905e`
 - Nautilus wheel SHA256: `eab45fafd2312deda1236554c49a9798bfc76bc8465af864878e2f70189ebebe`
-- Full working-tree pytest: **178 passed, 1 skipped**
+- Full working-tree pytest: **189 passed, 1 skipped**
 - Ruff: **passed** under the previous policy; E701/E702/E703 are not suppressed
-- Mypy: **passed**, `Success: no issues found in 87 source files`
+- Mypy: **passed**, `Success: no issues found in 88 source files`
 - Compileall: **passed**
 - `git diff --check`: **passed**
 - Fresh Python 3.12 hashed-lock install: **passed**
-- Fresh-install full pytest: **178 passed, 1 skipped**
+- Fresh-install full pytest: **189 passed, 1 skipped**
+- New temporal run-binding, recovery-cycle, protection-positive-evidence,
+  retention-coverage and causal-fingerprint tests: **TESTED**
 - Real Parquet/Arrow round-trip, deterministic partitioning, idempotency,
   conflict rejection and append-only checks: **TESTED**
 - Real DuckDB BTCUSDT/ETHUSDT archive filtering and research-only boundary:
@@ -93,17 +107,17 @@ Nautilus or causal test.
 
 ## TRACKED-ONLY REPRODUCIBILITY
 
-- Repair implementation commits: `48b52c4fbb3b3a691ab687135ceccb439a3a72cd`
-  and `99d5156201a58fa5c19774e619b31207584636ec`.  The latter serializes
-  transactions on the shared SQLite journal connection after the tracked-only
-  validation exposed an intermittent existing concurrency-test failure.
-- A tracked-only clone from `99d5156201a58fa5c19774e619b31207584636ec`
+- Repair implementation commits: `48b52c4fbb3b3a691ab687135ceccb439a3a72cd`,
+  `99d5156201a58fa5c19774e619b31207584636ec` and
+  `90b85127b56482668b21533740d3f5b0f052607b`.
+- A tracked-only clone from
+  `90b85127b56482668b21533740d3f5b0f052607b`
   contained all eight
   `src/atlas/data/*.py` files, all five `tests/data/*.py` files, the migration
   integration test and the authority adversarial tests.
 - The tracked-only clone installed `requirements-lock.txt` with
   `pip install --require-hashes` under Python 3.12.13 and passed the complete
-  suite: **178 passed, 1 skipped**.  The skip was the same explicit,
+  suite: **189 passed, 1 skipped**.  The skip was the same explicit,
   credentialed public-testnet check documented above.
 
 ## TEST GATE / UNVERIFIED
