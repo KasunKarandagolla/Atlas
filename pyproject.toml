@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "atlas"
 version = "0.1.0"
-description = "ATLAS V1 foundation: typed execution/protection contracts and SQLite durable journal (Phase 0/1, no live orders)"
+description = "ATLAS stabilized V1 Phase 0–6 baseline and V2 Phase-0 transition audit"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "UNLICENSED - private research foundation" }

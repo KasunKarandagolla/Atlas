@@ -1,0 +1,97 @@
+{
+  "baseline_schema_version": 1,
+  "contract_versions": {
+    "capability_contract": "1.0",
+    "information_contract": "1.0",
+    "risk_policy_contract": "1.0",
+    "sqlite_schema_version": 6,
+    "strategy_id": "CRYPTO_TREND_24H_V1",
+    "strategy_version": "1.0",
+    "trade_plan_contract": "1.0"
+  },
+  "dependency_lock": {
+    "path": "requirements-lock.txt",
+    "sha256": "0d7b5cc6129aab127f07a1b5bce4b7794eec5c48db0f99451eba675031ca2b39"
+  },
+  "generation_inputs": {
+    "phase4_decision_fixture": "tests/support/phase4_factory.py::decision_input",
+    "phase4_model_manifest": {
+      "availability_mode": "RECONSTRUCTED_MARKET",
+      "fit_at_ns": 1700000000000000000,
+      "seeds": [
+        101,
+        202
+      ],
+      "selected_block": 24,
+      "selected_ridge": 0.1,
+      "training_interval": [
+        1680000000000000000,
+        1699000000000000000
+      ],
+      "validation_folds": [
+        [
+          1690000000000000000,
+          1693000000000000000
+        ],
+        [
+          1694000000000000000,
+          1697000000000000000
+        ]
+      ]
+    },
+    "phase4_model_manifest_risk_policy": "engineering_default_policy(policy_version=\"eng-0.1\", policy_effective_at_ns=0)",
+    "representative_trade_plan_fixture": "tests/unit/test_trade_plan.py::make_valid_plan",
+    "small_replay_fixture": "tests/science/test_policy_replay_pnl.py::test_hand_calculated_long_and_short_profit_and_loss"
+  },
+  "golden_values": {
+    "capability_contract_sha256": "10efccc833ce552a31d3eca071c7e309e44f2c8e114cca1c8bf4e9a319bfbb9d",
+    "engineering_default_risk_policy_sha256": "d96a7dac7c877369921dcf56fbf36bf303ea649dc531d87e0bf1d54abed2988f",
+    "phase4_decision_calendar_record_sha256": "a2dd5ab5088a4573f4aa4149e870e6ab53cdb2399649f8170c30c78bce5272ce",
+    "phase4_decision_state": {
+      "a0": "TRADE_CANDIDATE",
+      "b0": "TRADE_CANDIDATE",
+      "trade_plan_sha256": "ec8e89ac4a7750c9cc2f968e526bf4f5b70233def3bea91fc90708f600e86856"
+    },
+    "phase4_model_manifest_sha256": "e85a1f5f24ad6143f782d0a9dab5a56490c82aa36600c0fea028432bc2c8ab41",
+    "representative_trade_plan_sha256": "b76c3de08ab4f6085014db9b36c26d67bc772ca11884e66f19e1557d10459412",
+    "small_replay_projection": {
+      "entry_price": "100.1",
+      "entry_qty": "1",
+      "evidence_status": "EXECUTABLE",
+      "exit_fills": [
+        {
+          "at_ns": 100800000000000,
+          "price": "109.9",
+          "qty": "1"
+        }
+      ],
+      "fixture": "tests/science/test_policy_replay_pnl.py::test_hand_calculated_long_and_short_profit_and_loss",
+      "outcome_status": "TIME_EXIT",
+      "pnl": "9.8",
+      "remaining_qty": "0",
+      "side": "LONG",
+      "status": "FULL_FILL"
+    },
+    "small_replay_projection_sha256": "6385f72bee99b73ca37e3c4fb2746d194d61b2f0a40b7a9453b944f4f573774b"
+  },
+  "nautilus": {
+    "expected": {
+      "distribution": "nautilus-trader",
+      "source": "requirements-lock.txt and docs/capability/nautilus-pin-status.json",
+      "source_commit": "1b0a49d2792a9432a3aca3fcb617ce7a630d905e",
+      "version": "2.0.0rc5",
+      "wheel_filename": "nautilus_trader-2.0.0rc5-cp312-cp312-manylinux_2_34_x86_64.whl",
+      "wheel_sha256": "eab45fafd2312deda1236554c49a9798bfc76bc8465af864878e2f70189ebebe"
+    },
+    "install_method": "uv 0.11.8: uv venv --python Python-3.12.13; uv pip sync --python .venv/bin/python requirements-lock.txt",
+    "install_result": "PASS; installed distribution reports 2.0.0rc5; the pinned lock entry supplied the expected wheel digest",
+    "observed": {
+      "distribution_version": "2.0.0rc5",
+      "installed_core_binary_sha256": "a53dd5a24fe77f4c66169af84ee9c7e292018010922e3dce9a8b6c9f7f3b7021",
+      "raw_wheel_sha256": null,
+      "raw_wheel_sha256_status": "BLOCKED BY ENVIRONMENT"
+    },
+    "raw_wheel_note": "The downloaded wheel file was not retained after installation, so a separate sha256sum of wheel bytes is BLOCKED BY ENVIRONMENT. The installed core extension hash is recorded independently."
+  },
+  "source_commit": "146bae0a2f10e2f794cbed3441123071c55a2baf"
+}

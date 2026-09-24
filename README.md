@@ -1,58 +1,49 @@
-# ATLAS — Session 005 direct implementation
+# ATLAS — stabilized V1 and V2 transition audit
 
-This package is a direct implementation workspace based on GitHub branch
-`impl/session-004-phase2-completion` at verified tip
-`3ca43f7ff270d617cb1a4dd98863e0a6e7cd3a57`.
+ATLAS is a private research and execution-control project. The current V1
+checkpoint is the stabilized Phase 0–6 baseline from Session 009:
 
-The authoritative contract is `ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md`.
+`impl/session-009-v1-phase0-6-stabilization` at
+`146bae0a2f10e2f794cbed3441123071c55a2baf`.
 
-## Implemented in this package
+Session 010 is the mandatory V2 Phase 0 exit audit. Its dedicated checkpoint
+branch is `impl/session-010-v2-transition-audit`. It records what the frozen V1
+code and offline tests establish, preserves machine-readable V1 golden values,
+and documents additive V2 seams. It does not implement V2 Phase 1 or Phase 2.
 
-Phase-2 repair work:
-- schema v5 recovery/reconciliation evidence membership;
-- complete risk-vector reservation release with immutable release audit;
-- reconciliation query scope (`account` vs `instrument`) and one-run membership;
-- full recovery query-set gating rather than single-endpoint READY;
-- artifact-backed flat/protection recovery authority;
-- typed durable protection evidence;
-- monotonic `RECOVERY_REQUIRED` after the two-second protection deadline;
-- separate runtime-instance, reconciliation-run and recovery-certificate identities;
-- fail-closed future SQLite schema handling;
-- stricter capability evidence gates;
-- no ordinary exchange transport or second OMS.
+## Authority and evidence
 
-Phase-3 causal-data foundation:
-- immutable causal market-record contract for BTCUSDT/ETHUSDT;
-- actual receipt/ingestion vs reconstructed replay availability separation;
-- `ACTUAL_SYSTEM` and `RECONSTRUCTED_MARKET` replay views;
-- versioned/hashable replay-availability rules;
-- historical import that refuses backdated `received_at`;
-- deterministic duplicate/clock/dependency/revision quarantine validation;
-- generic prefix-invariance and future-tail-independence framework;
-- append-only Parquet/Arrow archive boundary;
-- DuckDB research-only query boundary;
-- credential-free public Bybit event ingestion boundary.
+The governing documents are:
 
-## Safety status
+- `ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md` —
+  authoritative for existing V1 behavior and safety contracts.
+- `ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE.md` — the
+  supplied additive V2 implementation authority used for the transition audit
+  (provided in the invoking workspace; SHA-256
+  `bae3e1a9e48aec64d1292e5bc791c2e87949ed33f4124b1f9807b589cc07a484`).
+- `docs/v2/V1_EXIT_AUDIT.md` — current Phase 0 findings and status matrix.
+- `docs/v2/V1_GOLDEN_BASELINE.json` — deterministic V1 transition values.
+- `docs/handoffs/session-009.md` and `docs/handoffs/session-010.md` — checkpoint
+  evidence and handoff records.
 
-All six Bybit behavioral capabilities remain `UNVERIFIED`.
-`assisted_enabled` remains `false`.
-No live or test order was sent. No authenticated mutation was performed.
+V1 freezes BTCUSDT and ETHUSDT as its strategy and capital universe, uses the
+Bybit linear one-way isolated profile, and keeps NautilusTrader as the normal
+order/fill/position engine. ATLAS retains durable intent, approvals,
+reservations, risk, recovery and audit authority. V2 additions must be
+versioned and must not silently change these V1 contracts.
 
-## Validation in this execution environment
+## Current operating status
 
-This qualification run uses Python 3.12.13 with the resolved hashed lock.
+- All six authenticated Bybit capability states remain `UNVERIFIED` and are
+  `TEST GATE` items.
+- `assisted_enabled=false`; no live or test order was submitted for Session
+  010.
+- No profitability or economic-validation claim is established; that status is
+  `NOT ESTIMABLE`.
+- The Session-009 offline suite is rerun and recorded in the Session-010 audit.
+  Offline tests do not qualify exchange capabilities.
 
-Executed here:
-
-```text
-PYTHONPATH=src:. python3.12 -m pytest -ra
-full preserved suite passes; one credential-required public test is skipped
-
-PYTHONPATH=src:. python3.12 -m compileall -q src tests
-passed
-```
-
-The Python 3.12 lock includes hashed `pyarrow==25.0.1` and `duckdb==1.5.5`.
-Parquet and DuckDB runtime tests exercise real archive writes and research-only
-queries. The six Bybit behavior items remain future TEST GATE work.
+The GitHub default branch may still point to the older
+`impl/session-001-foundation`. It is stale and non-authoritative. Implementation
+checkpoints are identified by their approved branch and exact SHA; do not infer
+the current baseline from the default branch.
