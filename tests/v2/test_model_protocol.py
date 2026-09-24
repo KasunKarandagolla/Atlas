@@ -50,6 +50,13 @@ def test_request_deterministic_identity_and_temporal_constraints() -> None:
     second = request()
     assert first.request_id == second.request_id
     assert ModelRequestV2.from_dict(first.to_dict()) == first
+    decimal_budget = ModelRequestV2.build(
+        input_artifact_refs=(H,), input_hash=H2, instrument_key=key(), policy_context_ref="policy-ref",
+        model_manifest_hash=manifest().manifest_hash, information_cutoff_ns=100,
+        requested_targets=("net_return",), requested_horizons=(60,), requested_quantiles=(Decimal("0.5"),),
+        deadline_ns=200, seed=4, resource_budget={"accelerator_gb": Decimal("1.5")},
+    )
+    assert ModelRequestV2.from_dict(decimal_budget.to_dict()) == decimal_budget
     with pytest.raises(ValueError, match="deadline_ns"):
         ModelRequestV2.build(
             input_artifact_refs=(H,), input_hash=H2, instrument_key=key(), policy_context_ref="p",

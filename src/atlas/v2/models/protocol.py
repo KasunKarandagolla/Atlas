@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, ClassVar, Mapping
+from typing import Any, ClassVar
 
 from atlas.domain.money import canonical_decimal_str
 
@@ -263,6 +264,13 @@ class ModelRequestV2:
         for name in ("input_artifact_refs", "requested_targets", "requested_horizons", "requested_quantiles"):
             if not isinstance(d[name], list):
                 raise ValueError(f"{name} must be an array")
+        if not isinstance(d["resource_budget"], Mapping):
+            raise ValueError("resource_budget must be an object")
+        resource_budget: dict[str, Any] = {}
+        for name, value in d["resource_budget"].items():
+            if isinstance(value, str):
+                value = decimal_value(value, field=f"resource_budget.{name}", wire=True)
+            resource_budget[name] = value
         return cls(
             request_id=d["request_id"],
             input_artifact_refs=tuple(d["input_artifact_refs"]),
@@ -276,7 +284,7 @@ class ModelRequestV2:
             requested_quantiles=tuple(decimal_value(v, field="requested_quantiles", wire=True) for v in d["requested_quantiles"]),
             deadline_ns=d["deadline_ns"],
             seed=d["seed"],
-            resource_budget=FrozenMap(d["resource_budget"]),
+            resource_budget=FrozenMap(resource_budget),
         )
 
 
