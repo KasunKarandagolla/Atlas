@@ -6,6 +6,7 @@
 - Exact starting SHA: `729b6413d0dfc63dba888f7bff98ad8daa9edf1f`
 - Working/final branch: `impl/session-011-v2-foundation-contracts-memory`
 - Implementation commit: `c6f491a263ec47da0e4b1ceb30e1f1ea88ad14fe`
+- Follow-up contract fix: `5e1d8b1ceeeeca257481454722bbe1dcc006b9c3` (canonical Decimal resource-budget round-trip).
 - Final branch tip: this handoff commit; the exact pushed tip is reported in the Session-011 closeout after remote verification.
 - The GitHub default branch was not used. Session 010 was fetched and verified at the required SHA before the new branch was created.
 
