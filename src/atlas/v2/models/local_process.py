@@ -1,4 +1,4 @@
-"""Isolated deterministic worker process with an allowlisted environment and narrow IPC."""
+"""Bounded local worker launched only inside an OS sandbox."""
 
 from __future__ import annotations
 
@@ -7,16 +7,17 @@ import math
 import os
 import signal
 import subprocess
-import sys
 import tempfile
 import time
 from collections.abc import Mapping
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 from .._serialization import sha256_json
 from .protocol import ForecastArtifactV2, ModelManifestV2, ModelRequestV2
 from .provider import ModelProvider
+from .sandbox import BubblewrapSandboxV2
 from .worker_protocol import ModelProviderError, WorkerRequestV2, canonical_worker_request, strict_worker_response
 
 _WORKER_PROGRAM = r'''import hashlib,json,sys,time
@@ -33,7 +34,7 @@ answer={"schema_version":1,"request_id":q["request_id"],"model_manifest_hash":ha
 sys.stdout.write(json.dumps(answer,sort_keys=True,separators=(",",":")))
 '''
 
-_ENV_ALLOWLIST = ("PATH", "LANG", "LC_ALL", "TZ", "SYSTEMROOT", "WINDIR", "TMPDIR", "TEMP", "TMP", "PYTHONIOENCODING")
+_ENV_ALLOWLIST = ("LANG", "LC_ALL", "TZ", "PYTHONIOENCODING")
 
 
 class LocalProcessProvider(ModelProvider):
@@ -46,6 +47,7 @@ class LocalProcessProvider(ModelProvider):
         max_memory_mb: int = 1024,
         timeout_s: float = 5.0,
         worker_program: str = _WORKER_PROGRAM,
+        approved_read_only_paths: tuple[str | Path, ...] = (),
     ) -> None:
         if max_input_bytes <= 0 or max_output_bytes <= 0 or max_memory_mb <= 0 or timeout_s <= 0:
             raise ValueError("local worker bounds must be positive")
@@ -55,26 +57,31 @@ class LocalProcessProvider(ModelProvider):
         self.max_memory_mb = max_memory_mb
         self.timeout_s = timeout_s
         self._worker_program = worker_program
+        self.sandbox = BubblewrapSandboxV2(approved_read_only_paths)
 
     @staticmethod
     def allowlisted_environment(parent: Mapping[str, str] | None = None) -> dict[str, str]:
         source = os.environ if parent is None else parent
-        return {key: source[key] for key in _ENV_ALLOWLIST if key in source}
+        return {"PATH": "/usr/bin:/bin", **{key: source[key] for key in _ENV_ALLOWLIST if key in source}}
 
     @staticmethod
     def probe_environment_keys(parent: Mapping[str, str] | None = None) -> tuple[str, ...]:
         program = "import json,os;print(json.dumps(sorted(os.environ)))"
-        result = subprocess.run(
-            [sys.executable, "-I", "-S", "-c", program],
-            check=False,
-            capture_output=True,
-            timeout=2,
-            env=LocalProcessProvider.allowlisted_environment(parent),
-            cwd=os.path.abspath(os.sep),
-            close_fds=True,
-        )
+        sandbox = BubblewrapSandboxV2()
+        try:
+            result = subprocess.run(
+                sandbox.command(program),
+                check=False,
+                capture_output=True,
+                timeout=2,
+                env=LocalProcessProvider.allowlisted_environment(parent),
+                cwd=os.path.abspath(os.sep),
+                close_fds=True,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "isolated worker sandbox probe failed") from exc
         if result.returncode != 0:
-            raise ModelProviderError("WORKER_PROBE_FAILED", "isolated worker environment probe failed")
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "isolated worker sandbox probe failed")
         value = json.loads(result.stdout)
         if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
             raise ModelProviderError("WORKER_PROBE_MALFORMED", "isolated worker environment probe was malformed")
@@ -98,7 +105,7 @@ class LocalProcessProvider(ModelProvider):
         if remaining_s <= 0:
             raise ModelProviderError("WORKER_DEADLINE_EXPIRED", "request expired before worker launch")
         if os.name != "posix":
-            raise ModelProviderError("WORKER_RESOURCE_LIMITS_UNAVAILABLE", "local worker resource isolation requires POSIX limits")
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "local worker sandbox requires POSIX limits")
         environment = self.allowlisted_environment()
 
         def apply_resource_limits() -> None:
@@ -115,7 +122,7 @@ class LocalProcessProvider(ModelProvider):
         try:
             with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
                 process = subprocess.Popen(
-                    [sys.executable, "-I", "-S", "-c", self._worker_program],
+                    self.sandbox.command(self._worker_program),
                     stdin=subprocess.PIPE,
                     stdout=stdout_file,
                     stderr=stderr_file,
@@ -144,10 +151,12 @@ class LocalProcessProvider(ModelProvider):
                 stderr_file.seek(0)
                 stderr = stderr_file.read(self.max_output_bytes + 1)
         except (OSError, subprocess.SubprocessError) as exc:
-            raise ModelProviderError("WORKER_LAUNCH_FAILED", f"local worker could not start: {type(exc).__name__}") from exc
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", f"local worker sandbox could not start: {type(exc).__name__}") from exc
         if len(stdout) > self.max_output_bytes or len(stderr) > self.max_output_bytes:
             raise ModelProviderError("WORKER_OUTPUT_TOO_LARGE", "local worker output exceeded configured byte limit")
         if process.returncode != 0:
+            if b"bwrap:" in stderr:
+                raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "local worker sandbox setup failed")
             raise ModelProviderError("WORKER_CRASH", f"local worker exited with status {process.returncode}")
         try:
             response = strict_worker_response(json.loads(stdout))
