@@ -411,6 +411,11 @@ class OpsRepository:
             result.append(SourceHealthV2(**payload))
         return tuple(result)
 
+    def source_health_sources(self) -> tuple[str, ...]:
+        with self._lock:
+            rows = self._connection.execute("SELECT DISTINCT source_id FROM source_health ORDER BY source_id").fetchall()
+        return tuple(row[0] for row in rows)
+
     def register_model_manifest(self, manifest: ModelManifestV2) -> str:
         manifest_hash = manifest.manifest_hash
         manifest_json = manifest.to_canonical_json()
@@ -461,6 +466,22 @@ class OpsRepository:
         return ArtifactIndexEntryV2(
             row["artifact_ref"], row["artifact_type"], row["content_hash"], row["created_at_ns"],
             row["available_at_ns"], json.loads(row["metadata_json"]),
+        )
+
+    def artifact_entries(self, artifact_type: str) -> tuple[ArtifactIndexEntryV2, ...]:
+        """Read a small typed artifact-index namespace without adding a warehouse table."""
+        nonblank(artifact_type, field="artifact_type")
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM artifact_index WHERE artifact_type=? ORDER BY created_at_ns,artifact_ref",
+                (artifact_type,),
+            ).fetchall()
+        return tuple(
+            ArtifactIndexEntryV2(
+                row["artifact_ref"], row["artifact_type"], row["content_hash"], row["created_at_ns"],
+                row["available_at_ns"], json.loads(row["metadata_json"]),
+            )
+            for row in rows
         )
 
     def recover_active_watches(

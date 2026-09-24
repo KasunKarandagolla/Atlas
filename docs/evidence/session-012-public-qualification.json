@@ -1,0 +1,122 @@
+{
+  "anomalies": [],
+  "artifact_count": 170,
+  "conflicts_observed": 0,
+  "ended_at_utc": "2026-09-24T19:29:10.690654+00:00",
+  "environment": {
+    "credential_mode": "PUBLIC_ONLY",
+    "platform": "Linux",
+    "python": "3.12.13"
+  },
+  "final_bar_count": 22,
+  "gaps_observed": 0,
+  "network_status": "TESTED",
+  "overlap_duplicate_statuses": [
+    "DUPLICATE",
+    "DUPLICATE"
+  ],
+  "point_in_time_mapping_verified": true,
+  "reconnect_health_transitions": {
+    "BINANCE_USDM": [
+      "HEALTHY_CURRENT",
+      "DISCONNECTED",
+      "RECONNECTING",
+      "INCOMPLETE_SNAPSHOT",
+      "HEALTHY_CURRENT"
+    ],
+    "BYBIT": [
+      "HEALTHY_CURRENT",
+      "DISCONNECTED",
+      "RECONNECTING",
+      "INCOMPLETE_SNAPSHOT",
+      "HEALTHY_CURRENT"
+    ]
+  },
+  "reconnect_mechanism": "REST reconnect state transition plus a second overlapping final-kline request",
+  "reconnect_statuses": {
+    "BINANCE_USDM": "TESTED",
+    "BYBIT": "TESTED"
+  },
+  "restart_health_transitions": {
+    "BINANCE_USDM": [
+      "HEALTHY_CURRENT",
+      "INCOMPLETE_SNAPSHOT",
+      "HEALTHY_CURRENT"
+    ],
+    "BYBIT": [
+      "HEALTHY_CURRENT",
+      "INCOMPLETE_SNAPSHOT",
+      "HEALTHY_CURRENT"
+    ]
+  },
+  "restart_overlap_duplicate_statuses": [
+    "DUPLICATE",
+    "DUPLICATE"
+  ],
+  "restart_reconnect_statuses": {
+    "BINANCE_USDM": "TESTED",
+    "BYBIT": "TESTED"
+  },
+  "run_kind": "ATLAS_V2_SESSION_012_SHORT_PUBLIC_QUALIFICATION",
+  "schema_version": 1,
+  "source_health_transitions": {
+    "BINANCE_USDM": [
+      "HEALTHY_CURRENT",
+      "DISCONNECTED",
+      "RECONNECTING",
+      "INCOMPLETE_SNAPSHOT",
+      "HEALTHY_CURRENT"
+    ],
+    "BYBIT": [
+      "HEALTHY_CURRENT",
+      "DISCONNECTED",
+      "RECONNECTING",
+      "INCOMPLETE_SNAPSHOT",
+      "HEALTHY_CURRENT"
+    ]
+  },
+  "started_at_utc": "2026-09-24T19:28:54.428619+00:00",
+  "venues": {
+    "BINANCE_USDM": {
+      "channels": [
+        "AGG_TRADE",
+        "BAR_15M",
+        "BOOK_TICKER",
+        "FUNDING_HISTORY",
+        "INSTRUMENT_INFO",
+        "MARK_INDEX_CURRENT_FUNDING",
+        "OPEN_INTEREST_CURRENT",
+        "OPEN_INTEREST_HISTORY"
+      ],
+      "final_bars": 11,
+      "kline_gap_count": 0,
+      "metadata_received_at_ns": 1790278139076373670,
+      "metadata_revision": "3484c60cc01aba6f0663518532df7fc89cd056f008298f7c369af5c86cab6839",
+      "status": "TESTED",
+      "symbols": [
+        "BTCUSDT"
+      ],
+      "translated_artifacts": 86
+    },
+    "BYBIT": {
+      "channels": [
+        "BAR_15M",
+        "FUNDING_HISTORY",
+        "INSTRUMENT_INFO",
+        "OPEN_INTEREST_HISTORY",
+        "TICKER_MARK_INDEX_FUNDING_OI",
+        "TRADE"
+      ],
+      "final_bars": 11,
+      "kline_gap_count": 0,
+      "metadata_received_at_ns": 1790278135823352142,
+      "metadata_revision": "d89138353bea2b64b54164f42d97954c3dafdda3f779a61aab78670606c9f126",
+      "status": "TESTED",
+      "symbols": [
+        "BTCUSDT"
+      ],
+      "translated_artifacts": 84
+    }
+  },
+  "watch_resubscription_verified": true
+}
