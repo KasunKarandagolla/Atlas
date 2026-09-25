@@ -67,7 +67,7 @@ def store_for_side(side: str) -> CausalBarStoreV2:
 
 
 def universe_at(cutoff: int) -> UniverseContractV2:
-    product_ref = sha256_json({"product": KEY.to_dict(), "revision": "rev-014"})
+    product_ref = sha256_json({"product": KEY.to_dict(), "revision": KEY.contract_revision})
     entry = UniverseEntryV2(KEY, product_ref, True, True, True, True, False,
                             FrozenMap({POLICY_ID: StrategyEligibilityV2(EligibilityStatusV2.ELIGIBLE)}), ())
     envelope = ArtifactEnvelope(1, "u014", cutoff, cutoff, "universe-fixture-v1", (product_ref,))
@@ -81,6 +81,8 @@ def clear(at: int) -> EventGate:
 @pytest.mark.parametrize("side", ["LONG", "SHORT"])
 def test_s1_watch_restart_candidate_and_handoff(tmp_path, side: str) -> None:
     store = store_for_side(side)
+    assert KEY.contract_revision != KEY.content_hash
+    assert all(item.instrument_revision == KEY.contract_revision for item in store.all_versions())
     joined = asof_join(store, KEY, cutoff_ns=SETUP)
     assert joined.status == "AVAILABLE"
     feature = feature_snapshot(joined)

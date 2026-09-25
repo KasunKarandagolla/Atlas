@@ -36,7 +36,7 @@ from atlas.v2.math.core import (
 
 NS = 1_000_000_000
 KEY = InstrumentKeyV2(VenueV2.BYBIT, EnvironmentV2.TESTNET, ProductTypeV2.LINEAR_PERPETUAL,
-                      "BTCUSDT", "bitcoin", "USDT", "USDT", "rev-014")
+                      "BTCUSDT", "bitcoin", "USDT", "USDT", "e" * 64)
 
 
 def bar(index: int, *, interval: BarIntervalV2 = BarIntervalV2.M15, close: str = "100",
@@ -46,7 +46,7 @@ def bar(index: int, *, interval: BarIntervalV2 = BarIntervalV2.M15, close: str =
     price = Decimal(close)
     high_value = Decimal(high) if high is not None else price + Decimal("0.3")
     low_value = Decimal(low) if low is not None else price - Decimal("0.3")
-    raw = RawObservationV2.build(instrument_revision=key.content_hash, source_id="fixture-public",
+    raw = RawObservationV2.build(instrument_revision=key.contract_revision, source_id="fixture-public",
         event_type=f"BAR_{interval.value}", received_at_ns=close_ns, ingested_at_ns=close_ns,
         available_at_ns=close_ns, event_at_ns=close_ns, translation_version="fixture-v1",
         payload={"i": index, "close": close, "high": str(high_value), "low": str(low_value)})

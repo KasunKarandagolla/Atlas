@@ -27,7 +27,7 @@ def asof_join(store: CausalBarStoreV2, key: InstrumentKeyV2, *, cutoff_ns: int,
               view: AvailabilityClassV2 = AvailabilityClassV2.ACTUAL_SYSTEM,
               source_health: PublicSourceHealthV2 | None = None) -> JoinedBars:
     def select(interval: BarIntervalV2) -> tuple[CausalBarV2, ...]:
-        return tuple(bar for bar in store.as_of(key.content_hash, interval, information_cutoff_ns=cutoff_ns, availability_class=view)
+        return tuple(bar for bar in store.as_of(key.contract_revision, interval, information_cutoff_ns=cutoff_ns, availability_class=view)
                      if bar.final and bar.close_at_ns <= cutoff_ns)
 
     h4, h1, m15 = select(BarIntervalV2.H4), select(BarIntervalV2.H1), select(BarIntervalV2.M15)

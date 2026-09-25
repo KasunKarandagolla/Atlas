@@ -29,7 +29,7 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
         availability = bar.raw.available_at_ns if replay_view == ReplayViewV2.ACTUAL_SYSTEM else bar.replay_available_at_ns
         if availability is None or availability > join.cutoff_ns or bar.close_at_ns > join.cutoff_ns:
             raise ValueError("feature input unavailable at cutoff")
-        if bar.instrument_revision != join.key.content_hash:
+        if bar.instrument_revision != join.key.contract_revision:
             raise ValueError("feature input instrument revision mismatch")
     values: dict[str, FeatureValueV2] = {}
     units = {"ema20": "price", "ema50": "price", "atr14": "price", "robust_slope20": "price/bar",
