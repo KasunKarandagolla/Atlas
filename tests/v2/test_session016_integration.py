@@ -11,13 +11,15 @@ from atlas.v2.data.bars import BarIntervalV2
 from atlas.v2.features.joins import JoinedBars
 from atlas.v2.features.pipeline import feature_snapshot
 from atlas.v2.instruments import UniverseContractV2
-from atlas.v2.memory.repository import OpsRepository
+from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.selection import (
     SELECTION_POLICY_HASH,
     ScannerRankEvidenceV1,
+    ScannerSelectionSourceV1,
     accept_research_candidates,
     assemble_candidate_set,
     register_scanner_rank,
+    register_scanner_source,
 )
 from atlas.v2.strategies.s1_trend import (
     S1_POLICY,
@@ -69,9 +71,15 @@ def test_bounded_s1_s2_candidate_set_acceptance_and_unselected_handoff(tmp_path)
         candidates = (s1_decision.candidate, s2_decision.candidate)
         refs = {}
         for rank, candidate in ((2, candidates[0]), (1, candidates[1])):
+            input_body = {"scanner_fixture": candidate.candidate_id, "rank": rank, "cutoff": cutoff}
+            input_ref = sha256_json(input_body)
+            repository.register_artifact(ArtifactIndexEntryV2(input_ref, "ScannerInputFixtureV1", input_ref,
+                cutoff, cutoff, input_body))
+            source_ref = register_scanner_source(repository, ScannerSelectionSourceV1(
+                candidate.candidate_id, candidate.key, rank, "SCANNER_V1", "1.0",
+                universe.content_hash, "event-016-integration", cutoff, (input_ref,)))
             evidence = ScannerRankEvidenceV1(candidate.candidate_id, rank, "SCANNER_V1", "1.0",
-                universe.content_hash, "event-016-integration", cutoff,
-                sha256_json({"scanner": candidate.candidate_id, "rank": rank}))
+                universe.content_hash, "event-016-integration", cutoff, source_ref)
             refs[candidate.candidate_id] = (register_scanner_rank(repository, evidence),)
         result = assemble_candidate_set(repository, universe=universe,
             decision_event_id="event-016-integration", cutoff_ns=cutoff,

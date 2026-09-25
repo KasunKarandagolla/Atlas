@@ -216,8 +216,14 @@ class S2ShadowCoordinator:
             "key": join.key.to_dict(), "feature_hash": feature.content_hash,
             "universe_ref": universe.content_hash, "cutoff_ns": cutoff,
             "quantile_convention": QUANTILE_VERSION, "sample_count": SAMPLE_SIZE,
+            # ATR is Wilder-recursive over the entire pre-trigger prefix. The
+            # first comparison width also consumes the preceding 19 closes.
+            "indicator_history_refs": [bar.content_hash for bar in pre],
+            "warmup_refs": [bar.content_hash for bar in pre[:start]],
             "comparison_first_ref": pre[start].content_hash, "comparison_last_ref": pre[-2].content_hash,
             "comparison_refs": [bar.content_hash for bar in pre[start:-1]],
+            "first_comparison_width20": widths[0],
+            "first_comparison_atr14": sample_atr[0],
             "latest_measurement_ref": pre[-1].content_hash, "latest_bollinger_width20": widths[-1],
             "width_percentile_20": width_threshold, "latest_atr14": str(atr_decimal),
             "atr_median": atr_threshold, "atr_ref": pre[-1].content_hash,

@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from atlas.v2._serialization import FrozenMap, sha256_json
+from atlas.v2._serialization import FrozenMap, canonical_json, sha256_json
 from atlas.v2.contracts import (
     ArtifactEnvelope,
     CandidateActionV2,
@@ -20,9 +20,11 @@ from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.selection import (
     SELECTION_POLICY_HASH,
     ScannerRankEvidenceV1,
+    ScannerSelectionSourceV1,
     accept_research_candidates,
     assemble_candidate_set,
     register_scanner_rank,
+    register_scanner_source,
 )
 from atlas.v2.strategies.s1_trend import S1_POLICY
 from atlas.v2.strategies.s2_breakout import S2_POLICY
@@ -69,9 +71,22 @@ def index(repository, item, **metadata):
         {"candidate": item.to_dict(), "feature_hash": item.snapshot_hash, **metadata}))
 
 
+def source(repository, item, u, rank, *, available_at_ns=CUTOFF, event=EVENT,
+           key=None, policy_id="SCANNER_V1", policy_version="1.0"):
+    input_body = {"candidate_id": item.candidate_id, "scanner_rank": rank,
+                  "available_at_ns": available_at_ns, "source": "fixture"}
+    input_ref = sha256_json(input_body)
+    repository.register_artifact(ArtifactIndexEntryV2(input_ref, "ScannerInputFixtureV1", input_ref,
+        available_at_ns, available_at_ns, input_body))
+    artifact = ScannerSelectionSourceV1(item.candidate_id, key or item.key, rank, policy_id,
+        policy_version, u.content_hash, event, available_at_ns, (input_ref,))
+    return register_scanner_source(repository, artifact)
+
+
 def evidence(repository, item, u, rank, *, available_at_ns=CUTOFF, event=EVENT):
+    source_ref = source(repository, item, u, rank, available_at_ns=available_at_ns, event=event)
     record = ScannerRankEvidenceV1(item.candidate_id, rank, "SCANNER_V1", "1.0", u.content_hash,
-        event, available_at_ns, sha256_json({"scanner": item.candidate_id, "rank": rank}))
+        event, available_at_ns, source_ref)
     return register_scanner_rank(repository, record)
 
 
@@ -181,3 +196,114 @@ def test_empty_known_rejection_and_invalid_candidate_refs(tmp_path):
         index(repository, wrong_key)
         with pytest.raises(ValueError, match="universe"):
             assemble(repository, u, (wrong_key,), {})
+
+
+def test_indexed_scanner_source_and_only_causal_candidate_set_inputs(tmp_path):
+    u, item = universe(), candidate()
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        index(repository, item)
+        rank_ref = evidence(repository, item, u, 1)
+        rank_artifact = repository.get_artifact(rank_ref)
+        assert rank_artifact is not None
+        source_ref = rank_artifact.metadata["source_artifact_ref"]
+        source_artifact = repository.get_artifact(source_ref)
+        assert source_artifact is not None
+        assert canonical_json(source_artifact.metadata["key"]) == item.key.to_canonical_json()
+        assert len(source_artifact.metadata["input_refs"]) == 1
+        assert repository.get_artifact(source_artifact.metadata["input_refs"][0]) is not None
+        result = assemble(repository, u, (item,), {item.candidate_id: (rank_ref,)})
+        assert result.selection_status == CandidateSelectionStatus.SELECTED
+        assert {rank_ref, source_ref}.issubset(result.envelope.input_refs)
+        assert all((artifact := repository.get_artifact(ref)) is not None
+                   and artifact.available_at_ns <= CUTOFF for ref in result.envelope.input_refs)
+
+
+@pytest.mark.parametrize(("field", "wrong"), (
+    ("candidate_id", sha256_json({"wrong": "candidate"})),
+    ("universe_ref", sha256_json({"wrong": "universe"})),
+    ("decision_event_id", "other-event"),
+    ("scanner_rank", 2),
+    ("scanner_policy_id", "OTHER_SCANNER"),
+    ("scanner_policy_version", "2.0"),
+))
+def test_scanner_source_and_rank_identity_mismatch_rejected(tmp_path, field, wrong):
+    u, item = universe(), candidate()
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        source_ref = source(repository, item, u, 1)
+        rank = ScannerRankEvidenceV1(item.candidate_id, 1, "SCANNER_V1", "1.0",
+            u.content_hash, EVENT, CUTOFF, source_ref)
+        with pytest.raises(ValueError, match="matching indexed causal source"):
+            register_scanner_rank(repository, replace(rank, **{field: wrong}))
+
+
+def test_missing_future_and_wrong_instrument_scanner_sources_fail_closed(tmp_path):
+    u, item = universe(), candidate()
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        index(repository, item)
+        missing_ref = sha256_json({"unindexed_source": True})
+        missing = ScannerRankEvidenceV1(item.candidate_id, 1, "SCANNER_V1", "1.0",
+            u.content_hash, EVENT, CUTOFF, missing_ref)
+        with pytest.raises(ValueError, match="matching indexed causal source"):
+            register_scanner_rank(repository, missing)
+        future_ref = source(repository, item, u, 1, available_at_ns=CUTOFF + 1)
+        with pytest.raises(ValueError, match="matching indexed causal source"):
+            register_scanner_rank(repository, replace(missing, source_artifact_ref=future_ref))
+        wrong_key_ref = source(repository, item, u, 1, key=alternate_key())
+        rank_ref = register_scanner_rank(repository, replace(missing, source_artifact_ref=wrong_key_ref))
+        result = assemble(repository, u, (item,), {item.candidate_id: (rank_ref,)})
+        assert result.selection_status == CandidateSelectionStatus.NOT_ESTIMABLE
+        assert rank_ref not in result.envelope.input_refs
+        assert wrong_key_ref not in result.envelope.input_refs
+
+
+def test_unresolved_attempt_is_diagnostic_and_source_replay_is_immutable(tmp_path):
+    u, item = universe(), candidate()
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        index(repository, item)
+        unknown = sha256_json({"attempted_rank": "unindexed"})
+        result = assemble(repository, u, (item,), {item.candidate_id: (unknown,)})
+        assert result.selection_status == CandidateSelectionStatus.NOT_ESTIMABLE
+        assert result.candidates[0].selection_feature_refs == ()
+        assert unknown not in result.envelope.input_refs
+        indexed_set = repository.get_artifact(result.content_hash)
+        assert indexed_set is not None
+        assert indexed_set.metadata["identity"]["attempted_scanner_evidence_refs"][item.candidate_id] == (unknown,)
+        assert all((artifact := repository.get_artifact(ref)) is not None
+                   and artifact.available_at_ns <= CUTOFF for ref in result.envelope.input_refs)
+        source_ref = source(repository, item, u, 1)
+        with pytest.raises(ValueError, match="immutable"):
+            repository.register_artifact(ArtifactIndexEntryV2(source_ref, "ScannerSelectionSourceV1",
+                sha256_json({"changed": True}), CUTOFF, CUTOFF, {"changed": True}))
+
+
+@pytest.mark.parametrize("source_state", ("missing", "future", "wrong_source_input"))
+def test_indexed_rank_with_invalid_source_never_becomes_causal_input(tmp_path, source_state):
+    u, item = universe(), candidate()
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        index(repository, item)
+        if source_state == "missing":
+            source_ref = sha256_json({"source": "absent"})
+        elif source_state == "future":
+            source_ref = source(repository, item, u, 1, available_at_ns=CUTOFF + 1)
+        else:
+            input_ref = sha256_json({"scanner_input": "absent"})
+            invalid_source = ScannerSelectionSourceV1(item.candidate_id, item.key, 1, "SCANNER_V1",
+                "1.0", u.content_hash, EVENT, CUTOFF, (input_ref,))
+            source_ref = invalid_source.content_hash
+            with pytest.raises(ValueError, match="scanner source input is unindexed"):
+                register_scanner_source(repository, invalid_source)
+            repository.register_artifact(ArtifactIndexEntryV2(source_ref, "ScannerSelectionSourceV1",
+                source_ref, CUTOFF, CUTOFF, invalid_source.to_dict()))
+        record = ScannerRankEvidenceV1(item.candidate_id, 1, "SCANNER_V1", "1.0",
+            u.content_hash, EVENT, CUTOFF, source_ref)
+        # Simulate a legacy or corrupted rank index that bypassed registration validation.
+        rank_ref = record.content_hash
+        repository.register_artifact(ArtifactIndexEntryV2(rank_ref, "ScannerRankEvidenceV1", rank_ref,
+            CUTOFF, CUTOFF, record.to_dict()))
+        result = assemble(repository, u, (item,), {item.candidate_id: (rank_ref,)})
+        assert result.selection_status == CandidateSelectionStatus.NOT_ESTIMABLE
+        assert result.candidates[0].rejection_reason == "SCANNER_EVIDENCE_UNAVAILABLE_STALE_OR_CONTRADICTORY"
+        assert rank_ref not in result.envelope.input_refs
+        assert source_ref not in result.envelope.input_refs
+        assert all((artifact := repository.get_artifact(ref)) is not None
+                   and artifact.available_at_ns <= CUTOFF for ref in result.envelope.input_refs)

@@ -87,6 +87,14 @@ def test_exact_history_long_candidate_and_frozen_evidence(tmp_path):
         assert setup.metadata["atr_ref"] == joined.m15[-2].content_hash
         assert trigger.metadata["spread"] == "0.01"
         assert len(setup.metadata["comparison_refs"]) == 2880
+        assert len(setup.metadata["warmup_refs"]) == 19
+        assert setup.metadata["indicator_history_refs"] == tuple(
+            item.content_hash for item in joined.m15[:-1])
+        assert setup.metadata["indicator_history_refs"] == (
+            setup.metadata["warmup_refs"] + setup.metadata["comparison_refs"]
+            + (setup.metadata["latest_measurement_ref"],))
+        assert setup.metadata["latest_measurement_ref"] == joined.m15[-2].content_hash
+        assert joined.m15[-1].content_hash not in setup.metadata["indicator_history_refs"]
         assert trigger.metadata["bbo_ref"] == quote.evidence_ref
         assert repository.get_artifact(candidate.content_hash) is not None
         assert repository.get_artifact(S2_POLICY.policy_hash) is not None
@@ -99,6 +107,26 @@ def test_exact_history_long_candidate_and_frozen_evidence(tmp_path):
         second_inside = bar(TRIGGER_INDEX + 2, close="100", high="100.4", low="99.6")
         assert failed_break_exit(candidate, body, (second, second_inside)) == second_inside.content_hash
         assert failed_break_exit(candidate, body, (second,)) is None
+
+
+def test_warmup_bar_changes_statistics_and_is_bound_to_setup(tmp_path):
+    _, joined, feature, universe, quote = fixture()
+    mutated_bar = bar(0, close="103", high="103.3", low="102.7")
+    changed = replace(joined, m15=(mutated_bar,) + joined.m15[1:])
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        coordinator = S2ShadowCoordinator(repository)
+        original = coordinator.on_trigger_close(joined, feature, universe=universe, bbo=quote)
+        revised = coordinator.on_trigger_close(changed, feature, universe=universe, bbo=quote)
+        assert original.status == revised.status == "CANDIDATE"
+        old_setup = repository.get_artifact(original.setup_ref)
+        new_setup = repository.get_artifact(revised.setup_ref)
+        assert old_setup is not None and new_setup is not None
+        assert old_setup.metadata["comparison_refs"] == new_setup.metadata["comparison_refs"]
+        assert old_setup.metadata["latest_measurement_ref"] == new_setup.metadata["latest_measurement_ref"]
+        assert old_setup.metadata["first_comparison_width20"] != new_setup.metadata["first_comparison_width20"]
+        assert old_setup.metadata["warmup_refs"][0] != new_setup.metadata["warmup_refs"][0]
+        assert new_setup.metadata["indicator_history_refs"][0] == mutated_bar.content_hash
+        assert original.setup_ref != revised.setup_ref
 
 
 def test_insufficient_history_and_missing_context_fail_closed(tmp_path):

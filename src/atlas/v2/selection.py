@@ -15,7 +15,7 @@ from atlas.v2.contracts import (
     EligibilityStatusV2,
     PolicySpecV2,
 )
-from atlas.v2.instruments import UniverseContractV2
+from atlas.v2.instruments import InstrumentKeyV2, UniverseContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 
 SELECTION_POLICY_ID = "S1_S2_SCANNER_RANK_V1"
@@ -35,6 +35,73 @@ TIE_BREAK_RULE = " > ".join(ORDERING)
 
 
 @dataclass(frozen=True)
+class ScannerSelectionSourceV1:
+    """Immutable scanner-stage rank result and its already indexed inputs."""
+
+    candidate_id: str
+    key: InstrumentKeyV2
+    scanner_rank: int
+    scanner_policy_id: str
+    scanner_policy_version: str
+    universe_ref: str
+    decision_event_id: str
+    available_at_ns: int
+    input_refs: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        sha256_ref(self.candidate_id, field="candidate_id")
+        if not isinstance(self.key, InstrumentKeyV2):
+            raise ValueError("scanner source requires full InstrumentKeyV2")
+        if type(self.scanner_rank) is not int or self.scanner_rank < 1:
+            raise ValueError("scanner source rank must be a positive integer")
+        if not self.scanner_policy_id or not self.scanner_policy_version or not self.decision_event_id:
+            raise ValueError("scanner source policy and event are required")
+        sha256_ref(self.universe_ref, field="universe_ref")
+        if type(self.available_at_ns) is not int or self.available_at_ns < 0:
+            raise ValueError("scanner source availability must be UTC nanoseconds")
+        if any(not isinstance(ref, str) for ref in self.input_refs):
+            raise ValueError("scanner source input refs must be SHA-256 strings")
+        refs = tuple(sorted(self.input_refs))
+        if not refs or len(set(refs)) != len(refs):
+            raise ValueError("scanner source requires unique input refs")
+        for ref in refs:
+            sha256_ref(ref, field="scanner_source.input_ref")
+        object.__setattr__(self, "input_refs", refs)
+
+    def to_dict(self) -> dict[str, object]:
+        return {"version": "SCANNER_SELECTION_SOURCE_V1", "candidate_id": self.candidate_id,
+            "key": self.key.to_dict(), "scanner_rank": self.scanner_rank,
+            "scanner_policy_id": self.scanner_policy_id,
+            "scanner_policy_version": self.scanner_policy_version,
+            "universe_ref": self.universe_ref, "decision_event_id": self.decision_event_id,
+            "available_at_ns": self.available_at_ns, "input_refs": list(self.input_refs)}
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+
+def _indexed_causal(repository: OpsRepository, ref: str, cutoff_ns: int) -> ArtifactIndexEntryV2 | None:
+    try:
+        entry = repository.get_artifact(ref)
+    except ValueError:
+        return None
+    if entry is None or entry.content_hash != ref or entry.available_at_ns > cutoff_ns:
+        return None
+    return entry
+
+
+def register_scanner_source(repository: OpsRepository, source: ScannerSelectionSourceV1) -> str:
+    """Persist a rank source only after every declared source input is durable and causal."""
+    if any(_indexed_causal(repository, ref, source.available_at_ns) is None for ref in source.input_refs):
+        raise ValueError("scanner source input is unindexed or unavailable")
+    ref = source.content_hash
+    repository.register_artifact(ArtifactIndexEntryV2(ref, "ScannerSelectionSourceV1", ref,
+        source.available_at_ns, source.available_at_ns, source.to_dict()))
+    return ref
+
+
+@dataclass(frozen=True)
 class ScannerRankEvidenceV1:
     candidate_id: str
     scanner_rank: int
@@ -46,6 +113,7 @@ class ScannerRankEvidenceV1:
     source_artifact_ref: str
 
     def __post_init__(self) -> None:
+        sha256_ref(self.candidate_id, field="candidate_id")
         if not self.candidate_id or not self.scanner_policy_id or not self.scanner_policy_version:
             raise ValueError("scanner evidence identity is required")
         if type(self.scanner_rank) is not int or self.scanner_rank < 1:
@@ -71,8 +139,34 @@ class ScannerRankEvidenceV1:
         return sha256_json(self.to_dict())
 
 
+def _matching_scanner_source(repository: OpsRepository, source_ref: object,
+                             rank: Mapping[str, object], *, key: InstrumentKeyV2 | None) -> bool:
+    rank_available_at = rank.get("available_at_ns")
+    if not isinstance(source_ref, str) or type(rank_available_at) is not int or rank_available_at < 0:
+        return False
+    source = _indexed_causal(repository, source_ref, rank_available_at)
+    if source is None or source.artifact_type != "ScannerSelectionSourceV1":
+        return False
+    body = source.metadata
+    if (sha256_json(body) != source_ref or body.get("version") != "SCANNER_SELECTION_SOURCE_V1"
+            or body.get("available_at_ns") != source.available_at_ns
+            or any(body.get(field) != rank.get(field) for field in (
+                "candidate_id", "scanner_rank", "scanner_policy_id", "scanner_policy_version",
+                "universe_ref", "decision_event_id"))):
+        return False
+    if key is not None and canonical_json(body.get("key")) != key.to_canonical_json():
+        return False
+    refs = body.get("input_refs")
+    return (isinstance(refs, tuple) and bool(refs)
+            and all(isinstance(ref, str) and _indexed_causal(repository, ref, source.available_at_ns) is not None
+                    for ref in refs))
+
+
 def register_scanner_rank(repository: OpsRepository, evidence: ScannerRankEvidenceV1) -> str:
     """Index an immutable scanner-stage observation, never a naked rank."""
+    if not _matching_scanner_source(repository, evidence.source_artifact_ref,
+                                    evidence.to_dict(), key=None):
+        raise ValueError("scanner rank requires matching indexed causal source")
     ref = evidence.content_hash
     repository.register_artifact(ArtifactIndexEntryV2(ref, "ScannerRankEvidenceV1", ref,
         evidence.available_at_ns, evidence.available_at_ns, evidence.to_dict()))
@@ -135,10 +229,14 @@ def assemble_candidate_set(repository: OpsRepository, *, universe: UniverseContr
     ranks: dict[str, int] = {}
     reasons: dict[str, str] = {}
     statuses: dict[str, EligibilityStatusV2] = {}
-    all_refs: set[str] = {SELECTION_POLICY_HASH, universe.content_hash}
+    causal_refs: set[str] = {SELECTION_POLICY_HASH, universe.content_hash}
+    selected_feature_refs: dict[str, tuple[str, ...]] = {}
+    validated_source_refs: set[str] = set()
+    attempted_refs = {candidate.candidate_id: tuple(sorted(scanner_evidence_refs.get(candidate.candidate_id, ())))
+                      for candidate in ordered}
     uncertain = False
     for candidate in ordered:
-        all_refs.add(candidate.content_hash)
+        causal_refs.add(candidate.content_hash)
         universe_entry = next(item for item in universe.entries if item.key == candidate.key)
         policy = policies[candidate.policy_hash]
         strategy_status = universe_entry.strategy_eligibility.get(policy.policy_id)
@@ -155,16 +253,15 @@ def assemble_candidate_set(repository: OpsRepository, *, universe: UniverseContr
             uncertain = True
             continue
         refs = tuple(scanner_evidence_refs.get(candidate.candidate_id, ()))
-        all_refs.update(refs)
         if len(refs) != 1:
             statuses[candidate.candidate_id] = EligibilityStatusV2.NOT_ESTIMABLE
             reasons[candidate.candidate_id] = "SCANNER_EVIDENCE_MISSING_OR_CONTRADICTORY"
             uncertain = True
             continue
         ref = refs[0]
-        evidence = repository.get_artifact(ref)
+        evidence = _indexed_causal(repository, ref, cutoff_ns)
         if (evidence is None or evidence.artifact_type != "ScannerRankEvidenceV1"
-                or evidence.content_hash != ref or evidence.metadata.get("candidate_id") != candidate.candidate_id
+                or evidence.metadata.get("candidate_id") != candidate.candidate_id
                 or evidence.metadata.get("universe_ref") != universe.content_hash
                 or evidence.metadata.get("decision_event_id") != decision_event_id
                 or not evidence.metadata.get("scanner_policy_id")
@@ -175,19 +272,25 @@ def assemble_candidate_set(repository: OpsRepository, *, universe: UniverseContr
                 or cutoff_ns - evidence.available_at_ns > RANK_MAX_AGE_NS
                 or type(evidence.metadata.get("scanner_rank")) is not int
                 or evidence.metadata["scanner_rank"] < 1
-                or sha256_json(evidence.metadata) != ref):
+                or sha256_json(evidence.metadata) != ref
+                or not _matching_scanner_source(repository, evidence.metadata.get("source_artifact_ref"),
+                                                evidence.metadata, key=candidate.key)):
             statuses[candidate.candidate_id] = EligibilityStatusV2.NOT_ESTIMABLE
             reasons[candidate.candidate_id] = "SCANNER_EVIDENCE_UNAVAILABLE_STALE_OR_CONTRADICTORY"
             uncertain = True
             continue
         statuses[candidate.candidate_id] = EligibilityStatusV2.ELIGIBLE
         ranks[candidate.candidate_id] = int(evidence.metadata["scanner_rank"])
+        source_ref = str(evidence.metadata["source_artifact_ref"])
+        selected_feature_refs[candidate.candidate_id] = tuple(sorted((ref, source_ref)))
+        validated_source_refs.add(source_ref)
+        causal_refs.update((ref, source_ref))
     ranking = sorted((candidate for candidate in ordered if candidate.candidate_id in ranks),
         key=lambda candidate: (ranks[candidate.candidate_id], policies[candidate.policy_hash].policy_id,
             candidate.key.to_canonical_json(), candidate.candidate_id))
     rank_positions = {candidate.candidate_id: i + 1 for i, candidate in enumerate(ranking)}
     entries = tuple(CandidateSetEntryV2(candidate.candidate_id, policies[candidate.policy_hash].policy_id,
-        candidate.key, candidate.side, tuple(sorted(set(scanner_evidence_refs.get(candidate.candidate_id, ())))),
+        candidate.key, candidate.side, selected_feature_refs.get(candidate.candidate_id, ()),
         statuses[candidate.candidate_id], rank_positions.get(candidate.candidate_id),
         "SCANNER_RANK_POLICY_KEY_CANDIDATE_ID" if candidate.candidate_id in rank_positions else None,
         reasons.get(candidate.candidate_id)) for candidate in ordered)
@@ -200,14 +303,16 @@ def assemble_candidate_set(repository: OpsRepository, *, universe: UniverseContr
     else:
         selection_status = CandidateSelectionStatus.NO_CANDIDATE
         selected_id = None
-    all_refs.update(ref for refs in scanner_evidence_refs.values() for ref in refs)
+    if any(_indexed_causal(repository, ref, cutoff_ns) is None for ref in causal_refs):
+        raise ValueError("CandidateSet causal input ref is unindexed or unavailable")
     identity = {"decision_event_id": decision_event_id, "universe_ref": universe.content_hash,
         "selection_policy_hash": SELECTION_POLICY_HASH, "candidate_refs": sorted(candidate.content_hash for candidate in ordered),
-        "selection_evidence_refs": sorted(all_refs - {SELECTION_POLICY_HASH, universe.content_hash} -
-            {candidate.content_hash for candidate in ordered}),
+        "attempted_scanner_evidence_refs": {candidate_id: list(refs) for candidate_id, refs in attempted_refs.items()},
+        "validated_scanner_source_refs": sorted(validated_source_refs),
+        "causal_input_refs": sorted(causal_refs),
         "cutoff_ns": cutoff_ns, "producer_version": PRODUCER_VERSION}
     artifact_id = sha256_json(identity)
-    envelope = ArtifactEnvelope(1, artifact_id, cutoff_ns, cutoff_ns, PRODUCER_VERSION, tuple(sorted(all_refs)))
+    envelope = ArtifactEnvelope(1, artifact_id, cutoff_ns, cutoff_ns, PRODUCER_VERSION, tuple(sorted(causal_refs)))
     result = CandidateSetV2(envelope, decision_event_id, universe.content_hash, SELECTION_POLICY_HASH,
                             entries, selected_id, TIE_BREAK_RULE, selection_status)
     decision_index_ref = sha256_json({"artifact_type": "CandidateSetDecisionIndexV1",
