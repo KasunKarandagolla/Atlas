@@ -19,9 +19,11 @@ from .memory.repository import ArtifactIndexEntryV2, OpsRepository
 from .science.costs import FeeScheduleV2
 
 DAY_NS = 86_400_000_000_000
-SIZING_VERSION = "V2_HARD_RISK_SIZING_V1"
+SIZING_VERSION = "V2_HARD_RISK_SIZING_V2"
 STRESS_VERSION = "V1_JUMP_10_LIQUIDITY_EXECUTABLE_BOUND_V1"
 LEVERAGE_CONVENTION = "MAX_ROUNDED_HARD_FEASIBLE_QTY_THEN_LOWEST_ALLOWED_LEVERAGE_V1"
+NOTIONAL_CONVENTION = "MAX_ENTRY_REFERENCE_AND_COLLAR_V1"
+ACTUAL_CLOSE_PROVENANCE = "RECONCILED_ATLAS_V2_POSITION_AND_ACCOUNT_PNL"
 ZERO = Decimal("0")
 ONE = Decimal("1")
 
@@ -120,7 +122,7 @@ def index_risk_policies(repo: OpsRepository, v1: RiskPolicy, v2: RiskPolicyV2) -
         v2.effective_at_ns, v2.effective_at_ns, {"policy": v2.to_dict()}))
 
 
-def index_risk_evidence(repo: OpsRepository, item: ClosedV2Outcome | PossibleRiskV2 |
+def index_risk_evidence(repo: OpsRepository, item: ActualClosedPositionSourceV2 | ClosedV2Outcome | PossibleRiskV2 |
                         AccountRiskSnapshotV2 | VenueSizingLimitsV2 | StressBoundV2 | ProductContractV2 |
                         FeeScheduleV2) -> str:
     """Durably index one supplied research artifact after its declared sources."""
@@ -130,7 +132,9 @@ def index_risk_evidence(repo: OpsRepository, item: ClosedV2Outcome | PossibleRis
         required = (item.metadata_ref,)
     else:
         kind, body, ref, at = type(item).__name__, item.to_dict(), item.content_hash, item.available_at_ns
-        if isinstance(item, AccountRiskSnapshotV2):
+        if isinstance(item, ActualClosedPositionSourceV2):
+            required = (item.execution_source_ref, item.economic_source_ref)
+        elif isinstance(item, AccountRiskSnapshotV2):
             required = (item.exposure_completeness_ref,) + item.closed_outcome_refs + item.pending_risk_refs + item.existing_exposure_refs
         elif isinstance(item, (PossibleRiskV2, VenueSizingLimitsV2, StressBoundV2, FeeScheduleV2)):
             required = (item.source_ref,)
@@ -140,8 +144,78 @@ def index_risk_evidence(repo: OpsRepository, item: ClosedV2Outcome | PossibleRis
             required = ()
     if any(_indexed(repo, source, at) is None for source in required):
         raise ValueError("risk evidence source is unindexed or future")
+    if isinstance(item, ActualClosedPositionSourceV2):
+        execution = _indexed(repo, item.execution_source_ref, at, "V2ActualExecutionCloseObservationV1")
+        economics = _indexed(repo, item.economic_source_ref, at, "V2ActualAccountPnlObservationV1")
+        shared = {"account_scope": item.account_scope, "position_epoch_id": item.position_epoch_id,
+                  "key": item.key.to_dict(), "close_at_ns": item.close_at_ns}
+        if (execution is None or economics is None or
+                sha256_json(execution.metadata) != item.execution_source_ref or
+                sha256_json(economics.metadata) != item.economic_source_ref or
+                any(canonical_json(execution.metadata.get(k)) != canonical_json(v) or
+                    canonical_json(economics.metadata.get(k)) != canonical_json(v) for k, v in shared.items()) or
+                economics.metadata.get("realized_net_pnl") != _c(item.realized_net_pnl) or
+                execution.metadata.get("source_system") != "VENUE_RECONCILED_EXECUTION" or
+                economics.metadata.get("source_system") != "ACCOUNT_RECONCILED_CASH"):
+            raise ValueError("actual close source observations do not establish reconciled provenance")
+    if isinstance(item, ClosedV2Outcome) and item.outcome_class == OutcomeClass.ACTUAL_CLOSED_POSITION:
+        actual = _indexed(repo, item.position_ref, at, "ActualClosedPositionSourceV2")
+        if (actual is None or actual.metadata.get("close_at_ns") != item.close_at_ns or
+                actual.metadata.get("realized_net_pnl") != _c(item.realized_net_pnl) or
+                actual.metadata.get("actual_system_provenance") != ACTUAL_CLOSE_PROVENANCE or
+                sha256_json(actual.metadata) != item.position_ref):
+            raise ValueError("actual outcome requires matching typed closed-position provenance")
     repo.register_artifact(ArtifactIndexEntryV2(ref, kind, ref, at, at, body))
     return ref
+
+
+@dataclass(frozen=True)
+class ActualClosedPositionSourceV2:
+    account_scope: str
+    position_epoch_id: str
+    key: InstrumentKeyV2
+    close_at_ns: int
+    realized_net_pnl: Decimal
+    available_at_ns: int
+    actual_system_provenance: str
+    execution_source_ref: str
+    economic_source_ref: str
+
+    def __post_init__(self) -> None:
+        if not self.account_scope.strip() or not self.position_epoch_id.strip():
+            raise ValueError("actual close account/epoch identity required")
+        if not isinstance(self.key, InstrumentKeyV2):
+            raise ValueError("actual close exact instrument required")
+        _ns(self.close_at_ns, "close_at_ns")
+        _ns(self.available_at_ns, "available_at_ns")
+        if self.available_at_ns < self.close_at_ns:
+            raise ValueError("actual close cannot be available before close")
+        _decimal(self.realized_net_pnl, "realized_net_pnl", nonnegative=False)
+        if self.actual_system_provenance != ACTUAL_CLOSE_PROVENANCE:
+            raise ValueError("actual close provenance unsupported")
+        for name in ("execution_source_ref", "economic_source_ref"):
+            sha256_ref(getattr(self, name), field=name)
+        if self.execution_source_ref == self.economic_source_ref:
+            raise ValueError("actual execution and economic refs must differ")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": "ACTUAL_ATLAS_V2_CLOSED_POSITION_SOURCE_V1",
+                "account_scope": self.account_scope, "position_epoch_id": self.position_epoch_id,
+                "key": self.key.to_dict(), "close_at_ns": self.close_at_ns,
+                "realized_net_pnl": _c(self.realized_net_pnl), "available_at_ns": self.available_at_ns,
+                "actual_system_provenance": self.actual_system_provenance,
+                "execution_source_ref": self.execution_source_ref,
+                "economic_source_ref": self.economic_source_ref}
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+
+class OutcomeClass(StrEnum):
+    ACTUAL_CLOSED_POSITION = "ACTUAL_CLOSED_POSITION"
+    SIMULATED = "SIMULATED"
+    COUNTERFACTUAL = "COUNTERFACTUAL"
 
 
 @dataclass(frozen=True)
@@ -150,6 +224,7 @@ class ClosedV2Outcome:
     available_at_ns: int
     realized_net_pnl: Decimal
     position_ref: str
+    outcome_class: OutcomeClass
 
     def __post_init__(self) -> None:
         _ns(self.close_at_ns, "close_at_ns")
@@ -158,11 +233,12 @@ class ClosedV2Outcome:
             raise ValueError("closed PnL cannot be available before close")
         _decimal(self.realized_net_pnl, "realized_net_pnl", nonnegative=False)
         sha256_ref(self.position_ref, field="position_ref")
+        object.__setattr__(self, "outcome_class", OutcomeClass(self.outcome_class))
 
     def to_dict(self) -> dict[str, Any]:
-        return {"version": "CLOSED_ATLAS_V2_NET_PNL_V1", "close_at_ns": self.close_at_ns,
+        return {"version": "CLOSED_ATLAS_V2_NET_PNL_V2", "close_at_ns": self.close_at_ns,
                 "available_at_ns": self.available_at_ns, "realized_net_pnl": _c(self.realized_net_pnl),
-                "position_ref": self.position_ref}
+                "position_ref": self.position_ref, "outcome_class": self.outcome_class.value}
 
     @property
     def content_hash(self) -> str:
@@ -171,7 +247,8 @@ class ClosedV2Outcome:
 
 def rolling_realized_loss(outcomes: tuple[ClosedV2Outcome, ...], cutoff_ns: int) -> tuple[Decimal, tuple[str, ...]]:
     _ns(cutoff_ns, "cutoff_ns")
-    eligible = tuple(x for x in outcomes if cutoff_ns - DAY_NS < x.close_at_ns <= cutoff_ns
+    eligible = tuple(x for x in outcomes if x.outcome_class == OutcomeClass.ACTUAL_CLOSED_POSITION
+                     and cutoff_ns - DAY_NS < x.close_at_ns <= cutoff_ns
                      and x.available_at_ns <= cutoff_ns)
     refs = tuple(sorted(x.content_hash for x in eligible))
     if len(set(refs)) != len(refs):
@@ -360,6 +437,7 @@ class SizingDecisionV2:
     notional: Decimal | None
     margin: Decimal | None
     leverage: Decimal | None
+    notional_reference_price: Decimal | None
     rolling_loss_consumed: Decimal | None
     rolling_new_risk_consumed: Decimal | None
     status: SizingStatus
@@ -367,7 +445,8 @@ class SizingDecisionV2:
     available_at_ns: int
 
     def to_dict(self) -> dict[str, Any]:
-        return {"version": SIZING_VERSION, "candidate_ref": self.candidate_ref,
+        return {"version": SIZING_VERSION, "notional_convention": NOTIONAL_CONVENTION,
+                "candidate_ref": self.candidate_ref,
                 "candidate_set_ref": self.candidate_set_ref, "selected_candidate_id": self.selected_candidate_id,
                 "risk_policy_hash": self.risk_policy_hash, "risk_policy_v2_hash": self.risk_policy_v2_hash,
                 "account_snapshot_ref": self.account_snapshot_ref, "product_ref": self.product_ref,
@@ -377,6 +456,7 @@ class SizingDecisionV2:
                 "notional": _c(self.notional) if self.notional is not None else None,
                 "margin": _c(self.margin) if self.margin is not None else None,
                 "leverage": _c(self.leverage) if self.leverage is not None else None,
+                "notional_reference_price": _c(self.notional_reference_price) if self.notional_reference_price is not None else None,
                 "rolling_loss_consumed": _c(self.rolling_loss_consumed) if self.rolling_loss_consumed is not None else None,
                 "rolling_new_risk_consumed": _c(self.rolling_new_risk_consumed) if self.rolling_new_risk_consumed is not None else None,
                 "status": self.status.value, "reasons": list(self.reasons), "available_at_ns": self.available_at_ns}
@@ -438,11 +518,13 @@ def size_selected_candidate(repo: OpsRepository, *, candidate_set: CandidateSetV
     def persist(status: SizingStatus, why: tuple[str, ...], *, q: Decimal | None = None,
                 normal: Decimal | None = None, stressed: Decimal | None = None,
                 notional: Decimal | None = None, margin: Decimal | None = None,
-                leverage: Decimal | None = None, loss: Decimal | None = None,
+                leverage: Decimal | None = None, notional_price: Decimal | None = None,
+                loss: Decimal | None = None,
                 rolling: Decimal | None = None) -> SizingDecisionV2:
         decision = SizingDecisionV2(candidate.content_hash, candidate_set.content_hash, candidate.candidate_id,
             v1.policy_hash(), v2.policy_hash, account.content_hash, product.content_hash, tuple(sorted(valid_refs)),
-            q, normal, stressed, notional, margin, leverage, loss, rolling, status, why, cutoff_ns)
+            q, normal, stressed, notional, margin, leverage, notional_price,
+            loss, rolling, status, why, cutoff_ns)
         repo.register_artifact(ArtifactIndexEntryV2(decision.content_hash, "SizingDecisionV2", decision.content_hash,
             cutoff_ns, cutoff_ns, {"sizing": decision.to_dict(), "diagnostic_reasons": list(why)}))
         return decision
@@ -499,13 +581,28 @@ def size_selected_candidate(repo: OpsRepository, *, candidate_set: CandidateSetV
         return not_est("ACCOUNT_EXPOSURE_TOTAL_CONTRADICTION")
     if any(x.key == candidate.key for x in exposures):
         return no_trade("NO_PYRAMIDING")
+    account_outcomes = tuple(x for x in outcomes if x.content_hash in account.closed_outcome_refs)
+    if any(x.outcome_class != OutcomeClass.ACTUAL_CLOSED_POSITION for x in account_outcomes):
+        return not_est("NON_ACTUAL_ROLLING_OUTCOME")
     if any(x.available_at_ns > account.available_at_ns or not _matches(
            repo, x.content_hash, cutoff_ns, "ClosedV2Outcome", x.to_dict())
-           for x in outcomes if x.content_hash in account.closed_outcome_refs):
+           for x in account_outcomes):
         return not_est("CLOSED_OUTCOME_UNAVAILABLE")
-    if tuple(sorted(x.content_hash for x in outcomes if x.available_at_ns <= account.available_at_ns)) != account.closed_outcome_refs:
+    if tuple(sorted(x.content_hash for x in outcomes if
+                    x.outcome_class == OutcomeClass.ACTUAL_CLOSED_POSITION and
+                    x.available_at_ns <= account.available_at_ns)) != account.closed_outcome_refs:
         return not_est("CLOSED_OUTCOME_REFS_INCOMPLETE")
-    loss, used_outcomes = rolling_realized_loss(tuple(x for x in outcomes if x.content_hash in account.closed_outcome_refs), cutoff_ns)
+    for outcome in account_outcomes:
+        actual = _indexed(repo, outcome.position_ref, account.available_at_ns, "ActualClosedPositionSourceV2")
+        if (actual is None or sha256_json(actual.metadata) != outcome.position_ref or
+                actual.metadata.get("account_scope") != account.account_scope or
+                actual.metadata.get("close_at_ns") != outcome.close_at_ns or
+                actual.metadata.get("realized_net_pnl") != _c(outcome.realized_net_pnl) or
+                actual.metadata.get("actual_system_provenance") != ACTUAL_CLOSE_PROVENANCE):
+            return not_est("ACTUAL_OUTCOME_PROVENANCE_UNAVAILABLE")
+        valid_refs.update((outcome.content_hash, outcome.position_ref,
+                           actual.metadata["execution_source_ref"], actual.metadata["economic_source_ref"]))
+    loss, used_outcomes = rolling_realized_loss(account_outcomes, cutoff_ns)
     valid_refs.update(used_outcomes)
     if any(_indexed(repo, ref, cutoff_ns) is None for ref in (venue.source_ref, stress.source_ref, fee.source_ref)):
         return not_est("RISK_SOURCE_UNAVAILABLE")
@@ -531,7 +628,8 @@ def size_selected_candidate(repo: OpsRepository, *, candidate_set: CandidateSetV
     stress_unit = max(normal_unit, (abs(candidate.entry_reference - stress.worst_executable_exit_price)
                    + candidate.entry_reference * fee_entry_rate
                    + stress.worst_executable_exit_price * fee_exit_rate) * base)
-    notional_unit = candidate.entry_collar * base
+    notional_reference_price = max(candidate.entry_reference, candidate.entry_collar)
+    notional_unit = notional_reference_price * base
     beta_unit = notional_unit if candidate.side == V2Side.LONG else -notional_unit
     if normal_unit <= 0 or stress_unit <= 0 or notional_unit <= 0:
         return not_est("INVALID_PER_UNIT_RISK")
@@ -569,4 +667,5 @@ def size_selected_candidate(repo: OpsRepository, *, candidate_set: CandidateSetV
     proposed_normal, proposed_stress, proposed_notional = best_qty * normal_unit, best_qty * stress_unit, best_qty * notional_unit
     return persist(SizingStatus.SIZED, (), q=best_qty, normal=proposed_normal,
                    stressed=proposed_stress, notional=proposed_notional, margin=best_margin,
-                   leverage=best_leverage, loss=loss, rolling=rolling_base + proposed_normal)
+                   leverage=best_leverage, notional_price=notional_reference_price,
+                   loss=loss, rolling=rolling_base + proposed_normal)

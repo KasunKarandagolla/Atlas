@@ -8,9 +8,10 @@ from types import SimpleNamespace
 
 import pytest
 
+from atlas.domain.money import canonical_decimal_str
 from atlas.domain.risk import engineering_default_policy
 from atlas.v2._serialization import FrozenMap, sha256_json
-from atlas.v2.contracts import ArtifactEnvelope, EligibilityStatusV2
+from atlas.v2.contracts import ArtifactEnvelope, EligibilityStatusV2, V2Side
 from atlas.v2.instruments import (
     ProductContractV2,
     StrategyEligibilityV2,
@@ -20,10 +21,13 @@ from atlas.v2.instruments import (
 )
 from atlas.v2.memory.repository import OpsRepository
 from atlas.v2.risk import (
+    ACTUAL_CLOSE_PROVENANCE,
     DAY_NS,
     AccountRiskSnapshotV2,
+    ActualClosedPositionSourceV2,
     ClosedV2Outcome,
     ExposureKind,
+    OutcomeClass,
     PossibleRiskV2,
     RiskPolicyV2,
     SizingStatus,
@@ -53,9 +57,30 @@ def source(repo, label, at=0):
     return ref
 
 
+def actual_outcome(repo, close_at_ns, available_at_ns, pnl, *, account_scope="SHADOW_FAKE_ACCOUNT"):
+    epoch = sha256_json({"actual_fixture_epoch": close_at_ns, "pnl": str(pnl), "scope": account_scope})
+    shared = {"account_scope": account_scope, "position_epoch_id": epoch,
+              "key": KEY.to_dict(), "close_at_ns": close_at_ns}
+    execution = {**shared, "source_system": "VENUE_RECONCILED_EXECUTION"}
+    economics = {**shared, "source_system": "ACCOUNT_RECONCILED_CASH",
+                 "realized_net_pnl": canonical_decimal_str(pnl)}
+    execution_ref = sha256_json(execution)
+    economic_ref = sha256_json(economics)
+    index_research_evidence(repo, "V2ActualExecutionCloseObservationV1",
+                            execution_ref, available_at_ns, execution)
+    index_research_evidence(repo, "V2ActualAccountPnlObservationV1",
+                            economic_ref, available_at_ns, economics)
+    provenance = ActualClosedPositionSourceV2(account_scope, epoch, KEY, close_at_ns, pnl,
+        available_at_ns, ACTUAL_CLOSE_PROVENANCE, execution_ref, economic_ref)
+    index_risk_evidence(repo, provenance)
+    return ClosedV2Outcome(close_at_ns, available_at_ns, pnl, provenance.content_hash,
+                           OutcomeClass.ACTUAL_CLOSED_POSITION)
+
+
 def risk_case(repo, *, account_overrides=None, product_overrides=None, venue_overrides=None,
               stress_overrides=None, fee_overrides=None, v1_overrides=None, v2_overrides=None,
-              outcomes=(), exposures=(), include_s2=False):
+              outcomes=(), exposures=(), include_s2=False, short=False,
+              claim_non_actual=False):
     v1 = engineering_default_policy(policy_version="SESSION017_ENGINEERING_FIXTURE", policy_effective_at_ns=0)
     if v1_overrides:
         v1 = replace(v1, **v1_overrides)
@@ -75,7 +100,10 @@ def risk_case(repo, *, account_overrides=None, product_overrides=None, venue_ove
         (product.content_hash,)), "fixture", CUTOFF, SELECTION_POLICY_HASH, (entry,))
     shadow = candidate()
     item = replace(shadow, envelope=replace(shadow.envelope, content_hash=""),
-                   horizon_end_ns=CUTOFF + 4 * HOUR_NS)
+                   horizon_end_ns=CUTOFF + 4 * HOUR_NS,
+                   side=V2Side.SHORT if short else V2Side.LONG,
+                   entry_collar=Decimal("99.95") if short else shadow.entry_collar,
+                   stop_price=Decimal("101") if short else shadow.stop_price)
     index(repo, item, universe_ref=universe.content_hash)
     rank_ref = evidence(repo, item, universe, 1)
     items = (item,)
@@ -94,7 +122,7 @@ def risk_case(repo, *, account_overrides=None, product_overrides=None, venue_ove
         (Decimal("1"), Decimal("2")), Decimal("2"), Decimal("0"), source(repo, "venue"))
     if venue_overrides:
         venue = replace(venue, **venue_overrides)
-    stress = StressBoundV2(KEY, 0, Decimal("90"), source(repo, "stress"))
+    stress = StressBoundV2(KEY, 0, Decimal("110") if short else Decimal("90"), source(repo, "stress"))
     if stress_overrides:
         stress = replace(stress, **stress_overrides)
     fee = FeeScheduleV2(KEY, 0, Decimal("0.001"), Decimal("0.001"), source(repo, "fee"))
@@ -105,6 +133,8 @@ def risk_case(repo, *, account_overrides=None, product_overrides=None, venue_ove
     for outcome in outcomes:
         if outcome.available_at_ns <= CUTOFF:
             index_risk_evidence(repo, outcome)
+    claimed_outcomes = tuple(x for x in outcomes if x.available_at_ns <= CUTOFF and (
+        claim_non_actual or x.outcome_class == OutcomeClass.ACTUAL_CLOSED_POSITION))
     open_items = tuple(x for x in exposures if x.kind in (ExposureKind.OPEN, ExposureKind.PARTIAL))
     pending_items = tuple(x for x in exposures if x.kind in (ExposureKind.PENDING, ExposureKind.UNKNOWN))
     account = AccountRiskSnapshotV2("SHADOW_FAKE_ACCOUNT", CUTOFF, Decimal("100000"),
@@ -116,7 +146,7 @@ def risk_case(repo, *, account_overrides=None, product_overrides=None, venue_ove
         sum((x.signed_beta_notional for x in exposures), Decimal("0")),
         sum((x.possible_venue_collateral for x in exposures), Decimal("0")),
         Decimal("0"), len(pending_items) + sum(x.kind == ExposureKind.PARTIAL for x in exposures),
-        tuple(x.content_hash for x in outcomes if x.available_at_ns <= CUTOFF),
+        tuple(x.content_hash for x in claimed_outcomes),
         tuple(x.content_hash for x in pending_items), tuple(x.content_hash for x in open_items),
         source(repo, "account-complete"))
     if account_overrides:
@@ -161,6 +191,7 @@ def test_hand_calculated_largest_quantity_and_leverage_tie(tmp_path):
         assert decision.normal_risk == Decimal("29.3755")
         assert decision.stress_risk == Decimal("249.6550")
         assert decision.notional == Decimal("2451.225")
+        assert decision.notional_reference_price == Decimal("100.05")
         assert decision.leverage == Decimal("1")
         assert case.candidate.quantity is None
         assert repo.get_artifact(decision.content_hash) is not None
@@ -169,16 +200,17 @@ def test_hand_calculated_largest_quantity_and_leverage_tie(tmp_path):
 def test_rolling_loss_boundary_and_profit_nonnegative_allowance():
     pos = sha256_json({"position": 1})
     rows = (
-        ClosedV2Outcome(CUTOFF - DAY_NS, CUTOFF - DAY_NS, Decimal("-50"), pos),
-        ClosedV2Outcome(CUTOFF - DAY_NS + 1, CUTOFF - DAY_NS + 1, Decimal("-100"), pos),
-        ClosedV2Outcome(CUTOFF, CUTOFF, Decimal("20"), pos),
-        ClosedV2Outcome(CUTOFF, CUTOFF + 1, Decimal("-500"), pos),
+        ClosedV2Outcome(CUTOFF - DAY_NS, CUTOFF - DAY_NS, Decimal("-50"), pos, OutcomeClass.ACTUAL_CLOSED_POSITION),
+        ClosedV2Outcome(CUTOFF - DAY_NS + 1, CUTOFF - DAY_NS + 1, Decimal("-100"), pos, OutcomeClass.ACTUAL_CLOSED_POSITION),
+        ClosedV2Outcome(CUTOFF, CUTOFF, Decimal("20"), pos, OutcomeClass.ACTUAL_CLOSED_POSITION),
+        ClosedV2Outcome(CUTOFF, CUTOFF + 1, Decimal("-500"), pos, OutcomeClass.ACTUAL_CLOSED_POSITION),
     )
     loss, refs = rolling_realized_loss(rows, CUTOFF)
     assert loss == Decimal("80")
     assert rows[0].content_hash not in refs and rows[1].content_hash in refs
     assert rows[2].content_hash in refs and rows[3].content_hash not in refs
-    assert rolling_realized_loss((ClosedV2Outcome(CUTOFF, CUTOFF, Decimal("50"), pos),), CUTOFF)[0] == 0
+    assert rolling_realized_loss((ClosedV2Outcome(CUTOFF, CUTOFF, Decimal("50"), pos,
+        OutcomeClass.ACTUAL_CLOSED_POSITION),), CUTOFF)[0] == 0
 
 
 def test_future_account_product_policy_and_stress_fail_closed(tmp_path):
@@ -226,15 +258,55 @@ def test_hard_risk_boundaries_and_pending_possible_exposure(tmp_path):
 
 def test_realized_stop_and_future_outcome_excluded(tmp_path):
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
-        pos = source(repo, "closed-position")
-        loss = ClosedV2Outcome(CUTOFF - 1, CUTOFF, Decimal("-5001"), pos)
+        loss = actual_outcome(repo, CUTOFF - 1, CUTOFF, Decimal("-5001"))
         case = risk_case(repo, outcomes=(loss,))
         assert size(repo, case).reasons == ("ROLLING_REALIZED_LOSS_STOP",)
     with OpsRepository(tmp_path / "future.sqlite") as repo:
-        pos = source(repo, "future-position")
-        future = ClosedV2Outcome(CUTOFF, CUTOFF + 1, Decimal("-999999"), pos)
+        future = actual_outcome(repo, CUTOFF, CUTOFF + 1, Decimal("-999999"))
         case = risk_case(repo, outcomes=(future,))
         assert size(repo, case).rolling_loss_consumed == Decimal("0")
+
+
+def test_only_actual_reconciled_outcomes_enter_rolling_authority(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        actual_loss = actual_outcome(repo, CUTOFF - 2, CUTOFF, Decimal("-100"))
+        actual_profit = actual_outcome(repo, CUTOFF - 1, CUTOFF, Decimal("20"))
+        diagnostic_ref = source(repo, "simulated-position")
+        simulated_loss = ClosedV2Outcome(CUTOFF, CUTOFF, Decimal("-900"), diagnostic_ref,
+                                         OutcomeClass.SIMULATED)
+        simulated_profit = ClosedV2Outcome(CUTOFF, CUTOFF, Decimal("1000"), diagnostic_ref,
+                                           OutcomeClass.SIMULATED)
+        counterfactual = ClosedV2Outcome(CUTOFF, CUTOFF, Decimal("-700"), diagnostic_ref,
+                                         OutcomeClass.COUNTERFACTUAL)
+        rows = (actual_loss, actual_profit, simulated_loss, simulated_profit, counterfactual)
+        loss, refs = rolling_realized_loss(rows, CUTOFF)
+        assert loss == Decimal("80")
+        assert refs == tuple(sorted((actual_loss.content_hash, actual_profit.content_hash)))
+        case = risk_case(repo, outcomes=rows)
+        decision = size(repo, case)
+        assert decision.status == SizingStatus.SIZED
+        assert decision.rolling_loss_consumed == Decimal("80")
+        assert set(case.account.closed_outcome_refs) == set(refs)
+    for outcome_class in (OutcomeClass.SIMULATED, OutcomeClass.COUNTERFACTUAL):
+        with OpsRepository(tmp_path / f"claimed-{outcome_class.value}.sqlite") as repo:
+            ref = source(repo, "research-only-position")
+            diagnostic = ClosedV2Outcome(CUTOFF, CUTOFF, Decimal("-200"), ref, outcome_class)
+            case = risk_case(repo, outcomes=(diagnostic,), claim_non_actual=True)
+            decision = size(repo, case)
+            assert decision.status == SizingStatus.NOT_ESTIMABLE
+            assert decision.reasons == ("NON_ACTUAL_ROLLING_OUTCOME",)
+
+
+def test_actual_outcome_rejects_generic_or_wrong_account_provenance(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        generic = source(repo, "generic-position")
+        forged = ClosedV2Outcome(CUTOFF, CUTOFF, Decimal("-10"), generic,
+                                 OutcomeClass.ACTUAL_CLOSED_POSITION)
+        with pytest.raises(ValueError, match="typed closed-position"):
+            index_risk_evidence(repo, forged)
+        actual = actual_outcome(repo, CUTOFF, CUTOFF, Decimal("-10"), account_scope="OTHER_FAKE_SCOPE")
+        case = risk_case(repo, outcomes=(actual,))
+        assert size(repo, case).reasons == ("ACTUAL_OUTCOME_PROVENANCE_UNAVAILABLE",)
 
 
 @pytest.mark.parametrize(("mutation", "quantity"), (
@@ -304,3 +376,29 @@ def test_initial_account_intent_cap_stays_one_even_if_fixture_policies_are_loose
             v1_overrides={"max_simultaneous_new_risk_intents": 2},
             v2_overrides={"max_opening_intents_per_account": 2})
         assert size(repo, case).reasons == ("MAX_OPENING_INTENTS",)
+
+
+@pytest.mark.parametrize("binding", ("gross", "instrument", "beta", "margin"))
+def test_short_notional_caps_use_bid_reference_above_sell_collar(tmp_path, binding):
+    with OpsRepository(tmp_path / f"{binding}.sqlite") as repo:
+        cap = Decimal("0.009995")  # 999.5 on 100,000 eligible equity.
+        v1_field = {"gross": "account_gross_notional_limit",
+                    "instrument": "instrument_notional_limit",
+                    "beta": "correlated_crypto_beta_limit"}.get(binding)
+        case = risk_case(repo, short=True,
+            v1_overrides={v1_field: cap} if v1_field is not None else None,
+            account_overrides={"margin_available": Decimal("50999.5")} if binding == "margin" else None,
+            venue_overrides={"allowed_leverages": (Decimal("1"),),
+                             "account_leverage_limit": Decimal("1")} if binding == "margin" else None)
+        assert case.candidate.side == V2Side.SHORT
+        assert case.candidate.entry_reference == Decimal("100")
+        assert case.candidate.entry_collar == Decimal("99.95")
+        assert Decimal("10") * case.candidate.entry_collar == Decimal("999.50")
+        decision = size(repo, case)
+        assert decision.status == SizingStatus.SIZED
+        assert decision.notional_reference_price == Decimal("100")
+        assert decision.quantity == Decimal("9.9")
+        assert decision.notional == Decimal("990")
+        assert decision.margin == Decimal("990")
+        assert decision.normal_risk == Decimal("11.8899")
+        assert decision.stress_risk == Decimal("101.079")

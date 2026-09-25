@@ -358,6 +358,10 @@ def replay_action(repo: OpsRepository, *, action: ActionArtifactV2, candidate: C
         return finish(None, (), (), ReplayStatusV2.NO_FILL, "DEADLINE_EXPIRED_BEFORE_ARRIVAL")
     if entry_minute is None:
         return finish(None, (), (), ReplayStatusV2.NOT_ESTIMABLE, "NO_ARRIVAL_MINUTE", "NO_ARRIVAL_MINUTE")
+    if entry_minute.at_ns > candidate.deadline_ns:
+        return finish(None, (), (), ReplayStatusV2.NOT_ESTIMABLE,
+                      "ENTRY_EXECUTION_RESOLUTION_EXCEEDS_DEADLINE",
+                      "ENTRY_EXECUTION_RESOLUTION_EXCEEDS_DEADLINE")
     if not entry_minute.available or entry_minute.bid is None or entry_minute.ask is None or (
         entry_minute.ask_depth if candidate.side.value == "LONG" else entry_minute.bid_depth) is None:
         return finish(None, (), (), ReplayStatusV2.NOT_ESTIMABLE, "MISSING_ENTRY_DEPTH", "MISSING_ENTRY_DEPTH")

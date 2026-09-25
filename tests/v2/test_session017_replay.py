@@ -97,6 +97,7 @@ def test_full_ioc_time_exit_fee_once_and_common_24h_cash(tmp_path):
         assert context[0].action.horizon_end_ns == CUTOFF + 4 * HOUR_NS
         result = run(repo, case, context)
         assert result.status == ReplayStatusV2.FULL_FILL
+        assert result.entry is not None and result.entry.at_ns <= case.candidate.deadline_ns
         assert result.exit_reason == "TIME_EXIT"
         assert result.filled_quantity == Decimal("24.5") and result.remaining_quantity == 0
         assert len(result.exits) == 1 and result.exits[0].fee == Decimal("2.6950")
@@ -138,7 +139,8 @@ def test_partial_no_fill_outside_collar_missing_depth_and_arrival(tmp_path):
             minute(CUTOFF, ask="100"), minute(CUTOFF + MINUTE_NS, ask="101"),
             minute(CUTOFF + 4 * HOUR_NS, bid="110", ask="110")))
         result = run(repo, case, context)
-        assert result.status == ReplayStatusV2.NO_FILL and result.exit_reason == "IOC_NO_FILL"
+        assert result.status == ReplayStatusV2.NOT_ESTIMABLE
+        assert result.exit_reason == "ENTRY_EXECUTION_RESOLUTION_EXCEEDS_DEADLINE"
     with OpsRepository(tmp_path / "late.sqlite") as repo:
         case = risk_case(repo)
         late = ReplayAssumptionsV2(10_000_000_000, 0, 0, 0, Decimal("1"), Decimal("0"))
@@ -147,6 +149,22 @@ def test_partial_no_fill_outside_collar_missing_depth_and_arrival(tmp_path):
         result = run(repo, case, context)
         assert result.status == ReplayStatusV2.NO_FILL
         assert result.exit_reason == "DEADLINE_EXPIRED_BEFORE_ARRIVAL"
+
+
+def test_arrival_inside_deadline_but_next_complete_minute_is_too_late(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        case = risk_case(repo)
+        half_second = 500_000_000
+        delayed = ReplayAssumptionsV2(half_second, 0, 0, 0, Decimal("1"), Decimal("0"))
+        assert CUTOFF + half_second < case.candidate.deadline_ns < CUTOFF + MINUTE_NS
+        context = replay_context(repo, case, assumptions=delayed, minutes=(
+            minute(CUTOFF, ask="100", ask_depth="100"),
+            minute(CUTOFF + MINUTE_NS, ask="100", ask_depth="100"),
+            minute(CUTOFF + 4 * HOUR_NS, bid="101", ask="101")))
+        result = run(repo, case, context)
+        assert result.status == ReplayStatusV2.NOT_ESTIMABLE
+        assert result.exit_reason == "ENTRY_EXECUTION_RESOLUTION_EXCEEDS_DEADLINE"
+        assert result.entry is None and result.payoff is None
 
 
 def test_mark_stop_gap_after_latency_and_unresolved_residual(tmp_path):
