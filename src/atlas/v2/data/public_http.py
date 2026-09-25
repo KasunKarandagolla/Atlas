@@ -37,6 +37,7 @@ _PATHS = {
     PublicVenueV2.BINANCE: frozenset(
         {
             "/fapi/v1/time",
+            "/fapi/v1/depth",
             "/fapi/v1/exchangeInfo",
             "/fapi/v1/klines",
             "/fapi/v1/aggTrades",
@@ -57,6 +58,7 @@ _QUERY_FIELDS = {
     "/v5/market/funding/history": frozenset({"category", "symbol", "limit", "startTime", "endTime"}),
     "/v5/market/open-interest": frozenset({"category", "symbol", "intervalTime", "limit", "startTime", "endTime"}),
     "/fapi/v1/time": frozenset(),
+    "/fapi/v1/depth": frozenset({"symbol", "limit"}),
     "/fapi/v1/exchangeInfo": frozenset(),
     "/fapi/v1/klines": frozenset({"symbol", "interval", "limit", "startTime", "endTime"}),
     "/fapi/v1/aggTrades": frozenset({"symbol", "fromId", "startTime", "endTime", "limit"}),

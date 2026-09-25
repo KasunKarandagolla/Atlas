@@ -302,6 +302,11 @@ class BinanceUsdMPublicReaderV2:
     def exchange_info(self) -> PublicHttpResponseV2:
         return self.client.get("/fapi/v1/exchangeInfo")
 
+    def depth_snapshot(self, symbol: str, *, limit: int = 100) -> PublicHttpResponseV2:
+        if limit not in (5, 10, 20, 50, 100, 500, 1000):
+            raise ValueError("unsupported declared depth")
+        return self.client.get("/fapi/v1/depth", {"symbol": symbol, "limit": limit})
+
     def klines(self, symbol: str, interval: BarIntervalV2, *, limit: int = 200) -> PublicHttpResponseV2:
         interval_text = {BarIntervalV2.M15: "15m", BarIntervalV2.H1: "1h", BarIntervalV2.H4: "4h"}[BarIntervalV2(interval)]
         return self.client.get("/fapi/v1/klines", {"symbol": symbol, "interval": interval_text, "limit": limit})
