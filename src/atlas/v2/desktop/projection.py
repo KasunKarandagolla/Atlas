@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar
 
+from atlas.domain.capability import capability_contract_from_manifest
+
 from .._serialization import canonical_json, sha256_json, sha256_ref, strict_fields, timestamp
 from ..contracts import (
     CandidateActionV2,
@@ -24,33 +26,72 @@ from ..data.bars import BarIntervalV2, CausalBarV2
 from ..data.raw import AvailabilityClassV2, RawObservationV2
 from ..instruments import UniverseContractV2
 from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
+from ..science.admission import VenueCapabilitySnapshotV2, VenueCapabilityStatusV2
 
 DESKTOP_PROJECTION_SCHEMA_VERSION = 2
 DESKTOP_PROJECTION_VERSION = "ATLAS_DESKTOP_PROJECTION_V2"
 MAX_SCANNER_ROWS = 500
 MAX_WATCH_ROWS = 500
 MAX_EVIDENCE_ROWS = 500
+MAX_EVIDENCE_INPUT_REFS = 64
 MAX_CHART_BARS = 10_000
 MAX_SNAPSHOT_BYTES = 900_000
 SOURCE_HEALTH_MAX_AGE_NS = 60_000_000_000
 _SAFE_CODE = re.compile(r"^[A-Z0-9_.:-]{1,128}$")
 
 _EVIDENCE_TYPES = (
-    "UniverseContractV2", "ProductContractV2", "FeatureArtifactV2", "PublicObservationIndexV2",
-    "ScannerSelectionSourceV1", "ScannerRankEvidenceV1", "OpportunityWatchV2",
-    "S1SetupEvidenceV1", "S2SetupEvidenceV1", "S2TriggerEvidenceV1",
-    "CandidateSetV2", "CandidateActionV2", "SizingDecisionV2", "ActionArtifactV2",
-    "M0FeatureVectorV2", "M0SupportV2", "M0CalibrationV2", "M0OODV2",
-    "M0ModelFitV2", "M0ModelRunV2", "M0PredictionV2", "M0OOFResidualArchiveV2",
-    "PretradeScenarioArtifactV2", "PretradeExecutionScenarioV2", "PretradeDerivedEvidenceV2",
-    "ScenarioSupportV2", "InferenceSupportV2", "OutcomeDistributionV2",
-    "EstimationUncertaintyV2", "ExecutionModelUncertaintyV2", "NumericalErrorV2",
-    "DeterministicStressV2", "PortfolioESV2", "EvaluationArtifactV2",
-    "DecisionCalendarEntryV2", "TradePlanEnvelopeV2", "MaturedOutcomeV2", "ReplayPathV2", "PolicyPayoffV2",
-    "RiskPolicyV1", "RiskPolicyV2", "SizingRiskInputV2", "VenueSizingLimitsV2",
-    "StressBoundV2", "AccountRiskSnapshotV2", "FeeScheduleV2",
-    "VenueCapabilitySnapshotV2", "ModelForecastV2", "ModelForecastArtifactV2",
+    "UniverseContractV2",
+    "ProductContractV2",
+    "FeatureArtifactV2",
+    "PublicObservationIndexV2",
+    "ScannerSelectionSourceV1",
+    "ScannerRankEvidenceV1",
+    "OpportunityWatchV2",
+    "S1SetupEvidenceV1",
+    "S2SetupEvidenceV1",
+    "S2TriggerEvidenceV1",
+    "CandidateSetV2",
+    "CandidateActionV2",
+    "SizingDecisionV2",
+    "ActionArtifactV2",
+    "M0FeatureVectorV2",
+    "M0SupportV2",
+    "M0CalibrationV2",
+    "M0OODV2",
+    "M0ModelFitV2",
+    "M0ModelRunV2",
+    "M0PredictionV2",
+    "M0OOFResidualArchiveV2",
+    "PretradeScenarioArtifactV2",
+    "PretradeExecutionScenarioV2",
+    "PretradeDerivedEvidenceV2",
+    "ScenarioSupportV2",
+    "InferenceSupportV2",
+    "OutcomeDistributionV2",
+    "EstimationUncertaintyV2",
+    "ExecutionModelUncertaintyV2",
+    "NumericalErrorV2",
+    "DeterministicStressV2",
+    "PortfolioESV2",
+    "EvaluationArtifactV2",
+    "DecisionCalendarEntryV2",
+    "TradePlanEnvelopeV2",
+    "MaturedOutcomeV2",
+    "ReplayPathV2",
+    "PolicyPayoffV2",
+    "RiskPolicyV1",
+    "RiskPolicyV2",
+    "SizingRiskInputV2",
+    "VenueSizingLimitsV2",
+    "StressBoundV2",
+    "AccountRiskSnapshotV2",
+    "FeeScheduleV2",
+    "VenueCapabilitySnapshotV2",
+    "ModelForecastV2",
+    "ModelForecastArtifactV2",
     "SyntheticIntegrationFixtureV1",
+    "SyntheticVenueCapabilitySourceV2",
+    "CapabilityContractV1",
 )
 
 
@@ -99,18 +140,120 @@ def _jsonable(value: Any) -> Any:
 
 def _body(entry: ArtifactIndexEntryV2) -> Mapping[str, Any]:
     keys = {
-        "UniverseContractV2": "universe", "FeatureArtifactV2": "feature",
-        "CandidateSetV2": "candidate_set", "CandidateActionV2": "candidate",
-        "SizingDecisionV2": "sizing", "ActionArtifactV2": "action_artifact",
-        "EvaluationArtifactV2": "evaluation", "DecisionCalendarEntryV2": "decision_entry",
-        "TradePlanEnvelopeV2": "plan", "MaturedOutcomeV2": "outcome",
-        "PretradeScenarioArtifactV2": "scenario", "PretradeExecutionScenarioV2": "scenario",
+        "UniverseContractV2": "universe",
+        "FeatureArtifactV2": "feature",
+        "CandidateSetV2": "candidate_set",
+        "CandidateActionV2": "candidate",
+        "SizingDecisionV2": "sizing",
+        "ActionArtifactV2": "action_artifact",
+        "EvaluationArtifactV2": "evaluation",
+        "DecisionCalendarEntryV2": "decision_entry",
+        "TradePlanEnvelopeV2": "plan",
+        "MaturedOutcomeV2": "outcome",
+        "PretradeScenarioArtifactV2": "scenario",
+        "PretradeExecutionScenarioV2": "scenario",
+        "VenueCapabilitySnapshotV2": "capability",
     }
     body = entry.metadata.get(keys.get(entry.artifact_type, ""))
     return body if isinstance(body, Mapping) else entry.metadata
 
 
-def _reason_codes(entry: ArtifactIndexEntryV2, body: Mapping[str, Any]) -> tuple[str, ...]:
+def _capability_projection(
+    entry: ArtifactIndexEntryV2,
+    evidence_entries: Mapping[str, ArtifactIndexEntryV2],
+) -> tuple[str, str | None, bool]:
+    """Resolve a strict capability body and require typed evidence for SUPPORTED."""
+    body = entry.metadata.get("capability")
+    try:
+        if not isinstance(body, Mapping):
+            raise ValueError("capability body is missing")
+        capability = VenueCapabilitySnapshotV2.from_dict(_jsonable(body))
+        if (
+            entry.artifact_ref != capability.content_hash
+            or entry.content_hash != capability.content_hash
+            or sha256_json(body) != capability.content_hash
+            or entry.available_at_ns != capability.available_at_ns
+        ):
+            raise ValueError("capability identity or availability does not match its index")
+    except (KeyError, TypeError, ValueError):
+        return "UNVERIFIED", "CAPABILITY_EVIDENCE_INVALID_OR_UNAVAILABLE", False
+
+    if capability.observed_status != VenueCapabilityStatusV2.SUPPORTED:
+        return (
+            capability.observed_status.value,
+            "SYNTHETIC_FIXTURE" if capability.synthetic_fixture else None,
+            capability.synthetic_fixture,
+        )
+
+    if capability.synthetic_fixture:
+        if not capability.evidence_refs:
+            return "UNVERIFIED", "CAPABILITY_SYNTHETIC_SOURCE_MISSING", True
+        for ref in capability.evidence_refs:
+            source = evidence_entries.get(ref)
+            source_body = source.metadata.get("evidence") if source is not None else None
+            if (
+                source is None
+                or not source.artifact_type.startswith("SyntheticVenueCapability")
+                or source.content_hash != ref
+                or source.created_at_ns > capability.available_at_ns
+                or source.available_at_ns > capability.available_at_ns
+                or not isinstance(source_body, Mapping)
+                or sha256_json(source_body) != ref
+            ):
+                return "UNVERIFIED", "CAPABILITY_SYNTHETIC_SOURCE_INVALID", True
+        return "SUPPORTED", "SYNTHETIC_FIXTURE", True
+
+    if not capability.evidence_refs:
+        return "UNVERIFIED", "CAPABILITY_QUALIFICATION_SOURCE_MISSING", False
+    try:
+        for ref in capability.evidence_refs:
+            source = evidence_entries.get(ref)
+            source_body = source.metadata.get("evidence") if source is not None else None
+            if (
+                source is None
+                or source.artifact_type != "CapabilityContractV1"
+                or source.content_hash != ref
+                or source.created_at_ns > capability.available_at_ns
+                or source.available_at_ns > capability.available_at_ns
+                or not isinstance(source_body, Mapping)
+                or sha256_json(source_body) != ref
+            ):
+                raise ValueError("typed capability source missing")
+            manifest = capability_contract_from_manifest(dict(source_body))
+            venue, runtime = manifest.venue, manifest.runtime
+            normalized_margin = capability.margin_mode.casefold().replace("_", "-")
+            observed_margin = venue.account_generation_and_margin_mode.casefold().replace("_", "-")
+            if (
+                not manifest.capabilities.all_supported()
+                or manifest.assisted_blockers()
+                or venue.environment.casefold() != capability.environment.value.casefold()
+                or venue.account_identity_hash != capability.account_scope
+                or venue.product.casefold() != "linear"
+                or venue.position_mode.casefold().replace("-", "_")
+                != capability.position_mode.casefold().replace("-", "_")
+                or normalized_margin not in observed_margin
+                or runtime.distribution != capability.nautilus_distribution
+                or runtime.version != capability.nautilus_version
+                or runtime.source_commit != capability.nautilus_source_commit
+                or runtime.installed_artifact_sha256 != capability.nautilus_artifact_ref
+                or manifest.contract_version != capability.qualification_version
+            ):
+                raise ValueError("typed capability profile mismatch")
+    except (KeyError, TypeError, ValueError):
+        return "UNVERIFIED", "CAPABILITY_QUALIFICATION_SOURCE_INVALID", False
+    return "SUPPORTED", None, False
+
+
+def _reason_codes(
+    entry: ArtifactIndexEntryV2,
+    body: Mapping[str, Any],
+    *,
+    evidence_entries: Mapping[str, ArtifactIndexEntryV2] | None = None,
+) -> tuple[str, ...]:
+    if entry.artifact_type == "VenueCapabilitySnapshotV2":
+        _, reason, _ = _capability_projection(entry, evidence_entries or {})
+        if reason is not None:
+            return (reason,)
     for name in ("reason_codes", "reasons", "diagnostic_reasons"):
         value = body.get(name, entry.metadata.get(name))
         if isinstance(value, (list, tuple)):
@@ -123,10 +266,24 @@ def _reason_codes(entry: ArtifactIndexEntryV2, body: Mapping[str, Any]) -> tuple
     return ()
 
 
-def _status(entry: ArtifactIndexEntryV2, body: Mapping[str, Any]) -> str:
+def _status(
+    entry: ArtifactIndexEntryV2,
+    body: Mapping[str, Any],
+    *,
+    evidence_entries: Mapping[str, ArtifactIndexEntryV2] | None = None,
+) -> str:
+    if entry.artifact_type == "VenueCapabilitySnapshotV2":
+        return _capability_projection(entry, evidence_entries or {})[0]
     for name in (
-        "decision", "admission_state", "selection_state", "selection_status", "status",
-        "execution_state", "label_state", "state", "capability_status",
+        "decision",
+        "admission_state",
+        "selection_state",
+        "selection_status",
+        "status",
+        "execution_state",
+        "label_state",
+        "state",
+        "capability_status",
     ):
         value = body.get(name, entry.metadata.get(name))
         if value is not None:
@@ -135,6 +292,12 @@ def _status(entry: ArtifactIndexEntryV2, body: Mapping[str, Any]) -> str:
 
 
 def _artifact_refs(entry: ArtifactIndexEntryV2, body: Mapping[str, Any]) -> tuple[str, ...]:
+    # This test-only marker carries a long subject list so downstream rows can
+    # be marked synthetic. Returning that entire list in a desktop row would
+    # overwhelm the bounded IPC snapshot; each subject remains directly
+    # available in its own typed evidence row.
+    if entry.artifact_type == "SyntheticIntegrationFixtureV1":
+        return ()
     refs: set[str] = set()
     envelopes = body.get("envelope")
     candidates: list[Any] = [body.get("input_refs"), body.get("source_refs"), body.get("dependency_refs")]
@@ -167,8 +330,11 @@ class DesktopStatusV2:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "name": self.name, "state": self.state, "value": self.value,
-            "observed_at_ns": self.observed_at_ns, "evidence_ref": self.evidence_ref,
+            "name": self.name,
+            "state": self.state,
+            "value": self.value,
+            "observed_at_ns": self.observed_at_ns,
+            "evidence_ref": self.evidence_ref,
             "reason_code": self.reason_code,
         }
 
@@ -180,8 +346,14 @@ class DesktopStatusV2:
             timestamp(item["observed_at_ns"], field="observed_at_ns")
         if item["evidence_ref"] is not None:
             sha256_ref(item["evidence_ref"], field="evidence_ref")
-        return cls(item["name"], item["state"], item["value"], item["observed_at_ns"],
-                   item["evidence_ref"], item["reason_code"])
+        return cls(
+            item["name"],
+            item["state"],
+            item["value"],
+            item["observed_at_ns"],
+            item["evidence_ref"],
+            item["reason_code"],
+        )
 
 
 @dataclass(frozen=True)
@@ -223,7 +395,9 @@ class DesktopScannerRowV2:
                 sha256_ref(item[name], field=name)
         if item["expiry_ns"] is not None:
             timestamp(item["expiry_ns"], field="expiry_ns")
-        if item["selection_rank"] is not None and (type(item["selection_rank"]) is not int or item["selection_rank"] < 1):
+        if item["selection_rank"] is not None and (
+            type(item["selection_rank"]) is not int or item["selection_rank"] < 1
+        ):
             raise ValueError("selection_rank must be positive or null")
         return cls(**item)
 
@@ -323,17 +497,26 @@ class DesktopOverviewV2:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> DesktopOverviewV2:
-        fields = {"statuses", "decision_counts", "universe_instruments", "observed_instruments",
-                  "scanner_eligible_instruments", "unavailable_fields"}
+        fields = {
+            "statuses",
+            "decision_counts",
+            "universe_instruments",
+            "observed_instruments",
+            "scanner_eligible_instruments",
+            "unavailable_fields",
+        }
         item = strict_fields(data, expected=fields, required=fields, name=cls.__name__)
         counts = item["decision_counts"]
         if not isinstance(counts, list) or any(not isinstance(x, list) or len(x) != 2 for x in counts):
             raise ValueError("decision_counts must contain name/count pairs")
-        return cls(tuple(DesktopStatusV2.from_dict(x) for x in item["statuses"]),
-                   tuple((str(name), int(count)) for name, count in counts),
-                   item["universe_instruments"], item["observed_instruments"],
-                   item["scanner_eligible_instruments"],
-                   _tuple_strings(item["unavailable_fields"], field="unavailable_fields"))
+        return cls(
+            tuple(DesktopStatusV2.from_dict(x) for x in item["statuses"]),
+            tuple((str(name), int(count)) for name, count in counts),
+            item["universe_instruments"],
+            item["observed_instruments"],
+            item["scanner_eligible_instruments"],
+            _tuple_strings(item["unavailable_fields"], field="unavailable_fields"),
+        )
 
 
 @dataclass(frozen=True)
@@ -393,25 +576,47 @@ class DesktopChartSeriesV2:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "schema_version": self.schema_version, "projection_version": self.projection_version,
-            "key_json": self.key_json, "interval": self.interval,
+            "schema_version": self.schema_version,
+            "projection_version": self.projection_version,
+            "key_json": self.key_json,
+            "interval": self.interval,
             "information_cutoff_ns": self.information_cutoff_ns,
-            "availability_view": self.availability_view, "state": self.state,
-            "reason_code": self.reason_code, "bars": [row.to_dict() for row in self.bars],
+            "availability_view": self.availability_view,
+            "state": self.state,
+            "reason_code": self.reason_code,
+            "bars": [row.to_dict() for row in self.bars],
             "synthetic_fixture": self.synthetic_fixture,
         }
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> DesktopChartSeriesV2:
-        fields = {"schema_version", "projection_version", "key_json", "interval", "information_cutoff_ns",
-                  "availability_view", "state", "reason_code", "bars", "synthetic_fixture"}
+        fields = {
+            "schema_version",
+            "projection_version",
+            "key_json",
+            "interval",
+            "information_cutoff_ns",
+            "availability_view",
+            "state",
+            "reason_code",
+            "bars",
+            "synthetic_fixture",
+        }
         item = strict_fields(data, expected=fields, required=fields, name=cls.__name__)
         if not isinstance(item["bars"], list):
             raise ValueError("bars must be an array")
-        return cls(item["schema_version"], item["projection_version"], item["key_json"], item["interval"],
-                   item["information_cutoff_ns"], item["availability_view"], item["state"],
-                   item["reason_code"], tuple(DesktopChartBarV2.from_dict(row) for row in item["bars"]),
-                   item["synthetic_fixture"])
+        return cls(
+            item["schema_version"],
+            item["projection_version"],
+            item["key_json"],
+            item["interval"],
+            item["information_cutoff_ns"],
+            item["availability_view"],
+            item["state"],
+            item["reason_code"],
+            tuple(DesktopChartBarV2.from_dict(row) for row in item["bars"]),
+            item["synthetic_fixture"],
+        )
 
 
 @dataclass(frozen=True)
@@ -443,9 +648,12 @@ class DesktopSnapshotV2:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "schema_version": self.schema_version, "projection_version": self.projection_version,
-            "generated_at_ns": self.generated_at_ns, "valid_until_ns": self.valid_until_ns,
-            "freshness_state": self.freshness_state, "overview": self.overview.to_dict(),
+            "schema_version": self.schema_version,
+            "projection_version": self.projection_version,
+            "generated_at_ns": self.generated_at_ns,
+            "valid_until_ns": self.valid_until_ns,
+            "freshness_state": self.freshness_state,
+            "overview": self.overview.to_dict(),
             "scanner_rows": [row.to_dict() for row in self.scanner_rows],
             "watch_rows": [row.to_dict() for row in self.watch_rows],
             "evidence": [row.to_dict() for row in self.evidence],
@@ -457,23 +665,39 @@ class DesktopSnapshotV2:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> DesktopSnapshotV2:
-        fields = {"schema_version", "projection_version", "generated_at_ns", "valid_until_ns", "freshness_state",
-                  "overview", "scanner_rows", "watch_rows", "evidence", "evidence_truncated"}
+        fields = {
+            "schema_version",
+            "projection_version",
+            "generated_at_ns",
+            "valid_until_ns",
+            "freshness_state",
+            "overview",
+            "scanner_rows",
+            "watch_rows",
+            "evidence",
+            "evidence_truncated",
+        }
         item = strict_fields(data, expected=fields, required=fields, name=cls.__name__)
         for name in ("scanner_rows", "watch_rows", "evidence"):
             if not isinstance(item[name], list):
                 raise ValueError(f"{name} must be an array")
-        return cls(item["schema_version"], item["projection_version"], item["generated_at_ns"],
-                   item["valid_until_ns"], item["freshness_state"],
-                   DesktopOverviewV2.from_dict(item["overview"]),
-                   tuple(DesktopScannerRowV2.from_dict(row) for row in item["scanner_rows"]),
-                   tuple(DesktopWatchRowV2.from_dict(row) for row in item["watch_rows"]),
-                   tuple(DesktopEvidenceSummaryV2.from_dict(row) for row in item["evidence"]),
-                   item["evidence_truncated"])
+        return cls(
+            item["schema_version"],
+            item["projection_version"],
+            item["generated_at_ns"],
+            item["valid_until_ns"],
+            item["freshness_state"],
+            DesktopOverviewV2.from_dict(item["overview"]),
+            tuple(DesktopScannerRowV2.from_dict(row) for row in item["scanner_rows"]),
+            tuple(DesktopWatchRowV2.from_dict(row) for row in item["watch_rows"]),
+            tuple(DesktopEvidenceSummaryV2.from_dict(row) for row in item["evidence"]),
+            item["evidence_truncated"],
+        )
 
 
 def _synthetic_refs(entries: Sequence[ArtifactIndexEntryV2]) -> frozenset[str]:
     refs: set[str] = set()
+    evidence_entries = {entry.artifact_ref: entry for entry in entries}
     for entry in entries:
         if entry.artifact_type == "SyntheticIntegrationFixtureV1" and entry.metadata.get("synthetic_fixture") is True:
             subjects = entry.metadata.get("subject_refs", ())
@@ -484,10 +708,19 @@ def _synthetic_refs(entries: Sequence[ArtifactIndexEntryV2]) -> frozenset[str]:
         plan_evidence = entry.metadata.get("shadow_plan_evidence")
         if isinstance(plan_evidence, Mapping) and plan_evidence.get("synthetic_fixture") is True:
             refs.add(entry.artifact_ref)
+        if entry.artifact_type == "VenueCapabilitySnapshotV2":
+            _, _, synthetic = _capability_projection(entry, evidence_entries)
+            if synthetic:
+                refs.add(entry.artifact_ref)
     return frozenset(refs)
 
 
-def _entry_summary(entry: ArtifactIndexEntryV2, *, synthetic_refs: frozenset[str]) -> DesktopEvidenceSummaryV2:
+def _entry_summary(
+    entry: ArtifactIndexEntryV2,
+    *,
+    synthetic_refs: frozenset[str],
+    evidence_entries: Mapping[str, ArtifactIndexEntryV2] | None = None,
+) -> DesktopEvidenceSummaryV2:
     body = _body(entry)
     envelope = body.get("envelope")
     if not isinstance(envelope, Mapping):
@@ -502,12 +735,25 @@ def _entry_summary(entry: ArtifactIndexEntryV2, *, synthetic_refs: frozenset[str
     source_health_text = _code(source_health, default="AVAILABLE_REF")
     provenance_text = _code(provenance, default="PERSISTED_V2_ARTIFACT")
     version_text = _code(version, default=entry.artifact_type)
+    input_refs = _artifact_refs(entry, body)
+    reason_codes = _reason_codes(entry, body, evidence_entries=evidence_entries)
+    if len(input_refs) > MAX_EVIDENCE_INPUT_REFS:
+        input_refs = input_refs[:MAX_EVIDENCE_INPUT_REFS]
+        reason_codes = (*reason_codes, "DESKTOP_INPUT_REFS_BOUNDED")
     return DesktopEvidenceSummaryV2(
-        entry.artifact_type, version_text, entry.artifact_ref, entry.content_hash,
-        provenance_text, decision_at, event_at, entry.available_at_ns, source_health_text,
-        _artifact_refs(entry, body), _status(entry, body),
+        entry.artifact_type,
+        version_text,
+        entry.artifact_ref,
+        entry.content_hash,
+        provenance_text,
+        decision_at,
+        event_at,
+        entry.available_at_ns,
+        source_health_text,
+        input_refs,
+        _status(entry, body, evidence_entries=evidence_entries),
         _code(body.get("outcome_target")) if body.get("outcome_target") is not None else None,
-        _reason_codes(entry, body),
+        reason_codes,
         entry.artifact_ref in synthetic_refs or any(ref in synthetic_refs for ref in _artifact_refs(entry, body)),
     )
 
@@ -552,17 +798,30 @@ def _parse_candidate(entry: ArtifactIndexEntryV2) -> CandidateActionV2 | None:
 
 def _project_watch(watch: OpportunityWatchV2) -> DesktopWatchRowV2:
     return DesktopWatchRowV2(
-        watch.watch_id, watch.key.to_canonical_json(), watch.key.venue.value, watch.key.product.value,
-        watch.key.native_symbol, _strategy_label(watch.strategy_id), _code(watch.strategy_version), watch.policy_hash,
-        watch.state.value, watch.created_at_ns, watch.wake_at_ns, watch.expires_at_ns,
-        watch.invalidators, watch.evidence_refs,
-        "ACTIVE" if watch.state.value in {"DETECTED", "WAITING_FOR_EVENT", "READY_FOR_RECHECK", "CONFIRMED"}
+        watch.watch_id,
+        watch.key.to_canonical_json(),
+        watch.key.venue.value,
+        watch.key.product.value,
+        watch.key.native_symbol,
+        _strategy_label(watch.strategy_id),
+        _code(watch.strategy_version),
+        watch.policy_hash,
+        watch.state.value,
+        watch.created_at_ns,
+        watch.wake_at_ns,
+        watch.expires_at_ns,
+        watch.invalidators,
+        watch.evidence_refs,
+        "ACTIVE"
+        if watch.state.value in {"DETECTED", "WAITING_FOR_EVENT", "READY_FOR_RECHECK", "CONFIRMED"}
         else "TERMINAL",
     )
 
 
 def _project_scanner(
-    repo: OpsRepository, entries: Sequence[ArtifactIndexEntryV2], watches: Sequence[OpportunityWatchV2],
+    repo: OpsRepository,
+    entries: Sequence[ArtifactIndexEntryV2],
+    watches: Sequence[OpportunityWatchV2],
     synthetic_refs: frozenset[str],
 ) -> tuple[tuple[DesktopScannerRowV2, ...], dict[str, tuple[str, ...]]]:
     universes = _parse_universe(entries)
@@ -572,17 +831,23 @@ def _project_scanner(
             candidate = _parse_candidate(entry)
             if candidate is not None:
                 candidates[candidate.candidate_id] = (candidate, entry)
-    candidate_sets = [item for item in (_parse_candidate_set(entry) for entry in entries
-                     if entry.artifact_type == "CandidateSetV2") if item is not None]
+    candidate_sets = [
+        item
+        for item in (_parse_candidate_set(entry) for entry in entries if entry.artifact_type == "CandidateSetV2")
+        if item is not None
+    ]
     latest_sets: dict[str, CandidateSetV2] = {}
     for candidate_set in candidate_sets:
         previous = latest_sets.get(candidate_set.universe_ref)
-        if previous is None or (candidate_set.envelope.available_at_ns, candidate_set.decision_event_id,
-                                candidate_set.content_hash) > (previous.envelope.available_at_ns,
-                                previous.decision_event_id, previous.content_hash):
+        if previous is None or (
+            candidate_set.envelope.available_at_ns,
+            candidate_set.decision_event_id,
+            candidate_set.content_hash,
+        ) > (previous.envelope.available_at_ns, previous.decision_event_id, previous.content_hash):
             latest_sets[candidate_set.universe_ref] = candidate_set
-    current_members = [(candidate_set, member) for candidate_set in latest_sets.values()
-                       for member in candidate_set.candidates]
+    current_members = [
+        (candidate_set, member) for candidate_set in latest_sets.values() for member in candidate_set.candidates
+    ]
 
     calendar_by_candidate: dict[str, tuple[ArtifactIndexEntryV2, Mapping[str, Any]]] = {}
     for entry in entries:
@@ -592,7 +857,10 @@ def _project_scanner(
         if not isinstance(body, Mapping) or not isinstance(body.get("candidate_ref"), str):
             continue
         prior = calendar_by_candidate.get(str(body["candidate_ref"]))
-        if prior is None or (entry.available_at_ns, entry.artifact_ref) > (prior[0].available_at_ns, prior[0].artifact_ref):
+        if prior is None or (entry.available_at_ns, entry.artifact_ref) > (
+            prior[0].available_at_ns,
+            prior[0].artifact_ref,
+        ):
             calendar_by_candidate[str(body["candidate_ref"])] = (entry, body)
 
     sizing_by_candidate: dict[str, tuple[ArtifactIndexEntryV2, Mapping[str, Any]]] = {}
@@ -602,13 +870,19 @@ def _project_scanner(
             body = entry.metadata.get("sizing")
             if isinstance(body, Mapping) and isinstance(body.get("candidate_ref"), str):
                 prior = sizing_by_candidate.get(str(body["candidate_ref"]))
-                if prior is None or (entry.available_at_ns, entry.artifact_ref) > (prior[0].available_at_ns, prior[0].artifact_ref):
+                if prior is None or (entry.available_at_ns, entry.artifact_ref) > (
+                    prior[0].available_at_ns,
+                    prior[0].artifact_ref,
+                ):
                     sizing_by_candidate[str(body["candidate_ref"])] = (entry, body)
         elif entry.artifact_type == "ActionArtifactV2":
             body = entry.metadata.get("action_artifact")
             if isinstance(body, Mapping) and isinstance(body.get("candidate_ref"), str):
                 prior = action_by_candidate.get(str(body["candidate_ref"]))
-                if prior is None or (entry.available_at_ns, entry.artifact_ref) > (prior[0].available_at_ns, prior[0].artifact_ref):
+                if prior is None or (entry.available_at_ns, entry.artifact_ref) > (
+                    prior[0].available_at_ns,
+                    prior[0].artifact_ref,
+                ):
                     action_by_candidate[str(body["candidate_ref"])] = (entry, body)
 
     watch_by_id = {item.watch_id: item for item in watches}
@@ -621,18 +895,31 @@ def _project_scanner(
     rows: dict[str, DesktopScannerRowV2] = {}
     current_candidate_keys = {member.key.to_canonical_json() for _, member in current_members}
     latest_universe = max(universes.values(), key=lambda x: (x.decision_slot_ns, x.content_hash), default=None)
-    for universe in (() if latest_universe is None else (latest_universe,)):
+    for universe in () if latest_universe is None else (latest_universe,):
         for item in universe.entries:
             key_text = item.key.to_canonical_json()
             if key_text in current_candidate_keys:
                 continue
             rows[key_text] = DesktopScannerRowV2(
-                key_text, item.key.venue.value, item.key.environment.value, item.key.product.value,
-                item.key.native_symbol, item.key.contract_revision,
+                key_text,
+                item.key.venue.value,
+                item.key.environment.value,
+                item.key.product.value,
+                item.key.native_symbol,
+                item.key.contract_revision,
                 "SCANNER_ELIGIBLE" if item.scanner_eligible else "INELIGIBLE",
                 "OBSERVED" if item.observed else "NOT_OBSERVED",
-                "", None, None, "NO_CANDIDATE", "UNAVAILABLE", None, "UNAVAILABLE", None,
-                "NO_CANDIDATE", tuple(item.reasons), None,
+                "",
+                None,
+                None,
+                "NO_CANDIDATE",
+                "UNAVAILABLE",
+                None,
+                "UNAVAILABLE",
+                None,
+                "NO_CANDIDATE",
+                tuple(item.reasons),
+                None,
                 bool(item.product_ref and universe.envelope.available_at_ns <= universe.decision_slot_ns),
                 universe.content_hash in synthetic_refs,
             )
@@ -644,11 +931,17 @@ def _project_scanner(
         if candidate is None or candidate_entry is None:
             continue
         candidate_universe = universes.get(candidate_set.universe_ref)
-        universe_item = next((item for item in candidate_universe.entries if item.key == candidate.key), None) if candidate_universe else None
+        universe_item = (
+            next((item for item in candidate_universe.entries if item.key == candidate.key), None)
+            if candidate_universe
+            else None
+        )
         policy_hash = candidate.policy_hash
         calendar_pair = calendar_by_candidate.get(candidate.content_hash)
         calendar_body = calendar_pair[1] if calendar_pair else None
-        admission = _text(calendar_body.get("admission_state"), default="NOT_EVALUATED") if calendar_body else "NOT_EVALUATED"
+        admission = (
+            _text(calendar_body.get("admission_state"), default="NOT_EVALUATED") if calendar_body else "NOT_EVALUATED"
+        )
         calendar_reasons = tuple(_code(x) for x in calendar_body.get("reason_codes", ())) if calendar_body else ()
         sizing = sizing_by_candidate.get(candidate.content_hash)
         action = action_by_candidate.get(candidate.content_hash)
@@ -671,24 +964,48 @@ def _project_scanner(
         else:
             selection_state = "UNSELECTED"
         row = DesktopScannerRowV2(
-            key_text, candidate.key.venue.value, candidate.key.environment.value,
-            candidate.key.product.value, candidate.key.native_symbol, candidate.key.contract_revision,
-            "SCANNER_ELIGIBLE" if universe_item and universe_item.scanner_eligible else
-            "UNVERIFIED" if universe_item is None else "INELIGIBLE",
+            key_text,
+            candidate.key.venue.value,
+            candidate.key.environment.value,
+            candidate.key.product.value,
+            candidate.key.native_symbol,
+            candidate.key.contract_revision,
+            "SCANNER_ELIGIBLE"
+            if universe_item and universe_item.scanner_eligible
+            else "UNVERIFIED"
+            if universe_item is None
+            else "INELIGIBLE",
             "UNAVAILABLE" if universe_item is None else "OBSERVED" if universe_item.observed else "NOT_OBSERVED",
-            _strategy_label(member.policy_id), policy_hash, member.rank, selection_state,
-            watch.state.value if watch else "UNAVAILABLE", candidate.content_hash,
+            _strategy_label(member.policy_id),
+            policy_hash,
+            member.rank,
+            selection_state,
+            watch.state.value if watch else "UNAVAILABLE",
+            candidate.content_hash,
             _text(sizing[1].get("status")) if sizing else "UNAVAILABLE",
-            action[0].artifact_ref if action else None, admission,
-            reason_codes, candidate.deadline_ns, all_refs_present,
-            candidate.content_hash in synthetic_refs or candidate_set.content_hash in synthetic_refs or
-            (action is not None and action[0].artifact_ref in synthetic_refs),
+            action[0].artifact_ref if action else None,
+            admission,
+            reason_codes,
+            candidate.deadline_ns,
+            all_refs_present,
+            candidate.content_hash in synthetic_refs
+            or candidate_set.content_hash in synthetic_refs
+            or (action is not None and action[0].artifact_ref in synthetic_refs),
         )
         rows[f"{key_text}|{candidate.content_hash}"] = row
 
     # Preserve every member of each latest CandidateSet, including rejected and unselected members.
-    sorted_rows = sorted(rows.values(), key=lambda row: (row.selection_rank or 2**31, row.venue,
-                         row.product, row.symbol, row.contract_revision, row.candidate_ref or ""))
+    sorted_rows = sorted(
+        rows.values(),
+        key=lambda row: (
+            row.selection_rank or 2**31,
+            row.venue,
+            row.product,
+            row.symbol,
+            row.contract_revision,
+            row.candidate_ref or "",
+        ),
+    )
     rows_tuple = tuple(sorted_rows[:MAX_SCANNER_ROWS])
     candidate_refs_by_key: dict[str, tuple[str, ...]] = {
         row.key_json: (row.candidate_ref,) if row.candidate_ref else () for row in rows_tuple
@@ -709,8 +1026,13 @@ def _decision_counts(entries: Sequence[ArtifactIndexEntryV2]) -> tuple[tuple[str
 
 
 def _project_statuses(
-    repo: OpsRepository, entries: Sequence[ArtifactIndexEntryV2], *, now_ns: int,
-    universe_count: int, observed_count: int, eligible_count: int,
+    repo: OpsRepository,
+    entries: Sequence[ArtifactIndexEntryV2],
+    *,
+    now_ns: int,
+    universe_count: int,
+    observed_count: int,
+    eligible_count: int,
 ) -> tuple[tuple[DesktopStatusV2, ...], tuple[str, ...]]:
     status: list[DesktopStatusV2] = [
         DesktopStatusV2("projection_service", "RUNNING", "read-only", now_ns),
@@ -738,11 +1060,25 @@ def _project_statuses(
         DesktopStatusV2("capital_state", "BLOCKED", "CAPITAL_DISABLED", reason_code="CAPITAL_AUTHORITY_DISABLED"),
         DesktopStatusV2("protection_recovery", "UNAVAILABLE", "RECOVERY_HEALTH_NOT_INDEXED"),
     ]
-    unavailable = {"process", "version", "uptime", "engine_runtime", "queue_depth", "disk_health",
-                   "model_worker", "recovery", "research_health", "data_health", "protection_recovery"}
+    unavailable = {
+        "process",
+        "version",
+        "uptime",
+        "engine_runtime",
+        "queue_depth",
+        "disk_health",
+        "model_worker",
+        "recovery",
+        "research_health",
+        "data_health",
+        "protection_recovery",
+    }
 
-    observation_times = [item.available_at_ns for item in entries
-                         if item.artifact_type in {"FeatureArtifactV2", "PublicObservationIndexV2"}]
+    observation_times = [
+        item.available_at_ns
+        for item in entries
+        if item.artifact_type in {"FeatureArtifactV2", "PublicObservationIndexV2"}
+    ]
     if observation_times:
         last_input = max(observation_times)
         status[5] = DesktopStatusV2("last_successful_input", "AVAILABLE", str(last_input), last_input)
@@ -759,16 +1095,24 @@ def _project_statuses(
         state = _code(latest.status)
         if state == "HEALTHY_CURRENT" and now_ns - latest.available_at_ns > SOURCE_HEALTH_MAX_AGE_NS:
             state = "STALE"
-        details_ref = latest.details_ref if isinstance(latest.details_ref, str) and len(latest.details_ref) == 64 else None
+        details_ref = (
+            latest.details_ref if isinstance(latest.details_ref, str) and len(latest.details_ref) == 64 else None
+        )
         if details_ref is not None:
             try:
                 sha256_ref(details_ref, field="details_ref")
             except ValueError:
                 details_ref = None
-        source_records.append(DesktopStatusV2(
-            f"source:{_source_label(source_id)}", state, state, latest.available_at_ns, details_ref,
-            None if state == "HEALTHY_CURRENT" else _code(f"SOURCE_{state}"),
-        ))
+        source_records.append(
+            DesktopStatusV2(
+                f"source:{_source_label(source_id)}",
+                state,
+                state,
+                latest.available_at_ns,
+                details_ref,
+                None if state == "HEALTHY_CURRENT" else _code(f"SOURCE_{state}"),
+            )
+        )
     status.extend(sorted(source_records, key=lambda item: item.name))
     if source_records:
         unavailable.discard("data_health")
@@ -776,22 +1120,31 @@ def _project_statuses(
         data_state = "AVAILABLE" if all_healthy else "DEGRADED"
         data_health_index = next(index for index, item in enumerate(status) if item.name == "data_health")
         status[data_health_index] = DesktopStatusV2(
-            "data_health", data_state, "SOURCES_HEALTHY_CURRENT" if all_healthy else "SOURCE_HEALTH_DEGRADED",
+            "data_health",
+            data_state,
+            "SOURCES_HEALTHY_CURRENT" if all_healthy else "SOURCE_HEALTH_DEGRADED",
         )
 
     capabilities = [item for item in entries if item.artifact_type == "VenueCapabilitySnapshotV2"]
     if capabilities:
         latest_capability = max(capabilities, key=lambda item: (item.available_at_ns, item.artifact_ref))
-        body = _body(latest_capability)
-        state = _status(latest_capability, body)
+        state, reason, _ = _capability_projection(latest_capability, {item.artifact_ref: item for item in entries})
         status[13] = DesktopStatusV2(
-            "capability", state, state, latest_capability.available_at_ns, latest_capability.artifact_ref
+            "capability",
+            state,
+            state,
+            latest_capability.available_at_ns,
+            latest_capability.artifact_ref,
+            reason,
         )
     return tuple(status), tuple(sorted(unavailable))
 
 
 def project_snapshot(
-    repo: OpsRepository, *, now_ns: int | None = None, valid_for_ns: int = 2_000_000_000,
+    repo: OpsRepository,
+    *,
+    now_ns: int | None = None,
+    valid_for_ns: int = 2_000_000_000,
     artifact_limit: int = 2_000,
 ) -> DesktopSnapshotV2:
     """Project only explicit persisted artifacts into a bounded desktop snapshot."""
@@ -799,39 +1152,91 @@ def project_snapshot(
     timestamp(now, field="now_ns")
     if type(valid_for_ns) is not int or not 100_000_000 <= valid_for_ns <= 30_000_000_000:
         raise ValueError("snapshot validity must be between 100ms and 30s")
-    entries = repo.artifact_entries_by_types(_EVIDENCE_TYPES, limit=artifact_limit)
+    # Candle indexes can be numerous. Keep them in the Evidence view, but do
+    # not let them crowd out the smaller decision graph from the bounded read.
+    # The projection is point-in-time: later evidence must not appear early.
+    decision_types = tuple(item for item in _EVIDENCE_TYPES if item != "PublicObservationIndexV2")
+    decision_entries = repo.artifact_entries_by_types(
+        decision_types,
+        limit=artifact_limit,
+        available_before_ns=now,
+    )
+    public_entries = repo.artifact_entries_by_types(
+        ("PublicObservationIndexV2",),
+        limit=min(250, artifact_limit),
+        available_before_ns=now,
+    )
+    entries = tuple(
+        sorted(
+            (*decision_entries, *public_entries),
+            key=lambda item: (item.created_at_ns, item.artifact_ref),
+        )
+    )
+    evidence_entries = {entry.artifact_ref: entry for entry in entries}
     watches = repo.list_watches(limit=MAX_WATCH_ROWS + 1)
     synthetic_refs = _synthetic_refs(entries)
     scanner, _ = _project_scanner(repo, entries, watches, synthetic_refs)
     watch_rows = tuple(_project_watch(item) for item in watches[:MAX_WATCH_ROWS])
-    evidence_rows = tuple(_entry_summary(item, synthetic_refs=synthetic_refs)
-                          for item in entries[-MAX_EVIDENCE_ROWS:])
+    evidence_rows = tuple(
+        _entry_summary(item, synthetic_refs=synthetic_refs, evidence_entries=evidence_entries)
+        for item in entries[-MAX_EVIDENCE_ROWS:]
+    )
     universes = _parse_universe(entries)
     latest_universe = max(universes.values(), key=lambda item: (item.decision_slot_ns, item.content_hash), default=None)
     universe_count = len(latest_universe.entries) if latest_universe else 0
     observed_count = sum(item.observed for item in latest_universe.entries) if latest_universe else 0
     eligible_count = sum(item.scanner_eligible for item in latest_universe.entries) if latest_universe else 0
-    statuses, unavailable = _project_statuses(repo, entries, now_ns=now, universe_count=universe_count,
-        observed_count=observed_count, eligible_count=eligible_count)
-    overview = DesktopOverviewV2(statuses, _decision_counts(entries), universe_count, observed_count,
-                                 eligible_count, unavailable)
-    snapshot = DesktopSnapshotV2(DESKTOP_PROJECTION_SCHEMA_VERSION, DESKTOP_PROJECTION_VERSION,
-        now, now + valid_for_ns, "CURRENT", overview, scanner, watch_rows, evidence_rows,
-        len(entries) >= artifact_limit or len(watches) > MAX_WATCH_ROWS)
+    statuses, unavailable = _project_statuses(
+        repo,
+        entries,
+        now_ns=now,
+        universe_count=universe_count,
+        observed_count=observed_count,
+        eligible_count=eligible_count,
+    )
+    overview = DesktopOverviewV2(
+        statuses, _decision_counts(entries), universe_count, observed_count, eligible_count, unavailable
+    )
+    snapshot = DesktopSnapshotV2(
+        DESKTOP_PROJECTION_SCHEMA_VERSION,
+        DESKTOP_PROJECTION_VERSION,
+        now,
+        now + valid_for_ns,
+        "CURRENT",
+        overview,
+        scanner,
+        watch_rows,
+        evidence_rows,
+        len(entries) >= artifact_limit or len(watches) > MAX_WATCH_ROWS,
+    )
     serialized = snapshot.to_canonical_json().encode("utf-8")
     if len(serialized) > MAX_SNAPSHOT_BYTES:
-        snapshot = DesktopSnapshotV2(snapshot.schema_version, snapshot.projection_version,
-            snapshot.generated_at_ns, snapshot.valid_until_ns, snapshot.freshness_state,
-            snapshot.overview, snapshot.scanner_rows[:250], snapshot.watch_rows[:250],
-            snapshot.evidence[:100], True)
+        snapshot = DesktopSnapshotV2(
+            snapshot.schema_version,
+            snapshot.projection_version,
+            snapshot.generated_at_ns,
+            snapshot.valid_until_ns,
+            snapshot.freshness_state,
+            snapshot.overview,
+            snapshot.scanner_rows[:250],
+            snapshot.watch_rows[:250],
+            snapshot.evidence[:100],
+            True,
+        )
         if len(snapshot.to_canonical_json().encode("utf-8")) > MAX_SNAPSHOT_BYTES:
             raise ValueError("desktop projection exceeds transport byte bound")
     return snapshot
 
 
 def _read_chart_bars_from_archive(
-    repo: OpsRepository, archive_root: Path, *, key_revision: str, interval: BarIntervalV2,
-    cutoff_ns: int, availability_view: AvailabilityClassV2, limit: int,
+    repo: OpsRepository,
+    archive_root: Path,
+    *,
+    key: Any,
+    interval: BarIntervalV2,
+    cutoff_ns: int,
+    availability_view: AvailabilityClassV2,
+    limit: int,
 ) -> tuple[tuple[DesktopChartBarV2, ...], bool]:
     import pyarrow.parquet as pq
 
@@ -839,7 +1244,7 @@ def _read_chart_bars_from_archive(
 
     if not archive_root.exists() or not archive_root.is_dir():
         return (), False
-    versions: dict[int, tuple[tuple[int, str], DesktopChartBarV2]] = {}
+    candidates: dict[int, tuple[tuple[int, str], Mapping[str, Any]]] = {}
     examined = 0
     paths = sorted(path for path in archive_root.glob("*.parquet") if path.is_file() and not path.is_symlink())
     if len(paths) > 20_000:
@@ -847,9 +1252,19 @@ def _read_chart_bars_from_archive(
     for path in paths:
         try:
             parquet = pq.ParquetFile(path)
-            columns = {"record_id", "instrument_revision", "event_type", "available_at_ns",
-                       "replay_available_at_ns", "availability_class", "raw_payload_hash",
-                       "observation_json", "raw_payload_bytes", "bar_json", "archive_record_kind"}
+            columns = {
+                "record_id",
+                "instrument_revision",
+                "event_type",
+                "available_at_ns",
+                "replay_available_at_ns",
+                "availability_class",
+                "raw_payload_hash",
+                "observation_json",
+                "raw_payload_bytes",
+                "bar_json",
+                "archive_record_kind",
+            }
             if not columns.issubset(set(parquet.schema.names)):
                 continue
             for batch in parquet.iter_batches(columns=sorted(columns), batch_size=512):
@@ -857,63 +1272,122 @@ def _read_chart_bars_from_archive(
                     examined += 1
                     if examined > 2_000_000:
                         return (), True
-                    if (row["instrument_revision"] != key_revision or row["event_type"] != f"BAR_{interval.value}"
-                            or row["archive_record_kind"] == "DUPLICATE_CONFLICT"
-                            or row["availability_class"] != availability_view.value):
+                    if (
+                        row["instrument_revision"] != key.contract_revision
+                        or row["event_type"] != f"BAR_{interval.value}"
+                        or row["archive_record_kind"] == "DUPLICATE_CONFLICT"
+                        or row["availability_class"] != availability_view.value
+                    ):
                         continue
-                    available = (row["available_at_ns"] if availability_view == AvailabilityClassV2.ACTUAL_SYSTEM
-                                 else row["replay_available_at_ns"])
+                    available = (
+                        row["available_at_ns"]
+                        if availability_view == AvailabilityClassV2.ACTUAL_SYSTEM
+                        else row["replay_available_at_ns"]
+                    )
                     if type(available) is not int or available > cutoff_ns:
                         continue
-                    raw_bytes = row["raw_payload_bytes"]
-                    if not isinstance(raw_bytes, bytes) or hashlib.sha256(raw_bytes).hexdigest() != row["raw_payload_hash"]:
-                        continue
-                    observation = RawObservationV2.from_dict(json.loads(row["observation_json"]))
                     raw_bar = json.loads(row["bar_json"])
                     if not isinstance(raw_bar, Mapping) or raw_bar.get("final") is not True:
                         continue
                     open_at = raw_bar.get("open_at_ns")
                     if type(open_at) is not int:
                         continue
-                    close_at = close_boundary_ns(open_at, interval)
-                    from decimal import Decimal
-
-                    values = tuple(Decimal(str(raw_bar[name])) for name in ("open", "high", "low", "close", "volume"))
-                    bar = CausalBarV2(
-                        observation, interval, open_at, close_at, values[0], values[1], values[2], values[3],
-                        values[4], raw_bar.get("final") is True,
-                    )
-                    if row["record_id"] != observation.record_id:
+                    record_id = row["record_id"]
+                    if not isinstance(record_id, str):
                         continue
-                    ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": observation.record_id})
-                    indexed = repo.get_artifact(ref)
-                    if (indexed is None or indexed.artifact_type != "PublicObservationIndexV2"
-                            or indexed.content_hash != observation.content_hash
-                            or indexed.metadata.get("bar_content_hash") != bar.content_hash
-                            or indexed.metadata.get("raw_payload_hash") != observation.raw_payload_hash):
-                        continue
-                    display = DesktopChartBarV2(
-                        bar.open_at_ns, bar.close_at_ns, str(bar.open), str(bar.high), str(bar.low),
-                        str(bar.close), str(bar.volume), bar.content_hash, ref,
-                    )
-                    identity = (int(available), observation.record_id)
-                    old = versions.get(bar.open_at_ns)
-                    if old is None or identity > old[0]:
-                        versions[bar.open_at_ns] = (identity, display)
+                    identity = (available, record_id)
+                    current = candidates.get(open_at)
+                    if current is None or identity > current[0]:
+                        candidates[open_at] = (
+                            identity,
+                            {
+                                "record_id": record_id,
+                                "raw_payload_hash": row["raw_payload_hash"],
+                                "raw_payload_bytes": row["raw_payload_bytes"],
+                                "observation_json": row["observation_json"],
+                                "bar": raw_bar,
+                            },
+                        )
+                    if len(candidates) > 100_000:
+                        return (), True
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             continue
-    return _ordered_chart_bars(versions, limit), len(versions) > limit
+    selected = sorted(candidates.items())[-limit:]
+    refs = tuple(
+        sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": candidate["record_id"]})
+        for _, (_, candidate) in selected
+    )
+    indexed_entries = repo.get_artifact_metadata_by_refs(refs)
+    bars: list[DesktopChartBarV2] = []
+    for open_at, (_, candidate) in selected:
+        record_id = candidate["record_id"]
+        ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": record_id})
+        indexed = indexed_entries.get(ref)
+        metadata = indexed.get("metadata") if indexed is not None else None
+        raw_bytes = candidate["raw_payload_bytes"]
+        from decimal import Decimal, InvalidOperation
 
-
-def _ordered_chart_bars(
-    values: Mapping[int, tuple[tuple[int, str], DesktopChartBarV2]], limit: int
-) -> tuple[DesktopChartBarV2, ...]:
-    return tuple(values[key][1] for key in sorted(values)[-limit:])
+        try:
+            if (
+                not isinstance(raw_bytes, bytes)
+                or hashlib.sha256(raw_bytes).hexdigest() != candidate["raw_payload_hash"]
+                or not isinstance(candidate["observation_json"], str)
+            ):
+                continue
+            observation = RawObservationV2.from_dict(json.loads(candidate["observation_json"]))
+            raw_bar = candidate["bar"]
+            if record_id != observation.record_id or not isinstance(raw_bar, Mapping):
+                continue
+            close_at = close_boundary_ns(open_at, interval)
+            values = tuple(Decimal(str(raw_bar[name])) for name in ("open", "high", "low", "close", "volume"))
+            bar = CausalBarV2(
+                observation,
+                interval,
+                open_at,
+                close_at,
+                values[0],
+                values[1],
+                values[2],
+                values[3],
+                values[4],
+                raw_bar.get("final") is True,
+            )
+        except (ValueError, TypeError, KeyError, InvalidOperation, json.JSONDecodeError):
+            continue
+        if (
+            indexed is None
+            or indexed.get("artifact_type") != "PublicObservationIndexV2"
+            or indexed.get("content_hash") != observation.content_hash
+            or indexed.get("available_at_ns") != observation.available_at_ns
+            or not isinstance(metadata, Mapping)
+            or metadata.get("instrument_key_json") != key.to_canonical_json()
+            or metadata.get("bar_content_hash") != bar.content_hash
+            or metadata.get("raw_payload_hash") != observation.raw_payload_hash
+        ):
+            continue
+        display = DesktopChartBarV2(
+            bar.open_at_ns,
+            bar.close_at_ns,
+            str(bar.open),
+            str(bar.high),
+            str(bar.low),
+            str(bar.close),
+            str(bar.volume),
+            bar.content_hash,
+            ref,
+        )
+        bars.append(display)
+    return tuple(bars), len(candidates) > limit
 
 
 def project_chart_series(
-    repo: OpsRepository, *, key_json: str, interval: str, information_cutoff_ns: int,
-    archive_root: str | Path | None, availability_view: str = "ACTUAL_SYSTEM",
+    repo: OpsRepository,
+    *,
+    key_json: str,
+    interval: str,
+    information_cutoff_ns: int,
+    archive_root: str | Path | None,
+    availability_view: str = "ACTUAL_SYSTEM",
     limit: int = MAX_CHART_BARS,
 ) -> DesktopChartSeriesV2:
     """Read actual archived candles only after matching them to the immutable ops index."""
@@ -923,6 +1397,7 @@ def project_chart_series(
     try:
         key = json.loads(key_json)
         from ..instruments import InstrumentKeyV2
+
         instrument = InstrumentKeyV2.from_dict(key)
         frame = BarIntervalV2(interval)
         view = AvailabilityClassV2(availability_view)
@@ -931,16 +1406,53 @@ def project_chart_series(
     if view not in (AvailabilityClassV2.ACTUAL_SYSTEM, AvailabilityClassV2.RECONSTRUCTED_MARKET):
         raise ValueError("chart availability view must be actual or reconstructed market")
     if archive_root is None:
-        return DesktopChartSeriesV2(2, DESKTOP_PROJECTION_VERSION, instrument.to_canonical_json(), frame.value,
-            information_cutoff_ns, view.value, "UNAVAILABLE", "ARCHIVE_NOT_CONFIGURED", ())
-    bars, truncated = _read_chart_bars_from_archive(repo, Path(archive_root), key_revision=instrument.contract_revision,
-        interval=frame, cutoff_ns=information_cutoff_ns, availability_view=view, limit=limit)
+        return DesktopChartSeriesV2(
+            2,
+            DESKTOP_PROJECTION_VERSION,
+            instrument.to_canonical_json(),
+            frame.value,
+            information_cutoff_ns,
+            view.value,
+            "UNAVAILABLE",
+            "ARCHIVE_NOT_CONFIGURED",
+            (),
+        )
+    bars, truncated = _read_chart_bars_from_archive(
+        repo,
+        Path(archive_root),
+        key=instrument,
+        interval=frame,
+        cutoff_ns=information_cutoff_ns,
+        availability_view=view,
+        limit=limit,
+    )
     if not bars:
-        return DesktopChartSeriesV2(2, DESKTOP_PROJECTION_VERSION, instrument.to_canonical_json(), frame.value,
-            information_cutoff_ns, view.value, "UNAVAILABLE",
-            "ARCHIVE_SCAN_BOUND_EXCEEDED" if truncated else "NO_CAUSAL_CANDLES_AVAILABLE", ())
-    synthetic_refs = _synthetic_refs(repo.artifact_entries_by_types(("SyntheticIntegrationFixtureV1",)))
-    return DesktopChartSeriesV2(2, DESKTOP_PROJECTION_VERSION, instrument.to_canonical_json(), frame.value,
-        information_cutoff_ns, view.value, "AVAILABLE",
-        "SERIES_LIMIT_APPLIED" if truncated else None, bars,
-        any(row.bar_ref in synthetic_refs or row.observation_ref in synthetic_refs for row in bars))
+        return DesktopChartSeriesV2(
+            2,
+            DESKTOP_PROJECTION_VERSION,
+            instrument.to_canonical_json(),
+            frame.value,
+            information_cutoff_ns,
+            view.value,
+            "UNAVAILABLE",
+            "ARCHIVE_SCAN_BOUND_EXCEEDED" if truncated else "NO_CAUSAL_CANDLES_AVAILABLE",
+            (),
+        )
+    synthetic_refs = _synthetic_refs(
+        repo.artifact_entries_by_types(
+            ("SyntheticIntegrationFixtureV1",),
+            available_before_ns=information_cutoff_ns,
+        )
+    )
+    return DesktopChartSeriesV2(
+        2,
+        DESKTOP_PROJECTION_VERSION,
+        instrument.to_canonical_json(),
+        frame.value,
+        information_cutoff_ns,
+        view.value,
+        "AVAILABLE",
+        "SERIES_LIMIT_APPLIED" if truncated else None,
+        bars,
+        any(row.bar_ref in synthetic_refs or row.observation_ref in synthetic_refs for row in bars),
+    )

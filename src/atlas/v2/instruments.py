@@ -102,7 +102,17 @@ class InstrumentKeyV2:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> InstrumentKeyV2:
-        fields = {"schema_version", "venue", "environment", "product", "native_symbol", "base_asset_id", "quote_asset", "settlement_asset", "contract_revision"}
+        fields = {
+            "schema_version",
+            "venue",
+            "environment",
+            "product",
+            "native_symbol",
+            "base_asset_id",
+            "quote_asset",
+            "settlement_asset",
+            "contract_revision",
+        }
         d = strict_fields(data, expected=fields, required=fields, name=cls.__name__)
         if type(d["schema_version"]) is not int or d["schema_version"] != cls.SCHEMA_VERSION:
             raise ValueError("unsupported InstrumentKeyV2 schema_version")
@@ -110,7 +120,11 @@ class InstrumentKeyV2:
             _enum(VenueV2, d["venue"], field_name="venue"),
             _enum(EnvironmentV2, d["environment"], field_name="environment"),
             _enum(ProductTypeV2, d["product"], field_name="product"),
-            d["native_symbol"], d["base_asset_id"], d["quote_asset"], d["settlement_asset"], d["contract_revision"],
+            d["native_symbol"],
+            d["base_asset_id"],
+            d["quote_asset"],
+            d["settlement_asset"],
+            d["contract_revision"],
         )
 
 
@@ -156,9 +170,15 @@ class ProductContractV2:
             value = getattr(self, field_name)
             if value is not None:
                 timestamp(value, field=field_name)
-        if self.listing_at_ns is not None and self.delisting_at_ns is not None and self.delisting_at_ns < self.listing_at_ns:
+        if (
+            self.listing_at_ns is not None
+            and self.delisting_at_ns is not None
+            and self.delisting_at_ns < self.listing_at_ns
+        ):
             raise ValueError("delisting_at_ns cannot precede listing_at_ns")
-        object.__setattr__(self, "trading_status", _enum(TradingStatusV2, self.trading_status, field_name="trading_status"))
+        object.__setattr__(
+            self, "trading_status", _enum(TradingStatusV2, self.trading_status, field_name="trading_status")
+        )
         nonblank(self.metadata_ref, field="metadata_ref")
         for field_name in ("fee_schedule_ref", "margin_tiers_ref", "funding_schedule_ref"):
             value = getattr(self, field_name)
@@ -199,8 +219,35 @@ class ProductContractV2:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> ProductContractV2:
-        fields = {"schema_version", "key", "effective_at_ns", "observed_at_ns", "available_at_ns", "base_units_per_contract", "tick_size", "qty_step", "min_qty", "min_notional", "max_qty", "trading_status", "listing_at_ns", "delisting_at_ns", "fee_schedule_ref", "margin_tiers_ref", "funding_schedule_ref", "metadata_ref"}
-        optional = {"min_notional", "max_qty", "listing_at_ns", "delisting_at_ns", "fee_schedule_ref", "margin_tiers_ref", "funding_schedule_ref"}
+        fields = {
+            "schema_version",
+            "key",
+            "effective_at_ns",
+            "observed_at_ns",
+            "available_at_ns",
+            "base_units_per_contract",
+            "tick_size",
+            "qty_step",
+            "min_qty",
+            "min_notional",
+            "max_qty",
+            "trading_status",
+            "listing_at_ns",
+            "delisting_at_ns",
+            "fee_schedule_ref",
+            "margin_tiers_ref",
+            "funding_schedule_ref",
+            "metadata_ref",
+        }
+        optional = {
+            "min_notional",
+            "max_qty",
+            "listing_at_ns",
+            "delisting_at_ns",
+            "fee_schedule_ref",
+            "margin_tiers_ref",
+            "funding_schedule_ref",
+        }
         d = strict_fields(data, expected=fields, required=fields - optional, name=cls.__name__)
         if type(d["schema_version"]) is not int or d["schema_version"] != cls.SCHEMA_VERSION:
             raise ValueError("unsupported ProductContractV2 schema_version")
@@ -210,11 +257,23 @@ class ProductContractV2:
             decimals[name] = decimal_value(value, field=name, wire=True) if value is not None else None
         from_dict_key = InstrumentKeyV2.from_dict(d["key"])
         return cls(
-            from_dict_key, d["effective_at_ns"], d["observed_at_ns"], d["available_at_ns"],
-            decimals["base_units_per_contract"], decimals["tick_size"], decimals["qty_step"], decimals["min_qty"],
-            _enum(TradingStatusV2, d["trading_status"], field_name="trading_status"), d["metadata_ref"],
-            decimals["min_notional"], decimals["max_qty"], d.get("listing_at_ns"), d.get("delisting_at_ns"),
-            d.get("fee_schedule_ref"), d.get("margin_tiers_ref"), d.get("funding_schedule_ref"),
+            from_dict_key,
+            d["effective_at_ns"],
+            d["observed_at_ns"],
+            d["available_at_ns"],
+            decimals["base_units_per_contract"],
+            decimals["tick_size"],
+            decimals["qty_step"],
+            decimals["min_qty"],
+            _enum(TradingStatusV2, d["trading_status"], field_name="trading_status"),
+            d["metadata_ref"],
+            decimals["min_notional"],
+            decimals["max_qty"],
+            d.get("listing_at_ns"),
+            d.get("delisting_at_ns"),
+            d.get("fee_schedule_ref"),
+            d.get("margin_tiers_ref"),
+            d.get("funding_schedule_ref"),
         )
 
 
@@ -245,7 +304,9 @@ class InstrumentRegistryV2:
         except KeyError as exc:
             raise KeyError(f"unknown product_ref: {product_ref}") from exc
 
-    def resolve_as_of(self, key: InstrumentKeyV2, *, decision_slot_ns: int, information_cutoff_ns: int) -> ProductContractV2 | None:
+    def resolve_as_of(
+        self, key: InstrumentKeyV2, *, decision_slot_ns: int, information_cutoff_ns: int
+    ) -> ProductContractV2 | None:
         if not isinstance(key, InstrumentKeyV2):
             raise ValueError("registry resolution requires full InstrumentKeyV2 identity")
         timestamp(decision_slot_ns, field="decision_slot_ns")
@@ -253,7 +314,8 @@ class InstrumentRegistryV2:
         if information_cutoff_ns > decision_slot_ns:
             raise ValueError("information cutoff cannot follow the decision slot")
         eligible = [
-            contract for (registered_key, _), contract in self._contracts.items()
+            contract
+            for (registered_key, _), contract in self._contracts.items()
             if registered_key == key
             and contract.effective_at_ns <= decision_slot_ns
             and contract.available_at_ns <= information_cutoff_ns
@@ -263,9 +325,13 @@ class InstrumentRegistryV2:
             return None
         return max(eligible, key=lambda item: (item.effective_at_ns, item.available_at_ns, item.content_hash))
 
-    def validate_universe_as_of(self, entries: Sequence[UniverseEntryV2], *, decision_slot_ns: int, information_cutoff_ns: int) -> None:
+    def validate_universe_as_of(
+        self, entries: Sequence[UniverseEntryV2], *, decision_slot_ns: int, information_cutoff_ns: int
+    ) -> None:
         for entry in entries:
-            product = self.resolve_as_of(entry.key, decision_slot_ns=decision_slot_ns, information_cutoff_ns=information_cutoff_ns)
+            product = self.resolve_as_of(
+                entry.key, decision_slot_ns=decision_slot_ns, information_cutoff_ns=information_cutoff_ns
+            )
             if product is None or product.content_hash != entry.product_ref:
                 raise ValueError("universe entry references product metadata unavailable at its information cutoff")
 
@@ -273,9 +339,29 @@ class InstrumentRegistryV2:
         return tuple(
             sorted(
                 self._contracts.values(),
-                key=lambda item: (item.key.to_canonical_json(), item.effective_at_ns, item.available_at_ns, item.content_hash),
+                key=lambda item: (
+                    item.key.to_canonical_json(),
+                    item.effective_at_ns,
+                    item.available_at_ns,
+                    item.content_hash,
+                ),
             )
         )
+
+    def resolve_key_for_revision(self, contract_revision: str) -> InstrumentKeyV2:
+        """Resolve a revision only when it names one exact instrument identity.
+
+        ``contract_revision`` is scoped by an InstrumentKeyV2 in the frozen
+        contract. It is not globally unique, so data that carries only the
+        revision may be bound to a key only when this registry is unambiguous.
+        """
+        nonblank(contract_revision, field="contract_revision")
+        keys = {item.key for item in self._contracts.values() if item.key.contract_revision == contract_revision}
+        if not keys:
+            raise ValueError("instrument revision is unresolved in InstrumentRegistryV2")
+        if len(keys) != 1:
+            raise ValueError("instrument revision is ambiguous across InstrumentKeyV2 identities")
+        return next(iter(keys))
 
 
 @dataclass(frozen=True)
@@ -318,10 +404,20 @@ class UniverseEntryV2:
         if not isinstance(self.key, InstrumentKeyV2):
             raise ValueError("key must be InstrumentKeyV2")
         sha256_ref(self.product_ref, field="product_ref")
-        for field_name in ("observed", "data_eligible", "scanner_eligible", "deep_analysis_eligible", "capital_eligible"):
+        for field_name in (
+            "observed",
+            "data_eligible",
+            "scanner_eligible",
+            "deep_analysis_eligible",
+            "capital_eligible",
+        ):
             if type(getattr(self, field_name)) is not bool:
                 raise ValueError(f"{field_name} must be an explicit boolean")
-        strategy = self.strategy_eligibility if isinstance(self.strategy_eligibility, FrozenMap) else FrozenMap(self.strategy_eligibility)
+        strategy = (
+            self.strategy_eligibility
+            if isinstance(self.strategy_eligibility, FrozenMap)
+            else FrozenMap(self.strategy_eligibility)
+        )
         if any(not isinstance(value, StrategyEligibilityV2) for value in strategy.values()):
             raise ValueError("strategy_eligibility values must be StrategyEligibilityV2")
         object.__setattr__(self, "strategy_eligibility", strategy)
@@ -349,16 +445,37 @@ class UniverseEntryV2:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> UniverseEntryV2:
-        fields = {"key", "product_ref", "observed", "data_eligible", "scanner_eligible", "deep_analysis_eligible", "capital_eligible", "strategy_eligibility", "reasons", "cheap_feature_ref", "warmup_ref"}
+        fields = {
+            "key",
+            "product_ref",
+            "observed",
+            "data_eligible",
+            "scanner_eligible",
+            "deep_analysis_eligible",
+            "capital_eligible",
+            "strategy_eligibility",
+            "reasons",
+            "cheap_feature_ref",
+            "warmup_ref",
+        }
         required = fields - {"cheap_feature_ref", "warmup_ref"}
         d = strict_fields(data, expected=fields, required=required, name=cls.__name__)
         if not isinstance(d["strategy_eligibility"], Mapping) or not isinstance(d["reasons"], list):
             raise ValueError("strategy_eligibility/reasons have invalid wire types")
         return cls(
-            InstrumentKeyV2.from_dict(d["key"]), d["product_ref"], d["observed"], d["data_eligible"], d["scanner_eligible"],
-            d["deep_analysis_eligible"], d["capital_eligible"],
-            FrozenMap({policy: StrategyEligibilityV2.from_dict(value) for policy, value in d["strategy_eligibility"].items()}),
-            tuple(d["reasons"]), d.get("cheap_feature_ref"), d.get("warmup_ref"),
+            InstrumentKeyV2.from_dict(d["key"]),
+            d["product_ref"],
+            d["observed"],
+            d["data_eligible"],
+            d["scanner_eligible"],
+            d["deep_analysis_eligible"],
+            d["capital_eligible"],
+            FrozenMap(
+                {policy: StrategyEligibilityV2.from_dict(value) for policy, value in d["strategy_eligibility"].items()}
+            ),
+            tuple(d["reasons"]),
+            d.get("cheap_feature_ref"),
+            d.get("warmup_ref"),
         )
 
 
@@ -388,7 +505,9 @@ class UniverseContractV2:
         if not refs.issubset(set(self.envelope.input_refs)):
             raise ValueError("all product revisions must be bound as envelope input_refs")
         object.__setattr__(self, "entries", entries)
-        object.__setattr__(self, "envelope", seal_envelope(self.envelope, self._body(), artifact_type=self.ARTIFACT_TYPE))
+        object.__setattr__(
+            self, "envelope", seal_envelope(self.envelope, self._body(), artifact_type=self.ARTIFACT_TYPE)
+        )
 
     def _body(self) -> dict[str, Any]:
         return {
@@ -414,7 +533,9 @@ class UniverseContractV2:
     def validate_as_of(self, registry: InstrumentRegistryV2, *, information_cutoff_ns: int) -> None:
         if information_cutoff_ns > self.decision_slot_ns or self.envelope.available_at_ns > information_cutoff_ns:
             raise ValueError("universe artifact is not available at requested replay cutoff")
-        registry.validate_universe_as_of(self.entries, decision_slot_ns=self.decision_slot_ns, information_cutoff_ns=information_cutoff_ns)
+        registry.validate_universe_as_of(
+            self.entries, decision_slot_ns=self.decision_slot_ns, information_cutoff_ns=information_cutoff_ns
+        )
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> UniverseContractV2:
@@ -423,6 +544,9 @@ class UniverseContractV2:
         if not isinstance(d["entries"], list):
             raise ValueError("entries must be an array")
         return cls(
-            ArtifactEnvelope.from_dict(d["envelope"]), d["universe_version"], d["decision_slot_ns"], d["selection_policy_hash"],
+            ArtifactEnvelope.from_dict(d["envelope"]),
+            d["universe_version"],
+            d["decision_slot_ns"],
+            d["selection_policy_hash"],
             tuple(UniverseEntryV2.from_dict(entry) for entry in d["entries"]),
         )

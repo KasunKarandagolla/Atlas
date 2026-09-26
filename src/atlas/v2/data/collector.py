@@ -82,6 +82,7 @@ class PublicCollectorV2:
         self.health = SourceHealthTrackerV2()
         self._last_sequence: dict[tuple[str, str], int] = {}
         self._pending_archive: list[ImportedObservationV2] = []
+        self._pending_instrument_keys: dict[str, InstrumentKeyV2] = {}
         self._health_state: dict[str, PublicSourceStateV2] = {}
         self._cursor_hashes: dict[tuple[str, str], dict[str, str]] = {}
         self._conflicts: list[ConflictingDuplicateV2] = []
@@ -129,9 +130,13 @@ class PublicCollectorV2:
                 self._last_sequence[cursor] = max(self._last_sequence.get(cursor, sequence), sequence)
                 hashes = metadata.get("recent_payload_hashes", {})
                 if isinstance(hashes, Mapping):
-                    self._cursor_hashes[cursor] = {str(record_id): str(payload_hash) for record_id, payload_hash in hashes.items()}
+                    self._cursor_hashes[cursor] = {
+                        str(record_id): str(payload_hash) for record_id, payload_hash in hashes.items()
+                    }
 
-    def _record_health(self, source_id: str, state: PublicSourceStateV2, *, at_ns: int, details: str) -> PublicSourceHealthV2:
+    def _record_health(
+        self, source_id: str, state: PublicSourceStateV2, *, at_ns: int, details: str
+    ) -> PublicSourceHealthV2:
         timestamp(at_ns, field="health observation time")
         prior = self._health_state.get(source_id)
         if prior == state:
@@ -161,14 +166,24 @@ class PublicCollectorV2:
         observation: RawObservationV2,
         *,
         raw_payload: bytes | str,
+        instrument_key: InstrumentKeyV2 | None = None,
         bar: CausalBarV2 | None = None,
         sequence_channel: str | None = None,
         sequence_is_contiguous: bool = False,
     ) -> CollectorIngestResultV2:
-        if not any(item.key.contract_revision == observation.instrument_revision for item in self.registry.contracts()):
-            raise ValueError("raw observation instrument revision is unresolved in InstrumentRegistryV2")
+        if instrument_key is None:
+            instrument_key = self.registry.resolve_key_for_revision(observation.instrument_revision)
+        elif (
+            not isinstance(instrument_key, InstrumentKeyV2)
+            or instrument_key.contract_revision != observation.instrument_revision
+            or not any(item.key == instrument_key for item in self.registry.contracts())
+        ):
+            raise ValueError("explicit collector instrument key is not registered for the observation revision")
         payload_bytes = raw_payload.encode("utf-8") if isinstance(raw_payload, str) else raw_payload
-        if not isinstance(payload_bytes, bytes) or hashlib.sha256(payload_bytes).hexdigest() != observation.raw_payload_hash:
+        if (
+            not isinstance(payload_bytes, bytes)
+            or hashlib.sha256(payload_bytes).hexdigest() != observation.raw_payload_hash
+        ):
             raise ValueError("archived raw payload bytes must match RawObservationV2.raw_payload_hash")
         if bar is not None and (bar.raw.content_hash != observation.content_hash or not bar.final):
             raise ValueError("collector bars must be final and bound to the exact raw observation")
@@ -182,6 +197,7 @@ class PublicCollectorV2:
                 persisted_entry.artifact_type == "PublicObservationIndexV2"
                 and indexed.get("record_id") == observation.record_id
                 and indexed.get("instrument_revision") == observation.instrument_revision
+                and indexed.get("instrument_key_json") in (None, instrument_key.to_canonical_json())
                 and indexed.get("event_at_ns") == observation.event_at_ns
                 and indexed.get("published_at_ns") == observation.published_at_ns
                 and indexed.get("translation_version") == observation.translation_version
@@ -211,7 +227,9 @@ class PublicCollectorV2:
                 existing = self.store.get(observation.record_id)
                 prior_hash = existing.raw_payload_hash if existing is not None else observation.raw_payload_hash
             if self.archive is None:
-                raise RuntimeError("Parquet observation archive is required to durably quarantine a conflicting duplicate")
+                raise RuntimeError(
+                    "Parquet observation archive is required to durably quarantine a conflicting duplicate"
+                )
             quarantine_chunk_id = sha256_json(
                 {
                     "artifact_type": "PublicDuplicateConflictV2",
@@ -250,8 +268,12 @@ class PublicCollectorV2:
             conflict_hash = sha256_json(metadata)
             self.repository.register_artifact(
                 ArtifactIndexEntryV2(
-                    conflict_hash, "PublicDuplicateConflictV2", conflict_hash, conflict.observed_at_ns,
-                    conflict.observed_at_ns, metadata,
+                    conflict_hash,
+                    "PublicDuplicateConflictV2",
+                    conflict_hash,
+                    conflict.observed_at_ns,
+                    conflict.observed_at_ns,
+                    metadata,
                 )
             )
             self._record_health(
@@ -266,6 +288,7 @@ class PublicCollectorV2:
         self._pending_archive.append(
             ImportedObservationV2(len(self._pending_archive) + 1, observation, payload_bytes, bar)
         )
+        self._pending_instrument_keys[observation.record_id] = instrument_key
         self._bar_hashes[observation.record_id] = bar.content_hash if bar is not None else None
 
         gap: SequenceGapV2 | None = None
@@ -318,10 +341,11 @@ class PublicCollectorV2:
             }
         )
         path = self.archive.write_observation_chunk(chunk_id, items)
+        index_entries: list[ArtifactIndexEntryV2] = []
         for item in items:
             observation = item.observation
             index_ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": observation.record_id})
-            self.repository.register_artifact(
+            index_entries.append(
                 ArtifactIndexEntryV2(
                     index_ref,
                     "PublicObservationIndexV2",
@@ -331,6 +355,7 @@ class PublicCollectorV2:
                     {
                         "record_id": observation.record_id,
                         "instrument_revision": observation.instrument_revision,
+                        "instrument_key_json": self._pending_instrument_keys[observation.record_id].to_canonical_json(),
                         "event_at_ns": observation.event_at_ns,
                         "published_at_ns": observation.published_at_ns,
                         "translation_version": observation.translation_version,
@@ -343,31 +368,39 @@ class PublicCollectorV2:
                     },
                 )
             )
+        self.repository.register_artifacts(index_entries)
         self._pending_archive.clear()
+        self._pending_instrument_keys.clear()
         return str(path)
 
     def quarantined_conflicts(self) -> tuple[ConflictingDuplicateV2, ...]:
         return tuple(self._conflicts)
 
     def on_disconnect(self, source_id: str, *, at_ns: int) -> PublicSourceHealthV2:
-        return self._record_health(source_id, PublicSourceStateV2.DISCONNECTED, at_ns=at_ns, details="public transport disconnected")
+        return self._record_health(
+            source_id, PublicSourceStateV2.DISCONNECTED, at_ns=at_ns, details="public transport disconnected"
+        )
 
     def on_stale(self, source_id: str, *, at_ns: int) -> PublicSourceHealthV2:
-        return self._record_health(source_id, PublicSourceStateV2.STALE, at_ns=at_ns, details="public source exceeded its freshness bound")
+        return self._record_health(
+            source_id, PublicSourceStateV2.STALE, at_ns=at_ns, details="public source exceeded its freshness bound"
+        )
 
     def on_rate_limited(self, source_id: str, *, at_ns: int) -> PublicSourceHealthV2:
         return self._record_health(
-            source_id, PublicSourceStateV2.DEGRADED_RATE_LIMITED, at_ns=at_ns,
+            source_id,
+            PublicSourceStateV2.DEGRADED_RATE_LIMITED,
+            at_ns=at_ns,
             details="public source rate limited; data eligibility is suspended",
         )
 
     def mark_incomplete_snapshot(self, source_id: str, *, at_ns: int, details: str) -> PublicSourceHealthV2:
-        return self._record_health(
-            source_id, PublicSourceStateV2.INCOMPLETE_SNAPSHOT, at_ns=at_ns, details=details
-        )
+        return self._record_health(source_id, PublicSourceStateV2.INCOMPLETE_SNAPSHOT, at_ns=at_ns, details=details)
 
     def begin_reconnect(self, source_id: str, *, attempt: int, at_ns: int) -> tuple[PublicSourceHealthV2, int]:
-        record = self._record_health(source_id, PublicSourceStateV2.RECONNECTING, at_ns=at_ns, details="bounded public reconnect in progress")
+        record = self._record_health(
+            source_id, PublicSourceStateV2.RECONNECTING, at_ns=at_ns, details="bounded public reconnect in progress"
+        )
         return record, self.backoff.delay_ms(attempt)
 
     def reconnected(self, source_id: str, *, at_ns: int) -> PublicSourceHealthV2:
@@ -378,7 +411,9 @@ class PublicCollectorV2:
             details="reconnected; overlap/gap repair is required before eligibility",
         )
 
-    def reconcile_after_reconnect(self, source_id: str, *, at_ns: int, complete_snapshot: bool, missed_interval_repaired: bool) -> PublicSourceHealthV2:
+    def reconcile_after_reconnect(
+        self, source_id: str, *, at_ns: int, complete_snapshot: bool, missed_interval_repaired: bool
+    ) -> PublicSourceHealthV2:
         healthy = complete_snapshot and missed_interval_repaired
         state = PublicSourceStateV2.HEALTHY_CURRENT if healthy else PublicSourceStateV2.INCOMPLETE_SNAPSHOT
         detail = "overlap snapshot and missed interval verified" if healthy else "reconnect evidence remains incomplete"

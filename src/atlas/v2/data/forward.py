@@ -67,31 +67,51 @@ class BinanceDepthCaptureV2:
         self.last_update_id: int | None = None
         self.valid = False
 
-    def _save(self, raw: bytes, *, event_type: str, event_at_ns: int | None, received_at_ns: int,
-              sequence: int) -> ForwardReceiptV2:
+    def _save(
+        self, raw: bytes, *, event_type: str, event_at_ns: int | None, received_at_ns: int, sequence: int
+    ) -> ForwardReceiptV2:
         timestamp(received_at_ns, field="actual receipt")
         now = self.collector.clock_ns()
         if now < received_at_ns:
             raise ValueError("ingestion cannot predate actual receipt")
-        obs = RawObservationV2.build(instrument_revision=self.key.contract_revision, source_id=self.source_id,
-            event_type=event_type, received_at_ns=received_at_ns, ingested_at_ns=now,
-            available_at_ns=now, translation_version="BINANCE_USDM_DEPTH_CAPTURE_V1",
-            payload=raw, event_at_ns=event_at_ns, sequence=sequence)
-        result = self.collector.ingest(obs, raw_payload=raw)
+        obs = RawObservationV2.build(
+            instrument_revision=self.key.contract_revision,
+            source_id=self.source_id,
+            event_type=event_type,
+            received_at_ns=received_at_ns,
+            ingested_at_ns=now,
+            available_at_ns=now,
+            translation_version="BINANCE_USDM_DEPTH_CAPTURE_V1",
+            payload=raw,
+            event_at_ns=event_at_ns,
+            sequence=sequence,
+        )
+        result = self.collector.ingest(obs, raw_payload=raw, instrument_key=self.key)
         if result.append.status == AppendStatusV2.CONFLICT_QUARANTINED:
             self.valid = False
             return ForwardReceiptV2(obs.content_hash, obs.raw_payload_hash, False, "CONFLICT")
         self.collector.flush_archive()
         if result.append.status == AppendStatusV2.DUPLICATE:
-            return ForwardReceiptV2(_indexed_observation_ref(self.collector, obs),
-                                    obs.raw_payload_hash, self.valid, "DUPLICATE")
-        cursor = {"source_id": self.source_id, "last_update_id": self.last_update_id,
-                  "snapshot_update_id": self.snapshot_update_id, "sequence_valid": self.valid,
-                  "observation_ref": obs.content_hash}
+            return ForwardReceiptV2(
+                _indexed_observation_ref(self.collector, obs), obs.raw_payload_hash, self.valid, "DUPLICATE"
+            )
+        cursor = {
+            "source_id": self.source_id,
+            "last_update_id": self.last_update_id,
+            "snapshot_update_id": self.snapshot_update_id,
+            "sequence_valid": self.valid,
+            "observation_ref": obs.content_hash,
+        }
         ref = sha256_json({"artifact_type": "ForwardDepthCursorV2", "cursor": cursor})
-        self.collector.repository.register_artifact(ArtifactIndexEntryV2(ref, "ForwardDepthCursorV2", ref,
-            now, now, cursor))
-        return ForwardReceiptV2(obs.content_hash, obs.raw_payload_hash, self.valid, "SEQUENCE_VALID" if self.valid else "INCOMPLETE_SNAPSHOT")
+        self.collector.repository.register_artifact(
+            ArtifactIndexEntryV2(ref, "ForwardDepthCursorV2", ref, now, now, cursor)
+        )
+        return ForwardReceiptV2(
+            obs.content_hash,
+            obs.raw_payload_hash,
+            self.valid,
+            "SEQUENCE_VALID" if self.valid else "INCOMPLETE_SNAPSHOT",
+        )
 
     def snapshot(self, response: PublicHttpResponseV2) -> ForwardReceiptV2:
         if response.venue != PublicVenueV2.BINANCE or response.path != "/fapi/v1/depth":
@@ -101,10 +121,16 @@ class BinanceDepthCaptureV2:
         self.valid = False
         self.snapshot_update_id = update_id
         self.last_update_id = None
-        self.collector.mark_incomplete_snapshot(self.source_id, at_ns=response.received_at_ns,
-            details="snapshot archived; bridging diff still required")
-        return self._save(response.raw_body, event_type="L2_SNAPSHOT", event_at_ns=None,
-                          received_at_ns=response.received_at_ns, sequence=update_id)
+        self.collector.mark_incomplete_snapshot(
+            self.source_id, at_ns=response.received_at_ns, details="snapshot archived; bridging diff still required"
+        )
+        return self._save(
+            response.raw_body,
+            event_type="L2_SNAPSHOT",
+            event_at_ns=None,
+            received_at_ns=response.received_at_ns,
+            sequence=update_id,
+        )
 
     def delta(self, raw: bytes, *, received_at_ns: int) -> ForwardReceiptV2:
         body = _obj(raw)
@@ -117,8 +143,9 @@ class BinanceDepthCaptureV2:
         if first > last:
             raise ValueError("invalid depth range")
         if self.valid and last == self.last_update_id:
-            return self._save(raw, event_type="L2_DELTA", event_at_ns=event_at,
-                              received_at_ns=received_at_ns, sequence=last)
+            return self._save(
+                raw, event_type="L2_DELTA", event_at_ns=event_at, received_at_ns=received_at_ns, sequence=last
+            )
         if self.snapshot_update_id is None:
             self.valid = False
         elif self.last_update_id is None:
@@ -129,8 +156,11 @@ class BinanceDepthCaptureV2:
                 self.last_update_id = last
             else:
                 self.valid = False
-                self.collector.mark_incomplete_snapshot(self.source_id, at_ns=self.collector.clock_ns(),
-                    details="snapshot/delta bridge failed; fresh snapshot required")
+                self.collector.mark_incomplete_snapshot(
+                    self.source_id,
+                    at_ns=self.collector.clock_ns(),
+                    details="snapshot/delta bridge failed; fresh snapshot required",
+                )
                 self.snapshot_update_id = None
         elif self.valid and previous == self.last_update_id:
             self.last_update_id = last
@@ -139,13 +169,18 @@ class BinanceDepthCaptureV2:
             self.snapshot_update_id = None
             self.last_update_id = None
             self.collector.on_disconnect(self.source_id, at_ns=self.collector.clock_ns())
-            self.collector.mark_incomplete_snapshot(self.source_id, at_ns=self.collector.clock_ns(),
-                details="depth sequence gap/reset; fresh snapshot required")
-        receipt = self._save(raw, event_type="L2_DELTA", event_at_ns=event_at,
-                             received_at_ns=received_at_ns, sequence=last)
+            self.collector.mark_incomplete_snapshot(
+                self.source_id,
+                at_ns=self.collector.clock_ns(),
+                details="depth sequence gap/reset; fresh snapshot required",
+            )
+        receipt = self._save(
+            raw, event_type="L2_DELTA", event_at_ns=event_at, received_at_ns=received_at_ns, sequence=last
+        )
         if self.valid:
-            self.collector.reconcile_after_reconnect(self.source_id, at_ns=self.collector.clock_ns(),
-                complete_snapshot=True, missed_interval_repaired=True)
+            self.collector.reconcile_after_reconnect(
+                self.source_id, at_ns=self.collector.clock_ns(), complete_snapshot=True, missed_interval_repaired=True
+            )
         return receipt
 
     def disconnected(self, at_ns: int) -> None:
@@ -186,8 +221,12 @@ def bybit_liquidation_semantics(row: Mapping[str, Any]) -> tuple[str, str]:
 
 
 def capture_bybit_public_frame(
-    collector: PublicCollectorV2, key: InstrumentKeyV2, raw: bytes, *,
-    channel: str, received_at_ns: int,
+    collector: PublicCollectorV2,
+    key: InstrumentKeyV2,
+    raw: bytes,
+    *,
+    channel: str,
+    received_at_ns: int,
 ) -> ForwardReceiptV2:
     """Archive exact trade/liquidation frame bytes; completeness remains unknown."""
     if key.venue != "BYBIT" or channel not in ("publicTrade", "allLiquidation"):
@@ -209,24 +248,38 @@ def capture_bybit_public_frame(
     if now < received_at_ns:
         raise ValueError("ingestion cannot predate actual frame receipt")
     source_id = f"BYBIT_{channel}_{key.native_symbol}"
-    collector.mark_incomplete_snapshot(source_id, at_ns=now,
-        details="raw public frames archived; feed completeness and censoring unqualified")
-    obs = RawObservationV2.build(instrument_revision=key.contract_revision, source_id=source_id,
-        event_type=channel, received_at_ns=received_at_ns, ingested_at_ns=now, available_at_ns=now,
-        translation_version="BYBIT_PUBLIC_FRAME_CAPTURE_V1", payload=raw,
+    collector.mark_incomplete_snapshot(
+        source_id, at_ns=now, details="raw public frames archived; feed completeness and censoring unqualified"
+    )
+    obs = RawObservationV2.build(
+        instrument_revision=key.contract_revision,
+        source_id=source_id,
+        event_type=channel,
+        received_at_ns=received_at_ns,
+        ingested_at_ns=now,
+        available_at_ns=now,
+        translation_version="BYBIT_PUBLIC_FRAME_CAPTURE_V1",
+        payload=raw,
         event_at_ns=max(_int(row.get("T"), "event T") for row in rows) * 1_000_000,
-        sequence=hashlib.sha256(raw).hexdigest())
-    result = collector.ingest(obs, raw_payload=raw)
+        sequence=hashlib.sha256(raw).hexdigest(),
+    )
+    result = collector.ingest(obs, raw_payload=raw, instrument_key=key)
     if result.append.status == AppendStatusV2.CONFLICT_QUARANTINED:
         return ForwardReceiptV2(obs.content_hash, obs.raw_payload_hash, False, "CONFLICT")
     collector.flush_archive()
-    return ForwardReceiptV2(_indexed_observation_ref(collector, obs), obs.raw_payload_hash,
-                            False, "COVERAGE_UNVERIFIED")
+    return ForwardReceiptV2(
+        _indexed_observation_ref(collector, obs), obs.raw_payload_hash, False, "COVERAGE_UNVERIFIED"
+    )
 
 
 def capture_official_material(
-    collector: PublicCollectorV2, key: InstrumentKeyV2, raw: bytes, *,
-    source_id: str, publication_claim_ns: int | None, received_at_ns: int,
+    collector: PublicCollectorV2,
+    key: InstrumentKeyV2,
+    raw: bytes,
+    *,
+    source_id: str,
+    publication_claim_ns: int | None,
+    received_at_ns: int,
     revision_of: str | None = None,
 ) -> ForwardReceiptV2:
     """Preserve exact supplied official material; source identity is caller evidence."""
@@ -236,16 +289,24 @@ def capture_official_material(
     now = collector.clock_ns()
     if now < received_at_ns:
         raise ValueError("ingestion cannot predate actual receipt")
-    obs = RawObservationV2.build(instrument_revision=key.contract_revision, source_id=source_id,
-        event_type="OFFICIAL_RAW_MATERIAL", received_at_ns=received_at_ns,
-        ingested_at_ns=now, available_at_ns=now, translation_version="OFFICIAL_RAW_CAPTURE_V1",
-        payload=raw, published_at_ns=publication_claim_ns, revision_of=revision_of,
-        sequence=hashlib.sha256(raw).hexdigest())
-    collector.mark_incomplete_snapshot(source_id, at_ns=now,
-        details="official source publication/coverage unqualified; raw body archived")
-    result = collector.ingest(obs, raw_payload=raw)
+    obs = RawObservationV2.build(
+        instrument_revision=key.contract_revision,
+        source_id=source_id,
+        event_type="OFFICIAL_RAW_MATERIAL",
+        received_at_ns=received_at_ns,
+        ingested_at_ns=now,
+        available_at_ns=now,
+        translation_version="OFFICIAL_RAW_CAPTURE_V1",
+        payload=raw,
+        published_at_ns=publication_claim_ns,
+        revision_of=revision_of,
+        sequence=hashlib.sha256(raw).hexdigest(),
+    )
+    collector.mark_incomplete_snapshot(
+        source_id, at_ns=now, details="official source publication/coverage unqualified; raw body archived"
+    )
+    result = collector.ingest(obs, raw_payload=raw, instrument_key=key)
     if result.append.status == AppendStatusV2.CONFLICT_QUARANTINED:
         return ForwardReceiptV2(obs.content_hash, obs.raw_payload_hash, False, "CONFLICT")
     collector.flush_archive()
-    return ForwardReceiptV2(_indexed_observation_ref(collector, obs), obs.raw_payload_hash,
-                            False, "SOURCE_UNVERIFIED")
+    return ForwardReceiptV2(_indexed_observation_ref(collector, obs), obs.raw_payload_hash, False, "SOURCE_UNVERIFIED")

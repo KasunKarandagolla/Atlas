@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from .._serialization import canonical_json, nonblank, sha256_json, sha256_ref, timestamp
+from ..instruments import InstrumentKeyV2
+from ..memory.repository import OpsRepository
 from .bars import BarIntervalV2, CausalBarV2, close_boundary_ns
 from .raw import AvailabilityClassV2, RawObservationV2
 
@@ -148,16 +150,22 @@ class HistoricalImporterV2:
                     raise ValueError("payload must be an object or array")
                 if "quality_flags" in value and not isinstance(value["quality_flags"], list):
                     raise ValueError("quality_flags must be an array")
-                if "quality_flags" in value and any(not isinstance(flag, str) or not flag.strip() for flag in value["quality_flags"]):
+                if "quality_flags" in value and any(
+                    not isinstance(flag, str) or not flag.strip() for flag in value["quality_flags"]
+                ):
                     raise ValueError("quality_flags must contain non-empty strings")
-                if "sequence" in value and value["sequence"] is not None and (
-                    isinstance(value["sequence"], bool) or not isinstance(value["sequence"], (str, int))
+                if (
+                    "sequence" in value
+                    and value["sequence"] is not None
+                    and (isinstance(value["sequence"], bool) or not isinstance(value["sequence"], (str, int)))
                 ):
                     raise ValueError("sequence must be an integer, string or null")
                 parsed.append((row_number, value, line))
             except (json.JSONDecodeError, ValueError, TypeError) as exc:
                 raise ImportQuarantinedV2(
-                    f"corrupt or unsupported JSONL row {row_number}: {exc}", file_sha256=file_hash, row_number=row_number
+                    f"corrupt or unsupported JSONL row {row_number}: {exc}",
+                    file_sha256=file_hash,
+                    row_number=row_number,
                 ) from exc
         if not parsed:
             raise ImportQuarantinedV2("historical source contains no observations", file_sha256=file_hash)
@@ -228,17 +236,17 @@ class HistoricalImporterV2:
                             row_number=row_number,
                         )
                     bar = CausalBarV2(
-                            observation,
-                            interval,
-                            open_at,
-                            close_at,
-                            Decimal(str(bar_payload["open"])),
-                            Decimal(str(bar_payload["high"])),
-                            Decimal(str(bar_payload["low"])),
-                            Decimal(str(bar_payload["close"])),
-                            Decimal(str(bar_payload["volume"])),
-                            True,
-                        )
+                        observation,
+                        interval,
+                        open_at,
+                        close_at,
+                        Decimal(str(bar_payload["open"])),
+                        Decimal(str(bar_payload["high"])),
+                        Decimal(str(bar_payload["low"])),
+                        Decimal(str(bar_payload["close"])),
+                        Decimal(str(bar_payload["volume"])),
+                        True,
+                    )
                     bars.append(bar)
                 observations.append(
                     ImportedObservationV2(
@@ -268,7 +276,9 @@ class ParquetObservationArchiveV2:
     def write_batch(self, batch: HistoricalImportBatchV2) -> Path:
         return self.write_observation_chunk(batch.chunk_id, batch.observations)
 
-    def write_observation_chunk(self, chunk_id: str, observations: tuple[ImportedObservationV2, ...] | list[ImportedObservationV2]) -> Path:
+    def write_observation_chunk(
+        self, chunk_id: str, observations: tuple[ImportedObservationV2, ...] | list[ImportedObservationV2]
+    ) -> Path:
         import pyarrow as pa
         import pyarrow.parquet as pq
 
@@ -314,8 +324,13 @@ class ParquetObservationArchiveV2:
             existing = pq.read_table(target)
             candidate = pq.read_table(temporary)
             identity_columns = (
-                "record_id", "raw_payload_hash", "raw_payload_bytes", "import_row_number", "bar_json",
-                "source_file_sha256", "source_chunk_id",
+                "record_id",
+                "raw_payload_hash",
+                "raw_payload_bytes",
+                "import_row_number",
+                "bar_json",
+                "source_file_sha256",
+                "source_chunk_id",
                 "archive_record_kind",
             )
             equal = all(existing[name].to_pylist() == candidate[name].to_pylist() for name in identity_columns)
@@ -326,3 +341,146 @@ class ParquetObservationArchiveV2:
             return target
         temporary.replace(target)
         return target
+
+
+@dataclass(frozen=True)
+class IndexedCausalBarV2:
+    """A final bar reconstructed from its exact archived observation and ops index."""
+
+    bar: CausalBarV2
+    observation_index_ref: str
+
+
+def reconstruct_causal_bars_from_archive(
+    repository: OpsRepository,
+    archive_root: str | Path,
+    *,
+    key: InstrumentKeyV2,
+    interval: BarIntervalV2,
+    information_cutoff_ns: int,
+    availability_class: AvailabilityClassV2 = AvailabilityClassV2.ACTUAL_SYSTEM,
+    limit: int = 100_000,
+) -> tuple[IndexedCausalBarV2, ...]:
+    """Rebuild immutable bars from collected Parquet rows and their exact ops refs.
+
+    The archived observation format intentionally carries a contract revision,
+    while InstrumentKeyV2 owns the full instrument identity. PublicCollectorV2
+    persists the canonical key beside its observation index after resolving that
+    revision uniquely. Old or ambiguous index rows are not admitted here.
+    """
+    import json
+
+    import pyarrow.parquet as pq
+
+    from .._serialization import sha256_json
+
+    if not isinstance(key, InstrumentKeyV2):
+        raise ValueError("causal archive reconstruction requires a full InstrumentKeyV2")
+    frame = BarIntervalV2(interval)
+    view = AvailabilityClassV2(availability_class)
+    if view not in (AvailabilityClassV2.ACTUAL_SYSTEM, AvailabilityClassV2.RECONSTRUCTED_MARKET):
+        raise ValueError("causal archive reconstruction requires actual or reconstructed availability")
+    timestamp(information_cutoff_ns, field="information_cutoff_ns")
+    if type(limit) is not int or not 1 <= limit <= 100_000:
+        raise ValueError("causal archive reconstruction limit is outside the supported bound")
+    root = Path(archive_root)
+    if not root.exists() or not root.is_dir():
+        return ()
+
+    selected: dict[int, tuple[tuple[int, str], IndexedCausalBarV2]] = {}
+    examined = 0
+    columns = {
+        "record_id",
+        "instrument_revision",
+        "event_type",
+        "available_at_ns",
+        "replay_available_at_ns",
+        "availability_class",
+        "raw_payload_hash",
+        "observation_json",
+        "raw_payload_bytes",
+        "bar_json",
+        "archive_record_kind",
+    }
+    paths = sorted(path for path in root.glob("*.parquet") if path.is_file() and not path.is_symlink())
+    if len(paths) > 20_000:
+        raise ValueError("causal archive reconstruction exceeded its file scan bound")
+    for path in paths:
+        try:
+            parquet = pq.ParquetFile(path)
+            if not columns.issubset(set(parquet.schema.names)):
+                continue
+            for batch in parquet.iter_batches(columns=sorted(columns), batch_size=512):
+                for row in batch.to_pylist():
+                    examined += 1
+                    if examined > 2_000_000:
+                        raise ValueError("causal archive reconstruction exceeded its row scan bound")
+                    if (
+                        row["instrument_revision"] != key.contract_revision
+                        or row["event_type"] != f"BAR_{frame.value}"
+                        or row["archive_record_kind"] != ArchiveRecordKindV2.PUBLIC_OBSERVATION.value
+                        or row["availability_class"] != view.value
+                    ):
+                        continue
+                    available = (
+                        row["available_at_ns"]
+                        if view == AvailabilityClassV2.ACTUAL_SYSTEM
+                        else row["replay_available_at_ns"]
+                    )
+                    if type(available) is not int or available > information_cutoff_ns:
+                        continue
+                    raw_bytes = row["raw_payload_bytes"]
+                    if (
+                        not isinstance(raw_bytes, bytes)
+                        or hashlib.sha256(raw_bytes).hexdigest() != row["raw_payload_hash"]
+                    ):
+                        continue
+                    observation = RawObservationV2.from_dict(json.loads(row["observation_json"]))
+                    if (
+                        observation.record_id != row["record_id"]
+                        or observation.instrument_revision != key.contract_revision
+                        or observation.raw_payload_hash != row["raw_payload_hash"]
+                        or observation.available_at_ns != row["available_at_ns"]
+                        or observation.availability_class != view
+                    ):
+                        continue
+                    raw_bar = json.loads(row["bar_json"])
+                    if not isinstance(raw_bar, dict) or raw_bar.get("final") is not True:
+                        continue
+                    open_at = raw_bar.get("open_at_ns")
+                    if type(open_at) is not int:
+                        continue
+                    close_at = close_boundary_ns(open_at, frame)
+                    bar = CausalBarV2(
+                        observation,
+                        frame,
+                        open_at,
+                        close_at,
+                        Decimal(str(raw_bar["open"])),
+                        Decimal(str(raw_bar["high"])),
+                        Decimal(str(raw_bar["low"])),
+                        Decimal(str(raw_bar["close"])),
+                        Decimal(str(raw_bar["volume"])),
+                        True,
+                    )
+                    if bar.content_hash != sha256_json(raw_bar):
+                        continue
+                    ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": observation.record_id})
+                    indexed = repository.get_artifact(ref)
+                    if (
+                        indexed is None
+                        or indexed.artifact_type != "PublicObservationIndexV2"
+                        or indexed.content_hash != observation.content_hash
+                        or indexed.available_at_ns != observation.available_at_ns
+                        or indexed.metadata.get("record_id") != observation.record_id
+                        or indexed.metadata.get("instrument_revision") != key.contract_revision
+                        or indexed.metadata.get("instrument_key_json") != key.to_canonical_json()
+                        or indexed.metadata.get("bar_content_hash") != bar.content_hash
+                        or indexed.metadata.get("raw_payload_hash") != observation.raw_payload_hash
+                    ):
+                        continue
+                    selected[bar.open_at_ns] = ((int(available), observation.record_id), IndexedCausalBarV2(bar, ref))
+        except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+            continue
+    rows = [selected[open_at][1] for open_at in sorted(selected)]
+    return tuple(rows[-limit:])

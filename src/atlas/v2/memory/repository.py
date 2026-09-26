@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -101,8 +101,8 @@ class ArtifactIndexEntryV2:
         timestamp(self.available_at_ns, field="available_at_ns")
         if self.available_at_ns < self.created_at_ns:
             raise ValueError("artifact available_at_ns cannot precede created_at_ns")
-        canonical_json(self.metadata)
-        object.__setattr__(self, "metadata", FrozenMap(json.loads(canonical_json(self.metadata))))
+        metadata_json = canonical_json(self.metadata)
+        object.__setattr__(self, "metadata", FrozenMap(json.loads(metadata_json)))
 
 
 @dataclass(frozen=True)
@@ -233,8 +233,17 @@ class OpsRepository:
                 """INSERT INTO watch(watch_id,state,state_version,expires_at_ns,required_next_event,
                    last_event_id,last_evaluated_at_ns,payload_json,payload_hash)
                    VALUES(?,?,?,?,?,?,?,?,?)""",
-                (watch.watch_id, watch.state.value, watch.state_version, watch.expires_at_ns,
-                 watch.required_next_event, watch.last_event_id, watch.last_evaluated_at_ns, payload, digest),
+                (
+                    watch.watch_id,
+                    watch.state.value,
+                    watch.state_version,
+                    watch.expires_at_ns,
+                    watch.required_next_event,
+                    watch.last_event_id,
+                    watch.last_evaluated_at_ns,
+                    payload,
+                    digest,
+                ),
             )
         return watch
 
@@ -265,7 +274,8 @@ class OpsRepository:
             else:
                 rows = self._connection.execute(
                     "SELECT * FROM watch ORDER BY json_extract(payload_json, '$.created_at_ns') DESC, "
-                    "watch_id DESC LIMIT ?", (limit,)
+                    "watch_id DESC LIMIT ?",
+                    (limit,),
                 ).fetchall()[::-1]
         return tuple(self._watch_from_row(row) for row in rows)
 
@@ -317,7 +327,9 @@ class OpsRepository:
             if duplicate is not None:
                 if duplicate["payload_hash"] != transition_hash:
                     raise DedupeConflict("event identity was already applied with different transition content")
-                return TransitionResultV2(OpportunityWatchV2.from_dict(json.loads(duplicate["result_watch_json"])), False)
+                return TransitionResultV2(
+                    OpportunityWatchV2.from_dict(json.loads(duplicate["result_watch_json"])), False
+                )
             row = connection.execute("SELECT * FROM watch WHERE watch_id=?", (watch_id,)).fetchone()
             if row is None:
                 raise KeyError(f"unknown watch_id: {watch_id}")
@@ -340,15 +352,34 @@ class OpsRepository:
             connection.execute(
                 """UPDATE watch SET state=?,state_version=?,expires_at_ns=?,required_next_event=?,last_event_id=?,
                    last_evaluated_at_ns=?,payload_json=?,payload_hash=? WHERE watch_id=? AND state_version=?""",
-                (updated.state.value, updated.state_version, updated.expires_at_ns, updated.required_next_event,
-                 updated.last_event_id, updated.last_evaluated_at_ns, updated_json, updated_hash,
-                 watch_id, expected_state_version),
+                (
+                    updated.state.value,
+                    updated.state_version,
+                    updated.expires_at_ns,
+                    updated.required_next_event,
+                    updated.last_event_id,
+                    updated.last_evaluated_at_ns,
+                    updated_json,
+                    updated_hash,
+                    watch_id,
+                    expected_state_version,
+                ),
             )
             connection.execute(
                 """INSERT INTO watch_transition(watch_id,event_id,state_version,from_state,to_state,event_at_ns,
                    transition_at_ns,payload_json,payload_hash,result_watch_json) VALUES(?,?,?,?,?,?,?,?,?,?)""",
-                (watch_id, event_id, updated.state_version, current.state.value, updated.state.value,
-                 event_at_ns, transition_at_ns, transition_json, transition_hash, updated_json),
+                (
+                    watch_id,
+                    event_id,
+                    updated.state_version,
+                    current.state.value,
+                    updated.state.value,
+                    event_at_ns,
+                    transition_at_ns,
+                    transition_json,
+                    transition_hash,
+                    updated_json,
+                ),
             )
             outbox_payload = {
                 "event_type": "OPPORTUNITY_WATCH_TRANSITION",
@@ -363,8 +394,16 @@ class OpsRepository:
             connection.execute(
                 """INSERT INTO ops_outbox(outbox_id,watch_id,event_id,state_version,dedupe_key,payload_json,
                    payload_hash,created_at_ns) VALUES(?,?,?,?,?,?,?,?)""",
-                (outbox_id, watch_id, event_id, updated.state_version, dedupe_key, outbox_json,
-                 sha256_json(outbox_payload), transition_at_ns),
+                (
+                    outbox_id,
+                    watch_id,
+                    event_id,
+                    updated.state_version,
+                    dedupe_key,
+                    outbox_json,
+                    sha256_json(outbox_payload),
+                    transition_at_ns,
+                ),
             )
         return TransitionResultV2(updated, True)
 
@@ -387,9 +426,16 @@ class OpsRepository:
         if sha256_json(payload) != row["payload_hash"]:
             raise RuntimeError("stored outbox payload hash mismatch")
         return OutboxItemV2(
-            row["outbox_id"], row["watch_id"], row["event_id"], row["state_version"],
-            row["dedupe_key"], payload, row["payload_hash"], row["created_at_ns"],
-            row["handled_at_ns"], row["handling_ref"],
+            row["outbox_id"],
+            row["watch_id"],
+            row["event_id"],
+            row["state_version"],
+            row["dedupe_key"],
+            payload,
+            row["payload_hash"],
+            row["created_at_ns"],
+            row["handled_at_ns"],
+            row["handling_ref"],
         )
 
     def record_outbox_handling(self, outbox_id: str, *, handled_at_ns: int, handling_ref: str) -> OutboxItemV2:
@@ -400,7 +446,9 @@ class OpsRepository:
             row = connection.execute("SELECT * FROM ops_outbox WHERE outbox_id=?", (outbox_id,)).fetchone()
             if row is None:
                 raise KeyError(f"unknown outbox_id: {outbox_id}")
-            if row["handled_at_ns"] is not None and (row["handled_at_ns"] != handled_at_ns or row["handling_ref"] != handling_ref):
+            if row["handled_at_ns"] is not None and (
+                row["handled_at_ns"] != handled_at_ns or row["handling_ref"] != handling_ref
+            ):
                 raise DedupeConflict("outbox item already has a different handling record")
             connection.execute(
                 "UPDATE ops_outbox SET handled_at_ns=?,handling_ref=? WHERE outbox_id=?",
@@ -423,8 +471,15 @@ class OpsRepository:
             connection.execute(
                 """INSERT OR IGNORE INTO source_health(source_id,observed_at_ns,available_at_ns,status,details_ref,
                    payload_json,payload_hash) VALUES(?,?,?,?,?,?,?)""",
-                (record.source_id, record.observed_at_ns, record.available_at_ns, record.status,
-                 record.details_ref, payload_json, digest),
+                (
+                    record.source_id,
+                    record.observed_at_ns,
+                    record.available_at_ns,
+                    record.status,
+                    record.details_ref,
+                    payload_json,
+                    digest,
+                ),
             )
         return record
 
@@ -441,7 +496,8 @@ class OpsRepository:
             else:
                 rows = self._connection.execute(
                     "SELECT payload_json,payload_hash FROM source_health WHERE source_id=? "
-                    "ORDER BY observed_at_ns DESC LIMIT ?", (source_id, limit),
+                    "ORDER BY observed_at_ns DESC LIMIT ?",
+                    (source_id, limit),
                 ).fetchall()[::-1]
         result: list[SourceHealthV2] = []
         for row in rows:
@@ -453,26 +509,38 @@ class OpsRepository:
 
     def source_health_sources(self) -> tuple[str, ...]:
         with self._lock:
-            rows = self._connection.execute("SELECT DISTINCT source_id FROM source_health ORDER BY source_id").fetchall()
+            rows = self._connection.execute(
+                "SELECT DISTINCT source_id FROM source_health ORDER BY source_id"
+            ).fetchall()
         return tuple(row[0] for row in rows)
 
     def register_model_manifest(self, manifest: ModelManifestV2) -> str:
         manifest_hash = manifest.manifest_hash
         manifest_json = manifest.to_canonical_json()
         with self._transaction() as connection:
-            row = connection.execute("SELECT manifest_json FROM model_registry WHERE manifest_hash=?", (manifest_hash,)).fetchone()
+            row = connection.execute(
+                "SELECT manifest_json FROM model_registry WHERE manifest_hash=?", (manifest_hash,)
+            ).fetchone()
             if row is not None and row["manifest_json"] != manifest_json:
                 raise ValueError("model manifest hash collision/conflicting immutable content")
             connection.execute(
                 "INSERT OR IGNORE INTO model_registry(manifest_hash,provider,checkpoint_id,promotion_status,manifest_json) VALUES(?,?,?,?,?)",
-                (manifest_hash, manifest.provider, manifest.checkpoint_id, manifest.promotion_status.value, manifest_json),
+                (
+                    manifest_hash,
+                    manifest.provider,
+                    manifest.checkpoint_id,
+                    manifest.promotion_status.value,
+                    manifest_json,
+                ),
             )
         return manifest_hash
 
     def get_model_manifest(self, manifest_hash: str) -> ModelManifestV2 | None:
         sha256_ref(manifest_hash, field="manifest_hash")
         with self._lock:
-            row = self._connection.execute("SELECT manifest_json FROM model_registry WHERE manifest_hash=?", (manifest_hash,)).fetchone()
+            row = self._connection.execute(
+                "SELECT manifest_json FROM model_registry WHERE manifest_hash=?", (manifest_hash,)
+            ).fetchone()
         if row is None:
             return None
         manifest = ModelManifestV2.from_dict(json.loads(row["manifest_json"]))
@@ -481,32 +549,118 @@ class OpsRepository:
         return manifest
 
     def register_artifact(self, entry: ArtifactIndexEntryV2) -> ArtifactIndexEntryV2:
-        metadata_json = canonical_json(entry.metadata)
+        return self.register_artifacts((entry,))[0]
+
+    def register_artifacts(self, entries: Sequence[ArtifactIndexEntryV2]) -> tuple[ArtifactIndexEntryV2, ...]:
+        """Atomically register a deterministic batch of immutable artifact rows."""
+        batch = tuple(entries)
+        if any(not isinstance(entry, ArtifactIndexEntryV2) for entry in batch):
+            raise ValueError("artifact batch must contain ArtifactIndexEntryV2 entries")
+        encoded: dict[str, tuple[ArtifactIndexEntryV2, str]] = {}
+        for entry in batch:
+            metadata_json = canonical_json(entry.metadata)
+            previous = encoded.get(entry.artifact_ref)
+            if previous is not None:
+                prior_entry, prior_json = previous
+                if (
+                    prior_entry.artifact_type,
+                    prior_entry.content_hash,
+                    prior_entry.created_at_ns,
+                    prior_entry.available_at_ns,
+                    prior_json,
+                ) != (
+                    entry.artifact_type,
+                    entry.content_hash,
+                    entry.created_at_ns,
+                    entry.available_at_ns,
+                    metadata_json,
+                ):
+                    raise ValueError("artifact batch repeats an identity with different immutable content")
+            else:
+                encoded[entry.artifact_ref] = (entry, metadata_json)
         with self._transaction() as connection:
-            row = connection.execute("SELECT * FROM artifact_index WHERE artifact_ref=?", (entry.artifact_ref,)).fetchone()
-            if row is not None:
-                stored_tuple = (row["artifact_type"], row["content_hash"], row["created_at_ns"], row["available_at_ns"], row["metadata_json"])
-                requested_tuple = (entry.artifact_type, entry.content_hash, entry.created_at_ns, entry.available_at_ns, metadata_json)
-                if stored_tuple != requested_tuple:
-                    raise ValueError("artifact_ref already indexes different immutable content")
-                return entry
-            connection.execute(
-                "INSERT INTO artifact_index(artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json) VALUES(?,?,?,?,?,?)",
-                (entry.artifact_ref, entry.artifact_type, entry.content_hash, entry.created_at_ns,
-                 entry.available_at_ns, metadata_json),
-            )
-        return entry
+            for entry, metadata_json in encoded.values():
+                row = connection.execute(
+                    "SELECT * FROM artifact_index WHERE artifact_ref=?",
+                    (entry.artifact_ref,),
+                ).fetchone()
+                if row is not None:
+                    stored_tuple = (
+                        row["artifact_type"],
+                        row["content_hash"],
+                        row["created_at_ns"],
+                        row["available_at_ns"],
+                        row["metadata_json"],
+                    )
+                    requested_tuple = (
+                        entry.artifact_type,
+                        entry.content_hash,
+                        entry.created_at_ns,
+                        entry.available_at_ns,
+                        metadata_json,
+                    )
+                    if stored_tuple != requested_tuple:
+                        raise ValueError("artifact_ref already indexes different immutable content")
+                    continue
+                connection.execute(
+                    "INSERT INTO artifact_index(artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json) VALUES(?,?,?,?,?,?)",
+                    (
+                        entry.artifact_ref,
+                        entry.artifact_type,
+                        entry.content_hash,
+                        entry.created_at_ns,
+                        entry.available_at_ns,
+                        metadata_json,
+                    ),
+                )
+        return batch
 
     def get_artifact(self, artifact_ref: str) -> ArtifactIndexEntryV2 | None:
         sha256_ref(artifact_ref, field="artifact_ref")
         with self._lock:
-            row = self._connection.execute("SELECT * FROM artifact_index WHERE artifact_ref=?", (artifact_ref,)).fetchone()
+            row = self._connection.execute(
+                "SELECT * FROM artifact_index WHERE artifact_ref=?", (artifact_ref,)
+            ).fetchone()
         if row is None:
             return None
         return ArtifactIndexEntryV2(
-            row["artifact_ref"], row["artifact_type"], row["content_hash"], row["created_at_ns"],
-            row["available_at_ns"], json.loads(row["metadata_json"]),
+            row["artifact_ref"],
+            row["artifact_type"],
+            row["content_hash"],
+            row["created_at_ns"],
+            row["available_at_ns"],
+            json.loads(row["metadata_json"]),
         )
+
+    def get_artifact_metadata_by_refs(self, artifact_refs: Sequence[str]) -> dict[str, Mapping[str, Any]]:
+        """Read exact artifact index columns by ref without rebuilding full domain entries."""
+        requested = tuple(artifact_refs)
+        if any(not isinstance(ref, str) for ref in requested):
+            raise ValueError("artifact reference batch must contain strings")
+        refs = tuple(sorted(set(requested)))
+        if len(refs) > 100_000:
+            raise ValueError("artifact reference batch exceeds its bound")
+        for ref in refs:
+            sha256_ref(ref, field="artifact_ref")
+        entries: dict[str, Mapping[str, Any]] = {}
+        with self._lock:
+            for offset in range(0, len(refs), 500):
+                batch = refs[offset : offset + 500]
+                if not batch:
+                    continue
+                marks = ",".join("?" for _ in batch)
+                rows = self._connection.execute(
+                    f"SELECT * FROM artifact_index WHERE artifact_ref IN ({marks})",
+                    batch,
+                ).fetchall()
+                for row in rows:
+                    entries[row["artifact_ref"]] = {
+                        "artifact_type": row["artifact_type"],
+                        "content_hash": row["content_hash"],
+                        "available_at_ns": row["available_at_ns"],
+                        "metadata": json.loads(row["metadata_json"]),
+                    }
+        return entries
 
     def artifact_entries(self, artifact_type: str) -> tuple[ArtifactIndexEntryV2, ...]:
         """Read a small typed artifact-index namespace without adding a warehouse table."""
@@ -518,14 +672,22 @@ class OpsRepository:
             ).fetchall()
         return tuple(
             ArtifactIndexEntryV2(
-                row["artifact_ref"], row["artifact_type"], row["content_hash"], row["created_at_ns"],
-                row["available_at_ns"], json.loads(row["metadata_json"]),
+                row["artifact_ref"],
+                row["artifact_type"],
+                row["content_hash"],
+                row["created_at_ns"],
+                row["available_at_ns"],
+                json.loads(row["metadata_json"]),
             )
             for row in rows
         )
 
     def artifact_entries_by_types(
-        self, artifact_types: tuple[str, ...], *, limit: int = 2_000
+        self,
+        artifact_types: tuple[str, ...],
+        *,
+        limit: int = 2_000,
+        available_before_ns: int | None = None,
     ) -> tuple[ArtifactIndexEntryV2, ...]:
         """Read bounded typed artifact namespaces in stable index order."""
         types = tuple(sorted(set(artifact_types)))
@@ -533,18 +695,27 @@ class OpsRepository:
             raise ValueError("at least one non-empty artifact type is required")
         if type(limit) is not int or not 1 <= limit <= 10_000:
             raise ValueError("artifact read limit must be between 1 and 10000")
+        cutoff = (
+            timestamp(available_before_ns, field="available_before_ns") if available_before_ns is not None else None
+        )
         marks = ",".join("?" for _ in types)
+        availability_filter = " AND available_at_ns<=?" if cutoff is not None else ""
+        params: tuple[Any, ...] = (*types, *((cutoff,) if cutoff is not None else ()), limit)
         with self._lock:
             rows = self._connection.execute(
-                f"SELECT * FROM artifact_index WHERE artifact_type IN ({marks}) "
+                f"SELECT * FROM artifact_index WHERE artifact_type IN ({marks}){availability_filter} "
                 "ORDER BY created_at_ns DESC, artifact_ref DESC LIMIT ?",
-                (*types, limit),
+                params,
             ).fetchall()
         rows.reverse()
         return tuple(
             ArtifactIndexEntryV2(
-                row["artifact_ref"], row["artifact_type"], row["content_hash"], row["created_at_ns"],
-                row["available_at_ns"], json.loads(row["metadata_json"]),
+                row["artifact_ref"],
+                row["artifact_type"],
+                row["content_hash"],
+                row["created_at_ns"],
+                row["available_at_ns"],
+                json.loads(row["metadata_json"]),
             )
             for row in rows
         )

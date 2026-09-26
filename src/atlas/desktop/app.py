@@ -71,8 +71,25 @@ class AtlasDesktop(QMainWindow):
     def _scanner_tab(self) -> None:
         panel = QWidget()
         layout = QVBoxLayout(panel)
-        self.scanner_table = self._table(("Venue", "Product", "Instrument", "Eligibility", "Observed", "Strategy / policy",
-            "Rank", "Selection", "Watch", "Sizing", "Evaluation", "Reasons", "Expiry UTC", "Evidence", "Evidence class"))
+        self.scanner_table = self._table(
+            (
+                "Venue",
+                "Product",
+                "Instrument",
+                "Eligibility",
+                "Observed",
+                "Strategy / policy",
+                "Rank",
+                "Selection",
+                "Watch",
+                "Sizing",
+                "Evaluation",
+                "Reasons",
+                "Expiry UTC",
+                "Evidence",
+                "Evidence class",
+            )
+        )
         layout.addWidget(self.scanner_table)
         self.tabs.addTab(panel, "Scanner")
 
@@ -91,16 +108,44 @@ class AtlasDesktop(QMainWindow):
     def _watches_tab(self) -> None:
         panel = QWidget()
         layout = QVBoxLayout(panel)
-        self.watch_table = self._table(("Venue", "Product", "Instrument", "Strategy", "Policy hash", "State",
-            "Created UTC", "Wake UTC", "Expiry UTC", "Invalidation", "Evidence refs", "Lifecycle"))
+        self.watch_table = self._table(
+            (
+                "Venue",
+                "Product",
+                "Instrument",
+                "Strategy",
+                "Policy hash",
+                "State",
+                "Created UTC",
+                "Wake UTC",
+                "Expiry UTC",
+                "Invalidation",
+                "Evidence refs",
+                "Lifecycle",
+            )
+        )
         layout.addWidget(self.watch_table)
         self.tabs.addTab(panel, "Watches")
 
     def _evidence_tab(self) -> None:
         panel = QWidget()
         layout = QVBoxLayout(panel)
-        self.evidence_table = self._table(("Artifact", "Version", "Content ref", "Provenance", "Decision UTC",
-            "Event UTC", "Available UTC", "Source health", "Status", "Outcome target", "Reasons", "Class"))
+        self.evidence_table = self._table(
+            (
+                "Artifact",
+                "Version",
+                "Content ref",
+                "Provenance",
+                "Decision UTC",
+                "Event UTC",
+                "Available UTC",
+                "Source health",
+                "Status",
+                "Outcome target",
+                "Reasons",
+                "Class",
+            )
+        )
         layout.addWidget(self.evidence_table)
         self.evidence_detail = QLabel("Select an evidence row to inspect its sanitized metadata.")
         self.evidence_detail.setWordWrap(True)
@@ -130,7 +175,9 @@ class AtlasDesktop(QMainWindow):
     def _render_snapshot(self) -> None:
         assert self.snapshot is not None
         snap = self.snapshot
-        counts = ", ".join(f"{name}: {count}" for name, count in snap.overview.decision_counts) or "No terminal decisions"
+        counts = (
+            ", ".join(f"{name}: {count}" for name, count in snap.overview.decision_counts) or "No terminal decisions"
+        )
         self.overview_summary.setText(
             f"Snapshot: {display_time(snap.generated_at_ns)} UTC · valid until {display_time(snap.valid_until_ns)} UTC\n"
             f"Universe {snap.overview.universe_instruments} · observed {snap.overview.observed_instruments} · "
@@ -138,17 +185,54 @@ class AtlasDesktop(QMainWindow):
             f"Unavailable evidence: {', '.join(snap.overview.unavailable_fields) or 'none'}\n"
             "Economic value: NOT ESTIMABLE · venue qualification: UNVERIFIED · capital disabled"
         )
-        self._fill(self.status_table, [(x.name, x.state, x.value, x.reason_code or "NONE", display_time(x.observed_at_ns))
-            for x in snap.overview.statuses])
+        self._fill(
+            self.status_table,
+            [
+                (x.name, x.state, x.value, x.reason_code or "NONE", display_time(x.observed_at_ns))
+                for x in snap.overview.statuses
+            ],
+        )
         self._fill(self.scanner_table, [scanner_display(x) for x in snap.scanner_rows])
-        self._fill(self.watch_table, [(x.venue, x.product, x.symbol, x.strategy_id, x.policy_hash, x.state,
-            display_time(x.created_at_ns), display_time(x.wake_at_ns), display_time(x.expires_at_ns),
-            ", ".join(x.invalidation_codes) or "NONE", ", ".join(x.evidence_refs), x.current_status)
-            for x in snap.watch_rows])
-        self._fill(self.evidence_table, [(x.artifact_type, x.schema_version, x.content_ref, x.provenance,
-            display_time(x.decision_at_ns), display_time(x.event_at_ns), display_time(x.available_at_ns),
-            x.source_health, x.status, x.label_target or "NOT_APPLICABLE", ", ".join(x.reason_codes) or "NONE",
-            "SYNTHETIC FIXTURE" if x.synthetic_fixture else "PERSISTED EVIDENCE") for x in snap.evidence])
+        self._fill(
+            self.watch_table,
+            [
+                (
+                    x.venue,
+                    x.product,
+                    x.symbol,
+                    x.strategy_id,
+                    x.policy_hash,
+                    x.state,
+                    display_time(x.created_at_ns),
+                    display_time(x.wake_at_ns),
+                    display_time(x.expires_at_ns),
+                    ", ".join(x.invalidation_codes) or "NONE",
+                    ", ".join(x.evidence_refs),
+                    x.current_status,
+                )
+                for x in snap.watch_rows
+            ],
+        )
+        self._fill(
+            self.evidence_table,
+            [
+                (
+                    x.artifact_type,
+                    x.schema_version,
+                    x.content_ref,
+                    x.provenance,
+                    display_time(x.decision_at_ns),
+                    display_time(x.event_at_ns),
+                    display_time(x.available_at_ns),
+                    x.source_health,
+                    x.status,
+                    x.label_target or "NOT_APPLICABLE",
+                    ", ".join(x.reason_codes) or "NONE",
+                    "SYNTHETIC FIXTURE" if x.synthetic_fixture else "PERSISTED EVIDENCE",
+                )
+                for x in snap.evidence
+            ],
+        )
 
     def _load_selected_chart(self) -> None:
         if self.snapshot is None:
@@ -158,8 +242,16 @@ class AtlasDesktop(QMainWindow):
             return
         row = self.snapshot.scanner_rows[row_index]
         try:
-            raw = self.client.request("chart", {"key_json": row.key_json, "interval": "1H",
-                "information_cutoff_ns": self.snapshot.generated_at_ns, "availability_view": "ACTUAL_SYSTEM", "limit": 2000})
+            raw = self.client.request(
+                "chart",
+                {
+                    "key_json": row.key_json,
+                    "interval": "1H",
+                    "information_cutoff_ns": self.snapshot.generated_at_ns,
+                    "availability_view": "ACTUAL_SYSTEM",
+                    "limit": 500,
+                },
+            )
             series = DesktopChartSeriesV2.from_dict(raw)
         except (OSError, IPCProtocolError, ValueError, KeyError, TypeError) as exc:
             code = exc.code if isinstance(exc, IPCProtocolError) else "CHART_UNAVAILABLE"
@@ -194,8 +286,14 @@ class AtlasDesktop(QMainWindow):
                     painter.setBrush(pg.mkBrush(color))
                     painter.drawLine(pg.QtCore.QPointF(x, low_price), pg.QtCore.QPointF(x, high_price))
                     bottom, top = min(open_price, close_price), max(open_price, close_price)
-                    painter.drawRect(pg.QtCore.QRectF(x - interval_seconds * 0.32, bottom,
-                        interval_seconds * 0.64, max(top - bottom, abs(close_price) * 1e-7)))
+                    painter.drawRect(
+                        pg.QtCore.QRectF(
+                            x - interval_seconds * 0.32,
+                            bottom,
+                            interval_seconds * 0.64,
+                            max(top - bottom, abs(close_price) * 1e-7),
+                        )
+                    )
                 painter.end()
 
             def paint(self, painter: Any, option: Any, widget: Any = None) -> None:
