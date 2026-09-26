@@ -19,10 +19,12 @@ from atlas.v2._serialization import (
 )
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 
-VERSION = "PRETRADE_SCENARIO_ARTIFACT_V2_V1"
+VERSION = "PRETRADE_SCENARIO_ARTIFACT_V2_V2"
 COST_ACCOUNTING_VERSION = "NET_CASHFLOW_ONCE_V1"
 JOINT_DIMENSIONS = ("depth_liquidity", "entry_fill", "execution_latency", "exit_latency", "funding", "price_mark_index", "spread")
 FORBIDDEN_INPUT_TYPES = frozenset({"ReplayPathV2", "PolicyPayoffV2", "PairedPortfolioPayoffV2", "MaturedOutcomeV2"})
+DERIVED_TYPES = frozenset({"SUPPORT", "STRESS", "OUTCOME_DISPERSION", "ESTIMATION_UNCERTAINTY",
+                           "EXECUTION_UNCERTAINTY", "NUMERICAL_ERROR"})
 
 
 class ScenarioStatusV2(StrEnum):
@@ -79,6 +81,96 @@ class JointScenarioV2:
 
 
 @dataclass(frozen=True)
+class JointScenarioPayloadV2:
+    action_hash: str
+    action_artifact_ref: str
+    information_cutoff_ns: int
+    common_scenario_set_id: str
+    joint_path_id: str
+    generation_version: str
+    scenario_version: str
+    causal_input_manifest_hash: str
+    joint_dimensions: tuple[str, ...]
+    joint_data_ref: str
+    created_at_ns: int
+    computed_at_ns: int
+    available_at_ns: int
+
+    def __post_init__(self) -> None:
+        for name in ("action_hash", "action_artifact_ref", "common_scenario_set_id", "joint_path_id",
+                     "causal_input_manifest_hash", "joint_data_ref"):
+            sha256_ref(getattr(self, name), field=name)
+        for name in ("generation_version", "scenario_version"):
+            nonblank(getattr(self, name), field=name)
+        if tuple(sorted(self.joint_dimensions)) != JOINT_DIMENSIONS:
+            raise ValueError("joint payload must bind all required dimensions")
+        for name in ("information_cutoff_ns", "created_at_ns", "computed_at_ns", "available_at_ns"):
+            timestamp(getattr(self, name), field=name)
+        if not self.information_cutoff_ns <= self.created_at_ns <= self.computed_at_ns <= self.available_at_ns:
+            raise ValueError("joint payload chronology invalid")
+
+    def to_dict(self) -> dict[str, Any]:
+        return json_value({"version": "JOINT_SCENARIO_PAYLOAD_V2_V1",
+                           **{name: getattr(self, name) for name in self.__dataclass_fields__}})
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> JointScenarioPayloadV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = strict_fields(data, expected=fields, required=fields, name="JointScenarioPayloadV2")
+        if d["version"] != "JOINT_SCENARIO_PAYLOAD_V2_V1" or not isinstance(d["joint_dimensions"], list):
+            raise ValueError("unsupported joint payload wire")
+        return cls(d["action_hash"], d["action_artifact_ref"], d["information_cutoff_ns"],
+                   d["common_scenario_set_id"], d["joint_path_id"], d["generation_version"],
+                   d["scenario_version"], d["causal_input_manifest_hash"], tuple(d["joint_dimensions"]),
+                   d["joint_data_ref"], d["created_at_ns"], d["computed_at_ns"], d["available_at_ns"])
+
+
+@dataclass(frozen=True)
+class PretradeDerivedEvidenceV2:
+    role: str
+    action_hash: str
+    action_artifact_ref: str
+    information_cutoff_ns: int
+    common_scenario_set_id: str
+    causal_input_manifest_hash: str
+    result_ref: str
+    created_at_ns: int
+    computed_at_ns: int
+    available_at_ns: int
+
+    def __post_init__(self) -> None:
+        if self.role not in DERIVED_TYPES:
+            raise ValueError("unsupported derived evidence role")
+        for name in ("action_hash", "action_artifact_ref", "common_scenario_set_id",
+                     "causal_input_manifest_hash", "result_ref"):
+            sha256_ref(getattr(self, name), field=name)
+        for name in ("information_cutoff_ns", "created_at_ns", "computed_at_ns", "available_at_ns"):
+            timestamp(getattr(self, name), field=name)
+        if not self.information_cutoff_ns <= self.created_at_ns <= self.computed_at_ns <= self.available_at_ns:
+            raise ValueError("derived evidence chronology invalid")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": "PRETRADE_DERIVED_EVIDENCE_V2_V1",
+                **{name: getattr(self, name) for name in self.__dataclass_fields__}}
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> PretradeDerivedEvidenceV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = strict_fields(data, expected=fields, required=fields, name="PretradeDerivedEvidenceV2")
+        if d["version"] != "PRETRADE_DERIVED_EVIDENCE_V2_V1":
+            raise ValueError("unsupported derived evidence wire")
+        return cls(**{name: d[name] for name in cls.__dataclass_fields__})
+
+
+@dataclass(frozen=True)
 class PretradeScenarioArtifactV2:
     action_hash: str
     action_artifact_ref: str
@@ -107,6 +199,14 @@ class PretradeScenarioArtifactV2:
     status: ScenarioStatusV2
     inability_reason: str | None = None
 
+    @property
+    def causal_input_manifest_hash(self) -> str:
+        return sha256_json({"version": "PRETRADE_CAUSAL_INPUT_MANIFEST_V2_V1",
+            "model_version": self.model_version,
+            "model": self.model_input.to_dict(), "calibration": self.calibration_input.to_dict(),
+            "execution_model": self.execution_model_input.to_dict(),
+            "sources": [item.to_dict() for item in self.source_inputs]})
+
     def __post_init__(self) -> None:
         for name in ("action_hash", "action_artifact_ref", "common_scenario_set_id"):
             sha256_ref(getattr(self, name), field=name)
@@ -124,6 +224,8 @@ class PretradeScenarioArtifactV2:
             raise ValueError("every source, model and calibration vintage must be cutoff-known")
         if len({item.ref for item in inputs}) != len(inputs):
             raise ValueError("duplicate causal input")
+        if self.source_inputs != tuple(sorted(self.source_inputs, key=lambda item: item.ref)):
+            raise ValueError("causal source inputs must be sorted by exact ref")
         if tuple(sorted(self.joint_dimensions)) != JOINT_DIMENSIONS:
             raise ValueError("joint payload must declare price, liquidity, fill, latency and funding together")
         if self.status == ScenarioStatusV2.AVAILABLE:
@@ -188,35 +290,92 @@ class PretradeScenarioArtifactV2:
 def index_pretrade_scenario(repo: OpsRepository, scenario: PretradeScenarioArtifactV2) -> str:
     action = repo.get_artifact(scenario.action_artifact_ref)
     action_body = action.metadata.get("action_artifact") if action is not None else None
+    action_identity = action.metadata.get("action_identity") if action is not None else None
     if (action is None or action.artifact_type != "ActionArtifactV2" or action.available_at_ns > scenario.information_cutoff_ns
-            or not isinstance(action_body, Mapping) or action_body.get("action_hash") != scenario.action_hash):
+            or not isinstance(action_body, Mapping) or not isinstance(action_identity, Mapping)
+            or sha256_json(action_body) != scenario.action_artifact_ref
+            or sha256_json(action_identity) != scenario.action_hash
+            or action_body.get("action_hash") != scenario.action_hash):
         raise ValueError("exact frozen action artifact unavailable by cutoff")
     for item in (scenario.model_input, scenario.calibration_input, scenario.execution_model_input, *scenario.source_inputs):
         entry = repo.get_artifact(item.ref)
         if (entry is None or entry.artifact_type != item.kind or entry.available_at_ns != item.available_at_ns
-                or entry.available_at_ns > scenario.information_cutoff_ns or entry.created_at_ns > scenario.information_cutoff_ns):
+                or entry.available_at_ns > scenario.information_cutoff_ns or entry.created_at_ns > scenario.information_cutoff_ns
+                or item.vintage_at_ns > entry.available_at_ns):
             raise ValueError("causal source/model/calibration index mismatch")
-    for ref in scenario.support_refs:
-        entry = repo.get_artifact(ref)
-        if entry is None or entry.available_at_ns > scenario.information_cutoff_ns:
-            raise ValueError("scenario support was not cutoff-known")
     for row in scenario.rows:
         entry = repo.get_artifact(row.joint_payload_ref)
-        if (entry is None or entry.artifact_type != "JointScenarioPayloadV2"
-                or entry.available_at_ns > scenario.computed_at_ns
-                or entry.metadata.get("joint_path_id") != row.joint_path_id
-                or tuple(entry.metadata.get("joint_dimensions", ())) != JOINT_DIMENSIONS):
-            raise ValueError("joint scenario payload identity/dimensions unavailable")
-    for ref in scenario.deterministic_stress_refs:
+        body = entry.metadata.get("joint_payload") if entry is not None else None
+        if entry is None or entry.artifact_type != "JointScenarioPayloadV2" or not isinstance(body, Mapping):
+            raise ValueError("typed joint scenario payload required")
+        payload = JointScenarioPayloadV2.from_dict(json_value(body))
+        if (payload.content_hash != row.joint_payload_ref
+                or entry.created_at_ns != payload.created_at_ns
+                or entry.available_at_ns != payload.available_at_ns
+                or payload.action_hash != scenario.action_hash
+                or payload.action_artifact_ref != scenario.action_artifact_ref
+                or payload.information_cutoff_ns != scenario.information_cutoff_ns
+                or payload.common_scenario_set_id != scenario.common_scenario_set_id
+                or payload.joint_path_id != row.joint_path_id
+                or payload.generation_version != scenario.generation_version
+                or payload.scenario_version != scenario.scenario_version
+                or payload.causal_input_manifest_hash != scenario.causal_input_manifest_hash
+                or payload.computed_at_ns > scenario.computed_at_ns
+                or payload.available_at_ns > scenario.computed_at_ns):
+            raise ValueError("joint scenario action/cutoff/set/manifest or chronology mismatch")
+        data = repo.get_artifact(payload.joint_data_ref)
+        if (data is None or data.artifact_type != "JointScenarioDataV2"
+                or data.available_at_ns > payload.available_at_ns
+                or sha256_json(data.metadata) != payload.joint_data_ref):
+            raise ValueError("joint data payload unavailable")
+    derived = (*( (ref, "SUPPORT") for ref in scenario.support_refs),
+        *((ref, "STRESS") for ref in scenario.deterministic_stress_refs),
+        (scenario.outcome_dispersion_ref, "OUTCOME_DISPERSION"),
+        (scenario.estimation_uncertainty_ref, "ESTIMATION_UNCERTAINTY"),
+        (scenario.execution_uncertainty_ref, "EXECUTION_UNCERTAINTY"),
+        (scenario.numerical_error_ref, "NUMERICAL_ERROR"))
+    for ref, role in derived:
+        if ref is None:
+            continue
         entry = repo.get_artifact(ref)
-        if entry is None or entry.artifact_type != "DeterministicStressV2" or entry.available_at_ns > scenario.computed_at_ns:
-            raise ValueError("separate deterministic stress unavailable")
-    for uncertainty_ref in (scenario.outcome_dispersion_ref, scenario.estimation_uncertainty_ref,
-                            scenario.execution_uncertainty_ref, scenario.numerical_error_ref):
-        if uncertainty_ref is not None:
-            entry = repo.get_artifact(uncertainty_ref)
-            if entry is None or entry.available_at_ns > scenario.computed_at_ns:
-                raise ValueError("separate uncertainty/dispersion evidence unavailable")
+        body = entry.metadata.get("derived") if entry is not None else None
+        if entry is None or entry.artifact_type != "PretradeDerivedEvidenceV2" or not isinstance(body, Mapping):
+            raise ValueError("typed pretrade derived evidence required")
+        derived_item = PretradeDerivedEvidenceV2.from_dict(json_value(body))
+        if (derived_item.content_hash != ref or derived_item.role != role or derived_item.action_hash != scenario.action_hash
+                or derived_item.action_artifact_ref != scenario.action_artifact_ref
+                or derived_item.information_cutoff_ns != scenario.information_cutoff_ns
+                or derived_item.common_scenario_set_id != scenario.common_scenario_set_id
+                or derived_item.causal_input_manifest_hash != scenario.causal_input_manifest_hash
+                or derived_item.computed_at_ns > scenario.computed_at_ns or derived_item.available_at_ns > scenario.computed_at_ns
+                or entry.created_at_ns != derived_item.created_at_ns
+                or entry.available_at_ns != derived_item.available_at_ns):
+            raise ValueError("derived evidence action/cutoff/set/manifest or chronology mismatch")
+        result = repo.get_artifact(derived_item.result_ref)
+        if (result is None or result.available_at_ns > derived_item.available_at_ns
+                or sha256_json(result.metadata) != derived_item.result_ref):
+            raise ValueError("derived result payload unavailable")
     repo.register_artifact(ArtifactIndexEntryV2(scenario.content_hash, "PretradeScenarioArtifactV2",
         scenario.content_hash, scenario.created_at_ns, scenario.available_at_ns, {"scenario": scenario.to_dict()}))
     return scenario.content_hash
+
+
+def index_joint_scenario_payload(repo: OpsRepository, payload: JointScenarioPayloadV2) -> str:
+    data = repo.get_artifact(payload.joint_data_ref)
+    if (data is None or data.artifact_type != "JointScenarioDataV2"
+            or data.available_at_ns > payload.available_at_ns
+            or sha256_json(data.metadata) != payload.joint_data_ref):
+        raise ValueError("immutable joint data unavailable")
+    repo.register_artifact(ArtifactIndexEntryV2(payload.content_hash, "JointScenarioPayloadV2",
+        payload.content_hash, payload.created_at_ns, payload.available_at_ns, {"joint_payload": payload.to_dict()}))
+    return payload.content_hash
+
+
+def index_pretrade_derived_evidence(repo: OpsRepository, item: PretradeDerivedEvidenceV2) -> str:
+    result = repo.get_artifact(item.result_ref)
+    if (result is None or result.available_at_ns > item.available_at_ns
+            or sha256_json(result.metadata) != item.result_ref):
+        raise ValueError("derived result unavailable")
+    repo.register_artifact(ArtifactIndexEntryV2(item.content_hash, "PretradeDerivedEvidenceV2",
+        item.content_hash, item.created_at_ns, item.available_at_ns, {"derived": item.to_dict()}))
+    return item.content_hash
