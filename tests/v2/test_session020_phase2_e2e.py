@@ -18,7 +18,11 @@ from atlas.v2.data.bars import BarIntervalV2, CausalBarStoreV2, CausalBarV2, clo
 from atlas.v2.data.bybit import SOURCE_ID, translate_instrument_info, translate_kline
 from atlas.v2.data.collector import PublicCollectorV2
 from atlas.v2.data.health import PublicSourceStateV2
-from atlas.v2.data.history import ParquetObservationArchiveV2, reconstruct_causal_bars_from_archive
+from atlas.v2.data.history import (
+    ArchiveScanBoundExceededV2,
+    ParquetObservationArchiveV2,
+    reconstruct_causal_bars_from_archive,
+)
 from atlas.v2.data.universe import DynamicUniverseRuntimeV2, UniverseObservationV2
 from atlas.v2.features.joins import asof_join
 from atlas.v2.features.pipeline import feature_snapshot
@@ -137,16 +141,29 @@ def _ingest_bar(
     return bar
 
 
-def _reconstruct(repository: OpsRepository, archive_root: Path, key, cutoff_ns: int):
-    store = CausalBarStoreV2()
-    by_interval = {}
-    for interval in (BarIntervalV2.M15, BarIntervalV2.H1, BarIntervalV2.H4):
-        indexed = reconstruct_causal_bars_from_archive(
+def _complete_archive_reconstruction(repository, archive_root, *, key, interval, cutoff_ns):
+    try:
+        result = reconstruct_causal_bars_from_archive(
             repository,
             archive_root,
             key=key,
             interval=interval,
             information_cutoff_ns=cutoff_ns,
+        )
+    except ArchiveScanBoundExceededV2 as exc:
+        raise AssertionError(
+            "Phase-2 policy-ready reconstruction must not consume or return a bounded partial series"
+        ) from exc
+    assert isinstance(result, tuple)
+    return result
+
+
+def _reconstruct(repository: OpsRepository, archive_root: Path, key, cutoff_ns: int):
+    store = CausalBarStoreV2()
+    by_interval = {}
+    for interval in (BarIntervalV2.M15, BarIntervalV2.H1, BarIntervalV2.H4):
+        indexed = _complete_archive_reconstruction(
+            repository, archive_root, key=key, interval=interval, cutoff_ns=cutoff_ns
         )
         for item in indexed:
             entry = repository.get_artifact(item.observation_index_ref)
@@ -581,12 +598,12 @@ def test_phase2_s1_s2_persistence_ipc_and_matured_outcome(tmp_path, monkeypatch)
         assert collector.flush_archive() is not None
         later_evidence = tuple(
             item.bar
-            for item in reconstruct_causal_bars_from_archive(
+            for item in _complete_archive_reconstruction(
                 repo,
                 archive_root,
                 key=key,
                 interval=BarIntervalV2.M15,
-                information_cutoff_ns=later_bars[-1].close_at_ns,
+                cutoff_ns=later_bars[-1].close_at_ns,
             )
             if item.bar.open_at_ns >= later_bars[0].open_at_ns
         )

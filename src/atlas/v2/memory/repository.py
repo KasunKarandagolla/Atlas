@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from .._serialization import FrozenMap, canonical_json, nonblank, sha256_json, sha256_ref, timestamp
+from .._serialization import FrozenMap, canonical_json, json_value, nonblank, sha256_json, sha256_ref, timestamp
 from ..contracts import OpportunityWatchV2, WatchStateV2
 from ..models.protocol import ModelManifestV2
 from .schema import OPS_SCHEMA_NAMESPACE, OPS_SCHEMA_VERSION, initialize, validate_read_only
@@ -93,6 +93,33 @@ class ArtifactIndexEntryV2:
     available_at_ns: int
     metadata: Mapping[str, Any]
 
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row) -> ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+        content_hash = row["content_hash"]
+        created_at_ns = row["created_at_ns"]
+        available_at_ns = row["available_at_ns"]
+        sha256_ref(artifact_ref, field="artifact_ref")
+        nonblank(artifact_type, field="artifact_type")
+        sha256_ref(content_hash, field="content_hash")
+        timestamp(created_at_ns, field="created_at_ns")
+        timestamp(available_at_ns, field="available_at_ns")
+        if available_at_ns < created_at_ns:
+            raise ValueError("artifact available_at_ns cannot precede created_at_ns")
+        metadata = json.loads(row["metadata_json"])
+        if not isinstance(metadata, Mapping):
+            raise ValueError("persisted artifact metadata must be a JSON object")
+        entry = object.__new__(cls)
+        object.__setattr__(entry, "artifact_ref", artifact_ref)
+        object.__setattr__(entry, "artifact_type", artifact_type)
+        object.__setattr__(entry, "content_hash", content_hash)
+        object.__setattr__(entry, "created_at_ns", created_at_ns)
+        object.__setattr__(entry, "available_at_ns", available_at_ns)
+        object.__setattr__(entry, "metadata", FrozenMap(metadata))
+        return entry
+
     def __post_init__(self) -> None:
         sha256_ref(self.artifact_ref, field="artifact_ref")
         nonblank(self.artifact_type, field="artifact_type")
@@ -101,8 +128,7 @@ class ArtifactIndexEntryV2:
         timestamp(self.available_at_ns, field="available_at_ns")
         if self.available_at_ns < self.created_at_ns:
             raise ValueError("artifact available_at_ns cannot precede created_at_ns")
-        metadata_json = canonical_json(self.metadata)
-        object.__setattr__(self, "metadata", FrozenMap(json.loads(metadata_json)))
+        object.__setattr__(self, "metadata", FrozenMap(json_value(self.metadata)))
 
 
 @dataclass(frozen=True)
@@ -671,14 +697,7 @@ class OpsRepository:
                 (artifact_type,),
             ).fetchall()
         return tuple(
-            ArtifactIndexEntryV2(
-                row["artifact_ref"],
-                row["artifact_type"],
-                row["content_hash"],
-                row["created_at_ns"],
-                row["available_at_ns"],
-                json.loads(row["metadata_json"]),
-            )
+            ArtifactIndexEntryV2._from_storage_row(row)
             for row in rows
         )
 
@@ -709,14 +728,7 @@ class OpsRepository:
             ).fetchall()
         rows.reverse()
         return tuple(
-            ArtifactIndexEntryV2(
-                row["artifact_ref"],
-                row["artifact_type"],
-                row["content_hash"],
-                row["created_at_ns"],
-                row["available_at_ns"],
-                json.loads(row["metadata_json"]),
-            )
+            ArtifactIndexEntryV2._from_storage_row(row)
             for row in rows
         )
 

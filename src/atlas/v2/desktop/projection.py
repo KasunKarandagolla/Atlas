@@ -14,7 +14,7 @@ from typing import Any, ClassVar
 
 from atlas.domain.capability import capability_contract_from_manifest
 
-from .._serialization import canonical_json, sha256_json, sha256_ref, strict_fields, timestamp
+from .._serialization import SHA256_RE, canonical_json, sha256_json, sha256_ref, strict_fields, timestamp
 from ..contracts import (
     CandidateActionV2,
     CandidateSelectionStatus,
@@ -23,6 +23,7 @@ from ..contracts import (
     OpportunityWatchV2,
 )
 from ..data.bars import BarIntervalV2, CausalBarV2
+from ..data.history import causal_revision_order_key
 from ..data.raw import AvailabilityClassV2, RawObservationV2
 from ..instruments import UniverseContractV2
 from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
@@ -311,11 +312,8 @@ def _artifact_refs(entry: ArtifactIndexEntryV2, body: Mapping[str, Any]) -> tupl
     for values in candidates:
         if isinstance(values, (list, tuple)):
             for ref in values:
-                if isinstance(ref, str) and len(ref) == 64:
-                    try:
-                        refs.add(sha256_ref(ref, field="input ref"))
-                    except ValueError:
-                        continue
+                if isinstance(ref, str) and SHA256_RE.fullmatch(ref):
+                    refs.add(ref)
     return tuple(sorted(refs))
 
 
@@ -736,6 +734,7 @@ def _entry_summary(
     provenance_text = _code(provenance, default="PERSISTED_V2_ARTIFACT")
     version_text = _code(version, default=entry.artifact_type)
     input_refs = _artifact_refs(entry, body)
+    synthetic = entry.artifact_ref in synthetic_refs or any(ref in synthetic_refs for ref in input_refs)
     reason_codes = _reason_codes(entry, body, evidence_entries=evidence_entries)
     if len(input_refs) > MAX_EVIDENCE_INPUT_REFS:
         input_refs = input_refs[:MAX_EVIDENCE_INPUT_REFS]
@@ -754,7 +753,7 @@ def _entry_summary(
         _status(entry, body, evidence_entries=evidence_entries),
         _code(body.get("outcome_target")) if body.get("outcome_target") is not None else None,
         reason_codes,
-        entry.artifact_ref in synthetic_refs or any(ref in synthetic_refs for ref in _artifact_refs(entry, body)),
+        synthetic,
     )
 
 
@@ -823,8 +822,11 @@ def _project_scanner(
     entries: Sequence[ArtifactIndexEntryV2],
     watches: Sequence[OpportunityWatchV2],
     synthetic_refs: frozenset[str],
+    *,
+    universes: Mapping[str, UniverseContractV2] | None = None,
 ) -> tuple[tuple[DesktopScannerRowV2, ...], dict[str, tuple[str, ...]]]:
-    universes = _parse_universe(entries)
+    if universes is None:
+        universes = _parse_universe(entries)
     candidates: dict[str, tuple[CandidateActionV2, ArtifactIndexEntryV2]] = {}
     for entry in entries:
         if entry.artifact_type == "CandidateActionV2":
@@ -1175,13 +1177,13 @@ def project_snapshot(
     evidence_entries = {entry.artifact_ref: entry for entry in entries}
     watches = repo.list_watches(limit=MAX_WATCH_ROWS + 1)
     synthetic_refs = _synthetic_refs(entries)
-    scanner, _ = _project_scanner(repo, entries, watches, synthetic_refs)
+    universes = _parse_universe(entries)
+    scanner, _ = _project_scanner(repo, entries, watches, synthetic_refs, universes=universes)
     watch_rows = tuple(_project_watch(item) for item in watches[:MAX_WATCH_ROWS])
     evidence_rows = tuple(
         _entry_summary(item, synthetic_refs=synthetic_refs, evidence_entries=evidence_entries)
         for item in entries[-MAX_EVIDENCE_ROWS:]
     )
-    universes = _parse_universe(entries)
     latest_universe = max(universes.values(), key=lambda item: (item.decision_slot_ns, item.content_hash), default=None)
     universe_count = len(latest_universe.entries) if latest_universe else 0
     observed_count = sum(item.observed for item in latest_universe.entries) if latest_universe else 0
@@ -1295,7 +1297,7 @@ def _read_chart_bars_from_archive(
                     record_id = row["record_id"]
                     if not isinstance(record_id, str):
                         continue
-                    identity = (available, record_id)
+                    identity = causal_revision_order_key(available, record_id)
                     current = candidates.get(open_at)
                     if current is None or identity > current[0]:
                         candidates[open_at] = (

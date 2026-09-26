@@ -17,6 +17,23 @@ from ..memory.repository import OpsRepository
 from .bars import BarIntervalV2, CausalBarV2, close_boundary_ns
 from .raw import AvailabilityClassV2, RawObservationV2
 
+MAX_CAUSAL_ARCHIVE_FILES = 20_000
+MAX_CAUSAL_ARCHIVE_ROWS = 2_000_000
+
+
+class ArchiveScanBoundExceededV2(RuntimeError):
+    """The archive could not be scanned completely within its safety budget."""
+
+    def __init__(self, bound: str, maximum: int) -> None:
+        super().__init__(f"causal archive reconstruction exceeded its {bound} scan bound ({maximum})")
+        self.bound = bound
+        self.maximum = maximum
+
+
+def causal_revision_order_key(effective_available_at_ns: int, record_id: str) -> tuple[int, str]:
+    """Stable latest-known revision ordering shared by chart and feature reconstruction."""
+    return effective_available_at_ns, record_id
+
 
 class ArchiveRecordKindV2(StrEnum):
     PUBLIC_OBSERVATION = "PUBLIC_OBSERVATION"
@@ -403,8 +420,8 @@ def reconstruct_causal_bars_from_archive(
         "archive_record_kind",
     }
     paths = sorted(path for path in root.glob("*.parquet") if path.is_file() and not path.is_symlink())
-    if len(paths) > 20_000:
-        raise ValueError("causal archive reconstruction exceeded its file scan bound")
+    if len(paths) > MAX_CAUSAL_ARCHIVE_FILES:
+        raise ArchiveScanBoundExceededV2("file-count", MAX_CAUSAL_ARCHIVE_FILES)
     for path in paths:
         try:
             parquet = pq.ParquetFile(path)
@@ -413,8 +430,8 @@ def reconstruct_causal_bars_from_archive(
             for batch in parquet.iter_batches(columns=sorted(columns), batch_size=512):
                 for row in batch.to_pylist():
                     examined += 1
-                    if examined > 2_000_000:
-                        raise ValueError("causal archive reconstruction exceeded its row scan bound")
+                    if examined > MAX_CAUSAL_ARCHIVE_ROWS:
+                        raise ArchiveScanBoundExceededV2("row-count", MAX_CAUSAL_ARCHIVE_ROWS)
                     if (
                         row["instrument_revision"] != key.contract_revision
                         or row["event_type"] != f"BAR_{frame.value}"
@@ -441,6 +458,7 @@ def reconstruct_causal_bars_from_archive(
                         or observation.instrument_revision != key.contract_revision
                         or observation.raw_payload_hash != row["raw_payload_hash"]
                         or observation.available_at_ns != row["available_at_ns"]
+                        or observation.replay_available_at_ns != row["replay_available_at_ns"]
                         or observation.availability_class != view
                     ):
                         continue
@@ -451,6 +469,8 @@ def reconstruct_causal_bars_from_archive(
                     if type(open_at) is not int:
                         continue
                     close_at = close_boundary_ns(open_at, frame)
+                    if view == AvailabilityClassV2.RECONSTRUCTED_MARKET and available < close_at:
+                        continue
                     bar = CausalBarV2(
                         observation,
                         frame,
@@ -475,11 +495,16 @@ def reconstruct_causal_bars_from_archive(
                         or indexed.metadata.get("record_id") != observation.record_id
                         or indexed.metadata.get("instrument_revision") != key.contract_revision
                         or indexed.metadata.get("instrument_key_json") != key.to_canonical_json()
+                        or indexed.metadata.get("availability_class") != view.value
+                        or indexed.metadata.get("replay_available_at_ns") != observation.replay_available_at_ns
                         or indexed.metadata.get("bar_content_hash") != bar.content_hash
                         or indexed.metadata.get("raw_payload_hash") != observation.raw_payload_hash
                     ):
                         continue
-                    selected[bar.open_at_ns] = ((int(available), observation.record_id), IndexedCausalBarV2(bar, ref))
+                    revision_key = causal_revision_order_key(available, observation.record_id)
+                    current = selected.get(bar.open_at_ns)
+                    if current is None or revision_key > current[0]:
+                        selected[bar.open_at_ns] = (revision_key, IndexedCausalBarV2(bar, ref))
         except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
             continue
     rows = [selected[open_at][1] for open_at in sorted(selected)]
