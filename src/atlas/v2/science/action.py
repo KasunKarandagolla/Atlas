@@ -15,7 +15,7 @@ from atlas.v2.instruments import InstrumentKeyV2, ProductContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.risk import RiskPolicyV2, SizingDecisionV2, SizingStatus
 
-ACTION_VERSION = "V2_FROZEN_RISK_SIZED_ACTION_V1"
+ACTION_VERSION = "V2_FROZEN_RISK_SIZED_ACTION_V2"
 
 
 @dataclass(frozen=True)
@@ -29,6 +29,7 @@ class FrozenActionV2:
     entry_reference: Decimal
     entry_collar: Decimal
     stop_price: Decimal
+    entry_trigger_basis: str
     stop_trigger_basis: str
     management_rule: FrozenMap
     time_exit_rule: FrozenMap
@@ -51,7 +52,7 @@ class FrozenActionV2:
         for name in ("product_ref", "policy_hash", "risk_policy_hash", "risk_policy_v2_hash"):
             sha256_ref(getattr(self, name), field=name)
         if not all(getattr(self, name).strip() for name in (
-                "stop_trigger_basis", "policy_id", "policy_version")):
+                "entry_trigger_basis", "stop_trigger_basis", "policy_id", "policy_version")):
             raise ValueError("frozen action policy identity invalid")
         for name in ("entry_rule", "collar_rule", "management_rule", "time_exit_rule"):
             value = getattr(self, name)
@@ -64,7 +65,8 @@ class FrozenActionV2:
                 "quantity": _c(self.quantity), "product_ref": self.product_ref,
                 "entry_rule": self.entry_rule.to_dict(), "collar_rule": self.collar_rule.to_dict(),
                 "entry_reference": _c(self.entry_reference), "entry_collar": _c(self.entry_collar),
-                "stop_price": _c(self.stop_price), "stop_trigger_basis": self.stop_trigger_basis,
+                "stop_price": _c(self.stop_price), "entry_trigger_basis": self.entry_trigger_basis,
+                "stop_trigger_basis": self.stop_trigger_basis,
                 "management_rule": self.management_rule.to_dict(), "time_exit_rule": self.time_exit_rule.to_dict(),
                 "horizon_end_ns": self.horizon_end_ns, "policy_id": self.policy_id,
                 "policy_version": self.policy_version, "policy_hash": self.policy_hash,
@@ -109,7 +111,7 @@ def action_identity(candidate: CandidateActionV2, sizing: SizingDecisionV2,
         raise ValueError("risk-sized action identity mismatch")
     return FrozenActionV2(candidate.key, candidate.side.value, sizing.quantity, product.content_hash,
         policy.entry_rule, policy.collar_rule, candidate.entry_reference,
-        candidate.entry_collar, candidate.stop_price, policy.trigger_basis,
+        candidate.entry_collar, candidate.stop_price, policy.trigger_basis, "MARK_PRICE",
         policy.management_rule, policy.time_exit_rule, candidate.horizon_end_ns,
         policy.policy_id, policy.version, policy.policy_hash, v1.policy_hash(), v2.policy_hash)
 
