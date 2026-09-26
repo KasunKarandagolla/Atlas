@@ -19,9 +19,11 @@ from atlas.v2._serialization import (
 )
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 
-VERSION = "PRETRADE_SCENARIO_ARTIFACT_V2_V2"
+VERSION = "PRETRADE_SCENARIO_ARTIFACT_V2_V3"
 COST_ACCOUNTING_VERSION = "NET_CASHFLOW_ONCE_V1"
 JOINT_DIMENSIONS = ("depth_liquidity", "entry_fill", "execution_latency", "exit_latency", "funding", "price_mark_index", "spread")
+JOINT_DATA_VERSION = "JOINT_SCENARIO_DATA_V2_V1"
+JOINT_PAYLOAD_VERSION = "JOINT_SCENARIO_PAYLOAD_V2_V2"
 FORBIDDEN_INPUT_TYPES = frozenset({"ReplayPathV2", "PolicyPayoffV2", "PairedPortfolioPayoffV2", "MaturedOutcomeV2"})
 DERIVED_TYPES = frozenset({"SUPPORT", "STRESS", "OUTCOME_DISPERSION", "ESTIMATION_UNCERTAINTY",
                            "EXECUTION_UNCERTAINTY", "NUMERICAL_ERROR"})
@@ -80,6 +82,162 @@ class JointScenarioV2:
         return cls(d["joint_path_id"], d["joint_payload_ref"], decimal_value(d["probability"], field="probability", wire=True))
 
 
+class ScenarioFillStateV2(StrEnum):
+    NO_FILL = "NO_FILL"
+    PARTIAL_FILL = "PARTIAL_FILL"
+    FULL_FILL = "FULL_FILL"
+    NOT_ATTEMPTED = "NOT_ATTEMPTED"
+
+
+@dataclass(frozen=True)
+class JointScenarioPointV2:
+    """One atomic time slice; all market, execution and funding values share one path identity."""
+
+    at_ns: int
+    joint_path_id: str
+    last_price: Decimal
+    mark_price: Decimal
+    index_price: Decimal
+    spread: Decimal
+    bid_depth_contracts: Decimal
+    ask_depth_contracts: Decimal
+    entry_state: ScenarioFillStateV2
+    requested_entry_quantity: Decimal
+    entry_fill_quantity: Decimal
+    decision_to_execution_latency_ns: int
+    exit_latency_ns: int
+    exit_state: ScenarioFillStateV2
+    exit_fill_quantity: Decimal
+    funding_cashflow_usdt: Decimal
+
+    def __post_init__(self) -> None:
+        timestamp(self.at_ns, field="joint point at_ns")
+        sha256_ref(self.joint_path_id, field="joint point path id")
+        for name in ("last_price", "mark_price", "index_price"):
+            value = decimal_value(getattr(self, name), field=name)
+            if value <= 0:
+                raise ValueError(f"{name} must be positive")
+            object.__setattr__(self, name, value)
+        for name in ("spread", "bid_depth_contracts", "ask_depth_contracts",
+                     "requested_entry_quantity", "entry_fill_quantity", "exit_fill_quantity"):
+            value = decimal_value(getattr(self, name), field=name)
+            if value < 0:
+                raise ValueError(f"{name} must be nonnegative")
+            object.__setattr__(self, name, value)
+        object.__setattr__(self, "funding_cashflow_usdt",
+                           decimal_value(self.funding_cashflow_usdt, field="funding_cashflow_usdt"))
+        for name in ("decision_to_execution_latency_ns", "exit_latency_ns"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                raise ValueError(f"{name} must be nonnegative integer nanoseconds")
+        object.__setattr__(self, "entry_state", ScenarioFillStateV2(self.entry_state))
+        object.__setattr__(self, "exit_state", ScenarioFillStateV2(self.exit_state))
+        self._validate_fill("entry", self.entry_state, self.entry_fill_quantity, self.requested_entry_quantity)
+        self._validate_fill("exit", self.exit_state, self.exit_fill_quantity, self.entry_fill_quantity)
+
+    @staticmethod
+    def _validate_fill(label: str, state: ScenarioFillStateV2, filled: Decimal, requested: Decimal) -> None:
+        if state == ScenarioFillStateV2.NOT_ATTEMPTED:
+            if filled != 0:
+                raise ValueError(f"{label} not-attempted state cannot have fills")
+        elif state == ScenarioFillStateV2.NO_FILL:
+            if filled != 0:
+                raise ValueError(f"{label} no-fill state must have zero quantity")
+        elif requested <= 0 or filled <= 0 or filled > requested:
+            raise ValueError(f"{label} fill quantity is inconsistent with requested quantity")
+        elif state == ScenarioFillStateV2.PARTIAL_FILL and filled >= requested:
+            raise ValueError(f"{label} partial-fill quantity must be below requested quantity")
+        elif state == ScenarioFillStateV2.FULL_FILL and filled != requested:
+            raise ValueError(f"{label} full-fill quantity must equal requested quantity")
+
+    def to_dict(self) -> dict[str, Any]:
+        return json_value({"at_ns": self.at_ns, "joint_path_id": self.joint_path_id,
+            **{name: getattr(self, name) for name in (
+                "last_price", "mark_price", "index_price", "spread", "bid_depth_contracts", "ask_depth_contracts",
+                "entry_state", "requested_entry_quantity", "entry_fill_quantity", "decision_to_execution_latency_ns",
+                "exit_latency_ns", "exit_state", "exit_fill_quantity", "funding_cashflow_usdt")}})
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> JointScenarioPointV2:
+        fields = set(cls.__dataclass_fields__)
+        d = strict_fields(data, expected=fields, required=fields, name="JointScenarioPointV2")
+        return cls(d["at_ns"], d["joint_path_id"],
+            decimal_value(d["last_price"], field="last_price", wire=True),
+            decimal_value(d["mark_price"], field="mark_price", wire=True),
+            decimal_value(d["index_price"], field="index_price", wire=True),
+            decimal_value(d["spread"], field="spread", wire=True),
+            decimal_value(d["bid_depth_contracts"], field="bid_depth_contracts", wire=True),
+            decimal_value(d["ask_depth_contracts"], field="ask_depth_contracts", wire=True),
+            ScenarioFillStateV2(d["entry_state"]),
+            decimal_value(d["requested_entry_quantity"], field="requested_entry_quantity", wire=True),
+            decimal_value(d["entry_fill_quantity"], field="entry_fill_quantity", wire=True),
+            d["decision_to_execution_latency_ns"], d["exit_latency_ns"],
+            ScenarioFillStateV2(d["exit_state"]),
+            decimal_value(d["exit_fill_quantity"], field="exit_fill_quantity", wire=True),
+            decimal_value(d["funding_cashflow_usdt"], field="funding_cashflow_usdt", wire=True))
+
+
+@dataclass(frozen=True)
+class JointScenarioDataV2:
+    action_hash: str
+    action_artifact_ref: str
+    information_cutoff_ns: int
+    common_scenario_set_id: str
+    joint_path_id: str
+    generation_version: str
+    scenario_version: str
+    causal_input_manifest_hash: str
+    requested_entry_quantity: Decimal
+    points: tuple[JointScenarioPointV2, ...]
+    created_at_ns: int
+    computed_at_ns: int
+    available_at_ns: int
+
+    def __post_init__(self) -> None:
+        for name in ("action_hash", "action_artifact_ref", "common_scenario_set_id", "joint_path_id",
+                     "causal_input_manifest_hash"):
+            sha256_ref(getattr(self, name), field=name)
+        for name in ("generation_version", "scenario_version"):
+            nonblank(getattr(self, name), field=name)
+        quantity = decimal_value(self.requested_entry_quantity, field="requested_entry_quantity")
+        if quantity <= 0:
+            raise ValueError("requested entry quantity must be positive")
+        object.__setattr__(self, "requested_entry_quantity", quantity)
+        if not self.points or any(not isinstance(x, JointScenarioPointV2) for x in self.points):
+            raise ValueError("joint data requires typed path points")
+        times = tuple(x.at_ns for x in self.points)
+        if (times != tuple(sorted(set(times))) or any(x.at_ns <= self.information_cutoff_ns for x in self.points)
+                or any(x.joint_path_id != self.joint_path_id for x in self.points)):
+            raise ValueError("joint point order or path identity mismatch")
+        if any(x.requested_entry_quantity != quantity for x in self.points):
+            raise ValueError("joint points must bind the parent requested quantity")
+        for name in ("information_cutoff_ns", "created_at_ns", "computed_at_ns", "available_at_ns"):
+            timestamp(getattr(self, name), field=name)
+        if not self.information_cutoff_ns <= self.created_at_ns <= self.computed_at_ns <= self.available_at_ns:
+            raise ValueError("joint data computation chronology invalid")
+
+    def to_dict(self) -> dict[str, Any]:
+        return json_value({"version": JOINT_DATA_VERSION,
+            **{name: getattr(self, name) for name in self.__dataclass_fields__ if name != "points"},
+            "points": [point.to_dict() for point in self.points]})
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> JointScenarioDataV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = strict_fields(data, expected=fields, required=fields, name="JointScenarioDataV2")
+        if d["version"] != JOINT_DATA_VERSION or not isinstance(d["points"], list):
+            raise ValueError("unsupported or opaque joint data wire")
+        return cls(d["action_hash"], d["action_artifact_ref"], d["information_cutoff_ns"],
+            d["common_scenario_set_id"], d["joint_path_id"], d["generation_version"], d["scenario_version"],
+            d["causal_input_manifest_hash"], decimal_value(d["requested_entry_quantity"],
+            field="requested_entry_quantity", wire=True), tuple(JointScenarioPointV2.from_dict(x) for x in d["points"]),
+            d["created_at_ns"], d["computed_at_ns"], d["available_at_ns"])
+
+
 @dataclass(frozen=True)
 class JointScenarioPayloadV2:
     action_hash: str
@@ -110,7 +268,7 @@ class JointScenarioPayloadV2:
             raise ValueError("joint payload chronology invalid")
 
     def to_dict(self) -> dict[str, Any]:
-        return json_value({"version": "JOINT_SCENARIO_PAYLOAD_V2_V1",
+        return json_value({"version": JOINT_PAYLOAD_VERSION,
                            **{name: getattr(self, name) for name in self.__dataclass_fields__}})
 
     @property
@@ -121,7 +279,7 @@ class JointScenarioPayloadV2:
     def from_dict(cls, data: Mapping[str, Any]) -> JointScenarioPayloadV2:
         fields = set(cls.__dataclass_fields__) | {"version"}
         d = strict_fields(data, expected=fields, required=fields, name="JointScenarioPayloadV2")
-        if d["version"] != "JOINT_SCENARIO_PAYLOAD_V2_V1" or not isinstance(d["joint_dimensions"], list):
+        if d["version"] != JOINT_PAYLOAD_VERSION or not isinstance(d["joint_dimensions"], list):
             raise ValueError("unsupported joint payload wire")
         return cls(d["action_hash"], d["action_artifact_ref"], d["information_cutoff_ns"],
                    d["common_scenario_set_id"], d["joint_path_id"], d["generation_version"],
@@ -323,11 +481,13 @@ def index_pretrade_scenario(repo: OpsRepository, scenario: PretradeScenarioArtif
                 or payload.computed_at_ns > scenario.computed_at_ns
                 or payload.available_at_ns > scenario.computed_at_ns):
             raise ValueError("joint scenario action/cutoff/set/manifest or chronology mismatch")
-        data = repo.get_artifact(payload.joint_data_ref)
-        if (data is None or data.artifact_type != "JointScenarioDataV2"
-                or data.available_at_ns > payload.available_at_ns
-                or sha256_json(data.metadata) != payload.joint_data_ref):
-            raise ValueError("joint data payload unavailable")
+        data = _resolve_joint_data(repo, payload)
+        quantity_raw = action_identity.get("quantity")
+        if not isinstance(quantity_raw, str):
+            raise ValueError("frozen action quantity must use canonical Decimal wire form")
+        quantity = decimal_value(quantity_raw, field="action quantity", wire=True)
+        if data.requested_entry_quantity != quantity:
+            raise ValueError("joint data requested quantity does not match exact frozen action")
     derived = (*( (ref, "SUPPORT") for ref in scenario.support_refs),
         *((ref, "STRESS") for ref in scenario.deterministic_stress_refs),
         (scenario.outcome_dispersion_ref, "OUTCOME_DISPERSION"),
@@ -352,7 +512,8 @@ def index_pretrade_scenario(repo: OpsRepository, scenario: PretradeScenarioArtif
                 or entry.available_at_ns != derived_item.available_at_ns):
             raise ValueError("derived evidence action/cutoff/set/manifest or chronology mismatch")
         result = repo.get_artifact(derived_item.result_ref)
-        if (result is None or result.available_at_ns > derived_item.available_at_ns
+        if (result is None or result.created_at_ns > derived_item.computed_at_ns
+                or result.available_at_ns > derived_item.available_at_ns
                 or sha256_json(result.metadata) != derived_item.result_ref):
             raise ValueError("derived result payload unavailable")
     repo.register_artifact(ArtifactIndexEntryV2(scenario.content_hash, "PretradeScenarioArtifactV2",
@@ -361,19 +522,46 @@ def index_pretrade_scenario(repo: OpsRepository, scenario: PretradeScenarioArtif
 
 
 def index_joint_scenario_payload(repo: OpsRepository, payload: JointScenarioPayloadV2) -> str:
-    data = repo.get_artifact(payload.joint_data_ref)
-    if (data is None or data.artifact_type != "JointScenarioDataV2"
-            or data.available_at_ns > payload.available_at_ns
-            or sha256_json(data.metadata) != payload.joint_data_ref):
-        raise ValueError("immutable joint data unavailable")
+    _resolve_joint_data(repo, payload)
     repo.register_artifact(ArtifactIndexEntryV2(payload.content_hash, "JointScenarioPayloadV2",
         payload.content_hash, payload.created_at_ns, payload.available_at_ns, {"joint_payload": payload.to_dict()}))
     return payload.content_hash
 
 
+def index_joint_scenario_data(repo: OpsRepository, data: JointScenarioDataV2) -> str:
+    """Index one immutable, structurally joint path, never an opaque metadata label."""
+    repo.register_artifact(ArtifactIndexEntryV2(data.content_hash, "JointScenarioDataV2",
+        data.content_hash, data.created_at_ns, data.available_at_ns, {"joint_data": data.to_dict()}))
+    return data.content_hash
+
+
+def _resolve_joint_data(repo: OpsRepository, payload: JointScenarioPayloadV2) -> JointScenarioDataV2:
+    entry = repo.get_artifact(payload.joint_data_ref)
+    body = entry.metadata.get("joint_data") if entry is not None else None
+    if (entry is None or entry.artifact_type != "JointScenarioDataV2" or not isinstance(body, Mapping)
+            or entry.content_hash != payload.joint_data_ref):
+        raise ValueError("typed immutable JointScenarioDataV2 required")
+    data = JointScenarioDataV2.from_dict(json_value(body))
+    if (data.content_hash != payload.joint_data_ref or entry.created_at_ns != data.created_at_ns
+            or entry.available_at_ns != data.available_at_ns
+            or data.available_at_ns > payload.available_at_ns
+            or data.computed_at_ns > payload.computed_at_ns
+            or data.action_hash != payload.action_hash
+            or data.action_artifact_ref != payload.action_artifact_ref
+            or data.information_cutoff_ns != payload.information_cutoff_ns
+            or data.common_scenario_set_id != payload.common_scenario_set_id
+            or data.joint_path_id != payload.joint_path_id
+            or data.generation_version != payload.generation_version
+            or data.scenario_version != payload.scenario_version
+            or data.causal_input_manifest_hash != payload.causal_input_manifest_hash):
+        raise ValueError("joint data action/cutoff/set/path/version/manifest or chronology mismatch")
+    return data
+
+
 def index_pretrade_derived_evidence(repo: OpsRepository, item: PretradeDerivedEvidenceV2) -> str:
     result = repo.get_artifact(item.result_ref)
-    if (result is None or result.available_at_ns > item.available_at_ns
+    if (result is None or result.created_at_ns > item.computed_at_ns
+            or result.available_at_ns > item.available_at_ns
             or sha256_json(result.metadata) != item.result_ref):
         raise ValueError("derived result unavailable")
     repo.register_artifact(ArtifactIndexEntryV2(item.content_hash, "PretradeDerivedEvidenceV2",

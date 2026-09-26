@@ -19,10 +19,17 @@ from atlas.v2._serialization import (
     strict_fields,
     timestamp,
 )
+from atlas.v2.contracts import CandidateActionV2, CandidateSelectionStatus, CandidateSetV2, EligibilityStatusV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
-from atlas.v2.risk import ActualClosedPositionSourceV2
+from atlas.v2.risk import (
+    NOTIONAL_CONVENTION,
+    SIZING_VERSION,
+    ActualClosedPositionSourceV2,
+)
 
-VERSION = "MATURED_OUTCOME_V2_V2"
+VERSION = "MATURED_OUTCOME_V2_V3"
+DECISION_ENTRY_VERSION = "DECISION_CALENDAR_ENTRY_V2_V1"
+ECONOMIC_EVALUATION_VERSION = "EVALUATION_ARTIFACT_V2_AMENDED_V1"
 
 
 class OutcomeProvenanceV2(StrEnum):
@@ -31,14 +38,27 @@ class OutcomeProvenanceV2(StrEnum):
     COUNTERFACTUAL = "COUNTERFACTUAL"
 
 
-class CalendarStateV2(StrEnum):
+class SelectionStateV2(StrEnum):
     SELECTED = "SELECTED"
     UNSELECTED = "UNSELECTED"
     REJECTED = "REJECTED"
     NO_CANDIDATE = "NO_CANDIDATE"
+    NOT_ESTIMABLE = "NOT_ESTIMABLE"
+
+
+class AdmissionStateV2(StrEnum):
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    NOT_EVALUATED = "NOT_EVALUATED"
+    RISK_SIZED = "RISK_SIZED"
+    CANDIDATE = "CANDIDATE"
     NO_TRADE = "NO_TRADE"
     NOT_ESTIMABLE = "NOT_ESTIMABLE"
     EXPIRED = "EXPIRED"
+
+
+class ExecutionOutcomeStateV2(StrEnum):
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    UNRESOLVED = "UNRESOLVED"
     NO_FILL = "NO_FILL"
     PARTIAL_FILL = "PARTIAL_FILL"
     FULL_FILL = "FULL_FILL"
@@ -53,6 +73,383 @@ class LabelStateV2(StrEnum):
 class OutcomeTargetV2(StrEnum):
     EXECUTABLE_ACTION_VALUE = "EXECUTABLE_ACTION_VALUE"
     NON_EXECUTABLE_DIAGNOSTIC = "NON_EXECUTABLE_DIAGNOSTIC"
+
+
+class DecisionSourceStageV2(StrEnum):
+    CANDIDATE_SET = "CANDIDATE_SET"
+    HARD_RISK = "HARD_RISK"
+    ECONOMIC_EVALUATION = "ECONOMIC_EVALUATION"
+    EXPIRY = "EXPIRY"
+
+
+@dataclass(frozen=True)
+class DecisionCalendarEntryV2:
+    """Immutable historical selection/admission state bound to its indexed producer evidence."""
+
+    candidate_set_ref: str
+    candidate_ref: str | None
+    policy_id: str
+    policy_version: str
+    policy_hash: str
+    decision_at_ns: int
+    selection_state: SelectionStateV2
+    admission_state: AdmissionStateV2
+    action_hash: str | None
+    action_artifact_ref: str | None
+    source_stage: DecisionSourceStageV2
+    reason_codes: tuple[str, ...]
+    source_artifact_ref: str
+    created_at_ns: int
+    available_at_ns: int
+
+    def __post_init__(self) -> None:
+        for name in ("candidate_set_ref", "policy_hash", "source_artifact_ref"):
+            sha256_ref(getattr(self, name), field=name)
+        for name in ("candidate_ref", "action_hash", "action_artifact_ref"):
+            value = getattr(self, name)
+            if value is not None:
+                sha256_ref(value, field=name)
+        for name in ("policy_id", "policy_version"):
+            nonblank(getattr(self, name), field=name)
+        for name in ("decision_at_ns", "created_at_ns", "available_at_ns"):
+            timestamp(getattr(self, name), field=name)
+        if not self.decision_at_ns <= self.created_at_ns <= self.available_at_ns:
+            raise ValueError("decision-calendar chronology invalid")
+        object.__setattr__(self, "selection_state", SelectionStateV2(self.selection_state))
+        object.__setattr__(self, "admission_state", AdmissionStateV2(self.admission_state))
+        object.__setattr__(self, "source_stage", DecisionSourceStageV2(self.source_stage))
+        reasons = tuple(self.reason_codes)
+        if reasons != tuple(sorted(set(reasons))):
+            raise ValueError("decision reason codes must be sorted and unique")
+        for reason in reasons:
+            nonblank(reason, field="decision reason")
+        object.__setattr__(self, "reason_codes", reasons)
+        if self.action_hash is None:
+            if self.action_artifact_ref is not None:
+                raise ValueError("absent decision action cannot carry artifact ref")
+        elif self.action_artifact_ref is None:
+            raise ValueError("frozen decision action requires artifact ref")
+        if self.selection_state != SelectionStateV2.SELECTED and self.admission_state != AdmissionStateV2.NOT_APPLICABLE:
+            raise ValueError("non-selected calendar entries cannot assert admission state")
+        if self.admission_state == AdmissionStateV2.RISK_SIZED and self.action_hash is None:
+            raise ValueError("risk-sized admission requires its frozen action")
+        if self.action_hash is not None and self.selection_state != SelectionStateV2.SELECTED:
+            raise ValueError("unselected/rejected/no-candidate entries cannot invent an action")
+
+    @property
+    def decision_identity_ref(self) -> str:
+        return sha256_json({"version": "DECISION_CALENDAR_IDENTITY_V2_V1",
+            "candidate_set_ref": self.candidate_set_ref, "candidate_ref": self.candidate_ref,
+            "policy_hash": self.policy_hash})
+
+    def to_dict(self) -> dict[str, Any]:
+        return json_value({"version": DECISION_ENTRY_VERSION,
+            **{name: getattr(self, name) for name in self.__dataclass_fields__}})
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> DecisionCalendarEntryV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = strict_fields(data, expected=fields, required=fields, name="DecisionCalendarEntryV2")
+        if d["version"] != DECISION_ENTRY_VERSION or not isinstance(d["reason_codes"], list):
+            raise ValueError("unsupported decision calendar wire version")
+        return cls(**{name: d[name] for name in cls.__dataclass_fields__})
+
+
+@dataclass(frozen=True)
+class CandidateExpiryEvidenceV2:
+    candidate_set_ref: str
+    candidate_ref: str
+    policy_hash: str
+    deadline_ns: int
+    expired_at_ns: int
+    reason_code: str
+
+    def __post_init__(self) -> None:
+        for name in ("candidate_set_ref", "candidate_ref", "policy_hash"):
+            sha256_ref(getattr(self, name), field=name)
+        for name in ("deadline_ns", "expired_at_ns"):
+            timestamp(getattr(self, name), field=name)
+        nonblank(self.reason_code, field="reason_code")
+        if self.expired_at_ns < self.deadline_ns:
+            raise ValueError("candidate expiry cannot precede its declared deadline")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": "CANDIDATE_EXPIRY_EVIDENCE_V2_V1",
+            **{name: getattr(self, name) for name in self.__dataclass_fields__}}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> CandidateExpiryEvidenceV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = strict_fields(data, expected=fields, required=fields, name="CandidateExpiryEvidenceV2")
+        if d["version"] != "CANDIDATE_EXPIRY_EVIDENCE_V2_V1":
+            raise ValueError("unsupported candidate-expiry evidence version")
+        return cls(**{name: d[name] for name in cls.__dataclass_fields__})
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+
+def index_candidate_expiry_evidence(repo: OpsRepository, item: CandidateExpiryEvidenceV2,
+                                    *, available_at_ns: int) -> str:
+    timestamp(available_at_ns, field="expiry evidence available_at_ns")
+    if available_at_ns < item.expired_at_ns:
+        raise ValueError("expiry evidence cannot be available before expiry")
+    repo.register_artifact(ArtifactIndexEntryV2(item.content_hash, "CandidateExpiryEvidenceV2",
+        item.content_hash, item.expired_at_ns, available_at_ns, {"expiry": item.to_dict()}))
+    return item.content_hash
+
+
+def _resolve_candidate_set(repo: OpsRepository, ref: str) -> tuple[CandidateSetV2, Mapping[str, Any]]:
+    indexed = repo.get_artifact(ref)
+    body = indexed.metadata.get("candidate_set") if indexed is not None else None
+    identity = indexed.metadata.get("identity") if indexed is not None else None
+    if (indexed is None or indexed.artifact_type != "CandidateSetV2" or indexed.content_hash != ref
+            or not isinstance(body, Mapping) or not isinstance(identity, Mapping)):
+        raise ValueError("typed indexed CandidateSet decision evidence required")
+    candidate_set = CandidateSetV2.from_dict(json_value(body))
+    cutoff_ns = identity.get("cutoff_ns")
+    if type(cutoff_ns) is not int:
+        raise ValueError("CandidateSet identity must declare an exact integer cutoff")
+    candidate_refs = tuple(identity.get("candidate_refs", ()))
+    if (candidate_set.content_hash != ref or cutoff_ns != candidate_set.envelope.available_at_ns
+            or candidate_refs != tuple(sorted(set(candidate_refs)))
+            or not set(candidate_refs).issubset(set(candidate_set.envelope.input_refs))
+            or len(candidate_refs) != len(candidate_set.candidates)
+            or tuple(identity.get("causal_input_refs", ())) != candidate_set.envelope.input_refs
+            or tuple(identity.get("causal_input_refs", ())) != tuple(sorted(set(identity.get("causal_input_refs", ()))))
+            or identity.get("selection_policy_hash") != candidate_set.selection_policy_hash
+            or identity.get("decision_event_id") != candidate_set.decision_event_id
+            or sha256_json(identity) != candidate_set.envelope.artifact_id):
+        raise ValueError("CandidateSet content or selection identity mismatch")
+    indexed_candidates: dict[str, CandidateActionV2] = {}
+    for candidate_ref in candidate_refs:
+        item = repo.get_artifact(candidate_ref)
+        candidate_body = item.metadata.get("candidate") if item is not None else None
+        if (item is None or item.artifact_type != "CandidateActionV2" or item.content_hash != candidate_ref
+                or not isinstance(candidate_body, Mapping)):
+            raise ValueError("CandidateSet references an unavailable typed candidate")
+        candidate = CandidateActionV2.from_dict(json_value(candidate_body))
+        if (candidate.content_hash != candidate_ref or candidate.candidate_id in indexed_candidates
+                or candidate.envelope.available_at_ns > cutoff_ns):
+            raise ValueError("CandidateSet candidate identity is duplicate or contradictory")
+        indexed_candidates[candidate.candidate_id] = candidate
+    if set(indexed_candidates) != {item.candidate_id for item in candidate_set.candidates}:
+        raise ValueError("CandidateSet candidate membership is incomplete")
+    for candidate_entry in candidate_set.candidates:
+        candidate = indexed_candidates[candidate_entry.candidate_id]
+        if candidate.key != candidate_entry.key or candidate.side != candidate_entry.side:
+            raise ValueError("CandidateSet selection entry disagrees with exact candidate")
+    decision_index_ref = sha256_json({"artifact_type": "CandidateSetDecisionIndexV1",
+        "decision_event_id": candidate_set.decision_event_id, "universe_ref": candidate_set.universe_ref,
+        "selection_policy_hash": candidate_set.selection_policy_hash})
+    decision_index = repo.get_artifact(decision_index_ref)
+    if (decision_index is None or decision_index.artifact_type != "CandidateSetDecisionIndexV1"
+            or decision_index.metadata.get("candidate_set_ref") != ref
+            or decision_index.metadata.get("cutoff_ns") != identity.get("cutoff_ns")
+            or decision_index.content_hash != sha256_json(decision_index.metadata)
+            or decision_index.created_at_ns != identity.get("cutoff_ns")
+            or decision_index.available_at_ns != identity.get("cutoff_ns")):
+        raise ValueError("CandidateSet lacks its exact immutable decision-event index")
+    return candidate_set, identity
+
+
+def _resolve_decision_calendar_entry(repo: OpsRepository, ref: str) -> DecisionCalendarEntryV2:
+    indexed = repo.get_artifact(ref)
+    body = indexed.metadata.get("decision_entry") if indexed is not None else None
+    if indexed is None or indexed.artifact_type != "DecisionCalendarEntryV2" or not isinstance(body, Mapping):
+        raise ValueError("indexed typed DecisionCalendarEntryV2 required")
+    entry = DecisionCalendarEntryV2.from_dict(json_value(body))
+    identity = repo.get_artifact(entry.decision_identity_ref)
+    if (entry.content_hash != ref or indexed.content_hash != ref
+            or indexed.created_at_ns != entry.created_at_ns or indexed.available_at_ns != entry.available_at_ns
+            or identity is None or identity.artifact_type != "DecisionCalendarIdentityV2"
+            or identity.content_hash != ref or identity.metadata.get("decision_ref") != ref):
+        raise ValueError("decision calendar identity is missing or contradictory")
+    return entry
+
+
+def index_decision_calendar_entry(repo: OpsRepository, entry: DecisionCalendarEntryV2) -> str:
+    candidate_set, identity = _resolve_candidate_set(repo, entry.candidate_set_ref)
+    if entry.decision_at_ns != identity.get("cutoff_ns"):
+        raise ValueError("decision timestamp must equal CandidateSet cutoff")
+    candidate = None
+    set_entry = None
+    if entry.candidate_ref is not None:
+        if entry.candidate_ref not in identity.get("candidate_refs", ()):
+            raise ValueError("candidate is absent from exact CandidateSet")
+        indexed_candidate = repo.get_artifact(entry.candidate_ref)
+        candidate_body = indexed_candidate.metadata.get("candidate") if indexed_candidate is not None else None
+        if (indexed_candidate is None or indexed_candidate.artifact_type != "CandidateActionV2"
+                or indexed_candidate.content_hash != entry.candidate_ref or not isinstance(candidate_body, Mapping)):
+            raise ValueError("typed indexed candidate evidence required")
+        candidate = CandidateActionV2.from_dict(json_value(candidate_body))
+        if candidate.content_hash != entry.candidate_ref:
+            raise ValueError("candidate content hash mismatch")
+        set_entry = next((x for x in candidate_set.candidates if x.candidate_id == candidate.candidate_id), None)
+        if (set_entry is None or set_entry.key != candidate.key or set_entry.side != candidate.side
+                or set_entry.policy_id != entry.policy_id or candidate.policy_hash != entry.policy_hash
+                or candidate.decision_at_ns != entry.decision_at_ns):
+            raise ValueError("CandidateSet membership or policy identity mismatch")
+    elif entry.policy_hash != candidate_set.selection_policy_hash:
+        raise ValueError("no-candidate calendar identity must use the exact selection policy")
+
+    state, admission, stage = entry.selection_state, entry.admission_state, entry.source_stage
+    if stage == DecisionSourceStageV2.CANDIDATE_SET:
+        if (entry.source_artifact_ref != entry.candidate_set_ref or entry.action_hash is not None
+                or entry.created_at_ns != candidate_set.envelope.available_at_ns
+                or entry.available_at_ns != candidate_set.envelope.available_at_ns):
+            raise ValueError("CandidateSet decision source/action mismatch")
+        if state == SelectionStateV2.NO_CANDIDATE:
+            if candidate is not None or candidate_set.candidates or candidate_set.selection_status != CandidateSelectionStatus.NO_CANDIDATE:
+                raise ValueError("NO_CANDIDATE requires an empty exact CandidateSet")
+            if admission != AdmissionStateV2.NOT_APPLICABLE:
+                raise ValueError("NO_CANDIDATE has no admission state")
+        elif state == SelectionStateV2.NOT_ESTIMABLE:
+            if (candidate_set.selection_status != CandidateSelectionStatus.NOT_ESTIMABLE
+                    or admission != AdmissionStateV2.NOT_APPLICABLE):
+                raise ValueError("selection NOT_ESTIMABLE must be established by CandidateSet")
+        elif state == SelectionStateV2.SELECTED:
+            if (candidate is None or candidate_set.selection_status != CandidateSelectionStatus.SELECTED
+                    or candidate_set.selected_candidate_id != candidate.candidate_id
+                    or admission != AdmissionStateV2.NOT_EVALUATED):
+                raise ValueError("selected state must match CandidateSet and remain unevaluated")
+        elif state == SelectionStateV2.UNSELECTED:
+            if (candidate is None or candidate_set.selection_status != CandidateSelectionStatus.SELECTED
+                    or candidate_set.selected_candidate_id == candidate.candidate_id
+                    or set_entry is None or set_entry.eligibility_status != EligibilityStatusV2.ELIGIBLE
+                    or admission != AdmissionStateV2.NOT_APPLICABLE):
+                raise ValueError("UNSELECTED requires a different selected candidate and eligible membership")
+        elif state == SelectionStateV2.REJECTED:
+            if (candidate is None or set_entry is None or set_entry.eligibility_status != EligibilityStatusV2.INELIGIBLE
+                    or not set_entry.rejection_reason or admission != AdmissionStateV2.NOT_APPLICABLE
+                    or set_entry.rejection_reason not in entry.reason_codes
+                    or candidate_set.selected_candidate_id == candidate.candidate_id):
+                raise ValueError("REJECTED requires typed CandidateSet rejection evidence")
+    elif stage == DecisionSourceStageV2.HARD_RISK:
+        source = repo.get_artifact(entry.source_artifact_ref)
+        body = source.metadata.get("sizing") if source is not None else None
+        if (state != SelectionStateV2.SELECTED or candidate is None or source is None
+                or source.artifact_type != "SizingDecisionV2" or source.content_hash != entry.source_artifact_ref
+                or not isinstance(body, Mapping) or sha256_json(body) != entry.source_artifact_ref
+                or source.available_at_ns != entry.available_at_ns
+                or body.get("candidate_ref") != entry.candidate_ref
+                or body.get("candidate_set_ref") != entry.candidate_set_ref
+                or body.get("selected_candidate_id") != candidate.candidate_id
+                or body.get("available_at_ns") != source.available_at_ns
+                or body.get("version") != SIZING_VERSION
+                or body.get("notional_convention") != NOTIONAL_CONVENTION):
+            raise ValueError("hard-risk decision is not the exact indexed SizingDecisionV2")
+        required_sizing_fields = {"version", "notional_convention", "candidate_ref", "candidate_set_ref",
+            "selected_candidate_id", "risk_policy_hash", "risk_policy_v2_hash", "account_snapshot_ref",
+            "product_ref", "risk_input_refs", "quantity", "normal_risk", "stress_risk", "notional",
+            "margin", "leverage", "notional_reference_price", "rolling_loss_consumed",
+            "rolling_new_risk_consumed", "status", "reasons", "available_at_ns"}
+        strict_fields(body, expected=required_sizing_fields, required=required_sizing_fields,
+                      name="SizingDecisionV2")
+        if (not isinstance(body.get("risk_input_refs"), (list, tuple))
+                or tuple(body["risk_input_refs"]) != tuple(sorted(set(body["risk_input_refs"])))
+                or not isinstance(body.get("reasons"), (list, tuple))):
+            raise ValueError("SizingDecisionV2 input/reason lists must be canonical")
+        required_risk_refs = {entry.candidate_ref, entry.candidate_set_ref, body.get("account_snapshot_ref"),
+                              body.get("product_ref"), body.get("risk_policy_hash"),
+                              body.get("risk_policy_v2_hash")}
+        if (None in required_risk_refs or not required_risk_refs.issubset(set(body["risk_input_refs"]))):
+            raise ValueError("SizingDecisionV2 does not bind its exact policy/candidate/risk inputs")
+        for ref in body["risk_input_refs"]:
+            input_artifact = repo.get_artifact(ref)
+            if input_artifact is None or input_artifact.available_at_ns > source.available_at_ns:
+                raise ValueError("SizingDecisionV2 input was unavailable")
+        if tuple(body.get("reasons", ())) != entry.reason_codes:
+            raise ValueError("decision reason codes disagree with SizingDecisionV2")
+        result_fields = ("quantity", "normal_risk", "stress_risk", "notional", "margin", "leverage",
+                         "notional_reference_price", "rolling_loss_consumed", "rolling_new_risk_consumed")
+        if body.get("status") == "SIZED":
+            if any(body.get(field) is None for field in result_fields):
+                raise ValueError("SIZED decision must retain every hard-risk result component")
+            if _decimal_wire(body["quantity"], "sizing quantity") <= 0:
+                raise ValueError("SIZED quantity must be positive")
+        elif any(body.get(field) is not None for field in result_fields):
+            raise ValueError("non-SIZED hard-risk decision cannot retain a fabricated action quantity/result")
+        expected = {"SIZED": AdmissionStateV2.RISK_SIZED.value,
+                    "NO_TRADE": AdmissionStateV2.NO_TRADE.value,
+                    "NOT_ESTIMABLE": AdmissionStateV2.NOT_ESTIMABLE.value}
+        sizing_status = body.get("status")
+        if not isinstance(sizing_status, str) or expected.get(sizing_status) != admission.value:
+            raise ValueError("hard-risk state disagrees with SizingDecisionV2")
+        if admission == AdmissionStateV2.RISK_SIZED:
+            if entry.action_hash is None or entry.action_artifact_ref is None:
+                raise ValueError("SIZED risk evidence must bind frozen action")
+        elif entry.action_hash is not None:
+            raise ValueError("hard-risk rejection cannot carry an action")
+    elif stage == DecisionSourceStageV2.ECONOMIC_EVALUATION:
+        source = repo.get_artifact(entry.source_artifact_ref)
+        body = source.metadata.get("evaluation") if source is not None else None
+        if (state != SelectionStateV2.SELECTED or candidate is None
+                or admission not in (AdmissionStateV2.CANDIDATE, AdmissionStateV2.NO_TRADE,
+                                     AdmissionStateV2.NOT_ESTIMABLE)
+                or entry.action_hash is None or source is None or source.artifact_type != "EvaluationArtifactV2"
+                or source.content_hash != entry.source_artifact_ref or not isinstance(body, Mapping)
+                or sha256_json(body) != entry.source_artifact_ref or body.get("version") != ECONOMIC_EVALUATION_VERSION
+                or body.get("candidate_set_ref") != entry.candidate_set_ref
+                or body.get("candidate_ref") != entry.candidate_ref
+                or body.get("action_hash") != entry.action_hash
+                or body.get("action_artifact_ref") != entry.action_artifact_ref
+                or body.get("policy_hash") != entry.policy_hash
+                or tuple(body.get("reason_codes", ())) != entry.reason_codes
+                or body.get("decision_at_ns") != entry.decision_at_ns
+                or body.get("decision") != admission.value
+                or body.get("available_at_ns") != source.available_at_ns
+                or source.available_at_ns != entry.available_at_ns):
+            raise ValueError("future economic admission requires indexed exact amended EvaluationArtifact")
+    elif stage == DecisionSourceStageV2.EXPIRY:
+        source = repo.get_artifact(entry.source_artifact_ref)
+        body = source.metadata.get("expiry") if source is not None else None
+        expiry = CandidateExpiryEvidenceV2.from_dict(json_value(body)) if isinstance(body, Mapping) else None
+        if (state != SelectionStateV2.SELECTED or candidate is None or admission != AdmissionStateV2.EXPIRED
+                or source is None or source.artifact_type != "CandidateExpiryEvidenceV2"
+                or source.content_hash != entry.source_artifact_ref or not isinstance(body, Mapping)
+                or sha256_json(body) != entry.source_artifact_ref
+                or expiry is None or expiry.candidate_set_ref != entry.candidate_set_ref
+                or expiry.candidate_ref != entry.candidate_ref or expiry.policy_hash != entry.policy_hash
+                or expiry.deadline_ns != candidate.deadline_ns or expiry.reason_code not in entry.reason_codes
+                or source.available_at_ns != entry.available_at_ns):
+            raise ValueError("expiry state requires exact typed candidate expiry evidence")
+    else:
+        raise ValueError("unsupported decision evidence stage")
+
+    if entry.action_hash is not None:
+        action = repo.get_artifact(entry.action_artifact_ref or "")
+        action_body = action.metadata.get("action_artifact") if action is not None else None
+        action_identity = action.metadata.get("action_identity") if action is not None else None
+        if (action is None or action.artifact_type != "ActionArtifactV2" or not isinstance(action_body, Mapping)
+                or not isinstance(action_identity, Mapping) or sha256_json(action_body) != entry.action_artifact_ref
+                or sha256_json(action_identity) != entry.action_hash
+                or action_body.get("candidate_ref") != entry.candidate_ref
+                or action_body.get("candidate_set_ref") != entry.candidate_set_ref
+                or action_identity.get("policy_id") != entry.policy_id
+                or action_identity.get("policy_version") != entry.policy_version
+                or action_identity.get("policy_hash") != entry.policy_hash
+                or (entry.source_stage == DecisionSourceStageV2.HARD_RISK
+                    and action_body.get("sizing_ref") != entry.source_artifact_ref)
+                or action.available_at_ns > entry.available_at_ns):
+            raise ValueError("decision entry frozen action identity mismatch")
+
+    existing = repo.get_artifact(entry.decision_identity_ref)
+    if existing is not None and (existing.artifact_type != "DecisionCalendarIdentityV2"
+            or existing.content_hash != entry.content_hash
+            or existing.metadata.get("decision_ref") != entry.content_hash):
+        raise ValueError("decision identity already has a contradictory immutable state")
+    repo.register_artifact(ArtifactIndexEntryV2(entry.content_hash, "DecisionCalendarEntryV2",
+        entry.content_hash, entry.created_at_ns, entry.available_at_ns, {"decision_entry": entry.to_dict()}))
+    repo.register_artifact(ArtifactIndexEntryV2(entry.decision_identity_ref, "DecisionCalendarIdentityV2",
+        entry.content_hash, entry.created_at_ns, entry.available_at_ns,
+        {"version": "DECISION_CALENDAR_IDENTITY_V2_V1", "decision_ref": entry.content_hash}))
+    return entry.content_hash
 
 
 @dataclass(frozen=True)
@@ -166,7 +563,9 @@ class MaturedOutcomeV2:
     available_at_ns: int
     label_definition: str
     label_view: str
-    calendar_state: CalendarStateV2
+    selection_state: SelectionStateV2
+    admission_state: AdmissionStateV2
+    execution_state: ExecutionOutcomeStateV2
     label_state: LabelStateV2
     provenance: OutcomeProvenanceV2
     payoff_unit: str
@@ -212,13 +611,15 @@ class MaturedOutcomeV2:
             timestamp(getattr(self, name), field=name)
         if not self.decision_at_ns < self.horizon_end_ns <= self.matured_at_ns <= self.available_at_ns:
             raise ValueError("outcome chronology invalid")
-        for name, enum in (("calendar_state", CalendarStateV2), ("label_state", LabelStateV2), ("provenance", OutcomeProvenanceV2)):
+        for name, enum in (("selection_state", SelectionStateV2), ("admission_state", AdmissionStateV2),
+                           ("execution_state", ExecutionOutcomeStateV2), ("label_state", LabelStateV2),
+                           ("provenance", OutcomeProvenanceV2)):
             object.__setattr__(self, name, enum(getattr(self, name)))
         object.__setattr__(self, "outcome_target", OutcomeTargetV2(self.outcome_target))
         if self.candidate_ref is None:
-            if self.calendar_state != CalendarStateV2.NO_CANDIDATE or self.action_hash is not None:
+            if self.selection_state not in (SelectionStateV2.NO_CANDIDATE, SelectionStateV2.NOT_ESTIMABLE) or self.action_hash is not None:
                 raise ValueError("only NO_CANDIDATE may lack candidate identity")
-        elif self.calendar_state == CalendarStateV2.NO_CANDIDATE:
+        elif self.selection_state == SelectionStateV2.NO_CANDIDATE:
             raise ValueError("NO_CANDIDATE cannot claim a candidate")
         if self.action_hash is None:
             if self.action_artifact_ref is not None:
@@ -226,8 +627,13 @@ class MaturedOutcomeV2:
             nonblank(self.action_absence_reason or "", field="action_absence_reason")
         elif self.action_absence_reason is not None or self.candidate_ref is None or self.action_artifact_ref is None:
             raise ValueError("frozen action identity and absence reason conflict")
-        if self.calendar_state in (CalendarStateV2.UNSELECTED, CalendarStateV2.REJECTED, CalendarStateV2.NO_CANDIDATE) and self.action_hash is not None:
+        if self.selection_state in (SelectionStateV2.UNSELECTED, SelectionStateV2.REJECTED,
+                                    SelectionStateV2.NO_CANDIDATE, SelectionStateV2.NOT_ESTIMABLE) and self.action_hash is not None:
             raise ValueError("unselected/rejected/no-candidate cannot invent a frozen action")
+        if self.action_hash is None and self.execution_state != ExecutionOutcomeStateV2.NOT_APPLICABLE:
+            raise ValueError("an absent frozen action cannot have an execution outcome")
+        if self.action_hash is not None and self.execution_state == ExecutionOutcomeStateV2.NOT_APPLICABLE:
+            raise ValueError("an existing frozen action requires a distinct execution state")
         if self.instrument_revision is None:
             if self.candidate_ref is not None or self.venue is not None or self.product is not None:
                 raise ValueError("candidate instrument identity incomplete")
@@ -238,8 +644,9 @@ class MaturedOutcomeV2:
             if value is not None:
                 object.__setattr__(self, name, decimal_value(value, field=name))
         if self.outcome_target == OutcomeTargetV2.NON_EXECUTABLE_DIAGNOSTIC:
-            if self.action_hash is not None or self.execution_evidence_ref is not None or self.actual_closed_source_ref is not None:
-                raise ValueError("diagnostic target cannot claim executable action or close")
+            if (self.action_hash is not None or self.execution_state != ExecutionOutcomeStateV2.NOT_APPLICABLE
+                    or self.execution_evidence_ref is not None or self.actual_closed_source_ref is not None):
+                raise ValueError("diagnostic target cannot claim executable outcome or close")
             if any(getattr(self, name) is not None for name in (
                     "gross_payoff", "fees", "funding_cashflow", "net_payoff", "fill_quantity",
                     "requested_quantity", "mfe", "mae", "extrema_evidence_ref", "actual_action_binding_ref")):
@@ -252,8 +659,8 @@ class MaturedOutcomeV2:
         elif self.diagnostic_value is not None or self.diagnostic_unit is not None or self.diagnostic_evidence_ref is not None:
             raise ValueError("executable target cannot carry diagnostic value")
         if self.label_state == LabelStateV2.MATURED and self.outcome_target == OutcomeTargetV2.EXECUTABLE_ACTION_VALUE:
-            if self.calendar_state not in (CalendarStateV2.NO_FILL, CalendarStateV2.PARTIAL_FILL,
-                                           CalendarStateV2.FULL_FILL):
+            if self.execution_state not in (ExecutionOutcomeStateV2.NO_FILL, ExecutionOutcomeStateV2.PARTIAL_FILL,
+                                            ExecutionOutcomeStateV2.FULL_FILL):
                 raise ValueError("matured executable action value requires terminal fill classification")
             if None in (self.gross_payoff, self.fees, self.funding_cashflow, self.net_payoff):
                 raise ValueError("matured monetary label requires complete components")
@@ -276,19 +683,19 @@ class MaturedOutcomeV2:
         if self.fill_quantity is not None:
             if self.fill_quantity < 0 or self.requested_quantity is None or self.fill_quantity > self.requested_quantity:
                 raise ValueError("fill quantity invalid")
-            if self.calendar_state == CalendarStateV2.NO_FILL and self.fill_quantity != 0:
+            if self.execution_state == ExecutionOutcomeStateV2.NO_FILL and self.fill_quantity != 0:
                 raise ValueError("no-fill quantity must be zero")
-            if self.calendar_state == CalendarStateV2.PARTIAL_FILL and not 0 < self.fill_quantity < self.requested_quantity:
+            if self.execution_state == ExecutionOutcomeStateV2.PARTIAL_FILL and not 0 < self.fill_quantity < self.requested_quantity:
                 raise ValueError("partial-fill quantity invalid")
             if self.fill_quantity > 0 and self.execution_evidence_ref is None:
                 raise ValueError("positive fill requires execution evidence")
             if self.fill_quantity > 0 and self.action_hash is None:
                 raise ValueError("candidate without frozen action cannot claim executable fill")
-        if self.label_state == LabelStateV2.MATURED and self.outcome_target == OutcomeTargetV2.EXECUTABLE_ACTION_VALUE and self.calendar_state in (
-                CalendarStateV2.NO_FILL, CalendarStateV2.PARTIAL_FILL, CalendarStateV2.FULL_FILL):
+        if self.label_state == LabelStateV2.MATURED and self.outcome_target == OutcomeTargetV2.EXECUTABLE_ACTION_VALUE and self.execution_state in (
+                ExecutionOutcomeStateV2.NO_FILL, ExecutionOutcomeStateV2.PARTIAL_FILL, ExecutionOutcomeStateV2.FULL_FILL):
             if self.execution_evidence_ref is None or self.fill_quantity is None or self.requested_quantity is None:
                 raise ValueError("matured fill state requires measured execution evidence")
-            if self.calendar_state == CalendarStateV2.FULL_FILL and self.fill_quantity != self.requested_quantity:
+            if self.execution_state == ExecutionOutcomeStateV2.FULL_FILL and self.fill_quantity != self.requested_quantity:
                 raise ValueError("full-fill quantity must equal requested quantity")
         if self.provenance == OutcomeProvenanceV2.ACTUAL:
             if self.label_view != "ACTUAL_SYSTEM":
@@ -370,7 +777,7 @@ def _validate_policy_payoff(repo: OpsRepository, outcome: MaturedOutcomeV2, iden
     if (sha256_json(body) != ref or body["version"] != "S1_S2_EXECUTION_REPLAY_V1"
             or body["action_hash"] != outcome.action_hash
             or body["action_artifact_ref"] != outcome.action_artifact_ref
-            or body["status"] != outcome.calendar_state.value
+            or body["status"] != outcome.execution_state.value
             or body["status"] not in ("NO_FILL", "PARTIAL_FILL", "FULL_FILL")
             or body["reasons"] or body["available_at_ns"] != entry.available_at_ns
             or body["available_at_ns"] > outcome.matured_at_ns
@@ -510,11 +917,15 @@ def _validate_actual_binding(repo: OpsRepository, outcome: MaturedOutcomeV2) -> 
                          ("requested_quantity", outcome.requested_quantity), ("fill_quantity", outcome.fill_quantity)):
         if _decimal_wire(economics.metadata.get(field), field) != value:
             raise ValueError("actual economics components disagree with outcome")
-    if economics.metadata.get("fill_status") != outcome.calendar_state.value:
+    if economics.metadata.get("fill_status") != outcome.execution_state.value:
         raise ValueError("actual fill status mismatch")
 
 
 def index_diagnostic_target_evidence(repo: OpsRepository, item: DiagnosticTargetEvidenceV2) -> str:
+    decision = _resolve_decision_calendar_entry(repo, item.decision_ref)
+    if (decision.candidate_set_ref != item.candidate_set_ref or decision.candidate_ref != item.candidate_ref
+            or decision.decision_at_ns != item.decision_at_ns):
+        raise ValueError("diagnostic target must bind exact decision calendar identity")
     declaration = repo.get_artifact(item.target_declaration_ref)
     if (declaration is None or declaration.artifact_type != "DiagnosticTargetDefinitionV2"
             or declaration.available_at_ns > item.decision_at_ns
@@ -558,12 +969,16 @@ def _validate_diagnostic_target(repo: OpsRepository, outcome: MaturedOutcomeV2) 
 
 def index_matured_outcome(repo: OpsRepository, outcome: MaturedOutcomeV2) -> str:
     """Index an available label; callers retain its immutable payload separately."""
-    candidate_set = repo.get_artifact(outcome.candidate_set_ref)
-    set_body = candidate_set.metadata.get("candidate_set") if candidate_set is not None else None
-    set_identity = candidate_set.metadata.get("identity") if candidate_set is not None else None
-    if (candidate_set is None or candidate_set.artifact_type != "CandidateSetV2"
-            or not isinstance(set_body, Mapping) or not isinstance(set_identity, Mapping)
-            or outcome.decision_at_ns != set_identity.get("cutoff_ns")
+    decision = _resolve_decision_calendar_entry(repo, outcome.decision_ref)
+    if (outcome.candidate_set_ref != decision.candidate_set_ref
+            or outcome.candidate_ref != decision.candidate_ref
+            or outcome.policy_id != decision.policy_id or outcome.policy_version != decision.policy_version
+            or outcome.policy_hash != decision.policy_hash or outcome.decision_at_ns != decision.decision_at_ns
+            or outcome.selection_state != decision.selection_state or outcome.admission_state != decision.admission_state
+            or outcome.action_hash != decision.action_hash or outcome.action_artifact_ref != decision.action_artifact_ref):
+        raise ValueError("outcome decision state/identity must match indexed decision-calendar evidence")
+    candidate_set, set_identity = _resolve_candidate_set(repo, outcome.candidate_set_ref)
+    if (outcome.decision_at_ns != set_identity.get("cutoff_ns")
             or (outcome.candidate_ref is not None
                 and outcome.candidate_ref not in set_identity.get("candidate_refs", ()))):
         raise ValueError("outcome decision/candidate must belong to exact CandidateSet")
@@ -626,8 +1041,15 @@ def index_matured_outcome(repo: OpsRepository, outcome: MaturedOutcomeV2) -> str
 def executable_action_value_training_eligible(outcome: MaturedOutcomeV2, cutoff_ns: int) -> bool:
     timestamp(cutoff_ns, field="training cutoff")
     return (outcome.outcome_target == OutcomeTargetV2.EXECUTABLE_ACTION_VALUE
-            and outcome.action_hash is not None and outcome.label_state == LabelStateV2.MATURED
-            and outcome.net_payoff is not None and outcome.available_at_ns <= cutoff_ns)
+            and outcome.action_hash is not None and outcome.action_artifact_ref is not None
+            and outcome.label_state == LabelStateV2.MATURED
+            and outcome.execution_state in (ExecutionOutcomeStateV2.NO_FILL,
+                ExecutionOutcomeStateV2.PARTIAL_FILL, ExecutionOutcomeStateV2.FULL_FILL)
+            and outcome.execution_evidence_ref is not None and outcome.fill_quantity is not None
+            and outcome.requested_quantity is not None and outcome.gross_payoff is not None
+            and outcome.fees is not None and outcome.funding_cashflow is not None
+            and outcome.net_payoff == outcome.gross_payoff - outcome.fees + outcome.funding_cashflow
+            and outcome.available_at_ns <= cutoff_ns)
 
 
 def matured_diagnostic_eligible(outcome: MaturedOutcomeV2, cutoff_ns: int) -> bool:
