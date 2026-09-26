@@ -264,7 +264,13 @@ class BybitPublicReaderV2:
         return self.client.get("/v5/market/instruments-info", params)
 
     def klines(self, symbol: str, interval: BarIntervalV2, *, limit: int = 200) -> PublicHttpResponseV2:
-        interval_text = {BarIntervalV2.M15: "15", BarIntervalV2.H1: "60", BarIntervalV2.H4: "240"}[BarIntervalV2(interval)]
+        interval_text = {
+            BarIntervalV2.M1: "1",
+            BarIntervalV2.M5: "5",
+            BarIntervalV2.M15: "15",
+            BarIntervalV2.H1: "60",
+            BarIntervalV2.H4: "240",
+        }[BarIntervalV2(interval)]
         return self.client.get("/v5/market/kline", {"category": "linear", "symbol": symbol, "interval": interval_text, "limit": limit})
 
     def recent_trades(self, symbol: str, *, limit: int = 100) -> PublicHttpResponseV2:

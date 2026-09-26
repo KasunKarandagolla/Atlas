@@ -31,6 +31,8 @@ class ComputeTierV2(IntEnum):
 
 class SubscriptionChannelV2(StrEnum):
     INSTRUMENT_INFO = "INSTRUMENT_INFO"
+    KLINE_1M = "KLINE_1M"
+    KLINE_5M = "KLINE_5M"
     KLINE_15M = "KLINE_15M"
     KLINE_1H = "KLINE_1H"
     KLINE_4H = "KLINE_4H"
@@ -39,6 +41,19 @@ class SubscriptionChannelV2(StrEnum):
     MARK_INDEX = "MARK_INDEX"
     FUNDING = "FUNDING"
     OPEN_INTEREST = "OPEN_INTEREST"
+
+
+def session021_strategy_history_days_v2() -> dict[str, int]:
+    """Return the point-in-time observed-history minimums for S3 and S6.
+
+    Callers pass this additive map in ``UniverseObservationV2``. Keeping it
+    opt-in preserves the accepted S1/S2 universe artifact and selection inputs.
+    The policies separately validate exact bars, trades, health and liquidity.
+    """
+    return {
+        "S3_VWAP_STAT_MEAN_REVERSION": 7,
+        "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH": 30,
+    }
 
 
 @dataclass(frozen=True)
@@ -219,6 +234,16 @@ class DynamicUniverseRuntimeV2:
         tier3_primary = scanner[:top_tier_3]
         tier3_keys = {item.product.key for item in tier3_primary}
         tier3_keys.update(item.product.key for item in tier0 if item.open_position or item.active_watch)
+        # Explicitly opted-in S3 history requirements receive 1M observations.
+        # With the default S1/S2-only map this adds no subscriptions or tier changes.
+        s3_policy = "S3_VWAP_STAT_MEAN_REVERSION"
+        tier3_keys.update(
+            item.product.key for item in tier0
+            if item.strategy_history_days.get(s3_policy, 0) >= 7
+            and any(entry.key == item.product.key and entry.strategy_eligibility.get(s3_policy) is not None
+                    and entry.strategy_eligibility[s3_policy].status == EligibilityStatusV2.ELIGIBLE
+                    for entry in entries)
+        )
         tiers: dict[InstrumentKeyV2, ComputeTierV2] = {}
         for item in tier0:
             key = item.product.key
@@ -279,6 +304,8 @@ def subscription_channels_for_tier(tier: ComputeTierV2) -> tuple[SubscriptionCha
             SubscriptionChannelV2.TRADES,
         ),
         ComputeTierV2.TIER_3: (
+            SubscriptionChannelV2.KLINE_1M,
+            SubscriptionChannelV2.KLINE_5M,
             SubscriptionChannelV2.KLINE_15M,
             SubscriptionChannelV2.KLINE_1H,
             SubscriptionChannelV2.KLINE_4H,

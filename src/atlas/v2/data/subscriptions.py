@@ -15,6 +15,8 @@ from .universe import ComputeTierV2, SubscriptionChannelV2, subscription_channel
 _SUBSCRIPTION_SCHEMA_VERSION = 1
 
 _WATCH_EVENT_CHANNELS = {
+    "BAR_CLOSE_1M": SubscriptionChannelV2.KLINE_1M,
+    "BAR_CLOSE_5M": SubscriptionChannelV2.KLINE_5M,
     "BAR_CLOSE_15M": SubscriptionChannelV2.KLINE_15M,
     "BAR_CLOSE_1H": SubscriptionChannelV2.KLINE_1H,
     "BAR_CLOSE_4H": SubscriptionChannelV2.KLINE_4H,

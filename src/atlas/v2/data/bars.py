@@ -15,13 +15,21 @@ from .raw import AvailabilityClassV2, RawObservationV2
 
 
 class BarIntervalV2(StrEnum):
+    M1 = "1M"
+    M5 = "5M"
     M15 = "15M"
     H1 = "1H"
     H4 = "4H"
 
     @property
     def duration_ns(self) -> int:
-        return {BarIntervalV2.M15: 900, BarIntervalV2.H1: 3600, BarIntervalV2.H4: 14400}[self] * 1_000_000_000
+        return {
+            BarIntervalV2.M1: 60,
+            BarIntervalV2.M5: 300,
+            BarIntervalV2.M15: 900,
+            BarIntervalV2.H1: 3600,
+            BarIntervalV2.H4: 14400,
+        }[self] * 1_000_000_000
 
 
 def close_boundary_ns(open_at_ns: int, interval: BarIntervalV2) -> int:
