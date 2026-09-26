@@ -15,15 +15,16 @@ from atlas.v2.science.admission import (
     DecisionTimePortfolioScenariosV2,
     EstimationUncertaintyV2,
     ExecutionModelUncertaintyV2,
+    NumericalErrorV2,
     OutcomeDistributionV2,
     PortfolioPathV2,
     ReservationSnapshotV2,
     VenueCapabilitySnapshotV2,
+    VenueCapabilityStatusV2,
     create_shadow_trade_plan,
     expected_value_lcb,
     index_shadow_plan_snapshots,
     make_execution_uncertainty,
-    make_numerical_error,
     make_portfolio_es,
 )
 
@@ -32,13 +33,44 @@ def _ref(name: str) -> str:
     return sha256_json({"test-ref": name})
 
 
+def _policy(threshold: Decimal = Decimal("0.5")):
+    from atlas.v2.science.admission import ADMISSION_POLICY_VERSION, AdmissionPolicyV2
+
+    return AdmissionPolicyV2(ADMISSION_POLICY_VERSION, threshold, 30, 30, 20, Decimal(1),
+        "ISOLATED", "ONE_WAY", "nautilus_trader", "2.0.0rc5",
+        "1b0a49d2792a9432a3aca3fcb617ce7a630d905e", _ref("nautilus-artifact"),
+        _ref("execution-profile"), _ref("protection-profile"), "TEST_QUALIFICATION_V1")
+
+
+def _capability(action, *, account_scope: str, policy, synthetic: bool = True,
+        evidence_ref: str | None = None, available_at_ns: int = 100):
+    return VenueCapabilitySnapshotV2(action.action.key.venue, action.action.key.environment,
+        account_scope, action.action.product_ref, action.action.key.content_hash,
+        policy.required_margin_mode, policy.required_position_mode,
+        policy.required_nautilus_distribution, policy.required_nautilus_version,
+        policy.required_nautilus_source_commit, policy.required_nautilus_artifact_ref,
+        policy.required_execution_profile_ref, policy.required_protection_profile_ref,
+        policy.required_qualification_version, VenueCapabilityStatusV2.SUPPORTED,
+        (evidence_ref or _ref("synthetic-capability-source"),), available_at_ns, synthetic)
+
+
+def _numerical(action_hash: str, scenario_ref: str, prediction_ref: str, *,
+        seed_a: int, seed_b: int, path_count_a: int, path_count_b: int,
+        estimate_a: Decimal, estimate_b: Decimal, conversion_error: Decimal) -> NumericalErrorV2:
+    return NumericalErrorV2(action_hash, scenario_ref, _ref("template-manifest"),
+        _ref("execution-model"), _ref("fee-model"), prediction_ref,
+        _ref("run-a"), _ref("run-b"), seed_a, seed_b, path_count_a, path_count_b,
+        conversion_error, estimate_a, estimate_b,
+        abs(estimate_a - estimate_b) + conversion_error, 101, 102, "AVAILABLE")
+
+
 def _evaluation(decision: DecisionStatusV2 = DecisionStatusV2.CANDIDATE) -> AmendedEvaluationArtifactV2:
     refs = {name: _ref(name) for name in (
         "action", "action-artifact", "candidate", "policy", "risk-v1-ref", "risk-v1-hash",
         "risk-v2-ref", "risk-v2-hash", "account", "universe", "candidate-set", "selection",
         "causal-state", "feature", "model", "prediction", "scenario", "stress", "portfolio",
         "lcb", "estimation", "execution", "numerical", "support", "calibration", "ood",
-        "distribution", "admission-policy")}
+        "distribution", "admission-policy", "capability")}
     reasons = () if decision == DecisionStatusV2.CANDIDATE else ("FIXTURE_REJECTION",)
     return AmendedEvaluationArtifactV2(
         action_hash=refs["action"], action_artifact_ref=refs["action-artifact"], candidate_ref=refs["candidate"],
@@ -56,6 +88,7 @@ def _evaluation(decision: DecisionStatusV2 = DecisionStatusV2.CANDIDATE) -> Amen
         numerical_error_ref=refs["numerical"], support_ref=refs["support"],
         calibration_ref=refs["calibration"], ood_ref=refs["ood"],
         outcome_distribution_ref=refs["distribution"], admission_policy_ref=refs["admission-policy"],
+        capability_evidence_ref=refs["capability"],
         es_before=Decimal("0.01"), es_after=Decimal("0.02"), decision=decision,
         reason_codes=reasons, decision_at_ns=100, available_at_ns=101, action_expiry_ns=200)
 
@@ -86,9 +119,9 @@ def test_lcb_subtracts_three_uncertainty_terms_not_a_pnl_tail_quantile():
         Decimal("3.92"), "AVAILABLE")
     execution = ExecutionModelUncertaintyV2(action_hash, _ref("execution-model"),
         (_ref("exec-1"), _ref("exec-2")), 2, Decimal("1.5"), "AVAILABLE")
-    numerical = make_numerical_error(action_hash=action_hash, scenario_ref=_ref("scenario"),
-        seed_a=11, seed_b=29, path_count_a=1_000, path_count_b=10_000,
-        estimate_a=Decimal("8.0"), estimate_b=Decimal("8.2"), m0_conversion_error=Decimal("0"))
+    numerical = _numerical(action_hash, _ref("scenario"), _ref("prediction"), seed_a=11,
+        seed_b=29, path_count_a=1_000, path_count_b=10_000,
+        estimate_a=Decimal("8.0"), estimate_b=Decimal("8.2"), conversion_error=Decimal("0"))
     assert numerical.error_bound == Decimal("0.2")
     assert expected_value_lcb(Decimal("10"), estimation, execution, numerical) == Decimal("4.38")
     assert expected_value_lcb(Decimal("10"), estimation,
@@ -97,10 +130,9 @@ def test_lcb_subtracts_three_uncertainty_terms_not_a_pnl_tail_quantile():
 
 
 def test_m0_decimal_conversion_error_is_recorded_and_subtracted_separately():
-    numerical = make_numerical_error(action_hash=_ref("action"), scenario_ref=_ref("scenario"),
-        seed_a=2, seed_b=7, path_count_a=100, path_count_b=1000,
-        estimate_a=Decimal("1"), estimate_b=Decimal("1.1"),
-        m0_conversion_error=Decimal("0.001"))
+    numerical = _numerical(_ref("action"), _ref("scenario"), _ref("prediction"), seed_a=2,
+        seed_b=7, path_count_a=100, path_count_b=1000,
+        estimate_a=Decimal("1"), estimate_b=Decimal("1.1"), conversion_error=Decimal("0.001"))
     assert numerical.m0_conversion_error == Decimal("0.001")
     assert numerical.error_bound == Decimal("0.101")
 
@@ -109,16 +141,13 @@ def test_deterministic_admission_requires_every_gate_and_respects_materiality(tm
     from atlas.v2.memory.repository import OpsRepository
     from atlas.v2.science.action import freeze_action
     from atlas.v2.science.admission import (
-        ADMISSION_POLICY_VERSION,
         M0OODV2,
-        AdmissionPolicyV2,
         DeterministicStressV2,
         M0CalibrationV2,
         M0SupportV2,
         PortfolioESV2,
         ScenarioSupportV2,
         decide_admission,
-        make_numerical_error,
     )
     from atlas.v2.science.m0 import M0PredictionV2
     from atlas.v2.science.pretrade import CausalInputV2
@@ -148,7 +177,7 @@ def test_deterministic_admission_requires_every_gate_and_respects_materiality(tm
         model_input, calibration_input, execution_input, (source_input,), (template_ref,),
         (joint_data_ref,), ((path_id, Decimal(1), payload_ref),), (),
         SCENARIO_GENERATOR_VERSION, _ref("common-set"), CUTOFF + 1, CUTOFF + 2, CUTOFF + 3,
-        case.candidate.deadline_ns, ScenarioGenerationStatusV2.AVAILABLE)
+        case.candidate.deadline_ns, ScenarioGenerationStatusV2.AVAILABLE, seed=19, scenario_count=1)
     support = M0SupportV2(action.action.action_hash, CUTOFF, 40, 40, 1, (("ACTUAL", 40),),
         (("FULL_FILL", 40),), (("__any_missing__", Decimal(0)),), CUTOFF - 10,
         CUTOFF - 1, (_ref("training-outcome"),), _ref("compatibility"), "SUPPORTED")
@@ -159,8 +188,9 @@ def test_deterministic_admission_requires_every_gate_and_respects_materiality(tm
         40, Decimal("0.3"), "OOF_CALIBRATED")
     ood = M0OODV2(action.action.action_hash, prediction.feature_vector_ref,
         support.training_outcome_refs, Decimal(5), Decimal("0.2"), False, "IN_DISTRIBUTION")
+    unit_refs = tuple(sorted(_ref(f"support-unit-{i}") for i in range(40)))
     scenario_support = ScenarioSupportV2(action.action.action_hash, scenario.content_hash, 40,
-        True, True, True, True, True, "SUPPORTED", (template_ref,))
+        unit_refs, unit_refs, True, True, True, True, True, "SUPPORTED", (template_ref,))
     outcome = OutcomeDistributionV2(action.action.action_hash, scenario.content_hash, (payoff_ref,),
         (path_id,), (Decimal(1),), (Decimal(2),), Decimal(2), Decimal(2), "AVAILABLE")
     estimation = EstimationUncertaintyV2(action.action.action_hash, prediction.content_hash,
@@ -168,10 +198,9 @@ def test_deterministic_admission_requires_every_gate_and_respects_materiality(tm
         Decimal("0.05"), "AVAILABLE")
     execution = ExecutionModelUncertaintyV2(action.action.action_hash, execution_input.ref,
         (_ref("execution-residual"),), 40, Decimal("0.05"), "AVAILABLE")
-    numerical = make_numerical_error(action_hash=action.action.action_hash,
-        scenario_ref=scenario.content_hash, seed_a=1901, seed_b=1902, path_count_a=100,
-        path_count_b=1000, estimate_a=Decimal("1.9"), estimate_b=Decimal("1.9"),
-        m0_conversion_error=Decimal(0))
+    numerical = _numerical(action.action.action_hash, scenario.content_hash, prediction.content_hash,
+        seed_a=1901, seed_b=1902, path_count_a=100, path_count_b=1000,
+        estimate_a=Decimal("1.9"), estimate_b=Decimal("1.9"), conversion_error=Decimal(0))
     stress = DeterministicStressV2(action.action.action_hash, action.content_hash,
         action.action.quantity, case.v1.policy_hash(), case.v1.policy_hash(), Decimal(10_000),
         Decimal(0), Decimal(50), CUTOFF, "STRESS_FIXTURE_V1", _ref("stress-evidence"),
@@ -181,18 +210,35 @@ def test_deterministic_admission_requires_every_gate_and_respects_materiality(tm
 
     def result(*, expected: Decimal = Decimal(2), threshold: Decimal = Decimal("0.5"),
             supported: bool = True, stress_breach: bool = False, es_breach: bool = False,
-            materially_ood: bool = False):
-        return decide_admission(action=action,
-            prediction=replace(prediction, expected_net_value=expected), m0_support=support,
-            calibration=calibration, ood=replace(ood, out_of_distribution=materially_ood,
+            materially_ood: bool = False, capability_override=None,
+            allow_fixture: bool = True, legacy_capability_qualified: bool | None = None):
+        admission_policy = _policy(threshold)
+        capability = capability_override or _capability(action, account_scope="SYNTHETIC_ACCOUNT",
+            policy=admission_policy)
+        kwargs = {
+            "action": action,
+            "prediction": replace(prediction, expected_net_value=expected),
+            "m0_support": support,
+            "calibration": calibration,
+            "ood": replace(ood, out_of_distribution=materially_ood,
                 status="OOD" if materially_ood else "IN_DISTRIBUTION"),
-            scenario=scenario, scenario_support=scenario_support,
-            outcome_distribution=outcome, estimation=estimation,
-            execution=execution if supported else replace(execution, residual_refs=(),
+            "scenario": scenario,
+            "scenario_support": scenario_support,
+            "outcome_distribution": outcome,
+            "estimation": estimation,
+            "execution": execution if supported else replace(execution, residual_refs=(),
                 independent_support_count=0, absolute_cost_error_q90=None, status="NOT_ESTIMABLE"),
-            numerical=numerical, stress=replace(stress, breach=stress_breach),
-            portfolio=replace(portfolio, breach=es_breach),
-            policy=AdmissionPolicyV2(ADMISSION_POLICY_VERSION, threshold, 30, 30, 20, Decimal(1), True))
+            "numerical": numerical,
+            "stress": replace(stress, breach=stress_breach),
+            "portfolio": replace(portfolio, breach=es_breach),
+            "policy": admission_policy,
+            "capability": capability,
+            "account_scope": "SYNTHETIC_ACCOUNT",
+            "allow_synthetic_fixtures": allow_fixture,
+        }
+        if legacy_capability_qualified is not None:
+            kwargs["venue_capability_qualified"] = legacy_capability_qualified
+        return decide_admission(**kwargs)
 
     assert result().decision == DecisionStatusV2.CANDIDATE
     assert result(expected=Decimal("-1")).decision == DecisionStatusV2.NO_TRADE
@@ -201,6 +247,23 @@ def test_deterministic_admission_requires_every_gate_and_respects_materiality(tm
     assert result(materially_ood=True).decision == DecisionStatusV2.NOT_ESTIMABLE
     assert result(stress_breach=True).decision == DecisionStatusV2.NO_TRADE
     assert result(es_breach=True).decision == DecisionStatusV2.NO_TRADE
+    assert result(allow_fixture=False).decision == DecisionStatusV2.NOT_ESTIMABLE
+    with pytest.raises(TypeError, match="venue_capability_qualified"):
+        result(legacy_capability_qualified=True)
+    wrong_venue = replace(_capability(action, account_scope="SYNTHETIC_ACCOUNT", policy=_policy()),
+        venue="BINANCE")
+    wrong_account = replace(_capability(action, account_scope="SYNTHETIC_ACCOUNT", policy=_policy()),
+        account_scope="OTHER_ACCOUNT")
+    wrong_product = replace(_capability(action, account_scope="SYNTHETIC_ACCOUNT", policy=_policy()),
+        product_ref=_ref("wrong-product"))
+    wrong_profile = replace(_capability(action, account_scope="SYNTHETIC_ACCOUNT", policy=_policy()),
+        protection_profile_ref=_ref("wrong-protection-profile"))
+    assert result(capability_override=wrong_venue).decision == DecisionStatusV2.NOT_ESTIMABLE
+    assert result(capability_override=wrong_account).decision == DecisionStatusV2.NOT_ESTIMABLE
+    assert result(capability_override=wrong_product).decision == DecisionStatusV2.NOT_ESTIMABLE
+    assert result(capability_override=wrong_profile).decision == DecisionStatusV2.NOT_ESTIMABLE
+    with pytest.raises(ValueError, match="unknown fields"):
+        _policy().from_dict(_policy().to_dict() | {"venue_capability_qualified": True})
 
 
 def test_outcome_dispersion_and_mean_estimation_uncertainty_are_separate_artifacts():
@@ -382,6 +445,7 @@ def test_rejected_evaluation_has_terminal_reason_and_is_not_candidate(decision):
 def test_synthetic_candidate_fixture_creates_one_read_only_plan_from_frozen_sizing(tmp_path, monkeypatch):
     from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
     from atlas.v2.science.action import freeze_action
+    from atlas.v2.science.admission import index_admission_evidence
     from atlas.v2.strategies.s1_trend import S1_POLICY
 
     from . import test_session016_candidate_selection as selection_module
@@ -400,9 +464,18 @@ def test_synthetic_candidate_fixture_creates_one_read_only_plan_from_frozen_sizi
         sizing = risk_module.size(repo, case)
         action = freeze_action(repo, candidate=case.candidate, candidate_set=case.candidate_set,
             sizing=sizing, product=case.product, policy=S1_POLICY, v1=case.v1, v2=case.v2)
+        admission_policy = _policy()
+        admission_policy_ref = index_admission_evidence(repo, "AdmissionPolicyV2",
+            admission_policy.to_dict(), case.candidate.decision_at_ns, metadata_key="evidence")
+        capability_source_ref = index_admission_evidence(repo, "SyntheticVenueCapabilitySourceV2",
+            {"version": "SYNTHETIC_VENUE_CAPABILITY_SOURCE_V1", "scope": "SHADOW_FAKE_ACCOUNT"},
+            case.candidate.decision_at_ns, metadata_key="evidence")
+        capability = _capability(action, account_scope="SHADOW_FAKE_ACCOUNT",
+            policy=admission_policy, evidence_ref=capability_source_ref,
+            available_at_ns=case.candidate.decision_at_ns)
         refs = {name: _ref(f"plan-{name}") for name in (
             "model", "prediction", "scenario", "stress", "portfolio", "lcb", "estimation",
-            "execution", "numerical", "support", "calibration", "ood", "distribution", "policy")}
+            "execution", "numerical", "support", "calibration", "ood", "distribution")}
         evaluation = AmendedEvaluationArtifactV2(
             action.action.action_hash, action.content_hash, case.candidate.content_hash,
             action.action.quantity, S1_POLICY.policy_hash, case.v1.policy_hash(), case.v1.policy_hash(),
@@ -412,13 +485,11 @@ def test_synthetic_candidate_fixture_creates_one_read_only_plan_from_frozen_sizi
             "M0_HUBER_RIDGE_ACTION_VALUE_V1", refs["scenario"], refs["stress"], refs["portfolio"],
             Decimal("1"), Decimal("0.5"), refs["lcb"], refs["estimation"], refs["execution"],
             refs["numerical"], refs["support"], refs["calibration"], refs["ood"], refs["distribution"],
-            refs["policy"], Decimal("0"), Decimal("0"), DecisionStatusV2.CANDIDATE, (),
+            admission_policy_ref, capability.content_hash, Decimal("0"), Decimal("0"), DecisionStatusV2.CANDIDATE, (),
             case.candidate.decision_at_ns, case.candidate.decision_at_ns + 100, case.candidate.deadline_ns)
         repo.register_artifact(ArtifactIndexEntryV2(evaluation.content_hash, "EvaluationArtifactV2",
             evaluation.content_hash, evaluation.decision_at_ns, evaluation.available_at_ns,
             {"evaluation": evaluation.to_dict()}))
-        capability = VenueCapabilitySnapshotV2("SHADOW_FAKE_ACCOUNT", case.product.content_hash,
-            evaluation.available_at_ns, False, True)
         reservation = ReservationSnapshotV2("SHADOW_FAKE_ACCOUNT", evaluation.available_at_ns, 1, True)
         index_shadow_plan_snapshots(repo, capability=capability, reservation=reservation)
         plan = create_shadow_trade_plan(repo, action=action, evaluation=evaluation,
@@ -442,12 +513,12 @@ def test_synthetic_candidate_fixture_creates_one_read_only_plan_from_frozen_sizi
         assert len(repo.artifact_entries("TradePlanEnvelopeV2")) == 1
         assert create_shadow_trade_plan(repo, action=action, evaluation=evaluation,
             capability=capability, reservation=reservation) is None
-        real_capability = replace(capability, qualified=True, synthetic_fixture=False)
-        real_reservation = replace(reservation, synthetic_fixture=False)
-        index_shadow_plan_snapshots(repo, capability=real_capability, reservation=real_reservation)
-        with pytest.raises(ValueError, match="required"):
-            create_shadow_trade_plan(repo, action=action, evaluation=evaluation,
-                capability=real_capability, reservation=real_reservation)
+        real_source_ref = index_admission_evidence(repo, "VenueCapabilityQualificationEvidenceV2",
+            {"version": "VENUE_CAPABILITY_QUALIFICATION_FIXTURE_V1", "scope": "SHADOW_FAKE_ACCOUNT"},
+            case.candidate.decision_at_ns, metadata_key="evidence")
+        real_capability = replace(capability, synthetic_fixture=False, evidence_refs=(real_source_ref,))
+        with pytest.raises(ValueError, match="CapabilityContractV1"):
+            index_shadow_plan_snapshots(repo, capability=real_capability, reservation=reservation)
         assert create_shadow_trade_plan(repo, action=action,
             evaluation=replace(evaluation, decision=DecisionStatusV2.NO_TRADE,
                 reason_codes=("EXPECTED_NET_VALUE_LCB_NOT_POSITIVE",)),

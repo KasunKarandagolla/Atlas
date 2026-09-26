@@ -26,7 +26,7 @@ from atlas.v2.science.pretrade import CausalInputV2, ScenarioFillStateV2
 
 JOINT_EXECUTION_DATA_VERSION = "JOINT_SCENARIO_DATA_V2_V2"
 JOINT_EXECUTION_PAYLOAD_VERSION = "JOINT_SCENARIO_PAYLOAD_V2_V3"
-PRETRADE_EXECUTION_SCENARIO_VERSION = "PRETRADE_SCENARIO_ARTIFACT_V2_V4"
+PRETRADE_EXECUTION_SCENARIO_VERSION = "PRETRADE_SCENARIO_ARTIFACT_V2_V5"
 PATH_PAYOFF_VERSION = "PRETRADE_PATH_PAYOFF_V2_V1"
 SCENARIO_GENERATOR_VERSION = "COHERENT_JOINT_BLOCK_RESAMPLE_V1"
 FORBIDDEN_PRETRADE_TYPES = frozenset({"ReplayPathV2", "PolicyPayoffV2", "PairedPortfolioPayoffV2", "MaturedOutcomeV2"})
@@ -384,6 +384,8 @@ class PretradeExecutionScenarioV2:
     status: ScenarioGenerationStatusV2
     synthetic_fixture: bool = False
     reason: str | None = None
+    seed: int = 0
+    scenario_count: int = 0
 
     def __post_init__(self) -> None:
         for name in ("action_hash", "action_artifact_ref", "common_scenario_set_id"):
@@ -404,6 +406,8 @@ class PretradeExecutionScenarioV2:
         object.__setattr__(self, "status", ScenarioGenerationStatusV2(self.status))
         if type(self.synthetic_fixture) is not bool:
             raise ValueError("synthetic fixture marker must be boolean")
+        if type(self.seed) is not int or self.seed < 0 or type(self.scenario_count) is not int or self.scenario_count <= 0:
+            raise ValueError("scenario run seed/path count must be immutable positive-count evidence")
         if self.status == ScenarioGenerationStatusV2.NOT_ESTIMABLE:
             if self.rows or not self.reason or self.template_support_refs:
                 raise ValueError("NOT_ESTIMABLE scenario has no probability rows and requires a reason")
@@ -621,6 +625,23 @@ def _validate_policy_management(repo: OpsRepository, action: ActionArtifactV2,
         raise ValueError("S2 failed-break exit disagrees with the first two post-entry closed bars")
 
 
+def _sampled_probability_rows(supported: Sequence[JointExecutionDataV2], *, seed: int,
+        scenario_count: int) -> tuple[tuple[str, Decimal], ...]:
+    """Reproduce the exact path frequencies from the frozen joint-template set."""
+    rng = random.Random(seed)
+    counts: dict[str, int] = {}
+    ordered = tuple(supported)
+    for _ in range(scenario_count):
+        path_id = ordered[rng.randrange(len(ordered))].joint_path_id
+        counts[path_id] = counts.get(path_id, 0) + 1
+    rows = sorted(counts.items())
+    probabilities = [Decimal(count) / Decimal(scenario_count) for _, count in rows]
+    if probabilities:
+        probabilities[-1] = Decimal(1) - sum(probabilities[:-1], ZERO)
+    return tuple((path_id, probability) for (path_id, _), probability in
+        zip(rows, probabilities, strict=True))
+
+
 def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2,
         model_input: CausalInputV2, calibration_input: CausalInputV2,
         execution_model_input: CausalInputV2, source_inputs: Sequence[CausalInputV2],
@@ -683,7 +704,7 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
     def persist_scenario(artifact: PretradeExecutionScenarioV2, template_support_count: int) -> None:
         repo.register_artifact(ArtifactIndexEntryV2(artifact.content_hash, "PretradeExecutionScenarioV2",
             artifact.content_hash, artifact.created_at_ns, artifact.available_at_ns,
-            {"scenario": artifact.to_dict(), "seed": seed, "scenario_count": scenario_count,
+            {"scenario": artifact.to_dict(), "seed": artifact.seed, "scenario_count": artifact.scenario_count,
              "template_support_count": template_support_count}))
 
     if not supported:
@@ -691,7 +712,7 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
             model_input, calibration_input, execution_model_input, sources, (), source_data_refs, (), tuple(sorted(set(stress_refs))),
             SCENARIO_GENERATOR_VERSION, common_id, created_at_ns, computed_at_ns, available_at_ns,
             expires_at_ns, ScenarioGenerationStatusV2.NOT_ESTIMABLE,
-            reason="MISSING_QUALIFIED_JOINT_EXECUTION_SUPPORT")
+            reason="MISSING_QUALIFIED_JOINT_EXECUTION_SUPPORT", seed=seed, scenario_count=scenario_count)
         persist_scenario(scenario, 0)
         return scenario, ()
     if len({datum.joint_path_id for datum in supported}) != len(supported):
@@ -699,7 +720,7 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
             model_input, calibration_input, execution_model_input, sources, (), source_data_refs, (), tuple(sorted(set(stress_refs))),
             SCENARIO_GENERATOR_VERSION, common_id, created_at_ns, computed_at_ns, available_at_ns,
             expires_at_ns, ScenarioGenerationStatusV2.NOT_ESTIMABLE,
-            reason="DUPLICATE_JOINT_PATH_TEMPLATE_IDENTITY")
+            reason="DUPLICATE_JOINT_PATH_TEMPLATE_IDENTITY", seed=seed, scenario_count=scenario_count)
         persist_scenario(scenario, 0)
         return scenario, ()
     if computed_at_ns < max(d.computed_at_ns for d in supported):
@@ -719,15 +740,12 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
             model_input, calibration_input, execution_model_input, sources, (), source_data_refs, (), tuple(sorted(set(stress_refs))),
             SCENARIO_GENERATOR_VERSION, common_id, created_at_ns, computed_at_ns, available_at_ns,
             expires_at_ns, ScenarioGenerationStatusV2.NOT_ESTIMABLE,
-            reason="SCENARIO_POLICY_OR_EXECUTION_MECHANICS_UNRESOLVED")
+            reason="SCENARIO_POLICY_OR_EXECUTION_MECHANICS_UNRESOLVED", seed=seed,
+            scenario_count=scenario_count)
         persist_scenario(scenario, 0)
         return scenario, ()
     # The draw unit is the complete joint path, never an independently shuffled component.
-    rng = random.Random(seed)
-    draws = [supported[rng.randrange(len(supported))] for _ in range(scenario_count)]
-    counts: dict[str, int] = {}
-    for draw in draws:
-        counts[draw.joint_path_id] = counts.get(draw.joint_path_id, 0) + 1
+    sampled_rows = _sampled_probability_rows(supported, seed=seed, scenario_count=scenario_count)
     payload_refs: dict[str, str] = {}
     data_by_path = {datum.joint_path_id: datum for datum in supported}
     for datum in supported:
@@ -737,19 +755,15 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
         payload_refs[datum.joint_path_id] = payload.content_hash
         repo.register_artifact(ArtifactIndexEntryV2(payload.content_hash, "JointExecutionPayloadV2",
             payload.content_hash, created_at_ns, available_at_ns, {"joint_execution_payload": payload.to_dict()}))
-    ordered_counts = sorted(counts.items())
-    probability_values = [Decimal(count) / Decimal(scenario_count) for _, count in ordered_counts]
-    if probability_values:
-        probability_values[-1] = Decimal(1) - sum(probability_values[:-1], ZERO)
     probability_rows = tuple((path_id, probability, payload_refs[path_id])
-                             for (path_id, _), probability in zip(ordered_counts, probability_values, strict=True))
+                             for path_id, probability in sampled_rows)
     synthetic_fixture = any(item.synthetic_fixture for item in supported)
     scenario = PretradeExecutionScenarioV2(action.action.action_hash, action.content_hash, cutoff_ns,
         model_input, calibration_input, execution_model_input, sources,
         tuple(sorted(datum.content_hash for datum in supported)), source_data_refs, probability_rows,
         tuple(sorted(set(stress_refs))), SCENARIO_GENERATOR_VERSION, common_id, created_at_ns,
         computed_at_ns, available_at_ns, expires_at_ns, ScenarioGenerationStatusV2.AVAILABLE,
-        synthetic_fixture)
+        synthetic_fixture, seed=seed, scenario_count=scenario_count)
     scenario_ref = scenario.content_hash
     payoffs: list[PretradePathPayoffV2] = []
     for path_id, _, payload_ref in probability_rows:
@@ -804,6 +818,23 @@ def validate_pretrade_scenario_evidence(repo: OpsRepository, *, action: ActionAr
             not supported or len({item.joint_path_id for item in supported}) != len(supported) or
             scenario.synthetic_fixture != any(item.synthetic_fixture for item in supported)):
         raise ValueError("pretrade scenario template support does not reproduce from cutoff evidence")
+    scenario_entry = repo.get_artifact(scenario.content_hash)
+    run_metadata = scenario_entry.metadata if scenario_entry is not None else None
+    seed = run_metadata.get("seed") if isinstance(run_metadata, Mapping) else None
+    scenario_count = run_metadata.get("scenario_count") if isinstance(run_metadata, Mapping) else None
+    if (scenario_entry is None or scenario_entry.artifact_type != "PretradeExecutionScenarioV2" or
+            scenario_entry.content_hash != scenario.content_hash or scenario_entry.created_at_ns != scenario.created_at_ns or
+            scenario_entry.available_at_ns != scenario.available_at_ns or
+            not isinstance(run_metadata, Mapping) or
+            canonical_json(run_metadata.get("scenario")) != canonical_json(scenario.to_dict()) or
+            type(seed) is not int or seed < 0 or type(scenario_count) is not int or scenario_count <= 0 or
+            seed != scenario.seed or scenario_count != scenario.scenario_count or
+            run_metadata.get("template_support_count") != len(supported)):
+        raise ValueError("pretrade scenario lacks immutable seed/path-count run metadata")
+    expected_probabilities = _sampled_probability_rows(supported, seed=seed, scenario_count=scenario_count)
+    actual_probabilities = tuple((path_id, probability) for path_id, probability, _ in scenario.rows)
+    if expected_probabilities != actual_probabilities:
+        raise ValueError("pretrade scenario probabilities do not reproduce from declared seed/path count")
     data_by_path = {item.joint_path_id: item for item in supported}
     if any(path_id not in data_by_path for path_id, _, _ in scenario.rows):
         raise ValueError("scenario probability row lacks its coherent joint template")

@@ -30,6 +30,10 @@ from atlas.v2.risk import (
 VERSION = "MATURED_OUTCOME_V2_V3"
 DECISION_ENTRY_VERSION = "DECISION_CALENDAR_ENTRY_V2_V1"
 ECONOMIC_EVALUATION_VERSION = "EVALUATION_ARTIFACT_V2_AMENDED_V1"
+ECONOMIC_EVALUATION_VERSIONS = frozenset({
+    ECONOMIC_EVALUATION_VERSION,
+    "EVALUATION_ARTIFACT_V2_AMENDED_V2",
+})
 
 
 class OutcomeProvenanceV2(StrEnum):
@@ -394,7 +398,7 @@ def index_decision_calendar_entry(repo: OpsRepository, entry: DecisionCalendarEn
                                      AdmissionStateV2.NOT_ESTIMABLE)
                 or entry.action_hash is None or source is None or source.artifact_type != "EvaluationArtifactV2"
                 or source.content_hash != entry.source_artifact_ref or not isinstance(body, Mapping)
-                or sha256_json(body) != entry.source_artifact_ref or body.get("version") != ECONOMIC_EVALUATION_VERSION
+                or sha256_json(body) != entry.source_artifact_ref or body.get("version") not in ECONOMIC_EVALUATION_VERSIONS
                 or body.get("candidate_set_ref") != entry.candidate_set_ref
                 or body.get("candidate_ref") != entry.candidate_ref
                 or body.get("action_hash") != entry.action_hash

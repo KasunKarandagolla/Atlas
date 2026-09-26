@@ -153,9 +153,10 @@ def test_scenario_resolution_does_not_increase_template_support(tmp_path):
             created_at_ns=CUTOFF + 1, computed_at_ns=CUTOFF + 2, available_at_ns=CUTOFF + 3,
             expires_at_ns=case.candidate.deadline_ns, seed=10, scenario_count=1000,
             allow_synthetic_fixtures=True)
-        first_support, second_support = make_scenario_support(first), make_scenario_support(second)
+        first_support = make_scenario_support(repo, action=action, scenario=first, support_unit_refs=())
+        second_support = make_scenario_support(repo, action=action, scenario=second, support_unit_refs=())
         assert len(first.rows) != 0 and len(second.rows) != 0
-        assert first_support.independent_template_count == second_support.independent_template_count == 1
+        assert first_support.independent_support_unit_count == second_support.independent_support_unit_count == 0
         assert first_support.template_refs == second_support.template_refs == (data.content_hash,)
         assert first_support.evidence_quality == "UNSUPPORTED_OR_ENGINEERING_FIXTURE"
 
@@ -185,9 +186,9 @@ def test_joint_wire_rejects_unknown_versions_and_cross_path_component_swaps(tmp_
         body.pop("content_hash", None)
         with pytest.raises(ValueError, match="path identity"):
             JointExecutionDataV2.from_dict(body)
-        old_wire = {"version": "PRETRADE_SCENARIO_ARTIFACT_V2_V3"}
-        with pytest.raises(ValueError):
-            PretradeExecutionScenarioV2.from_dict(old_wire)
+        for version in ("PRETRADE_SCENARIO_ARTIFACT_V2_V4", "PRETRADE_SCENARIO_ARTIFACT_V2_V6"):
+            with pytest.raises(ValueError):
+                PretradeExecutionScenarioV2.from_dict({"version": version})
         assert scenario.content_hash == sha256_json(scenario._body())
 
 

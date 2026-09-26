@@ -15,6 +15,8 @@ from atlas.v2.science.admission import (
     AdmissionPolicyV2,
     DecisionTimePortfolioCompletenessV2,
     LCBMethodV2,
+    VenueCapabilitySnapshotV2,
+    VenueCapabilityStatusV2,
     build_decision_time_portfolio_scenarios,
     decide_admission,
     evaluate_deterministic_stress,
@@ -22,6 +24,7 @@ from atlas.v2.science.admission import (
     index_amended_evaluation,
     index_lcb_method,
     index_portfolio_completeness,
+    index_venue_capability_snapshot,
     make_amended_evaluation,
     make_estimation_uncertainty,
     make_execution_uncertainty,
@@ -93,7 +96,8 @@ def test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calen
             seed=1901, scenario_count=100)
         assert repo.get_artifact(scenario.content_hash) is not None
 
-        scenario_support = make_scenario_support(scenario)
+        scenario_support = make_scenario_support(repo, action=action, scenario=scenario,
+            support_unit_refs=())
         index_admission_evidence(repo, "ScenarioSupportV2",
             scenario_support.to_dict(), CUTOFF + 3)
         support = make_inference_support(action.action.action_hash, m0_support, scenario_support)
@@ -110,10 +114,8 @@ def test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calen
             compatibility_key=m0_support.compatibility_key, cutoff_ns=CUTOFF, minimum_support=1)
         execution_ref = index_admission_evidence(repo, "ExecutionModelUncertaintyV2",
             execution.to_dict(), CUTOFF + 3)
-        numerical = make_numerical_error(action_hash=action.action.action_hash,
-            scenario_ref=scenario.content_hash, seed_a=19, seed_b=23,
-            path_count_a=100, path_count_b=1000, estimate_a=None, estimate_b=None,
-            m0_conversion_error=prediction.numerical_conversion_error)
+        numerical = make_numerical_error(repo, action=action, scenario=scenario,
+            prediction=prediction)
         numerical_ref = index_admission_evidence(repo, "NumericalErrorV2", numerical.to_dict(), CUTOFF + 3)
         stress = evaluate_deterministic_stress(repo, action=action, risk_policy=case.v1,
             risk_policy_ref=case.v1.policy_hash(), eligible_equity=case.account.eligible_equity,
@@ -133,9 +135,20 @@ def test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calen
             risk_policy_ref=case.v1.policy_hash())
         index_admission_evidence(repo, "PortfolioESV2", portfolio_es.to_dict(), CUTOFF + 3)
 
+        profile_refs = {name: sha256_json({"session019-profile": name}) for name in
+            ("nautilus-artifact", "execution", "protection")}
         policy = AdmissionPolicyV2(ADMISSION_POLICY_VERSION, Decimal("1"), 30, 30, 20,
-            Decimal("1.96"), False)
+            Decimal("1.96"), "ISOLATED", "ONE_WAY", "nautilus_trader", "2.0.0rc5",
+            "1b0a49d2792a9432a3aca3fcb617ce7a630d905e", profile_refs["nautilus-artifact"],
+            profile_refs["execution"], profile_refs["protection"], "SESSION019_CAPABILITY_PROFILE_V1")
         policy_ref = index_admission_evidence(repo, "AdmissionPolicyV2", policy.to_dict(), CUTOFF + 4)
+        capability = VenueCapabilitySnapshotV2(action.action.key.venue, action.action.key.environment,
+            case.account.account_scope, action.action.product_ref, action.action.key.content_hash,
+            "ISOLATED", "ONE_WAY", "nautilus_trader", "2.0.0rc5",
+            "1b0a49d2792a9432a3aca3fcb617ce7a630d905e", profile_refs["nautilus-artifact"],
+            profile_refs["execution"], profile_refs["protection"], "SESSION019_CAPABILITY_PROFILE_V1",
+            VenueCapabilityStatusV2.UNVERIFIED, (), CUTOFF)
+        capability_ref = index_venue_capability_snapshot(repo, capability)
         lcb_method_ref = index_lcb_method(repo, LCBMethodV2(), available_at_ns=CUTOFF + 4)
         ood_entry = repo.get_artifact(prediction.ood_ref)
         assert ood_entry is not None
@@ -149,7 +162,8 @@ def test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calen
             calibration=calibration, ood=ood,
             scenario=scenario, scenario_support=scenario_support, outcome_distribution=distribution,
             estimation=estimation, execution=execution, numerical=numerical, stress=stress,
-            portfolio=portfolio_es, policy=policy)
+            portfolio=portfolio_es, policy=policy, capability=capability,
+            account_scope=case.account.account_scope)
         assert result.decision.value == "NOT_ESTIMABLE"
         evaluation = make_amended_evaluation(action=action, candidate=case.candidate,
             candidate_set=case.candidate_set, prediction=prediction, scenario=scenario,
@@ -157,7 +171,8 @@ def test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calen
             estimation_ref=estimation_ref, execution_ref=execution_ref,
             numerical_ref=numerical_ref, calibration_ref=prediction.calibration_ref,
             ood_ref=prediction.ood_ref, outcome_distribution_ref=distribution_ref,
-            admission_policy_ref=policy_ref, lcb_method_ref=lcb_method_ref,
+            admission_policy_ref=policy_ref, capability_evidence_ref=capability_ref,
+            lcb_method_ref=lcb_method_ref,
             account_snapshot_ref=case.account.content_hash,
             risk_policy_ref=case.v1.policy_hash(), risk_policy_v2_ref=case.v2.policy_hash,
             causal_state_ref=case.candidate.snapshot_hash, available_at_ns=CUTOFF + 10,
@@ -176,15 +191,36 @@ def test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calen
         assert calendar.admission_state == AdmissionStateV2.NOT_ESTIMABLE
         assert calendar.reason_codes == evaluation.reason_codes
         for field in ("action_hash", "candidate_ref", "candidate_set_ref", "risk_policy_ref",
-                "pretrade_scenario_ref", "m0_prediction_ref", "support_ref", "ood_ref"):
+                "pretrade_scenario_ref", "m0_prediction_ref", "support_ref", "ood_ref",
+                "capability_evidence_ref", "numerical_error_ref"):
             with pytest.raises(ValueError):
                 index_amended_evaluation(repo, replace(evaluation,
                     **{field: sha256_json({"wrong-session019-ref": field})}))
+        forged_capability = replace(capability, account_scope="WRONG_ACCOUNT_SCOPE")
+        forged_capability_ref = index_venue_capability_snapshot(repo, forged_capability)
+        with pytest.raises(ValueError, match="wrong venue/account/product/runtime/profile"):
+            index_amended_evaluation(repo, replace(evaluation,
+                capability_evidence_ref=forged_capability_ref))
+        forged_support = replace(support, independent_scenario_support_units=1)
+        forged_support_ref = index_admission_evidence(repo, "InferenceSupportV2",
+            forged_support.to_dict(), CUTOFF + 3)
+        with pytest.raises(ValueError):
+            index_amended_evaluation(repo, replace(evaluation, support_ref=forged_support_ref))
         forged_estimation = replace(estimation, status="AVAILABLE", standard_error=Decimal(0),
             uncertainty_amount=Decimal(0))
         forged_ref = index_admission_evidence(repo, "EstimationUncertaintyV2",
             forged_estimation.to_dict(), CUTOFF + 3)
         with pytest.raises(ValueError, match="estimation uncertainty does not reproduce"):
             index_amended_evaluation(repo, replace(evaluation, estimation_uncertainty_ref=forged_ref))
+        forged_numerical = replace(numerical, cost_model_ref=sha256_json("forged-cost-model"),
+            run_a_ref=sha256_json("missing-convergence-run-a"),
+            run_b_ref=sha256_json("missing-convergence-run-b"), seed_a=1901, seed_b=1902,
+            path_count_a=100, path_count_b=1_000, estimate_a=Decimal(0), estimate_b=Decimal(0),
+            m0_conversion_error=Decimal(0), error_bound=Decimal(0), status="AVAILABLE", reason=None)
+        forged_numerical_ref = index_admission_evidence(repo, "NumericalErrorV2",
+            forged_numerical.to_dict(), CUTOFF + 3)
+        with pytest.raises(ValueError):
+            index_amended_evaluation(repo, replace(evaluation,
+                numerical_error_ref=forged_numerical_ref))
         assert len(repo.artifact_entries("EvaluationArtifactV2")) == 1
         assert len(repo.artifact_entries("DecisionCalendarEntryV2")) == 1

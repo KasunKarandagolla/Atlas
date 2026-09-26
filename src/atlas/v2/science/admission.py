@@ -5,8 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from decimal import Decimal
+from enum import StrEnum
 from typing import Any
 
+from atlas.domain.capability import capability_contract_from_manifest
 from atlas.domain.enums import Side
 from atlas.domain.money import canonical_decimal_str
 from atlas.domain.risk import RiskPolicy
@@ -34,7 +36,7 @@ from atlas.v2.contracts import (
     TradePlanEnvelopeV2,
     V2Side,
 )
-from atlas.v2.instruments import InstrumentKeyV2
+from atlas.v2.instruments import EnvironmentV2, InstrumentKeyV2, VenueV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.risk import AccountRiskSnapshotV2
 from atlas.v2.science.action import ActionArtifactV2, FrozenActionV2
@@ -58,24 +60,80 @@ from atlas.v2.science.outcomes import (
     index_decision_calendar_entry,
 )
 from atlas.v2.science.scenario_engine import (
+    JointExecutionDataV2,
     PretradeExecutionScenarioV2,
     PretradePathPayoffV2,
     ScenarioGenerationStatusV2,
     validate_pretrade_scenario_evidence,
 )
 
-EVALUATION_VERSION = "EVALUATION_ARTIFACT_V2_AMENDED_V1"
-ADMISSION_POLICY_VERSION = "DETERMINISTIC_M0_ADMISSION_V1"
+EVALUATION_VERSION = "EVALUATION_ARTIFACT_V2_AMENDED_V2"
+ADMISSION_POLICY_VERSION = "DETERMINISTIC_M0_ADMISSION_V2"
 LCB_METHOD_VERSION = "M0_MEAN_VALUE_LCB_V1"
 LCB_COMPONENTS = ("estimation_uncertainty", "execution_model_uncertainty", "numerical_error")
 ZERO = Decimal(0)
 
 
 @dataclass(frozen=True)
+class ScenarioSupportUnitV2:
+    """Historical episode provenance for one coherent scenario template."""
+
+    source_episode_ref: str
+    source_window_start_ns: int
+    source_window_end_ns: int
+    source_bundle_refs: tuple[str, ...]
+    venue: VenueV2
+    product_ref: str
+    policy_compatibility_class: str
+    action_compatibility_class: str
+    execution_model_ref: str
+    calibration_ref: str
+    template_ref: str
+    available_at_ns: int
+    synthetic_fixture: bool = False
+
+    def __post_init__(self) -> None:
+        for name in ("source_episode_ref", "product_ref", "policy_compatibility_class",
+                "action_compatibility_class", "execution_model_ref", "calibration_ref", "template_ref"):
+            sha256_ref(getattr(self, name), field=name)
+        if (type(self.source_window_start_ns) is not int or type(self.source_window_end_ns) is not int or
+                type(self.available_at_ns) is not int or self.source_window_start_ns < 0 or
+                self.source_window_end_ns <= self.source_window_start_ns or
+                self.available_at_ns < self.source_window_end_ns):
+            raise ValueError("scenario support unit chronology invalid")
+        if self.source_bundle_refs != tuple(sorted(set(self.source_bundle_refs))) or not self.source_bundle_refs:
+            raise ValueError("scenario support source bundle must be nonempty, sorted and unique")
+        for ref in self.source_bundle_refs:
+            sha256_ref(ref, field="source_bundle_ref")
+        object.__setattr__(self, "venue", VenueV2(self.venue))
+        if type(self.synthetic_fixture) is not bool:
+            raise ValueError("scenario support fixture marker must be boolean")
+
+    def to_dict(self) -> dict[str, Any]:
+        return json_value({"version": "SCENARIO_SUPPORT_UNIT_V2_V1", **{
+            name: getattr(self, name) for name in self.__dataclass_fields__}})
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ScenarioSupportUnitV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = dict(strict_fields(data, expected=fields, required=fields, name="ScenarioSupportUnitV2"))
+        if d.pop("version") != "SCENARIO_SUPPORT_UNIT_V2_V1" or not isinstance(d["source_bundle_refs"], list):
+            raise ValueError("unsupported scenario support unit wire")
+        d["source_bundle_refs"] = tuple(d["source_bundle_refs"])
+        return cls(**{name: d[name] for name in cls.__dataclass_fields__})
+
+
+@dataclass(frozen=True)
 class ScenarioSupportV2:
     action_hash: str
     scenario_ref: str
-    independent_template_count: int
+    independent_support_unit_count: int
+    support_unit_refs: tuple[str, ...]
+    independent_unit_refs: tuple[str, ...]
     policy_compatible: bool
     horizon_compatible: bool
     venue_product_compatible: bool
@@ -87,19 +145,35 @@ class ScenarioSupportV2:
     def __post_init__(self) -> None:
         sha256_ref(self.action_hash, field="action_hash")
         sha256_ref(self.scenario_ref, field="scenario_ref")
-        if type(self.independent_template_count) is not int or self.independent_template_count < 0:
+        if type(self.independent_support_unit_count) is not int or self.independent_support_unit_count < 0:
             raise ValueError("scenario support count invalid")
-        if self.template_refs != tuple(sorted(set(self.template_refs))):
-            raise ValueError("scenario support template refs must be sorted unique")
-        for ref in self.template_refs:
-            sha256_ref(ref, field="template_ref")
+        for name in ("support_unit_refs", "independent_unit_refs", "template_refs"):
+            refs = getattr(self, name)
+            if refs != tuple(sorted(set(refs))):
+                raise ValueError(f"scenario support {name} must be sorted unique")
+            for ref in refs:
+                sha256_ref(ref, field=name)
+        if self.independent_support_unit_count != len(self.independent_unit_refs):
+            raise ValueError("independent support count must match exact selected support units")
 
     def to_dict(self) -> dict[str, Any]:
-        return {"version": "PRETRADE_SCENARIO_SUPPORT_V1", **{name: getattr(self, name) for name in self.__dataclass_fields__}}
+        return json_value({"version": "PRETRADE_SCENARIO_SUPPORT_V2", **{name: getattr(self, name) for name in self.__dataclass_fields__}})
 
     @property
     def content_hash(self) -> str:
         return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ScenarioSupportV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = dict(strict_fields(data, expected=fields, required=fields, name="ScenarioSupportV2"))
+        if d.pop("version") != "PRETRADE_SCENARIO_SUPPORT_V2":
+            raise ValueError("unsupported scenario support wire")
+        for name in ("support_unit_refs", "independent_unit_refs", "template_refs"):
+            if not isinstance(d[name], list):
+                raise ValueError("scenario support ref arrays required")
+            d[name] = tuple(d[name])
+        return cls(**{name: d[name] for name in cls.__dataclass_fields__})
 
 
 @dataclass(frozen=True)
@@ -109,7 +183,7 @@ class InferenceSupportV2:
     scenario_support_ref: str
     eligible_m0_samples: int
     independent_m0_samples: int
-    independent_scenario_templates: int
+    independent_scenario_support_units: int
     missing_feature_coverage: Decimal
     policy_compatible: bool
     horizon_compatible: bool
@@ -122,13 +196,13 @@ class InferenceSupportV2:
     def __post_init__(self) -> None:
         for name in ("action_hash", "m0_support_ref", "scenario_support_ref"):
             sha256_ref(getattr(self, name), field=name)
-        if min(self.eligible_m0_samples, self.independent_m0_samples, self.independent_scenario_templates) < 0:
+        if min(self.eligible_m0_samples, self.independent_m0_samples, self.independent_scenario_support_units) < 0:
             raise ValueError("inference support counts invalid")
         if not ZERO <= self.missing_feature_coverage <= Decimal(1):
             raise ValueError("feature missingness coverage must be a fraction")
 
     def to_dict(self) -> dict[str, Any]:
-        return json_value({"version": "COMPOSITE_M0_SCENARIO_SUPPORT_V1", **{name: getattr(self, name) for name in self.__dataclass_fields__}})
+        return json_value({"version": "COMPOSITE_M0_SCENARIO_SUPPORT_V2", **{name: getattr(self, name) for name in self.__dataclass_fields__}})
 
     @property
     def content_hash(self) -> str:
@@ -310,62 +384,246 @@ class ExecutionModelUncertaintyV2:
 
 
 @dataclass(frozen=True)
-class NumericalErrorV2:
+class NumericalConvergenceRunV2:
     action_hash: str
     scenario_ref: str
-    seed_a: int
-    seed_b: int
-    path_count_a: int
-    path_count_b: int
-    m0_conversion_error: Decimal | None
-    estimate_a: Decimal | None
-    estimate_b: Decimal | None
-    error_bound: Decimal | None
-    status: str
+    template_manifest_ref: str
+    execution_model_ref: str
+    cost_model_ref: str
+    seed: int
+    path_count: int
+    payoff_refs: tuple[str, ...]
+    weighted_mean_estimate: Decimal
+    computed_at_ns: int
+    available_at_ns: int
 
     def __post_init__(self) -> None:
-        sha256_ref(self.action_hash, field="action_hash")
-        sha256_ref(self.scenario_ref, field="scenario_ref")
-        if min(self.seed_a, self.seed_b) < 0 or self.seed_a == self.seed_b or min(self.path_count_a, self.path_count_b) <= 0:
-            raise ValueError("numerical convergence run invalid")
-        if self.m0_conversion_error is not None:
-            object.__setattr__(self, "m0_conversion_error", decimal_value(self.m0_conversion_error,
-                field="m0_conversion_error"))
-            if self.m0_conversion_error < 0:
-                raise ValueError("M0 numerical conversion error must be nonnegative")
-        if self.status == "AVAILABLE":
-            if (self.m0_conversion_error is None or self.estimate_a is None or
-                    self.estimate_b is None or self.error_bound is None):
-                raise ValueError("numerical error needs independent estimates and M0 conversion error")
-            if self.error_bound < 0:
-                raise ValueError("numerical error needs nonnegative bound")
-            if self.error_bound < abs(self.estimate_a - self.estimate_b) + self.m0_conversion_error:
-                raise ValueError("numerical error bound understates convergence/conversion error")
-        elif self.status == "NOT_ESTIMABLE":
-            if any(value is not None for value in (self.estimate_a, self.estimate_b, self.error_bound)):
-                raise ValueError("unestimable numerical error cannot carry convergence estimates")
-        else:
-            raise ValueError("unknown numerical-error status")
+        for name in ("action_hash", "scenario_ref", "template_manifest_ref", "execution_model_ref", "cost_model_ref"):
+            sha256_ref(getattr(self, name), field=name)
+        if type(self.seed) is not int or self.seed < 0 or type(self.path_count) is not int or self.path_count <= 0:
+            raise ValueError("numerical convergence run seed/path count invalid")
+        if self.payoff_refs != tuple(sorted(set(self.payoff_refs))) or not self.payoff_refs:
+            raise ValueError("numerical convergence payoff refs must be sorted unique and nonempty")
+        for ref in self.payoff_refs:
+            sha256_ref(ref, field="payoff_ref")
+        object.__setattr__(self, "weighted_mean_estimate", decimal_value(self.weighted_mean_estimate,
+            field="weighted_mean_estimate"))
+        if type(self.computed_at_ns) is not int or type(self.available_at_ns) is not int or not (
+                0 <= self.computed_at_ns <= self.available_at_ns):
+            raise ValueError("numerical convergence run chronology invalid")
 
     def to_dict(self) -> dict[str, Any]:
-        return json_value({"version": "PRETRADE_NUMERICAL_ERROR_V1", **{name: getattr(self, name) for name in self.__dataclass_fields__}})
+        return json_value({"version": "NUMERICAL_CONVERGENCE_RUN_V2_V1", **{name: getattr(self, name) for name in self.__dataclass_fields__}})
 
     @property
     def content_hash(self) -> str:
         return sha256_json(self.to_dict())
 
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> NumericalConvergenceRunV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = dict(strict_fields(data, expected=fields, required=fields, name="NumericalConvergenceRunV2"))
+        if d.pop("version") != "NUMERICAL_CONVERGENCE_RUN_V2_V1" or not isinstance(d["payoff_refs"], list):
+            raise ValueError("unsupported numerical convergence run wire")
+        d["payoff_refs"] = tuple(d["payoff_refs"])
+        d["weighted_mean_estimate"] = decimal_value(d["weighted_mean_estimate"], field="weighted_mean_estimate", wire=True)
+        return cls(**{name: d[name] for name in cls.__dataclass_fields__})
 
-def make_numerical_error(*, action_hash: str, scenario_ref: str, seed_a: int, seed_b: int,
-        path_count_a: int, path_count_b: int, estimate_a: Decimal | None,
-        estimate_b: Decimal | None, m0_conversion_error: Decimal | None) -> NumericalErrorV2:
-    if estimate_a is None or estimate_b is None or m0_conversion_error is None:
-        return NumericalErrorV2(action_hash, scenario_ref, seed_a, seed_b, path_count_a,
-            path_count_b, m0_conversion_error, None, None, None, "NOT_ESTIMABLE")
-    # Deterministic convergence difference is a numerical resolution term only;
-    # it never changes historical support or estimation uncertainty.
-    return NumericalErrorV2(action_hash, scenario_ref, seed_a, seed_b, path_count_a,
-        path_count_b, m0_conversion_error, estimate_a, estimate_b,
-        abs(estimate_a - estimate_b) + m0_conversion_error, "AVAILABLE")
+
+@dataclass(frozen=True)
+class NumericalErrorV2:
+    action_hash: str
+    scenario_ref: str
+    template_manifest_ref: str
+    execution_model_ref: str
+    cost_model_ref: str | None
+    prediction_ref: str
+    run_a_ref: str | None
+    run_b_ref: str | None
+    seed_a: int | None
+    seed_b: int | None
+    path_count_a: int | None
+    path_count_b: int | None
+    m0_conversion_error: Decimal | None
+    estimate_a: Decimal | None
+    estimate_b: Decimal | None
+    error_bound: Decimal | None
+    computed_at_ns: int
+    available_at_ns: int
+    status: str
+    reason: str | None = None
+
+    def __post_init__(self) -> None:
+        for name in ("action_hash", "scenario_ref", "template_manifest_ref", "execution_model_ref", "prediction_ref"):
+            sha256_ref(getattr(self, name), field=name)
+        for name in ("cost_model_ref", "run_a_ref", "run_b_ref"):
+            value = getattr(self, name)
+            if value is not None:
+                sha256_ref(value, field=name)
+        for name in ("m0_conversion_error", "estimate_a", "estimate_b", "error_bound"):
+            value = getattr(self, name)
+            if value is not None:
+                value = decimal_value(value, field=name)
+                object.__setattr__(self, name, value)
+        if type(self.computed_at_ns) is not int or type(self.available_at_ns) is not int or not (
+                0 <= self.computed_at_ns <= self.available_at_ns):
+            raise ValueError("numerical error chronology invalid")
+        if self.status == "AVAILABLE":
+            if (self.cost_model_ref is None or self.run_a_ref is None or self.run_b_ref is None or
+                    self.seed_a is None or self.seed_b is None or self.seed_a == self.seed_b or
+                    self.path_count_a is None or self.path_count_a <= 0 or
+                    self.path_count_b is None or self.path_count_b <= 0 or
+                    self.m0_conversion_error is None or self.m0_conversion_error < 0 or
+                    self.estimate_a is None or self.estimate_b is None or self.error_bound is None or
+                    self.error_bound < abs(self.estimate_a - self.estimate_b) + self.m0_conversion_error or
+                    self.reason is not None):
+                raise ValueError("available numerical error requires two reproducible independent runs")
+        elif self.status == "NOT_ESTIMABLE":
+            if (self.run_a_ref is not None or self.run_b_ref is not None or self.seed_a is not None or
+                    self.seed_b is not None or self.path_count_a is not None or self.path_count_b is not None or
+                    self.estimate_a is not None or self.estimate_b is not None or self.error_bound is not None or
+                    not self.reason):
+                raise ValueError("unestimable numerical error cannot carry fabricated convergence runs")
+        else:
+            raise ValueError("unknown numerical-error status")
+
+    def to_dict(self) -> dict[str, Any]:
+        return json_value({"version": "PRETRADE_NUMERICAL_ERROR_V2", **{
+            name: getattr(self, name) for name in self.__dataclass_fields__}})
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> NumericalErrorV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = dict(strict_fields(data, expected=fields, required=fields, name="NumericalErrorV2"))
+        if d.pop("version") != "PRETRADE_NUMERICAL_ERROR_V2":
+            raise ValueError("unsupported numerical error wire")
+        for name in ("m0_conversion_error", "estimate_a", "estimate_b", "error_bound"):
+            d[name] = decimal_value(d[name], field=name, wire=True) if d[name] is not None else None
+        return cls(**{name: d[name] for name in cls.__dataclass_fields__})
+
+
+def _pretrade_template_manifest_ref(scenario: PretradeExecutionScenarioV2) -> str:
+    inputs = (scenario.model_input, scenario.calibration_input,
+        scenario.execution_model_input, *scenario.source_inputs)
+    return sha256_json({"version": "PRETRADE_EXECUTION_CAUSAL_MANIFEST_V1",
+        "inputs": [item.to_dict() for item in inputs],
+        "data_refs": sorted(scenario.source_joint_data_refs),
+        "generator": scenario.generation_version})
+
+
+def _reproduce_numerical_convergence_run(repo: OpsRepository, *, action: ActionArtifactV2,
+        scenario_ref: str) -> NumericalConvergenceRunV2:
+    entry = repo.get_artifact(scenario_ref)
+    body = entry.metadata.get("scenario") if entry is not None else None
+    scenario = PretradeExecutionScenarioV2.from_dict(json_value(body)) if isinstance(body, Mapping) else None
+    if (entry is None or entry.artifact_type != "PretradeExecutionScenarioV2" or scenario is None or
+            scenario.content_hash != scenario_ref or
+            scenario.status != ScenarioGenerationStatusV2.AVAILABLE):
+        raise ValueError("numerical convergence requires indexed real-support pretrade scenario runs")
+    payoffs = validate_pretrade_scenario_evidence(repo, action=action, scenario=scenario)
+    payoff_by_path = {item.joint_path_id: item for item in payoffs}
+    if set(payoff_by_path) != {path_id for path_id, _, _ in scenario.rows}:
+        raise ValueError("numerical run has incomplete exact path-payoff evidence")
+    run_metadata = entry.metadata
+    seed, path_count = run_metadata.get("seed"), run_metadata.get("scenario_count")
+    if type(seed) is not int or type(path_count) is not int:
+        raise ValueError("numerical run scenario seed/path count missing")
+    mean = sum((probability * payoff_by_path[path_id].net_payoff
+        for path_id, probability, _ in scenario.rows), ZERO)
+    data_entry = repo.get_artifact(scenario.template_support_refs[0])
+    data_body = data_entry.metadata.get("joint_execution_data") if data_entry is not None else None
+    data = JointExecutionDataV2.from_dict(json_value(data_body)) if isinstance(data_body, Mapping) else None
+    template_data = []
+    for ref in scenario.template_support_refs:
+        template_entry = repo.get_artifact(ref)
+        template_body = template_entry.metadata.get("joint_execution_data") if template_entry is not None else None
+        if not isinstance(template_body, Mapping):
+            raise ValueError("numerical run template evidence missing")
+        template_data.append(JointExecutionDataV2.from_dict(json_value(template_body)))
+    if data is None or any(item.fee_ref != data.fee_ref for item in template_data):
+        raise ValueError("numerical run cost model is not common across its coherent template set")
+    return NumericalConvergenceRunV2(action.action.action_hash, scenario.content_hash,
+        _pretrade_template_manifest_ref(scenario), scenario.execution_model_input.ref, data.fee_ref,
+        seed, path_count, tuple(sorted(item.content_hash for item in payoffs)), mean,
+        scenario.computed_at_ns, scenario.available_at_ns)
+
+
+def index_numerical_convergence_run(repo: OpsRepository, *, action: ActionArtifactV2,
+        scenario_ref: str) -> str:
+    run = _reproduce_numerical_convergence_run(repo, action=action, scenario_ref=scenario_ref)
+    repo.register_artifact(ArtifactIndexEntryV2(run.content_hash, "NumericalConvergenceRunV2",
+        run.content_hash, run.computed_at_ns, run.available_at_ns, {"evidence": run.to_dict()}))
+    return run.content_hash
+
+
+def _lookup_numerical_convergence_run(repo: OpsRepository, *, action: ActionArtifactV2,
+        run_ref: str, primary_scenario: PretradeExecutionScenarioV2) -> NumericalConvergenceRunV2:
+    entry = repo.get_artifact(run_ref)
+    body = entry.metadata.get("evidence") if entry is not None else None
+    run = NumericalConvergenceRunV2.from_dict(json_value(body)) if isinstance(body, Mapping) else None
+    if (entry is None or entry.artifact_type != "NumericalConvergenceRunV2" or run is None or
+            entry.content_hash != run_ref or run.content_hash != run_ref or
+            entry.created_at_ns != run.computed_at_ns or entry.available_at_ns != run.available_at_ns):
+        raise ValueError("indexed typed numerical convergence run required")
+    reproduced = _reproduce_numerical_convergence_run(repo, action=action, scenario_ref=run.scenario_ref)
+    run_scenario_entry = repo.get_artifact(run.scenario_ref)
+    run_scenario_body = run_scenario_entry.metadata.get("scenario") if run_scenario_entry is not None else None
+    run_scenario = PretradeExecutionScenarioV2.from_dict(json_value(run_scenario_body)) if isinstance(run_scenario_body, Mapping) else None
+    if (canonical_json(reproduced.to_dict()) != canonical_json(run.to_dict()) or run_scenario is None or
+            run_scenario.common_scenario_set_id != primary_scenario.common_scenario_set_id or
+            run.template_manifest_ref != _pretrade_template_manifest_ref(primary_scenario) or
+            run_scenario.template_support_refs != primary_scenario.template_support_refs or
+            run_scenario.source_joint_data_refs != primary_scenario.source_joint_data_refs or
+            run_scenario.execution_model_input != primary_scenario.execution_model_input or
+            run_scenario.calibration_input != primary_scenario.calibration_input or
+            run_scenario.source_inputs != primary_scenario.source_inputs or
+            run_scenario.action_hash != primary_scenario.action_hash or
+            run_scenario.action_artifact_ref != primary_scenario.action_artifact_ref):
+        raise ValueError("numerical run does not reproduce from the exact causal template manifest")
+    return run
+
+
+def make_numerical_error(repo: OpsRepository, *, action: ActionArtifactV2,
+        scenario: PretradeExecutionScenarioV2, prediction: M0PredictionV2,
+        run_a_ref: str | None = None, run_b_ref: str | None = None) -> NumericalErrorV2:
+    if (scenario.action_hash != action.action.action_hash or
+            prediction.action_hash != action.action.action_hash or
+            prediction.action_artifact_ref != action.content_hash):
+        raise ValueError("numerical convergence action/prediction identity mismatch")
+    if run_a_ref is None or run_b_ref is None:
+        if run_a_ref is not None or run_b_ref is not None:
+            raise ValueError("both independent indexed convergence runs are required")
+        return NumericalErrorV2(action.action.action_hash, scenario.content_hash,
+            _pretrade_template_manifest_ref(scenario), scenario.execution_model_input.ref,
+            None, prediction.content_hash, None, None, None, None, None, None,
+            prediction.numerical_conversion_error, None, None, None,
+            scenario.computed_at_ns, scenario.available_at_ns, "NOT_ESTIMABLE",
+            "INDEPENDENT_CONVERGENCE_RUNS_MISSING")
+    if run_a_ref == run_b_ref:
+        raise ValueError("numerical convergence runs require distinct immutable refs")
+    run_a = _lookup_numerical_convergence_run(repo, action=action, run_ref=run_a_ref,
+        primary_scenario=scenario)
+    run_b = _lookup_numerical_convergence_run(repo, action=action, run_ref=run_b_ref,
+        primary_scenario=scenario)
+    if run_a.seed == run_b.seed:
+        raise ValueError("numerical convergence seeds must be independent")
+    if run_a.cost_model_ref != run_b.cost_model_ref or run_a.execution_model_ref != run_b.execution_model_ref:
+        raise ValueError("numerical convergence runs use different execution/cost models")
+    conversion = prediction.numerical_conversion_error
+    if conversion is None:
+        raise ValueError("M0 float-to-Decimal conversion error is unavailable")
+    return NumericalErrorV2(action.action.action_hash, scenario.content_hash,
+        _pretrade_template_manifest_ref(scenario), scenario.execution_model_input.ref,
+        run_a.cost_model_ref, prediction.content_hash, run_a_ref, run_b_ref,
+        run_a.seed, run_b.seed, run_a.path_count, run_b.path_count, conversion,
+        run_a.weighted_mean_estimate, run_b.weighted_mean_estimate,
+        abs(run_a.weighted_mean_estimate - run_b.weighted_mean_estimate) + conversion,
+        max(run_a.computed_at_ns, run_b.computed_at_ns),
+        max(run_a.available_at_ns, run_b.available_at_ns), "AVAILABLE")
 
 
 @dataclass(frozen=True)
@@ -898,18 +1156,35 @@ class AdmissionPolicyV2:
     version: str
     materiality_threshold: Decimal
     minimum_action_support: int
-    minimum_scenario_templates: int
+    minimum_scenario_support_units: int
     minimum_execution_calibration: int
     confidence_multiplier: Decimal
-    venue_capability_qualified: bool
+    required_margin_mode: str
+    required_position_mode: str
+    required_nautilus_distribution: str
+    required_nautilus_version: str
+    required_nautilus_source_commit: str
+    required_nautilus_artifact_ref: str
+    required_execution_profile_ref: str
+    required_protection_profile_ref: str
+    required_qualification_version: str
 
     def __post_init__(self) -> None:
         if self.version != ADMISSION_POLICY_VERSION:
             raise ValueError("unsupported admission policy")
-        if self.materiality_threshold < 0 or min(self.minimum_action_support, self.minimum_scenario_templates, self.minimum_execution_calibration) <= 0:
+        object.__setattr__(self, "materiality_threshold", decimal_value(self.materiality_threshold, field="materiality_threshold"))
+        object.__setattr__(self, "confidence_multiplier", decimal_value(self.confidence_multiplier, field="confidence_multiplier"))
+        if self.materiality_threshold < 0 or min(self.minimum_action_support, self.minimum_scenario_support_units, self.minimum_execution_calibration) <= 0:
             raise ValueError("admission threshold/support configuration invalid")
-        if self.confidence_multiplier <= 0 or type(self.venue_capability_qualified) is not bool:
-            raise ValueError("admission confidence/capability config invalid")
+        if self.confidence_multiplier <= 0:
+            raise ValueError("admission confidence config invalid")
+        for name in ("required_nautilus_artifact_ref", "required_execution_profile_ref",
+                "required_protection_profile_ref"):
+            sha256_ref(getattr(self, name), field=name)
+        for name in ("required_margin_mode", "required_position_mode", "required_nautilus_distribution",
+                "required_nautilus_version", "required_nautilus_source_commit", "required_qualification_version"):
+            if not isinstance(getattr(self, name), str) or not getattr(self, name).strip():
+                raise ValueError(f"admission {name} required")
 
     def to_dict(self) -> dict[str, Any]:
         return json_value({"version": self.version, **{name: getattr(self, name) for name in self.__dataclass_fields__ if name != "version"}})
@@ -917,6 +1192,20 @@ class AdmissionPolicyV2:
     @property
     def content_hash(self) -> str:
         return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> AdmissionPolicyV2:
+        fields = {"version", "materiality_threshold", "minimum_action_support",
+            "minimum_scenario_support_units", "minimum_execution_calibration", "confidence_multiplier",
+            "required_margin_mode", "required_position_mode", "required_nautilus_distribution",
+            "required_nautilus_version", "required_nautilus_source_commit", "required_nautilus_artifact_ref",
+            "required_execution_profile_ref", "required_protection_profile_ref", "required_qualification_version"}
+        d = dict(strict_fields(data, expected=fields, required=fields, name="AdmissionPolicyV2"))
+        if d["version"] != ADMISSION_POLICY_VERSION:
+            raise ValueError("unsupported admission policy wire")
+        d["materiality_threshold"] = decimal_value(d["materiality_threshold"], field="materiality_threshold", wire=True)
+        d["confidence_multiplier"] = decimal_value(d["confidence_multiplier"], field="confidence_multiplier", wire=True)
+        return cls(**d)
 
 
 @dataclass(frozen=True)
@@ -984,6 +1273,7 @@ class AmendedEvaluationArtifactV2:
     ood_ref: str
     outcome_distribution_ref: str
     admission_policy_ref: str
+    capability_evidence_ref: str
     es_before: Decimal | None
     es_after: Decimal | None
     decision: DecisionStatusV2
@@ -998,7 +1288,8 @@ class AmendedEvaluationArtifactV2:
             "candidate_set_ref", "selection_policy_hash", "causal_state_ref", "feature_artifact_ref", "m0_model_ref",
             "m0_prediction_ref", "pretrade_scenario_ref", "deterministic_stress_ref", "existing_portfolio_ref",
             "lcb_method_ref", "estimation_uncertainty_ref", "execution_uncertainty_ref", "numerical_error_ref",
-            "support_ref", "calibration_ref", "ood_ref", "outcome_distribution_ref", "admission_policy_ref")
+            "support_ref", "calibration_ref", "ood_ref", "outcome_distribution_ref", "admission_policy_ref",
+            "capability_evidence_ref")
         for name in refs:
             sha256_ref(getattr(self, name), field=name)
         object.__setattr__(self, "quantity", decimal_value(self.quantity, field="quantity"))
@@ -1099,13 +1390,110 @@ def make_outcome_distribution(scenario: PretradeExecutionScenarioV2,
         tuple(path_id for path_id, _, _ in scenario.rows), probs, values, mean, q05, "AVAILABLE")
 
 
-def make_scenario_support(scenario: PretradeExecutionScenarioV2) -> ScenarioSupportV2:
-    supported = (scenario.status == ScenarioGenerationStatusV2.AVAILABLE and
-        not scenario.synthetic_fixture and bool(scenario.template_support_refs))
-    return ScenarioSupportV2(scenario.action_hash, scenario.content_hash,
-        len(scenario.template_support_refs), supported, supported, supported, supported, supported,
-        "SUPPORTED" if supported else "UNSUPPORTED_OR_ENGINEERING_FIXTURE",
-        scenario.template_support_refs)
+def scenario_support_compatibility_classes(action: ActionArtifactV2) -> tuple[str, str]:
+    frozen = action.action
+    policy_class = sha256_json({"version": "SCENARIO_POLICY_COMPATIBILITY_V1",
+        "policy_id": frozen.policy_id, "policy_version": frozen.policy_version,
+        "policy_hash": frozen.policy_hash, "entry_rule": frozen.entry_rule.to_dict(),
+        "collar_rule": frozen.collar_rule.to_dict(), "stop_trigger_basis": frozen.stop_trigger_basis,
+        "management_rule": frozen.management_rule.to_dict(), "time_exit_rule": frozen.time_exit_rule.to_dict()})
+    action_class = sha256_json({"version": "SCENARIO_ACTION_COMPATIBILITY_V1",
+        "key": frozen.key.to_dict(), "product_ref": frozen.product_ref, "side": frozen.side,
+        "quantity": frozen.quantity, "stop_trigger_basis": frozen.stop_trigger_basis,
+        "entry_trigger_basis": frozen.entry_trigger_basis, "policy_class": policy_class})
+    return policy_class, action_class
+
+
+def index_scenario_support_unit(repo: OpsRepository, unit: ScenarioSupportUnitV2) -> str:
+    template_entry = repo.get_artifact(unit.template_ref)
+    template_body = template_entry.metadata.get("joint_execution_data") if template_entry is not None else None
+    template = JointExecutionDataV2.from_dict(json_value(template_body)) if isinstance(template_body, Mapping) else None
+    if (template_entry is None or template_entry.artifact_type != "JointExecutionDataV2" or
+            template_entry.content_hash != unit.template_ref or template is None or
+            template.content_hash != unit.template_ref or
+            unit.source_episode_ref != template.source_ref or
+            template.source_ref not in unit.source_bundle_refs or
+            template_entry.available_at_ns > unit.available_at_ns or
+            unit.synthetic_fixture != template.synthetic_fixture):
+        raise ValueError("scenario support unit does not bind exact template and historical source window")
+    episode = repo.get_artifact(unit.source_episode_ref)
+    if (episode is None or episode.content_hash != unit.source_episode_ref or
+            episode.available_at_ns > unit.available_at_ns or episode.created_at_ns > unit.available_at_ns):
+        raise ValueError("scenario support episode/source identity is unavailable by unit evidence time")
+    for ref in unit.source_bundle_refs:
+        source = repo.get_artifact(ref)
+        if (source is None or source.content_hash != ref or source.available_at_ns > unit.available_at_ns or
+                source.created_at_ns > unit.available_at_ns):
+            raise ValueError("scenario support source bundle is unavailable by unit evidence time")
+    ref = unit.content_hash
+    repo.register_artifact(ArtifactIndexEntryV2(ref, "ScenarioSupportUnitV2", ref,
+        unit.available_at_ns, unit.available_at_ns, {"evidence": unit.to_dict()}))
+    return ref
+
+
+def _load_scenario_support_unit(repo: OpsRepository, ref: str, cutoff_ns: int) -> ScenarioSupportUnitV2:
+    entry = repo.get_artifact(ref)
+    body = entry.metadata.get("evidence") if entry is not None else None
+    unit = ScenarioSupportUnitV2.from_dict(json_value(body)) if isinstance(body, Mapping) else None
+    if (entry is None or entry.artifact_type != "ScenarioSupportUnitV2" or entry.content_hash != ref or
+            not isinstance(body, Mapping) or sha256_json(body) != ref or unit is None or
+            unit.content_hash != ref or entry.available_at_ns > cutoff_ns or unit.available_at_ns > cutoff_ns):
+        raise ValueError("scenario support unit is missing, future or hash-mismatched")
+    return unit
+
+
+def _independent_support_units(units: Sequence[ScenarioSupportUnitV2]) -> tuple[ScenarioSupportUnitV2, ...]:
+    """Greedy earliest-finish selection with strict episode/source dedupe and no overlap."""
+    ordered = sorted(units, key=lambda item: (item.source_window_end_ns, item.source_window_start_ns,
+        item.source_episode_ref, item.source_bundle_refs, item.template_ref, item.content_hash))
+    accepted: list[ScenarioSupportUnitV2] = []
+    seen_episodes: set[str] = set()
+    seen_sources: set[str] = set()
+    last_end_ns = -1
+    for unit in ordered:
+        if (unit.source_episode_ref in seen_episodes or unit.source_window_start_ns < last_end_ns or
+                set(unit.source_bundle_refs).intersection(seen_sources)):
+            continue
+        accepted.append(unit)
+        seen_episodes.add(unit.source_episode_ref)
+        seen_sources.update(unit.source_bundle_refs)
+        last_end_ns = unit.source_window_end_ns
+    return tuple(accepted)
+
+
+def make_scenario_support(repo: OpsRepository, *, action: ActionArtifactV2,
+        scenario: PretradeExecutionScenarioV2, support_unit_refs: Sequence[str]) -> ScenarioSupportV2:
+    refs = tuple(sorted(set(support_unit_refs)))
+    if tuple(support_unit_refs) != refs:
+        raise ValueError("scenario support unit refs must be sorted and unique")
+    units = tuple(_load_scenario_support_unit(repo, ref, scenario.information_cutoff_ns) for ref in refs)
+    policy_class, action_class = scenario_support_compatibility_classes(action)
+    template_by_ref = {unit.template_ref: unit for unit in units}
+    complete_units = set(template_by_ref) == set(scenario.template_support_refs)
+    compatible = (scenario.action_hash == action.action.action_hash and
+        scenario.action_artifact_ref == action.content_hash and complete_units and bool(units) and
+        all(unit.venue == action.action.key.venue and unit.product_ref == action.action.product_ref and
+            unit.policy_compatibility_class == policy_class and unit.action_compatibility_class == action_class and
+            unit.execution_model_ref == scenario.execution_model_input.ref and
+            unit.calibration_ref == scenario.calibration_input.ref for unit in units))
+    for unit in units:
+        if unit.template_ref not in scenario.template_support_refs:
+            compatible = False
+        template_entry = repo.get_artifact(unit.template_ref)
+        template_body = template_entry.metadata.get("joint_execution_data") if template_entry is not None else None
+        template = JointExecutionDataV2.from_dict(json_value(template_body)) if isinstance(template_body, Mapping) else None
+        if (template is None or unit.source_episode_ref != template.source_ref or
+                template.source_ref not in unit.source_bundle_refs or
+                template.action_hash != action.action.action_hash or
+                template.execution_model_ref != scenario.execution_model_input.ref or
+                template.information_cutoff_ns > scenario.information_cutoff_ns):
+            compatible = False
+    independent = _independent_support_units(units) if compatible else ()
+    real_evidence = compatible and not scenario.synthetic_fixture and all(not unit.synthetic_fixture for unit in units)
+    quality = "SUPPORTED" if real_evidence and independent else "UNSUPPORTED_OR_ENGINEERING_FIXTURE"
+    return ScenarioSupportV2(action.action.action_hash, scenario.content_hash, len(independent), refs,
+        tuple(sorted(unit.content_hash for unit in independent)), compatible, compatible, compatible,
+        compatible, compatible, quality, scenario.template_support_refs)
 
 
 def make_inference_support(action_hash: str, m0: M0SupportV2,
@@ -1115,7 +1503,7 @@ def make_inference_support(action_hash: str, m0: M0SupportV2,
               scenario.execution_mode_compatible, scenario.depth_supported)
     supported = m0.evidence_quality == "SUPPORTED" and all(checks)
     return InferenceSupportV2(action_hash, m0.content_hash, scenario.content_hash,
-        m0.eligible_sample_count, m0.independent_support_count, scenario.independent_template_count,
+        m0.eligible_sample_count, m0.independent_support_count, scenario.independent_support_unit_count,
         missing, *checks, scenario.evidence_quality,
         "SUPPORTED" if supported else "INSUFFICIENT")
 
@@ -1205,7 +1593,9 @@ def decide_admission(*, action: ActionArtifactV2, prediction: M0PredictionV2,
         outcome_distribution: OutcomeDistributionV2,
         estimation: EstimationUncertaintyV2, execution: ExecutionModelUncertaintyV2,
         numerical: NumericalErrorV2, stress: DeterministicStressV2, portfolio: PortfolioESV2,
-        policy: AdmissionPolicyV2) -> AdmissionResultV2:
+        policy: AdmissionPolicyV2, capability: VenueCapabilitySnapshotV2 | None = None,
+        account_scope: str | None = None,
+        allow_synthetic_fixtures: bool = False) -> AdmissionResultV2:
     reasons: list[str] = []
     if action.action.action_hash != prediction.action_hash or scenario.action_hash != action.action.action_hash:
         reasons.append("ACTION_IDENTITY_CONFLICT")
@@ -1219,7 +1609,7 @@ def decide_admission(*, action: ActionArtifactV2, prediction: M0PredictionV2,
         reasons.append("M0_STATE_OOD_OR_UNESTIMABLE")
     if scenario.status != ScenarioGenerationStatusV2.AVAILABLE or scenario.synthetic_fixture:
         reasons.append("PRETRADE_SCENARIO_UNSUPPORTED")
-    if (scenario_support.independent_template_count < policy.minimum_scenario_templates or
+    if (scenario_support.independent_support_unit_count < policy.minimum_scenario_support_units or
             not all((scenario_support.policy_compatible, scenario_support.horizon_compatible,
                      scenario_support.venue_product_compatible, scenario_support.execution_mode_compatible,
                      scenario_support.depth_supported))):
@@ -1238,8 +1628,12 @@ def decide_admission(*, action: ActionArtifactV2, prediction: M0PredictionV2,
         reasons.append("DETERMINISTIC_STRESS_UNESTIMABLE")
     if portfolio.status != "AVAILABLE" or portfolio.breach is None:
         reasons.append("PORTFOLIO_ES_UNESTIMABLE")
-    if not policy.venue_capability_qualified:
-        reasons.append("VENUE_CAPABILITY_NOT_QUALIFIED")
+    if capability is None or account_scope is None:
+        reasons.append("VENUE_CAPABILITY_EVIDENCE_MISSING")
+    elif not capability.supports(action, account_scope=account_scope,
+            cutoff_ns=action_identity_cutoff_for_action(prediction, scenario), policy=policy,
+            allow_synthetic_fixtures=allow_synthetic_fixtures):
+        reasons.append("VENUE_CAPABILITY_UNQUALIFIED_OR_SCOPE_MISMATCH")
     if reasons:
         return AdmissionResultV2(DecisionStatusV2.NOT_ESTIMABLE, tuple(sorted(set(reasons))), prediction.expected_net_value, None, ())
     assert prediction.expected_net_value is not None
@@ -1263,6 +1657,13 @@ def decide_admission(*, action: ActionArtifactV2, prediction: M0PredictionV2,
         rejected.append("PORTFOLIO_ES_LIMIT_BREACH")
     return AdmissionResultV2(DecisionStatusV2.NO_TRADE if rejected else DecisionStatusV2.CANDIDATE,
         tuple(sorted(set(rejected))), prediction.expected_net_value, lcb, components)
+
+
+def action_identity_cutoff_for_action(prediction: M0PredictionV2,
+        scenario: PretradeExecutionScenarioV2) -> int:
+    if prediction.training_cutoff_ns != scenario.information_cutoff_ns:
+        raise ValueError("M0 and scenario cutoff disagree")
+    return prediction.training_cutoff_ns
 
 
 def index_admission_evidence(repo: OpsRepository, artifact_type: str, body: Mapping[str, Any],
@@ -1308,6 +1709,7 @@ def make_amended_evaluation(*, action: ActionArtifactV2, candidate: CandidateAct
         support: InferenceSupportV2, estimation_ref: str, execution_ref: str,
         numerical_ref: str, calibration_ref: str, ood_ref: str,
         outcome_distribution_ref: str, admission_policy_ref: str,
+        capability_evidence_ref: str,
         lcb_method_ref: str, account_snapshot_ref: str, risk_policy_ref: str,
         risk_policy_v2_ref: str, causal_state_ref: str, available_at_ns: int,
         result: AdmissionResultV2) -> AmendedEvaluationArtifactV2:
@@ -1338,12 +1740,13 @@ def make_amended_evaluation(*, action: ActionArtifactV2, candidate: CandidateAct
         "M0_HUBER_RIDGE_ACTION_VALUE_V1", scenario.content_hash, stress.content_hash,
         portfolio.content_hash, result.expected_net_value, result.lcb, lcb_method_ref,
         estimation_ref, execution_ref, numerical_ref, support.content_hash,
-        calibration_ref, ood_ref, outcome_distribution_ref, admission_policy_ref,
+        calibration_ref, ood_ref, outcome_distribution_ref, admission_policy_ref, capability_evidence_ref,
         portfolio_es.es_before_fraction, portfolio_es.es_after_fraction, result.decision,
         result.reasons, candidate.decision_at_ns, available_at_ns, candidate.deadline_ns)
 
 
-def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationArtifactV2) -> str:
+def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationArtifactV2, *,
+        allow_synthetic_fixtures: bool = False) -> str:
     action_entry = repo.get_artifact(evaluation.action_artifact_ref)
     action_body = action_entry.metadata.get("action_artifact") if action_entry is not None else None
     identity = action_entry.metadata.get("action_identity") if action_entry is not None else None
@@ -1382,6 +1785,7 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
         (evaluation.calibration_ref, "M0CalibrationV2"), (evaluation.ood_ref, "M0OODV2"),
         (evaluation.outcome_distribution_ref, "OutcomeDistributionV2"),
         (evaluation.admission_policy_ref, "AdmissionPolicyV2"),
+        (evaluation.capability_evidence_ref, "VenueCapabilitySnapshotV2"),
         (evaluation.lcb_method_ref, "LCBMethodV2"))
     for ref, kind in required:
         entry = repo.get_artifact(ref)
@@ -1401,13 +1805,14 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
         (evaluation.ood_ref, "M0OODV2", "ood"),
         (evaluation.outcome_distribution_ref, "OutcomeDistributionV2", "evidence"),
         (evaluation.admission_policy_ref, "AdmissionPolicyV2", "evidence"),
+        (evaluation.capability_evidence_ref, "VenueCapabilitySnapshotV2", "capability"),
         (evaluation.lcb_method_ref, "LCBMethodV2", "lcb_method"),
     )
     evidence_bodies: dict[str, Mapping[str, Any]] = {}
     direct_hash_kinds = {"M0ModelFitV2", "M0PredictionV2", "DeterministicStressV2",
         "DecisionTimePortfolioScenariosV2", "EstimationUncertaintyV2", "ExecutionModelUncertaintyV2",
         "NumericalErrorV2", "InferenceSupportV2", "M0CalibrationV2", "M0OODV2",
-        "OutcomeDistributionV2", "AdmissionPolicyV2", "LCBMethodV2"}
+        "OutcomeDistributionV2", "AdmissionPolicyV2", "VenueCapabilitySnapshotV2", "LCBMethodV2"}
     for ref, kind, metadata_key in evidence_specs:
         entry = repo.get_artifact(ref)
         body: Any = None
@@ -1483,6 +1888,31 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
         account_entry = repo.get_artifact(evaluation.account_snapshot_ref)
         if account_entry is None or account_entry.metadata.get("account_scope") != candidate.account_scope:
             raise ValueError("evaluation account snapshot scope conflicts with candidate")
+    capability_body = evidence_bodies[evaluation.capability_evidence_ref]
+    capability = VenueCapabilitySnapshotV2.from_dict(json_value(capability_body))
+    admission_policy = AdmissionPolicyV2.from_dict(
+        json_value(evidence_bodies[evaluation.admission_policy_ref]))
+    expected_account_scope = account_body.get("account_scope")
+    if (capability.content_hash != evaluation.capability_evidence_ref or
+            capability.venue != resolved_action.action.key.venue or
+            capability.environment != resolved_action.action.key.environment or
+            capability.product_ref != resolved_action.action.product_ref or
+            capability.instrument_key_ref != resolved_action.action.key.content_hash or
+            capability.account_scope != expected_account_scope or
+            (candidate.account_scope is not None and capability.account_scope != candidate.account_scope) or
+            capability.margin_mode != admission_policy.required_margin_mode or
+            capability.position_mode != admission_policy.required_position_mode or
+            capability.nautilus_distribution != admission_policy.required_nautilus_distribution or
+            capability.nautilus_version != admission_policy.required_nautilus_version or
+            capability.nautilus_source_commit != admission_policy.required_nautilus_source_commit or
+            capability.nautilus_artifact_ref != admission_policy.required_nautilus_artifact_ref or
+            capability.execution_profile_ref != admission_policy.required_execution_profile_ref or
+            capability.protection_profile_ref != admission_policy.required_protection_profile_ref or
+            capability.qualification_version != admission_policy.required_qualification_version or
+            capability.available_at_ns > evaluation.decision_at_ns):
+        raise ValueError("evaluation capability evidence has wrong venue/account/product/runtime/profile or is future")
+    validate_venue_capability_snapshot(repo, capability, cutoff_ns=evaluation.decision_at_ns,
+        action=resolved_action)
     feature_entry = repo.get_artifact(evaluation.feature_artifact_ref)
     if (feature_entry is None or feature_entry.artifact_type != "FeatureArtifactV2" or
             feature_entry.content_hash != evaluation.feature_artifact_ref or
@@ -1551,7 +1981,7 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
             oof_body.get("feature_schema_version") != feature_vector.schema_version):
         raise ValueError("evaluation chronological OOF archive is unavailable or version-mismatched")
     support_body = evidence_bodies[evaluation.support_ref]
-    if (support_body.get("version") != "COMPOSITE_M0_SCENARIO_SUPPORT_V1" or
+    if (support_body.get("version") != "COMPOSITE_M0_SCENARIO_SUPPORT_V2" or
             support_body.get("action_hash") != evaluation.action_hash):
         raise ValueError("evaluation composite support is not action-bound")
     m0_support_ref = support_body.get("m0_support_ref")
@@ -1571,7 +2001,7 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
             scenario_support_body.get("action_hash") != evaluation.action_hash or
             scenario_support_body.get("scenario_ref") != evaluation.pretrade_scenario_ref or
             support_body.get("eligible_m0_samples") != m0_support_body.get("eligible_sample_count") or
-            support_body.get("independent_scenario_templates") != scenario_support_body.get("independent_template_count")):
+            support_body.get("independent_scenario_support_units") != scenario_support_body.get("independent_support_unit_count")):
         raise ValueError("evaluation support refs/counts do not resolve to exact M0/scenario evidence")
     assert feature_vector is not None and isinstance(m0_support_body, Mapping)
     assert isinstance(oof_body, Mapping)
@@ -1726,12 +2156,7 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
         decimal_value(ood_body["maximum_absolute_robust_z"], field="maximum_absolute_robust_z", wire=True)
             if ood_body["maximum_absolute_robust_z"] is not None else None,
         ood_body["out_of_distribution"], ood_body["status"])
-    scenario_support = ScenarioSupportV2(
-        scenario_support_body["action_hash"], scenario_support_body["scenario_ref"],
-        scenario_support_body["independent_template_count"], scenario_support_body["policy_compatible"],
-        scenario_support_body["horizon_compatible"], scenario_support_body["venue_product_compatible"],
-        scenario_support_body["execution_mode_compatible"], scenario_support_body["depth_supported"],
-        scenario_support_body["evidence_quality"], tuple(scenario_support_body["template_refs"]))
+    scenario_support = ScenarioSupportV2.from_dict(json_value(scenario_support_body))
     estimation_body = evidence_bodies[evaluation.estimation_uncertainty_ref]
     estimation = EstimationUncertaintyV2(estimation_body["action_hash"], estimation_body["prediction_ref"],
         estimation_body["oof_archive_ref"], tuple(estimation_body["training_outcome_refs"]),
@@ -1746,27 +2171,10 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
         decimal_value(execution_body["absolute_cost_error_q90"], field="absolute_cost_error_q90", wire=True)
             if execution_body["absolute_cost_error_q90"] is not None else None, execution_body["status"])
     numerical_body = evidence_bodies[evaluation.numerical_error_ref]
-    numerical = NumericalErrorV2(numerical_body["action_hash"], numerical_body["scenario_ref"],
-        numerical_body["seed_a"], numerical_body["seed_b"], numerical_body["path_count_a"],
-        numerical_body["path_count_b"],
-        decimal_value(numerical_body["m0_conversion_error"], field="m0_conversion_error", wire=True)
-            if numerical_body["m0_conversion_error"] is not None else None,
-        decimal_value(numerical_body["estimate_a"], field="estimate_a", wire=True)
-            if numerical_body["estimate_a"] is not None else None,
-        decimal_value(numerical_body["estimate_b"], field="estimate_b", wire=True)
-            if numerical_body["estimate_b"] is not None else None,
-        decimal_value(numerical_body["error_bound"], field="error_bound", wire=True)
-            if numerical_body["error_bound"] is not None else None, numerical_body["status"])
-    policy_body_amended = evidence_bodies[evaluation.admission_policy_ref]
+    numerical = NumericalErrorV2.from_dict(json_value(numerical_body))
     lcb_method = LCBMethodV2.from_dict(json_value(evidence_bodies[evaluation.lcb_method_ref]))
     if lcb_method.content_hash != evaluation.lcb_method_ref:
         raise ValueError("evaluation lower-bound method ref/content mismatch")
-    admission_policy = AdmissionPolicyV2(policy_body_amended["version"],
-        decimal_value(policy_body_amended["materiality_threshold"], field="materiality_threshold", wire=True),
-        policy_body_amended["minimum_action_support"], policy_body_amended["minimum_scenario_templates"],
-        policy_body_amended["minimum_execution_calibration"],
-        decimal_value(policy_body_amended["confidence_multiplier"], field="confidence_multiplier", wire=True),
-        policy_body_amended["venue_capability_qualified"])
     if (execution.action_hash != evaluation.action_hash or
             execution.execution_model_ref != scenario.execution_model_input.ref):
         raise ValueError("execution uncertainty is not bound to the exact pretrade execution model")
@@ -1801,7 +2209,8 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
         confidence_multiplier=admission_policy.confidence_multiplier)
     if canonical_json(reproduced_estimation.to_dict()) != canonical_json(estimation.to_dict()):
         raise ValueError("estimation uncertainty does not reproduce from exact M0 evidence/policy")
-    reproduced_scenario_support = make_scenario_support(scenario)
+    reproduced_scenario_support = make_scenario_support(repo, action=resolved_action, scenario=scenario,
+        support_unit_refs=scenario_support.support_unit_refs)
     if canonical_json(reproduced_scenario_support.to_dict()) != canonical_json(scenario_support.to_dict()):
         raise ValueError("scenario support does not reproduce from coherent template evidence")
     reproduced_support = make_inference_support(evaluation.action_hash, m0_support, scenario_support)
@@ -1811,8 +2220,13 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
     if canonical_json(reproduced_distribution.to_dict()) != canonical_json(outcome_distribution.to_dict()):
         raise ValueError("outcome distribution does not reproduce from exact path cashflows")
     if (numerical.action_hash != evaluation.action_hash or numerical.scenario_ref != scenario.content_hash or
+            numerical.prediction_ref != prediction.content_hash or
             numerical.m0_conversion_error != prediction.numerical_conversion_error):
         raise ValueError("numerical error does not bind exact action/scenario/M0 conversion")
+    reproduced_numerical = make_numerical_error(repo, action=resolved_action, scenario=scenario,
+        prediction=prediction, run_a_ref=numerical.run_a_ref, run_b_ref=numerical.run_b_ref)
+    if canonical_json(reproduced_numerical.to_dict()) != canonical_json(numerical.to_dict()):
+        raise ValueError("numerical convergence evidence does not reproduce from indexed scenario/payoff runs")
     stress_source = repo.get_artifact(stress.stress_evidence_ref) if stress.stress_evidence_ref is not None else None
     raw_stress_input = stress_source.metadata.get("stress_input") if stress_source is not None else None
     stress_input = stress_input_from_wire(json_value(raw_stress_input)) if isinstance(raw_stress_input, Mapping) else None
@@ -1864,7 +2278,9 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
         calibration=calibration, ood=ood, scenario=scenario, scenario_support=scenario_support,
         outcome_distribution=outcome_distribution,
         estimation=estimation, execution=execution, numerical=numerical, stress=stress,
-        portfolio=portfolio_es, policy=admission_policy)
+        portfolio=portfolio_es, policy=admission_policy, capability=capability,
+        account_scope=str(expected_account_scope) if expected_account_scope is not None else None,
+        allow_synthetic_fixtures=allow_synthetic_fixtures)
     if (result.decision != evaluation.decision or result.reasons != evaluation.reason_codes or
             result.expected_net_value != evaluation.expected_net_value or result.lcb != evaluation.expected_pnl_lcb or
             portfolio_es.es_before_fraction != evaluation.es_before or
@@ -1895,27 +2311,94 @@ def persist_economic_decision(repo: OpsRepository, evaluation: AmendedEvaluation
     return evaluation_ref, calendar_ref
 
 
+class VenueCapabilityStatusV2(StrEnum):
+    UNVERIFIED = "UNVERIFIED"
+    SUPPORTED = "SUPPORTED"
+    UNSUPPORTED = "UNSUPPORTED"
+    EXPIRED = "EXPIRED"
+
+
 @dataclass(frozen=True)
 class VenueCapabilitySnapshotV2:
+    """Immutable qualification evidence scoped to one exact venue/profile/action."""
+
+    venue: VenueV2
+    environment: EnvironmentV2
     account_scope: str
     product_ref: str
+    instrument_key_ref: str
+    margin_mode: str
+    position_mode: str
+    nautilus_distribution: str
+    nautilus_version: str
+    nautilus_source_commit: str
+    nautilus_artifact_ref: str
+    execution_profile_ref: str
+    protection_profile_ref: str
+    qualification_version: str
+    observed_status: VenueCapabilityStatusV2
+    evidence_refs: tuple[str, ...]
     available_at_ns: int
-    qualified: bool
-    synthetic_fixture: bool
+    synthetic_fixture: bool = False
 
     def __post_init__(self) -> None:
-        sha256_ref(self.product_ref, field="product_ref")
-        if not self.account_scope or type(self.available_at_ns) is not int or self.available_at_ns < 0:
-            raise ValueError("capability snapshot identity invalid")
-        if type(self.qualified) is not bool or type(self.synthetic_fixture) is not bool:
-            raise ValueError("capability qualification/fixture flags must be booleans")
+        object.__setattr__(self, "venue", VenueV2(self.venue))
+        object.__setattr__(self, "environment", EnvironmentV2(self.environment))
+        object.__setattr__(self, "observed_status", VenueCapabilityStatusV2(self.observed_status))
+        for name in ("product_ref", "instrument_key_ref", "nautilus_artifact_ref",
+                "execution_profile_ref", "protection_profile_ref"):
+            sha256_ref(getattr(self, name), field=name)
+        for name in ("account_scope", "margin_mode", "position_mode", "nautilus_distribution",
+                "nautilus_version", "nautilus_source_commit", "qualification_version"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip() or value.strip().upper() in {
+                    "REQUIRED", "UNVERIFIED", "TEST_GATE", "PENDING"}:
+                raise ValueError(f"capability {name} must identify an observed profile")
+        if self.evidence_refs != tuple(sorted(set(self.evidence_refs))):
+            raise ValueError("capability evidence refs must be sorted unique")
+        for ref in self.evidence_refs:
+            sha256_ref(ref, field="capability_evidence_ref")
+        if type(self.available_at_ns) is not int or self.available_at_ns < 0 or type(self.synthetic_fixture) is not bool:
+            raise ValueError("capability availability/fixture marker invalid")
+        if self.observed_status == VenueCapabilityStatusV2.SUPPORTED and not self.evidence_refs:
+            raise ValueError("supported capability requires immutable qualification evidence refs")
+        if self.synthetic_fixture and self.observed_status != VenueCapabilityStatusV2.SUPPORTED:
+            raise ValueError("synthetic fixture capability must explicitly model supported status")
 
     def to_dict(self) -> dict[str, Any]:
-        return {"version": "SHADOW_VENUE_CAPABILITY_SNAPSHOT_V1", **{name: getattr(self, name) for name in self.__dataclass_fields__}}
+        return json_value({"version": "VENUE_CAPABILITY_EVIDENCE_V2_V1", **{
+            name: getattr(self, name) for name in self.__dataclass_fields__}})
 
     @property
     def content_hash(self) -> str:
         return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> VenueCapabilitySnapshotV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        d = dict(strict_fields(data, expected=fields, required=fields, name="VenueCapabilitySnapshotV2"))
+        if d.pop("version") != "VENUE_CAPABILITY_EVIDENCE_V2_V1" or not isinstance(d["evidence_refs"], list):
+            raise ValueError("unsupported venue capability evidence wire")
+        d["evidence_refs"] = tuple(d["evidence_refs"])
+        return cls(**{name: d[name] for name in cls.__dataclass_fields__})
+
+    def supports(self, action: ActionArtifactV2, *, account_scope: str, cutoff_ns: int,
+            policy: AdmissionPolicyV2, allow_synthetic_fixtures: bool = False) -> bool:
+        return (self.observed_status == VenueCapabilityStatusV2.SUPPORTED and
+            self.venue == action.action.key.venue and self.environment == action.action.key.environment and
+            self.product_ref == action.action.product_ref and
+            self.instrument_key_ref == action.action.key.content_hash and
+            self.account_scope == account_scope and self.available_at_ns <= cutoff_ns and
+            self.margin_mode == policy.required_margin_mode and
+            self.position_mode == policy.required_position_mode and
+            self.nautilus_distribution == policy.required_nautilus_distribution and
+            self.nautilus_version == policy.required_nautilus_version and
+            self.nautilus_source_commit == policy.required_nautilus_source_commit and
+            self.nautilus_artifact_ref == policy.required_nautilus_artifact_ref and
+            self.execution_profile_ref == policy.required_execution_profile_ref and
+            self.protection_profile_ref == policy.required_protection_profile_ref and
+            self.qualification_version == policy.required_qualification_version and
+            bool(self.evidence_refs) and (allow_synthetic_fixtures or not self.synthetic_fixture))
 
 
 @dataclass(frozen=True)
@@ -1942,13 +2425,84 @@ class ReservationSnapshotV2:
 
 def index_shadow_plan_snapshots(repo: OpsRepository, *, capability: VenueCapabilitySnapshotV2,
                                 reservation: ReservationSnapshotV2) -> tuple[str, str]:
-    repo.register_artifact(ArtifactIndexEntryV2(capability.content_hash, "VenueCapabilitySnapshotV2",
-        capability.content_hash, capability.available_at_ns, capability.available_at_ns,
-        {"capability": capability.to_dict()}))
+    index_venue_capability_snapshot(repo, capability)
     repo.register_artifact(ArtifactIndexEntryV2(reservation.content_hash, "ReservationSnapshotV2",
         reservation.content_hash, reservation.available_at_ns, reservation.available_at_ns,
         {"reservation": reservation.to_dict()}))
     return capability.content_hash, reservation.content_hash
+
+
+def index_venue_capability_snapshot(repo: OpsRepository, capability: VenueCapabilitySnapshotV2) -> str:
+    _validate_capability_sources(repo, capability, cutoff_ns=capability.available_at_ns)
+    repo.register_artifact(ArtifactIndexEntryV2(capability.content_hash, "VenueCapabilitySnapshotV2",
+        capability.content_hash, capability.available_at_ns, capability.available_at_ns,
+        {"capability": capability.to_dict()}))
+    return capability.content_hash
+
+
+def _validate_capability_sources(repo: OpsRepository, capability: VenueCapabilitySnapshotV2,
+        *, cutoff_ns: int, action: ActionArtifactV2 | None = None) -> None:
+    if capability.observed_status != VenueCapabilityStatusV2.SUPPORTED:
+        return
+    if capability.synthetic_fixture:
+        for ref in capability.evidence_refs:
+            source = repo.get_artifact(ref)
+            if (source is None or source.content_hash != ref or source.available_at_ns > cutoff_ns or
+                    source.created_at_ns > cutoff_ns or
+                    not source.artifact_type.startswith("SyntheticVenueCapability")):
+                raise ValueError("synthetic capability ref is missing, future or not fixture evidence")
+        return
+    if not capability.evidence_refs:
+        raise ValueError("real supported capability needs a qualified V1 capability manifest ref")
+    manifests = []
+    for ref in capability.evidence_refs:
+        source = repo.get_artifact(ref)
+        body = source.metadata.get("evidence") if source is not None else None
+        if (source is None or source.artifact_type != "CapabilityContractV1" or
+                source.content_hash != ref or source.available_at_ns > cutoff_ns or
+                source.created_at_ns > cutoff_ns or not isinstance(body, Mapping) or
+                sha256_json(body) != ref):
+            raise ValueError("real capability refs must resolve to an exact indexed CapabilityContractV1")
+        try:
+            manifest = capability_contract_from_manifest(dict(body))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("real capability manifest is malformed") from exc
+        venue = manifest.venue
+        runtime = manifest.runtime
+        normalized_margin = capability.margin_mode.casefold().replace("_", "-")
+        observed_margin = venue.account_generation_and_margin_mode.casefold().replace("_", "-")
+        if (not manifest.capabilities.all_supported() or manifest.assisted_blockers() or
+                venue.environment.casefold() != capability.environment.value.casefold() or
+                venue.account_identity_hash != capability.account_scope or
+                venue.product.casefold() != "linear" or
+                venue.position_mode.casefold().replace("-", "_") != capability.position_mode.casefold().replace("-", "_") or
+                normalized_margin not in observed_margin or
+                runtime.distribution != capability.nautilus_distribution or
+                runtime.version != capability.nautilus_version or
+                runtime.source_commit != capability.nautilus_source_commit or
+                runtime.installed_artifact_sha256 != capability.nautilus_artifact_ref or
+                manifest.contract_version != capability.qualification_version):
+            raise ValueError("real V1 capability manifest does not qualify the exact V2 account/runtime profile")
+        if action is not None and (action.action.key.native_symbol not in venue.supported_symbols or
+                action.action.key.environment.value.casefold() != venue.environment.casefold() or
+                capability.instrument_key_ref != action.action.key.content_hash or
+                capability.product_ref != action.action.product_ref):
+            raise ValueError("real capability manifest does not cover the exact action symbol/product")
+        manifests.append(manifest)
+    if not manifests:
+        raise ValueError("real supported capability has no qualified capability manifest")
+
+
+def validate_venue_capability_snapshot(repo: OpsRepository, capability: VenueCapabilitySnapshotV2,
+        *, cutoff_ns: int, action: ActionArtifactV2 | None = None) -> None:
+    entry = repo.get_artifact(capability.content_hash)
+    body = entry.metadata.get("capability") if entry is not None else None
+    if (entry is None or entry.artifact_type != "VenueCapabilitySnapshotV2" or
+            entry.content_hash != capability.content_hash or entry.available_at_ns > cutoff_ns or
+            not isinstance(body, Mapping) or sha256_json(body) != capability.content_hash or
+            canonical_json(body) != canonical_json(capability.to_dict())):
+        raise ValueError("exact indexed venue capability evidence is required")
+    _validate_capability_sources(repo, capability, cutoff_ns=cutoff_ns, action=action)
 
 
 def create_shadow_trade_plan(repo: OpsRepository, *, action: ActionArtifactV2,
@@ -1959,7 +2513,8 @@ def create_shadow_trade_plan(repo: OpsRepository, *, action: ActionArtifactV2,
         return None
     if (action.action.action_hash != evaluation.action_hash or action.content_hash != evaluation.action_artifact_ref or
             action.action.quantity != evaluation.quantity or capability.product_ref != action.action.product_ref or
-            capability.account_scope != reservation.account_scope or capability.available_at_ns > evaluation.available_at_ns or
+            evaluation.capability_evidence_ref != capability.content_hash or
+            capability.account_scope != reservation.account_scope or capability.available_at_ns > evaluation.decision_at_ns or
             reservation.available_at_ns > evaluation.available_at_ns):
         raise ValueError("shadow plan identity/capability/reservation mismatch")
     evaluation_entry = repo.get_artifact(evaluation.content_hash)
@@ -1968,7 +2523,12 @@ def create_shadow_trade_plan(repo: OpsRepository, *, action: ActionArtifactV2,
             not isinstance(evaluation_body, Mapping) or evaluation_entry.content_hash != evaluation.content_hash or
             canonical_json(evaluation_body) != canonical_json(evaluation.to_dict())):
         raise ValueError("final amended EvaluationArtifact must be durable before shadow plan creation")
-    if not capability.qualified and not (allow_synthetic_fixtures and capability.synthetic_fixture and reservation.synthetic_fixture):
+    policy_entry = repo.get_artifact(evaluation.admission_policy_ref)
+    policy_body = policy_entry.metadata.get("evidence") if policy_entry is not None else None
+    admission_policy = AdmissionPolicyV2.from_dict(json_value(policy_body)) if isinstance(policy_body, Mapping) else None
+    if (admission_policy is None or not capability.supports(action,
+            account_scope=capability.account_scope, cutoff_ns=evaluation.decision_at_ns,
+            policy=admission_policy, allow_synthetic_fixtures=allow_synthetic_fixtures)):
         return None
     if (capability.synthetic_fixture != reservation.synthetic_fixture and
             (capability.synthetic_fixture or reservation.synthetic_fixture)):
@@ -1979,12 +2539,16 @@ def create_shadow_trade_plan(repo: OpsRepository, *, action: ActionArtifactV2,
         # A SHA-shaped indexed summary is insufficient for a real shadow plan.
         # Reproduce all amended economic gates from their durable evidence.
         index_amended_evaluation(repo, evaluation)
+    else:
+        validate_venue_capability_snapshot(repo, capability, cutoff_ns=evaluation.decision_at_ns,
+            action=action)
     candidate_entry = repo.get_artifact(action.candidate_ref)
     candidate_body = candidate_entry.metadata.get("candidate") if candidate_entry is not None else None
     candidate = CandidateActionV2.from_dict(json_value(candidate_body)) if isinstance(candidate_body, Mapping) else None
     sizing_entry = repo.get_artifact(action.sizing_ref)
     sizing_body = sizing_entry.metadata.get("sizing") if sizing_entry is not None else None
-    if (candidate is None or candidate.account_scope is None or sizing_entry is None or not isinstance(sizing_body, Mapping) or
+    if (candidate is None or candidate.account_scope is None or
+            capability.account_scope != candidate.account_scope or sizing_entry is None or not isinstance(sizing_body, Mapping) or
             sizing_entry.artifact_type != "SizingDecisionV2" or sha256_json(sizing_body) != action.sizing_ref or
             sizing_body.get("status") != "SIZED" or sizing_body.get("quantity") != canonical_decimal_str(action.action.quantity) or
             sizing_body.get("product_ref") != action.action.product_ref or
