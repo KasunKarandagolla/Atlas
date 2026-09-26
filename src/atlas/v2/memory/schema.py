@@ -120,3 +120,20 @@ def initialize(connection: sqlite3.Connection) -> None:
     except BaseException:
         connection.rollback()
         raise
+
+
+def validate_read_only(connection: sqlite3.Connection) -> None:
+    """Validate an existing ops store without creating or changing schema state."""
+    tables = {
+        row[0]
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        )
+    }
+    if not _REQUIRED_TABLES.issubset(tables):
+        raise RuntimeError("atlas-ops schema is incomplete")
+    rows = connection.execute(
+        "SELECT schema_version FROM schema_meta WHERE namespace=?", (OPS_SCHEMA_NAMESPACE,)
+    ).fetchall()
+    if len(rows) != 1 or rows[0][0] != OPS_SCHEMA_VERSION:
+        raise RuntimeError("atlas-ops schema version is missing or unsupported")

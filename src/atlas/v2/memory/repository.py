@@ -13,11 +13,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from .._serialization import FrozenMap, canonical_json, nonblank, sha256_json, sha256_ref, timestamp
 from ..contracts import OpportunityWatchV2, WatchStateV2
 from ..models.protocol import ModelManifestV2
-from .schema import OPS_SCHEMA_NAMESPACE, OPS_SCHEMA_VERSION, initialize
+from .schema import OPS_SCHEMA_NAMESPACE, OPS_SCHEMA_VERSION, initialize, validate_read_only
 
 _ACTIVE_STATES = (
     WatchStateV2.DETECTED.value,
@@ -113,30 +114,42 @@ class RestartSnapshotV2:
 class OpsRepository:
     """A small local SQLite repository; callers provide every durable ID."""
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, *, read_only: bool = False) -> None:
         raw_path = str(path)
         if raw_path.startswith("file:") or "://" in raw_path:
             raise ValueError("atlas-ops requires a local SQLite path, not a shared/network URI")
         if raw_path == "":
             raise ValueError("database path must be non-empty")
         self.path = raw_path
+        self.read_only = read_only
         self._lock = threading.RLock()
-        self._connection = sqlite3.connect(self.path, isolation_level=None, check_same_thread=False)
+        if read_only:
+            if self.path == ":memory:":
+                raise ValueError("read-only atlas-ops access requires an existing local database file")
+            absolute = Path(self.path).resolve().as_posix()
+            encoded_path = quote(absolute, safe="/:\\")
+            uri = f"file:{encoded_path}?mode=ro"
+            self._connection = sqlite3.connect(uri, uri=True, isolation_level=None, check_same_thread=False)
+        else:
+            self._connection = sqlite3.connect(self.path, isolation_level=None, check_same_thread=False)
         self._connection.row_factory = sqlite3.Row
         self._connection.execute("PRAGMA foreign_keys=ON")
-        self._connection.execute("PRAGMA journal_mode=WAL")
-        self._connection.execute("PRAGMA synchronous=FULL")
+        if not read_only:
+            self._connection.execute("PRAGMA journal_mode=WAL")
+            self._connection.execute("PRAGMA synchronous=FULL")
+        else:
+            self._connection.execute("PRAGMA query_only=ON")
         if self._connection.execute("PRAGMA foreign_keys").fetchone()[0] != 1:
             self._connection.close()
             raise RuntimeError("SQLite foreign keys could not be enabled")
-        if self._connection.execute("PRAGMA journal_mode").fetchone()[0].lower() != "wal":
+        if not read_only and self._connection.execute("PRAGMA journal_mode").fetchone()[0].lower() != "wal":
             self._connection.close()
             raise RuntimeError("atlas-ops SQLite WAL mode is unavailable")
-        if self._connection.execute("PRAGMA synchronous").fetchone()[0] != 2:
+        if not read_only and self._connection.execute("PRAGMA synchronous").fetchone()[0] != 2:
             self._connection.close()
             raise RuntimeError("atlas-ops SQLite synchronous=FULL is unavailable")
         try:
-            initialize(self._connection)
+            validate_read_only(self._connection) if read_only else initialize(self._connection)
         except BaseException:
             self._connection.close()
             raise
@@ -160,6 +173,9 @@ class OpsRepository:
         self.close()
 
     def _transaction(self):
+        if self.read_only:
+            raise RuntimeError("read-only atlas-ops repository cannot mutate evidence")
+
         class Transaction:
             def __init__(self, repository: OpsRepository) -> None:
                 self.repository = repository
@@ -235,6 +251,22 @@ class OpsRepository:
                 f"SELECT * FROM watch WHERE state IN ({marks}) ORDER BY expires_at_ns, watch_id",
                 _ACTIVE_STATES,
             ).fetchall()
+        return tuple(self._watch_from_row(row) for row in rows)
+
+    def list_watches(self, *, limit: int | None = None) -> tuple[OpportunityWatchV2, ...]:
+        """Return every persisted watch, including terminal lifecycle states."""
+        if limit is not None and (type(limit) is not int or not 1 <= limit <= 10_000):
+            raise ValueError("watch read limit must be between 1 and 10000")
+        with self._lock:
+            if limit is None:
+                rows = self._connection.execute(
+                    "SELECT * FROM watch ORDER BY json_extract(payload_json, '$.created_at_ns'), watch_id"
+                ).fetchall()
+            else:
+                rows = self._connection.execute(
+                    "SELECT * FROM watch ORDER BY json_extract(payload_json, '$.created_at_ns') DESC, "
+                    "watch_id DESC LIMIT ?", (limit,)
+                ).fetchall()[::-1]
         return tuple(self._watch_from_row(row) for row in rows)
 
     def transition_watch(
@@ -396,13 +428,21 @@ class OpsRepository:
             )
         return record
 
-    def source_health_history(self, source_id: str) -> tuple[SourceHealthV2, ...]:
+    def source_health_history(self, source_id: str, *, limit: int | None = None) -> tuple[SourceHealthV2, ...]:
         nonblank(source_id, field="source_id")
+        if limit is not None and (type(limit) is not int or not 1 <= limit <= 10_000):
+            raise ValueError("source health read limit must be between 1 and 10000")
         with self._lock:
-            rows = self._connection.execute(
-                "SELECT payload_json,payload_hash FROM source_health WHERE source_id=? ORDER BY observed_at_ns",
-                (source_id,),
-            ).fetchall()
+            if limit is None:
+                rows = self._connection.execute(
+                    "SELECT payload_json,payload_hash FROM source_health WHERE source_id=? ORDER BY observed_at_ns",
+                    (source_id,),
+                ).fetchall()
+            else:
+                rows = self._connection.execute(
+                    "SELECT payload_json,payload_hash FROM source_health WHERE source_id=? "
+                    "ORDER BY observed_at_ns DESC LIMIT ?", (source_id, limit),
+                ).fetchall()[::-1]
         result: list[SourceHealthV2] = []
         for row in rows:
             payload = json.loads(row["payload_json"])
@@ -476,6 +516,31 @@ class OpsRepository:
                 "SELECT * FROM artifact_index WHERE artifact_type=? ORDER BY created_at_ns,artifact_ref",
                 (artifact_type,),
             ).fetchall()
+        return tuple(
+            ArtifactIndexEntryV2(
+                row["artifact_ref"], row["artifact_type"], row["content_hash"], row["created_at_ns"],
+                row["available_at_ns"], json.loads(row["metadata_json"]),
+            )
+            for row in rows
+        )
+
+    def artifact_entries_by_types(
+        self, artifact_types: tuple[str, ...], *, limit: int = 2_000
+    ) -> tuple[ArtifactIndexEntryV2, ...]:
+        """Read bounded typed artifact namespaces in stable index order."""
+        types = tuple(sorted(set(artifact_types)))
+        if not types or any(not isinstance(item, str) or not item.strip() for item in types):
+            raise ValueError("at least one non-empty artifact type is required")
+        if type(limit) is not int or not 1 <= limit <= 10_000:
+            raise ValueError("artifact read limit must be between 1 and 10000")
+        marks = ",".join("?" for _ in types)
+        with self._lock:
+            rows = self._connection.execute(
+                f"SELECT * FROM artifact_index WHERE artifact_type IN ({marks}) "
+                "ORDER BY created_at_ns DESC, artifact_ref DESC LIMIT ?",
+                (*types, limit),
+            ).fetchall()
+        rows.reverse()
         return tuple(
             ArtifactIndexEntryV2(
                 row["artifact_ref"], row["artifact_type"], row["content_hash"], row["created_at_ns"],

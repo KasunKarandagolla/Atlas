@@ -24,6 +24,15 @@ dev = [
   "mypy>=1.0",
   "pyyaml>=6.0",
 ]
+desktop = [
+  "PySide6>=6.10,<7",
+  "pyqtgraph>=0.14,<0.15",
+  "pyinstaller>=6.22,<7",
+]
+
+[project.scripts]
+atlas-v2-projection = "atlas.v2.desktop.ipc:main"
+atlas-desktop = "atlas.desktop.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

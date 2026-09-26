@@ -80,7 +80,9 @@ def actual_outcome(repo, close_at_ns, available_at_ns, pnl, *, account_scope="SH
 def risk_case(repo, *, account_overrides=None, product_overrides=None, venue_overrides=None,
               stress_overrides=None, fee_overrides=None, v1_overrides=None, v2_overrides=None,
               outcomes=(), exposures=(), include_s2=False, short=False,
-              claim_non_actual=False):
+              claim_non_actual=False, cutoff_ns=None, universe_override=None,
+              candidate_override=None, candidate_factory=None, universe_available_at_ns=None):
+    cutoff = CUTOFF if cutoff_ns is None else cutoff_ns
     v1 = engineering_default_policy(policy_version="SESSION017_ENGINEERING_FIXTURE", policy_effective_at_ns=0)
     if v1_overrides:
         v1 = replace(v1, **v1_overrides)
@@ -96,27 +98,37 @@ def risk_case(repo, *, account_overrides=None, product_overrides=None, venue_ove
     entry = UniverseEntryV2(KEY, product.content_hash, True, True, True, True, False,
         FrozenMap({p.policy_id: StrategyEligibilityV2(EligibilityStatusV2.ELIGIBLE)
                    for p in (S1_POLICY, S2_POLICY)}), ())
-    universe = UniverseContractV2(ArtifactEnvelope(1, "risk-u", CUTOFF, CUTOFF, "fixture",
-        (product.content_hash,)), "fixture", CUTOFF, SELECTION_POLICY_HASH, (entry,))
-    shadow = candidate()
+    universe_available = cutoff if universe_available_at_ns is None else universe_available_at_ns
+    default_universe = UniverseContractV2(ArtifactEnvelope(1, "risk-u", universe_available, universe_available, "fixture",
+        (product.content_hash,)), "fixture", cutoff, SELECTION_POLICY_HASH, (entry,))
+    universe = universe_override or default_universe
+    universe_product_refs = {member.product_ref for member in universe.entries if member.key == KEY}
+    if universe_product_refs != {product.content_hash}:
+        raise ValueError("risk fixture universe must bind the exact product contract")
+    if candidate_factory is not None:
+        candidate_override = candidate_factory(repo, universe, product)
+    shadow = candidate_override if candidate_override is not None else candidate()
     item = replace(shadow, envelope=replace(shadow.envelope, content_hash=""),
-                   horizon_end_ns=CUTOFF + 4 * HOUR_NS,
-                   side=V2Side.SHORT if short else V2Side.LONG,
-                   entry_collar=Decimal("99.95") if short else shadow.entry_collar,
-                   stop_price=Decimal("101") if short else shadow.stop_price)
-    index(repo, item, universe_ref=universe.content_hash)
-    rank_ref = evidence(repo, item, universe, 1)
+                   horizon_end_ns=cutoff + 4 * HOUR_NS,
+                   side=V2Side.SHORT if short and candidate_override is None else shadow.side,
+                   entry_collar=Decimal("99.95") if short and candidate_override is None else shadow.entry_collar,
+                   stop_price=Decimal("101") if short and candidate_override is None else shadow.stop_price)
+    if repo.get_artifact(item.content_hash) is None:
+        index(repo, item, universe_ref=universe.content_hash)
+    rank_ref = evidence(repo, item, universe, 1, available_at_ns=cutoff, event=EVENT)
     items = (item,)
     evidence_refs = {item.candidate_id: (rank_ref,)}
     if include_s2:
         s2_item = candidate(S2_POLICY)
-        index(repo, s2_item, universe_ref=universe.content_hash)
+        if repo.get_artifact(s2_item.content_hash) is None:
+            index(repo, s2_item, universe_ref=universe.content_hash)
         items += (s2_item,)
-        evidence_refs[s2_item.candidate_id] = (evidence(repo, s2_item, universe, 2),)
+        evidence_refs[s2_item.candidate_id] = (evidence(repo, s2_item, universe, 2,
+            available_at_ns=cutoff, event=EVENT),)
     else:
         s2_item = None
     candidate_set = assemble_candidate_set(repo, universe=universe, decision_event_id=EVENT,
-        cutoff_ns=CUTOFF, candidates=items, policies={p.policy_hash: p for p in (S1_POLICY, S2_POLICY)},
+        cutoff_ns=cutoff, candidates=items, policies={p.policy_hash: p for p in (S1_POLICY, S2_POLICY)},
         scanner_evidence_refs=evidence_refs)
     venue = VenueSizingLimitsV2(KEY, product.content_hash, 0,
         (Decimal("1"), Decimal("2")), Decimal("2"), Decimal("0"), source(repo, "venue"))
@@ -131,13 +143,13 @@ def risk_case(repo, *, account_overrides=None, product_overrides=None, venue_ove
     for exposure in exposures:
         index_risk_evidence(repo, exposure)
     for outcome in outcomes:
-        if outcome.available_at_ns <= CUTOFF:
+        if outcome.available_at_ns <= cutoff:
             index_risk_evidence(repo, outcome)
-    claimed_outcomes = tuple(x for x in outcomes if x.available_at_ns <= CUTOFF and (
+    claimed_outcomes = tuple(x for x in outcomes if x.available_at_ns <= cutoff and (
         claim_non_actual or x.outcome_class == OutcomeClass.ACTUAL_CLOSED_POSITION))
     open_items = tuple(x for x in exposures if x.kind in (ExposureKind.OPEN, ExposureKind.PARTIAL))
     pending_items = tuple(x for x in exposures if x.kind in (ExposureKind.PENDING, ExposureKind.UNKNOWN))
-    account = AccountRiskSnapshotV2("SHADOW_FAKE_ACCOUNT", CUTOFF, Decimal("100000"),
+    account = AccountRiskSnapshotV2("SHADOW_FAKE_ACCOUNT", cutoff, Decimal("100000"),
         Decimal("100000"), sum((x.possible_margin for x in exposures), Decimal("0")),
         Decimal("0"), sum((x.possible_normal_loss for x in open_items), Decimal("0")),
         sum((x.possible_normal_loss for x in pending_items), Decimal("0")),

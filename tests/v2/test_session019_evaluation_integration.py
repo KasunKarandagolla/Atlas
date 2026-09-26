@@ -42,7 +42,7 @@ from atlas.v2.science.scenario_engine import generate_pretrade_scenarios
 from atlas.v2.strategies.s1_trend import S1_POLICY
 
 from .test_session014_core import KEY
-from .test_session017_risk import CUTOFF, risk_case, size
+from .test_session017_risk import CUTOFF, size
 
 
 def test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calendar(tmp_path, monkeypatch):
@@ -52,9 +52,13 @@ def test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calen
 
     original_candidate = risk_module.candidate
     features: dict[str, FeatureArtifactV2] = {}
+    active_repository: OpsRepository | None = None
 
     def candidate_with_feature(policy=S1_POLICY, key=KEY, **kwargs):
         item = original_candidate(policy, key, **kwargs)
+        indexed_feature = active_repository.get_artifact(item.snapshot_hash) if active_repository is not None else None
+        if indexed_feature is not None and indexed_feature.artifact_type == "FeatureArtifactV2":
+            return item
         feature = FeatureArtifactV2(
             ArtifactEnvelope(1, f"session019-admission-feature-{item.candidate_id}", CUTOFF,
                 CUTOFF, "session019-fixture", ()), item.key, "SESSION019_FIXTURE_V1",
@@ -67,7 +71,8 @@ def test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calen
 
     monkeypatch.setattr(risk_module, "candidate", candidate_with_feature)
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
-        case = risk_case(repo)
+        active_repository = repo
+        case = risk_module.risk_case(repo)
         for ref, feature in features.items():
             repo.register_artifact(ArtifactIndexEntryV2(ref, "FeatureArtifactV2", ref,
                 CUTOFF, CUTOFF, {"feature": feature.to_dict()}))
