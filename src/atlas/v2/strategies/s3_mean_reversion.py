@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 from statistics import mean, stdev
 
-from atlas.v2._serialization import FrozenMap, artifact_wire, seal_envelope, sha256_json, timestamp
+from atlas.v2._serialization import FrozenMap, artifact_wire, seal_envelope, sha256_json, strict_fields, timestamp
 from atlas.v2.contracts import (
     ArtifactEnvelope,
     CandidateActionV2,
@@ -210,8 +210,6 @@ class TradeVwapSnapshotV2:
         timestamp(self.available_at_ns, field="vwap.available_at_ns")
         if self.utc_day_start_ns % DAY_NS or self.utc_day_start_ns > self.information_cutoff_ns:
             raise ValueError("VWAP snapshot must bind the current UTC day")
-        if self.available_at_ns > self.information_cutoff_ns:
-            raise ValueError("VWAP snapshot is not available by its cutoff")
         object.__setattr__(self, "vwap", Decimal(self.vwap))
         if not self.vwap.is_finite() or self.vwap <= 0:
             raise ValueError("VWAP must be positive and finite")
@@ -240,6 +238,28 @@ class TradeVwapSnapshotV2:
             "source_health_ref": self.source_health_ref,
             "replay_view": self.replay_view,
         }
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, object]) -> TradeVwapSnapshotV2:
+        """Decode persisted S3 VWAP evidence without accepting extra fields."""
+        fields = {
+            "schema_version", "key", "utc_day_start_ns", "information_cutoff_ns", "available_at_ns",
+            "vwap", "trade_refs", "source_health_ref", "replay_view",
+        }
+        value = strict_fields(data, expected=fields, required=fields, name=cls.__name__)
+        if type(value["schema_version"]) is not int or value["schema_version"] != 1:
+            raise ValueError("unsupported TradeVwapSnapshotV2 schema_version")
+        if not isinstance(value["key"], Mapping):
+            raise ValueError("TradeVwapSnapshotV2 key must be an object")
+        if not isinstance(value["vwap"], str) or not isinstance(value["trade_refs"], (list, tuple)):
+            raise ValueError("TradeVwapSnapshotV2 decimal and trade refs have invalid wire types")
+        if not isinstance(value["source_health_ref"], str) or not isinstance(value["replay_view"], str):
+            raise ValueError("TradeVwapSnapshotV2 source/view have invalid wire types")
+        return cls(
+            InstrumentKeyV2.from_dict(value["key"]),
+            value["utc_day_start_ns"], value["information_cutoff_ns"], value["available_at_ns"],
+            Decimal(value["vwap"]), tuple(value["trade_refs"]), value["source_health_ref"], value["replay_view"],
+        )
 
 
 def utc_day_trade_vwap(
@@ -323,16 +343,43 @@ def residual_observation(bar: CausalBarV2, vwap: TradeVwapSnapshotV2) -> Residua
             or bar.instrument_revision != vwap.key.contract_revision
             or bar.raw.availability_class.value != vwap.replay_view):
         raise ValueError("S3 residual requires the exact completed 1M bar and instrument revision")
-    if vwap.information_cutoff_ns < bar.close_at_ns or vwap.available_at_ns > vwap.information_cutoff_ns:
-        raise ValueError("VWAP snapshot is not causal for the completed bar")
+    if vwap.information_cutoff_ns != bar.close_at_ns:
+        raise ValueError("VWAP snapshot information cutoff must equal the completed bar close")
     bar_available = bar.raw.available_at_ns if vwap.replay_view == "ACTUAL_SYSTEM" else bar.replay_available_at_ns
-    if bar_available is None or bar_available > vwap.information_cutoff_ns:
+    if bar_available is None:
         raise ValueError("bar is unavailable in the requested residual replay view")
     return ResidualObservationV2(
         vwap.key, bar.content_hash, vwap.content_hash, bar.close_at_ns,
         max(bar_available, vwap.available_at_ns),
         math.log(float(bar.close)) - math.log(float(vwap.vwap)), vwap.replay_view,
     )
+
+
+def validate_historical_residual_v2(
+    residual: ResidualObservationV2, *, key: InstrumentKeyV2, bar: CausalBarV2,
+    vwap: TradeVwapSnapshotV2, replay_view: str,
+) -> str | None:
+    """Validate a historical residual against its exact selected causal inputs."""
+    if (not bar.final or bar.interval != BarIntervalV2.M1 or bar.content_hash != residual.bar_ref
+            or residual.close_at_ns != bar.close_at_ns or bar.instrument_revision != key.contract_revision
+            or residual.key != key):
+        return "HISTORICAL_RESIDUAL_BAR_REF_MISMATCH"
+    if residual.replay_view != replay_view or bar.raw.availability_class.value != replay_view:
+        return "HISTORICAL_RESIDUAL_VIEW_MISMATCH"
+    bar_available = (bar.raw.available_at_ns if replay_view == "ACTUAL_SYSTEM" else bar.replay_available_at_ns)
+    if bar_available is None:
+        return "HISTORICAL_RESIDUAL_BAR_AVAILABILITY_MISSING"
+    if vwap.key != key or vwap.replay_view != replay_view:
+        return "HISTORICAL_VWAP_IDENTITY_OR_VIEW_MISMATCH"
+    if (bar_available > residual.available_at_ns or vwap.available_at_ns > residual.available_at_ns
+            or residual.available_at_ns < max(bar_available, vwap.available_at_ns)):
+        return "HISTORICAL_RESIDUAL_AVAILABILITY_PRECEDES_INPUT"
+    if vwap.information_cutoff_ns != bar.close_at_ns:
+        return "HISTORICAL_VWAP_NOT_CAUSAL_FOR_RESIDUAL"
+    derived = math.log(float(bar.close)) - math.log(float(vwap.vwap))
+    if residual.residual != derived:
+        return "HISTORICAL_RESIDUAL_VALUE_MISMATCH"
+    return None
 
 
 def persist_trade_vwap_v2(repository: OpsRepository, snapshot: TradeVwapSnapshotV2) -> None:
@@ -491,6 +538,43 @@ def _bar_available_at_view(bar: CausalBarV2, cutoff_ns: int, replay_view: str) -
     return available is not None and available <= cutoff_ns
 
 
+def select_causal_setup_prefix_v2(
+    *, key: InstrumentKeyV2, cutoff_ns: int, replay_view: str,
+    completed_1m: Sequence[CausalBarV2], residuals: Sequence[ResidualObservationV2],
+) -> tuple[tuple[CausalBarV2, ...], tuple[ResidualObservationV2, ...]]:
+    """Select the latest bar and residual revisions known in one replay view."""
+    eligible_bars = tuple(
+        bar for bar in completed_1m
+        if bar.final and bar.interval == BarIntervalV2.M1 and bar.instrument_revision == key.contract_revision
+        and _bar_available_at_view(bar, cutoff_ns, replay_view)
+    )
+    by_open: dict[int, CausalBarV2] = {}
+    for bar in eligible_bars:
+        available = bar.raw.available_at_ns if replay_view == "ACTUAL_SYSTEM" else bar.replay_available_at_ns
+        previous_bar = by_open.get(bar.open_at_ns)
+        previous_available = (
+            previous_bar.raw.available_at_ns if previous_bar is not None and replay_view == "ACTUAL_SYSTEM"
+            else previous_bar.replay_available_at_ns if previous_bar is not None else None
+        )
+        if (previous_bar is None
+                or (available, bar.raw.record_id) > (previous_available, previous_bar.raw.record_id)):
+            by_open[bar.open_at_ns] = bar
+    causal_bars = tuple(sorted(by_open.values(), key=lambda bar: (bar.close_at_ns, bar.content_hash)))
+    causal_bar_refs = {bar.content_hash for bar in causal_bars}
+    residual_by_bar: dict[str, ResidualObservationV2] = {}
+    for item in residuals:
+        if (item.key != key or item.bar_ref not in causal_bar_refs or item.available_at_ns > cutoff_ns
+                or item.close_at_ns > cutoff_ns or item.replay_view != replay_view):
+            continue
+        previous_residual = residual_by_bar.get(item.bar_ref)
+        if (previous_residual is None
+                or (item.available_at_ns, item.content_hash) >
+                (previous_residual.available_at_ns, previous_residual.content_hash)):
+            residual_by_bar[item.bar_ref] = item
+    causal_residuals = tuple(sorted(residual_by_bar.values(), key=lambda item: (item.close_at_ns, item.bar_ref)))
+    return causal_bars, causal_residuals
+
+
 class S3ShadowCoordinator:
     def __init__(self, repository: OpsRepository, *, policy: PolicySpecV2 = S3_POLICY,
                  cost_model_ref: str = "S3_SHADOW_COST_UNESTIMATED_V1") -> None:
@@ -560,38 +644,12 @@ class S3ShadowCoordinator:
     ) -> S3DecisionV2:
         timestamp(cutoff_ns, field="S3.cutoff_ns")
         replay_view = feature.replay_view.value
-        eligible_bars = tuple(
-            bar for bar in completed_1m
-            if bar.final and bar.interval == BarIntervalV2.M1 and bar.instrument_revision == key.contract_revision
-            and _bar_available_at_view(bar, cutoff_ns, replay_view)
+        # Filter by availability before choosing a revision so future corrections
+        # cannot rewrite an already emitted setup.
+        causal_bars, causal_residuals = select_causal_setup_prefix_v2(
+            key=key, cutoff_ns=cutoff_ns, replay_view=replay_view,
+            completed_1m=completed_1m, residuals=residuals,
         )
-        # Select the latest correction known at this cutoff for each UTC minute.
-        # Filtering by availability first keeps later corrections from leaking backward.
-        by_open: dict[int, CausalBarV2] = {}
-        for bar in eligible_bars:
-            available = bar.raw.available_at_ns if replay_view == "ACTUAL_SYSTEM" else bar.replay_available_at_ns
-            previous_bar = by_open.get(bar.open_at_ns)
-            previous_available = (
-                previous_bar.raw.available_at_ns if previous_bar is not None and replay_view == "ACTUAL_SYSTEM"
-                else previous_bar.replay_available_at_ns if previous_bar is not None else None
-            )
-            if (previous_bar is None
-                    or (available, bar.raw.record_id) > (previous_available, previous_bar.raw.record_id)):
-                by_open[bar.open_at_ns] = bar
-        causal_bars = tuple(sorted(by_open.values(), key=lambda bar: (bar.close_at_ns, bar.content_hash)))
-        causal_bar_refs = {bar.content_hash for bar in causal_bars}
-        residual_by_bar: dict[str, ResidualObservationV2] = {}
-        for item in residuals:
-            if (item.key != key or item.bar_ref not in causal_bar_refs or item.available_at_ns > cutoff_ns
-                    or item.close_at_ns > cutoff_ns or item.replay_view != replay_view):
-                continue
-            previous_residual = residual_by_bar.get(item.bar_ref)
-            if (previous_residual is None or
-                    (item.available_at_ns, item.content_hash) >
-                    (previous_residual.available_at_ns, previous_residual.content_hash)):
-                residual_by_bar[item.bar_ref] = item
-        causal_residuals = tuple(sorted(residual_by_bar.values(),
-                                        key=lambda item: (item.close_at_ns, item.bar_ref)))
         refs = [item.content_hash for item in causal_residuals[-AR_OBSERVATION_COUNT:]]
         refs.extend(item.vwap_ref for item in causal_residuals[-AR_OBSERVATION_COUNT:])
         for trade in trades:
@@ -689,19 +747,33 @@ class S3ShadowCoordinator:
                 or any(item.bar_ref != bar.content_hash for item, bar in zip(sample, bars, strict=True))
                 or sample[-1].bar_ref != latest.content_hash or sample[-1].close_at_ns != latest.close_at_ns):
             return fail("INCOMPLETE_7_DAY_AR_WINDOW")
+        selected_bars = {bar.content_hash: bar for bar in bars}
+        persisted_vwaps = self.repository.get_artifact_metadata_by_refs(tuple(item.vwap_ref for item in sample))
         for item in sample:
-            historical_vwap = self.repository.get_artifact(item.vwap_ref)
-            if (historical_vwap is None or historical_vwap.artifact_type != "S3TradeVwapSnapshotV2"
-                    or historical_vwap.available_at_ns > cutoff_ns):
+            historical_vwap = persisted_vwaps.get(item.vwap_ref)
+            if (historical_vwap is None
+                    or historical_vwap.get("artifact_type") != "S3TradeVwapSnapshotV2"
+                    or historical_vwap.get("content_hash") != item.vwap_ref
+                    or not isinstance(historical_vwap.get("available_at_ns"), int)
+                    or historical_vwap["available_at_ns"] > cutoff_ns):
                 return fail("HISTORICAL_VWAP_EVIDENCE_UNAVAILABLE")
-            snapshot_body = historical_vwap.metadata.get("vwap")
-            if (not isinstance(snapshot_body, Mapping)
-                    or snapshot_body.get("key") != key.to_dict()
-                    or snapshot_body.get("replay_view") != replay_view
-                    or snapshot_body.get("information_cutoff_ns", cutoff_ns + 1) > item.available_at_ns
-                    or historical_vwap.available_at_ns > item.available_at_ns):
-                return fail("HISTORICAL_VWAP_NOT_CAUSAL_FOR_RESIDUAL")
-        if any(b.close_at_ns - a.close_at_ns != MINUTE_NS for a, b in zip(sample, sample[1:], strict=True)):
+            snapshot_metadata = historical_vwap.get("metadata")
+            snapshot_body = snapshot_metadata.get("vwap") if isinstance(snapshot_metadata, Mapping) else None
+            if not isinstance(snapshot_body, Mapping):
+                return fail("HISTORICAL_VWAP_EVIDENCE_INVALID")
+            try:
+                snapshot = TradeVwapSnapshotV2.from_dict(snapshot_body)
+            except (TypeError, ValueError, ArithmeticError):
+                return fail("HISTORICAL_VWAP_EVIDENCE_INVALID")
+            if (snapshot.content_hash != item.vwap_ref
+                    or historical_vwap["available_at_ns"] != snapshot.available_at_ns):
+                return fail("HISTORICAL_VWAP_EVIDENCE_INVALID")
+            reason = validate_historical_residual_v2(
+                item, key=key, bar=selected_bars[item.bar_ref], vwap=snapshot, replay_view=replay_view,
+            )
+            if reason is not None:
+                return fail(reason)
+        if any(b.close_at_ns - a.close_at_ns != MINUTE_NS for a, b in zip(sample, sample[1:], strict=False)):
             return fail("INCOMPLETE_7_DAY_AR_WINDOW")
         if current_vwap is None:
             return fail("VWAP_UNAVAILABLE")
@@ -750,9 +822,13 @@ class S3ShadowCoordinator:
         except ValueError:
             return fail("INVALID_120_OBSERVATION_STANDARDIZATION", alpha=alpha, phi=phi,
                         half=half_life, vwap=current_vwap.vwap)
-        for item in sample:
-            _index(self.repository, item.content_hash, "S3ResidualObservationV2", item.available_at_ns,
-                   {"residual": item.to_dict()})
+        self.repository.register_artifacts(tuple(
+            ArtifactIndexEntryV2(
+                item.content_hash, "S3ResidualObservationV2", item.content_hash,
+                item.available_at_ns, item.available_at_ns, {"residual": item.to_dict()},
+            )
+            for item in sample
+        ))
         if not deviation_exceeds_watch_threshold(z_score):
             state = self._state(key=key, cutoff_ns=cutoff_ns, status="NO_CANDIDATE", reason="DEVIATION_NOT_BEYOND_2_SIGMA",
                                 refs=refs, residual=current_residual, z_score=z_score, sigma=sigma,

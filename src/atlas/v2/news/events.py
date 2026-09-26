@@ -33,6 +33,8 @@ from atlas.v2.strategies.s1_trend import EventGate, EventState
 
 NEWS_EVENT_SCHEMA_V2 = "NEWS_EVENT_V2"
 EVENT_SAFETY_GATE_VERSION = "EVENT_SAFETY_GATE_V2_1"
+CALENDAR_REQUIRED_BEFORE_NS = 15 * 60 * 1_000_000_000
+CALENDAR_REQUIRED_AFTER_NS = 30 * 60 * 1_000_000_000
 EVENT_REACTION_VERSION = "S7_DIRECTIONAL_REACTION_V1"
 ALERT_VERSION = "EVENT_ALERT_V2_1"
 PRODUCER_VERSION = "S7_EVENT_PIPELINE_V2_1"
@@ -946,7 +948,8 @@ class EventSafetyGateBuilderV2:
                 or coverage.available_at_ns > cutoff_ns \
                 or cutoff_ns - coverage.available_at_ns > CALENDAR_MAX_AGE_NS \
                 or cutoff_ns - coverage.observed_at_ns > CALENDAR_MAX_AGE_NS \
-                or not coverage.covered_from_ns <= cutoff_ns <= coverage.covered_through_ns \
+                or coverage.covered_from_ns > cutoff_ns - CALENDAR_REQUIRED_BEFORE_NS \
+                or coverage.covered_through_ns < cutoff_ns + CALENDAR_REQUIRED_AFTER_NS \
                 or not _source_evidence_available(self.repository, coverage.evidence_ref,
                                                   coverage.available_at_ns):
             state = EventGateStateV2.UNKNOWN

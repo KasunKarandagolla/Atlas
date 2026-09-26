@@ -302,6 +302,86 @@ def test_event_gate_calendar_coverage_missing_fails_closed_and_blackout_is_half_
             assert gate.to_s1_event_gate().evidence_ref == gate.content_hash
 
 
+def test_event_gate_requires_full_decision_blackout_coverage_horizon(tmp_path) -> None:
+    cutoff = 100_000 * NS
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        builder = EventSafetyGateBuilderV2(repository)
+        abnormality = _normal_abnormality(repository, cutoff)
+
+        def coverage(start: int, end: int) -> CalendarCoverageV2:
+            source_ref = sha256_json({"horizon-source": cutoff, "from": start, "through": end})
+            _index(repository, source_ref, "CalendarSourceFixtureV2", cutoff)
+            return CalendarCoverageV2(
+                "FEDERAL_RESERVE", start, end, cutoff, cutoff, cutoff, True,
+                "schedule-horizon-r1", source_ref, "VERIFIED",
+            )
+
+        required_start = cutoff - 15 * 60 * NS
+        required_end = cutoff + 30 * 60 * NS
+        for start, end in (
+            (required_start, cutoff),
+            (required_start, required_end - 1),
+            (required_start + 1, required_end),
+        ):
+            gate = builder.evaluate(
+                key=KEY, cutoff_ns=cutoff, coverage=coverage(start, end), scheduled_events=(),
+                abnormality=abnormality, incidents=(),
+            )
+            assert gate.state == EventGateStateV2.UNKNOWN
+            assert gate.blocked
+            assert "CALENDAR_COVERAGE_MISSING_STALE_OR_INCOMPLETE" in gate.reasons
+
+        complete = builder.evaluate(
+            key=KEY, cutoff_ns=cutoff, coverage=coverage(required_start, required_end),
+            scheduled_events=(), abnormality=abnormality, incidents=(),
+        )
+        assert complete.state == EventGateStateV2.CLEAR
+        assert not complete.blocked
+
+        missing_source_coverage = CalendarCoverageV2(
+            "FEDERAL_RESERVE", required_start, required_end, cutoff, cutoff, cutoff,
+            True, "schedule-missing-source-r1", sha256_json({"missing-calendar-source": cutoff}), "VERIFIED",
+        )
+        missing_source = builder.evaluate(
+            key=KEY, cutoff_ns=cutoff, coverage=missing_source_coverage, scheduled_events=(),
+            abnormality=abnormality, incidents=(),
+        )
+        assert missing_source.state == EventGateStateV2.UNKNOWN
+        assert "CALENDAR_COVERAGE_MISSING_STALE_OR_INCOMPLETE" in missing_source.reasons
+
+
+def test_event_gate_horizon_preserves_exact_half_open_blackout_and_missing_event_evidence(tmp_path) -> None:
+    cutoff = 200_000 * NS
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        builder = EventSafetyGateBuilderV2(repository)
+        coverage = _coverage(repository, cutoff)
+        abnormality = _normal_abnormality(repository, cutoff)
+
+        for scheduled_at, expected in (
+            (cutoff + 30 * 60 * NS, EventGateStateV2.BLOCKED),
+            (cutoff - 15 * 60 * NS, EventGateStateV2.CLEAR),
+            (cutoff - 15 * 60 * NS + 1, EventGateStateV2.BLOCKED),
+        ):
+            event = _macro_event(repository, scheduled_at, cutoff)
+            gate = builder.evaluate(
+                key=KEY, cutoff_ns=cutoff, coverage=coverage, scheduled_events=(event,),
+                abnormality=abnormality, incidents=(),
+            )
+            assert gate.state == expected
+
+        missing_source_event = ScheduledEventV2(
+            sha256_json({"event-with-missing-source": cutoff}), "US_CPI", cutoff + 2 * 60 * 60 * NS,
+            "schedule-r1", "FEDERAL_RESERVE", cutoff - 1, cutoff, cutoff,
+            sha256_json({"not-indexed-event-source": cutoff}),
+        )
+        missing_evidence = builder.evaluate(
+            key=KEY, cutoff_ns=cutoff, coverage=coverage, scheduled_events=(missing_source_event,),
+            abnormality=abnormality, incidents=(),
+        )
+        assert missing_evidence.state == EventGateStateV2.UNKNOWN
+        assert "SCHEDULE_EVENT_SOURCE_EVIDENCE_UNAVAILABLE" in missing_evidence.reasons
+
+
 def test_event_gate_abnormality_unknown_abnormal_and_unresolved_incident_do_not_expire(tmp_path) -> None:
     cutoff = 50_000 * NS
     with OpsRepository(tmp_path / "ops.sqlite") as repository:
