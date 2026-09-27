@@ -1,0 +1,335 @@
+{
+  "artifact_type": "SESSION024_VENUE_CAPABILITY_MATRIX_V2",
+  "created_at": "2026-09-28",
+  "credential_presence": {
+    "binance_testnet_key_and_secret_present": false,
+    "bybit_testnet_key_and_secret_present": false,
+    "secret_values_recorded": false
+  },
+  "nautilus_runtime_identity": {
+    "binance_installed_stub_sha256": "f9dc108e1a772abb74a7517b65d474f59705afa070302e527596088e3cc01d1f",
+    "bybit_installed_stub_sha256": "7e12c3cfafbd6821b899464f1be0995d21976d5cc43dfe95701e87e3c4c2a83b",
+    "compiled_artifact": "_libnautilus.cpython-312-x86_64-linux-gnu.so",
+    "compiled_artifact_sha256": "a53dd5a24fe77f4c66169af84ee9c7e292018010922e3dce9a8b6c9f7f3b7021",
+    "dependency_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "distribution": "nautilus_trader",
+    "python_abi": "cp312-cp312-manylinux_2_34_x86_64",
+    "release_url": "https://github.com/nautechsystems/nautilus_trader/releases/tag/v2.0.0rc5",
+    "source_commit": "1b0a49d2792a9432a3aca3fcb617ce7a630d905e",
+    "version": "2.0.0rc5"
+  },
+  "official_documentation": {
+    "binance": [
+      "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/trade",
+      "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account",
+      "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-api/user-data-streams"
+    ],
+    "bybit": [
+      "https://bybit-exchange.github.io/docs/v5/order/create-order",
+      "https://bybit-exchange.github.io/docs/v5/position/trading-stop",
+      "https://bybit-exchange.github.io/docs/v5/position/position-mode",
+      "https://bybit-exchange.github.io/docs/v5/market/instrument",
+      "https://bybit-exchange.github.io/docs/v5/account/fee-rate",
+      "https://bybit-exchange.github.io/docs/v5/order/order-list",
+      "https://bybit-exchange.github.io/docs/v5/websocket/private/execution",
+      "https://bybit-exchange.github.io/docs/v5/demo"
+    ]
+  },
+  "profile_contract": {
+    "account_identity_hash": null,
+    "capital_capable": false,
+    "immutable_content_hash": "SHA-256 canonical JSON",
+    "profile_hash": null,
+    "profile_instance_status": "BLOCKED BY ENVIRONMENT",
+    "qualified_at_ns": null,
+    "reason": "No authenticated testnet account identity, product/filter/fee revisions, or redacted venue evidence exists in this environment.",
+    "synthetic_fixture": null,
+    "version": "VENUE_CAPABILITY_PROFILE_V2_V1"
+  },
+  "profiles": [
+    {
+      "account_identity_hash": null,
+      "capital_capable": false,
+      "engineering_status": "TESTED",
+      "environment": "TESTNET",
+      "environment_status": "BLOCKED BY ENVIRONMENT",
+      "gate_status": "TEST GATE",
+      "instruments": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "margin_mode": "ISOLATED (not account-queried)",
+      "oms_owner": "NautilusTrader 2.0.0rc5; normal entry/exit/cancel/amend remains Nautilus-owned",
+      "position_mode": "ONE_WAY (not account-queried)",
+      "product_scope": "USDT linear perpetual",
+      "profile_hash": null,
+      "protection_port_scope": [
+        "read protection",
+        "ensure or repair approved full-position stop",
+        "read already-authorized economic events"
+      ],
+      "qualification_status": "UNVERIFIED",
+      "rows": [
+        {
+          "capability": "account_environment_identity",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "usdt_linear_perpetual_product",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "one_way_position_mode",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "isolated_margin_mode",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "instrument_filter_revision",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "tick_qty_min_notional_rules",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "leverage_and_risk_tier",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "fee_schedule_revision",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "client_order_identity_mapping",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "ioc_and_partial_fill_semantics",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "reduce_only_enforcement",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "full_position_stop_visibility",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "stop_quantity_after_partial_fill",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "mark_price_stop_trigger",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "external_stop_fill_reconciliation",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "order_history_and_query_retention",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "private_stream_reconnect_and_execution_ids",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "funding_and_cash_evidence",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "unknown_submit_recovery",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "emergency_flatten",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        }
+      ],
+      "venue": "BYBIT"
+    },
+    {
+      "account_identity_hash": null,
+      "capital_capable": false,
+      "engineering_status": "TESTED",
+      "environment": "TESTNET",
+      "environment_status": "BLOCKED BY ENVIRONMENT",
+      "gate_status": "TEST GATE",
+      "instruments": null,
+      "margin_mode": null,
+      "oms_owner": "NautilusTrader 2.0.0rc5; Binance remains research/shadow for capital purposes",
+      "position_mode": null,
+      "product_scope": "USD\u24c8-M perpetual",
+      "profile_hash": null,
+      "protection_decision": {
+        "pinned_adapter_attached_entry_stop": false,
+        "source_finding": "The rc5 Binance futures adapter source submits conditional protection through a separate algo-order path; no entry-attached full-position stop contract was found. No second transport or position book was added.",
+        "status": "TEST GATE"
+      },
+      "qualification_status": "UNVERIFIED",
+      "rows": [
+        {
+          "capability": "account_environment_identity",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "usd_m_perpetual_product",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "one_way_position_mode",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "isolated_margin_mode",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "symbol_filter_revision",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "tick_step_min_qty_notional_rules",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "leverage_and_risk_limits",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "fee_and_funding_semantics",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "client_order_identity_mapping",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "partial_fill_semantics",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "reduce_only_closing_behavior",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "venue_native_entry_protection",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "TEST GATE"
+        },
+        {
+          "capability": "protection_visibility_and_partial_fill_quantity",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "history_and_reconciliation_queries",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "private_user_stream_and_reconnect",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "unknown_submit_recovery",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        },
+        {
+          "capability": "emergency_flatten",
+          "engineering_status": "TESTED",
+          "evidence_refs": [],
+          "venue_status": "BLOCKED BY ENVIRONMENT"
+        }
+      ],
+      "venue": "BINANCE"
+    }
+  ],
+  "schema_version": 1,
+  "source_files_reviewed": {
+    "binance_rc5_futures_execution": "https://raw.githubusercontent.com/nautechsystems/nautilus_trader/v2.0.0rc5/crates/adapters/binance/src/futures/execution.rs",
+    "bybit_rc5_execution": "https://raw.githubusercontent.com/nautechsystems/nautilus_trader/v2.0.0rc5/crates/adapters/bybit/src/execution.rs"
+  },
+  "status_vocabulary": [
+    "IMPLEMENTED",
+    "TESTED",
+    "UNVERIFIED",
+    "TEST GATE",
+    "NOT ESTIMABLE",
+    "BLOCKED BY ENVIRONMENT"
+  ]
+}

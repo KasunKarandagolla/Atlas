@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "artifact_type": "SESSION024_FAILURE_MATRIX_V2",
+  "evidence_scope": "Deterministic local tests exercise V1 state machines and V2 bridge/risk validation. They are not venue qualification evidence.",
+  "scenarios": [
+    {"scenario": "GUI death and restart", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/v2/test_session020_desktop_ipc.py", "tests/v2/test_session020_phase2_e2e.py"]},
+    {"scenario": "research/model/news worker failure or timeout", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/v2/test_worker_isolation.py", "tests/v2/test_model_runtime.py", "tests/v2/test_session023_integration.py"]},
+    {"scenario": "disk-full/persistence error before atomic approval-intent-reservation commit", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v1_boundary_failures.py"]},
+    {"scenario": "crash after atomic intent-reservation commit before command persistence", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v1_boundary_failures.py"]},
+    {"scenario": "writer crash before send-start marker", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_assisted_control_dispatch.py", "tests/runtime/test_safe_runtime.py"]},
+    {"scenario": "writer crash after send-start marker before venue response", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v1_boundary_failures.py", "tests/persistence/test_session001_repairs.py"]},
+    {"scenario": "lost acknowledgement, submit timeout, UNKNOWN restart", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase6_end_to_end.py", "tests/support/fault_injection.py"]},
+    {"scenario": "negative/empty lookup, delayed history and private-stream disconnect", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_temporal_reconciliation.py", "tests/runtime/test_reconciliation_v5.py", "tests/support/fault_injection.py"]},
+    {"scenario": "zero, partial, multiple, late and duplicate execution events", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/support/fault_injection.py", "tests/v2/test_session017_replay.py"]},
+    {"scenario": "cancel/fill race and late opening fill during exit", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/support/fault_injection.py", "tests/runtime/test_assisted_control_risk_reduction.py"]},
+    {"scenario": "stale protection after fill, wrong stop/trigger and repair failure", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_assisted_control_protection.py", "tests/runtime/test_protection_deadline.py"]},
+    {"scenario": "explicit-quantity reduce-only exit, emergency flatten and no reversal", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_assisted_control_risk_reduction.py", "tests/runtime/test_wire_contract.py", "tests/runtime/test_assisted_control_risk_reduction.py"]},
+    {"scenario": "flat certificate with residual orders or contradictory later evidence", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_flat_certificate.py", "tests/runtime/test_flat_contradiction.py", "tests/runtime/test_capital_control_authority.py"]},
+    {"scenario": "book gap and stale metadata/instrument revision", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/v2/test_session022_s4_microstructure.py", "tests/v2/test_session015_instrument_identity.py", "tests/v2/test_data_runtime.py"]},
+    {"scenario": "expired plan and changed V1/V2 risk or capability profile", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v2_bridge.py", "tests/runtime/test_phase4_v2_live_risk.py", "tests/runtime/test_assisted_control_revalidation.py"]},
+    {"scenario": "stale local writer identity/epoch", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_assisted_control_revalidation.py", "tests/runtime/test_safe_runtime.py"]},
+    {"scenario": "manual external position/order discovery", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_reconciliation_evidence.py", "tests/runtime/test_flat_certificate.py"]},
+    {"scenario": "research/model/desktop/ops credential and direct-submit authority boundaries", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_authority_boundary.py", "tests/v2/test_worker_isolation.py", "tests/v2/test_session020_desktop_ipc.py", "tests/runtime/test_safe_runtime.py", "tests/v2/test_session014_s1.py", "tests/v2/test_session023_m1.py"]},
+    {"scenario": "cross-host replacement writer externally fenced", "offline_status": "BLOCKED BY ENVIRONMENT", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": []}
+  ],
+  "risk_reduction_policy": "Protection and closing-only actions remain subject to persisted intent and reconciliation evidence. New opening risk fails closed on any unresolved or stale evidence.",
+  "actual_exchange_fault_injection": "UNVERIFIED"
+}
