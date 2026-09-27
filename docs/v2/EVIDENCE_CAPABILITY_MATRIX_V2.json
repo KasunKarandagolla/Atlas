@@ -1,0 +1,376 @@
+{
+  "rows": [
+    {
+      "aggressor_side_convention": null,
+      "availability_semantics": "decision availability is max(actual receipt, parse completion); actual receipt retained",
+      "basis_inputs": null,
+      "cadence_resolution": "documented push 20ms for depth 50; observed cadence still unqualified",
+      "coverage_censoring_limitations": "public book feed coverage can be interrupted; no claim of full market liquidity",
+      "declared_book_depth": "50 levels per side",
+      "environment": "MAINNET",
+      "evidence_refs": [
+        "https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook",
+        "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
+      ],
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_1",
+      "exchange_event_timestamp_semantics": "cts matching-engine timestamp when supplied, else ts exchange message timestamp; provenance not live-qualified",
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "funding_current_predicted_settled": null,
+      "gap_reset_reconnect_behavior": "gap, reset u=1, disconnect or stale frame invalidates; reconnect requires new snapshot reconciliation",
+      "instrument_product": "LINEAR_PERPETUAL",
+      "liquidation_side_product_convention": null,
+      "oi_quantity_value_convention": null,
+      "permitted_uses": [
+        "sequence-valid displayed depth context after explicit recovery"
+      ],
+      "receipt_timestamp_semantics": "local monotonic/UTC receipt captured on frame arrival",
+      "repair_capability": "fresh REST snapshot plus buffered-delta bridge is required; implementation local only",
+      "sequence_update_semantics": "u update id; seq is cross-sequence; update-ID continuity guarantee not published; implementation fails closed on nonconsecutive u; u=1 reset",
+      "snapshot_delta_semantics": "snapshot followed by level deltas; size zero removes a level",
+      "source_channel": "public/orderbook.50 WS",
+      "source_health_requirement": "HEALTHY_CURRENT plus current receipt age and no sequence conflict",
+      "status": "UNVERIFIED",
+      "units": "price and contract quantity strings",
+      "venue": "BYBIT",
+      "warmup_requirement": "30s continuous valid post-recovery book/trade coverage (engineering default)"
+    },
+    {
+      "aggressor_side_convention": "S is taker side (Buy/Sell)",
+      "availability_semantics": "decision availability is receipt/parse completion, never matched-time backdating",
+      "basis_inputs": null,
+      "cadence_resolution": "up to 1024 trades/message; live cadence unqualified",
+      "coverage_censoring_limitations": "stream continuity/coverage and trades omitted during disconnect are unknown",
+      "declared_book_depth": null,
+      "environment": "MAINNET",
+      "evidence_refs": [
+        "https://bybit-exchange.github.io/docs/v5/websocket/public/trade",
+        "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
+      ],
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_1",
+      "exchange_event_timestamp_semantics": "T matched time; frame ts is message time",
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "funding_current_predicted_settled": null,
+      "gap_reset_reconnect_behavior": "duplicate trade id idempotent only for identical content; reconnect gap is coverage loss",
+      "instrument_product": "LINEAR_PERPETUAL",
+      "liquidation_side_product_convention": null,
+      "oi_quantity_value_convention": null,
+      "permitted_uses": [
+        "signed aggressive trade flow when side convention and coverage are qualified"
+      ],
+      "receipt_timestamp_semantics": "local receipt captured when frame arrives",
+      "repair_capability": "no historical repair declared",
+      "sequence_update_semantics": "trade id i; cross sequence may be shared by grouped records",
+      "snapshot_delta_semantics": null,
+      "source_channel": "public/trade WS",
+      "source_health_requirement": "HEALTHY_CURRENT and bounded receipt age",
+      "status": "UNVERIFIED",
+      "units": "price p; size v in contract-native quantity",
+      "venue": "BYBIT",
+      "warmup_requirement": "trade windows require explicit timestamp and coverage support"
+    },
+    {
+      "aggressor_side_convention": null,
+      "availability_semantics": "available only at actual receipt/parse completion",
+      "basis_inputs": null,
+      "cadence_resolution": "documented 500ms pushes; event selection/censoring unresolved",
+      "coverage_censoring_limitations": "stream is censored/event-filtered; population completeness and cross-venue coverage unknown",
+      "declared_book_depth": null,
+      "environment": "MAINNET",
+      "evidence_refs": [
+        "https://bybit-exchange.github.io/docs/v5/websocket/public/all-liquidation",
+        "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
+      ],
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_1",
+      "exchange_event_timestamp_semantics": "T execution time; frame ts message time",
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "funding_current_predicted_settled": null,
+      "gap_reset_reconnect_behavior": "disconnect loses events; reconnect cannot repair omitted observations",
+      "instrument_product": "LINEAR_PERPETUAL",
+      "liquidation_side_product_convention": "S denotes liquidated position side (Buy = long position liquidated; not aggressor side)",
+      "oi_quantity_value_convention": null,
+      "permitted_uses": [
+        "observed event intensity with explicit censored/unknown coverage"
+      ],
+      "receipt_timestamp_semantics": "local frame receipt",
+      "repair_capability": "no repair capability qualified",
+      "sequence_update_semantics": "record id and message sequence are not a completeness cursor",
+      "snapshot_delta_semantics": null,
+      "source_channel": "public/allLiquidation WS",
+      "source_health_requirement": "separate liquidation source health and coverage state required",
+      "status": "UNVERIFIED",
+      "units": "price p and executed contract size v",
+      "venue": "BYBIT",
+      "warmup_requirement": "venue-specific baseline requires qualified historical coverage"
+    },
+    {
+      "aggressor_side_convention": null,
+      "availability_semantics": "available at response receipt/parse completion",
+      "basis_inputs": null,
+      "cadence_resolution": "on demand, not a stream",
+      "coverage_censoring_limitations": "snapshot is point-in-time; does not certify continuous liquidity or hidden depth",
+      "declared_book_depth": "request limit/depth field varies; must record returned levels",
+      "environment": "MAINNET",
+      "evidence_refs": [
+        "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
+      ],
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_1",
+      "exchange_event_timestamp_semantics": "no exchange event timestamp in depth snapshot",
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "funding_current_predicted_settled": null,
+      "gap_reset_reconnect_behavior": "a later gap/reconnect invalidates until a new snapshot bridge",
+      "instrument_product": "LINEAR_PERPETUAL",
+      "liquidation_side_product_convention": null,
+      "oi_quantity_value_convention": null,
+      "permitted_uses": [
+        "snapshot initialization input for a sequence-reconciled book"
+      ],
+      "receipt_timestamp_semantics": "local HTTP response receipt",
+      "repair_capability": "fresh snapshot bridge possible only with diff stream; live transport currently absent",
+      "sequence_update_semantics": "lastUpdateId only; snapshot alone has no continuous update chain",
+      "snapshot_delta_semantics": "REST snapshot at lastUpdateId",
+      "source_channel": "USD-M depth snapshot REST",
+      "source_health_requirement": "healthy request plus independent stream state",
+      "status": "TEST GATE",
+      "units": "price and base-asset quantity",
+      "venue": "BINANCE",
+      "warmup_requirement": "30s continuous valid post-recovery book (engineering default)"
+    },
+    {
+      "aggressor_side_convention": null,
+      "availability_semantics": "available at max(receipt, parse completion); event time never substitutes receipt",
+      "basis_inputs": null,
+      "cadence_resolution": "documented 100/250/500ms stream options; live cadence unqualified",
+      "coverage_censoring_limitations": "public depth stream is bounded/censored to exchange-published levels",
+      "declared_book_depth": "diff updates have level changes only",
+      "environment": "MAINNET",
+      "evidence_refs": [
+        "https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams/Diff-Book-Depth-Streams",
+        "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
+      ],
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_1",
+      "exchange_event_timestamp_semantics": "E event time and T transaction time when supplied",
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "funding_current_predicted_settled": null,
+      "gap_reset_reconnect_behavior": "gap, out-of-order, reconnect, stale feed or failed pu invalidates immediately",
+      "instrument_product": "LINEAR_PERPETUAL",
+      "liquidation_side_product_convention": null,
+      "oi_quantity_value_convention": null,
+      "permitted_uses": [
+        "sequence-valid displayed depth context after full snapshot/delta reconciliation"
+      ],
+      "receipt_timestamp_semantics": "local frame receipt captured on arrival",
+      "repair_capability": "buffer deltas, fetch snapshot, bridge U<=lastUpdateId+1<=u; new snapshot required after gap",
+      "sequence_update_semantics": "U first update id, u final update id, pu prior final update id; verify bridge then enforce pu continuity",
+      "snapshot_delta_semantics": "diff event fields U/u; bridge against REST lastUpdateId",
+      "source_channel": "USD-M depth diff WS",
+      "source_health_requirement": "HEALTHY_CURRENT, sequence chain, current receipt age",
+      "status": "UNVERIFIED",
+      "units": "price and base-asset quantity",
+      "venue": "BINANCE",
+      "warmup_requirement": "30s valid post-recovery (engineering default)"
+    },
+    {
+      "aggressor_side_convention": "m=true means buyer is maker, so seller is taker; otherwise buyer aggressor",
+      "availability_semantics": "available at receipt/parse completion",
+      "basis_inputs": null,
+      "cadence_resolution": "documented event stream, observed cadence unqualified",
+      "coverage_censoring_limitations": "aggregate trades are not every individual matching-engine print; disconnect creates gaps",
+      "declared_book_depth": null,
+      "environment": "MAINNET",
+      "evidence_refs": [
+        "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
+      ],
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_1",
+      "exchange_event_timestamp_semantics": "T trade time and E event time",
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "funding_current_predicted_settled": null,
+      "gap_reset_reconnect_behavior": "trade id overlap may de-duplicate; reconnect coverage gap remains",
+      "instrument_product": "LINEAR_PERPETUAL",
+      "liquidation_side_product_convention": null,
+      "oi_quantity_value_convention": null,
+      "permitted_uses": [
+        "signed aggressive aggregate trade flow with explicitly labeled aggregation"
+      ],
+      "receipt_timestamp_semantics": "local frame receipt",
+      "repair_capability": "no historical repair declared",
+      "sequence_update_semantics": "a/f aggregate trade id range",
+      "snapshot_delta_semantics": null,
+      "source_channel": "USD-M aggTrade WS",
+      "source_health_requirement": "HEALTHY_CURRENT plus explicit id continuity/coverage policy",
+      "status": "UNVERIFIED",
+      "units": "p price; q base-asset quantity",
+      "venue": "BINANCE",
+      "warmup_requirement": "window only with supported actual cadence/coverage"
+    },
+    {
+      "aggressor_side_convention": null,
+      "availability_semantics": "history is reconstructed availability unless original publication receipt is evidenced",
+      "basis_inputs": "basis only from explicit same-cutoff mark and index inputs",
+      "cadence_resolution": "REST endpoint intervals; do not imply tick cadence",
+      "coverage_censoring_limitations": "historical revisions append; coverage/publication receipt may be unavailable; no earlier visibility inference",
+      "declared_book_depth": null,
+      "environment": "MAINNET",
+      "evidence_refs": [
+        "https://bybit-exchange.github.io/docs/v5/market/tickers",
+        "https://bybit-exchange.github.io/docs/v5/market/history-fund-rate",
+        "https://bybit-exchange.github.io/docs/v5/market/open-interest",
+        "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
+      ],
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_1",
+      "exchange_event_timestamp_semantics": "source event/period timestamps may not equal publication time",
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "funding_current_predicted_settled": "current/settled/predicted distinct only when source field is qualified; otherwise UNQUALIFIED",
+      "gap_reset_reconnect_behavior": "REST refresh does not repair missing original receipt history",
+      "instrument_product": "LINEAR_PERPETUAL",
+      "liquidation_side_product_convention": null,
+      "oi_quantity_value_convention": "raw openInterest and openInterestValue fields; contract/quote conversion not live-qualified",
+      "permitted_uses": [
+        "crowding context and observed economic-cost inputs with named missingness"
+      ],
+      "receipt_timestamp_semantics": "actual ATLAS response receipt only; imports retain separate historical import receipt",
+      "repair_capability": "no continuous sequence repair; refresh creates a new observation",
+      "sequence_update_semantics": "no continuous sequence semantics",
+      "snapshot_delta_semantics": "REST points/history records; revision semantics source-specific",
+      "source_channel": "V5 REST ticker/funding-history/open-interest",
+      "source_health_requirement": "source healthy/current for live values; reconstructed history separately labeled",
+      "status": "TEST GATE",
+      "units": "native source raw units retained",
+      "venue": "BYBIT",
+      "warmup_requirement": "15M OI change only from cutoff-known observations at both ends"
+    },
+    {
+      "aggressor_side_convention": null,
+      "availability_semantics": "historical download/import is RECONSTRUCTED_MARKET unless original receipt is archived",
+      "basis_inputs": "mark/index basis only from same-cutoff premiumIndex inputs",
+      "cadence_resolution": "REST request intervals; OI history has source-declared intervals",
+      "coverage_censoring_limitations": "REST points omit intervals between requests; historical revisions do not rewrite actual receipt chronology",
+      "declared_book_depth": null,
+      "environment": "MAINNET",
+      "evidence_refs": [
+        "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price",
+        "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History",
+        "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Open-Interest",
+        "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
+      ],
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_1",
+      "exchange_event_timestamp_semantics": "endpoint-specific event/funding-period timestamps; publication receipt may be absent",
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "funding_current_predicted_settled": "premiumIndex fundingRate semantics not upgraded to predicted/settled without qualified source evidence; history is SETTLED only when source contract proves it",
+      "gap_reset_reconnect_behavior": "refresh provides a new point; no sequence continuity or missing-point repair",
+      "instrument_product": "LINEAR_PERPETUAL",
+      "liquidation_side_product_convention": null,
+      "oi_quantity_value_convention": "raw openInterest and sumOpenInterestValue/sumOpenInterest fields remain separately unit-tagged; no inferred conversion",
+      "permitted_uses": [
+        "crowding context and observed economic-cost inputs with named missingness"
+      ],
+      "receipt_timestamp_semantics": "actual ATLAS HTTP response receipt; imported history keeps import receipt separate",
+      "repair_capability": "no continuous sequence repair; archived originals remain append-only",
+      "sequence_update_semantics": "no continuous sequence semantics",
+      "snapshot_delta_semantics": "REST current points and historical interval samples",
+      "source_channel": "USD-M REST mark/funding/open-interest",
+      "source_health_requirement": "healthy current HTTP source for live point values; reconstructed history labeled separately",
+      "status": "TEST GATE",
+      "units": "raw JSON numeric strings retained",
+      "venue": "BINANCE",
+      "warmup_requirement": "15M OI change requires two same-source, same-unit cutoff-known intervals"
+    },
+    {
+      "aggressor_side_convention": null,
+      "availability_semantics": "actual receipt distinct from event time; imports remain reconstructed",
+      "basis_inputs": null,
+      "cadence_resolution": "forceOrder stream transport not implemented/live-qualified",
+      "coverage_censoring_limitations": "no feed completeness or population coverage claim",
+      "declared_book_depth": null,
+      "environment": "MAINNET",
+      "evidence_refs": [
+        "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
+      ],
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_1",
+      "exchange_event_timestamp_semantics": "event time field semantics not live-qualified",
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "funding_current_predicted_settled": null,
+      "gap_reset_reconnect_behavior": "not implemented; any disconnect is unknown coverage",
+      "instrument_product": "LINEAR_PERPETUAL",
+      "liquidation_side_product_convention": "forceOrder schema/product/side and selection semantics not qualified",
+      "oi_quantity_value_convention": null,
+      "permitted_uses": [
+        "none until schema and coverage are qualified"
+      ],
+      "receipt_timestamp_semantics": "actual local frame receipt only",
+      "repair_capability": "no repair declared",
+      "sequence_update_semantics": null,
+      "snapshot_delta_semantics": null,
+      "source_channel": "USD-M forceOrder liquidation WS",
+      "source_health_requirement": "dedicated feed health and explicit coverage qualification required",
+      "status": "NOT ESTIMABLE",
+      "units": "raw venue fields only",
+      "venue": "BINANCE",
+      "warmup_requirement": "venue baseline requires sufficient earlier qualified fixed-duration windows"
+    }
+  ],
+  "schema_version": 2,
+  "version": "EVIDENCE_CAPABILITY_MATRIX_V2_1"
+}
