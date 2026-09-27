@@ -119,6 +119,35 @@ class FundingScheduleV2:
         return sha256_json(self.to_dict())
 
 
+@dataclass(frozen=True)
+class ActionCostContractV2:
+    """Cutoff-known cost contract explicitly selected by a candidate policy."""
+
+    key: InstrumentKeyV2
+    policy_hash: str
+    available_at_ns: int
+    fee_schedule_ref: str
+    funding_schedule_ref: str
+    execution_assumptions_ref: str
+    source_ref: str
+
+    def __post_init__(self) -> None:
+        if type(self.available_at_ns) is not int or self.available_at_ns < 0:
+            raise ValueError("action cost contract availability requires UTC nanoseconds")
+        for name in ("policy_hash", "fee_schedule_ref", "funding_schedule_ref", "execution_assumptions_ref", "source_ref"):
+            sha256_ref(getattr(self, name), field=name)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": "V2_ACTION_COST_CONTRACT_V1", "key": self.key.to_dict(),
+            "policy_hash": self.policy_hash, "available_at_ns": self.available_at_ns,
+            "fee_schedule_ref": self.fee_schedule_ref, "funding_schedule_ref": self.funding_schedule_ref,
+            "execution_assumptions_ref": self.execution_assumptions_ref, "source_ref": self.source_ref}
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+
 def index_cost_evidence(repo: OpsRepository, item: FeeScheduleV2 | FundingCashflowV2 |
                         FundingScheduleV2) -> str:
     source = repo.get_artifact(item.source_ref)
@@ -126,4 +155,13 @@ def index_cost_evidence(repo: OpsRepository, item: FeeScheduleV2 | FundingCashfl
         raise ValueError("cost source artifact unindexed or future")
     repo.register_artifact(ArtifactIndexEntryV2(item.content_hash, type(item).__name__, item.content_hash,
         item.available_at_ns, item.available_at_ns, item.to_dict()))
+    return item.content_hash
+
+
+def index_action_cost_contract(repo: OpsRepository, item: ActionCostContractV2) -> str:
+    refs = (item.fee_schedule_ref, item.funding_schedule_ref, item.execution_assumptions_ref, item.source_ref)
+    if any((entry := repo.get_artifact(ref)) is None or entry.available_at_ns > item.available_at_ns for ref in refs):
+        raise ValueError("action cost contract inputs must be typed and cutoff-known")
+    repo.register_artifact(ArtifactIndexEntryV2(item.content_hash, "ActionCostContractV2", item.content_hash,
+        item.available_at_ns, item.available_at_ns, {"cost_contract": item.to_dict()}))
     return item.content_hash

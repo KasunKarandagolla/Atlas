@@ -49,9 +49,10 @@ from atlas.v2.science.pretrade import (
     index_pretrade_derived_evidence,
     index_pretrade_scenario,
 )
-from atlas.v2.science.replay import HOUR_NS, ReplayStatusV2
+from atlas.v2.science.replay import HOUR_NS, ReplayAssumptionsV2, ReplayStatusV2
 
 from .test_session014_core import KEY
+from .test_session016_candidate_selection import candidate as candidate_for_cutoff
 from .test_session017_replay import minute, replay_context, run
 from .test_session017_risk import CUTOFF, actual_outcome, risk_case
 
@@ -75,19 +76,25 @@ def _index_fixture_candidate_set(repo, candidate_set, identity):
 
 
 def _payoff_case(repo, *, entry_depth="100", entry_ask="100",
-                 admission_state=AdmissionStateV2.RISK_SIZED):
-    case = risk_case(repo)
+                 admission_state=AdmissionStateV2.RISK_SIZED, cutoff_ns=CUTOFF,
+                 candidate_override=None):
+    candidate = candidate_override or candidate_for_cutoff(decision_at_ns=cutoff_ns,
+        deadline_ns=cutoff_ns + 5_000_000_000)
+    candidate = replace(candidate, envelope=replace(candidate.envelope, content_hash=""),
+        horizon_end_ns=cutoff_ns + 4 * HOUR_NS)
+    case = risk_case(repo, cutoff_ns=cutoff_ns, candidate_override=candidate)
     context = replay_context(repo, case, minutes=(
-        minute(CUTOFF, ask=entry_ask, ask_depth=entry_depth),
-        minute(CUTOFF + 4 * HOUR_NS, bid="110", ask="110", mark_low="110", mark_high="110",
-               last_low="110", last_high="110")))
+        minute(cutoff_ns, ask=entry_ask, ask_depth=entry_depth),
+        minute(cutoff_ns + 4 * HOUR_NS, bid="110", ask="110", mark_low="110", mark_high="110",
+               last_low="110", last_high="110")), decision_cutoff_ns=cutoff_ns,
+        assumptions=ReplayAssumptionsV2(0, 0, max(0, cutoff_ns - CUTOFF), 0, Decimal("1"), Decimal("0")))
     payoff = run(repo, case, context)
     action = context[0]
     fees = (payoff.entry.fee if payoff.entry else Decimal(0)) + sum((x.fee for x in payoff.exits), Decimal(0))
     funding = sum((cash for _, cash in payoff.funding_cashflows), Decimal(0))
     assert payoff.payoff is not None
     if admission_state == AdmissionStateV2.RISK_SIZED:
-        source_stage, decision_source, decision_at = DecisionSourceStageV2.HARD_RISK, action.sizing_ref, CUTOFF
+        source_stage, decision_source, decision_at = DecisionSourceStageV2.HARD_RISK, action.sizing_ref, cutoff_ns
     else:
         assert admission_state in (AdmissionStateV2.NO_TRADE, AdmissionStateV2.NOT_ESTIMABLE)
         eval_body = {"version": "EVALUATION_ARTIFACT_V2_AMENDED_V1",
@@ -95,19 +102,19 @@ def _payoff_case(repo, *, entry_depth="100", entry_ask="100",
             "candidate_ref": case.candidate.content_hash,
             "action_hash": action.action.action_hash, "action_artifact_ref": action.content_hash,
             "policy_hash": action.action.policy_hash,
-            "decision_at_ns": CUTOFF, "decision": admission_state.value, "reason_codes": [],
-            "available_at_ns": CUTOFF + 1}
+            "decision_at_ns": cutoff_ns, "decision": admission_state.value, "reason_codes": [],
+            "available_at_ns": cutoff_ns + 1}
         decision_source = sha256_json(eval_body)
-        _index(repo, decision_source, "EvaluationArtifactV2", CUTOFF + 1,
+        _index(repo, decision_source, "EvaluationArtifactV2", cutoff_ns + 1,
                {"evaluation": eval_body})
-        source_stage, decision_at = DecisionSourceStageV2.ECONOMIC_EVALUATION, CUTOFF + 1
+        source_stage, decision_at = DecisionSourceStageV2.ECONOMIC_EVALUATION, cutoff_ns + 1
     decision = DecisionCalendarEntryV2(
         candidate_set_ref=case.candidate_set.content_hash,
         candidate_ref=case.candidate.content_hash,
         policy_id=action.action.policy_id,
         policy_version=action.action.policy_version,
         policy_hash=action.action.policy_hash,
-        decision_at_ns=CUTOFF,
+        decision_at_ns=cutoff_ns,
         selection_state=SelectionStateV2.SELECTED,
         admission_state=admission_state,
         action_hash=action.action.action_hash,
@@ -123,7 +130,7 @@ def _payoff_case(repo, *, entry_depth="100", entry_ask="100",
         policy_version=action.action.policy_version, policy_hash=action.action.policy_hash,
         action_hash=action.action.action_hash, action_artifact_ref=action.content_hash,
         action_absence_reason=None, instrument_revision=KEY.contract_revision, venue=KEY.venue.value,
-        product=KEY.product.value, decision_at_ns=CUTOFF, horizon_end_ns=case.candidate.horizon_end_ns,
+        product=KEY.product.value, decision_at_ns=cutoff_ns, horizon_end_ns=case.candidate.horizon_end_ns,
         matured_at_ns=payoff.available_at_ns, available_at_ns=payoff.available_at_ns + 1,
         label_definition="net_action_value_v2", label_view="RECONSTRUCTED_MARKET",
         selection_state=SelectionStateV2.SELECTED, admission_state=admission_state,

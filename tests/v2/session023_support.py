@@ -17,16 +17,19 @@ from .test_session016_candidate_selection import CUTOFF, EVENT, candidate, evide
 from .test_session017_risk import risk_case
 
 
-def feature_candidate(repo, policy=S1_POLICY, key=KEY, **kwargs):
+def feature_candidate(repo, policy=S1_POLICY, key=KEY, *, cost_model_ref="SESSION023_SYNTHETIC_COST_LABEL",
+        liquidity_ref=None, **kwargs):
     item = candidate(policy, key, **kwargs)
+    item = replace(item, envelope=replace(item.envelope, content_hash=""), cost_model_ref=cost_model_ref)
     duration = policy.time_exit_rule.get("after_ns", policy.time_exit_rule.get("max_hold_ns"))
     item = replace(item, envelope=replace(item.envelope, content_hash=""),
         horizon_end_ns=item.decision_at_ns + duration)
     names = ("h4.ema20", "h4.ema50", "h4.adx14", "h1.roc10", "h1.realized_variance20",
         "h1.ewma_variance", "m15.rsi14", "m15.atr14", "candle.signed_body_atr",
         "candle.close_position", "regime.trend_state", "regime.volatility_state")
+    feature_inputs = (liquidity_ref,) if liquidity_ref is not None else ()
     feature = FeatureArtifactV2(ArtifactEnvelope(1, f"session023-{item.candidate_id}",
-        item.decision_at_ns, item.decision_at_ns, "SESSION023_SYNTHETIC_FIXTURE", ()), key,
+        item.decision_at_ns, item.decision_at_ns, "SESSION023_SYNTHETIC_FIXTURE", feature_inputs), key,
         "SESSION023_ENGINEERING_FEATURES_V1", item.decision_at_ns, item.decision_at_ns,
         {name: FeatureValueV2(Decimal("1"), "FIXTURE") for name in names},
         sha256_json("session023-health"), ReplayViewV2.ACTUAL_SYSTEM)

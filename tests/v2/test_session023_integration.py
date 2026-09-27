@@ -15,10 +15,11 @@ from atlas.v2.news.events import S7DirectionalShadowV2
 from atlas.v2.science.action import freeze_action
 from atlas.v2.science.admission import ADMISSION_POLICY_VERSION, AdmissionPolicyV2, VenueCapabilitySnapshotV2
 from atlas.v2.science.analogue import (
-    AnalogueCompatibilityV2,
-    action_semantics_hash,
+    AnalogueNotEstimableError,
+    build_analogue_compatibility,
     build_analogue_query,
     estimate_causal_analogue,
+    not_estimable_analogue,
     persist_analogue,
 )
 from atlas.v2.science.audits import (
@@ -107,13 +108,16 @@ def test_phase3_research_calendar_selection_frozen_models_evaluator_outcome_audi
             cutoff_ns=CUTOFF, available_at_ns=CUTOFF + 1,
             dependency_lock_hash=hashlib.sha256(Path("requirements-lock.txt").read_bytes()).hexdigest())
         names = ("action.quantity_log_notional", "value:h1.roc10")
-        compat = AnalogueCompatibilityV2(action.action.policy_hash, action.action.side,
-            action_semantics_hash(action.action.to_dict()), 4 * HOUR_NS, KEY.venue.value, KEY.product.value,
-            "MINUTE_REPLAY", "LOG_BASE_NOTIONAL", "UNKNOWN", sha256_json(list(names)), (True, True), sha256_json("NET_COSTS"))
-        query = build_analogue_query(repo, action_ref=action.content_hash, candidate_ref=case.candidate.content_hash,
-            candidate_set_ref=case.candidate_set.content_hash, cutoff_ns=CUTOFF, compatibility=compat,
-            feature_names=names, regime_id="UNKNOWN")
-        analogue = estimate_causal_analogue(repo, query, (), compatibility_contracts={compat.compatibility_key: compat})
+        try:
+            compat = build_analogue_compatibility(repo, action_ref=action.content_hash)
+            query = build_analogue_query(repo, action_ref=action.content_hash, candidate_ref=case.candidate.content_hash,
+                candidate_set_ref=case.candidate_set.content_hash, cutoff_ns=CUTOFF, compatibility=compat,
+                feature_names=names, regime_id="UNKNOWN")
+            analogue = estimate_causal_analogue(repo, query, (), compatibility_contracts={compat.compatibility_key: compat})
+        except AnalogueNotEstimableError as error:
+            analogue = not_estimable_analogue(action_ref=action.content_hash,
+                candidate_ref=case.candidate.content_hash, candidate_set_ref=case.candidate_set.content_hash,
+                action_hash=action.action.action_hash, information_cutoff_ns=CUTOFF, reason=error.reason)
         persist_analogue(repo, analogue, available_at_ns=CUTOFF + 1)
         comparison = compare_frozen_action(m0=evaluated.prediction, m1=challenger, analogue=analogue)
         persist_research_artifact(repo, "FrozenActionModelComparisonV2", comparison.to_dict(), available_at_ns=CUTOFF + 10)

@@ -38,9 +38,9 @@
       "S6": "a2497ebad6307bd7c44155599b317119ba6cbfb4ee60da49226974ea23adffd3"
     },
     "session024_started": false,
-    "starting_sha": "09efb89ff99e156fb39c7c0a89c5a86f639ccf47",
-    "validation_manifest_ref": "1aa2cb5515aed268ba2d526525699b2169036d86674038d4ba0c17848a2c160e",
+    "starting_sha": "6eccab03f7b975019c145839bd63c058fa7b0e95",
+    "validation_manifest_ref": "65cbb0e8dbf9ce5c81e94bee6e22cb52630e530542c53b9b17007942cf7f53ac",
     "version": "PHASE3_ENGINEERING_GATE_V2_V1"
   },
-  "content_hash": "7287c96289eb57181cb4d773f1baa3e75352895ce087f0b1119b7fdb79942005"
+  "content_hash": "a1b95b5e2cd3a6e9329b1eaa5ad9c70bc28fbc69d8eebb6e031a8973b3d7afb2"
 }

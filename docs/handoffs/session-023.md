@@ -27,7 +27,7 @@ All new components have zero capital authority. Decision ordering remains candid
 
 ### Causal analogues
 
-- `CAUSAL_ANALOGUE_ACTION_VALUE_V1`, policy hash `887ab6205b40f8ed7aef6c736b5e8ca1ff142ec89a307eba9ce2e1a552ee395f`. Numerical retrieval only; no vector database.
+- `CAUSAL_ANALOGUE_ACTION_VALUE_V1`, policy hash `9b6312e42b28649877ce3f62b593b14cc769572987053abeca5b55f28b6934bf`. Numerical retrieval only; no vector database.
 - Compatibility precedes distance: policy/action semantics, side, exact holding horizon, venue/product, execution mode, quantity/participation representation, liquidity, feature schema/availability and cost semantics. Repository source loading revalidates the honest matured label, frozen action, original features and execution provenance.
 - Decision and label availability must precede the query cutoff; overlapping targets are embargoed. Median/MAD scaling uses compatible prior rows only. Deterministic distances/weights, population/scaler refs, neighbours/payoffs, missingness, dispersion, effective support, independent components, temporal concentration, regime coverage, OOD and explanations are retained.
 - Overlapping labels and shared episodes form dependence components. Both independent components and effective episode-weight support require at least 20; concentrated or unsupported neighbourhoods return `NOT ESTIMABLE`.
@@ -62,7 +62,7 @@ The explicit `ResearchSleeveSelectionAuditV2` is persisted by the integration/re
 
 ### Discovery, multiplicity, calendar and ablation
 
-- `BOUNDED_DISCOVERY_LAB_V2_V1`, contract hash `de9fffe220110ef158a993e092b888bae16be6f863b1f4a80222c4069e7a907f`. Preregistered schema-constrained offline operations, feature/availability assumptions, finite attempt/parameter budget, baseline/metrics, chronology/purge/embargo, multiplicity family, stop rule, holdout identity and prospective requirement.
+- `BOUNDED_DISCOVERY_LAB_V2_V2`, contract hash `9270c622e372dc54bb90ce15d5cc7ba94da6c1d18fa462c40e0f46fa54cae7b1`. Preregistered schema-constrained offline operations, feature/availability assumptions, finite attempt/parameter budget, baseline/metrics, chronology/purge/embargo, multiplicity family, stop rule, holdout identity and prospective requirement.
 - Append-only attempts retain specifications, source/proposer, parameters, times, evidence refs, results, failures, manual intervention and holdout views. Budget/future-label/spent-holdout rejections are retained. A spent holdout cannot reset through a renamed experiment; redesign requires fresh future evidence.
 - The durable design registers **17 proposals**: four M1 configurations, analogue, research selector, S8, and ten feature ablations. All missing-evidence results and the required M0 baseline remain in an **18-member** family. No economic search or final-holdout evaluation occurred. No AI/LLM provider was used; optional proposal flags prohibit credentials, order tools, risk mutation, capital and self-promotion.
 - `DEPENDENCE_BLOCK_HOLM_AUDIT_V2_V1`: synchronized contiguous decision-time blocks covering the maximum policy horizon, paired whole-policy net values, centered-null block bootstrap, then Holm step-down FWER at alpha 0.05. Holm accommodates dependence between family tests; block resampling preserves within-block time dependence under the declared block qualification. At least three genuine outer windows and 20 independent blocks/support are required. Monte Carlo repetitions never add independent market support. This family is `NOT ESTIMABLE`; no economic pass is inferred.
@@ -73,8 +73,8 @@ The explicit `ResearchSleeveSelectionAuditV2` is persisted by the integration/re
 
 - `docs/v2/SESSION023_RESEARCH_DESIGN.json`: preregistration, complete attempted family/failure ledger, multiplicity result, ablation design and untouched future holdout identity.
 - `docs/v2/SESSION023_ENGINEERING_EVIDENCE.json`: explicitly synthetic immutable same-action comparison, whole-calendar audit and sleeve exclusions from the deterministic integration fixture.
-- `docs/v2/SESSION023_VALIDATION.json`: actual test cases/counts, source hashes, commands, environment, frozen identities and credential scan. Validation content hash `1aa2cb5515aed268ba2d526525699b2169036d86674038d4ba0c17848a2c160e`.
-- `docs/v2/PHASE3_ENGINEERING_GATE.json`: `PHASE3_ENGINEERING_GATE_V2_V1`, artifact hash `7287c96289eb57181cb4d773f1baa3e75352895ce087f0b1119b7fdb79942005`; **Phase-3 engineering `TESTED`**. Every required engineering check is true and linked to passing test evidence in the validation manifest.
+- `docs/v2/SESSION023_VALIDATION.json`: actual test cases/counts, source hashes, commands, environment, frozen identities and credential scan. Validation content hash `65cbb0e8dbf9ce5c81e94bee6e22cb52630e530542c53b9b17007942cf7f53ac`.
+- `docs/v2/PHASE3_ENGINEERING_GATE.json`: `PHASE3_ENGINEERING_GATE_V2_V1`, artifact hash `a1b95b5e2cd3a6e9329b1eaa5ad9c70bc28fbc69d8eebb6e031a8973b3d7afb2`; **Phase-3 engineering `TESTED`**. Every required engineering check is true and linked to passing test evidence in the validation manifest.
 - Separate states: economic value **`NOT ESTIMABLE`**; live feed qualification **`UNVERIFIED / TEST GATE`**; capital **disabled**.
 - Formal promotion states remain `INTEGRATED`. Engineering evidence is `TESTED`; no automatic ladder advancement occurred. The exact six-stage ladder is validated one stage at a time with review evidence. No `PROSPECTIVE_SHADOW`, `INCREMENTAL_VALUE_PASS` or `DECISION_ELIGIBLE` claim is made.
 
@@ -83,10 +83,10 @@ The explicit `ResearchSleeveSelectionAuditV2` is persisted by the integration/re
 - Added only optional `offline-research = ["lightgbm==4.7.0"]`. The live writer does not require LightGBM; a guarded fresh process imports writer, coordinator, SafeRuntime and CLI plus research contracts with LightGBM/NumPy/SciPy imports unavailable.
 - Actual environment: Python **3.12.13**, `Linux-5.15.0-177-generic-x86_64-with-glibc2.35`; LightGBM **4.7.0**, NumPy **2.5.3**, SciPy **1.18.1**, narwhals **2.26.0**.
 - Complete lock diff inspected: LightGBM plus required narwhals/SciPy; existing dependency versions unchanged. Hash-locked install and dry-run validation passed. Lock SHA-256 `711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b`. Only `dependency_lock.sha256` changed in the V1 golden metadata; all V1 behavior hashes are preserved.
-- Complete V2: **363 passed**, including **61 Session-023**, **47 Session-022**, **35 Session-021**, and **19 Session-020** cases, M0/evaluator/scenario/outcome, model ABI/deadline/isolation, selection/action/risk and desktop/IPC seam coverage.
+- Complete V2: **389 passed**, including **87 Session-023**, **47 Session-022**, **35 Session-021**, and **19 Session-020** cases, M0/evaluator/scenario/outcome, model ABI/deadline/isolation, selection/action/risk and desktop/IPC seam coverage.
 - Complete V1: **414 passed, 1 existing skipped**. V1 golden recomputation and accepted-checkpoint metadata comparison passed.
 - Ruff, mypy (**183 checked files**, all source plus focused new tests), compileall, working/staged `git diff --check`, pip check and hash-locked dependency validation passed. The lock dry-run checked **33 packages**, proposed **zero changes**; installed-package compatibility checked **34 packages**.
-- Tracked credential scan: **348 implementation/report paths**, zero high-confidence hits; matched values were not printed. It checked private-key/AWS/GitHub/Slack patterns plus high-entropy credential assignments. Dedicated gitleaks/trufflehog/detect-secrets binaries were unavailable. The final documentation-inclusive scan is recorded in closeout; no GitHub CI result is claimed.
+- Tracked credential scan: **349 implementation/report paths**, zero high-confidence hits; matched values were not printed. It checked private-key/AWS/GitHub/Slack patterns plus high-entropy credential assignments. Dedicated gitleaks/trufflehog/detect-secrets binaries were unavailable. The final documentation-inclusive scan is recorded in closeout; no GitHub CI result is claimed.
 - Integration ends honestly in `NOT ESTIMABLE`, with a simulated no-fill outcome; no artificial TRADE is forced. S4/S5 attachments leave sizing/action unchanged; S6/S7 evidence remains visible; S8 stays outside single-action execution.
 
 ## Preserved identities
@@ -131,3 +131,47 @@ No environment blocker prevented native LightGBM implementation or local validat
 After independent review and explicit authorization, Session 024 owns Phase-4 venue qualification, the capital bridge and failure/recovery hardening: authenticated venue/account/product/runtime qualification; actual fees/funding/fill/latency/protection and source-health evidence; controlled single-venue bridge to unchanged approval/reservation/hard-risk authority; and UNKNOWN, recovery, reconciliation and failure handling. Unqualified models/sleeves retain zero capital influence. This session introduces no live S8 multi-leg authority, new risk limits, live tuning/self-learning, automatic promotion or simultaneous multi-venue capital.
 
 Capital remains disabled. Session 024 has not started.
+
+## Final Session-023 Analogue & Discovery Enforcement Remediation
+
+This closeout records the narrow remediation on branch `impl/session-023-v2-m1-analogue-discovery-selection-gate`, starting from required SHA `6eccab03f7b975019c145839bd63c058fa7b0e95`. The final analogue/discovery identities, gate hashes, and validation totals above supersede the earlier Session-023 values in this handoff.
+
+### Analogue compatibility evidence
+
+- The repository builder derives compatibility from the indexed frozen `ActionArtifactV2`, full `InstrumentKeyV2`, exact causal `FeatureArtifactV2`, versioned cutoff-known S4 sequence-valid book evidence and archived raw-frame lineage, product and quantity contract, and the action's typed cost contract, fee/funding schedules, and replay assumptions.
+- Action execution semantics bind the frozen order/stop/management/horizon semantics and replay assumptions. Outcome provenance remains a separate `ACTUAL`, `SIMULATED`, or `COUNTERFACTUAL` field. Compatibility is re-derived before query construction; caller-authored matching labels cannot establish compatibility.
+- Liquidity, participation, feature availability, and cost inputs missing at the decision cutoff return named `NOT ESTIMABLE` errors. Later revisions leave the earlier key/query unchanged. The 20-independent-episode and effective-support floors remain in force.
+- The analogue policy hash is `9b6312e42b28649877ce3f62b593b14cc769572987053abeca5b55f28b6934bf`.
+- Adversarial coverage exercises caller tampering of execution, quantity/participation, liquidity, cost, feature availability, action semantics, horizon, venue, and product; it also checks deterministic independent fixture reproduction, missing evidence, later revisions, future tails, dependence, and effective support.
+
+### Discovery chronology and holdout evidence
+
+- Action-value evaluation resolves typed, indexed `MaturedOutcomeV2` artifacts through the existing maturity and executable-action eligibility contract. Feature artifacts, unmatured labels, and synthetic/fixture evidence cannot act as historical labels. S8 economic discovery remains `NOT ESTIMABLE` until an honest matured two-leg contract exists.
+- Any evaluation refs require a deterministic typed chronological split specification. The builder validates split membership, label maturity/availability, boundary crossing, overlap purge, maximum policy horizon, preregistered chronology/purge agreement, and minimum embargo.
+- Holdout use is derived recursively from immutable evaluation lineage. Training and validation reject holdout-linked evidence. An outer holdout view requires an explicit declaration, stores the exact attempt and evidence refs, spends the reservation, and prevents reuse or experiment-renaming resets. Redesign after spending requires genuinely later evidence. Rejected attempts remain in the durable ledger.
+- The discovery lab contract hash is `9270c622e372dc54bb90ce15d5cc7ba94da6c1d18fa462c40e0f46fa54cae7b1`.
+
+### Final validation and gate
+
+- The complete V2 suite passed **389/389**; the complete V1 suite passed **414/415** with **one existing skip**. The V1 golden recomputation/comparison passed separately. Session totals are Session-023 **87**, Session-022 **47**, Session-021 **35**, and Session-020 **19**.
+- Ruff, mypy (**183 checked files**), compileall, `git diff --check`, pip check, hash-locked dependency validation (**33 locked packages, zero proposed changes**), frozen identity checks, and the tracked-file credential scan (**349 paths, zero high-confidence matches**) passed.
+- Validation manifest hash: `65cbb0e8dbf9ce5c81e94bee6e22cb52630e530542c53b9b17007942cf7f53ac`. The regenerated Phase-3 gate hash is `a1b95b5e2cd3a6e9329b1eaa5ad9c70bc28fbc69d8eebb6e031a8973b3d7afb2`; its validation reference includes the new analogue and discovery adversarial node IDs.
+- Preserved Session-022 identities remain unchanged: S1 `c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0`; S2 `fbcdacd8ec6a79ea2595fa367d220b55b1d84c326ec3a28d787d23f356062dcd`; S3 `b6a6ef283a5ca0b4dcbcb730b03adff92fb62c76c55fc66ef9268c906d8c62b6`; S4 `327c816792290ceaf64ef6dd6b6e90e0382c04782e1dc7d9ca5895ce7f2ae146`; S6 `a2497ebad6307bd7c44155599b317119ba6cbfb4ee60da49226974ea23adffd3`; S1/S2 selector `36f8fd58c9e791ea580a1855f9e98555131e0828604d484eda3df4c7d5529cac`; evidence matrix `294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81`.
+- Economics remain `NOT ESTIMABLE`; live venue/source qualification remains `UNVERIFIED / TEST GATE`; capital remains disabled. No GitHub workflow run is claimed. Session 024 has not started and still requires the coordinating ChatGPT's independent inspection of the pushed SHA.
+
+### Files changed by this remediation
+
+- `docs/handoffs/session-023.md`
+- `docs/v2/PHASE3_ENGINEERING_GATE.json`
+- `docs/v2/SESSION023_RESEARCH_DESIGN.json`
+- `docs/v2/SESSION023_VALIDATION.json`
+- `src/atlas/v2/data/microstructure.py`
+- `src/atlas/v2/science/analogue.py`
+- `src/atlas/v2/science/costs.py`
+- `src/atlas/v2/science/discovery.py`
+- `tests/v2/session023_support.py`
+- `tests/v2/test_session018_remediation.py`
+- `tests/v2/test_session023_analogue.py`
+- `tests/v2/test_session023_discovery_s8.py`
+- `tests/v2/test_session023_integration.py`
+- `tests/v2/test_session023_m1.py`

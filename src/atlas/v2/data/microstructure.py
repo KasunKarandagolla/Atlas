@@ -13,7 +13,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any, ClassVar, cast
 
-from .._serialization import canonical_json, decimal_value, nonblank, sha256_json, sha256_ref, timestamp
+from .._serialization import canonical_json, decimal_value, nonblank, sha256_json, sha256_ref, strict_fields, timestamp
 from ..instruments import InstrumentKeyV2
 from .capabilities import (
     FeedCoverageEvidenceV2,
@@ -1089,6 +1089,46 @@ class S4FeatureArtifactV2:
                 "opposing_liquidity_persistence": self.opposing_liquidity_persistence,
                 "data_age_ns": self.data_age_ns, "alignment_uncertainty_ns": self.alignment_uncertainty_ns,
                 "role": "DECISION_TIME_FEATURES_ONLY"}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> S4FeatureArtifactV2:
+        expected = {"schema_version", "cutoff_ns", "availability_view", "instrument", "source_id", "channel",
+            "producer_version", "producer_policy_hash", "sequence_state", "recovery_epoch", "source_health",
+            "source_health_ref", "capability_matrix_ref", "declared_cadence_ns", "trade_coverage_state",
+            "trade_coverage_ref", "trade_source_ids", "trade_side_conventions", "input_refs", "bbo", "spread",
+            "mid", "microprice", "depth_bands", "depth_imbalance", "ofi", "ofi_windows", "signed_trade_windows",
+            "flow_price_response_windows", "price_response_windows", "displayed_liquidity_changes",
+            "persistence_proxy", "replenishment_proxy", "opposing_liquidity_side", "opposing_liquidity_persistence",
+            "missing_reason", "data_age_ns", "alignment_uncertainty_ns", "role"}
+        value = strict_fields(data, expected=expected, required=expected, name="S4FeatureArtifactV2")
+        if value["schema_version"] != cls.SCHEMA_VERSION or value["producer_policy_hash"] != S4_FEATURE_POLICY_HASH:
+            raise ValueError("unsupported S4 feature schema or producer policy")
+        return cls(
+            cutoff_ns=value["cutoff_ns"], availability_view=AvailabilityViewV2(value["availability_view"]),
+            instrument=InstrumentKeyV2.from_dict(value["instrument"]), source_id=value["source_id"],
+            channel=value["channel"], producer_version=value["producer_version"],
+            sequence_state=BookStateV2(value["sequence_state"]), recovery_epoch=value["recovery_epoch"],
+            source_health=value["source_health"], source_health_ref=value["source_health_ref"],
+            capability_matrix_ref=value["capability_matrix_ref"], declared_cadence_ns=value["declared_cadence_ns"],
+            trade_coverage_state=value["trade_coverage_state"], trade_coverage_ref=value["trade_coverage_ref"],
+            trade_source_ids=tuple(value["trade_source_ids"]), trade_side_conventions=tuple(value["trade_side_conventions"]),
+            input_refs=tuple(value["input_refs"]), bbo=tuple(value["bbo"]) if value["bbo"] is not None else None,
+            spread=value["spread"], mid=value["mid"], microprice=value["microprice"],
+            depth_bands=tuple(tuple(row) for row in value["depth_bands"]),
+            depth_imbalance=tuple(tuple(row) for row in value["depth_imbalance"]),
+            ofi=Decimal(value["ofi"]) if value["ofi"] is not None else None,
+            ofi_windows=tuple(tuple(row) for row in value["ofi_windows"]),
+            signed_trade_windows=tuple(tuple(row) for row in value["signed_trade_windows"]),
+            flow_price_response_windows=tuple(tuple(row) for row in value["flow_price_response_windows"]),
+            price_response_windows=tuple(tuple(row) for row in value["price_response_windows"]),
+            displayed_liquidity_changes=tuple(value["displayed_liquidity_changes"])
+                if value["displayed_liquidity_changes"] is not None else None,
+            persistence_proxy=value["persistence_proxy"], replenishment_proxy=value["replenishment_proxy"],
+            opposing_liquidity_side=value["opposing_liquidity_side"],
+            opposing_liquidity_persistence=value["opposing_liquidity_persistence"],
+            missing_reason=value["missing_reason"], data_age_ns=value["data_age_ns"],
+            alignment_uncertainty_ns=value["alignment_uncertainty_ns"],
+        )
 
     @property
     def content_hash(self) -> str:

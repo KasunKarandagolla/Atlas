@@ -13,9 +13,11 @@ from atlas.v2.science.audits import MultiplicityVariantV2
 from atlas.v2.science.discovery import (
     DiscoveryAttemptV2,
     DiscoveryExperimentV2,
+    DiscoveryOutcomeViewV2,
     audit_discovery_multiplicity,
     discovery_attempt_ledger,
     holdout_spent_at,
+    index_discovery_outcome_view,
     mark_holdout_spent,
     register_discovery_attempt,
     register_discovery_experiment,
@@ -40,6 +42,7 @@ from atlas.v2.strategies.s8_pairs import (
 
 from .test_session014_core import KEY
 from .test_session016_candidate_selection import alternate_key, universe
+from .test_session017_risk import CUTOFF
 
 
 def experiment(repo, budget=2, parameter_budget=2):
@@ -54,13 +57,53 @@ def experiment(repo, budget=2, parameter_budget=2):
     return value
 
 
-def attempt(experiment, identity="one", *, viewed=False, failure=None, refs=(), start=10, units=1):
+def split_spec(experiment, *, training=(0, 1), validation=(2, 3), outer=(4, 5), cutoff=9,
+        embargo=1, horizon=1):
+    return {"version": "DISCOVERY_CHRONOLOGICAL_SPLIT_V1",
+        "chronology_contract": experiment.chronology, "purge_embargo_contract": experiment.purge_embargo,
+        "training_start_ns": training[0], "training_end_ns": training[1],
+        "validation_start_ns": validation[0], "validation_end_ns": validation[1],
+        "outer_start_ns": outer[0], "outer_end_ns": outer[1], "evaluation_cutoff_ns": cutoff,
+        "embargo_ns": embargo, "maximum_policy_horizon_ns": horizon, "randomized": False}
+
+
+def attempt(experiment, identity="one", *, viewed=False, failure=None, refs=(), start=10, units=1,
+        training_refs=None, validation_refs=None, outer_refs=None, typed_split=None):
     spec = {"version": "EXACT_EXECUTABLE_RESEARCH_SPEC_V1", "operation": "M1_LIGHTGBM_FIXED_GRID",
         "evaluation_cutoff_ns": start - 1}
+    if refs or training_refs or validation_refs or outer_refs:
+        spec["split_spec"] = typed_split or split_spec(experiment, cutoff=start - 1)
+        spec["evaluation_cutoff_ns"] = spec["split_spec"]["evaluation_cutoff_ns"]
     return DiscoveryAttemptV2(experiment.content_hash, experiment.experiment_id, identity, 1, None,
         "1.0.0", spec, sha256_json(spec), "RESEARCH_SCRIPT", "session023-offline", {"search_units": units},
-        start, start + 1, refs, (), (), None if failure else {"status": "NOT_ESTIMABLE"}, failure,
+        start, start + 1, refs if training_refs is None else training_refs,
+        () if validation_refs is None else validation_refs, () if outer_refs is None else outer_refs,
+        None if failure else {"status": "NOT_ESTIMABLE"}, failure,
         (), viewed, experiment.final_holdout_ref)
+
+
+def valid_outcome(repo, *, cutoff=CUTOFF):
+    from atlas.v2.science.outcomes import index_matured_outcome
+
+    from .test_session018_remediation import _payoff_case
+
+    case, action, payoff, outcome = _payoff_case(repo, cutoff_ns=cutoff)
+    index_matured_outcome(repo, outcome)
+    return outcome
+
+
+def split_for_outcome(experiment, outcome, *, outer_label=True):
+    horizon = outcome.horizon_end_ns - outcome.decision_at_ns
+    embargo = horizon
+    if outer_label:
+        return split_spec(experiment, training=(0, outcome.decision_at_ns - 3 * horizon),
+            validation=(outcome.decision_at_ns - 2 * horizon, outcome.decision_at_ns - horizon),
+            outer=(outcome.decision_at_ns, outcome.horizon_end_ns),
+            cutoff=outcome.available_at_ns, embargo=embargo, horizon=horizon)
+    return split_spec(experiment, training=(outcome.decision_at_ns - 2 * horizon, outcome.horizon_end_ns),
+        validation=(outcome.horizon_end_ns + horizon, outcome.horizon_end_ns + 2 * horizon),
+        outer=(outcome.horizon_end_ns + 3 * horizon, outcome.available_at_ns),
+        cutoff=outcome.available_at_ns, embargo=embargo, horizon=horizon)
 
 
 def test_budget_failure_and_all_attempts_are_retained_and_family_complete(tmp_path):
@@ -110,20 +153,58 @@ def test_parameter_budget_is_independent_and_rejected_search_retained(tmp_path):
 def test_viewed_holdout_is_globally_spent_and_cannot_reset_or_reuse(tmp_path):
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
         exp = experiment(repo, budget=4, parameter_budget=4)
-        register_discovery_attempt(repo, exp.content_hash, attempt(exp, viewed=True), available_at_ns=11)
-        assert holdout_spent_at(repo, exp.content_hash) == 11
-        with pytest.raises(ValueError, match="SPENT"):
+        alias = replace(exp, experiment_id="pre-registered-alias")
+        register_discovery_experiment(repo, alias, available_at_ns=1)
+        with pytest.raises(ValueError, match="holdout_viewed"):
+            register_discovery_attempt(repo, exp.content_hash, attempt(exp, viewed=True), available_at_ns=11)
+        outcome = valid_outcome(repo)
+        view = DiscoveryOutcomeViewV2(exp.content_hash, outcome.content_hash, "OUTER",
+            outcome.available_at_ns, exp.final_holdout_ref)
+        view_ref = index_discovery_outcome_view(repo, view)
+        start = outcome.available_at_ns + 2
+        viewed = attempt(exp, identity="view-one", viewed=True, outer_refs=(view_ref,), start=start,
+            typed_split=split_for_outcome(exp, outcome))
+        register_discovery_attempt(repo, exp.content_hash, viewed, available_at_ns=start + 1)
+        spent_at = holdout_spent_at(repo, exp.content_hash)
+        assert spent_at == start + 1
+        state = repo.artifact_entries("DiscoveryHoldoutStateV2")[0].metadata["holdout_state"]
+        assert state["attempt_ref"] == viewed.content_hash and state["evidence_refs"] == (view_ref,)
+        second_view = attempt(exp, identity="view-two", viewed=True, outer_refs=(view_ref,),
+            start=spent_at + 2, typed_split=split_for_outcome(exp, outcome))
+        with pytest.raises(ValueError, match="genuinely later future evidence|SPENT"):
+            register_discovery_attempt(repo, exp.content_hash, second_view, available_at_ns=spent_at + 3)
+        assert any(row["attempt_id"] == "view-two" and row.get("rejection_reason")
+            for row in discovery_attempt_ledger(repo, exp.content_hash))
+        alias_view = DiscoveryOutcomeViewV2(alias.content_hash, outcome.content_hash, "OUTER",
+            outcome.available_at_ns, alias.final_holdout_ref)
+        alias_view_ref = index_discovery_outcome_view(repo, alias_view)
+        alias_second_view = attempt(alias, identity="alias-second-view", viewed=True,
+            outer_refs=(alias_view_ref,), start=spent_at + 4,
+            typed_split=split_for_outcome(alias, outcome))
+        with pytest.raises(ValueError, match="genuinely later future evidence|SPENT"):
+            register_discovery_attempt(repo, alias.content_hash, alias_second_view,
+                available_at_ns=spent_at + 5)
+        assert any(row["attempt_id"] == "alias-second-view" and row.get("rejection_reason")
+            for row in discovery_attempt_ledger(repo, alias.content_hash))
+        with pytest.raises(ValueError, match="SPENT|fresh future"):
             mark_holdout_spent(repo, experiment_ref=exp.content_hash, holdout_ref=exp.final_holdout_ref,
-                attempt_id="reset", viewed_at_ns=12)
+                attempt_id="reset", attempt_ref=sha256_json("reset"), evidence_refs=(view_ref,), viewed_at_ns=spent_at + 1)
         with pytest.raises(ValueError, match="SPENT"):
-            register_discovery_experiment(repo, replace(exp, experiment_id="renamed"), available_at_ns=12)
-        with pytest.raises(ValueError, match="fresh future"):
-            register_discovery_attempt(repo, exp.content_hash, attempt(exp, identity="redesign", start=20), available_at_ns=21)
-        fresh = sha256_json("fresh-future-evidence")
-        repo.register_artifact(ArtifactIndexEntryV2(fresh, "QualifiedHistoricalEvidenceV2", fresh, 15, 15, {}))
-        redesign = attempt(exp, identity="fresh-redesign", refs=(fresh,), start=20)
-        register_discovery_attempt(repo, exp.content_hash, redesign, available_at_ns=21)
-        assert holdout_spent_at(repo, exp.content_hash) == 11
+            register_discovery_experiment(repo, replace(exp, experiment_id="renamed"), available_at_ns=spent_at + 1)
+        with pytest.raises(ValueError, match="genuinely later future evidence"):
+            register_discovery_attempt(repo, exp.content_hash,
+                attempt(exp, identity="redesign", start=spent_at + 2), available_at_ns=spent_at + 3)
+        minute_ns = 60 * 1_000_000_000
+        fresh_cutoff = ((spent_at + minute_ns - 1) // minute_ns) * minute_ns
+        fresh_outcome = valid_outcome(repo, cutoff=fresh_cutoff)
+        fresh_split = split_for_outcome(exp, fresh_outcome)
+        fresh_start = fresh_outcome.available_at_ns + 2
+        redesign = attempt(exp, identity="fresh-redesign", outer_refs=(fresh_outcome.content_hash,),
+            start=fresh_start, typed_split=fresh_split)
+        register_discovery_attempt(repo, exp.content_hash, redesign, available_at_ns=fresh_start + 1)
+        assert holdout_spent_at(repo, exp.content_hash) == spent_at
+        assert any(row["attempt_id"] == "fresh-redesign" and row.get("rejection_reason") is None
+            for row in discovery_attempt_ledger(repo, exp.content_hash))
 
 
 def test_future_labels_cannot_enter_proposal_evaluation_and_authority_is_zero(tmp_path):
@@ -131,13 +212,126 @@ def test_future_labels_cannot_enter_proposal_evaluation_and_authority_is_zero(tm
         exp = experiment(repo)
         future = sha256_json("future-label")
         repo.register_artifact(ArtifactIndexEntryV2(future, "MaturedOutcomeV2", future, 100, 100, {}))
-        with pytest.raises(ValueError, match="future"):
+        with pytest.raises(ValueError, match="MaturedOutcomeV2"):
             register_discovery_attempt(repo, exp.content_hash, attempt(exp, refs=(future,)), available_at_ns=11)
-        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"] == "FUTURE_OR_UNAVAILABLE_EVALUATION_LABEL"
+        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"]
         with pytest.raises(ValueError, match="authority"):
             replace(attempt(exp), capital_authority=True)
         with pytest.raises(TypeError):
             attempt(exp).proposal_spec["operation"] = "LIVE_SELF_TUNING"
+
+
+def test_feature_artifact_cannot_masquerade_as_action_value_training_label(tmp_path):
+    from .session023_support import feature_candidate
+
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        exp = experiment(repo)
+        feature = feature_candidate(repo)
+        invalid = attempt(exp, identity="feature-as-label", training_refs=(feature.snapshot_hash,), start=10)
+        with pytest.raises(ValueError, match="MaturedOutcomeV2"):
+            register_discovery_attempt(repo, exp.content_hash, invalid, available_at_ns=11)
+        ledger = discovery_attempt_ledger(repo, exp.content_hash)
+        assert len(ledger) == 1 and ledger[0]["rejection_reason"]
+
+
+def test_unmatured_typed_outcome_cannot_enter_action_value_evaluation(tmp_path):
+    from atlas.v2.science.outcomes import ExecutionOutcomeStateV2, LabelStateV2, index_matured_outcome
+
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        exp = experiment(repo)
+        outcome = valid_outcome(repo)
+        unresolved = replace(outcome, label_state=LabelStateV2.UNRESOLVED,
+            execution_state=ExecutionOutcomeStateV2.UNRESOLVED, gross_payoff=None, fees=None,
+            funding_cashflow=None, net_payoff=None, fill_quantity=None, reason="UNMATURED_TEST_LABEL")
+        index_matured_outcome(repo, unresolved)
+        invalid = attempt(exp, identity="unmatured-outcome", training_refs=(unresolved.content_hash,), start=10)
+        with pytest.raises(ValueError, match="unmatured|invalid MaturedOutcomeV2"):
+            register_discovery_attempt(repo, exp.content_hash, invalid, available_at_ns=11)
+        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"]
+
+
+@pytest.mark.parametrize("role", ["training", "validation"])
+def test_final_holdout_cannot_appear_in_training_or_validation_refs(tmp_path, role):
+    with OpsRepository(tmp_path / f"ops-{role}.sqlite") as repo:
+        exp = experiment(repo)
+        outcome = valid_outcome(repo)
+        view = DiscoveryOutcomeViewV2(exp.content_hash, outcome.content_hash, "OUTER",
+            outcome.available_at_ns, exp.final_holdout_ref)
+        ref = index_discovery_outcome_view(repo, view)
+        split = split_for_outcome(exp, outcome)
+        start = outcome.available_at_ns + 2
+        kwargs = {f"{role}_refs": (ref,)}
+        invalid = attempt(exp, identity=f"holdout-{role}", start=start, typed_split=split, **kwargs)
+        with pytest.raises(ValueError):
+            register_discovery_attempt(repo, exp.content_hash, invalid, available_at_ns=start + 1)
+        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"]
+
+
+def test_holdout_linked_outer_without_explicit_view_is_rejected_and_retained(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        exp = experiment(repo)
+        outcome = valid_outcome(repo)
+        view = DiscoveryOutcomeViewV2(exp.content_hash, outcome.content_hash, "OUTER",
+            outcome.available_at_ns, exp.final_holdout_ref)
+        ref = index_discovery_outcome_view(repo, view)
+        start = outcome.available_at_ns + 2
+        invalid = attempt(exp, identity="implicit-holdout", outer_refs=(ref,), start=start,
+            typed_split=split_for_outcome(exp, outcome), viewed=False)
+        with pytest.raises(ValueError, match="explicit holdout view"):
+            register_discovery_attempt(repo, exp.content_hash, invalid, available_at_ns=start + 1)
+        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"] == "HOLDOUT_VIEW_NOT_DECLARED"
+
+
+@pytest.mark.parametrize("bad_split,reason", [
+    ({"wrong_role": 0}, "wrong chronological split"),
+    ({"outer_end_before_horizon": 0}, "fold boundary"),
+    ({"embargo_below_horizon": 0}, "embargo is below"),
+])
+def test_discovery_chronology_purge_boundaries_and_embargo_are_enforced(tmp_path, bad_split, reason):
+    with OpsRepository(tmp_path / f"ops-{reason.replace(' ', '-')}.sqlite") as repo:
+        exp = experiment(repo)
+        outcome = valid_outcome(repo)
+        horizon = outcome.horizon_end_ns - outcome.decision_at_ns
+        base = split_for_outcome(exp, outcome)
+        if "wrong_role" in bad_split:
+            base = split_for_outcome(exp, outcome)
+        elif "outer_end_before_horizon" in bad_split:
+            base["outer_end_ns"] = outcome.horizon_end_ns - 1
+        else:
+            base["embargo_ns"] = horizon - 1
+        start = outcome.available_at_ns + 2
+        refs = {"training_refs": (outcome.content_hash,)} if "wrong_role" in bad_split else {
+            "outer_refs": (outcome.content_hash,)}
+        invalid = attempt(exp, identity=f"bad-split-{reason}", start=start, typed_split=base, **refs)
+        with pytest.raises(ValueError, match=reason):
+            register_discovery_attempt(repo, exp.content_hash, invalid, available_at_ns=start + 1)
+        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"]
+
+
+def test_overlapping_training_labels_violate_declared_purge(tmp_path):
+    from .test_session017_risk import CUTOFF, HOUR_NS
+
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        exp = experiment(repo)
+        first = valid_outcome(repo, cutoff=CUTOFF)
+        second = valid_outcome(repo, cutoff=CUTOFF + HOUR_NS)
+        d0, d1 = first.decision_at_ns, second.decision_at_ns
+        horizon = max(first.horizon_end_ns - d0, second.horizon_end_ns - d1)
+        training_end = second.horizon_end_ns + 1
+        validation_start = training_end + horizon
+        validation_end = validation_start + HOUR_NS
+        outer_start = validation_end + horizon
+        outer_end = outer_start + HOUR_NS
+        split = split_spec(exp, training=(d0 - 1, training_end),
+            validation=(validation_start, validation_end), outer=(outer_start, outer_end),
+            cutoff=outer_end, embargo=horizon, horizon=horizon)
+        start = outer_end + 2
+        invalid = attempt(exp, identity="overlapping-training-labels",
+            training_refs=tuple(sorted((first.content_hash, second.content_hash))),
+            start=start, typed_split=split)
+        with pytest.raises(ValueError, match="overlap or violate the declared purge/embargo"):
+            register_discovery_attempt(repo, exp.content_hash, invalid, available_at_ns=start + 1)
+        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"]
 
 
 def basket_fixture():

@@ -124,13 +124,11 @@ def test_required_180_30_30_schedule_outer_models_and_untouched_holdout():
 
 
 @pytest.mark.parametrize("depth,state", [("0", "NO_FILL"), ("10", "PARTIAL_FILL"), ("100", "FULL_FILL")])
-def test_honest_training_loader_preserves_fill_provenance_and_net_components(tmp_path, monkeypatch, depth, state):
-    from . import test_session017_risk as risk_module
-
+def test_honest_training_loader_preserves_fill_provenance_and_net_components(tmp_path, depth, state):
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
-        monkeypatch.setattr(risk_module, "candidate", lambda policy=risk_module.S1_POLICY, key=risk_module.KEY,
-            **kwargs: feature_candidate(repo, policy, key, **kwargs))
-        _, action, _, outcome = _payoff_case(repo, entry_depth=depth)
+        causal_candidate = feature_candidate(repo, S1_POLICY, decision_at_ns=CUTOFF,
+            deadline_ns=CUTOFF + 5_000_000_000)
+        _, action, _, outcome = _payoff_case(repo, entry_depth=depth, candidate_override=causal_candidate)
         from atlas.v2.science.outcomes import index_matured_outcome
 
         index_matured_outcome(repo, outcome)
@@ -170,7 +168,7 @@ def test_m1_exact_action_binding_no_history_and_changed_action_rejection(tmp_pat
                     cutoff_ns=CUTOFF, available_at_ns=CUTOFF + 1, dependency_lock_hash=sha256_json("lock"))
 
 
-def test_m1_final_holdout_never_rolls_into_later_training_or_resets_after_viewing(tmp_path):
+def test_m1_final_holdout_reservation_is_stable_and_manual_spending_requires_attempt_evidence(tmp_path):
     from atlas.v2.memory.repository import ArtifactIndexEntryV2
     from atlas.v2.science.discovery import DiscoveryExperimentV2, mark_holdout_spent, register_discovery_experiment
     from atlas.v2.science.m1 import reserve_m1_final_holdout
@@ -188,6 +186,8 @@ def test_m1_final_holdout_never_rolls_into_later_training_or_resets_after_viewin
             baseline, ("whole_policy_value",), "180_30_30", "MAX_HORIZON", "family", "BUDGET",
             first[2], "UNTOUCHED", True, 500 * DAY_NS + 2)
         register_discovery_experiment(repo, exp, available_at_ns=500 * DAY_NS + 2)
-        mark_holdout_spent(repo, experiment_ref=exp.content_hash, holdout_ref=first[2], attempt_id="viewed", viewed_at_ns=500 * DAY_NS + 3)
-        with pytest.raises(ValueError, match="SPENT"):
-            reserve_m1_final_holdout(repo, compatibility_key=key, cutoff_ns=600 * DAY_NS, available_at_ns=600 * DAY_NS + 1)
+        with pytest.raises(ValueError, match="exact indexed completed attempt"):
+            mark_holdout_spent(repo, experiment_ref=exp.content_hash, holdout_ref=first[2], attempt_id="viewed",
+                attempt_ref=sha256_json("unindexed-attempt"), evidence_refs=(first[2],), viewed_at_ns=500 * DAY_NS + 3)
+        assert reserve_m1_final_holdout(repo, compatibility_key=key, cutoff_ns=600 * DAY_NS,
+            available_at_ns=600 * DAY_NS + 1) == first
