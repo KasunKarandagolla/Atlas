@@ -27,19 +27,24 @@ S4_ABSORPTION_VERSION = "S4_ABSORPTION_SHADOW_V1"
 S4_EXECUTION_CONTEXT_VERSION = "S4_EXECUTION_QUALITY_CONTEXT_V1"
 DEFAULT_BOOK_WARMUP_NS = 30_000_000_000
 DEFAULT_BOOK_STALE_NS = 1_000_000_000
-S4_FEATURE_POLICY_HASH = sha256_json({"policy_id": S4_FEATURE_VERSION, "spec": {
-    "book_sequence_required": True, "gap_action": "NOT_ESTIMABLE_UNTIL_SNAPSHOT_AND_WARMUP",
+S4_FEATURE_POLICY_SPEC = {
+    "book_sequence_required": True, "gap_action": "NOT_ESTIMABLE_UNTIL_FRESH_SNAPSHOT_BRIDGE_AND_WARMUP",
     "windows_seconds": [1, 5, 30], "window_left_boundary_baseline": True,
     "ofi_windows": True, "flow_price_response_windows": True,
     "source_channel_capability_row_required": True, "trade_coverage_matrix_hash_exact": True,
     "actual_receipt_only_book_and_trade_evidence": True,
     "binance_rest_snapshot_requires_buffered_update_bridge": True,
-    "binance_snapshot_bridge": "first U <= lastUpdateId + 1 <= u; stale u <= lastUpdateId ignored",
-    "binance_subsequent_updates": "pu equals previous accepted u independent of feature warmup",
-    "binance_gap_recovery": "fresh snapshot, new bridge, then feature warmup",
+    "binance_snapshot": "REST lastUpdateId = L",
+    "binance_stale_buffered_events": "discard only buffered events where u < L; u == L remains eligible",
+    "binance_snapshot_bridge": "first processed event requires U <= L <= u",
+    "binance_subsequent_updates": (
+        "require pu == previous accepted u; any mismatch immediately enters GAP_DETECTED, independent of feature warmup"
+    ),
+    "binance_gap_recovery": "fresh REST snapshot, new valid bridge, then declared S4 warmup",
     "decision_view": "ACTUAL_RECEIPT",
     "future_markout_role": "OUTCOME_ONLY", "baseline_contract": "INTRADAY_CORE_V1_UNCHANGED",
-}})
+}
+S4_FEATURE_POLICY_HASH = sha256_json({"policy_id": S4_FEATURE_VERSION, "spec": S4_FEATURE_POLICY_SPEC})
 S4_ABSORPTION_POLICY_HASH = sha256_json({"policy_id": S4_ABSORPTION_VERSION, "spec": {
     "prior_only_expected_response": True, "minimum_prior_samples": 3,
     "flow_response_window_seconds": 30,

@@ -123,11 +123,12 @@ def oi(*, event: int, quantity: str, available: int | None = None,
 
 def test_capability_matrix_is_versioned_explicit_and_does_not_claim_live_support() -> None:
     matrix = default_evidence_capability_matrix_v2()
-    assert matrix.version == "EVIDENCE_CAPABILITY_MATRIX_V2_3"
+    assert matrix.version == "EVIDENCE_CAPABILITY_MATRIX_V2_4"
     assert len(matrix.rows) == 9
     assert matrix.content_hash == default_evidence_capability_matrix_v2().content_hash
     checked_in = json.loads(Path("docs/v2/EVIDENCE_CAPABILITY_MATRIX_V2.json").read_text())
     assert checked_in == matrix.to_dict()
+    binance_snapshot = matrix.lookup("BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M depth snapshot REST")
     bybit = matrix.lookup("BYBIT", "MAINNET", "LINEAR_PERPETUAL", "public/orderbook.50 WS")
     assert bybit is not None
     assert bybit.status == CapabilityStatusV2.UNVERIFIED
@@ -136,10 +137,17 @@ def test_capability_matrix_is_versioned_explicit_and_does_not_claim_live_support
     assert "position ownership" in bybit.explicitly_unsupported_uses
     binance_depth = matrix.lookup("BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M depth diff WS")
     binance_trades = matrix.lookup("BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M aggTrade WS")
+    official_sync_doc = (
+        "https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/"
+        "websocket-market-streams/How-to-manage-a-local-order-book-correctly"
+    )
+    assert binance_snapshot is not None and binance_snapshot.status == CapabilityStatusV2.TEST_GATE
+    assert official_sync_doc in binance_snapshot.evidence_refs
     assert binance_depth is not None and binance_depth.status == CapabilityStatusV2.UNVERIFIED
     assert "pu == previous accepted u" in (binance_depth.sequence_update_semantics or "")
     assert "U <= L <= u" in (binance_depth.sequence_update_semantics or "")
     assert "L+1" not in (binance_depth.sequence_update_semantics or "")
+    assert official_sync_doc in binance_depth.evidence_refs
     assert any("/ws-streams/public" in item for item in binance_depth.evidence_refs)
     assert binance_trades is not None and binance_trades.status == CapabilityStatusV2.UNVERIFIED
     assert "/market" in (binance_trades.availability_semantics or "")

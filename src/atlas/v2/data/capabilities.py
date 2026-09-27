@@ -13,7 +13,7 @@ from typing import Any, ClassVar
 from .._serialization import canonical_json, nonblank, sha256_json, timestamp
 from ..instruments import InstrumentKeyV2
 
-EVIDENCE_CAPABILITY_MATRIX_V2_VERSION = "EVIDENCE_CAPABILITY_MATRIX_V2_3"
+EVIDENCE_CAPABILITY_MATRIX_V2_VERSION = "EVIDENCE_CAPABILITY_MATRIX_V2_4"
 
 
 class CapabilityStatusV2(StrEnum):
@@ -222,6 +222,7 @@ _DOC_BYBIT_LIQ = "https://bybit-exchange.github.io/docs/v5/websocket/public/all-
 _DOC_BINANCE_PUBLIC = "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/public"
 _DOC_BINANCE_MARKET = "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/market"
 _DOC_BINANCE_DEPTH_REST = "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data"
+_DOC_BINANCE_LOCAL_BOOK_SYNC = "https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/websocket-market-streams/How-to-manage-a-local-order-book-correctly"
 _BINANCE_SYNC_IMPL = "repo:src/atlas/v2/data/microstructure.py"
 _BINANCE_SYNC_TEST = "repo:tests/v2/test_session022_s4_microstructure.py"
 _DOC_BYBIT_TICKER = "https://bybit-exchange.github.io/docs/v5/market/tickers"
@@ -287,7 +288,8 @@ def default_evidence_capability_matrix_v2() -> EvidenceCapabilityMatrixV2:
             "buffer depth events; fetch fresh REST snapshot L; discard u < L; accept first bridge only when U <= L <= u; after bridge require pu == previous accepted u; after mismatch require a fresh snapshot, valid bridge and declared S4 warmup",
             "healthy request plus independent stream state", "30s continuous valid post-recovery book (engineering default)",
             ("snapshot initialization input for a sequence-reconciled book",), shared_unsupported,
-            (_DOC_BINANCE_DEPTH_REST, _DOC_BINANCE_PUBLIC, _BINANCE_SYNC_IMPL, _BINANCE_SYNC_TEST, _LOCAL),
+            (_DOC_BINANCE_DEPTH_REST, _DOC_BINANCE_PUBLIC, _DOC_BINANCE_LOCAL_BOOK_SYNC,
+             _BINANCE_SYNC_IMPL, _BINANCE_SYNC_TEST, _LOCAL),
         ),
         EvidenceCapabilityV2(
             "BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M depth diff WS", CapabilityStatusV2.UNVERIFIED,
@@ -301,7 +303,8 @@ def default_evidence_capability_matrix_v2() -> EvidenceCapabilityMatrixV2:
             "buffer depth events; fetch fresh REST snapshot L; discard u < L; accept first bridge only when U <= L <= u; then require pu == previous accepted u; after mismatch require a fresh snapshot, valid bridge and declared S4 warmup",
             "HEALTHY_CURRENT, sequence chain, current receipt age", "30s valid post-recovery (engineering default)",
             ("sequence-valid displayed depth context after full snapshot/delta reconciliation",), shared_unsupported,
-            (_DOC_BINANCE_PUBLIC, _DOC_BINANCE_DEPTH_REST, _BINANCE_SYNC_IMPL, _BINANCE_SYNC_TEST, _LOCAL),
+            (_DOC_BINANCE_PUBLIC, _DOC_BINANCE_DEPTH_REST, _DOC_BINANCE_LOCAL_BOOK_SYNC,
+             _BINANCE_SYNC_IMPL, _BINANCE_SYNC_TEST, _LOCAL),
         ),
         EvidenceCapabilityV2(
             "BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M aggTrade WS", CapabilityStatusV2.UNVERIFIED,

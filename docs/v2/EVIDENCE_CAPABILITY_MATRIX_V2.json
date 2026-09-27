@@ -12,7 +12,7 @@
         "https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_4",
       "exchange_event_timestamp_semantics": "cts matching-engine timestamp when supplied, else ts exchange message timestamp; provenance not live-qualified",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -53,7 +53,7 @@
         "https://bybit-exchange.github.io/docs/v5/websocket/public/trade",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_4",
       "exchange_event_timestamp_semantics": "T matched time; frame ts is message time",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -94,7 +94,7 @@
         "https://bybit-exchange.github.io/docs/v5/websocket/public/all-liquidation",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_4",
       "exchange_event_timestamp_semantics": "T execution time; frame ts message time",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -134,11 +134,12 @@
       "evidence_refs": [
         "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
         "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/public",
+        "https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/websocket-market-streams/How-to-manage-a-local-order-book-correctly",
         "repo:src/atlas/v2/data/microstructure.py",
         "repo:tests/v2/test_session022_s4_microstructure.py",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_4",
       "exchange_event_timestamp_semantics": "no exchange event timestamp in depth snapshot",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -178,11 +179,12 @@
       "evidence_refs": [
         "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/public",
         "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+        "https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/websocket-market-streams/How-to-manage-a-local-order-book-correctly",
         "repo:src/atlas/v2/data/microstructure.py",
         "repo:tests/v2/test_session022_s4_microstructure.py",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_4",
       "exchange_event_timestamp_semantics": "E event time and T transaction time when supplied",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -223,7 +225,7 @@
         "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/market",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_4",
       "exchange_event_timestamp_semantics": "T trade time and E event time",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -266,7 +268,7 @@
         "https://bybit-exchange.github.io/docs/v5/market/open-interest",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_4",
       "exchange_event_timestamp_semantics": "source event/period timestamps may not equal publication time",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -309,7 +311,7 @@
         "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Open-Interest",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_4",
       "exchange_event_timestamp_semantics": "endpoint-specific event/funding-period timestamps; publication receipt may be absent",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -349,7 +351,7 @@
       "evidence_refs": [
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_4",
       "exchange_event_timestamp_semantics": "event time field semantics not live-qualified",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -380,5 +382,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "EVIDENCE_CAPABILITY_MATRIX_V2_3"
+  "version": "EVIDENCE_CAPABILITY_MATRIX_V2_4"
 }

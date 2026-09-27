@@ -15,6 +15,9 @@ from atlas.v2.data.capabilities import (
     default_evidence_capability_matrix_v2,
 )
 from atlas.v2.data.microstructure import (
+    S4_FEATURE_POLICY_HASH,
+    S4_FEATURE_POLICY_SPEC,
+    S4_FEATURE_VERSION,
     AggressiveTradeV2,
     BinanceDepthSyncPhaseV2,
     BookLevelV2,
@@ -143,6 +146,31 @@ def qualified_feature(*, cutoff_ns: int = T0, trade_quantity: str = "1"):
         "BYBIT_S_IS_TAKER_SIDE", source_health_ref=HEALTH_REF,
     ) for i in range(1, 31))
     return b.feature(cutoff_ns=cutoff_ns, trades=trades, trade_coverage=coverage)
+
+
+def test_s4_feature_policy_hash_describes_current_binance_sync_contract() -> None:
+    specification = json.dumps(S4_FEATURE_POLICY_SPEC, sort_keys=True)
+    assert "lastUpdateId + 1" not in specification
+    assert "L+1" not in specification
+    assert "u <= lastUpdateId ignored" not in specification
+    assert S4_FEATURE_POLICY_SPEC["gap_action"] == "NOT_ESTIMABLE_UNTIL_FRESH_SNAPSHOT_BRIDGE_AND_WARMUP"
+    assert S4_FEATURE_POLICY_SPEC["binance_snapshot"] == "REST lastUpdateId = L"
+    assert S4_FEATURE_POLICY_SPEC["binance_stale_buffered_events"] == (
+        "discard only buffered events where u < L; u == L remains eligible"
+    )
+    assert S4_FEATURE_POLICY_SPEC["binance_snapshot_bridge"] == "first processed event requires U <= L <= u"
+    assert S4_FEATURE_POLICY_SPEC["binance_subsequent_updates"] == (
+        "require pu == previous accepted u; any mismatch immediately enters GAP_DETECTED, independent of feature warmup"
+    )
+    assert S4_FEATURE_POLICY_SPEC["binance_gap_recovery"] == (
+        "fresh REST snapshot, new valid bridge, then declared S4 warmup"
+    )
+    assert sha256_json({
+        "policy_id": S4_FEATURE_VERSION,
+        "spec": S4_FEATURE_POLICY_SPEC,
+    }) == S4_FEATURE_POLICY_HASH
+    assert S4_FEATURE_POLICY_HASH != "2708c4a7091cb9c8bab75b388371acbaac905db9f229e9e375f656edd7dffcdf"
+    assert qualified_feature().to_dict()["producer_policy_hash"] == S4_FEATURE_POLICY_HASH
 
 
 def test_instrument_identity_is_full_and_venue_specific() -> None:
