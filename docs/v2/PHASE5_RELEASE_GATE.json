@@ -1,0 +1,92 @@
+{
+  "artifact_type": "AtlasV2Phase5ReleaseGate",
+  "content_hash": "7fd6d97e20faf886de8547513587e676afc0a137802d87258ba1dc32a585a691",
+  "payload": {
+    "assisted_enabled": false,
+    "authenticated_recovery_drill": "BLOCKED BY ENVIRONMENT",
+    "binance_protection": "TEST GATE",
+    "binance_testnet_qualification": "UNVERIFIED / TEST GATE",
+    "bybit_testnet_qualification": "UNVERIFIED / TEST GATE",
+    "capital_enabled": false,
+    "dependency_scan": {
+      "hash_locked_offline_validation": "PASS",
+      "pip_audit": "no known vulnerabilities",
+      "pip_check": "PASS",
+      "status": "TESTED"
+    },
+    "desktop_launch": "TESTED; offscreen, no exchange credentials, reconnect state shown",
+    "economics": "NOT ESTIMABLE",
+    "external_writer_fencing": "BLOCKED BY ENVIRONMENT",
+    "full_v1_regression": {
+      "evidence": "complete repository regression: 887 passed, 3 skipped, 0 failed",
+      "status": "TESTED"
+    },
+    "full_v2_regression": {
+      "evidence": "complete repository regression: 887 passed, 3 skipped, 0 failed",
+      "status": "TESTED"
+    },
+    "holdout": {
+      "identity": "aa7e691c14325ec1018df74037d48e8e0ce93de5755decb00d425b1549ede5f9",
+      "population_state": "UNASSIGNED / UNTOUCHED",
+      "viewed": false
+    },
+    "ipc_safety": "TESTED; loopback, private token auth, protocol 2, bounded framing, request correlation, read-only method allowlist",
+    "linux_packaging": {
+      "format": "PyInstaller one-folder",
+      "status": "TESTED",
+      "target": "linux-x86_64",
+      "tree_sha256": "a9c933ea224dc5bdd73d7227d33689e900ca3dfbaed57b6e0a4cc1a6affc5517"
+    },
+    "matured_candidate_opportunities": {
+      "genuinely_known": 0,
+      "synthetic_or_fixture_outcomes_counted": false
+    },
+    "projection_service": "TESTED; separate process; read-only ops.sqlite; version diagnostics visible",
+    "prospective_shadow_minimum": "NOT ESTIMABLE",
+    "public_soak": "BLOCKED BY ENVIRONMENT; no genuine 72-hour continuous artifact",
+    "recovery_engineering": {
+      "covered_contract_tests": 103,
+      "direct_fault_scenarios": 17,
+      "failed": 0,
+      "passed": 17,
+      "status": "TESTED"
+    },
+    "release_classification": "SHADOW_RELEASED",
+    "release_manifest": {
+      "content_hash": "7ff2fb153c4f0d57350c3e611e71e660b8e91fac940fd75c69bd728ee4f6f420",
+      "file_sha256": "9f26f4f73c14f5e70cee3c47df28b8e68f2cc05988b8bce8a9c49ce580a90e69",
+      "path": "docs/v2/SESSION025_RELEASE_MANIFEST.json",
+      "status": "TESTED"
+    },
+    "release_source_git_sha": "1bb7ec4ac0dc0af34b1fdebaea9912e1bf3ddab5",
+    "secret_scan": {
+      "package_credential_values": 0,
+      "package_sensitive_config_files": 0,
+      "status": "TESTED",
+      "tracked_repository_high_confidence_values": 0
+    },
+    "sessions_020_to_024_regression": {
+      "evidence": "included in complete repository regression",
+      "status": "TESTED"
+    },
+    "starting_git_sha": "f7e0cb7de3f7cfcdee51c4d42842f6d06094467f",
+    "v1_golden": {
+      "file_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+      "recomputed": true,
+      "status": "TESTED"
+    },
+    "validation_artifact": {
+      "content_hash": "d29f1a75a61165eeff24d023e77a740ac9fc7c461c7d1f6e1ba1ebfe13934e24",
+      "file_sha256": "730459019f03ac48ee2a3500c738cd1884ea9917ad06c90c21952cd56d549228",
+      "path": "docs/v2/SESSION025_VALIDATION.json",
+      "status": "TESTED"
+    },
+    "windows_packaging": "BLOCKED BY ENVIRONMENT",
+    "worker_failure_drill": {
+      "health_state": "UNAVAILABLE / NOT_REPORTED",
+      "provider_runtime_fault_tests": "TESTED in complete repository suite",
+      "status": "NOT SHIPPED"
+    }
+  },
+  "schema_version": 1
+}

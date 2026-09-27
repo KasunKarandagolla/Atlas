@@ -1,0 +1,164 @@
+{
+  "artifact_type": "AtlasV2Session025Validation",
+  "content_hash": "d29f1a75a61165eeff24d023e77a740ac9fc7c461c7d1f6e1ba1ebfe13934e24",
+  "payload": {
+    "branch": "impl/session-025-v2-release-engineering-shadow-closure",
+    "capital_and_venues": {
+      "assisted_enabled": false,
+      "binance_authenticated_testnet": "UNVERIFIED / TEST GATE",
+      "binance_protection": "TEST GATE",
+      "bybit_authenticated_testnet": "UNVERIFIED / TEST GATE",
+      "capital_enabled": false,
+      "external_writer_fencing": "BLOCKED BY ENVIRONMENT",
+      "live_risk_policy": "NO APPROVED LIVE POLICY; engineering defaults are not safe for live use",
+      "public_fee_filter_margin_data": "not authenticated account evidence"
+    },
+    "environment": {
+      "architecture": "x86_64",
+      "glibc": "2.35",
+      "kernel": "5.15.0-177-generic",
+      "os": "Linux Lite 6.6 (Ubuntu 22.04.5 LTS base)",
+      "package_manager": "uv 0.11.8",
+      "pyinstaller": "6.22.3",
+      "pyqtgraph": "0.14.0",
+      "python": "3.12.13",
+      "qt": "6.11.2"
+    },
+    "frozen_identity_check": {
+      "evidence_matrix_and_holdout": "accepted identities preserved and checked by complete suite",
+      "recomputed_policy_hashes": 16,
+      "result": "PASS"
+    },
+    "operations_and_economic_evidence": {
+      "discovery_promotion_state": "INTEGRATED; not DECISION_ELIGIBLE",
+      "economics": "NOT ESTIMABLE",
+      "genuine_matured_candidate_opportunities_known": 0,
+      "holdout_identity": "aa7e691c14325ec1018df74037d48e8e0ce93de5755decb00d425b1549ede5f9",
+      "holdout_population_state": "UNASSIGNED / UNTOUCHED",
+      "holdout_viewed": false,
+      "prospective_shadow_minimum": "NOT ESTIMABLE; no accepted prospective artifact establishes the eight-week/200-matured-opportunity floor",
+      "public_72_hour_soak": "BLOCKED BY ENVIRONMENT; no genuine completed continuous artifact supplied"
+    },
+    "packaging": {
+      "build_command": ".venv/bin/pyinstaller --noconfirm --clean atlas-desktop.spec",
+      "build_result": "PASS",
+      "build_warnings": [
+        "Optional pyqtgraph.opengl submodule was not collected because PyOpenGL is absent; release desktop uses the 2D chart view and offscreen launch passed.",
+        "PyInstaller logged an unresolved optional scipy.special._cdflib hidden import; no required desktop or projection code path uses it in the package smoke."
+      ],
+      "bundle": {
+        "executables": [
+          "atlas-desktop",
+          "atlas-v2-projection"
+        ],
+        "file_count": 1190,
+        "format": "sorted relative-path/size/per-file-SHA256 tree digest",
+        "logical_total_bytes": 788170494,
+        "path": "dist/atlas-desktop",
+        "runtime_smoke": "PASS: authenticated loopback IPC, separate processes, offscreen launch, projection snapshot, unavailable-service reconnect, unchanged ops.sqlite hash, capital disabled, no exchange credential environment passed",
+        "target": "Linux x86_64 PyInstaller one-folder bundle",
+        "tree_sha256": "a9c933ea224dc5bdd73d7227d33689e900ca3dfbaed57b6e0a4cc1a6affc5517"
+      },
+      "database_integrity": "PASS; ops.sqlite SHA-256 unchanged across packaged projection/desktop run",
+      "desktop_projection_launch_smoke": "PASS; no exchange credentials were passed to either process",
+      "desktop_runtime_contract": "offscreen GUI launch; service connection; source snapshot; explicit missing-service reconnect state; observer only",
+      "linux_x86_64": "TESTED",
+      "nautilus_bundled_in_desktop": false,
+      "projection_runtime_contract": "separate process; read-only ops.sqlite; authenticated loopback only; protocol 2; 1,000,000-byte frame cap; strict eight-method read-only allowlist; no order API; no live-control database access",
+      "windows": "BLOCKED BY ENVIRONMENT"
+    },
+    "phase5_classification": "SHADOW_RELEASED",
+    "recovery_drill": {
+      "additional_recovery_contracts": "103 focused release/recovery tests passed; journal reopen, UNKNOWN command and reservation retention, protection, contradictory evidence, flat certificate, V2 authority invalidation on writer/runtime/recovery identity changes, and clean desktop-unavailable state are covered",
+      "authenticated_exchange_recovery": "BLOCKED BY ENVIRONMENT",
+      "direct_fault_harness": "TESTED",
+      "failed": 0,
+      "fault_types": [
+        "amendment_cancel_fill_race",
+        "approval_replay",
+        "crash_after_commit_before_transport",
+        "definite_reject",
+        "duplicate_reordered_execution",
+        "exit_unresolved",
+        "funding_fee_dedup",
+        "incomplete_paginated_rest",
+        "kill_after_first_fill",
+        "kill_after_full_fill",
+        "late_entry_fill_during_cancel",
+        "lost_response_after_accept",
+        "partial_fills",
+        "persistence_clock_fault",
+        "private_disconnect_reconcile",
+        "residual_orders_zero_position",
+        "restore_unresolved_command"
+      ],
+      "passed": 17,
+      "scenario_count": 17,
+      "separate_worker_process": "NOT SHIPPED; model-worker health reports UNAVAILABLE/NOT_REPORTED; provider isolation/runtime fault tests are in the full regression"
+    },
+    "regression": {
+      "authenticated_exchange_recovery": "BLOCKED BY ENVIRONMENT",
+      "complete_repository_command": "PYTHONPATH=src .venv/bin/python -m pytest -o addopts='' -q --tb=no --junitxml=/tmp/atlas_session025_junit.xml",
+      "complete_repository_result": {
+        "duration_seconds": 1923.03,
+        "exit_code": 0,
+        "failed": 0,
+        "passed": 887,
+        "skipped": 3
+      },
+      "focused_release_desktop_recovery_command": ".venv/bin/python -m pytest -o addopts='' -q --tb=short tests/contract/test_v1_golden_baseline.py tests/v2/test_session025_release.py tests/v2/test_session020_desktop_ipc.py tests/runtime/test_fault_injection.py tests/runtime/test_recovery_gate.py tests/persistence/test_recovery_persistence.py tests/runtime/test_flat_certificate.py tests/runtime/test_flat_contradiction.py tests/runtime/test_phase4_v2_capital_authority.py tests/runtime/test_phase4_authority_boundary.py tests/runtime/test_safe_runtime.py tests/runtime/test_protection_evidence_v5.py tests/runtime/test_assisted_control_protection.py tests/runtime/test_assisted_control_revalidation.py",
+      "focused_result": {
+        "duration_seconds": 95.07,
+        "exit_code": 0,
+        "failed": 0,
+        "passed": 103,
+        "skipped": 1
+      },
+      "full_v1_regression": "TESTED as part of the complete repository suite",
+      "full_v2_regression": "TESTED as part of the complete repository suite",
+      "github_ci_run_claimed": false,
+      "recovery_engineering": "TESTED",
+      "sessions_020_to_024_regression": "TESTED as part of the complete repository suite",
+      "skips": [
+        "Bybit authenticated testnet qualification is opt-in; credentials absent",
+        "Binance authenticated testnet qualification is opt-in; credentials absent",
+        "Public testnet connectivity is opt-in; not required for local regression"
+      ],
+      "v1_golden_recomputation": "TESTED; standalone contract test passed"
+    },
+    "release_source_git_sha": "1bb7ec4ac0dc0af34b1fdebaea9912e1bf3ddab5",
+    "security": {
+      "actual_authenticated_account_evidence": "absent",
+      "exchange_credentials_in_public_shadow_desktop": false,
+      "package_scan": {
+        "complete_pem_private_key_blocks": 0,
+        "credential_value_matches": 0,
+        "file_count": 1190,
+        "logical_total_bytes": 788170494,
+        "parser_marker_review": "expected PEM parsing marker strings in bundled Qt TLS/OpenSSL code; no private-key payload",
+        "sensitive_config_filenames": 0,
+        "tls_parser_marker_strings": 2,
+        "tree_sha256": "a9c933ea224dc5bdd73d7227d33689e900ca3dfbaed57b6e0a4cc1a6affc5517"
+      },
+      "tracked_repository_scan": "PASS; final staged release scan reports zero high-confidence credential values and no .env/private config files"
+    },
+    "session": 25,
+    "starting_git_sha": "f7e0cb7de3f7cfcdee51c4d42842f6d06094467f",
+    "static_and_dependency_checks": {
+      "compileall": "PASS: .venv/bin/python -m compileall -q src tests",
+      "dependency_files_changed": false,
+      "dependency_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "dependency_vulnerability_scan": "PASS: uvx --from pip-audit pip-audit --requirement requirements-lock.txt; no known vulnerabilities",
+      "git_diff_check": "PASS",
+      "hash_locked_offline_validation": "PASS: pip dry-run with --no-index --require-hashes against requirements-lock.txt; no package changes",
+      "mypy": "PASS: .venv/bin/python -m mypy src tests; 320 source files",
+      "pip_check": "PASS: No broken requirements found",
+      "ruff": "PASS: .venv/bin/ruff check .",
+      "secret_scanner_tools": {
+        "gitleaks": "not installed",
+        "trufflehog": "not installed"
+      }
+    }
+  },
+  "schema_version": 1
+}

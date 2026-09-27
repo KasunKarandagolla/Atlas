@@ -1,0 +1,213 @@
+{
+  "artifact_type": "AtlasV2ReleaseManifest",
+  "content_hash": "7ff2fb153c4f0d57350c3e611e71e660b8e91fac940fd75c69bd728ee4f6f420",
+  "payload": {
+    "accepted_session024_sha": "f7e0cb7de3f7cfcdee51c4d42842f6d06094467f",
+    "analogue_hash": "9b6312e42b28649877ce3f62b593b14cc769572987053abeca5b55f28b6934bf",
+    "analogue_identity": {
+      "policy_hash": "9b6312e42b28649877ce3f62b593b14cc769572987053abeca5b55f28b6934bf",
+      "result_version": "ANALOGUE_ACTION_VALUE_V2_V2",
+      "support_version": "ANALOGUE_SUPPORT_V2_V1",
+      "version": "2.0.0-research"
+    },
+    "assisted_enabled": false,
+    "build_reproducibility": {
+      "artifact_file_count": 1190,
+      "artifact_logical_bytes": 788170494,
+      "artifact_path": "dist/atlas-desktop",
+      "artifact_tree_sha256": "a9c933ea224dc5bdd73d7227d33689e900ca3dfbaed57b6e0a4cc1a6affc5517",
+      "build_command": ".venv/bin/pyinstaller --noconfirm --clean atlas-desktop.spec",
+      "os": "Linux Lite 6.6 / Ubuntu 22.04.5 LTS base, x86_64, glibc 2.35",
+      "package_manager": "uv 0.11.8",
+      "pyinstaller_version": "6.22.3",
+      "python": "3.12.13",
+      "windows": "BLOCKED BY ENVIRONMENT; native Windows build/runtime not exercised"
+    },
+    "capital_enabled": false,
+    "dependency_lock": {
+      "package_manager": "uv 0.11.8",
+      "path": "requirements-lock.txt",
+      "sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b"
+    },
+    "desktop_projection_schema_version": 2,
+    "desktop_projection_version": "ATLAS_DESKTOP_PROJECTION_V2",
+    "discovery_hash": "846fd322e5d0a8d91a4ae659771f7e37f26bcff384508a5895f154a93b0cfac3",
+    "discovery_identity": {
+      "attempt_version": "DISCOVERY_ATTEMPT_V2_V2",
+      "experiment_version": "DISCOVERY_EXPERIMENT_V2_V2",
+      "holdout_population_version": "DISCOVERY_HOLDOUT_POPULATION_V2_V1",
+      "lab_hash": "846fd322e5d0a8d91a4ae659771f7e37f26bcff384508a5895f154a93b0cfac3",
+      "lab_version": "BOUNDED_DISCOVERY_LAB_V2_V3"
+    },
+    "economic_evidence_status": {
+      "dependence_aware_interpretation": "NOT ESTABLISHED",
+      "genuine_matured_opportunities_known": 0,
+      "minimum_matured_opportunities": 200,
+      "minimum_weeks": 8,
+      "prospective_shadow_minimum": "NOT ESTIMABLE",
+      "regime_coverage": "NOT ESTABLISHED",
+      "status": "NOT ESTIMABLE"
+    },
+    "evidence_matrix_hash": "294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81",
+    "evidence_matrix_identity": {
+      "hash": "294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81",
+      "version": "EVIDENCE_CAPABILITY_MATRIX_V2_4"
+    },
+    "frozen_policy_hashes": {
+      "ANALOGUE": "9b6312e42b28649877ce3f62b593b14cc769572987053abeca5b55f28b6934bf",
+      "DISCOVERY": "846fd322e5d0a8d91a4ae659771f7e37f26bcff384508a5895f154a93b0cfac3",
+      "EVIDENCE_MATRIX": "294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81",
+      "M0_BASELINE_POLICY_REF": "102681d12c5c592b9a258f7a453e9fa441f649e952772afb9a9df5bb9673a3ff",
+      "M1_FEATURES": "b608c93873df82168c4d922b5d18b976efdc94a07c84159d75d1258aaa428f28",
+      "M1_POLICY": "7ec4703f20ec9e3e2bf58c5a785f1ef179a22c3f8382b1c059679ee6306bc57f",
+      "MULTI_SLEEVE_RESEARCH_SELECTOR": "37355c64d45a67bdce3a271a63db377b953c05847561bcda33847c27cecb0dac",
+      "S1": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+      "S1_S2_SELECTOR": "36f8fd58c9e791ea580a1855f9e98555131e0828604d484eda3df4c7d5529cac",
+      "S2": "fbcdacd8ec6a79ea2595fa367d220b55b1d84c326ec3a28d787d23f356062dcd",
+      "S3": "b6a6ef283a5ca0b4dcbcb730b03adff92fb62c76c55fc66ef9268c906d8c62b6",
+      "S4_ABSORPTION": "fcd2e5b0f3643de92df8fb73e16ca924b3570b92285cc72eebb76ac03c964614",
+      "S4_EXECUTION_CONTEXT": "dae5c5519eb2d5c204607ca8e81f06fdc9b32ed07f69b6460b3fc6d46ccf995a",
+      "S4_FEATURE": "327c816792290ceaf64ef6dd6b6e90e0382c04782e1dc7d9ca5895ce7f2ae146",
+      "S5_CONTINUATION": "47c48f9d347957a3175523f7753531dbba5098c1c0cde7301200d4bb813f2fd2",
+      "S5_CROWDING_CONTEXT": "8b29caee27d91d4ecc13b51cd605d13d83bbfca22de0789925adbef1a07e23d7",
+      "S5_REVERSAL": "6e11389f7c06406acb8a8207d057f8b17edc56e4a9e619322fb64f5b083cf8c8",
+      "S6": "a2497ebad6307bd7c44155599b317119ba6cbfb4ee60da49226974ea23adffd3",
+      "S8_PROFILE": "c118b1e3f6732cf8897efc4c08a2d21eef50cec63b78d5bb40787f9fa5b0f7fe"
+    },
+    "git_sha": "1bb7ec4ac0dc0af34b1fdebaea9912e1bf3ddab5",
+    "holdout": {
+      "contract_version": "DISCOVERY_HOLDOUT_POPULATION_V2_V1",
+      "discovery_promotion_state": "INTEGRATED; not DECISION_ELIGIBLE",
+      "population_identity": "aa7e691c14325ec1018df74037d48e8e0ce93de5755decb00d425b1549ede5f9",
+      "population_state": "UNASSIGNED / UNTOUCHED",
+      "prospective_future_evidence_sufficient": false,
+      "viewed": false
+    },
+    "ipc_protocol_version": 2,
+    "live_authority": {
+      "authority_owner": "V1 live-control writer / SafeRuntime only",
+      "contract": "V2_CAPITAL_AUTHORITY_ATTESTATION_V1",
+      "contract_hash": "94d59964c503a88a13d1fd05d7f02554153e7bb74ac73e7dc4cb93c4a8b645da",
+      "extension_version": 2
+    },
+    "m0_identity": {
+      "baseline_policy_ref": "102681d12c5c592b9a258f7a453e9fa441f649e952772afb9a9df5bb9673a3ff",
+      "configuration": "M0_FIXED_HUBER_RIDGE_CONFIG_V2",
+      "economic_status": "NOT ESTIMABLE",
+      "feature_schema": "M0_ACTION_VALUE_FEATURES_V1",
+      "model_version": "M0_HUBER_RIDGE_ACTION_VALUE_V1",
+      "oof_archive": "M0_CHRONOLOGICAL_OOF_RESIDUAL_ARCHIVE_V2"
+    },
+    "m1_identity": {
+      "authority": "offline research challenger; no voting or capital authority",
+      "feature_policy_hash": "b608c93873df82168c4d922b5d18b976efdc94a07c84159d75d1258aaa428f28",
+      "lightgbm_distribution_version": "4.7.0",
+      "model": "M1_LIGHTGBM_ACTION_VALUE_V1",
+      "policy_hash": "7ec4703f20ec9e3e2bf58c5a785f1ef179a22c3f8382b1c059679ee6306bc57f",
+      "policy_version": "1.0.0-offline-research"
+    },
+    "nautilus_identity": {
+      "bundled_in_desktop_projection": false,
+      "distribution": "nautilus-trader",
+      "installed_binance_adapter_stub_sha256": "f9dc108e1a772abb74a7517b65d474f59705afa070302e527596088e3cc01d1f",
+      "installed_bybit_adapter_stub_sha256": "7e12c3cfafbd6821b899464f1be0995d21976d5cc43dfe95701e87e3c4c2a83b",
+      "installed_core_extension_sha256": "a53dd5a24fe77f4c66169af84ee9c7e292018010922e3dce9a8b6c9f7f3b7021",
+      "pinned_wheel_filename": "nautilus_trader-2.0.0rc5-cp312-cp312-manylinux_2_34_x86_64.whl",
+      "pinned_wheel_sha256": "eab45fafd2312deda1236554c49a9798bfc76bc8465af864878e2f70189ebebe",
+      "raw_wheel_retained": false,
+      "raw_wheel_retention_status": "BLOCKED BY ENVIRONMENT",
+      "source_commit": "1b0a49d2792a9432a3aca3fcb617ce7a630d905e",
+      "version": "2.0.0rc5"
+    },
+    "packaging_targets_tested": [
+      {
+        "artifact_tree_sha256": "a9c933ea224dc5bdd73d7227d33689e900ca3dfbaed57b6e0a4cc1a6affc5517",
+        "format": "PyInstaller one-folder",
+        "status": "TESTED",
+        "target": "linux-x86_64"
+      }
+    ],
+    "phase2_gate_ref": {
+      "path": "docs/handoffs/session-020.md",
+      "sha256": "0007d218e6f18761cb54d35830d67fdc5906899dd3e3f0b370fe1cba77995ff5",
+      "status": "TESTED"
+    },
+    "phase3_gate_ref": {
+      "content_hash": "f05ce110367b4f6d6b22e6c8231e4b22fb71d9906f4899c83d4bd035ae8ef59f",
+      "path": "docs/v2/PHASE3_ENGINEERING_GATE.json",
+      "sha256": "bb9c283aeddf66231cd770de07833a1f88579b6c431fe015e44f3190678b1a1d",
+      "status": "TESTED"
+    },
+    "phase4_gate_ref": {
+      "path": "docs/v2/PHASE4_VENUE_CAPITAL_GATE.json",
+      "sha256": "8767a913b4fa747b1cf68e6f5d35bcaf0d82cb628a2b8a8f947ced5027108446",
+      "status": "TESTED engineering / external qualification blocked"
+    },
+    "public_data_archive_schemas": {
+      "causal_bar_contract": "CausalBarV2",
+      "microstructure_chunk_index": 1,
+      "ops_sqlite": 1,
+      "public_source_health": 1,
+      "raw_observation": 1,
+      "subscription_plan": 1
+    },
+    "python": {
+      "implementation": "CPython",
+      "version": "3.12.13"
+    },
+    "release_classification": "SHADOW_RELEASED",
+    "release_version": "2.0.0.dev25",
+    "risk_policy_status": {
+      "capital_enabled": false,
+      "engineering_default_status": "ENGINEERING_DEFAULTS_ONLY_NOT_SAFE_FOR_LIVE",
+      "live_status": "NO APPROVED LIVE RISK POLICY"
+    },
+    "selector_hash": "36f8fd58c9e791ea580a1855f9e98555131e0828604d484eda3df4c7d5529cac",
+    "strategy_contract_versions": {
+      "S1": "1.0.0-shadow",
+      "S2": "1.0.0-shadow",
+      "S3": "1.0.0-shadow-research",
+      "S4_ABSORPTION": "S4_ABSORPTION_SHADOW_V1",
+      "S4_EXECUTION_CONTEXT": "S4_EXECUTION_QUALITY_CONTEXT_V1",
+      "S4_FEATURE": "S4_MICROSTRUCTURE_FEATURE_V1",
+      "S5_CONTINUATION": "S5_DELEVERAGING_CONTINUATION_SHADOW_V1",
+      "S5_CROWDING_CONTEXT": "S5_CROWDING_CONTEXT_V1",
+      "S5_REVERSAL": "S5_POST_CASCADE_REVERSAL_SHADOW_V1",
+      "S6": "1.0.0-shadow-research",
+      "S7": {
+        "alert": "EVENT_ALERT_V2_1",
+        "directional_reaction": "S7_DIRECTIONAL_REACTION_V1",
+        "event_safety_gate": "EVENT_SAFETY_GATE_V2_1",
+        "pipeline": "S7_EVENT_PIPELINE_V2_1"
+      },
+      "S8": {
+        "basket": "RESEARCH_BASKET_FORECAST_V2_V1",
+        "simulation": "S8_BASKET_SIMULATION_V2_V1"
+      },
+      "m0": "M0_HUBER_RIDGE_ACTION_VALUE_V1",
+      "m1": "M1_LIGHTGBM_ACTION_VALUE_V1",
+      "selector": "S1_S2_SCANNER_RANK_V1"
+    },
+    "v1_baseline_sha": "146bae0a2f10e2f794cbed3441123071c55a2baf",
+    "v1_golden_hash": {
+      "path": "docs/v2/V1_GOLDEN_BASELINE.json",
+      "sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251"
+    },
+    "v2_schema_versions": {
+      "desktop_projection": 2,
+      "live_authority_extension": 2,
+      "ops_sqlite": 1,
+      "v1_authority_schema": 6
+    },
+    "venue_qualification_status": {
+      "authenticated_account_evidence_refs": [],
+      "binance_protection": "TEST GATE",
+      "binance_testnet": "UNVERIFIED / TEST GATE",
+      "bybit_testnet": "UNVERIFIED / TEST GATE",
+      "cross_host_writer_fencing": "BLOCKED BY ENVIRONMENT",
+      "installed_nautilus_adapter_evidence": "pinned rc5 distribution and local artifact hashes recorded above",
+      "public_documentation_metadata": "documentation/adapter evidence only; not account qualification"
+    }
+  },
+  "schema_version": 1
+}
