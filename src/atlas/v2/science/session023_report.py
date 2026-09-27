@@ -19,10 +19,15 @@ from atlas.v2.science.audits import (
     persist_research_artifact,
 )
 from atlas.v2.science.discovery import (
+    DECISION_CALENDAR_POPULATION_V1,
+    DECISION_EVENT_IDENTITY_RULES_V1,
+    FINAL_HOLDOUT_ASSIGNMENT_RULE,
     DiscoveryAttemptV2,
     DiscoveryExperimentV2,
+    DiscoveryHoldoutPopulationV2,
     audit_discovery_multiplicity,
     discovery_attempt_ledger,
+    index_discovery_holdout_population,
     register_discovery_attempt,
     register_discovery_experiment,
 )
@@ -42,10 +47,14 @@ def build_session023_research_report(repo: OpsRepository, *, preregistered_at_ns
     baseline_body = {"version": "SESSION023_M0_REQUIRED_BASELINE_V1", "model_version": M0_MODEL_VERSION,
         "selection_policy": "S1_S2_SCANNER_RANK_V1", "capital_authority": "ZERO"}
     baseline = persist_research_artifact(repo, "ResearchBaselinePolicyV2", baseline_body, available_at_ns=at)
-    holdout_body = {"version": "SESSION023_FRESH_FUTURE_HOLDOUT_IDENTITY_V1", "state": "UNTOUCHED",
-        "population": "FINAL_CHRONOLOGICAL_30D_AFTER_THREE_REQUIRED_OUTER_WINDOWS",
-        "evidence_available": False, "preregistered_at_ns": at}
-    holdout = persist_research_artifact(repo, "UntouchedHoldoutIdentityV2", holdout_body, available_at_ns=at)
+    chronology = "180D_TRAIN_30D_INNER_30D_OUTER_MONTHLY_ADVANCE_THREE_OUTER_FINAL_30D_UNTOUCHED"
+    population = DiscoveryHoldoutPopulationV2("SESSION023_PHASE3_FAMILY_FINAL_30D", 1,
+        "SESSION023_OFFLINE_FAMILY_V1", "SESSION023_PHASE3_FAMILY_V1", chronology,
+        FINAL_HOLDOUT_ASSIGNMENT_RULE, "NOT_ESTIMABLE", None, None, DECISION_CALENDAR_POPULATION_V1,
+        (("*", "*", "*"),), DECISION_EVENT_IDENTITY_RULES_V1, None, at, None)
+    holdout = index_discovery_holdout_population(repo, population)
+    holdout_body = {"state": "UNTOUCHED", "population_ref": holdout, "population": population.to_dict(),
+        "reason": "NOT_ESTIMABLE_FINAL_HOLDOUT_POPULATION_UNASSIGNED"}
     specifications = [(f"M1_CONFIG_{index + 1}", "M1_LIGHTGBM_FIXED_GRID", {"model_policy_hash": M1_POLICY_HASH,
         "parameters": dict(parameters)}) for index, parameters in enumerate(M1_PARAMETER_GRID)]
     specifications += [("ANALOGUE", "CAUSAL_ANALOGUE_FIXED_RETRIEVAL", {"policy_hash": ANALOGUE_POLICY_HASH}),
@@ -57,7 +66,7 @@ def build_session023_research_report(repo: OpsRepository, *, preregistered_at_ns
         "FROZEN_ACTION_CHALLENGERS_AND_WHOLE_POLICY_ABLATIONS", tuple(sorted(ABLATION_FAMILIES)),
         ("CUTOFF_AVAILABLE_HASH_BOUND", "HONEST_MATURED_EXACT_ACTION_LABELS", "NO_FABRICATED_EXECUTION"),
         len(specifications), len(specifications), baseline, ("calibration", "compute_latency", "whole_policy_net_value"),
-        "180D_TRAIN_30D_INNER_30D_OUTER_MONTHLY_ADVANCE_THREE_OUTER_FINAL_30D_UNTOUCHED",
+        chronology,
         "PURGE_OVERLAPPING_LABELS_EMBARGO_AT_LEAST_MAX_HOLDING_HORIZON", "SESSION023_PHASE3_FAMILY_V1",
         "STOP_AT_17_PROPOSALS_OR_OPERATIONAL_FAILURE_REDESIGN_AFTER_HOLDOUT_NEEDS_FRESH_FUTURE_EVIDENCE",
         holdout, "UNTOUCHED", True, at)

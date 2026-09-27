@@ -10,10 +10,11 @@ from typing import Any
 from atlas.v2._serialization import FrozenMap, canonical_json, sha256_json, sha256_ref
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 
-DISCOVERY_LAB_VERSION = "BOUNDED_DISCOVERY_LAB_V2_V2"
-DISCOVERY_EXPERIMENT_VERSION = "DISCOVERY_EXPERIMENT_V2_V1"
-DISCOVERY_ATTEMPT_VERSION = "DISCOVERY_ATTEMPT_V2_V1"
-HOLDOUT_STATE_VERSION = "DISCOVERY_HOLDOUT_STATE_V2_V2"
+DISCOVERY_LAB_VERSION = "BOUNDED_DISCOVERY_LAB_V2_V3"
+DISCOVERY_EXPERIMENT_VERSION = "DISCOVERY_EXPERIMENT_V2_V2"
+DISCOVERY_ATTEMPT_VERSION = "DISCOVERY_ATTEMPT_V2_V2"
+DISCOVERY_HOLDOUT_POPULATION_VERSION = "DISCOVERY_HOLDOUT_POPULATION_V2_V1"
+HOLDOUT_STATE_VERSION = "DISCOVERY_HOLDOUT_STATE_V2_V3"
 PROPOSER_TYPES = frozenset({"HUMAN", "OFFLINE_LLM_ADAPTER", "MECHANICAL_ABLATION", "RESEARCH_SCRIPT"})
 ATTEMPT_STATES = frozenset({"PROPOSED", "STARTED", "COMPLETED", "FAILED", "ABANDONED"})
 PROPOSAL_OPERATIONS = frozenset({"M1_LIGHTGBM_FIXED_GRID", "CAUSAL_ANALOGUE_FIXED_RETRIEVAL",
@@ -25,13 +26,184 @@ DISCOVERY_LAB_BODY = {
     "ai_proposal_boundary": {"schema_constrained_hypotheses_only": True, "credentials": False,
         "exchange_or_order_tools": False, "live_risk_mutation": False,
         "capital_authority": False, "self_promotion": False},
-    "holdout": "LINEAGE_INSPECTED_EXPLICIT_VIEW_SPENDS_HOLDOUT_AND_REQUIRES_FRESH_FUTURE_EVIDENCE",
+    "holdout": "IMMUTABLE_VERSIONED_POPULATION_CLASSIFICATION_FROM_VALIDATED_DECISION_EVIDENCE_EXPLICIT_VIEW_SPENDS",
+    "holdout_population_contract": {
+        "version": "DISCOVERY_HOLDOUT_POPULATION_V2_V1",
+        "assignment_rule": "FINAL_30D_AFTER_THREE_REQUIRED_OUTER_WINDOWS_V1",
+        "classification": "HALF_OPEN_DECISION_TIME_START_INCLUSIVE_END_EXCLUSIVE",
+        "population": "ALL_PREREGISTERED_WHOLE_POLICY_FAMILY_DECISIONS_V1",
+        "decision_identity": "VALIDATED_MATURED_OUTCOME_DECISION_REF_CANDIDATE_SET_REF_V1",
+        "assignment_source": "IMMUTABLE_CUTOFF_KNOWN_TYPED_EVIDENCE_REVISION",
+        "unassigned_behavior": "NOT_ESTIMABLE_NO_BOUNDARY_GUESSING",
+    },
     "attempt_ledger": "APPEND_ONLY_INCLUDING_FAILURES_AND_REJECTED_VALIDATION_ATTEMPTS",
     "proposal_operations": sorted(PROPOSAL_OPERATIONS),
     "executable_spec_version": "EXACT_EXECUTABLE_RESEARCH_SPEC_V1",
     "evaluation": "OPERATION_TYPED_MATURED_EVIDENCE_DETERMINISTIC_CHRONOLOGY_PURGE_EMBARGO_AND_CUTOFF",
 }
 DISCOVERY_LAB_HASH = sha256_json(DISCOVERY_LAB_BODY)
+
+FINAL_HOLDOUT_ASSIGNMENT_RULE = "FINAL_30D_AFTER_THREE_REQUIRED_OUTER_WINDOWS_V1"
+DECISION_CALENDAR_POPULATION_V1 = "ALL_PREREGISTERED_WHOLE_POLICY_FAMILY_DECISIONS_V1"
+DECISION_EVENT_IDENTITY_RULES_V1 = "VALIDATED_MATURED_OUTCOME_DECISION_REF_CANDIDATE_SET_REF_V1"
+HOLDOUT_POPULATION_UNASSIGNED_REASON = "NOT_ESTIMABLE_FINAL_HOLDOUT_POPULATION_UNASSIGNED"
+
+
+@dataclass(frozen=True)
+class DiscoveryHoldoutPopulationV2:
+    """Immutable half-open decision-time assignment for a final holdout population."""
+
+    population_id: str
+    population_version: int
+    experiment_id: str
+    family_id: str
+    chronology_version: str
+    assignment_rule: str
+    assignment_status: str
+    final_holdout_start_ns: int | None
+    final_holdout_end_ns: int | None
+    decision_calendar_population: str
+    venue_product_policy_universe: tuple[tuple[str, str, str], ...]
+    decision_event_identity_rules: str
+    source_evidence_revision_ref: str | None
+    preregistered_at_ns: int
+    assignment_available_at_ns: int | None
+
+    def __post_init__(self) -> None:
+        for name in ("population_id", "experiment_id", "family_id", "chronology_version", "assignment_rule",
+                "decision_calendar_population", "decision_event_identity_rules"):
+            if not getattr(self, name).strip():
+                raise ValueError(f"holdout population {name} is required")
+        if self.population_version < 1 or self.preregistered_at_ns < 0:
+            raise ValueError("holdout population version/preregistration time is invalid")
+        if self.assignment_status not in {"ASSIGNED", "NOT_ESTIMABLE"}:
+            raise ValueError("holdout population assignment status is invalid")
+        if self.assignment_rule != FINAL_HOLDOUT_ASSIGNMENT_RULE:
+            raise ValueError("holdout population must preserve the preregistered final-window assignment rule")
+        if self.decision_calendar_population != DECISION_CALENDAR_POPULATION_V1:
+            raise ValueError("holdout population decision-calendar definition is unsupported")
+        if self.decision_event_identity_rules != DECISION_EVENT_IDENTITY_RULES_V1:
+            raise ValueError("holdout population decision/event identity rules are unsupported")
+        universe = tuple(tuple(item) for item in self.venue_product_policy_universe)
+        if (not universe or any(len(item) != 3 or any(not part.strip() for part in item) for item in universe)
+                or tuple(sorted(set(universe))) != universe):
+            raise ValueError("holdout population universe must be non-empty, sorted and unique triples")
+        object.__setattr__(self, "venue_product_policy_universe", universe)
+        if self.assignment_status == "NOT_ESTIMABLE":
+            if (self.final_holdout_start_ns is not None or self.final_holdout_end_ns is not None
+                    or self.source_evidence_revision_ref is not None or self.assignment_available_at_ns is not None):
+                raise ValueError("unassigned final holdout must not invent dates or source evidence")
+        else:
+            if (type(self.final_holdout_start_ns) is not int or type(self.final_holdout_end_ns) is not int
+                    or self.final_holdout_start_ns < 0 or self.final_holdout_end_ns <= self.final_holdout_start_ns
+                    or self.source_evidence_revision_ref is None
+                    or type(self.assignment_available_at_ns) is not int
+                    or self.assignment_available_at_ns < self.preregistered_at_ns
+                    or self.assignment_available_at_ns > self.final_holdout_start_ns):
+                raise ValueError("assigned final holdout requires a known half-open interval and cutoff-known source")
+            sha256_ref(self.source_evidence_revision_ref, field="source_evidence_revision_ref")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": DISCOVERY_HOLDOUT_POPULATION_VERSION, **{
+            name: [list(item) for item in value] if name == "venue_product_policy_universe" else value
+            for name, value in self.__dict__.items()}}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> DiscoveryHoldoutPopulationV2:
+        expected = {"version", *cls.__dataclass_fields__}
+        if set(data) != expected or data.get("version") != DISCOVERY_HOLDOUT_POPULATION_VERSION:
+            raise ValueError("typed DiscoveryHoldoutPopulationV2 contract is malformed")
+        values = {name: data[name] for name in cls.__dataclass_fields__}
+        values["venue_product_policy_universe"] = tuple(tuple(row) for row in values["venue_product_policy_universe"])
+        population = cls(**values)
+        if population.content_hash != sha256_json(data):
+            raise ValueError("DiscoveryHoldoutPopulationV2 content hash mismatch")
+        return population
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+
+def index_discovery_holdout_population(repo: OpsRepository, population: DiscoveryHoldoutPopulationV2) -> str:
+    """Index an immutable population assignment; an assigned boundary needs an indexed source revision."""
+    for entry in repo.artifact_entries("DiscoveryHoldoutPopulationV2"):
+        raw = entry.metadata.get("population")
+        if (isinstance(raw, Mapping) and raw.get("population_id") == population.population_id
+                and raw.get("population_version") == population.population_version
+                and entry.content_hash != population.content_hash):
+            raise ValueError("holdout population version is immutable and cannot be revised")
+    if population.assignment_status == "ASSIGNED":
+        source = repo.get_artifact(str(population.source_evidence_revision_ref))
+        evidence = source.metadata.get("assignment_evidence") if source is not None else None
+        expected_evidence = {
+            "version": "DISCOVERY_HOLDOUT_ASSIGNMENT_EVIDENCE_V1",
+            "population_id": population.population_id,
+            "population_version": population.population_version,
+            "experiment_id": population.experiment_id,
+            "family_id": population.family_id,
+            "chronology_version": population.chronology_version,
+            "assignment_rule": population.assignment_rule,
+            "final_holdout_start_ns": population.final_holdout_start_ns,
+            "final_holdout_end_ns": population.final_holdout_end_ns,
+            "decision_calendar_population": population.decision_calendar_population,
+            "venue_product_policy_universe": [list(row) for row in population.venue_product_policy_universe],
+            "decision_event_identity_rules": population.decision_event_identity_rules,
+            "assignment_available_at_ns": population.assignment_available_at_ns,
+        }
+        if (source is None or source.artifact_type != "DiscoveryHoldoutAssignmentEvidenceV2"
+                or source.content_hash != population.source_evidence_revision_ref
+                or source.available_at_ns > int(population.assignment_available_at_ns or 0)
+                or not isinstance(evidence, Mapping) or canonical_json(evidence) != canonical_json(expected_evidence)
+                or sha256_json(evidence) != population.source_evidence_revision_ref):
+            raise ValueError("assigned holdout population requires its exact cutoff-known source/evidence revision")
+    for entry in repo.artifact_entries("DiscoveryHoldoutPopulationV2"):
+        raw = entry.metadata.get("population")
+        if not isinstance(raw, Mapping):
+            continue
+        if raw.get("population_id") == population.population_id:
+            if raw.get("population_version") == population.population_version:
+                if entry.content_hash != population.content_hash:
+                    raise ValueError("holdout population version is immutable and cannot be revised")
+                return population.content_hash
+            if int(raw.get("population_version", 0)) >= population.population_version:
+                raise ValueError("holdout population versions are append-only")
+            old_ref = entry.content_hash
+            old = DiscoveryHoldoutPopulationV2.from_dict(raw)
+            used = any(
+                isinstance((attempt := artifact.metadata.get("attempt")), Mapping)
+                and attempt.get("holdout_ref") == old_ref
+                and bool(attempt.get("training_refs") or attempt.get("validation_refs") or attempt.get("outer_refs"))
+                for artifact in (*repo.artifact_entries("DiscoveryAttemptV2"),
+                    *repo.artifact_entries("DiscoveryRejectedAttemptV2")))
+            spent = any(
+                isinstance((state := artifact.metadata.get("holdout_state")), Mapping)
+                and state.get("holdout_ref") == old_ref and state.get("state") == "SPENT"
+                for artifact in repo.artifact_entries("DiscoveryHoldoutStateV2"))
+            if (old.assignment_status == "ASSIGNED" and used) or spent:
+                raise ValueError("a classified or spent holdout population cannot be revised")
+            old_start, old_end = old.final_holdout_start_ns, old.final_holdout_end_ns
+            new_start, new_end = population.final_holdout_start_ns, population.final_holdout_end_ns
+            if (old_start is not None and old_end is not None and new_start is not None and new_end is not None
+                    and old_start < new_end and new_start < old_end):
+                raise ValueError("a holdout population version cannot move an assigned interval")
+    if population.assignment_status == "ASSIGNED":
+        for entry in repo.artifact_entries("DiscoveryHoldoutPopulationV2"):
+            if entry.artifact_ref == population.content_hash:
+                continue
+            raw = entry.metadata.get("population")
+            if not isinstance(raw, Mapping):
+                continue
+            prior = DiscoveryHoldoutPopulationV2.from_dict(raw)
+            if (prior.assignment_status == "ASSIGNED"
+                    and int(population.final_holdout_start_ns or 0) < int(prior.final_holdout_end_ns or 0)
+                    and int(prior.final_holdout_start_ns or 0) < int(population.final_holdout_end_ns or 0)):
+                raise ValueError("final holdout interval overlaps an existing immutable population assignment")
+    repo.register_artifact(ArtifactIndexEntryV2(population.content_hash, "DiscoveryHoldoutPopulationV2",
+        population.content_hash, population.preregistered_at_ns,
+        population.assignment_available_at_ns or population.preregistered_at_ns,
+        {"population": population.to_dict()}))
+    return population.content_hash
 
 
 @dataclass(frozen=True)
@@ -222,7 +394,7 @@ class DiscoveryOutcomeViewV2:
             raise ValueError("final holdout views are permitted only as explicitly assigned outer evidence")
 
     def to_dict(self) -> dict[str, Any]:
-        return {"version": "DISCOVERY_OUTCOME_VIEW_V1", **self.__dict__}
+        return {"version": "DISCOVERY_OUTCOME_VIEW_V2", **self.__dict__}
 
     @property
     def content_hash(self) -> str:
@@ -236,6 +408,11 @@ def index_discovery_outcome_view(repo: OpsRepository, item: DiscoveryOutcomeView
             or not isinstance(body, Mapping)
             or (item.final_holdout_ref is not None and item.final_holdout_ref != body.get("final_holdout_ref"))):
         raise ValueError("discovery outcome view must bind its preregistered experiment/holdout identity")
+    if item.final_holdout_ref is not None:
+        _resolve_holdout_population(repo, item.final_holdout_ref)
+        population_entry = repo.get_artifact(item.final_holdout_ref)
+        if population_entry is not None and population_entry.available_at_ns > item.available_at_ns:
+            raise ValueError("discovery outcome view precedes the immutable holdout population assignment")
     label = _resolve_matured_label(repo, item.outcome_ref, item.available_at_ns)
     if label["available_at_ns"] > item.available_at_ns:
         raise ValueError("discovery outcome view cannot precede its matured label")
@@ -244,12 +421,44 @@ def index_discovery_outcome_view(repo: OpsRepository, item: DiscoveryOutcomeView
     return item.content_hash
 
 
+def _load_holdout_population(repo: OpsRepository, ref: str) -> DiscoveryHoldoutPopulationV2:
+    entry = repo.get_artifact(ref)
+    raw = entry.metadata.get("population") if entry is not None else None
+    if (entry is None or entry.artifact_type != "DiscoveryHoldoutPopulationV2"
+            or entry.content_hash != ref or not isinstance(raw, Mapping)):
+        raise ValueError("NOT_ESTIMABLE_FINAL_HOLDOUT_POPULATION_CONTRACT_MISSING_OR_INVALID")
+    population = DiscoveryHoldoutPopulationV2.from_dict(raw)
+    if population.content_hash != ref:
+        raise ValueError("holdout population ref does not reproduce its immutable contract")
+    return population
+
+
+def _resolve_holdout_population(repo: OpsRepository, ref: str) -> DiscoveryHoldoutPopulationV2:
+    population = _load_holdout_population(repo, ref)
+    if population.assignment_status != "ASSIGNED":
+        raise ValueError(f"{HOLDOUT_POPULATION_UNASSIGNED_REASON}: {population.assignment_rule}")
+    return population
+
+
 def register_discovery_experiment(repo: OpsRepository, experiment: DiscoveryExperimentV2,
         *, available_at_ns: int) -> str:
     if available_at_ns < experiment.preregistered_at_ns:
         raise ValueError("experiment availability precedes preregistration")
-    if repo.get_artifact(experiment.baseline_policy_ref) is None or repo.get_artifact(experiment.final_holdout_ref) is None:
-        raise ValueError("discovery baseline and holdout must already be indexed")
+    if repo.get_artifact(experiment.baseline_policy_ref) is None:
+        raise ValueError("discovery baseline must already be indexed")
+    population_entry = repo.get_artifact(experiment.final_holdout_ref)
+    population_raw = population_entry.metadata.get("population") if population_entry is not None else None
+    if (population_entry is None or population_entry.artifact_type != "DiscoveryHoldoutPopulationV2"
+            or population_entry.content_hash != experiment.final_holdout_ref or not isinstance(population_raw, Mapping)):
+        raise ValueError("discovery final holdout must reference an immutable typed population contract")
+    population = DiscoveryHoldoutPopulationV2.from_dict(population_raw)
+    if (population.content_hash != experiment.final_holdout_ref
+            or population.experiment_id != experiment.experiment_id or population.family_id != experiment.family_id
+            or population.chronology_version != experiment.chronology
+            or population.preregistered_at_ns != experiment.preregistered_at_ns):
+        raise ValueError("discovery experiment does not match its preregistered holdout population identity")
+    if population_entry.available_at_ns > available_at_ns:
+        raise ValueError("discovery experiment cannot precede its immutable holdout population assignment")
     if any(isinstance((body := entry.metadata.get("holdout_state")), Mapping)
         and body.get("holdout_ref") == experiment.final_holdout_ref for entry in repo.artifact_entries("DiscoveryHoldoutStateV2")):
         raise ValueError("a SPENT holdout cannot be reset through a new experiment identity")
@@ -269,14 +478,12 @@ def _attempts(repo: OpsRepository, experiment_ref: str) -> tuple[Mapping[str, An
 
 
 def holdout_spent_at(repo: OpsRepository, experiment_ref: str) -> int | None:
-    experiment = repo.get_artifact(experiment_ref)
-    experiment_body = experiment.metadata.get("experiment") if experiment else None
-    holdout_ref = experiment_body.get("final_holdout_ref") if isinstance(experiment_body, Mapping) else None
+    # Holdout consumption is a lab-wide information event. A renamed experiment or
+    # family cannot make evidence dated before the latest view become fresh again.
+    _ = experiment_ref
     spent = [int(body["viewed_at_ns"]) for entry in repo.artifact_entries("DiscoveryHoldoutStateV2")
-        if isinstance((body := entry.metadata.get("holdout_state")), Mapping)
-        and (body.get("experiment_ref") == experiment_ref or holdout_ref is not None and body.get("holdout_ref") == holdout_ref)
-        and body.get("state") == "SPENT"]
-    return min(spent) if spent else None
+        if isinstance((body := entry.metadata.get("holdout_state")), Mapping) and body.get("state") == "SPENT"]
+    return max(spent) if spent else None
 
 
 def mark_holdout_spent(repo: OpsRepository, *, experiment_ref: str, holdout_ref: str,
@@ -285,7 +492,9 @@ def mark_holdout_spent(repo: OpsRepository, *, experiment_ref: str, holdout_ref:
     body = experiment.metadata.get("experiment") if experiment else None
     if not isinstance(body, Mapping) or body.get("final_holdout_ref") != holdout_ref or viewed_at_ns < int(body["preregistered_at_ns"]):
         raise ValueError("holdout spending must bind its preregistered immutable holdout")
-    if holdout_spent_at(repo, experiment_ref) is not None:
+    if any(isinstance((state := entry.metadata.get("holdout_state")), Mapping)
+            and state.get("holdout_ref") == holdout_ref and state.get("state") == "SPENT"
+            for entry in repo.artifact_entries("DiscoveryHoldoutStateV2")):
         raise ValueError("final holdout is already SPENT and cannot be reset or viewed again")
     attempt_entry = repo.get_artifact(attempt_ref)
     attempt_body = attempt_entry.metadata.get("attempt") if attempt_entry is not None else None
@@ -296,8 +505,22 @@ def mark_holdout_spent(repo: OpsRepository, *, experiment_ref: str, holdout_ref:
             or attempt_body.get("completed_at_ns") != viewed_at_ns
             or not set(evidence_refs).issubset(set(attempt_body.get("outer_refs", ())))):
         raise ValueError("holdout spending requires the exact indexed completed attempt and outer evidence")
-    if set(evidence_refs).difference(_holdout_linked_refs(repo, tuple(evidence_refs), holdout_ref)):
-        raise ValueError("holdout spending evidence is not linked to the final holdout")
+    population = _resolve_holdout_population(repo, holdout_ref)
+    proposal = attempt_body.get("proposal_spec")
+    if not isinstance(proposal, Mapping):
+        raise ValueError("holdout spending requires the exact executable proposal specification")
+    split = proposal.get("split_spec")
+    if not isinstance(split, Mapping) or type(split.get("evaluation_cutoff_ns")) is not int:
+        raise ValueError("holdout spending requires a typed evaluation cutoff and population evidence")
+    derived: set[str] = set()
+    for ref in tuple(attempt_body.get("outer_refs", ())):
+        labels = _resolve_operation_evidence(repo, str(proposal.get("operation")), ref,
+            int(split["evaluation_cutoff_ns"]), experiment_ref=experiment_ref, split_role="OUTER")
+        if any(_label_belongs_to_final_holdout(label, population) for label in labels):
+            derived.add(ref)
+    declared = _holdout_linked_refs(repo, tuple(attempt_body.get("outer_refs", ())), holdout_ref)
+    if set(evidence_refs) != (derived | (declared & set(evidence_refs))):
+        raise ValueError("holdout spending evidence must be the exact outer refs assigned to its immutable population")
     artifact = DiscoveryHoldoutStateV2(experiment_ref, holdout_ref, "SPENT", viewed_at_ns, attempt_id,
         attempt_ref, tuple(sorted(set(evidence_refs))))
     repo.register_artifact(ArtifactIndexEntryV2(artifact.content_hash, "DiscoveryHoldoutStateV2",
@@ -403,7 +626,7 @@ def _split_specification(experiment_body: Mapping[str, Any], attempt: DiscoveryA
     return raw
 
 
-def _resolve_matured_label(repo: OpsRepository, ref: str, cutoff_ns: int) -> Mapping[str, int]:
+def _resolve_matured_label(repo: OpsRepository, ref: str, cutoff_ns: int) -> Mapping[str, Any]:
     from atlas.v2._serialization import json_value
     from atlas.v2.science.outcomes import (
         MaturedOutcomeV2,
@@ -422,8 +645,11 @@ def _resolve_matured_label(repo: OpsRepository, ref: str, cutoff_ns: int) -> Map
     index_matured_outcome(repo, outcome)
     if outcome.evidence_quality.upper().startswith(("SYNTHETIC", "FIXTURE")):
         raise ValueError("synthetic fixture labels cannot masquerade as historical discovery evidence")
-    return {"decision_at_ns": outcome.decision_at_ns, "horizon_end_ns": outcome.horizon_end_ns,
-        "available_at_ns": outcome.available_at_ns}
+    return {"outcome_ref": ref, "decision_ref": outcome.decision_ref,
+        "candidate_set_ref": outcome.candidate_set_ref, "decision_at_ns": outcome.decision_at_ns,
+        "horizon_end_ns": outcome.horizon_end_ns, "available_at_ns": outcome.available_at_ns,
+        "venue": outcome.venue or "UNKNOWN", "product": outcome.product or "UNKNOWN",
+        "policy_hash": outcome.policy_hash}
 
 
 def _resolve_operation_evidence(repo: OpsRepository, operation: str, ref: str,
@@ -435,7 +661,7 @@ def _resolve_operation_evidence(repo: OpsRepository, operation: str, ref: str,
         if entry is not None and entry.artifact_type == "DiscoveryOutcomeViewV2":
             view = entry.metadata.get("view")
             required = {"version", "experiment_ref", "outcome_ref", "split_role", "available_at_ns", "final_holdout_ref"}
-            if (not isinstance(view, Mapping) or set(view) != required or view.get("version") != "DISCOVERY_OUTCOME_VIEW_V1"
+            if (not isinstance(view, Mapping) or set(view) != required or view.get("version") != "DISCOVERY_OUTCOME_VIEW_V2"
                     or sha256_json(view) != ref or entry.content_hash != ref
                     or view.get("experiment_ref") != experiment_ref or view.get("split_role") != split_role
                     or view.get("available_at_ns") != entry.available_at_ns or entry.available_at_ns > cutoff_ns):
@@ -450,7 +676,7 @@ def _resolve_operation_evidence(repo: OpsRepository, operation: str, ref: str,
             if label["available_at_ns"] > entry.available_at_ns:
                 raise ValueError("discovery outcome view precedes its matured label")
             return ({**label, "view_split_role": view["split_role"],
-                "final_holdout_ref": view.get("final_holdout_ref")},)
+                "view_final_holdout_ref": view.get("final_holdout_ref")},)
         return (_resolve_matured_label(repo, ref, cutoff_ns),)
     if operation == "MULTI_SLEEVE_RESEARCH_SELECTION":
         from atlas.v2.science.audits import SELECTION_AUDIT_VERSION
@@ -481,13 +707,18 @@ def _resolve_operation_evidence(repo: OpsRepository, operation: str, ref: str,
 
 
 def _validate_discovery_evidence(repo: OpsRepository, experiment_body: Mapping[str, Any],
-        attempt: DiscoveryAttemptV2, refs: tuple[str, ...]) -> Mapping[str, Any]:
+        attempt: DiscoveryAttemptV2, refs: tuple[str, ...]) -> tuple[Mapping[str, Any], tuple[str, ...]]:
     split = _split_specification(experiment_body, attempt)
+    population = _load_holdout_population(repo, str(experiment_body["final_holdout_ref"]))
+    population_entry = repo.get_artifact(str(experiment_body["final_holdout_ref"]))
+    if population_entry is None or population_entry.available_at_ns > int(split["evaluation_cutoff_ns"]):
+        raise ValueError("NOT_ESTIMABLE_FINAL_HOLDOUT_POPULATION_UNAVAILABLE_AT_EVALUATION_CUTOFF")
     operation = str(attempt.proposal_spec["operation"])
     groups = (("training", attempt.training_refs, "training_start_ns", "training_end_ns", "validation_start_ns"),
         ("validation", attempt.validation_refs, "validation_start_ns", "validation_end_ns", "outer_start_ns"),
         ("outer", attempt.outer_refs, "outer_start_ns", "outer_end_ns", "evaluation_cutoff_ns"))
     observed: dict[str, list[Mapping[str, int]]] = {name: [] for name, *_ in groups}
+    population_holdout_refs: set[str] = set()
     for name, group_refs, start_field, end_field, next_field in groups:
         for ref in group_refs:
             labels = _resolve_operation_evidence(repo, operation, ref, int(split["evaluation_cutoff_ns"]),
@@ -495,6 +726,13 @@ def _validate_discovery_evidence(repo: OpsRepository, experiment_body: Mapping[s
             for label in labels:
                 if label.get("view_split_role") is not None and label.get("view_split_role") != name.upper():
                     raise ValueError("typed discovery outcome view is assigned to the wrong split")
+                is_final_holdout = _label_belongs_to_final_holdout(label, population)
+                if label.get("view_final_holdout_ref") is not None and not is_final_holdout:
+                    raise ValueError("typed discovery outcome view declares a final holdout outside its immutable population")
+                if is_final_holdout:
+                    if name != "outer":
+                        raise ValueError("FINAL_HOLDOUT_IN_TRAINING_OR_VALIDATION: decision belongs to the preregistered population")
+                    population_holdout_refs.add(ref)
                 start, end = int(split[start_field]), int(split[end_field])
                 decision, horizon, available = label["decision_at_ns"], label["horizon_end_ns"], label["available_at_ns"]
                 if not start <= decision < end:
@@ -512,12 +750,29 @@ def _validate_discovery_evidence(repo: OpsRepository, experiment_body: Mapping[s
         for left, right in zip(ordered, ordered[1:], strict=False):
             if left["horizon_end_ns"] + int(split["embargo_ns"]) > right["decision_at_ns"]:
                 raise ValueError(f"{name} labels overlap or violate the declared purge/embargo")
-    return split
+    return split, tuple(sorted(population_holdout_refs))
+
+
+def _label_belongs_to_final_holdout(label: Mapping[str, Any], population: DiscoveryHoldoutPopulationV2) -> bool:
+    if population.assignment_status != "ASSIGNED":
+        raise ValueError(f"{HOLDOUT_POPULATION_UNASSIGNED_REASON}: {population.assignment_rule}")
+    if not label.get("decision_ref") or not label.get("candidate_set_ref"):
+        raise ValueError("NOT_ESTIMABLE_FINAL_HOLDOUT_DECISION_EVENT_IDENTITY_MISSING")
+    identity = (str(label.get("venue", "UNKNOWN")), str(label.get("product", "UNKNOWN")),
+        str(label.get("policy_hash", "UNKNOWN")))
+    in_universe = any(all(expected == "*" or expected == actual for expected, actual in zip(row, identity, strict=True))
+        for row in population.venue_product_policy_universe)
+    decision_at_ns = int(label["decision_at_ns"])
+    # The declared assignment is half-open: the exact start is held out, the instant before it is not.
+    return (in_universe and int(population.final_holdout_start_ns or 0) <= decision_at_ns
+        < int(population.final_holdout_end_ns or 0))
 
 
 def _rejection_code(message: str) -> str:
     if message.startswith("NOT_ESTIMABLE_"):
         return message.split(":", 1)[0]
+    if message.startswith("FINAL_HOLDOUT_IN_TRAINING_OR_VALIDATION"):
+        return "FINAL_HOLDOUT_IN_TRAINING_OR_VALIDATION"
     normalized = re.sub(r"[^A-Z0-9]+", "_", message.upper()).strip("_")
     return ("REJECTED_" + normalized)[:120]
 
@@ -572,8 +827,9 @@ def _register_discovery_attempt(repo: OpsRepository, experiment_ref: str, attemp
         raise ValueError("preregistered discovery parameter search budget exceeded")
     evaluation_refs = attempt.training_refs + attempt.validation_refs + attempt.outer_refs
     split: Mapping[str, Any] | None = None
+    population_outer_holdout: tuple[str, ...] = ()
     if evaluation_refs:
-        split = _validate_discovery_evidence(repo, body, attempt, evaluation_refs)
+        split, population_outer_holdout = _validate_discovery_evidence(repo, body, attempt, evaluation_refs)
     spent_at = holdout_spent_at(repo, experiment_ref)
     if spent_at is not None and attempt.attempt_version == 1:
         if not evaluation_refs or split is None or int(split["evaluation_cutoff_ns"]) <= spent_at:
@@ -586,7 +842,8 @@ def _register_discovery_attempt(repo: OpsRepository, experiment_ref: str, attemp
                 if any(row["decision_at_ns"] <= spent_at or row["available_at_ns"] <= spent_at for row in rows):
                     _retain_rejection(repo, attempt, "SPENT_HOLDOUT_REDESIGN_REQUIRES_FRESH_FUTURE_EVIDENCE", available_at_ns)
                     raise ValueError("a redesign after viewing the holdout requires genuinely later future evidence")
-    holdout_links = _holdout_linked_refs(repo, evaluation_refs, str(body["final_holdout_ref"]))
+    holdout_links = (_holdout_linked_refs(repo, evaluation_refs, str(body["final_holdout_ref"]))
+        | set(population_outer_holdout))
     ordinary_refs = attempt.training_refs + attempt.validation_refs
     if any(ref in holdout_links for ref in ordinary_refs):
         _retain_rejection(repo, attempt, "FINAL_HOLDOUT_IN_TRAINING_OR_VALIDATION", available_at_ns)

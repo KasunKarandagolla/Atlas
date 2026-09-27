@@ -9,6 +9,7 @@
       "capital_authority_unchanged": true,
       "discovery_failures_retained": true,
       "event_receipt_latency_preserved": true,
+      "holdout_population_membership_evidence_bound": true,
       "m1_chronological_oof_only": true,
       "multiplicity_audit_exists": true,
       "non_action_sleeves_explicitly_excluded": true,
@@ -38,9 +39,9 @@
       "S6": "a2497ebad6307bd7c44155599b317119ba6cbfb4ee60da49226974ea23adffd3"
     },
     "session024_started": false,
-    "starting_sha": "6eccab03f7b975019c145839bd63c058fa7b0e95",
-    "validation_manifest_ref": "65cbb0e8dbf9ce5c81e94bee6e22cb52630e530542c53b9b17007942cf7f53ac",
+    "starting_sha": "9a65ec9ebfe423a7bb26d5e508cbdfc949f09644",
+    "validation_manifest_ref": "159d0190c67994d40fdfe603d86c9d28d33256cb85b7b45ea563886bd4d4b166",
     "version": "PHASE3_ENGINEERING_GATE_V2_V1"
   },
-  "content_hash": "a1b95b5e2cd3a6e9329b1eaa5ad9c70bc28fbc69d8eebb6e031a8973b3d7afb2"
+  "content_hash": "f05ce110367b4f6d6b22e6c8231e4b22fb71d9906f4899c83d4bd035ae8ef59f"
 }

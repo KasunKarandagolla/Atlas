@@ -132,6 +132,47 @@ After independent review and explicit authorization, Session 024 owns Phase-4 ve
 
 Capital remains disabled. Session 024 has not started.
 
+## Final Session-023 Holdout-Population Remediation
+
+This final narrow remediation started from required SHA `9a65ec9ebfe423a7bb26d5e508cbdfc949f09644` on branch `impl/session-023-v2-m1-analogue-discovery-selection-gate`. It closes holdout membership inference for raw matured outcomes. No Session-024 or Phase-4 venue/capital work was started.
+
+### Immutable holdout population and evidence-derived membership
+
+- Discovery now requires a versioned `DiscoveryHoldoutPopulationV2` reference bound to the experiment and family, chronology, preregistration time, decision-calendar population, venue/product/policy universe, decision/event identity rules, assignment rule, and immutable source-evidence revision when assigned. Population versions are append-only; assigned or spent intervals cannot be moved or replaced under the same identity.
+- The Session-023 final population retains rule `FINAL_30D_AFTER_THREE_REQUIRED_OUTER_WINDOWS_V1` as `NOT_ESTIMABLE`, with no fabricated start/end dates or source revision. Its exact contract reference is `aa7e691c14325ec1018df74037d48e8e0ce93de5755decb00d425b1549ede5f9`.
+- Once a genuine assignment is available, membership is derived from the validated matured outcome’s immutable decision chronology and bound identity/scope. The interval is half-open: `final_holdout_start_ns <= decision_at_ns < final_holdout_end_ns`. Wrapper omission or later outcome-availability revisions cannot alter classification. While the population is unassigned, evaluation returns `NOT_ESTIMABLE_FINAL_HOLDOUT_POPULATION_UNASSIGNED` instead of guessing.
+- Raw or wrapped final-holdout evidence is rejected from training and validation. Outer use requires an explicit view bound to the exact population version and evidence refs; the attempt and view are retained and the population becomes `SPENT`. Experiment/family renames and omitted holdout metadata do not reset spent state; a second view fails, and redesign requires genuinely later evidence. Rejected attempts remain in the durable ledger.
+- The final discovery-lab policy hash is `846fd322e5d0a8d91a4ae659771f7e37f26bcff384508a5895f154a93b0cfac3`. The accepted analogue policy identity remains `9b6312e42b28649877ce3f62b593b14cc769572987053abeca5b55f28b6934bf`.
+
+### Adversarial tests and validation
+
+- New tests cover raw final-holdout outcomes in training, validation, and outer refs; explicit versus omitted holdout views; wrapper behavior; the immediately preceding decision and exact start boundary; immutable classification across availability revisions; immutable population versions; unassigned named `NOT ESTIMABLE`; durable rejection; experiment/family renaming and omitted metadata; and redesign requiring fresh future evidence.
+- Complete `tests/v2`: **392 passed**. Session-023: **90 passed**; Session-022: **47 passed**; Session-021: **35 passed**; Session-020: **19 passed**. The standalone Session-020 E2E/IPC seam passed **6/6** with the required socket permission. Complete V1: **415 collected, 414 passed, 1 existing skip**. The separate V1 golden recomputation/comparison passed.
+- Ruff, mypy (**183 source files**), compileall, `git diff --check`, pip check (**34 compatible packages**), hash-locked dependency validation (**33 packages, zero changes**), frozen identity checks, and tracked-file credential scan (**349 paths, zero high-confidence matches**) passed. No GitHub workflow run is claimed.
+- The regenerated validation manifest hash is `159d0190c67994d40fdfe603d86c9d28d33256cb85b7b45ea563886bd4d4b166`; the new Phase-3 gate hash is `f05ce110367b4f6d6b22e6c8231e4b22fb71d9906f4899c83d4bd035ae8ef59f`, referencing that manifest. Phase-3 engineering remains `TESTED`; economics remain `NOT ESTIMABLE`; live venue/source qualification remains `UNVERIFIED / TEST GATE`; capital remains disabled. Session 024 remains unstarted pending the coordinating ChatGPT’s independent inspection of the pushed SHA.
+
+### Preserved Session-022 identities
+
+- S1: `c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0`.
+- S2: `fbcdacd8ec6a79ea2595fa367d220b55b1d84c326ec3a28d787d23f356062dcd`.
+- S3: `b6a6ef283a5ca0b4dcbcb730b03adff92fb62c76c55fc66ef9268c906d8c62b6`.
+- S4: `327c816792290ceaf64ef6dd6b6e90e0382c04782e1dc7d9ca5895ce7f2ae146`.
+- S6: `a2497ebad6307bd7c44155599b317119ba6cbfb4ee60da49226974ea23adffd3`.
+- S1/S2 selector: `36f8fd58c9e791ea580a1855f9e98555131e0828604d484eda3df4c7d5529cac`.
+- Evidence matrix: `294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81`.
+
+### Files changed by this final remediation
+
+- `docs/handoffs/session-023.md`
+- `docs/v2/PHASE3_ENGINEERING_GATE.json`
+- `docs/v2/SESSION023_RESEARCH_DESIGN.json`
+- `docs/v2/SESSION023_VALIDATION.json`
+- `src/atlas/v2/science/discovery.py`
+- `src/atlas/v2/science/phase3.py`
+- `src/atlas/v2/science/session023_report.py`
+- `tests/v2/test_session023_discovery_s8.py`
+- `tests/v2/test_session023_m1.py`
+
 ## Final Session-023 Analogue & Discovery Enforcement Remediation
 
 This closeout records the narrow remediation on branch `impl/session-023-v2-m1-analogue-discovery-selection-gate`, starting from required SHA `6eccab03f7b975019c145839bd63c058fa7b0e95`. The final analogue/discovery identities, gate hashes, and validation totals above supersede the earlier Session-023 values in this handoff.

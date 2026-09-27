@@ -24,6 +24,7 @@ GATE_CHECKS = (
     "s8_outside_normal_tradeplan", "m1_chronological_oof_only", "analogue_cutoff_maturity_valid",
     "all_exact_action_competitors_retained", "non_action_sleeves_explicitly_excluded",
     "multiplicity_audit_exists", "selection_audit_exists", "discovery_failures_retained",
+    "holdout_population_membership_evidence_bound",
     "spent_holdout_immutable", "s1_s2_baseline_reproducible", "capital_authority_unchanged",
     "ablation_audit_exists", "tier_c_passed", "actual_lightgbm_tested",
 )

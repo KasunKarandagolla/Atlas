@@ -170,7 +170,16 @@ def test_m1_exact_action_binding_no_history_and_changed_action_rejection(tmp_pat
 
 def test_m1_final_holdout_reservation_is_stable_and_manual_spending_requires_attempt_evidence(tmp_path):
     from atlas.v2.memory.repository import ArtifactIndexEntryV2
-    from atlas.v2.science.discovery import DiscoveryExperimentV2, mark_holdout_spent, register_discovery_experiment
+    from atlas.v2.science.discovery import (
+        DECISION_CALENDAR_POPULATION_V1,
+        DECISION_EVENT_IDENTITY_RULES_V1,
+        FINAL_HOLDOUT_ASSIGNMENT_RULE,
+        DiscoveryExperimentV2,
+        DiscoveryHoldoutPopulationV2,
+        index_discovery_holdout_population,
+        mark_holdout_spent,
+        register_discovery_experiment,
+    )
     from atlas.v2.science.m1 import reserve_m1_final_holdout
 
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
@@ -182,12 +191,16 @@ def test_m1_final_holdout_reservation_is_stable_and_manual_spending_requires_att
             reserve_m1_final_holdout(repo, compatibility_key=key, cutoff_ns=350 * DAY_NS, available_at_ns=350 * DAY_NS + 1)
         baseline = sha256_json("baseline")
         repo.register_artifact(ArtifactIndexEntryV2(baseline, "PolicyV2", baseline, 0, 0, {}))
+        population = DiscoveryHoldoutPopulationV2("fixed-holdout", 1, "fixed-holdout", "family", "180_30_30",
+            FINAL_HOLDOUT_ASSIGNMENT_RULE, "NOT_ESTIMABLE", None, None, DECISION_CALENDAR_POPULATION_V1,
+            (("*", "*", "*"),), DECISION_EVENT_IDENTITY_RULES_V1, None, 500 * DAY_NS + 2, None)
+        holdout_ref = index_discovery_holdout_population(repo, population)
         exp = DiscoveryExperimentV2("fixed-holdout", "family", "M1", ("candles",), ("CAUSAL",), 1, 1,
             baseline, ("whole_policy_value",), "180_30_30", "MAX_HORIZON", "family", "BUDGET",
-            first[2], "UNTOUCHED", True, 500 * DAY_NS + 2)
+            holdout_ref, "UNTOUCHED", True, 500 * DAY_NS + 2)
         register_discovery_experiment(repo, exp, available_at_ns=500 * DAY_NS + 2)
         with pytest.raises(ValueError, match="exact indexed completed attempt"):
-            mark_holdout_spent(repo, experiment_ref=exp.content_hash, holdout_ref=first[2], attempt_id="viewed",
-                attempt_ref=sha256_json("unindexed-attempt"), evidence_refs=(first[2],), viewed_at_ns=500 * DAY_NS + 3)
+            mark_holdout_spent(repo, experiment_ref=exp.content_hash, holdout_ref=holdout_ref, attempt_id="viewed",
+                attempt_ref=sha256_json("unindexed-attempt"), evidence_refs=(holdout_ref,), viewed_at_ns=500 * DAY_NS + 3)
         assert reserve_m1_final_holdout(repo, compatibility_key=key, cutoff_ns=600 * DAY_NS,
             available_at_ns=600 * DAY_NS + 1) == first

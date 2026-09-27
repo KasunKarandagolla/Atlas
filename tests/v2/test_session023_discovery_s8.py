@@ -11,12 +11,17 @@ from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.models.protocol import PromotionStatusV2
 from atlas.v2.science.audits import MultiplicityVariantV2
 from atlas.v2.science.discovery import (
+    DECISION_CALENDAR_POPULATION_V1,
+    DECISION_EVENT_IDENTITY_RULES_V1,
+    FINAL_HOLDOUT_ASSIGNMENT_RULE,
     DiscoveryAttemptV2,
     DiscoveryExperimentV2,
+    DiscoveryHoldoutPopulationV2,
     DiscoveryOutcomeViewV2,
     audit_discovery_multiplicity,
     discovery_attempt_ledger,
     holdout_spent_at,
+    index_discovery_holdout_population,
     index_discovery_outcome_view,
     mark_holdout_spent,
     register_discovery_attempt,
@@ -44,14 +49,37 @@ from .test_session014_core import KEY
 from .test_session016_candidate_selection import alternate_key, universe
 from .test_session017_risk import CUTOFF
 
+DAY_NS = 24 * HOUR_NS
 
-def experiment(repo, budget=2, parameter_budget=2):
-    baseline, holdout = sha256_json("baseline"), sha256_json("untouched-holdout")
-    for ref, kind in ((baseline, "PolicyV2"), (holdout, "UntouchedHoldoutIdentityV2")):
-        repo.register_artifact(ArtifactIndexEntryV2(ref, kind, ref, 0, 0, {}))
+
+def experiment(repo, budget=2, parameter_budget=2, *, holdout_start_ns=None, holdout_end_ns=None,
+        holdout_assigned=True, population_id="test-final-holdout"):
+    baseline = sha256_json("baseline")
+    repo.register_artifact(ArtifactIndexEntryV2(baseline, "PolicyV2", baseline, 0, 0, {}))
+    chronology = "180D_30D_30D_THREE_OUTER_FINAL_30D_V1"
+    start = (CUTOFF + 100 * DAY_NS if holdout_start_ns is None else holdout_start_ns) if holdout_assigned else None
+    end = (start + 30 * DAY_NS if holdout_end_ns is None else holdout_end_ns) if holdout_assigned else None
+    source_ref = None
+    if holdout_assigned:
+        source_body = {"version": "DISCOVERY_HOLDOUT_ASSIGNMENT_EVIDENCE_V1", "population_id": population_id,
+            "population_version": 1, "experiment_id": "experiment", "family_id": "family",
+            "chronology_version": chronology, "assignment_rule": FINAL_HOLDOUT_ASSIGNMENT_RULE,
+            "final_holdout_start_ns": start, "final_holdout_end_ns": end,
+            "decision_calendar_population": DECISION_CALENDAR_POPULATION_V1,
+            "venue_product_policy_universe": [["*", "*", "*"]],
+            "decision_event_identity_rules": DECISION_EVENT_IDENTITY_RULES_V1,
+            "assignment_available_at_ns": 1}
+        source_ref = sha256_json(source_body)
+        repo.register_artifact(ArtifactIndexEntryV2(source_ref, "DiscoveryHoldoutAssignmentEvidenceV2",
+            source_ref, 0, 0, {"assignment_evidence": source_body}))
+    population = DiscoveryHoldoutPopulationV2(population_id, 1, "experiment", "family", chronology,
+        FINAL_HOLDOUT_ASSIGNMENT_RULE, "ASSIGNED" if holdout_assigned else "NOT_ESTIMABLE", start, end,
+        DECISION_CALENDAR_POPULATION_V1, (("*", "*", "*"),), DECISION_EVENT_IDENTITY_RULES_V1,
+        source_ref, 1, 1 if holdout_assigned else None)
+    holdout = index_discovery_holdout_population(repo, population)
     value = DiscoveryExperimentV2("experiment", "family", "numerical_challengers", ("candles",),
         ("CUT_OFF_AVAILABLE_ONLY",), budget, parameter_budget, baseline, ("whole_policy_net_value",),
-        "180D_30D_30D_THREE_OUTER_MONTHLY_HOLDOUT", "MAX_HORIZON_PURGE_EMBARGO", "family",
+        chronology, "MAX_HORIZON_PURGE_EMBARGO", "family",
         "STOP_AT_BUDGET_OR_OPERATIONAL_FAILURE", holdout, "UNTOUCHED", True, 1)
     register_discovery_experiment(repo, value, available_at_ns=1)
     return value
@@ -139,6 +167,11 @@ def test_durable_report_retains_all_preregistered_variants_without_economic_sear
         assert len(report["multiplicity"]["members"]) == 18
         assert report["multiplicity"]["status"] == "NOT_ESTIMABLE"
         assert report["holdout"]["state"] == "UNTOUCHED" and not report["capital_enabled"]
+        population = report["holdout"]["population"]
+        assert population["assignment_status"] == "NOT_ESTIMABLE"
+        assert population["final_holdout_start_ns"] is population["final_holdout_end_ns"] is None
+        assert population["source_evidence_revision_ref"] is None
+        assert population["assignment_rule"] == FINAL_HOLDOUT_ASSIGNMENT_RULE
 
 
 def test_parameter_budget_is_independent_and_rejected_search_retained(tmp_path):
@@ -152,9 +185,7 @@ def test_parameter_budget_is_independent_and_rejected_search_retained(tmp_path):
 
 def test_viewed_holdout_is_globally_spent_and_cannot_reset_or_reuse(tmp_path):
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
-        exp = experiment(repo, budget=4, parameter_budget=4)
-        alias = replace(exp, experiment_id="pre-registered-alias")
-        register_discovery_experiment(repo, alias, available_at_ns=1)
+        exp = experiment(repo, budget=4, parameter_budget=4, holdout_start_ns=CUTOFF)
         with pytest.raises(ValueError, match="holdout_viewed"):
             register_discovery_attempt(repo, exp.content_hash, attempt(exp, viewed=True), available_at_ns=11)
         outcome = valid_outcome(repo)
@@ -175,27 +206,62 @@ def test_viewed_holdout_is_globally_spent_and_cannot_reset_or_reuse(tmp_path):
             register_discovery_attempt(repo, exp.content_hash, second_view, available_at_ns=spent_at + 3)
         assert any(row["attempt_id"] == "view-two" and row.get("rejection_reason")
             for row in discovery_attempt_ledger(repo, exp.content_hash))
-        alias_view = DiscoveryOutcomeViewV2(alias.content_hash, outcome.content_hash, "OUTER",
-            outcome.available_at_ns, alias.final_holdout_ref)
-        alias_view_ref = index_discovery_outcome_view(repo, alias_view)
-        alias_second_view = attempt(alias, identity="alias-second-view", viewed=True,
-            outer_refs=(alias_view_ref,), start=spent_at + 4,
-            typed_split=split_for_outcome(alias, outcome))
+        raw_second_view = attempt(exp, identity="raw-second-view", viewed=True,
+            outer_refs=(outcome.content_hash,), start=spent_at + 4,
+            typed_split=split_for_outcome(exp, outcome))
         with pytest.raises(ValueError, match="genuinely later future evidence|SPENT"):
-            register_discovery_attempt(repo, alias.content_hash, alias_second_view,
-                available_at_ns=spent_at + 5)
-        assert any(row["attempt_id"] == "alias-second-view" and row.get("rejection_reason")
-            for row in discovery_attempt_ledger(repo, alias.content_hash))
+            register_discovery_attempt(repo, exp.content_hash, raw_second_view, available_at_ns=spent_at + 5)
+        assert any(row["attempt_id"] == "raw-second-view" and row.get("rejection_reason")
+            for row in discovery_attempt_ledger(repo, exp.content_hash))
         with pytest.raises(ValueError, match="SPENT|fresh future"):
             mark_holdout_spent(repo, experiment_ref=exp.content_hash, holdout_ref=exp.final_holdout_ref,
                 attempt_id="reset", attempt_ref=sha256_json("reset"), evidence_refs=(view_ref,), viewed_at_ns=spent_at + 1)
-        with pytest.raises(ValueError, match="SPENT"):
-            register_discovery_experiment(repo, replace(exp, experiment_id="renamed"), available_at_ns=spent_at + 1)
+        for renamed in (replace(exp, experiment_id="renamed"), replace(exp, family_id="renamed-family")):
+            with pytest.raises(ValueError, match="population identity"):
+                register_discovery_experiment(repo, renamed, available_at_ns=spent_at + 1)
+        with pytest.raises(ValueError, match="typed population contract"):
+            register_discovery_experiment(repo, replace(exp, final_holdout_ref=sha256_json("omitted-population")),
+                available_at_ns=spent_at + 1)
+        with pytest.raises(ValueError, match="overlaps an existing immutable population"):
+            experiment(repo, holdout_start_ns=CUTOFF, population_id="renamed-family-population")
+        prior_population = DiscoveryHoldoutPopulationV2.from_dict(
+            repo.get_artifact(exp.final_holdout_ref).metadata["population"])
+        next_start = int(prior_population.final_holdout_end_ns) + 1
+        next_end = next_start + 30 * DAY_NS
+        next_source_body = {"version": "DISCOVERY_HOLDOUT_ASSIGNMENT_EVIDENCE_V1",
+            "population_id": "redesign-final-holdout", "population_version": 1,
+            "experiment_id": "redesigned-experiment", "family_id": "redesigned-family",
+            "chronology_version": prior_population.chronology_version,
+            "assignment_rule": FINAL_HOLDOUT_ASSIGNMENT_RULE,
+            "final_holdout_start_ns": next_start, "final_holdout_end_ns": next_end,
+            "decision_calendar_population": DECISION_CALENDAR_POPULATION_V1,
+            "venue_product_policy_universe": [["*", "*", "*"]],
+            "decision_event_identity_rules": DECISION_EVENT_IDENTITY_RULES_V1,
+            "assignment_available_at_ns": 1}
+        next_source_ref = sha256_json(next_source_body)
+        repo.register_artifact(ArtifactIndexEntryV2(next_source_ref, "DiscoveryHoldoutAssignmentEvidenceV2",
+            next_source_ref, 0, 0, {"assignment_evidence": next_source_body}))
+        next_population = DiscoveryHoldoutPopulationV2("redesign-final-holdout", 1,
+            "redesigned-experiment", "redesigned-family", prior_population.chronology_version,
+            FINAL_HOLDOUT_ASSIGNMENT_RULE, "ASSIGNED", next_start, next_end,
+            DECISION_CALENDAR_POPULATION_V1, (("*", "*", "*"),), DECISION_EVENT_IDENTITY_RULES_V1,
+            next_source_ref, 1, 1)
+        next_population_ref = index_discovery_holdout_population(repo, next_population)
+        redesigned = replace(exp, experiment_id="redesigned-experiment", family_id="redesigned-family",
+            final_holdout_ref=next_population_ref)
+        register_discovery_experiment(repo, redesigned, available_at_ns=spent_at + 6)
+        stale_raw = attempt(redesigned, identity="renamed-family-old-raw-evidence", outer_refs=(outcome.content_hash,),
+            start=spent_at + 8, typed_split=split_for_outcome(redesigned, outcome))
+        with pytest.raises(ValueError, match="genuinely later future evidence"):
+            register_discovery_attempt(repo, redesigned.content_hash, stale_raw, available_at_ns=spent_at + 9)
+        assert discovery_attempt_ledger(repo, redesigned.content_hash)[0]["rejection_reason"] == \
+            "SPENT_HOLDOUT_REDESIGN_REQUIRES_FRESH_FUTURE_EVIDENCE"
         with pytest.raises(ValueError, match="genuinely later future evidence"):
             register_discovery_attempt(repo, exp.content_hash,
                 attempt(exp, identity="redesign", start=spent_at + 2), available_at_ns=spent_at + 3)
+        population = repo.get_artifact(exp.final_holdout_ref).metadata["population"]
         minute_ns = 60 * 1_000_000_000
-        fresh_cutoff = ((spent_at + minute_ns - 1) // minute_ns) * minute_ns
+        fresh_cutoff = int(population["final_holdout_end_ns"]) + minute_ns
         fresh_outcome = valid_outcome(repo, cutoff=fresh_cutoff)
         fresh_split = split_for_outcome(exp, fresh_outcome)
         fresh_start = fresh_outcome.available_at_ns + 2
@@ -253,24 +319,31 @@ def test_unmatured_typed_outcome_cannot_enter_action_value_evaluation(tmp_path):
 @pytest.mark.parametrize("role", ["training", "validation"])
 def test_final_holdout_cannot_appear_in_training_or_validation_refs(tmp_path, role):
     with OpsRepository(tmp_path / f"ops-{role}.sqlite") as repo:
-        exp = experiment(repo)
-        outcome = valid_outcome(repo)
-        view = DiscoveryOutcomeViewV2(exp.content_hash, outcome.content_hash, "OUTER",
-            outcome.available_at_ns, exp.final_holdout_ref)
-        ref = index_discovery_outcome_view(repo, view)
-        split = split_for_outcome(exp, outcome)
-        start = outcome.available_at_ns + 2
-        kwargs = {f"{role}_refs": (ref,)}
+        exp = experiment(repo, holdout_start_ns=CUTOFF)
+        outcome = valid_outcome(repo, cutoff=CUTOFF)
+        start = CUTOFF + 22 * DAY_NS
+        # The split itself assigns this exact decision to the requested ordinary role.
+        split = split_spec(exp, training=(CUTOFF - HOUR_NS, CUTOFF + 5 * DAY_NS),
+            validation=(CUTOFF + 6 * DAY_NS, CUTOFF + 12 * DAY_NS),
+            outer=(CUTOFF + 13 * DAY_NS, CUTOFF + 20 * DAY_NS),
+            cutoff=CUTOFF + 21 * DAY_NS, embargo=1, horizon=1)
+        if role == "validation":
+            split = split_spec(exp, training=(CUTOFF - 10 * HOUR_NS, CUTOFF - 5 * HOUR_NS),
+                validation=(CUTOFF - HOUR_NS, CUTOFF + 5 * DAY_NS),
+                outer=(CUTOFF + 6 * DAY_NS, CUTOFF + 20 * DAY_NS),
+                cutoff=CUTOFF + 21 * DAY_NS, embargo=1, horizon=1)
+        kwargs = {f"{role}_refs": (outcome.content_hash,)}
         invalid = attempt(exp, identity=f"holdout-{role}", start=start, typed_split=split, **kwargs)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="FINAL_HOLDOUT_IN_TRAINING_OR_VALIDATION"):
             register_discovery_attempt(repo, exp.content_hash, invalid, available_at_ns=start + 1)
-        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"]
+        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"] == \
+            "FINAL_HOLDOUT_IN_TRAINING_OR_VALIDATION"
 
 
 def test_holdout_linked_outer_without_explicit_view_is_rejected_and_retained(tmp_path):
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
-        exp = experiment(repo)
-        outcome = valid_outcome(repo)
+        exp = experiment(repo, holdout_start_ns=CUTOFF)
+        outcome = valid_outcome(repo, cutoff=CUTOFF)
         view = DiscoveryOutcomeViewV2(exp.content_hash, outcome.content_hash, "OUTER",
             outcome.available_at_ns, exp.final_holdout_ref)
         ref = index_discovery_outcome_view(repo, view)
@@ -280,6 +353,103 @@ def test_holdout_linked_outer_without_explicit_view_is_rejected_and_retained(tmp
         with pytest.raises(ValueError, match="explicit holdout view"):
             register_discovery_attempt(repo, exp.content_hash, invalid, available_at_ns=start + 1)
         assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"] == "HOLDOUT_VIEW_NOT_DECLARED"
+
+
+def test_raw_final_holdout_outer_requires_explicit_view_and_spends_population(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        exp = experiment(repo, holdout_start_ns=CUTOFF)
+        outcome = valid_outcome(repo, cutoff=CUTOFF)
+        start = outcome.available_at_ns + 2
+        split = split_for_outcome(exp, outcome)
+        implicit = attempt(exp, identity="raw-implicit", outer_refs=(outcome.content_hash,), start=start,
+            typed_split=split, viewed=False)
+        with pytest.raises(ValueError, match="explicit holdout view"):
+            register_discovery_attempt(repo, exp.content_hash, implicit, available_at_ns=start + 1)
+        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"] == "HOLDOUT_VIEW_NOT_DECLARED"
+
+        explicit = attempt(exp, identity="raw-explicit", outer_refs=(outcome.content_hash,), start=start + 2,
+            typed_split=split, viewed=True)
+        register_discovery_attempt(repo, exp.content_hash, explicit, available_at_ns=start + 3)
+        assert holdout_spent_at(repo, exp.content_hash) == start + 3
+        state = repo.artifact_entries("DiscoveryHoldoutStateV2")[0].metadata["holdout_state"]
+        assert state["holdout_ref"] == exp.final_holdout_ref
+        assert state["evidence_refs"] == (outcome.content_hash,)
+
+
+def test_holdout_membership_uses_half_open_fixed_population_not_wrapper_or_revision(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        exp = experiment(repo, holdout_start_ns=CUTOFF + 1)
+        before = valid_outcome(repo, cutoff=CUTOFF)
+        before_start = before.available_at_ns + 2
+        ordinary = attempt(exp, identity="immediately-before", outer_refs=(before.content_hash,),
+            start=before_start, typed_split=split_for_outcome(exp, before), viewed=False)
+        register_discovery_attempt(repo, exp.content_hash, ordinary, available_at_ns=before_start + 1)
+        assert holdout_spent_at(repo, exp.content_hash) is None
+
+    with OpsRepository(tmp_path / "ops-exact-start.sqlite") as exact_repo:
+        exact_exp = experiment(exact_repo, holdout_start_ns=CUTOFF)
+        at_start = valid_outcome(exact_repo, cutoff=CUTOFF)
+        start = at_start.available_at_ns + 2
+        raw = attempt(exact_exp, identity="exact-start", outer_refs=(at_start.content_hash,),
+            start=start, typed_split=split_for_outcome(exact_exp, at_start), viewed=False)
+        with pytest.raises(ValueError, match="explicit holdout view"):
+            register_discovery_attempt(exact_repo, exact_exp.content_hash, raw, available_at_ns=start + 1)
+        assert discovery_attempt_ledger(exact_repo, exact_exp.content_hash)[-1]["rejection_reason"] == "HOLDOUT_VIEW_NOT_DECLARED"
+
+        revised = replace(at_start, available_at_ns=at_start.available_at_ns + 100)
+        from atlas.v2.science.outcomes import index_matured_outcome
+        index_matured_outcome(exact_repo, revised)
+        revised_start = revised.available_at_ns + 2
+        revised_raw = attempt(exact_exp, identity="revised-same-decision", outer_refs=(revised.content_hash,),
+            start=revised_start, typed_split=split_for_outcome(exact_exp, revised), viewed=False)
+        with pytest.raises(ValueError, match="explicit holdout view"):
+            register_discovery_attempt(exact_repo, exact_exp.content_hash, revised_raw, available_at_ns=revised_start + 1)
+        assert discovery_attempt_ledger(exact_repo, exact_exp.content_hash)[-1]["rejection_reason"] == "HOLDOUT_VIEW_NOT_DECLARED"
+
+        moved = replace(at_start, decision_at_ns=CUTOFF + 1)
+        with pytest.raises(ValueError, match="decision state/identity must match indexed"):
+            index_matured_outcome(exact_repo, moved)
+
+        population = DiscoveryHoldoutPopulationV2.from_dict(
+            exact_repo.get_artifact(exact_exp.final_holdout_ref).metadata["population"])
+        with pytest.raises(ValueError, match="version is immutable"):
+            index_discovery_holdout_population(exact_repo, replace(population,
+                final_holdout_start_ns=CUTOFF + 1))
+
+
+def test_unassigned_preregistered_population_returns_named_not_estimable(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        exp = experiment(repo, holdout_assigned=False)
+        outcome = valid_outcome(repo)
+        invalid = attempt(exp, identity="unassigned-population", outer_refs=(outcome.content_hash,),
+            start=outcome.available_at_ns + 2, typed_split=split_for_outcome(exp, outcome))
+        with pytest.raises(ValueError, match="NOT_ESTIMABLE_FINAL_HOLDOUT_POPULATION_UNASSIGNED"):
+            register_discovery_attempt(repo, exp.content_hash, invalid, available_at_ns=outcome.available_at_ns + 3)
+        assert discovery_attempt_ledger(repo, exp.content_hash)[0]["rejection_reason"] == \
+            "NOT_ESTIMABLE_FINAL_HOLDOUT_POPULATION_UNASSIGNED"
+
+        original = DiscoveryHoldoutPopulationV2.from_dict(
+            repo.get_artifact(exp.final_holdout_ref).metadata["population"])
+        boundary = CUTOFF + 100 * DAY_NS
+        source_body = {"version": "DISCOVERY_HOLDOUT_ASSIGNMENT_EVIDENCE_V1",
+            "population_id": original.population_id, "population_version": 2,
+            "experiment_id": original.experiment_id, "family_id": original.family_id,
+            "chronology_version": original.chronology_version, "assignment_rule": original.assignment_rule,
+            "final_holdout_start_ns": boundary, "final_holdout_end_ns": boundary + 30 * DAY_NS,
+            "decision_calendar_population": original.decision_calendar_population,
+            "venue_product_policy_universe": [["*", "*", "*"]],
+            "decision_event_identity_rules": original.decision_event_identity_rules,
+            "assignment_available_at_ns": 1}
+        source_ref = sha256_json(source_body)
+        repo.register_artifact(ArtifactIndexEntryV2(source_ref, "DiscoveryHoldoutAssignmentEvidenceV2",
+            source_ref, 0, 0, {"assignment_evidence": source_body}))
+        assigned = replace(original, population_version=2, assignment_status="ASSIGNED",
+            final_holdout_start_ns=boundary, final_holdout_end_ns=boundary + 30 * DAY_NS,
+            source_evidence_revision_ref=source_ref, assignment_available_at_ns=1)
+        assigned_ref = index_discovery_holdout_population(repo, assigned)
+        assert assigned_ref != exp.final_holdout_ref
+        revised_experiment = replace(exp, final_holdout_ref=assigned_ref)
+        register_discovery_experiment(repo, revised_experiment, available_at_ns=1)
 
 
 @pytest.mark.parametrize("bad_split,reason", [
