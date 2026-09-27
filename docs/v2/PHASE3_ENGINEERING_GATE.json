@@ -1,0 +1,46 @@
+{
+  "artifact": {
+    "capital_enabled": false,
+    "checks": {
+      "ablation_audit_exists": true,
+      "actual_lightgbm_tested": true,
+      "all_exact_action_competitors_retained": true,
+      "analogue_cutoff_maturity_valid": true,
+      "capital_authority_unchanged": true,
+      "discovery_failures_retained": true,
+      "event_receipt_latency_preserved": true,
+      "m1_chronological_oof_only": true,
+      "multiplicity_audit_exists": true,
+      "non_action_sleeves_explicitly_excluded": true,
+      "s1_input_action_complete": true,
+      "s1_s2_baseline_reproducible": true,
+      "s2_input_action_complete": true,
+      "s3_unavailable_inputs_named": true,
+      "s4_book_gaps_invalidate_flow": true,
+      "s5_coverage_uncertainty_propagates": true,
+      "s6_insufficient_breadth_named": true,
+      "s7_duplicates_do_not_duplicate_watches_candidates": true,
+      "s8_outside_normal_tradeplan": true,
+      "selection_audit_exists": true,
+      "spent_holdout_immutable": true,
+      "tier_c_passed": true
+    },
+    "economic_value": "NOT ESTIMABLE",
+    "live_feed_qualification": "UNVERIFIED / TEST GATE",
+    "phase3_engineering": "TESTED",
+    "preserved_identities": {
+      "MATRIX": "294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81",
+      "S1": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+      "S1_S2_SELECTOR": "36f8fd58c9e791ea580a1855f9e98555131e0828604d484eda3df4c7d5529cac",
+      "S2": "fbcdacd8ec6a79ea2595fa367d220b55b1d84c326ec3a28d787d23f356062dcd",
+      "S3": "b6a6ef283a5ca0b4dcbcb730b03adff92fb62c76c55fc66ef9268c906d8c62b6",
+      "S4": "327c816792290ceaf64ef6dd6b6e90e0382c04782e1dc7d9ca5895ce7f2ae146",
+      "S6": "a2497ebad6307bd7c44155599b317119ba6cbfb4ee60da49226974ea23adffd3"
+    },
+    "session024_started": false,
+    "starting_sha": "09efb89ff99e156fb39c7c0a89c5a86f639ccf47",
+    "validation_manifest_ref": "1aa2cb5515aed268ba2d526525699b2169036d86674038d4ba0c17848a2c160e",
+    "version": "PHASE3_ENGINEERING_GATE_V2_V1"
+  },
+  "content_hash": "7287c96289eb57181cb4d773f1baa3e75352895ce087f0b1119b7fdb79942005"
+}

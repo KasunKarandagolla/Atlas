@@ -11,7 +11,7 @@
   },
   "dependency_lock": {
     "path": "requirements-lock.txt",
-    "sha256": "64c072e71415da5fdba66fdf747e5603e6014e01380a46dba9e95ee4e138a044"
+    "sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b"
   },
   "generation_inputs": {
     "phase4_decision_fixture": "tests/support/phase4_factory.py::decision_input",

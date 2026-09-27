@@ -1,0 +1,376 @@
+{
+  "artifacts": [
+    {
+      "artifact": {
+        "audit_id": "session023-integration",
+        "block_uncertainty": null,
+        "deadline_loss_rate": "0",
+        "decision_calendar_selection_coverage": "1",
+        "end_ns": 1814460000000002,
+        "fill_state_counts": [
+          [
+            "NO_FILL",
+            1
+          ]
+        ],
+        "inverse_probability_status": "NOT_ESTIMABLE_NO_KNOWN_INCLUSION_PROBABILITIES",
+        "metric_definitions": {
+          "deadline_loss_rate": "expired or deadline-lost rows / retained calendar member rows",
+          "decision_calendar_selection_coverage": "selected decision sets / all retained calendar decision sets",
+          "selection_coverage": "selected positive net value / total positive net value across fully qualified competitors",
+          "uncertainty": "synchronized contiguous decision-time blocks covering maximum policy horizon; at least 20 blocks",
+          "warmup_exclusion_rate": "warmup exclusions / retained calendar member rows"
+        },
+        "missed_value_share": null,
+        "provenance_counts": [
+          [
+            "SIMULATED",
+            1
+          ]
+        ],
+        "reasons": [
+          "INCOMPLETE_MATURED_COMPETITOR_OUTCOMES_OR_NO_POSITIVE_VALUE_SUPPORT"
+        ],
+        "rows": [
+          {
+            "admission_state": "NOT_APPLICABLE",
+            "candidate_ref": "3f4fe54a4e39d61e90dff429d37468a8c2c15d2cabf890518e654cfd2056c4c0",
+            "candidate_set_ref": "c2f63babd33d2f960f02dfaa15429904f087d1ffef0e260e2d069426fb2d9dc1",
+            "decision_at_ns": 1800000000000000,
+            "decision_event_id": "confirmed-15m-016",
+            "decision_ref": "b3879249745dbf8c6917e466e3663d3fbc20f58aa5eb2ef1e59b7f2939bf406f",
+            "execution_states": [],
+            "exploration_probability": null,
+            "outcome_provenance": [],
+            "outcome_refs": [],
+            "policy_id": "S3_VWAP_STAT_MEAN_REVERSION",
+            "realized_values": [],
+            "reason_codes": [],
+            "selection_state": "UNSELECTED"
+          },
+          {
+            "admission_state": "NOT_APPLICABLE",
+            "candidate_ref": "a668c253cf1efe5cbab662af7bdc181d751115d1bf4f72aa31d86cd57b193662",
+            "candidate_set_ref": "c2f63babd33d2f960f02dfaa15429904f087d1ffef0e260e2d069426fb2d9dc1",
+            "decision_at_ns": 1800000000000000,
+            "decision_event_id": "confirmed-15m-016",
+            "decision_ref": "c2f63babd33d2f960f02dfaa15429904f087d1ffef0e260e2d069426fb2d9dc1",
+            "execution_states": [
+              "NO_FILL"
+            ],
+            "exploration_probability": null,
+            "outcome_provenance": [
+              "SIMULATED"
+            ],
+            "outcome_refs": [
+              "e1efd4d9027cde793d0428daba173a1cdff2a59e53139ca55dd4b246a8fe545a"
+            ],
+            "policy_id": "S1_MTF_TREND_PULLBACK",
+            "realized_values": [
+              "0"
+            ],
+            "reason_codes": [],
+            "selection_state": "UNSELECTED"
+          },
+          {
+            "admission_state": "NOT_ESTIMABLE",
+            "candidate_ref": "a668c253cf1efe5cbab662af7bdc181d751115d1bf4f72aa31d86cd57b193662",
+            "candidate_set_ref": "c2f63babd33d2f960f02dfaa15429904f087d1ffef0e260e2d069426fb2d9dc1",
+            "decision_at_ns": 1800000000000000,
+            "decision_event_id": "confirmed-15m-016",
+            "decision_ref": "1eadceb44ddafbf9b03315b242531b8a5e7a6e79d8673f92bd87a10ffd69b49f",
+            "execution_states": [
+              "NO_FILL"
+            ],
+            "exploration_probability": null,
+            "outcome_provenance": [
+              "SIMULATED"
+            ],
+            "outcome_refs": [
+              "e1efd4d9027cde793d0428daba173a1cdff2a59e53139ca55dd4b246a8fe545a"
+            ],
+            "policy_id": "S1_MTF_TREND_PULLBACK",
+            "realized_values": [
+              "0"
+            ],
+            "reason_codes": [
+              "DETERMINISTIC_STRESS_UNESTIMABLE",
+              "ESTIMATION_UNCERTAINTY_UNESTIMABLE",
+              "EXECUTION_MODEL_UNCERTAINTY_UNESTIMABLE",
+              "M0_CALIBRATION_UNSUPPORTED",
+              "M0_NOT_ESTIMABLE",
+              "M0_STATE_OOD_OR_UNESTIMABLE",
+              "M0_SUPPORT_INSUFFICIENT",
+              "NUMERICAL_ERROR_UNESTIMABLE",
+              "OUTCOME_DISTRIBUTION_UNESTIMABLE",
+              "PORTFOLIO_ES_UNESTIMABLE",
+              "PRETRADE_SCENARIO_SUPPORT_INSUFFICIENT",
+              "PRETRADE_SCENARIO_UNSUPPORTED",
+              "VENUE_CAPABILITY_UNQUALIFIED_OR_SCOPE_MISMATCH"
+            ],
+            "selection_state": "SELECTED"
+          },
+          {
+            "admission_state": "NOT_APPLICABLE",
+            "candidate_ref": "ff1d0b1f128e39c784d8b02e660d09fc052d3a74bb1f5013cb577cd017bfbdfe",
+            "candidate_set_ref": "c2f63babd33d2f960f02dfaa15429904f087d1ffef0e260e2d069426fb2d9dc1",
+            "decision_at_ns": 1800000000000000,
+            "decision_event_id": "confirmed-15m-016",
+            "decision_ref": "c2f63babd33d2f960f02dfaa15429904f087d1ffef0e260e2d069426fb2d9dc1",
+            "execution_states": [],
+            "exploration_probability": null,
+            "outcome_provenance": [],
+            "outcome_refs": [],
+            "policy_id": "S2_COMPRESSION_BREAKOUT",
+            "realized_values": [],
+            "reason_codes": [],
+            "selection_state": "UNSELECTED"
+          },
+          {
+            "admission_state": "NOT_APPLICABLE",
+            "candidate_ref": "ff1d0b1f128e39c784d8b02e660d09fc052d3a74bb1f5013cb577cd017bfbdfe",
+            "candidate_set_ref": "c2f63babd33d2f960f02dfaa15429904f087d1ffef0e260e2d069426fb2d9dc1",
+            "decision_at_ns": 1800000000000000,
+            "decision_event_id": "confirmed-15m-016",
+            "decision_ref": "c251a0d3c58a1205e03d2a6bb2b42f95bc8cccc387d79e09112b45b18b258b4f",
+            "execution_states": [],
+            "exploration_probability": null,
+            "outcome_provenance": [],
+            "outcome_refs": [],
+            "policy_id": "S2_COMPRESSION_BREAKOUT",
+            "realized_values": [],
+            "reason_codes": [],
+            "selection_state": "UNSELECTED"
+          }
+        ],
+        "selection_coverage": null,
+        "selection_lift": null,
+        "source_calendar_refs": [
+          "1eadceb44ddafbf9b03315b242531b8a5e7a6e79d8673f92bd87a10ffd69b49f",
+          "a668c253cf1efe5cbab662af7bdc181d751115d1bf4f72aa31d86cd57b193662",
+          "b3879249745dbf8c6917e466e3663d3fbc20f58aa5eb2ef1e59b7f2939bf406f",
+          "c251a0d3c58a1205e03d2a6bb2b42f95bc8cccc387d79e09112b45b18b258b4f",
+          "c2f63babd33d2f960f02dfaa15429904f087d1ffef0e260e2d069426fb2d9dc1",
+          "ff1d0b1f128e39c784d8b02e660d09fc052d3a74bb1f5013cb577cd017bfbdfe"
+        ],
+        "start_ns": 1799999999999999,
+        "status": "NOT_ESTIMABLE",
+        "version": "WHOLE_CALENDAR_SELECTION_AUDIT_V2_V1",
+        "warmup_exclusion_rate": "0"
+      },
+      "artifact_type": "SelectionPolicyAuditV2",
+      "content_hash": "7d55bcebaa0c033bed6214518fd8b934aec4a0e7931edd4df9e4fba5d2a9214a"
+    },
+    {
+      "artifact": {
+        "action_artifact_ref": "b0b908fad664235153494a494b7741b777084a5706234f387ac9b6ca7c1ce065",
+        "action_hash": "665fbeed591706c79b03b1071353baacfca619b4329b77ccb0aefa4678541fe5",
+        "analogue_ref": "975244d5436f98abfddcbdd6c18cfe9237e3cfd23ed3ea97e2e5de4d4faab8b3",
+        "baseline": "M0",
+        "candidate_ref": "a668c253cf1efe5cbab662af7bdc181d751115d1bf4f72aa31d86cd57b193662",
+        "candidate_set_ref": "c2f63babd33d2f960f02dfaa15429904f087d1ffef0e260e2d069426fb2d9dc1",
+        "capital_authority": "ZERO",
+        "costs_already_in_target": true,
+        "decision_cutoff_ns": 1800000000000000,
+        "diagnostics": {
+          "analogue": {
+            "compatibility_key": "7bdc40059970100cc223a7e5a0b30d1049518fd4855d00cafc1c2bea31339c10",
+            "effective_support": null,
+            "estimate": null,
+            "independent_vote": false,
+            "ood": "NOT_ESTIMABLE",
+            "status": "NOT_ESTIMABLE",
+            "support": 0
+          },
+          "compute_ms": {
+            "analogue": null,
+            "m0": null,
+            "m1": null
+          },
+          "coverage": {
+            "analogue": false,
+            "m0": false,
+            "m1": false
+          },
+          "economic_value": "NOT_ESTIMABLE",
+          "m0": {
+            "calibration_ref": "19ecea3605b41ee9a43b147e39aad7dea5a22ceee923b286935614e62abfb70d",
+            "estimate": null,
+            "ood_ref": "563049420faa59d31c4dd8e1af019a106e3454fbbcddd6ac7458bab21259cb8c",
+            "status": "NOT_ESTIMABLE",
+            "support_ref": "9153969fc4736591a5bcc953bf19c3a5c27d1582f36a14a366cad5dec398a6da"
+          },
+          "m1": {
+            "calibration": {
+              "absolute_residual_q90": null,
+              "action_hash": "665fbeed591706c79b03b1071353baacfca619b4329b77ccb0aefa4678541fe5",
+              "cutoff_ns": 0,
+              "independent_support": 0,
+              "oof_archive_ref": "f07be8651970a3fd6acb463718fcbe951a0bfb2ff77325f2d7a18705e8a79b76",
+              "oof_row_refs": [],
+              "reason": "INSUFFICIENT_INDEPENDENT_CHRONOLOGICAL_OOF_RESIDUALS",
+              "status": "NOT_ESTIMABLE",
+              "version": "M1_CALIBRATION_V2_V1"
+            },
+            "compatibility_key": "b0e0f8bdd2e73d59ebf100f2466edf402499d6eb04217c34b74bab116a2e8611",
+            "estimate": null,
+            "model_fit_ref": "30aaf0e8731c9704a920b3df5326f830d3840395aa757ad859ca51bdb2c4c7f3",
+            "ood": {
+              "action_hash": "665fbeed591706c79b03b1071353baacfca619b4329b77ccb0aefa4678541fe5",
+              "feature_ref": "cbf54c84a7ebb5df7e9eb8f120b74e3c59693018e87f9337b644663a33f081bb",
+              "fitted_center": [],
+              "fitted_scale": [],
+              "maximum_absolute_robust_z": null,
+              "status": "NOT_ESTIMABLE",
+              "threshold": 6.0,
+              "training_row_refs": [],
+              "version": "M1_OOD_V2_V1"
+            },
+            "status": "NOT_ESTIMABLE",
+            "support": {
+              "action_hash": "665fbeed591706c79b03b1071353baacfca619b4329b77ccb0aefa4678541fe5",
+              "compatible_training_row_refs": [],
+              "cutoff_ns": 1800000000000000,
+              "end_ns": null,
+              "execution_state_counts": [],
+              "independent_training_row_refs": [],
+              "missing_feature_counts": [],
+              "provenance_counts": [],
+              "start_ns": null,
+              "status": "INSUFFICIENT",
+              "version": "M1_SUPPORT_V2_V1"
+            }
+          },
+          "operational_degradation": {
+            "analogue_missing_features": [],
+            "m1_missing_features": []
+          },
+          "outer_chronology": {
+            "advance_ns": 2592000000000000,
+            "as_of_ns": 1800000000000000,
+            "embargo_ns": 86400000000000,
+            "final_holdout_refs": [],
+            "holdout_state": "UNTOUCHED",
+            "outer_window_ns": 2592000000000000,
+            "reason": "INSUFFICIENT_180_30_30_OUTER_WINDOWS_OR_HOLDOUT",
+            "status": "NOT_ESTIMABLE",
+            "training_window_ns": 15552000000000000,
+            "validation_window_ns": 2592000000000000,
+            "version": "M1_CHRONOLOGY_V1",
+            "windows": [
+              {
+                "fold_id": "OUTER_1",
+                "outer_end_ns": -5976000000000000,
+                "outer_refs": [],
+                "outer_start_ns": -8568000000000000,
+                "training_end_ns": -11160000000000000,
+                "training_refs": [],
+                "training_start_ns": -26712000000000000,
+                "validation_end_ns": -8568000000000000,
+                "validation_refs": [],
+                "validation_start_ns": -11160000000000000
+              },
+              {
+                "fold_id": "OUTER_2",
+                "outer_end_ns": -3384000000000000,
+                "outer_refs": [],
+                "outer_start_ns": -5976000000000000,
+                "training_end_ns": -8568000000000000,
+                "training_refs": [],
+                "training_start_ns": -24120000000000000,
+                "validation_end_ns": -5976000000000000,
+                "validation_refs": [],
+                "validation_start_ns": -8568000000000000
+              },
+              {
+                "fold_id": "OUTER_3",
+                "outer_end_ns": -792000000000000,
+                "outer_refs": [],
+                "outer_start_ns": -3384000000000000,
+                "training_end_ns": -5976000000000000,
+                "training_refs": [],
+                "training_start_ns": -21528000000000000,
+                "validation_end_ns": -3384000000000000,
+                "validation_refs": [],
+                "validation_start_ns": -5976000000000000
+              }
+            ]
+          }
+        },
+        "incremental_difference_vs_m0": null,
+        "incremental_uncertainty": null,
+        "m0_prediction_ref": "1d775b974d7fabea301ab1ffde68a8c255aee884a6e7748cfffdb36b5ef75a9f",
+        "m1_prediction_ref": "db9760583e9fc5acb316e640ca5d1c109fa5c212f75cc1b3b576c7e0f4974595",
+        "model_averaging": false,
+        "model_voting": false,
+        "promotion_status": "INTEGRATED",
+        "status": "NOT_ESTIMABLE",
+        "version": "FROZEN_ACTION_M0_M1_ANALOGUE_COMPARISON_V2_V1"
+      },
+      "artifact_type": "FrozenActionModelComparisonV2",
+      "content_hash": "e3f5145dafb7e4140672b2aaf412dc8b645418e06773b36fd269d56bc7fa87a8"
+    },
+    {
+      "artifact": {
+        "available_at_ns": 1800000000000000,
+        "exact_action_policy_ids": [
+          "S1_MTF_TREND_PULLBACK",
+          "S2_COMPRESSION_BREAKOUT",
+          "S3_VWAP_STAT_MEAN_REVERSION"
+        ],
+        "excluded_reason": "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT",
+        "selection_policy_hash": "37355c64d45a67bdce3a271a63db377b953c05847561bcda33847c27cecb0dac",
+        "sleeves": [
+          [
+            "S1",
+            "ELIGIBLE",
+            "COMPLETE CandidateActionV2 contract exists"
+          ],
+          [
+            "S2",
+            "ELIGIBLE",
+            "COMPLETE CandidateActionV2 contract exists"
+          ],
+          [
+            "S3",
+            "ELIGIBLE",
+            "COMPLETE exact stop, horizon and management contract exists"
+          ],
+          [
+            "S4",
+            "EXCLUDED",
+            "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"
+          ],
+          [
+            "S5",
+            "EXCLUDED",
+            "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"
+          ],
+          [
+            "S6",
+            "EXCLUDED",
+            "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"
+          ],
+          [
+            "S7",
+            "EXCLUDED",
+            "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"
+          ],
+          [
+            "S8",
+            "EXCLUDED",
+            "RESEARCH_BASKET_ONLY_NO_SINGLE_ACTION_CONTRACT"
+          ]
+        ],
+        "version": "RESEARCH_SLEEVE_SELECTION_AUDIT_V2_V1"
+      },
+      "artifact_type": "ResearchSleeveSelectionAuditV2",
+      "content_hash": "f2e44c8f1f435a74165b177a0bdb04b62eb9eabcc1eee00b6d1647d28d54f222"
+    }
+  ],
+  "capital_enabled": false,
+  "economic_value": "NOT ESTIMABLE",
+  "synthetic": true,
+  "test": "tests/v2/test_session023_integration.py::test_phase3_research_calendar_selection_frozen_models_evaluator_outcome_audits",
+  "version": "SESSION023_DETERMINISTIC_ENGINEERING_EVIDENCE_V1"
+}

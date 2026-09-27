@@ -18,6 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+offline-research = ["lightgbm==4.7.0"]
 dev = [
   "pytest>=8.0",
   "hypothesis>=6.0",
