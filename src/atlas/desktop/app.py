@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from atlas import __version__ as ATLAS_VERSION
 from atlas.v2.desktop.ipc import IPCProtocolError, ProjectionClient, read_token
 from atlas.v2.desktop.projection import DesktopChartSeriesV2, DesktopSnapshotV2
 
@@ -33,7 +34,7 @@ class AtlasDesktop(QMainWindow):
         super().__init__()
         self.client = client
         self.snapshot: DesktopSnapshotV2 | None = None
-        self.setWindowTitle("ATLAS V2 — Read-only evidence observer")
+        self.setWindowTitle(f"ATLAS V2 {ATLAS_VERSION} — Read-only evidence observer")
         self.resize(1280, 760)
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
@@ -163,10 +164,16 @@ class AtlasDesktop(QMainWindow):
 
     def refresh(self) -> None:
         try:
+            diagnostics = self.client.request("ping")
             raw = self.client.request("snapshot")
             self.snapshot = DesktopSnapshotV2.from_dict(raw)
             freshness = current_freshness(self.snapshot, now_ns=time.time_ns())
-            self.banner.setText(f"Projection service connected · snapshot {freshness.lower()} · observer only")
+            self.banner.setText(
+                f"ATLAS desktop {ATLAS_VERSION} · {diagnostics.get('service')} "
+                f"{diagnostics.get('service_version')} · IPC {diagnostics.get('protocol_version')} · "
+                f"uptime {diagnostics.get('uptime_seconds')}s · "
+                f"{diagnostics.get('release_classification')} · snapshot {freshness.lower()} · observer only"
+            )
             self._render_snapshot()
         except (OSError, IPCProtocolError, ValueError, KeyError, TypeError) as exc:
             code = exc.code if isinstance(exc, IPCProtocolError) else "SERVICE_UNAVAILABLE"
@@ -183,7 +190,8 @@ class AtlasDesktop(QMainWindow):
             f"Universe {snap.overview.universe_instruments} · observed {snap.overview.observed_instruments} · "
             f"scanner eligible {snap.overview.scanner_eligible_instruments}\nDecisions: {counts}\n"
             f"Unavailable evidence: {', '.join(snap.overview.unavailable_fields) or 'none'}\n"
-            "Economic value: NOT ESTIMABLE · venue qualification: UNVERIFIED · capital disabled"
+            "Release: SHADOW_RELEASED · economic value: NOT ESTIMABLE · "
+            "venue qualification: UNVERIFIED / TEST GATE · capital disabled"
         )
         self._fill(
             self.status_table,

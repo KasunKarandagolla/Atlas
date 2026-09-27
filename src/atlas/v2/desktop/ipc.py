@@ -12,10 +12,13 @@ import socketserver
 import stat
 import struct
 import threading
+import time
 import uuid
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+
+from atlas import __version__ as ATLAS_VERSION
 
 from .._serialization import canonical_json
 from ..memory.repository import OpsRepository
@@ -122,6 +125,7 @@ class ProjectionService:
         self._archive_root = Path(archive_root) if archive_root is not None else None
         self._request_count = 0
         self._request_lock = threading.Lock()
+        self._started_monotonic = time.monotonic()
         owner = self
 
         class Handler(socketserver.BaseRequestHandler):
@@ -221,14 +225,29 @@ class ProjectionService:
         if kind in {"ping", "health", "snapshot", "overview", "scanner", "watches", "evidence"} and params:
             raise IPCProtocolError("INVALID_PARAMS")
         if kind == "ping":
-            return {"protocol_version": IPC_PROTOCOL_VERSION, "service": "ATLAS_DESKTOP_PROJECTION_V2", "state": "READY"}
+            return {"protocol_version": IPC_PROTOCOL_VERSION, "service": "atlas-v2-projection",
+                    "service_version": ATLAS_VERSION, "projection_version": "ATLAS_DESKTOP_PROJECTION_V2",
+                    "uptime_seconds": int(time.monotonic() - self._started_monotonic),
+                    "requests_served": self.request_count,
+                    "state": "READY", "database_mode": "READ_ONLY", "loopback_only": True,
+                    "release_classification": "SHADOW_RELEASED", "economics_status": "NOT ESTIMABLE",
+                    "capital_enabled": False, "assisted_enabled": False}
         if kind == "chart":
             return self._dispatch_chart(params)
         snapshot = project_snapshot(self._repository)
         if kind == "health":
             return {"schema_version": snapshot.schema_version, "projection_version": snapshot.projection_version,
                     "freshness_state": snapshot.freshness_state,
-                    "statuses": [item.to_dict() for item in snapshot.overview.statuses]}
+                    "statuses": [item.to_dict() for item in snapshot.overview.statuses],
+                    "diagnostics": {"process": "atlas-v2-projection", "version": ATLAS_VERSION,
+                        "uptime_seconds": int(time.monotonic() - self._started_monotonic),
+                        "requests_served": self.request_count,
+                        "process_status": "RUNNING", "projection_version": snapshot.projection_version,
+                        "ipc_protocol_version": IPC_PROTOCOL_VERSION, "database_mode": "READ_ONLY",
+                        "loopback_only": True, "read_only_methods": sorted(READ_ONLY_COMMANDS),
+                        "release_classification": "SHADOW_RELEASED", "economics_status": "NOT ESTIMABLE",
+                        "soak_status": "BLOCKED BY ENVIRONMENT", "capital_enabled": False,
+                        "assisted_enabled": False}}
         if kind == "snapshot":
             return snapshot.to_dict()
         if kind == "overview":

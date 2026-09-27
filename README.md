@@ -1,49 +1,165 @@
-# ATLAS — stabilized V1 and V2 transition audit
+# ATLAS V2 — public research and shadow desktop
 
-ATLAS is a private research and execution-control project. The current V1
-checkpoint is the stabilized Phase 0–6 baseline from Session 009:
+ATLAS V2 is a causal crypto-futures research system with a read-only desktop for persisted market, scanner, watch, and evaluation evidence. This Session-025 engineering candidate is version `2.0.0.dev25`, classified `SHADOW_RELEASED`. It is an engineering and research release. It makes no claim of trading profitability, authenticated exchange qualification, or readiness for live capital.
 
-`impl/session-009-v1-phase0-6-stabilization` at
-`146bae0a2f10e2f794cbed3441123071c55a2baf`.
+Capital ships disabled: `capital_enabled = false` and `assisted_enabled = false`. Public market data and the desktop do not require exchange private credentials. Never provide withdrawal permission to an ATLAS key.
 
-Session 010 is the mandatory V2 Phase 0 exit audit. Its dedicated checkpoint
-branch is `impl/session-010-v2-transition-audit`. It records what the frozen V1
-code and offline tests establish, preserves machine-readable V1 golden values,
-and documents additive V2 seams. It does not implement V2 Phase 1 or Phase 2.
+## Current release state
 
-## Authority and evidence
+| Area | Status |
+| --- | --- |
+| V1 baseline and capital/recovery invariants | Frozen; V1 schema 6 |
+| V2 causal contracts and research | Implemented; deterministic regression tested |
+| S1 and S2 | Exact-action shadow research; active baseline selector |
+| S3 and S6 | Research hypotheses; S3 exact-action research path, S6 context without a complete action |
+| S4 and S5 | Microstructure/crowding context; no exact executable action |
+| S7 | Public event safety, alerts, and directional shadow evidence |
+| S8 | Two-leg basket research; outside the single-action TradePlan path |
+| M0 | Chronological Huber/ridge action-value baseline; current economics not estimable |
+| M1 | Offline LightGBM challenger; no model voting or capital authority |
+| Analogue support | Causal support/OOD evidence; not an independent vote |
+| Discovery Lab | Bounded offline research; cannot change risk or promote itself |
+| Bybit public data | Research/public-data target; no authenticated account qualification |
+| Binance USD-M public data | Research/public-data target; protection remains a capital test gate |
+| Bybit authenticated testnet | `UNVERIFIED / TEST GATE` |
+| Binance authenticated testnet | `UNVERIFIED / TEST GATE` |
+| Binance native protection | `TEST GATE` |
+| External cross-host writer fencing | `BLOCKED BY ENVIRONMENT` |
+| 72-hour continuous public soak | `BLOCKED BY ENVIRONMENT` until genuine evidence completes |
+| Prospective evidence and economics | `NOT ESTIMABLE`; no positive economic claim |
+| Final untouched holdout | `UNTOUCHED`, identity `aa7e691c14325ec1018df74037d48e8e0ce93de5755decb00d425b1549ede5f9` |
+| Capital | Disabled |
 
-The governing documents are:
+The minimum before any positive economic claim is at least eight weeks of prospective shadow, at least 200 matured candidate opportunities, adequate regime coverage, and a dependence-aware interpretation. These are evidence floors, not an automatic pass. Historical fixtures, simulation, and additional model runs do not replace elapsed prospective time.
 
-- `ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md` —
-  authoritative for existing V1 behavior and safety contracts.
-- `ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE.md` — the
-  supplied additive V2 implementation authority used for the transition audit
-  (provided in the invoking workspace; SHA-256
-  `bae3e1a9e48aec64d1292e5bc791c2e87949ed33f4124b1f9807b589cc07a484`).
-- `docs/v2/V1_EXIT_AUDIT.md` — current Phase 0 findings and status matrix.
-- `docs/v2/V1_GOLDEN_BASELINE.json` — deterministic V1 transition values.
-- `docs/handoffs/session-009.md` and `docs/handoffs/session-010.md` — checkpoint
-  evidence and handoff records.
+## Architecture and authority
 
-V1 freezes BTCUSDT and ETHUSDT as its strategy and capital universe, uses the
-Bybit linear one-way isolated profile, and keeps NautilusTrader as the normal
-order/fill/position engine. ATLAS retains durable intent, approvals,
-reservations, risk, recovery and audit authority. V2 additions must be
-versioned and must not silently change these V1 contracts.
+The repository keeps V1 and V2 authority separate.
 
-## Current operating status
+- `atlas-crypto-live` is the only credential-bearing crypto writer. It owns the Nautilus runtime boundary, immutable plan approval, revalidation, reservations, durable commands, protection, reconciliation, and recovery. This engineering release does not enable its assisted path.
+- `atlas-ops` is the intended single writer for public collection, scanner/watch state, research artifacts, and the separate `ops.sqlite` store. The repository includes its collector/scanner/coordinator APIs, but this candidate has no general scheduled `atlas-ops` daemon command. `OpsRepository` uses one writer; desktop projections use a read-only SQLite connection. Public collectors have no exchange credentials or mutation routes.
+- `atlas-worker` describes the optional disposable role for research/inference. This candidate has no general worker daemon command; M1 remains offline research code. Any deployment-specific worker must receive no trading credentials, have no live-control database write path, and be unable to approve trades, change risk, or promote its output.
+- `atlas-v2-projection` is a separate, read-only process. It opens an existing `ops.sqlite` read-only, accepts authenticated loopback connections only, and exposes bounded projection methods.
+- `atlas-desktop` is a separate PySide6 observer. It reads the projection service and never starts/stops the engine, writes `ops.sqlite`, changes risk, or submits orders.
 
-- All six authenticated Bybit capability states remain `UNVERIFIED` and are
-  `TEST GATE` items.
-- `assisted_enabled=false`; no live or test order was submitted for Session
-  010.
-- No profitability or economic-validation claim is established; that status is
-  `NOT ESTIMABLE`.
-- The Session-009 offline suite is rerun and recorded in the Session-010 audit.
-  Offline tests do not qualify exchange capabilities.
+The human approval model remains:
 
-The GitHub default branch may still point to the older
-`impl/session-001-foundation`. It is stale and non-authoritative. Implementation
-checkpoints are identified by their approved branch and exact SHA; do not infer
-the current baseline from the default branch.
+> **ATLAS finds exact plan → human approves exact plan → bot manages execution automatically.**
+
+For any future assisted release, the intended sequence is an immutable `TradePlan` → approval of that exact plan → live revalidation → atomic approval, intent, and reservation persistence → Nautilus execution → automatic fill, protection, exit, and recovery management. Approval of one plan grants no continuing autonomous strategy authority. V1 schema remains `6`; the additive V2 live-authority extension remains version `2`, contract `V2_CAPITAL_AUTHORITY_ATTESTATION_V1`, hash `94d59964c503a88a13d1fd05d7f02554153e7bb74ac73e7dc4cb93c4a8b645da`.
+
+Research, strategy, model, news, desktop, and worker components cannot grant capital authority. A desktop action cannot enable capital. Startup never migrates an old configuration into enabled capital.
+
+## Strategies and research
+
+S1–S8 are versioned hypotheses, not a collection of independent votes.
+
+- **S1** is multi-timeframe trend continuation/pullback research.
+- **S2** is compression breakout research.
+- **S1/S2 selector** preserves the frozen baseline ranking and exact action identity.
+- **S3** is VWAP/statistical mean-reversion shadow research with an explicit one-hour action contract.
+- **S4** measures sequence-valid book/flow and absorption context; no exact action is emitted.
+- **S5** records derivatives/crowding, deleveraging continuation, and post-cascade reversal context; no exact action is emitted.
+- **S6** measures cross-sectional residual relative strength; its missing stop/action contract keeps it out of single-action execution.
+- **S7** collects event evidence, applies a conservative event safety gate, and stores directional reaction research. Source coverage is not considered verified by an empty event list.
+- **S8** stores an explicit two-leg hourly pairs basket forecast and replay contract. It is not a normal one-plan order or capital path.
+
+M0 is the chronological Huber/ridge action-value baseline. M1 is the bounded LightGBM offline challenger. Analogues provide compatible historical support and OOD diagnostics. Discovery proposals and failures remain in their finite preregistered family. No automatic promotion occurs; current promotion state is `INTEGRATED`, not `DECISION_ELIGIBLE`.
+
+## Supported and research venues
+
+Bybit and Binance USD-M are public market-data research targets. Public metadata, fees, filters, or official documentation do not establish current values for a particular live account. Installed Nautilus rc5 adapter evidence is engineering evidence only. Authenticated account evidence is absent for both venues. Bybit testnet order/protection/recovery behavior remains unverified; Binance native entry protection and account recovery remain test gates. No mainnet order was used for this release.
+
+Current public fee/filter/margin observations must be stored with their source, product revision, and availability time. If account-specific fees, filters, margin mode, risk tiers, or protection cannot be authenticated and proven, capital qualification remains blocked.
+
+## Install and launch
+
+The release targets Python 3.12. The dependency lock is `requirements-lock.txt`; its SHA-256 is recorded in the release manifest. Do not change dependency versions to address a packaging convenience.
+
+### Linux
+
+```bash
+uv venv --python 3.12.13
+uv pip sync --python .venv/bin/python requirements-lock.txt
+uv pip install --python .venv/bin/python --no-deps -e '.[desktop,offline-research]'
+```
+
+The checked Linux target is a PyInstaller one-folder bundle with separate desktop and projection-service executables. A source install can launch them with `atlas-desktop` and `atlas-v2-projection`. Windows instructions are in the [release notes](docs/v2/V2_RELEASE_NOTES.md); Windows packaging was not exercised in this environment.
+
+### Public-only connection check
+
+This short command probes public Bybit and Binance endpoints, writes sanitized evidence, and uses a temporary ops store. It is a transport/translation check; it does not persist a user’s ongoing archive, qualify an account, or count toward the 72-hour soak.
+
+```bash
+mkdir -p evidence
+atlas-v2-public-qualification --output evidence/public-qualification.json
+```
+
+### Genuine 72-hour public operations soak
+
+Run the durable foreground soaker on an always-on host. It writes each sanitized JSONL sample and fsyncs it. Do not alter the duration or evidence timestamps to claim elapsed time. A restart must use the original evidence file and exact run ID; an interruption resets the continuous segment and the final record reports the resulting duration/status.
+
+```bash
+atlas-v2-public-soak --evidence evidence/public-soak.jsonl --duration-hours 72 --interval-seconds 60
+```
+
+Resume the same incomplete run using its `run_id` from the header:
+
+```bash
+atlas-v2-public-soak --evidence evidence/public-soak.jsonl --duration-hours 72 --interval-seconds 60 --resume-run-id RUN_ID
+```
+
+The Session-025 release records the soak as `BLOCKED BY ENVIRONMENT` until a real continuous artifact is validated for run identity, duration, continuity, sample timestamps, source health, and sanitized contents.
+
+### Projection service and desktop
+
+Start the V2 projection service against an existing initialized `atlas-ops` database. The service never creates or modifies that database. Use a private local token file; the service creates it with mode `0600` on POSIX. Keep the service bound to `127.0.0.1`.
+
+```bash
+atlas-v2-projection --db /path/to/ops.sqlite --archive-root /path/to/public-archive --token-file /path/to/private/atlas-ipc.token --host 127.0.0.1 --port 0
+```
+
+Copy the printed loopback port into a second terminal and launch the desktop:
+
+```bash
+atlas-desktop --host 127.0.0.1 --port PORT --token-file /path/to/private/atlas-ipc.token
+```
+
+The Linux bundle includes `atlas-v2-projection` and `atlas-desktop` as separate processes. A missing projection service produces an explicit reconnecting/unavailable state. Desktop diagnostics show desktop/service version, IPC protocol version, release classification, and evidence freshness. The health method also reports process uptime and the current persisted source, lag, queue, model-worker, capability, recovery, capital, economics, and soak states. Metrics not supplied by a runtime are explicitly unavailable rather than inferred.
+
+`atlas-ops` remains the sole writer and should be started before its projection service. The package provides collector/scanner/coordinator APIs and the public qualification/soak utilities; it does not provide a general scheduled `atlas-ops` daemon command in this candidate. A deployment-specific ops host must drive those APIs and persist evidence before the desktop has live research rows to display. An empty ops database is useful for checking the observer and will correctly show no current scanner evidence. No polling, alert delivery, or continuous scanner status is implied by installing the desktop alone.
+
+## Configuration and evidence
+
+Public/shadow research uses public endpoints and does not need exchange private credentials. Desktop configuration consists of the local ops database path, optional public archive path, loopback host/port, and a private IPC token file. No `atlas-worker` configuration is shipped because there is no worker command in this candidate. Credential-bearing live configuration is isolated to `atlas-crypto-live` and remains disabled for this release.
+
+`.env.example` contains names/placeholders only. Never commit `.env`, tokens, passwords, API keys, private account identifiers, or sensitive logs. Prefer OS-protected secret storage for any future authenticated testnet process; use least privilege and disable withdrawals.
+
+Keep durable evidence under deployment-managed paths outside the source tree:
+
+- `ops.sqlite` and its SQLite sidecars belong to the single `atlas-ops` writer. Back it up using SQLite’s online backup mechanism or after a clean shutdown; never copy a live database file as if that were an atomic backup.
+- Parquet public observations are immutable archive evidence. Back up the archive and its index together.
+- Qualification, soak, sanitized logs, release manifests, and recovery reports belong in a dated evidence directory with restrictive local permissions.
+- The V1 live-control journal and backups are separate from `ops.sqlite`. Do not use research or desktop backups as a recovery journal.
+
+## Recovery, logs, shutdown, and backup
+
+The release desktop is not the engine and cannot resolve recovery. If an authenticated writer is ever present, startup must begin in recovery: restore the journal and reservations; query unresolved order identities, executions, positions, wallet, and native protection; reconcile buffered events; repair or reduce unprotected owned exposure; and resume new risk only after a valid reconciliation certificate. `UNKNOWN` remains unresolved until positive terminal evidence; a negative recent-order lookup or elapsed time alone cannot free its reservation. Contradictory later evidence reopens recovery.
+
+Keep logs sanitized. Record event IDs, state transitions, evidence refs, status codes, and exception types; do not dump request headers, credential values, full account objects, or private IDs. On normal shutdown, stop the desktop first, then the projection service, flush/close the ops writer and archive, and verify the process has exited before creating backups. Never delete unresolved intents, pending commands, protection evidence, or reservations to make the UI appear healthy.
+
+## Environment gates and security
+
+- Authenticated Bybit and Binance testnet credentials/harnesses are absent. No authenticated exchange request was made for Session 025.
+- Binance protection is not established by the pinned adapter’s separate algo-order path.
+- Cross-host fencing requires an externally demonstrated control that prevents an old host from authenticating/sending before a replacement starts. A local lock or higher epoch is insufficient.
+- Public docs and adapter source are not account evidence. Public fee/filter/margin values cannot promote a profile to `SUPPORTED`.
+- Windows packaging/runtime, a genuine continuous 72-hour soak, and prospective economic evidence were unavailable in this environment.
+- The final holdout has not been viewed or consumed. Prospective evidence is insufficient; the known genuine matured candidate count is zero at this checkpoint. Economic status remains `NOT ESTIMABLE`.
+- A final repository scan and package-content scan are recorded in the Session-025 validation artifact. Release diagnostics keep capital false and do not equate engineering health with capital readiness.
+
+To qualify authenticated testnet behavior later, use a dedicated testnet account and a reviewed credential-safe harness. Bind the account/profile, position/margin mode, instrument filter/fee/margin revisions, pinned Nautilus distribution/source/artifact, order identity, IOC partial-fill behavior, native full-position protection, funding/cash evidence, history retention, reconnect/recovery, and emergency reduce-only path. Save redacted evidence with source hashes and timestamps. Exercise the exact testnet profile; never substitute public documentation, mocks, or synthetic fixtures. Do not use mainnet for this qualification.
+
+## Operator rule
+
+ATLAS may present research evidence and an exact immutable plan. It does not authorize capital in this release. The `SHADOW_RELEASED` classification means only that the non-capital engineering candidate passed its recorded deterministic release gates; it is not a profitability or live-readiness claim.

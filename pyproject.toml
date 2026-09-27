@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlas"
-version = "0.1.0"
-description = "ATLAS stabilized V1 Phase 0–6 baseline and V2 Phase-0 transition audit"
+version = "2.0.0.dev25"
+description = "ATLAS V2 causal crypto research and read-only public shadow desktop; capital disabled"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "UNLICENSED - private research foundation" }
@@ -35,6 +35,8 @@ desktop = [
 [project.scripts]
 atlas-v2-projection = "atlas.v2.desktop.ipc:main"
 atlas-desktop = "atlas.desktop.app:main"
+atlas-v2-public-qualification = "atlas.v2.data.qualification:main"
+atlas-v2-public-soak = "atlas.v2.data.soak:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

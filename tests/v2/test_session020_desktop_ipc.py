@@ -118,7 +118,28 @@ def test_protocol_rejects_bad_large_unknown_and_future_requests(tmp_path):
         assert wrong_version["error"]["code"] == "UNSUPPORTED_PROTOCOL_VERSION"
         unknown = _raw_request(host, port, _request(token, "modify_risk_policy"))
         assert unknown["error"]["code"] == "UNKNOWN_REQUEST"
-        assert ProjectionClient(host, port, token).request("ping")["state"] == "READY"
+        client = ProjectionClient(host, port, token)
+        ping = client.request("ping")
+        assert ping["state"] == "READY"
+        assert ping["service"] == "atlas-v2-projection"
+        assert ping["database_mode"] == "READ_ONLY"
+        assert ping["loopback_only"] is True
+        assert ping["release_classification"] == "SHADOW_RELEASED"
+        assert ping["capital_enabled"] is False
+        assert type(ping["uptime_seconds"]) is int
+        assert ping["requests_served"] >= 1
+        health = client.request("health")
+        diagnostics = health["diagnostics"]
+        assert diagnostics["process"] == "atlas-v2-projection"
+        assert diagnostics["version"] == "2.0.0.dev25"
+        assert diagnostics["ipc_protocol_version"] == 2
+        assert diagnostics["release_classification"] == "SHADOW_RELEASED"
+        assert diagnostics["economics_status"] == "NOT ESTIMABLE"
+        assert diagnostics["soak_status"] == "BLOCKED BY ENVIRONMENT"
+        assert diagnostics["capital_enabled"] is False
+        assert diagnostics["requests_served"] >= ping["requests_served"]
+        status_names = {item["name"] for item in health["statuses"]}
+        assert {"data_lag", "queue_depth", "model_worker", "capability", "recovery", "new_risk_allowed"} <= status_names
         assert frozenset(
             {"ping", "health", "snapshot", "overview", "scanner", "watches", "evidence", "chart"}
         ) == READ_ONLY_COMMANDS
@@ -201,3 +222,22 @@ os._exit(37)
     with ProjectionService(db, token) as reconnected:
         reconnected.start()
         assert ProjectionClient(*reconnected.address, token).request("ping")["state"] == "READY"
+
+
+def test_desktop_reports_clean_projection_unavailable_state(monkeypatch):
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    from atlas.desktop.app import AtlasDesktop
+
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        host, port = listener.getsockname()
+    app = QApplication.instance() or QApplication([])
+    window = AtlasDesktop(ProjectionClient(host, port, secrets.token_urlsafe(48)))
+    try:
+        assert window.banner.text() == "Projection service unavailable · SERVICE_UNAVAILABLE · reconnecting"
+    finally:
+        window.timer.stop()
+        window.close()
+        app.processEvents()
