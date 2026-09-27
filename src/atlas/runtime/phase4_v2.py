@@ -17,6 +17,11 @@ from atlas.domain.enums import Side
 from atlas.domain.money import canonical_decimal_str
 from atlas.domain.risk import RiskPolicy
 from atlas.domain.trade_plan import TradePlan
+from atlas.runtime.v2_capital_authority import (
+    V2CapitalAuthorityAttestation,
+    V2CapitalAuthorityStatus,
+    V2LiveAuthorityEvidenceKind,
+)
 from atlas.v2._serialization import canonical_json, decimal_value, sha256_json, sha256_ref, strict_fields
 from atlas.v2.contracts import (
     CandidateActionV2,
@@ -1053,6 +1058,290 @@ def persist_v2_bridged_trade_plan(
     return v1_plan
 
 
+def _v2_authority_ops_refs(
+    repo: OpsRepository,
+    bridge: V2CapitalBridgeEnvelope,
+    plan: TradePlanEnvelopeV2,
+    capability_profile: VenueCapabilityProfileV2,
+    risk_evidence: V2LiveRiskEvidence,
+) -> tuple[str, ...]:
+    """Return every immutable ops ref used by an authority decision."""
+    refs = {
+        bridge.content_hash,
+        bridge.candidate_set_ref,
+        bridge.candidate_ref,
+        bridge.action_artifact_ref,
+        bridge.sizing_ref,
+        bridge.evaluation_ref,
+        bridge.venue_capability_profile_ref,
+        bridge.venue_capability_snapshot_ref,
+        bridge.product_ref,
+        bridge.cost_model_ref,
+        bridge.v2_trade_plan_hash,
+        plan.content_hash,
+        capability_profile.content_hash,
+        risk_evidence.account_snapshot.content_hash,
+        risk_evidence.account_observation_ref,
+        risk_evidence.reconciliation_ref,
+    }
+    refs.update(row_ref for row in capability_profile.rows for row_ref in row.evidence_refs)
+    for outcome in risk_evidence.closed_outcomes:
+        refs.add(outcome.content_hash)
+        refs.add(outcome.position_ref)
+        position = repo.get_artifact(outcome.position_ref)
+        if position is not None:
+            for key in ("execution_source_ref", "economic_source_ref"):
+                source_ref = position.metadata.get(key)
+                if isinstance(source_ref, str) and _SHA256.fullmatch(source_ref):
+                    refs.add(source_ref)
+    for possible in risk_evidence.possible_risks:
+        refs.add(possible.content_hash)
+        refs.add(possible.source_ref)
+    return tuple(sorted(refs))
+
+
+def _require_current_ops_refs(repo: OpsRepository, refs: tuple[str, ...]) -> tuple[tuple[str, str], ...]:
+    fingerprints = []
+    for ref in refs:
+        item = repo.get_artifact(ref)
+        if item is None or item.artifact_ref != ref or item.content_hash != ref:
+            raise ValueError("attested immutable ops artifact reference is missing or changed")
+        fingerprints.append(
+            (
+                ref,
+                sha256_json(
+                    {
+                        "artifact_ref": item.artifact_ref,
+                        "artifact_type": item.artifact_type,
+                        "content_hash": item.content_hash,
+                        "created_at_ns": item.created_at_ns,
+                        "available_at_ns": item.available_at_ns,
+                        "metadata": dict(item.metadata),
+                    }
+                ),
+            )
+        )
+    return tuple(fingerprints)
+
+
+def _require_v2_current_recovery(
+    journal: Any,
+    *,
+    recovery_run_id: str,
+    writer_id: str,
+    writer_epoch: int,
+    runtime_instance_id: str,
+) -> None:
+    certificate = journal.load_latest_recovery_certificate()
+    if certificate is None or certificate.recovery_run_id != recovery_run_id:
+        raise ValueError("current live recovery certificate is missing or changed")
+    if (
+        certificate.decision.value != "READY"
+        or certificate.reconciliation_health.value != "CURRENT"
+        or certificate.writer_id != writer_id
+        or certificate.writer_epoch != writer_epoch
+        or certificate.runtime_instance_id != runtime_instance_id
+        or certificate.journal_schema_version != (journal.schema_version() or 0)
+        or certificate.unresolved_intents
+        or certificate.unresolved_commands
+        or certificate.unknown_commands
+    ):
+        raise ValueError("recovery-required or stale live-control state invalidates V2 opening authority")
+
+
+def _live_authority_evidence(
+    journal: Any,
+    *,
+    profile: VenueCapabilityProfileV2,
+    product_revision: str,
+    risk_evidence: V2LiveRiskEvidence,
+    risk_snapshot_hash: str,
+    protection_evidence_ref: str,
+    recovery_run_id: str,
+    writer_id: str,
+    writer_epoch: int,
+    runtime_instance_id: str,
+    cutoff_ns: int,
+) -> tuple[tuple[str, ...], bool]:
+    """Require exact, cutoff-current evidence stored by this live writer."""
+    sha256_ref(protection_evidence_ref, field="protection evidence ref")
+    required: list[tuple[str, V2LiveAuthorityEvidenceKind, str | None, str | None]] = [
+        (ref, V2LiveAuthorityEvidenceKind.CAPABILITY, row.capability, None)
+        for row in profile.rows
+        for ref in row.evidence_refs
+    ]
+    required.extend(
+        (
+            (risk_evidence.account_observation_ref, V2LiveAuthorityEvidenceKind.ACCOUNT_RISK, None, risk_snapshot_hash),
+            (risk_evidence.reconciliation_ref, V2LiveAuthorityEvidenceKind.EXPOSURE_RECONCILIATION, None, None),
+            (protection_evidence_ref, V2LiveAuthorityEvidenceKind.PROTECTION, None, None),
+        )
+    )
+    seen: list[str] = []
+    synthetic = False
+    for evidence_ref, expected_kind, expected_capability, expected_snapshot_hash in sorted(
+        required, key=lambda value: (value[0], value[1].value, value[2] or "")
+    ):
+        evidence = journal.load_v2_live_authority_evidence(evidence_ref)
+        if evidence is None:
+            raise ValueError("capital-critical evidence has no live-control journal receipt")
+        if (
+            evidence.kind is not expected_kind
+            or evidence.account_identity_hash != profile.account_identity_hash
+            or evidence.venue != profile.venue
+            or evidence.environment != profile.environment
+            or evidence.product_revision != product_revision
+            or evidence.capability_profile_hash != profile.content_hash
+            or evidence.capability != expected_capability
+            or evidence.account_risk_snapshot_hash != expected_snapshot_hash
+            or evidence.writer_id != writer_id
+            or evidence.writer_epoch != writer_epoch
+            or evidence.runtime_instance_id != runtime_instance_id
+            or evidence.recovery_run_id != recovery_run_id
+            or evidence.observed_at_ns > cutoff_ns
+            or cutoff_ns - evidence.observed_at_ns > _MAX_EVIDENCE_AGE_NS
+        ):
+            raise ValueError("live-control evidence is stale or does not bind the current profile/account/writer")
+        synthetic = synthetic or evidence.synthetic_fixture
+        seen.append(evidence.content_hash)
+    return tuple(sorted(seen)), synthetic
+def _attest_v2_bridge_authority(
+    shell: Any,
+    *,
+    repo: OpsRepository,
+    bridge: V2CapitalBridgeEnvelope,
+    plan: TradePlanEnvelopeV2,
+    capability_profile: VenueCapabilityProfileV2,
+    risk_evidence: V2LiveRiskEvidence,
+    risk_policy_v1: RiskPolicy,
+    risk_policy_v2: RiskPolicyV2,
+    account_scope: str,
+    cutoff_ns: int,
+    attested_at_ns: int,
+    expires_at_ns: int,
+    protection_evidence_ref: str,
+    v1_revalidation_evidence: Any,
+) -> V2CapitalAuthorityAttestation:
+    """Persist authority only after the active live writer accepts all evidence.
+
+    Offline fixtures are persisted as ``SYNTHETIC_TEST_ONLY`` and can never
+    authorize an opening. Ops labels alone do not create live evidence rows.
+    """
+    from atlas.runtime.assisted_control import revalidate_plan
+
+    context = getattr(shell, "v2_live_writer_context", lambda: None)()
+    if context is None:
+        raise ValueError("V2 capital attestation requires the active SafeRuntime writer")
+    writer_id, writer_epoch, runtime_instance_id = context
+    if cutoff_ns != v1_revalidation_evidence.now_ns or attested_at_ns != cutoff_ns:
+        raise ValueError("live V1/V2 evidence cutoff and attestation timestamp must match")
+    _require_v2_current_recovery(
+        shell.journal,
+        recovery_run_id=v1_revalidation_evidence.recovery_run_id,
+        writer_id=writer_id,
+        writer_epoch=writer_epoch,
+        runtime_instance_id=runtime_instance_id,
+    )
+    if (
+        expires_at_ns <= attested_at_ns
+        or expires_at_ns
+        > min(plan.expires_at_ns, capability_profile.expires_at_ns, attested_at_ns + _MAX_EVIDENCE_AGE_NS)
+    ):
+        raise ValueError("attestation expiry must be within the exact plan and capability expiry")
+    if (
+        account_scope != bridge.account_identity_hash
+        or risk_policy_v1.policy_hash() != bridge.v1_risk_policy_hash
+        or risk_policy_v2.policy_hash != bridge.risk_policy_v2_hash
+        or plan.content_hash != bridge.v2_trade_plan_hash
+        or capability_profile.content_hash != bridge.venue_capability_profile_ref
+    ):
+        raise ValueError("current account, plan, capability, or risk policy differs from the bridge")
+
+    validate_venue_profile_for_capital(repo, capability_profile, now_ns=cutoff_ns)
+    refs = _v2_authority_ops_refs(repo, bridge, plan, capability_profile, risk_evidence)
+    ops_fingerprints = _require_current_ops_refs(repo, refs)
+    _require_indexed(
+        repo, bridge.content_hash, "V2CapitalBridgeEnvelope", metadata_key="bridge", expected=bridge.to_dict()
+    )
+    _require_indexed(
+        repo,
+        capability_profile.content_hash,
+        "VenueCapabilityProfileV2",
+        metadata_key="profile",
+        expected=capability_profile.to_dict(),
+    )
+    _require_indexed(repo, plan.content_hash, "TradePlanEnvelopeV2", metadata_key="plan", expected=plan.to_dict())
+
+    v1_plan = bridge_to_v1_trade_plan(bridge, plan)
+    current_v1 = revalidate_plan(journal=shell.journal, plan=v1_plan, evidence=v1_revalidation_evidence)
+    if not current_v1.ok:
+        raise ValueError("current V1 recovery/risk revalidation failed: " + "; ".join(current_v1.reasons))
+    decision = revalidate_v2_rolling_risk(
+        repo=repo,
+        evidence=risk_evidence,
+        risk_policy_v1=risk_policy_v1,
+        risk_policy_v2=risk_policy_v2,
+        account_scope=account_scope,
+        cutoff_ns=cutoff_ns,
+        proposed_normal_loss=bridge.normal_risk,
+        v1_reserved_normal_loss=shell.journal.reservation_totals()["normal_loss"],
+        v1_unresolved_opening_intents=len(shell.journal.load_unresolved_intents()),
+    )
+    if not decision.allowed:
+        raise ValueError("current RiskPolicyV2 revalidation failed: " + "; ".join(decision.reasons))
+    try:
+        live_refs, synthetic = _live_authority_evidence(
+            shell.journal,
+            profile=capability_profile,
+            product_revision=bridge.product_revision,
+            risk_evidence=risk_evidence,
+            risk_snapshot_hash=risk_evidence.account_snapshot.content_hash,
+            protection_evidence_ref=protection_evidence_ref,
+            recovery_run_id=v1_revalidation_evidence.recovery_run_id,
+            writer_id=writer_id,
+            writer_epoch=writer_epoch,
+            runtime_instance_id=runtime_instance_id,
+            cutoff_ns=cutoff_ns,
+        )
+    except (AttributeError, ValueError) as exc:
+        raise ValueError(f"live authority evidence rejected: {exc}") from exc
+    evidence_refs = tuple(sorted({ref for row in capability_profile.rows for ref in row.evidence_refs}))
+    attestation = V2CapitalAuthorityAttestation(
+        bridge.content_hash,
+        plan.content_hash,
+        capability_profile.content_hash,
+        bridge.venue_capability_snapshot_ref,
+        evidence_refs,
+        account_scope,
+        bridge.venue,
+        bridge.environment,
+        bridge.instrument_key_ref,
+        bridge.product_ref,
+        bridge.product_revision,
+        risk_policy_v1.policy_hash(),
+        risk_policy_v2.policy_hash,
+        risk_evidence.account_snapshot.content_hash,
+        risk_evidence.account_observation_ref,
+        decision.evidence_hash,
+        risk_evidence.reconciliation_ref,
+        protection_evidence_ref,
+        refs,
+        ops_fingerprints,
+        live_refs,
+        writer_id,
+        writer_epoch,
+        runtime_instance_id,
+        v1_revalidation_evidence.recovery_run_id,
+        cutoff_ns,
+        attested_at_ns,
+        expires_at_ns,
+        V2CapitalAuthorityStatus.SYNTHETIC_TEST_ONLY if synthetic else V2CapitalAuthorityStatus.LIVE_ATTESTED,
+        "SYNTHETIC_TEST_FIXTURE" if synthetic else "AUTHENTICATED_LIVE_CONTROL",
+    )
+    shell.journal.append_v2_capital_authority_attestation(attestation)
+    return attestation
+
+
 def prepare_v2_bridge_entry(
     shell: Any,
     *,
@@ -1068,10 +1357,93 @@ def prepare_v2_bridge_entry(
     approval_id: str,
     user_identity: str,
     v1_revalidation_evidence: Any,
+    authority_attestation_ref: str | None = None,
+    protection_evidence_ref: str | None = None,
 ) -> Any:
-    """Run the V2 live gate, then delegate unchanged to V1 durable control."""
+    """Require live-control authority, then delegate unchanged to V1 durable control."""
     from atlas.persistence.sqlite import PersistenceError
-    from atlas.runtime.assisted_control import AssistedControlResult
+    from atlas.runtime.assisted_control import AssistedControlResult, revalidate_plan, validate_approval
+
+    if authority_attestation_ref is None:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("live-control capital attestation required",))
+    if protection_evidence_ref is None:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("current live protection evidence required",))
+    try:
+        attestation = shell.journal.load_v2_capital_authority_attestation(authority_attestation_ref)
+    except (AttributeError, PersistenceError, ValueError) as exc:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", (str(exc),))
+    if attestation is None or attestation.content_hash != authority_attestation_ref:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("durable live-control attestation missing",))
+    context = getattr(shell, "v2_live_writer_context", lambda: None)()
+    if context is None:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("active SafeRuntime writer context required",))
+    writer_id, writer_epoch, runtime_instance_id = context
+    try:
+        v1_plan = bridge_to_v1_trade_plan(bridge, plan)
+    except (AttributeError, ValueError) as exc:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", (str(exc),))
+    early_mismatches: list[str] = []
+    early_expected = {
+        "bridge_hash": bridge.content_hash,
+        "trade_plan_hash": plan.content_hash,
+        "capability_profile_hash": capability_profile.content_hash,
+        "capability_snapshot_hash": bridge.venue_capability_snapshot_ref,
+        "account_identity_hash": account_scope,
+        "venue": bridge.venue,
+        "environment": bridge.environment,
+        "instrument_key_hash": bridge.instrument_key_ref,
+        "product_hash": bridge.product_ref,
+        "product_revision": bridge.product_revision,
+        "v1_risk_policy_hash": risk_policy_v1.policy_hash(),
+        "risk_policy_v2_hash": risk_policy_v2.policy_hash,
+        "writer_id": writer_id,
+        "writer_epoch": writer_epoch,
+        "runtime_instance_id": runtime_instance_id,
+        "recovery_run_id": v1_revalidation_evidence.recovery_run_id,
+        "evidence_cutoff_ns": cutoff_ns,
+        "protection_evidence_hash": protection_evidence_ref,
+    }
+    early_mismatches.extend(
+        f"attestation {name} mismatch" for name, expected in early_expected.items()
+        if getattr(attestation, name) != expected
+    )
+    if attestation.capability_evidence_refs != tuple(
+        sorted({ref for row in capability_profile.rows for ref in row.evidence_refs})
+    ):
+        early_mismatches.append("attestation capability evidence set mismatch")
+    if attestation.status is not V2CapitalAuthorityStatus.LIVE_ATTESTED:
+        early_mismatches.append("synthetic or non-live attestation cannot authorize opening risk")
+    if cutoff_ns < attestation.attested_at_ns or cutoff_ns >= attestation.expires_at_ns:
+        early_mismatches.append("live-control attestation is stale or expired")
+    if early_mismatches:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", tuple(early_mismatches))
+
+    # Approval remains plan-bound and single-use; it cannot create or refresh authority.
+    try:
+        validate_approval(
+            journal=shell.journal,
+            plan=v1_plan,
+            approval_id=approval_id,
+            user_identity=user_identity,
+            now_ns=cutoff_ns,
+        )
+    except PersistenceError as exc:
+        return AssistedControlResult("APPROVAL_BLOCKED", (str(exc),))
+    try:
+        _require_v2_current_recovery(
+            shell.journal,
+            recovery_run_id=v1_revalidation_evidence.recovery_run_id,
+            writer_id=writer_id,
+            writer_epoch=writer_epoch,
+            runtime_instance_id=runtime_instance_id,
+        )
+    except (AttributeError, PersistenceError, ValueError) as exc:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", (str(exc),))
+    if v1_revalidation_evidence.now_ns != cutoff_ns:
+        return AssistedControlResult("V2_RISK_BLOCKED", ("V1/V2 revalidation cutoffs differ",))
+    current_v1 = revalidate_plan(journal=shell.journal, plan=v1_plan, evidence=v1_revalidation_evidence)
+    if not current_v1.ok:
+        return AssistedControlResult("V2_RISK_BLOCKED", current_v1.reasons)
 
     if capability_profile.content_hash != bridge.venue_capability_profile_ref:
         return AssistedControlResult("V2_CAPABILITY_BLOCKED", ("venue capability profile changed",))
@@ -1099,10 +1471,15 @@ def prepare_v2_bridge_entry(
             expected=capability_profile.to_dict(),
         )
         _require_indexed(repo, plan.content_hash, "TradePlanEnvelopeV2", metadata_key="plan", expected=plan.to_dict())
-        v1_plan = bridge_to_v1_trade_plan(bridge, plan)
         stored_plan = shell.journal.load_trade_plan(v1_plan.plan_id)
         if stored_plan.plan_hash() != v1_plan.plan_hash():
             return AssistedControlResult("V2_BRIDGE_BLOCKED", ("persisted V1 plan differs from bridge",))
+        ops_refs = _v2_authority_ops_refs(repo, bridge, plan, capability_profile, risk_evidence)
+        if ops_refs != attestation.ops_artifact_refs:
+            return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("ops artifact set differs from live attestation",))
+        ops_fingerprints = _require_current_ops_refs(repo, ops_refs)
+        if ops_fingerprints != attestation.ops_artifact_fingerprints:
+            return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("ops artifact content changed after attestation",))
         journal_reserved = shell.journal.reservation_totals()["normal_loss"]
         journal_opening_intents = len(shell.journal.load_unresolved_intents())
         decision = revalidate_v2_rolling_risk(
@@ -1120,8 +1497,45 @@ def prepare_v2_bridge_entry(
         return AssistedControlResult("V2_RISK_BLOCKED", (str(exc),))
     if not decision.allowed:
         return AssistedControlResult("V2_RISK_BLOCKED", decision.reasons)
-    if v1_revalidation_evidence.now_ns != cutoff_ns:
-        return AssistedControlResult("V2_RISK_BLOCKED", ("V1/V2 revalidation cutoffs differ",))
+    try:
+        live_refs, synthetic = _live_authority_evidence(
+            shell.journal,
+            profile=capability_profile,
+            product_revision=bridge.product_revision,
+            risk_evidence=risk_evidence,
+            risk_snapshot_hash=risk_evidence.account_snapshot.content_hash,
+            protection_evidence_ref=protection_evidence_ref,
+            recovery_run_id=v1_revalidation_evidence.recovery_run_id,
+            writer_id=writer_id,
+            writer_epoch=writer_epoch,
+            runtime_instance_id=runtime_instance_id,
+            cutoff_ns=cutoff_ns,
+        )
+    except (AttributeError, PersistenceError, ValueError) as exc:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", (str(exc),))
+    if synthetic or live_refs != attestation.live_evidence_refs:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("live evidence set changed or is synthetic",))
+    binding_reasons = attestation.binding_reasons(
+        bridge=bridge,
+        plan=plan,
+        capability_profile=capability_profile,
+        account_identity_hash=account_scope,
+        v1_risk_policy_hash=risk_policy_v1.policy_hash(),
+        risk_policy_v2_hash=risk_policy_v2.policy_hash,
+        account_risk_snapshot_hash=risk_evidence.account_snapshot.content_hash,
+        account_risk_observation_hash=risk_evidence.account_observation_ref,
+        risk_evidence_hash=decision.evidence_hash,
+        exposure_reconciliation_hash=risk_evidence.reconciliation_ref,
+        protection_evidence_hash=protection_evidence_ref,
+        writer_id=writer_id,
+        writer_epoch=writer_epoch,
+        runtime_instance_id=runtime_instance_id,
+        recovery_run_id=v1_revalidation_evidence.recovery_run_id,
+        cutoff_ns=cutoff_ns,
+        now_ns=cutoff_ns,
+    )
+    if binding_reasons:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", binding_reasons)
     return shell.prepare_entry(
         plan=v1_plan, approval_id=approval_id, user_identity=user_identity, evidence=v1_revalidation_evidence
     )

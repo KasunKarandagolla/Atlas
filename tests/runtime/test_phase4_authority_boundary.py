@@ -64,3 +64,30 @@ def test_phase4_bridge_keeps_normal_orders_on_existing_nautilus_boundary():
     source = Path("src/atlas/runtime/phase4_v2.py").read_text(encoding="utf-8")
     assert "submit_order" not in source and "place_order" not in source
     assert "requests." not in source and "httpx." not in source
+
+
+def test_only_crypto_live_runtime_can_create_v2_capital_attestations():
+    runtime = Path("src/atlas/runtime/safe_runtime.py").read_text(encoding="utf-8")
+    journal = Path("src/atlas/persistence/sqlite.py").read_text(encoding="utf-8")
+    assert "_attest_v2_bridge_authority" in runtime
+    assert "append_v2_capital_authority_attestation" in journal
+    restricted_roots = (
+        Path("src/atlas/desktop"),
+        Path("src/atlas/v2/desktop"),
+        Path("src/atlas/v2/models"),
+        Path("src/atlas/v2/strategies"),
+        Path("src/atlas/v2/science"),
+        Path("src/atlas/v2/news"),
+    )
+    forbidden_authority = (
+        "_attest_v2_bridge_authority",
+        "attest_v2_bridge_authority",
+        "append_v2_capital_authority_attestation",
+        "append_v2_live_authority_evidence",
+        "record_v2_live_authority_evidence",
+    )
+    for root in restricted_roots:
+        for path in root.rglob("*.py"):
+            source = path.read_text(encoding="utf-8")
+            assert not any(symbol in source for symbol in forbidden_authority), str(path)
+    assert "v2_capital_authority" not in Path("src/atlas/v2/desktop/ipc.py").read_text(encoding="utf-8")

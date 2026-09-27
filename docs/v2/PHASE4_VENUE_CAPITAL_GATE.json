@@ -14,6 +14,9 @@
   "bybit_engineering_implementation": "TESTED",
   "bybit_protection_engineering": "TESTED",
   "bybit_testnet_gate": "TEST GATE",
+  "capital_authority_attestation_contract_version": "V2_CAPITAL_AUTHORITY_ATTESTATION_V1",
+  "capital_authority_contract_hash": "2d32483fdc5cf1d2d5fc91cc11daab8d4b650611167ec379809377f1406d27b7",
+  "capital_authority_owned_by_live_control_writer": "TESTED",
   "capital_enabled": false,
   "capital_policy": "Disabled; tests and implementation do not enable assisted or live capital.",
   "created_at": "2026-09-28",
@@ -25,6 +28,7 @@
     "No external cross-host writer/credential fencing mechanism can be demonstrated in this environment."
   ],
   "failure_matrix": "TESTED",
+  "ops_artifacts_alone_cannot_authorize_opening_risk": "TESTED",
   "phase4_engineering": "TESTED",
   "riskpolicyv2_live_binding": "TESTED",
   "schema_version": 1,

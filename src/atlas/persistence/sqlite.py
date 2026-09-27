@@ -68,6 +68,8 @@ class SQLiteJournal:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._closed = False
         self._transaction_lock = threading.RLock()
+        self._v2_live_writer: Any | None = None
+        self._v2_runtime_instance_id: str | None = None
         try:
             self._conn = sqlite3.connect(self.path, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
@@ -106,6 +108,234 @@ class SQLiteJournal:
 
     def schema_version(self) -> int | None:
         return self._wrap("schema_version", lambda: current_version(self._conn))
+
+    def _bind_v2_live_writer(self, writer: Any, runtime_instance_id: str) -> None:
+        """Bind V2 authority writes to the active in-process live writer.
+
+        SafeRuntime is the only production caller. Direct journal users retain
+        all existing V1 APIs but cannot create V2 live authority records.
+        """
+        if self._closed:
+            raise PersistenceError("cannot bind a closed V2 live journal")
+        ownership = getattr(writer, "ownership", None)
+        if ownership is None:
+            raise PersistenceError("V2 live authority requires an acquired writer lock")
+        if not isinstance(runtime_instance_id, str) or not runtime_instance_id.strip():
+            raise PersistenceError("V2 live authority runtime identity is required")
+        if self._v2_live_writer is not None:
+            raise PersistenceError("V2 live journal writer context is already bound")
+        self._v2_live_writer = writer
+        self._v2_runtime_instance_id = runtime_instance_id
+
+    def v2_live_writer_context(self) -> tuple[str, int, str] | None:
+        """Return the current local writer identity, or None when unbound/fenced."""
+        def op():
+            writer = self._v2_live_writer
+            runtime_instance_id = self._v2_runtime_instance_id
+            ownership = getattr(writer, "ownership", None) if writer is not None else None
+            if ownership is None or runtime_instance_id is None:
+                return None
+            return ownership.writer_id, ownership.writer_epoch, runtime_instance_id
+
+        return self._wrap("v2_live_writer_context", op)
+
+    def append_v2_live_authority_evidence(self, evidence: Any) -> None:
+        """Persist a hash-only live evidence receipt under the active writer."""
+        from atlas.runtime.v2_capital_authority import V2LiveAuthorityEvidence
+
+        if not isinstance(evidence, V2LiveAuthorityEvidence):
+            raise PersistenceError("typed V2 live authority evidence required")
+        context = self.v2_live_writer_context()
+        if context is None or context != (
+            evidence.writer_id,
+            evidence.writer_epoch,
+            evidence.runtime_instance_id,
+        ):
+            raise PersistenceError("V2 live authority evidence does not match the active writer context")
+        body = evidence.to_dict()
+        encoded = json.dumps(body, sort_keys=True, separators=(",", ":"))
+
+        def op():
+            with self._tx() as c:
+                existing = c.execute(
+                    "SELECT canonical_json FROM v2_live_authority_evidence WHERE evidence_hash=?",
+                    (evidence.content_hash,),
+                ).fetchone()
+                if existing is not None:
+                    if existing["canonical_json"] != encoded:
+                        raise PersistenceError("V2 live authority evidence hash conflicts with persisted content")
+                    return
+                c.execute(
+                    """INSERT INTO v2_live_authority_evidence(
+                        evidence_hash,canonical_json,account_identity_hash,capability_profile_hash,
+                        writer_id,writer_epoch,runtime_instance_id,observed_at_ns,synthetic_fixture
+                    ) VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (
+                        evidence.content_hash,
+                        encoded,
+                        evidence.account_identity_hash,
+                        evidence.capability_profile_hash,
+                        evidence.writer_id,
+                        evidence.writer_epoch,
+                        evidence.runtime_instance_id,
+                        evidence.observed_at_ns,
+                        int(evidence.synthetic_fixture),
+                    ),
+                )
+
+        self._wrap("append_v2_live_authority_evidence", op)
+
+    def load_v2_live_authority_evidence(self, evidence_hash: str) -> Any | None:
+        from atlas.runtime.v2_capital_authority import V2LiveAuthorityEvidence
+
+        def op():
+            row = self._conn.execute(
+                "SELECT * FROM v2_live_authority_evidence WHERE evidence_hash=?", (evidence_hash,)
+            ).fetchone()
+            if row is None:
+                return None
+            evidence = V2LiveAuthorityEvidence.from_dict(json.loads(row["canonical_json"]))
+            if evidence.content_hash != evidence_hash or any(
+                (
+                    row["account_identity_hash"] != evidence.account_identity_hash,
+                    row["capability_profile_hash"] != evidence.capability_profile_hash,
+                    row["writer_id"] != evidence.writer_id,
+                    int(row["writer_epoch"]) != evidence.writer_epoch,
+                    row["runtime_instance_id"] != evidence.runtime_instance_id,
+                    int(row["observed_at_ns"]) != evidence.observed_at_ns,
+                    bool(row["synthetic_fixture"]) != evidence.synthetic_fixture,
+                )
+            ):
+                raise PersistenceError("V2 live authority evidence integrity mismatch")
+            return evidence
+
+        return self._wrap("load_v2_live_authority_evidence", op)
+
+    def append_v2_capital_authority_attestation(self, attestation: Any) -> None:
+        """Append an immutable attestation; only SafeRuntime-bound journals may write."""
+        from atlas.runtime.v2_capital_authority import (
+            V2CapitalAuthorityAttestation,
+            V2CapitalAuthorityStatus,
+        )
+
+        if not isinstance(attestation, V2CapitalAuthorityAttestation):
+            raise PersistenceError("typed V2 capital authority attestation required")
+        context = self.v2_live_writer_context()
+        if context is None or context != (
+            attestation.writer_id,
+            attestation.writer_epoch,
+            attestation.runtime_instance_id,
+        ):
+            raise PersistenceError("V2 capital authority attestation does not match the active writer context")
+        loaded_evidence = tuple(
+            self.load_v2_live_authority_evidence(ref) for ref in attestation.live_evidence_refs
+        )
+        if any(item is None for item in loaded_evidence):
+            raise PersistenceError("attestation references missing live-control evidence")
+        evidence = tuple(item for item in loaded_evidence if item is not None)
+        for item in evidence:
+            if (
+                item.account_identity_hash != attestation.account_identity_hash
+                or item.capability_profile_hash != attestation.capability_profile_hash
+                or item.venue != attestation.venue
+                or item.environment != attestation.environment
+                or item.product_revision != attestation.product_revision
+                or item.writer_id != attestation.writer_id
+                or item.writer_epoch != attestation.writer_epoch
+                or item.runtime_instance_id != attestation.runtime_instance_id
+                or item.recovery_run_id != attestation.recovery_run_id
+                or item.observed_at_ns > attestation.evidence_cutoff_ns
+            ):
+                raise PersistenceError("attestation live evidence binding mismatch")
+        from atlas.runtime.v2_capital_authority import V2LiveAuthorityEvidenceKind
+
+        by_kind = {
+            kind: [item for item in evidence if item.kind is kind] for kind in V2LiveAuthorityEvidenceKind
+        }
+        if (
+            not by_kind[V2LiveAuthorityEvidenceKind.CAPABILITY]
+            or len(by_kind[V2LiveAuthorityEvidenceKind.ACCOUNT_RISK]) != 1
+            or len(by_kind[V2LiveAuthorityEvidenceKind.EXPOSURE_RECONCILIATION]) != 1
+            or len(by_kind[V2LiveAuthorityEvidenceKind.PROTECTION]) != 1
+            or tuple(sorted(item.evidence_ref for item in by_kind[V2LiveAuthorityEvidenceKind.CAPABILITY]))
+            != attestation.capability_evidence_refs
+            or by_kind[V2LiveAuthorityEvidenceKind.ACCOUNT_RISK][0].evidence_ref
+            != attestation.account_risk_observation_hash
+            or by_kind[V2LiveAuthorityEvidenceKind.ACCOUNT_RISK][0].account_risk_snapshot_hash
+            != attestation.account_risk_snapshot_hash
+            or by_kind[V2LiveAuthorityEvidenceKind.EXPOSURE_RECONCILIATION][0].evidence_ref
+            != attestation.exposure_reconciliation_hash
+            or by_kind[V2LiveAuthorityEvidenceKind.PROTECTION][0].evidence_ref
+            != attestation.protection_evidence_hash
+        ):
+            raise PersistenceError("attestation does not bind the required exact live evidence set")
+        synthetic = any(item.synthetic_fixture for item in evidence)
+        if synthetic != (attestation.status is V2CapitalAuthorityStatus.SYNTHETIC_TEST_ONLY):
+            raise PersistenceError("attestation status does not match live evidence fixture class")
+        encoded = json.dumps(attestation.to_dict(), sort_keys=True, separators=(",", ":"))
+
+        def op():
+            with self._tx() as c:
+                existing = c.execute(
+                    "SELECT canonical_json FROM v2_capital_authority_attestations WHERE attestation_hash=?",
+                    (attestation.content_hash,),
+                ).fetchone()
+                if existing is not None:
+                    if existing["canonical_json"] != encoded:
+                        raise PersistenceError("V2 authority attestation hash conflicts with persisted content")
+                    return
+                c.execute(
+                    """INSERT INTO v2_capital_authority_attestations(
+                        attestation_hash,bridge_hash,trade_plan_hash,account_identity_hash,writer_id,
+                        writer_epoch,runtime_instance_id,evidence_cutoff_ns,attested_at_ns,expires_at_ns,
+                        status,canonical_json
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        attestation.content_hash,
+                        attestation.bridge_hash,
+                        attestation.trade_plan_hash,
+                        attestation.account_identity_hash,
+                        attestation.writer_id,
+                        attestation.writer_epoch,
+                        attestation.runtime_instance_id,
+                        attestation.evidence_cutoff_ns,
+                        attestation.attested_at_ns,
+                        attestation.expires_at_ns,
+                        attestation.status.value,
+                        encoded,
+                    ),
+                )
+
+        self._wrap("append_v2_capital_authority_attestation", op)
+
+    def load_v2_capital_authority_attestation(self, attestation_hash: str) -> Any | None:
+        from atlas.runtime.v2_capital_authority import V2CapitalAuthorityAttestation
+
+        def op():
+            row = self._conn.execute(
+                "SELECT * FROM v2_capital_authority_attestations WHERE attestation_hash=?", (attestation_hash,)
+            ).fetchone()
+            if row is None:
+                return None
+            attestation = V2CapitalAuthorityAttestation.from_dict(json.loads(row["canonical_json"]))
+            if attestation.content_hash != attestation_hash or any(
+                (
+                    row["bridge_hash"] != attestation.bridge_hash,
+                    row["trade_plan_hash"] != attestation.trade_plan_hash,
+                    row["account_identity_hash"] != attestation.account_identity_hash,
+                    row["writer_id"] != attestation.writer_id,
+                    int(row["writer_epoch"]) != attestation.writer_epoch,
+                    row["runtime_instance_id"] != attestation.runtime_instance_id,
+                    int(row["evidence_cutoff_ns"]) != attestation.evidence_cutoff_ns,
+                    int(row["attested_at_ns"]) != attestation.attested_at_ns,
+                    int(row["expires_at_ns"]) != attestation.expires_at_ns,
+                    row["status"] != attestation.status.value,
+                )
+            ):
+                raise PersistenceError("V2 capital authority attestation integrity mismatch")
+            return attestation
+
+        return self._wrap("load_v2_capital_authority_attestation", op)
 
     @contextmanager
     def _tx(self) -> Iterator[sqlite3.Cursor]:
@@ -1748,6 +1978,21 @@ class SQLiteJournal:
             )
 
         return self._wrap("load_recovery_certificate", op)
+
+    def load_latest_recovery_certificate(self) -> Any | None:
+        """Load the most recently persisted recovery certificate."""
+        recovery_run_id = self._wrap(
+            "load_latest_recovery_certificate",
+            lambda: (
+                row[0]
+                if (row := self._conn.execute(
+                    "SELECT recovery_run_id FROM recovery_certificates "
+                    "ORDER BY ended_at_ns DESC,recovery_run_id DESC LIMIT 1"
+                ).fetchone())
+                else None
+            ),
+        )
+        return self.load_recovery_certificate(recovery_run_id) if recovery_run_id is not None else None
 
     def load_recovery_incidents(self, recovery_run_id: str | None = None) -> list[Any]:
         from atlas.runtime.recovery import RecoveryIncident

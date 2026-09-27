@@ -312,6 +312,69 @@ DDL_STATEMENTS = [
         target_profile_hash TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS v2_schema_metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS v2_live_authority_evidence (
+        evidence_hash TEXT PRIMARY KEY,
+        canonical_json TEXT NOT NULL,
+        account_identity_hash TEXT NOT NULL,
+        capability_profile_hash TEXT NOT NULL,
+        writer_id TEXT NOT NULL,
+        writer_epoch INTEGER NOT NULL,
+        runtime_instance_id TEXT NOT NULL,
+        observed_at_ns INTEGER NOT NULL,
+        synthetic_fixture INTEGER NOT NULL CHECK(synthetic_fixture IN (0,1))
+    )
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS v2_live_authority_evidence_no_update
+    BEFORE UPDATE ON v2_live_authority_evidence
+    BEGIN
+        SELECT RAISE(ABORT, 'V2 live authority evidence is immutable');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS v2_live_authority_evidence_no_delete
+    BEFORE DELETE ON v2_live_authority_evidence
+    BEGIN
+        SELECT RAISE(ABORT, 'V2 live authority evidence is append-only');
+    END
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS v2_capital_authority_attestations (
+        attestation_hash TEXT PRIMARY KEY,
+        bridge_hash TEXT NOT NULL,
+        trade_plan_hash TEXT NOT NULL,
+        account_identity_hash TEXT NOT NULL,
+        writer_id TEXT NOT NULL,
+        writer_epoch INTEGER NOT NULL,
+        runtime_instance_id TEXT NOT NULL,
+        evidence_cutoff_ns INTEGER NOT NULL,
+        attested_at_ns INTEGER NOT NULL,
+        expires_at_ns INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        canonical_json TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS v2_capital_authority_no_update
+    BEFORE UPDATE ON v2_capital_authority_attestations
+    BEGIN
+        SELECT RAISE(ABORT, 'V2 capital authority attestation is immutable');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS v2_capital_authority_no_delete
+    BEFORE DELETE ON v2_capital_authority_attestations
+    BEGIN
+        SELECT RAISE(ABORT, 'V2 capital authority attestation is append-only');
+    END
+    """,
 ]
 
 

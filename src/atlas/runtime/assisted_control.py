@@ -316,7 +316,7 @@ class AssistedControlShell:
     def __init__(self, *, journal: SQLiteJournal, runtime_instance_id: str, writer_id: str, writer_epoch: int,
                  capability_contract: CapabilityContract | None = None, capability_hash: str = "",
                  all_qualified: bool = False, assisted_enabled: bool = False, paused: bool = False,
-                 nautilus_port: NautilusCommandPort | None = None):
+                 nautilus_port: NautilusCommandPort | None = None, live_writer_lock=None):
         self.journal = journal
         self.runtime_instance_id = runtime_instance_id
         self.writer_id = writer_id
@@ -327,6 +327,17 @@ class AssistedControlShell:
         self.assisted_enabled = assisted_enabled
         self.paused = paused
         self.nautilus_port = nautilus_port
+        self._live_writer_lock = live_writer_lock
+
+    def v2_live_writer_context(self) -> tuple[str, int, str] | None:
+        """Expose a V2 authority context only while this shell belongs to SafeRuntime."""
+        ownership = getattr(self._live_writer_lock, "ownership", None)
+        if ownership is None:
+            return None
+        context = self.journal.v2_live_writer_context()
+        expected = (self.writer_id, self.writer_epoch, self.runtime_instance_id)
+        return expected if context == expected == (ownership.writer_id, ownership.writer_epoch,
+                                                    self.runtime_instance_id) else None
 
     def pause(self) -> None:
         self.paused = True

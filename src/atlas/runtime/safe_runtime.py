@@ -6,6 +6,7 @@ import signal
 import threading
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from atlas.domain.capability import CapabilityContract
 from atlas.domain.risk import RiskPolicy
@@ -83,6 +84,7 @@ class SafeRuntime:
         try:
             self._writer.acquire()
             self._journal = SQLiteJournal(self.c.journal_path)
+            self._journal._bind_v2_live_writer(self._writer, self._runtime_instance_id)
             last = self._run()
             self._last = last
             self._publish(last)
@@ -142,6 +144,40 @@ class SafeRuntime:
         self._ticks += 1
         self._publish(self._last)
         return self._last
+
+    def create_assisted_control_shell(self, *, nautilus_port=None):
+        """Construct the assisted shell inside the active credential-bearing runtime."""
+        if self._writer is None or self._journal is None or self._writer.ownership is None:
+            raise RuntimeError("crypto-live writer must be active before creating the control shell")
+        from .assisted_control import AssistedControlShell
+
+        ownership = self._writer.ownership
+        return AssistedControlShell(
+            journal=self._journal,
+            runtime_instance_id=self._runtime_instance_id,
+            writer_id=ownership.writer_id,
+            writer_epoch=ownership.writer_epoch,
+            capability_contract=self.c.capability_contract,
+            capability_hash=self.c.capability_hash,
+            all_qualified=self.c.all_qualified,
+            assisted_enabled=self.c.assisted_enabled,
+            nautilus_port=nautilus_port,
+            live_writer_lock=self._writer,
+        )
+
+    def attest_v2_bridge_authority(self, **evidence: Any) -> Any:
+        """Capture and persist V2 capital authority inside the sole live runtime."""
+        if self._writer is None or self._journal is None or self._writer.ownership is None:
+            raise RuntimeError("crypto-live writer must be active before attesting V2 capital authority")
+        from .phase4_v2 import _attest_v2_bridge_authority
+
+        return _attest_v2_bridge_authority(self.create_assisted_control_shell(), **evidence)
+
+    def record_v2_live_authority_evidence(self, evidence: Any) -> None:
+        """Persist hash-only capability/risk/protection evidence inside crypto-live."""
+        if self._writer is None or self._journal is None or self._writer.ownership is None:
+            raise RuntimeError("crypto-live writer must be active before recording V2 live evidence")
+        self._journal.append_v2_live_authority_evidence(evidence)
 
     def shutdown(self):
         self._shutdown.set()

@@ -21,7 +21,11 @@
     {"scenario": "stale local writer identity/epoch", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_assisted_control_revalidation.py", "tests/runtime/test_safe_runtime.py"]},
     {"scenario": "manual external position/order discovery", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_reconciliation_evidence.py", "tests/runtime/test_flat_certificate.py"]},
     {"scenario": "research/model/desktop/ops credential and direct-submit authority boundaries", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_authority_boundary.py", "tests/v2/test_worker_isolation.py", "tests/v2/test_session020_desktop_ipc.py", "tests/runtime/test_safe_runtime.py", "tests/v2/test_session014_s1.py", "tests/v2/test_session023_m1.py"]},
-    {"scenario": "cross-host replacement writer externally fenced", "offline_status": "BLOCKED BY ENVIRONMENT", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": []}
+    {"scenario": "cross-host replacement writer externally fenced", "offline_status": "BLOCKED BY ENVIRONMENT", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": []},
+    {"scenario": "forged ops capability/risk labels without live-control evidence or attestation", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v2_capital_authority.py"]},
+    {"scenario": "exact V2 attestation binding, stale/wrong writer rejection and immutable ops fingerprints", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v2_capital_authority.py"]},
+    {"scenario": "V1 schema-6 journal reopen with additive V2 authority extension", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/persistence/test_migration_v6_v2_authority.py"]},
+    {"scenario": "recovery-required state invalidates opening authority; approval cannot replace attestation", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v2_capital_authority.py"]}
   ],
   "risk_reduction_policy": "Protection and closing-only actions remain subject to persisted intent and reconciliation evidence. New opening risk fails closed on any unresolved or stale evidence.",
   "actual_exchange_fault_injection": "UNVERIFIED"

@@ -20,6 +20,7 @@ from .schema import (
 )
 
 LEGACY_RUNTIME_INSTANCE_ID = "legacy-v4-runtime-unavailable"
+V2_CAPITAL_AUTHORITY_SCHEMA_VERSION = 1
 
 
 def _metadata_exists(conn: sqlite3.Connection) -> bool:
@@ -346,6 +347,29 @@ def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
         )
 
 
+def _bootstrap_v2_extensions(conn: sqlite3.Connection) -> None:
+    """Version additive V2 journal extensions without changing V1 schema semantics."""
+    row = conn.execute(
+        "SELECT value FROM v2_schema_metadata WHERE key='capital_authority_schema_version'"
+    ).fetchone()
+    if row is None:
+        conn.execute(
+            "INSERT INTO v2_schema_metadata(key,value) VALUES('capital_authority_schema_version',?)",
+            (str(V2_CAPITAL_AUTHORITY_SCHEMA_VERSION),),
+        )
+        return
+    version = int(row[0])
+    if version > V2_CAPITAL_AUTHORITY_SCHEMA_VERSION:
+        raise RuntimeError(
+            f"future V2 journal extension {version} > supported {V2_CAPITAL_AUTHORITY_SCHEMA_VERSION}; fail closed"
+        )
+    if version < V2_CAPITAL_AUTHORITY_SCHEMA_VERSION:
+        conn.execute(
+            "UPDATE v2_schema_metadata SET value=? WHERE key='capital_authority_schema_version'",
+            (str(V2_CAPITAL_AUTHORITY_SCHEMA_VERSION),),
+        )
+
+
 def bootstrap(conn: sqlite3.Connection) -> int:
     """Create or migrate the journal, committing schema metadata last."""
 
@@ -378,6 +402,7 @@ def bootstrap(conn: sqlite3.Connection) -> int:
             if migrate_queries:
                 _copy_v4_query_evidence(conn)
             _add_v5_columns(conn)
+        _bootstrap_v2_extensions(conn)
         conn.execute(
             "INSERT INTO schema_metadata(key, value) VALUES('schema_version', ?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
