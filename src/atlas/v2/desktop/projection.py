@@ -894,6 +894,32 @@ def _project_scanner(
         if isinstance(watch_id, str):
             watch_for_candidate[candidate_id] = watch_id
 
+    required_refs_by_member: dict[tuple[str, str], tuple[str, ...]] = {}
+    required_artifact_refs: set[str] = set()
+    for candidate_set, member in current_members:
+        candidate_data = candidates.get(member.candidate_id)
+        if candidate_data is None:
+            continue
+        candidate = candidate_data[0]
+        required = {candidate.content_hash, candidate.snapshot_hash, candidate_set.content_hash}
+        required.update(member.selection_feature_refs)
+        action = action_by_candidate.get(candidate.content_hash)
+        if action is not None:
+            required.add(action[0].artifact_ref)
+        calendar = calendar_by_candidate.get(candidate.content_hash)
+        if calendar is not None:
+            required.add(calendar[0].artifact_ref)
+        member_key = (candidate_set.content_hash, member.candidate_id)
+        required_refs_by_member[member_key] = tuple(sorted(required))
+        required_artifact_refs.update(required)
+
+    present_artifact_refs: set[str] = set()
+    ordered_required_refs = tuple(sorted(required_artifact_refs))
+    for offset in range(0, len(ordered_required_refs), 100_000):
+        present_artifact_refs.update(
+            repo.get_artifact_metadata_by_refs(ordered_required_refs[offset : offset + 100_000])
+        )
+
     rows: dict[str, DesktopScannerRowV2] = {}
     current_candidate_keys = {member.key.to_canonical_json() for _, member in current_members}
     latest_universe = max(universes.values(), key=lambda x: (x.decision_slot_ns, x.content_hash), default=None)
@@ -949,14 +975,8 @@ def _project_scanner(
         action = action_by_candidate.get(candidate.content_hash)
         watch = watch_by_id.get(watch_for_candidate.get(candidate.candidate_id, ""))
         reason_codes = calendar_reasons or ((member.rejection_reason,) if member.rejection_reason else ())
-        required = {candidate.content_hash, candidate.snapshot_hash, candidate_set.content_hash}
-        if member.selection_feature_refs:
-            required.update(member.selection_feature_refs)
-        if action:
-            required.add(action[0].artifact_ref)
-        if calendar_pair:
-            required.add(calendar_pair[0].artifact_ref)
-        all_refs_present = all(repo.get_artifact(ref) is not None for ref in required)
+        required_refs = required_refs_by_member.get((candidate_set.content_hash, member.candidate_id), ())
+        all_refs_present = all(ref in present_artifact_refs for ref in required_refs)
         if candidate_set.selection_status == CandidateSelectionStatus.NOT_ESTIMABLE:
             selection_state = CandidateSelectionStatus.NOT_ESTIMABLE.value
         elif candidate_set.selected_candidate_id == candidate.candidate_id:

@@ -574,18 +574,26 @@ class SequenceValidBookV2:
                              and delta.received_at_ns < self.last_received_at_ns)):
             self._invalidate(BookStateV2.GAP_DETECTED, "OUT_OF_ORDER_RECEIPT_OR_AVAILABILITY", processed_at)
             return self.sequence_state
-        if delta.last_update_id <= previous:
+        if delta.last_update_id < previous:
             if (self.sequence_semantics == "BINANCE_U_PU"
                     and self._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE):
+                # USD-M synchronization discards buffered events ending before
+                # snapshot L. An event ending exactly at L is still eligible
+                # to be the first overlapping bridge.
                 return self.sequence_state
+            self._invalidate(BookStateV2.GAP_DETECTED, "OUT_OF_ORDER_DELTA", processed_at)
+            return self.sequence_state
+        if (delta.last_update_id == previous
+                and not (self.sequence_semantics == "BINANCE_U_PU"
+                         and self._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE)):
             self._invalidate(BookStateV2.GAP_DETECTED, "OUT_OF_ORDER_DELTA", processed_at)
             return self.sequence_state
         if mode == "BINANCE_U_PU":
             if self._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE:
                 # Events ending before the snapshot ID were already discarded
-                # above. The first advancing event must bridge L+1 explicitly.
+                # above. The first processed event must overlap snapshot L.
                 contiguous = (delta.first_update_id is not None
-                              and delta.first_update_id <= previous + 1 <= delta.last_update_id)
+                              and delta.first_update_id <= previous <= delta.last_update_id)
             else:
                 contiguous = delta.previous_update_id == previous
         elif mode in {"BYBIT_U", "CONTIGUOUS_UPDATE_ID"}:

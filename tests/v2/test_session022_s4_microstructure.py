@@ -200,53 +200,71 @@ def test_sequence_gap_requires_explicit_snapshot_and_declared_warmup() -> None:
     assert b.feature(cutoff_ns=T0 + 50).sequence_state == BookStateV2.VALID
 
 
-def test_binance_first_snapshot_bridge_is_independent_of_feature_warmup() -> None:
+@pytest.mark.parametrize(
+    ("first", "last"),
+    (
+        (8, 10),
+        (9, 11),
+    ),
+)
+def test_binance_initial_bridge_overlaps_snapshot_id(first: int, last: int) -> None:
     b = binance_book(warmup=1_000)
     b.apply_snapshot(binance_snapshot(10))
     assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE
 
-    bridge = binance_delta(11, 12, 10, T0 + 10)
+    bridge = binance_delta(first, last, 9_999, T0 + 10)
     assert b.apply_delta(bridge).state == BookStateV2.WARMING
-    assert b.last_update_id == 12
+    assert b.last_update_id == last
     assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.BRIDGE_COMPLETE
+    assert ref(["binance-delta", first, last, 9_999, T0 + 10, "12"]) in b.feature(
+        cutoff_ns=T0 + 10
+    ).input_refs
+
+
+def test_binance_initial_bridge_does_not_accept_an_event_only_covering_l_plus_one() -> None:
+    b = binance_book(warmup=1_000)
+    b.apply_snapshot(binance_snapshot(10))
+
+    assert b.apply_delta(binance_delta(11, 12, 10, T0 + 10)).state == BookStateV2.GAP_DETECTED
+    assert b.sequence_state.reason == "SEQUENCE_GAP_OR_FAILED_SNAPSHOT_BRIDGE"
 
 
 def test_binance_wrong_pu_fails_while_warming_even_when_range_covers_next_id() -> None:
     b = binance_book(warmup=1_000)
     b.apply_snapshot(binance_snapshot(10))
-    assert b.apply_delta(binance_delta(11, 12, 10, T0 + 10)).state == BookStateV2.WARMING
+    assert b.apply_delta(binance_delta(9, 11, 0, T0 + 10)).state == BookStateV2.WARMING
 
-    # U/u covers update 13, but pu must name the last accepted event (u=12).
-    wrong = binance_delta(13, 14, 11, T0 + 20)
+    # U/u covers updates after 11, but pu must name the last accepted event (u=11).
+    wrong = binance_delta(12, 13, 10, T0 + 20)
     assert b.apply_delta(wrong).state == BookStateV2.GAP_DETECTED
     assert b.sequence_state.reason == "SEQUENCE_GAP_OR_FAILED_SNAPSHOT_BRIDGE"
     assert not b.feature(cutoff_ns=T0 + 20).estimable
-    assert b.apply_delta(binance_delta(13, 14, 12, T0 + 30)).state == BookStateV2.GAP_DETECTED
+    assert b.apply_delta(binance_delta(12, 13, 11, T0 + 30)).state == BookStateV2.GAP_DETECTED
 
 
 def test_binance_correct_second_pu_succeeds_while_still_warming() -> None:
     b = binance_book(warmup=1_000)
     b.apply_snapshot(binance_snapshot(10))
-    assert b.apply_delta(binance_delta(11, 12, 10, T0 + 10)).state == BookStateV2.WARMING
+    assert b.apply_delta(binance_delta(9, 11, 0, T0 + 10)).state == BookStateV2.WARMING
 
-    second = binance_delta(13, 14, 12, T0 + 20)
+    second = binance_delta(12, 13, 11, T0 + 20)
     assert b.apply_delta(second).state == BookStateV2.WARMING
-    assert b.last_update_id == 14
+    assert b.last_update_id == 13
     assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.BRIDGE_COMPLETE
 
 
 def test_binance_buffer_discards_stale_events_and_chains_every_event_after_bridge() -> None:
     b = binance_book(warmup=1_000)
     snapshot_receipt = T0 + 100
-    stale = binance_delta(8, 9, 7, T0 + 80, raw="pre-snapshot-stale")
-    bridge = binance_delta(11, 12, 10, T0 + 90, raw="snapshot-bridge")
-    chained = binance_delta(13, 14, 12, T0 + 95, raw="buffered-chain")
+    stale = binance_delta(7, 9, 7, T0 + 80, raw="pre-snapshot-stale")
+    bridge = binance_delta(8, 10, 7, T0 + 90, raw="snapshot-bridge")
+    chained = binance_delta(11, 12, 10, T0 + 95, raw="buffered-chain")
     state = b.apply_snapshot(
         binance_snapshot(10, received=snapshot_receipt),
         buffered_deltas=(stale, bridge, chained),
     )
     assert state.state == BookStateV2.WARMING
-    assert b.last_update_id == 14
+    assert b.last_update_id == 12
     assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.BRIDGE_COMPLETE
     assert ref("pre-snapshot-stale") not in b.feature(cutoff_ns=snapshot_receipt).input_refs
     assert {ref("snapshot-bridge"), ref("buffered-chain")} <= set(
@@ -258,14 +276,43 @@ def test_binance_buffer_discards_stale_events_and_chains_every_event_after_bridg
     assert b.apply_delta(bad_chain).state == BookStateV2.GAP_DETECTED
 
 
+@pytest.mark.parametrize(
+    ("first", "last", "next_first", "next_last"),
+    (
+        (8, 10, 11, 12),
+        (9, 11, 12, 13),
+    ),
+)
+def test_binance_next_pu_must_match_each_valid_bridge_endpoint(
+    first: int, last: int, next_first: int, next_last: int,
+) -> None:
+    b = binance_book(warmup=1_000)
+    b.apply_snapshot(binance_snapshot(10))
+    assert b.apply_delta(binance_delta(first, last, 0, T0 + 10)).state == BookStateV2.WARMING
+
+    assert b.apply_delta(binance_delta(next_first, next_last, last, T0 + 20)).state == BookStateV2.WARMING
+    assert b.last_update_id == next_last
+
+
+@pytest.mark.parametrize(("first", "last", "next_first"), ((8, 10, 11), (9, 11, 12)))
+def test_binance_next_event_rejects_wrong_pu_for_both_bridge_endpoints(
+    first: int, last: int, next_first: int,
+) -> None:
+    b = binance_book(warmup=1_000)
+    b.apply_snapshot(binance_snapshot(10))
+    assert b.apply_delta(binance_delta(first, last, 0, T0 + 10)).state == BookStateV2.WARMING
+
+    assert b.apply_delta(binance_delta(next_first, next_first, last - 1, T0 + 20)).state == BookStateV2.GAP_DETECTED
+
+
 def test_binance_gap_requires_new_snapshot_bridge_and_warmup_without_rewriting_earlier_feature() -> None:
     b = binance_book(warmup=10)
     b.apply_snapshot(binance_snapshot(10))
-    assert b.apply_delta(binance_delta(11, 12, 10, T0 + 10)).state == BookStateV2.WARMING
-    assert b.apply_delta(binance_delta(13, 13, 12, T0 + 20)).state == BookStateV2.VALID
+    assert b.apply_delta(binance_delta(8, 10, 0, T0 + 10)).state == BookStateV2.WARMING
+    assert b.apply_delta(binance_delta(11, 11, 10, T0 + 20)).state == BookStateV2.VALID
     earlier = b.feature(cutoff_ns=T0 + 20).to_canonical_json()
 
-    fault = binance_delta(14, 15, 12, T0 + 30)
+    fault = binance_delta(12, 13, 9, T0 + 30)
     assert b.apply_delta(fault).state == BookStateV2.GAP_DETECTED
     assert b.feature(cutoff_ns=T0 + 30).sequence_state == BookStateV2.GAP_DETECTED
     assert b.apply_delta(binance_delta(16, 17, 15, T0 + 40)).state == BookStateV2.GAP_DETECTED
@@ -273,9 +320,9 @@ def test_binance_gap_requires_new_snapshot_bridge_and_warmup_without_rewriting_e
     b.apply_snapshot(binance_snapshot(20, received=T0 + 50))
     assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE
     assert b.feature(cutoff_ns=T0 + 50).sequence_state == BookStateV2.WARMING
-    assert b.apply_delta(binance_delta(21, 22, 20, T0 + 60)).state == BookStateV2.WARMING
-    assert b.apply_delta(binance_delta(23, 23, 22, T0 + 70)).state == BookStateV2.VALID
-    assert b.last_update_id == 23
+    assert b.apply_delta(binance_delta(19, 20, 0, T0 + 60)).state == BookStateV2.WARMING
+    assert b.apply_delta(binance_delta(21, 21, 20, T0 + 70)).state == BookStateV2.VALID
+    assert b.last_update_id == 21
     assert b.feature(cutoff_ns=T0 + 20).to_canonical_json() == earlier
 
 
@@ -502,7 +549,7 @@ def test_bybit_and_binance_public_parsers_keep_exact_sequence_and_timestamps() -
                       channel=CHANNEL, source=SOURCE)
     assert parse_bybit_orderbook_frame(bybit_cts, instrument=key()).event_at_ns == 1_750_000_000_001_000_000
     binance_raw = {"stream": "btcusdt@depth@100ms", "data": {
-        "E": 1750000000000, "U": 8, "u": 10, "pu": 7,
+        "E": 1750000000000, "U": 7, "u": 10, "pu": 6,
         "b": [["100", "3"]], "a": [["102", "4"]],
     }}
     binance = frame(VenueV2.BINANCE, binance_raw, channel="btcusdt@depth@100ms", source="BINANCE_TEST")
@@ -511,7 +558,7 @@ def test_bybit_and_binance_public_parsers_keep_exact_sequence_and_timestamps() -
                                              processed_at_ns=T0 + 2)
     assert isinstance(parsed_delta, L2DeltaV2)
     assert parsed_delta.sequence_semantics == "BINANCE_U_PU"
-    assert (parsed_delta.first_update_id, parsed_delta.last_update_id, parsed_delta.previous_update_id) == (8, 10, 7)
+    assert (parsed_delta.first_update_id, parsed_delta.last_update_id, parsed_delta.previous_update_id) == (7, 10, 6)
     assert parsed_delta.received_at_ns == T0 and parsed_delta.available_at_ns == T0 + 2
     snapshot_body = json.dumps({"lastUpdateId": 7, "bids": [["100", "2"]], "asks": [["102", "3"]]}).encode()
     snap = parse_binance_rest_snapshot(snapshot_body, instrument=key(VenueV2.BINANCE),

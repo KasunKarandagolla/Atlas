@@ -12,7 +12,7 @@
         "https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_2",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
       "exchange_event_timestamp_semantics": "cts matching-engine timestamp when supplied, else ts exchange message timestamp; provenance not live-qualified",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -53,7 +53,7 @@
         "https://bybit-exchange.github.io/docs/v5/websocket/public/trade",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_2",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
       "exchange_event_timestamp_semantics": "T matched time; frame ts is message time",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -94,7 +94,7 @@
         "https://bybit-exchange.github.io/docs/v5/websocket/public/all-liquidation",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_2",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
       "exchange_event_timestamp_semantics": "T execution time; frame ts message time",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -132,13 +132,13 @@
       "declared_book_depth": "request limit/depth field varies; must record returned levels",
       "environment": "MAINNET",
       "evidence_refs": [
-        "https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
-        "https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/public",
+        "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+        "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/public",
         "repo:src/atlas/v2/data/microstructure.py",
         "repo:tests/v2/test_session022_s4_microstructure.py",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_2",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
       "exchange_event_timestamp_semantics": "no exchange event timestamp in depth snapshot",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -149,7 +149,7 @@
         "institutional intent"
       ],
       "funding_current_predicted_settled": null,
-      "gap_reset_reconnect_behavior": "a later gap/reconnect invalidates until a fresh snapshot and diff-stream bridge",
+      "gap_reset_reconnect_behavior": "a later gap/reconnect invalidates until a fresh snapshot, valid bridge and declared S4 warmup",
       "instrument_product": "LINEAR_PERPETUAL",
       "liquidation_side_product_convention": null,
       "oi_quantity_value_convention": null,
@@ -157,8 +157,8 @@
         "snapshot initialization input for a sequence-reconciled book"
       ],
       "receipt_timestamp_semantics": "local HTTP response receipt",
-      "repair_capability": "fresh snapshot plus /public diff stream required; implementation local only",
-      "sequence_update_semantics": "lastUpdateId only; discard buffered u < L; first bridge requires U <= L+1 <= u",
+      "repair_capability": "buffer depth events; fetch fresh REST snapshot L; discard u < L; accept first bridge only when U <= L <= u; after bridge require pu == previous accepted u; after mismatch require a fresh snapshot, valid bridge and declared S4 warmup",
+      "sequence_update_semantics": "lastUpdateId L; discard buffered events where u < L; first processed event must satisfy U <= L <= u",
       "snapshot_delta_semantics": "REST /fapi/v1/depth snapshot at lastUpdateId; pair with the public diff stream",
       "source_channel": "USD-M depth snapshot REST",
       "source_health_requirement": "healthy request plus independent stream state",
@@ -176,13 +176,13 @@
       "declared_book_depth": "diff updates have level changes only",
       "environment": "MAINNET",
       "evidence_refs": [
-        "https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/public",
-        "https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+        "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/public",
+        "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
         "repo:src/atlas/v2/data/microstructure.py",
         "repo:tests/v2/test_session022_s4_microstructure.py",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_2",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
       "exchange_event_timestamp_semantics": "E event time and T transaction time when supplied",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -193,7 +193,7 @@
         "institutional intent"
       ],
       "funding_current_predicted_settled": null,
-      "gap_reset_reconnect_behavior": "gap, out-of-order, reconnect, stale feed or pu mismatch enters GAP_DETECTED; later deltas cannot repair; fresh snapshot, bridge and warmup required",
+      "gap_reset_reconnect_behavior": "any later pu mismatch immediately enters GAP_DETECTED regardless of feature WARMING; gap, out-of-order, reconnect or stale feed cannot be repaired by later deltas; fresh snapshot, valid bridge and declared S4 warmup required",
       "instrument_product": "LINEAR_PERPETUAL",
       "liquidation_side_product_convention": null,
       "oi_quantity_value_convention": null,
@@ -201,8 +201,8 @@
         "sequence-valid displayed depth context after full snapshot/delta reconciliation"
       ],
       "receipt_timestamp_semantics": "local frame receipt captured on arrival",
-      "repair_capability": "buffer deltas, fetch snapshot, ignore u < L, accept first U<=L+1<=u bridge, then require pu continuity; new snapshot required after a gap",
-      "sequence_update_semantics": "U first id, u final id, pu previous event final id; ignore buffered u < L; first bridge U <= L+1 <= u; every later event requires pu == previous accepted u, regardless of WARMING",
+      "repair_capability": "buffer depth events; fetch fresh REST snapshot L; discard u < L; accept first bridge only when U <= L <= u; then require pu == previous accepted u; after mismatch require a fresh snapshot, valid bridge and declared S4 warmup",
+      "sequence_update_semantics": "U first update ID, u final update ID, pu previous stream event final ID; discard buffered u < L; first processed event must satisfy U <= L <= u; every subsequent event must satisfy pu == previous accepted u, regardless of feature WARMING",
       "snapshot_delta_semantics": "credential-free /public diff stream with U/u fields; bridge against REST lastUpdateId",
       "source_channel": "USD-M depth diff WS",
       "source_health_requirement": "HEALTHY_CURRENT, sequence chain, current receipt age",
@@ -220,10 +220,10 @@
       "declared_book_depth": null,
       "environment": "MAINNET",
       "evidence_refs": [
-        "https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/market",
+        "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/market",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_2",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
       "exchange_event_timestamp_semantics": "T trade time and E event time",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -266,7 +266,7 @@
         "https://bybit-exchange.github.io/docs/v5/market/open-interest",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_2",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
       "exchange_event_timestamp_semantics": "source event/period timestamps may not equal publication time",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -309,7 +309,7 @@
         "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Open-Interest",
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_2",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
       "exchange_event_timestamp_semantics": "endpoint-specific event/funding-period timestamps; publication receipt may be absent",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -349,7 +349,7 @@
       "evidence_refs": [
         "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
       ],
-      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_2",
+      "evidence_version": "EVIDENCE_CAPABILITY_MATRIX_V2_3",
       "exchange_event_timestamp_semantics": "event time field semantics not live-qualified",
       "explicitly_unsupported_uses": [
         "historical L2 reconstruction from candles",
@@ -380,5 +380,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "EVIDENCE_CAPABILITY_MATRIX_V2_2"
+  "version": "EVIDENCE_CAPABILITY_MATRIX_V2_3"
 }
