@@ -16,6 +16,7 @@ from atlas.v2.data.capabilities import (
 )
 from atlas.v2.data.microstructure import (
     AggressiveTradeV2,
+    BinanceDepthSyncPhaseV2,
     BookLevelV2,
     BookStateV2,
     L2DeltaV2,
@@ -40,6 +41,8 @@ from atlas.v2.instruments import EnvironmentV2, InstrumentKeyV2, ProductTypeV2, 
 T0 = 1_750_000_000_000_000_000
 SOURCE = "BYBIT_TEST_PUBLIC_WS"
 CHANNEL = "orderbook.50.BTCUSDT"
+BINANCE_SOURCE = "BINANCE_PUBLIC_WS"
+BINANCE_CHANNEL = "btcusdt@depth@100ms"
 HEALTH_REF = sha256_json({"test_health": "healthy"})
 
 
@@ -82,6 +85,38 @@ def book(*, warmup: int = 0, stale: int = 1_000_000_000,
     return SequenceValidBookV2(instrument=key(), source_id=SOURCE, channel=CHANNEL,
                                sequence_semantics="BYBIT_U", warmup_ns=warmup,
                                stale_ns=stale, declared_cadence_ns=cadence)
+
+
+def binance_book(*, warmup: int = 0, stale: int = 10_000) -> SequenceValidBookV2:
+    return SequenceValidBookV2(
+        instrument=key(VenueV2.BINANCE), source_id=BINANCE_SOURCE, channel=BINANCE_CHANNEL,
+        sequence_semantics="BINANCE_U_PU", warmup_ns=warmup, stale_ns=stale,
+        declared_cadence_ns=100,
+    )
+
+
+def binance_snapshot(last_update_id: int, *, received: int = T0, available: int | None = None) -> L2SnapshotV2:
+    return L2SnapshotV2(
+        key(VenueV2.BINANCE), "BINANCE_REST", "USD-M depth snapshot REST", "BINANCE_U_PU",
+        last_update_id, None, received, received if available is None else available,
+        (BookLevelV2(Decimal("99"), Decimal("10")),),
+        (BookLevelV2(Decimal("101"), Decimal("10")),), ref(["binance-snapshot", last_update_id]),
+        "HEALTHY_CURRENT", 1, source_health_ref=HEALTH_REF,
+    )
+
+
+def binance_delta(first: int, last: int, previous: int, at: int, *,
+                  received: int | None = None, available: int | None = None,
+                  raw: str | None = None, bid_qty: str = "12") -> L2DeltaV2:
+    receipt = at if received is None else received
+    availability = receipt if available is None else available
+    return L2DeltaV2(
+        key(VenueV2.BINANCE), BINANCE_SOURCE, BINANCE_CHANNEL, "BINANCE_U_PU",
+        first, last, previous, receipt, receipt, availability,
+        (BookLevelV2(Decimal("99"), Decimal(bid_qty)),), (),
+        ref(raw or ["binance-delta", first, last, previous, receipt, bid_qty]),
+        "HEALTHY_CURRENT", source_health_ref=HEALTH_REF,
+    )
 
 
 def frame(venue: VenueV2, payload: dict, *, channel: str, source: str, at: int = T0) -> CapturedPublicFrameV2:
@@ -165,43 +200,83 @@ def test_sequence_gap_requires_explicit_snapshot_and_declared_warmup() -> None:
     assert b.feature(cutoff_ns=T0 + 50).sequence_state == BookStateV2.VALID
 
 
-def test_binance_snapshot_bridge_reconciles_buffer_without_backdating_feature() -> None:
-    from atlas.v2.data.microstructure import SequenceValidBookV2
+def test_binance_first_snapshot_bridge_is_independent_of_feature_warmup() -> None:
+    b = binance_book(warmup=1_000)
+    b.apply_snapshot(binance_snapshot(10))
+    assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE
 
-    instrument = key(VenueV2.BINANCE)
-    stream = "btcusdt@depth@100ms"
-    b = SequenceValidBookV2(
-        instrument=instrument, source_id="BINANCE_PUBLIC_WS", channel=stream,
-        sequence_semantics="BINANCE_U_PU", warmup_ns=10, stale_ns=10_000,
-        declared_cadence_ns=100,
+    bridge = binance_delta(11, 12, 10, T0 + 10)
+    assert b.apply_delta(bridge).state == BookStateV2.WARMING
+    assert b.last_update_id == 12
+    assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.BRIDGE_COMPLETE
+
+
+def test_binance_wrong_pu_fails_while_warming_even_when_range_covers_next_id() -> None:
+    b = binance_book(warmup=1_000)
+    b.apply_snapshot(binance_snapshot(10))
+    assert b.apply_delta(binance_delta(11, 12, 10, T0 + 10)).state == BookStateV2.WARMING
+
+    # U/u covers update 13, but pu must name the last accepted event (u=12).
+    wrong = binance_delta(13, 14, 11, T0 + 20)
+    assert b.apply_delta(wrong).state == BookStateV2.GAP_DETECTED
+    assert b.sequence_state.reason == "SEQUENCE_GAP_OR_FAILED_SNAPSHOT_BRIDGE"
+    assert not b.feature(cutoff_ns=T0 + 20).estimable
+    assert b.apply_delta(binance_delta(13, 14, 12, T0 + 30)).state == BookStateV2.GAP_DETECTED
+
+
+def test_binance_correct_second_pu_succeeds_while_still_warming() -> None:
+    b = binance_book(warmup=1_000)
+    b.apply_snapshot(binance_snapshot(10))
+    assert b.apply_delta(binance_delta(11, 12, 10, T0 + 10)).state == BookStateV2.WARMING
+
+    second = binance_delta(13, 14, 12, T0 + 20)
+    assert b.apply_delta(second).state == BookStateV2.WARMING
+    assert b.last_update_id == 14
+    assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.BRIDGE_COMPLETE
+
+
+def test_binance_buffer_discards_stale_events_and_chains_every_event_after_bridge() -> None:
+    b = binance_book(warmup=1_000)
+    snapshot_receipt = T0 + 100
+    stale = binance_delta(8, 9, 7, T0 + 80, raw="pre-snapshot-stale")
+    bridge = binance_delta(11, 12, 10, T0 + 90, raw="snapshot-bridge")
+    chained = binance_delta(13, 14, 12, T0 + 95, raw="buffered-chain")
+    state = b.apply_snapshot(
+        binance_snapshot(10, received=snapshot_receipt),
+        buffered_deltas=(stale, bridge, chained),
     )
-    seed = L2SnapshotV2(
-        instrument, "BINANCE_REST", "USD-M depth snapshot REST", "BINANCE_U_PU", 10,
-        None, T0 + 100, T0 + 100,
-        (BookLevelV2(Decimal("99"), Decimal("10")),),
-        (BookLevelV2(Decimal("101"), Decimal("10")),), ref("binance-rest-snapshot"),
-        "HEALTHY_CURRENT", 1, source_health_ref=HEALTH_REF,
+    assert state.state == BookStateV2.WARMING
+    assert b.last_update_id == 14
+    assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.BRIDGE_COMPLETE
+    assert ref("pre-snapshot-stale") not in b.feature(cutoff_ns=snapshot_receipt).input_refs
+    assert {ref("snapshot-bridge"), ref("buffered-chain")} <= set(
+        b.feature(cutoff_ns=snapshot_receipt).input_refs
     )
-    buffered = L2DeltaV2(
-        instrument, "BINANCE_PUBLIC_WS", stream, "BINANCE_U_PU", 11, 12, 10,
-        T0 + 90, T0 + 90, T0 + 90,
-        (BookLevelV2(Decimal("99"), Decimal("12")),), (), ref("binance-buffered-delta"),
-        "HEALTHY_CURRENT", source_health_ref=HEALTH_REF,
-    )
-    b.apply_snapshot(seed, buffered_deltas=(buffered,))
-    assert b.sequence_state.state == BookStateV2.WARMING
-    assert b.feature(cutoff_ns=T0 + 99).sequence_state == BookStateV2.COLD
-    followup = L2DeltaV2(
-        instrument, "BINANCE_PUBLIC_WS", stream, "BINANCE_U_PU", 13, 13, 12,
-        T0 + 110, T0 + 110, T0 + 110,
-        (BookLevelV2(Decimal("99"), Decimal("13")),), (), ref("binance-followup-delta"),
-        "HEALTHY_CURRENT", source_health_ref=HEALTH_REF,
-    )
-    b.apply_delta(followup)
-    recovered = b.feature(cutoff_ns=T0 + 110)
-    assert recovered.sequence_state == BookStateV2.VALID
-    assert {ref("binance-rest-snapshot"), ref("binance-buffered-delta"),
-            ref("binance-followup-delta")} <= set(recovered.input_refs)
+
+    bad_chain = binance_delta(15, 16, 13, T0 + 110, raw="bad-buffer-chain")
+    # The range covers 15, but pu does not equal the prior accepted u (14).
+    assert b.apply_delta(bad_chain).state == BookStateV2.GAP_DETECTED
+
+
+def test_binance_gap_requires_new_snapshot_bridge_and_warmup_without_rewriting_earlier_feature() -> None:
+    b = binance_book(warmup=10)
+    b.apply_snapshot(binance_snapshot(10))
+    assert b.apply_delta(binance_delta(11, 12, 10, T0 + 10)).state == BookStateV2.WARMING
+    assert b.apply_delta(binance_delta(13, 13, 12, T0 + 20)).state == BookStateV2.VALID
+    earlier = b.feature(cutoff_ns=T0 + 20).to_canonical_json()
+
+    fault = binance_delta(14, 15, 12, T0 + 30)
+    assert b.apply_delta(fault).state == BookStateV2.GAP_DETECTED
+    assert b.feature(cutoff_ns=T0 + 30).sequence_state == BookStateV2.GAP_DETECTED
+    assert b.apply_delta(binance_delta(16, 17, 15, T0 + 40)).state == BookStateV2.GAP_DETECTED
+
+    b.apply_snapshot(binance_snapshot(20, received=T0 + 50))
+    assert b._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE
+    assert b.feature(cutoff_ns=T0 + 50).sequence_state == BookStateV2.WARMING
+    assert b.apply_delta(binance_delta(21, 22, 20, T0 + 60)).state == BookStateV2.WARMING
+    assert b.apply_delta(binance_delta(23, 23, 22, T0 + 70)).state == BookStateV2.VALID
+    assert b.last_update_id == 23
+    assert b.feature(cutoff_ns=T0 + 20).to_canonical_json() == earlier
 
 
 def test_unhealthy_wrong_source_health_and_stale_book_invalidate() -> None:
@@ -320,10 +395,6 @@ def test_replenishment_persistence_and_execution_context_are_explicit() -> None:
 
 
 def test_prior_only_expected_response_fit_and_absorption_cases() -> None:
-    feature = book(stale=10_000, cadence=10)
-    feature.apply_snapshot(snapshot(T0))
-    feature.apply_delta(delta(T0 + 10, 101))
-    feature = feature.feature(cutoff_ns=T0 + 10)
     prior_refs = [ref(f"prior-{i}") for i in range(4)]
     history = tuple((T0 - 100 + i, Decimal(i + 1), Decimal(i + 1) / 10, prior_refs[i]) for i in range(3))
     # A future training point is excluded by the fit cutoff.
@@ -438,6 +509,7 @@ def test_bybit_and_binance_public_parsers_keep_exact_sequence_and_timestamps() -
     parsed_delta = parse_binance_depth_frame(binance, instrument=key(VenueV2.BINANCE),
                                              source_health="HEALTHY_CURRENT", source_health_ref=HEALTH_REF,
                                              processed_at_ns=T0 + 2)
+    assert isinstance(parsed_delta, L2DeltaV2)
     assert parsed_delta.sequence_semantics == "BINANCE_U_PU"
     assert (parsed_delta.first_update_id, parsed_delta.last_update_id, parsed_delta.previous_update_id) == (8, 10, 7)
     assert parsed_delta.received_at_ns == T0 and parsed_delta.available_at_ns == T0 + 2
@@ -495,15 +567,39 @@ def test_archive_round_trip_raw_bytes_restart_state_and_conflict_quarantine(tmp_
         assert len(repository.artifact_entries("L2ConflictQuarantineV2")) == 1
 
 
-def test_public_socket_routes_are_fixed_allowlisted_and_credential_free() -> None:
-    from atlas.v2.data.public_microstructure_ws import _topic_allowed, _venue_url
+def test_public_socket_routes_are_split_allowlisted_and_credential_free() -> None:
+    import inspect
+    from urllib.parse import parse_qs, urlsplit
+
+    from atlas.v2.data.public_microstructure_ws import (
+        _topic_allowed,
+        _venue_url,
+        capture_public_frames,
+    )
 
     bybit = _venue_url(VenueV2.BYBIT, ("orderbook.50.BTCUSDT", "publicTrade.BTCUSDT"))
-    binance = _venue_url(VenueV2.BINANCE, ("btcusdt@depth@100ms", "btcusdt@aggTrade"))
+    binance_depth = _venue_url(VenueV2.BINANCE, ("btcusdt@depth@100ms",))
+    binance_trade = _venue_url(VenueV2.BINANCE, ("btcusdt@aggTrade",))
     assert bybit == "wss://stream.bybit.com/v5/public/linear"
-    assert "wss://fstream.binance.com/stream" in binance
-    assert "@bookTicker" not in binance
+    assert urlsplit(binance_depth).path == "/public/stream"
+    assert parse_qs(urlsplit(binance_depth).query)["streams"] == ["btcusdt@depth@100ms"]
+    assert urlsplit(binance_trade).path == "/market/stream"
+    assert parse_qs(urlsplit(binance_trade).query)["streams"] == ["btcusdt@aggTrade"]
+    assert "wss://fstream.binance.com/stream?" not in binance_depth
+    assert "wss://fstream.binance.com/stream?" not in binance_trade
+    with pytest.raises(ValueError, match="separate WebSocket routes"):
+        _venue_url(VenueV2.BINANCE, ("btcusdt@depth@100ms", "btcusdt@aggTrade"))
+
     assert not _topic_allowed(VenueV2.BYBIT, "private/order.create")
     assert not _topic_allowed(VenueV2.BINANCE, "btcusdt@bookTicker")
+    assert not _topic_allowed(VenueV2.BINANCE, "btcusdt@userData")
     with pytest.raises(ValueError, match="allowlisted"):
         _venue_url(VenueV2.BYBIT, ("private/order.create",))
+    with pytest.raises(ValueError, match="allowlisted"):
+        _venue_url(VenueV2.BINANCE, ("btcusdt@orderTradeUpdate",))
+
+    credential_parameters = {"headers", "additional_headers", "api_key", "apiKey", "token", "credentials"}
+    assert not credential_parameters.intersection(inspect.signature(capture_public_frames).parameters)
+    transport_source = inspect.getsource(capture_public_frames)
+    assert "additional_headers" not in transport_source
+    assert "api_key" not in transport_source and "credentials" not in transport_source

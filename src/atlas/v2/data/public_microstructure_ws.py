@@ -53,7 +53,15 @@ class CapturedPublicFrameV2:
 def _topic_allowed(venue: VenueV2, topic: str) -> bool:
     if venue == VenueV2.BYBIT:
         return topic.startswith(("orderbook.50.", "publicTrade.", "allLiquidation."))
-    return topic.endswith(("@depth@100ms", "@depth@250ms", "@aggTrade"))
+    return _binance_route(topic) is not None
+
+
+def _binance_route(topic: str) -> str | None:
+    if topic.endswith(("@depth@100ms", "@depth@250ms")):
+        return "public"
+    if topic.endswith("@aggTrade"):
+        return "market"
+    return None
 
 
 def _venue_url(venue: VenueV2, topics: tuple[str, ...]) -> str:
@@ -61,7 +69,11 @@ def _venue_url(venue: VenueV2, topics: tuple[str, ...]) -> str:
         raise ValueError("only allowlisted public L2/trade/liquidation channels are accepted")
     if venue == VenueV2.BYBIT:
         return "wss://stream.bybit.com/v5/public/linear"
-    return "wss://fstream.binance.com/stream?" + urlencode({"streams": "/".join(topics)})
+    routes = {_binance_route(topic) for topic in topics}
+    if len(routes) != 1:
+        raise ValueError("Binance public depth and market trades require separate WebSocket routes")
+    route = next(iter(routes))
+    return f"wss://fstream.binance.com/{route}/stream?" + urlencode({"streams": "/".join(topics)})
 
 
 async def capture_public_frames(*, venue: VenueV2, topics: tuple[str, ...],

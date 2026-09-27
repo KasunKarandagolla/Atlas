@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -20,6 +22,7 @@ from atlas.v2.data.derivatives import (
     LiquidationCoverageV2,
     LiquidationWindowTotalV2,
     OpenInterestObservationV2,
+    S5CrowdingContextV2,
     build_s5_crowding_context,
     fit_s5_liquidation_baseline,
     funding_percentile_prior,
@@ -41,7 +44,7 @@ from atlas.v2.features.context import (
     build_structure_context,
     build_time_context,
 )
-from atlas.v2.instruments import VenueV2
+from atlas.v2.instruments import EnvironmentV2, VenueV2
 from atlas.v2.memory.repository import OpsRepository
 from atlas.v2.strategies.s5_crowding import (
     S5_CONTINUATION_POLICY_HASH,
@@ -120,15 +123,25 @@ def oi(*, event: int, quantity: str, available: int | None = None,
 
 def test_capability_matrix_is_versioned_explicit_and_does_not_claim_live_support() -> None:
     matrix = default_evidence_capability_matrix_v2()
-    assert matrix.version == "EVIDENCE_CAPABILITY_MATRIX_V2_1"
+    assert matrix.version == "EVIDENCE_CAPABILITY_MATRIX_V2_2"
     assert len(matrix.rows) == 9
     assert matrix.content_hash == default_evidence_capability_matrix_v2().content_hash
+    checked_in = json.loads(Path("docs/v2/EVIDENCE_CAPABILITY_MATRIX_V2.json").read_text())
+    assert checked_in == matrix.to_dict()
     bybit = matrix.lookup("BYBIT", "MAINNET", "LINEAR_PERPETUAL", "public/orderbook.50 WS")
     assert bybit is not None
     assert bybit.status == CapabilityStatusV2.UNVERIFIED
     assert "fails closed" in (bybit.sequence_update_semantics or "")
     assert bybit.declared_book_depth == "50 levels per side"
     assert "position ownership" in bybit.explicitly_unsupported_uses
+    binance_depth = matrix.lookup("BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M depth diff WS")
+    binance_trades = matrix.lookup("BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M aggTrade WS")
+    assert binance_depth is not None and binance_depth.status == CapabilityStatusV2.UNVERIFIED
+    assert "pu == previous accepted u" in (binance_depth.sequence_update_semantics or "")
+    assert any("/ws-streams/public" in item for item in binance_depth.evidence_refs)
+    assert binance_trades is not None and binance_trades.status == CapabilityStatusV2.UNVERIFIED
+    assert "/market" in (binance_trades.availability_semantics or "")
+    assert any("/ws-streams/market" in item for item in binance_trades.evidence_refs)
     assert matrix.lookup("UNKNOWN", "MAINNET", "LINEAR_PERPETUAL", "public/orderbook") is None
     with pytest.raises(ValueError, match="row identities"):
         EvidenceCapabilityMatrixV2((bybit, bybit))
@@ -149,7 +162,7 @@ def test_qualified_feed_coverage_requires_measured_gap_and_exact_refs() -> None:
 
 def test_derivative_channel_and_environment_must_match_declared_capability() -> None:
     observed = funding(at=T0, rate="0.05", kind=FundingKindV2.CURRENT)
-    testnet = replace(observed, instrument=replace(DERIVATIVE_KEY, environment="TESTNET"))
+    testnet = replace(observed, instrument=replace(DERIVATIVE_KEY, environment=EnvironmentV2.TESTNET))
     unknown_channel = replace(observed, channel="unknown.derivatives.feed")
     for item in (testnet, unknown_channel):
         context = build_s5_crowding_context(
@@ -318,7 +331,7 @@ def test_bybit_liquidation_parser_preserves_position_side_and_censoring() -> Non
     assert observations[0].availability == DerivativeAvailabilityV2.ACTUAL_RECEIPT
 
 
-def _supported_context() -> object:
+def _supported_context() -> S5CrowdingContextV2:
     f = funding(at=T0, rate="0.01", kind=FundingKindV2.CURRENT)
     open_interest = oi(event=T0, quantity="100")
     return build_s5_crowding_context(
@@ -533,6 +546,7 @@ def test_spring_upthrust_effort_result_and_time_context_are_measurable() -> None
     assert time_context.utc_minute_of_day == 90
     assert time_context.weekday_utc == 0 and not time_context.weekend_utc
     assert time_context.session_overlaps == ("ASIA",)
+    assert funding_record.next_funding_at_ns is not None
     assert time_context.time_to_funding_ns == funding_record.next_funding_at_ns - cutoff
     assert killzone.windows == ("ASIA_RESEARCH_WINDOW",)
     assert killzone.to_dict()["distinct_from_calendar_features"] is True

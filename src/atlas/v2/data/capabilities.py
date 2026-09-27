@@ -13,7 +13,7 @@ from typing import Any, ClassVar
 from .._serialization import canonical_json, nonblank, sha256_json, timestamp
 from ..instruments import InstrumentKeyV2
 
-EVIDENCE_CAPABILITY_MATRIX_V2_VERSION = "EVIDENCE_CAPABILITY_MATRIX_V2_1"
+EVIDENCE_CAPABILITY_MATRIX_V2_VERSION = "EVIDENCE_CAPABILITY_MATRIX_V2_2"
 
 
 class CapabilityStatusV2(StrEnum):
@@ -219,7 +219,11 @@ class EvidenceCapabilityMatrixV2:
 _DOC_BYBIT = "https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook"
 _DOC_BYBIT_TRADES = "https://bybit-exchange.github.io/docs/v5/websocket/public/trade"
 _DOC_BYBIT_LIQ = "https://bybit-exchange.github.io/docs/v5/websocket/public/all-liquidation"
-_DOC_BINANCE = "https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams/Diff-Book-Depth-Streams"
+_DOC_BINANCE_PUBLIC = "https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/public"
+_DOC_BINANCE_MARKET = "https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/ws-streams/market"
+_DOC_BINANCE_DEPTH_REST = "https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data"
+_BINANCE_SYNC_IMPL = "repo:src/atlas/v2/data/microstructure.py"
+_BINANCE_SYNC_TEST = "repo:tests/v2/test_session022_s4_microstructure.py"
 _DOC_BYBIT_TICKER = "https://bybit-exchange.github.io/docs/v5/market/tickers"
 _DOC_BYBIT_FUNDING = "https://bybit-exchange.github.io/docs/v5/market/history-fund-rate"
 _DOC_BYBIT_OI = "https://bybit-exchange.github.io/docs/v5/market/open-interest"
@@ -274,37 +278,42 @@ def default_evidence_capability_matrix_v2() -> EvidenceCapabilityMatrixV2:
         ),
         EvidenceCapabilityV2(
             "BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M depth snapshot REST", CapabilityStatusV2.TEST_GATE,
-            "REST snapshot at lastUpdateId", "lastUpdateId only; snapshot alone has no continuous update chain",
+            "REST /fapi/v1/depth snapshot at lastUpdateId; pair with the public diff stream",
+            "lastUpdateId only; discard buffered u < L; first bridge requires U <= L+1 <= u",
             "no exchange event timestamp in depth snapshot", "local HTTP response receipt", "available at response receipt/parse completion",
             "request limit/depth field varies; must record returned levels", "on demand, not a stream", "price and base-asset quantity",
             None, None, None, None, None, "snapshot is point-in-time; does not certify continuous liquidity or hidden depth",
-            "a later gap/reconnect invalidates until a new snapshot bridge", "fresh snapshot bridge possible only with diff stream; live transport currently absent",
+            "a later gap/reconnect invalidates until a fresh snapshot and diff-stream bridge",
+            "fresh snapshot plus /public diff stream required; implementation local only",
             "healthy request plus independent stream state", "30s continuous valid post-recovery book (engineering default)",
             ("snapshot initialization input for a sequence-reconciled book",), shared_unsupported,
-            (_LOCAL,),
+            (_DOC_BINANCE_DEPTH_REST, _DOC_BINANCE_PUBLIC, _BINANCE_SYNC_IMPL, _BINANCE_SYNC_TEST, _LOCAL),
         ),
         EvidenceCapabilityV2(
             "BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M depth diff WS", CapabilityStatusV2.UNVERIFIED,
-            "diff event fields U/u; bridge against REST lastUpdateId", "U first update id, u final update id, pu prior final update id; verify bridge then enforce pu continuity",
+            "credential-free /public diff stream with U/u fields; bridge against REST lastUpdateId",
+            "U first id, u final id, pu previous event final id; ignore buffered u < L; first bridge U <= L+1 <= u; every later event requires pu == previous accepted u, regardless of WARMING",
             "E event time and T transaction time when supplied", "local frame receipt captured on arrival",
             "available at max(receipt, parse completion); event time never substitutes receipt", "diff updates have level changes only",
             "documented 100/250/500ms stream options; live cadence unqualified", "price and base-asset quantity",
             None, None, None, None, None, "public depth stream is bounded/censored to exchange-published levels",
-            "gap, out-of-order, reconnect, stale feed or failed pu invalidates immediately", "buffer deltas, fetch snapshot, bridge U<=lastUpdateId+1<=u; new snapshot required after gap",
+            "gap, out-of-order, reconnect, stale feed or pu mismatch enters GAP_DETECTED; later deltas cannot repair; fresh snapshot, bridge and warmup required",
+            "buffer deltas, fetch snapshot, ignore u < L, accept first U<=L+1<=u bridge, then require pu continuity; new snapshot required after a gap",
             "HEALTHY_CURRENT, sequence chain, current receipt age", "30s valid post-recovery (engineering default)",
             ("sequence-valid displayed depth context after full snapshot/delta reconciliation",), shared_unsupported,
-            (_DOC_BINANCE, _LOCAL),
+            (_DOC_BINANCE_PUBLIC, _DOC_BINANCE_DEPTH_REST, _BINANCE_SYNC_IMPL, _BINANCE_SYNC_TEST, _LOCAL),
         ),
         EvidenceCapabilityV2(
             "BINANCE", "MAINNET", "LINEAR_PERPETUAL", "USD-M aggTrade WS", CapabilityStatusV2.UNVERIFIED,
             None, "a/f aggregate trade id range", "T trade time and E event time", "local frame receipt",
-            "available at receipt/parse completion", None, "documented event stream, observed cadence unqualified",
+            "available at receipt/parse completion on the credential-free /market route", None,
+            "documented /market event stream, observed cadence unqualified",
             "p price; q base-asset quantity", "m=true means buyer is maker, so seller is taker; otherwise buyer aggressor",
             None, None, None, None, "aggregate trades are not every individual matching-engine print; disconnect creates gaps",
             "trade id overlap may de-duplicate; reconnect coverage gap remains", "no historical repair declared",
             "HEALTHY_CURRENT plus explicit id continuity/coverage policy", "window only with supported actual cadence/coverage",
             ("signed aggressive aggregate trade flow with explicitly labeled aggregation",), shared_unsupported,
-            (_LOCAL,),
+            (_DOC_BINANCE_MARKET, _LOCAL),
         ),
         EvidenceCapabilityV2(
             "BYBIT", "MAINNET", "LINEAR_PERPETUAL", "V5 REST ticker/funding-history/open-interest", CapabilityStatusV2.TEST_GATE,

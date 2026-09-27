@@ -34,6 +34,9 @@ S4_FEATURE_POLICY_HASH = sha256_json({"policy_id": S4_FEATURE_VERSION, "spec": {
     "source_channel_capability_row_required": True, "trade_coverage_matrix_hash_exact": True,
     "actual_receipt_only_book_and_trade_evidence": True,
     "binance_rest_snapshot_requires_buffered_update_bridge": True,
+    "binance_snapshot_bridge": "first U <= lastUpdateId + 1 <= u; stale u <= lastUpdateId ignored",
+    "binance_subsequent_updates": "pu equals previous accepted u independent of feature warmup",
+    "binance_gap_recovery": "fresh snapshot, new bridge, then feature warmup",
     "decision_view": "ACTUAL_RECEIPT",
     "future_markout_role": "OUTCOME_ONLY", "baseline_contract": "INTRADAY_CORE_V1_UNCHANGED",
 }})
@@ -56,6 +59,14 @@ class BookStateV2(StrEnum):
     GAP_DETECTED = "GAP_DETECTED"
     SNAPSHOT_RECOVERY = "SNAPSHOT_RECOVERY"
     INVALID = "INVALID"
+
+
+class BinanceDepthSyncPhaseV2(StrEnum):
+    """Snapshot synchronization phase, independent of S4 feature warmup."""
+
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    AWAITING_SNAPSHOT_BRIDGE = "AWAITING_SNAPSHOT_BRIDGE"
+    BRIDGE_COMPLETE = "BRIDGE_COMPLETE"
 
 
 class AvailabilityViewV2(StrEnum):
@@ -359,6 +370,10 @@ class SequenceValidBookV2:
             raise ValueError("declared cadence must be a positive integer nanosecond interval")
         self.declared_cadence_ns = declared_cadence_ns
         self.state = BookStateV2.COLD
+        self._binance_sync_phase = (
+            BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE
+            if sequence_semantics == "BINANCE_U_PU" else BinanceDepthSyncPhaseV2.NOT_APPLICABLE
+        )
         self.last_update_id: int | None = None
         self.epoch = 0
         self.state_changed_at_ns = 0
@@ -391,6 +406,8 @@ class SequenceValidBookV2:
         self.valid_since_ns = None
         self._reason = reason
         self._seen.clear()
+        if self.sequence_semantics == "BINANCE_U_PU":
+            self._binance_sync_phase = BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE
         self._state_events.append((at_ns, state, self.epoch, self._source_health, reason, self.valid_since_ns,
                                    self._source_health_ref))
 
@@ -469,7 +486,14 @@ class SequenceValidBookV2:
         self.last_update_id = snapshot.last_update_id
         self.state = BookStateV2.WARMING
         self.state_changed_at_ns = snapshot.available_at_ns
-        self.valid_since_ns = snapshot.available_at_ns
+        self._binance_sync_phase = (
+            BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE
+            if self.sequence_semantics == "BINANCE_U_PU" else BinanceDepthSyncPhaseV2.NOT_APPLICABLE
+        )
+        # A Binance snapshot is not a synchronized book until a diff event
+        # bridges its lastUpdateId. Start feature warmup only at that bridge.
+        self.valid_since_ns = (None if self.sequence_semantics == "BINANCE_U_PU"
+                               else snapshot.available_at_ns)
         self.last_received_at_ns = snapshot.received_at_ns
         self._declared_depth = snapshot.declared_depth
         self._seen.clear()
@@ -551,11 +575,17 @@ class SequenceValidBookV2:
             self._invalidate(BookStateV2.GAP_DETECTED, "OUT_OF_ORDER_RECEIPT_OR_AVAILABILITY", processed_at)
             return self.sequence_state
         if delta.last_update_id <= previous:
+            if (self.sequence_semantics == "BINANCE_U_PU"
+                    and self._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE):
+                return self.sequence_state
             self._invalidate(BookStateV2.GAP_DETECTED, "OUT_OF_ORDER_DELTA", processed_at)
             return self.sequence_state
         if mode == "BINANCE_U_PU":
-            if self.state == BookStateV2.WARMING and delta.first_update_id is not None:
-                contiguous = delta.first_update_id <= previous + 1 <= delta.last_update_id
+            if self._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE:
+                # Events ending before the snapshot ID were already discarded
+                # above. The first advancing event must bridge L+1 explicitly.
+                contiguous = (delta.first_update_id is not None
+                              and delta.first_update_id <= previous + 1 <= delta.last_update_id)
             else:
                 contiguous = delta.previous_update_id == previous
         elif mode in {"BYBIT_U", "CONTIGUOUS_UPDATE_ID"}:
@@ -575,6 +605,9 @@ class SequenceValidBookV2:
         self.last_update_id = delta.last_update_id
         self._seen[delta.last_update_id] = delta.raw_content_ref
         self.last_received_at_ns = max(self.last_received_at_ns or delta.received_at_ns, delta.received_at_ns)
+        if mode == "BINANCE_U_PU" and self._binance_sync_phase == BinanceDepthSyncPhaseV2.AWAITING_SNAPSHOT_BRIDGE:
+            self._binance_sync_phase = BinanceDepthSyncPhaseV2.BRIDGE_COMPLETE
+            self.valid_since_ns = processed_at
         self._append_frame(processed_at, delta.received_at_ns, delta.raw_content_ref,
                            delta.event_at_ns)
         if self.state != BookStateV2.INVALID and self.valid_since_ns is not None:
