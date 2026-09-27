@@ -9,6 +9,7 @@ backfills historical schema-5 consumption before exposing the new version.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 from typing import Any
@@ -20,7 +21,7 @@ from .schema import (
 )
 
 LEGACY_RUNTIME_INSTANCE_ID = "legacy-v4-runtime-unavailable"
-V2_CAPITAL_AUTHORITY_SCHEMA_VERSION = 1
+V2_CAPITAL_AUTHORITY_SCHEMA_VERSION = 2
 
 
 def _metadata_exists(conn: sqlite3.Connection) -> bool:
@@ -352,22 +353,64 @@ def _bootstrap_v2_extensions(conn: sqlite3.Connection) -> None:
     row = conn.execute(
         "SELECT value FROM v2_schema_metadata WHERE key='capital_authority_schema_version'"
     ).fetchone()
-    if row is None:
-        conn.execute(
-            "INSERT INTO v2_schema_metadata(key,value) VALUES('capital_authority_schema_version',?)",
-            (str(V2_CAPITAL_AUTHORITY_SCHEMA_VERSION),),
-        )
-        return
-    version = int(row[0])
+    version = int(row[0]) if row is not None else 0
     if version > V2_CAPITAL_AUTHORITY_SCHEMA_VERSION:
         raise RuntimeError(
             f"future V2 journal extension {version} > supported {V2_CAPITAL_AUTHORITY_SCHEMA_VERSION}; fail closed"
         )
+
+    columns = _columns(conn, "v2_live_authority_evidence")
+    if version == V2_CAPITAL_AUTHORITY_SCHEMA_VERSION and "source_evidence_ref" not in columns:
+        raise RuntimeError("V2 authority extension schema is inconsistent; source evidence index is missing")
     if version < V2_CAPITAL_AUTHORITY_SCHEMA_VERSION:
+        # Version 1 keyed only by receipt hash. Recover each source identity
+        # from its immutable canonical receipt before advancing the extension.
+        conn.execute("DROP TRIGGER IF EXISTS v2_live_authority_evidence_no_update")
+        if "source_evidence_ref" not in columns:
+            conn.execute("ALTER TABLE v2_live_authority_evidence ADD COLUMN source_evidence_ref TEXT")
+        rows = conn.execute(
+            "SELECT evidence_hash,canonical_json,source_evidence_ref FROM v2_live_authority_evidence"
+        ).fetchall()
+        for item in rows:
+            encoded = item["canonical_json"]
+            try:
+                body = json.loads(encoded)
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise RuntimeError("V2 authority migration found invalid canonical receipt JSON") from exc
+            source_ref = body.get("evidence_ref") if isinstance(body, dict) else None
+            if not isinstance(source_ref, str) or len(source_ref) != 64 or any(
+                c not in "0123456789abcdef" for c in source_ref
+            ):
+                raise RuntimeError("V2 authority migration found an invalid source evidence ref")
+            if hashlib.sha256(encoded.encode("utf-8")).hexdigest() != item["evidence_hash"]:
+                raise RuntimeError("V2 authority migration found a receipt/content hash mismatch")
+            if item["source_evidence_ref"] not in (None, source_ref):
+                raise RuntimeError("V2 authority migration found a source-ref projection mismatch")
+            if item["source_evidence_ref"] is None:
+                conn.execute(
+                    "UPDATE v2_live_authority_evidence SET source_evidence_ref=? WHERE evidence_hash=?",
+                    (source_ref, item["evidence_hash"]),
+                )
         conn.execute(
-            "UPDATE v2_schema_metadata SET value=? WHERE key='capital_authority_schema_version'",
-            (str(V2_CAPITAL_AUTHORITY_SCHEMA_VERSION),),
+            "CREATE TRIGGER IF NOT EXISTS v2_live_authority_evidence_no_update "
+            "BEFORE UPDATE ON v2_live_authority_evidence BEGIN "
+            "SELECT RAISE(ABORT, 'V2 live authority evidence is immutable'); END"
         )
+        if row is None:
+            conn.execute(
+                "INSERT INTO v2_schema_metadata(key,value) VALUES('capital_authority_schema_version',?)",
+                (str(V2_CAPITAL_AUTHORITY_SCHEMA_VERSION),),
+            )
+        else:
+            conn.execute(
+                "UPDATE v2_schema_metadata SET value=? WHERE key='capital_authority_schema_version'",
+                (str(V2_CAPITAL_AUTHORITY_SCHEMA_VERSION),),
+            )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS v2_live_authority_source_context_idx "
+        "ON v2_live_authority_evidence(source_evidence_ref,writer_id,writer_epoch,"
+        "runtime_instance_id,account_identity_hash,capability_profile_hash)"
+    )
 
 
 def bootstrap(conn: sqlite3.Connection) -> int:

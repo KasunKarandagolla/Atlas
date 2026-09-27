@@ -8,6 +8,7 @@ cutoff-current, reconciled evidence.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
@@ -457,9 +458,9 @@ def _require_indexed(
     if item is None or item.content_hash != ref or item.artifact_type != kind:
         raise ValueError(f"durable {kind} artifact required")
     body = item.metadata.get(metadata_key) if metadata_key else dict(item.metadata)
-    if not isinstance(body, dict) or (expected is not None and canonical_json(body) != canonical_json(expected)):
+    if not isinstance(body, Mapping) or (expected is not None and canonical_json(body) != canonical_json(expected)):
         raise ValueError(f"durable {kind} body/hash mismatch")
-    return body
+    return dict(body)
 
 
 def validate_v2_bridge_material(
@@ -1162,6 +1163,7 @@ def _live_authority_evidence(
     writer_epoch: int,
     runtime_instance_id: str,
     cutoff_ns: int,
+    allow_synthetic_fixture: bool = False,
 ) -> tuple[tuple[str, ...], bool]:
     """Require exact, cutoff-current evidence stored by this live writer."""
     sha256_ref(protection_evidence_ref, field="protection evidence ref")
@@ -1182,26 +1184,25 @@ def _live_authority_evidence(
     for evidence_ref, expected_kind, expected_capability, expected_snapshot_hash in sorted(
         required, key=lambda value: (value[0], value[1].value, value[2] or "")
     ):
-        evidence = journal.load_v2_live_authority_evidence(evidence_ref)
-        if evidence is None:
-            raise ValueError("capital-critical evidence has no live-control journal receipt")
-        if (
-            evidence.kind is not expected_kind
-            or evidence.account_identity_hash != profile.account_identity_hash
-            or evidence.venue != profile.venue
-            or evidence.environment != profile.environment
-            or evidence.product_revision != product_revision
-            or evidence.capability_profile_hash != profile.content_hash
-            or evidence.capability != expected_capability
-            or evidence.account_risk_snapshot_hash != expected_snapshot_hash
-            or evidence.writer_id != writer_id
-            or evidence.writer_epoch != writer_epoch
-            or evidence.runtime_instance_id != runtime_instance_id
-            or evidence.recovery_run_id != recovery_run_id
-            or evidence.observed_at_ns > cutoff_ns
-            or cutoff_ns - evidence.observed_at_ns > _MAX_EVIDENCE_AGE_NS
-        ):
-            raise ValueError("live-control evidence is stale or does not bind the current profile/account/writer")
+        evidence = journal.load_v2_live_authority_evidence_for_source(
+            evidence_ref,
+            writer_id=writer_id,
+            writer_epoch=writer_epoch,
+            runtime_instance_id=runtime_instance_id,
+            recovery_run_id=recovery_run_id,
+            account_identity_hash=profile.account_identity_hash,
+            venue=profile.venue,
+            environment=profile.environment,
+            capability_profile_hash=profile.content_hash,
+            kind=expected_kind,
+            capability=expected_capability,
+            account_risk_snapshot_hash=expected_snapshot_hash,
+            cutoff_ns=cutoff_ns,
+            max_age_ns=_MAX_EVIDENCE_AGE_NS,
+            require_live=not allow_synthetic_fixture,
+        )
+        if evidence.product_revision != product_revision:
+            raise ValueError("live-control evidence product revision differs from the current profile")
         synthetic = synthetic or evidence.synthetic_fixture
         seen.append(evidence.content_hash)
     return tuple(sorted(seen)), synthetic
@@ -1227,6 +1228,7 @@ def _attest_v2_bridge_authority(
     Offline fixtures are persisted as ``SYNTHETIC_TEST_ONLY`` and can never
     authorize an opening. Ops labels alone do not create live evidence rows.
     """
+    from atlas.persistence.sqlite import PersistenceError
     from atlas.runtime.assisted_control import revalidate_plan
 
     context = getattr(shell, "v2_live_writer_context", lambda: None)()
@@ -1302,8 +1304,9 @@ def _attest_v2_bridge_authority(
             writer_epoch=writer_epoch,
             runtime_instance_id=runtime_instance_id,
             cutoff_ns=cutoff_ns,
+            allow_synthetic_fixture=True,
         )
-    except (AttributeError, ValueError) as exc:
+    except (AttributeError, PersistenceError, ValueError) as exc:
         raise ValueError(f"live authority evidence rejected: {exc}") from exc
     evidence_refs = tuple(sorted({ref for row in capability_profile.rows for ref in row.evidence_refs}))
     attestation = V2CapitalAuthorityAttestation(
@@ -1411,8 +1414,6 @@ def prepare_v2_bridge_entry(
         sorted({ref for row in capability_profile.rows for ref in row.evidence_refs})
     ):
         early_mismatches.append("attestation capability evidence set mismatch")
-    if attestation.status is not V2CapitalAuthorityStatus.LIVE_ATTESTED:
-        early_mismatches.append("synthetic or non-live attestation cannot authorize opening risk")
     if cutoff_ns < attestation.attested_at_ns or cutoff_ns >= attestation.expires_at_ns:
         early_mismatches.append("live-control attestation is stale or expired")
     if early_mismatches:
@@ -1510,11 +1511,14 @@ def prepare_v2_bridge_entry(
             writer_epoch=writer_epoch,
             runtime_instance_id=runtime_instance_id,
             cutoff_ns=cutoff_ns,
+            allow_synthetic_fixture=True,
         )
     except (AttributeError, PersistenceError, ValueError) as exc:
         return AssistedControlResult("V2_AUTHORITY_BLOCKED", (str(exc),))
-    if synthetic or live_refs != attestation.live_evidence_refs:
-        return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("live evidence set changed or is synthetic",))
+    if live_refs != attestation.live_evidence_refs:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("live evidence receipt set changed after attestation",))
+    if synthetic or attestation.status is not V2CapitalAuthorityStatus.LIVE_ATTESTED:
+        return AssistedControlResult("V2_AUTHORITY_BLOCKED", ("synthetic or non-live attestation cannot authorize opening risk",))
     binding_reasons = attestation.binding_reasons(
         bridge=bridge,
         plan=plan,

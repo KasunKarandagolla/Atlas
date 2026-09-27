@@ -321,6 +321,7 @@ DDL_STATEMENTS = [
     """
     CREATE TABLE IF NOT EXISTS v2_live_authority_evidence (
         evidence_hash TEXT PRIMARY KEY,
+        source_evidence_ref TEXT NOT NULL,
         canonical_json TEXT NOT NULL,
         account_identity_hash TEXT NOT NULL,
         capability_profile_hash TEXT NOT NULL,

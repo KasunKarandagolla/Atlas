@@ -158,20 +158,25 @@ class SQLiteJournal:
         def op():
             with self._tx() as c:
                 existing = c.execute(
-                    "SELECT canonical_json FROM v2_live_authority_evidence WHERE evidence_hash=?",
+                    "SELECT canonical_json,source_evidence_ref FROM v2_live_authority_evidence WHERE evidence_hash=?",
                     (evidence.content_hash,),
                 ).fetchone()
                 if existing is not None:
-                    if existing["canonical_json"] != encoded:
+                    if (
+                        existing["canonical_json"] != encoded
+                        or existing["source_evidence_ref"] != evidence.evidence_ref
+                    ):
                         raise PersistenceError("V2 live authority evidence hash conflicts with persisted content")
                     return
                 c.execute(
                     """INSERT INTO v2_live_authority_evidence(
-                        evidence_hash,canonical_json,account_identity_hash,capability_profile_hash,
-                        writer_id,writer_epoch,runtime_instance_id,observed_at_ns,synthetic_fixture
-                    ) VALUES(?,?,?,?,?,?,?,?,?)""",
+                        evidence_hash,source_evidence_ref,canonical_json,account_identity_hash,
+                        capability_profile_hash,writer_id,writer_epoch,runtime_instance_id,
+                        observed_at_ns,synthetic_fixture
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?)""",
                     (
                         evidence.content_hash,
+                        evidence.evidence_ref,
                         encoded,
                         evidence.account_identity_hash,
                         evidence.capability_profile_hash,
@@ -197,6 +202,7 @@ class SQLiteJournal:
             evidence = V2LiveAuthorityEvidence.from_dict(json.loads(row["canonical_json"]))
             if evidence.content_hash != evidence_hash or any(
                 (
+                    row["source_evidence_ref"] != evidence.evidence_ref,
                     row["account_identity_hash"] != evidence.account_identity_hash,
                     row["capability_profile_hash"] != evidence.capability_profile_hash,
                     row["writer_id"] != evidence.writer_id,
@@ -210,6 +216,120 @@ class SQLiteJournal:
             return evidence
 
         return self._wrap("load_v2_live_authority_evidence", op)
+
+    def load_v2_live_authority_evidence_for_source(
+        self,
+        source_evidence_ref: str,
+        *,
+        writer_id: str,
+        writer_epoch: int,
+        runtime_instance_id: str,
+        recovery_run_id: str,
+        account_identity_hash: str,
+        venue: Any,
+        environment: Any,
+        capability_profile_hash: str,
+        kind: Any,
+        capability: str | None,
+        account_risk_snapshot_hash: str | None,
+        cutoff_ns: int,
+        max_age_ns: int,
+        require_live: bool = True,
+    ) -> Any:
+        """Resolve a source ref to its immutable receipt in one exact live context.
+
+        ``source_evidence_ref`` identifies the underlying ops/venue evidence;
+        the returned receipt retains its independent content-hash identity.
+        Ambiguity or any context mismatch fails closed.
+        """
+        from atlas.runtime.v2_capital_authority import V2LiveAuthorityEvidence, V2LiveAuthorityEvidenceKind
+        from atlas.v2._serialization import sha256_ref
+        from atlas.v2.instruments import EnvironmentV2, VenueV2
+
+        sha256_ref(source_evidence_ref, field="source_evidence_ref")
+        sha256_ref(account_identity_hash, field="account_identity_hash")
+        sha256_ref(capability_profile_hash, field="capability_profile_hash")
+        if account_risk_snapshot_hash is not None:
+            sha256_ref(account_risk_snapshot_hash, field="account_risk_snapshot_hash")
+        if (
+            not writer_id.strip()
+            or not runtime_instance_id.strip()
+            or not recovery_run_id.strip()
+            or type(writer_epoch) is not int
+            or writer_epoch < 1
+            or type(cutoff_ns) is not int
+            or cutoff_ns < 0
+            or type(max_age_ns) is not int
+            or max_age_ns < 0
+            or type(require_live) is not bool
+        ):
+            raise PersistenceError("invalid V2 live evidence lookup context")
+        expected_venue = VenueV2(venue)
+        expected_environment = EnvironmentV2(environment)
+        expected_kind = V2LiveAuthorityEvidenceKind(kind)
+        active_writer_context = self.v2_live_writer_context()
+        if active_writer_context != (writer_id, writer_epoch, runtime_instance_id):
+            raise PersistenceError("V2 source lookup does not match the active writer/runtime context")
+
+        def op():
+            rows = self._conn.execute(
+                "SELECT * FROM v2_live_authority_evidence WHERE source_evidence_ref=? "
+                "ORDER BY evidence_hash",
+                (source_evidence_ref,),
+            ).fetchall()
+            receipts: list[V2LiveAuthorityEvidence] = []
+            for row in rows:
+                receipt = V2LiveAuthorityEvidence.from_dict(json.loads(row["canonical_json"]))
+                if receipt.content_hash != row["evidence_hash"] or any(
+                    (
+                        row["source_evidence_ref"] != receipt.evidence_ref,
+                        row["account_identity_hash"] != receipt.account_identity_hash,
+                        row["capability_profile_hash"] != receipt.capability_profile_hash,
+                        row["writer_id"] != receipt.writer_id,
+                        int(row["writer_epoch"]) != receipt.writer_epoch,
+                        row["runtime_instance_id"] != receipt.runtime_instance_id,
+                        int(row["observed_at_ns"]) != receipt.observed_at_ns,
+                        bool(row["synthetic_fixture"]) != receipt.synthetic_fixture,
+                    )
+                ):
+                    raise PersistenceError("V2 live authority evidence integrity mismatch")
+                receipts.append(receipt)
+
+            active_context = [
+                receipt
+                for receipt in receipts
+                if (
+                    receipt.writer_id == writer_id
+                    and receipt.writer_epoch == writer_epoch
+                    and receipt.runtime_instance_id == runtime_instance_id
+                    and receipt.recovery_run_id == recovery_run_id
+                )
+            ]
+            if not active_context:
+                raise PersistenceError("no V2 live receipt matches the active writer/runtime/recovery context")
+            if len(active_context) != 1:
+                raise PersistenceError("ambiguous V2 live receipts for the active writer/runtime/recovery context")
+            receipt = active_context[0]
+            if any(
+                (
+                    receipt.evidence_ref != source_evidence_ref,
+                    receipt.account_identity_hash != account_identity_hash,
+                    receipt.venue is not expected_venue,
+                    receipt.environment is not expected_environment,
+                    receipt.capability_profile_hash != capability_profile_hash,
+                    receipt.kind is not expected_kind,
+                    receipt.capability != capability,
+                    receipt.account_risk_snapshot_hash != account_risk_snapshot_hash,
+                )
+            ):
+                raise PersistenceError("V2 live receipt source/context binding mismatch")
+            if receipt.observed_at_ns > cutoff_ns or cutoff_ns - receipt.observed_at_ns > max_age_ns:
+                raise PersistenceError("V2 live receipt is stale for the requested evidence cutoff")
+            if require_live and receipt.synthetic_fixture:
+                raise PersistenceError("synthetic V2 live receipt cannot satisfy live authority lookup")
+            return receipt
+
+        return self._wrap("load_v2_live_authority_evidence_for_source", op)
 
     def append_v2_capital_authority_attestation(self, attestation: Any) -> None:
         """Append an immutable attestation; only SafeRuntime-bound journals may write."""

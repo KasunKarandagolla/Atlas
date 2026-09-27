@@ -4,10 +4,12 @@ import json
 import sqlite3
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from v2.test_session014_core import KEY
 
+from atlas.domain.enums import ReconciliationHealth
 from atlas.domain.execution import Approval
 from atlas.domain.risk import engineering_default_policy
 from atlas.persistence.sqlite import PersistenceError, SQLiteJournal
@@ -20,6 +22,7 @@ from atlas.runtime.phase4_v2 import (
     VenueCapabilityRowV2,
     _attest_v2_bridge_authority,
     _require_current_ops_refs,
+    _v2_authority_ops_refs,
     persist_v2_bridged_trade_plan,
     prepare_v2_bridge_entry,
     validate_venue_profile_for_capital,
@@ -51,7 +54,15 @@ def _ref(value: object) -> str:
     return sha256_json(value)
 
 
-def _ops_qualified_profile(repo: OpsRepository) -> VenueCapabilityProfileV2:
+def _ops_qualified_profile(
+    repo: OpsRepository, *, account_identity_hash: str = _ACCOUNT
+) -> VenueCapabilityProfileV2:
+    """Create forged Ops-only labels for offline fail-closed authority tests.
+
+    These metadata labels are deliberately not genuine qualification evidence;
+    any test reaching an authority receipt uses separately marked synthetic
+    live-journal fixtures and cannot authorize a venue order.
+    """
     rows = []
     for capability in BYBIT_REQUIRED_CAPABILITIES_V2:
         metadata = {
@@ -59,7 +70,7 @@ def _ops_qualified_profile(repo: OpsRepository) -> VenueCapabilityProfileV2:
             "venue": VenueV2.BYBIT.value,
             "environment": EnvironmentV2.TESTNET.value,
             "capability": capability,
-            "account_identity_hash": _ACCOUNT,
+            "account_identity_hash": account_identity_hash,
             "product_ref": _PRODUCT,
             "instrument_key_ref": KEY.content_hash,
             "position_mode": "ONE_WAY",
@@ -93,7 +104,7 @@ def _ops_qualified_profile(repo: OpsRepository) -> VenueCapabilityProfileV2:
     profile = VenueCapabilityProfileV2(
         VenueV2.BYBIT,
         EnvironmentV2.TESTNET,
-        _ACCOUNT,
+        account_identity_hash,
         _PRODUCT,
         KEY.content_hash,
         "ONE_WAY",
@@ -137,17 +148,23 @@ def _risk_ops_forgery(repo: OpsRepository) -> str:
     return evidence_ref
 
 
-def _plan_and_bridge(profile: VenueCapabilityProfileV2):
-    v1 = engineering_default_policy(policy_version="authority-test", policy_effective_at_ns=0)
-    v2_hash = _ref("risk-v2")
+def _plan_and_bridge(
+    profile: VenueCapabilityProfileV2,
+    *,
+    now_ns: int = 100,
+    risk_policy_v1=None,
+    risk_policy_v2_hash: str | None = None,
+):
+    v1 = risk_policy_v1 or engineering_default_policy(policy_version="authority-test", policy_effective_at_ns=0)
+    v2_hash = risk_policy_v2_hash or _ref("risk-v2")
     plan = TradePlanEnvelopeV2(
-        ArtifactEnvelope(1, "authority-plan", 100, 100, "authority-test", ()),
+        ArtifactEnvelope(1, "authority-plan", now_ns, now_ns, "authority-test", ()),
         _ref("plan-id"),
         "2.0",
         "2.0",
         KEY,
         _PRODUCT,
-        _ACCOUNT,
+        profile.account_identity_hash,
         _ref("policy"),
         _ref("action"),
         _ref("evaluation"),
@@ -161,13 +178,13 @@ def _plan_and_bridge(profile: VenueCapabilityProfileV2):
         Decimal("90"),
         "MARK_PRICE",
         "fixed-stop",
-        300,
+        now_ns + 300,
         Decimal("10"),
         Decimal("20"),
         Decimal("100"),
         Decimal("2"),
         Decimal("99"),
-        200,
+        now_ns + 200,
     )
     from atlas.runtime.phase4_v2 import V2CapitalBridgeEnvelope
 
@@ -187,7 +204,7 @@ def _plan_and_bridge(profile: VenueCapabilityProfileV2):
         _PRODUCT,
         KEY.contract_revision,
         _ref("cost-model"),
-        _ACCOUNT,
+        profile.account_identity_hash,
         VenueV2.BYBIT,
         EnvironmentV2.TESTNET,
         KEY.content_hash,
@@ -215,6 +232,163 @@ def _live_journal(tmp_path, *, runtime_id: str = "runtime-synthetic"):
     journal = SQLiteJournal(tmp_path / "live.sqlite")
     journal._bind_v2_live_writer(lock, runtime_id)
     return lock, journal, ownership, runtime_id
+
+
+def _append_source_receipt(
+    journal: SQLiteJournal,
+    ownership,
+    runtime_id: str,
+    *,
+    source_ref: str,
+    profile_hash: str,
+    recovery_run_id: str,
+    kind: V2LiveAuthorityEvidenceKind = V2LiveAuthorityEvidenceKind.CAPABILITY,
+    account_identity_hash: str = _ACCOUNT,
+    venue: VenueV2 = VenueV2.BYBIT,
+    environment: EnvironmentV2 = EnvironmentV2.TESTNET,
+    capability: str | None = "one_way_position_mode",
+    account_risk_snapshot_hash: str | None = None,
+    observed_at_ns: int = _CUTOFF,
+) -> V2LiveAuthorityEvidence:
+    if kind is not V2LiveAuthorityEvidenceKind.CAPABILITY:
+        capability = None
+    if kind is V2LiveAuthorityEvidenceKind.ACCOUNT_RISK and account_risk_snapshot_hash is None:
+        account_risk_snapshot_hash = _ref("account-risk-snapshot")
+    receipt = V2LiveAuthorityEvidence(
+        source_ref,
+        kind,
+        account_identity_hash,
+        venue,
+        environment,
+        KEY.contract_revision,
+        profile_hash,
+        capability,
+        account_risk_snapshot_hash,
+        observed_at_ns,
+        ownership.writer_id,
+        ownership.writer_epoch,
+        runtime_id,
+        recovery_run_id,
+        "SYNTHETIC_TEST_FIXTURE",
+        True,
+    )
+    journal.append_v2_live_authority_evidence(receipt)
+    return receipt
+
+
+def _lookup_source_receipt(
+    journal: SQLiteJournal,
+    receipt: V2LiveAuthorityEvidence,
+    *,
+    require_live: bool = True,
+    cutoff_ns: int = _CUTOFF,
+    max_age_ns: int = 1_000_000_000,
+    **overrides,
+) -> V2LiveAuthorityEvidence:
+    context: dict[str, Any] = {
+        "writer_id": receipt.writer_id,
+        "writer_epoch": receipt.writer_epoch,
+        "runtime_instance_id": receipt.runtime_instance_id,
+        "recovery_run_id": receipt.recovery_run_id,
+        "account_identity_hash": receipt.account_identity_hash,
+        "venue": receipt.venue,
+        "environment": receipt.environment,
+        "capability_profile_hash": receipt.capability_profile_hash,
+        "kind": receipt.kind,
+        "capability": receipt.capability,
+        "account_risk_snapshot_hash": receipt.account_risk_snapshot_hash,
+        "cutoff_ns": cutoff_ns,
+        "max_age_ns": max_age_ns,
+        "require_live": require_live,
+    }
+    context.update(overrides)
+    return journal.load_v2_live_authority_evidence_for_source(receipt.evidence_ref, **context)
+
+
+def _record_all_authority_receipts(
+    journal: SQLiteJournal,
+    ownership,
+    runtime_id: str,
+    profile: VenueCapabilityProfileV2,
+    risk_evidence,
+    *,
+    recovery_run_id: str,
+    cutoff_ns: int,
+    protection_evidence_ref: str,
+) -> tuple[V2LiveAuthorityEvidence, ...]:
+    requirements: list[tuple[str, V2LiveAuthorityEvidenceKind, str | None, str | None]] = [
+        (ref, V2LiveAuthorityEvidenceKind.CAPABILITY, row.capability, None)
+        for row in profile.rows
+        for ref in row.evidence_refs
+    ]
+    requirements.extend(
+        (
+            (
+                risk_evidence.account_observation_ref,
+                V2LiveAuthorityEvidenceKind.ACCOUNT_RISK,
+                None,
+                risk_evidence.account_snapshot.content_hash,
+            ),
+            (
+                risk_evidence.reconciliation_ref,
+                V2LiveAuthorityEvidenceKind.EXPOSURE_RECONCILIATION,
+                None,
+                None,
+            ),
+            (protection_evidence_ref, V2LiveAuthorityEvidenceKind.PROTECTION, None, None),
+        )
+    )
+    receipts = []
+    for source_ref, kind, capability, account_snapshot_hash in requirements:
+        receipts.append(
+            _append_source_receipt(
+                journal,
+                ownership,
+                runtime_id,
+                source_ref=source_ref,
+                profile_hash=profile.content_hash,
+                recovery_run_id=recovery_run_id,
+                kind=kind,
+                account_identity_hash=profile.account_identity_hash,
+                venue=profile.venue,
+                environment=profile.environment,
+                capability=capability,
+                account_risk_snapshot_hash=account_snapshot_hash,
+                observed_at_ns=cutoff_ns,
+            )
+        )
+    return tuple(receipts)
+
+
+def _index_bridge_inputs(repo: OpsRepository, profile, plan, bridge, risk_evidence, cutoff_ns: int) -> None:
+    exact = (
+        (bridge.content_hash, "V2CapitalBridgeEnvelope", "bridge", bridge.to_dict()),
+        (profile.content_hash, "VenueCapabilityProfileV2", "profile", profile.to_dict()),
+        (plan.content_hash, "TradePlanEnvelopeV2", "plan", plan.to_dict()),
+    )
+    for ref, artifact_type, metadata_key, body in exact:
+        repo.register_artifact(
+            ArtifactIndexEntryV2(
+                ref,
+                artifact_type,
+                ref,
+                cutoff_ns,
+                cutoff_ns,
+                {metadata_key: body},
+            )
+        )
+    for ref in _v2_authority_ops_refs(repo, bridge, plan, profile, risk_evidence):
+        if repo.get_artifact(ref) is None:
+            repo.register_artifact(
+                ArtifactIndexEntryV2(
+                    ref,
+                    "AuthoritySourceFixtureV2",
+                    ref,
+                    cutoff_ns,
+                    cutoff_ns,
+                    {"source_fixture_ref": ref},
+                )
+            )
 
 
 def _synthetic_attestation(
@@ -693,3 +867,356 @@ def test_different_bridge_attestation_is_rejected_before_approval_or_intent(tmp_
 def test_only_bybit_required_capability_contract_is_used_for_bybit_profile():
     assert BYBIT_REQUIRED_CAPABILITIES_V2
     assert BINANCE_REQUIRED_CAPABILITIES_V2
+
+
+def test_source_ref_resolves_immutable_receipt_without_redefining_receipt_hash(tmp_path):
+    lock, journal, owner, runtime = _live_journal(tmp_path)
+    receipt = _append_source_receipt(
+        journal,
+        owner,
+        runtime,
+        source_ref=_ref("underlying-source"),
+        profile_hash=_ref("profile"),
+        recovery_run_id=_ref("recovery"),
+    )
+    assert receipt.evidence_ref != receipt.content_hash
+    assert journal.load_v2_live_authority_evidence(receipt.content_hash) == receipt
+    assert _lookup_source_receipt(journal, receipt, require_live=False) == receipt
+    assert journal._conn.execute(
+        "SELECT source_evidence_ref,evidence_hash FROM v2_live_authority_evidence WHERE evidence_hash=?",
+        (receipt.content_hash,),
+    ).fetchone()[:] == (receipt.evidence_ref, receipt.content_hash)
+    journal.close()
+    lock.release()
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("writer_id", "previous-writer"),
+        ("writer_epoch", 2),
+        ("runtime_instance_id", "previous-runtime"),
+        ("recovery_run_id", _ref("previous-recovery")),
+    ],
+)
+def test_source_ref_lookup_rejects_wrong_writer_runtime_or_recovery(tmp_path, field, replacement):
+    lock, journal, owner, runtime = _live_journal(tmp_path)
+    receipt = _append_source_receipt(
+        journal,
+        owner,
+        runtime,
+        source_ref=_ref(f"wrong-context-{field}"),
+        profile_hash=_ref("profile"),
+        recovery_run_id=_ref("current-recovery"),
+    )
+    with pytest.raises(PersistenceError, match="active writer/runtime|no V2 live receipt"):
+        _lookup_source_receipt(journal, receipt, require_live=False, **{field: replacement})
+    journal.close()
+    lock.release()
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("account_identity_hash", _ref("wrong-account")),
+        ("venue", VenueV2.BINANCE),
+        ("environment", EnvironmentV2.MAINNET),
+        ("capability_profile_hash", _ref("wrong-profile")),
+        ("capability", "wrong_capability"),
+        ("account_risk_snapshot_hash", _ref("wrong-account-snapshot")),
+        ("kind", V2LiveAuthorityEvidenceKind.EXPOSURE_RECONCILIATION),
+    ],
+)
+def test_source_ref_lookup_rejects_wrong_source_binding(tmp_path, field, replacement):
+    lock, journal, owner, runtime = _live_journal(tmp_path)
+    receipt = _append_source_receipt(
+        journal,
+        owner,
+        runtime,
+        source_ref=_ref(f"wrong-binding-{field}"),
+        profile_hash=_ref("profile"),
+        recovery_run_id=_ref("recovery"),
+    )
+    with pytest.raises(PersistenceError, match="source/context binding mismatch"):
+        _lookup_source_receipt(journal, receipt, require_live=False, **{field: replacement})
+    journal.close()
+    lock.release()
+
+
+def test_source_ref_lookup_fails_on_ambiguous_active_context_receipts(tmp_path):
+    lock, journal, owner, runtime = _live_journal(tmp_path)
+    source_ref = _ref("ambiguous-underlying-source")
+    first = _append_source_receipt(
+        journal,
+        owner,
+        runtime,
+        source_ref=source_ref,
+        profile_hash=_ref("profile"),
+        recovery_run_id=_ref("recovery"),
+        observed_at_ns=_CUTOFF - 1,
+    )
+    _append_source_receipt(
+        journal,
+        owner,
+        runtime,
+        source_ref=source_ref,
+        profile_hash=_ref("profile"),
+        recovery_run_id=_ref("recovery"),
+        observed_at_ns=_CUTOFF,
+    )
+    with pytest.raises(PersistenceError, match="ambiguous V2 live receipts"):
+        _lookup_source_receipt(journal, first, require_live=False)
+    journal.close()
+    lock.release()
+
+
+def test_source_ref_lookup_rejects_stale_and_synthetic_when_live_is_required(tmp_path):
+    lock, journal, owner, runtime = _live_journal(tmp_path)
+    stale = _append_source_receipt(
+        journal,
+        owner,
+        runtime,
+        source_ref=_ref("stale-underlying-source"),
+        profile_hash=_ref("profile"),
+        recovery_run_id=_ref("recovery"),
+        observed_at_ns=_CUTOFF - 1_000_000_001,
+    )
+    with pytest.raises(PersistenceError, match="stale"):
+        _lookup_source_receipt(journal, stale, require_live=False)
+
+    synthetic = _append_source_receipt(
+        journal,
+        owner,
+        runtime,
+        source_ref=_ref("synthetic-underlying-source"),
+        profile_hash=_ref("profile"),
+        recovery_run_id=_ref("recovery"),
+    )
+    with pytest.raises(PersistenceError, match="synthetic.*cannot satisfy live authority"):
+        _lookup_source_receipt(journal, synthetic, require_live=True)
+    assert _lookup_source_receipt(journal, synthetic, require_live=False).synthetic_fixture is True
+    journal.close()
+    lock.release()
+
+
+def test_previous_writer_epoch_cannot_resolve_a_source_receipt(tmp_path):
+    lock1, journal1, old_owner, runtime = _live_journal(tmp_path)
+    receipt = _append_source_receipt(
+        journal1,
+        old_owner,
+        runtime,
+        source_ref=_ref("prior-epoch-source"),
+        profile_hash=_ref("profile"),
+        recovery_run_id=_ref("recovery"),
+    )
+    journal1.close()
+    lock1.release()
+
+    lock2 = WriterLock(tmp_path / "writer.lock")
+    new_owner = lock2.acquire()
+    journal2 = SQLiteJournal(tmp_path / "live.sqlite")
+    journal2._bind_v2_live_writer(lock2, runtime)
+    assert new_owner.writer_epoch > old_owner.writer_epoch
+    with pytest.raises(PersistenceError, match="no V2 live receipt"):
+        journal2.load_v2_live_authority_evidence_for_source(
+            receipt.evidence_ref,
+            writer_id=new_owner.writer_id,
+            writer_epoch=new_owner.writer_epoch,
+            runtime_instance_id=runtime,
+            recovery_run_id=receipt.recovery_run_id,
+            account_identity_hash=receipt.account_identity_hash,
+            venue=receipt.venue,
+            environment=receipt.environment,
+            capability_profile_hash=receipt.capability_profile_hash,
+            kind=receipt.kind,
+            capability=receipt.capability,
+            account_risk_snapshot_hash=receipt.account_risk_snapshot_hash,
+            cutoff_ns=_CUTOFF,
+            max_age_ns=1_000_000_000,
+            require_live=False,
+        )
+    journal2.close()
+    lock2.release()
+
+
+def test_previous_runtime_cannot_resolve_a_source_receipt_after_reopen(tmp_path):
+    lock, journal1, owner, old_runtime = _live_journal(tmp_path)
+    receipt = _append_source_receipt(
+        journal1,
+        owner,
+        old_runtime,
+        source_ref=_ref("prior-runtime-source"),
+        profile_hash=_ref("profile"),
+        recovery_run_id=_ref("recovery"),
+    )
+    journal1.close()
+
+    new_runtime = "runtime-after-restart"
+    journal2 = SQLiteJournal(tmp_path / "live.sqlite")
+    journal2._bind_v2_live_writer(lock, new_runtime)
+    with pytest.raises(PersistenceError, match="no V2 live receipt"):
+        journal2.load_v2_live_authority_evidence_for_source(
+            receipt.evidence_ref,
+            writer_id=owner.writer_id,
+            writer_epoch=owner.writer_epoch,
+            runtime_instance_id=new_runtime,
+            recovery_run_id=receipt.recovery_run_id,
+            account_identity_hash=receipt.account_identity_hash,
+            venue=receipt.venue,
+            environment=receipt.environment,
+            capability_profile_hash=receipt.capability_profile_hash,
+            kind=receipt.kind,
+            capability=receipt.capability,
+            account_risk_snapshot_hash=receipt.account_risk_snapshot_hash,
+            cutoff_ns=_CUTOFF,
+            max_age_ns=1_000_000_000,
+            require_live=False,
+        )
+    journal2.close()
+    lock.release()
+
+
+def test_live_attestation_and_prepare_resolve_source_refs_to_exact_receipts(tmp_path, monkeypatch):
+    from runtime.test_phase4_v2_live_risk import _case as risk_case
+
+    from atlas.runtime import assisted_control
+    from atlas.runtime.phase4_v2 import _attest_v2_bridge_authority
+    from atlas.runtime.recovery import RecoveryCertificate, RecoveryDecision
+
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        risk_evidence, v1, v2 = risk_case(repo)
+        profile = _ops_qualified_profile(
+            repo,
+            account_identity_hash=risk_evidence.account_snapshot.account_scope,
+        )
+        plan, bridge, v1, v2_hash = _plan_and_bridge(
+            profile,
+            now_ns=_CUTOFF,
+            risk_policy_v1=v1,
+            risk_policy_v2_hash=v2.policy_hash,
+        )
+        recovery_run = _ref("e2e-recovery-run")
+        protection_ref = _ref("e2e-protection-source")
+        lock, journal, owner, runtime = _live_journal(tmp_path, runtime_id="runtime-source-e2e")
+        recovery = RecoveryCertificate(
+            recovery_run_id=recovery_run,
+            runtime_instance_id=runtime,
+            writer_id=owner.writer_id,
+            writer_epoch=owner.writer_epoch,
+            journal_schema_version=6,
+            unresolved_intents=(),
+            unresolved_commands=(),
+            unknown_commands=(),
+            reconciliation_health=ReconciliationHealth.CURRENT,
+            started_at_ns=_CUTOFF - 1,
+            ended_at_ns=_CUTOFF,
+            evidence_refs=(_ref("recovery-journal-evidence"),),
+            venue_evidence_refs=(_ref("recovery-venue-evidence"),),
+            decision=RecoveryDecision.READY,
+            protection_evidence_id=_ref("recovery-protection-evidence"),
+        )
+        journal.load_latest_recovery_certificate = lambda: recovery
+        revalidation = SimpleNamespace(now_ns=_CUTOFF, recovery_run_id=recovery_run)
+        monkeypatch.setattr(
+            assisted_control,
+            "revalidate_plan",
+            lambda **_: SimpleNamespace(ok=True, reasons=()),
+        )
+
+        receipts = _record_all_authority_receipts(
+            journal,
+            owner,
+            runtime,
+            profile,
+            risk_evidence,
+            recovery_run_id=recovery_run,
+            cutoff_ns=_CUTOFF,
+            protection_evidence_ref=protection_ref,
+        )
+        assert receipts
+        for receipt in receipts:
+            assert receipt.evidence_ref != receipt.content_hash
+            assert _lookup_source_receipt(journal, receipt, require_live=False) == receipt
+
+        _index_bridge_inputs(repo, profile, plan, bridge, risk_evidence, _CUTOFF)
+        v1_plan = persist_v2_bridged_trade_plan(journal, bridge, plan)
+        approval = Approval(
+            "source-lookup-approval",
+            "operator",
+            v1_plan.plan_id,
+            v1_plan.version,
+            _CUTOFF,
+            v1_plan.expires_at_ns - 1,
+        )
+        journal.create_approval(approval)
+        shell = AssistedControlShell(
+            journal=journal,
+            runtime_instance_id=runtime,
+            writer_id=owner.writer_id,
+            writer_epoch=owner.writer_epoch,
+            live_writer_lock=lock,
+        )
+
+        lookup_calls = []
+        actual_lookup = journal.load_v2_live_authority_evidence_for_source
+
+        def tracked_lookup(source_ref, **kwargs):
+            receipt = actual_lookup(source_ref, **kwargs)
+            lookup_calls.append((source_ref, receipt.content_hash))
+            return receipt
+
+        monkeypatch.setattr(journal, "load_v2_live_authority_evidence_for_source", tracked_lookup)
+        attestation = _attest_v2_bridge_authority(
+            shell,
+            repo=repo,
+            bridge=bridge,
+            plan=plan,
+            capability_profile=profile,
+            risk_evidence=risk_evidence,
+            risk_policy_v1=v1,
+            risk_policy_v2=v2,
+            account_scope=profile.account_identity_hash,
+            cutoff_ns=_CUTOFF,
+            attested_at_ns=_CUTOFF,
+            expires_at_ns=_CUTOFF + 100,
+            protection_evidence_ref=protection_ref,
+            v1_revalidation_evidence=revalidation,
+        )
+        assert attestation.status is V2CapitalAuthorityStatus.SYNTHETIC_TEST_ONLY
+        receipt_hashes = tuple(sorted(receipt.content_hash for receipt in receipts))
+        source_hashes = tuple(sorted(receipt.evidence_ref for receipt in receipts))
+        assert attestation.live_evidence_refs == receipt_hashes
+        assert attestation.live_evidence_refs != source_hashes
+        assert set(source_hashes).issubset(set(attestation.capability_evidence_refs) | {
+            risk_evidence.account_observation_ref,
+            risk_evidence.reconciliation_ref,
+            protection_ref,
+        })
+        before_prepare = len(lookup_calls)
+
+        result = prepare_v2_bridge_entry(
+            shell,
+            repo=repo,
+            bridge=bridge,
+            plan=plan,
+            capability_profile=profile,
+            risk_evidence=risk_evidence,
+            risk_policy_v1=v1,
+            risk_policy_v2=v2,
+            account_scope=profile.account_identity_hash,
+            cutoff_ns=_CUTOFF,
+            approval_id=approval.approval_id,
+            user_identity="operator",
+            v1_revalidation_evidence=revalidation,
+            authority_attestation_ref=attestation.content_hash,
+            protection_evidence_ref=protection_ref,
+        )
+        prepare_receipts = lookup_calls[before_prepare:]
+        assert result.status == "V2_AUTHORITY_BLOCKED"
+        assert result.reasons == ("synthetic or non-live attestation cannot authorize opening risk",)
+        assert tuple(sorted(receipt_hash for _, receipt_hash in prepare_receipts)) == receipt_hashes
+        assert tuple(sorted(source_ref for source_ref, _ in prepare_receipts)) == tuple(sorted(source_hashes))
+        assert journal.load_unresolved_intents() == []
+        assert journal.load_unresolved_commands() == []
+        journal.close()
+        lock.release()

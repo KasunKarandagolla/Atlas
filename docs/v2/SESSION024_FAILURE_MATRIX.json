@@ -25,6 +25,8 @@
     {"scenario": "forged ops capability/risk labels without live-control evidence or attestation", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v2_capital_authority.py"]},
     {"scenario": "exact V2 attestation binding, stale/wrong writer rejection and immutable ops fingerprints", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v2_capital_authority.py"]},
     {"scenario": "V1 schema-6 journal reopen with additive V2 authority extension", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/persistence/test_migration_v6_v2_authority.py"]},
+    {"scenario": "V2 extension-v1 receipt migration preserves source-ref and receipt-hash identities across reopen", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/persistence/test_migration_v6_v2_authority.py", "tests/runtime/test_phase4_v2_capital_authority.py"]},
+    {"scenario": "Source-ref lookup returns one exact current-writer receipt and rejects stale, synthetic, wrong-context or ambiguous receipts", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v2_capital_authority.py"]},
     {"scenario": "recovery-required state invalidates opening authority; approval cannot replace attestation", "offline_status": "TESTED", "venue_status": "BLOCKED BY ENVIRONMENT", "evidence": ["tests/runtime/test_phase4_v2_capital_authority.py"]}
   ],
   "risk_reduction_policy": "Protection and closing-only actions remain subject to persisted intent and reconciliation evidence. New opening risk fails closed on any unresolved or stale evidence.",

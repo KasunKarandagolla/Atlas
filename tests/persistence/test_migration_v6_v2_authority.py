@@ -71,7 +71,7 @@ def test_v6_to_v2_extension_migration_preserves_v1_rows(tmp_path):
     assert reopened.schema_version() == 6
     assert reopened._conn.execute(
         "SELECT value FROM v2_schema_metadata WHERE key='capital_authority_schema_version'"
-    ).fetchone()[0] == "1"
+    ).fetchone()[0] == "2"
     assert dict(reopened._conn.execute("SELECT * FROM trade_plans WHERE plan_id=?", (plan.plan_id,)).fetchone()) == before_plan
     assert dict(
         reopened._conn.execute("SELECT * FROM approvals WHERE approval_id=?", (approval.approval_id,)).fetchone()
@@ -91,3 +91,54 @@ def test_v6_to_v2_extension_migration_preserves_v1_rows(tmp_path):
         "SELECT 1 FROM sqlite_master WHERE type='trigger' AND name='v2_capital_authority_no_update'"
     ).fetchone()
     reopened.close()
+
+
+def test_v2_extension_v1_migrates_both_source_and_receipt_identity(tmp_path):
+    from runtime.test_phase4_v2_capital_authority import (
+        _live_journal,
+        _lookup_source_receipt,
+        _synthetic_attestation,
+    )
+
+    lock, journal, ownership, runtime_id = _live_journal(tmp_path, runtime_id="migration-runtime")
+    attestation, _ = _synthetic_attestation(journal, ownership, runtime_id)
+    receipt_hash = attestation.live_evidence_refs[0]
+    receipt_before = journal.load_v2_live_authority_evidence(receipt_hash)
+    assert receipt_before is not None
+    assert receipt_before.evidence_ref != receipt_before.content_hash
+    attestation_before = journal.load_v2_capital_authority_attestation(attestation.content_hash)
+    assert attestation_before == attestation
+
+    # Recreate an extension-v1 database with persisted canonical receipts but
+    # no source projection. Its receipt hashes and attestation are immutable.
+    journal._conn.execute("DROP INDEX v2_live_authority_source_context_idx")
+    journal._conn.execute("ALTER TABLE v2_live_authority_evidence DROP COLUMN source_evidence_ref")
+    journal._conn.execute(
+        "UPDATE v2_schema_metadata SET value='1' WHERE key='capital_authority_schema_version'"
+    )
+    journal._conn.commit()
+    journal.close()
+
+    reopened = SQLiteJournal(tmp_path / "live.sqlite")
+    reopened._bind_v2_live_writer(lock, runtime_id)
+    assert reopened.schema_version() == 6
+    assert reopened._conn.execute(
+        "SELECT value FROM v2_schema_metadata WHERE key='capital_authority_schema_version'"
+    ).fetchone()[0] == "2"
+    assert reopened.load_v2_live_authority_evidence(receipt_hash) == receipt_before
+    assert reopened.load_v2_capital_authority_attestation(attestation.content_hash) == attestation_before
+    projected = reopened._conn.execute(
+        "SELECT source_evidence_ref,evidence_hash FROM v2_live_authority_evidence WHERE evidence_hash=?",
+        (receipt_hash,),
+    ).fetchone()
+    assert tuple(projected) == (receipt_before.evidence_ref, receipt_before.content_hash)
+    assert _lookup_source_receipt(reopened, receipt_before, require_live=False) == receipt_before
+    assert reopened._conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='trigger' AND name='v2_live_authority_evidence_no_update'"
+    ).fetchone()
+    assert reopened._conn.execute(
+        "SELECT COUNT(*) FROM v2_capital_authority_attestations WHERE attestation_hash=?",
+        (attestation.content_hash,),
+    ).fetchone()[0] == 1
+    reopened.close()
+    lock.release()
