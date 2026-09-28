@@ -149,3 +149,57 @@ The three V1 skips were the Bybit and Binance authenticated testnet qualificatio
 - Network activity was limited to the required Git fetch/push. No public-market, venue, LLM or external-provider request ran. No GitHub Actions run exists or is claimed. The 72-hour public soak was not run and is not claimed as passed.
 
 The handoff is now returned to the coordinating reviewer for independent inspection of the pushed Session-027 branch.
+
+## Second bounded production-composition remediation closeout (2026-09-29)
+
+This is a second bounded remediation within Session 027. It does not create Session 028. The earlier Session-027 records above are retained as history. This remediation restores the accepted decision-calendar wire contract and closes the built-in production-composition blockers.
+
+- Required starting remote tip: 4ff75d3f164c8e1d1181bf8d92e67d5dca39b0ec; verified before editing.
+- Prior remediation tested implementation: ae6722a30745992b8d930b9d9e11750832145297.
+- Implementation and tested commit: 39afc3a13b1459063766a94b7ba0e97953270a47.
+- The final documentation-only remote tip is reported in the final closeout; a commit cannot contain its own resulting SHA.
+- Branch: impl/session-027-v2-continuous-ops-supervisor. No merge was performed.
+
+### Changed files
+
+- src/atlas/v2/data/collector.py — indexes durable typed source-health and exact public observation reconciliation evidence.
+- src/atlas/v2/data/history.py — reconstructs archived public observations with content/hash/index checks and cutoff-safe availability.
+- src/atlas/v2/runtime/production.py — composes durable event handoff, as-of universe/history, existing causal features, S1/S2/S3 coordinators, CandidateSet/selector, indexed hard-risk and economics inputs, action, evaluation, diagnostics and calendar through the built-in adapter.
+- src/atlas/v2/science/outcomes.py — removes the unversioned OPS_RUNTIME_GATE enum branch and validation; DecisionCalendarEntryV2 retains its accepted wire identity.
+- tests/v2/test_session027_production.py — adds default-path integration and indexed evidence, ambiguity/future, fail-closed, calendar round-trip, restart/idempotency and no-network/capital-boundary regressions.
+- docs/v2/SESSION027_OPS_RUNTIME_VALIDATION.json — adds this second remediation record without replacing earlier history.
+- docs/handoffs/session-027.md — this appended closeout.
+
+### Built-in composition result
+
+The default factory identity is ATLAS_V2_PRODUCTION_OPS_COMPOSITION_V1 at atlas.v2.runtime.production:create_production_port, using IndexedPublicCycleSourceV1 and IndexedProductionEventInputsV1. The decisive test calls create_production_port() without a custom public source, StaticInputsProvider, custom inputs provider or external adapter.
+
+From persisted causal public evidence the default composition reconciles source health, resolves or produces a content-addressed decision-event handoff, builds event-cutoff universe/as-of joins, calls feature_snapshot, invokes the existing S1ShadowCoordinator, S2ShadowCoordinator and S3ShadowCoordinator, persists every actual exact candidate before selection, and uses the existing CandidateSet and deterministic selector. The fixture selects an S2 candidate created by the coordinator; it does not pre-create CandidateActionV2.
+
+The default path resolves exact typed risk evidence, reaches existing hard-risk sizing, and freezes the exact action only after SIZED. Quantity comes from hard risk. It resolves the existing economic input types and calls run_phase2_economic_evaluation; the result is NOT ESTIMABLE. M1 and analogue diagnostics bind the same frozen action hash and retain ZERO authority. No TradePlan, order, approval, capital or assisted-execution path is created.
+
+### Decision calendar, ownership and recovery
+
+The OPS_RUNTIME_GATE mutation has been removed. Regression tests prove accepted DecisionCalendarEntryV2 values and serialized round trips remain unchanged. Runtime-only blockers stay in the operational receipt; accepted calendar semantics are used only for established states.
+
+Restarting the supervisor and creating a fresh default adapter against the same database did not duplicate event identity, CandidateSet, sizing decision, frozen action, evaluation or calendar entry. A selection-stage interruption recovered through the built-in path. OpsSupervisorV2 owns one writable OpsRepository shared by collection and production composition; no second writer or agent DB writer starts. No agent worker, broker, provider or dispatch is imported or started.
+
+### Tests and checks
+
+| Command | Result |
+| --- | --- |
+| .venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session027_ops_supervisor.py tests/v2/test_session027_production.py | 31 passed, 0 skipped, 0 failed |
+| .venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session027-second-remediation-seams.xml tests/v2/test_session020_*.py tests/v2/test_session023_*.py tests/v2/test_session025_release.py tests/v2/test_session026_*.py tests/v2/test_worker_isolation.py | 168 passed, 0 skipped, 0 failed |
+| .venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session027-second-remediation-v2.xml tests/v2 | 477 passed, 0 skipped, 0 failed; 1,032.66 seconds |
+| .venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session027-second-remediation-v1.xml tests --ignore=tests/v2 | 485 passed, 3 skipped, 0 failed; 510.464 seconds |
+| .venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session027-second-remediation-contracts.xml tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py | 10 passed, 0 skipped, 0 failed; includes V1 golden recomputation |
+| .venv/bin/ruff check . | Passed |
+| .venv/bin/mypy src | Passed; 195 source files |
+| .venv/bin/python -m compileall -q src tests | Passed |
+| .venv/bin/python -m pip check | Passed; no broken requirements |
+| .venv/bin/atlas-ops --help | Passed |
+| .venv/bin/atlas-ops --db <temporary ops.sqlite> --once | Passed without --adapter |
+
+The three non-V2 skips were the Bybit and Binance authenticated testnet qualification opt-ins and the public testnet connectivity opt-in. The two accepted dependency locks and the V1/V2 freeze, golden, release and gate hashes were recomputed and unchanged. A value-suppressing fallback signature scan checked 400 tracked/untracked text paths, skipped one binary file, and found zero high-confidence key/token/private-key patterns. gitleaks, trufflehog and detect-secrets were unavailable.
+
+No public-market or venue request, authenticated call, LLM/provider request, or GitHub Actions run occurred. Network activity was limited to Git fetch/push. No 72-hour soak was run. Economics is NOT ESTIMABLE. Final holdout remains UNASSIGNED / UNTOUCHED. Agent mode is DISABLED; capital and assisted execution remain disabled. No profitability claim is made.

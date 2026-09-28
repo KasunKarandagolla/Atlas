@@ -255,5 +255,165 @@
       "atlas-session005.zip"
     ],
     "merge_performed": false
+  },
+  "session_027_second_bounded_remediation": {
+    "starting_remote_tip_sha": "4ff75d3f164c8e1d1181bf8d92e67d5dca39b0ec",
+    "prior_remediation_tested_sha": "ae6722a30745992b8d930b9d9e11750832145297",
+    "branch": "impl/session-027-v2-continuous-ops-supervisor",
+    "implementation_commit_sha": "39afc3a13b1459063766a94b7ba0e97953270a47",
+    "tested_implementation_sha": "39afc3a13b1459063766a94b7ba0e97953270a47",
+    "final_documentation_only_remote_tip": "reported separately in final closeout; a commit cannot embed its own resulting SHA",
+    "changed_files": [
+      "src/atlas/v2/data/collector.py",
+      "src/atlas/v2/data/history.py",
+      "src/atlas/v2/runtime/production.py",
+      "src/atlas/v2/science/outcomes.py",
+      "tests/v2/test_session027_production.py",
+      "docs/v2/SESSION027_OPS_RUNTIME_VALIDATION.json",
+      "docs/handoffs/session-027.md"
+    ],
+    "production_composition": {
+      "identity": "ATLAS_V2_PRODUCTION_OPS_COMPOSITION_V1",
+      "factory": "atlas.v2.runtime.production:create_production_port",
+      "cli_default": true,
+      "public_source": "IndexedPublicCycleSourceV1",
+      "event_inputs": "IndexedProductionEventInputsV1",
+      "default_test_injected_public_source": false,
+      "default_test_injected_static_or_custom_inputs_provider": false,
+      "default_test_external_adapter": false,
+      "default_path_generated_its_own_candidate": true,
+      "generated_candidate_sleeve": "S2",
+      "composition": [
+        "reconcile source health against exact durable public observation refs",
+        "resolve or deterministically produce content-addressed decision-event handoff from persisted causal public evidence",
+        "build event-cutoff universe and as-of history/join inputs, rejecting evidence unavailable at cutoff",
+        "call existing feature_snapshot API and persist the existing feature artifact",
+        "invoke existing S1ShadowCoordinator, S2ShadowCoordinator, and S3ShadowCoordinator; keep only actual unsized exact candidates",
+        "persist all exact candidates before existing CandidateSet acceptance and deterministic selection",
+        "resolve exact indexed typed risk evidence and call existing hard-risk sizing",
+        "freeze the exact action only when sizing is SIZED",
+        "resolve indexed economic inputs and call existing economic evaluation",
+        "bind optional M1 and analogue diagnostics to the same action hash with ZERO authority",
+        "persist the existing decision-calendar entry using the unchanged accepted wire contract"
+      ],
+      "hard_risk_inputs_resolved_by_default_path": true,
+      "sizing_action_evaluation_reached": true,
+      "evaluation_result": "NOT_ESTIMABLE",
+      "decision_calendar_entry_created": true,
+      "calendar_wire_compatibility": "PASS; OPS_RUNTIME_GATE removed; DecisionCalendarEntryV2 enum/wire identity and old-value round trips remain unchanged",
+      "quantity_authority": "existing hard-risk sizing only",
+      "action_hash_fixed_after_freeze": true,
+      "m1_analogue_action_hash_matches": true,
+      "m1_analogue_authority": "ZERO",
+      "tradeplan_order_approval_created": false
+    },
+    "restart_and_ownership": {
+      "restart_idempotency": "PASS; same durable event and no duplicate CandidateSet, sizing decision, frozen action, evaluation, or calendar entry",
+      "crash_recovery": "PASS; selection interruption resumed through the same default composition; existing stage crash-recovery tests remain passing",
+      "single_writer": "PASS; OpsSupervisorV2 owns one writable OpsRepository reused by collector and production composition; no second writer or agent DB writer",
+      "agent_workers_or_provider_dispatch_started": false
+    },
+    "tests": {
+      "focused_session027": {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session027_ops_supervisor.py tests/v2/test_session027_production.py",
+        "passed": 31,
+        "skipped": 0,
+        "failed": 0,
+        "elapsed_seconds": 202.49
+      },
+      "session020_023_025_026_regressions": {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session027-second-remediation-seams.xml tests/v2/test_session020_*.py tests/v2/test_session023_*.py tests/v2/test_session025_release.py tests/v2/test_session026_*.py tests/v2/test_worker_isolation.py",
+        "passed": 168,
+        "skipped": 0,
+        "failed": 0,
+        "elapsed_seconds": 329.28
+      },
+      "full_v2": {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session027-second-remediation-v2.xml tests/v2",
+        "passed": 477,
+        "skipped": 0,
+        "failed": 0,
+        "elapsed_seconds": 1032.66
+      },
+      "full_non_v2_v1": {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session027-second-remediation-v1.xml tests --ignore=tests/v2",
+        "passed": 485,
+        "skipped": 3,
+        "failed": 0,
+        "elapsed_seconds": 510.464,
+        "skips": [
+          "Bybit authenticated testnet qualification opt-in",
+          "Binance authenticated testnet qualification opt-in",
+          "public testnet connectivity opt-in"
+        ]
+      },
+      "serialization_contracts_and_v1_golden_recompute": {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session027-second-remediation-contracts.xml tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+        "passed": 10,
+        "skipped": 0,
+        "failed": 0,
+        "elapsed_seconds": 12.85
+      },
+      "engineering_checks": {
+        "ruff": ".venv/bin/ruff check .: PASS",
+        "mypy": ".venv/bin/mypy src: PASS, 195 source files",
+        "compileall": ".venv/bin/python -m compileall -q src tests: PASS",
+        "pip_check": ".venv/bin/python -m pip check: PASS, no broken requirements",
+        "cli_help": ".venv/bin/atlas-ops --help: PASS",
+        "default_cli_once": ".venv/bin/atlas-ops --db <temporary ops.sqlite> --once: PASS without --adapter"
+      }
+    },
+    "secret_scan": {
+      "dedicated_scanners_available": false,
+      "unavailable_scanners": [
+        "gitleaks",
+        "trufflehog",
+        "detect-secrets"
+      ],
+      "method": "value-suppressing high-confidence private-key, AWS-key, GitHub-token, and provider-token signature scan over tracked and untracked text paths",
+      "text_paths_scanned": 400,
+      "binary_paths_skipped": 1,
+      "high_confidence_pattern_hits": 0
+    },
+    "preserved_hashes": {
+      "requirements_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements_agent_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "v1_golden_baseline_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+      "v1_freeze_document_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "v2_amended_freeze_document_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "agent_freeze_document_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "session025_release_manifest_sha256": "9f26f4f73c14f5e70cee3c47df28b8e68f2cc05988b8bce8a9c49ce580a90e69",
+      "phase5_release_gate_sha256": "fe47c1f3d284c622e6f63a2b0a1eb5ac6faa8babf27ccabd4cce8975c93aa32e",
+      "agent_intelligence_gate_sha256": "0288cba49682a2e31b0b0103ce898312e410f64509f4dd14b35f368f2cdd0d2f",
+      "session026_validation_sha256": "f2b65610bd7a8edd5879e1c9f27f5ab61dbdaebf626ba9b1bf5b684c74e4d6fa",
+      "dependency_locks_changed": false,
+      "accepted_freeze_release_and_gate_hashes_changed": false
+    },
+    "external_activity": {
+      "git_fetch_and_push": true,
+      "public_market_or_venue_requests": false,
+      "authenticated_venue_calls": false,
+      "llm_or_external_provider_requests": false,
+      "github_actions_evidence": false,
+      "genuine_72_hour_soak": "NOT RUN"
+    },
+    "authority_and_gates": {
+      "economics": "NOT ESTIMABLE",
+      "final_holdout": "UNASSIGNED / UNTOUCHED",
+      "final_holdout_inspected": false,
+      "agent_mode": "DISABLED",
+      "capital_enabled": false,
+      "assisted_execution_enabled": false,
+      "v1_live_control_database_touched": false,
+      "merge_performed": false,
+      "remaining_gates": [
+        "independent coordinating reviewer inspection",
+        "economics remains NOT ESTIMABLE",
+        "no GitHub Actions run evidence",
+        "the 72-hour soak was not run",
+        "venue/account qualification remains unverified",
+        "capital and assisted execution remain disabled"
+      ]
+    }
   }
 }
