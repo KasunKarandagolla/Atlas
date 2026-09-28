@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "session": 27,
+  "checkpoint": "bounded-v2-continuous-ops-supervisor",
+  "checkpoint_is_v2_phase": false,
+  "repository": "KasunKarandagolla/Atlas",
+  "starting_point": {
+    "branch": "impl/session-026-agent-intelligence-offline-infrastructure",
+    "sha": "8f915f85798ff5777592e7f187641ad5684699ff",
+    "session026_tested_commit": "29271fcb65b2f1c0763aac50d8f67fa4049afef6",
+    "session025_release_base_branch": "impl/session-025-v2-release-engineering-shadow-closure",
+    "session025_release_base_sha": "21055dcb5496665aaf165bde1e4f7e73db773192",
+    "v1_frozen_baseline_branch": "impl/session-009-v1-phase0-6-stabilization",
+    "v1_frozen_baseline_sha": "146bae0a2f10e2f794cbed3441123071c55a2baf"
+  },
+  "implementation": {
+    "branch": "impl/session-027-v2-continuous-ops-supervisor",
+    "tested_implementation_sha": "8de91429786a29c463d97149a711296850dc513d",
+    "remote_tip_after_implementation_push_sha": "8de91429786a29c463d97149a711296850dc513d",
+    "remote_tip_independently_verified": true,
+    "final_documentation_closeout_tip": "reported separately after documentation-only push",
+    "files_changed": [
+      "pyproject.toml",
+      "src/atlas/v2/runtime/__init__.py",
+      "src/atlas/v2/runtime/ops_supervisor.py",
+      "tests/v2/test_session027_ops_supervisor.py",
+      "docs/v2/SESSION027_OPS_RUNTIME_VALIDATION.json",
+      "docs/handoffs/session-027.md"
+    ],
+    "merge_performed": false
+  },
+  "runtime": {
+    "status": ["IMPLEMENTED", "TESTED"],
+    "command": "atlas-ops",
+    "command_help_verified": true,
+    "foreground_only": true,
+    "bounded_run_once": true,
+    "injected_clock_sleep_source_ports": true,
+    "single_writer": "atlas-ops owns one long-lived writable local OpsRepository; supplied collector/pipeline services reuse it; downstream projection readers remain read-only",
+    "restart_recovery": "restores active watches/subscriptions through PublicCollectorV2 and keeps source health incomplete until reconciliation succeeds",
+    "event_and_stage_idempotency": "TESTED",
+    "receipt": "versioned, content-addressed and operational-only; diagnostics bind the frozen action and have ZERO selector/risk/admission authority",
+    "agents": "DISABLED; no Session-026 provider, broker or worker is imported or scheduled",
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "v1_live_control_database_touched": false,
+    "order_approval_protection_or_recovery_execution_called": false
+  },
+  "preserved_authority_hashes": {
+    "v1_golden_baseline_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+    "v1_freeze_document_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "v2_amended_freeze_document_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "agent_freeze_document_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "session025_release_manifest_sha256": "9f26f4f73c14f5e70cee3c47df28b8e68f2cc05988b8bce8a9c49ce580a90e69",
+    "phase5_release_gate_sha256": "fe47c1f3d284c622e6f63a2b0a1eb5ac6faa8babf27ccabd4cce8975c93aa32e",
+    "session026_agent_gate_sha256": "0288cba49682a2e31b0b0103ce898312e410f64509f4dd14b35f368f2cdd0d2f",
+    "session026_validation_sha256": "f2b65610bd7a8edd5879e1c9f27f5ab61dbdaebf626ba9b1bf5b684c74e4d6fa",
+    "requirements_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "requirements_agent_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+    "accepted_documents_changed": false,
+    "dependency_locks_changed": false
+  },
+  "tests": {
+    "focused_supervisor": {
+      "command": ".venv/bin/pytest -q -o addopts='' tests/v2/test_session027_ops_supervisor.py",
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0
+    },
+    "full_v2": {
+      "command": ".venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-v2-final.xml tests/v2",
+      "passed": 463,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 500.29
+    },
+    "full_v1": {
+      "command": ".venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-v1.xml tests --ignore=tests/v2",
+      "passed": 485,
+      "skipped": 3,
+      "failed": 0,
+      "elapsed_seconds": 646.90
+    },
+    "session020_023_025_026_and_worker_isolation": {
+      "command": ".venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-seams.xml tests/v2/test_session020_phase2_e2e.py tests/v2/test_session023_integration.py tests/v2/test_session025_release.py tests/v2/test_session026_agent_broker_ownership.py tests/v2/test_session026_agent_intelligence.py tests/v2/test_worker_isolation.py",
+      "passed": 63,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 234.38
+    },
+    "serialization_contracts_and_v1_golden_recompute": {
+      "command": ".venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-hashes.xml tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+      "passed": 10,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 23.39
+    },
+    "engineering_checks": {
+      "ruff": "PASS: .venv/bin/ruff check src/atlas/v2/runtime tests/v2/test_session027_ops_supervisor.py",
+      "mypy": "PASS: .venv/bin/mypy src (194 source files)",
+      "compileall": "PASS: .venv/bin/python -m compileall -q src",
+      "pip_check": "PASS: .venv/bin/pip check; no broken requirements",
+      "dependency_locks": "PASS: both accepted lock files match the recorded SHA-256 values and are unchanged from the starting commit",
+      "entry_point": "PASS: editable install with --no-deps; .venv/bin/atlas-ops --help"
+    }
+  },
+  "skipped_or_blocked": {
+    "v1_skips": [
+      "tests.integration.test_phase4_testnet_qualification::test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+      "tests.integration.test_phase4_testnet_qualification::test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+      "tests.runtime.test_safe_runtime::test_public_testnet_connectivity_opt_in"
+    ],
+    "network_smoke_ran": false,
+    "github_actions_run_verified": false,
+    "github_ci_status": "UNVERIFIED",
+    "genuine_72_hour_public_soak": "BLOCKED BY ENVIRONMENT"
+  },
+  "secret_scan": {
+    "dedicated_scanners_available": false,
+    "scanner_names": ["gitleaks", "trufflehog", "detect-secrets"],
+    "method": "tracked/untracked text-path and changed-file fallback; high-confidence key/token/private-key patterns; matched values were not printed",
+    "text_paths_scanned": 398,
+    "changed_paths_scanned": 6,
+    "disallowed_sensitive_paths": 0,
+    "high_confidence_pattern_hits": 0
+  },
+  "unchanged_project_status": {
+    "agent_offline_infrastructure": ["IMPLEMENTED", "TESTED"],
+    "agent_live_shadow": ["NOT IMPLEMENTED", "TEST GATE"],
+    "agent_decision_influence": "TEST GATE",
+    "economics": "NOT ESTIMABLE",
+    "venue_account_qualification": ["UNVERIFIED", "TEST GATE"],
+    "final_holdout_identity": "aa7e691c14325ec1018df74037d48e8e0ce93de5755decb00d425b1549ede5f9",
+    "final_holdout_state": "UNASSIGNED / UNTOUCHED",
+    "final_holdout_viewed": false,
+    "capital_enabled": false,
+    "assisted_enabled": false
+  },
+  "remaining_gates": [
+    "independent reviewer inspection of the pushed Session-027 branch",
+    "agent live shadow and decision influence remain gated",
+    "economics remains NOT ESTIMABLE",
+    "genuine uninterrupted 72-hour public soak remains BLOCKED BY ENVIRONMENT",
+    "venue/account qualification remains UNVERIFIED / TEST GATE",
+    "no capital or assisted execution is authorized"
+  ]
+}

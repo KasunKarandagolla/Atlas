@@ -1,0 +1,98 @@
+# Session 027 — V2 continuous non-capital ops supervisor
+
+## Outcome
+
+Implemented and tested a bounded foreground `atlas-ops` supervisor for the existing deterministic V2 research/shadow pipeline. Session 027 is sequential repository bookkeeping only; this work does not add a seventh V2 phase or reopen any frozen V1/V2 phase.
+
+The supervisor owns one long-lived, local writable `OpsRepository`, recovers durable watches and subscriptions before collection, gates decisions on reconciled current source health, validates causal artifact availability, checkpoints ordered pipeline stages, and persists content-addressed event and cycle receipts. It passes the repository to its injected composition port; existing collectors and services reuse that repository. The CLI takes a deployment `module:factory` adapter so source and production pipeline composition stay injected and deterministic tests need neither sleeping nor network access.
+
+The adapter composes the current multi-sleeve CandidateSet, selector, hard-risk sizing, exact action freeze, economic evaluation, M1 and analogue APIs, and decision calendar. It preserves S1–S3 exact-action roles, the S4–S7 context/research exclusions, and S8 basket-only semantics. CandidateSet selection happens before sizing and evaluation. M1 and analogue outputs are bound to the frozen action and carry zero selector, risk, and admission authority. Primary stage references preserve the adapter's declared order.
+
+No strategy rules, V1/V2 identity, selector order, risk limits, economic contracts, capability qualification, agent provider history, capital controls, or protection/recovery semantics changed. No exchange credential, order, approval, live-control database, agent provider, broker, or worker was used.
+
+## Repository identity
+
+- Starting branch and SHA: `impl/session-026-agent-intelligence-offline-infrastructure` at `8f915f85798ff5777592e7f187641ad5684699ff`.
+- Session-026 tested implementation: `29271fcb65b2f1c0763aac50d8f67fa4049afef6`.
+- Accepted Session-025 release base: `impl/session-025-v2-release-engineering-shadow-closure` at `21055dcb5496665aaf165bde1e4f7e73db773192`.
+- Frozen V1 baseline: `impl/session-009-v1-phase0-6-stabilization` at `146bae0a2f10e2f794cbed3441123071c55a2baf`.
+- Implementation branch: `impl/session-027-v2-continuous-ops-supervisor`.
+- Tested implementation commit: `8de91429786a29c463d97149a711296850dc513d`.
+- Remote tip after the implementation push was independently verified as `8de91429786a29c463d97149a711296850dc513d`.
+- A documentation-only closeout commit follows. Its final remote tip is reported separately after push because a commit cannot contain its own resulting SHA.
+- No merge was performed.
+
+## Changed files
+
+- `pyproject.toml` — registers the `atlas-ops` command.
+- `src/atlas/v2/runtime/__init__.py` — exports the V2 supervisor API.
+- `src/atlas/v2/runtime/ops_supervisor.py` — recovery-first bounded cycle, source-health and chronology gates, ordered stage checkpoints, event idempotency, operational receipts, and foreground CLI/loop.
+- `tests/v2/test_session027_ops_supervisor.py` — deterministic lifecycle, production seam composition, safety, sleeve contract, idempotency, and restart tests.
+- `docs/v2/SESSION027_OPS_RUNTIME_VALIDATION.json` — machine-readable validation results.
+- `docs/handoffs/session-027.md` — this handoff.
+
+Pre-existing untracked freeze-document copies and `atlas-session005.zip` were left untouched and were not committed.
+
+## Authority and identity preservation
+
+The following accepted artifacts and dependency locks are unchanged from the verified start point:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| V1 golden baseline | `be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251` |
+| V1 freeze document | `c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c` |
+| Amended V2 freeze document | `e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78` |
+| Agent-intelligence freeze | `d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d` |
+| Session-025 release manifest | `9f26f4f73c14f5e70cee3c47df28b8e68f2cc05988b8bce8a9c49ce580a90e69` |
+| Phase-5 release gate | `fe47c1f3d284c622e6f63a2b0a1eb5ac6faa8babf27ccabd4cce8975c93aa32e` |
+| Session-026 agent gate | `0288cba49682a2e31b0b0103ce898312e410f64509f4dd14b35f368f2cdd0d2f` |
+| Session-026 validation | `f2b65610bd7a8edd5879e1c9f27f5ab61dbdaebf626ba9b1bf5b684c74e4d6fa` |
+| `requirements-lock.txt` | `711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b` |
+| `requirements-agent-lock.txt` | `47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3` |
+
+Both dependency locks are byte-for-byte unchanged. The existing holdout population identity is `aa7e691c14325ec1018df74037d48e8e0ce93de5755decb00d425b1549ede5f9`, still `UNASSIGNED / UNTOUCHED` and not viewed.
+
+## Validation
+
+| Command | Result |
+| --- | --- |
+| `.venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-v2-final.xml tests/v2` | 463 passed, 0 skipped, 0 failed; 500.29 seconds |
+| `.venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-v1.xml tests --ignore=tests/v2` | 485 passed, 3 skipped, 0 failed; 646.90 seconds |
+| `.venv/bin/pytest -q -o addopts='' tests/v2/test_session027_ops_supervisor.py` | 17 passed |
+| `.venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-seams.xml tests/v2/test_session020_phase2_e2e.py tests/v2/test_session023_integration.py tests/v2/test_session025_release.py tests/v2/test_session026_agent_broker_ownership.py tests/v2/test_session026_agent_intelligence.py tests/v2/test_worker_isolation.py` | 63 passed |
+| `.venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-hashes.xml tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py` | 10 passed; includes V1 golden recomputation |
+| `.venv/bin/ruff check src/atlas/v2/runtime tests/v2/test_session027_ops_supervisor.py` | Passed |
+| `.venv/bin/mypy src` | Passed; 194 source files |
+| `.venv/bin/python -m compileall -q src` | Passed |
+| `.venv/bin/pip check` | No broken requirements |
+| `.venv/bin/atlas-ops --help` | Passed after editable install with `--no-deps` |
+
+The three V1 skips were the Bybit and Binance authenticated testnet qualification opt-ins and the opt-in public testnet connectivity check. No authenticated exchange test or public network smoke ran. The genuine uninterrupted 72-hour public soak was not run and remains `BLOCKED BY ENVIRONMENT`.
+
+The broad V2 run includes Session-020/023 integration coverage, Session-025 release regressions, Session-026 agent ownership/isolation regressions, and the updated Session-027 tests. V1 golden recomputation, V2 serialization/hash invariants, and both lock hashes were verified. `gitleaks`, `trufflehog`, and `detect-secrets` were unavailable; a value-suppressing tracked/untracked text-path and changed-file fallback scan is recorded in the validation artifact.
+
+No GitHub Actions run was used as evidence. GitHub CI status is `UNVERIFIED`.
+
+## Ownership, recovery, and terminal status
+
+- `atlas-ops` is the only writable ops repository owner in this runtime. Collector and pipeline adapters receive and reuse the supplied repository; projection access remains read-only.
+- Restart tests restored a durable active watch and subscription plan. Source health stayed `INCOMPLETE_SNAPSHOT` until the collector's reconnect reconciliation completed.
+- Replaying a completed immutable event after process restart returned the same receipt and did not rerun the production composition. The CandidateSet, frozen action, evaluation, and decision-calendar references did not duplicate.
+- Injected failures after UNIVERSE, CANDIDATE_SET, HARD_RISK, and ECONOMIC_EVALUATION checkpoints resumed after process restart without reordering or backdating stages.
+- Missing or future causal/risk evidence terminated as `NOT_ESTIMABLE`; no action or evaluation followed failed hard-risk sizing.
+- S4–S7 remained excluded from exact-action selection and S8 remained basket-only.
+- The deterministic economic fixture used explicitly unqualified synthetic capability evidence and returned `NOT_ESTIMABLE`; it is not venue qualification or an economics claim.
+
+## Acceptance state and remaining gates
+
+- Continuous non-capital ops supervisor: `IMPLEMENTED` / `TESTED`.
+- Agent offline infrastructure: `IMPLEMENTED` / `TESTED`, unchanged.
+- Agent live shadow: `NOT IMPLEMENTED` / `TEST GATE`.
+- Agent decision influence: `TEST GATE`.
+- Economics: `NOT ESTIMABLE`.
+- Genuine 72-hour public soak: `BLOCKED BY ENVIRONMENT`.
+- Venue/account qualification: `UNVERIFIED` / `TEST GATE`.
+- Capital: disabled. Assisted execution: disabled.
+- DeepSeek/NIM amendment and live agent shadow remain out of scope.
+
+The next action is independent reviewer inspection of the pushed Session-027 branch. No merge, provider change, agent shadow, or capital enablement is requested here.
