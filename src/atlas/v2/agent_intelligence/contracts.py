@@ -596,6 +596,78 @@ class AgentAttemptV1:
 
 
 @dataclass(frozen=True)
+class BrokerDispatchAuthorizationV1:
+    """Durable sole-writer authorization created before a broker capability."""
+
+    job_id: str
+    request_key: str
+    request_hash: str
+    attempt_id: str
+    call_index: int
+    lease_epoch: int
+    authorization_id: str
+    capability_nonce: str
+    evidence_hash: str
+    model_profile_hash: str
+    provider: str
+    requested_model_id: str
+    deadline_ns: int
+    authorized_at_ns: int
+    expires_at_ns: int
+    budget_reservation_id: str
+    reserved_cost_usd: str
+    max_input_tokens: int
+    max_output_tokens: int
+    authorization_hash: str
+
+    @classmethod
+    def create(cls, *, job_id: str, request_key: str, request_hash: str, attempt_id: str,
+               call_index: int, lease_epoch: int, authorization_id: str, capability_nonce: str,
+               evidence_hash: str, model_profile_hash: str, provider: str, requested_model_id: str,
+               deadline_ns: int, authorized_at_ns: int, expires_at_ns: int,
+               budget_reservation_id: str, reserved_cost_usd: str, max_input_tokens: int,
+               max_output_tokens: int) -> BrokerDispatchAuthorizationV1:
+        for name, value in (("job_id", job_id), ("attempt_id", attempt_id),
+                            ("authorization_id", authorization_id),
+                            ("capability_nonce", capability_nonce),
+                            ("budget_reservation_id", budget_reservation_id)):
+            _uuid(value, name)
+        for name, value in (("request_key", request_key), ("request_hash", request_hash),
+                            ("evidence_hash", evidence_hash), ("model_profile_hash", model_profile_hash)):
+            sha256_ref(value, field=name)
+        if (type(call_index) is not int or not 1 <= call_index <= 3
+                or type(lease_epoch) is not int or lease_epoch < 1):
+            raise ValueError("dispatch authorization attempt fence is invalid")
+        if (type(deadline_ns) is not int or type(authorized_at_ns) is not int or type(expires_at_ns) is not int
+                or not authorized_at_ns < expires_at_ns <= deadline_ns):
+            raise ValueError("dispatch authorization time bounds are invalid")
+        if provider != "openai" or requested_model_id != "gpt-6-astra":
+            raise ValueError("dispatch authorization provider/model is outside the fixed allowlist")
+        if (not isinstance(reserved_cost_usd, str)
+                or not re.fullmatch(r"(?:0|[1-9]\d*)(?:\.\d{1,6})?", reserved_cost_usd)):
+            raise ValueError("dispatch authorization budget reservation is invalid")
+        if (type(max_input_tokens) is not int or not 1 <= max_input_tokens <= 32_000
+                or type(max_output_tokens) is not int or not 1 <= max_output_tokens <= 8_000):
+            raise ValueError("dispatch authorization token caps are invalid")
+        body = {"version": "BrokerDispatchAuthorizationV1", "job_id": job_id,
+            "request_key": request_key, "request_hash": request_hash, "attempt_id": attempt_id,
+            "call_index": call_index, "lease_epoch": lease_epoch, "authorization_id": authorization_id,
+            "capability_nonce": capability_nonce, "evidence_hash": evidence_hash,
+            "model_profile_hash": model_profile_hash, "provider": provider,
+            "requested_model_id": requested_model_id, "deadline_ns": deadline_ns,
+            "authorized_at_ns": authorized_at_ns, "expires_at_ns": expires_at_ns,
+            "budget_reservation_id": budget_reservation_id, "reserved_cost_usd": reserved_cost_usd,
+            "max_input_tokens": max_input_tokens, "max_output_tokens": max_output_tokens}
+        return cls(job_id, request_key, request_hash, attempt_id, call_index, lease_epoch, authorization_id,
+            capability_nonce, evidence_hash, model_profile_hash, provider, requested_model_id, deadline_ns,
+            authorized_at_ns, expires_at_ns, budget_reservation_id, reserved_cost_usd, max_input_tokens,
+            max_output_tokens, sha256_json(body))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": "BrokerDispatchAuthorizationV1", **self.__dict__}
+
+
+@dataclass(frozen=True)
 class AgentValidationReceiptV1:
     request_key: str
     proposal_hash: str

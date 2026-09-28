@@ -36,7 +36,7 @@ from atlas.v2.agent_intelligence.contracts import (
 )
 from atlas.v2.agent_intelligence.controller import ResearchJobController
 from atlas.v2.agent_intelligence.evidence import BoundedResearchReadService
-from atlas.v2.agent_intelligence.persistence import AgentJobRepository
+from atlas.v2.agent_intelligence.persistence import AGENT_NAMESPACE_WRITER_OWNER, AgentJobRepository
 from atlas.v2.agent_intelligence.profile import initial_model_profile
 from atlas.v2.agent_intelligence.provider import (
     SYSTEM_PROMPT_V1,
@@ -121,7 +121,7 @@ class _Fixture:
         self.jobs = AgentJobRepository(path, self.schedule)
         self.profile = initial_model_profile(price_schedule=self.schedule, agent_lock_path=AGENT_LOCK)
         self.jobs.register_model_profile(self.profile, created_at_ns=CUTOFF)
-        self.now_ns = time.time_ns() + 1_000_000_000
+        self.now_ns = time.time_ns()
 
     def request(self, **changes: Any) -> ResearchProposalRequestV1:
         baseline_ref = self.experiment.baseline_policy_ref
@@ -193,8 +193,7 @@ def test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_
     request = env.request()
     provider = _FakeProvider(_result(json.dumps(_proposal_wire(request))))
     socket_path = tmp_path / "agent-broker.sock"
-    broker = InferenceBroker(provider, signing_key=b"k" * 32,
-        authorize_dispatch=env.jobs.claim_broker_dispatch)
+    broker = InferenceBroker(provider, signing_key=b"k" * 32)
     server = InferenceBrokerServer(socket_path, broker)
     server.start()
     from atlas.v2.agent_intelligence.worker import AgentWorkerSupervisor
@@ -228,7 +227,7 @@ def test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_
         assert connection.execute("SELECT COUNT(*) FROM ops_outbox").fetchone()[0] == 0
         ops_version = connection.execute("SELECT schema_version FROM schema_meta").fetchone()[0]
         assert ops_version == 1
-        assert connection.execute("SELECT schema_version FROM agent_intelligence_meta").fetchone()[0] == 1
+        assert connection.execute("SELECT schema_version FROM agent_intelligence_meta").fetchone()[0] == 2
         assert connection.execute("SELECT COUNT(*) FROM agent_authorities").fetchone()[0] == 1
     request_key = request.request_key
     job_id = outcome.job_id
@@ -236,6 +235,42 @@ def test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_
     env.jobs = AgentJobRepository(env.path, env.schedule)
     assert env.jobs.get_request(request_key) == request
     assert env.jobs.get_job(job_id).lifecycle_state == AgentJobStateV1.VALIDATED
+
+
+def test_agent_namespace_single_writer_controller_and_broker_components(env: _Fixture,
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    request = env.request()
+    provider = _FakeProvider(_result(json.dumps(_proposal_wire(request))))
+    broker = InferenceBroker(provider, signing_key=b"w" * 32)
+    env.ops.close()  # No unrelated writable ops repository remains open during the ownership exercise.
+    assert env.jobs._connection.execute("PRAGMA query_only").fetchone()[0] == 0
+    assert env.read_ops._connection.execute("PRAGMA query_only").fetchone()[0] == 1
+
+    def no_new_database_handles(*_args: Any, **_kwargs: Any):
+        raise AssertionError("a component other than the existing atlas-ops/controller handle opened SQLite")
+
+    monkeypatch.setattr(sqlite3, "connect", no_new_database_handles)
+
+    class BrokerPort:
+        def __init__(self, context: Any) -> None:
+            self.context = context
+
+        def propose(self, inner_request: ResearchProposalRequestV1, evidence: Any) -> ProviderResultV1:
+            context = self.context
+            return broker.infer(capability=context.capability, job_id=context.job_id,
+                attempt_id=context.attempt_id, lease_epoch=context.lease_epoch,
+                call_index=context.call_index, request_data=inner_request.to_dict(), evidence=evidence,
+                now_ns=time.time_ns())
+
+    controller = ResearchJobController(jobs=env.jobs, evidence=env.evidence, profile=env.profile,
+        capability_signing_key=b"w" * 32, provider_factory=lambda context, _deadline: BrokerPort(context))
+    outcome = controller.run(request, job_id=str(uuid.uuid4()))
+
+    assert outcome.authoritative is True
+    assert provider.calls == 1
+    assert len(broker._seen) == 1
+    assert env.jobs._connection.execute("SELECT COUNT(*) FROM agent_broker_dispatches").fetchone()[0] == 1
+    assert env.jobs._connection.execute("SELECT COUNT(*) FROM agent_authorities").fetchone()[0] == 1
 
 
 @pytest.mark.parametrize(("field", "value", "reason"), [
@@ -394,8 +429,12 @@ def test_worker_crash_before_result_recovers_under_a_new_fenced_lease(env: _Fixt
     env.jobs.start(job.job_id, owner="worker-before-crash", epoch=first.lease_epoch, now_ns=env.now_ns)
     first_attempt = env.jobs.reserve_attempt(job.job_id, owner="worker-before-crash", epoch=first.lease_epoch,
         now_ns=env.now_ns + 1)
-    assert env.jobs.claim_broker_dispatch(job.job_id, request.request_key, first_attempt.attempt_id,
-        first.lease_epoch, "crashed-worker-capability", env.now_ns + 2)
+    authorization = env.jobs.authorize_broker_dispatch(job.job_id, request, first_attempt,
+        owner="worker-before-crash", lease_epoch=first.lease_epoch,
+        authorization_id=str(uuid.uuid4()), capability_nonce=str(uuid.uuid4()),
+        evidence_hash=sha256_json([]), model_profile_hash=request.model_profile_hash,
+        expires_at_ns=env.now_ns + 9, authorized_at_ns=env.now_ns + 2)
+    assert authorization.attempt_id == first_attempt.attempt_id
 
     # Closing and reopening the repository models a worker/process crash after dispatch, before result submit.
     env.jobs.close()
@@ -440,23 +479,36 @@ def test_crash_after_accepted_result_redelivers_persisted_authority(env: _Fixtur
     assert restarted_provider.calls == 0
 
 
+def _authorized_capability(env: _Fixture, request: ResearchProposalRequestV1,
+                           evidence: list[dict[str, Any]], *, now_ns: int | None = None):
+    now = env.now_ns if now_ns is None else now_ns
+    job = env.jobs.create_request(request, job_id=str(uuid.uuid4()), now_ns=now)
+    leased = env.jobs.lease(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, now_ns=now, lease_ns=90_000_000_000)
+    env.jobs.start(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, epoch=leased.lease_epoch, now_ns=now)
+    attempt = env.jobs.reserve_attempt(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, epoch=leased.lease_epoch,
+                                       now_ns=now + 1)
+    authorization = env.jobs.authorize_broker_dispatch(job.job_id, request, attempt,
+        owner=AGENT_NAMESPACE_WRITER_OWNER, lease_epoch=leased.lease_epoch,
+        authorization_id=str(uuid.uuid4()), capability_nonce=str(uuid.uuid4()),
+        evidence_hash=sha256_json(evidence), model_profile_hash=request.model_profile_hash,
+        expires_at_ns=now + 30_000_000_000, authorized_at_ns=now + 2)
+    capability = BrokerCapabilityV1.issue_authorized(authorization=authorization, signing_key=b"b" * 32)
+    return job, leased, attempt, authorization, capability
+
+
 def test_broker_capability_binds_evidence_and_deduplicates_provider_response(env: _Fixture) -> None:
     request = env.request()
-    evidence = [{"tool_name": item.tool_name, "artifact_ref": item.artifact_ref, "cursor": item.cursor,
+    evidence: list[dict[str, Any]] = [{"tool_name": item.tool_name, "artifact_ref": item.artifact_ref, "cursor": item.cursor,
         "status": "PRESENT", "rows": []} for item in request.evidence_manifest]
-    attempt_id = str(uuid.uuid4())
-    job_id = str(uuid.uuid4())
     signing_key = b"b" * 32
     now = env.now_ns
-    capability = BrokerCapabilityV1.issue(job_id=job_id, request=request, issued_at_ns=now,
-        expires_at_ns=now + 30_000_000_000, max_model_calls=1, attempt_id=attempt_id, lease_epoch=1,
-        call_index=1, evidence_hash=sha256_json(evidence), signing_key=signing_key)
+    job, leased, attempt, _authorization, capability = _authorized_capability(env, request, evidence)
     fake = _FakeProvider(_result("{}"))
-    broker = InferenceBroker(fake, signing_key=signing_key,
-        authorize_dispatch=lambda *_args: True)
-    arguments = {"capability": capability.capability, "job_id": job_id, "attempt_id": attempt_id,
-        "lease_epoch": 1, "call_index": 1, "request_data": request.to_dict(), "evidence": evidence,
-        "now_ns": now + 1}
+    broker = InferenceBroker(fake, signing_key=signing_key)
+    arguments = {"capability": capability.capability, "job_id": job.job_id, "attempt_id": attempt.attempt_id,
+        "lease_epoch": leased.lease_epoch, "call_index": attempt.attempt_index,
+        "request_data": request.to_dict(), "evidence": evidence,
+        "now_ns": now + 3}
     first = broker.infer(**arguments)
     assert broker.infer(**arguments) == first
     assert fake.calls == 1
@@ -466,16 +518,162 @@ def test_broker_capability_binds_evidence_and_deduplicates_provider_response(env
         broker.infer(**{**arguments, "evidence": changed})
     overrun_provider = _FakeProvider(ProviderResultV1("{}", "gpt-6-astra", None, False, False,
         12_001, 4_001, "fake-overrun"))
-    overrun_broker = InferenceBroker(overrun_provider, signing_key=signing_key,
-        authorize_dispatch=lambda *_args: True)
-    overrun_capability = BrokerCapabilityV1.issue(job_id=job_id, request=request, issued_at_ns=now,
-        expires_at_ns=now + 30_000_000_000, max_model_calls=1, attempt_id=str(uuid.uuid4()), lease_epoch=1,
-        call_index=1, evidence_hash=sha256_json(evidence), signing_key=signing_key)
-    overrun = overrun_broker.infer(**{**arguments, "capability": overrun_capability.capability,
-        "attempt_id": BrokerCapabilityV1.verify(overrun_capability.capability, signing_key=signing_key,
-            now_ns=now + 1)["attempt_id"]})
+    restarted_broker = InferenceBroker(overrun_provider, signing_key=signing_key)
+    overrun = restarted_broker.infer(**arguments)
     assert overrun.failure_code == "TOKEN_LIMIT_EXCEEDED"
     assert (overrun.input_tokens, overrun.output_tokens) == (12_001, 4_001)
+
+
+def test_controller_persists_exact_dispatch_authorization_before_capability_issue(
+        env: _Fixture, monkeypatch: pytest.MonkeyPatch) -> None:
+    request = env.request()
+    fake = _FakeProvider(_result(json.dumps(_proposal_wire(request))))
+    issue = BrokerCapabilityV1.issue_authorized
+    observed: list[tuple[str, str]] = []
+
+    def check_persisted(*, authorization: Any, signing_key: bytes):
+        row = env.jobs._connection.execute("SELECT dispatch_hash,authorization_id,request_key,attempt_index,"
+            "lease_epoch,evidence_hash,model_profile_hash,deadline_ns,expires_at_ns,budget_reservation_id "
+            "FROM agent_broker_dispatches WHERE attempt_id=?", (authorization.attempt_id,)).fetchone()
+        assert row is not None
+        assert row[0] == authorization.authorization_hash
+        assert row[1] == authorization.authorization_id
+        assert row[2] == authorization.request_key
+        assert row[3] == authorization.call_index
+        assert row[4] == authorization.lease_epoch
+        assert row[5] == authorization.evidence_hash
+        assert row[6] == authorization.model_profile_hash
+        assert row[7] == authorization.deadline_ns
+        assert row[8] == authorization.expires_at_ns
+        assert row[9] == authorization.budget_reservation_id
+        observed.append((authorization.attempt_id, authorization.authorization_hash))
+        return issue(authorization=authorization, signing_key=signing_key)
+
+    monkeypatch.setattr(BrokerCapabilityV1, "issue_authorized", staticmethod(check_persisted))
+    controller = ResearchJobController(jobs=env.jobs, evidence=env.evidence, profile=env.profile,
+        capability_signing_key=b"p" * 32, provider_factory=lambda _context, _deadline: fake,
+        now_ns=lambda: env.now_ns)
+    outcome = controller.run(request, job_id=str(uuid.uuid4()))
+    assert outcome.authoritative is True
+    assert fake.calls == 1
+    assert len(observed) == 1
+
+
+def test_dispatch_authorization_persistence_failure_stops_before_capability_or_provider(
+        env: _Fixture, monkeypatch: pytest.MonkeyPatch) -> None:
+    request = env.request()
+    fake = _FakeProvider(_result(json.dumps(_proposal_wire(request))))
+
+    def fail_before_commit(*_args: Any, **_kwargs: Any):
+        raise sqlite3.OperationalError("injected durable authorization failure")
+
+    def capability_must_not_be_issued(**_kwargs: Any):
+        pytest.fail("capability issued after dispatch-authorization persistence failure")
+
+    monkeypatch.setattr(env.jobs, "authorize_broker_dispatch", fail_before_commit)
+    monkeypatch.setattr(BrokerCapabilityV1, "issue_authorized", staticmethod(capability_must_not_be_issued))
+    controller = ResearchJobController(jobs=env.jobs, evidence=env.evidence, profile=env.profile,
+        capability_signing_key=b"f" * 32, provider_factory=lambda _context, _deadline: fake,
+        now_ns=lambda: env.now_ns)
+    with pytest.raises(sqlite3.OperationalError, match="injected durable authorization failure"):
+        controller.run(request, job_id=str(uuid.uuid4()))
+    assert fake.calls == 0
+    assert env.jobs._connection.execute("SELECT COUNT(*) FROM agent_broker_dispatches").fetchone()[0] == 0
+
+
+def test_broker_rejects_forged_replayed_scope_request_evidence_model_and_expiry(env: _Fixture) -> None:
+    import base64
+
+    request = env.request()
+    evidence: list[dict[str, Any]] = [{"tool_name": item.tool_name, "artifact_ref": item.artifact_ref, "cursor": item.cursor,
+        "status": "PRESENT", "rows": []} for item in request.evidence_manifest]
+    job, leased, attempt, _authorization, capability = _authorized_capability(env, request, evidence)
+    fake = _FakeProvider(_result("{}"))
+    broker = InferenceBroker(fake, signing_key=b"b" * 32)
+    arguments = {"capability": capability.capability, "job_id": job.job_id, "attempt_id": attempt.attempt_id,
+        "lease_epoch": leased.lease_epoch, "call_index": attempt.attempt_index,
+        "request_data": request.to_dict(), "evidence": evidence, "now_ns": env.now_ns + 3}
+
+    payload, _signature = capability.capability.split(".", 1)
+    forged = payload + "." + base64.urlsafe_b64encode(b"x" * 32).decode("ascii")
+    with pytest.raises(BrokerProtocolError, match="INVALID_OR_EXPIRED_CAPABILITY"):
+        broker.infer(**{**arguments, "capability": forged})
+    with pytest.raises(BrokerProtocolError, match="CAPABILITY_SCOPE_MISMATCH"):
+        broker.infer(**{**arguments, "attempt_id": str(uuid.uuid4())})
+    different_request = replace(request, request_id=str(uuid.uuid4()))
+    with pytest.raises(BrokerProtocolError, match="REQUEST_BINDING_MISMATCH"):
+        broker.infer(**{**arguments, "request_data": different_request.to_dict()})
+    changed_evidence = [*evidence]
+    changed_evidence[0] = {**changed_evidence[0], "rows": [{"unbound": True}]}
+    with pytest.raises(BrokerProtocolError, match="EVIDENCE_HASH_MISMATCH"):
+        broker.infer(**{**arguments, "evidence": changed_evidence})
+    wrong_profile = replace(request, model_profile_hash="f" * 64)
+    with pytest.raises(BrokerProtocolError, match="REQUEST_BINDING_MISMATCH"):
+        broker.infer(**{**arguments, "request_data": wrong_profile.to_dict()})
+    with pytest.raises(BrokerProtocolError, match="INVALID_OR_EXPIRED_CAPABILITY"):
+        broker.infer(**{**arguments, "now_ns": capability.expires_at_ns})
+    assert fake.calls == 0
+
+
+def test_controller_authorization_rejects_stale_lease_and_single_attempt_reauthorization(env: _Fixture) -> None:
+    request = env.request()
+    job = env.jobs.create_request(request, job_id=str(uuid.uuid4()), now_ns=env.now_ns)
+    first = env.jobs.lease(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, now_ns=env.now_ns, lease_ns=10)
+    env.jobs.start(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, epoch=first.lease_epoch, now_ns=env.now_ns)
+    attempt = env.jobs.reserve_attempt(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, epoch=first.lease_epoch,
+                                       now_ns=env.now_ns + 1)
+    second = env.jobs.lease(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, now_ns=env.now_ns + 10,
+                            lease_ns=100_000_000_000)
+    env.jobs.start(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, epoch=second.lease_epoch,
+                   now_ns=env.now_ns + 10)
+    with pytest.raises(ValueError, match="dispatch attempt/request binding|stale job lease"):
+        env.jobs.authorize_broker_dispatch(job.job_id, request, attempt,
+            owner=AGENT_NAMESPACE_WRITER_OWNER, lease_epoch=first.lease_epoch,
+            authorization_id=str(uuid.uuid4()), capability_nonce=str(uuid.uuid4()),
+            evidence_hash=sha256_json([]), model_profile_hash=request.model_profile_hash,
+            expires_at_ns=env.now_ns + 20, authorized_at_ns=env.now_ns + 11)
+
+    fresh = env.jobs.reserve_attempt(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, epoch=second.lease_epoch,
+                                     now_ns=env.now_ns + 11)
+    auth = env.jobs.authorize_broker_dispatch(job.job_id, request, fresh,
+        owner=AGENT_NAMESPACE_WRITER_OWNER, lease_epoch=second.lease_epoch,
+        authorization_id=str(uuid.uuid4()), capability_nonce=str(uuid.uuid4()),
+        evidence_hash=sha256_json([]), model_profile_hash=request.model_profile_hash,
+        expires_at_ns=env.now_ns + 30, authorized_at_ns=env.now_ns + 12)
+    with pytest.raises(ValueError, match="already has a dispatch authorization"):
+        env.jobs.authorize_broker_dispatch(job.job_id, request, fresh,
+            owner=AGENT_NAMESPACE_WRITER_OWNER, lease_epoch=second.lease_epoch,
+            authorization_id=str(uuid.uuid4()), capability_nonce=str(uuid.uuid4()),
+            evidence_hash=sha256_json([]), model_profile_hash=request.model_profile_hash,
+            expires_at_ns=env.now_ns + 31, authorized_at_ns=env.now_ns + 13)
+    assert auth.attempt_id == fresh.attempt_id
+
+
+def test_dispatch_authorization_schema_v1_migrates_and_reopens_without_ops_schema_change(env: _Fixture) -> None:
+    env.jobs.close()
+    with sqlite3.connect(env.path) as connection:
+        connection.execute("DROP TRIGGER agent_broker_dispatches_no_update")
+        connection.execute("DROP TRIGGER agent_broker_dispatches_no_delete")
+        connection.execute("DROP INDEX IF EXISTS agent_dispatch_authorization_id_unique")
+        connection.execute("ALTER TABLE agent_broker_dispatches RENAME TO agent_broker_dispatches_v2")
+        connection.execute("CREATE TABLE agent_broker_dispatches(attempt_id TEXT PRIMARY KEY REFERENCES "
+            "agent_attempts(attempt_id),request_key TEXT NOT NULL,capability_nonce TEXT NOT NULL UNIQUE,"
+            "lease_epoch INTEGER NOT NULL,dispatched_at_ns INTEGER NOT NULL,dispatch_hash TEXT NOT NULL)")
+        connection.execute("DROP TABLE agent_broker_dispatches_v2")
+        connection.execute("CREATE TRIGGER agent_broker_dispatches_no_update BEFORE UPDATE ON "
+            "agent_broker_dispatches BEGIN SELECT RAISE(ABORT,'immutable broker dispatch'); END")
+        connection.execute("CREATE TRIGGER agent_broker_dispatches_no_delete BEFORE DELETE ON "
+            "agent_broker_dispatches BEGIN SELECT RAISE(ABORT,'immutable broker dispatch'); END")
+        connection.execute("UPDATE agent_intelligence_meta SET schema_version=1")
+        ops_version = connection.execute("SELECT schema_version FROM schema_meta").fetchone()[0]
+    env.jobs = AgentJobRepository(env.path, env.schedule)
+    with sqlite3.connect(env.path) as connection:
+        assert connection.execute("SELECT schema_version FROM agent_intelligence_meta").fetchone()[0] == 2
+        assert connection.execute("SELECT schema_version FROM schema_meta").fetchone()[0] == ops_version == 1
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(agent_broker_dispatches)")}
+        assert {"job_id", "request_hash", "attempt_index", "authorization_id", "evidence_hash",
+            "model_profile_hash", "deadline_ns", "authorized_at_ns", "expires_at_ns",
+            "budget_reservation_id", "reserved_cost_usd"}.issubset(columns)
 
 
 @pytest.mark.parametrize("failure", ["RATE_LIMITED", "PROVIDER_TIMEOUT"])
@@ -491,6 +689,10 @@ def test_retryable_provider_failures_stop_at_three_calls_without_authority(env: 
     with sqlite3.connect(env.path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM agent_authorities").fetchone()[0] == 0
         assert connection.execute("SELECT COUNT(*) FROM agent_attempt_outcomes").fetchone()[0] == 3
+        dispatched = connection.execute("SELECT attempt_id,attempt_index FROM agent_broker_dispatches "
+                                        "ORDER BY attempt_index").fetchall()
+        assert [row[1] for row in dispatched] == [1, 2, 3]
+        assert len({row[0] for row in dispatched}) == 3
 
 
 def test_spend_reservation_failure_prevents_provider_dispatch(env: _Fixture) -> None:
@@ -520,7 +722,7 @@ def test_broker_unavailable_is_research_only_and_uses_bounded_retries(env: _Fixt
     assert outcome.authoritative is False
     assert provider.calls == 3
     with sqlite3.connect(env.path) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM agent_broker_dispatches").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM agent_broker_dispatches").fetchone()[0] == 3
         assert connection.execute("SELECT COUNT(*) FROM agent_authorities").fetchone()[0] == 0
 
 

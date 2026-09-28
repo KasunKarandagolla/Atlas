@@ -11,7 +11,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from atlas.v2._serialization import canonical_json, sha256_json
+from atlas.v2._serialization import canonical_json, sha256_json, sha256_ref
 from atlas.v2.agent_intelligence.budget import ProviderPriceScheduleV1
 from atlas.v2.agent_intelligence.contracts import (
     AgentAttemptV1,
@@ -20,13 +20,15 @@ from atlas.v2.agent_intelligence.contracts import (
     AgentJobV1,
     AgentModelProfileV1,
     AgentValidationReceiptV1,
+    BrokerDispatchAuthorizationV1,
     ResearchProposalRequestV1,
     ResearchProposalV1,
 )
 from atlas.v2.memory.schema import validate_read_only
 
 AGENT_SCHEMA_NAMESPACE = "atlas-agent-intelligence"
-AGENT_SCHEMA_VERSION = 1
+AGENT_SCHEMA_VERSION = 2
+AGENT_NAMESPACE_WRITER_OWNER = "atlas-ops/controller"
 _NS_PER_DAY = 86_400_000_000_000
 _SECRET_PATTERN = re.compile(
     r"(?:sk-[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|sk-or-v1-[A-Za-z0-9_-]{20,}|"
@@ -61,8 +63,13 @@ _AGENT_DDL = (
         outcome_id TEXT PRIMARY KEY, attempt_id TEXT NOT NULL REFERENCES agent_attempts(attempt_id),
         outcome_json TEXT NOT NULL, outcome_hash TEXT NOT NULL, created_at_ns INTEGER NOT NULL)""",
     """CREATE TABLE agent_broker_dispatches(
-        attempt_id TEXT PRIMARY KEY REFERENCES agent_attempts(attempt_id), request_key TEXT NOT NULL,
-        capability_nonce TEXT NOT NULL UNIQUE, lease_epoch INTEGER NOT NULL,
+        attempt_id TEXT PRIMARY KEY REFERENCES agent_attempts(attempt_id), job_id TEXT NOT NULL,
+        request_key TEXT NOT NULL, request_hash TEXT NOT NULL, attempt_index INTEGER NOT NULL,
+        authorization_id TEXT NOT NULL UNIQUE, capability_nonce TEXT NOT NULL UNIQUE,
+        lease_epoch INTEGER NOT NULL, evidence_hash TEXT NOT NULL, model_profile_hash TEXT NOT NULL,
+        deadline_ns INTEGER NOT NULL, authorized_at_ns INTEGER NOT NULL, expires_at_ns INTEGER NOT NULL,
+        budget_reservation_id TEXT NOT NULL, reserved_cost_usd TEXT NOT NULL,
+        max_input_tokens INTEGER NOT NULL, max_output_tokens INTEGER NOT NULL,
         dispatched_at_ns INTEGER NOT NULL, dispatch_hash TEXT NOT NULL)""",
     """CREATE TABLE agent_results(
         result_id TEXT PRIMARY KEY, request_key TEXT NOT NULL REFERENCES agent_requests(request_key),
@@ -143,7 +150,11 @@ def initialize_agent_extension(connection: sqlite3.Connection) -> None:
     if exists:
         row = connection.execute("SELECT schema_version FROM agent_intelligence_meta WHERE namespace=?",
                                  (AGENT_SCHEMA_NAMESPACE,)).fetchone()
-        if row is None or row[0] != AGENT_SCHEMA_VERSION:
+        if row is None:
+            raise RuntimeError("agent persistence schema version is unsupported")
+        if row[0] == 1:
+            _migrate_agent_extension_v1_to_v2(connection)
+        elif row[0] != AGENT_SCHEMA_VERSION:
             raise RuntimeError("agent persistence schema version is unsupported")
         required = {"agent_model_profiles", "agent_family_budgets", "agent_family_usage", "agent_requests", "agent_jobs", "agent_attempts", "agent_results", "agent_authorities",
                     "agent_broker_dispatches", "agent_validation_receipts", "agent_budget_reservations", "agent_daily_budgets",
@@ -157,6 +168,31 @@ def initialize_agent_extension(connection: sqlite3.Connection) -> None:
             connection.execute(statement)
         connection.execute("INSERT INTO agent_intelligence_meta VALUES(?,?)",
                            (AGENT_SCHEMA_NAMESPACE, AGENT_SCHEMA_VERSION))
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+
+
+def _migrate_agent_extension_v1_to_v2(connection: sqlite3.Connection) -> None:
+    """Add exact durable dispatch-authorization bindings without changing ops schema metadata."""
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(agent_broker_dispatches)")}
+    additions = (
+        ("job_id", "TEXT"), ("request_hash", "TEXT"), ("attempt_index", "INTEGER"),
+        ("authorization_id", "TEXT"), ("evidence_hash", "TEXT"), ("model_profile_hash", "TEXT"),
+        ("deadline_ns", "INTEGER"), ("authorized_at_ns", "INTEGER"), ("expires_at_ns", "INTEGER"),
+        ("budget_reservation_id", "TEXT"), ("reserved_cost_usd", "TEXT"),
+        ("max_input_tokens", "INTEGER"), ("max_output_tokens", "INTEGER"),
+    )
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        for column, sql_type in additions:
+            if column not in columns:
+                connection.execute(f"ALTER TABLE agent_broker_dispatches ADD COLUMN {column} {sql_type}")
+        connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS agent_dispatch_authorization_id_unique "
+                           "ON agent_broker_dispatches(authorization_id) WHERE authorization_id IS NOT NULL")
+        connection.execute("UPDATE agent_intelligence_meta SET schema_version=? WHERE namespace=?",
+                           (AGENT_SCHEMA_VERSION, AGENT_SCHEMA_NAMESPACE))
         connection.commit()
     except BaseException:
         connection.rollback()
@@ -426,6 +462,7 @@ class AgentJobRepository:
             if daily_reserved + reserve > ceiling:
                 raise ValueError("daily inference cost budget exhausted")
             attempt_id = str(uuid.uuid4())
+            budget_reservation_id = str(uuid.uuid4())
             record = AgentAttemptV1(attempt_id, row["request_key"], attempts + 1, epoch, "DISPATCH_RESERVED",
                 now_ns, str(reserve), request.model_profile_hash,
                 sha256_json({"request_key": row["request_key"], "attempt_index": attempts + 1,
@@ -434,11 +471,11 @@ class AgentJobRepository:
                              "max_output_tokens": request.max_output_tokens}))
             attempt_json = canonical_json(record.to_dict())
             attempt_hash = sha256_json(attempt_json)
-            connection.execute("INSERT INTO agent_budget_reservations VALUES(?,?,?,?,?,?,?)",
-                (str(uuid.uuid4()), row["request_key"], attempts + 1, day, str(reserve), str(ceiling),
-                 self.price_schedule.content_hash))
             connection.execute("INSERT INTO agent_attempts VALUES(?,?,?,?,?,?,?,?)",
                 (attempt_id, row["request_key"], attempts + 1, epoch, now_ns, str(reserve), attempt_json, attempt_hash))
+            connection.execute("INSERT INTO agent_budget_reservations VALUES(?,?,?,?,?,?,?)",
+                (budget_reservation_id, row["request_key"], attempts + 1, day, str(reserve), str(ceiling),
+                 self.price_schedule.content_hash))
         return record
 
     def record_tool_call(self, request_key: str, authorization: AgentEvidenceRefV1, *, status: str,
@@ -464,29 +501,86 @@ class AgentJobRepository:
                                (outcome_id, attempt_id, encoded, digest, at_ns))
         return outcome_id
 
-    def claim_broker_dispatch(self, job_id: str, request_key: str, attempt_id: str, lease_epoch: int,
-                              capability_nonce: str, now_ns: int) -> bool:
-        """Atomically consume one reserved attempt before a provider request can be sent."""
+    def authorize_broker_dispatch(self, job_id: str, request: ResearchProposalRequestV1,
+                                  attempt: AgentAttemptV1, *, owner: str, lease_epoch: int,
+                                  authorization_id: str, capability_nonce: str, evidence_hash: str,
+                                  model_profile_hash: str, expires_at_ns: int,
+                                  authorized_at_ns: int) -> BrokerDispatchAuthorizationV1:
+        """Durably authorize the exact attempt before the controller issues its signed capability."""
+        sha256_ref(evidence_hash, field="evidence_hash")
         with self._transaction() as connection:
-            row = connection.execute("SELECT j.*,a.request_key AS attempt_request_key,a.lease_epoch AS attempt_epoch "
+            row = connection.execute("SELECT j.*,a.request_key AS attempt_request_key, "
+                "a.lease_epoch AS attempt_epoch,a.attempt_index,a.attempt_json,a.attempt_hash, "
+                "a.reserved_cost_usd,a.attempt_id AS persisted_attempt_id "
                 "FROM agent_jobs j JOIN agent_attempts a ON a.request_key=j.request_key "
-                "WHERE j.job_id=? AND a.attempt_id=?", (job_id, attempt_id)).fetchone()
-            if (row is None or row["request_key"] != request_key or row["attempt_request_key"] != request_key
-                    or row["lifecycle_state"] != AgentJobStateV1.RUNNING.value
-                    or row["lease_epoch"] != lease_epoch or row["attempt_epoch"] != lease_epoch
-                    or row["lease_expires_at_ns"] is None or now_ns >= row["lease_expires_at_ns"]
-                    or now_ns >= row["deadline_ns"]):
-                return False
-            existing = connection.execute("SELECT capability_nonce,lease_epoch FROM agent_broker_dispatches "
-                "WHERE attempt_id=?", (attempt_id,)).fetchone()
+                "WHERE j.job_id=? AND a.attempt_id=?", (job_id, attempt.attempt_id)).fetchone()
+            if row is None:
+                raise ValueError("dispatch attempt is not persisted for this job")
+            if (row["request_key"] != request.request_key
+                    or row["attempt_request_key"] != request.request_key
+                    or row["persisted_attempt_id"] != attempt.attempt_id
+                    or row["attempt_index"] != attempt.attempt_index
+                    or row["attempt_epoch"] != lease_epoch or attempt.lease_epoch != lease_epoch
+                    or attempt.request_key != request.request_key
+                    or attempt.state != "DISPATCH_RESERVED"
+                    or sha256_json(row["attempt_json"]) != row["attempt_hash"]):
+                raise ValueError("dispatch attempt/request binding is invalid")
+            if (row["lifecycle_state"] != AgentJobStateV1.RUNNING.value
+                    or row["lease_owner"] != owner or row["lease_epoch"] != lease_epoch
+                    or row["lease_expires_at_ns"] is None
+                    or authorized_at_ns >= row["lease_expires_at_ns"]
+                    or authorized_at_ns >= row["deadline_ns"]):
+                raise ValueError("dispatch authorization has a stale job lease or deadline")
+            if (request.model_profile_hash != model_profile_hash
+                    or row["request_hash"] != sha256_json(request.to_dict())
+                    or request.absolute_deadline_ns != row["deadline_ns"]
+                    or attempt.model_profile_hash != model_profile_hash
+                    or attempt.reserved_cost_usd != row["reserved_cost_usd"]
+                    or attempt.attempt_index > request.max_model_calls):
+                raise ValueError("dispatch authorization request/profile/budget binding is invalid")
+            if (not authorized_at_ns < expires_at_ns <= min(row["lease_expires_at_ns"], row["deadline_ns"],
+                    authorized_at_ns + 120_000_000_000)):
+                raise ValueError("dispatch capability expiry exceeds its durable lease/deadline scope")
+            reserved = connection.execute("SELECT * FROM agent_budget_reservations "
+                "WHERE request_key=? AND attempt_index=?", (request.request_key, attempt.attempt_index)).fetchone()
+            if (reserved is None or reserved["reserved_usd"] != row["reserved_cost_usd"]
+                    or reserved["price_schedule_hash"] != self.price_schedule.content_hash):
+                raise ValueError("dispatch authorization has no matching immutable budget reservation")
+            existing = connection.execute("SELECT 1 FROM agent_broker_dispatches WHERE attempt_id=?",
+                                          (attempt.attempt_id,)).fetchone()
             if existing is not None:
-                return False
-            dispatch = {"attempt_id": attempt_id, "job_id": job_id, "request_key": request_key,
-                        "capability_nonce": capability_nonce, "lease_epoch": lease_epoch,
-                        "dispatched_at_ns": now_ns}
-            connection.execute("INSERT INTO agent_broker_dispatches VALUES(?,?,?,?,?,?)",
-                (attempt_id, request_key, capability_nonce, lease_epoch, now_ns, sha256_json(dispatch)))
-            return True
+                raise ValueError("persisted attempt already has a dispatch authorization")
+            request_row = connection.execute("SELECT request_json,request_hash FROM agent_requests WHERE request_key=?",
+                                             (request.request_key,)).fetchone()
+            if (request_row is None or request_row["request_hash"] != row["request_hash"]
+                    or canonical_json(request.to_dict()) != request_row["request_json"]):
+                raise ValueError("immutable request persistence does not match dispatch authorization")
+            profile_row = connection.execute("SELECT profile_json FROM agent_model_profiles WHERE profile_hash=?",
+                                             (model_profile_hash,)).fetchone()
+            if profile_row is None:
+                raise ValueError("dispatch model profile is not registered")
+            profile = AgentModelProfileV1.from_dict(json.loads(profile_row["profile_json"]))
+            authorization = BrokerDispatchAuthorizationV1.create(
+                job_id=job_id, request_key=request.request_key, request_hash=row["request_hash"],
+                attempt_id=attempt.attempt_id, call_index=attempt.attempt_index, lease_epoch=lease_epoch,
+                authorization_id=authorization_id, capability_nonce=capability_nonce,
+                evidence_hash=evidence_hash, model_profile_hash=model_profile_hash,
+                provider=profile.provider, requested_model_id=profile.requested_model_id,
+                deadline_ns=row["deadline_ns"], authorized_at_ns=authorized_at_ns,
+                expires_at_ns=expires_at_ns, budget_reservation_id=reserved["reservation_id"],
+                reserved_cost_usd=reserved["reserved_usd"], max_input_tokens=request.max_input_tokens,
+                max_output_tokens=request.max_output_tokens)
+            connection.execute("INSERT INTO agent_broker_dispatches("
+                "attempt_id,job_id,request_key,request_hash,attempt_index,authorization_id,capability_nonce,"
+                "lease_epoch,evidence_hash,model_profile_hash,deadline_ns,authorized_at_ns,expires_at_ns,"
+                "budget_reservation_id,reserved_cost_usd,max_input_tokens,max_output_tokens,"
+                "dispatched_at_ns,dispatch_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+                    attempt.attempt_id, job_id, request.request_key, row["request_hash"], attempt.attempt_index,
+                    authorization.authorization_id, authorization.capability_nonce, lease_epoch, evidence_hash,
+                    model_profile_hash, row["deadline_ns"], authorized_at_ns, expires_at_ns,
+                    reserved["reservation_id"], reserved["reserved_usd"], request.max_input_tokens,
+                    request.max_output_tokens, authorized_at_ns, authorization.authorization_hash))
+        return authorization
 
     def submit_result(self, job_id: str, attempt_id: str, *, owner: str, epoch: int,
                       result: dict[str, Any], received_at_ns: int) -> tuple[str, bool, str]:

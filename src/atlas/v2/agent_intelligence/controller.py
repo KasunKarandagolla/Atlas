@@ -21,7 +21,7 @@ from atlas.v2.agent_intelligence.contracts import (
     RevisionStatusV1,
 )
 from atlas.v2.agent_intelligence.evidence import BoundedResearchReadService, collect_job_evidence
-from atlas.v2.agent_intelligence.persistence import AgentJobRepository
+from atlas.v2.agent_intelligence.persistence import AGENT_NAMESPACE_WRITER_OWNER, AgentJobRepository
 from atlas.v2.agent_intelligence.provider import ResearchProviderUnavailable
 from atlas.v2.agent_intelligence.validation import validate_proposal_output, validate_request_evidence_availability
 from atlas.v2.agent_intelligence.worker import AgentWorkerSupervisor, WorkerSandboxUnavailable
@@ -106,8 +106,9 @@ class ResearchJobController:
             return ResearchJobOutcomeV1(job.job_id, job.request_key, job.lifecycle_state, None, None,
                                         "REQUEST_ALREADY_TERMINAL", False)
         try:
-            job = self._jobs.lease(job.job_id, owner="atlas-agent-controller", now_ns=now, lease_ns=LEASE_NS)
-            job = self._jobs.start(job.job_id, owner="atlas-agent-controller", epoch=job.lease_epoch, now_ns=now)
+            job = self._jobs.lease(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER, now_ns=now, lease_ns=LEASE_NS)
+            job = self._jobs.start(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER,
+                                   epoch=job.lease_epoch, now_ns=now)
         except ValueError as exc:
             return ResearchJobOutcomeV1(job.job_id, job.request_key, self._jobs.get_job(job.job_id).lifecycle_state,
                                         None, None, _safe_reason(str(exc)), False)
@@ -130,17 +131,19 @@ class ResearchJobController:
                                                now_ns=now, reason="absolute_deadline_elapsed")
                 return self._outcome(job.job_id, request.request_key, None, None, "absolute_deadline_elapsed", False)
             try:
-                attempt = self._jobs.reserve_attempt(job.job_id, owner="atlas-agent-controller",
+                attempt = self._jobs.reserve_attempt(job.job_id, owner=AGENT_NAMESPACE_WRITER_OWNER,
                     epoch=job.lease_epoch, now_ns=now)
             except ValueError as exc:
                 last_reason = _safe_reason(str(exc))
                 break
             cap_expiry = min(now + 120_000_000_000, job.lease_expires_at_ns or now,
                              request.absolute_deadline_ns)
-            capability = BrokerCapabilityV1.issue(job_id=job.job_id, request=request, issued_at_ns=now,
-                expires_at_ns=cap_expiry, max_model_calls=1, attempt_id=attempt.attempt_id,
-                lease_epoch=job.lease_epoch, call_index=attempt.attempt_index,
-                evidence_hash=sha256_json(evidence),
+            dispatch_authorization = self._jobs.authorize_broker_dispatch(job.job_id, request, attempt,
+                owner=AGENT_NAMESPACE_WRITER_OWNER, lease_epoch=job.lease_epoch,
+                authorization_id=str(uuid.uuid4()), capability_nonce=str(uuid.uuid4()),
+                evidence_hash=sha256_json(evidence), model_profile_hash=self._profile.content_hash,
+                expires_at_ns=cap_expiry, authorized_at_ns=now)
+            capability = BrokerCapabilityV1.issue_authorized(authorization=dispatch_authorization,
                 signing_key=self._signing_key).capability
             context = _DispatchContext(capability, job.job_id, attempt.attempt_id, job.lease_epoch,
                                        attempt.attempt_index)
@@ -208,7 +211,7 @@ class ResearchJobController:
                 "proposal_hash": sha256_json({"raw_untrusted_output": provider_result.raw_output}),
                 "provider_metadata": profile_metadata}
             result_id, eligible, result_hash = self._jobs.submit_result(job.job_id, attempt.attempt_id,
-                owner="atlas-agent-controller", epoch=job.lease_epoch, result=result_body,
+                owner=AGENT_NAMESPACE_WRITER_OWNER, epoch=job.lease_epoch, result=result_body,
                 received_at_ns=self._now_ns())
             if not eligible:
                 self._jobs.transition_terminal(job.job_id, AgentJobStateV1.EXPIRED,

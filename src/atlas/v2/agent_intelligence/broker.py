@@ -18,13 +18,18 @@ import struct
 import threading
 import time
 import uuid
-from collections.abc import Callable, Mapping, Sequence
+from collections import OrderedDict
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from atlas.v2._serialization import canonical_json, sha256_json, strict_fields
-from atlas.v2.agent_intelligence.contracts import ProviderResultV1, ResearchProposalRequestV1
+from atlas.v2.agent_intelligence.contracts import (
+    BrokerDispatchAuthorizationV1,
+    ProviderResultV1,
+    ResearchProposalRequestV1,
+)
 from atlas.v2.agent_intelligence.provider import ResearchProviderUnavailable
 from atlas.v2.models.worker_protocol import _reject_sensitive_fields
 
@@ -32,6 +37,9 @@ BROKER_PROTOCOL_VERSION = 1
 MAX_BROKER_FRAME_BYTES = 256_000
 BROKER_SOCKET_TIMEOUT_SECONDS = 35.0
 MAX_CAPABILITY_LIFETIME_NS = 120_000_000_000
+MAX_REPLAY_CACHE_ENTRIES = 256
+ALLOWED_PROVIDER = "openai"
+ALLOWED_MODEL_ID = "gpt-6-astra"
 
 
 class BrokerProtocolError(ValueError):
@@ -52,46 +60,53 @@ class BrokerCapabilityV1:
     max_input_tokens: int
     max_output_tokens: int
     nonce: str
+    authorization_id: str
+    attempt_id: str
+    lease_epoch: int
+    call_index: int
+    deadline_ns: int
+    budget_reservation_id: str
     capability: str
 
     @staticmethod
-    def issue(*, job_id: str, request: ResearchProposalRequestV1, issued_at_ns: int,
-              expires_at_ns: int, max_model_calls: int, attempt_id: str, lease_epoch: int,
-              call_index: int, evidence_hash: str, signing_key: bytes) -> BrokerCapabilityV1:
+    def issue_authorized(*, authorization: BrokerDispatchAuthorizationV1,
+                         signing_key: bytes) -> BrokerCapabilityV1:
         if len(signing_key) < 32:
             raise ValueError("broker capability signing key must contain at least 256 bits")
-        if (expires_at_ns <= issued_at_ns or expires_at_ns > min(request.absolute_deadline_ns,
-                issued_at_ns + MAX_CAPABILITY_LIFETIME_NS)):
-            raise ValueError("broker capability must be short-lived and bounded by the job deadline")
-        if not 1 <= max_model_calls <= request.max_model_calls <= 3:
-            raise ValueError("broker capability model-call cap is invalid")
-        try:
-            if str(uuid.UUID(job_id)) != job_id:
-                raise ValueError
-            if str(uuid.UUID(attempt_id)) != attempt_id:
-                raise ValueError
-        except ValueError as exc:
-            raise ValueError("broker capability job/attempt identity is invalid") from exc
-        if type(lease_epoch) is not int or lease_epoch < 1 or type(call_index) is not int \
-                or not 1 <= call_index <= request.max_model_calls:
-            raise ValueError("broker capability attempt fence is invalid")
-        if not isinstance(evidence_hash, str) or len(evidence_hash) != 64:
-            raise ValueError("broker capability evidence hash is invalid")
-        nonce = str(uuid.uuid4())
-        body = {"version": "BrokerCapabilityV1", "job_id": job_id, "request_key": request.request_key,
-                "model_profile_hash": request.model_profile_hash, "evidence_hash": evidence_hash,
-                "issued_at_ns": issued_at_ns,
-                "expires_at_ns": expires_at_ns, "max_model_calls": max_model_calls,
-                "max_input_tokens": request.max_input_tokens, "max_output_tokens": request.max_output_tokens,
-                "attempt_id": attempt_id, "lease_epoch": lease_epoch, "call_index": call_index,
-                "nonce": nonce}
+        auth = authorization.to_dict()
+        auth_body = dict(auth)
+        auth_hash = auth_body.pop("authorization_hash", None)
+        if not isinstance(auth_hash, str) or auth_hash != sha256_json(auth_body):
+            raise ValueError("durable broker dispatch authorization hash is invalid")
+        if authorization.provider != ALLOWED_PROVIDER or authorization.requested_model_id != ALLOWED_MODEL_ID:
+            raise ValueError("broker authorization provider/model is outside the fixed allowlist")
+        if (authorization.expires_at_ns > min(authorization.deadline_ns,
+                authorization.authorized_at_ns + MAX_CAPABILITY_LIFETIME_NS)):
+            raise ValueError("broker capability expiry exceeds the durable authorization")
+        body = {"version": "BrokerCapabilityV1", "authorization_hash": authorization.authorization_hash,
+                "authorization_id": authorization.authorization_id, "job_id": authorization.job_id,
+                "request_key": authorization.request_key, "request_hash": authorization.request_hash,
+                "attempt_id": authorization.attempt_id, "lease_epoch": authorization.lease_epoch,
+                "call_index": authorization.call_index, "capability_nonce": authorization.capability_nonce,
+                "provider": authorization.provider, "requested_model_id": authorization.requested_model_id,
+                "model_profile_hash": authorization.model_profile_hash,
+                "evidence_hash": authorization.evidence_hash, "issued_at_ns": authorization.authorized_at_ns,
+                "authorized_at_ns": authorization.authorized_at_ns,
+                "deadline_ns": authorization.deadline_ns, "expires_at_ns": authorization.expires_at_ns,
+                "budget_reservation_id": authorization.budget_reservation_id,
+                "reserved_cost_usd": authorization.reserved_cost_usd,
+                "max_model_calls": 1, "max_input_tokens": authorization.max_input_tokens,
+                "max_output_tokens": authorization.max_output_tokens}
         encoded = canonical_json(body).encode("utf-8")
         signature = hmac.new(signing_key, encoded, hashlib.sha256).digest()
         token = (base64.urlsafe_b64encode(encoded).decode("ascii") + "."
                  + base64.urlsafe_b64encode(signature).decode("ascii"))
-        return BrokerCapabilityV1(job_id, request.request_key, request.model_profile_hash, evidence_hash,
-            issued_at_ns, expires_at_ns, max_model_calls, request.max_input_tokens, request.max_output_tokens,
-            nonce, token)
+        return BrokerCapabilityV1(authorization.job_id, authorization.request_key,
+            authorization.model_profile_hash, authorization.evidence_hash, authorization.authorized_at_ns,
+            authorization.expires_at_ns, 1, authorization.max_input_tokens, authorization.max_output_tokens,
+            authorization.capability_nonce, authorization.authorization_id, authorization.attempt_id,
+            authorization.lease_epoch, authorization.call_index, authorization.deadline_ns,
+            authorization.budget_reservation_id, token)
 
     @staticmethod
     def verify(token: str, *, signing_key: bytes, now_ns: int) -> Mapping[str, Any]:
@@ -103,14 +118,37 @@ class BrokerCapabilityV1:
             if not hmac.compare_digest(signature, expected):
                 raise ValueError
             body = json.loads(payload.decode("utf-8"))
-            fields = {"version", "job_id", "request_key", "model_profile_hash", "evidence_hash",
-                      "issued_at_ns", "expires_at_ns",
-                      "max_model_calls", "max_input_tokens", "max_output_tokens", "attempt_id", "lease_epoch",
-                      "call_index", "nonce"}
+            fields = {"version", "authorization_hash", "authorization_id", "job_id", "request_key",
+                      "request_hash", "attempt_id", "lease_epoch", "call_index", "capability_nonce",
+                      "provider", "requested_model_id", "model_profile_hash", "evidence_hash", "issued_at_ns",
+                      "authorized_at_ns", "deadline_ns", "expires_at_ns", "budget_reservation_id",
+                      "reserved_cost_usd", "max_model_calls", "max_input_tokens", "max_output_tokens"}
             strict_fields(body, expected=fields, required=fields, name="BrokerCapabilityV1")
             if body["version"] != "BrokerCapabilityV1" or now_ns < body["issued_at_ns"] or now_ns >= body["expires_at_ns"]:
                 raise ValueError
-            if body["expires_at_ns"] - body["issued_at_ns"] > MAX_CAPABILITY_LIFETIME_NS:
+            if (body["provider"] != ALLOWED_PROVIDER or body["requested_model_id"] != ALLOWED_MODEL_ID
+                    or body["max_model_calls"] != 1 or body["authorized_at_ns"] != body["issued_at_ns"]
+                    or body["expires_at_ns"] > body["deadline_ns"]
+                    or body["deadline_ns"] < body["expires_at_ns"]
+                    or body["expires_at_ns"] - body["authorized_at_ns"] > MAX_CAPABILITY_LIFETIME_NS):
+                raise ValueError
+            for name in ("job_id", "attempt_id", "authorization_id", "capability_nonce", "budget_reservation_id"):
+                if str(uuid.UUID(body[name])) != body[name]:
+                    raise ValueError
+            for name in ("authorization_hash", "request_key", "request_hash", "model_profile_hash", "evidence_hash"):
+                if not isinstance(body[name], str) or len(body[name]) != 64:
+                    raise ValueError
+            if (type(body["lease_epoch"]) is not int or body["lease_epoch"] < 1
+                    or type(body["call_index"]) is not int or not 1 <= body["call_index"] <= 3
+                    or type(body["max_input_tokens"]) is not int or not 1 <= body["max_input_tokens"] <= 32_000
+                    or type(body["max_output_tokens"]) is not int or not 1 <= body["max_output_tokens"] <= 8_000):
+                raise ValueError
+            auth_fields = {name: body[name] for name in (
+                "job_id", "request_key", "request_hash", "attempt_id", "call_index", "lease_epoch",
+                "authorization_id", "capability_nonce", "evidence_hash", "model_profile_hash", "provider",
+                "requested_model_id", "deadline_ns", "authorized_at_ns", "expires_at_ns",
+                "budget_reservation_id", "reserved_cost_usd", "max_input_tokens", "max_output_tokens")}
+            if sha256_json({"version": "BrokerDispatchAuthorizationV1", **auth_fields}) != body["authorization_hash"]:
                 raise ValueError
             return body
         except Exception as exc:
@@ -137,17 +175,15 @@ def _result_from_wire(value: Mapping[str, Any]) -> ProviderResultV1:
 
 
 class InferenceBroker:
-    """One bounded structured inference operation, with durable-attempt authorization."""
+    """One bounded structured inference operation; it has no persistence dependency."""
 
-    def __init__(self, provider: Any, *, signing_key: bytes,
-                 authorize_dispatch: Callable[[str, str, str, int, str, int], bool]) -> None:
+    def __init__(self, provider: Any, *, signing_key: bytes) -> None:
         if len(signing_key) < 32:
             raise ValueError("broker capability signing key must contain at least 256 bits")
         self._provider = provider
         self.__signing_key = bytes(signing_key)
-        self._authorize_dispatch = authorize_dispatch
         self._lock = threading.Lock()
-        self._seen: dict[tuple[str, int], tuple[str, ProviderResultV1]] = {}
+        self._seen: OrderedDict[tuple[str, str], tuple[str, ProviderResultV1]] = OrderedDict()
         self._busy: set[str] = set()
 
     def infer(self, *, capability: str, job_id: str, attempt_id: str, lease_epoch: int,
@@ -157,12 +193,18 @@ class InferenceBroker:
         body = BrokerCapabilityV1.verify(capability, signing_key=self.__signing_key, now_ns=now)
         if (body["job_id"] != job_id or body["attempt_id"] != attempt_id
                 or body["lease_epoch"] != lease_epoch or body["call_index"] != call_index
-                or type(lease_epoch) is not int):
+                or type(lease_epoch) is not int or type(call_index) is not int):
             raise BrokerProtocolError("CAPABILITY_SCOPE_MISMATCH")
         request = ResearchProposalRequestV1.from_dict(request_data)
-        if (request.request_key != body["request_key"] or request.model_profile_hash != body["model_profile_hash"]
-                or request.max_input_tokens > body["max_input_tokens"]
-                or request.max_output_tokens > body["max_output_tokens"]):
+        if (request.request_key != body["request_key"]
+                or sha256_json(request.to_dict()) != body["request_hash"]
+                or request.model_profile_hash != body["model_profile_hash"]
+                or request.absolute_deadline_ns != body["deadline_ns"]
+                or request.max_input_tokens != body["max_input_tokens"]
+                or request.max_output_tokens != body["max_output_tokens"]
+                or body["provider"] != ALLOWED_PROVIDER
+                or body["requested_model_id"] != ALLOWED_MODEL_ID
+                or not 1 <= call_index <= request.max_model_calls):
             raise BrokerProtocolError("REQUEST_BINDING_MISMATCH")
         if len(evidence) != len(request.evidence_manifest) or len(evidence) > request.max_read_tool_calls:
             raise BrokerProtocolError("EVIDENCE_BUDGET_EXCEEDED")
@@ -179,24 +221,28 @@ class InferenceBroker:
             raise BrokerProtocolError("EVIDENCE_SIZE_LIMIT")
         if sha256_json(list(evidence)) != body["evidence_hash"]:
             raise BrokerProtocolError("EVIDENCE_HASH_MISMATCH")
-        idempotency_key = (body["nonce"], call_index)
+        idempotency_key = (body["authorization_id"], body["capability_nonce"])
         input_hash = sha256_json({"request_key": request.request_key, "attempt_id": attempt_id,
-                                  "lease_epoch": lease_epoch, "evidence": list(evidence)})
+                                  "lease_epoch": lease_epoch, "call_index": call_index,
+                                  "model_profile_hash": request.model_profile_hash,
+                                  "evidence_hash": body["evidence_hash"], "evidence": list(evidence)})
         with self._lock:
             prior = self._seen.get(idempotency_key)
             if prior is not None:
                 if prior[0] != input_hash:
                     raise BrokerProtocolError("CALL_INDEX_CONTRADICTION")
                 return prior[1]
-            if body["nonce"] in self._busy or not self._authorize_dispatch(
-                    job_id, request.request_key, attempt_id, lease_epoch, body["nonce"], now):
-                raise BrokerProtocolError("DISPATCH_NOT_AUTHORIZED")
-            self._busy.add(body["nonce"])
+            if len(self._seen) >= MAX_REPLAY_CACHE_ENTRIES:
+                raise BrokerProtocolError("REPLAY_CACHE_FULL")
+            if body["authorization_id"] in self._busy:
+                raise BrokerProtocolError("DISPATCH_ALREADY_IN_PROGRESS")
+            self._busy.add(body["authorization_id"])
         try:
             result = self._provider.propose(request, evidence)
             if not isinstance(result, ProviderResultV1):
-                raise BrokerProtocolError("PROVIDER_RETURN_TYPE_INVALID")
-            if result.input_tokens > body["max_input_tokens"] or result.output_tokens > body["max_output_tokens"]:
+                result = ProviderResultV1("", None, None, False, False, 0, 0, None,
+                                          "PROVIDER_RETURN_TYPE_INVALID", False)
+            elif result.input_tokens > body["max_input_tokens"] or result.output_tokens > body["max_output_tokens"]:
                 result = ProviderResultV1("", result.returned_model_id, result.model_revision, result.refusal, True,
                     result.input_tokens, result.output_tokens, result.provider_request_id,
                     "TOKEN_LIMIT_EXCEEDED", False)
@@ -219,7 +265,7 @@ class InferenceBroker:
             return result
         finally:
             with self._lock:
-                self._busy.discard(body["nonce"])
+                self._busy.discard(body["authorization_id"])
 
 
 def _read_exact(sock: socket.socket, length: int) -> bytes:
@@ -352,17 +398,13 @@ def broker_main() -> int:
     """Opt-in credential-owning service entry; no key is accepted on argv or logged."""
     import argparse
 
-    from atlas.v2.agent_intelligence.budget import ProviderPriceScheduleV1
-    from atlas.v2.agent_intelligence.persistence import AgentJobRepository
     from atlas.v2.agent_intelligence.provider import PydanticAIResearchProposalProvider
 
     parser = argparse.ArgumentParser(prog="atlas-agent-broker")
-    parser.add_argument("--ops-db", default=os.environ.get("ATLAS_OPS_DB"))
     parser.add_argument("--socket", default=os.environ.get("ATLAS_AGENT_BROKER_SOCKET"))
-    parser.add_argument("--price-schedule", default="configs/agent_intelligence/provider_pricing_v1.json")
     args = parser.parse_args()
-    if not isinstance(args.ops_db, str) or not args.ops_db or not isinstance(args.socket, str) or not args.socket:
-        raise SystemExit("ATLAS_OPS_DB and ATLAS_AGENT_BROKER_SOCKET are required")
+    if not isinstance(args.socket, str) or not args.socket:
+        raise SystemExit("ATLAS_AGENT_BROKER_SOCKET is required")
     signing_text = os.environ.get("ATLAS_AGENT_CAPABILITY_KEY", "")
     try:
         signing_key = bytes.fromhex(signing_text)
@@ -373,11 +415,8 @@ def broker_main() -> int:
     api_key = os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         raise SystemExit("PROVIDER_CREDENTIAL_UNAVAILABLE")
-    schedule = ProviderPriceScheduleV1.load(args.price_schedule)
-    repository = AgentJobRepository(args.ops_db, schedule)
-    provider = PydanticAIResearchProposalProvider(api_key, model_id=schedule.requested_model_id)
-    broker = InferenceBroker(provider, signing_key=signing_key,
-        authorize_dispatch=repository.claim_broker_dispatch)
+    provider = PydanticAIResearchProposalProvider(api_key, model_id=ALLOWED_MODEL_ID)
+    broker = InferenceBroker(provider, signing_key=signing_key)
     server = InferenceBrokerServer(args.socket, broker)
     try:
         server.start()
@@ -387,4 +426,3 @@ def broker_main() -> int:
         return 0
     finally:
         server.close()
-        repository.close()
