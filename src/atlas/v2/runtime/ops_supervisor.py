@@ -1055,8 +1055,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--db", required=True, help="local ops.sqlite path owned by this process")
     parser.add_argument(
         "--adapter",
-        required=True,
-        help="deployment composition factory in module:factory form; it must use credential-free public sources",
+        default="atlas.v2.runtime.production:create_production_port",
+        help=("optional explicit composition override in module:factory form; "
+              "the built-in credential-free ATLAS production composition is the default"),
     )
     parser.add_argument("--interval-seconds", type=float, default=1.0)
     parser.add_argument("--once", action="store_true", help="run one bounded cycle and exit")

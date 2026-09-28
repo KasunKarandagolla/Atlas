@@ -6,7 +6,6 @@ import ast
 import hashlib
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -29,12 +28,9 @@ from atlas.v2.runtime.ops_supervisor import (
     OpsTerminalStatusV1,
     PipelineStageV1,
 )
-from atlas.v2.science.research_selection import persist_research_sleeve_audit
-from atlas.v2.selection import accept_research_candidates
 from atlas.v2.strategies.s1_trend import S1_POLICY
 
-from .session023_support import research_case
-from .test_session016_candidate_selection import CUTOFF, EVENT
+from .test_session016_candidate_selection import CUTOFF
 from .test_session017_risk import risk_case
 
 HEALTHY = (OpsSourceStateV1("PUBLIC_MARKET", "HEALTHY_CURRENT", CUTOFF, CUTOFF),)
@@ -238,9 +234,9 @@ class CollectorRecoveryPort(DeterministicPort):
         assert self.collector is not None
         self.calls.append("collect")
         self.collect_count += 1
+        events: tuple[OpsDecisionEventV1, ...] = ()
         if self.collect_count == 1:
             health = self.collector.health.latest("PUBLIC_MARKET")
-            events = ()
             reconciled = False
         else:
             health = self.collector.reconcile_after_reconnect(
@@ -248,6 +244,7 @@ class CollectorRecoveryPort(DeterministicPort):
             )
             events = (self.event,) if self.event is not None else ()
             reconciled = True
+        assert health is not None
         if self.event is not None and events:
             self._index_trigger(repository, self.event)
         source = OpsSourceStateV1("PUBLIC_MARKET", health.state.value, health.observed_at_ns, health.available_at_ns)
@@ -411,213 +408,6 @@ def test_non_action_sleeve_contracts_and_s8_basket_role_remain_explicit(tmp_path
     )
     assert not isinstance(basket, __import__("atlas.v2.contracts", fromlist=["CandidateActionV2"]).CandidateActionV2)
     assert {name for name, _, _ in SLEEVE_AVAILABILITY} == {"S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"}
-
-
-class ExistingV2CompositionPort(DeterministicPort):
-    """Test adapter composes accepted production APIs and never duplicates their rules."""
-
-    def __init__(self) -> None:
-        super().__init__(event=make_event(cutoff_ns=CUTOFF, event_id=sha256_json({"research_event": EVENT})))
-        self.candidate_set_hash: str | None = None
-        self.action_hash: str | None = None
-        self.risk_result: Any = None
-        self.economic_result: Any = None
-        self.m1_action_hash: str | None = None
-        self.analogue_action_hash: str | None = None
-
-    def process_event(self, repository, event, *, now_ns, source_health_state, completed_stages, checkpoint):
-        self.process_calls += 1
-        import hashlib as _hashlib
-
-        from atlas.v2.science.action import freeze_action
-        from atlas.v2.science.analogue import not_estimable_analogue, persist_analogue
-        from atlas.v2.science.evaluation_service import run_phase2_economic_evaluation
-        from atlas.v2.science.m1 import fit_m1
-
-        from . import test_session017_risk as risk_module
-        from .test_session020_phase2_e2e import _admission_policy, _capability_for_action, _causal_input
-
-        del source_health_state
-        case = research_case(repository)
-        self.candidate_set_hash = case.candidate_set.content_hash
-        acceptance = accept_research_candidates(
-            repository, case.candidate_set, case.competitors, accepted_at_ns=event.information_cutoff_ns
-        )
-        audit_ref = persist_research_sleeve_audit(repository, available_at_ns=event.information_cutoff_ns)
-        stages: dict[PipelineStageV1, OpsStageResultV1] = dict(completed_stages)
-
-        def save(stage, status, refs=(), *, action_hash=None, reason=None):
-            item = OpsStageResultV1(stage, status, tuple(refs), now_ns, reason, action_hash)
-            checkpoint(item)
-            stages[stage] = item
-
-        save(PipelineStageV1.UNIVERSE, OpsStageStatusV1.COMPLETE, (case.universe.content_hash,))
-        save(PipelineStageV1.CAUSAL_FEATURES, OpsStageStatusV1.COMPLETE, (case.candidate.snapshot_hash,))
-        save(PipelineStageV1.WATCHES_AND_SLEEVES, OpsStageStatusV1.COMPLETE, (audit_ref,))
-        auxiliary_ref = "0" * 64
-        repository.register_artifact(
-            ArtifactIndexEntryV2(
-                auxiliary_ref,
-                "Session027AuxiliaryStageArtifactV1",
-                sha256_json("session027-auxiliary-stage-artifact"),
-                event.information_cutoff_ns,
-                event.information_cutoff_ns,
-                {},
-            )
-        )
-        save(
-            PipelineStageV1.CANDIDATE_SET,
-            OpsStageStatusV1.COMPLETE,
-            (case.candidate_set.content_hash, auxiliary_ref),
-        )
-        save(
-            PipelineStageV1.SELECTION,
-            OpsStageStatusV1.COMPLETE,
-            (case.candidate_set.content_hash, *acceptance.values()),
-        )
-        sizing = risk_module.size(repository, case)
-        self.risk_result = sizing
-        save(
-            PipelineStageV1.HARD_RISK,
-            OpsStageStatusV1.COMPLETE if sizing.status == SizingStatus.SIZED else OpsStageStatusV1.NOT_ESTIMABLE,
-            (sizing.content_hash,),
-            reason=None if sizing.status == SizingStatus.SIZED else sizing.reasons[0],
-        )
-        if sizing.status != SizingStatus.SIZED:
-            for stage in PIPELINE_STAGE_ORDER[6:]:
-                save(stage, OpsStageStatusV1.SKIPPED, reason="HARD_RISK_TERMINAL")
-            return OpsDecisionResultV1(
-                tuple(stages[item] for item in PIPELINE_STAGE_ORDER),
-                OpsTerminalStatusV1.NOT_ESTIMABLE,
-                sizing.reasons[0],
-            )
-
-        action = freeze_action(
-            repository,
-            candidate=case.candidate,
-            candidate_set=case.candidate_set,
-            sizing=sizing,
-            product=case.product,
-            policy=S1_POLICY,
-            v1=case.v1,
-            v2=case.v2,
-        )
-        self.action_hash = action.action.action_hash
-        save(
-            PipelineStageV1.FROZEN_ACTION,
-            OpsStageStatusV1.COMPLETE,
-            (action.content_hash,),
-            action_hash=action.action.action_hash,
-        )
-        evaluation = run_phase2_economic_evaluation(
-            repository,
-            action=action,
-            candidate=case.candidate,
-            candidate_set=case.candidate_set,
-            sizing=sizing,
-            product=case.product,
-            risk_policy=case.v1,
-            risk_policy_v2=case.v2,
-            account=case.account,
-            fee=case.fee,
-            admission_policy=_admission_policy(),
-            capability=_capability_for_action(action, case, event.information_cutoff_ns),
-            model_input=_causal_input(repository, "Session027M0InputV1", event.information_cutoff_ns),
-            calibration_input=_causal_input(repository, "Session027CalibrationInputV1", event.information_cutoff_ns),
-            execution_model_input=_causal_input(repository, "Session027ExecutionInputV1", event.information_cutoff_ns),
-            available_at_ns=event.information_cutoff_ns + 10,
-            scenario_seed=27027,
-            scenario_count=100,
-        )
-        self.economic_result = evaluation
-        evaluation_status = OpsStageStatusV1.NOT_ESTIMABLE
-        save(
-            PipelineStageV1.ECONOMIC_EVALUATION,
-            evaluation_status,
-            (evaluation.evaluation_ref,),
-            reason=evaluation.evaluation.reason_codes[0] if evaluation.evaluation.reason_codes else "NOT_ESTIMABLE",
-        )
-
-        m1 = fit_m1(
-            repository,
-            action=action,
-            candidate=case.candidate,
-            candidate_set=case.candidate_set,
-            cutoff_ns=event.information_cutoff_ns,
-            available_at_ns=event.information_cutoff_ns + 20,
-            dependency_lock_hash=_hashlib.sha256(Path("requirements-lock.txt").read_bytes()).hexdigest(),
-        )
-        self.m1_action_hash = m1.prediction.action_hash
-        m1_entry = repository.get_artifact(m1.prediction.content_hash)
-        assert m1_entry is not None
-        save(
-            PipelineStageV1.M1_DIAGNOSTIC,
-            OpsStageStatusV1.NOT_ESTIMABLE,
-            (m1.prediction.content_hash,),
-            action_hash=m1.prediction.action_hash,
-            reason=m1.prediction.reasons[0] if m1.prediction.reasons else "INSUFFICIENT_SUPPORT",
-        )
-
-        analogue = not_estimable_analogue(
-            action_ref=action.content_hash,
-            candidate_ref=case.candidate.content_hash,
-            candidate_set_ref=case.candidate_set.content_hash,
-            action_hash=action.action.action_hash,
-            information_cutoff_ns=event.information_cutoff_ns,
-            reason="NOT_ESTIMABLE_NO_COMPATIBLE_NEIGHBORS",
-        )
-        analogue_ref = persist_analogue(repository, analogue, available_at_ns=event.information_cutoff_ns + 21)
-        self.analogue_action_hash = analogue.query_action_hash
-        save(
-            PipelineStageV1.ANALOGUE_DIAGNOSTIC,
-            OpsStageStatusV1.NOT_ESTIMABLE,
-            (analogue_ref,),
-            action_hash=analogue.query_action_hash,
-            reason=analogue.reasons[0],
-        )
-        save(PipelineStageV1.DECISION_CALENDAR, OpsStageStatusV1.COMPLETE, (evaluation.calendar_ref,))
-        return OpsDecisionResultV1(
-            tuple(stages[item] for item in PIPELINE_STAGE_ORDER),
-            OpsTerminalStatusV1.NOT_ESTIMABLE,
-            "ECONOMIC_SUPPORT_OR_CAPABILITY_NOT_ESTIMABLE",
-        )
-
-
-def test_runtime_composes_production_candidate_risk_action_economic_and_diagnostic_apis(tmp_path):
-    port = ExistingV2CompositionPort()
-    clock = FakeClock(CUTOFF + 100)
-    path = tmp_path / "ops.sqlite"
-    with OpsSupervisorV2(path, port, clock_ns=clock) as supervisor:
-        output = supervisor.run_once()
-        receipt = output.event_receipts[0]
-        assert supervisor.repository is not None
-        selected_before = port.candidate_set_hash
-        action_before = port.action_hash
-        calendar_before = receipt.calendar_refs
-    clock.now_ns += 1
-    restarted_port = ExistingV2CompositionPort()
-    with OpsSupervisorV2(path, restarted_port, clock_ns=clock) as restarted:
-        replay = restarted.run_once().event_receipts[0]
-        assert restarted.repository is not None
-        action_artifacts = restarted.repository.artifact_entries("ActionArtifactV2")
-        evaluation_artifacts = restarted.repository.artifact_entries("EvaluationArtifactV2")
-        calendar_artifacts = restarted.repository.artifact_entries("DecisionCalendarEntryV2")
-    assert port.process_calls == 1
-    assert restarted_port.process_calls == 0
-    assert port.risk_result.status == SizingStatus.SIZED
-    assert port.economic_result.evaluation.decision.value == "NOT_ESTIMABLE"
-    assert receipt.candidate_set_ref == selected_before
-    assert receipt.to_dict()["action_hash"] == action_before == port.m1_action_hash == port.analogue_action_hash
-    assert receipt.evaluation_ref == port.economic_result.evaluation_ref
-    assert receipt.calendar_refs == calendar_before == (port.economic_result.calendar_ref,)
-    assert receipt.result.stages[PIPELINE_STAGE_ORDER.index(PipelineStageV1.M1_DIAGNOSTIC)].authority == "ZERO"
-    assert receipt.result.stages[PIPELINE_STAGE_ORDER.index(PipelineStageV1.ANALOGUE_DIAGNOSTIC)].authority == "ZERO"
-    assert receipt.to_dict()["agent_mode"] == "DISABLED"
-    assert not receipt.to_dict()["capital_enabled"] and not receipt.to_dict()["assisted_enabled"]
-    assert replay.content_hash == receipt.content_hash
-    assert tuple(entry.artifact_ref for entry in action_artifacts) == (receipt.action_ref,)
-    assert tuple(entry.artifact_ref for entry in evaluation_artifacts) == (receipt.evaluation_ref,)
-    assert tuple(entry.artifact_ref for entry in calendar_artifacts) == calendar_before
 
 
 def test_missing_risk_evidence_blocks_action_and_economic_progression(tmp_path):

@@ -14,9 +14,18 @@ from .ops_supervisor import (
     OpsTerminalStatusV1,
     PipelineStageV1,
 )
+from .production import (
+    OPS_PRODUCTION_ADAPTER_ID,
+    ProductionEconomicInputsV1,
+    ProductionEventInputsV1,
+    ProductionOpsCyclePortV1,
+    ProductionRiskInputsV1,
+    create_production_port,
+)
 
 __all__ = [
     "OPS_SUPERVISOR_VERSION",
+    "OPS_PRODUCTION_ADAPTER_ID",
     "OpsCycleBatchV1",
     "OpsCycleReceiptV1",
     "OpsDecisionEventV1",
@@ -28,4 +37,9 @@ __all__ = [
     "OpsSupervisorV2",
     "OpsTerminalStatusV1",
     "PipelineStageV1",
+    "ProductionEconomicInputsV1",
+    "ProductionEventInputsV1",
+    "ProductionOpsCyclePortV1",
+    "ProductionRiskInputsV1",
+    "create_production_port",
 ]
