@@ -37,6 +37,7 @@ atlas-v2-projection = "atlas.v2.desktop.ipc:main"
 atlas-desktop = "atlas.desktop.app:main"
 atlas-v2-public-qualification = "atlas.v2.data.qualification:main"
 atlas-v2-public-soak = "atlas.v2.data.soak:main"
+atlas-ops = "atlas.v2.runtime.ops_supervisor:main"
 atlas-agent-worker = "atlas.v2.agent_intelligence.worker:worker_main"
 atlas-agent-broker = "atlas.v2.agent_intelligence.broker:broker_main"
 
