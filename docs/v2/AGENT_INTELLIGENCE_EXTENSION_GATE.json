@@ -1,11 +1,11 @@
 {
   "artifact_type": "AtlasAgentIntelligenceExtensionGate",
-  "content_hash": "a2769167c687e88554a9c429fe639f42d124e5f6f63e9e6b41646b043bd92377",
+  "content_hash": "47a3a86aaddd8ade852ea5c82f2147454864b573f4af72ba606fccc1cde216b0",
   "payload": {
     "architecture_freeze_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
     "architecture_freeze_verified": true,
     "branch": "impl/session-026-agent-intelligence-offline-infrastructure",
-    "final_implementation_sha": "3ac306e6af820be1fc01946f8c7ab8f36469cb85",
+    "final_implementation_sha": "29271fcb65b2f1c0763aac50d8f67fa4049afef6",
     "frozen_identities": {
       "discovery_lab_hash": "846fd322e5d0a8d91a4ae659771f7e37f26bcff384508a5895f154a93b0cfac3",
       "evidence_matrix_hash": "294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81",
@@ -35,22 +35,34 @@
       "session025_validation_identity": "PASS"
     },
     "gates": {
-      "agent_dependency_isolation": "PASS",
+      "agent_dependency_isolation": "PASS; separately installed/audited lock; absent from core environment",
       "assisted_enabled": false,
       "capital_enabled": false,
       "decision_influence": "TEST GATE",
       "disabled_path_equivalence": "PASS",
       "economics": "NOT ESTIMABLE",
-      "full_v1_v2_and_golden_regressions": "PASS",
+      "full_v1_v2_and_golden_regressions": "PASS; V2 446 passed; V1 485 passed/3 skipped; V1 golden passed",
       "live_shadow_agent": "NOT IMPLEMENTED; UNVERIFIED / TEST GATE",
       "offline_zero_authority_agent_infrastructure": "IMPLEMENTED / TESTED",
       "real_provider_contract": "BLOCKED BY ENVIRONMENT",
-      "security_and_dependency_review": "PASS; with the disclosed environment-output process exception recorded in validation report"
+      "security_and_dependency_review": "PASS; with the disclosed environment-output process exception recorded in validation report",
+      "ops_sqlite_single_writer": "TESTED",
+      "inference_broker_has_no_ops_db_write_authority": "TESTED"
     },
     "handoff": "docs/handoffs/session-026.md",
     "session": 26,
     "starting_git_sha": "21055dcb5496665aaf165bde1e4f7e73db773192",
-    "validation_report": "docs/v2/SESSION026_AGENT_VALIDATION.json"
+    "validation_report": "docs/v2/SESSION026_AGENT_VALIDATION.json",
+    "remediation_starting_git_sha": "84e4cf31b65940a98650cf1848b5635f9d57ec63",
+    "single_writer_architecture": {
+      "agent_namespace_writer_owner": "atlas-ops/controller only",
+      "broker_ops_sqlite_access": "NONE",
+      "worker_ops_sqlite_access": "NONE",
+      "durable_dispatch_authorization_precedes_capability": "TESTED",
+      "ops_schema_version": 1,
+      "namespaced_agent_schema_version": 2,
+      "ordinary_ops_outbox_changed": false
+    }
   },
   "schema_version": 1
 }

@@ -1,30 +1,32 @@
 {
   "artifact_type": "AtlasAgentIntelligenceSession026Validation",
-  "content_hash": "7ce6e5f2052a617d1573abea0d5190696eee2a7b0c4c2cffbb74371bec59c339",
+  "content_hash": "d3e3a93e86099615fdbf311adf8b7cfbff817bb7f8c4a95efc87912e2713c4d0",
   "payload": {
     "agent_contracts": {
       "hashes": {
-        "broker_protocol_file_sha256": "b4b599f6f92bc39a02e7bde73d932c7bdf8a2a49ba2c21b471db50299224b3a4",
-        "contracts_module_sha256": "7917e8aeeb8cf8e73389739ad348952a9769c88a57a5de4314c138bfb9e762b8",
+        "broker_protocol_file_sha256": "94bea9f9b8f7d63a5edd2bdfdd476bee79d0f41e6a195e29034f3d77d08e3387",
+        "contracts_module_sha256": "5a4b03f0b39519632a2ff7ba3d84e2a9424facfd59c0894a81000c899b1fd8e0",
         "initial_model_profile_sha256": "75e4e39340c534cfc32503b36baa5c7c28bd6cc5bb2e8db02310152d0e6bd34b",
-        "persistence_file_sha256": "d5cd6544cb6f11b60aa225cbfaf0108d7800840c76e3a9d293f7ba14b34514c2",
+        "persistence_file_sha256": "3342fa302d946e7d5493a98c70f873178eb670460dd50570495fb30c1d04f284",
         "pricing_schedule_sha256": "8e60910165e6bdd775ec5c8e7f858d3c71c781e9a8392c5eee0a7596c03bc0e4",
         "prompt_contract_sha256": "28f8e300ccfb4ab7f5f7869096675ed180f024abaffae6107b1457adfae98d4d",
         "runtime_dependency_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
         "schema_sha256": "baacb75f51b26dbc5b062b25b0aad3a54c77af0ee202b7d0669ba140b3f850f3",
         "tool_contract_sha256": "ecdf4fd766e812e1d23aaa477cff50aca3c3b5ddd3a5e4740d1653e1dffe825d",
         "validation_file_sha256": "ba0e987eb98e8d01eda58cf29759e9c2cf12da46ce5118c4d17b91d80b599148",
-        "worker_protocol_file_sha256": "609e8b0e1bacc018386939321dfe61dbf1b2711df62af151da7eb82577cf3472"
+        "worker_protocol_file_sha256": "609e8b0e1bacc018386939321dfe61dbf1b2711df62af151da7eb82577cf3472",
+        "controller_file_sha256": "222c045422ea0a9fecb09f4836b85b56690c18f7ac665df872c12936b418bd60"
       },
       "source_file_hashes": {
         "configs/agent_intelligence/provider_pricing_v1.json": "f55b39ee654ea08836de76b10126b34ac7f5e70c9c1d9aebacb7b0db5c4073ef",
         "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
-        "src/atlas/v2/agent_intelligence/broker.py": "b4b599f6f92bc39a02e7bde73d932c7bdf8a2a49ba2c21b471db50299224b3a4",
-        "src/atlas/v2/agent_intelligence/contracts.py": "7917e8aeeb8cf8e73389739ad348952a9769c88a57a5de4314c138bfb9e762b8",
-        "src/atlas/v2/agent_intelligence/persistence.py": "d5cd6544cb6f11b60aa225cbfaf0108d7800840c76e3a9d293f7ba14b34514c2",
+        "src/atlas/v2/agent_intelligence/broker.py": "94bea9f9b8f7d63a5edd2bdfdd476bee79d0f41e6a195e29034f3d77d08e3387",
+        "src/atlas/v2/agent_intelligence/contracts.py": "5a4b03f0b39519632a2ff7ba3d84e2a9424facfd59c0894a81000c899b1fd8e0",
+        "src/atlas/v2/agent_intelligence/persistence.py": "3342fa302d946e7d5493a98c70f873178eb670460dd50570495fb30c1d04f284",
         "src/atlas/v2/agent_intelligence/provider.py": "b684ca6218819a48093fc63d543170a6f013f96702116c995047ecfce856820b",
         "src/atlas/v2/agent_intelligence/validation.py": "ba0e987eb98e8d01eda58cf29759e9c2cf12da46ce5118c4d17b91d80b599148",
-        "src/atlas/v2/agent_intelligence/worker.py": "609e8b0e1bacc018386939321dfe61dbf1b2711df62af151da7eb82577cf3472"
+        "src/atlas/v2/agent_intelligence/worker.py": "609e8b0e1bacc018386939321dfe61dbf1b2711df62af151da7eb82577cf3472",
+        "src/atlas/v2/agent_intelligence/controller.py": "222c045422ea0a9fecb09f4836b85b56690c18f7ac665df872c12936b418bd60"
       },
       "versions": {
         "action_assessment_request": "ActionAssessmentRequestV1",
@@ -122,7 +124,7 @@
       "result": "PASS",
       "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
     },
-    "final_implementation_sha": "3ac306e6af820be1fc01946f8c7ab8f36469cb85",
+    "final_implementation_sha": "29271fcb65b2f1c0763aac50d8f67fa4049afef6",
     "persistence_and_discovery": {
       "contradictory_attempts_retained": true,
       "discovery_lab_hash": "846fd322e5d0a8d91a4ae659771f7e37f26bcff384508a5895f154a93b0cfac3",
@@ -135,13 +137,14 @@
       "late_results_retained_ineligible": true,
       "lease_epoch_fencing": true,
       "migration_reopen_and_worker_crash_tests": "PASS",
-      "namespaced_ops_sqlite_schema_version": 1,
+      "namespaced_ops_sqlite_schema_version": 2,
       "one_authoritative_result_per_request_key": true,
       "ops_outbox_repurposed": false,
       "proposal_state": "Quarantined ResearchProposalV1 in agent ledger; never creates a completed/accepted Discovery experiment",
       "request_persisted_before_dispatch": true,
       "strategy_installed_or_self_promoted": false,
-      "unrestricted_evaluation_started": false
+      "unrestricted_evaluation_started": false,
+      "sole_agent_namespace_writer": "atlas-ops/controller"
     },
     "provider_and_framework": {
       "agent_package_in_core_environment": false,
@@ -163,14 +166,15 @@
           "MPL-2.0",
           "PSF-2.0"
         ],
-        "pip_audit": "PASS; no known vulnerabilities found",
+        "pip_audit": "PASS for core and agent hash locks; no known vulnerabilities found",
         "result": "PASS; 26 hash-pinned distributions reviewed via official package metadata; no GPL/AGPL dependency found"
       },
       "lock_validation": {
         "agent_hash_locked_dry_run": "PASS; resolved all 26 pinned packages using --require-hashes",
-        "agent_pip_check": "PASS; all 26 packages compatible",
-        "core_hash_locked_offline_dry_run": "PASS; no changes requested",
-        "core_pip_check": "PASS; no broken requirements"
+        "agent_pip_check": "PASS; isolated agent environment reports no broken requirements",
+        "core_hash_locked_offline_dry_run": "PASS; --no-index --require-hashes; no package changes requested",
+        "core_pip_check": "PASS; no broken requirements",
+        "agent_hash_locked_install": "PASS; installed all 26 packages into an isolated Python 3.12 environment using --require-hashes"
       },
       "official_metadata_checked_utc_date": "2026-09-28",
       "official_sources": [
@@ -204,27 +208,27 @@
         "file": ".env.example",
         "status": "tracked example template only; all values empty"
       },
-      "tracked_and_staged_high_confidence_credential_scan": "PASS; 0 matches; no matched values emitted"
+      "tracked_and_staged_high_confidence_credential_scan": "PASS after single-writer remediation; 0 high-confidence credential match files and 0 sensitive credential filenames; matched values suppressed"
     },
     "session": 26,
     "starting_git_sha": "21055dcb5496665aaf165bde1e4f7e73db773192",
     "static_checks": {
-      "agent_lock_validation": "PASS",
-      "agent_pip_audit": "PASS; no known vulnerabilities",
-      "agent_pip_check": "PASS",
+      "agent_lock_validation": "PASS; isolated hash-locked install from requirements-agent-lock.txt",
+      "agent_pip_audit": "PASS; no known vulnerabilities found",
+      "agent_pip_check": "PASS; isolated Python 3.12 agent environment",
       "compileall": {
         "command": ".venv/bin/python -m compileall -q src tests",
         "status": "PASS"
       },
-      "core_hash_lock_validation": "PASS",
-      "core_pip_check": "PASS",
+      "core_hash_lock_validation": "PASS; offline --require-hashes dry run",
+      "core_pip_check": "PASS; no broken requirements found",
       "git_diff_check": {
         "command": "git diff --cached --check; git diff --check",
         "status": "PASS"
       },
       "mypy": {
         "command": ".venv/bin/mypy src",
-        "source_files": 192,
+        "source_files": 194,
         "status": "PASS"
       },
       "ruff": {
@@ -246,30 +250,33 @@
     "tests": {
       "ci_run_claimed": false,
       "covered_regressions": [
-        "Sessions 020\u2013025 relevant V2 regressions",
-        "Session-023 Discovery and holdout",
+        "complete V2 suite, including new controller/broker single-writer and capability-boundary tests",
+        "complete V1 suite",
+        "Discovery and Session-023 holdout regressions",
+        "Sessions 020–025 relevant regressions",
         "persistence migration/reopen",
-        "capital authority/recovery/fault suites",
+        "Session-024 authority/recovery/fault suites",
         "desktop/IPC write-authority boundary",
+        "disabled-path equivalence",
         "V1 golden baseline"
       ],
       "focused_agent": {
-        "command": ".venv/bin/pytest tests/v2/test_session026_agent_intelligence.py -q -o addopts='' --tb=short",
+        "command": ".venv/bin/pytest -o addopts=\"\" -q --tb=short tests/v2/test_session026_agent_intelligence.py tests/v2/test_session026_agent_broker_ownership.py",
         "exit_code": 0,
-        "passed": 32
+        "passed": 43
       },
       "full_v1": {
-        "command": ".venv/bin/python -m pytest -o addopts='' -q --tb=short --ignore=tests/v2",
-        "duration_seconds": 377.09,
+        "command": ".venv/bin/pytest -o addopts=\"\" -q --tb=short --ignore=tests/v2",
+        "duration_seconds": 291.91,
         "exit_code": 0,
         "passed": 485,
         "skipped": 3
       },
       "full_v2": {
-        "command": ".venv/bin/python -m pytest -o addopts='' -q --tb=short tests/v2",
-        "duration_seconds": 664.7,
+        "command": ".venv/bin/pytest -o addopts=\"\" -q --tb=short tests/v2",
+        "duration_seconds": 814.13,
         "exit_code": 0,
-        "passed": 435
+        "passed": 446
       },
       "v1_golden": {
         "command": ".venv/bin/pytest -o addopts='' -q --tb=short tests/contract/test_v1_golden_baseline.py",
@@ -277,6 +284,48 @@
         "exit_code": 0,
         "passed": 1
       }
+    },
+    "remediation": {
+      "starting_git_sha": "84e4cf31b65940a98650cf1848b5635f9d57ec63",
+      "implementation_git_sha": "29271fcb65b2f1c0763aac50d8f67fa4049afef6",
+      "architecture_freeze_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "ops_sqlite_single_writer": "TESTED",
+      "inference_broker_has_no_ops_db_write_authority": "TESTED",
+      "agent_namespace_writer_owner": "atlas-ops/controller only",
+      "broker_ops_sqlite_access": "NONE; broker process has no ops-db argument, repository, or persistence import",
+      "worker_ops_sqlite_access": "NONE",
+      "dispatch_sequence": [
+        "immutable request persisted",
+        "job leased and running",
+        "attempt and spend reserved",
+        "exact dispatch authorization committed by the sole ops writer",
+        "short-lived capability issued from that committed authorization",
+        "worker submits capability to broker",
+        "broker verifies signature and scope",
+        "provider call"
+      ],
+      "capability_issued_only_after_durable_authorization": true,
+      "ops_schema_version": 1,
+      "agent_namespace_schema_version": 2,
+      "ordinary_ops_outbox_changed": false,
+      "persistent_global_broker_replay_store_added": false,
+      "retry_semantics": "one authorization per persisted attempt; retries allocate a new attempt and authorization; maximum three calls",
+      "broker_replay_suppression": "bounded in-memory per process; no ops.sqlite reconnect",
+      "focused_tests": {
+        "command": ".venv/bin/pytest -o addopts=\"\" -q --tb=short tests/v2/test_session026_agent_intelligence.py tests/v2/test_session026_agent_broker_ownership.py",
+        "exit_code": 0,
+        "passed": 43
+      },
+      "ownership_cases": [
+        "broker starts without an ops.sqlite path and rejects the removed --ops-db option",
+        "broker runtime has no OpsRepository/AgentJobRepository or writable-persistence dependency",
+        "dispatch authorization is committed before capability issuance; persistence failure blocks dispatch",
+        "forged, wrong-attempt, wrong-request, wrong-evidence, wrong-profile, and expired capabilities are rejected",
+        "stale leases and repeated authorization for one attempt are rejected; retries require a new attempt and remain capped at three calls",
+        "broker restart and contradictory duplicate output cannot create another authoritative request result",
+        "controller and broker operate as separate realistic components with only the controller holding a writable DB repository",
+        "worker retains no DB, network, venue credential, or live-control authority"
+      ]
     }
   },
   "schema_version": 1
