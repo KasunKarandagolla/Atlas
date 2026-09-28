@@ -1,0 +1,283 @@
+{
+  "artifact_type": "AtlasAgentIntelligenceSession026Validation",
+  "content_hash": "7ce6e5f2052a617d1573abea0d5190696eee2a7b0c4c2cffbb74371bec59c339",
+  "payload": {
+    "agent_contracts": {
+      "hashes": {
+        "broker_protocol_file_sha256": "b4b599f6f92bc39a02e7bde73d932c7bdf8a2a49ba2c21b471db50299224b3a4",
+        "contracts_module_sha256": "7917e8aeeb8cf8e73389739ad348952a9769c88a57a5de4314c138bfb9e762b8",
+        "initial_model_profile_sha256": "75e4e39340c534cfc32503b36baa5c7c28bd6cc5bb2e8db02310152d0e6bd34b",
+        "persistence_file_sha256": "d5cd6544cb6f11b60aa225cbfaf0108d7800840c76e3a9d293f7ba14b34514c2",
+        "pricing_schedule_sha256": "8e60910165e6bdd775ec5c8e7f858d3c71c781e9a8392c5eee0a7596c03bc0e4",
+        "prompt_contract_sha256": "28f8e300ccfb4ab7f5f7869096675ed180f024abaffae6107b1457adfae98d4d",
+        "runtime_dependency_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+        "schema_sha256": "baacb75f51b26dbc5b062b25b0aad3a54c77af0ee202b7d0669ba140b3f850f3",
+        "tool_contract_sha256": "ecdf4fd766e812e1d23aaa477cff50aca3c3b5ddd3a5e4740d1653e1dffe825d",
+        "validation_file_sha256": "ba0e987eb98e8d01eda58cf29759e9c2cf12da46ce5118c4d17b91d80b599148",
+        "worker_protocol_file_sha256": "609e8b0e1bacc018386939321dfe61dbf1b2711df62af151da7eb82577cf3472"
+      },
+      "source_file_hashes": {
+        "configs/agent_intelligence/provider_pricing_v1.json": "f55b39ee654ea08836de76b10126b34ac7f5e70c9c1d9aebacb7b0db5c4073ef",
+        "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+        "src/atlas/v2/agent_intelligence/broker.py": "b4b599f6f92bc39a02e7bde73d932c7bdf8a2a49ba2c21b471db50299224b3a4",
+        "src/atlas/v2/agent_intelligence/contracts.py": "7917e8aeeb8cf8e73389739ad348952a9769c88a57a5de4314c138bfb9e762b8",
+        "src/atlas/v2/agent_intelligence/persistence.py": "d5cd6544cb6f11b60aa225cbfaf0108d7800840c76e3a9d293f7ba14b34514c2",
+        "src/atlas/v2/agent_intelligence/provider.py": "b684ca6218819a48093fc63d543170a6f013f96702116c995047ecfce856820b",
+        "src/atlas/v2/agent_intelligence/validation.py": "ba0e987eb98e8d01eda58cf29759e9c2cf12da46ce5118c4d17b91d80b599148",
+        "src/atlas/v2/agent_intelligence/worker.py": "609e8b0e1bacc018386939321dfe61dbf1b2711df62af151da7eb82577cf3472"
+      },
+      "versions": {
+        "action_assessment_request": "ActionAssessmentRequestV1",
+        "agent_assessment": "AgentAssessmentV1",
+        "agent_attempt": "AgentAttemptV1",
+        "agent_evidence_ref": "AgentEvidenceRefV1",
+        "agent_job": "AgentJobV1",
+        "agent_model_profile": "AgentModelProfileV1",
+        "agent_validation_receipt": "AgentValidationReceiptV1",
+        "broker_protocol": 1,
+        "contract_namespace": "ATLAS_AGENT_INTELLIGENCE_V1",
+        "event_extraction": "EventExtractionV1",
+        "event_extraction_request": "EventExtractionRequestV1",
+        "prompt": "DISCOVERY_PROPOSER_PROMPT_V1",
+        "research_proposal": "RESEARCH_PROPOSAL_V1",
+        "research_proposal_request": "ResearchProposalRequestV1 (schema_version=1)",
+        "rule_grammar": "RESEARCH_RULE_DSL_V1",
+        "tools": "DISCOVERY_READ_TOOLS_V1",
+        "worker_wire": "AgentWorkerInputV1/AgentWorkerOutputV1"
+      }
+    },
+    "branch": "impl/session-026-agent-intelligence-offline-infrastructure",
+    "budget_and_isolation": {
+      "automatic_provider_retries": 0,
+      "deadline": "Immutable request carries an absolute deadline; provider timeout is capped at 30 seconds per call; broker capability <=120 seconds",
+      "maximum_concurrent_jobs": 1,
+      "maximum_cost_per_call_usd": "0.35",
+      "maximum_cost_per_job_usd": "1.05",
+      "maximum_daily_cost_usd": "5.25",
+      "maximum_input_tokens": 12000,
+      "maximum_model_calls_including_retries": 3,
+      "maximum_output_tokens": 4000,
+      "maximum_read_tool_calls": 8,
+      "pricing_schedule_file_sha256": "f55b39ee654ea08836de76b10126b34ac7f5e70c9c1d9aebacb7b0db5c4073ef",
+      "pricing_schedule_id": "OPENAI_GPT_6_ASTRA_STANDARD_SHORT_2026_09_V1",
+      "provider_credential_owner": "inference broker only",
+      "worker_boundary": "Separate bubblewrap process, --unshare-all/--clearenv, read-only runtime/source mounts, fixed AF_UNIX broker socket; no ops DB mount or network namespace sharing",
+      "worker_tools": [
+        "bounded structured inference via broker",
+        "manifest-scoped bounded research evidence only"
+      ]
+    },
+    "disabled_path_equivalence": {
+      "evidence": [
+        "No agent_intelligence imports from existing runtime, selector, admission, TradePlan, desktop, or execution modules",
+        "Core requirements-lock.txt unchanged and pydantic_ai absent from core environment",
+        "Core runtime started with explicit assertion that pydantic_ai was absent; state RECOVERING, new_risk_allowed=False, no orders submitted",
+        "Existing Session-025 Discovery, selector/model/risk identities preserved and full V1/V2 plus golden regressions passed"
+      ],
+      "evidence_matrix_hash": "294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81",
+      "frozen_policy_hashes": {
+        "ANALOGUE": "9b6312e42b28649877ce3f62b593b14cc769572987053abeca5b55f28b6934bf",
+        "DISCOVERY": "846fd322e5d0a8d91a4ae659771f7e37f26bcff384508a5895f154a93b0cfac3",
+        "EVIDENCE_MATRIX": "294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81",
+        "M0_BASELINE_POLICY_REF": "102681d12c5c592b9a258f7a453e9fa441f649e952772afb9a9df5bb9673a3ff",
+        "M1_FEATURES": "b608c93873df82168c4d922b5d18b976efdc94a07c84159d75d1258aaa428f28",
+        "M1_POLICY": "7ec4703f20ec9e3e2bf58c5a785f1ef179a22c3f8382b1c059679ee6306bc57f",
+        "MULTI_SLEEVE_RESEARCH_SELECTOR": "37355c64d45a67bdce3a271a63db377b953c05847561bcda33847c27cecb0dac",
+        "S1": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+        "S1_S2_SELECTOR": "36f8fd58c9e791ea580a1855f9e98555131e0828604d484eda3df4c7d5529cac",
+        "S2": "fbcdacd8ec6a79ea2595fa367d220b55b1d84c326ec3a28d787d23f356062dcd",
+        "S3": "b6a6ef283a5ca0b4dcbcb730b03adff92fb62c76c55fc66ef9268c906d8c62b6",
+        "S4_ABSORPTION": "fcd2e5b0f3643de92df8fb73e16ca924b3570b92285cc72eebb76ac03c964614",
+        "S4_EXECUTION_CONTEXT": "dae5c5519eb2d5c204607ca8e81f06fdc9b32ed07f69b6460b3fc6d46ccf995a",
+        "S4_FEATURE": "327c816792290ceaf64ef6dd6b6e90e0382c04782e1dc7d9ca5895ce7f2ae146",
+        "S5_CONTINUATION": "47c48f9d347957a3175523f7753531dbba5098c1c0cde7301200d4bb813f2fd2",
+        "S5_CROWDING_CONTEXT": "8b29caee27d91d4ecc13b51cd605d13d83bbfca22de0789925adbef1a07e23d7",
+        "S5_REVERSAL": "6e11389f7c06406acb8a8207d057f8b17edc56e4a9e619322fb64f5b083cf8c8",
+        "S6": "a2497ebad6307bd7c44155599b317119ba6cbfb4ee60da49226974ea23adffd3",
+        "S8_PROFILE": "c118b1e3f6732cf8897efc4c08a2d21eef50cec63b78d5bb40787f9fa5b0f7fe"
+      },
+      "m0_identity": {
+        "baseline_policy_ref": "102681d12c5c592b9a258f7a453e9fa441f649e952772afb9a9df5bb9673a3ff",
+        "configuration": "M0_FIXED_HUBER_RIDGE_CONFIG_V2",
+        "economic_status": "NOT ESTIMABLE",
+        "feature_schema": "M0_ACTION_VALUE_FEATURES_V1",
+        "model_version": "M0_HUBER_RIDGE_ACTION_VALUE_V1",
+        "oof_archive": "M0_CHRONOLOGICAL_OOF_RESIDUAL_ARCHIVE_V2"
+      },
+      "m1_identity": {
+        "authority": "offline research challenger; no voting or capital authority",
+        "feature_policy_hash": "b608c93873df82168c4d922b5d18b976efdc94a07c84159d75d1258aaa428f28",
+        "lightgbm_distribution_version": "4.7.0",
+        "model": "M1_LIGHTGBM_ACTION_VALUE_V1",
+        "policy_hash": "7ec4703f20ec9e3e2bf58c5a785f1ef179a22c3f8382b1c059679ee6306bc57f",
+        "policy_version": "1.0.0-offline-research"
+      },
+      "selector_hash": "36f8fd58c9e791ea580a1855f9e98555131e0828604d484eda3df4c7d5529cac",
+      "session025_release_manifest_sha256": "9f26f4f73c14f5e70cee3c47df28b8e68f2cc05988b8bce8a9c49ce580a90e69",
+      "status": "PASS"
+    },
+    "extension_freeze": {
+      "path": "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "required_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "result": "PASS",
+      "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "final_implementation_sha": "3ac306e6af820be1fc01946f8c7ab8f36469cb85",
+    "persistence_and_discovery": {
+      "contradictory_attempts_retained": true,
+      "discovery_lab_hash": "846fd322e5d0a8d91a4ae659771f7e37f26bcff384508a5895f154a93b0cfac3",
+      "discovery_multiplicity_budget_changed": false,
+      "existing_ops_schema_version": 1,
+      "final_holdout_population_identity": "aa7e691c14325ec1018df74037d48e8e0ce93de5755decb00d425b1549ede5f9",
+      "generated_python_executed": false,
+      "holdout_population_status": "UNASSIGNED / UNTOUCHED",
+      "holdout_viewed": false,
+      "late_results_retained_ineligible": true,
+      "lease_epoch_fencing": true,
+      "migration_reopen_and_worker_crash_tests": "PASS",
+      "namespaced_ops_sqlite_schema_version": 1,
+      "one_authoritative_result_per_request_key": true,
+      "ops_outbox_repurposed": false,
+      "proposal_state": "Quarantined ResearchProposalV1 in agent ledger; never creates a completed/accepted Discovery experiment",
+      "request_persisted_before_dispatch": true,
+      "strategy_installed_or_self_promoted": false,
+      "unrestricted_evaluation_started": false
+    },
+    "provider_and_framework": {
+      "agent_package_in_core_environment": false,
+      "core_lock": "requirements-lock.txt",
+      "core_lock_changed": false,
+      "core_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "endpoint": "https://api.openai.com/v1/responses",
+      "framework": "pydantic-ai-slim[openai]",
+      "framework_version": "2.51.0",
+      "initial_revision_status": "ALIAS_ONLY",
+      "license_review": {
+        "license_identifiers": [
+          "Apache-2.0",
+          "Apache-2.0 AND CNRI-Python",
+          "BSD-3-Clause",
+          "ISC",
+          "MIT",
+          "MIT OR Apache-2.0",
+          "MPL-2.0",
+          "PSF-2.0"
+        ],
+        "pip_audit": "PASS; no known vulnerabilities found",
+        "result": "PASS; 26 hash-pinned distributions reviewed via official package metadata; no GPL/AGPL dependency found"
+      },
+      "lock_validation": {
+        "agent_hash_locked_dry_run": "PASS; resolved all 26 pinned packages using --require-hashes",
+        "agent_pip_check": "PASS; all 26 packages compatible",
+        "core_hash_locked_offline_dry_run": "PASS; no changes requested",
+        "core_pip_check": "PASS; no broken requirements"
+      },
+      "official_metadata_checked_utc_date": "2026-09-28",
+      "official_sources": [
+        "https://pypi.org/pypi/pydantic-ai-slim/2.51.0/json",
+        "https://pypi.org/pypi/openai/3.19.2/json",
+        "https://ai.pydantic.dev/models/openai/",
+        "https://developers.openai.com/api/docs/pricing"
+      ],
+      "openai_sdk_version": "3.19.2",
+      "provider": "OpenAI Responses API",
+      "python": "3.12.13",
+      "real_provider_smoke": "BLOCKED BY ENVIRONMENT; OpenAI key unavailable; no provider request made",
+      "reasoning_effort": "medium",
+      "requested_model_id": "gpt-6-astra",
+      "runtime_lock": "requirements-agent-lock.txt",
+      "runtime_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "snapshot_invented": false
+    },
+    "remaining_live_shadow_prerequisites": [
+      "No general continuous atlas-ops daemon shipped in Session-025; later hidden-shadow work needs a bounded continuous non-capital ops runtime/supervisor or an equivalent proven deployment orchestrator.",
+      "Independent coordinating ChatGPT inspection of the pushed Session-026 SHA before authorizing another checkpoint."
+    ],
+    "security": {
+      "process_exception": {
+        "status": "DISCLOSED TO USER; rotation status unknown",
+        "summary": "A prior diagnostic printed host environment output into an agent tool result and exposed third-party provider credential values there. Values are intentionally not repeated. They were not copied into repository files, SQLite artifacts, test fixtures, or committed logs. The user was advised to rotate/revoke the exposed credentials."
+      },
+      "provider_keys_in_committed_files_fixtures_sqlite_or_logs": false,
+      "real_provider_key_available": false,
+      "sensitive_configuration_templates_reviewed": {
+        "file": ".env.example",
+        "status": "tracked example template only; all values empty"
+      },
+      "tracked_and_staged_high_confidence_credential_scan": "PASS; 0 matches; no matched values emitted"
+    },
+    "session": 26,
+    "starting_git_sha": "21055dcb5496665aaf165bde1e4f7e73db773192",
+    "static_checks": {
+      "agent_lock_validation": "PASS",
+      "agent_pip_audit": "PASS; no known vulnerabilities",
+      "agent_pip_check": "PASS",
+      "compileall": {
+        "command": ".venv/bin/python -m compileall -q src tests",
+        "status": "PASS"
+      },
+      "core_hash_lock_validation": "PASS",
+      "core_pip_check": "PASS",
+      "git_diff_check": {
+        "command": "git diff --cached --check; git diff --check",
+        "status": "PASS"
+      },
+      "mypy": {
+        "command": ".venv/bin/mypy src",
+        "source_files": 192,
+        "status": "PASS"
+      },
+      "ruff": {
+        "command": ".venv/bin/ruff check src tests",
+        "status": "PASS"
+      }
+    },
+    "status": {
+      "agent_offline_infrastructure": "IMPLEMENTED / TESTED",
+      "assisted_enabled": false,
+      "binance_qualification": "UNCHANGED: UNVERIFIED / TEST GATE",
+      "bybit_qualification": "UNCHANGED: UNVERIFIED / TEST GATE",
+      "capital_enabled": false,
+      "decision_influence": "TEST GATE",
+      "economics": "NOT ESTIMABLE",
+      "live_shadow_agent": "NOT IMPLEMENTED; UNVERIFIED / TEST GATE",
+      "real_provider_contract": "BLOCKED BY ENVIRONMENT"
+    },
+    "tests": {
+      "ci_run_claimed": false,
+      "covered_regressions": [
+        "Sessions 020\u2013025 relevant V2 regressions",
+        "Session-023 Discovery and holdout",
+        "persistence migration/reopen",
+        "capital authority/recovery/fault suites",
+        "desktop/IPC write-authority boundary",
+        "V1 golden baseline"
+      ],
+      "focused_agent": {
+        "command": ".venv/bin/pytest tests/v2/test_session026_agent_intelligence.py -q -o addopts='' --tb=short",
+        "exit_code": 0,
+        "passed": 32
+      },
+      "full_v1": {
+        "command": ".venv/bin/python -m pytest -o addopts='' -q --tb=short --ignore=tests/v2",
+        "duration_seconds": 377.09,
+        "exit_code": 0,
+        "passed": 485,
+        "skipped": 3
+      },
+      "full_v2": {
+        "command": ".venv/bin/python -m pytest -o addopts='' -q --tb=short tests/v2",
+        "duration_seconds": 664.7,
+        "exit_code": 0,
+        "passed": 435
+      },
+      "v1_golden": {
+        "command": ".venv/bin/pytest -o addopts='' -q --tb=short tests/contract/test_v1_golden_baseline.py",
+        "duration_seconds": 9.13,
+        "exit_code": 0,
+        "passed": 1
+      }
+    }
+  },
+  "schema_version": 1
+}
