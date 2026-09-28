@@ -14,11 +14,30 @@ from typing import Any
 
 import pytest
 
-from atlas.v2._serialization import sha256_json
+from atlas.domain.risk import engineering_default_policy
+from atlas.v2._serialization import FrozenMap, canonical_json, json_value, sha256_json
+from atlas.v2.contracts import CandidateActionV2, CandidateSetV2
+from atlas.v2.data.bars import BarIntervalV2, CausalBarV2
 from atlas.v2.data.collector import PublicCollectorV2
 from atlas.v2.data.health import PublicSourceHealthV2, PublicSourceStateV2
+from atlas.v2.data.history import ParquetObservationArchiveV2
+from atlas.v2.data.raw import RawObservationV2
+from atlas.v2.instruments import (
+    InstrumentRegistryV2,
+    ProductContractV2,
+    TradingStatusV2,
+)
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
-from atlas.v2.risk import size_selected_candidate
+from atlas.v2.risk import (
+    AccountRiskSnapshotV2,
+    RiskPolicyV2,
+    StressBoundV2,
+    VenueSizingLimitsV2,
+    index_research_evidence,
+    index_risk_evidence,
+    index_risk_policies,
+    size_selected_candidate,
+)
 from atlas.v2.runtime import production
 from atlas.v2.runtime.ops_supervisor import (
     OpsCycleBatchV1,
@@ -29,13 +48,26 @@ from atlas.v2.runtime.ops_supervisor import (
     OpsTerminalStatusV1,
     PipelineStageV1,
 )
-from atlas.v2.science.action import freeze_action
+from atlas.v2.science.action import ActionArtifactV2, FrozenActionV2, freeze_action
+from atlas.v2.science.admission import (
+    VenueCapabilitySnapshotV2,
+    VenueCapabilityStatusV2,
+    index_venue_capability_snapshot,
+)
+from atlas.v2.science.costs import FeeScheduleV2, index_cost_evidence
+from atlas.v2.science.outcomes import (
+    AdmissionStateV2,
+    DecisionCalendarEntryV2,
+    DecisionSourceStageV2,
+    SelectionStateV2,
+)
 from atlas.v2.science.research_selection import assemble_multisleeve_research_candidate_set
 from atlas.v2.strategies.s1_trend import S1_POLICY
 from atlas.v2.strategies.s2_breakout import S2_POLICY
 from atlas.v2.strategies.s3_mean_reversion import S3_POLICY
 
 from .session023_support import research_case
+from .test_session014_core import KEY
 from .test_session016_candidate_selection import CUTOFF, evidence
 from .test_session020_phase2_e2e import (
     _admission_policy,
@@ -264,6 +296,233 @@ def _production_event(repository, **options):
     return event, inputs, case, candidate_set, selected, sizing_ref, action_ref, action_hash
 
 
+def _seed_default_public_evidence(repository: OpsRepository, *, archive_root: Path) -> tuple[int, ProductContractV2]:
+    """Persist local final bars and exact source receipts; do not create a candidate."""
+    history_count = 2900
+    m15 = BarIntervalV2.M15
+    cutoff_ns = (history_count + 1) * m15.duration_ns
+    metadata = {"fixture_product_metadata": "default-production-composition"}
+    metadata_ref = sha256_json(metadata)
+    index_research_evidence(repository, "ProductMetadataFixtureV1", metadata_ref, 0, metadata)
+    product = ProductContractV2(
+        KEY,
+        0,
+        0,
+        0,
+        Decimal("1"),
+        Decimal("0.01"),
+        Decimal("0.1"),
+        Decimal("0.1"),
+        TradingStatusV2.TRADING,
+        metadata_ref,
+        min_notional=Decimal("10"),
+        max_qty=Decimal("1000"),
+    )
+    index_risk_evidence(repository, product)
+    registry = InstrumentRegistryV2()
+    registry.register(product)
+    collector = PublicCollectorV2(
+        repository=repository,
+        registry=registry,
+        clock_ns=lambda: cutoff_ns,
+        archive=ParquetObservationArchiveV2(archive_root),
+    )
+    source_id = "fixture-public"
+
+    def persist_bar(interval: BarIntervalV2, index: int, *, close: Decimal, high: Decimal,
+                    low: Decimal, volume: Decimal) -> None:
+        open_at = index * interval.duration_ns
+        close_at = open_at + interval.duration_ns
+        payload = {
+            "open_at_ns": open_at,
+            "open": str(close),
+            "high": str(high),
+            "low": str(low),
+            "close": str(close),
+            "volume": str(volume),
+            "final": True,
+        }
+        raw = RawObservationV2.build(
+            instrument_revision=KEY.contract_revision,
+            source_id=source_id,
+            event_type=f"BAR_{interval.value}",
+            event_at_ns=close_at,
+            published_at_ns=close_at,
+            received_at_ns=close_at,
+            ingested_at_ns=close_at,
+            available_at_ns=close_at,
+            translation_version="deterministic-public-fixture-v1",
+            sequence=str(open_at),
+            payload=payload,
+        )
+        bar = CausalBarV2(raw, interval, open_at, close_at, close, high, low, close, volume, True)
+        collector.ingest(raw, raw_payload=canonical_json(payload), instrument_key=KEY, bar=bar)
+
+    for index in range(history_count):
+        if index < history_count - 20:
+            close = Decimal("99") if index % 2 else Decimal("101")
+            high, low, volume = close + Decimal("0.3"), close - Decimal("0.3"), Decimal("2000")
+        else:
+            close, high, low, volume = Decimal("100"), Decimal("100.3"), Decimal("99.7"), Decimal("10")
+        persist_bar(m15, index, close=close, high=high, low=low, volume=volume)
+    persist_bar(
+        m15, history_count, close=Decimal("100.6"), high=Decimal("100.7"),
+        low=Decimal("99.6"), volume=Decimal("11"),
+    )
+    for interval in (BarIntervalV2.H1, BarIntervalV2.H4):
+        index = cutoff_ns // interval.duration_ns - 1
+        persist_bar(
+            interval, index, close=Decimal("100"), high=Decimal("100.3"),
+            low=Decimal("99.7"), volume=Decimal("2000"),
+        )
+
+    ticker_payload = {
+        "bid1Price": "99.99",
+        "ask1Price": "100.01",
+        "markPrice": "100",
+        "indexPrice": "100",
+    }
+    ticker = RawObservationV2.build(
+        instrument_revision=KEY.contract_revision,
+        source_id=source_id,
+        event_type="TICKER_MARK_INDEX_FUNDING_OI",
+        event_at_ns=cutoff_ns,
+        published_at_ns=cutoff_ns,
+        received_at_ns=cutoff_ns,
+        ingested_at_ns=cutoff_ns,
+        available_at_ns=cutoff_ns,
+        translation_version="deterministic-public-fixture-v1",
+        payload=ticker_payload,
+    )
+    collector.ingest(ticker, raw_payload=canonical_json(ticker_payload), instrument_key=KEY)
+    collector.flush_archive()
+    health = collector.health.latest(source_id)
+    assert health is not None and health.data_eligible
+    observation_refs = tuple(sorted(
+        entry.artifact_ref for entry in repository.artifact_entries("PublicObservationIndexV2")
+        if entry.metadata.get("source_id") == source_id
+    ))
+    assert observation_refs
+    collector.reconcile_after_reconnect(
+        source_id,
+        at_ns=cutoff_ns,
+        complete_snapshot=True,
+        missed_interval_repaired=True,
+        snapshot_refs=observation_refs,
+    )
+    return cutoff_ns, product
+
+
+def _seed_default_risk_and_economic_evidence(
+    repository: OpsRepository, *, event: OpsDecisionEventV1, candidate: CandidateActionV2,
+    product: ProductContractV2, candidate_set: CandidateSetV2,
+) -> None:
+    cutoff = event.information_cutoff_ns
+    source_refs: dict[str, str] = {}
+    for label in ("risk-completeness", "risk-venue-sizing", "risk-stress", "risk-fee"):
+        body = {"deterministic_typed_evidence_source": label, "cutoff_ns": cutoff}
+        ref = sha256_json(body)
+        index_research_evidence(repository, "ProductionTypedEvidenceSourceV1", ref, cutoff, body)
+        source_refs[label] = ref
+
+    v1 = engineering_default_policy(policy_version="OPS_DEFAULT_PATH_TEST_V1", policy_effective_at_ns=0)
+    v2 = RiskPolicyV2(
+        "OPS_DEFAULT_PATH_TEST_V1", 0, v1.policy_hash(), Decimal("0.05"), Decimal("0.02"), 1,
+    )
+    index_risk_policies(repository, v1, v2)
+    account = AccountRiskSnapshotV2(
+        "DEFAULT_PATH_RESEARCH_ACCOUNT",
+        cutoff,
+        Decimal("100000"),
+        Decimal("100000"),
+        Decimal("0"),
+        Decimal("0"),
+        Decimal("0"),
+        Decimal("0"),
+        Decimal("0"),
+        Decimal("0"),
+        Decimal("0"),
+        Decimal("0"),
+        Decimal("0"),
+        0,
+        (),
+        (),
+        (),
+        source_refs["risk-completeness"],
+    )
+    venue_sizing = VenueSizingLimitsV2(
+        candidate.key, product.content_hash, cutoff, (Decimal("1"), Decimal("2")),
+        Decimal("2"), Decimal("0"), source_refs["risk-venue-sizing"],
+    )
+    stress_price = Decimal("90") if candidate.side.value == "LONG" else Decimal("110")
+    stress = StressBoundV2(candidate.key, cutoff, stress_price, source_refs["risk-stress"])
+    fee = FeeScheduleV2(candidate.key, cutoff, Decimal("0.001"), Decimal("0.001"), source_refs["risk-fee"])
+    for item in (account, venue_sizing, stress, fee):
+        if isinstance(item, FeeScheduleV2):
+            index_cost_evidence(repository, item)
+        else:
+            index_risk_evidence(repository, item)
+
+    admission = _admission_policy()
+    production.index_ops_admission_policy_evidence(
+        repository,
+        admission_policy=admission,
+        available_at_ns=cutoff,
+        event_id=event.event_id,
+        candidate_set_ref=candidate_set.content_hash,
+        candidate_ref=candidate.content_hash,
+        product_ref=product.content_hash,
+    )
+    capability = VenueCapabilitySnapshotV2(
+        candidate.key.venue,
+        candidate.key.environment,
+        account.account_scope,
+        product.content_hash,
+        candidate.key.content_hash,
+        admission.required_margin_mode,
+        admission.required_position_mode,
+        admission.required_nautilus_distribution,
+        admission.required_nautilus_version,
+        admission.required_nautilus_source_commit,
+        admission.required_nautilus_artifact_ref,
+        admission.required_execution_profile_ref,
+        admission.required_protection_profile_ref,
+        admission.required_qualification_version,
+        VenueCapabilityStatusV2.UNVERIFIED,
+        (),
+        cutoff,
+    )
+    index_venue_capability_snapshot(repository, capability)
+    roles = (
+        ("M0", "Session027DefaultPathM0InputV1"),
+        ("CALIBRATION", "Session027DefaultPathCalibrationInputV1"),
+        ("EXECUTION_MODEL", "Session027DefaultPathExecutionInputV1"),
+    )
+    for role, kind in roles:
+        causal = _causal_input(repository, kind, cutoff)
+        production.index_ops_causal_input_evidence(
+            repository,
+            role=role,
+            causal_input=causal,
+            available_at_ns=cutoff,
+            event_id=event.event_id,
+            candidate_set_ref=candidate_set.content_hash,
+            candidate_ref=candidate.content_hash,
+            product_ref=product.content_hash,
+        )
+    production.index_ops_economic_scenario_config(
+        repository,
+        scenario_seed=27027,
+        scenario_count=32,
+        evaluation_available_at_ns=cutoff + 10,
+        available_at_ns=cutoff,
+        event_id=event.event_id,
+        candidate_set_ref=candidate_set.content_hash,
+        candidate_ref=candidate.content_hash,
+        product_ref=product.content_hash,
+    )
+
+
 def _run_with_production_port(path, event, inputs, clock, *, port=None):
     source = ReconciledFixturePublicSource(event)
     adapter = port or production.ProductionOpsCyclePortV1(
@@ -281,6 +540,358 @@ def test_builtin_atlas_ops_cli_imports_and_runs_without_external_adapter(tmp_pat
     assert main(["--db", str(tmp_path / "ops.sqlite"), "--once"]) == 0
     output = capsys.readouterr().out
     assert '"recovered":true' in output
+
+
+def test_default_production_composes_public_to_risk_action_and_economics_after_restart(tmp_path, monkeypatch):
+    path = tmp_path / "ops.sqlite"
+    archive_root = tmp_path / "ops-observations"
+    with OpsRepository(path) as repository:
+        cutoff_ns, product = _seed_default_public_evidence(repository, archive_root=archive_root)
+        assert repository.artifact_entries("CandidateActionV2") == ()
+
+    def forbid_network(*args, **kwargs):
+        raise AssertionError("default production composition attempted a network request")
+
+    monkeypatch.setattr(socket, "create_connection", forbid_network)
+    monkeypatch.setattr(urllib.request, "urlopen", forbid_network)
+
+    coordinator_calls = []
+    coordinator_methods = (
+        (production.S1ShadowCoordinator, "create_watch", "S1"),
+        (production.S1ShadowCoordinator, "on_bar", "S1"),
+        (production.S2ShadowCoordinator, "on_trigger_close", "S2"),
+        (production.S3ShadowCoordinator, "evaluate_setup", "S3"),
+    )
+    for coordinator, method_name, label in coordinator_methods:
+        original = getattr(coordinator, method_name)
+
+        def counted(self, *args, _original=original, _label=label, **kwargs):
+            coordinator_calls.append(_label)
+            return _original(self, *args, **kwargs)
+
+        monkeypatch.setattr(coordinator, method_name, counted)
+
+    clock = FakeClock(cutoff_ns + 1)
+    port = production.create_production_port()
+    assert type(port.public_source) is production.IndexedPublicCycleSourceV1
+    assert type(port.inputs_provider) is production.IndexedProductionEventInputsV1
+    injected = []
+
+    def crash_after_selection(stage):
+        if stage == PipelineStageV1.SELECTION and not injected:
+            injected.append(stage)
+            raise RuntimeError("deterministic composition restart boundary")
+
+    port.crash_after_checkpoint = crash_after_selection
+    with OpsSupervisorV2(path, port, clock_ns=clock) as supervisor:
+        waiting = supervisor.run_once()
+        assert not waiting.event_receipts
+        clock.now_ns += 1
+        interrupted = supervisor.run_once()
+        assert not interrupted.event_receipts
+        assert interrupted.cycle.event_ids
+        assert interrupted.cycle.failure_types == ("RuntimeError",)
+        assert supervisor.repository is not None
+        repository = supervisor.repository
+        assert port._collector_recovery is not None
+        assert port._collector_recovery.collector.repository is repository
+        assert not repository.read_only
+        assert interrupted.cycle.source_health_state == "HEALTHY_CURRENT"
+        event_entry, = repository.artifact_entries("OpsDecisionEventSourceV1")
+        event = production.decision_event_from_dict(event_entry.metadata["event"])
+        assert event.information_cutoff_ns == cutoff_ns
+        assert event.source_event_at_ns == cutoff_ns
+        assert event.available_at_ns == cutoff_ns
+        assert event.deadline_ns > interrupted.cycle.started_at_ns
+        assert "OpsPublicSourceReconciliationV1" in {
+            entry.artifact_type for entry in repository.artifact_entries("OpsPublicSourceReconciliationV1")
+        }
+        feature_entries = repository.artifact_entries("FeatureArtifactV2")
+        assert feature_entries
+        assert all(entry.available_at_ns <= event.information_cutoff_ns for entry in feature_entries)
+        candidate_set_checkpoint = repository.get_artifact(
+            OpsSupervisorV2._checkpoint_ref(event.event_id, PipelineStageV1.CANDIDATE_SET)
+        )
+        selection_checkpoint = repository.get_artifact(
+            OpsSupervisorV2._checkpoint_ref(event.event_id, PipelineStageV1.SELECTION)
+        )
+        assert candidate_set_checkpoint is not None and selection_checkpoint is not None
+        candidate_set_ref = candidate_set_checkpoint.metadata["stage_result"]["artifact_refs"][0]
+        candidate_set_entry = repository.get_artifact(candidate_set_ref)
+        assert candidate_set_entry is not None
+        candidate_set = CandidateSetV2.from_dict(json_value(candidate_set_entry.metadata["candidate_set"]))
+        assert candidate_set.selected_candidate_id is not None
+        assert candidate_set.candidates
+        candidate_ref = next(iter(candidate_set_entry.metadata["identity"]["candidate_refs"]))
+        candidate_entry = repository.get_artifact(candidate_ref)
+        assert candidate_entry is not None
+        candidate = CandidateActionV2.from_dict(json_value(candidate_entry.metadata["candidate"]))
+        assert candidate.candidate_id == candidate_set.selected_candidate_id
+        assert candidate.policy_hash == S2_POLICY.policy_hash
+        assert candidate.quantity is None
+        assert any(
+            entry.artifact_type == "FeatureArtifactV2" and entry.artifact_ref == candidate.snapshot_hash
+            for entry in feature_entries
+        )
+        assert {"S1", "S2", "S3"}.issubset(set(coordinator_calls))
+        indexed_candidates = tuple(repository.artifact_entries("CandidateActionV2"))
+        assert {entry.artifact_ref for entry in indexed_candidates} == set(
+            candidate_set_entry.metadata["identity"]["candidate_refs"]
+        )
+        assert repository.artifact_entries("OpsSupervisorReceiptIdentityV1") == ()
+
+    # The exact typed evidence is indexed only after the production coordinator
+    # has generated and selected the candidate.
+    with OpsRepository(path) as repository:
+        _seed_default_risk_and_economic_evidence(
+            repository, event=event, candidate=candidate, product=product, candidate_set=candidate_set,
+        )
+        assert repository.get_artifact(candidate.content_hash) is not None
+
+    port.crash_after_checkpoint = None
+    clock.now_ns += 1
+    with OpsSupervisorV2(path, port, clock_ns=clock) as restarted:
+        waiting = restarted.run_once()
+        assert not waiting.event_receipts
+        clock.now_ns += 10
+        completed = restarted.run_once()
+        assert len(completed.event_receipts) == 1
+        receipt = completed.event_receipts[0]
+        assert receipt.event.event_id == event.event_id
+        assert receipt.candidate_set_ref == candidate_set.content_hash
+        assert receipt.result.terminal_status == OpsTerminalStatusV1.NOT_ESTIMABLE
+        assert receipt.agent_mode == "DISABLED"
+        assert not receipt.capital_enabled and not receipt.assisted_enabled
+        assert receipt.sizing_ref and receipt.action_ref and receipt.evaluation_ref and receipt.calendar_refs
+        assert receipt.to_dict()["action_hash"]
+        repository = restarted.repository
+        assert repository is not None
+        assert len(repository.artifact_entries("CandidateActionV2")) == 1
+        assert len(repository.artifact_entries("CandidateSetV2")) == 1
+        assert len(repository.artifact_entries("SizingDecisionV2")) == 1
+        assert len(repository.artifact_entries("ActionArtifactV2")) == 1
+        assert len(repository.artifact_entries("EvaluationArtifactV2")) == 1
+        assert len(repository.artifact_entries("DecisionCalendarEntryV2")) == 1
+        assert len(repository.artifact_entries("OpsRiskEvidenceResolutionV1")) == 1
+        assert len(repository.artifact_entries("OpsEconomicEvidenceResolutionV1")) == 1
+        sizing = repository.get_artifact(receipt.sizing_ref)
+        action = repository.get_artifact(receipt.action_ref)
+        evaluation = repository.get_artifact(receipt.evaluation_ref)
+        assert sizing is not None and action is not None and evaluation is not None
+        sizing_body = sizing.metadata["sizing"]
+        action_identity = action.metadata["action_identity"]
+        assert sizing_body["status"] == "SIZED"
+        assert sizing_body["quantity"] is not None
+        assert action_identity["quantity"] == sizing_body["quantity"]
+        assert action.metadata["action_artifact"]["action_hash"] == receipt.to_dict()["action_hash"]
+        assert evaluation.metadata["evaluation"]["decision"] == "NOT_ESTIMABLE"
+        calendar = repository.get_artifact(receipt.calendar_refs[0])
+        assert calendar is not None and calendar.artifact_type == "DecisionCalendarEntryV2"
+        assert calendar.metadata["decision_entry"]["source_stage"] == "ECONOMIC_EVALUATION"
+        assert calendar.metadata["decision_entry"]["action_artifact_ref"] == receipt.action_ref
+        assert repository.artifact_entries("TradePlanEnvelopeV2") == ()
+        assert repository.artifact_entries("OrderIntentV2") == ()
+        assert repository.artifact_entries("Approval") == ()
+        assert repository.artifact_entries("ReservationSnapshotV2") == ()
+        for stage in (PipelineStageV1.M1_DIAGNOSTIC, PipelineStageV1.ANALOGUE_DIAGNOSTIC):
+            stage_result = next(item for item in receipt.result.stages if item.stage == stage)
+            assert stage_result.bound_action_hash == receipt.to_dict()["action_hash"]
+            assert stage_result.authority == "ZERO"
+            diagnostic_entry = repository.get_artifact(stage_result.artifact_refs[0])
+            assert diagnostic_entry is not None
+            if diagnostic_entry.artifact_type == "OpsZeroAuthorityDiagnosticV1":
+                assert diagnostic_entry.metadata["diagnostic"]["action_hash"] == receipt.to_dict()["action_hash"]
+                assert diagnostic_entry.metadata["diagnostic"]["authority"] == "ZERO"
+            elif diagnostic_entry.artifact_type == "AnalogueActionValueV2":
+                assert diagnostic_entry.metadata["analogue"]["query_action_hash"] == receipt.to_dict()["action_hash"]
+            else:
+                assert diagnostic_entry.metadata["prediction"]["action_hash"] == receipt.to_dict()["action_hash"]
+        before_restart = {
+            artifact_type: tuple(entry.artifact_ref for entry in repository.artifact_entries(artifact_type))
+            for artifact_type in (
+                "OpsDecisionEventSourceV1", "OpsSupervisorReceiptIdentityV1", "CandidateSetV2",
+                "SizingDecisionV2", "ActionArtifactV2", "EvaluationArtifactV2", "DecisionCalendarEntryV2",
+            )
+        }
+
+    clock.now_ns += 1
+    with OpsSupervisorV2(path, production.create_production_port(), clock_ns=clock) as replayed:
+        replayed.run_once()
+        assert replayed.repository is not None
+        after_restart = {
+            artifact_type: tuple(entry.artifact_ref for entry in replayed.repository.artifact_entries(artifact_type))
+            for artifact_type in before_restart
+        }
+    assert after_restart == before_restart
+
+
+def test_decision_calendar_v2_v1_wire_values_round_trip_unchanged():
+    assert [item.value for item in DecisionSourceStageV2] == [
+        "CANDIDATE_SET", "HARD_RISK", "ECONOMIC_EVALUATION", "EXPIRY",
+    ]
+    row = DecisionCalendarEntryV2(
+        sha256_json({"candidate_set": "accepted-wire"}),
+        sha256_json({"candidate": "accepted-wire"}),
+        "S2_BREAKOUT", "1.0", S2_POLICY.policy_hash, CUTOFF,
+        SelectionStateV2.SELECTED, AdmissionStateV2.NOT_EVALUATED, None, None,
+        DecisionSourceStageV2.CANDIDATE_SET, (), sha256_json({"source": "accepted-wire"}),
+        CUTOFF, CUTOFF,
+    )
+    wire = row.to_dict()
+    assert wire["version"] == "DECISION_CALENDAR_ENTRY_V2_V1"
+    assert DecisionCalendarEntryV2.from_dict(wire) == row
+    assert DecisionCalendarEntryV2.from_dict(wire).content_hash == row.content_hash
+
+
+def test_indexed_default_risk_and_economic_resolvers_reject_future_and_ambiguity(tmp_path):
+    path = tmp_path / "indexed-resolvers.sqlite"
+    with OpsRepository(path) as repository:
+        event, inputs, case, candidate_set, candidate, _, action_ref, _ = _production_event(repository)
+        risk, reason = production._resolve_indexed_risk_inputs(
+            repository, event, candidate_set, candidate, case.universe, now_ns=CUTOFF + 100,
+        )
+        assert reason is None and risk is not None and risk.complete
+
+        future_account = replace(
+            case.account,
+            available_at_ns=CUTOFF + 1,
+            eligible_equity=case.account.eligible_equity + Decimal("1"),
+        )
+        index_risk_evidence(repository, future_account)
+        asof_risk, reason = production._resolve_indexed_risk_inputs(
+            repository, event, candidate_set, candidate, case.universe, now_ns=CUTOFF + 100,
+        )
+        assert reason is None and asof_risk is not None
+        assert asof_risk.account is not None and asof_risk.account.content_hash == case.account.content_hash
+
+        action_entry = repository.get_artifact(action_ref)
+        assert action_entry is not None
+        action_body = json_value(action_entry.metadata["action_artifact"])
+        identity = json_value(action_entry.metadata["action_identity"])
+        action = ActionArtifactV2(
+            FrozenActionV2(
+                candidate.key, identity["side"], Decimal(identity["quantity"]), identity["product_ref"],
+                FrozenMap(identity["entry_rule"]), FrozenMap(identity["collar_rule"]),
+                Decimal(identity["entry_reference"]), Decimal(identity["entry_collar"]),
+                Decimal(identity["stop_price"]), identity["entry_trigger_basis"],
+                identity["stop_trigger_basis"], FrozenMap(identity["management_rule"]),
+                FrozenMap(identity["time_exit_rule"]), identity["horizon_end_ns"],
+                identity["policy_id"], identity["policy_version"], identity["policy_hash"],
+                identity["risk_policy_hash"], identity["risk_policy_v2_hash"],
+            ),
+            action_body["candidate_ref"], action_body["sizing_ref"], action_body["candidate_set_ref"],
+            action_body["available_at_ns"],
+        )
+        economic = inputs.economic_inputs[candidate.candidate_id]
+        missing, reason = production._resolve_indexed_economic_inputs(
+            repository, event, candidate_set, candidate, action, risk, now_ns=CUTOFF + 100,
+        )
+        assert missing is None and reason == "ADMISSION_POLICY_MISSING_OR_AMBIGUOUS"
+
+        production.index_ops_admission_policy_evidence(
+            repository,
+            admission_policy=economic.admission_policy,
+            available_at_ns=CUTOFF + 1,
+            event_id=event.event_id,
+            candidate_set_ref=candidate_set.content_hash,
+            candidate_ref=candidate.content_hash,
+            product_ref=case.product.content_hash,
+        )
+        future_policy, reason = production._resolve_indexed_economic_inputs(
+            repository, event, candidate_set, candidate, action, risk, now_ns=CUTOFF + 100,
+        )
+        assert future_policy is None and reason == "ADMISSION_POLICY_MISSING_OR_AMBIGUOUS"
+
+        capability = economic.capability
+        assert capability is not None
+        index_venue_capability_snapshot(repository, capability)
+        production.index_ops_admission_policy_evidence(
+            repository,
+            admission_policy=economic.admission_policy,
+            available_at_ns=CUTOFF,
+            event_id=event.event_id,
+            candidate_set_ref=candidate_set.content_hash,
+            candidate_ref=candidate.content_hash,
+            product_ref=case.product.content_hash,
+        )
+        for role, causal_input in (
+            ("M0", economic.model_input),
+            ("CALIBRATION", economic.calibration_input),
+            ("EXECUTION_MODEL", economic.execution_model_input),
+        ):
+            assert causal_input is not None
+            production.index_ops_causal_input_evidence(
+                repository,
+                role=role,
+                causal_input=causal_input,
+                available_at_ns=CUTOFF,
+                event_id=event.event_id,
+                candidate_set_ref=candidate_set.content_hash,
+                candidate_ref=candidate.content_hash,
+                product_ref=case.product.content_hash,
+            )
+        production.index_ops_economic_scenario_config(
+            repository,
+            scenario_seed=27027,
+            scenario_count=32,
+            evaluation_available_at_ns=CUTOFF + 10,
+            available_at_ns=CUTOFF,
+            event_id=event.event_id,
+            candidate_set_ref=candidate_set.content_hash,
+            candidate_ref=candidate.content_hash,
+            product_ref=case.product.content_hash,
+        )
+
+        resolved, reason = production._resolve_indexed_economic_inputs(
+            repository, event, candidate_set, candidate, action, risk, now_ns=CUTOFF + 100,
+        )
+        assert reason is None and resolved is not None and resolved.complete
+        assert resolved.model_input == economic.model_input
+
+        future_input = replace(economic.model_input, available_at_ns=CUTOFF + 1)
+        production.index_ops_causal_input_evidence(
+            repository,
+            role="M0",
+            causal_input=future_input,
+            available_at_ns=CUTOFF + 1,
+            event_id=event.event_id,
+            candidate_set_ref=candidate_set.content_hash,
+            candidate_ref=candidate.content_hash,
+            product_ref=case.product.content_hash,
+        )
+        still_resolved, reason = production._resolve_indexed_economic_inputs(
+            repository, event, candidate_set, candidate, action, risk, now_ns=CUTOFF + 100,
+        )
+        assert reason is None and still_resolved is not None
+        assert still_resolved.model_input == economic.model_input
+
+        duplicate_source = _causal_input(repository, "Session027AmbiguousM0InputV1", CUTOFF)
+        production.index_ops_causal_input_evidence(
+            repository,
+            role="M0",
+            causal_input=duplicate_source,
+            available_at_ns=CUTOFF,
+            event_id=event.event_id,
+            candidate_set_ref=candidate_set.content_hash,
+            candidate_ref=candidate.content_hash,
+            product_ref=case.product.content_hash,
+        )
+        ambiguous, reason = production._resolve_indexed_economic_inputs(
+            repository, event, candidate_set, candidate, action, risk, now_ns=CUTOFF + 100,
+        )
+        assert ambiguous is None
+        assert reason == "CAUSAL_M0_CALIBRATION_OR_EXECUTION_INPUT_MISSING_OR_AMBIGUOUS"
+
+        conflicting_account = replace(
+            case.account,
+            eligible_equity=case.account.eligible_equity + Decimal("2"),
+        )
+        index_risk_evidence(repository, conflicting_account)
+        ambiguous_risk, reason = production._resolve_indexed_risk_inputs(
+            repository, event, candidate_set, candidate, case.universe, now_ns=CUTOFF + 100,
+        )
+        assert ambiguous_risk is None
+        assert reason == "AMBIGUOUS_CURRENT_ACCOUNT_RISK_SNAPSHOT"
 
 
 def test_actual_adapter_recovers_before_collecting_and_uses_existing_pipeline_apis(tmp_path, monkeypatch):
@@ -558,7 +1169,8 @@ def test_missing_and_future_mandatory_evidence_terminates_without_fabricating_pr
             ]
             calendar = repo.get_artifact(receipt.calendar_refs[0])
             assert calendar is not None and calendar.artifact_type == "DecisionCalendarEntryV2"
-            assert calendar.metadata["decision_entry"]["admission_state"] == "NOT_ESTIMABLE"
+            assert calendar.metadata["decision_entry"]["admission_state"] == "NOT_EVALUATED"
+            assert calendar.metadata["decision_entry"]["source_stage"] == "CANDIDATE_SET"
 
 
 def test_missing_economic_evidence_keeps_only_existing_hard_risk_action(tmp_path):
@@ -584,7 +1196,9 @@ def test_missing_economic_evidence_keeps_only_existing_hard_risk_action(tmp_path
         assert supervisor.repository.artifact_entries("EvaluationArtifactV2") == ()
         calendar = supervisor.repository.get_artifact(receipt.calendar_refs[0])
         assert calendar is not None
-        assert calendar.metadata["decision_entry"]["admission_state"] == "NOT_ESTIMABLE"
+        assert calendar.metadata["decision_entry"]["admission_state"] == "RISK_SIZED"
+        assert calendar.metadata["decision_entry"]["source_stage"] == "HARD_RISK"
+        assert calendar.metadata["decision_entry"]["action_artifact_ref"] == action_ref
 
 
 def test_future_capability_keeps_hard_risk_action_but_blocks_evaluation(tmp_path):

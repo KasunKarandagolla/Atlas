@@ -158,6 +158,10 @@ class PublicCollectorV2:
         )
         self.health.append(record)
         self.repository.record_source_health(record.to_ops_record())
+        self.repository.register_artifact(ArtifactIndexEntryV2(
+            record.content_hash, "PublicSourceHealthV2", record.content_hash,
+            record.available_at_ns, record.available_at_ns, {"health": record.to_dict()},
+        ))
         self._health_state[source_id] = state
         return record
 
@@ -354,6 +358,7 @@ class PublicCollectorV2:
                     observation.available_at_ns,
                     {
                         "record_id": observation.record_id,
+                        "source_id": observation.source_id,
                         "instrument_revision": observation.instrument_revision,
                         "instrument_key_json": self._pending_instrument_keys[observation.record_id].to_canonical_json(),
                         "event_at_ns": observation.event_at_ns,
@@ -412,11 +417,29 @@ class PublicCollectorV2:
         )
 
     def reconcile_after_reconnect(
-        self, source_id: str, *, at_ns: int, complete_snapshot: bool, missed_interval_repaired: bool
+        self, source_id: str, *, at_ns: int, complete_snapshot: bool, missed_interval_repaired: bool,
+        snapshot_refs: tuple[str, ...] = (),
     ) -> PublicSourceHealthV2:
         healthy = complete_snapshot and missed_interval_repaired
         state = PublicSourceStateV2.HEALTHY_CURRENT if healthy else PublicSourceStateV2.INCOMPLETE_SNAPSHOT
         detail = "overlap snapshot and missed interval verified" if healthy else "reconnect evidence remains incomplete"
+        refs = tuple(sorted(set(snapshot_refs)))
+        if snapshot_refs and refs != snapshot_refs:
+            raise ValueError("snapshot reconciliation refs must be sorted and unique")
+        if healthy and refs:
+            for ref in refs:
+                entry = self.repository.get_artifact(ref)
+                if (entry is None or entry.artifact_type != "PublicObservationIndexV2"
+                        or entry.available_at_ns > at_ns or entry.metadata.get("source_id") != source_id):
+                    raise ValueError("snapshot reconciliation requires exact available source observation refs")
+            body = {"version": "OPS_PUBLIC_SOURCE_RECONCILIATION_V1", "source_id": source_id,
+                    "available_at_ns": at_ns, "complete_snapshot": True,
+                    "missed_interval_repaired": True, "evidence_refs": list(refs)}
+            ref = sha256_json(body)
+            self.repository.register_artifact(ArtifactIndexEntryV2(
+                ref, "OpsPublicSourceReconciliationV1", ref, at_ns, at_ns,
+                {"reconciliation": body},
+            ))
         return self._record_health(source_id, state, at_ns=at_ns, details=detail)
 
     def restore_subscriptions(

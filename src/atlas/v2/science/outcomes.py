@@ -84,7 +84,6 @@ class DecisionSourceStageV2(StrEnum):
     HARD_RISK = "HARD_RISK"
     ECONOMIC_EVALUATION = "ECONOMIC_EVALUATION"
     EXPIRY = "EXPIRY"
-    OPS_RUNTIME_GATE = "OPS_RUNTIME_GATE"
 
 
 @dataclass(frozen=True)
@@ -424,25 +423,6 @@ def index_decision_calendar_entry(repo: OpsRepository, entry: DecisionCalendarEn
                 or expiry.deadline_ns != candidate.deadline_ns or expiry.reason_code not in entry.reason_codes
                 or source.available_at_ns != entry.available_at_ns):
             raise ValueError("expiry state requires exact typed candidate expiry evidence")
-    elif stage == DecisionSourceStageV2.OPS_RUNTIME_GATE:
-        source = repo.get_artifact(entry.source_artifact_ref)
-        body = source.metadata.get("runtime_decision") if source is not None else None
-        if (state != SelectionStateV2.SELECTED or candidate is None
-                or admission not in (AdmissionStateV2.NO_TRADE, AdmissionStateV2.NOT_ESTIMABLE)
-                or source is None or source.artifact_type != "OpsRuntimeDecisionEvidenceV1"
-                or source.content_hash != entry.source_artifact_ref or not isinstance(body, Mapping)
-                or sha256_json(body) != entry.source_artifact_ref
-                or body.get("candidate_set_ref") != entry.candidate_set_ref
-                or body.get("candidate_ref") != entry.candidate_ref
-                or body.get("policy_hash") != entry.policy_hash
-                or body.get("action_hash") != entry.action_hash
-                or body.get("action_artifact_ref") != entry.action_artifact_ref
-                or body.get("admission_state") != admission.value
-                or tuple(body.get("reason_codes", ())) != entry.reason_codes
-                or body.get("decision_at_ns") != entry.decision_at_ns
-                or body.get("available_at_ns") != source.available_at_ns
-                or source.available_at_ns != entry.available_at_ns):
-            raise ValueError("ops runtime gate decision evidence is missing or contradictory")
     else:
         raise ValueError("unsupported decision evidence stage")
 

@@ -368,6 +368,95 @@ class IndexedCausalBarV2:
     observation_index_ref: str
 
 
+@dataclass(frozen=True)
+class IndexedPublicObservationV2:
+    """Exact archived public payload paired with its immutable ops index ref."""
+
+    observation: RawObservationV2
+    raw_payload_bytes: bytes
+    observation_index_ref: str
+
+
+def reconstruct_public_observations_from_archive(
+    repository: OpsRepository,
+    archive_root: str | Path,
+    *,
+    instrument_revision: str,
+    information_cutoff_ns: int,
+    event_types: tuple[str, ...],
+    limit: int = 100_000,
+) -> tuple[IndexedPublicObservationV2, ...]:
+    """Read exact persisted public payloads after checking archive and index identities."""
+    import json
+
+    import pyarrow.parquet as pq
+
+    from .._serialization import sha256_json
+
+    sha256_ref(instrument_revision, field="instrument_revision")
+    timestamp(information_cutoff_ns, field="information_cutoff_ns")
+    kinds = tuple(sorted(set(event_types)))
+    if not kinds or any(not isinstance(item, str) or not item.strip() for item in kinds):
+        raise ValueError("public observation reconstruction requires event types")
+    if type(limit) is not int or not 1 <= limit <= 100_000:
+        raise ValueError("public observation reconstruction limit is outside its bound")
+    root = Path(archive_root)
+    if not root.exists() or not root.is_dir():
+        return ()
+    paths = sorted(path for path in root.glob("*.parquet") if path.is_file() and not path.is_symlink())
+    if len(paths) > MAX_CAUSAL_ARCHIVE_FILES:
+        raise ArchiveScanBoundExceededV2("file-count", MAX_CAUSAL_ARCHIVE_FILES)
+    columns = {
+        "record_id", "instrument_revision", "event_type", "available_at_ns", "raw_payload_hash",
+        "observation_json", "raw_payload_bytes", "archive_record_kind",
+    }
+    found: dict[str, IndexedPublicObservationV2] = {}
+    examined = 0
+    for path in paths:
+        try:
+            parquet = pq.ParquetFile(path)
+            if not columns.issubset(set(parquet.schema.names)):
+                continue
+            for batch in parquet.iter_batches(columns=sorted(columns), batch_size=512):
+                for row in batch.to_pylist():
+                    examined += 1
+                    if examined > MAX_CAUSAL_ARCHIVE_ROWS:
+                        raise ArchiveScanBoundExceededV2("row-count", MAX_CAUSAL_ARCHIVE_ROWS)
+                    if (row["instrument_revision"] != instrument_revision or row["event_type"] not in kinds
+                            or row["archive_record_kind"] != ArchiveRecordKindV2.PUBLIC_OBSERVATION.value
+                            or type(row["available_at_ns"]) is not int
+                            or row["available_at_ns"] > information_cutoff_ns):
+                        continue
+                    raw_bytes = row["raw_payload_bytes"]
+                    if not isinstance(raw_bytes, bytes) or hashlib.sha256(raw_bytes).hexdigest() != row["raw_payload_hash"]:
+                        continue
+                    observation = RawObservationV2.from_dict(json.loads(row["observation_json"]))
+                    if (observation.record_id != row["record_id"]
+                            or observation.instrument_revision != instrument_revision
+                            or observation.event_type != row["event_type"]
+                            or observation.available_at_ns != row["available_at_ns"]
+                            or observation.raw_payload_hash != row["raw_payload_hash"]):
+                        continue
+                    index_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                             "record_id": observation.record_id})
+                    indexed = repository.get_artifact(index_ref)
+                    if (indexed is None or indexed.artifact_type != "PublicObservationIndexV2"
+                            or indexed.content_hash != observation.content_hash
+                            or indexed.available_at_ns != observation.available_at_ns
+                            or indexed.metadata.get("record_id") != observation.record_id
+                            or indexed.metadata.get("instrument_revision") != instrument_revision
+                            or indexed.metadata.get("event_at_ns") != observation.event_at_ns
+                            or indexed.metadata.get("published_at_ns") != observation.published_at_ns
+                            or indexed.metadata.get("raw_payload_hash") != observation.raw_payload_hash):
+                        continue
+                    found[observation.record_id] = IndexedPublicObservationV2(observation, raw_bytes, index_ref)
+        except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+            continue
+    rows = sorted(found.values(), key=lambda item: (item.observation.available_at_ns,
+                                                    item.observation.record_id))
+    return tuple(rows[-limit:])
+
+
 def reconstruct_causal_bars_from_archive(
     repository: OpsRepository,
     archive_root: str | Path,
