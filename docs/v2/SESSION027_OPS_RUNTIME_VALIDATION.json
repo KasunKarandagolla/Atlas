@@ -143,5 +143,117 @@
     "genuine uninterrupted 72-hour public soak remains BLOCKED BY ENVIRONMENT",
     "venue/account qualification remains UNVERIFIED / TEST GATE",
     "no capital or assisted execution is authorized"
-  ]
+  ],
+  "session_027_bounded_remediation": {
+    "reviewer_blocker": "The production ATLAS OpsCyclePortV1 composition was absent from source and existed only as a test fixture.",
+    "prior_session027_tip_sha": "24e965ac64f3337bdb484df3aed4e0741ebd2bc3",
+    "branch": "impl/session-027-v2-continuous-ops-supervisor",
+    "implementation_sha": "ae6722a30745992b8d930b9d9e11750832145297",
+    "tested_sha": "ae6722a30745992b8d930b9d9e11750832145297",
+    "final_documentation_only_tip_sha": "reported separately in the final pushed-branch closeout",
+    "production_adapter": {
+      "identity": "ATLAS_V2_PRODUCTION_OPS_COMPOSITION_V1",
+      "factory": "atlas.v2.runtime.production:create_production_port",
+      "cli_default": true,
+      "source": "IndexedPublicCycleSourceV1; durable events are held until PublicCollectorV2 source health is reconciled",
+      "event_inputs": "IndexedProductionEventInputsV1 resolves only event-referenced, available-at-cutoff universe/candidate/scanner/feature artifacts",
+      "composition": [
+        "recover PublicCollectorV2 cursors, watches, subscriptions and source health",
+        "collect immutable public event handoffs using the supervisor-owned OpsRepository",
+        "causal multi-sleeve universe/features and existing S1-S3 CandidateActionV2 outputs",
+        "existing multi-sleeve CandidateSet, acceptance and deterministic selector APIs",
+        "existing hard-risk sizing, then freeze_action only for SIZED results",
+        "existing economic evaluation and decision-calendar persistence",
+        "optional M1 and analogue diagnostics bound to the frozen action with ZERO authority"
+      ],
+      "single_writer": "OpsSupervisorV2 owns the sole writable OpsRepository; PublicCollectorV2, event sources and the production composition receive and reuse that instance",
+      "capital_enabled": false,
+      "assisted_enabled": false,
+      "agent_mode": "DISABLED",
+      "credentials_or_provider_calls": false
+    },
+    "changed_files": [
+      "src/atlas/v2/runtime/__init__.py",
+      "src/atlas/v2/runtime/ops_supervisor.py",
+      "src/atlas/v2/runtime/production.py",
+      "src/atlas/v2/science/outcomes.py",
+      "tests/v2/test_session027_ops_supervisor.py",
+      "tests/v2/test_session027_production.py",
+      "docs/v2/SESSION027_OPS_RUNTIME_VALIDATION.json",
+      "docs/handoffs/session-027.md"
+    ],
+    "tests": {
+      "focused_session027": {
+        "command": ".venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-remediation-focused.xml tests/v2/test_session027_ops_supervisor.py tests/v2/test_session027_production.py",
+        "passed": 28,
+        "skipped": 0,
+        "failed": 0
+      },
+      "session020_023_025_026_regressions": {
+        "command": ".venv/bin/pytest -q tests/v2/test_session020_*.py tests/v2/test_session023_*.py tests/v2/test_session025_release.py tests/v2/test_session026_*.py",
+        "passed": 163,
+        "skipped": 0,
+        "failed": 0
+      },
+      "full_v2": {
+        "command": ".venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-remediation-v2.xml tests/v2",
+        "passed": 474,
+        "skipped": 0,
+        "failed": 0,
+        "elapsed_seconds": 1150.38
+      },
+      "full_v1": {
+        "command": ".venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-remediation-v1.xml tests --ignore=tests/v2",
+        "passed": 485,
+        "skipped": 3,
+        "failed": 0,
+        "elapsed_seconds": 476.06
+      },
+      "v1_golden_recomputation": {
+        "command": ".venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-remediation-golden.xml tests/contract/test_v1_golden_baseline.py",
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0
+      },
+      "engineering_checks": {
+        "ruff": ".venv/bin/ruff check .: PASS",
+        "mypy": ".venv/bin/mypy src: PASS, 195 source files",
+        "compileall": ".venv/bin/python -m compileall -q src tests: PASS",
+        "pip_check": ".venv/bin/python -m pip check: PASS, no broken requirements",
+        "dependency_locks": "Both accepted dependency-lock SHA-256 values match the preserved values above",
+        "secret_scan": "PASS, 465 text files scanned; zero high-confidence pattern hits"
+      }
+    },
+    "restart_and_idempotency": {
+      "collector_restart": "PublicCollectorV2 restored its cursor, active watch and subscription plan; HEALTHY_CURRENT reverted to INCOMPLETE_SNAPSHOT until explicit reconnect reconciliation",
+      "event_restart": "The production adapter replayed the same immutable receipt without duplicating CandidateSet, sizing, action, evaluation or calendar identities",
+      "crash_injection_stages": ["UNIVERSE", "CANDIDATE_SET", "HARD_RISK", "ECONOMIC_EVALUATION"],
+      "resume_order_and_chronology": "PASS; all stage checkpoints resumed in fixed order with nondecreasing completion times and no backdating"
+    },
+    "authority_and_evidence": {
+      "economics": "NOT ESTIMABLE",
+      "m1_analogue_authority": "ZERO; both are bound to the already frozen action",
+      "s4_s7": "context/research only; excluded from CandidateActionV2 selection",
+      "s8": "research basket only",
+      "final_holdout": "UNASSIGNED / UNTOUCHED",
+      "final_holdout_viewed": false,
+      "live_control_database_touched": false,
+      "order_approval_protection_or_recovery_capital_boundary_reached": false
+    },
+    "external_activity": {
+      "git_fetch_and_push": true,
+      "public_market_or_venue_request": false,
+      "llm_or_external_provider_request": false,
+      "authenticated_venue_call": false,
+      "github_actions_run_exists": false,
+      "github_ci_claimed": false,
+      "genuine_72_hour_public_soak_passed": false
+    },
+    "preexisting_untracked_files_left_untouched": [
+      "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "atlas-session005.zip"
+    ],
+    "merge_performed": false
+  }
 }

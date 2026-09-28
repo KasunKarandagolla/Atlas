@@ -96,3 +96,56 @@ No GitHub Actions run was used as evidence. GitHub CI status is `UNVERIFIED`.
 - DeepSeek/NIM amendment and live agent shadow remain out of scope.
 
 The next action is independent reviewer inspection of the pushed Session-027 branch. No merge, provider change, agent shadow, or capital enablement is requested here.
+
+## Bounded production-composition remediation closeout (2026-09-28)
+
+This section records the requested remediation of the reviewer blocker. The original Session-027 history and validation above remain intact.
+
+- Prior Session-027 branch tip before remediation: `24e965ac64f3337bdb484df3aed4e0741ebd2bc3`.
+- Remediation implementation commit: `ae6722a30745992b8d930b9d9e11750832145297`.
+- Tested SHA: `ae6722a30745992b8d930b9d9e11750832145297`; the complete code/test tree at this SHA passed the recorded Session-027, regression, V2 and V1 runs.
+- Final documentation-only tip SHA is reported separately in the final pushed-branch closeout because a commit cannot contain its own resulting SHA.
+- Branch: `impl/session-027-v2-continuous-ops-supervisor`. No merge was performed.
+
+### Remediation changes
+
+- `src/atlas/v2/runtime/production.py` — adds `ProductionOpsCyclePortV1` (`ATLAS_V2_PRODUCTION_OPS_COMPOSITION_V1`) and the `create_production_port` factory. It reuses the supervisor-owned `OpsRepository`, restores `PublicCollectorV2` cursors/watches/subscriptions and source-health state, waits for reconnect reconciliation before processing durable event handoffs, and calls the existing CandidateSet/acceptance, hard-risk sizing, `freeze_action`, economic evaluation, M1/analogue and decision-calendar APIs.
+- `src/atlas/v2/runtime/ops_supervisor.py` — makes that credential-free built-in factory the normal `atlas-ops` default. `--adapter` remains an explicit override.
+- `src/atlas/v2/runtime/__init__.py` — exports the production adapter and factory.
+- `src/atlas/v2/science/outcomes.py` — adds typed validation for the operational `OPS_RUNTIME_GATE` decision-calendar evidence used when mandatory risk/economic inputs are missing.
+- `tests/v2/test_session027_ops_supervisor.py` — removes the test-only `ExistingV2CompositionPort` implementation.
+- `tests/v2/test_session027_production.py` — exercises the production adapter, existing API calls, chronology, missing/future evidence gates, action-bound ZERO-authority diagnostics, sleeve boundaries, default CLI, restart/idempotency and injected crash recovery.
+- `docs/v2/SESSION027_OPS_RUNTIME_VALIDATION.json` — appends the machine-readable bounded-remediation results.
+- `docs/handoffs/session-027.md` — this appended remediation record.
+
+The built-in `IndexedPublicCycleSourceV1` consumes durable `OpsDecisionEventSourceV1` public-source handoffs and `IndexedProductionEventInputsV1` consumes only event-referenced, cutoff-available universe, candidate, scanner and feature artifacts. The adapter makes no network/provider request and does not synthesize account, hard-risk, capability, qualification, venue or economic evidence. Missing mandatory evidence is persisted as a `NOT_ESTIMABLE` runtime decision/calendar state; a normal public-only run may correctly stop there. Tests inject deterministic typed event inputs into the production adapter, rather than substituting another pipeline implementation.
+
+### Remediation validation
+
+| Command | Result |
+| --- | --- |
+| `.venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-remediation-focused.xml tests/v2/test_session027_ops_supervisor.py tests/v2/test_session027_production.py` | 28 passed, 0 skipped, 0 failed |
+| `.venv/bin/pytest -q tests/v2/test_session020_*.py tests/v2/test_session023_*.py tests/v2/test_session025_release.py tests/v2/test_session026_*.py` | 163 passed, 0 skipped, 0 failed |
+| `.venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-remediation-v2.xml tests/v2` | 474 passed, 0 skipped, 0 failed; 1,150.38 seconds |
+| `.venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-remediation-v1.xml tests --ignore=tests/v2` | 485 passed, 3 skipped, 0 failed; 476.06 seconds |
+| `.venv/bin/pytest -q -o addopts='' --junitxml=/tmp/session027-remediation-golden.xml tests/contract/test_v1_golden_baseline.py` | 1 passed; V1 golden recomputation |
+| `.venv/bin/ruff check .` | Passed |
+| `.venv/bin/mypy src` | Passed; 195 source files |
+| `.venv/bin/python -m compileall -q src tests` | Passed |
+| `.venv/bin/python -m pip check` | Passed; no broken requirements |
+
+The three V1 skips were the Bybit and Binance authenticated testnet qualification opt-ins and the opt-in public testnet connectivity check. The V1 and V2 freeze, release, Session-026 and dependency-lock hashes listed above were recomputed and matched. The local value-suppressing secret scan examined 465 text files and found zero high-confidence patterns; `gitleaks`, `trufflehog` and `detect-secrets` are not installed.
+
+### Remediation runtime and authority status
+
+- Single-writer ownership: `OpsSupervisorV2` opens and owns the sole writable ops repository; `PublicCollectorV2`, source adapters and pipeline composition reuse that repository instance.
+- Recovery: the production adapter restored the collector cursor, active watch and subscription plan. Restarted `HEALTHY_CURRENT` state returned to `INCOMPLETE_SNAPSHOT` and remained there until explicit overlap/missed-interval reconciliation.
+- Idempotency: restarting the production adapter returned the same immutable receipt and did not duplicate CandidateSet, sizing, action, evaluation or decision-calendar artifacts.
+- Crash recovery: injected crashes after `UNIVERSE`, `CANDIDATE_SET`, `HARD_RISK` and `ECONOMIC_EVALUATION` resumed in fixed stage order without backdating.
+- M1 and analogue diagnostics remained bound to the frozen action and retained `ZERO` selector/risk/admission authority.
+- S1–S3 remain the only exact-action candidate sleeves; S4–S7 remain context/research and S8 remains research-basket-only.
+- Economics: `NOT ESTIMABLE`. Agent mode: `DISABLED`. Capital: disabled. Assisted execution: disabled.
+- Final holdout: `UNASSIGNED / UNTOUCHED`; not inspected. V1 live-control database: untouched. No order, approval, protection, recovery-capital or authenticated-venue boundary was reached.
+- Network activity was limited to the required Git fetch/push. No public-market, venue, LLM or external-provider request ran. No GitHub Actions run exists or is claimed. The 72-hour public soak was not run and is not claimed as passed.
+
+The handoff is now returned to the coordinating reviewer for independent inspection of the pushed Session-027 branch.
