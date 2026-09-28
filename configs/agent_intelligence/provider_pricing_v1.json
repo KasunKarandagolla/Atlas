@@ -1,0 +1,23 @@
+{
+  "version": "OPENAI_GPT_6_ASTRA_STANDARD_SHORT_2026_09_V1",
+  "provider": "openai",
+  "requested_model_id": "gpt-6-astra",
+  "endpoint": "https://api.openai.com/v1/responses",
+  "effective_date": "2026-09-28",
+  "pricing_source": "https://developers.openai.com/api/docs/pricing",
+  "prices_usd_per_million_tokens": {
+    "input": "10.00",
+    "cached_input": "1.00",
+    "cache_write": "12.50",
+    "output": "50.00"
+  },
+  "maximum_input_tokens": 12000,
+  "maximum_output_tokens": 4000,
+  "maximum_input_context_tokens": 272000,
+  "maximum_model_calls_per_job": 3,
+  "maximum_read_tool_calls_per_job": 8,
+  "maximum_concurrent_research_jobs": 1,
+  "maximum_cost_per_call_usd": "0.35",
+  "maximum_cost_per_job_usd": "1.05",
+  "maximum_daily_cost_usd": "5.25"
+}
