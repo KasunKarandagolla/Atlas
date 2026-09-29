@@ -7,6 +7,7 @@ import builtins
 import importlib
 import socket
 import urllib.request
+from collections.abc import Mapping
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
@@ -115,19 +116,9 @@ class ReconciledFixturePublicSource:
         health = collector.health.latest(self.source_id)
         if health is None:
             collector.reconnected(self.source_id, at_ns=now_ns - 2)
-            health = collector.reconcile_after_reconnect(
-                self.source_id,
-                at_ns=now_ns - 1,
-                complete_snapshot=True,
-                missed_interval_repaired=True,
-            )
+            health = self._reconcile(repository, collector, at_ns=now_ns)
         elif health.state != PublicSourceStateV2.HEALTHY_CURRENT and health.observed_at_ns < now_ns:
-            health = collector.reconcile_after_reconnect(
-                self.source_id,
-                at_ns=now_ns,
-                complete_snapshot=True,
-                missed_interval_repaired=True,
-            )
+            health = self._reconcile(repository, collector, at_ns=now_ns)
         healthy = health.state == PublicSourceStateV2.HEALTHY_CURRENT
         events = (self.event,) if self.event is not None and healthy else ()
         if self.event is not None and events:
@@ -145,6 +136,32 @@ class ReconciledFixturePublicSource:
             health.available_at_ns,
         )
         return OpsCycleBatchV1(events, (state,), (self.source_id,), (), healthy, now_ns)
+
+    def _reconcile(self, repository, collector, *, at_ns):
+        observation = RawObservationV2.build(
+            instrument_revision=KEY.contract_revision, source_id=self.source_id,
+            event_type="RECONNECT_SNAPSHOT_FIXTURE", event_at_ns=at_ns,
+            received_at_ns=at_ns, ingested_at_ns=at_ns, available_at_ns=at_ns,
+            translation_version="session027-reconnect-fixture-v1", payload={"fixture": "overlap-snapshot"},
+        )
+        observation_ref = sha256_json({
+            "artifact_type": "PublicObservationIndexV2", "record_id": observation.record_id,
+        })
+        repository.register_artifact(ArtifactIndexEntryV2(
+            observation_ref, "PublicObservationIndexV2", observation.content_hash,
+            at_ns, at_ns,
+            {"record_id": observation.record_id, "source_id": self.source_id,
+             "instrument_revision": observation.instrument_revision,
+             "instrument_key_json": KEY.to_canonical_json(), "event_at_ns": observation.event_at_ns,
+             "published_at_ns": observation.published_at_ns,
+             "raw_payload_hash": observation.raw_payload_hash},
+        ))
+        epoch_ref = collector.required_recovery_epoch_ref
+        assert epoch_ref is not None
+        return collector.reconcile_after_reconnect(
+            self.source_id, at_ns=at_ns, complete_snapshot=True, missed_interval_repaired=True,
+            snapshot_refs=(observation_ref,), recovery_epoch_ref=epoch_ref,
+        )
 
 
 def _trigger_entry(event: OpsDecisionEventV1, body: dict[str, object]) -> ArtifactIndexEntryV2:
@@ -398,11 +415,20 @@ def _seed_default_public_evidence(repository: OpsRepository, *, archive_root: Pa
     collector.flush_archive()
     health = collector.health.latest(source_id)
     assert health is not None and health.data_eligible
+    observations = tuple(
+        entry for entry in repository.artifact_entries("PublicObservationIndexV2")
+        if entry.metadata.get("source_id") == source_id and entry.available_at_ns <= cutoff_ns
+    )
+    latest_observation_time = max(entry.available_at_ns for entry in observations)
     observation_refs = tuple(sorted(
-        entry.artifact_ref for entry in repository.artifact_entries("PublicObservationIndexV2")
-        if entry.metadata.get("source_id") == source_id
+        entry.artifact_ref for entry in observations if entry.available_at_ns == latest_observation_time
     ))
     assert observation_refs
+    prior_epoch = _index_recovery_epoch(repository, started_at_ns=cutoff_ns - 1, epoch_index=1)
+    _index_reconnect_reconciliation(
+        repository, source_id=source_id, epoch_ref=prior_epoch, at_ns=cutoff_ns,
+        observation_refs=observation_refs,
+    )
     collector.reconcile_after_reconnect(
         source_id,
         at_ns=cutoff_ns,
@@ -411,6 +437,240 @@ def _seed_default_public_evidence(repository: OpsRepository, *, archive_root: Pa
         snapshot_refs=observation_refs,
     )
     return cutoff_ns, product
+
+
+def _index_recovery_epoch(
+    repository: OpsRepository, *, started_at_ns: int, epoch_index: int, previous_ref: str | None = None,
+) -> str:
+    body = {
+        "version": "OPS_RECOVERY_EPOCH_V1", "epoch_index": epoch_index,
+        "started_at_ns": started_at_ns, "previous_epoch_ref": previous_ref, "authority": "ZERO",
+    }
+    ref = sha256_json(body)
+    repository.register_artifact(ArtifactIndexEntryV2(
+        ref, "OpsRecoveryEpochV1", ref, started_at_ns, started_at_ns, {"recovery_epoch": body},
+    ))
+    return ref
+
+
+def _index_reconnect_reconciliation(
+    repository: OpsRepository, *, source_id: str, epoch_ref: str, at_ns: int,
+    observation_refs: tuple[str, ...] | None = None,
+) -> str:
+    if observation_refs is None:
+        observations = tuple(
+            entry for entry in repository.artifact_entries("PublicObservationIndexV2")
+            if entry.metadata.get("source_id") == source_id and entry.available_at_ns <= at_ns
+        )
+        latest_observation_time = max((entry.available_at_ns for entry in observations), default=None)
+        refs = tuple(sorted(
+            entry.artifact_ref for entry in observations if entry.available_at_ns == latest_observation_time
+        ))
+    else:
+        refs = observation_refs
+    assert refs
+    body = {
+        "version": "OPS_PUBLIC_SOURCE_RECONCILIATION_V1", "source_id": source_id,
+        "available_at_ns": at_ns, "complete_snapshot": True,
+        "missed_interval_repaired": True, "evidence_refs": list(refs),
+        "recovery_epoch_ref": epoch_ref,
+    }
+    ref = sha256_json(body)
+    repository.register_artifact(ArtifactIndexEntryV2(
+        ref, "OpsPublicSourceReconciliationV1", ref, at_ns, at_ns,
+        {"reconciliation": body},
+    ))
+    return ref
+
+
+def _seed_default_s3_candidate_evidence(
+    repository: OpsRepository, *, archive_root: Path, setup_cutoff_ns: int,
+) -> tuple[int, int, ProductContractV2, str, CausalBarV2]:
+    """Seed public evidence plus a real S3 WATCH produced by the accepted coordinator."""
+    import math
+
+    from atlas.v2.data.bybit import translate_recent_trades, translate_ticker
+    from atlas.v2.data.history import ImportedObservationV2
+    from atlas.v2.news.events import (
+        AbnormalityEvidenceV2,
+        AbnormalityStateV2,
+        CalendarCoverageV2,
+        EventSafetyGateBuilderV2,
+    )
+    from atlas.v2.strategies.s3_mean_reversion import S3ShadowCoordinator
+
+    from .test_session021_data_s3 import _production_s3_setup_inputs
+
+    setup = _production_s3_setup_inputs(
+        repository, cutoff_ns=setup_cutoff_ns, innovation_scale=20.0,
+    )
+    setup_result = S3ShadowCoordinator(repository).evaluate_setup(
+        key=KEY,
+        cutoff_ns=setup_cutoff_ns,
+        residuals=setup["residuals"],
+        current_vwap=setup["current_vwap"],
+        trades=setup["trades"],
+        completed_1m=setup["bars"],
+        context=setup["context"],
+        feature=setup["feature"],
+        quote=setup["quote"],
+        tick_size=setup["product"].tick_size,
+        universe=setup["universe"],
+        event_gate=setup["event_gate"],
+        bar_health=setup["bar_health"],
+        trade_health=setup["trade_health"],
+    )
+    assert setup_result.status == "WATCH" and setup_result.watch is not None
+    event_cutoff_ns = setup_cutoff_ns + BarIntervalV2.M15.duration_ns
+    product = setup["product"]
+    archived: list[ImportedObservationV2] = []
+    observation_entries: list[ArtifactIndexEntryV2] = []
+
+    def persist_observation(observation: RawObservationV2, payload: Mapping[str, Any],
+                            bar: CausalBarV2 | None = None) -> None:
+        raw_bytes = canonical_json(payload).encode("utf-8")
+        index_ref = sha256_json({
+            "artifact_type": "PublicObservationIndexV2", "record_id": observation.record_id,
+        })
+        observation_entries.append(ArtifactIndexEntryV2(
+            index_ref, "PublicObservationIndexV2", observation.content_hash,
+            observation.received_at_ns, observation.available_at_ns,
+            {
+                "record_id": observation.record_id,
+                "source_id": observation.source_id,
+                "instrument_revision": observation.instrument_revision,
+                "instrument_key_json": KEY.to_canonical_json(),
+                "event_at_ns": observation.event_at_ns,
+                "published_at_ns": observation.published_at_ns,
+                "translation_version": observation.translation_version,
+                "revision_of": observation.revision_of,
+                "quality_flags": list(observation.quality_flags),
+                "availability_class": observation.availability_class.value,
+                "replay_available_at_ns": observation.replay_available_at_ns,
+                "raw_payload_hash": observation.raw_payload_hash,
+                "bar_content_hash": bar.content_hash if bar is not None else None,
+            },
+        ))
+        archived.append(ImportedObservationV2(len(archived) + 1, observation, raw_bytes, bar))
+
+    def ingest_bar(bar: CausalBarV2) -> None:
+        persist_observation(bar.raw, {
+            "open": str(bar.open), "high": str(bar.high),
+            "low": str(bar.low), "close": str(bar.close),
+        }, bar)
+
+    m15_context = setup["context"].m15[-1]
+    h4_context = setup["context"].h4[-1]
+    for bar in setup["bars"]:
+        ingest_bar(bar)
+
+    def add_context_bar(interval: BarIntervalV2, close_at_ns: int, ordinal: int) -> CausalBarV2:
+        if interval == BarIntervalV2.M15 and close_at_ns == m15_context.close_at_ns:
+            ingest_bar(m15_context)
+            return m15_context
+        if interval == BarIntervalV2.H4 and close_at_ns == h4_context.close_at_ns:
+            ingest_bar(h4_context)
+            return h4_context
+        wave = math.sin(ordinal * (0.011 if interval == BarIntervalV2.M15 else 0.19))
+        close = Decimal(str(100 + 0.1 * wave))
+        high, low = close + Decimal("0.5"), close - Decimal("0.5")
+        open_at_ns = close_at_ns - interval.duration_ns
+        payload = {"open": str(close), "high": str(high), "low": str(low), "close": str(close)}
+        raw = RawObservationV2.build(
+            instrument_revision=KEY.contract_revision, source_id="PUBLIC_BARS",
+            event_type=f"BAR_{interval.value}", event_at_ns=close_at_ns,
+            received_at_ns=close_at_ns, ingested_at_ns=close_at_ns, available_at_ns=close_at_ns,
+            translation_version="session027-s3-public-bars-v1", sequence=str(open_at_ns), payload=payload,
+        )
+        bar = CausalBarV2(
+            raw, interval, open_at_ns, close_at_ns, close, high, low, close, Decimal("1"), True,
+        )
+        ingest_bar(bar)
+        return bar
+
+    m15_start = setup_cutoff_ns - 30 * 24 * 60 * 60 * 1_000_000_000 + BarIntervalV2.M15.duration_ns
+    for ordinal, close_at_ns in enumerate(range(m15_start, setup_cutoff_ns, BarIntervalV2.M15.duration_ns)):
+        add_context_bar(BarIntervalV2.M15, close_at_ns, ordinal)
+    add_context_bar(BarIntervalV2.M15, setup_cutoff_ns, 30 * 24 * 4 - 1)
+    trigger_bar = add_context_bar(BarIntervalV2.M15, event_cutoff_ns, 30 * 24 * 4)
+    h1_start = setup_cutoff_ns - 30 * 24 * 60 * 60 * 1_000_000_000 + BarIntervalV2.H1.duration_ns
+    for ordinal, close_at_ns in enumerate(range(h1_start, setup_cutoff_ns + 1, BarIntervalV2.H1.duration_ns)):
+        add_context_bar(BarIntervalV2.H1, close_at_ns, ordinal)
+    h4_start = setup_cutoff_ns - 30 * 24 * 60 * 60 * 1_000_000_000 + BarIntervalV2.H4.duration_ns
+    for ordinal, close_at_ns in enumerate(range(h4_start, setup_cutoff_ns, BarIntervalV2.H4.duration_ns)):
+        add_context_bar(BarIntervalV2.H4, close_at_ns, ordinal)
+
+    for index in range(1, 16):
+        close_at_ns = setup_cutoff_ns + index * BarIntervalV2.M1.duration_ns
+        close = Decimal("100.001")
+        high, low = close + Decimal("0.001"), close - Decimal("0.001")
+        open_at_ns = close_at_ns - BarIntervalV2.M1.duration_ns
+        payload = {"open": str(close), "high": str(high), "low": str(low), "close": str(close)}
+        raw = RawObservationV2.build(
+            instrument_revision=KEY.contract_revision, source_id="PUBLIC_BARS",
+            event_type="BAR_1M", event_at_ns=close_at_ns,
+            received_at_ns=close_at_ns, ingested_at_ns=close_at_ns, available_at_ns=close_at_ns,
+            translation_version="session027-s3-public-bars-v1", sequence=str(open_at_ns), payload=payload,
+        )
+        ingest_bar(CausalBarV2(
+            raw, BarIntervalV2.M1, open_at_ns, close_at_ns, close, high, low, close, Decimal("1"), True,
+        ))
+
+    trade_row = {
+        "symbol": KEY.native_symbol, "execId": "session027-s3-current-trade",
+        "p": "100", "v": "1", "time": event_cutoff_ns // 1_000_000, "S": "Buy",
+    }
+    trade_raw, = translate_recent_trades(
+        (trade_row,), key=KEY, received_at_ns=event_cutoff_ns, source_id="PUBLIC_TRADES",
+    )
+    persist_observation(trade_raw, trade_row)
+    quote_row = {
+        "symbol": KEY.native_symbol, "ts": event_cutoff_ns // 1_000_000,
+        "bid1Price": "100.001", "ask1Price": "100.002", "markPrice": "100", "indexPrice": "100",
+    }
+    quote_raw = translate_ticker(
+        quote_row, key=KEY, received_at_ns=event_cutoff_ns, source_id="PUBLIC_QUOTE",
+    )
+    persist_observation(quote_raw, quote_row)
+    chunk_id = sha256_json({
+        "fixture": "SESSION027_DEFAULT_S3_PUBLIC_ARCHIVE_V1",
+        "record_ids": [item.observation.record_id for item in archived],
+    })
+    ParquetObservationArchiveV2(archive_root).write_observation_chunk(chunk_id, archived)
+    repository.register_artifacts(tuple(observation_entries))
+    for source_id in ("PUBLIC_BARS", "PUBLIC_TRADES", "PUBLIC_QUOTE"):
+        health = PublicSourceHealthV2(
+            source_id, event_cutoff_ns, event_cutoff_ns, PublicSourceStateV2.HEALTHY_CURRENT,
+            sha256_json({"session027-s3-current-health": source_id, "cutoff": event_cutoff_ns}),
+            "deterministic local S3 composition fixture",
+        )
+        repository.register_artifact(ArtifactIndexEntryV2(
+            health.content_hash, "PublicSourceHealthV2", health.content_hash,
+            event_cutoff_ns, event_cutoff_ns, {"health": health.to_dict()},
+        ))
+        repository.record_source_health(health.to_ops_record())
+
+    calendar_ref = sha256_json({"session027-s3-calendar": event_cutoff_ns})
+    abnormality_ref = sha256_json({"session027-s3-abnormality": event_cutoff_ns})
+    repository.register_artifacts((
+        ArtifactIndexEntryV2(calendar_ref, "CalendarSourceFixtureV2", calendar_ref,
+                             event_cutoff_ns, event_cutoff_ns, {"ref": calendar_ref}),
+        ArtifactIndexEntryV2(abnormality_ref, "AbnormalitySourceFixtureV2", abnormality_ref,
+                             event_cutoff_ns, event_cutoff_ns, {"ref": abnormality_ref}),
+    ))
+    coverage = CalendarCoverageV2(
+        "SCHEDULE_FIXTURE", event_cutoff_ns - BarIntervalV2.M15.duration_ns,
+        event_cutoff_ns + BarIntervalV2.H4.duration_ns, event_cutoff_ns, event_cutoff_ns,
+        event_cutoff_ns, True, "schedule-r1", calendar_ref, "VERIFIED",
+    )
+    abnormality = AbnormalityEvidenceV2(
+        AbnormalityStateV2.NORMAL, event_cutoff_ns, event_cutoff_ns, abnormality_ref,
+    )
+    EventSafetyGateBuilderV2(repository).evaluate(
+        key=KEY, cutoff_ns=event_cutoff_ns, coverage=coverage, scheduled_events=(),
+        abnormality=abnormality, incidents=(),
+    )
+    return setup_cutoff_ns, event_cutoff_ns, product, setup_result.watch.watch_id, trigger_bar
 
 
 def _seed_default_risk_and_economic_evidence(
@@ -586,7 +846,22 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
     with OpsSupervisorV2(path, port, clock_ns=clock) as supervisor:
         waiting = supervisor.run_once()
         assert not waiting.event_receipts
+        assert not waiting.cycle.event_ids
+        assert port._collector_recovery is not None
+        assert port._collector_recovery.collector.health.latest("fixture-public").state == (
+            PublicSourceStateV2.INCOMPLETE_SNAPSHOT
+        )
+        prior_reconciliations = supervisor.repository.artifact_entries("OpsPublicSourceReconciliationV1")
+        assert any(
+            item.metadata["reconciliation"].get("recovery_epoch_ref") != port._collector_recovery.recovery_epoch_ref
+            for item in prior_reconciliations
+        )
         clock.now_ns += 1
+        assert supervisor.repository is not None
+        _index_reconnect_reconciliation(
+            supervisor.repository, source_id="fixture-public",
+            epoch_ref=port._collector_recovery.recovery_epoch_ref, at_ns=clock.now_ns,
+        )
         interrupted = supervisor.run_once()
         assert not interrupted.event_receipts
         assert interrupted.cycle.event_ids
@@ -638,6 +913,13 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
         assert {entry.artifact_ref for entry in indexed_candidates} == set(
             candidate_set_entry.metadata["identity"]["candidate_refs"]
         )
+        s3_states = [entry for entry in repository.artifact_entries("S3MeanReversionStateV2")
+                     if entry.available_at_ns <= event.information_cutoff_ns]
+        assert s3_states and all(entry.metadata["state"]["status"] == "NOT_ESTIMABLE" for entry in s3_states)
+        assert not any(
+            CandidateActionV2.from_dict(json_value(entry.metadata["candidate"])).policy_hash == S3_POLICY.policy_hash
+            for entry in repository.artifact_entries("CandidateActionV2")
+        )
         assert repository.artifact_entries("OpsSupervisorReceiptIdentityV1") == ()
 
     # The exact typed evidence is indexed only after the production coordinator
@@ -653,7 +935,16 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
     with OpsSupervisorV2(path, port, clock_ns=clock) as restarted:
         waiting = restarted.run_once()
         assert not waiting.event_receipts
+        assert port._collector_recovery is not None
+        assert port._collector_recovery.collector.health.latest("fixture-public").state == (
+            PublicSourceStateV2.INCOMPLETE_SNAPSHOT
+        )
         clock.now_ns += 10
+        assert restarted.repository is not None
+        _index_reconnect_reconciliation(
+            restarted.repository, source_id="fixture-public",
+            epoch_ref=port._collector_recovery.recovery_epoch_ref, at_ns=clock.now_ns,
+        )
         completed = restarted.run_once()
         assert len(completed.event_receipts) == 1
         receipt = completed.event_receipts[0]
@@ -723,6 +1014,81 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
             for artifact_type in before_restart
         }
     assert after_restart == before_restart
+
+
+def test_default_production_wires_real_s3_evidence_and_natural_candidate_path(tmp_path, monkeypatch):
+    from atlas.v2.selection import accept_research_candidates
+    from atlas.v2.strategies.s1_trend import S1_POLICY
+    from atlas.v2.strategies.s2_breakout import S2_POLICY
+    from atlas.v2.strategies.s3_mean_reversion import S3ShadowCoordinator
+
+    path = tmp_path / "s3-default.sqlite"
+    archive_root = tmp_path / "ops-observations"
+    setup_cutoff = 40 * 24 * 60 * 60 * 1_000_000_000 + 12 * 60 * 60 * 1_000_000_000
+    with OpsRepository(path) as repository:
+        _setup_cutoff, event_cutoff, product, watch_id, trigger_bar = _seed_default_s3_candidate_evidence(
+            repository, archive_root=archive_root, setup_cutoff_ns=setup_cutoff,
+        )
+        assert repository.get_watch(watch_id) is not None
+        assert repository.artifact_entries("CandidateActionV2") == ()
+        event = production._public_bar_event(repository, product, trigger_bar, now_ns=event_cutoff)
+        assert event is not None
+
+    def forbid_network(*args, **kwargs):
+        raise AssertionError("default S3 composition attempted a network request")
+
+    monkeypatch.setattr(socket, "create_connection", forbid_network)
+    monkeypatch.setattr(urllib.request, "urlopen", forbid_network)
+    received: list[dict[str, Any]] = []
+    subsequent: list[Any] = []
+    original_evaluate = S3ShadowCoordinator.evaluate_setup
+    original_subsequent = S3ShadowCoordinator.on_subsequent_bar
+
+    def capture_evaluate(self, *args, **kwargs):
+        received.append(kwargs)
+        return original_evaluate(self, *args, **kwargs)
+
+    def capture_subsequent(self, *args, **kwargs):
+        result = original_subsequent(self, *args, **kwargs)
+        subsequent.append(result)
+        return result
+
+    monkeypatch.setattr(S3ShadowCoordinator, "evaluate_setup", capture_evaluate)
+    monkeypatch.setattr(S3ShadowCoordinator, "on_subsequent_bar", capture_subsequent)
+    port = production.create_production_port()
+    assert type(port.public_source) is production.IndexedPublicCycleSourceV1
+    assert type(port.inputs_provider) is production.IndexedProductionEventInputsV1
+    with OpsRepository(path) as repository:
+        resolved = port.inputs_provider.resolve(repository, event)
+        assert resolved is not None
+        assert received
+        s3_args = received[-1]
+        assert s3_args["residuals"]
+        assert len(s3_args["residuals"]) >= 7 * 24 * 60 + 1
+        assert s3_args["current_vwap"] is not None
+        assert s3_args["trades"]
+        assert s3_args["trade_health"].state == PublicSourceStateV2.HEALTHY_CURRENT
+        assert s3_args["current_vwap"].trade_refs
+        assert subsequent and any(item.candidate is not None for item in subsequent)
+        s3_candidates = [item for item in resolved.candidates if item.policy_hash == S3_POLICY.policy_hash]
+        assert s3_candidates
+        assert all(item.quantity is None for item in s3_candidates)
+        candidate_set = assemble_multisleeve_research_candidate_set(
+            repository, universe=resolved.universe, decision_event_id=event.event_id,
+            cutoff_ns=event.information_cutoff_ns, candidates=resolved.candidates,
+            policies={policy.policy_hash: policy for policy in (S1_POLICY, S2_POLICY, S3_POLICY)},
+            scanner_evidence_refs=resolved.scanner_evidence_refs,
+        )
+        accept_research_candidates(
+            repository, candidate_set, resolved.candidates,
+            accepted_at_ns=event.information_cutoff_ns,
+        )
+        assert {item.candidate_id for item in candidate_set.candidates}.intersection(
+            item.candidate_id for item in s3_candidates
+        )
+        assert product.content_hash in {
+            entry.artifact_ref for entry in repository.artifact_entries("ProductContractV2")
+        }
 
 
 def test_decision_calendar_v2_v1_wire_values_round_trip_unchanged():
@@ -1037,6 +1403,28 @@ def test_builtin_event_handoff_waits_for_collector_reconnect_reconciliation(tmp_
             event.available_at_ns,
             {"event": event.to_dict()},
         ))
+        observation = RawObservationV2.build(
+            instrument_revision=KEY.contract_revision, source_id="PUBLIC_MARKET",
+            event_type="TICKER_MARK_INDEX_FUNDING_OI", event_at_ns=CUTOFF,
+            received_at_ns=CUTOFF, ingested_at_ns=CUTOFF, available_at_ns=CUTOFF,
+            translation_version="session027-recovery-test-v1", payload={"bid1Price": "1", "ask1Price": "2"},
+        )
+        observation_ref = sha256_json({
+            "artifact_type": "PublicObservationIndexV2", "record_id": observation.record_id,
+        })
+        repo.register_artifact(ArtifactIndexEntryV2(
+            observation_ref, "PublicObservationIndexV2", observation.content_hash,
+            observation.available_at_ns, observation.available_at_ns,
+            {"record_id": observation.record_id, "source_id": "PUBLIC_MARKET",
+             "instrument_revision": KEY.contract_revision, "instrument_key_json": KEY.to_canonical_json(),
+             "event_at_ns": observation.event_at_ns, "published_at_ns": None,
+             "raw_payload_hash": observation.raw_payload_hash},
+        ))
+        old_epoch = _index_recovery_epoch(repo, started_at_ns=CUTOFF - 2, epoch_index=1)
+        stale_ref = _index_reconnect_reconciliation(
+            repo, source_id="PUBLIC_MARKET", epoch_ref=old_epoch, at_ns=CUTOFF - 1,
+            observation_refs=(observation_ref,),
+        )
         repo.record_source_health(PublicSourceHealthV2(
             "PUBLIC_MARKET",
             CUTOFF,
@@ -1054,12 +1442,22 @@ def test_builtin_event_handoff_waits_for_collector_reconnect_reconciliation(tmp_
         assert port._collector_recovery.collector.health.latest("PUBLIC_MARKET").state == (
             PublicSourceStateV2.INCOMPLETE_SNAPSHOT
         )
+        assert not first.cycle.event_ids
+        assert port._collector_recovery.recovery_epoch_ref != old_epoch
+        assert supervisor.repository is not None
+        stale = supervisor.repository.get_artifact(stale_ref)
+        assert stale is not None
+        assert stale.metadata["reconciliation"]["recovery_epoch_ref"] == old_epoch
         clock.now_ns += 10
-        port._collector_recovery.collector.reconcile_after_reconnect(
-            "PUBLIC_MARKET",
-            at_ns=clock.now_ns,
-            complete_snapshot=True,
-            missed_interval_repaired=True,
+        with pytest.raises(ValueError, match="current recovery epoch"):
+            port._collector_recovery.collector.reconcile_after_reconnect(
+                "PUBLIC_MARKET", at_ns=clock.now_ns, complete_snapshot=True,
+                missed_interval_repaired=True, snapshot_refs=(observation_ref,),
+            )
+        _index_reconnect_reconciliation(
+            supervisor.repository, source_id="PUBLIC_MARKET",
+            epoch_ref=port._collector_recovery.recovery_epoch_ref,
+            at_ns=clock.now_ns, observation_refs=(observation_ref,),
         )
         second = supervisor.run_once()
     assert len(second.event_receipts) == 1

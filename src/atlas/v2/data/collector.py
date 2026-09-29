@@ -72,12 +72,14 @@ class PublicCollectorV2:
         clock_ns: Callable[[], int],
         archive: ParquetObservationArchiveV2 | None = None,
         backoff: BoundedBackoffV2 | None = None,
+        required_recovery_epoch_ref: str | None = None,
     ) -> None:
         self.repository = repository
         self.registry = registry
         self.clock_ns = clock_ns
         self.archive = archive
         self.backoff = backoff or BoundedBackoffV2()
+        self.required_recovery_epoch_ref = required_recovery_epoch_ref
         self.store = RawObservationStoreV2()
         self.health = SourceHealthTrackerV2()
         self._last_sequence: dict[tuple[str, str], int] = {}
@@ -418,7 +420,7 @@ class PublicCollectorV2:
 
     def reconcile_after_reconnect(
         self, source_id: str, *, at_ns: int, complete_snapshot: bool, missed_interval_repaired: bool,
-        snapshot_refs: tuple[str, ...] = (),
+        snapshot_refs: tuple[str, ...] = (), recovery_epoch_ref: str | None = None,
     ) -> PublicSourceHealthV2:
         healthy = complete_snapshot and missed_interval_repaired
         state = PublicSourceStateV2.HEALTHY_CURRENT if healthy else PublicSourceStateV2.INCOMPLETE_SNAPSHOT
@@ -426,15 +428,36 @@ class PublicCollectorV2:
         refs = tuple(sorted(set(snapshot_refs)))
         if snapshot_refs and refs != snapshot_refs:
             raise ValueError("snapshot reconciliation refs must be sorted and unique")
+        if (self.required_recovery_epoch_ref is not None
+                and recovery_epoch_ref != self.required_recovery_epoch_ref):
+            raise ValueError("production reconnect reconciliation must bind the current recovery epoch")
+        if recovery_epoch_ref is not None:
+            epoch = self.repository.get_artifact(recovery_epoch_ref)
+            body = epoch.metadata.get("recovery_epoch") if epoch is not None else None
+            if (epoch is None or epoch.artifact_type != "OpsRecoveryEpochV1"
+                    or epoch.content_hash != recovery_epoch_ref or not isinstance(body, Mapping)
+                    or body.get("version") != "OPS_RECOVERY_EPOCH_V1"
+                    or sha256_json(body) != recovery_epoch_ref
+                    or epoch.available_at_ns > at_ns or body.get("started_at_ns", at_ns + 1) > at_ns):
+                raise ValueError("reconnect evidence must bind an exact available ops recovery epoch")
+        if recovery_epoch_ref is not None and healthy and not refs:
+            raise ValueError("healthy reconnect reconciliation requires exact observation refs")
         if healthy and refs:
+            indexed = self.repository.get_artifact_metadata_by_refs(refs)
             for ref in refs:
-                entry = self.repository.get_artifact(ref)
-                if (entry is None or entry.artifact_type != "PublicObservationIndexV2"
-                        or entry.available_at_ns > at_ns or entry.metadata.get("source_id") != source_id):
+                entry = indexed.get(ref)
+                metadata = entry.get("metadata") if entry is not None else None
+                if (entry is None or entry.get("artifact_type") != "PublicObservationIndexV2"
+                        or not isinstance(entry.get("content_hash"), str)
+                        or len(entry["content_hash"]) != 64
+                        or not isinstance(entry.get("available_at_ns"), int)
+                        or entry["available_at_ns"] > at_ns or not isinstance(metadata, Mapping)
+                        or metadata.get("source_id") != source_id):
                     raise ValueError("snapshot reconciliation requires exact available source observation refs")
             body = {"version": "OPS_PUBLIC_SOURCE_RECONCILIATION_V1", "source_id": source_id,
                     "available_at_ns": at_ns, "complete_snapshot": True,
-                    "missed_interval_repaired": True, "evidence_refs": list(refs)}
+                    "missed_interval_repaired": True, "evidence_refs": list(refs),
+                    "recovery_epoch_ref": recovery_epoch_ref}
             ref = sha256_json(body)
             self.repository.register_artifact(ArtifactIndexEntryV2(
                 ref, "OpsPublicSourceReconciliationV1", ref, at_ns, at_ns,

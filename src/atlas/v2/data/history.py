@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
@@ -439,21 +440,29 @@ def reconstruct_public_observations_from_archive(
                         continue
                     index_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
                                              "record_id": observation.record_id})
-                    indexed = repository.get_artifact(index_ref)
-                    if (indexed is None or indexed.artifact_type != "PublicObservationIndexV2"
-                            or indexed.content_hash != observation.content_hash
-                            or indexed.available_at_ns != observation.available_at_ns
-                            or indexed.metadata.get("record_id") != observation.record_id
-                            or indexed.metadata.get("instrument_revision") != instrument_revision
-                            or indexed.metadata.get("event_at_ns") != observation.event_at_ns
-                            or indexed.metadata.get("published_at_ns") != observation.published_at_ns
-                            or indexed.metadata.get("raw_payload_hash") != observation.raw_payload_hash):
-                        continue
                     found[observation.record_id] = IndexedPublicObservationV2(observation, raw_bytes, index_ref)
         except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
             continue
-    rows = sorted(found.values(), key=lambda item: (item.observation.available_at_ns,
-                                                    item.observation.record_id))
+    indexed = repository.get_artifact_metadata_by_refs(
+        tuple(item.observation_index_ref for item in found.values())
+    )
+    rows = []
+    for item in found.values():
+        observation = item.observation
+        entry = indexed.get(item.observation_index_ref)
+        metadata = entry.get("metadata") if entry is not None else None
+        if (entry is None or entry.get("artifact_type") != "PublicObservationIndexV2"
+                or entry.get("content_hash") != observation.content_hash
+                or entry.get("available_at_ns") != observation.available_at_ns
+                or not isinstance(metadata, Mapping)
+                or metadata.get("record_id") != observation.record_id
+                or metadata.get("instrument_revision") != instrument_revision
+                or metadata.get("event_at_ns") != observation.event_at_ns
+                or metadata.get("published_at_ns") != observation.published_at_ns
+                or metadata.get("raw_payload_hash") != observation.raw_payload_hash):
+            continue
+        rows.append(item)
+    rows.sort(key=lambda item: (item.observation.available_at_ns, item.observation.record_id))
     return tuple(rows[-limit:])
 
 
@@ -494,6 +503,7 @@ def reconstruct_causal_bars_from_archive(
         return ()
 
     selected: dict[int, tuple[tuple[int, str], IndexedCausalBarV2]] = {}
+    indexed_candidates: dict[str, tuple[int, tuple[int, str], IndexedCausalBarV2]] = {}
     examined = 0
     columns = {
         "record_id",
@@ -575,26 +585,30 @@ def reconstruct_causal_bars_from_archive(
                     if bar.content_hash != sha256_json(raw_bar):
                         continue
                     ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": observation.record_id})
-                    indexed = repository.get_artifact(ref)
-                    if (
-                        indexed is None
-                        or indexed.artifact_type != "PublicObservationIndexV2"
-                        or indexed.content_hash != observation.content_hash
-                        or indexed.available_at_ns != observation.available_at_ns
-                        or indexed.metadata.get("record_id") != observation.record_id
-                        or indexed.metadata.get("instrument_revision") != key.contract_revision
-                        or indexed.metadata.get("instrument_key_json") != key.to_canonical_json()
-                        or indexed.metadata.get("availability_class") != view.value
-                        or indexed.metadata.get("replay_available_at_ns") != observation.replay_available_at_ns
-                        or indexed.metadata.get("bar_content_hash") != bar.content_hash
-                        or indexed.metadata.get("raw_payload_hash") != observation.raw_payload_hash
-                    ):
-                        continue
                     revision_key = causal_revision_order_key(available, observation.record_id)
-                    current = selected.get(bar.open_at_ns)
-                    if current is None or revision_key > current[0]:
-                        selected[bar.open_at_ns] = (revision_key, IndexedCausalBarV2(bar, ref))
+                    indexed_candidates[ref] = (bar.open_at_ns, revision_key, IndexedCausalBarV2(bar, ref))
         except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
             continue
+    indexed = repository.get_artifact_metadata_by_refs(tuple(indexed_candidates))
+    for ref, (open_at, revision_key, candidate) in indexed_candidates.items():
+        entry = indexed.get(ref)
+        metadata = entry.get("metadata") if entry is not None else None
+        bar = candidate.bar
+        observation = bar.raw
+        if (entry is None or entry.get("artifact_type") != "PublicObservationIndexV2"
+                or entry.get("content_hash") != observation.content_hash
+                or entry.get("available_at_ns") != observation.available_at_ns
+                or not isinstance(metadata, Mapping)
+                or metadata.get("record_id") != observation.record_id
+                or metadata.get("instrument_revision") != key.contract_revision
+                or metadata.get("instrument_key_json") != key.to_canonical_json()
+                or metadata.get("availability_class") != view.value
+                or metadata.get("replay_available_at_ns") != observation.replay_available_at_ns
+                or metadata.get("bar_content_hash") != bar.content_hash
+                or metadata.get("raw_payload_hash") != observation.raw_payload_hash):
+            continue
+        current = selected.get(open_at)
+        if current is None or revision_key > current[0]:
+            selected[open_at] = (revision_key, candidate)
     rows = [selected[open_at][1] for open_at in sorted(selected)]
     return tuple(rows[-limit:])

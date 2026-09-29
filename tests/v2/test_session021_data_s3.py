@@ -104,14 +104,16 @@ def _s3_fixture_bar(key, interval: BarIntervalV2, opened: int, close: Decimal, a
     )
 
 
-def _production_s3_setup_inputs(repository: OpsRepository) -> dict[str, Any]:
+def _production_s3_setup_inputs(
+    repository: OpsRepository, *, cutoff_ns: int | None = None, innovation_scale: float = 1.0,
+) -> dict[str, Any]:
     """Build a deterministic seven-day causal prefix and all setup evidence."""
-    cutoff = 8 * DAY_NS + 12 * 60 * 60 * NS
+    cutoff = cutoff_ns if cutoff_ns is not None else 8 * DAY_NS + 12 * 60 * 60 * NS
     first_close = cutoff - (AR_OBSERVATION_COUNT - 1) * BarIntervalV2.M1.duration_ns
     bars: list[CausalBarV2] = []
     snapshots: list[TradeVwapSnapshotV2] = []
     residuals = []
-    prior_close = 0.001
+    prior_close = 0.001 * innovation_scale
     vwap_entries = []
     source_id = "PUBLIC_TRADES"
     current_day_start = cutoff - cutoff % DAY_NS
@@ -122,7 +124,7 @@ def _production_s3_setup_inputs(repository: OpsRepository) -> dict[str, Any]:
         # Stable AR-like history with a small deterministic innovation.
         residual_value = prior_close
         if index:
-            residual_value = 0.95 * prior_close + 0.00002 * math.sin(index * 0.271)
+            residual_value = 0.95 * prior_close + 0.00002 * innovation_scale * math.sin(index * 0.271)
         prior_close = residual_value
         close_price = Decimal(str(100.0 * math.exp(residual_value)))
         delayed = index == AR_OBSERVATION_COUNT // 2

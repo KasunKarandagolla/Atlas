@@ -22,6 +22,8 @@ from atlas.domain.risk import RiskPolicy
 from .._serialization import canonical_json, json_value, sha256_json, sha256_ref
 from ..contracts import CandidateActionV2, CandidateSetV2, PolicySpecV2
 from ..data.bars import BarIntervalV2, CausalBarStoreV2
+from ..data.binance import translate_agg_trades
+from ..data.bybit import translate_recent_trades
 from ..data.collector import PublicCollectorV2
 from ..data.health import PublicSourceHealthV2
 from ..data.history import (
@@ -87,7 +89,16 @@ from ..strategies.s1_trend import (
     S1ShadowCoordinator,
 )
 from ..strategies.s2_breakout import S2_POLICY, S2ShadowCoordinator
-from ..strategies.s3_mean_reversion import S3_POLICY, S3ShadowCoordinator
+from ..strategies.s3_mean_reversion import (
+    S3_POLICY,
+    CausalTradeV2,
+    ResidualObservationV2,
+    S3ShadowCoordinator,
+    TradeVwapSnapshotV2,
+    persist_trade_vwap_v2,
+    residual_observation,
+    utc_day_trade_vwap,
+)
 from .ops_supervisor import (
     PIPELINE_STAGE_ORDER,
     OpsCycleBatchV1,
@@ -255,7 +266,11 @@ class IndexedPublicCycleSourceV1:
             for entry in repository.artifact_entries("PublicObservationIndexV2")
             if isinstance(entry.metadata.get("source_id"), str)
         )
-        _reconcile_public_sources(repository, collector, tuple(sorted(source_ids)), now_ns=now_ns)
+        recovery_epoch_ref = _current_recovery_epoch_ref(repository, now_ns=now_ns)
+        _reconcile_public_sources(
+            repository, collector, tuple(sorted(source_ids)), now_ns=now_ns,
+            recovery_epoch_ref=recovery_epoch_ref,
+        )
 
         events: list[OpsDecisionEventV1] = []
         refs: list[str] = []
@@ -278,6 +293,12 @@ class IndexedPublicCycleSourceV1:
             state is not None and state.data_eligible and state.available_at_ns <= now_ns
             for state in health_states.values()
         )
+        if not healthy:
+            # Durable events remain queued until this recovery epoch has exact
+            # source-health reconciliation evidence for every required source.
+            events.clear()
+            refs.clear()
+            seen_event_ids.clear()
         if healthy:
             for product in collector.registry.contracts():
                 bars = reconstruct_causal_bars_from_archive(
@@ -356,15 +377,92 @@ def _ops_receipt_identity_ref(event_id: str) -> str:
     return sha256_json({"artifact_type": "OpsSupervisorReceiptIdentityV1", "event_id": event_id})
 
 
+def _new_recovery_epoch(repository: OpsRepository, *, started_at_ns: int) -> str:
+    """Persist a monotone, content-addressed epoch for this supervisor recovery."""
+    prior: list[tuple[int, str]] = []
+    epoch_entries = repository.artifact_entries("OpsRecoveryEpochV1")
+    for entry in epoch_entries:
+        body = entry.metadata.get("recovery_epoch")
+        if (not isinstance(body, Mapping) or entry.content_hash != entry.artifact_ref
+                or sha256_json(body) != entry.artifact_ref
+                or body.get("version") != "OPS_RECOVERY_EPOCH_V1"
+                or type(body.get("epoch_index")) is not int or body["epoch_index"] <= 0
+                or type(body.get("started_at_ns")) is not int or body.get("authority") != "ZERO"
+                or body.get("started_at_ns") != entry.available_at_ns):
+            continue
+        if entry.available_at_ns > started_at_ns:
+            raise ValueError("ops recovery epoch clock moved behind persisted recovery evidence")
+        prior.append((body["epoch_index"], entry.artifact_ref))
+    prior.sort()
+    indices = [index for index, _ref in prior]
+    if len(indices) != len(set(indices)) or indices != list(range(1, len(indices) + 1)):
+        raise ValueError("persisted ops recovery epoch sequence is ambiguous")
+    epoch_by_ref = {entry.artifact_ref: entry for entry in epoch_entries}
+    for position, (_index, ref) in enumerate(prior):
+        body = epoch_by_ref[ref].metadata["recovery_epoch"]
+        expected_previous = prior[position - 1][1] if position else None
+        if body.get("previous_epoch_ref") != expected_previous:
+            raise ValueError("persisted ops recovery epoch chain is invalid")
+    epoch_index = prior[-1][0] + 1 if prior else 1
+    previous_ref = prior[-1][1] if prior else None
+    body = {
+        "version": "OPS_RECOVERY_EPOCH_V1",
+        "epoch_index": epoch_index,
+        "started_at_ns": started_at_ns,
+        "previous_epoch_ref": previous_ref,
+        "authority": "ZERO",
+    }
+    ref = sha256_json(body)
+    repository.register_artifact(ArtifactIndexEntryV2(
+        ref, "OpsRecoveryEpochV1", ref, started_at_ns, started_at_ns,
+        {"recovery_epoch": body},
+    ))
+    return ref
+
+
+def _current_recovery_epoch_ref(repository: OpsRepository, *, now_ns: int) -> str | None:
+    valid: list[tuple[int, str]] = []
+    for entry in repository.artifact_entries("OpsRecoveryEpochV1"):
+        body = entry.metadata.get("recovery_epoch")
+        if (not isinstance(body, Mapping) or entry.content_hash != entry.artifact_ref
+                or sha256_json(body) != entry.artifact_ref
+                or body.get("version") != "OPS_RECOVERY_EPOCH_V1"
+                or type(body.get("epoch_index")) is not int
+                or type(body.get("started_at_ns")) is not int or body.get("authority") != "ZERO"
+                or body.get("started_at_ns") != entry.available_at_ns):
+            continue
+        valid.append((body["epoch_index"], entry.artifact_ref))
+    if not valid:
+        return None
+    valid.sort()
+    indices = [index for index, _ref in valid]
+    if len(indices) != len(set(indices)) or indices != list(range(1, len(indices) + 1)):
+        return None
+    entries = {entry.artifact_ref: entry for entry in repository.artifact_entries("OpsRecoveryEpochV1")}
+    for position, (_index, ref) in enumerate(valid):
+        entry = entries[ref]
+        body = entry.metadata["recovery_epoch"]
+        previous_ref = valid[position - 1][1] if position else None
+        if body.get("previous_epoch_ref") != previous_ref:
+            return None
+    if entries[valid[-1][1]].available_at_ns > now_ns:
+        return None
+    return valid[-1][1]
+
+
 def _reconcile_public_sources(
     repository: OpsRepository,
     collector: PublicCollectorV2,
     source_ids: tuple[str, ...],
     *,
     now_ns: int,
+    recovery_epoch_ref: str | None,
 ) -> None:
     """Reconcile only from a persisted, exact public snapshot/gap-repair receipt."""
     by_source: dict[str, list[ArtifactIndexEntryV2]] = {}
+    observation_entries = {
+        item.artifact_ref: item for item in repository.artifact_entries("PublicObservationIndexV2")
+    }
     for entry in repository.artifact_entries("OpsPublicSourceReconciliationV1"):
         body = entry.metadata.get("reconciliation")
         if isinstance(body, Mapping):
@@ -382,6 +480,8 @@ def _reconcile_public_sources(
                     or sha256_json(body) != entry.artifact_ref
                     or body.get("version") != "OPS_PUBLIC_SOURCE_RECONCILIATION_V1"
                     or body.get("source_id") != source_id
+                    or recovery_epoch_ref is None
+                    or body.get("recovery_epoch_ref") != recovery_epoch_ref
                     or body.get("available_at_ns") != entry.available_at_ns
                     or entry.available_at_ns > now_ns
                     or body.get("complete_snapshot") is not True
@@ -392,7 +492,7 @@ def _reconcile_public_sources(
                 continue
             evidence_ok = True
             for ref in refs:
-                item = repository.get_artifact(str(ref))
+                item = observation_entries.get(str(ref))
                 if (item is None or item.artifact_type != "PublicObservationIndexV2"
                         or item.available_at_ns > entry.available_at_ns
                         or item.metadata.get("source_id") != source_id):
@@ -407,7 +507,7 @@ def _reconcile_public_sources(
                 continue
             collector.reconcile_after_reconnect(
                 source_id, at_ns=at_ns, complete_snapshot=True, missed_interval_repaired=True,
-                snapshot_refs=tuple(refs),
+                snapshot_refs=tuple(refs), recovery_epoch_ref=recovery_epoch_ref,
             )
             break
 
@@ -500,12 +600,219 @@ def _causal_bar_entry(bar: Any, source_ref: str) -> ArtifactIndexEntryV2:
     )
 
 
+def _indexed_s3_vwaps(
+    repository: OpsRepository, key: InstrumentKeyV2, *, cutoff_ns: int,
+) -> tuple[TradeVwapSnapshotV2, ...]:
+    snapshots: list[TradeVwapSnapshotV2] = []
+    for entry in repository.artifact_entries("S3TradeVwapSnapshotV2"):
+        if entry.available_at_ns > cutoff_ns:
+            continue
+        body = entry.metadata.get("vwap")
+        if not isinstance(body, Mapping):
+            continue
+        try:
+            snapshot = TradeVwapSnapshotV2.from_dict(body)
+        except (ArithmeticError, TypeError, ValueError):
+            continue
+        if (entry.content_hash == snapshot.content_hash == entry.artifact_ref
+                and entry.available_at_ns == snapshot.available_at_ns
+                and snapshot.key == key and snapshot.information_cutoff_ns <= cutoff_ns
+                and snapshot.available_at_ns <= cutoff_ns
+                and snapshot.replay_view == AvailabilityClassV2.ACTUAL_SYSTEM.value):
+            snapshots.append(snapshot)
+    return tuple(sorted(snapshots, key=lambda item: (item.information_cutoff_ns, item.content_hash)))
+
+
+def _indexed_s3_residuals(
+    repository: OpsRepository, key: InstrumentKeyV2, *, cutoff_ns: int,
+) -> tuple[ResidualObservationV2, ...]:
+    residuals: list[ResidualObservationV2] = []
+    for entry in repository.artifact_entries("S3ResidualObservationV2"):
+        if entry.available_at_ns > cutoff_ns:
+            continue
+        body = entry.metadata.get("residual")
+        if not isinstance(body, Mapping) or body.get("schema_version") != 1:
+            continue
+        raw_key = body.get("key")
+        if not isinstance(raw_key, Mapping):
+            continue
+        residual_value = body.get("residual")
+        if isinstance(residual_value, bool) or not isinstance(residual_value, (int, float)):
+            continue
+        try:
+            residual = ResidualObservationV2(
+                InstrumentKeyV2.from_dict(raw_key), str(body["bar_ref"]), str(body["vwap_ref"]),
+                int(body["close_at_ns"]), int(body["available_at_ns"]), float(residual_value),
+                str(body["replay_view"]),
+            )
+        except (ArithmeticError, KeyError, TypeError, ValueError):
+            continue
+        if (residual.key == key and residual.content_hash == entry.artifact_ref == entry.content_hash
+                and residual.available_at_ns == entry.available_at_ns
+                and residual.available_at_ns <= cutoff_ns and residual.close_at_ns <= cutoff_ns):
+            residuals.append(residual)
+    return tuple(sorted(residuals, key=lambda item: (item.close_at_ns, item.content_hash)))
+
+
+def _indexed_s3_trades(
+    repository: OpsRepository,
+    archive_root: Path,
+    key: InstrumentKeyV2,
+    *,
+    cutoff_ns: int,
+    health_by_source: Mapping[str, PublicSourceHealthV2],
+) -> tuple[tuple[CausalTradeV2, ...], PublicSourceHealthV2 | None, tuple[str, ...]]:
+    observations = reconstruct_public_observations_from_archive(
+        repository, archive_root, instrument_revision=key.contract_revision,
+        information_cutoff_ns=cutoff_ns, event_types=("TRADE", "AGG_TRADE"), limit=100_000,
+    )
+    translated: list[CausalTradeV2] = []
+    for item in observations:
+        observation = item.observation
+        if (observation.availability_class != AvailabilityClassV2.ACTUAL_SYSTEM
+                or observation.event_at_ns is None or observation.event_at_ns > cutoff_ns
+                or observation.received_at_ns > cutoff_ns or observation.available_at_ns > cutoff_ns
+                or (observation.published_at_ns is not None and observation.published_at_ns > cutoff_ns)):
+            continue
+        indexed = repository.get_artifact(item.observation_index_ref)
+        if (indexed is None or indexed.metadata.get("instrument_key_json") != key.to_canonical_json()
+                or indexed.metadata.get("source_id") != observation.source_id):
+            continue
+        try:
+            payload = json.loads(item.raw_payload_bytes)
+            if not isinstance(payload, Mapping):
+                continue
+            if key.venue.value == "BYBIT" and observation.event_type == "TRADE":
+                translated_row, = translate_recent_trades(
+                    (payload,), key=key, received_at_ns=observation.received_at_ns,
+                    source_id=observation.source_id,
+                )
+                identity = payload.get("execId", payload.get("i"))
+                price, quantity = Decimal(str(payload["p"])), Decimal(str(payload["v"]))
+                raw_side = payload.get("S")
+                aggressor = {"Buy": "BUY", "Sell": "SELL"}.get(str(raw_side))
+                trade_id = str(identity)
+            elif key.venue.value == "BINANCE" and observation.event_type == "AGG_TRADE":
+                translated_row, = translate_agg_trades(
+                    (payload,), key=key, received_at_ns=observation.received_at_ns,
+                    source_id=observation.source_id,
+                )
+                identity = payload.get("a")
+                price, quantity = Decimal(str(payload["p"])), Decimal(str(payload["q"]))
+                buyer_is_maker = payload.get("m")
+                aggressor = ("SELL" if buyer_is_maker else "BUY") if isinstance(buyer_is_maker, bool) else None
+                trade_id = str(identity)
+            else:
+                continue
+            if (translated_row.record_id != observation.record_id
+                    or translated_row.raw_payload_hash != observation.raw_payload_hash
+                    or translated_row.event_at_ns != observation.event_at_ns
+                    or translated_row.sequence != observation.sequence):
+                continue
+            translated.append(CausalTradeV2(
+                key, item.observation_index_ref, observation.source_id, trade_id,
+                observation.event_at_ns, observation.received_at_ns, observation.available_at_ns,
+                price, quantity, aggressor,
+            ))
+        except (ArithmeticError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            continue
+
+    available_sources = {
+        item.source_id for item in translated
+        if item.effective_available_at(AvailabilityClassV2.ACTUAL_SYSTEM.value) is not None
+    }
+    current_sources = {
+        source_id for source_id in available_sources
+        if (source_id in health_by_source
+            and health_by_source[source_id].available_at_ns <= cutoff_ns
+            and health_by_source[source_id].observed_at_ns <= cutoff_ns
+            and health_by_source[source_id].data_eligible)
+    }
+    if len(current_sources) != 1:
+        return (), None, ()
+    source_id = next(iter(current_sources))
+    health = health_by_source[source_id]
+    selected = tuple(item for item in translated if item.source_id == source_id)
+    refs = tuple(sorted({item.raw_observation_ref for item in selected} | {health.content_hash}))
+    return selected, health, refs
+
+
+def _resolve_indexed_s3_inputs(
+    repository: OpsRepository,
+    archive_root: Path,
+    key: InstrumentKeyV2,
+    *,
+    cutoff_ns: int,
+    completed_1m: Sequence[Any],
+    health_by_source: Mapping[str, PublicSourceHealthV2],
+) -> tuple[tuple[ResidualObservationV2, ...], TradeVwapSnapshotV2 | None,
+           tuple[CausalTradeV2, ...], PublicSourceHealthV2 | None, tuple[str, ...]]:
+    """Rebuild S3-only typed inputs from exact indexed, cutoff-available public evidence."""
+    trades, trade_health, trade_refs = _indexed_s3_trades(
+        repository, archive_root, key, cutoff_ns=cutoff_ns, health_by_source=health_by_source,
+    )
+    snapshots = _indexed_s3_vwaps(repository, key, cutoff_ns=cutoff_ns)
+    residuals = list(_indexed_s3_residuals(repository, key, cutoff_ns=cutoff_ns))
+    residual_by_bar: dict[str, ResidualObservationV2] = {}
+    for item in residuals:
+        prior = residual_by_bar.get(item.bar_ref)
+        if prior is None or (item.available_at_ns, item.content_hash) > (prior.available_at_ns, prior.content_hash):
+            residual_by_bar[item.bar_ref] = item
+
+    snapshots_by_cutoff: dict[int, list[TradeVwapSnapshotV2]] = {}
+    for snapshot in snapshots:
+        snapshots_by_cutoff.setdefault(snapshot.information_cutoff_ns, []).append(snapshot)
+    for bar in completed_1m:
+        if (not bar.final or bar.interval != BarIntervalV2.M1 or bar.instrument_revision != key.contract_revision
+                or bar.close_at_ns > cutoff_ns or bar.raw.available_at_ns > cutoff_ns
+                or bar.content_hash in residual_by_bar):
+            continue
+        matching = snapshots_by_cutoff.get(bar.close_at_ns, ())
+        if len({item.content_hash for item in matching}) != 1:
+            continue
+        selected_snapshot = next(iter(matching), None)
+        if selected_snapshot is None:
+            continue
+        try:
+            residual = residual_observation(bar, selected_snapshot)
+        except (ArithmeticError, TypeError, ValueError):
+            continue
+        if residual.available_at_ns <= cutoff_ns:
+            existing = repository.get_artifact(residual.content_hash)
+            if existing is None:
+                repository.register_artifact(ArtifactIndexEntryV2(
+                    residual.content_hash, "S3ResidualObservationV2", residual.content_hash,
+                    residual.available_at_ns, residual.available_at_ns, {"residual": residual.to_dict()},
+                ))
+            residual_by_bar[bar.content_hash] = residual
+
+    exact_snapshots = [item for item in snapshots if item.information_cutoff_ns == cutoff_ns]
+    current_vwap: TradeVwapSnapshotV2 | None = None
+    if len({item.content_hash for item in exact_snapshots}) == 1:
+        current_vwap = exact_snapshots[0]
+    elif not exact_snapshots and trades and trade_health is not None:
+        current_vwap = utc_day_trade_vwap(
+            trades, key=key, cutoff_ns=cutoff_ns, source_health=trade_health,
+        )
+        if current_vwap is not None:
+            persist_trade_vwap_v2(repository, current_vwap)
+
+    resolved = tuple(sorted(residual_by_bar.values(), key=lambda item: (item.close_at_ns, item.content_hash)))
+    causal_refs = set(trade_refs)
+    causal_refs.update(item.content_hash for item in resolved)
+    causal_refs.update(item.vwap_ref for item in resolved)
+    if current_vwap is not None:
+        causal_refs.update((current_vwap.content_hash, *current_vwap.trade_refs, current_vwap.source_health_ref))
+    return resolved, current_vwap, trades, trade_health, tuple(sorted(causal_refs))
+
+
 @dataclass(frozen=True)
 class ProductionCollectorRecoveryV1:
     collector: PublicCollectorV2
     restored_subscription_plan: SubscriptionPlanV2
     required_source_ids: tuple[str, ...]
     had_prior_source_state: bool
+    recovery_epoch_ref: str
 
 
 class ProductionOpsCyclePortV1:
@@ -529,6 +836,7 @@ class ProductionOpsCyclePortV1:
         """Restore collector cursors, active watches and subscriptions first."""
         if repository.read_only:
             raise ValueError("production ops composition requires the supervisor-owned writable repository")
+        recovery_epoch_ref = _new_recovery_epoch(repository, started_at_ns=now_ns)
         registry = InstrumentRegistryV2()
         for entry in repository.artifact_entries("ProductContractV2"):
             body = entry.metadata.get("product")
@@ -543,6 +851,7 @@ class ProductionOpsCyclePortV1:
             registry=registry,
             clock_ns=lambda: now_ns,
             archive=archive,
+            required_recovery_epoch_ref=recovery_epoch_ref,
         )
         tiers = {product.key: ComputeTierV2.TIER_1 for product in registry.contracts()}
         restart = collector.restore_subscriptions(tiers, now_ns=now_ns)
@@ -558,7 +867,7 @@ class ProductionOpsCyclePortV1:
             else:
                 states.append(OpsSourceStateV1(source_id, "UNKNOWN", now_ns, now_ns))
         self._collector_recovery = ProductionCollectorRecoveryV1(
-            collector, restart.subscriptions, source_ids, had_prior
+            collector, restart.subscriptions, source_ids, had_prior, recovery_epoch_ref
         )
         self._recovery_calls += 1
         return OpsRecoverySnapshotV1(
@@ -1510,7 +1819,22 @@ def _compose_public_event_inputs(
                 source_refs.update((item.observation_index_ref, item.bar.content_hash))
         histories[product.key.to_canonical_json()] = frames
     if causal_bar_entries:
-        repository.register_artifacts(tuple(causal_bar_entries[key] for key in sorted(causal_bar_entries)))
+        existing_bars = repository.get_artifact_metadata_by_refs(tuple(causal_bar_entries))
+        missing_bar_entries: list[ArtifactIndexEntryV2] = []
+        for ref, entry in sorted(causal_bar_entries.items()):
+            existing = existing_bars.get(ref)
+            if existing is None:
+                missing_bar_entries.append(entry)
+                continue
+            metadata = existing.get("metadata")
+            if (existing.get("artifact_type") != "CausalBarV2"
+                    or existing.get("content_hash") != ref
+                    or existing.get("available_at_ns") != entry.available_at_ns
+                    or not isinstance(metadata, Mapping)
+                    or canonical_json(metadata.get("bar")) != canonical_json(entry.metadata.get("bar"))):
+                raise ValueError("causal bar ref already indexes conflicting immutable evidence")
+        if missing_bar_entries:
+            repository.register_artifacts(tuple(missing_bar_entries))
 
     primary_frames = histories.get(trigger_product.key.to_canonical_json(), {})
     primary_m15 = primary_frames.get(BarIntervalV2.M15, ())
@@ -1643,11 +1967,19 @@ def _compose_public_event_inputs(
             source_refs.update(feature.envelope.input_refs)
             if gate is not None:
                 source_refs.add(gate.evidence_ref)
+            s3_residuals, s3_current_vwap, s3_trades, s3_trade_health, s3_refs = _resolve_indexed_s3_inputs(
+                repository, archive_root, trigger_product.key,
+                cutoff_ns=event.information_cutoff_ns,
+                completed_1m=frames.get(BarIntervalV2.M1, ()),
+                health_by_source=latest_health,
+            )
+            source_refs.update(s3_refs)
             waiting = [watch for watch in repository.list_active_watches()
                        if watch.key == trigger_product.key and watch.state.value == "WAITING_FOR_EVENT"]
+            s1_waiting = [watch for watch in waiting if watch.policy_hash == S1_POLICY.policy_hash]
             s1 = S1ShadowCoordinator(repository)
-            if waiting:
-                for watch in waiting:
+            if s1_waiting:
+                for watch in s1_waiting:
                     decision = s1.on_bar(watch.watch_id, join, feature, event_gate=gate,
                                          bbo=quote, mark_index=mark)
                     if decision.candidate is not None:
@@ -1661,14 +1993,45 @@ def _compose_public_event_inputs(
             )
             if s2.candidate is not None:
                 candidates[s2.candidate.candidate_id] = s2.candidate
-            # S3 still receives its real typed causal history. Missing trade VWAP,
-            # 1M residuals or health remain its own NOT_ESTIMABLE contract.
-            S3ShadowCoordinator(repository).evaluate_setup(
+            s3 = S3ShadowCoordinator(repository)
+            completed_m1 = tuple(
+                bar for bar in frames.get(BarIntervalV2.M1, ())
+                if bar.final and bar.close_at_ns <= event.information_cutoff_ns
+                and bar.raw.available_at_ns <= event.information_cutoff_ns
+            )
+            for watch in waiting:
+                if watch.policy_hash != S3_POLICY.policy_hash:
+                    continue
+                trigger_m1 = next(
+                    (bar for bar in reversed(completed_m1) if bar.close_at_ns > watch.created_at_ns), None,
+                )
+                if trigger_m1 is None:
+                    continue
+                setup = repository.get_artifact(watch.thesis_hash)
+                setup_state = setup.metadata.get("state") if setup is not None else None
+                sigma = setup_state.get("residual_sigma") if isinstance(setup_state, Mapping) else None
+                frozen = [item for item in _indexed_s3_vwaps(
+                    repository, watch.key, cutoff_ns=event.information_cutoff_ns,
+                ) if item.content_hash in watch.evidence_refs]
+                if len(frozen) != 1 or isinstance(sigma, bool) or not isinstance(sigma, (int, float)):
+                    continue
+                result = s3.on_subsequent_bar(
+                    watch_id=watch.watch_id, trigger=trigger_m1,
+                    cutoff_ns=event.information_cutoff_ns, frozen_vwap=frozen[0],
+                    residual_sigma=float(sigma), quote=quote, tick_size=tick_size,
+                    feature=feature, universe=universe, event_gate=gate,
+                    bar_health=trigger_health,
+                )
+                if result.candidate is not None:
+                    candidates[result.candidate.candidate_id] = result.candidate
+            # Missing trade VWAP, 1M residuals or health remain S3's existing
+            # NOT_ESTIMABLE contract; the coordinator receives only resolved evidence.
+            s3.evaluate_setup(
                 key=trigger_product.key, cutoff_ns=event.information_cutoff_ns,
-                residuals=(), current_vwap=None, trades=(),
+                residuals=s3_residuals, current_vwap=s3_current_vwap, trades=s3_trades,
                 completed_1m=frames.get(BarIntervalV2.M1, ()), context=join,
                 feature=feature, quote=quote, tick_size=tick_size, universe=universe,
-                event_gate=gate, bar_health=trigger_health, trade_health=trigger_health,
+                event_gate=gate, bar_health=trigger_health, trade_health=s3_trade_health,
             )
 
     scanner_refs: dict[str, tuple[str, ...]] = {}

@@ -605,11 +605,21 @@ class OpsRepository:
             else:
                 encoded[entry.artifact_ref] = (entry, metadata_json)
         with self._transaction() as connection:
+            existing: dict[str, sqlite3.Row] = {}
+            refs = tuple(encoded)
+            for offset in range(0, len(refs), 500):
+                ref_batch = refs[offset : offset + 500]
+                if not ref_batch:
+                    continue
+                marks = ",".join("?" for _ in ref_batch)
+                rows = connection.execute(
+                    f"SELECT artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json "
+                    f"FROM artifact_index WHERE artifact_ref IN ({marks})",
+                    ref_batch,
+                ).fetchall()
+                existing.update((row["artifact_ref"], row) for row in rows)
             for entry, metadata_json in encoded.values():
-                row = connection.execute(
-                    "SELECT * FROM artifact_index WHERE artifact_ref=?",
-                    (entry.artifact_ref,),
-                ).fetchone()
+                row = existing.get(entry.artifact_ref)
                 if row is not None:
                     stored_tuple = (
                         row["artifact_type"],
