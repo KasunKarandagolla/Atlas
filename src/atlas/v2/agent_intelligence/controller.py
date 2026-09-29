@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
@@ -9,8 +10,17 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from atlas.v2._serialization import sha256_json
-from atlas.v2.agent_intelligence.broker import BrokerCapabilityV1, BrokerCapabilityV2
+from atlas.v2.agent_intelligence.broker import (
+    ActionAssessmentBrokerCapabilityV1,
+    BrokerCapabilityV1,
+    BrokerCapabilityV2,
+)
 from atlas.v2.agent_intelligence.contracts import (
+    ActionAssessmentDispatchAuthorizationV1,
+    ActionAssessmentProviderProfileV1,
+    ActionAssessmentRequestV2,
+    ActionAssessmentResultV2,
+    ActionAssessmentValidationReceiptV1,
     AgentJobStateV1,
     AgentModelProfile,
     AgentModelProfileV1,
@@ -23,11 +33,20 @@ from atlas.v2.agent_intelligence.contracts import (
     ResearchProposalRequestV1,
     ResearchProposalV1,
     RevisionStatusV1,
+    SealedActionAssessmentPacketV1,
 )
 from atlas.v2.agent_intelligence.evidence import BoundedResearchReadService, collect_job_evidence
-from atlas.v2.agent_intelligence.persistence import AGENT_NAMESPACE_WRITER_OWNER, AgentJobRepository
+from atlas.v2.agent_intelligence.persistence import (
+    AGENT_NAMESPACE_WRITER_OWNER,
+    ActionAssessmentRepository,
+    AgentJobRepository,
+)
 from atlas.v2.agent_intelligence.provider import ResearchProviderUnavailable
-from atlas.v2.agent_intelligence.validation import validate_proposal_output, validate_request_evidence_availability
+from atlas.v2.agent_intelligence.validation import (
+    validate_action_assessment_output,
+    validate_proposal_output,
+    validate_request_evidence_availability,
+)
 from atlas.v2.agent_intelligence.worker import AgentWorkerSupervisor, WorkerSandboxUnavailable
 
 LEASE_NS = 180_000_000_000
@@ -264,6 +283,252 @@ class ResearchJobController:
                  authoritative: bool) -> ResearchJobOutcomeV1:
         job = self._jobs.get_job(job_id)
         return ResearchJobOutcomeV1(job_id, request_key, job.lifecycle_state, proposal, receipt, reason, authoritative)
+
+
+@dataclass(frozen=True)
+class ActionAssessmentRunOutcomeV1:
+    request_id: str
+    packet_ref: str
+    status: str
+    result: ActionAssessmentResultV2 | None
+    reason_code: str | None
+    accepted_shadow_evidence: bool
+
+
+class DirectActionAssessmentBrokerPort:
+    """Direct local-broker port for one structured critic request; no worker or tools."""
+
+    def __init__(self, broker_client: Any) -> None:
+        self._broker_client = broker_client
+
+    def assess(self, *, capability: str, authorization_id: str, attempt_id: str,
+               request: ActionAssessmentRequestV2,
+               packet: SealedActionAssessmentPacketV1) -> ProviderResultV1:
+        return self._broker_client.assess_action_v1(capability=capability,
+            authorization_id=authorization_id, attempt_id=attempt_id, request=request, packet=packet)
+
+
+class ActionAssessmentController:
+    """Persist, dispatch once, and validate hidden zero-authority action assessments."""
+
+    def __init__(self, *, ledger: ActionAssessmentRepository,
+                 profile: ActionAssessmentProviderProfileV1,
+                 capability_signing_key: bytes | None, provider: DirectActionAssessmentBrokerPort | None,
+                 now_ns: Callable[[], int] = time.time_ns) -> None:
+        if capability_signing_key is not None and len(capability_signing_key) < 32:
+            raise ValueError("broker capability signing key must contain at least 256 bits")
+        if profile.price_schedule_hash != ledger.price_schedule.content_hash:
+            raise ValueError("action-assessment profile and persisted price schedule differ")
+        if profile.task_identity != "ActionAssessmentProvider":
+            raise ValueError("action-assessment controller requires its distinct task profile")
+        self._ledger = ledger
+        self._profile = profile
+        self._signing_key = bytes(capability_signing_key) if capability_signing_key is not None else None
+        self._provider = provider
+        self._now_ns = now_ns
+        self._lock = threading.Lock()
+
+    def assess(self, request: ActionAssessmentRequestV2,
+               packet: SealedActionAssessmentPacketV1) -> ActionAssessmentRunOutcomeV1:
+        with self._lock:
+            self._check_binding(request, packet)
+            now = self._now_ns()
+            state = self._ledger.request_state(request.request_id)
+            if state is not None and state["status"] is not None:
+                return self._from_state(request, packet, state)
+            if state is not None and state["authorization_id"] is not None:
+                self._ledger.recover_dispatch_without_result(request.request_id, now_ns=now)
+                return self._from_state(request, packet, self._required_state(request.request_id))
+            if state is not None and state["attempt_id"] is not None:
+                self._record_terminal(request, packet, "UNAVAILABLE", "ATTEMPT_INTERRUPTED_BEFORE_DISPATCH",
+                                      now_ns=now, attempt_id=state["attempt_id"])
+                return self._from_state(request, packet, self._required_state(request.request_id))
+            self._ledger.persist_packet_request(packet, request, now_ns=now)
+            if now >= request.deadline_ns:
+                self._record_terminal(request, packet, "EXPIRED", "ORIGINAL_DECISION_DEADLINE_ELAPSED", now_ns=now)
+                return self._from_state(request, packet, self._required_state(request.request_id))
+            if self._provider is None or self._signing_key is None:
+                self._record_terminal(request, packet, "UNAVAILABLE", "BROKER_UNAVAILABLE", now_ns=now)
+                return self._from_state(request, packet, self._required_state(request.request_id))
+
+            attempt_id = str(uuid.uuid5(uuid.UUID(request.request_id), "action-assessment-attempt-1"))
+            reservation_id = str(uuid.uuid5(uuid.UUID(request.request_id), "action-assessment-cost-reservation-1"))
+            authorization_id = str(uuid.uuid5(uuid.UUID(request.request_id), "action-assessment-dispatch-authorization-1"))
+            capability_nonce = str(uuid.uuid5(uuid.UUID(request.request_id), "action-assessment-capability-nonce-1"))
+            self._ledger.create_attempt(request.request_id, attempt_id=attempt_id, now_ns=now)
+            reserved = self._ledger.price_schedule.worst_case_call_usd(input_tokens=12_000, output_tokens=2_048)
+            try:
+                self._ledger.reserve_cost(request.request_id, attempt_id=attempt_id, reservation_id=reservation_id,
+                                          now_ns=now, reserved_usd=reserved)
+            except Exception:
+                self._record_terminal(request, packet, "UNAVAILABLE", "COST_RESERVATION_UNAVAILABLE",
+                                      now_ns=self._now_ns(), attempt_id=attempt_id)
+                return self._from_state(request, packet, self._required_state(request.request_id))
+
+            authorized_at = self._now_ns()
+            if authorized_at >= request.deadline_ns:
+                self._record_terminal(request, packet, "EXPIRED", "ORIGINAL_DECISION_DEADLINE_ELAPSED",
+                                      now_ns=authorized_at, attempt_id=attempt_id)
+                return self._from_state(request, packet, self._required_state(request.request_id))
+            expires_at = min(authorized_at + 120_000_000_000, request.deadline_ns)
+            authorization = ActionAssessmentDispatchAuthorizationV1.create(
+                task_identity=request.task_identity, packet_ref=packet.packet_ref, packet_hash=packet.content_hash,
+                request_hash=request.content_hash, action_hash=packet.action_hash,
+                profile_hash=self._profile.content_hash, provider_binding_hash=self._profile.provider_binding_hash,
+                price_schedule_hash=self._profile.price_schedule_hash, provider=self._profile.provider,
+                requested_model_id=self._profile.requested_model_id, endpoint=self._profile.endpoint,
+                attempt_id=attempt_id, deadline_ns=request.deadline_ns, authorized_at_ns=authorized_at,
+                expires_at_ns=expires_at, reservation_id=reservation_id, reserved_cost_usd=str(reserved),
+                max_input_tokens=12_000, max_output_tokens=2_048, authorization_id=authorization_id,
+                capability_nonce=capability_nonce)
+            # Durable authorization and reservation are in SQLite before a signed capability exists.
+            self._ledger.persist_dispatch_authorization(authorization, now_ns=authorized_at)
+            capability = ActionAssessmentBrokerCapabilityV1.issue_authorized(
+                authorization=authorization, signing_key=self._signing_key).capability
+            try:
+                provider_result = self._provider.assess(capability=capability,
+                    authorization_id=authorization_id, attempt_id=attempt_id, request=request, packet=packet)
+            except Exception as exc:
+                reason = _critic_failure_code(getattr(exc, "code", "BROKER_UNAVAILABLE"))
+                output_hash = sha256_json({"action_assessment_provider_failure": reason})
+                receipt = ActionAssessmentValidationReceiptV1.create(request_hash=request.content_hash,
+                    packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
+                    provider_output_hash=output_hash, status="UNAVAILABLE", reasons=(reason,), at_ns=self._now_ns())
+                self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=self._now_ns())
+                self._ledger.record_outcome(request.request_id, attempt_id=attempt_id, status="UNAVAILABLE",
+                    result=None, provider_output_hash=output_hash, failure_code=reason,
+                    received_at_ns=self._now_ns(), eligible=False)
+                return self._from_state(request, packet, self._required_state(request.request_id))
+
+            received_at = self._now_ns()
+            raw_hash = sha256_json({"raw_untrusted_action_assessment": provider_result.raw_output})
+            provider_output_hash = sha256_json({"raw_output_hash": raw_hash,
+                "returned_model_id": provider_result.returned_model_id,
+                "failure_code": provider_result.failure_code, "refusal": provider_result.refusal,
+                "truncated": provider_result.truncated,
+                "input_tokens": provider_result.input_tokens, "output_tokens": provider_result.output_tokens})
+            if received_at >= request.deadline_ns:
+                receipt = ActionAssessmentValidationReceiptV1.create(request_hash=request.content_hash,
+                    packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
+                    provider_output_hash=provider_output_hash, status="LATE", reasons=("LATE_OUTPUT_INELIGIBLE",),
+                    at_ns=received_at)
+                self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=received_at)
+                self._ledger.record_outcome(request.request_id, attempt_id=attempt_id, status="EXPIRED",
+                    result=None, provider_output_hash=provider_output_hash, failure_code="LATE_OUTPUT_INELIGIBLE",
+                    received_at_ns=received_at, eligible=False)
+                return self._from_state(request, packet, self._required_state(request.request_id))
+
+            if provider_result.failure_code is not None or provider_result.refusal or provider_result.truncated:
+                reason = _critic_failure_code(provider_result.failure_code or
+                    ("PROVIDER_REFUSAL" if provider_result.refusal else "PROVIDER_TRUNCATED"))
+                status = "REFUSED" if provider_result.refusal else (
+                    "UNAVAILABLE" if reason in {"PROVIDER_TIMEOUT", "RATE_LIMITED", "PROVIDER_UNAVAILABLE",
+                        "BROKER_UNAVAILABLE", "PROVIDER_ERROR"} else "INVALID")
+                receipt = ActionAssessmentValidationReceiptV1.create(request_hash=request.content_hash,
+                    packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
+                    provider_output_hash=provider_output_hash, status=status, reasons=(reason,), at_ns=received_at)
+                self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=received_at)
+                self._ledger.record_outcome(request.request_id, attempt_id=attempt_id, status=status,
+                    result=None, provider_output_hash=provider_output_hash, failure_code=reason,
+                    received_at_ns=received_at, eligible=False)
+                return self._from_state(request, packet, self._required_state(request.request_id))
+
+            if (provider_result.returned_model_id != request.requested_model_id
+                    or provider_result.input_tokens > request.max_input_tokens
+                    or provider_result.output_tokens > request.max_output_tokens):
+                reason = "RETURNED_MODEL_ID_DRIFT" if provider_result.returned_model_id != request.requested_model_id \
+                    else "TOKEN_LIMIT_EXCEEDED"
+                receipt = ActionAssessmentValidationReceiptV1.create(request_hash=request.content_hash,
+                    packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
+                    provider_output_hash=provider_output_hash, status="INVALID", reasons=(reason,), at_ns=received_at)
+                self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=received_at)
+                self._ledger.record_outcome(request.request_id, attempt_id=attempt_id, status="INVALID",
+                    result=None, provider_output_hash=provider_output_hash, failure_code=reason,
+                    received_at_ns=received_at, eligible=False)
+                return self._from_state(request, packet, self._required_state(request.request_id))
+
+            result, reasons = validate_action_assessment_output(request, packet, provider_result.raw_output,
+                                                                 now_ns=received_at)
+            valid = result is not None
+            receipt = ActionAssessmentValidationReceiptV1.create(request_hash=request.content_hash,
+                packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
+                provider_output_hash=provider_output_hash, status="VALID" if valid else "INVALID",
+                reasons=reasons, at_ns=received_at)
+            self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=received_at)
+            self._ledger.record_outcome(request.request_id, attempt_id=attempt_id,
+                status="COMPLETE" if valid else "INVALID", result=result.to_dict() if result is not None else None,
+                provider_output_hash=provider_output_hash, failure_code=None if valid else reasons[0],
+                received_at_ns=received_at, eligible=valid)
+            return self._from_state(request, packet, self._required_state(request.request_id))
+
+    def record_skip(self, receipt_ref: str, reason_code: str) -> None:
+        self._ledger.record_skip(receipt_ref, reason_code, now_ns=self._now_ns())
+
+    def fail_safe(self, *, receipt_ref: str, request: ActionAssessmentRequestV2,
+                  packet: SealedActionAssessmentPacketV1, reason_code: str) -> ActionAssessmentRunOutcomeV1 | None:
+        """Seal a safe unavailable terminal after coordinator errors; never redispatch."""
+        state = self._ledger.request_state(request.request_id)
+        now = self._now_ns()
+        if state is None:
+            self._ledger.record_skip(receipt_ref, _critic_failure_code(reason_code), now_ns=now)
+            return None
+        if state["status"] is not None:
+            return self._from_state(request, packet, state)
+        if state["authorization_id"] is not None:
+            self._ledger.recover_dispatch_without_result(request.request_id, now_ns=now)
+            return self._from_state(request, packet, self._required_state(request.request_id))
+        self._record_terminal(request, packet, "UNAVAILABLE", _critic_failure_code(reason_code),
+                              now_ns=now, attempt_id=state["attempt_id"])
+        return self._from_state(request, packet, self._required_state(request.request_id))
+
+    def _check_binding(self, request: ActionAssessmentRequestV2,
+                       packet: SealedActionAssessmentPacketV1) -> None:
+        if (request.packet_ref != packet.packet_ref or request.packet_hash != packet.content_hash
+                or request.action_hash != packet.action_hash
+                or request.profile_hash != self._profile.content_hash
+                or request.provider_binding_hash != self._profile.provider_binding_hash
+                or request.price_schedule_hash != self._profile.price_schedule_hash
+                or request.deadline_ns != packet.original_deadline_d_ns
+                or request.max_model_calls != 1 or request.max_dynamic_tools != 0
+                or request.max_input_tokens != 12_000 or request.max_output_tokens != 2_048):
+            raise ValueError("action-assessment controller binding mismatch")
+
+    def _record_terminal(self, request: ActionAssessmentRequestV2, packet: SealedActionAssessmentPacketV1,
+                         status: str, reason: str, *, now_ns: int, attempt_id: str | None = None) -> None:
+        self._ledger.persist_packet_request(packet, request, now_ns=now_ns)
+        output_hash = sha256_json({"action_assessment_terminal": reason})
+        self._ledger.record_outcome(request.request_id, attempt_id=attempt_id, status=status, result=None,
+            provider_output_hash=output_hash, failure_code=reason, received_at_ns=now_ns, eligible=False)
+
+    def _required_state(self, request_id: str) -> dict[str, Any]:
+        state = self._ledger.request_state(request_id)
+        if state is None:
+            raise RuntimeError("persisted action-assessment state disappeared")
+        return state
+
+    @staticmethod
+    def _from_state(request: ActionAssessmentRequestV2, packet: SealedActionAssessmentPacketV1,
+                    state: Mapping[str, Any]) -> ActionAssessmentRunOutcomeV1:
+        status = state.get("status") or "PENDING"
+        result_data = state.get("result_json")
+        result = None
+        if isinstance(result_data, str):
+            import json
+            body = json.loads(result_data)
+            result = ActionAssessmentResultV2.from_dict(body)
+        return ActionAssessmentRunOutcomeV1(request.request_id, packet.packet_ref, status, result,
+            state.get("failure_code"), bool(state.get("eligible")))
+
+
+def _critic_failure_code(value: Any) -> str:
+    allowed = {"BROKER_UNAVAILABLE", "PROVIDER_UNAVAILABLE", "PROVIDER_TIMEOUT", "RATE_LIMITED",
+        "PROVIDER_REFUSAL", "PROVIDER_TRUNCATED", "PROVIDER_ERROR", "PROVIDER_AUTHENTICATION_FAILED",
+        "PROVIDER_REQUEST_REJECTED", "RETURNED_MODEL_ID_DRIFT", "RETURNED_MODEL_ID_MISSING",
+        "AGENT_DEPENDENCY_UNAVAILABLE", "INPUT_TOKEN_BUDGET_EXCEEDED", "TOKEN_LIMIT_EXCEEDED",
+        "OUTPUT_SIZE_LIMIT", "MALFORMED_STRUCTURED_OUTPUT", "UNEXPECTED_TOOL_OUTPUT",
+        "CALLBACK_FAILED", "BROKER_PROTOCOL_ERROR"}
+    text = str(value)
+    return text if text in allowed else "PROVIDER_ERROR"
 
 
 def _revision_status(profile: AgentModelProfile, returned_model_id: str | None,

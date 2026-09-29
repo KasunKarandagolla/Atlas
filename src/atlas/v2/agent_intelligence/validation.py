@@ -9,10 +9,17 @@ from typing import Any
 
 from atlas.v2._serialization import sha256_json, sha256_ref
 from atlas.v2.agent_intelligence.contracts import (
+    ACTION_ASSESSMENT_FINDING_TYPES,
+    ACTION_ASSESSMENT_MAX_FINDINGS,
+    ACTION_ASSESSMENT_SCHEMA_VERSION,
     MAX_PROPOSAL_BYTES,
+    ActionAssessmentFindingV1,
+    ActionAssessmentRequestV2,
+    ActionAssessmentResultV2,
     AgentValidationReceiptV1,
     ResearchProposalRequestV1,
     ResearchProposalV1,
+    SealedActionAssessmentPacketV1,
 )
 
 _CODE_SIGNS = re.compile(r"```|\b(?:def|class|import|exec|eval|subprocess|__import__)\s*|(?:^|\n)\s*[$>]\s")
@@ -40,6 +47,145 @@ _ALLOWED_FOLLOWUPS = frozenset({
     "MATURITY_CUTOFF_AUDIT",
     "POINT_IN_TIME_AVAILABILITY_AUDIT",
 })
+
+_CRITIC_UNSAFE_TEXT = re.compile(
+    r"\b(?:recommend|recommendation|suggest|should|must|please|instruct|request|browse|search|read|open|fetch|"
+    r"access|use another|switch to|select another|change|alter|modify|resize|increase|decrease|move|set)\b"
+    r".{0,100}\b(?:buy|sell|long|short|candidate|direction|quantity|qty|size|entry|collar|stop|leverage|"
+    r"risk\s*policy|capital|order|approval|approv|reservation|reserve|venue|account|credential|api\s*key|"
+    r"file|path|url|tool|browser|database|profit|confidence|conviction|trade[- ]quality)\b|"
+    r"\b(?:BUY|SELL)\b|\b(?:probability\s+of\s+profit|profitability|confidence|conviction|trade[- ]quality|"
+    r"profitability\s+score|confidence\s+score|conviction\s+score|trade[- ]quality\s+score)\b|"
+    r"\b(?:use|call|invoke|enable|create|request)\b.{0,100}\b(?:tools?|browser|web\s+search|"
+    r"database|files?|credentials?|api\s+keys?|venue|capital|orders?|reservations?)\b|"
+    r"sk-[A-Za-z0-9_-]{20,}|\bBearer\s+[A-Za-z0-9._~-]{16,}|AKIA[0-9A-Z]{16}|"
+    r"gh[pousr]_[A-Za-z0-9]{20,}|https?://|file://|-----BEGIN [A-Z ]+PRIVATE KEY-----|"
+    r"\b(?:use|choose|prefer|keep|take|enter|go)\b.{0,100}\b(?:buy|sell|long|short|candidate|direction|"
+    r"quantity|qty|size|entry|collar|stop|leverage|risk\s*policy|capital|order|approval|reservation)\b",
+    re.I | re.S,
+)
+
+
+def action_assessment_payload_schema() -> dict[str, Any]:
+    """Strict provider-facing JSON Schema for the six frozen finding types."""
+    ref = {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    finding = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "finding_type": {"type": "string", "enum": sorted(ACTION_ASSESSMENT_FINDING_TYPES)},
+            "subject_artifact_ref": ref,
+            "supporting_evidence_refs": {"type": "array", "maxItems": 16, "uniqueItems": True, "items": ref},
+            "explanation": {"type": "string", "minLength": 1, "maxLength": 1_000},
+            "field_paths": {"type": "array", "maxItems": 8, "uniqueItems": True,
+                "items": {"type": "string", "minLength": 2, "maxLength": 160}},
+        },
+        "required": ["finding_type", "subject_artifact_ref", "supporting_evidence_refs", "explanation"],
+    }
+    return {"type": "object", "additionalProperties": False,
+            "properties": {"version": {"const": ACTION_ASSESSMENT_SCHEMA_VERSION},
+                           "findings": {"type": "array", "maxItems": ACTION_ASSESSMENT_MAX_FINDINGS,
+                                        "items": finding}},
+            "required": ["version", "findings"]}
+
+
+def action_assessment_schema_hash() -> str:
+    return sha256_json({"version": ACTION_ASSESSMENT_SCHEMA_VERSION, "schema": action_assessment_payload_schema()})
+
+
+def _strict_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("MALFORMED_DUPLICATE_JSON_KEY")
+        result[key] = value
+    return result
+
+
+def _json_pointer_exists(value: Any, pointer: str) -> bool:
+    if not pointer.startswith("/"):
+        return False
+    current = value
+    for encoded in pointer[1:].split("/"):
+        part = encoded.replace("~1", "/").replace("~0", "~")
+        if isinstance(current, Mapping) and part in current:
+            current = current[part]
+        elif isinstance(current, (list, tuple)) and part.isdecimal() and int(part) < len(current):
+            current = current[int(part)]
+        else:
+            return False
+    return True
+
+
+def validate_action_assessment_output(
+    request: ActionAssessmentRequestV2,
+    packet: SealedActionAssessmentPacketV1,
+    raw_output: str,
+    *,
+    now_ns: int,
+) -> tuple[ActionAssessmentResultV2 | None, tuple[str, ...]]:
+    """Validate untrusted critic JSON atomically; never repair or accept partial findings."""
+    try:
+        if type(now_ns) is not int or now_ns >= request.deadline_ns:
+            raise ValueError("DEADLINE_EXPIRED")
+        if (request.packet_ref != packet.packet_ref or request.packet_hash != packet.content_hash
+                or request.action_hash != packet.action_hash):
+            raise ValueError("SEALED_PACKET_BINDING_MISMATCH")
+        if len(raw_output.encode("utf-8")) > 12_000:
+            raise ValueError("OUTPUT_SIZE_LIMIT")
+        decoded = json.loads(raw_output, object_pairs_hook=_strict_json_object)
+        if not isinstance(decoded, Mapping):
+            raise ValueError("SCHEMA_ROOT_NOT_OBJECT")
+        if set(decoded) != {"version", "findings"} or decoded.get("version") != ACTION_ASSESSMENT_SCHEMA_VERSION:
+            raise ValueError("SCHEMA_UNKNOWN_OR_REQUIRED_FIELDS")
+        findings_raw = decoded.get("findings")
+        if not isinstance(findings_raw, list) or len(findings_raw) > ACTION_ASSESSMENT_MAX_FINDINGS:
+            raise ValueError("FINDINGS_MALFORMED_OR_OVERSIZED")
+        summary_by_ref: dict[str, Mapping[str, Any]] = {}
+        summaries = packet.summaries.to_dict()
+        for item in summaries.values():
+            if not isinstance(item, Mapping):
+                raise ValueError("SEALED_PACKET_SUMMARY_MALFORMED")
+            artifact_ref = item.get("artifact_ref")
+            summary = item.get("summary")
+            if isinstance(artifact_ref, str) and isinstance(summary, Mapping):
+                if artifact_ref in summary_by_ref:
+                    raise ValueError("SEALED_PACKET_SUMMARY_AMBIGUOUS")
+                summary_by_ref[artifact_ref] = summary
+        findings: list[ActionAssessmentFindingV1] = []
+        for raw_finding in findings_raw:
+            if not isinstance(raw_finding, Mapping):
+                raise ValueError("FINDING_NOT_OBJECT")
+            allowed = {"finding_type", "subject_artifact_ref", "supporting_evidence_refs", "explanation", "field_paths"}
+            required = allowed - {"field_paths"}
+            if set(raw_finding) - allowed:
+                raise ValueError("FINDING_UNKNOWN_FIELDS")
+            if not required.issubset(raw_finding):
+                raise ValueError("FINDING_REQUIRED_FIELDS_MISSING")
+            finding = ActionAssessmentFindingV1(
+                raw_finding["finding_type"], raw_finding["subject_artifact_ref"],
+                tuple(raw_finding["supporting_evidence_refs"]), raw_finding["explanation"],
+                tuple(raw_finding.get("field_paths", ())),
+            )
+            if finding.subject_artifact_ref not in packet.artifact_refs:
+                raise ValueError("FINDING_SUBJECT_REF_UNBOUND")
+            if finding.subject_artifact_ref not in summary_by_ref:
+                raise ValueError("FINDING_SUBJECT_SUMMARY_UNAVAILABLE")
+            if not finding.supporting_evidence_refs or not set(finding.supporting_evidence_refs).issubset(
+                    set(packet.artifact_refs)):
+                raise ValueError("FINDING_EVIDENCE_REF_UNBOUND")
+            if any(not _json_pointer_exists(summary_by_ref[finding.subject_artifact_ref], path)
+                   for path in finding.field_paths):
+                raise ValueError("FINDING_FIELD_PATH_UNSUPPORTED")
+            if _CRITIC_UNSAFE_TEXT.search(finding.explanation):
+                raise ValueError("FINDING_CONTAINS_AUTHORITY_OR_TOOL_INSTRUCTION")
+            findings.append(finding)
+        result = ActionAssessmentResultV2(request.request_id, packet.packet_ref, packet.content_hash,
+                                          packet.action_hash, "COMPLETE", tuple(findings))
+        return result, ("VALID",)
+    except (ValueError, TypeError, KeyError, json.JSONDecodeError, RecursionError, AttributeError) as exc:
+        reason = str(exc) or "INVALID_ACTION_ASSESSMENT"
+        return None, (reason[:160],)
 
 
 def _parameter_units(rule: Any) -> int:

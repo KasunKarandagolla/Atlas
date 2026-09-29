@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import sys
 import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -491,6 +492,7 @@ class OpsSupervisorV2:
         clock_ns: Callable[[], int] = time.time_ns,
         sleep_fn: Callable[[float], None] = time.sleep,
         max_events_per_cycle: int = 64,
+        post_receipt_shadow: Callable[[OpsSupervisorReceiptV1, str, OpsRepository], None] | None = None,
     ) -> None:
         raw_path = str(database_path)
         if raw_path.startswith("file:") or "://" in raw_path or not raw_path:
@@ -502,6 +504,7 @@ class OpsSupervisorV2:
         self.clock_ns = clock_ns
         self.sleep_fn = sleep_fn
         self.max_events_per_cycle = max_events_per_cycle
+        self.post_receipt_shadow = post_receipt_shadow
         self.repository: OpsRepository | None = None
         self.recovery: OpsRecoverySnapshotV1 | None = None
         self._closed = False
@@ -818,7 +821,14 @@ class OpsSupervisorV2:
                         identity_entry = repository.get_artifact(self._receipt_identity_ref(event.event_id))
                         if identity_entry is None:
                             raise RuntimeError("durable receipt identity disappeared during replay")
-                        receipt_refs.append(str(identity_entry.metadata["receipt_ref"]))
+                        prior_receipt_ref = str(identity_entry.metadata["receipt_ref"])
+                        receipt_refs.append(prior_receipt_ref)
+                        if self.post_receipt_shadow is not None:
+                            try:
+                                self.post_receipt_shadow(prior_receipt, prior_receipt_ref, repository)
+                            except Exception:
+                                # Shadow failure must not alter the accepted deterministic cycle/receipt.
+                                pass
                         continue
 
                     event_inputs_available = all(
@@ -885,6 +895,12 @@ class OpsSupervisorV2:
                     receipt_ref = self._persist_final_receipt(repository, receipt)
                     receipts.append(receipt)
                     receipt_refs.append(receipt_ref)
+                    if self.post_receipt_shadow is not None:
+                        try:
+                            self.post_receipt_shadow(receipt, receipt_ref, repository)
+                        except Exception:
+                            # Shadow failure must not alter the accepted deterministic cycle/receipt.
+                            pass
                 except Exception as error:
                     # Exception text can contain arbitrary adapter/provider content;
                     # persist only the type and immutable event identity.
@@ -1061,11 +1077,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--interval-seconds", type=float, default=1.0)
     parser.add_argument("--once", action="store_true", help="run one bounded cycle and exit")
+    parser.add_argument("--action-critic-shadow", action="store_true",
+        help="opt in to the post-receipt hidden zero-authority action critic")
+    parser.add_argument("--broker-socket", default=os.environ.get("ATLAS_AGENT_BROKER_SOCKET"),
+        help="existing fixed local inference-broker Unix socket")
     args = parser.parse_args(argv)
     if args.interval_seconds <= 0:
         parser.error("--interval-seconds must be positive")
     port = _import_port(args.adapter)
-    supervisor = OpsSupervisorV2(Path(args.db), port)
+    shadow = None
+    if args.action_critic_shadow:
+        from .action_critic_shadow import _LazyActionAssessmentShadow
+
+        shadow = _LazyActionAssessmentShadow(args.db, args.broker_socket)
+    supervisor = OpsSupervisorV2(Path(args.db), port, post_receipt_shadow=shadow)
     try:
         if args.once:
             result = supervisor.run_once()
@@ -1080,6 +1105,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     finally:
         supervisor.close()
+        if shadow is not None:
+            shadow.close()
 
 
 if __name__ == "__main__":  # pragma: no cover - console entry point

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
 
-from atlas.v2._serialization import FrozenMap, canonical_json, sha256_json, sha256_ref, strict_fields
+from atlas.v2._serialization import FrozenMap, canonical_json, nonblank, sha256_json, sha256_ref, strict_fields
 
 CONTRACT_NAMESPACE = "ATLAS_AGENT_INTELLIGENCE_V1"
 PROMPT_CONTRACT_VERSION = "DISCOVERY_PROPOSER_PROMPT_V1"
@@ -26,6 +26,52 @@ MAX_EVIDENCE_REFS = 32
 MAX_FEATURE_FAMILIES = 24
 MAX_RULE_NODES = 96
 MAX_DEPTH = 8
+ACTION_ASSESSMENT_PACKET_VERSION = "SealedActionAssessmentPacketV1"
+ACTION_ASSESSMENT_REQUEST_VERSION = "ActionAssessmentRequestV2"
+ACTION_ASSESSMENT_SCHEMA_VERSION = "ATLAS_ACTION_CRITIC_OUTPUT_V1"
+ACTION_ASSESSMENT_PROFILE_VERSION = "ActionAssessmentProviderProfileV1"
+ACTION_ASSESSMENT_TASK_IDENTITY = "ActionAssessmentProvider"
+ACTION_ASSESSMENT_PACKET_MAX_BYTES = 36_000
+ACTION_ASSESSMENT_MAX_FINDINGS = 16
+ACTION_ASSESSMENT_FINDING_TYPES = frozenset({
+    "EVENT_ENTITY_AMBIGUOUS",
+    "EVENT_TIME_AMBIGUOUS",
+    "SOURCE_CLAIMS_CONFLICT",
+    "SOURCE_ASSERTION_UNSUPPORTED",
+    "ARTIFACT_SEMANTIC_MISMATCH",
+    "REQUIRED_CONTEXT_UNAVAILABLE",
+})
+_CRITIC_PACKET_FORBIDDEN_KEY = re.compile(
+    r"(?:credential|api[_-]?key|secret|private[_-]?key|password|account[_-]?id|exchange[_-]?account|"
+    r"raw[_-]?log|file[_-]?path|filesystem|database[_-]?row|url)", re.I)
+_CRITIC_PACKET_FORBIDDEN_VALUE = re.compile(
+    r"https?://|file://|(?:^|\s)/(?:home|root|tmp|etc)/|\bBearer\s+[A-Za-z0-9._~-]{16,}|"
+    r"sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|"
+    r"-----BEGIN [A-Z ]+PRIVATE KEY-----", re.I)
+
+
+def _validate_critic_packet_summary(value: Any, *, depth: int = 0, counter: list[int] | None = None) -> None:
+    nodes = counter if counter is not None else [0]
+    nodes[0] += 1
+    if nodes[0] > 4_000 or depth > 10:
+        raise ValueError("action-assessment summary exceeds its structural bound")
+    if isinstance(value, Mapping):
+        if len(value) > 128 or any(not isinstance(key, str) or _CRITIC_PACKET_FORBIDDEN_KEY.search(key) for key in value):
+            raise ValueError("action-assessment summary contains an unsupported field")
+        for child in value.values():
+            _validate_critic_packet_summary(child, depth=depth + 1, counter=nodes)
+    elif isinstance(value, (list, tuple)):
+        if len(value) > 256:
+            raise ValueError("action-assessment summary array exceeds its bound")
+        for child in value:
+            _validate_critic_packet_summary(child, depth=depth + 1, counter=nodes)
+    elif isinstance(value, str):
+        if len(value) > 2_000 or _CRITIC_PACKET_FORBIDDEN_VALUE.search(value):
+            raise ValueError("action-assessment summary contains an unsafe or oversized value")
+    elif value is None or type(value) in {bool, int, float}:
+        return
+    else:
+        raise ValueError("action-assessment summary contains an unsupported value type")
 SUPPORTED_RULE_OPERATIONS_V1 = frozenset({"AND", "OR", "GT", "GTE", "LT", "LTE", "EQ", "RISING", "FALLING",
                                           "CROSS_ABOVE", "CROSS_BELOW"})
 
@@ -644,6 +690,555 @@ class AgentAssessmentV1:
 
 
 @dataclass(frozen=True)
+class SealedActionAssessmentPacketV1:
+    """Content-addressed, host-produced evidence packet for a hidden zero-authority critic."""
+
+    originating_receipt_ref: str
+    decision_event_id: str
+    candidate_set_ref: str
+    selected_candidate_ref: str
+    selector_policy_hash: str
+    action_artifact_ref: str
+    action_hash: str
+    economic_evaluation_ref: str
+    m0_model_ref: str
+    m0_prediction_ref: str
+    m1_diagnostic_ref: str
+    analogue_diagnostic_ref: str
+    pretrade_scenario_ref: str
+    estimation_uncertainty_ref: str
+    execution_uncertainty_ref: str
+    numerical_error_ref: str
+    support_ref: str
+    calibration_ref: str
+    ood_ref: str
+    deterministic_stress_ref: str
+    portfolio_ref: str
+    portfolio_es_ref: str
+    source_health_ref: str
+    source_health_evidence_refs: tuple[str, ...]
+    market_evidence_refs: tuple[str, ...]
+    artifact_refs: tuple[str, ...]
+    artifact_types: FrozenMap
+    availability_by_ref: FrozenMap
+    source_cutoff_t0_ns: int
+    sealed_cutoff_t_ns: int
+    original_deadline_d_ns: int
+    missingness: FrozenMap
+    summaries: FrozenMap
+
+    VERSION = ACTION_ASSESSMENT_PACKET_VERSION
+
+    def __post_init__(self) -> None:
+        required_refs = (
+            "originating_receipt_ref", "candidate_set_ref", "selected_candidate_ref", "selector_policy_hash",
+            "action_artifact_ref", "action_hash", "economic_evaluation_ref", "m0_model_ref",
+            "m0_prediction_ref", "m1_diagnostic_ref", "analogue_diagnostic_ref", "pretrade_scenario_ref",
+            "estimation_uncertainty_ref", "execution_uncertainty_ref", "numerical_error_ref", "support_ref",
+            "calibration_ref", "ood_ref", "deterministic_stress_ref", "portfolio_ref", "portfolio_es_ref",
+            "source_health_ref",
+        )
+        for name in required_refs:
+            sha256_ref(getattr(self, name), field=name)
+        nonblank(self.decision_event_id, field="decision_event_id")
+        source_refs = _refs(self.source_health_evidence_refs, "source_health_evidence_refs", maximum=64)
+        market_refs = _refs(self.market_evidence_refs, "market_evidence_refs", maximum=256)
+        refs = _refs(self.artifact_refs, "artifact_refs", maximum=384)
+        artifact_reference_fields = set(required_refs) - {"selector_policy_hash", "action_hash"}
+        expected_refs = set(source_refs) | set(market_refs) | {
+            getattr(self, name) for name in artifact_reference_fields
+        }
+        if not expected_refs.issubset(refs):
+            raise ValueError("sealed packet omits a required exact artifact reference")
+        if self.source_health_ref != self.originating_receipt_ref:
+            raise ValueError("source health must bind the exact originating receipt")
+        if not (type(self.source_cutoff_t0_ns) is int and type(self.sealed_cutoff_t_ns) is int
+                and type(self.original_deadline_d_ns) is int
+                and 0 <= self.source_cutoff_t0_ns <= self.sealed_cutoff_t_ns < self.original_deadline_d_ns):
+            raise ValueError("sealed packet chronology must satisfy T0 <= T < D")
+        artifact_types = self.artifact_types if isinstance(self.artifact_types, FrozenMap) else FrozenMap(self.artifact_types)
+        availability = self.availability_by_ref if isinstance(self.availability_by_ref, FrozenMap) else FrozenMap(self.availability_by_ref)
+        missingness = self.missingness if isinstance(self.missingness, FrozenMap) else FrozenMap(self.missingness)
+        summaries = self.summaries if isinstance(self.summaries, FrozenMap) else FrozenMap(self.summaries)
+        if set(artifact_types) != set(refs) or set(availability) != set(refs):
+            raise ValueError("sealed packet artifact inventory is incomplete or ambiguous")
+        if any(not isinstance(artifact_types[ref], str) or type(availability[ref]) is not int
+               or availability[ref] > self.sealed_cutoff_t_ns for ref in refs):
+            raise ValueError("sealed packet exposes missing, untyped or future artifacts")
+        if any(availability[ref] > self.source_cutoff_t0_ns for ref in market_refs):
+            raise ValueError("market/news evidence cannot follow the information cutoff T0")
+        if set(summaries) != set(refs):
+            raise ValueError("sealed packet must contain one bounded typed summary for every exact ref")
+        for ref in refs:
+            summary_entry = summaries[ref]
+            if (not isinstance(summary_entry, Mapping) or summary_entry.get("artifact_ref") != ref
+                    or summary_entry.get("artifact_type") != artifact_types[ref]
+                    or not isinstance(summary_entry.get("summary"), Mapping)):
+                raise ValueError("sealed packet summary does not match its exact artifact inventory")
+            _validate_critic_packet_summary(summary_entry)
+        summary_by_ref = {ref: summaries[ref]["summary"] for ref in refs}
+        action_summary = summary_by_ref[self.action_artifact_ref]
+        candidate_summary = summary_by_ref[self.selected_candidate_ref]
+        candidate_set_summary = summary_by_ref[self.candidate_set_ref]
+        evaluation_summary = summary_by_ref[self.economic_evaluation_ref]
+        deterministic_bindings = {
+            "action_identity_hash": isinstance(action_summary.get("action_identity"), Mapping)
+                and sha256_json(action_summary["action_identity"]) == self.action_hash,
+            "action_hash": action_summary.get("action_hash") == self.action_hash,
+            "action_candidate_ref": action_summary.get("candidate_ref") == self.selected_candidate_ref,
+            "action_candidate_set_ref": action_summary.get("candidate_set_ref") == self.candidate_set_ref,
+            "action_sizing_ref": action_summary.get("sizing_ref") in refs,
+            "selected_candidate_id": candidate_set_summary.get("selected_candidate_id")
+                == candidate_summary.get("candidate_id"),
+            "selected_candidate_ref": candidate_set_summary.get("selected_candidate_ref")
+                == self.selected_candidate_ref,
+            "selector_policy_hash": candidate_set_summary.get("selection_policy_hash")
+                == self.selector_policy_hash,
+            "evaluation_action_hash": evaluation_summary.get("action_hash") == self.action_hash,
+            "evaluation_action_ref": evaluation_summary.get("action_artifact_ref") == self.action_artifact_ref,
+            "evaluation_candidate_ref": evaluation_summary.get("candidate_ref") == self.selected_candidate_ref,
+            "evaluation_candidate_set_ref": evaluation_summary.get("candidate_set_ref") == self.candidate_set_ref,
+            "evaluation_selector_policy_hash": evaluation_summary.get("selection_policy_hash")
+                == self.selector_policy_hash,
+            "m0_model_ref": evaluation_summary.get("m0_model_ref") == self.m0_model_ref,
+            "m0_prediction_ref": evaluation_summary.get("m0_prediction_ref") == self.m0_prediction_ref,
+            "pretrade_scenario_ref": evaluation_summary.get("pretrade_scenario_ref") == self.pretrade_scenario_ref,
+            "estimation_uncertainty_ref": evaluation_summary.get("estimation_uncertainty_ref")
+                == self.estimation_uncertainty_ref,
+            "execution_uncertainty_ref": evaluation_summary.get("execution_uncertainty_ref")
+                == self.execution_uncertainty_ref,
+            "numerical_error_ref": evaluation_summary.get("numerical_error_ref") == self.numerical_error_ref,
+            "support_ref": evaluation_summary.get("support_ref") == self.support_ref,
+            "calibration_ref": evaluation_summary.get("calibration_ref") == self.calibration_ref,
+            "ood_ref": evaluation_summary.get("ood_ref") == self.ood_ref,
+            "deterministic_stress_ref": evaluation_summary.get("deterministic_stress_ref")
+                == self.deterministic_stress_ref,
+            "portfolio_ref": evaluation_summary.get("existing_portfolio_ref") == self.portfolio_ref,
+        }
+        if not all(deterministic_bindings.values()):
+            failed = "_".join(name for name, matches in deterministic_bindings.items() if not matches)
+            raise ValueError(f"sealed action-assessment deterministic binding mismatch: {failed}")
+        for ref in (self.m0_model_ref, self.m0_prediction_ref, self.m1_diagnostic_ref,
+                    self.analogue_diagnostic_ref, self.pretrade_scenario_ref, self.estimation_uncertainty_ref,
+                    self.execution_uncertainty_ref, self.numerical_error_ref, self.support_ref,
+                    self.calibration_ref, self.ood_ref, self.deterministic_stress_ref, self.portfolio_ref,
+                    self.portfolio_es_ref):
+            artifact_summary = summary_by_ref[ref]
+            if (artifact_summary.get("action_hash") != self.action_hash
+                    and artifact_summary.get("query_action_hash") != self.action_hash):
+                raise ValueError("sealed derived assessment artifact belongs to a different action")
+        object.__setattr__(self, "market_evidence_refs", market_refs)
+        object.__setattr__(self, "source_health_evidence_refs", source_refs)
+        object.__setattr__(self, "artifact_refs", refs)
+        object.__setattr__(self, "artifact_types", artifact_types)
+        object.__setattr__(self, "availability_by_ref", availability)
+        object.__setattr__(self, "missingness", missingness)
+        object.__setattr__(self, "summaries", summaries)
+        if len(canonical_json(self.to_dict()).encode("utf-8")) > ACTION_ASSESSMENT_PACKET_MAX_BYTES:
+            raise ValueError("sealed action-assessment packet exceeds its byte limit")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "version": self.VERSION,
+            "originating_receipt_ref": self.originating_receipt_ref,
+            "decision_event_id": self.decision_event_id,
+            "candidate_set_ref": self.candidate_set_ref,
+            "selected_candidate_ref": self.selected_candidate_ref,
+            "selector_policy_hash": self.selector_policy_hash,
+            "action_artifact_ref": self.action_artifact_ref,
+            "action_hash": self.action_hash,
+            "economic_evaluation_ref": self.economic_evaluation_ref,
+            "m0_model_ref": self.m0_model_ref,
+            "m0_prediction_ref": self.m0_prediction_ref,
+            "m1_diagnostic_ref": self.m1_diagnostic_ref,
+            "analogue_diagnostic_ref": self.analogue_diagnostic_ref,
+            "pretrade_scenario_ref": self.pretrade_scenario_ref,
+            "estimation_uncertainty_ref": self.estimation_uncertainty_ref,
+            "execution_uncertainty_ref": self.execution_uncertainty_ref,
+            "numerical_error_ref": self.numerical_error_ref,
+            "support_ref": self.support_ref,
+            "calibration_ref": self.calibration_ref,
+            "ood_ref": self.ood_ref,
+            "deterministic_stress_ref": self.deterministic_stress_ref,
+            "portfolio_ref": self.portfolio_ref,
+            "portfolio_es_ref": self.portfolio_es_ref,
+            "source_health_ref": self.source_health_ref,
+            "source_health_evidence_refs": list(self.source_health_evidence_refs),
+            "market_evidence_refs": list(self.market_evidence_refs),
+            "artifact_refs": list(self.artifact_refs),
+            "artifact_types": self.artifact_types.to_dict(),
+            "availability_by_ref": self.availability_by_ref.to_dict(),
+            "source_cutoff_t0_ns": self.source_cutoff_t0_ns,
+            "sealed_cutoff_t_ns": self.sealed_cutoff_t_ns,
+            "original_deadline_d_ns": self.original_deadline_d_ns,
+            "missingness": self.missingness.to_dict(),
+            "summaries": self.summaries.to_dict(),
+        }
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @property
+    def packet_ref(self) -> str:
+        return sha256_json({"artifact_type": self.VERSION, "content_hash": self.content_hash})
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> SealedActionAssessmentPacketV1:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        row = dict(strict_fields(data, expected=fields, required=fields, name=cls.VERSION))
+        if row.pop("version") != cls.VERSION:
+            raise ValueError("unsupported sealed action-assessment packet")
+        for name in ("market_evidence_refs", "source_health_evidence_refs", "artifact_refs"):
+            if not isinstance(row[name], list):
+                raise ValueError(f"{name} must be an array")
+        for name in ("artifact_types", "availability_by_ref", "missingness", "summaries"):
+            if not isinstance(row[name], Mapping):
+                raise ValueError(f"{name} must be an object")
+            row[name] = FrozenMap(row[name])
+        row["market_evidence_refs"] = tuple(row["market_evidence_refs"])
+        row["source_health_evidence_refs"] = tuple(row["source_health_evidence_refs"])
+        row["artifact_refs"] = tuple(row["artifact_refs"])
+        return cls(**row)
+
+
+@dataclass(frozen=True)
+class ActionAssessmentRequestV2:
+    request_id: str
+    packet_ref: str
+    packet_hash: str
+    action_hash: str
+    task_identity: str
+    profile_hash: str
+    provider_binding_hash: str
+    price_schedule_hash: str
+    provider: str
+    requested_model_id: str
+    model_family: str
+    revision_status: RevisionStatusV1
+    endpoint: str
+    prompt_hash: str
+    schema_hash: str
+    deadline_ns: int
+    max_model_calls: int = 1
+    max_dynamic_tools: int = 0
+    max_input_tokens: int = 12_000
+    max_output_tokens: int = 2_048
+
+    VERSION = ACTION_ASSESSMENT_REQUEST_VERSION
+
+    def __post_init__(self) -> None:
+        _uuid(self.request_id, "request_id")
+        for name in ("packet_ref", "packet_hash", "action_hash", "profile_hash", "provider_binding_hash",
+                     "price_schedule_hash", "prompt_hash", "schema_hash"):
+            sha256_ref(getattr(self, name), field=name)
+        if (self.task_identity != ACTION_ASSESSMENT_TASK_IDENTITY or self.provider != "deepseek"
+                or self.requested_model_id != "deepseek-flash" or self.model_family != "DeepSeek-V4.1-Flash"
+                or self.endpoint != "https://api.deepseek.com/responses"
+                or RevisionStatusV1(self.revision_status) != RevisionStatusV1.ALIAS_ONLY):
+            raise ValueError("action assessment request provider/task binding is outside the frozen critic profile")
+        if (type(self.deadline_ns) is not int or self.deadline_ns < 0 or self.max_model_calls != 1
+                or self.max_dynamic_tools != 0 or self.max_input_tokens != 12_000 or self.max_output_tokens != 2_048):
+            raise ValueError("action assessment request limits differ from the frozen one-call profile")
+        object.__setattr__(self, "revision_status", RevisionStatusV1(self.revision_status))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": self.VERSION, **{name: value.value if isinstance(value, StrEnum) else value
+                for name, value in self.__dict__.items()}}
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ActionAssessmentRequestV2:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        row = dict(strict_fields(data, expected=fields, required=fields, name=cls.VERSION))
+        if row.pop("version") != cls.VERSION:
+            raise ValueError("unsupported ActionAssessmentRequestV2")
+        return cls(**row)
+
+
+@dataclass(frozen=True)
+class ActionAssessmentProviderProfileV1:
+    provider: str
+    requested_model_id: str
+    model_family: str
+    revision_status: RevisionStatusV1
+    base_url: str
+    endpoint_path: str
+    reasoning_setting_id: str
+    reasoning_settings: FrozenMap
+    structured_output_format: str
+    task_identity: str
+    price_schedule_id: str
+    price_schedule_hash: str
+    prompt_hash: str
+    schema_hash: str
+    runtime_dependency_hash: str
+    maximum_input_tokens: int = 12_000
+    maximum_output_tokens: int = 2_048
+    maximum_model_calls: int = 1
+    maximum_dynamic_tools: int = 0
+    maximum_concurrent_jobs: int = 1
+    packet_version: str = ACTION_ASSESSMENT_PACKET_VERSION
+    packet_max_bytes: int = ACTION_ASSESSMENT_PACKET_MAX_BYTES
+
+    VERSION = ACTION_ASSESSMENT_PROFILE_VERSION
+
+    def __post_init__(self) -> None:
+        fixed = (self.provider == "deepseek" and self.requested_model_id == "deepseek-flash"
+                 and self.model_family == "DeepSeek-V4.1-Flash"
+                 and RevisionStatusV1(self.revision_status) == RevisionStatusV1.ALIAS_ONLY
+                 and self.base_url == "https://api.deepseek.com" and self.endpoint_path == "/responses"
+                 and self.reasoning_setting_id == "DEEPSEEK_RESPONSES_REASONING_EFFORT_HIGH_V1"
+                 and self.structured_output_format == "json_schema"
+                 and self.task_identity == ACTION_ASSESSMENT_TASK_IDENTITY
+                 and self.maximum_input_tokens == 12_000 and self.maximum_output_tokens == 2_048
+                 and self.maximum_model_calls == 1 and self.maximum_dynamic_tools == 0
+                 and self.maximum_concurrent_jobs == 1 and self.packet_version == ACTION_ASSESSMENT_PACKET_VERSION
+                 and self.packet_max_bytes == ACTION_ASSESSMENT_PACKET_MAX_BYTES)
+        if not fixed or self.reasoning_settings.to_dict() != {"effort": "high"}:
+            raise ValueError("action-critic model profile differs from the fixed hidden shadow binding")
+        for name in ("price_schedule_hash", "prompt_hash", "schema_hash", "runtime_dependency_hash"):
+            sha256_ref(getattr(self, name), field=name)
+        object.__setattr__(self, "revision_status", RevisionStatusV1(self.revision_status))
+
+    @property
+    def endpoint(self) -> str:
+        return self.base_url + self.endpoint_path
+
+    @property
+    def provider_binding_hash(self) -> str:
+        return sha256_json({"provider": self.provider, "requested_model_id": self.requested_model_id,
+            "model_family": self.model_family, "endpoint": self.endpoint, "task_identity": self.task_identity,
+            "revision_status": self.revision_status.value, "reasoning_setting_id": self.reasoning_setting_id,
+            "structured_output_format": self.structured_output_format})
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": self.VERSION, **{name: value.to_dict() if isinstance(value, FrozenMap)
+                else value.value if isinstance(value, StrEnum) else value
+                for name, value in self.__dict__.items()}}
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+
+@dataclass(frozen=True)
+class ActionAssessmentFindingV1:
+    finding_type: str
+    subject_artifact_ref: str
+    supporting_evidence_refs: tuple[str, ...]
+    explanation: str
+    field_paths: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.finding_type not in ACTION_ASSESSMENT_FINDING_TYPES:
+            raise ValueError("unknown action-assessment finding type")
+        sha256_ref(self.subject_artifact_ref, field="subject_artifact_ref")
+        refs = _refs(self.supporting_evidence_refs, "supporting_evidence_refs", maximum=16)
+        if not isinstance(self.explanation, str) or not self.explanation.strip() or len(self.explanation) > 1_000:
+            raise ValueError("action-assessment explanation is empty or exceeds its bound")
+        paths = tuple(self.field_paths)
+        if len(paths) > 8 or len(set(paths)) != len(paths) or any(
+                not isinstance(path, str) or len(path) > 160 or not path.startswith("/") for path in paths):
+            raise ValueError("action-assessment field paths are invalid or oversized")
+        object.__setattr__(self, "supporting_evidence_refs", refs)
+        object.__setattr__(self, "field_paths", paths)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"finding_type": self.finding_type, "subject_artifact_ref": self.subject_artifact_ref,
+                "supporting_evidence_refs": list(self.supporting_evidence_refs),
+                "explanation": self.explanation, "field_paths": list(self.field_paths)}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ActionAssessmentFindingV1:
+        fields = set(cls.__dataclass_fields__)
+        row = strict_fields(data, expected=fields, required=fields - {"field_paths"}, name="ActionAssessmentFindingV1")
+        if not isinstance(row["supporting_evidence_refs"], list) or not isinstance(row.get("field_paths", []), list):
+            raise ValueError("action-assessment finding refs/paths must be arrays")
+        return cls(row["finding_type"], row["subject_artifact_ref"], tuple(row["supporting_evidence_refs"]),
+                   row["explanation"], tuple(row.get("field_paths", [])))
+
+
+@dataclass(frozen=True)
+class ActionAssessmentResultV2:
+    request_id: str
+    packet_ref: str
+    packet_hash: str
+    action_hash: str
+    status: str
+    findings: tuple[ActionAssessmentFindingV1, ...]
+
+    VERSION = "AgentAssessmentV2"
+
+    def __post_init__(self) -> None:
+        _uuid(self.request_id, "request_id")
+        for name in ("packet_ref", "packet_hash", "action_hash"):
+            sha256_ref(getattr(self, name), field=name)
+        if self.status not in {"COMPLETE", "REFUSED", "UNAVAILABLE", "INVALID", "EXPIRED"}:
+            raise ValueError("action-assessment result status is invalid")
+        findings = tuple(self.findings)
+        if len(findings) > ACTION_ASSESSMENT_MAX_FINDINGS or any(
+                not isinstance(item, ActionAssessmentFindingV1) for item in findings):
+            raise ValueError("action-assessment findings exceed their closed bound")
+        if self.status != "COMPLETE" and findings:
+            raise ValueError("non-complete action assessment cannot contain findings")
+        object.__setattr__(self, "findings", findings)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": self.VERSION, "request_id": self.request_id, "packet_ref": self.packet_ref,
+                "packet_hash": self.packet_hash, "action_hash": self.action_hash, "status": self.status,
+                "findings": [finding.to_dict() for finding in self.findings]}
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ActionAssessmentResultV2:
+        fields = {"version", "request_id", "packet_ref", "packet_hash", "action_hash", "status", "findings"}
+        row = dict(strict_fields(data, expected=fields, required=fields, name=cls.VERSION))
+        if row["version"] != cls.VERSION or not isinstance(row["findings"], list):
+            raise ValueError("invalid action-assessment result wire")
+        return cls(row["request_id"], row["packet_ref"], row["packet_hash"], row["action_hash"],
+                   row["status"], tuple(ActionAssessmentFindingV1.from_dict(item) for item in row["findings"]))
+
+
+@dataclass(frozen=True)
+class ActionAssessmentValidationReceiptV1:
+    request_hash: str
+    packet_ref: str
+    packet_hash: str
+    action_hash: str
+    provider_output_hash: str
+    validator_version: str
+    validation_status: str
+    reasons: tuple[str, ...]
+    validated_at_ns: int
+    receipt_hash: str
+
+    VERSION = "ActionAssessmentValidationReceiptV1"
+    VALIDATOR_VERSION = "DETERMINISTIC_ACTION_ASSESSMENT_VALIDATOR_V1"
+
+    def __post_init__(self) -> None:
+        for name in ("request_hash", "packet_ref", "packet_hash", "action_hash", "provider_output_hash", "receipt_hash"):
+            sha256_ref(getattr(self, name), field=name)
+        if (self.validator_version != self.VALIDATOR_VERSION
+                or self.validation_status not in {"VALID", "INVALID", "LATE", "UNAVAILABLE", "REFUSED"}
+                or type(self.validated_at_ns) is not int or self.validated_at_ns < 0):
+            raise ValueError("action-assessment validation receipt binding is invalid")
+        reasons = tuple(self.reasons)
+        if len(reasons) > 16 or any(not isinstance(item, str) or not item or len(item) > 160 for item in reasons):
+            raise ValueError("action-assessment validation reasons exceed their bound")
+        object.__setattr__(self, "reasons", reasons)
+        body = {"version": self.VERSION, "request_hash": self.request_hash, "packet_ref": self.packet_ref,
+            "packet_hash": self.packet_hash, "action_hash": self.action_hash,
+            "provider_output_hash": self.provider_output_hash, "validator_version": self.validator_version,
+            "validation_status": self.validation_status, "reasons": list(reasons),
+            "validated_at_ns": self.validated_at_ns}
+        if sha256_json(body) != self.receipt_hash:
+            raise ValueError("action-assessment validation receipt hash mismatch")
+
+    @classmethod
+    def create(cls, *, request_hash: str, packet_ref: str, packet_hash: str, action_hash: str,
+               provider_output_hash: str, status: str, reasons: Sequence[str], at_ns: int
+               ) -> ActionAssessmentValidationReceiptV1:
+        body = {"version": cls.VERSION, "request_hash": request_hash, "packet_ref": packet_ref,
+                "packet_hash": packet_hash, "action_hash": action_hash,
+                "provider_output_hash": provider_output_hash, "validator_version": cls.VALIDATOR_VERSION,
+                "validation_status": status, "reasons": list(reasons), "validated_at_ns": at_ns}
+        return cls(request_hash, packet_ref, packet_hash, action_hash, provider_output_hash,
+                   cls.VALIDATOR_VERSION, status, tuple(reasons), at_ns, sha256_json(body))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": self.VERSION, **{name: value for name, value in self.__dict__.items()
+                if name != "receipt_hash"}, "receipt_hash": self.receipt_hash}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ActionAssessmentValidationReceiptV1:
+        fields = set(cls.__dataclass_fields__) | {"version"}
+        row = dict(strict_fields(data, expected=fields, required=fields, name=cls.VERSION))
+        if row.pop("version") != cls.VERSION or not isinstance(row["reasons"], list):
+            raise ValueError("invalid action-assessment validation receipt wire")
+        row["reasons"] = tuple(row["reasons"])
+        return cls(**row)
+
+
+@dataclass(frozen=True)
+class ActionAssessmentDispatchAuthorizationV1:
+    task_identity: str
+    packet_ref: str
+    packet_hash: str
+    request_hash: str
+    action_hash: str
+    profile_hash: str
+    provider_binding_hash: str
+    price_schedule_hash: str
+    provider: str
+    requested_model_id: str
+    endpoint: str
+    attempt_id: str
+    deadline_ns: int
+    authorized_at_ns: int
+    expires_at_ns: int
+    reservation_id: str
+    reserved_cost_usd: str
+    max_input_tokens: int
+    max_output_tokens: int
+    authorization_id: str
+    capability_nonce: str
+    authorization_hash: str
+
+    VERSION = "ActionAssessmentDispatchAuthorizationV1"
+
+    @classmethod
+    def create(cls, *, task_identity: str, packet_ref: str, packet_hash: str, request_hash: str,
+               action_hash: str, profile_hash: str, provider_binding_hash: str, price_schedule_hash: str,
+               provider: str, requested_model_id: str, endpoint: str, attempt_id: str, deadline_ns: int,
+               authorized_at_ns: int, expires_at_ns: int, reservation_id: str, reserved_cost_usd: str,
+               max_input_tokens: int, max_output_tokens: int, authorization_id: str,
+               capability_nonce: str) -> ActionAssessmentDispatchAuthorizationV1:
+        for name, value in (("attempt_id", attempt_id), ("reservation_id", reservation_id),
+                            ("authorization_id", authorization_id), ("capability_nonce", capability_nonce)):
+            _uuid(value, name)
+        for name, value in (("packet_ref", packet_ref), ("packet_hash", packet_hash),
+                            ("request_hash", request_hash), ("action_hash", action_hash),
+                            ("profile_hash", profile_hash), ("provider_binding_hash", provider_binding_hash),
+                            ("price_schedule_hash", price_schedule_hash)):
+            sha256_ref(value, field=name)
+        if (task_identity != ACTION_ASSESSMENT_TASK_IDENTITY or provider != "deepseek"
+                or requested_model_id != "deepseek-flash" or endpoint != "https://api.deepseek.com/responses"):
+            raise ValueError("action-assessment dispatch task/provider binding is invalid")
+        if (not (type(deadline_ns) is int and type(authorized_at_ns) is int and type(expires_at_ns) is int
+                 and authorized_at_ns < expires_at_ns <= deadline_ns)
+                or max_input_tokens != 12_000 or max_output_tokens != 2_048):
+            raise ValueError("action-assessment dispatch time/token ceilings are invalid")
+        if (not isinstance(reserved_cost_usd, str)
+                or not re.fullmatch(r"(?:0|[1-9]\d*)(?:\.\d{1,6})?", reserved_cost_usd)):
+            raise ValueError("action-assessment cost reservation is invalid")
+        body = {"version": cls.VERSION, "task_identity": task_identity, "packet_ref": packet_ref,
+                "packet_hash": packet_hash, "request_hash": request_hash, "action_hash": action_hash,
+                "profile_hash": profile_hash, "provider_binding_hash": provider_binding_hash,
+                "price_schedule_hash": price_schedule_hash, "provider": provider,
+                "requested_model_id": requested_model_id, "endpoint": endpoint, "attempt_id": attempt_id,
+                "deadline_ns": deadline_ns, "authorized_at_ns": authorized_at_ns,
+                "expires_at_ns": expires_at_ns, "reservation_id": reservation_id,
+                "reserved_cost_usd": reserved_cost_usd, "max_input_tokens": max_input_tokens,
+                "max_output_tokens": max_output_tokens, "authorization_id": authorization_id,
+                "capability_nonce": capability_nonce}
+        return cls(task_identity, packet_ref, packet_hash, request_hash, action_hash, profile_hash,
+                   provider_binding_hash, price_schedule_hash, provider, requested_model_id, endpoint,
+                   attempt_id, deadline_ns, authorized_at_ns, expires_at_ns, reservation_id,
+                   reserved_cost_usd, max_input_tokens, max_output_tokens, authorization_id,
+                   capability_nonce, sha256_json(body))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": self.VERSION, **self.__dict__}
+
+
+@dataclass(frozen=True)
 class EventExtractionRequestV1:
     request_id: str
     source_artifact_ref: str
@@ -970,6 +1565,14 @@ class ResearchProposalProvider(Protocol):
 @runtime_checkable
 class ActionAssessmentProvider(Protocol):
     def assess(self, request: ActionAssessmentRequestV1, evidence: Sequence[Mapping[str, Any]]) -> AgentAssessmentV1: ...
+
+
+@runtime_checkable
+class ActionAssessmentProviderV2(Protocol):
+    """Direct tool-free provider contract over a sealed immutable packet."""
+
+    def assess(self, request: ActionAssessmentRequestV2,
+               packet: SealedActionAssessmentPacketV1) -> ProviderResultV1: ...
 
 
 @runtime_checkable

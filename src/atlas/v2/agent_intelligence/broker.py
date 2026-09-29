@@ -2,8 +2,8 @@
 
 Only this process constructs the configured OpenAI-compatible SDK client and receives
 the selected provider credential (OPENAI_API_KEY or DEEPSEEK_API_KEY). Its protocol
-has one command (structured discovery inference), no arbitrary HTTP,
-provider URL, hosted tool, file, browser, shell, MCP, venue, or database operation.
+has two disjoint fixed commands (research proposal and sealed action assessment), no
+arbitrary HTTP, provider URL, hosted tool, file, browser, shell, MCP, venue, or database operation.
 """
 
 from __future__ import annotations
@@ -20,19 +20,23 @@ import threading
 import time
 import uuid
 from collections import OrderedDict
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from atlas.v2._serialization import canonical_json, sha256_json, strict_fields
 from atlas.v2.agent_intelligence.contracts import (
+    ActionAssessmentDispatchAuthorizationV1,
+    ActionAssessmentProviderProfileV1,
+    ActionAssessmentRequestV2,
     AgentModelProfileV1,
     AgentModelProfileV2,
     BrokerDispatchAuthorizationV1,
     BrokerDispatchAuthorizationV2,
     ProviderResultV1,
     ResearchProposalRequestV1,
+    SealedActionAssessmentPacketV1,
 )
 from atlas.v2.agent_intelligence.provider import ResearchProviderUnavailable
 from atlas.v2.models.worker_protocol import _reject_sensitive_fields
@@ -265,6 +269,97 @@ class BrokerCapabilityV2:
             raise BrokerProtocolError("INVALID_OR_EXPIRED_CAPABILITY") from exc
 
 
+@dataclass(frozen=True)
+class ActionAssessmentBrokerCapabilityV1:
+    """Disjoint one-call capability for the sealed hidden action-critic task."""
+
+    authorization_id: str
+    attempt_id: str
+    packet_ref: str
+    packet_hash: str
+    request_hash: str
+    action_hash: str
+    profile_hash: str
+    provider_binding_hash: str
+    price_schedule_hash: str
+    deadline_ns: int
+    issued_at_ns: int
+    expires_at_ns: int
+    max_model_calls: int
+    max_input_tokens: int
+    max_output_tokens: int
+    capability: str
+
+    @staticmethod
+    def issue_authorized(*, authorization: ActionAssessmentDispatchAuthorizationV1,
+                         signing_key: bytes) -> ActionAssessmentBrokerCapabilityV1:
+        if len(signing_key) < 32:
+            raise ValueError("broker capability signing key must contain at least 256 bits")
+        auth_body = authorization.to_dict()
+        auth_hash = auth_body.pop("authorization_hash", None)
+        if not isinstance(auth_hash, str) or auth_hash != sha256_json(auth_body):
+            raise ValueError("durable action-assessment authorization hash is invalid")
+        if (authorization.task_identity != "ActionAssessmentProvider" or authorization.provider != "deepseek"
+                or authorization.requested_model_id != "deepseek-flash"
+                or authorization.endpoint != "https://api.deepseek.com/responses"
+                or authorization.max_input_tokens != 12_000 or authorization.max_output_tokens != 2_048):
+            raise ValueError("action-assessment authorization is outside the fixed critic binding")
+        body = {"version": "ActionAssessmentBrokerCapabilityV1",
+                **{key: value for key, value in auth_body.items() if key != "version"},
+                "authorization_hash": authorization.authorization_hash, "issued_at_ns": authorization.authorized_at_ns,
+                "max_model_calls": 1, "max_dynamic_tools": 0}
+        encoded = canonical_json(body).encode("utf-8")
+        signature = hmac.new(signing_key, encoded, hashlib.sha256).digest()
+        token = base64.urlsafe_b64encode(encoded).decode("ascii") + "." + base64.urlsafe_b64encode(signature).decode("ascii")
+        return ActionAssessmentBrokerCapabilityV1(
+            authorization.authorization_id, authorization.attempt_id, authorization.packet_ref,
+            authorization.packet_hash, authorization.request_hash, authorization.action_hash,
+            authorization.profile_hash, authorization.provider_binding_hash, authorization.price_schedule_hash,
+            authorization.deadline_ns, authorization.authorized_at_ns, authorization.expires_at_ns,
+            1, authorization.max_input_tokens, authorization.max_output_tokens, token)
+
+    @staticmethod
+    def verify(token: str, *, signing_key: bytes, now_ns: int) -> Mapping[str, Any]:
+        try:
+            payload_part, signature_part = token.split(".", 1)
+            payload = base64.urlsafe_b64decode(payload_part.encode("ascii"))
+            signature = base64.urlsafe_b64decode(signature_part.encode("ascii"))
+            expected = hmac.new(signing_key, payload, hashlib.sha256).digest()
+            if not hmac.compare_digest(signature, expected):
+                raise ValueError
+            body = json.loads(payload.decode("utf-8"))
+            fields = {"version", "task_identity", "packet_ref", "packet_hash", "request_hash", "action_hash",
+                "profile_hash", "provider_binding_hash", "price_schedule_hash", "provider", "requested_model_id",
+                "endpoint", "attempt_id", "deadline_ns", "authorized_at_ns", "expires_at_ns", "reservation_id",
+                "reserved_cost_usd", "max_input_tokens", "max_output_tokens", "authorization_id", "capability_nonce",
+                "authorization_hash", "issued_at_ns", "max_model_calls", "max_dynamic_tools"}
+            strict_fields(body, expected=fields, required=fields, name="ActionAssessmentBrokerCapabilityV1")
+            if (body["version"] != "ActionAssessmentBrokerCapabilityV1"
+                    or body["task_identity"] != "ActionAssessmentProvider"
+                    or body["provider"] != "deepseek" or body["requested_model_id"] != "deepseek-flash"
+                    or body["endpoint"] != "https://api.deepseek.com/responses"
+                    or body["max_model_calls"] != 1 or body["max_dynamic_tools"] != 0
+                    or body["max_input_tokens"] != 12_000 or body["max_output_tokens"] != 2_048
+                    or body["issued_at_ns"] != body["authorized_at_ns"]
+                    or not body["issued_at_ns"] <= now_ns < body["expires_at_ns"]
+                    or body["expires_at_ns"] > body["deadline_ns"]):
+                raise ValueError
+            for name in ("attempt_id", "reservation_id", "authorization_id", "capability_nonce"):
+                if str(uuid.UUID(body[name])) != body[name]:
+                    raise ValueError
+            for name in ("packet_ref", "packet_hash", "request_hash", "action_hash", "profile_hash",
+                         "provider_binding_hash", "price_schedule_hash"):
+                if not isinstance(body[name], str) or len(body[name]) != 64:
+                    raise ValueError
+            auth_fields = {key: body[key] for key in fields - {"version", "authorization_hash", "issued_at_ns",
+                "max_model_calls", "max_dynamic_tools"}}
+            if sha256_json({"version": ActionAssessmentDispatchAuthorizationV1.VERSION, **auth_fields}) != body["authorization_hash"]:
+                raise ValueError
+            return body
+        except Exception as exc:
+            raise BrokerProtocolError("INVALID_OR_EXPIRED_ACTION_ASSESSMENT_CAPABILITY") from exc
+
+
 def _capability_version(token: str) -> str:
     try:
         payload_part = token.split(".", 1)[0]
@@ -300,11 +395,19 @@ class InferenceBroker:
     """One bounded structured inference operation; it has no persistence dependency."""
 
     def __init__(self, provider: Any, *, signing_key: bytes,
-                 model_profile: AgentModelProfileV1 | AgentModelProfileV2 | None = None,
-                 price_schedule_hash: str | None = None) -> None:
+                 model_profile: AgentModelProfileV1 | AgentModelProfileV2 | ActionAssessmentProviderProfileV1 | None = None,
+                 price_schedule_hash: str | None = None,
+                 now_ns: Callable[[], int] = time.time_ns) -> None:
         if len(signing_key) < 32:
             raise ValueError("broker capability signing key must contain at least 256 bits")
-        if isinstance(model_profile, AgentModelProfileV2):
+        if isinstance(model_profile, ActionAssessmentProviderProfileV1):
+            if (price_schedule_hash != model_profile.price_schedule_hash
+                    or getattr(provider, "provider_id", None) != model_profile.provider
+                    or getattr(provider, "requested_model_id", None) != model_profile.requested_model_id
+                    or getattr(provider, "endpoint", None) != model_profile.endpoint
+                    or getattr(provider, "task_identity", None) != model_profile.task_identity):
+                raise ValueError("action-assessment broker, provider and immutable task profile do not match")
+        elif isinstance(model_profile, AgentModelProfileV2):
             if (price_schedule_hash is None or len(price_schedule_hash) != 64
                     or getattr(provider, "provider_id", None) != model_profile.provider
                     or getattr(provider, "requested_model_id", None) != model_profile.requested_model_id
@@ -316,14 +419,88 @@ class InferenceBroker:
         self._profile = model_profile
         self._price_schedule_hash = price_schedule_hash
         self.__signing_key = bytes(signing_key)
+        self._now_ns = now_ns
         self._lock = threading.Lock()
         self._seen: OrderedDict[tuple[str, str], tuple[str, ProviderResultV1]] = OrderedDict()
         self._busy: set[str] = set()
 
+    def assess_action_v1(self, *, capability: str, authorization_id: str, attempt_id: str,
+                         request_data: Mapping[str, Any], packet_data: Mapping[str, Any],
+                         now_ns: int | None = None) -> ProviderResultV1:
+        """Execute one signed, direct, tool-free action-critic call."""
+        now = self._now_ns() if now_ns is None else now_ns
+        if not isinstance(self._profile, ActionAssessmentProviderProfileV1):
+            raise BrokerProtocolError("CAPABILITY_PROFILE_VERSION_MISMATCH")
+        body = ActionAssessmentBrokerCapabilityV1.verify(capability, signing_key=self.__signing_key, now_ns=now)
+        try:
+            request = ActionAssessmentRequestV2.from_dict(request_data)
+            packet = SealedActionAssessmentPacketV1.from_dict(packet_data)
+        except Exception as exc:
+            raise BrokerProtocolError("INVALID_ACTION_ASSESSMENT_REQUEST") from exc
+        if (body["authorization_id"] != authorization_id or body["attempt_id"] != attempt_id
+                or body["packet_ref"] != packet.packet_ref or body["packet_hash"] != packet.content_hash
+                or body["request_hash"] != request.content_hash or body["action_hash"] != packet.action_hash
+                or body["profile_hash"] != self._profile.content_hash
+                or body["provider_binding_hash"] != self._profile.provider_binding_hash
+                or body["price_schedule_hash"] != self._price_schedule_hash
+                or body["provider"] != self._profile.provider
+                or body["requested_model_id"] != self._profile.requested_model_id
+                or body["endpoint"] != self._profile.endpoint
+                or request.packet_ref != packet.packet_ref or request.packet_hash != packet.content_hash
+                or request.action_hash != packet.action_hash or request.profile_hash != self._profile.content_hash
+                or request.provider_binding_hash != self._profile.provider_binding_hash
+                or request.price_schedule_hash != self._price_schedule_hash
+                or request.deadline_ns != body["deadline_ns"] or now >= packet.original_deadline_d_ns
+                or len(canonical_json(packet.to_dict()).encode("utf-8")) > self._profile.packet_max_bytes):
+            raise BrokerProtocolError("ACTION_ASSESSMENT_BINDING_MISMATCH")
+        key = (authorization_id, body["capability_nonce"])
+        input_hash = sha256_json({"request": request.to_dict(), "packet": packet.to_dict(),
+                                  "attempt_id": attempt_id, "profile_hash": self._profile.content_hash})
+        with self._lock:
+            prior = self._seen.get(key)
+            if prior is not None:
+                if prior[0] != input_hash:
+                    raise BrokerProtocolError("CALL_INDEX_CONTRADICTION")
+                return prior[1]
+            if len(self._seen) >= MAX_REPLAY_CACHE_ENTRIES:
+                raise BrokerProtocolError("REPLAY_CACHE_FULL")
+            if authorization_id in self._busy:
+                raise BrokerProtocolError("DISPATCH_ALREADY_IN_PROGRESS")
+            self._busy.add(authorization_id)
+        try:
+            result = self._provider.assess(request, packet)
+            if not isinstance(result, ProviderResultV1):
+                result = ProviderResultV1("", None, None, False, False, 0, 0, None,
+                                          "PROVIDER_RETURN_TYPE_INVALID", False)
+            elif result.input_tokens > body["max_input_tokens"] or result.output_tokens > body["max_output_tokens"]:
+                result = ProviderResultV1("", result.returned_model_id, None, result.refusal, True,
+                    result.input_tokens, result.output_tokens, result.provider_request_id,
+                    "TOKEN_LIMIT_EXCEEDED", False)
+            with self._lock:
+                self._seen[key] = (input_hash, result)
+            return result
+        except ResearchProviderUnavailable as exc:
+            result = ProviderResultV1("", None, None, exc.code == "PROVIDER_REFUSAL", False, 0, 0,
+                                      None, exc.code, False)
+            with self._lock:
+                self._seen[key] = (input_hash, result)
+            return result
+        except Exception:
+            result = ProviderResultV1("", None, None, False, False, 0, 0,
+                                      None, "PROVIDER_ERROR", False)
+            with self._lock:
+                self._seen[key] = (input_hash, result)
+            return result
+        finally:
+            with self._lock:
+                self._busy.discard(authorization_id)
+
     def infer(self, *, capability: str, job_id: str, attempt_id: str, lease_epoch: int,
               call_index: int, request_data: Mapping[str, Any], evidence: Sequence[Mapping[str, Any]],
               now_ns: int | None = None) -> ProviderResultV1:
-        now = time.time_ns() if now_ns is None else now_ns
+        now = self._now_ns() if now_ns is None else now_ns
+        if isinstance(self._profile, ActionAssessmentProviderProfileV1):
+            raise BrokerProtocolError("ACTION_ASSESSMENT_CAPABILITY_CANNOT_INVOKE_RESEARCH")
         capability_version = _capability_version(capability)
         if capability_version == "BrokerCapabilityV1":
             if isinstance(self._profile, AgentModelProfileV2):
@@ -489,16 +666,33 @@ class InferenceBrokerServer:
         try:
             raw = _read_frame(connection)
             data = json.loads(raw.decode("utf-8"))
-            fields = {"protocol_version", "request_id", "command", "capability", "job_id", "attempt_id",
-                      "lease_epoch", "call_index", "request", "evidence"}
-            row = strict_fields(data, expected=fields, required=fields, name="BrokerRequestV1")
-            if (row["protocol_version"] != BROKER_PROTOCOL_VERSION or row["command"] != "infer"
-                    or not isinstance(row["request_id"], str) or len(row["request_id"]) != 36
-                    or not isinstance(row["request"], Mapping) or not isinstance(row["evidence"], list)):
+            if not isinstance(data, Mapping):
                 raise BrokerProtocolError("INVALID_BROKER_REQUEST")
-            result = self.broker.infer(capability=row["capability"], job_id=row["job_id"],
-                attempt_id=row["attempt_id"], lease_epoch=row["lease_epoch"], call_index=row["call_index"],
-                request_data=row["request"], evidence=row["evidence"])
+            command = data.get("command")
+            if command == "infer":
+                fields = {"protocol_version", "request_id", "command", "capability", "job_id", "attempt_id",
+                          "lease_epoch", "call_index", "request", "evidence"}
+                row = strict_fields(data, expected=fields, required=fields, name="BrokerRequestV1")
+                if (row["protocol_version"] != BROKER_PROTOCOL_VERSION
+                        or not isinstance(row["request_id"], str) or len(row["request_id"]) != 36
+                        or not isinstance(row["request"], Mapping) or not isinstance(row["evidence"], list)):
+                    raise BrokerProtocolError("INVALID_BROKER_REQUEST")
+                result = self.broker.infer(capability=row["capability"], job_id=row["job_id"],
+                    attempt_id=row["attempt_id"], lease_epoch=row["lease_epoch"], call_index=row["call_index"],
+                    request_data=row["request"], evidence=row["evidence"])
+            elif command == "assess_action_v1":
+                fields = {"protocol_version", "request_id", "command", "capability", "authorization_id",
+                          "attempt_id", "request", "packet"}
+                row = strict_fields(data, expected=fields, required=fields, name="ActionAssessmentBrokerRequestV1")
+                if (row["protocol_version"] != BROKER_PROTOCOL_VERSION
+                        or not isinstance(row["request_id"], str) or len(row["request_id"]) != 36
+                        or not isinstance(row["request"], Mapping) or not isinstance(row["packet"], Mapping)):
+                    raise BrokerProtocolError("INVALID_ACTION_ASSESSMENT_BROKER_REQUEST")
+                result = self.broker.assess_action_v1(capability=row["capability"],
+                    authorization_id=row["authorization_id"], attempt_id=row["attempt_id"],
+                    request_data=row["request"], packet_data=row["packet"])
+            else:
+                raise BrokerProtocolError("BROKER_OPERATION_UNSUPPORTED")
             _write_frame(connection, {"protocol_version": BROKER_PROTOCOL_VERSION, "request_id": row["request_id"],
                                       "ok": True, "result": _result_wire(result)})
         except Exception as exc:
@@ -547,6 +741,25 @@ class InferenceBrokerClient:
             raise BrokerProtocolError("BROKER_RESPONSE_INVALID")
         return _result_from_wire(response["result"])
 
+    def assess_action_v1(self, *, capability: str, authorization_id: str, attempt_id: str,
+                         request: ActionAssessmentRequestV2,
+                         packet: SealedActionAssessmentPacketV1) -> ProviderResultV1:
+        request_id = str(uuid.uuid4())
+        payload = {"protocol_version": BROKER_PROTOCOL_VERSION, "request_id": request_id,
+            "command": "assess_action_v1", "capability": capability,
+            "authorization_id": authorization_id, "attempt_id": attempt_id,
+            "request": request.to_dict(), "packet": packet.to_dict()}
+        self._socket.settimeout(BROKER_SOCKET_TIMEOUT_SECONDS)
+        _write_frame(self._socket, payload)
+        response = json.loads(_read_frame(self._socket).decode("utf-8"))
+        if response.get("protocol_version") != BROKER_PROTOCOL_VERSION or response.get("request_id") not in {request_id, None}:
+            raise BrokerProtocolError("BROKER_RESPONSE_MISMATCH")
+        if response.get("ok") is not True:
+            raise BrokerProtocolError(str(response.get("error", "BROKER_UNAVAILABLE")))
+        if not isinstance(response.get("result"), Mapping):
+            raise BrokerProtocolError("BROKER_RESPONSE_INVALID")
+        return _result_from_wire(response["result"])
+
 
 def broker_main() -> int:
     """Opt-in credential-owning service entry; no key is accepted on argv or logged."""
@@ -554,8 +767,12 @@ def broker_main() -> int:
     from pathlib import Path
 
     from atlas.v2.agent_intelligence.budget import DeepSeekPriceScheduleV1
-    from atlas.v2.agent_intelligence.profile import deepseek_v41_flash_model_profile
+    from atlas.v2.agent_intelligence.profile import (
+        deepseek_v41_flash_action_critic_profile,
+        deepseek_v41_flash_model_profile,
+    )
     from atlas.v2.agent_intelligence.provider import (
+        DeepSeekResponsesActionAssessmentProvider,
         DeepSeekResponsesResearchProposalProvider,
         PydanticAIResearchProposalProvider,
     )
@@ -573,7 +790,7 @@ def broker_main() -> int:
     if len(signing_key) < 32:
         raise SystemExit("ATLAS_AGENT_CAPABILITY_KEY must be at least 256 bits")
     provider_profile = os.environ.get("ATLAS_AGENT_PROVIDER_PROFILE", "openai-astra-v1")
-    provider: PydanticAIResearchProposalProvider | DeepSeekResponsesResearchProposalProvider
+    provider: PydanticAIResearchProposalProvider | DeepSeekResponsesResearchProposalProvider | DeepSeekResponsesActionAssessmentProvider
     if provider_profile == "openai-astra-v1":
         api_key = os.environ.get("OPENAI_API_KEY", "")
         if not api_key:
@@ -591,6 +808,18 @@ def broker_main() -> int:
             agent_lock_path=repo_root / "requirements-agent-lock.txt")
         provider = DeepSeekResponsesResearchProposalProvider(api_key)
         broker = InferenceBroker(provider, signing_key=signing_key, model_profile=profile,
+                                 price_schedule_hash=price_schedule.content_hash)
+    elif provider_profile == "deepseek-v41-action-critic-v1":
+        api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+        if not api_key:
+            raise SystemExit("PROVIDER_CREDENTIAL_UNAVAILABLE")
+        repo_root = Path(__file__).resolve().parents[4]
+        price_schedule = DeepSeekPriceScheduleV1.load(
+            repo_root / "configs/agent_intelligence/provider_pricing_deepseek_v41_flash_v1.json")
+        critic_profile = deepseek_v41_flash_action_critic_profile(price_schedule=price_schedule,
+            agent_lock_path=repo_root / "requirements-agent-lock.txt")
+        provider = DeepSeekResponsesActionAssessmentProvider(api_key)
+        broker = InferenceBroker(provider, signing_key=signing_key, model_profile=critic_profile,
                                  price_schedule_hash=price_schedule.content_hash)
     else:
         raise SystemExit("PROVIDER_PROFILE_UNSUPPORTED")

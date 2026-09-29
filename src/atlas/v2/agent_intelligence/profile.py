@@ -8,11 +8,20 @@ from pathlib import Path
 from atlas.v2._serialization import FrozenMap
 from atlas.v2.agent_intelligence.budget import DeepSeekPriceScheduleV1, ProviderPriceScheduleV1
 from atlas.v2.agent_intelligence.contracts import (
+    ACTION_ASSESSMENT_PACKET_MAX_BYTES,
+    ACTION_ASSESSMENT_PACKET_VERSION,
+    ACTION_ASSESSMENT_TASK_IDENTITY,
+    ActionAssessmentProviderProfileV1,
     AgentModelProfileV1,
     AgentModelProfileV2,
     RevisionStatusV1,
 )
-from atlas.v2.agent_intelligence.provider import PROMPT_CONTRACT_HASH, TOOL_CONTRACT_HASH
+from atlas.v2.agent_intelligence.provider import (
+    ACTION_CRITIC_PROMPT_HASH,
+    ACTION_CRITIC_SCHEMA_HASH,
+    PROMPT_CONTRACT_HASH,
+    TOOL_CONTRACT_HASH,
+)
 from atlas.v2.agent_intelligence.validation import proposal_schema_hash
 
 
@@ -64,4 +73,37 @@ def deepseek_v41_flash_model_profile(*, price_schedule: DeepSeekPriceScheduleV1,
         tool_contract_hash=TOOL_CONTRACT_HASH,
         runtime_dependency_hash=hashlib.sha256(lock_bytes).hexdigest(),
         pricing_schedule_id=price_schedule.version,
+    )
+
+
+def deepseek_v41_flash_action_critic_profile(*, price_schedule: DeepSeekPriceScheduleV1,
+        agent_lock_path: str | Path) -> ActionAssessmentProviderProfileV1:
+    """Build the separate one-call ActionAssessmentProvider profile over the accepted price schedule."""
+    lock_bytes = Path(agent_lock_path).read_bytes()
+    if (price_schedule.provider != "deepseek" or price_schedule.requested_model_id != "deepseek-flash"
+            or price_schedule.endpoint != "https://api.deepseek.com/responses"):
+        raise ValueError("action critic requires the accepted DeepSeek price schedule")
+    return ActionAssessmentProviderProfileV1(
+        provider="deepseek",
+        requested_model_id="deepseek-flash",
+        model_family="DeepSeek-V4.1-Flash",
+        revision_status=RevisionStatusV1.ALIAS_ONLY,
+        base_url="https://api.deepseek.com",
+        endpoint_path="/responses",
+        reasoning_setting_id="DEEPSEEK_RESPONSES_REASONING_EFFORT_HIGH_V1",
+        reasoning_settings=FrozenMap({"effort": "high"}),
+        structured_output_format="json_schema",
+        task_identity=ACTION_ASSESSMENT_TASK_IDENTITY,
+        price_schedule_id=price_schedule.version,
+        price_schedule_hash=price_schedule.content_hash,
+        prompt_hash=ACTION_CRITIC_PROMPT_HASH,
+        schema_hash=ACTION_CRITIC_SCHEMA_HASH,
+        runtime_dependency_hash=hashlib.sha256(lock_bytes).hexdigest(),
+        maximum_input_tokens=12_000,
+        maximum_output_tokens=2_048,
+        maximum_model_calls=1,
+        maximum_dynamic_tools=0,
+        maximum_concurrent_jobs=1,
+        packet_version=ACTION_ASSESSMENT_PACKET_VERSION,
+        packet_max_bytes=ACTION_ASSESSMENT_PACKET_MAX_BYTES,
     )

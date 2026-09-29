@@ -7,6 +7,7 @@ import re
 import sqlite3
 import threading
 import uuid
+from collections.abc import Mapping
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -142,6 +143,62 @@ _AGENT_DDL = (
     """CREATE TRIGGER agent_events_no_delete BEFORE DELETE ON agent_job_events BEGIN SELECT RAISE(ABORT,'immutable job event'); END""",
 )
 
+ACTION_ASSESSMENT_SCHEMA_NAMESPACE = "atlas-agent-action-assessment"
+ACTION_ASSESSMENT_SCHEMA_VERSION = 1
+_ACTION_ASSESSMENT_DDL = (
+    "CREATE TABLE agent_action_assessment_meta(namespace TEXT PRIMARY KEY, schema_version INTEGER NOT NULL CHECK(schema_version=1))",
+    """CREATE TABLE agent_action_assessment_packets(
+        packet_ref TEXT PRIMARY KEY, packet_hash TEXT NOT NULL UNIQUE, packet_json TEXT NOT NULL,
+        originating_receipt_ref TEXT NOT NULL, created_at_ns INTEGER NOT NULL)""",
+    """CREATE TABLE agent_action_assessment_requests(
+        request_id TEXT PRIMARY KEY, request_hash TEXT NOT NULL UNIQUE,
+        packet_ref TEXT NOT NULL REFERENCES agent_action_assessment_packets(packet_ref),
+        request_json TEXT NOT NULL, created_at_ns INTEGER NOT NULL)""",
+    """CREATE TABLE agent_action_assessment_attempts(
+        attempt_id TEXT PRIMARY KEY, request_id TEXT NOT NULL UNIQUE
+        REFERENCES agent_action_assessment_requests(request_id), attempt_index INTEGER NOT NULL CHECK(attempt_index=1),
+        state TEXT NOT NULL, created_at_ns INTEGER NOT NULL)""",
+    """CREATE TABLE agent_action_assessment_reservations(
+        reservation_id TEXT PRIMARY KEY, request_id TEXT NOT NULL UNIQUE
+        REFERENCES agent_action_assessment_requests(request_id), attempt_id TEXT NOT NULL UNIQUE
+        REFERENCES agent_action_assessment_attempts(attempt_id), utc_day INTEGER NOT NULL,
+        reserved_usd TEXT NOT NULL, price_schedule_hash TEXT NOT NULL, created_at_ns INTEGER NOT NULL)""",
+    """CREATE TABLE agent_action_assessment_dispatches(
+        authorization_id TEXT PRIMARY KEY, attempt_id TEXT NOT NULL UNIQUE
+        REFERENCES agent_action_assessment_attempts(attempt_id), request_id TEXT NOT NULL UNIQUE
+        REFERENCES agent_action_assessment_requests(request_id), authorization_json TEXT NOT NULL,
+        authorization_hash TEXT NOT NULL UNIQUE, created_at_ns INTEGER NOT NULL)""",
+    """CREATE TABLE agent_action_assessment_outcomes(
+        outcome_id TEXT PRIMARY KEY, request_id TEXT NOT NULL UNIQUE
+        REFERENCES agent_action_assessment_requests(request_id), attempt_id TEXT UNIQUE
+        REFERENCES agent_action_assessment_attempts(attempt_id), status TEXT NOT NULL,
+        result_json TEXT, provider_output_hash TEXT, failure_code TEXT, received_at_ns INTEGER NOT NULL,
+        eligible INTEGER NOT NULL CHECK(eligible IN (0,1)))""",
+    """CREATE TABLE agent_action_assessment_validations(
+        receipt_hash TEXT PRIMARY KEY, request_id TEXT NOT NULL
+        REFERENCES agent_action_assessment_requests(request_id), attempt_id TEXT NOT NULL
+        REFERENCES agent_action_assessment_attempts(attempt_id), receipt_json TEXT NOT NULL,
+        created_at_ns INTEGER NOT NULL)""",
+    """CREATE TABLE agent_action_assessment_skips(
+        receipt_ref TEXT PRIMARY KEY, reason_code TEXT NOT NULL, created_at_ns INTEGER NOT NULL)""",
+    """CREATE TABLE agent_action_assessment_acceptances(
+        packet_ref TEXT PRIMARY KEY REFERENCES agent_action_assessment_packets(packet_ref),
+        request_id TEXT NOT NULL UNIQUE REFERENCES agent_action_assessment_requests(request_id),
+        result_hash TEXT NOT NULL, created_at_ns INTEGER NOT NULL)""",
+    *tuple(f"CREATE TRIGGER {table}_no_update BEFORE UPDATE ON {table} BEGIN SELECT RAISE(ABORT,'immutable action assessment record'); END"
+        for table in ("agent_action_assessment_packets", "agent_action_assessment_requests",
+            "agent_action_assessment_attempts", "agent_action_assessment_reservations",
+            "agent_action_assessment_dispatches", "agent_action_assessment_outcomes",
+            "agent_action_assessment_validations", "agent_action_assessment_skips",
+            "agent_action_assessment_acceptances")),
+    *tuple(f"CREATE TRIGGER {table}_no_delete BEFORE DELETE ON {table} BEGIN SELECT RAISE(ABORT,'immutable action assessment record'); END"
+        for table in ("agent_action_assessment_packets", "agent_action_assessment_requests",
+            "agent_action_assessment_attempts", "agent_action_assessment_reservations",
+            "agent_action_assessment_dispatches", "agent_action_assessment_outcomes",
+            "agent_action_assessment_validations", "agent_action_assessment_skips",
+            "agent_action_assessment_acceptances")),
+)
+
 
 def initialize_agent_extension(connection: sqlite3.Connection) -> None:
     """Create the namespaced extension without touching existing ops schema/version rows."""
@@ -159,9 +216,11 @@ def initialize_agent_extension(connection: sqlite3.Connection) -> None:
             _migrate_agent_extension_v1_to_v2(connection)
         elif row[0] != AGENT_SCHEMA_VERSION:
             raise RuntimeError("agent persistence schema version is unsupported")
+        rows = connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        tables = {row[0] for row in rows}
         required = {"agent_model_profiles", "agent_family_budgets", "agent_family_usage", "agent_requests", "agent_jobs", "agent_attempts", "agent_results", "agent_authorities",
                     "agent_broker_dispatches", "agent_validation_receipts", "agent_budget_reservations", "agent_daily_budgets",
-                    "agent_tool_calls", "agent_job_events"}
+        "agent_tool_calls", "agent_job_events"}
         if not required.issubset(tables):
             raise RuntimeError("agent persistence schema is incomplete")
         return
@@ -196,6 +255,35 @@ def _migrate_agent_extension_v1_to_v2(connection: sqlite3.Connection) -> None:
                            "ON agent_broker_dispatches(authorization_id) WHERE authorization_id IS NOT NULL")
         connection.execute("UPDATE agent_intelligence_meta SET schema_version=? WHERE namespace=?",
                            (AGENT_SCHEMA_VERSION, AGENT_SCHEMA_NAMESPACE))
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+
+
+def initialize_action_assessment_extension(connection: sqlite3.Connection) -> None:
+    """Create the versioned critic ledger beside, without changing, the S26/28 agent schema."""
+    rows = connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    tables = {row[0] for row in rows}
+    if "agent_intelligence_meta" not in tables:
+        raise RuntimeError("action-assessment ledger requires the accepted agent extension")
+    if "agent_action_assessment_meta" in tables:
+        row = connection.execute("SELECT schema_version FROM agent_action_assessment_meta WHERE namespace=?",
+                                 (ACTION_ASSESSMENT_SCHEMA_NAMESPACE,)).fetchone()
+        required = {"agent_action_assessment_packets", "agent_action_assessment_requests",
+            "agent_action_assessment_attempts", "agent_action_assessment_reservations",
+            "agent_action_assessment_dispatches", "agent_action_assessment_outcomes",
+            "agent_action_assessment_validations", "agent_action_assessment_skips",
+            "agent_action_assessment_acceptances"}
+        if row is None or row[0] != ACTION_ASSESSMENT_SCHEMA_VERSION or not required.issubset(tables):
+            raise RuntimeError("action-assessment ledger schema is incomplete or unsupported")
+        return
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        for statement in _ACTION_ASSESSMENT_DDL:
+            connection.execute(statement)
+        connection.execute("INSERT INTO agent_action_assessment_meta VALUES(?,?)",
+                           (ACTION_ASSESSMENT_SCHEMA_NAMESPACE, ACTION_ASSESSMENT_SCHEMA_VERSION))
         connection.commit()
     except BaseException:
         connection.rollback()
@@ -793,3 +881,222 @@ class AgentJobRepository:
 
 _TERMINAL = frozenset({AgentJobStateV1.VALIDATED, AgentJobStateV1.UNAVAILABLE, AgentJobStateV1.INVALID,
                        AgentJobStateV1.EXPIRED, AgentJobStateV1.CANCELLED})
+
+
+class ActionAssessmentRepository:
+    """Append-only hidden critic ledger, written only by atlas-ops/controller."""
+
+    def __init__(self, path: str | Path, *, price_schedule: DeepSeekPriceScheduleV1) -> None:
+        raw = str(path)
+        if not raw or raw.startswith("file:") or "://" in raw:
+            raise ValueError("action-assessment persistence requires a local ops.sqlite path")
+        self.path = raw
+        self.price_schedule = price_schedule
+        self._lock = threading.RLock()
+        self._connection = sqlite3.connect(raw, isolation_level=None, check_same_thread=False, timeout=30)
+        self._connection.row_factory = sqlite3.Row
+        self._connection.execute("PRAGMA foreign_keys=ON")
+        self._connection.execute("PRAGMA busy_timeout=30000")
+        if self._connection.execute("PRAGMA journal_mode").fetchone()[0].lower() != "wal":
+            self._connection.close()
+            raise RuntimeError("action-assessment persistence requires existing ops WAL mode")
+        validate_read_only(self._connection)
+        initialize_agent_extension(self._connection)
+        initialize_action_assessment_extension(self._connection)
+
+    def close(self) -> None:
+        with self._lock:
+            self._connection.close()
+
+    def __enter__(self) -> ActionAssessmentRepository:
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+        self.close()
+
+    def _transaction(self):
+        repository = self
+
+        class Transaction:
+            def __enter__(self) -> sqlite3.Connection:
+                repository._lock.acquire()
+                repository._connection.execute("BEGIN IMMEDIATE")
+                return repository._connection
+
+            def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+                try:
+                    repository._connection.rollback() if exc_type else repository._connection.commit()
+                finally:
+                    repository._lock.release()
+        return Transaction()
+
+    def record_skip(self, receipt_ref: str, reason_code: str, *, now_ns: int) -> None:
+        sha256_ref(receipt_ref, field="receipt_ref")
+        if not re.fullmatch(r"[A-Z][A-Z0-9_]{0,95}", reason_code):
+            raise ValueError("action-assessment skip reason is invalid")
+        with self._transaction() as connection:
+            row = connection.execute("SELECT reason_code FROM agent_action_assessment_skips WHERE receipt_ref=?",
+                                     (receipt_ref,)).fetchone()
+            if row is not None:
+                if row["reason_code"] != reason_code:
+                    raise ValueError("receipt was already sealed with a different action-critic skip reason")
+                return
+            connection.execute("INSERT INTO agent_action_assessment_skips VALUES(?,?,?)",
+                               (receipt_ref, reason_code, now_ns))
+
+    def persist_packet_request(self, packet: Any, request: Any, *, now_ns: int) -> None:
+        packet_body, request_body = packet.to_dict(), request.to_dict()
+        packet_json, request_json = canonical_json(packet_body), canonical_json(request_body)
+        if _safe_json(packet_body) != packet_json or _safe_json(request_body) != request_json:
+            raise ValueError("sensitive material cannot be persisted in an action-assessment contract")
+        if (request.packet_ref != packet.packet_ref or request.packet_hash != packet.content_hash
+                or request.action_hash != packet.action_hash):
+            raise ValueError("action-assessment request does not bind the exact sealed packet")
+        with self._transaction() as connection:
+            existing_packet = connection.execute("SELECT packet_hash,packet_json FROM agent_action_assessment_packets "
+                "WHERE packet_ref=?", (packet.packet_ref,)).fetchone()
+            if existing_packet is not None:
+                if existing_packet["packet_hash"] != packet.content_hash or existing_packet["packet_json"] != packet_json:
+                    raise ValueError("content-addressed sealed packet identity collision")
+            else:
+                connection.execute("INSERT INTO agent_action_assessment_packets VALUES(?,?,?,?,?)",
+                    (packet.packet_ref, packet.content_hash, packet_json, packet.originating_receipt_ref, now_ns))
+            existing_request = connection.execute("SELECT request_hash,request_json FROM agent_action_assessment_requests "
+                "WHERE request_id=?", (request.request_id,)).fetchone()
+            if existing_request is not None:
+                if existing_request["request_hash"] != request.content_hash or existing_request["request_json"] != request_json:
+                    raise ValueError("deterministic action-assessment request identity collision")
+            else:
+                connection.execute("INSERT INTO agent_action_assessment_requests VALUES(?,?,?,?,?)",
+                    (request.request_id, request.content_hash, packet.packet_ref, request_json, now_ns))
+
+    def request_state(self, request_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._connection.execute("SELECT r.request_json,a.attempt_id,d.authorization_id,o.status,o.result_json,"
+                "o.provider_output_hash,o.failure_code,o.received_at_ns,o.eligible FROM agent_action_assessment_requests r "
+                "LEFT JOIN agent_action_assessment_attempts a ON a.request_id=r.request_id "
+                "LEFT JOIN agent_action_assessment_dispatches d ON d.request_id=r.request_id "
+                "LEFT JOIN agent_action_assessment_outcomes o ON o.request_id=r.request_id WHERE r.request_id=?",
+                (request_id,)).fetchone()
+        return dict(row) if row is not None else None
+
+    def create_attempt(self, request_id: str, *, attempt_id: str, now_ns: int) -> None:
+        with self._transaction() as connection:
+            prior = connection.execute("SELECT attempt_id FROM agent_action_assessment_attempts WHERE request_id=?",
+                                       (request_id,)).fetchone()
+            if prior is not None:
+                if prior["attempt_id"] != attempt_id:
+                    raise ValueError("action-assessment request already has its one attempt")
+                return
+            connection.execute("INSERT INTO agent_action_assessment_attempts VALUES(?,?,?,?,?)",
+                               (attempt_id, request_id, 1, "CREATED", now_ns))
+
+    def reserve_cost(self, request_id: str, *, attempt_id: str, reservation_id: str, now_ns: int,
+                     reserved_usd: Decimal) -> None:
+        if reserved_usd != self.price_schedule.worst_case_call_usd(input_tokens=12_000, output_tokens=2_048):
+            raise ValueError("critic reservation does not use the conservative existing DeepSeek price schedule")
+        utc_day = now_ns // _NS_PER_DAY
+        with self._transaction() as connection:
+            prior = connection.execute("SELECT reservation_id,reserved_usd,price_schedule_hash "
+                "FROM agent_action_assessment_reservations WHERE request_id=?", (request_id,)).fetchone()
+            if prior is not None:
+                if (prior["reservation_id"] != reservation_id or prior["reserved_usd"] != str(reserved_usd)
+                        or prior["price_schedule_hash"] != self.price_schedule.content_hash):
+                    raise ValueError("action-assessment cost reservation is immutable")
+                return
+            rows = connection.execute("SELECT reserved_usd FROM agent_action_assessment_reservations WHERE utc_day=?",
+                                      (utc_day,)).fetchall()
+            used = sum((Decimal(row["reserved_usd"]) for row in rows), Decimal(0))
+            if used + reserved_usd > self.price_schedule.maximum_daily_cost_usd:
+                raise ValueError("action-assessment daily cost ceiling is exhausted")
+            connection.execute("INSERT INTO agent_action_assessment_reservations VALUES(?,?,?,?,?,?,?)",
+                (reservation_id, request_id, attempt_id, utc_day, str(reserved_usd),
+                 self.price_schedule.content_hash, now_ns))
+
+    def persist_dispatch_authorization(self, authorization: Any, *, now_ns: int) -> None:
+        body = authorization.to_dict()
+        encoded = canonical_json(body)
+        if _safe_json(body) != encoded:
+            raise ValueError("sensitive material cannot be persisted in a dispatch authorization")
+        with self._transaction() as connection:
+            attempt = connection.execute("SELECT request_id FROM agent_action_assessment_attempts WHERE attempt_id=?",
+                                         (authorization.attempt_id,)).fetchone()
+            if attempt is None:
+                raise ValueError("dispatch authorization lacks its persisted attempt")
+            request_id = attempt["request_id"]
+            existing = connection.execute("SELECT authorization_hash,authorization_json FROM "
+                "agent_action_assessment_dispatches WHERE request_id=?", (request_id,)).fetchone()
+            if existing is not None:
+                if existing["authorization_hash"] != authorization.authorization_hash or existing["authorization_json"] != encoded:
+                    raise ValueError("action-assessment dispatch authorization is already sealed")
+                return
+            request = connection.execute("SELECT request_hash FROM agent_action_assessment_requests WHERE request_id=?",
+                                         (request_id,)).fetchone()
+            reservation = connection.execute("SELECT reservation_id FROM agent_action_assessment_reservations "
+                                             "WHERE request_id=?", (request_id,)).fetchone()
+            if (request is None or request["request_hash"] != authorization.request_hash or reservation is None
+                    or reservation["reservation_id"] != authorization.reservation_id):
+                raise ValueError("dispatch authorization must follow its immutable request and cost reservation")
+            connection.execute("INSERT INTO agent_action_assessment_dispatches VALUES(?,?,?,?,?,?)",
+                (authorization.authorization_id, authorization.attempt_id, request_id, encoded,
+                 authorization.authorization_hash, now_ns))
+
+    def has_dispatch(self, request_id: str) -> bool:
+        with self._lock:
+            return self._connection.execute("SELECT 1 FROM agent_action_assessment_dispatches WHERE request_id=?",
+                                            (request_id,)).fetchone() is not None
+
+    def record_validation(self, request_id: str, attempt_id: str, receipt: Any, *, now_ns: int) -> None:
+        body = receipt.to_dict()
+        with self._transaction() as connection:
+            connection.execute("INSERT OR IGNORE INTO agent_action_assessment_validations VALUES(?,?,?,?,?)",
+                (receipt.receipt_hash, request_id, attempt_id, canonical_json(body), now_ns))
+
+    def record_outcome(self, request_id: str, *, attempt_id: str | None, status: str,
+                       result: Mapping[str, Any] | None, provider_output_hash: str | None,
+                       failure_code: str | None, received_at_ns: int, eligible: bool) -> None:
+        if status not in {"COMPLETE", "REFUSED", "UNAVAILABLE", "INVALID", "EXPIRED", "SKIPPED"}:
+            raise ValueError("action-assessment terminal status is invalid")
+        if eligible and (status != "COMPLETE" or result is None or attempt_id is None):
+            raise ValueError("only a validated complete critic result can be accepted shadow evidence")
+        if provider_output_hash is not None:
+            sha256_ref(provider_output_hash, field="provider_output_hash")
+        if result is None:
+            encoded = None
+        else:
+            encoded = canonical_json(dict(result))
+            if _safe_json(dict(result)) != encoded:
+                raise ValueError("sensitive material cannot be persisted in critic findings")
+        with self._transaction() as connection:
+            packet = connection.execute("SELECT packet_ref FROM agent_action_assessment_requests WHERE request_id=?",
+                                        (request_id,)).fetchone()
+            if packet is None:
+                raise ValueError("action-assessment outcome lacks its immutable request")
+            prior = connection.execute("SELECT status,result_json,eligible FROM agent_action_assessment_outcomes "
+                                       "WHERE request_id=?", (request_id,)).fetchone()
+            if prior is not None:
+                if prior["status"] != status or prior["result_json"] != encoded or bool(prior["eligible"]) != eligible:
+                    raise ValueError("one terminal action-assessment outcome is already sealed")
+                return
+            outcome_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"atlas-action-assessment-outcome:{request_id}"))
+            if eligible:
+                assert result is not None and attempt_id is not None
+                result_hash = sha256_json(dict(result))
+                accepted = connection.execute("SELECT request_id,result_hash FROM "
+                    "agent_action_assessment_acceptances WHERE packet_ref=?", (packet["packet_ref"],)).fetchone()
+                if accepted is not None and (accepted["request_id"] != request_id or accepted["result_hash"] != result_hash):
+                    raise ValueError("sealed packet already has its one accepted shadow assessment")
+                if accepted is None:
+                    connection.execute("INSERT INTO agent_action_assessment_acceptances VALUES(?,?,?,?)",
+                        (packet["packet_ref"], request_id, result_hash, received_at_ns))
+            connection.execute("INSERT INTO agent_action_assessment_outcomes VALUES(?,?,?,?,?,?,?,?,?)",
+                (outcome_id, request_id, attempt_id, status, encoded, provider_output_hash, failure_code,
+                 received_at_ns, int(eligible)))
+
+    def recover_dispatch_without_result(self, request_id: str, *, now_ns: int) -> None:
+        state = self.request_state(request_id)
+        if state is None or state["authorization_id"] is None or state["status"] is not None:
+            return
+        self.record_outcome(request_id, attempt_id=state["attempt_id"], status="UNAVAILABLE", result=None,
+            provider_output_hash=None, failure_code="DISPATCH_OUTCOME_LOST_ON_RESTART", received_at_ns=now_ns,
+            eligible=False)

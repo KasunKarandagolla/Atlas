@@ -1,8 +1,13 @@
 """Offline, zero-authority agent research infrastructure for ATLAS."""
 
 from .contracts import (
+    ActionAssessmentFindingV1,
     ActionAssessmentProvider,
+    ActionAssessmentProviderV2,
     ActionAssessmentRequestV1,
+    ActionAssessmentRequestV2,
+    ActionAssessmentResultV2,
+    ActionAssessmentValidationReceiptV1,
     AgentAssessmentV1,
     AgentAttemptV1,
     AgentEvidenceRefV1,
@@ -19,10 +24,14 @@ from .contracts import (
     ResearchProposalProvider,
     ResearchProposalRequestV1,
     ResearchProposalV1,
+    SealedActionAssessmentPacketV1,
 )
 
 __all__ = [
-    "ActionAssessmentProvider", "ActionAssessmentRequestV1", "AgentAssessmentV1", "AgentAttemptV1",
+    "ActionAssessmentProvider", "ActionAssessmentProviderV2", "ActionAssessmentRequestV1",
+    "ActionAssessmentRequestV2", "ActionAssessmentFindingV1", "ActionAssessmentResultV2",
+    "ActionAssessmentValidationReceiptV1", "SealedActionAssessmentPacketV1",
+    "AgentAssessmentV1", "AgentAttemptV1",
     "BrokerDispatchAuthorizationV1",
     "BrokerDispatchAuthorizationV2",
     "AgentEvidenceRefV1", "AgentJobStateV1", "AgentJobV1", "AgentModelProfileV1",
