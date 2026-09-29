@@ -1,6 +1,6 @@
 {
   "artifact_type": "AtlasAgentProviderModelAmendmentGateV1",
-  "content_hash": "a304215fef334552ef92a7a069409bbfb191e52bb788e33e227ad53f4867161d",
+  "content_hash": "1fc0a55ffda40cf9686a64260eea51918ca9bf017b7d7f399e2e93f100b268d7",
   "schema_version": 1,
   "payload": {
     "amendment_identity": "ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1",
@@ -62,6 +62,8 @@
       "dispatch_authorization_before_capability": "TESTED",
       "worker_provider_secret_database_and_network_authority": "NONE; TESTED",
       "broker_ops_sqlite_or_opsrepository_access": "NONE; TESTED",
+      "normal_runtime_provider_credential_lookup_owner": "broker only",
+      "live_smoke_traversed_broker_process": false,
       "provider_reasoning_persistence": "DISCARDED AT BOUNDARY; TESTED",
       "v1_profile_wire_and_openai_pricing_preserved": "TESTED",
       "session026_regression": "PASS",
@@ -78,6 +80,7 @@
     "provider_calls": {
       "total_real_calls": 1,
       "provider": "DeepSeek direct only",
+      "runner": "one-off local harness invoked the fixed adapter directly, outside the broker socket",
       "requested_and_returned_model": "deepseek-flash",
       "input_tokens": 1929,
       "output_tokens": 512,

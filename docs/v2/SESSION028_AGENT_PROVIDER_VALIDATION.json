@@ -144,7 +144,8 @@
     "broker_has_ops_sqlite_or_opsrepository": false,
     "worker_has_database_or_provider_secret": false,
     "worker_network_authority": false,
-    "provider_credentials_read_only_by_broker": true,
+    "normal_runtime_provider_credential_lookup_owner": "broker only",
+    "session_smoke_ran_inside_broker_process": false,
     "capability_binds_profile_provider_model_endpoint_and_price_schedule": true,
     "dispatch_authorization_persisted_before_capability": true,
     "every_retry_requires_new_persisted_attempt_and_authorization": true,
@@ -225,6 +226,9 @@
   "real_provider_smoke": {
     "provider_calls_total_for_session028": 1,
     "provider_called": "deepseek direct endpoint only",
+    "runner": "one-off local harness invoked the fixed provider adapter directly; it did not traverse the broker socket",
+    "credential_transport": "read from the protected process environment into transient process memory; no CLI/job/prompt/capability/SQLite/log transport",
+    "broker_credential_isolation_verified_by": "source ownership checks and offline tests; the live smoke did not exercise broker-process isolation",
     "nvidia_nim_calls": 0,
     "credential_availability_boolean_only": {
       "DEEPSEEK_API_KEY": true,
