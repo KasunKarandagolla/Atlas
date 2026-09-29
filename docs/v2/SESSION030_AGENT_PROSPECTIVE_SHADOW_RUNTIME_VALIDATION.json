@@ -1,0 +1,320 @@
+{
+  "schema_version": 1,
+  "session": 30,
+  "checkpoint": "nonblocking-hidden-critic-prospective-shadow-runtime-readiness",
+  "checkpoint_is_v2_phase": false,
+  "repository": "KasunKarandagolla/Atlas",
+  "starting_point": {
+    "required_branch": "impl/session-029-agent-hidden-shadow-action-critic",
+    "accepted_starting_sha": "a875401615612f4354fbe8afbf69acb4fa8d4bda",
+    "remote_sha_verified_before_editing": true,
+    "verification_method": "Fetched origin and compared its exact Session-029 branch SHA with the required a875401615612f4354fbe8afbf69acb4fa8d4bda before creating the Session-030 branch.",
+    "session029_tested_implementation_sha": "000f80cce95a377d7641110248606b01b6051783"
+  },
+  "implementation": {
+    "branch": "impl/session-030-agent-prospective-shadow-runtime-readiness",
+    "implementation_commit_sha": "732032bfa053447c089985e58d42cf5232733504",
+    "tested_implementation_sha": "732032bfa053447c089985e58d42cf5232733504",
+    "implementation_remote_tip_verified": "732032bfa053447c089985e58d42cf5232733504",
+    "documentation_commit_sha": "reported separately in final closeout because a commit cannot contain its own resulting SHA",
+    "final_remote_tip": "reported after documentation push and independent remote SHA verification",
+    "merge_performed": false,
+    "session029_history_modified": false,
+    "dependency_files_modified": false,
+    "changed_files": [
+      "src/atlas/v2/agent_intelligence/controller.py",
+      "src/atlas/v2/agent_intelligence/persistence.py",
+      "src/atlas/v2/agent_intelligence/shadow_measurement.py",
+      "src/atlas/v2/runtime/action_critic_dispatcher.py",
+      "src/atlas/v2/runtime/action_critic_shadow.py",
+      "src/atlas/v2/runtime/ops_supervisor.py",
+      "src/atlas/v2/science/action_critic_outcomes.py",
+      "tests/v2/test_session030_action_critic_runtime.py",
+      "docs/v2/SESSION030_AGENT_PROSPECTIVE_SHADOW_RUNTIME_VALIDATION.json",
+      "docs/v2/AGENT_PROSPECTIVE_SHADOW_RUNTIME_GATE_V1.json",
+      "docs/handoffs/session-030.md"
+    ]
+  },
+  "gate_content_hash": "2e495fe981246b28bc1b60490e586a96acc0ec06d45f259b71018e6e6f05a334",
+  "dispatcher_and_thread_proof": {
+    "status": "IMPLEMENTED / TESTED",
+    "controller_and_ledger_writer": "atlas-ops/controller main thread only",
+    "worker": "one daemon thread; receives only immutable ActionAssessmentDispatchWorkV1; performs the fixed local broker assess_action_v1 operation; returns sanitized ProviderResultV1 plus dispatch identity; never persists",
+    "maximum_concurrent_provider_calls": 1,
+    "pending_work_queue_capacity": 1,
+    "in_memory_capacity_reservations": 1,
+    "maximum_active_work": 2,
+    "completion_queue_capacity": 2,
+    "maximum_completions_drained_per_cycle": 2,
+    "retry": false,
+    "fallback": false,
+    "database_repository_or_connection_crosses_worker_boundary": false,
+    "provider_credentials_cross_controller_or_worker_boundary": false,
+    "capacity_exhaustion": "record DISPATCHER_CAPACITY_UNAVAILABLE as shadow-only SKIPPED before attempt/authorization; deterministic processing does not wait",
+    "absent_broker_socket": "record shadow-only BROKER_UNAVAILABLE skip where possible; deterministic processing continues",
+    "completion_poll": "get_nowait only; bounded drain at run_once safe cycle boundary; finalization and persistence remain on controller thread",
+    "shutdown": "dispatcher close sets closed and returns without joining; I/O worker is daemonized; unfinished durable authorization is recovered as DISPATCH_OUTCOME_LOST_ON_RESTART",
+    "thread_proof": {
+      "controller_writer_thread_captured": true,
+      "sqlite_trace_callback_records_writer_thread_ids": true,
+      "all_observed_sql_write_thread_ids_equal_controller_thread_id": true,
+      "worker_thread_id_differs_from_controller_thread_id": true,
+      "worker_thread_id_absent_from_sql_write_thread_ids": true,
+      "work_item_contains_no_repository_ledger_or_connection": true,
+      "blocked_provider_test_uses_threading_events": true,
+      "first_and_second_run_once_return_while_fake_provider_is_blocked": true,
+      "third_cycle_drains_after_release_and_controller_persists_result": true,
+      "deterministic_receipt_hashes_unchanged_across_cycles": true,
+      "source_test": "tests/v2/test_session030_action_critic_runtime.py::test_blocked_worker_cannot_block_run_once_and_result_is_main_writer_finalized"
+    }
+  },
+  "dispatch_restart_semantics": {
+    "prepare": [
+      "verify immutable request/packet/profile binding",
+      "persist packet and request",
+      "create one attempt and worst-case cost reservation",
+      "persist dispatch authorization",
+      "issue signed one-task capability",
+      "return immutable ActionAssessmentDispatchWorkV1 only after durable preparation"
+    ],
+    "execute": "one fixed broker operation on the bounded non-DB I/O worker; no retry or fallback",
+    "finalize": "controller verifies request, packet, attempt, authorization, capability, model/deadline/token/output bindings, then persists terminal validation/outcome/acceptance",
+    "durable_authorization_restart_rule": "terminalize as DISPATCH_OUTCOME_LOST_ON_RESTART and never redispatch",
+    "late_or_duplicate_completion": "terminal state is idempotent and cannot be overwritten or accepted twice",
+    "deadline_D": "the immutable request deadline is bound through prepare/execute/finalize and is never reset",
+    "synchronous_compatibility_wrapper": "ActionAssessmentController.assess remains available for focused S29 compatibility tests; production opt-in runtime uses prepare/worker/finalize phases"
+  },
+  "prospective_measurement": {
+    "observation_contract": "ActionCriticShadowObservationV1",
+    "observation_wire_hash_algorithm": "sha256_json(to_dict())",
+    "observation_contract_source": "src/atlas/v2/agent_intelligence/shadow_measurement.py",
+    "observation_contract_source_raw_sha256": "65702c3d69d5dd262e9c297b7bd0ec1cbd558db1ed7073960b01a391dd284270",
+    "observation_binds": [
+      "originating deterministic OpsSupervisorReceiptV1 ref",
+      "exact DecisionCalendarEntryV2 ref and CandidateSet ref",
+      "immutable packet ref/hash and request ref/hash",
+      "exact ActionArtifactV2 ref and action hash",
+      "critic terminal status, accepted-shadow-evidence boolean, and closed finding types only",
+      "dispatch-authorized and result-received timestamps when present, with bounded latency metadata",
+      "provider and model-profile hashes",
+      "decision_influence=false and admission_influence=false",
+      "deterministic baseline terminal and admission statuses"
+    ],
+    "judgment_profitability_or_alpha_fields": false,
+    "maturity_link_contract": "ActionCriticShadowMaturityLinkV1",
+    "maturity_link_wire_hash_algorithm": "sha256_json(to_dict())",
+    "maturity_link_contract_source": "src/atlas/v2/science/action_critic_outcomes.py",
+    "maturity_link_contract_source_raw_sha256": "3784c55c14c15b6e5ceec8ccbaa10452d61d3f80994ada82f7958539d72c4b69",
+    "maturity_link_reuses": [
+      "DecisionCalendarEntryV2",
+      "MaturedOutcomeV2"
+    ],
+    "maturity_link_acceptance": "one exact already indexed, valid, available MaturedOutcomeV2 matching decision, candidate-set, and action identities; outcome and observation are not mutated",
+    "rejects": [
+      "decision/calendar mismatch",
+      "action mismatch",
+      "CandidateSet mismatch",
+      "future or unavailable outcome",
+      "censored/non-matured outcome",
+      "multiple ambiguous outcome identities"
+    ],
+    "synthesizes_outcomes": false,
+    "reads_final_holdout": false,
+    "incremental_value_computed": false,
+    "critic_finding_to_veto_or_admission_mapper": false
+  },
+  "deterministic_compatibility": {
+    "ordinary_atlas_ops_without_opt_in_changed": false,
+    "opt_in": "--action-critic-shadow",
+    "OPS_SUPERVISOR_VERSION": "ATLAS_OPS_SUPERVISOR_V2_V1",
+    "pipeline_stage_count": 11,
+    "pipeline_stage_order_hash": "223cf16eab1080aef7c4c921e86bd230439ceb7ca8601f7f7af70ea476f4a339",
+    "PipelineStageV1_wire_values_unchanged": true,
+    "PIPELINE_STAGE_ORDER_unchanged": true,
+    "OpsSupervisorReceiptV1_wire_unchanged": true,
+    "agent_mode_in_deterministic_receipts": "DISABLED",
+    "critic_success_failure_timeout_refusal_invalid_or_capacity_skip_changes_deterministic_receipt": false,
+    "representative_session029_deterministic_receipt_hash": "dadd7cc006c58bc6bdc0c771df6c1d58f913cf8a43cda35216ca164a1cbe60bc",
+    "deterministic_decision_admission_risk_plan_execution_or_capital_authority": "ZERO"
+  },
+  "tests": {
+    "session030_focused_final_tree": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session030_action_critic_runtime.py",
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 26.72
+    },
+    "session029_core_regression": {
+      "passed": 35,
+      "skipped": 1,
+      "failed": 0,
+      "elapsed_seconds": 43.2
+    },
+    "session028_core_provider_regression": {
+      "passed": 19,
+      "skipped": 1,
+      "failed": 0,
+      "elapsed_seconds": 33.58
+    },
+    "session028_and_029_isolated_mocktransport": {
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 37.23,
+      "agent_environment_lock_packages": 26,
+      "external_network": false
+    },
+    "session027_supervisor_and_production": {
+      "passed": 32,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 614.11
+    },
+    "session026_agent_and_broker_ownership": {
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 29.07
+    },
+    "outcomes_calendar_regressions": {
+      "passed": 21,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 49.22
+    },
+    "session020_phase2_maturity_e2e": {
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 142.21
+    },
+    "session019_023_025_science_regressions": {
+      "passed": 144,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 152.81,
+      "command_paths": [
+        "tests/v2/test_session019_admission.py",
+        "tests/v2/test_session019_evaluation_integration.py",
+        "tests/v2/test_session019_m0.py",
+        "tests/v2/test_session019_remediation.py",
+        "tests/v2/test_session019_scenarios.py",
+        "tests/v2/test_session023_analogue.py",
+        "tests/v2/test_session023_discovery_s8.py",
+        "tests/v2/test_session023_integration.py",
+        "tests/v2/test_session023_m1.py",
+        "tests/v2/test_session023_selection_audits.py",
+        "tests/v2/test_session025_release.py"
+      ]
+    },
+    "full_v2": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+      "passed": 547,
+      "skipped": 2,
+      "failed": 0,
+      "elapsed_seconds": 1548.83,
+      "skip_reasons": [
+        "Session-028 local locked SDK MockTransport test in the core environment (passed separately in the isolated agent environment)",
+        "Session-029 local action-critic MockTransport test in the core environment (passed separately in the isolated agent environment)"
+      ]
+    },
+    "full_non_v2_v1": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
+      "passed": 485,
+      "skipped": 3,
+      "failed": 0,
+      "elapsed_seconds": 485.24,
+      "skip_reasons": [
+        "Bybit authenticated testnet qualification opt-in",
+        "Binance authenticated testnet qualification opt-in",
+        "public testnet connectivity opt-in"
+      ]
+    },
+    "v2_contracts_v1_contracts_and_golden": {
+      "passed": 10,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 25.78
+    },
+    "engineering_checks": {
+      "ruff": "PASS: .venv/bin/ruff check .",
+      "mypy": "PASS: .venv/bin/mypy src; 200 source files, no issues",
+      "compileall": "PASS: .venv/bin/python -m compileall -q src",
+      "core_pip_check": "PASS: no broken requirements",
+      "isolated_agent_pip_check": "PASS: uv pip check; 26 locked packages compatible",
+      "requirements_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements_agent_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "git_diff_check": "PASS"
+    },
+    "intermediate_harness_note": "A Ruff auto-fix briefly removed the imported Session-029 fixture, producing 12 isolated S30 setup errors; the fixture was explicitly aliased/wrapped, and the final standalone S30 run passed all 15 cases. The full V2 run itself completed successfully (547 passed, 2 skipped) before that test-only fixture cleanup."
+  },
+  "provider_and_network_calls": {
+    "real_provider_calls_total": 0,
+    "deepseek_real_calls": 0,
+    "openai_real_calls": 0,
+    "nvidia_nim_calls": 0,
+    "market_or_venue_api_calls": 0,
+    "external_network_calls_during_tests": 0,
+    "local_mocktransport_calls": 2,
+    "fake_provider_or_local_unix_broker_calls": "offline test fixtures only",
+    "reasoning_or_credentials_persisted": false
+  },
+  "preserved_hashes": {
+    "v1_authority_freeze_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "amended_v2_authority_freeze_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "agent_authority_freeze_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "session029_gate_sha256": "6b412e7a6ae1a8b37d02cd23f39bdccb66236dd7d8fb9fd8f92b64fca0fd2f49",
+    "session029_validation_sha256": "eb1a5493e8903a9aeca688e8b988b8a7aec4e3ca02fcd7aebeec134dd1e106ef",
+    "session029_handoff_sha256": "0928dd6f1788b89210764d661671a87a30140ba18f412a4ba8a88729011f98fb",
+    "requirements_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "requirements_agent_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+    "all_listed_hashes_recomputed_unchanged": true
+  },
+  "external_evidence": {
+    "live_deepseek_smoke": "NOT RUN",
+    "nvidia_smoke": "NOT RUN",
+    "authenticated_venue_test": "NOT RUN",
+    "public_market_connectivity_test": "NOT RUN",
+    "72_hour_soak": "NOT RUN",
+    "final_holdout": "UNASSIGNED / UNTOUCHED; not read"
+  },
+  "secret_scan": {
+    "dedicated_scanners_available": false,
+    "scanner_names": [
+      "gitleaks",
+      "trufflehog",
+      "detect-secrets"
+    ],
+    "method": "Value-suppressing scan of tracked and untracked repository text for high-confidence provider, NVIDIA, AWS, GitHub, Bearer, private-key, and credential-assignment patterns.",
+    "high_confidence_pattern_hits": 0,
+    "real_env_files_found": 0,
+    "matched_values_printed": false,
+    "text_files_scanned_final": 420
+  },
+  "status": {
+    "nonblocking_critic_dispatcher": "IMPLEMENTED / TESTED",
+    "single_writer_result_finalization": "IMPLEMENTED / TESTED",
+    "prospective_shadow_observation_and_maturity_plumbing": "IMPLEMENTED / TESTED",
+    "hidden_critic_overall": "ENGINEERING_PASS",
+    "genuine_prospective_hidden_shadow": "TEST GATE",
+    "live_deepseek_critic": "UNVERIFIED / TEST GATE",
+    "agent_decision_influence": "TEST GATE",
+    "agent_admission_influence": "TEST GATE",
+    "economics": "NOT ESTIMABLE",
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "final_holdout": "UNASSIGNED / UNTOUCHED",
+    "final_holdout_viewed": false,
+    "profitability_claim": false
+  },
+  "remaining_gates": [
+    "independent review of implementation and documentation closeout commits",
+    "genuine prospective hidden-shadow evidence and qualification",
+    "direct live DeepSeek critic contract remains UNVERIFIED / TEST GATE; no live request was made",
+    "72-hour soak, public-market connectivity, and authenticated venue qualification were not run",
+    "decision influence and admission influence remain TEST GATE and are not implemented",
+    "economics remains NOT ESTIMABLE; capital and assisted execution remain disabled",
+    "final holdout remains UNASSIGNED / UNTOUCHED"
+  ]
+}
