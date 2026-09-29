@@ -415,5 +415,153 @@
         "capital and assisted execution remain disabled"
       ]
     }
+  },
+  "session_027_third_final_remediation": {
+    "remediation": "third/final bounded remediation within Session 027; no Session 028 created",
+    "starting_remote_tip_sha": "493fa5ba7296e4de7ef8c86efe4c53acb069a2a9",
+    "tested_implementation_sha": "5ddcc4dfaa986a978afa0e9756b23ff714eeaf96",
+    "final_documentation_only_remote_tip": "reported in the final push verification; a commit cannot embed its own resulting SHA",
+    "branch": "impl/session-027-v2-continuous-ops-supervisor",
+    "changed_files": [
+      "src/atlas/v2/data/collector.py",
+      "src/atlas/v2/data/history.py",
+      "src/atlas/v2/memory/repository.py",
+      "src/atlas/v2/runtime/production.py",
+      "tests/v2/test_session021_data_s3.py",
+      "tests/v2/test_session027_production.py",
+      "docs/v2/SESSION027_OPS_RUNTIME_VALIDATION.json",
+      "docs/handoffs/session-027.md"
+    ],
+    "recovery_epoch_reconciliation": {
+      "runtime_artifact": "content-addressed OpsRecoveryEpochV1 created when ProductionOpsCyclePortV1.recover() begins",
+      "reconciliation_binding": "source reconciliation must reference the current recovery epoch and exact persisted public observations",
+      "stale_pre_restart_reconciliation_rejected": true,
+      "restart_result": "restored HEALTHY_CURRENT source becomes INCOMPLETE_SNAPSHOT; prior reconciliation cannot promote it",
+      "event_gate": "queued decision events remain unprocessed while required source health is unreconciled",
+      "current_epoch_evidence_result": "explicit reconciliation for the current epoch is accepted; source returns HEALTHY_CURRENT and event processing resumes",
+      "new_observation_fabricated_or_backdated": false,
+      "accepted_serialized_contracts_changed": false
+    },
+    "s3_default_path": {
+      "production_factory": "atlas.v2.runtime.production:create_production_port",
+      "custom_public_source_or_inputs_provider_required": false,
+      "persisted_causal_evidence_resolved": [
+        "causal public trades",
+        "trade VWAP",
+        "residual observations",
+        "completed M1 bars",
+        "source health"
+      ],
+      "cutoff_enforced": "available_at_ns <= information_cutoff_ns",
+      "trade_source": "existing archive translation and accepted CausalTradeV2 semantics; candle volume is not used",
+      "vwap_and_residuals": "uses valid indexed artifacts or existing utc_day_trade_vwap/persist_trade_vwap_v2/residual_observation APIs with exact causal evidence",
+      "real_nonempty_inputs_passed_to_existing_s3_coordinator": true,
+      "legitimate_natural_s3_candidate_path_demonstrated": true,
+      "candidate_origin": "existing S3ShadowCoordinator output; not pre-created or monkeypatched",
+      "missing_evidence": "existing S3 NOT_ESTIMABLE; no fabricated candidate",
+      "s1_s2_behavior": "unchanged and regression-tested"
+    },
+    "calendar_and_ownership": {
+      "decision_calendar_wire_contract": "unchanged; no outcomes.py modification; existing enum values and DECISION_CALENDAR_ENTRY_V2_V1 round trips remain compatible",
+      "single_writer": "PASS; OpsSupervisorV2 owns the sole writable OpsRepository",
+      "restart_idempotency": "PASS; source reconciliation is epoch-bound and existing event/artifact idempotency remains covered",
+      "agent_worker_or_provider_started": false,
+      "merge_performed": false
+    },
+    "tests": {
+      "focused_session027": {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session027_production.py tests/v2/test_session027_ops_supervisor.py",
+        "passed": 32,
+        "skipped": 0,
+        "failed": 0
+      },
+      "session020_021_023_025_026_027_regressions": {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session020_*.py tests/v2/test_session021_data_s3.py tests/v2/test_session023_*.py tests/v2/test_session025_*.py tests/v2/test_session026_*.py tests/v2/test_session027_*.py",
+        "passed": 212,
+        "skipped": 0,
+        "failed": 0
+      },
+      "full_v2": {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+        "passed": 478,
+        "skipped": 0,
+        "failed": 0
+      },
+      "full_non_v2_v1": {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
+        "passed": 485,
+        "skipped": 3,
+        "failed": 0,
+        "skips": [
+          "Bybit authenticated testnet qualification opt-in",
+          "Binance authenticated testnet qualification opt-in",
+          "public testnet connectivity opt-in"
+        ]
+      },
+      "serialization_contracts_and_v1_golden": {
+        "commands": [
+          ".venv/bin/python -m pytest -q -o addopts='' tests/contract tests/runtime/test_wire_contract.py",
+          ".venv/bin/python -m pytest -q -o addopts='' tests/contract/test_v1_golden_baseline.py"
+        ],
+        "results": [
+          "7 passed",
+          "1 passed; V1 golden recomputation"
+        ]
+      },
+      "engineering_checks": {
+        "changed_file_ruff": "PASS",
+        "full_ruff": ".venv/bin/ruff check .: PASS",
+        "source_seam_mypy": "PASS; collector.py, history.py, repository.py, production.py",
+        "full_mypy": ".venv/bin/mypy src: PASS; 195 source files",
+        "compileall": ".venv/bin/python -m compileall -q src tests: PASS",
+        "pip_check": ".venv/bin/python -m pip check: PASS; no broken requirements",
+        "default_cli": ".venv/bin/atlas-ops --db <temporary ops.sqlite> --once: PASS without --adapter"
+      }
+    },
+    "secret_scan": {
+      "dedicated_scanners_available": false,
+      "unavailable_scanners": [
+        "gitleaks",
+        "trufflehog",
+        "detect-secrets"
+      ],
+      "method": "value-suppressed high-confidence private-key, AWS-key, GitHub-token, and provider-token signature scan across tracked and untracked text paths",
+      "text_paths_scanned": 400,
+      "high_confidence_pattern_hits": 0
+    },
+    "preserved_hashes": {
+      "requirements_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements_agent_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "v1_golden_baseline_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+      "v1_freeze_document_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "v2_amended_freeze_document_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "agent_freeze_document_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "session025_release_manifest_sha256": "9f26f4f73c14f5e70cee3c47df28b8e68f2cc05988b8bce8a9c49ce580a90e69",
+      "phase5_release_gate_sha256": "fe47c1f3d284c622e6f63a2b0a1eb5ac6faa8babf27ccabd4cce8975c93aa32e",
+      "agent_intelligence_gate_sha256": "0288cba49682a2e31b0b0103ce898312e410f64509f4dd14b35f368f2cdd0d2f",
+      "session026_validation_sha256": "f2b65610bd7a8edd5879e1c9f27f5ab61dbdaebf626ba9b1bf5b684c74e4d6fa",
+      "dependency_locks_changed": false,
+      "accepted_freeze_release_and_gate_hashes_changed": false
+    },
+    "external_activity_and_gates": {
+      "git_fetch_and_push": true,
+      "public_market_requests": false,
+      "llm_or_external_provider_requests": false,
+      "authenticated_venue_requests": false,
+      "github_actions_evidence": false,
+      "genuine_72_hour_soak": "NOT RUN",
+      "economics": "NOT ESTIMABLE",
+      "agent_mode": "DISABLED",
+      "capital_enabled": false,
+      "assisted_execution_enabled": false,
+      "final_holdout": "UNASSIGNED / UNTOUCHED",
+      "final_holdout_inspected": false,
+      "remaining_gates": [
+        "independent coordinating reviewer inspection",
+        "venue/account qualification remains unverified",
+        "no GitHub Actions evidence",
+        "72-hour soak not run; no economic admission established"
+      ]
+    }
   }
 }

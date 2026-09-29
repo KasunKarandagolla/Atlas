@@ -203,3 +203,32 @@ Restarting the supervisor and creating a fresh default adapter against the same 
 The three non-V2 skips were the Bybit and Binance authenticated testnet qualification opt-ins and the public testnet connectivity opt-in. The two accepted dependency locks and the V1/V2 freeze, golden, release and gate hashes were recomputed and unchanged. A value-suppressing fallback signature scan checked 400 tracked/untracked text paths, skipped one binary file, and found zero high-confidence key/token/private-key patterns. gitleaks, trufflehog and detect-secrets were unavailable.
 
 No public-market or venue request, authenticated call, LLM/provider request, or GitHub Actions run occurred. Network activity was limited to Git fetch/push. No 72-hour soak was run. Economics is NOT ESTIMABLE. Final holdout remains UNASSIGNED / UNTOUCHED. Agent mode is DISABLED; capital and assisted execution remain disabled. No profitability claim is made.
+
+## Third and final bounded remediation closeout (2026-09-29)
+
+This is the third and final bounded remediation within Session 027. No Session 028 was created. Starting remote tip `493fa5ba7296e4de7ef8c86efe4c53acb069a2a9` was verified. Tested implementation commit: `5ddcc4dfaa986a978afa0e9756b23ff714eeaf96`. The final documentation-only remote tip is reported by the final push verification; its own resulting SHA cannot be embedded in the commit contents. No merge was performed.
+
+### Changes
+
+- `src/atlas/v2/data/collector.py`, `src/atlas/v2/runtime/production.py`: recovery now creates a content-addressed `OpsRecoveryEpochV1`; source reconciliation must bind that current epoch and exact persisted public observations. Old pre-restart reconciliation is rejected. Restored `HEALTHY_CURRENT` becomes `INCOMPLETE_SNAPSHOT`; queued events do not process until current-epoch evidence restores health.
+- `src/atlas/v2/data/history.py`, `src/atlas/v2/memory/repository.py`, `src/atlas/v2/runtime/production.py`: default production resolves cutoff-valid archived causal trades, exact trade VWAP, residual observations, completed M1 bars and source health through existing accepted S3 types/APIs. No S3 trade evidence comes from candle volume.
+- `tests/v2/test_session021_data_s3.py`, `tests/v2/test_session027_production.py`: cover current-epoch recovery gating, stale reconciliation rejection, real non-empty default S3 inputs, naturally generated S3 candidate path, missing evidence behavior and S1/S2 regressions.
+- `docs/v2/SESSION027_OPS_RUNTIME_VALIDATION.json`, `docs/handoffs/session-027.md`: appended this final closeout while preserving prior history.
+
+The default `create_production_port()` path supplied real causal trades, VWAP and residual evidence to the existing `S3ShadowCoordinator`, and the coordinator naturally produced an eligible candidate in the deterministic fixture. The candidate was not pre-created and S3 was not monkeypatched to emit one. When required S3 evidence is absent, the existing result remains `NOT_ESTIMABLE` with no fabricated candidate. S1/S2 behavior remains unchanged. Accepted decision-calendar contracts were not modified; `src/atlas/v2/science/outcomes.py` is untouched.
+
+### Validation
+
+| Command | Result |
+| --- | --- |
+| `.venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session027_production.py tests/v2/test_session027_ops_supervisor.py` | 32 passed, 0 skipped, 0 failed |
+| `.venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session020_*.py tests/v2/test_session021_data_s3.py tests/v2/test_session023_*.py tests/v2/test_session025_*.py tests/v2/test_session026_*.py tests/v2/test_session027_*.py` | 212 passed, 0 skipped, 0 failed |
+| `.venv/bin/python -m pytest -q -o addopts='' tests/v2` | 478 passed, 0 skipped, 0 failed |
+| `.venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2` | 485 passed, 3 skipped, 0 failed (authenticated testnet and connectivity opt-ins) |
+| `.venv/bin/python -m pytest -q -o addopts='' tests/contract tests/runtime/test_wire_contract.py` | 7 passed |
+| `.venv/bin/python -m pytest -q -o addopts='' tests/contract/test_v1_golden_baseline.py` | 1 passed; V1 golden recomputation |
+| `.venv/bin/ruff check .`; `.venv/bin/mypy src`; `.venv/bin/python -m compileall -q src tests`; `.venv/bin/python -m pip check` | All passed; mypy covered 195 source files; pip reported no broken requirements |
+
+Fallback value-suppressed secret scan covered 400 text paths and found zero high-confidence signatures; `gitleaks`, `trufflehog` and `detect-secrets` were unavailable. Dependency locks and accepted freeze, release and gate hashes were recomputed and unchanged. No public-market, LLM/provider or authenticated venue requests were made. No GitHub Actions evidence exists; the 72-hour soak was not run.
+
+Economics remains `NOT ESTIMABLE`; agent mode `DISABLED`; capital and assisted execution disabled; final holdout `UNASSIGNED / UNTOUCHED`. The default runtime remains single-writer. No TradePlan, order or approval was created.
