@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 import uuid
@@ -48,6 +49,11 @@ from atlas.v2.agent_intelligence.validation import (
     validate_request_evidence_availability,
 )
 from atlas.v2.agent_intelligence.worker import AgentWorkerSupervisor, WorkerSandboxUnavailable
+from atlas.v2.runtime.action_critic_dispatcher import (
+    ActionAssessmentDispatchCompletionV1,
+    ActionAssessmentDispatchIdentityV1,
+    ActionAssessmentDispatchWorkV1,
+)
 
 LEASE_NS = 180_000_000_000
 MAX_RETRYABLE_PROVIDER_ATTEMPTS = 3
@@ -309,7 +315,7 @@ class DirectActionAssessmentBrokerPort:
 
 
 class ActionAssessmentController:
-    """Persist, dispatch once, and validate hidden zero-authority action assessments."""
+    """Prepare and finalize hidden critic work on the sole ops/controller writer."""
 
     def __init__(self, *, ledger: ActionAssessmentRepository,
                  profile: ActionAssessmentProviderProfileV1,
@@ -328,8 +334,10 @@ class ActionAssessmentController:
         self._now_ns = now_ns
         self._lock = threading.Lock()
 
-    def assess(self, request: ActionAssessmentRequestV2,
-               packet: SealedActionAssessmentPacketV1) -> ActionAssessmentRunOutcomeV1:
+    def prepare(self, request: ActionAssessmentRequestV2,
+                packet: SealedActionAssessmentPacketV1
+                ) -> ActionAssessmentDispatchWorkV1 | ActionAssessmentRunOutcomeV1:
+        """Persist the complete dispatch chain before returning an authorized immutable work item."""
         with self._lock:
             self._check_binding(request, packet)
             now = self._now_ns()
@@ -385,22 +393,36 @@ class ActionAssessmentController:
             self._ledger.persist_dispatch_authorization(authorization, now_ns=authorized_at)
             capability = ActionAssessmentBrokerCapabilityV1.issue_authorized(
                 authorization=authorization, signing_key=self._signing_key).capability
-            try:
-                provider_result = self._provider.assess(capability=capability,
-                    authorization_id=authorization_id, attempt_id=attempt_id, request=request, packet=packet)
-            except Exception as exc:
-                reason = _critic_failure_code(getattr(exc, "code", "BROKER_UNAVAILABLE"))
-                output_hash = sha256_json({"action_assessment_provider_failure": reason})
-                receipt = ActionAssessmentValidationReceiptV1.create(request_hash=request.content_hash,
-                    packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
-                    provider_output_hash=output_hash, status="UNAVAILABLE", reasons=(reason,), at_ns=self._now_ns())
-                self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=self._now_ns())
-                self._ledger.record_outcome(request.request_id, attempt_id=attempt_id, status="UNAVAILABLE",
-                    result=None, provider_output_hash=output_hash, failure_code=reason,
-                    received_at_ns=self._now_ns(), eligible=False)
-                return self._from_state(request, packet, self._required_state(request.request_id))
+            identity = ActionAssessmentDispatchIdentityV1(
+                request.request_id, request.content_hash, packet.packet_ref, packet.content_hash,
+                packet.action_hash, attempt_id, authorization.authorization_id,
+                authorization.authorization_hash, authorization.capability_nonce,
+                self._profile.content_hash, authorized_at, request.deadline_ns)
+            return ActionAssessmentDispatchWorkV1(identity, request, packet, authorization, capability)
 
-            received_at = self._now_ns()
+    def finalize(self, work: ActionAssessmentDispatchWorkV1,
+                 completion: ActionAssessmentDispatchCompletionV1) -> ActionAssessmentRunOutcomeV1:
+        """Validate a returned completion and persist its sole terminal result on the writer thread."""
+        with self._lock:
+            if completion.identity != work.identity:
+                raise ValueError("stale or unknown action-assessment dispatch completion identity")
+            request, packet, provider_result = work.request, work.packet, completion.result
+            self._check_binding(request, packet)
+            state = self._required_state(request.request_id)
+            # A restart or earlier terminal result wins over every late/duplicate worker return.
+            if state["status"] is not None:
+                return self._from_state(request, packet, state)
+            _verify_durable_dispatch_state(state, work)
+            if self._signing_key is None:
+                raise ValueError("critic dispatch capability cannot be verified without its signing key")
+            expected_capability = ActionAssessmentBrokerCapabilityV1.issue_authorized(
+                authorization=work.authorization, signing_key=self._signing_key).capability
+            if work.capability != expected_capability:
+                raise ValueError("critic dispatch capability does not match its immutable authorization")
+            finalized_at = self._now_ns()
+            received_at = completion.received_at_ns
+            if received_at > finalized_at:
+                raise ValueError("critic completion timestamp is later than controller time")
             raw_hash = sha256_json({"raw_untrusted_action_assessment": provider_result.raw_output})
             provider_output_hash = sha256_json({"raw_output_hash": raw_hash,
                 "returned_model_id": provider_result.returned_model_id,
@@ -412,8 +434,8 @@ class ActionAssessmentController:
                     packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
                     provider_output_hash=provider_output_hash, status="LATE", reasons=("LATE_OUTPUT_INELIGIBLE",),
                     at_ns=received_at)
-                self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=received_at)
-                self._ledger.record_outcome(request.request_id, attempt_id=attempt_id, status="EXPIRED",
+                self._ledger.record_validation(request.request_id, work.identity.attempt_id, receipt, now_ns=received_at)
+                self._ledger.record_outcome(request.request_id, attempt_id=work.identity.attempt_id, status="EXPIRED",
                     result=None, provider_output_hash=provider_output_hash, failure_code="LATE_OUTPUT_INELIGIBLE",
                     received_at_ns=received_at, eligible=False)
                 return self._from_state(request, packet, self._required_state(request.request_id))
@@ -427,8 +449,8 @@ class ActionAssessmentController:
                 receipt = ActionAssessmentValidationReceiptV1.create(request_hash=request.content_hash,
                     packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
                     provider_output_hash=provider_output_hash, status=status, reasons=(reason,), at_ns=received_at)
-                self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=received_at)
-                self._ledger.record_outcome(request.request_id, attempt_id=attempt_id, status=status,
+                self._ledger.record_validation(request.request_id, work.identity.attempt_id, receipt, now_ns=received_at)
+                self._ledger.record_outcome(request.request_id, attempt_id=work.identity.attempt_id, status=status,
                     result=None, provider_output_hash=provider_output_hash, failure_code=reason,
                     received_at_ns=received_at, eligible=False)
                 return self._from_state(request, packet, self._required_state(request.request_id))
@@ -441,8 +463,8 @@ class ActionAssessmentController:
                 receipt = ActionAssessmentValidationReceiptV1.create(request_hash=request.content_hash,
                     packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
                     provider_output_hash=provider_output_hash, status="INVALID", reasons=(reason,), at_ns=received_at)
-                self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=received_at)
-                self._ledger.record_outcome(request.request_id, attempt_id=attempt_id, status="INVALID",
+                self._ledger.record_validation(request.request_id, work.identity.attempt_id, receipt, now_ns=received_at)
+                self._ledger.record_outcome(request.request_id, attempt_id=work.identity.attempt_id, status="INVALID",
                     result=None, provider_output_hash=provider_output_hash, failure_code=reason,
                     received_at_ns=received_at, eligible=False)
                 return self._from_state(request, packet, self._required_state(request.request_id))
@@ -454,15 +476,88 @@ class ActionAssessmentController:
                 packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
                 provider_output_hash=provider_output_hash, status="VALID" if valid else "INVALID",
                 reasons=reasons, at_ns=received_at)
-            self._ledger.record_validation(request.request_id, attempt_id, receipt, now_ns=received_at)
-            self._ledger.record_outcome(request.request_id, attempt_id=attempt_id,
+            self._ledger.record_validation(request.request_id, work.identity.attempt_id, receipt, now_ns=received_at)
+            self._ledger.record_outcome(request.request_id, attempt_id=work.identity.attempt_id,
                 status="COMPLETE" if valid else "INVALID", result=result.to_dict() if result is not None else None,
                 provider_output_hash=provider_output_hash, failure_code=None if valid else reasons[0],
                 received_at_ns=received_at, eligible=valid)
             return self._from_state(request, packet, self._required_state(request.request_id))
 
-    def record_skip(self, receipt_ref: str, reason_code: str) -> None:
-        self._ledger.record_skip(receipt_ref, reason_code, now_ns=self._now_ns())
+    def assess(self, request: ActionAssessmentRequestV2,
+               packet: SealedActionAssessmentPacketV1) -> ActionAssessmentRunOutcomeV1:
+        """Synchronous compatibility wrapper for existing focused tests and callers."""
+        prepared = self.prepare(request, packet)
+        if isinstance(prepared, ActionAssessmentRunOutcomeV1):
+            return prepared
+        if self._provider is None:
+            return self._from_state(request, packet, self._required_state(request.request_id))
+        start = max(prepared.identity.authorized_at_ns, self._now_ns())
+        try:
+            provider_result = self._provider.assess(capability=prepared.capability,
+                authorization_id=prepared.identity.authorization_id,
+                attempt_id=prepared.identity.attempt_id, request=request, packet=packet)
+        except Exception as exc:
+            reason = _critic_failure_code(getattr(exc, "code", "BROKER_UNAVAILABLE"))
+            provider_result = ProviderResultV1("", None, None, False, False, 0, 0, None, reason)
+        received = max(start, self._now_ns())
+        completion = ActionAssessmentDispatchCompletionV1(prepared.identity, provider_result, start, received)
+        return self.finalize(prepared, completion)
+
+    def record_skip(self, receipt_ref: str, reason_code: str, *,
+                    request: ActionAssessmentRequestV2 | None = None,
+                    packet: SealedActionAssessmentPacketV1 | None = None) -> ActionAssessmentRunOutcomeV1 | None:
+        now = self._now_ns()
+        if request is None and packet is None:
+            self._ledger.record_skip(receipt_ref, reason_code, now_ns=now)
+            return None
+        if request is None or packet is None:
+            raise ValueError("shadow skip requires both its immutable request and packet")
+        self._check_binding(request, packet)
+        prior_state = self._ledger.request_state(request.request_id)
+        if prior_state is not None and prior_state["status"] is not None:
+            return self._from_state(request, packet, prior_state)
+        self._ledger.record_skip(receipt_ref, reason_code, now_ns=now)
+        self._ledger.persist_packet_request(packet, request, now_ns=now)
+        state = self._ledger.request_state(request.request_id)
+        if state is None:
+            raise RuntimeError("persisted action-assessment skip request disappeared")
+        if state["status"] is None:
+            output_hash = sha256_json({"action_assessment_skip": reason_code})
+            self._ledger.record_outcome(request.request_id, attempt_id=None, status="SKIPPED", result=None,
+                provider_output_hash=output_hash, failure_code=reason_code, received_at_ns=now, eligible=False)
+        return self._from_state(request, packet, self._required_state(request.request_id))
+
+    def recover_open_dispatches(self) -> int:
+        """Seal every prior-process authorization lacking a terminal result; never redispatch it."""
+        self._assert_writer_thread()
+        now = self._now_ns()
+        request_ids = self._ledger.authorized_requests_without_terminal_result()
+        for request_id in request_ids:
+            self._ledger.recover_dispatch_without_result(request_id, now_ns=now)
+        return len(request_ids)
+
+    def pending_observation_records(self, *, limit: int = 2) -> tuple[Mapping[str, Any], ...]:
+        self._assert_writer_thread()
+        return self._ledger.unprojected_terminal_records(limit=limit)
+
+    def mark_observation_projected(self, request_id: str, observation_ref: str, *, now_ns: int) -> None:
+        self._assert_writer_thread()
+        self._ledger.mark_observation_projected(request_id, observation_ref, now_ns=now_ns)
+
+    def abandon_authorized_work(self, work: ActionAssessmentDispatchWorkV1, reason_code: str) -> ActionAssessmentRunOutcomeV1:
+        """Seal a durable authorization that could not be handed to the reserved bounded queue."""
+        with self._lock:
+            state = self._required_state(work.request.request_id)
+            if state["status"] is not None:
+                return self._from_state(work.request, work.packet, state)
+            _verify_durable_dispatch_state(state, work)
+            reason = _critic_failure_code(reason_code)
+            at_ns = self._now_ns()
+            self._ledger.record_outcome(work.request.request_id, attempt_id=work.identity.attempt_id,
+                status="UNAVAILABLE", result=None,
+                provider_output_hash=sha256_json({"action_assessment_dispatch_failure": reason}),
+                failure_code=reason, received_at_ns=at_ns, eligible=False)
+            return self._from_state(work.request, work.packet, self._required_state(work.request.request_id))
 
     def fail_safe(self, *, receipt_ref: str, request: ActionAssessmentRequestV2,
                   packet: SealedActionAssessmentPacketV1, reason_code: str) -> ActionAssessmentRunOutcomeV1 | None:
@@ -506,6 +601,11 @@ class ActionAssessmentController:
             raise RuntimeError("persisted action-assessment state disappeared")
         return state
 
+    def _assert_writer_thread(self) -> None:
+        assert_writer = getattr(self._ledger, "assert_writer_thread", None)
+        if callable(assert_writer):
+            assert_writer()
+
     @staticmethod
     def _from_state(request: ActionAssessmentRequestV2, packet: SealedActionAssessmentPacketV1,
                     state: Mapping[str, Any]) -> ActionAssessmentRunOutcomeV1:
@@ -526,9 +626,40 @@ def _critic_failure_code(value: Any) -> str:
         "PROVIDER_REQUEST_REJECTED", "RETURNED_MODEL_ID_DRIFT", "RETURNED_MODEL_ID_MISSING",
         "AGENT_DEPENDENCY_UNAVAILABLE", "INPUT_TOKEN_BUDGET_EXCEEDED", "TOKEN_LIMIT_EXCEEDED",
         "OUTPUT_SIZE_LIMIT", "MALFORMED_STRUCTURED_OUTPUT", "UNEXPECTED_TOOL_OUTPUT",
-        "CALLBACK_FAILED", "BROKER_PROTOCOL_ERROR"}
+        "CALLBACK_FAILED", "BROKER_PROTOCOL_ERROR", "DISPATCH_HANDOFF_FAILED"}
     text = str(value)
     return text if text in allowed else "PROVIDER_ERROR"
+
+
+def _verify_durable_dispatch_state(state: Mapping[str, Any], work: ActionAssessmentDispatchWorkV1) -> None:
+    identity = work.identity
+    try:
+        request_body = json.loads(str(state["request_json"]))
+        authorization_body = json.loads(str(state["authorization_json"]))
+    except (KeyError, TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("durable critic authorization is missing or malformed") from exc
+    bindings = {
+        "request_id": isinstance(request_body, Mapping) and request_body.get("request_id") == identity.request_id,
+        "request_hash": state.get("request_hash") == identity.request_hash,
+        "packet_ref": state.get("packet_ref") == identity.packet_ref,
+        "packet_hash": state.get("packet_hash") == identity.packet_hash,
+        "attempt_id": state.get("attempt_id") == identity.attempt_id,
+        "authorization_id": state.get("authorization_id") == identity.authorization_id,
+        "authorization_hash": state.get("authorization_hash") == identity.authorization_hash,
+        "authorization_body": isinstance(authorization_body, Mapping)
+            and authorization_body.get("authorization_hash") == identity.authorization_hash
+            and authorization_body.get("request_hash") == identity.request_hash
+            and authorization_body.get("packet_ref") == identity.packet_ref
+            and authorization_body.get("packet_hash") == identity.packet_hash
+            and authorization_body.get("action_hash") == identity.action_hash
+            and authorization_body.get("attempt_id") == identity.attempt_id
+            and authorization_body.get("authorization_id") == identity.authorization_id
+            and authorization_body.get("capability_nonce") == identity.capability_nonce
+            and authorization_body.get("authorized_at_ns") == identity.authorized_at_ns,
+    }
+    if not all(bindings.values()):
+        failed = "_".join(name for name, matches in bindings.items() if not matches)
+        raise ValueError(f"stale or mismatched durable critic dispatch identity: {failed}")
 
 
 def _revision_status(profile: AgentModelProfile, returned_model_id: str | None,

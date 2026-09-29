@@ -144,9 +144,9 @@ _AGENT_DDL = (
 )
 
 ACTION_ASSESSMENT_SCHEMA_NAMESPACE = "atlas-agent-action-assessment"
-ACTION_ASSESSMENT_SCHEMA_VERSION = 1
+ACTION_ASSESSMENT_SCHEMA_VERSION = 2
 _ACTION_ASSESSMENT_DDL = (
-    "CREATE TABLE agent_action_assessment_meta(namespace TEXT PRIMARY KEY, schema_version INTEGER NOT NULL CHECK(schema_version=1))",
+    "CREATE TABLE agent_action_assessment_meta(namespace TEXT PRIMARY KEY, schema_version INTEGER NOT NULL CHECK(schema_version>=1))",
     """CREATE TABLE agent_action_assessment_packets(
         packet_ref TEXT PRIMARY KEY, packet_hash TEXT NOT NULL UNIQUE, packet_json TEXT NOT NULL,
         originating_receipt_ref TEXT NOT NULL, created_at_ns INTEGER NOT NULL)""",
@@ -185,18 +185,21 @@ _ACTION_ASSESSMENT_DDL = (
         packet_ref TEXT PRIMARY KEY REFERENCES agent_action_assessment_packets(packet_ref),
         request_id TEXT NOT NULL UNIQUE REFERENCES agent_action_assessment_requests(request_id),
         result_hash TEXT NOT NULL, created_at_ns INTEGER NOT NULL)""",
+    """CREATE TABLE agent_action_assessment_observation_projections(
+        request_id TEXT PRIMARY KEY REFERENCES agent_action_assessment_requests(request_id),
+        observation_ref TEXT NOT NULL UNIQUE, projected_at_ns INTEGER NOT NULL)""",
     *tuple(f"CREATE TRIGGER {table}_no_update BEFORE UPDATE ON {table} BEGIN SELECT RAISE(ABORT,'immutable action assessment record'); END"
         for table in ("agent_action_assessment_packets", "agent_action_assessment_requests",
             "agent_action_assessment_attempts", "agent_action_assessment_reservations",
             "agent_action_assessment_dispatches", "agent_action_assessment_outcomes",
             "agent_action_assessment_validations", "agent_action_assessment_skips",
-            "agent_action_assessment_acceptances")),
+            "agent_action_assessment_acceptances", "agent_action_assessment_observation_projections")),
     *tuple(f"CREATE TRIGGER {table}_no_delete BEFORE DELETE ON {table} BEGIN SELECT RAISE(ABORT,'immutable action assessment record'); END"
         for table in ("agent_action_assessment_packets", "agent_action_assessment_requests",
             "agent_action_assessment_attempts", "agent_action_assessment_reservations",
             "agent_action_assessment_dispatches", "agent_action_assessment_outcomes",
             "agent_action_assessment_validations", "agent_action_assessment_skips",
-            "agent_action_assessment_acceptances")),
+            "agent_action_assessment_acceptances", "agent_action_assessment_observation_projections")),
 )
 
 
@@ -275,6 +278,34 @@ def initialize_action_assessment_extension(connection: sqlite3.Connection) -> No
             "agent_action_assessment_dispatches", "agent_action_assessment_outcomes",
             "agent_action_assessment_validations", "agent_action_assessment_skips",
             "agent_action_assessment_acceptances"}
+        if row is None:
+            raise RuntimeError("action-assessment ledger schema is incomplete or unsupported")
+        if row[0] == 1:
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                connection.execute("""CREATE TABLE agent_action_assessment_observation_projections(
+                    request_id TEXT PRIMARY KEY REFERENCES agent_action_assessment_requests(request_id),
+                    observation_ref TEXT NOT NULL UNIQUE, projected_at_ns INTEGER NOT NULL)""")
+                connection.execute("""CREATE TRIGGER agent_action_assessment_observation_projections_no_update
+                    BEFORE UPDATE ON agent_action_assessment_observation_projections
+                    BEGIN SELECT RAISE(ABORT,'immutable action assessment record'); END""")
+                connection.execute("""CREATE TRIGGER agent_action_assessment_observation_projections_no_delete
+                    BEFORE DELETE ON agent_action_assessment_observation_projections
+                    BEGIN SELECT RAISE(ABORT,'immutable action assessment record'); END""")
+                # The original v1 metadata table constrained schema_version=1. Recreate only this
+                # metadata row; all critic evidence tables remain untouched.
+                connection.execute("DROP TABLE agent_action_assessment_meta")
+                connection.execute("CREATE TABLE agent_action_assessment_meta(namespace TEXT PRIMARY KEY, schema_version INTEGER NOT NULL CHECK(schema_version>=1))")
+                connection.execute("INSERT INTO agent_action_assessment_meta VALUES(?,?)",
+                    (ACTION_ASSESSMENT_SCHEMA_NAMESPACE, ACTION_ASSESSMENT_SCHEMA_VERSION))
+                connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
+            tables.add("agent_action_assessment_observation_projections")
+        required.add("agent_action_assessment_observation_projections")
+        row = connection.execute("SELECT schema_version FROM agent_action_assessment_meta WHERE namespace=?",
+                                 (ACTION_ASSESSMENT_SCHEMA_NAMESPACE,)).fetchone()
         if row is None or row[0] != ACTION_ASSESSMENT_SCHEMA_VERSION or not required.issubset(tables):
             raise RuntimeError("action-assessment ledger schema is incomplete or unsupported")
         return
@@ -326,6 +357,7 @@ class AgentJobRepository:
         self.path = raw
         self.price_schedule = price_schedule
         self._lock = threading.RLock()
+        self._writer_thread_id = threading.get_ident()
         self._connection = sqlite3.connect(raw, isolation_level=None, check_same_thread=False, timeout=30)
         self._connection.row_factory = sqlite3.Row
         self._connection.execute("PRAGMA foreign_keys=ON")
@@ -340,8 +372,13 @@ class AgentJobRepository:
         initialize_agent_extension(self._connection)
 
     def close(self) -> None:
+        self.assert_writer_thread()
         with self._lock:
             self._connection.close()
+
+    def assert_writer_thread(self) -> None:
+        if threading.get_ident() != self._writer_thread_id:
+            raise RuntimeError("agent/critic persistence is owned by the atlas-ops controller thread")
 
     def __enter__(self) -> AgentJobRepository:
         return self
@@ -354,6 +391,7 @@ class AgentJobRepository:
 
         class Transaction:
             def __enter__(self) -> sqlite3.Connection:
+                repository.assert_writer_thread()
                 repository._lock.acquire()
                 repository._connection.execute("BEGIN IMMEDIATE")
                 return repository._connection
@@ -893,6 +931,7 @@ class ActionAssessmentRepository:
         self.path = raw
         self.price_schedule = price_schedule
         self._lock = threading.RLock()
+        self._writer_thread_id = threading.get_ident()
         self._connection = sqlite3.connect(raw, isolation_level=None, check_same_thread=False, timeout=30)
         self._connection.row_factory = sqlite3.Row
         self._connection.execute("PRAGMA foreign_keys=ON")
@@ -905,8 +944,13 @@ class ActionAssessmentRepository:
         initialize_action_assessment_extension(self._connection)
 
     def close(self) -> None:
+        self.assert_writer_thread()
         with self._lock:
             self._connection.close()
+
+    def assert_writer_thread(self) -> None:
+        if threading.get_ident() != self._writer_thread_id:
+            raise RuntimeError("action-assessment ledger is owned by the atlas-ops controller thread")
 
     def __enter__(self) -> ActionAssessmentRepository:
         return self
@@ -919,6 +963,7 @@ class ActionAssessmentRepository:
 
         class Transaction:
             def __enter__(self) -> sqlite3.Connection:
+                repository.assert_writer_thread()
                 repository._lock.acquire()
                 repository._connection.execute("BEGIN IMMEDIATE")
                 return repository._connection
@@ -971,9 +1016,12 @@ class ActionAssessmentRepository:
                     (request.request_id, request.content_hash, packet.packet_ref, request_json, now_ns))
 
     def request_state(self, request_id: str) -> dict[str, Any] | None:
+        self.assert_writer_thread()
         with self._lock:
-            row = self._connection.execute("SELECT r.request_json,a.attempt_id,d.authorization_id,o.status,o.result_json,"
+            row = self._connection.execute("SELECT r.request_json,r.request_hash,p.packet_ref,p.packet_hash,"
+                "a.attempt_id,d.authorization_id,d.authorization_json,d.authorization_hash,o.status,o.result_json,"
                 "o.provider_output_hash,o.failure_code,o.received_at_ns,o.eligible FROM agent_action_assessment_requests r "
+                "JOIN agent_action_assessment_packets p ON p.packet_ref=r.packet_ref "
                 "LEFT JOIN agent_action_assessment_attempts a ON a.request_id=r.request_id "
                 "LEFT JOIN agent_action_assessment_dispatches d ON d.request_id=r.request_id "
                 "LEFT JOIN agent_action_assessment_outcomes o ON o.request_id=r.request_id WHERE r.request_id=?",
@@ -1042,6 +1090,7 @@ class ActionAssessmentRepository:
                  authorization.authorization_hash, now_ns))
 
     def has_dispatch(self, request_id: str) -> bool:
+        self.assert_writer_thread()
         with self._lock:
             return self._connection.execute("SELECT 1 FROM agent_action_assessment_dispatches WHERE request_id=?",
                                             (request_id,)).fetchone() is not None
@@ -1100,3 +1149,43 @@ class ActionAssessmentRepository:
         self.record_outcome(request_id, attempt_id=state["attempt_id"], status="UNAVAILABLE", result=None,
             provider_output_hash=None, failure_code="DISPATCH_OUTCOME_LOST_ON_RESTART", received_at_ns=now_ns,
             eligible=False)
+
+    def authorized_requests_without_terminal_result(self) -> tuple[str, ...]:
+        self.assert_writer_thread()
+        with self._lock:
+            rows = self._connection.execute("SELECT d.request_id FROM agent_action_assessment_dispatches d "
+                "LEFT JOIN agent_action_assessment_outcomes o ON o.request_id=d.request_id "
+                "WHERE o.request_id IS NULL ORDER BY d.created_at_ns,d.request_id").fetchall()
+        return tuple(str(row["request_id"]) for row in rows)
+
+    def unprojected_terminal_records(self, *, limit: int = 2) -> tuple[Mapping[str, Any], ...]:
+        self.assert_writer_thread()
+        if type(limit) is not int or not 0 <= limit <= 64:
+            raise ValueError("observation projection bound must be between zero and 64")
+        with self._lock:
+            rows = self._connection.execute("SELECT r.request_id,r.request_hash,r.request_json,p.packet_ref,"
+                "p.packet_hash,p.packet_json,o.status,o.result_json,o.failure_code,o.received_at_ns,o.eligible,"
+                "d.authorization_json,d.authorization_hash FROM agent_action_assessment_requests r "
+                "JOIN agent_action_assessment_packets p ON p.packet_ref=r.packet_ref "
+                "JOIN agent_action_assessment_outcomes o ON o.request_id=r.request_id "
+                "LEFT JOIN agent_action_assessment_dispatches d ON d.request_id=r.request_id "
+                "LEFT JOIN agent_action_assessment_observation_projections x ON x.request_id=r.request_id "
+                "WHERE x.request_id IS NULL ORDER BY o.received_at_ns,r.request_id LIMIT ?", (limit,)).fetchall()
+        return tuple(dict(row) for row in rows)
+
+    def mark_observation_projected(self, request_id: str, observation_ref: str, *, now_ns: int) -> None:
+        self.assert_writer_thread()
+        sha256_ref(observation_ref, field="observation_ref")
+        with self._transaction() as connection:
+            prior = connection.execute("SELECT observation_ref FROM agent_action_assessment_observation_projections "
+                                       "WHERE request_id=?", (request_id,)).fetchone()
+            if prior is not None:
+                if prior["observation_ref"] != observation_ref:
+                    raise ValueError("critic observation projection identity is already sealed")
+                return
+            terminal = connection.execute("SELECT 1 FROM agent_action_assessment_outcomes WHERE request_id=?",
+                                          (request_id,)).fetchone()
+            if terminal is None:
+                raise ValueError("critic observation cannot precede a terminal controller result")
+            connection.execute("INSERT INTO agent_action_assessment_observation_projections VALUES(?,?,?)",
+                               (request_id, observation_ref, now_ns))

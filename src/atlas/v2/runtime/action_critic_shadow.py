@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import socket
+import threading
+import time
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -22,8 +24,17 @@ from atlas.v2.agent_intelligence.contracts import (
 from atlas.v2.agent_intelligence.controller import ActionAssessmentController, DirectActionAssessmentBrokerPort
 from atlas.v2.agent_intelligence.persistence import ActionAssessmentRepository
 from atlas.v2.agent_intelligence.profile import deepseek_v41_flash_action_critic_profile
+from atlas.v2.agent_intelligence.shadow_measurement import (
+    build_action_critic_shadow_observation,
+    index_action_critic_shadow_observation,
+    index_packet_and_request,
+)
 from atlas.v2.contracts import CandidateActionV2, CandidateSetV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
+from atlas.v2.runtime.action_critic_dispatcher import (
+    ActionAssessmentDispatchWorkV1,
+    ActionAssessmentShadowDispatcher,
+)
 from atlas.v2.runtime.ops_supervisor import OpsSupervisorReceiptV1, PipelineStageV1
 from atlas.v2.science.admission import AmendedEvaluationArtifactV2
 from atlas.v2.science.scenario_engine import PretradeExecutionScenarioV2
@@ -479,18 +490,29 @@ class _UnixBrokerClientPort(DirectActionAssessmentBrokerPort):
             return InferenceBrokerClient(channel).assess_action_v1(capability=capability,
                 authorization_id=authorization_id, attempt_id=attempt_id, request=request, packet=packet)
 
+    def execute(self, work: ActionAssessmentDispatchWorkV1) -> ProviderResultV1:
+        return self.assess(capability=work.capability, authorization_id=work.identity.authorization_id,
+            attempt_id=work.identity.attempt_id, request=work.request, packet=work.packet)
+
 
 class ActionAssessmentShadowCoordinator:
-    """Same-process post-receipt shadow companion; never changes OpsRunResult."""
+    """Main-writer prepare/finalize coordinator with bounded external-I/O dispatch."""
 
     def __init__(self, *, profile: ActionAssessmentProviderProfileV1, controller: ActionAssessmentController,
-                 ledger: Any) -> None:
+                 ledger: Any, dispatcher: ActionAssessmentShadowDispatcher | None = None,
+                 now_ns: Any = time.time_ns) -> None:
         self.profile = profile
         self.controller = controller
         self.ledger = ledger
+        self.dispatcher = dispatcher
+        self._now_ns = now_ns
+        self._writer_thread_id = threading.get_ident()
+        self._works: dict[str, ActionAssessmentDispatchWorkV1] = {}
+        self._closed = False
 
     def __call__(self, receipt: OpsSupervisorReceiptV1, receipt_ref: str,
                  repository: OpsRepository) -> None:
+        self._assert_writer_thread()
         try:
             sealed = build_sealed_action_assessment(repository=repository, receipt=receipt,
                 receipt_ref=receipt_ref, profile=self.profile)
@@ -500,18 +522,111 @@ class ActionAssessmentShadowCoordinator:
         except Exception:
             self.controller.record_skip(receipt_ref, "SEALED_PACKET_AMBIGUOUS_OR_INVALID")
             return
+        # A receipt can be replayed by the deterministic supervisor while its immutable
+        # critic work is still queued, running, or awaiting controller-thread finalization.
+        # That replay must not re-enter prepare(), which correctly treats any orphaned
+        # durable authorization as a lost-on-restart dispatch.
+        if sealed.request.request_id in self._works:
+            return
         try:
-            self.controller.assess(sealed.request, sealed.packet)
+            index_packet_and_request(repository, receipt=receipt, packet=sealed.packet, request=sealed.request)
         except Exception:
+            try:
+                self.controller.record_skip(receipt_ref, "MEASUREMENT_BINDING_UNAVAILABLE",
+                    request=sealed.request, packet=sealed.packet)
+                self._project_observations(repository, limit=1)
+            except Exception:
+                pass
+            return
+
+        dispatcher = self.dispatcher
+        capacity = dispatcher.reserve_capacity() if dispatcher is not None else None
+        if capacity is None:
+            reason = "BROKER_UNAVAILABLE" if dispatcher is None else "DISPATCHER_CAPACITY_UNAVAILABLE"
+            try:
+                self.controller.record_skip(receipt_ref, reason, request=sealed.request, packet=sealed.packet)
+                self._project_observations(repository, limit=1)
+            except Exception:
+                pass
+            return
+        assert dispatcher is not None
+        try:
+            prepared = self.controller.prepare(sealed.request, sealed.packet)
+            if not isinstance(prepared, ActionAssessmentDispatchWorkV1):
+                dispatcher.release_capacity(capacity)
+                self._project_observations(repository, limit=1)
+                return
+            self._works[prepared.identity.request_id] = prepared
+            if not dispatcher.submit_reserved(capacity, prepared):
+                self._works.pop(prepared.identity.request_id, None)
+                self.controller.abandon_authorized_work(prepared, "DISPATCH_HANDOFF_FAILED")
+                self._project_observations(repository, limit=1)
+        except Exception:
+            dispatcher.release_capacity(capacity)
             try:
                 self.controller.fail_safe(receipt_ref=receipt_ref, request=sealed.request,
                     packet=sealed.packet, reason_code="CALLBACK_FAILED")
+                self._project_observations(repository, limit=1)
             except Exception:
-                # A ledger/database failure cannot cross the deterministic receipt boundary.
+                # Ledger or projection failure remains confined to the shadow-only branch.
                 pass
 
+    def drain_completed(self, *, max_items: int = 1, repository: OpsRepository) -> int:
+        """Poll without waiting; all validation and persistence stays on the writer thread."""
+        self._assert_writer_thread()
+        if self.dispatcher is None or self._closed:
+            self._project_observations(repository, limit=max_items)
+            return 0
+        completions = self.dispatcher.drain_completed(max_items=max_items)
+        finalized = 0
+        for completion in completions:
+            work = self._works.pop(completion.identity.request_id, None)
+            if work is None:
+                # Unknown/stale completion identities are rejected without persistence.
+                continue
+            try:
+                self.controller.finalize(work, completion)
+                finalized += 1
+            except Exception:
+                # Durable dispatch remains non-redispatchable and restart recovery marks it lost.
+                continue
+        self._project_observations(repository, limit=max_items)
+        return finalized
+
+    def _project_observations(self, repository: OpsRepository, *, limit: int) -> int:
+        rows = self.controller.pending_observation_records(limit=limit)
+        projected = 0
+        for row in rows:
+            try:
+                packet = SealedActionAssessmentPacketV1.from_dict(json.loads(str(row["packet_json"])))
+                request = ActionAssessmentRequestV2.from_dict(json.loads(str(row["request_json"])))
+                receipt_entry = repository.get_artifact(packet.originating_receipt_ref)
+                receipt_body = receipt_entry.metadata.get("receipt") if receipt_entry is not None else None
+                if not isinstance(receipt_body, Mapping):
+                    continue
+                from atlas.v2.runtime.ops_supervisor import _receipt_from_dict
+
+                receipt = _receipt_from_dict(receipt_body)
+                index_packet_and_request(repository, receipt=receipt, packet=packet, request=request)
+                observation = build_action_critic_shadow_observation(repository, row,
+                    recorded_at_ns=max(int(row["received_at_ns"]), self._now_ns()))
+                ref = index_action_critic_shadow_observation(repository, observation)
+                self.controller.mark_observation_projected(observation.request_id, ref, now_ns=self._now_ns())
+                projected += 1
+            except Exception:
+                continue
+        return projected
+
+    def _assert_writer_thread(self) -> None:
+        if threading.get_ident() != self._writer_thread_id:
+            raise RuntimeError("critic prepare/finalize belongs to the atlas-ops controller thread")
+
     def close(self) -> None:
-        self.ledger.close()
+        self._closed = True
+        if self.dispatcher is not None:
+            self.dispatcher.close()
+        if self.ledger is not None:
+            self.ledger.close()
 
 
 def create_action_assessment_shadow(database_path: str, socket_path: str | None, *,
@@ -533,10 +648,14 @@ def create_action_assessment_shadow(database_path: str, socket_path: str | None,
         signing_key = None
     if signing_key is not None and len(signing_key) < 32:
         signing_key = None
-    provider = _UnixBrokerClientPort(socket_path) if socket_path else None
+    usable_socket = socket_path if socket_path and Path(socket_path).exists() else None
+    io_port = _UnixBrokerClientPort(usable_socket) if usable_socket else None
+    dispatcher = ActionAssessmentShadowDispatcher(io_port) if io_port is not None and signing_key is not None else None
     controller = ActionAssessmentController(ledger=ledger, profile=profile,
-        capability_signing_key=signing_key, provider=provider)
-    return ActionAssessmentShadowCoordinator(profile=profile, controller=controller, ledger=ledger)
+        capability_signing_key=signing_key, provider=io_port)
+    controller.recover_open_dispatches()
+    return ActionAssessmentShadowCoordinator(profile=profile, controller=controller, ledger=ledger,
+        dispatcher=dispatcher)
 
 
 class _LazyActionAssessmentShadow:
@@ -546,16 +665,27 @@ class _LazyActionAssessmentShadow:
         self._database_path = database_path
         self._socket_path = socket_path
         self._coordinator: ActionAssessmentShadowCoordinator | None = None
+        self._init_failed = False
+
+    def _get_coordinator(self) -> ActionAssessmentShadowCoordinator | None:
+        if self._coordinator is not None or self._init_failed:
+            return self._coordinator
+        try:
+            self._coordinator = create_action_assessment_shadow(self._database_path, self._socket_path)
+        except Exception:
+            # Setup failure is shadow-only; deterministic processing remains available.
+            self._init_failed = True
+        return self._coordinator
 
     def __call__(self, receipt: OpsSupervisorReceiptV1, receipt_ref: str,
                  repository: OpsRepository) -> None:
-        if self._coordinator is None:
-            try:
-                self._coordinator = create_action_assessment_shadow(self._database_path, self._socket_path)
-            except Exception:
-                # Setup failure is shadow-only; the deterministic result has already been persisted.
-                return
-        self._coordinator(receipt, receipt_ref, repository)
+        coordinator = self._get_coordinator()
+        if coordinator is not None:
+            coordinator(receipt, receipt_ref, repository)
+
+    def drain_completed(self, *, max_items: int, repository: OpsRepository) -> int:
+        coordinator = self._get_coordinator()
+        return coordinator.drain_completed(max_items=max_items, repository=repository) if coordinator else 0
 
     def close(self) -> None:
         if self._coordinator is not None:

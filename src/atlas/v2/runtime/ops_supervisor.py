@@ -762,6 +762,14 @@ class OpsSupervisorV2:
         """Run one bounded recovery/collection/event cycle without sleeping."""
         started_at_ns = timestamp(self.clock_ns(), field="cycle start")
         repository = self._ensure_open()
+        drain_shadow = getattr(self.post_receipt_shadow, "drain_completed", None)
+        if callable(drain_shadow):
+            try:
+                # Safe cycle boundary: bounded nonblocking poll; critic I/O never runs here.
+                drain_shadow(max_items=2, repository=repository)
+            except Exception:
+                # Shadow persistence/projection cannot downgrade deterministic runtime health.
+                pass
         failures: list[str] = []
         receipts: list[OpsSupervisorReceiptV1] = []
         batch: OpsCycleBatchV1 | None = None
