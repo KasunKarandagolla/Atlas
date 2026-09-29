@@ -12,17 +12,20 @@ from pathlib import Path
 from typing import Any
 
 from atlas.v2._serialization import canonical_json, sha256_json, sha256_ref
-from atlas.v2.agent_intelligence.budget import ProviderPriceScheduleV1
+from atlas.v2.agent_intelligence.budget import DeepSeekPriceScheduleV1, ProviderPriceScheduleV1
 from atlas.v2.agent_intelligence.contracts import (
     AgentAttemptV1,
     AgentEvidenceRefV1,
     AgentJobStateV1,
     AgentJobV1,
-    AgentModelProfileV1,
+    AgentModelProfile,
+    AgentModelProfileV2,
     AgentValidationReceiptV1,
     BrokerDispatchAuthorizationV1,
+    BrokerDispatchAuthorizationV2,
     ResearchProposalRequestV1,
     ResearchProposalV1,
+    model_profile_from_dict,
 )
 from atlas.v2.memory.schema import validate_read_only
 
@@ -227,7 +230,8 @@ def _proposal_parameter_units(rule: dict[str, Any]) -> int:
 class AgentJobRepository:
     """Separate job repository over ops.sqlite; a worker never receives this connection."""
 
-    def __init__(self, path: str | Path, price_schedule: ProviderPriceScheduleV1) -> None:
+    def __init__(self, path: str | Path,
+                 price_schedule: ProviderPriceScheduleV1 | DeepSeekPriceScheduleV1) -> None:
         raw = str(path)
         if not raw or raw.startswith("file:") or "://" in raw:
             raise ValueError("agent persistence requires a local ops.sqlite path")
@@ -308,13 +312,22 @@ class AgentJobRepository:
                                              (request.model_profile_hash,)).fetchone()
             if profile_row is None:
                 raise ValueError("immutable AgentModelProfileV1 must be registered before the request")
-            profile = AgentModelProfileV1.from_dict(json.loads(profile_row["profile_json"]))
+            profile = model_profile_from_dict(json.loads(profile_row["profile_json"]))
             if (profile.content_hash != request.model_profile_hash or profile.pricing_schedule_id != self.price_schedule.version
+                    or profile.provider != self.price_schedule.provider
+                    or profile.requested_model_id != self.price_schedule.requested_model_id
                     or profile.prompt_contract_hash != request.prompt_contract_hash
                     or profile.schema_hash != request.schema_hash or profile.tool_contract_hash != request.tool_contract_hash
                     or request.max_input_tokens > profile.max_input_tokens
                     or request.max_output_tokens > profile.max_output_tokens):
                 raise ValueError("request/profile/provider-price binding mismatch")
+            if isinstance(profile, AgentModelProfileV2):
+                if not isinstance(self.price_schedule, DeepSeekPriceScheduleV1) \
+                        or profile.base_url != self.price_schedule.base_url \
+                        or profile.endpoint_path != self.price_schedule.endpoint_path:
+                    raise ValueError("versioned provider binding and price schedule differ")
+            elif not isinstance(self.price_schedule, ProviderPriceScheduleV1):
+                raise ValueError("OpenAI V1 profile requires the unchanged V1 price schedule")
             prior = connection.execute("SELECT * FROM agent_jobs WHERE request_key=?", (request_key,)).fetchone()
             if prior is not None:
                 return self._job(prior)
@@ -350,7 +363,7 @@ class AgentJobRepository:
             row = connection.execute("SELECT * FROM agent_jobs WHERE job_id=?", (job_id,)).fetchone()
         return self._job(row)
 
-    def register_model_profile(self, profile: AgentModelProfileV1, *, created_at_ns: int) -> str:
+    def register_model_profile(self, profile: AgentModelProfile, *, created_at_ns: int) -> str:
         if profile.pricing_schedule_id != self.price_schedule.version:
             raise ValueError("model profile references an unknown price schedule")
         encoded = canonical_json(profile.to_dict())
@@ -505,7 +518,7 @@ class AgentJobRepository:
                                   attempt: AgentAttemptV1, *, owner: str, lease_epoch: int,
                                   authorization_id: str, capability_nonce: str, evidence_hash: str,
                                   model_profile_hash: str, expires_at_ns: int,
-                                  authorized_at_ns: int) -> BrokerDispatchAuthorizationV1:
+                                  authorized_at_ns: int) -> BrokerDispatchAuthorizationV1 | BrokerDispatchAuthorizationV2:
         """Durably authorize the exact attempt before the controller issues its signed capability."""
         sha256_ref(evidence_hash, field="evidence_hash")
         with self._transaction() as connection:
@@ -559,17 +572,37 @@ class AgentJobRepository:
                                              (model_profile_hash,)).fetchone()
             if profile_row is None:
                 raise ValueError("dispatch model profile is not registered")
-            profile = AgentModelProfileV1.from_dict(json.loads(profile_row["profile_json"]))
-            authorization = BrokerDispatchAuthorizationV1.create(
-                job_id=job_id, request_key=request.request_key, request_hash=row["request_hash"],
-                attempt_id=attempt.attempt_id, call_index=attempt.attempt_index, lease_epoch=lease_epoch,
-                authorization_id=authorization_id, capability_nonce=capability_nonce,
-                evidence_hash=evidence_hash, model_profile_hash=model_profile_hash,
-                provider=profile.provider, requested_model_id=profile.requested_model_id,
-                deadline_ns=row["deadline_ns"], authorized_at_ns=authorized_at_ns,
-                expires_at_ns=expires_at_ns, budget_reservation_id=reserved["reservation_id"],
-                reserved_cost_usd=reserved["reserved_usd"], max_input_tokens=request.max_input_tokens,
-                max_output_tokens=request.max_output_tokens)
+            profile = model_profile_from_dict(json.loads(profile_row["profile_json"]))
+            authorization: BrokerDispatchAuthorizationV1 | BrokerDispatchAuthorizationV2
+            if isinstance(profile, AgentModelProfileV2):
+                if not isinstance(self.price_schedule, DeepSeekPriceScheduleV1):
+                    raise ValueError("DeepSeek profile has no matching versioned price schedule")
+                authorization = BrokerDispatchAuthorizationV2.create(
+                    job_id=job_id, request_key=request.request_key, request_hash=row["request_hash"],
+                    attempt_id=attempt.attempt_id, call_index=attempt.attempt_index, lease_epoch=lease_epoch,
+                    authorization_id=authorization_id, capability_nonce=capability_nonce,
+                    evidence_hash=evidence_hash, model_profile_hash=model_profile_hash,
+                    provider_binding_hash=profile.provider_binding_hash,
+                    price_schedule_hash=self.price_schedule.content_hash,
+                    provider=profile.provider, requested_model_id=profile.requested_model_id,
+                    endpoint=self.price_schedule.endpoint, deadline_ns=row["deadline_ns"],
+                    authorized_at_ns=authorized_at_ns, expires_at_ns=expires_at_ns,
+                    budget_reservation_id=reserved["reservation_id"],
+                    reserved_cost_usd=reserved["reserved_usd"], max_input_tokens=request.max_input_tokens,
+                    max_output_tokens=request.max_output_tokens)
+            else:
+                if not isinstance(self.price_schedule, ProviderPriceScheduleV1):
+                    raise ValueError("OpenAI V1 profile has no matching unchanged price schedule")
+                authorization = BrokerDispatchAuthorizationV1.create(
+                    job_id=job_id, request_key=request.request_key, request_hash=row["request_hash"],
+                    attempt_id=attempt.attempt_id, call_index=attempt.attempt_index, lease_epoch=lease_epoch,
+                    authorization_id=authorization_id, capability_nonce=capability_nonce,
+                    evidence_hash=evidence_hash, model_profile_hash=model_profile_hash,
+                    provider=profile.provider, requested_model_id=profile.requested_model_id,
+                    deadline_ns=row["deadline_ns"], authorized_at_ns=authorized_at_ns,
+                    expires_at_ns=expires_at_ns, budget_reservation_id=reserved["reservation_id"],
+                    reserved_cost_usd=reserved["reserved_usd"], max_input_tokens=request.max_input_tokens,
+                    max_output_tokens=request.max_output_tokens)
             connection.execute("INSERT INTO agent_broker_dispatches("
                 "attempt_id,job_id,request_key,request_hash,attempt_index,authorization_id,capability_nonce,"
                 "lease_epoch,evidence_hash,model_profile_hash,deadline_ns,authorized_at_ns,expires_at_ns,"

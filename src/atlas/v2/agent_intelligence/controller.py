@@ -9,11 +9,15 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from atlas.v2._serialization import sha256_json
-from atlas.v2.agent_intelligence.broker import BrokerCapabilityV1
+from atlas.v2.agent_intelligence.broker import BrokerCapabilityV1, BrokerCapabilityV2
 from atlas.v2.agent_intelligence.contracts import (
     AgentJobStateV1,
+    AgentModelProfile,
     AgentModelProfileV1,
+    AgentModelProfileV2,
     AgentValidationReceiptV1,
+    BrokerDispatchAuthorizationV1,
+    BrokerDispatchAuthorizationV2,
     ProviderResultV1,
     ResearchProposalProvider,
     ResearchProposalRequestV1,
@@ -73,7 +77,7 @@ class ResearchJobController:
     """Owns identity, deadlines, evidence scope, retries, persistence and validation."""
 
     def __init__(self, *, jobs: AgentJobRepository, evidence: BoundedResearchReadService,
-                 profile: AgentModelProfileV1, capability_signing_key: bytes,
+                 profile: AgentModelProfile, capability_signing_key: bytes,
                  provider_factory: ProviderFactory, now_ns: Callable[[], int] = time.time_ns) -> None:
         if len(capability_signing_key) < 32:
             raise ValueError("broker capability signing key must contain at least 256 bits")
@@ -143,8 +147,16 @@ class ResearchJobController:
                 authorization_id=str(uuid.uuid4()), capability_nonce=str(uuid.uuid4()),
                 evidence_hash=sha256_json(evidence), model_profile_hash=self._profile.content_hash,
                 expires_at_ns=cap_expiry, authorized_at_ns=now)
-            capability = BrokerCapabilityV1.issue_authorized(authorization=dispatch_authorization,
-                signing_key=self._signing_key).capability
+            if isinstance(self._profile, AgentModelProfileV2):
+                if not isinstance(dispatch_authorization, BrokerDispatchAuthorizationV2):
+                    raise RuntimeError("DeepSeek profile received a non-V2 dispatch authorization")
+                capability = BrokerCapabilityV2.issue_authorized(authorization=dispatch_authorization,
+                    signing_key=self._signing_key).capability
+            else:
+                if not isinstance(dispatch_authorization, BrokerDispatchAuthorizationV1):
+                    raise RuntimeError("OpenAI V1 profile received a non-V1 dispatch authorization")
+                capability = BrokerCapabilityV1.issue_authorized(authorization=dispatch_authorization,
+                    signing_key=self._signing_key).capability
             context = _DispatchContext(capability, job.job_id, attempt.attempt_id, job.lease_epoch,
                                        attempt.attempt_index)
             try:
@@ -159,8 +171,10 @@ class ResearchJobController:
                     "PROVIDER_ERROR", False)
             revision_status = _revision_status(self._profile, provider_result.returned_model_id,
                                                provider_result.model_revision)
+            persisted_revision = provider_result.model_revision if isinstance(self._profile, AgentModelProfileV1) \
+                else None
             response_profile = replace(self._profile, returned_model_id=provider_result.returned_model_id,
-                model_revision=provider_result.model_revision, revision_status=RevisionStatusV1(revision_status))
+                model_revision=persisted_revision, revision_status=RevisionStatusV1(revision_status))
             self._jobs.register_model_profile(response_profile, created_at_ns=self._now_ns())
             profile_metadata = {"provider": response_profile.provider,
                 "requested_model_id": response_profile.requested_model_id,
@@ -180,6 +194,8 @@ class ResearchJobController:
                 "provider_request_id": provider_result.provider_request_id,
                 "failure_code": provider_result.failure_code, "refusal": provider_result.refusal,
                 "truncated": provider_result.truncated}
+            if isinstance(self._profile, AgentModelProfileV2):
+                profile_metadata["provider_reported_revision"] = provider_result.model_revision
             self._jobs.append_attempt_outcome(attempt.attempt_id,
                 {"version": "AgentAttemptOutcomeV1", "status": "RETURNED" if provider_result.failure_code is None
                  else "FAILED", "provider_metadata": profile_metadata}, at_ns=self._now_ns())
@@ -203,8 +219,11 @@ class ResearchJobController:
                     provider_result.output_tokens, provider_result.provider_request_id, "TRUNCATED", False)
             model_ok = (provider_result.returned_model_id == self._profile.requested_model_id
                 or (provider_result.returned_model_id is not None
+                    and isinstance(self._profile, AgentModelProfileV1)
                     and provider_result.returned_model_id.startswith(self._profile.requested_model_id + "-")
                     and provider_result.model_revision == provider_result.returned_model_id))
+            if isinstance(self._profile, AgentModelProfileV2) and provider_result.model_revision is not None:
+                model_ok = False
             token_ok = (provider_result.input_tokens <= request.max_input_tokens
                         and provider_result.output_tokens <= request.max_output_tokens)
             result_body = {"version": "AgentProviderResultV1", "raw_output": provider_result.raw_output,
@@ -247,10 +266,10 @@ class ResearchJobController:
         return ResearchJobOutcomeV1(job_id, request_key, job.lifecycle_state, proposal, receipt, reason, authoritative)
 
 
-def _revision_status(profile: AgentModelProfileV1, returned_model_id: str | None,
+def _revision_status(profile: AgentModelProfile, returned_model_id: str | None,
                      revision: str | None) -> str:
     if revision:
-        return "FIXED_REVISION"
+        return "FIXED_REVISION" if isinstance(profile, AgentModelProfileV1) else "UNKNOWN"
     if returned_model_id == profile.requested_model_id:
         return "ALIAS_ONLY"
     return "UNKNOWN"

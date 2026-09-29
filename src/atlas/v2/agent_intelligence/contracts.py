@@ -164,6 +164,148 @@ class AgentModelProfileV1:
 
 
 @dataclass(frozen=True)
+class AgentModelProfileV2:
+    """Additive DeepSeek binding; V1 remains pinned to OpenAI/Astra."""
+
+    provider: str
+    requested_model_id: str
+    returned_model_id: str | None
+    model_revision: str | None
+    revision_status: RevisionStatusV1
+    base_url: str
+    endpoint_path: str
+    model_family: str
+    reasoning_setting_id: str
+    reasoning_settings: FrozenMap
+    structured_output_format: str
+    max_input_tokens: int
+    max_output_tokens: int
+    max_model_calls_per_job: int
+    max_read_tool_calls_per_job: int
+    max_concurrent_jobs: int
+    prompt_contract_hash: str
+    schema_hash: str
+    tool_contract_hash: str
+    runtime_dependency_hash: str
+    pricing_schedule_id: str
+    revision_evidence_hash: str | None = None
+    profile_version: str = "AgentModelProfileV2"
+
+    def __post_init__(self) -> None:
+        for field_name in ("provider", "requested_model_id", "base_url", "endpoint_path", "model_family",
+                           "reasoning_setting_id", "structured_output_format", "pricing_schedule_id"):
+            _identifier(getattr(self, field_name), field_name)
+        if self.returned_model_id is not None:
+            _identifier(self.returned_model_id, "returned_model_id")
+        if self.model_revision is not None:
+            _identifier(self.model_revision, "model_revision")
+        if self.profile_version != "AgentModelProfileV2":
+            raise ValueError("DeepSeek provider profile version is fixed")
+        if (self.provider != "deepseek" or self.requested_model_id != "deepseek-flash"
+                or self.base_url != "https://api.deepseek.com" or self.endpoint_path != "/responses"
+                or self.model_family != "DeepSeek-V4.1-Flash"):
+            raise ValueError("DeepSeek provider/model/endpoint binding is outside this amendment")
+        if self.reasoning_setting_id != "DEEPSEEK_RESPONSES_REASONING_EFFORT_HIGH_V1":
+            raise ValueError("DeepSeek reasoning-setting identity is outside this amendment")
+        object.__setattr__(self, "reasoning_settings", _frozen_map(self.reasoning_settings, "reasoning_settings", 2_000))
+        if self.reasoning_settings.to_dict() != {"effort": "high"}:
+            raise ValueError("DeepSeek reasoning settings must use the separately versioned high setting")
+        if self.structured_output_format != "json_schema":
+            raise ValueError("DeepSeek structured output must use JSON Schema")
+        if (type(self.max_input_tokens) is not int or self.max_input_tokens != 12_000
+                or type(self.max_output_tokens) is not int or self.max_output_tokens != 4_000
+                or type(self.max_model_calls_per_job) is not int or self.max_model_calls_per_job != 3
+                or type(self.max_read_tool_calls_per_job) is not int or self.max_read_tool_calls_per_job != 8
+                or type(self.max_concurrent_jobs) is not int or self.max_concurrent_jobs != 1):
+            raise ValueError("DeepSeek offline research limits differ from the approved amendment")
+        for name in ("prompt_contract_hash", "schema_hash", "tool_contract_hash", "runtime_dependency_hash"):
+            sha256_ref(getattr(self, name), field=name)
+        if self.revision_status == RevisionStatusV1.ALIAS_ONLY:
+            if self.model_revision is not None or self.revision_evidence_hash is not None:
+                raise ValueError("alias-only DeepSeek profile cannot invent revision evidence")
+            if self.returned_model_id not in {None, self.requested_model_id}:
+                raise ValueError("alias-only DeepSeek profile must return the requested alias")
+        elif self.revision_status == RevisionStatusV1.UNKNOWN:
+            if self.model_revision is not None or self.revision_evidence_hash is not None:
+                raise ValueError("unknown DeepSeek model identity cannot claim revision evidence")
+        elif self.revision_status == RevisionStatusV1.FIXED_REVISION:
+            if (self.model_revision is None or self.model_revision != self.returned_model_id
+                    or self.revision_evidence_hash is None):
+                raise ValueError("fixed DeepSeek revision requires matching identity and evidence hash")
+            sha256_ref(self.revision_evidence_hash, field="revision_evidence_hash")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": self.profile_version, "provider": self.provider,
+                "requested_model_id": self.requested_model_id, "returned_model_id": self.returned_model_id,
+                "model_revision": self.model_revision, "revision_status": self.revision_status.value,
+                "base_url": self.base_url, "endpoint_path": self.endpoint_path, "model_family": self.model_family,
+                "reasoning_setting_id": self.reasoning_setting_id,
+                "reasoning_settings": self.reasoning_settings.to_dict(),
+                "structured_output_format": self.structured_output_format,
+                "max_input_tokens": self.max_input_tokens, "max_output_tokens": self.max_output_tokens,
+                "max_model_calls_per_job": self.max_model_calls_per_job,
+                "max_read_tool_calls_per_job": self.max_read_tool_calls_per_job,
+                "max_concurrent_jobs": self.max_concurrent_jobs,
+                "prompt_contract_hash": self.prompt_contract_hash, "schema_hash": self.schema_hash,
+                "tool_contract_hash": self.tool_contract_hash,
+                "runtime_dependency_hash": self.runtime_dependency_hash,
+                "pricing_schedule_id": self.pricing_schedule_id,
+                "revision_evidence_hash": self.revision_evidence_hash}
+
+    @property
+    def content_hash(self) -> str:
+        return sha256_json(self.to_dict())
+
+    @property
+    def provider_binding_hash(self) -> str:
+        return sha256_json({"version": "AgentProviderBindingV2", "provider": self.provider,
+            "requested_model_id": self.requested_model_id, "base_url": self.base_url,
+            "endpoint_path": self.endpoint_path, "model_family": self.model_family,
+            "reasoning_setting_id": self.reasoning_setting_id,
+            "reasoning_settings": self.reasoning_settings.to_dict(),
+            "structured_output_format": self.structured_output_format,
+            "max_input_tokens": self.max_input_tokens, "max_output_tokens": self.max_output_tokens,
+            "prompt_contract_hash": self.prompt_contract_hash, "schema_hash": self.schema_hash,
+            "tool_contract_hash": self.tool_contract_hash,
+            "runtime_dependency_hash": self.runtime_dependency_hash,
+            "pricing_schedule_id": self.pricing_schedule_id})
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> AgentModelProfileV2:
+        fields = {"version", "provider", "requested_model_id", "returned_model_id", "model_revision",
+            "revision_status", "base_url", "endpoint_path", "model_family", "reasoning_setting_id",
+            "reasoning_settings", "structured_output_format", "max_input_tokens", "max_output_tokens",
+            "max_model_calls_per_job", "max_read_tool_calls_per_job", "max_concurrent_jobs",
+            "prompt_contract_hash", "schema_hash", "tool_contract_hash", "runtime_dependency_hash",
+            "pricing_schedule_id", "revision_evidence_hash"}
+        row = strict_fields(data, expected=fields, required=fields, name="AgentModelProfileV2")
+        if row["version"] != "AgentModelProfileV2" or not isinstance(row["reasoning_settings"], Mapping):
+            raise ValueError("AgentModelProfileV2 wire record is invalid")
+        profile = cls(row["provider"], row["requested_model_id"], row["returned_model_id"], row["model_revision"],
+            RevisionStatusV1(row["revision_status"]), row["base_url"], row["endpoint_path"], row["model_family"],
+            row["reasoning_setting_id"], FrozenMap(row["reasoning_settings"]), row["structured_output_format"],
+            row["max_input_tokens"], row["max_output_tokens"], row["max_model_calls_per_job"],
+            row["max_read_tool_calls_per_job"], row["max_concurrent_jobs"], row["prompt_contract_hash"],
+            row["schema_hash"], row["tool_contract_hash"], row["runtime_dependency_hash"],
+            row["pricing_schedule_id"], row["revision_evidence_hash"])
+        if canonical_json(profile.to_dict()) != canonical_json(data):
+            raise ValueError("AgentModelProfileV2 wire record is not canonical")
+        return profile
+
+
+AgentModelProfile = AgentModelProfileV1 | AgentModelProfileV2
+
+
+def model_profile_from_dict(data: Mapping[str, Any]) -> AgentModelProfile:
+    version = data.get("version")
+    if version == "AgentModelProfileV1":
+        return AgentModelProfileV1.from_dict(data)
+    if version == "AgentModelProfileV2":
+        return AgentModelProfileV2.from_dict(data)
+    raise ValueError("unsupported agent model profile version")
+
+
+@dataclass(frozen=True)
 class AgentEvidenceRefV1:
     tool_name: str
     artifact_ref: str
@@ -665,6 +807,85 @@ class BrokerDispatchAuthorizationV1:
 
     def to_dict(self) -> dict[str, Any]:
         return {"version": "BrokerDispatchAuthorizationV1", **self.__dict__}
+
+
+@dataclass(frozen=True)
+class BrokerDispatchAuthorizationV2:
+    """Durable DeepSeek dispatch binding; it is distinct from historical V1 auth."""
+
+    job_id: str
+    request_key: str
+    request_hash: str
+    attempt_id: str
+    call_index: int
+    lease_epoch: int
+    authorization_id: str
+    capability_nonce: str
+    evidence_hash: str
+    model_profile_hash: str
+    provider_binding_hash: str
+    price_schedule_hash: str
+    provider: str
+    requested_model_id: str
+    endpoint: str
+    deadline_ns: int
+    authorized_at_ns: int
+    expires_at_ns: int
+    budget_reservation_id: str
+    reserved_cost_usd: str
+    max_input_tokens: int
+    max_output_tokens: int
+    authorization_hash: str
+
+    @classmethod
+    def create(cls, *, job_id: str, request_key: str, request_hash: str, attempt_id: str,
+               call_index: int, lease_epoch: int, authorization_id: str, capability_nonce: str,
+               evidence_hash: str, model_profile_hash: str, provider_binding_hash: str,
+               price_schedule_hash: str, provider: str, requested_model_id: str, endpoint: str,
+               deadline_ns: int, authorized_at_ns: int, expires_at_ns: int,
+               budget_reservation_id: str, reserved_cost_usd: str, max_input_tokens: int,
+               max_output_tokens: int) -> BrokerDispatchAuthorizationV2:
+        for name, value in (("job_id", job_id), ("attempt_id", attempt_id),
+                            ("authorization_id", authorization_id), ("capability_nonce", capability_nonce),
+                            ("budget_reservation_id", budget_reservation_id)):
+            _uuid(value, name)
+        for name, value in (("request_key", request_key), ("request_hash", request_hash),
+                            ("evidence_hash", evidence_hash), ("model_profile_hash", model_profile_hash),
+                            ("provider_binding_hash", provider_binding_hash),
+                            ("price_schedule_hash", price_schedule_hash)):
+            sha256_ref(value, field=name)
+        if (type(call_index) is not int or not 1 <= call_index <= 3
+                or type(lease_epoch) is not int or lease_epoch < 1):
+            raise ValueError("dispatch authorization attempt fence is invalid")
+        if (type(deadline_ns) is not int or type(authorized_at_ns) is not int or type(expires_at_ns) is not int
+                or not authorized_at_ns < expires_at_ns <= deadline_ns):
+            raise ValueError("dispatch authorization time bounds are invalid")
+        if (provider != "deepseek" or requested_model_id != "deepseek-flash"
+                or endpoint != "https://api.deepseek.com/responses"):
+            raise ValueError("dispatch authorization provider/model/endpoint is outside the fixed V2 binding")
+        if (not isinstance(reserved_cost_usd, str)
+                or not re.fullmatch(r"(?:0|[1-9]\d*)(?:\.\d{1,6})?", reserved_cost_usd)):
+            raise ValueError("dispatch authorization budget reservation is invalid")
+        if (type(max_input_tokens) is not int or max_input_tokens != 12_000
+                or type(max_output_tokens) is not int or max_output_tokens != 4_000):
+            raise ValueError("dispatch authorization token caps differ from the DeepSeek amendment")
+        body = {"version": "BrokerDispatchAuthorizationV2", "job_id": job_id,
+            "request_key": request_key, "request_hash": request_hash, "attempt_id": attempt_id,
+            "call_index": call_index, "lease_epoch": lease_epoch, "authorization_id": authorization_id,
+            "capability_nonce": capability_nonce, "evidence_hash": evidence_hash,
+            "model_profile_hash": model_profile_hash, "provider_binding_hash": provider_binding_hash,
+            "price_schedule_hash": price_schedule_hash, "provider": provider,
+            "requested_model_id": requested_model_id, "endpoint": endpoint, "deadline_ns": deadline_ns,
+            "authorized_at_ns": authorized_at_ns, "expires_at_ns": expires_at_ns,
+            "budget_reservation_id": budget_reservation_id, "reserved_cost_usd": reserved_cost_usd,
+            "max_input_tokens": max_input_tokens, "max_output_tokens": max_output_tokens}
+        return cls(job_id, request_key, request_hash, attempt_id, call_index, lease_epoch, authorization_id,
+            capability_nonce, evidence_hash, model_profile_hash, provider_binding_hash, price_schedule_hash,
+            provider, requested_model_id, endpoint, deadline_ns, authorized_at_ns, expires_at_ns,
+            budget_reservation_id, reserved_cost_usd, max_input_tokens, max_output_tokens, sha256_json(body))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": "BrokerDispatchAuthorizationV2", **self.__dict__}
 
 
 @dataclass(frozen=True)

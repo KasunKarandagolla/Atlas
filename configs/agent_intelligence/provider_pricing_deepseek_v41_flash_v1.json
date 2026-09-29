@@ -1,0 +1,23 @@
+{
+  "version": "DEEPSEEK_V41_FLASH_PEAK_2026_09_V1",
+  "provider": "deepseek",
+  "requested_model_id": "deepseek-flash",
+  "base_url": "https://api.deepseek.com",
+  "endpoint_path": "/responses",
+  "effective_date": "2026-09-10",
+  "pricing_source": "https://api-docs.deepseek.com/quick_start/pricing/",
+  "prices_usd_per_million_tokens": {
+    "cache_hit_input": "0.006",
+    "cache_miss_input": "0.30",
+    "output": "1.20"
+  },
+  "maximum_input_tokens": 12000,
+  "maximum_output_tokens": 4000,
+  "maximum_input_context_tokens": 12000,
+  "maximum_model_calls_per_job": 3,
+  "maximum_read_tool_calls_per_job": 8,
+  "maximum_concurrent_research_jobs": 1,
+  "maximum_cost_per_call_usd": "0.008400",
+  "maximum_cost_per_job_usd": "0.025200",
+  "maximum_daily_cost_usd": "5.25"
+}

@@ -1,4 +1,4 @@
-"""Versioned proposer prompt and lazy PydanticAI/OpenAI Responses adapter.
+"""Versioned proposer prompt and lazy OpenAI-compatible Responses adapters.
 
 Optional ``pydantic-ai-slim[openai]`` imports occur only inside the broker adapter;
 the normal ATLAS/live import path remains independent of that environment.
@@ -218,3 +218,162 @@ class PydanticAIResearchProposalProvider:
             code = codes.get(status, "PROVIDER_ERROR") if status is not None else "PROVIDER_ERROR"
             retryable = status in {408, 429, 500, 502, 503} if status is not None else False
             raise ResearchProviderUnavailable(code, retryable=retryable) from exc
+
+
+class DeepSeekResponsesResearchProposalProvider:
+    """Fixed DeepSeek V4.1 Flash Responses adapter; raw reasoning never crosses this class."""
+
+    provider_id = "deepseek"
+    requested_model_id = "deepseek-flash"
+    base_url = "https://api.deepseek.com"
+    endpoint_path = "/responses"
+    endpoint = "https://api.deepseek.com/responses"
+    reasoning_setting_id = "DEEPSEEK_RESPONSES_REASONING_EFFORT_HIGH_V1"
+
+    def __init__(self, api_key: str) -> None:
+        if not isinstance(api_key, str) or not api_key.strip():
+            raise ResearchProviderUnavailable("PROVIDER_CREDENTIAL_UNAVAILABLE")
+        self.__api_key = api_key
+
+    def propose(self, request: ResearchProposalRequestV1,
+                evidence: Sequence[Mapping[str, Any]]) -> ProviderResultV1:
+        if (request.max_input_tokens > 12_000 or request.max_output_tokens > 4_000
+                or request.max_model_calls > 3 or request.max_read_tool_calls > 8):
+            raise ResearchProviderUnavailable("TOKEN_OR_JOB_LIMIT_EXCEEDED")
+        prompt = build_user_prompt(request, evidence)
+        schema = proposal_payload_schema()
+        body = {
+            "model": self.requested_model_id,
+            "instructions": SYSTEM_PROMPT_V1,
+            "input": prompt,
+            "reasoning": {"effort": "high"},
+            "max_output_tokens": request.max_output_tokens,
+            "text": {"format": {"type": "json_schema", "name": "atlas_research_proposal_v1",
+                                 "schema": schema}},
+        }
+        # A byte ceiling is conservative for the provider's tokenizer and reserves room for API framing.
+        if len(canonical_json(body).encode("utf-8")) > 11_488:
+            raise ResearchProviderUnavailable("INPUT_TOKEN_BUDGET_EXCEEDED")
+        if request.schema_hash != SCHEMA_HASH or request.prompt_contract_hash != PROMPT_CONTRACT_HASH \
+                or request.tool_contract_hash != TOOL_CONTRACT_HASH:
+            raise ResearchProviderUnavailable("CONTRACT_HASH_MISMATCH")
+        from time import time_ns
+
+        remaining_seconds = (request.absolute_deadline_ns - time_ns()) / 1_000_000_000
+        if remaining_seconds <= 0:
+            return ProviderResultV1("", None, None, False, False, 0, 0, None,
+                                    "PROVIDER_TIMEOUT", True)
+        timeout_seconds = min(remaining_seconds, 30.0)
+        try:
+            from httpx2 import AsyncClient
+            from openai import AsyncOpenAI
+        except ImportError as exc:
+            raise ResearchProviderUnavailable("AGENT_DEPENDENCY_UNAVAILABLE") from exc
+
+        async def execute() -> Any:
+            http_client = AsyncClient(trust_env=False)
+            client = AsyncOpenAI(api_key=self.__api_key, base_url=self.base_url, max_retries=0,
+                                 timeout=timeout_seconds, http_client=http_client)
+            try:
+                return await client.responses.create(**body)
+            finally:
+                await client.close()
+
+        try:
+            response = asyncio.run(execute())
+        except ResearchProviderUnavailable:
+            raise
+        except Exception as exc:
+            status_code = getattr(exc, "status_code", None)
+            status = status_code if type(status_code) is int else None
+            if status == 429:
+                raise ResearchProviderUnavailable("RATE_LIMITED", retryable=True) from exc
+            if status in {408, 504} or isinstance(exc, TimeoutError) or "timeout" in type(exc).__name__.lower():
+                raise ResearchProviderUnavailable("PROVIDER_TIMEOUT", retryable=True) from exc
+            if status in {500, 502, 503}:
+                raise ResearchProviderUnavailable("PROVIDER_UNAVAILABLE", retryable=True) from exc
+            if status in {401, 403}:
+                raise ResearchProviderUnavailable("PROVIDER_AUTHENTICATION_FAILED") from exc
+            if status is not None and 400 <= status < 500:
+                raise ResearchProviderUnavailable("PROVIDER_REQUEST_REJECTED") from exc
+            raise ResearchProviderUnavailable("PROVIDER_ERROR") from exc
+
+        def field(value: Any, key: str, default: Any = None) -> Any:
+            return value.get(key, default) if isinstance(value, Mapping) else getattr(value, key, default)
+
+        response_id = field(response, "id")
+        provider_request_id = response_id if isinstance(response_id, str) and \
+            re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", response_id) else None
+        returned_model_id = field(response, "model")
+        if not isinstance(returned_model_id, str) or not returned_model_id:
+            return ProviderResultV1("", None, None, False, False, 0, 0, provider_request_id,
+                                    "RETURNED_MODEL_ID_MISSING", False)
+        usage = field(response, "usage")
+        input_tokens = field(usage, "input_tokens", 0)
+        output_tokens = field(usage, "output_tokens", 0)
+        if type(input_tokens) is not int or input_tokens < 0:
+            input_tokens = 0
+        if type(output_tokens) is not int or output_tokens < 0:
+            output_tokens = 0
+        status = field(response, "status")
+        incomplete = field(response, "incomplete_details")
+        incomplete_reason = field(incomplete, "reason")
+        if status == "incomplete":
+            return ProviderResultV1("", returned_model_id, None,
+                incomplete_reason == "content_filter", incomplete_reason != "content_filter",
+                input_tokens, output_tokens, provider_request_id,
+                "PROVIDER_REFUSAL" if incomplete_reason == "content_filter" else None, False)
+        if status == "failed":
+            error = field(response, "error")
+            error_code = field(error, "code")
+            refusal = error_code in {"content_filter", "refusal"}
+            return ProviderResultV1("", returned_model_id, None, refusal, False, input_tokens,
+                output_tokens, provider_request_id, "PROVIDER_REFUSAL" if refusal else "PROVIDER_ERROR", False)
+
+        # A mismatched identity is recorded as drift and its content is discarded.
+        if returned_model_id != self.requested_model_id:
+            return ProviderResultV1("", returned_model_id, None, False, False, input_tokens,
+                                    output_tokens, provider_request_id, "RETURNED_MODEL_ID_DRIFT", False)
+
+        output = field(response, "output", ())
+        final_parts: list[str] = []
+        refusal = False
+        truncated = False
+        if isinstance(output, Sequence) and not isinstance(output, (str, bytes)):
+            for item in output:
+                item_type = field(item, "type")
+                if item_type == "reasoning":
+                    # Deliberately do not read or serialize reasoning/chain-of-thought content.
+                    continue
+                if item_type == "refusal":
+                    refusal = True
+                    continue
+                if item_type != "message":
+                    continue
+                if field(item, "status") == "incomplete":
+                    truncated = True
+                content = field(item, "content", ())
+                if isinstance(content, Sequence) and not isinstance(content, (str, bytes)):
+                    for part in content:
+                        part_type = field(part, "type")
+                        if part_type == "refusal":
+                            refusal = True
+                        elif part_type == "output_text":
+                            text = field(part, "text")
+                            if isinstance(text, str):
+                                final_parts.append(text)
+        if refusal:
+            return ProviderResultV1("", returned_model_id, None, True, False, input_tokens,
+                                    output_tokens, provider_request_id)
+        if truncated or status != "completed":
+            return ProviderResultV1("", returned_model_id, None, False, True, input_tokens,
+                                    output_tokens, provider_request_id)
+        raw_output = "".join(final_parts)
+        if not raw_output:
+            return ProviderResultV1("", returned_model_id, None, False, False, input_tokens,
+                                    output_tokens, provider_request_id, "MALFORMED_STRUCTURED_OUTPUT", False)
+        if len(raw_output.encode("utf-8")) > MAX_PROPOSAL_BYTES:
+            return ProviderResultV1("", returned_model_id, None, False, True, input_tokens,
+                                    output_tokens, provider_request_id, "OUTPUT_SIZE_LIMIT", False)
+        return ProviderResultV1(raw_output, returned_model_id, None, False, False,
+                                input_tokens, output_tokens, provider_request_id, None, False)
