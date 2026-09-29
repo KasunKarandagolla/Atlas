@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "session": 28,
+  "checkpoint": "additive-deepseek-v41-flash-provider-model-amendment",
+  "checkpoint_is_v2_phase": false,
+  "repository": "KasunKarandagolla/Atlas",
+  "starting_point": {
+    "required_branch": "impl/session-027-v2-continuous-ops-supervisor",
+    "accepted_starting_sha": "81ee4c1edbe0156691863b90daf3174168fa387b",
+    "remote_sha_verified_before_work": true,
+    "verification_method": "git fetch origin followed by git ls-remote and local ref comparison",
+    "session027_tested_implementation_sha": "5ddcc4dfaa986a978afa0e9756b23ff714eeaf96"
+  },
+  "implementation": {
+    "branch": "impl/session-028-agent-provider-deepseek-v41-amendment",
+    "tested_implementation_sha": "32b244d8e0b7066ee43e2f184b6a8d87914f28ee",
+    "remote_tip_after_implementation_push_sha": "32b244d8e0b7066ee43e2f184b6a8d87914f28ee",
+    "implementation_remote_tip_independently_verified": true,
+    "final_documentation_closeout_tip": "reported in final closeout; a commit cannot contain its own resulting SHA",
+    "files_changed": [
+      "configs/agent_intelligence/provider_pricing_deepseek_v41_flash_v1.json",
+      "docs/v2/ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md",
+      "src/atlas/v2/agent_intelligence/__init__.py",
+      "src/atlas/v2/agent_intelligence/broker.py",
+      "src/atlas/v2/agent_intelligence/budget.py",
+      "src/atlas/v2/agent_intelligence/contracts.py",
+      "src/atlas/v2/agent_intelligence/controller.py",
+      "src/atlas/v2/agent_intelligence/persistence.py",
+      "src/atlas/v2/agent_intelligence/profile.py",
+      "src/atlas/v2/agent_intelligence/provider.py",
+      "tests/v2/test_session028_provider_amendment.py",
+      "docs/v2/SESSION028_AGENT_PROVIDER_VALIDATION.json",
+      "docs/v2/AGENT_PROVIDER_MODEL_AMENDMENT_GATE_V1.json",
+      "docs/handoffs/session-028.md"
+    ],
+    "implementation_and_docs_committed_separately": true,
+    "merge_performed": false,
+    "session027_files_modified": false,
+    "dependency_files_modified": false
+  },
+  "amendment": {
+    "identity": "ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1",
+    "amendment_document_raw_sha256": "a082f02b50786cf3af0f32ce7f825f9c94c0ff7888a6f3a5c78a69b4c0d1c60d",
+    "scope": "Additive provider/model support for the existing zero-authority ResearchProposalProvider path",
+    "status": "IMPLEMENTED / TESTED",
+    "new_v2_phase_created": false,
+    "provider_neutral_ports_remain_authoritative": [
+      "ResearchProposalProvider",
+      "ActionAssessmentProvider",
+      "EventExtractionProvider"
+    ],
+    "session026_openai_astra_history_and_freeze_changed": false,
+    "provider_or_model_fallback": false
+  },
+  "preserved_authority_hashes": {
+    "v1_freeze_document_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "amended_v2_freeze_document_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "agent_freeze_document_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "session025_release_manifest_sha256": "9f26f4f73c14f5e70cee3c47df28b8e68f2cc05988b8bce8a9c49ce580a90e69",
+    "phase5_release_gate_sha256": "fe47c1f3d284c622e6f63a2b0a1eb5ac6faa8babf27ccabd4cce8975c93aa32e",
+    "session025_validation_sha256": "730459019f03ac48ee2a3500c738cd1884ea9917ad06c90c21952cd56d549228",
+    "session026_agent_gate_sha256": "0288cba49682a2e31b0b0103ce898312e410f64509f4dd14b35f368f2cdd0d2f",
+    "session026_validation_sha256": "f2b65610bd7a8edd5879e1c9f27f5ab61dbdaebf626ba9b1bf5b684c74e4d6fa",
+    "session027_validation_identity_sha256": "ef09f54ed9fad0f5aa6f05bab915fbf13df4f023092d1f9b0b20cefbd7dfb8e1",
+    "v1_golden_baseline_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+    "core_requirements_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "agent_requirements_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+    "openai_pricing_artifact_raw_sha256": "f55b39ee654ea08836de76b10126b34ac7f5e70c9c1d9aebacb7b0db5c4073ef",
+    "openai_astra_profile_content_hash": "75e4e39340c534cfc32503b36baa5c7c28bd6cc5bb2e8db02310152d0e6bd34b",
+    "openai_astra_price_schedule_content_hash": "8e60910165e6bdd775ec5c8e7f858d3c71c781e9a8392c5eee0a7596c03bc0e4",
+    "all_listed_authority_and_lock_hashes_recomputed_and_unchanged": true
+  },
+  "model_profiles": {
+    "historical_openai_astra_v1": {
+      "profile_version": "AgentModelProfileV1",
+      "provider": "openai",
+      "requested_model_id": "gpt-6-astra",
+      "api": "Responses",
+      "reasoning_setting": "medium",
+      "credential_owner": "broker-only OPENAI_API_KEY path",
+      "profile_content_hash": "75e4e39340c534cfc32503b36baa5c7c28bd6cc5bb2e8db02310152d0e6bd34b",
+      "canonical_wire_round_trip_unchanged": true,
+      "rejects_other_provider_or_model_under_v1": true
+    },
+    "deepseek_v41_flash_v2": {
+      "profile_version": "AgentModelProfileV2",
+      "profile_content_hash": "819b22be3b3122df8b3574492a1aac1de4280011b4f9f28b8caca945bac16adf",
+      "provider_binding_hash": "3fd47a85e3c935f2d1ee01438b9b7fd697e6aa0005c41ed4934d6a83efb9cf48",
+      "provider": "deepseek",
+      "requested_model_id": "deepseek-flash",
+      "model_family": "DeepSeek-V4.1-Flash",
+      "revision_status": "ALIAS_ONLY",
+      "returned_model_id_on_smoke": "deepseek-flash",
+      "base_url": "https://api.deepseek.com",
+      "endpoint_path": "/responses",
+      "reasoning_setting_id": "DEEPSEEK_RESPONSES_REASONING_EFFORT_HIGH_V1",
+      "reasoning_setting": "high",
+      "structured_output_format": "json_schema",
+      "maximum_input_tokens": 12000,
+      "maximum_output_tokens": 4000,
+      "maximum_model_calls_per_job": 3,
+      "maximum_read_tool_calls_per_job": 8,
+      "maximum_concurrent_jobs": 1,
+      "pricing_schedule_id": "DEEPSEEK_V41_FLASH_PEAK_2026_09_V1",
+      "pricing_schedule_content_hash": "ff2ef50fe263a74a1c2ce7d57ef3bc067aec637c47f7c1ea4a4083284e42fd66",
+      "pricing_config_raw_sha256": "51b786dd051f174865a6ac333960dcfa803e3dbe8de7a65db5d1d4b4af0e9813",
+      "reservation_uses_cache_miss_rate": true,
+      "cache_hit_input_usd_per_million": "0.006",
+      "cache_miss_input_usd_per_million": "0.30",
+      "output_usd_per_million": "1.20",
+      "maximum_cost_per_call_usd": "0.008400",
+      "maximum_cost_per_job_usd": "0.025200",
+      "unknown_pricing_dispatchable": false
+    }
+  },
+  "provider_boundary": {
+    "adapter": "DeepSeekResponsesResearchProposalProvider",
+    "exact_fixed_endpoint": "https://api.deepseek.com/responses",
+    "caller_selectable_endpoint_or_model": false,
+    "hosted_tools": false,
+    "sdk_automatic_retries": 0,
+    "timeout_seconds_maximum": 30,
+    "trust_env": false,
+    "structured_output": "Responses API JSON Schema",
+    "provider_failure_mappings": [
+      "PROVIDER_TIMEOUT",
+      "RATE_LIMITED",
+      "PROVIDER_UNAVAILABLE",
+      "PROVIDER_AUTHENTICATION_FAILED",
+      "PROVIDER_REQUEST_REJECTED",
+      "PROVIDER_REFUSAL",
+      "PROVIDER_TRUNCATED",
+      "RETURNED_MODEL_ID_DRIFT"
+    ],
+    "fallback_on_timeout_refusal_rate_limit_failure_or_drift": false,
+    "reasoning_text_discarded_at_provider_boundary": true,
+    "reasoning_in_provider_result_attempts_proposals_receipts_or_logs": false,
+    "same_deterministic_proposal_validator_after_receipt": true
+  },
+  "ownership_and_authority": {
+    "agent_mode_in_deterministic_ops": "DISABLED",
+    "eligible_mode": "OFFLINE_RESEARCH only",
+    "agent_ledger_writer": "atlas-ops/controller only",
+    "broker_has_ops_sqlite_or_opsrepository": false,
+    "worker_has_database_or_provider_secret": false,
+    "worker_network_authority": false,
+    "provider_credentials_read_only_by_broker": true,
+    "capability_binds_profile_provider_model_endpoint_and_price_schedule": true,
+    "dispatch_authorization_persisted_before_capability": true,
+    "every_retry_requires_new_persisted_attempt_and_authorization": true,
+    "cross_provider_replay_rejected": true,
+    "cross_model_replay_rejected": true,
+    "provider_adapter_imported_by_atlas_crypto_live": false,
+    "provider_adapter_in_deterministic_ops_pipeline": false,
+    "decision_or_capital_authority": "ZERO",
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "final_holdout": "UNASSIGNED / UNTOUCHED"
+  },
+  "tests": {
+    "focused_session028": {
+      "command": "PYTHONPATH=/tmp/atlas-session028-agent/lib/python3.12/site-packages .venv/bin/python -m pytest -q tests/v2/test_session028_provider_amendment.py",
+      "passed": 20,
+      "skipped": 0,
+      "failed": 0,
+      "network": "offline fakes; the pinned OpenAI-compatible SDK test uses httpx2.MockTransport"
+    },
+    "session026_agent_and_broker_ownership": {
+      "command": ".venv/bin/python -m pytest -q tests/v2/test_session026_agent_intelligence.py tests/v2/test_session026_agent_broker_ownership.py",
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0
+    },
+    "worker_isolation": {
+      "command": ".venv/bin/python -m pytest -q tests/v2/test_worker_isolation.py",
+      "passed": 5,
+      "skipped": 0,
+      "failed": 0
+    },
+    "session027_supervisor_and_production": {
+      "command": ".venv/bin/python -m pytest -q tests/v2/test_session027_ops_supervisor.py tests/v2/test_session027_production.py",
+      "passed": 32,
+      "skipped": 0,
+      "failed": 0,
+      "provider_independence": "agent remains disabled and action/evaluation does not require or invoke a provider"
+    },
+    "full_v2": {
+      "command": "PYTHONPATH=/tmp/atlas-session028-agent/lib/python3.12/site-packages .venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session028-v2.xml tests/v2",
+      "passed": 498,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 1708.22,
+      "locked_agent_sdk_available_for_offline_mock_transport_test": true
+    },
+    "full_v1_non_v2": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session028-v1.xml tests --ignore=tests/v2",
+      "passed": 485,
+      "skipped": 3,
+      "failed": 0,
+      "elapsed_seconds": 636.65,
+      "skips": [
+        "Bybit authenticated testnet qualification opt-in",
+        "Binance authenticated testnet qualification opt-in",
+        "public testnet connectivity opt-in"
+      ]
+    },
+    "wire_contracts_and_v1_golden": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' --junitxml=/tmp/session028-contracts.xml tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+      "passed": 10,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 26.92,
+      "v1_golden_recomputed": true
+    },
+    "engineering_checks": {
+      "ruff": "PASS: .venv/bin/ruff check .",
+      "mypy": "PASS: .venv/bin/mypy src; 195 source files",
+      "compileall": "PASS: .venv/bin/python -m compileall -q src tests",
+      "core_pip_check": "PASS: no broken requirements",
+      "isolated_agent_pip_check": "PASS: no broken requirements; pinned requirements-agent-lock.txt installed with --require-hashes",
+      "dependency_lock_hashes": "PASS: core and agent lock hashes equal accepted starting hashes",
+      "v1_v2_agent_freeze_session025_session026_session027_hashes": "PASS: all recorded hashes recomputed unchanged"
+    }
+  },
+  "real_provider_smoke": {
+    "provider_calls_total_for_session028": 1,
+    "provider_called": "deepseek direct endpoint only",
+    "nvidia_nim_calls": 0,
+    "credential_availability_boolean_only": {
+      "DEEPSEEK_API_KEY": true,
+      "NVIDIA_API_KEY": false,
+      "OPENAI_API_KEY": false
+    },
+    "credential_values_recorded_or_printed": false,
+    "requested_model_id": "deepseek-flash",
+    "returned_model_id": "deepseek-flash",
+    "endpoint": "https://api.deepseek.com/responses",
+    "input_tokens": 1929,
+    "output_tokens": 512,
+    "maximum_output_tokens_for_smoke": 512,
+    "refusal": false,
+    "truncated": true,
+    "provider_request_id_value_recorded": false,
+    "provider_request_id_available": true,
+    "structured_json_and_atlas_validator_passed": false,
+    "retries": 0,
+    "fallback": false,
+    "smoke_result": "INCOMPLETE; response truncated at the authorized 512-token ceiling",
+    "direct_endpoint_contract_status": "BLOCKED BY ENVIRONMENT",
+    "status_note": "The single request reached the fixed model and returned usage metadata, but the smoke did not satisfy the pass criteria; a second request was prohibited for this session. No economic evidence was produced."
+  },
+  "external_activity": {
+    "official_deepseek_documentation_reviewed": true,
+    "git_fetch_and_push": true,
+    "direct_deepseek_api_requests": 1,
+    "nvidia_nim_api_requests": 0,
+    "openai_api_requests": 0,
+    "public_market_or_venue_requests": 0,
+    "authenticated_venue_calls": 0,
+    "github_actions_run_verified": false,
+    "github_ci_status": "UNVERIFIED",
+    "test_network_activity": "No external provider/network calls in ordinary tests; actual SDK conformance test used MockTransport"
+  },
+  "secret_scan": {
+    "dedicated_scanners_available": false,
+    "scanner_names": ["gitleaks", "trufflehog", "detect-secrets"],
+    "method": "Scanned tracked and untracked text paths, the final diff inputs and readable text members of the preserved ZIP; checked provider keys, NVIDIA keys, GitHub tokens, AWS access keys, bearer tokens, private keys, password/credential assignments, and disallowed .env paths. Matched values were never printed.",
+    "text_paths_scanned": 406,
+    "archive_text_members_scanned": 68,
+    "binary_paths_skipped": 0,
+    "unreadable_paths": 0,
+    "disallowed_env_paths": 0,
+    "high_confidence_pattern_hits": 0
+  },
+  "economics_and_gates": {
+    "economics": "NOT ESTIMABLE",
+    "agent_shadow": "TEST GATE",
+    "agent_decision_influence": "TEST GATE",
+    "admission_tradeplan_and_execution_influence": "NOT IMPLEMENTED / TEST GATE",
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "nvidia_nim_compatibility": "UNVERIFIED / TEST GATE",
+    "final_holdout": "UNASSIGNED / UNTOUCHED",
+    "final_holdout_viewed": false,
+    "profitability_claim": false,
+    "seventh_v2_phase_created": false,
+    "remaining_gates": [
+      "review the pushed Session-028 branch",
+      "DeepSeek real endpoint smoke did not pass; no second call is allowed in this session",
+      "NVIDIA NIM current V4.1 contract remains unverified and is not a fallback",
+      "live agent shadow and decision influence remain test-gated",
+      "economics remains NOT ESTIMABLE",
+      "capital and assisted execution remain disabled",
+      "final holdout remains UNASSIGNED / UNTOUCHED"
+    ]
+  },
+  "preexisting_untracked_files_left_untouched": [
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+    "atlas-session005.zip"
+  ],
+  "merge_performed": false
+}

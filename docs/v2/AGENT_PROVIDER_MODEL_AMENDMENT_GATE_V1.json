@@ -1,0 +1,109 @@
+{
+  "artifact_type": "AtlasAgentProviderModelAmendmentGateV1",
+  "content_hash": "a304215fef334552ef92a7a069409bbfb191e52bb788e33e227ad53f4867161d",
+  "schema_version": 1,
+  "payload": {
+    "amendment_identity": "ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1",
+    "session": 28,
+    "phase_created": false,
+    "implementation_branch": "impl/session-028-agent-provider-deepseek-v41-amendment",
+    "starting_sha": "81ee4c1edbe0156691863b90daf3174168fa387b",
+    "tested_implementation_sha": "32b244d8e0b7066ee43e2f184b6a8d87914f28ee",
+    "amendment_document": "docs/v2/ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md",
+    "validation_report": "docs/v2/SESSION028_AGENT_PROVIDER_VALIDATION.json",
+    "handoff": "docs/handoffs/session-028.md",
+    "provider_model": {
+      "status": "IMPLEMENTED / TESTED",
+      "profile_version": "AgentModelProfileV2",
+      "profile_content_hash": "819b22be3b3122df8b3574492a1aac1de4280011b4f9f28b8caca945bac16adf",
+      "provider_binding_hash": "3fd47a85e3c935f2d1ee01438b9b7fd697e6aa0005c41ed4934d6a83efb9cf48",
+      "provider": "deepseek",
+      "requested_model_id": "deepseek-flash",
+      "model_family": "DeepSeek-V4.1-Flash",
+      "revision_status": "ALIAS_ONLY",
+      "endpoint": "https://api.deepseek.com/responses",
+      "reasoning_setting_id": "DEEPSEEK_RESPONSES_REASONING_EFFORT_HIGH_V1",
+      "reasoning_setting": "high",
+      "structured_output": "Responses JSON Schema",
+      "token_ceilings": {
+        "input": 12000,
+        "output": 4000,
+        "persisted_attempts_per_job": 3,
+        "read_tool_calls_per_job": 8,
+        "concurrent_jobs": 1
+      },
+      "pricing_schedule": {
+        "identity": "DEEPSEEK_V41_FLASH_PEAK_2026_09_V1",
+        "content_hash": "ff2ef50fe263a74a1c2ce7d57ef3bc067aec637c47f7c1ea4a4083284e42fd66",
+        "reservation_input_class": "cache-miss at $0.30 per million tokens",
+        "output_usd_per_million_tokens": "1.20",
+        "unknown_pricing_dispatchable": false,
+        "automatic_peak_off_peak_scheduling": false
+      }
+    },
+    "historical_openai_astra": {
+      "profile_version": "AgentModelProfileV1",
+      "provider": "openai",
+      "requested_model_id": "gpt-6-astra",
+      "profile_content_hash": "75e4e39340c534cfc32503b36baa5c7c28bd6cc5bb2e8db02310152d0e6bd34b",
+      "provider_pricing_config_sha256": "f55b39ee654ea08836de76b10126b34ac7f5e70c9c1d9aebacb7b0db5c4073ef",
+      "session026_history_gate_and_validation_changed": false,
+      "agent_freeze_changed": false
+    },
+    "gates": {
+      "zero_authority_research_proposal_path": "IMPLEMENTED / TESTED",
+      "eligible_agent_mode": "OFFLINE_RESEARCH only",
+      "deterministic_ops_agent_mode": "DISABLED",
+      "deepseek_offline_adapter": "IMPLEMENTED / TESTED",
+      "deepseek_direct_endpoint": "BLOCKED BY ENVIRONMENT; one 512-token smoke truncated; no second call",
+      "nvidia_nim_compatibility": "UNVERIFIED / TEST GATE",
+      "provider_fallback": "NONE; all provider failures return explicit unavailable/invalid state",
+      "capability_profile_endpoint_model_price_binding": "TESTED",
+      "dispatch_authorization_before_capability": "TESTED",
+      "worker_provider_secret_database_and_network_authority": "NONE; TESTED",
+      "broker_ops_sqlite_or_opsrepository_access": "NONE; TESTED",
+      "provider_reasoning_persistence": "DISCARDED AT BOUNDARY; TESTED",
+      "v1_profile_wire_and_openai_pricing_preserved": "TESTED",
+      "session026_regression": "PASS",
+      "session027_runtime_regression": "PASS; no deterministic pipeline/provider dependency",
+      "full_v2": "PASS",
+      "full_v1_and_golden": "PASS",
+      "economics": "NOT ESTIMABLE",
+      "live_agent_shadow": "TEST GATE",
+      "decision_influence": "TEST GATE",
+      "capital_enabled": false,
+      "assisted_execution_enabled": false,
+      "final_holdout": "UNASSIGNED / UNTOUCHED"
+    },
+    "provider_calls": {
+      "total_real_calls": 1,
+      "provider": "DeepSeek direct only",
+      "requested_and_returned_model": "deepseek-flash",
+      "input_tokens": 1929,
+      "output_tokens": 512,
+      "truncated": true,
+      "no_retry_or_fallback": true,
+      "credential_availability_recorded_as_boolean_only": true,
+      "credential_values_recorded": false,
+      "nvidia_nim_calls": 0
+    },
+    "capital_and_economics": {
+      "decision_authority": "ZERO",
+      "economics": "NOT ESTIMABLE",
+      "capital_enabled": false,
+      "assisted_execution_enabled": false,
+      "profitability_claim": false,
+      "final_holdout_state": "UNASSIGNED / UNTOUCHED"
+    },
+    "remaining_gates": [
+      "independent review of the pushed implementation and docs-only closeout commits",
+      "direct DeepSeek endpoint smoke did not pass its structured-output/ATLAS-validation criteria under the one-call limit",
+      "NVIDIA NIM current V4.1 compatibility remains unverified",
+      "live agent shadow and decision influence remain test-gated",
+      "economics remains NOT ESTIMABLE",
+      "capital and assisted execution remain disabled",
+      "final holdout remains UNASSIGNED / UNTOUCHED"
+    ],
+    "merge_performed": false
+  }
+}
