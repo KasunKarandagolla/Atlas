@@ -287,7 +287,11 @@ class IndexedPublicCycleSourceV1:
         seen_event_ids = {item.event_id for item in events}
 
         health_states = {
-            source_id: collector.health.latest(source_id)
+            source_id: max(
+                (item for item in collector.health.history(source_id) if item.available_at_ns <= now_ns),
+                key=lambda item: (item.available_at_ns, item.content_hash),
+                default=None,
+            )
             for source_id in sorted(source_ids)
         }
         healthy = bool(health_states) and all(
@@ -917,11 +921,74 @@ class ProductionOpsCyclePortV1:
         if callable(acquire_snapshot):
             # Network acquisition returns bounded immutable records. Only this
             # supervisor-owned controller persists them through the collector.
+            begin_collection_cycle = getattr(self.public_source, "begin_collection_cycle", None)
+            if callable(begin_collection_cycle):
+                begin_collection_cycle(now_ns=now_ns)
             snapshot = acquire_snapshot(now_ns=now_ns)
-            self._persist_public_snapshot(repository, snapshot, now_ns=now_ns)
-            batch = IndexedPublicCycleSourceV1().collect(
-                repository, self._collector_recovery.collector, now_ns=now_ns, recovery=recovery,
-            )
+            snapshot_eligible = self._persist_public_snapshot(repository, snapshot, now_ns=now_ns)
+            if not snapshot_eligible:
+                self._record_late_public_events(
+                    repository, eligible_at_ns=now_ns, completed_at_ns=snapshot.observed_at_ns,
+                )
+                # Do not run the indexed handoff builder after a failed current
+                # acquisition: it persists event artifacts as a side effect.
+                # The supervisor sees only the as-of source-state prefix and a
+                # closed gate. Exact durable events already past deadline remain
+                # eligible for their immutable EXPIRED receipt.
+                expired = self._expired_public_events(repository, now_ns=now_ns)
+                source_ids = tuple(sorted(
+                    set(self._collector_recovery.required_source_ids)
+                    | set(repository.source_health_sources())
+                ))
+                states = self._public_source_states_as_of(
+                    self._collector_recovery.collector, source_ids, now_ns=now_ns,
+                )
+                batch = OpsCycleBatchV1(
+                    expired, states, source_ids,
+                    tuple(event.content_hash for event in expired), False, now_ns,
+                )
+            else:
+                batch = IndexedPublicCycleSourceV1().collect(
+                    repository, self._collector_recovery.collector, now_ns=now_ns, recovery=recovery,
+                )
+                late_event_ids = set(self._record_late_public_events(
+                    repository, eligible_at_ns=now_ns, completed_at_ns=snapshot.observed_at_ns,
+                ))
+                late_event_ids.update(
+                    event.event_id for event in batch.events if snapshot.observed_at_ns > event.deadline_ns
+                )
+                late_events = tuple(
+                    event for event in batch.events if event.event_id in late_event_ids
+                )
+                if late_events:
+                    retained = tuple(event for event in batch.events if event not in late_events)
+                    retained_refs = {event.content_hash for event in retained}
+                    batch = replace(
+                        batch,
+                        events=retained,
+                        evidence_refs=tuple(ref for ref in batch.evidence_refs if ref in retained_refs),
+                    )
+                # If acquisition carried a persisted event across its deadline,
+                # the event must remain excluded while this cycle's start time
+                # is still pre-deadline. On a following cycle that starts after
+                # the immutable deadline, pass the exact durable event through
+                # so the unchanged supervisor records EXPIRED instead of
+                # repeatedly dropping it or replaying it as timely.
+                expired = self._expired_public_events(repository, now_ns=now_ns)
+                if expired:
+                    known_ids = {event.event_id for event in batch.events}
+                    additional = tuple(event for event in expired if event.event_id not in known_ids)
+                    if additional:
+                        events = tuple(sorted(
+                            (*batch.events, *additional),
+                            key=lambda item: (item.available_at_ns, item.information_cutoff_ns, item.event_id),
+                        ))
+                        batch = replace(
+                            batch,
+                            events=events,
+                            evidence_refs=tuple(sorted({*batch.evidence_refs,
+                                                        *(event.content_hash for event in additional)})),
+                        )
         else:
             batch = self.public_source.collect(
                 repository,
@@ -934,7 +1001,94 @@ class ProductionOpsCyclePortV1:
         self._collection_calls += 1
         return batch
 
-    def _persist_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -> None:
+    @staticmethod
+    def _public_source_states_as_of(
+        collector: PublicCollectorV2,
+        source_ids: tuple[str, ...],
+        *,
+        now_ns: int,
+    ) -> tuple[OpsSourceStateV1, ...]:
+        result: list[OpsSourceStateV1] = []
+        for source_id in source_ids:
+            eligible = [
+                item for item in collector.health.history(source_id)
+                if item.available_at_ns <= now_ns and item.observed_at_ns <= now_ns
+            ]
+            current = max(eligible, key=lambda item: (item.observed_at_ns, item.content_hash), default=None)
+            result.append(OpsSourceStateV1(
+                source_id,
+                current.state.value if current is not None else "UNKNOWN",
+                current.observed_at_ns if current is not None else None,
+                current.available_at_ns if current is not None else None,
+            ))
+        return tuple(result)
+
+    @staticmethod
+    def _expired_public_events(
+        repository: OpsRepository, *, now_ns: int,
+    ) -> tuple[OpsDecisionEventV1, ...]:
+        """Expose exact durable expiries even while current source health is closed."""
+        result: list[OpsDecisionEventV1] = []
+        for entry in repository.artifact_entries("OpsDecisionEventSourceV1"):
+            body = entry.metadata.get("event")
+            if entry.available_at_ns > now_ns or not isinstance(body, Mapping):
+                continue
+            try:
+                event = decision_event_from_dict(body)
+            except (KeyError, TypeError, ValueError):
+                continue
+            if (event.deadline_ns >= now_ns or entry.artifact_ref != event.content_hash
+                    or entry.content_hash != event.content_hash
+                    or repository.get_artifact(_ops_receipt_identity_ref(event.event_id)) is not None):
+                continue
+            if any(
+                (causal_entry := repository.get_artifact(ref)) is None
+                or causal_entry.available_at_ns > event.information_cutoff_ns
+                for ref in event.causal_input_refs
+            ):
+                continue
+            result.append(event)
+        return tuple(sorted(result, key=lambda event: (event.available_at_ns, event.information_cutoff_ns, event.event_id)))
+
+    @staticmethod
+    def _record_late_public_events(
+        repository: OpsRepository,
+        *,
+        eligible_at_ns: int,
+        completed_at_ns: int,
+    ) -> tuple[str, ...]:
+        late: list[OpsDecisionEventV1] = []
+        for entry in repository.artifact_entries("OpsDecisionEventSourceV1"):
+            body = entry.metadata.get("event")
+            if entry.available_at_ns > eligible_at_ns or not isinstance(body, Mapping):
+                continue
+            try:
+                event = decision_event_from_dict(body)
+            except (KeyError, TypeError, ValueError):
+                continue
+            if (completed_at_ns <= event.deadline_ns
+                    or repository.get_artifact(_ops_receipt_identity_ref(event.event_id)) is not None):
+                continue
+            late.append(event)
+        if not late:
+            return ()
+        late.sort(key=lambda event: (event.deadline_ns, event.event_id))
+        body = {
+            "version": "OPS_PUBLIC_ACQUISITION_DEADLINE_GATE_V1",
+            "observed_at_ns": completed_at_ns,
+            "eligible_cutoff_ns": eligible_at_ns,
+            "event_ids": [event.event_id for event in late],
+            "deadlines_ns": [event.deadline_ns for event in late],
+            "status": "TEST GATE",
+        }
+        ref = sha256_json(body)
+        repository.register_artifact(ArtifactIndexEntryV2(
+            ref, "OpsPublicAcquisitionDeadlineGateV1", ref,
+            completed_at_ns, completed_at_ns, {"deadline_gate": body},
+        ))
+        return tuple(event.event_id for event in late)
+
+    def _persist_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -> bool:
         """Controller-owned persistence and source-health reconciliation for bounded intake records."""
         from ..data.bybit import SOURCE_ID
         from ..data.bybit_source import CAMPAIGN_INTERVALS
@@ -945,11 +1099,22 @@ class ProductionOpsCyclePortV1:
             snapshot.latest_received_at_ns,
             max((record.observation.received_at_ns for record in snapshot.records), default=now_ns),
         )
-        reconciliation_at_ns = max(latest_receipt_ns, snapshot.observed_at_ns)
-        prior_source_state = any(
-            entry.metadata.get("source_id") == SOURCE_ID and entry.available_at_ns < now_ns
-            for entry in repository.artifact_entries("PublicObservationIndexV2")
+        ingestion_at_ns = max(
+            latest_receipt_ns,
+            snapshot.observed_at_ns,
+            max((record.observation.event_at_ns or 0 for record in snapshot.records), default=0),
         )
+        reconciliation_at_ns = ingestion_at_ns
+        healthy_seen = False
+        recovery_required = False
+        for health_observation in collector.health.history(SOURCE_ID):
+            if health_observation.data_eligible:
+                healthy_seen = True
+            elif healthy_seen:
+                # A later healthy state cannot clear a previously observed
+                # trade-history gap; the current bounded REST surface has no
+                # evidence with which to prove that gap complete.
+                recovery_required = True
 
         prior_clock = collector.clock_ns
         collector.clock_ns = lambda: reconciliation_at_ns
@@ -962,9 +1127,23 @@ class ProductionOpsCyclePortV1:
             ingestion_complete = snapshot.complete
             for record in snapshot.records:
                 try:
+                    # The HTTP adapter records exact receipt times. Collector
+                    # validation/ingestion happens only after the complete bounded
+                    # response is available, so same-cycle eligibility begins at
+                    # this later, actual ingestion boundary.
+                    observation = replace(
+                        record.observation,
+                        ingested_at_ns=max(record.observation.ingested_at_ns, ingestion_at_ns),
+                        available_at_ns=max(
+                            record.observation.available_at_ns,
+                            ingestion_at_ns,
+                            record.observation.event_at_ns or 0,
+                        ),
+                    )
+                    bar = replace(record.bar, raw=observation) if record.bar is not None else None
                     result = collector.ingest(
-                        record.observation, raw_payload=record.raw_payload,
-                        instrument_key=record.instrument_key, bar=record.bar,
+                        observation, raw_payload=record.raw_payload,
+                        instrument_key=record.instrument_key, bar=bar,
                     )
                     if result.persistent_conflict or result.append.status.value == "CONFLICT_QUARANTINED":
                         ingestion_complete = False
@@ -992,18 +1171,80 @@ class ProductionOpsCyclePortV1:
         references_ready = bool(eligible_refs) and all(
             required_events.issubset(events) for events in by_symbol_events.values()
         )
-        repaired = self._public_snapshot_overlap_is_repaired(
-            repository, snapshot, at_ns=reconciliation_at_ns, had_prior_source_state=prior_source_state,
+        bar_gaps_repaired = self._public_snapshot_overlap_is_repaired(
+            repository, snapshot, at_ns=reconciliation_at_ns, recovery_required=recovery_required,
         )
-        if ingestion_complete and references_ready and repaired:
+        # A bounded recent-trades page has no cursor or historical backfill.
+        # It can show observed trades but cannot prove that a recovery gap was
+        # filled. Recovery after an unhealthy state therefore remains closed.
+        trade_continuity_proven = False
+        repaired = bar_gaps_repaired and (not recovery_required or trade_continuity_proven)
+        source_snapshot_reconciled = ingestion_complete and references_ready and repaired
+        if source_snapshot_reconciled:
             collector.reconcile_after_reconnect(
                 SOURCE_ID, at_ns=reconciliation_at_ns, complete_snapshot=True, missed_interval_repaired=True,
                 snapshot_refs=tuple(sorted(eligible_refs)),
                 recovery_epoch_ref=collector.required_recovery_epoch_ref,
             )
         else:
-            detail = snapshot.failure_reason or "BYBIT_PUBLIC_SNAPSHOT_UNRECONCILED_OR_CONFLICTED"
+            detail = snapshot.failure_reason or (
+                "BYBIT_RECOVERY_TRADE_HISTORY_UNVERIFIABLE"
+                if recovery_required and bar_gaps_repaired
+                else "BYBIT_PUBLIC_SNAPSHOT_UNRECONCILED_OR_CONFLICTED"
+            )
             collector.mark_incomplete_snapshot(SOURCE_ID, at_ns=reconciliation_at_ns, details=detail)
+
+        trade_count = sum(record.observation.event_type == "TRADE" for record in snapshot.records)
+        bar_records = [record for record in snapshot.records if record.bar is not None]
+        trade_observation_refs = tuple(sorted({
+            sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": record.observation.record_id})
+            for record in snapshot.records if record.observation.event_type == "TRADE"
+        }))
+        bar_observation_refs = tuple(sorted({
+            sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": record.observation.record_id})
+            for record in bar_records
+        }))
+        bar_coverage: dict[str, int] = {}
+        for record in bar_records:
+            event_type = record.observation.event_type
+            bar_coverage[event_type] = bar_coverage.get(event_type, 0) + 1
+        recovery_evidence = {
+            "version": "BYBIT_PUBLIC_RECOVERY_EVIDENCE_V1",
+            "source_id": SOURCE_ID,
+            "available_at_ns": reconciliation_at_ns,
+            "endpoint_reachability": (
+                "REACHABLE" if snapshot.successful_request_count else "UNKNOWN_OR_UNREACHABLE"
+            ),
+            "snapshot_complete": bool(snapshot.complete and ingestion_complete),
+            "failure_kind": snapshot.failure_kind,
+            "request_count": snapshot.request_count + snapshot.bootstrap_request_count,
+            "successful_request_count": (snapshot.successful_request_count
+                                          + snapshot.successful_bootstrap_request_count),
+            "market_data_request_count": snapshot.request_count,
+            "successful_market_data_request_count": snapshot.successful_request_count,
+            "metadata_bootstrap_request_count": snapshot.bootstrap_request_count,
+            "successful_metadata_bootstrap_request_count": snapshot.successful_bootstrap_request_count,
+            "acquisition_duration_ns": snapshot.acquisition_duration_ns,
+            "confirmed_bar_records_observed": len(bar_records),
+            "confirmed_bar_coverage_by_type": bar_coverage,
+            "confirmed_bar_observation_refs": list(bar_observation_refs),
+            "bar_gaps_repaired": bar_gaps_repaired,
+            "recovery_required": recovery_required,
+            "prior_unhealthy_transition_after_healthy": recovery_required,
+            "observed_trade_records": trade_count,
+            "trade_observation_refs": list(trade_observation_refs),
+            "trade_continuity_proven": trade_continuity_proven,
+            "trade_gap_status": "UNVERIFIABLE" if recovery_required else "NO_PRIOR_GAP_IDENTIFIED",
+            "s3_historical_vwap_coverage": "TEST GATE",
+            "qualification_status": "TEST GATE",
+            "reason_codes": ["BYBIT_RECENT_TRADE_WINDOW_DOES_NOT_PROVE_TRADE_CONTINUITY"],
+        }
+        evidence_ref = sha256_json(recovery_evidence)
+        repository.register_artifact(ArtifactIndexEntryV2(
+            evidence_ref, "BybitPublicRecoveryEvidenceV1", evidence_ref,
+            reconciliation_at_ns, reconciliation_at_ns, {"recovery_evidence": recovery_evidence},
+        ))
+        return source_snapshot_reconciled
 
     @staticmethod
     def _public_snapshot_overlap_is_repaired(
@@ -1011,11 +1252,11 @@ class ProductionOpsCyclePortV1:
         snapshot: Any,
         *,
         at_ns: int,
-        had_prior_source_state: bool,
+        recovery_required: bool,
     ) -> bool:
         from ..data.bybit_source import CAMPAIGN_INTERVALS
 
-        if not had_prior_source_state:
+        if not recovery_required:
             return True
         archive_root = Path(repository.path).parent / "ops-observations"
         keys = {record.instrument_key for record in snapshot.records}

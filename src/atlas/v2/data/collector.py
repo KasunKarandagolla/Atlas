@@ -203,6 +203,7 @@ class PublicCollectorV2:
                 persisted_entry.artifact_type == "PublicObservationIndexV2"
                 and indexed.get("record_id") == observation.record_id
                 and indexed.get("instrument_revision") == observation.instrument_revision
+                and indexed.get("event_type") in (None, observation.event_type)
                 and indexed.get("instrument_key_json") in (None, instrument_key.to_canonical_json())
                 and indexed.get("event_at_ns") == observation.event_at_ns
                 and indexed.get("published_at_ns") == observation.published_at_ns
@@ -361,6 +362,7 @@ class PublicCollectorV2:
                     {
                         "record_id": observation.record_id,
                         "source_id": observation.source_id,
+                        "event_type": observation.event_type,
                         "instrument_revision": observation.instrument_revision,
                         "instrument_key_json": self._pending_instrument_keys[observation.record_id].to_canonical_json(),
                         "event_at_ns": observation.event_at_ns,

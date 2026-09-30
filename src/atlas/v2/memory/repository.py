@@ -10,6 +10,7 @@ import json
 import sqlite3
 import threading
 from collections.abc import Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -132,6 +133,15 @@ class ArtifactIndexEntryV2:
 
 
 @dataclass(frozen=True)
+class ArtifactIndexPageV2:
+    """One bounded page from a stable artifact-index keyset traversal."""
+
+    entries: tuple[ArtifactIndexEntryV2, ...]
+    next_cursor: tuple[int, str] | None
+    invalid_entry_count: int = 0
+
+
+@dataclass(frozen=True)
 class RestartSnapshotV2:
     active_watches: tuple[OpportunityWatchV2, ...]
     required_events: tuple[tuple[str, str], ...]
@@ -183,6 +193,26 @@ class OpsRepository:
     @property
     def schema_version(self) -> int:
         return OPS_SCHEMA_VERSION
+
+    @contextmanager
+    def read_snapshot(self):
+        """Hold one consistent, read-only SQLite snapshot across bounded queries.
+
+        SQLite establishes the snapshot on the first read after ``BEGIN``. In
+        WAL mode, concurrent writers may continue while this connection sees
+        the same committed view. The transaction is always rolled back because
+        this context exists only to delimit the read snapshot.
+        """
+        if not self.read_only:
+            raise ValueError("read snapshots require an OpsRepository opened read-only")
+        with self._lock:
+            if self._connection.in_transaction:
+                raise RuntimeError("cannot nest an OpsRepository read snapshot")
+            self._connection.execute("BEGIN")
+            try:
+                yield self
+            finally:
+                self._connection.execute("ROLLBACK")
 
     @property
     def schema_namespace(self) -> str:
@@ -755,6 +785,57 @@ class OpsRepository:
             ArtifactIndexEntryV2._from_storage_row(row)
             for row in rows
         )
+
+    def artifact_entries_by_types_page(
+        self,
+        artifact_types: Sequence[str],
+        *,
+        as_of_ns: int,
+        after: tuple[int, str] | None = None,
+        limit: int = 500,
+    ) -> ArtifactIndexPageV2:
+        """Read one deterministic page, filtering availability before paging.
+
+        Pages are ordered descending by ``(created_at_ns, artifact_ref)``.
+        The reference makes equal timestamps unambiguous. ``after`` is the
+        final raw row key from the preceding page, including when that row is
+        malformed, so callers can account for invalid rows without looping.
+        Use inside :meth:`read_snapshot` when multiple pages must describe one
+        consistent inventory.
+        """
+        types = tuple(sorted(set(artifact_types)))
+        if not types or any(not isinstance(item, str) or not item.strip() for item in types):
+            raise ValueError("at least one non-empty artifact type is required")
+        cutoff = timestamp(as_of_ns, field="as_of_ns")
+        if type(limit) is not int or not 1 <= limit <= 2_000:
+            raise ValueError("artifact page size must be between 1 and 2000")
+        if after is not None:
+            if (not isinstance(after, tuple) or len(after) != 2 or type(after[0]) is not int
+                    or not isinstance(after[1], str)):
+                raise ValueError("artifact cursor must be a (created_at_ns, artifact_ref) pair")
+            timestamp(after[0], field="cursor.created_at_ns")
+            sha256_ref(after[1], field="cursor.artifact_ref")
+        marks = ",".join("?" for _ in types)
+        cursor_clause = " AND (created_at_ns,artifact_ref)<(?,?)" if after is not None else ""
+        params: tuple[Any, ...] = (
+            *types, cutoff, *((after[0], after[1]) if after is not None else ()), limit,
+        )
+        with self._lock:
+            rows = self._connection.execute(
+                f"SELECT * FROM artifact_index WHERE artifact_type IN ({marks}) "
+                f"AND available_at_ns<=?{cursor_clause} "
+                "ORDER BY created_at_ns DESC,artifact_ref DESC LIMIT ?",
+                params,
+            ).fetchall()
+        entries: list[ArtifactIndexEntryV2] = []
+        invalid = 0
+        for row in rows:
+            try:
+                entries.append(ArtifactIndexEntryV2._from_storage_row(row))
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                invalid += 1
+        next_cursor = (int(rows[-1]["created_at_ns"]), str(rows[-1]["artifact_ref"])) if rows else None
+        return ArtifactIndexPageV2(tuple(entries), next_cursor, invalid)
 
     def recover_active_watches(
         self,

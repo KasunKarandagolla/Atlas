@@ -220,7 +220,9 @@ def evaluate_strategy_readiness_v1(snapshot: StrategyEvidenceSnapshotV1) -> dict
                  "causal_trade_observations": snapshot.public_trade_count,
                  "historical_trade_vwap_refs": snapshot.trade_vwap_count,
                  "causal_residual_observations": residual_count,
-                 "strictly_preceding_standardization_residuals": max(0, residual_count - 1),
+                 "strictly_preceding_standardization_residuals": min(
+                     S3_STANDARDIZATION_PRECEDING, max(0, residual_count - 1),
+                 ),
                  "residual_vwap_refs": len(snapshot.residual_vwap_refs),
                  "required_standardization_residuals": S3_STANDARDIZATION_PRECEDING}
     if len(m1) < S3_REQUIRED_M1_BARS:
