@@ -142,6 +142,30 @@ class ArtifactIndexPageV2:
 
 
 @dataclass(frozen=True)
+class ArtifactMetadataIdentityPageV1:
+    """Bounded exact identity lookup within one typed artifact metadata path."""
+
+    entries: tuple[ArtifactIndexEntryV2, ...]
+    next_cursor: tuple[int, str] | None
+    has_more: bool
+    invalid_entry_count: int = 0
+
+
+_ARTIFACT_METADATA_IDENTITY_EXPRESSIONS: dict[tuple[str, tuple[str, ...]], str] = {
+    ("MaturedOutcomeV2", ("outcome", "decision_ref")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.outcome.decision_ref') END",
+    ("ActualActionPositionBindingV2", ("binding", "action_hash")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.binding.action_hash') END",
+    ("PolicyPayoffV2", ("payoff", "action_hash")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.payoff.action_hash') END",
+    ("DiagnosticTargetEvidenceV2", ("diagnostic", "decision_ref")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.diagnostic.decision_ref') END",
+    ("OutcomeMaturityStatusV1", ("status", "decision_ref")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.status.decision_ref') END",
+}
+
+
+@dataclass(frozen=True)
 class RestartSnapshotV2:
     active_watches: tuple[OpportunityWatchV2, ...]
     required_events: tuple[tuple[str, str], ...]
@@ -836,6 +860,75 @@ class OpsRepository:
                 invalid += 1
         next_cursor = (int(rows[-1]["created_at_ns"]), str(rows[-1]["artifact_ref"])) if rows else None
         return ArtifactIndexPageV2(tuple(entries), next_cursor, invalid)
+
+    def artifact_entries_by_metadata_identity(
+        self,
+        artifact_type: str,
+        metadata_path: Sequence[str],
+        identity_value: str,
+        *,
+        as_of_ns: int,
+        after: tuple[int, str] | None = None,
+        limit: int = 32,
+    ) -> ArtifactMetadataIdentityPageV1:
+        """Return a bounded exact metadata identity match set, causally available by ``as_of_ns``.
+
+        JSON path components are restricted to ASCII identifiers so the generated
+        SQLite JSON path cannot change query structure. ``has_more`` exposes
+        overflow; callers resolving immutable evidence should fail closed rather
+        than choose among a truncated set.
+        """
+        nonblank(artifact_type, field="artifact_type")
+        path = tuple(metadata_path)
+        if not path or any(
+            not isinstance(item, str)
+            or not item
+            or not item.isascii()
+            or not item.replace("_", "a").isalnum()
+            for item in path
+        ):
+            raise ValueError("metadata path must contain ASCII identifier components")
+        nonblank(identity_value, field="identity_value")
+        cutoff = timestamp(as_of_ns, field="as_of_ns")
+        if type(limit) is not int or not 1 <= limit <= 512:
+            raise ValueError("metadata identity page size must be between 1 and 512")
+        if after is not None:
+            if (not isinstance(after, tuple) or len(after) != 2 or type(after[0]) is not int
+                    or not isinstance(after[1], str)):
+                raise ValueError("metadata identity cursor must be a (created_at_ns, artifact_ref) pair")
+            timestamp(after[0], field="cursor.created_at_ns")
+            sha256_ref(after[1], field="cursor.artifact_ref")
+        identity_expression = _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS.get((artifact_type, path))
+        if identity_expression is None:
+            raise ValueError("metadata identity path has no bounded artifact index")
+        cursor_clause = " AND (created_at_ns,artifact_ref)<(?,?)" if after is not None else ""
+        params: tuple[Any, ...] = (
+            identity_value,
+            cutoff,
+            *((after[0], after[1]) if after is not None else ()),
+            limit + 1,
+        )
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM artifact_index WHERE "
+                f"artifact_type='{artifact_type}' AND {identity_expression}=? AND available_at_ns<=?"
+                f"{cursor_clause} ORDER BY created_at_ns DESC,artifact_ref DESC LIMIT ?",
+                params,
+            ).fetchall()
+        has_more = len(rows) > limit
+        selected_rows = rows[:limit]
+        entries: list[ArtifactIndexEntryV2] = []
+        invalid = 0
+        for row in selected_rows:
+            try:
+                entries.append(ArtifactIndexEntryV2._from_storage_row(row))
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                invalid += 1
+        next_cursor = (
+            (int(selected_rows[-1]["created_at_ns"]), str(selected_rows[-1]["artifact_ref"]))
+            if selected_rows else None
+        )
+        return ArtifactMetadataIdentityPageV1(tuple(entries), next_cursor, has_more, invalid)
 
     def recover_active_watches(
         self,

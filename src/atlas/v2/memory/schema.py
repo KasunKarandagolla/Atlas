@@ -81,7 +81,29 @@ _DDL = (
     )""",
     "CREATE INDEX watch_active_order ON watch(state, expires_at_ns, watch_id)",
     "CREATE INDEX outbox_pending_order ON ops_outbox(handled_at_ns, created_at_ns, outbox_id)",
+    """CREATE INDEX artifact_outcome_decision_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.outcome.decision_ref') END,
+        created_at_ns DESC, artifact_ref DESC, available_at_ns
+    ) WHERE artifact_type='MaturedOutcomeV2'""",
+    """CREATE INDEX artifact_actual_binding_action_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.binding.action_hash') END,
+        created_at_ns DESC, artifact_ref DESC, available_at_ns
+    ) WHERE artifact_type='ActualActionPositionBindingV2'""",
+    """CREATE INDEX artifact_policy_payoff_action_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.payoff.action_hash') END,
+        created_at_ns DESC, artifact_ref DESC, available_at_ns
+    ) WHERE artifact_type='PolicyPayoffV2'""",
+    """CREATE INDEX artifact_diagnostic_decision_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.diagnostic.decision_ref') END,
+        created_at_ns DESC, artifact_ref DESC, available_at_ns
+    ) WHERE artifact_type='DiagnosticTargetEvidenceV2'""",
+    """CREATE INDEX artifact_outcome_status_decision_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.status.decision_ref') END,
+        created_at_ns DESC, artifact_ref DESC, available_at_ns
+    ) WHERE artifact_type='OutcomeMaturityStatusV1'""",
 )
+
+_ARTIFACT_IDENTITY_INDEX_DDL = _DDL[-5:]
 
 
 def initialize(connection: sqlite3.Connection) -> None:
@@ -105,6 +127,14 @@ def initialize(connection: sqlite3.Connection) -> None:
             raise RuntimeError(f"unsupported atlas-ops schema version: {version!r}")
         if not _REQUIRED_TABLES.issubset(tables):
             raise RuntimeError("atlas-ops schema is incomplete")
+        connection.execute("BEGIN IMMEDIATE")
+        try:
+            for statement in _ARTIFACT_IDENTITY_INDEX_DDL:
+                connection.execute(statement.replace("CREATE INDEX ", "CREATE INDEX IF NOT EXISTS ", 1))
+            connection.commit()
+        except BaseException:
+            connection.rollback()
+            raise
         return
     if tables:
         raise RuntimeError("database has tables but is not an initialized atlas-ops store")

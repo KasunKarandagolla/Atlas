@@ -493,6 +493,7 @@ class OpsSupervisorV2:
         sleep_fn: Callable[[float], None] = time.sleep,
         max_events_per_cycle: int = 64,
         post_receipt_shadow: Callable[[OpsSupervisorReceiptV1, str, OpsRepository], None] | None = None,
+        post_cycle_maintenance: Callable[[OpsRepository, int], object] | None = None,
     ) -> None:
         raw_path = str(database_path)
         if raw_path.startswith("file:") or "://" in raw_path or not raw_path:
@@ -505,6 +506,11 @@ class OpsSupervisorV2:
         self.sleep_fn = sleep_fn
         self.max_events_per_cycle = max_events_per_cycle
         self.post_receipt_shadow = post_receipt_shadow
+        if post_cycle_maintenance is None:
+            from .outcome_maturity import run_outcome_maturity_cycle
+
+            post_cycle_maintenance = run_outcome_maturity_cycle
+        self.post_cycle_maintenance = post_cycle_maintenance
         self.repository: OpsRepository | None = None
         self.recovery: OpsRecoverySnapshotV1 | None = None
         self._closed = False
@@ -966,6 +972,49 @@ class OpsSupervisorV2:
                 cycle_id, "OpsSupervisorCycleReceiptV1", cycle_id, started_at_ns, started_at_ns, cycle.to_dict()
             )
         )
+        if self.post_cycle_maintenance is not None:
+            try:
+                # Decision receipts are sealed before bounded downstream outcome work begins.
+                maintenance_report = self.post_cycle_maintenance(repository, started_at_ns)
+                from .outcome_maturity import OutcomeMaturityCycleReportV1
+
+                if isinstance(maintenance_report, OutcomeMaturityCycleReportV1):
+                    report_body = maintenance_report.to_dict()
+                    report_ref = sha256_json(report_body)
+                    available_at_ns = max(started_at_ns, timestamp(self.clock_ns(), field="maintenance report time"))
+                    repository.register_artifact(
+                        ArtifactIndexEntryV2(
+                            report_ref,
+                            "OutcomeMaturityCycleReportV1",
+                            report_ref,
+                            available_at_ns,
+                            available_at_ns,
+                            {"report": report_body},
+                        )
+                    )
+            except Exception as error:
+                failure_type = type(error).__name__
+                if not failure_type.isascii() or not failure_type.isidentifier() or len(failure_type) > 64:
+                    failure_type = "Exception"
+                failure = {
+                    "version": "OPS_OUTCOME_MATURITY_FAILURE_V1",
+                    "attempted_at_ns": started_at_ns,
+                    "failure_type": failure_type,
+                    "reason_code": "OUTCOME_MATURITY_CYCLE_FAILED",
+                }
+                failure_ref = sha256_json(failure)
+                try:
+                    repository.register_artifact(ArtifactIndexEntryV2(
+                        failure_ref,
+                        "OpsOutcomeMaturityFailureV1",
+                        failure_ref,
+                        started_at_ns,
+                        started_at_ns,
+                        failure,
+                    ))
+                except Exception:
+                    # Downstream failure persistence must not alter the sealed cycle receipt.
+                    pass
         return OpsRunResultV1(cycle, tuple(receipts))
 
     def run_forever(
