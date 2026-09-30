@@ -1,0 +1,369 @@
+{
+  "authority": {
+    "final_holdout_accessed": false,
+    "manifest_authority": "METADATA_ONLY_ZERO_STRATEGY_MODEL_EXECUTION_AUTHORITY",
+    "merge_performed": false,
+    "profitability_claim": false
+  },
+  "campaign_manifest": {
+    "agent_freeze_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "assisted_execution_enabled": false,
+    "authority": "METADATA_ONLY_ZERO_STRATEGY_MODEL_EXECUTION_AUTHORITY",
+    "baseline_identity": [
+      [
+        "ENGINEERING_RISK_POLICY_V1",
+        "d96a7dac7c877369921dcf56fbf36bf303ea649dc531d87e0bf1d54abed2988f"
+      ],
+      [
+        "MULTI_SLEEVE_RESEARCH_SELECTION",
+        "37355c64d45a67bdce3a271a63db377b953c05847561bcda33847c27cecb0dac"
+      ],
+      [
+        "S1_POLICY",
+        "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0"
+      ],
+      [
+        "S2_POLICY",
+        "fbcdacd8ec6a79ea2595fa367d220b55b1d84c326ec3a28d787d23f356062dcd"
+      ],
+      [
+        "S3_POLICY",
+        "b6a6ef283a5ca0b4dcbcb730b03adff92fb62c76c55fc66ef9268c906d8c62b6"
+      ],
+      [
+        "SELECTION_POLICY",
+        "36f8fd58c9e791ea580a1855f9e98555131e0828604d484eda3df4c7d5529cac"
+      ]
+    ],
+    "campaign_id": "ATLAS_PUBLIC_SHADOW_S31_READINESS",
+    "capital_enabled": false,
+    "content_hash": "d65806135c2b86d9f5b9a11c2501b1442387cf51269793725da1641b17aecbc4",
+    "dependency_lock_sha256": [
+      [
+        "requirements-agent-lock.txt",
+        "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3"
+      ],
+      [
+        "requirements-lock.txt",
+        "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b"
+      ]
+    ],
+    "discovery_experiment_id": "SESSION023_OFFLINE_FAMILY_V1",
+    "discovery_experiment_ref": "b59f287c7c9a7fea5aa4c76f9c940395cf7a724761bfca326cf4e0eb7aedbc42",
+    "discovery_maximum_attempts": 17,
+    "discovery_parameter_search_budget": 17,
+    "discovery_prior_attempts": [
+      [
+        "ABLATION_CANDLES",
+        "FAILED"
+      ],
+      [
+        "ABLATION_DERIVATIVES_CROWDING",
+        "FAILED"
+      ],
+      [
+        "ABLATION_ELLIOTT_MEASURABLE_MORPHOLOGY",
+        "FAILED"
+      ],
+      [
+        "ABLATION_FIBONACCI",
+        "FAILED"
+      ],
+      [
+        "ABLATION_KILLZONE_TIME_WINDOW_CHALLENGERS",
+        "FAILED"
+      ],
+      [
+        "ABLATION_ORDINARY_TIME_CALENDAR",
+        "FAILED"
+      ],
+      [
+        "ABLATION_S4_FLOW_CONTEXT",
+        "FAILED"
+      ],
+      [
+        "ABLATION_SMC_STRUCTURE",
+        "FAILED"
+      ],
+      [
+        "ABLATION_SUPPORT_RESISTANCE",
+        "FAILED"
+      ],
+      [
+        "ABLATION_WYCKOFF_MEASURABLE_CHALLENGERS",
+        "FAILED"
+      ],
+      [
+        "ANALOGUE",
+        "FAILED"
+      ],
+      [
+        "M1_CONFIG_1",
+        "FAILED"
+      ],
+      [
+        "M1_CONFIG_2",
+        "FAILED"
+      ],
+      [
+        "M1_CONFIG_3",
+        "FAILED"
+      ],
+      [
+        "M1_CONFIG_4",
+        "FAILED"
+      ],
+      [
+        "MULTI_SLEEVE",
+        "FAILED"
+      ],
+      [
+        "S8_BASKET",
+        "FAILED"
+      ]
+    ],
+    "evidence_requirements": [
+      "EIGHT_WEEKS_PROSPECTIVE_SHADOW_AND_AT_LEAST_200_GENUINELY_MATURED_OPPORTUNITIES_REMAIN_REQUIRED",
+      "GENUINE_RECEIPT_PUBLICATION_AND_AVAILABLE_AT_CUTOFF_CHRONOLOGY",
+      "S1_CONFIRMED_H4_H1_M15_FEATURES_BBO_MARK_INDEX_EVENT_GATE_WATCH_AND_SOURCE_HEALTH",
+      "S2_2880_PRIOR_COMPARISON_MEASUREMENTS_AND_2901_CONTIGUOUS_M15_BARS",
+      "S3_10081_CONTIGUOUS_M1_BARS_CAUSAL_RESIDUALS_TRADE_VWAP_TRADES_AND_120_PRECEDING_RESIDUALS",
+      "S3_NATIVE_M1_DECISION_ORIGIN_COVERAGE_REPORTED_SEPARATELY_FROM_M15_HANDOFFS"
+    ],
+    "exact_s30_start_sha": "8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57",
+    "final_holdout_prohibition": "UNASSIGNED_UNTOUCHED_ACCESS_PROHIBITED",
+    "host_environment": "LINUX_CONTAINER_PYTHON312; OWNER_LINUX_OR_WSL_HOST_UNVERIFIED",
+    "instrument_scope": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "intervention_receipts": [],
+    "multiplicity_family_id": "SESSION023_PHASE3_FAMILY_V1",
+    "multiplicity_family_ref": "6cd00ba25d598271b46d58af50ec7a9bb52da14307bf3bf810dc915ee16ff2c9",
+    "observation_calendar": "ALL_EXPECTED_PRODUCTION_M15_HANDOFF_ORIGINS_AND_NATIVE_S3_M1_ORIGINS; INCLUDE_MISSING_REJECTED_UNSELECTED_EXPIRED_UNRESOLVED",
+    "permitted_operations": [
+      "CREDENTIAL_FREE_BYBIT_PUBLIC_GET_ONLY_IF_A_LATER_ENVIRONMENT_GATE_IS_APPROVED",
+      "DETERMINISTIC_OFFLINE_FAULT_REPLICA_TESTS",
+      "EXISTING_FROZEN_BASELINE_SHADOW_OBSERVATION_IF_A_LATER_CAMPAIGN_IS_AUTHORIZED",
+      "READ_ONLY_PREFLIGHT_REPORTING"
+    ],
+    "public_source_scope": [
+      "BYBIT_MAINNET_USDT_LINEAR_PERPETUAL_PUBLIC_OBSERVATION_ONLY",
+      "BYBIT_PUBLIC_HTTP"
+    ],
+    "reason_codes": [
+      "FRESH_HOST_PUBLIC_INGESTION_UNVERIFIED",
+      "MATURED_OUTCOME_PRODUCER_NOT_QUALIFIED",
+      "NATIVE_S3_M1_CADENCE_TEST_GATE",
+      "NO_72_HOUR_CAMPAIGN_STARTED",
+      "S31_ENGINEERING_COMPONENTS_TESTED_OFFLINE"
+    ],
+    "resource_budgets": [
+      [
+        "campaign_storage_cpu_ram_growth_budget",
+        "UNVERIFIED_NOT_QUALIFIED_ON_OWNER_HOST"
+      ],
+      [
+        "max_kline_rows_per_instrument_interval",
+        "200"
+      ],
+      [
+        "max_public_http_request_timeout_ms",
+        "1250"
+      ],
+      [
+        "max_public_http_requests_per_cycle",
+        "13"
+      ],
+      [
+        "max_public_response_bytes",
+        "2097152"
+      ],
+      [
+        "max_public_snapshot_records",
+        "1810"
+      ],
+      [
+        "max_recent_trade_rows_per_instrument",
+        "100"
+      ],
+      [
+        "writable_ops_sqlite_databases",
+        "1"
+      ]
+    ],
+    "schema_version": 1,
+    "status": "NOT_LAUNCHED_ENGINEERING_CHECKPOINT_ONLY",
+    "utc_clock_declaration": "UTC_NANOSECOND_TIMESTAMPS; NTP_AND_OWNER_HOST_CLOCK_UNVERIFIED",
+    "v1_freeze_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "v2_freeze_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "version": "PUBLIC_SHADOW_CAMPAIGN_MANIFEST_V1"
+  },
+  "checkpoint": "session-031-public-shadow-campaign-readiness-and-evidence-controls",
+  "economic_claim_requirements_unchanged": {
+    "72_hours_substitutes_for_eight_weeks": false,
+    "applicable_degradation_and_scientific_gates": true,
+    "consultation_proposed_replacement_accepted": false,
+    "dependence_aware_inference": true,
+    "matured_opportunity_floor": 200,
+    "promotion_guaranteed_by_floors": false,
+    "prospective_shadow_floor": "AT_LEAST_EIGHT_WEEKS",
+    "required_regime_state_coverage": true,
+    "valid_after_cost_execution_and_economic_evidence": true
+  },
+  "engineering_components": {
+    "campaign_manifest_and_lane_classification": {
+      "offline_status": "TESTED",
+      "status": "IMPLEMENTED"
+    },
+    "fresh_host_and_wsl_qualification": "UNVERIFIED / TEST GATE",
+    "offline_fault_replica_validation": {
+      "offline_status": "TESTED",
+      "status": "IMPLEMENTED"
+    },
+    "opt_in_bybit_public_intake": {
+      "offline_status": "TESTED",
+      "status": "IMPLEMENTED"
+    },
+    "read_only_seven_report_preflight": {
+      "offline_status": "TESTED",
+      "status": "IMPLEMENTED"
+    },
+    "s1_s2_s3_causal_readiness_evaluator": {
+      "offline_status": "TESTED",
+      "status": "IMPLEMENTED"
+    },
+    "s3_native_m1_cadence_inventory": {
+      "offline_status": "TESTED",
+      "production_cadence_change": false,
+      "status": "IMPLEMENTED"
+    }
+  },
+  "gate_content_hash": "a95eb86734a927e0512cdd1616dddc8694d36c55ad5c6a9d17f733c11aa8b38d",
+  "gates": {
+    "actual_continuous_72_hour_campaign": "TEST GATE",
+    "assisted_execution_enabled": false,
+    "capital_enabled": false,
+    "complete_production_source_and_cadence_coverage": "TEST GATE",
+    "critic_admission_or_decision_authority": "PROHIBITED_NOT_IMPLEMENTED",
+    "deployed_mature_outcome_producer": "TEST GATE \u2014 PRODUCTION_MATURED_OUTCOME_PRODUCER_NOT_QUALIFIED",
+    "final_holdout": "UNASSIGNED / UNTOUCHED",
+    "genuine_fresh_host_public_ingestion": "UNVERIFIED / TEST GATE",
+    "genuine_prospective_critic_qualification": "TEST GATE",
+    "live_deepseek_provider_behavior": "UNVERIFIED / TEST GATE",
+    "native_s3_one_minute_decision_coverage": "TEST GATE",
+    "qualified_historical_bootstrap_route": "TEST GATE",
+    "supported_economic_value": "NOT ESTIMABLE"
+  },
+  "lane_identities": [
+    {
+      "automatic_challenger_selection": false,
+      "capital_authority": false,
+      "final_holdout_access": false,
+      "identity": {
+        "adaptive_tuning": false,
+        "evidence_class": "GENUINE_PROSPECTIVE",
+        "execution_authority": "ZERO",
+        "final_holdout_access": false,
+        "lane": "A_FROZEN_DETERMINISTIC_BASELINE",
+        "promotion_eligible": false,
+        "version": "CAMPAIGN_LANE_IDENTITY_V1",
+        "writable_store": "PRIMARY_OPS_STORE"
+      },
+      "identity_sha256": "d47e4bf589fbcf486391f568f2b251a1ac7be372cb6d9de70ee63a28b01d2b69",
+      "promotion_authority": false,
+      "scope_note": "One primary writable ops store; adaptive tuning disabled."
+    },
+    {
+      "automatic_challenger_selection": false,
+      "capital_authority": false,
+      "final_holdout_access": false,
+      "identity": {
+        "adaptive_tuning": true,
+        "evidence_class": "DEVELOPMENT_ONLY",
+        "execution_authority": "ZERO",
+        "final_holdout_access": false,
+        "lane": "B_ADAPTIVE_CHALLENGER_LABORATORY",
+        "promotion_eligible": false,
+        "version": "CAMPAIGN_LANE_IDENTITY_V1",
+        "writable_store": "SEPARATE_RESEARCH_STORE"
+      },
+      "identity_sha256": "f9d68ba161c6a4f23c37a02f2fc1d5028e856e1dc335177a22a06c15a34b28b8",
+      "promotion_authority": false,
+      "scope_note": "Separate writable research store; development evidence only."
+    },
+    {
+      "automatic_challenger_selection": false,
+      "capital_authority": false,
+      "final_holdout_access": false,
+      "identity": {
+        "adaptive_tuning": false,
+        "evidence_class": "RETROSPECTIVE_RECONSTRUCTED",
+        "execution_authority": "ZERO",
+        "final_holdout_access": false,
+        "lane": "C_HISTORICAL_DIAGNOSTIC",
+        "promotion_eligible": false,
+        "version": "CAMPAIGN_LANE_IDENTITY_V1",
+        "writable_store": "RESEARCH_REPLICA"
+      },
+      "identity_sha256": "35c9235ace5ff718cc948de72b90e84373371b8f672ad5f025b33c78f4edb4c8",
+      "promotion_authority": false,
+      "scope_note": "Chronological retrospective/reconstructed evidence; never prospective."
+    },
+    {
+      "automatic_challenger_selection": false,
+      "capital_authority": false,
+      "final_holdout_access": false,
+      "identity": {
+        "adaptive_tuning": false,
+        "evidence_class": "FUTURE_PROSPECTIVE",
+        "execution_authority": "ZERO",
+        "final_holdout_access": false,
+        "lane": "D_FUTURE_LOCKED_CHALLENGER",
+        "promotion_eligible": false,
+        "version": "CAMPAIGN_LANE_IDENTITY_V1",
+        "writable_store": "SEPARATE_VERSIONED_SHADOW_STORE"
+      },
+      "identity_sha256": "3855ddeb3b06a807817975e586d1276a2caf04a346b4e505cc91b2da27c08526",
+      "promotion_authority": false,
+      "scope_note": "Future separately versioned zero-authority shadow policy; not launched in S31."
+    },
+    {
+      "automatic_challenger_selection": false,
+      "capital_authority": false,
+      "final_holdout_access": false,
+      "identity": {
+        "adaptive_tuning": false,
+        "evidence_class": "SYNTHETIC_ENGINEERING_ONLY",
+        "execution_authority": "ZERO",
+        "final_holdout_access": false,
+        "lane": "E_FAULT_RECOVERY_REPLICA",
+        "promotion_eligible": false,
+        "version": "CAMPAIGN_LANE_IDENTITY_V1",
+        "writable_store": "TEMPORARY_COPIED_TEST_STORES"
+      },
+      "identity_sha256": "0206220917fc27254d4b15c46c82da04287bab45ff0651ed841e0a545de65bf7",
+      "promotion_authority": false,
+      "scope_note": "Temporary copied stores and synthetic engineering fixtures only."
+    }
+  ],
+  "promotion": {
+    "ladder": [
+      "INTEGRATED",
+      "ENGINEERING_PASS",
+      "HISTORICAL_DIAGNOSTIC",
+      "PROSPECTIVE_SHADOW",
+      "INCREMENTAL_VALUE_PASS",
+      "DECISION_ELIGIBLE"
+    ],
+    "maximum_engineering_ceiling": "ENGINEERING_PASS",
+    "session032_authorized": false,
+    "subject_to_independent_coordinating_review": true
+  },
+  "repository": "KasunKarandagolla/Atlas",
+  "schema_version": 1,
+  "starting_branch": "impl/session-030-agent-prospective-shadow-runtime-readiness",
+  "starting_sha": "8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57",
+  "tested_implementation_sha": "df9f8e807497a449631d0a46f3c15050c3a4f952",
+  "version": "PUBLIC_SHADOW_CAMPAIGN_READINESS_GATE_V1"
+}

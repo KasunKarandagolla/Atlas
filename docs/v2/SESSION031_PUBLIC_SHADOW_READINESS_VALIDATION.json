@@ -1,0 +1,496 @@
+{
+  "acceptance_ceiling": "ENGINEERING_PASS_SUBJECT_TO_INDEPENDENT_COORDINATING_REVIEW",
+  "authority_documents": {
+    "all_read_in_full": true,
+    "documents": [
+      {
+        "calculated_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+        "expected_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+        "match": true,
+        "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md"
+      },
+      {
+        "calculated_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+        "expected_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+        "match": true,
+        "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md"
+      },
+      {
+        "calculated_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+        "expected_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+        "match": true,
+        "path": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md"
+      }
+    ]
+  },
+  "checkpoint": "public-shadow-campaign-readiness-and-evidence-controls",
+  "checkpoint_is_v2_phase": false,
+  "confirmation": {
+    "capital_or_assisted_execution_enabled": false,
+    "final_holdout_accessed": false,
+    "no_merge": true,
+    "profitability_or_incremental_value_claim": false,
+    "session032_authorized": false
+  },
+  "consultation_pdf": {
+    "authority": "CONSULTATION_ONLY_NOT_AN_IMPLEMENTATION_FREEZE_OR_APPROVED_AMENDMENT",
+    "eight_week_floor_replacement_proposal": "NOT ACCEPTED; existing eight-week prospective floor is unchanged",
+    "findings": {
+      "already_implemented_and_reusable": [
+        "OpsSupervisorV2 and ProductionOpsCyclePortV1 controller composition",
+        "PublicCollectorV2, single OpsRepository writer, Parquet archive, public transports, translators, source-health and reconnect machinery",
+        "causal public evidence, availability-aware archive/index, decision calendar and outcome contracts/validators/indexing",
+        "Discovery Lab/S23 experiment, attempt and multiplicity ledger",
+        "S30 hidden critic dispatch, measurement, authorization and zero-influence contracts",
+        "PublicSoakRunnerV2 endpoint probe and resumable probe evidence (not strategy-input qualification)"
+      ],
+      "confirmed_implementation_gaps": [
+        "default fresh-host production source is indexed/archive-only",
+        "public soaker probes limited endpoints and does not prove complete production input readiness",
+        "no native S3 one-minute production handoff; current production cadence remains final M15 bars",
+        "current public intake windows do not supply S2 2901-bar or S3 10081-bar warmup",
+        "no qualified historical bootstrap route and no deployed continuous matured-outcome producer",
+        "owner Linux/WSL/Windows host, clock, storage, process supervision and public network remain unqualified"
+      ],
+      "deferred_beyond_session031": [
+        "actual 72-hour campaign or accelerated-time endurance simulation",
+        "consultation hour-30 lock and hour-36 forward comparison clocks",
+        "new native-M1 production adapter/cadence policy, automated outcome producer, or Binance production feed",
+        "host-wide installation/service configuration, hosted tracing, provider smoke, live market smoke"
+      ],
+      "recommendations_requiring_separate_versioned_amendment": [
+        "replacing or shortening the frozen eight-week prospective floor",
+        "changing the 200 matured-opportunity, regime coverage, inference, cost, or degradation gates",
+        "shortening the existing M1 24-hour out-of-fold embargo",
+        "granting critic admission, selection, decision, or capital authority"
+      ],
+      "useful_recommendations_within_existing_authority": [
+        "bounded opt-in credential-free public intake through existing collection/controller boundaries",
+        "explicit causal readiness, missing-origin and cadence reporting",
+        "read-only preflight, lane provenance, evidence accounting, resource sampling and recovery runbook",
+        "deterministic copied-database offline fault replicas"
+      ]
+    },
+    "pages": 33,
+    "path": "ATLAS_72_Hour_Consultation.pdf",
+    "read_all_pages": true,
+    "tables_and_conditions_cross_checked_against_rendered_layout": true
+  },
+  "implementation": {
+    "branch": "impl/session-031-public-shadow-campaign-readiness-evidence-controls",
+    "campaign_and_research": {
+      "campaign_status": "NOT_LAUNCHED_ENGINEERING_CHECKPOINT_ONLY",
+      "consultation_hour30_hour36_clocks_started": false,
+      "discovery_experiment_identity": "SESSION023_OFFLINE_FAMILY_V1",
+      "holdout": "UNASSIGNED / UNTOUCHED; prohibited",
+      "lane_count": 5,
+      "m1_embargo_shortened": false,
+      "manifest_in_gate_artifact": true,
+      "maximum_attempts": 17,
+      "multiplicity_accounting": "Existing S23/Discovery Lab identity preserved; no campaign reset.",
+      "new_s31_trials_authorized": 0,
+      "parameter_search_budget": 17,
+      "prior_attempts": 17,
+      "prior_attempts_renamed_or_reset": false,
+      "remaining_attempt_budget": 0
+    },
+    "dependency_files_modified": false,
+    "dependency_lock_hashes": {
+      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b"
+    },
+    "documentation_closeout_sha": "reported separately after the documentation-only commit and fresh remote verification",
+    "exact_modified_files": [
+      "src/atlas/v2/data/bybit_source.py",
+      "src/atlas/v2/memory/repository.py",
+      "src/atlas/v2/runtime/production.py",
+      "src/atlas/v2/science/session031_campaign.py",
+      "src/atlas/v2/science/session031_preflight.py",
+      "src/atlas/v2/science/session031_readiness.py",
+      "tests/v2/test_session031_public_shadow_readiness.py",
+      "docs/v2/session031-wsl-fresh-host-preflight.md",
+      "docs/v2/PUBLIC_SHADOW_CAMPAIGN_READINESS_GATE_V1.json",
+      "docs/v2/SESSION031_PUBLIC_SHADOW_READINESS_VALIDATION.json",
+      "docs/handoffs/session-031.md"
+    ],
+    "final_remote_tip": "reported separately in final handoff after documentation-only push and fresh remote verification",
+    "implementation_remote_tip_verified_after_push": "df9f8e807497a449631d0a46f3c15050c3a4f952",
+    "merge_performed": false,
+    "outcome_readiness": {
+      "candidate_maturity_claims_account_realizable_profit": false,
+      "deployed_continuous_production_matured_outcome_producer": false,
+      "existing_contract": "MaturedOutcomeV2 exists",
+      "existing_indexing_functions": true,
+      "existing_s30_critic_to_outcome_linker": true,
+      "existing_validators": true,
+      "gate": "TEST GATE \u2014 PRODUCTION_MATURED_OUTCOME_PRODUCER_NOT_QUALIFIED",
+      "synthetic_matured_outcomes_created": false,
+      "unknown_payoff_converted_to_zero": false
+    },
+    "preflight": {
+      "campaign_level_ingestion_funnel_and_recovery_qualification_status": "TEST GATE",
+      "critic_admission_influence": false,
+      "critic_decision_influence": false,
+      "missing_measures_remain_null_or_explicitly_unverified": true,
+      "outcome_producer_reason": "TEST GATE \u2014 PRODUCTION_MATURED_OUTCOME_PRODUCER_NOT_QUALIFIED",
+      "read_only_ops_repository_required": true,
+      "report_identity_deterministic_for_identical_as_of_inputs": true,
+      "reports": [
+        "public ingestion",
+        "strategy/funnel/calendar",
+        "science/research",
+        "hidden critic",
+        "resources",
+        "recovery",
+        "prospective evidence inventory"
+      ],
+      "structured_json_and_human_summary": true
+    },
+    "production_composition_proof": {
+      "calendar_admission_states_observed": [
+        "NOT_APPLICABLE",
+        "NOT_APPLICABLE"
+      ],
+      "calendar_selection_states_observed": [
+        "NO_CANDIDATE",
+        "NO_CANDIDATE"
+      ],
+      "collector_archive_index_source_health_reconciliation_and_supervisor_receipt_observed": true,
+      "decision_calendar_entries": 2,
+      "fixture_test": "test_fake_bybit_source_flows_through_collector_archive_index_supervisor_and_calendar",
+      "provider_or_venue_calls": 0,
+      "readiness_result": "NOT_ESTIMABLE on intentionally short fixture history; no candidate trigger was manufactured"
+    },
+    "session030_or_prior_history_rewritten": false,
+    "source_adapter": {
+      "availability_rule": "actual response receipt and availability captured; no inferred publication time or backdated historical receipt",
+      "bounded_requests_per_collection_cycle": 13,
+      "class": "BybitPublicCycleSourceV1",
+      "default_factory": "create_production_port remains IndexedPublicCycleSourceV1/archive-only and performs no network request",
+      "existing_public_http_response_limit_bytes": 2097152,
+      "failure_rule": "malformed, incomplete, conflicting, rate-limited or disconnected snapshots remain ineligible; metadata bootstrap failure leaves deterministic supervisor cycle running with INCOMPLETE_SNAPSHOT",
+      "final_bar_rule": "confirmed only when Bybit server time is at or after the interval close; forming bars are omitted",
+      "instruments": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "intervals": [
+        "M1",
+        "M15",
+        "H1",
+        "H4"
+      ],
+      "maximum_final_bars_per_instrument_interval_per_cycle": 200,
+      "maximum_recent_trades_per_instrument_per_cycle": 100,
+      "metadata_bootstrap": "bounded product-info GET during recovery; ProductContract artifacts persisted only by ProductionOpsCyclePortV1",
+      "network_component_owns_or_opens_writable_ops_repository": false,
+      "network_component_returns": "bounded immutable validated observations; controller owns PublicCollectorV2 ingestion, Parquet flush, index and reconciliation",
+      "not_supported_or_not_qualified": [
+        "WebSocket stream",
+        "historical trades/backfill",
+        "more than 200 bars per instrument/interval/cycle",
+        "S2/S3 warmup from one recent window",
+        "trade-derived VWAP/residual production",
+        "qualified complete historical continuity on a fresh host",
+        "Binance production source",
+        "live venue/network qualification"
+      ],
+      "opt_in_factory": "create_bybit_public_port",
+      "product_scope": "Bybit MAINNET USDT-linear perpetual public observation only",
+      "recovery_rule": "exact snapshot references and current recovery epoch required; prior archive overlap/continuity must validate; endpoint response alone does not heal a gap",
+      "request_timeout_ms": 1250,
+      "source_id": "BYBIT_PUBLIC_HTTP",
+      "supported": [
+        "product metadata/contract revisions",
+        "confirmed M1/M15/H1/H4 bars",
+        "recent public trades",
+        "current BBO",
+        "mark/index/funding/open-interest ticker evidence",
+        "source health and reconciliation"
+      ]
+    },
+    "strategy_readiness": {
+      "evaluator": "pure deterministic typed evaluator; does not execute sleeve coordinators or create candidate activity",
+      "native_m1_cadence": {
+        "current_production_handoff_cadence": "confirmed M15 bar events",
+        "native_m1_deployment_status": "TEST GATE",
+        "native_s3_policy_cadence": "confirmed M1 origins",
+        "production_cadence_changed": false,
+        "separately_reports_expected_origins_actual_handoffs_source_gaps_policy_gaps_warmup_gaps_and_replay_view": true
+      },
+      "s1": {
+        "inputs": [
+          "50 confirmed H4 EMA history",
+          "50 confirmed H1 setup history",
+          "20 confirmed M15 trigger/feature bars",
+          "EMA20/EMA50",
+          "ATR14 and realized-variance readiness",
+          "current source health",
+          "fresh BBO",
+          "mark/index",
+          "event gate",
+          "point-in-time instrument eligibility",
+          "active-watch state",
+          "subsequent-confirmed-close evidence"
+        ],
+        "policy_changed": false
+      },
+      "s2": {
+        "comparison_measurements": 2880,
+        "excludes_trigger_and_future_bars_from_comparison_distribution": true,
+        "minimum_contiguous_confirmed_m15_bars": 2901,
+        "policy_changed": false,
+        "preceding_indicator_range_bars": 21,
+        "requires": [
+          "ATR/Bollinger/volume feature readiness",
+          "fresh BBO",
+          "confirmed H1/H4 context",
+          "point-in-time universe eligibility",
+          "current source health"
+        ]
+      },
+      "s3": {
+        "candle_volume_substitution": false,
+        "causal_residual_window": 10081,
+        "minimum_contiguous_confirmed_m1_bars": 10081,
+        "policy_changed": false,
+        "requires": [
+          "genuine public trades",
+          "historical trade-derived VWAP reference for each required residual",
+          "causal aligned M1 residuals",
+          "confirmed M15/H4 context",
+          "current trade and bar source health",
+          "valid event gate",
+          "point-in-time universe eligibility",
+          "BBO age no more than 1 second",
+          "available-at-cutoff eligibility",
+          "supported AR(1) phi/half-life"
+        ],
+        "strictly_preceding_standardization_residuals": 120
+      }
+    },
+    "tested_implementation_sha": "df9f8e807497a449631d0a46f3c15050c3a4f952",
+    "working_remote_tip_at_validation_generation": "df9f8e807497a449631d0a46f3c15050c3a4f952"
+  },
+  "invariant_verification": {
+    "agent_freeze_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "amended_v2_freeze_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "multisleeve_selection_sha256": "37355c64d45a67bdce3a271a63db377b953c05847561bcda33847c27cecb0dac",
+    "new_execution_sdk_oms_or_capital_credential_consumer": false,
+    "s1_policy_sha256": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+    "s2_policy_sha256": "fbcdacd8ec6a79ea2595fa367d220b55b1d84c326ec3a28d787d23f356062dcd",
+    "s30_critic_dispatcher_and_provider_configuration_modified": false,
+    "s30_pipeline_stage_count": 11,
+    "s30_pipeline_stage_order_sha256": "223cf16eab1080aef7c4c921e86bd230439ceb7ca8601f7f7af70ea476f4a339",
+    "s30_receipt_wire_and_pipeline_order_unchanged": true,
+    "s30_representative_session029_deterministic_receipt_sha256": "dadd7cc006c58bc6bdc0c771df6c1d58f913cf8a43cda35216ca164a1cbe60bc",
+    "s3_policy_sha256": "b6a6ef283a5ca0b4dcbcb730b03adff92fb62c76c55fc66ef9268c906d8c62b6",
+    "selection_policy_sha256": "36f8fd58c9e791ea580a1855f9e98555131e0828604d484eda3df4c7d5529cac",
+    "strategy_policy_stop_quantity_leverage_threshold_management_or_trigger_changes": false,
+    "v1_engineering_risk_policy_sha256": "d96a7dac7c877369921dcf56fbf36bf303ea649dc531d87e0bf1d54abed2988f",
+    "v1_freeze_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "v1_golden_baseline_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+    "v1_unknown_native_protection_risk_policy_semantics_changed": false
+  },
+  "provider_network_and_secrets": {
+    "authenticated_venue_or_account_calls": 0,
+    "deepseek_real_calls": 0,
+    "external_network_calls_during_tests": 0,
+    "github_network_use": "fetch, branch push, and remote SHA verification only",
+    "nvidia_nim_calls": 0,
+    "offline_agent_lock_install_network": "0; UV_OFFLINE=1 and local cache only",
+    "openai_real_calls": 0,
+    "provider_configuration_changed": false,
+    "provider_or_model_substitution": false,
+    "public_market_real_requests": 0,
+    "staged_implementation_secret_scan": {
+      "high_confidence_hits": 0,
+      "matched_values_printed": false,
+      "method": "value-suppressing scan of staged source/documentation diff for private-key headers, provider-key shapes, GitHub/AWS tokens, Bearer credentials, and credential assignments",
+      "real_dotenv_files_found": 0,
+      "text_paths_scanned": 8
+    }
+  },
+  "remaining_gates": {
+    "capital_and_assisted_execution": "DISABLED",
+    "complete_production_source_and_cadence_coverage": "TEST GATE",
+    "continuous_72_hour_campaign": "TEST GATE",
+    "critic_admission_or_decision_authority": "PROHIBITED_NOT_IMPLEMENTED",
+    "deployed_mature_outcome_producer": "TEST GATE \u2014 PRODUCTION_MATURED_OUTCOME_PRODUCER_NOT_QUALIFIED",
+    "final_holdout": "UNASSIGNED / UNTOUCHED",
+    "genuine_fresh_host_live_public_ingestion": "UNVERIFIED / TEST GATE",
+    "genuine_prospective_critic": "TEST GATE",
+    "live_deepseek_behavior": "UNVERIFIED / TEST GATE",
+    "native_s3_m1_coverage": "TEST GATE",
+    "owner_linux_wsl_native_windows_qualification": "UNVERIFIED / TEST GATE",
+    "qualified_historical_bootstrap": "TEST GATE",
+    "supported_economic_value": "NOT ESTIMABLE"
+  },
+  "repository": "KasunKarandagolla/Atlas",
+  "schema_version": 1,
+  "session": 31,
+  "starting_point": {
+    "accepted_starting_sha": "8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57",
+    "actual_verified_remote_starting_sha": "8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57",
+    "exact_session030_closeout_files": [
+      "docs/handoffs/session-030.md",
+      "docs/v2/AGENT_PROSPECTIVE_SHADOW_RUNTIME_GATE_V1.json",
+      "docs/v2/SESSION030_AGENT_PROSPECTIVE_SHADOW_RUNTIME_VALIDATION.json"
+    ],
+    "preserved_untracked_local_files": [
+      "ATLAS_72_Hour_Consultation.pdf",
+      "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "atlas-session005.zip"
+    ],
+    "preserved_untracked_or_ignored_files_staged": false,
+    "remote_sha_verified_before_branch_creation": true,
+    "required_branch": "impl/session-030-agent-prospective-shadow-runtime-readiness",
+    "s31_work_present_before_session": false,
+    "session030_closeout_documentation_only": true,
+    "session030_closeout_understood": true,
+    "starting_tracked_worktree_clean": true,
+    "tested_implementation_ancestor": "732032bfa053447c089985e58d42cf5232733504",
+    "tested_implementation_is_ancestor": true,
+    "unexpected_successor_branches_or_commits": []
+  },
+  "test_results": {
+    "final_tree_commands": [
+      {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session031_public_shadow_readiness.py",
+        "elapsed_seconds": 26.07,
+        "failed": 0,
+        "passed": 26,
+        "skipped": 0
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+        "elapsed_seconds": 1160.03,
+        "failed": 0,
+        "passed": 573,
+        "skipped": 2
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
+        "elapsed_seconds": 352.98,
+        "failed": 0,
+        "passed": 485,
+        "skipped": 3
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+        "elapsed_seconds": 10.67,
+        "failed": 0,
+        "passed": 10,
+        "skipped": 0
+      },
+      {
+        "command": ".venv/bin/ruff check .",
+        "result": "PASS"
+      },
+      {
+        "command": ".venv/bin/mypy src",
+        "result": "PASS",
+        "source_files": 204
+      },
+      {
+        "command": ".venv/bin/python -m compileall -q src tests",
+        "result": "PASS"
+      },
+      {
+        "command": ".venv/bin/python -m pip check",
+        "output": "No broken requirements found.",
+        "result": "PASS"
+      },
+      {
+        "command": "git diff --check",
+        "result": "PASS"
+      },
+      {
+        "command": "sha256sum docs/v2/V1_GOLDEN_BASELINE.json",
+        "result": "PASS",
+        "sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251"
+      },
+      {
+        "command": "sha256sum requirements-lock.txt requirements-agent-lock.txt",
+        "hashes": {
+          "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+          "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b"
+        },
+        "result": "PASS"
+      }
+    ],
+    "full_non_v2_skip_reasons": [
+      "Bybit authenticated testnet qualification is opt-in and was not enabled.",
+      "Binance authenticated testnet qualification is opt-in and was not enabled.",
+      "Public testnet connectivity is opt-in and was not enabled."
+    ],
+    "full_v2_skip_reasons": [
+      "S28 local SDK MockTransport test is skipped in core .venv because optional openai SDK is absent; the isolated locked test passed offline.",
+      "S29 local SDK MockTransport test is skipped in core .venv because optional httpx2 SDK is absent; the isolated locked test passed offline."
+    ],
+    "intermediate_iteration_notes": [
+      "An early positive S3 synthetic residual fixture estimated a half-life outside the frozen supported range; the fixture was corrected to a deterministic in-range AR(1) sequence, and the final 26-test module passes.",
+      "An early source-boundary test used a system clock against a deliberately historical fake cutoff; the fake clock was injected explicitly, and the final source-receipt chronology test passes.",
+      "Two earlier full V2 runs (569 passed/2 skipped and 571 passed/2 skipped) were superseded by later source-boundary and reporting changes; the final full V2 run at the tested implementation SHA passed 573/2.",
+      "One full V2 run was intentionally interrupted after 61 tests to correct report qualification statuses; it is not counted as a completed test run. The final complete run passed."
+    ],
+    "required_offline_or_environment_tests_not_executed": [
+      {
+        "reason": "Explicitly outside S31 offline checkpoint and requires separate environment authorization.",
+        "test": "genuine public-market smoke and continuous 72-hour campaign"
+      },
+      {
+        "reason": "Paid provider calls prohibited in S31; zero made.",
+        "test": "live DeepSeek/OpenAI/NVIDIA NIM provider call"
+      },
+      {
+        "reason": "Capital and authenticated access prohibited; zero made.",
+        "test": "authenticated venue/account calls"
+      },
+      {
+        "reason": "No owner host qualification was performed.",
+        "test": "owner Windows/WSL fresh-host qualification, NTP, sleep, fsync/power-interruption tests"
+      },
+      {
+        "reason": "UNASSIGNED / UNTOUCHED; protected holdout was not accessed.",
+        "test": "final holdout"
+      }
+    ],
+    "runtime_environment": {
+      "architecture": "x86_64",
+      "core_environment": ".venv",
+      "live_host_qualification": "UNVERIFIED / TEST GATE",
+      "os": "Linux",
+      "python": "3.12.13"
+    },
+    "supplemental_runs": [
+      {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session027_ops_supervisor.py tests/v2/test_session027_production.py tests/v2/test_data_runtime.py tests/v2/test_public_soak.py",
+        "elapsed_seconds": 330.52,
+        "failed": 0,
+        "included_again_in_final_full_v2": true,
+        "passed": 53,
+        "skipped": 0
+      },
+      {
+        "offline_isolated_agent_environment": {
+          "elapsed_seconds": 28.91,
+          "external_network": false,
+          "failed": 0,
+          "isolated_uv_pip_check": "PASS; 26 locked packages compatible",
+          "lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+          "locked_package_count": 26,
+          "mocktransport_tests": [
+            "tests/v2/test_session028_provider_amendment.py::test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+            "tests/v2/test_session029_action_critic.py::test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning"
+          ],
+          "passed": 2,
+          "setup_mode": "UV_OFFLINE=1; temporary venv; package cache only; temp environment removed after test",
+          "skipped": 0,
+          "source_lock": "requirements-agent-lock.txt"
+        }
+      }
+    ]
+  }
+}
