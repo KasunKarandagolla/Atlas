@@ -31,6 +31,7 @@ from ..data.history import (
     reconstruct_causal_bars_from_archive,
     reconstruct_public_observations_from_archive,
 )
+from ..data.public_http import PublicDataError
 from ..data.raw import AvailabilityClassV2
 from ..data.subscriptions import SubscriptionPlanV2
 from ..data.universe import ComputeTierV2, DynamicUniverseRuntimeV2, UniverseObservationV2
@@ -821,7 +822,7 @@ class ProductionOpsCyclePortV1:
     def __init__(
         self,
         *,
-        public_source: ProductionPublicCycleSourceV1 | None = None,
+        public_source: Any | None = None,
         inputs_provider: ProductionEventInputsProviderV1 | None = None,
         crash_after_checkpoint: Callable[[PipelineStageV1], None] | None = None,
     ) -> None:
@@ -836,6 +837,28 @@ class ProductionOpsCyclePortV1:
         """Restore collector cursors, active watches and subscriptions first."""
         if repository.read_only:
             raise ValueError("production ops composition requires the supervisor-owned writable repository")
+        bootstrap_products = getattr(self.public_source, "bootstrap_products", None)
+        if callable(bootstrap_products):
+            # The public acquisition object returns immutable metadata only. This
+            # supervisor-owned controller path is the sole ops.sqlite writer.
+            try:
+                products = bootstrap_products(now_ns=now_ns)
+            except (PublicDataError, KeyError, TypeError, ValueError, ArithmeticError):
+                # Metadata bootstrap failure must leave the source ineligible but
+                # must not prevent the supervisor from running its deterministic
+                # archive/recovery cycle. The adapter reports the missing bootstrap
+                # as an incomplete snapshot during collection.
+                products = ()
+            for product in products:
+                if (product.key.venue.value != "BYBIT"
+                        or product.key.environment.value != "MAINNET"
+                        or product.key.product.value != "LINEAR_PERPETUAL"
+                        or product.key.native_symbol not in {"BTCUSDT", "ETHUSDT"}):
+                    raise ValueError("opt-in Bybit bootstrap returned an out-of-scope product")
+                repository.register_artifact(ArtifactIndexEntryV2(
+                    product.content_hash, "ProductContractV2", product.content_hash,
+                    product.observed_at_ns, product.available_at_ns, {"product": product.to_dict()},
+                ))
         recovery_epoch_ref = _new_recovery_epoch(repository, started_at_ns=now_ns)
         registry = InstrumentRegistryV2()
         for entry in repository.artifact_entries("ProductContractV2"):
@@ -890,16 +913,129 @@ class ProductionOpsCyclePortV1:
             raise RuntimeError("PublicCollectorV2 recovery must precede production collection")
         if self._collector_recovery.collector.repository is not repository:
             raise ValueError("production collector must reuse the supervisor-owned OpsRepository")
-        batch = self.public_source.collect(
-            repository,
-            self._collector_recovery.collector,
-            now_ns=now_ns,
-            recovery=recovery,
-        )
+        acquire_snapshot = getattr(self.public_source, "acquire_snapshot", None)
+        if callable(acquire_snapshot):
+            # Network acquisition returns bounded immutable records. Only this
+            # supervisor-owned controller persists them through the collector.
+            snapshot = acquire_snapshot(now_ns=now_ns)
+            self._persist_public_snapshot(repository, snapshot, now_ns=now_ns)
+            batch = IndexedPublicCycleSourceV1().collect(
+                repository, self._collector_recovery.collector, now_ns=now_ns, recovery=recovery,
+            )
+        else:
+            batch = self.public_source.collect(
+                repository,
+                self._collector_recovery.collector,
+                now_ns=now_ns,
+                recovery=recovery,
+            )
         if batch.collected_at_ns != now_ns:
             raise ValueError("production public collector must preserve its observed cycle collection time")
         self._collection_calls += 1
         return batch
+
+    def _persist_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -> None:
+        """Controller-owned persistence and source-health reconciliation for bounded intake records."""
+        from ..data.bybit import SOURCE_ID
+        from ..data.bybit_source import CAMPAIGN_INTERVALS
+
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        latest_receipt_ns = max(
+            now_ns,
+            snapshot.latest_received_at_ns,
+            max((record.observation.received_at_ns for record in snapshot.records), default=now_ns),
+        )
+        reconciliation_at_ns = max(latest_receipt_ns, snapshot.observed_at_ns)
+        prior_source_state = any(
+            entry.metadata.get("source_id") == SOURCE_ID and entry.available_at_ns < now_ns
+            for entry in repository.artifact_entries("PublicObservationIndexV2")
+        )
+
+        prior_clock = collector.clock_ns
+        collector.clock_ns = lambda: reconciliation_at_ns
+        try:
+            if snapshot.failure_kind == "RATE_LIMITED":
+                collector.on_rate_limited(SOURCE_ID, at_ns=reconciliation_at_ns)
+            elif snapshot.failure_kind == "DISCONNECTED":
+                collector.on_disconnect(SOURCE_ID, at_ns=reconciliation_at_ns)
+
+            ingestion_complete = snapshot.complete
+            for record in snapshot.records:
+                try:
+                    result = collector.ingest(
+                        record.observation, raw_payload=record.raw_payload,
+                        instrument_key=record.instrument_key, bar=record.bar,
+                    )
+                    if result.persistent_conflict or result.append.status.value == "CONFLICT_QUARANTINED":
+                        ingestion_complete = False
+                except (ValueError, RuntimeError):
+                    ingestion_complete = False
+            collector.flush_archive()
+        finally:
+            collector.clock_ns = prior_clock
+
+        by_symbol_events: dict[str, set[str]] = {symbol: set() for symbol in ("BTCUSDT", "ETHUSDT")}
+        eligible_refs: set[str] = set()
+        for record in snapshot.records:
+            index_ref = sha256_json({
+                "artifact_type": "PublicObservationIndexV2",
+                "record_id": record.observation.record_id,
+            })
+            entry = repository.get_artifact(index_ref)
+            if entry is not None and entry.available_at_ns <= reconciliation_at_ns:
+                eligible_refs.add(index_ref)
+                by_symbol_events[record.instrument_key.native_symbol].add(record.observation.event_type)
+
+        required_events = {"PRODUCT_METADATA", "TICKER_MARK_INDEX_FUNDING_OI", "TRADE"} | {
+            f"BAR_{interval.value}" for interval in CAMPAIGN_INTERVALS
+        }
+        references_ready = bool(eligible_refs) and all(
+            required_events.issubset(events) for events in by_symbol_events.values()
+        )
+        repaired = self._public_snapshot_overlap_is_repaired(
+            repository, snapshot, at_ns=reconciliation_at_ns, had_prior_source_state=prior_source_state,
+        )
+        if ingestion_complete and references_ready and repaired:
+            collector.reconcile_after_reconnect(
+                SOURCE_ID, at_ns=reconciliation_at_ns, complete_snapshot=True, missed_interval_repaired=True,
+                snapshot_refs=tuple(sorted(eligible_refs)),
+                recovery_epoch_ref=collector.required_recovery_epoch_ref,
+            )
+        else:
+            detail = snapshot.failure_reason or "BYBIT_PUBLIC_SNAPSHOT_UNRECONCILED_OR_CONFLICTED"
+            collector.mark_incomplete_snapshot(SOURCE_ID, at_ns=reconciliation_at_ns, details=detail)
+
+    @staticmethod
+    def _public_snapshot_overlap_is_repaired(
+        repository: OpsRepository,
+        snapshot: Any,
+        *,
+        at_ns: int,
+        had_prior_source_state: bool,
+    ) -> bool:
+        from ..data.bybit_source import CAMPAIGN_INTERVALS
+
+        if not had_prior_source_state:
+            return True
+        archive_root = Path(repository.path).parent / "ops-observations"
+        keys = {record.instrument_key for record in snapshot.records}
+        if not keys:
+            return False
+        for key in sorted(keys, key=lambda item: item.native_symbol):
+            for interval in CAMPAIGN_INTERVALS:
+                bars = reconstruct_causal_bars_from_archive(
+                    repository, archive_root, key=key, interval=interval,
+                    information_cutoff_ns=at_ns, limit=100_000,
+                )
+                if not bars:
+                    return False
+                ordered = tuple(item.bar for item in bars)
+                if any(
+                    right.open_at_ns - left.open_at_ns != interval.duration_ns
+                    for left, right in zip(ordered, ordered[1:], strict=False)
+                ):
+                    return False
+        return True
 
     def process_event(
         self,
@@ -2143,6 +2279,13 @@ def _indexed_quote_and_mark(
 def create_production_port() -> ProductionOpsCyclePortV1:
     """Built-in credential-free adapter used by the normal ``atlas-ops`` CLI."""
     return ProductionOpsCyclePortV1()
+
+
+def create_bybit_public_port() -> ProductionOpsCyclePortV1:
+    """Explicit opt-in public Bybit adapter; the default CLI remains archive-only."""
+    from ..data.bybit_source import BybitPublicCycleSourceV1
+
+    return ProductionOpsCyclePortV1(public_source=BybitPublicCycleSourceV1())
 
 
 def decision_event_from_dict(body: Mapping[str, object]) -> OpsDecisionEventV1:

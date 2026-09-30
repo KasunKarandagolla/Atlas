@@ -305,6 +305,20 @@ class OpsRepository:
                 ).fetchall()[::-1]
         return tuple(self._watch_from_row(row) for row in rows)
 
+    def watch_transition_history(self, *, limit: int = 10_000) -> tuple[Mapping[str, Any], ...]:
+        """Read a stable bounded view of immutable watch lifecycle transitions."""
+        if type(limit) is not int or not 1 <= limit <= 10_000:
+            raise ValueError("watch transition read limit must be between 1 and 10000")
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT payload_json FROM watch_transition ORDER BY transition_at_ns,watch_id,state_version LIMIT ?",
+                (limit,),
+            ).fetchall()
+        result = tuple(json.loads(row["payload_json"]) for row in rows)
+        if any(not isinstance(item, Mapping) for item in result):
+            raise RuntimeError("stored watch transition history contains a non-object row")
+        return result
+
     def transition_watch(
         self,
         watch_id: str,
