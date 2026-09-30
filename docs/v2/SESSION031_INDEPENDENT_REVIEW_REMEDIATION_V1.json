@@ -1,0 +1,388 @@
+{
+  "version": "SESSION031_INDEPENDENT_REVIEW_REMEDIATION_V1",
+  "repository": "KasunKarandagolla/Atlas",
+  "branch": "impl/session-031-public-shadow-campaign-readiness-evidence-controls",
+  "status": "TESTED",
+  "submission": "Independent-review remediation of the existing S31 implementation; not Session 032 and not engineering acceptance.",
+  "ancestry": {
+    "required_remote_start_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+    "verified_original_remote_start_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+    "original_s31_tested_implementation_sha": "df9f8e807497a449631d0a46f3c15050c3a4f952",
+    "accepted_s30_base_sha": "8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57",
+    "tested_remediation_implementation_sha": "659e9833753602c77c877bd1fc08b18e848eb43f",
+    "tested_remediation_parent_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+    "original_s31_commits_rewritten": false,
+    "force_push": false,
+    "final_documentation_closeout_sha": "Recorded in the returned handoff after GitHub verification; this field cannot self-contain its own containing commit ID.",
+    "implementation_remote_tip_verified_after_push": "659e9833753602c77c877bd1fc08b18e848eb43f"
+  },
+  "authority_and_evidence": {
+    "v1_freeze_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "amended_v2_freeze_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "agent_freeze_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "authority_documents_read_completely_and_hash_verified": true,
+    "consultation_pdf_read_completely": true,
+    "consultation_authority": "CONSULTATION ONLY; it did not amend an accepted freeze.",
+    "eight_week_prospective_floor_preserved": true,
+    "minimum_matured_opportunities": 200,
+    "regime_coverage_and_dependence_aware_inference_preserved": true,
+    "chronology_and_research_embargoes_preserved": true,
+    "final_holdout": "UNASSIGNED / UNTOUCHED"
+  },
+  "dependency_and_golden_hashes": {
+    "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+    "dependency_files_changed": false,
+    "v1_golden_baseline_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251"
+  },
+  "issues": [
+    {
+      "id": "A",
+      "title": "Actual public acquisition time versus frozen supervisor-cycle time",
+      "original_defect": "Sequential REST records were persisted at actual receipts while same-cycle indexing used the earlier frozen cycle start. Ingestion was not represented as a later availability boundary, and receipt times could differ within the sequential response set.",
+      "pre_fix_reproduction": {
+        "result": "FAILED",
+        "baseline_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+        "fixture": "Temporary advancing deterministic clock with distinct request and response receipts; asserted all records become available only after the last actual receipt.",
+        "observed": "The earliest record availability was 1800000100000000 ns while the latest response receipt was 1800001400000000 ns; the post-acquisition-boundary assertion failed.",
+        "same_fixture_after_fix": "PASSED against 659e9833753602c77c877bd1fc08b18e848eb43f"
+      },
+      "root_cause": "A fixed cycle cutoff and a sequential acquisition completion boundary had been treated as though they were the same timestamp.",
+      "corrected_files": [
+        "src/atlas/v2/data/bybit_source.py",
+        "src/atlas/v2/runtime/production.py",
+        "tests/v2/test_session031_acquisition_recovery_remediation.py"
+      ],
+      "passing_regressions": [
+        "test_advancing_receipts_are_deferred_to_the_next_causal_cycle",
+        "test_final_m15_bar_that_expires_during_acquisition_never_becomes_a_handoff",
+        "test_deadline_crossed_during_acquisition_is_deferred_then_recorded_expired",
+        "test_restart_keeps_epoch_bound_and_does_not_duplicate_event_or_receipt"
+      ],
+      "fix": "Preserve actual HTTP receipts; set ingestion/availability no earlier than the completed acquisition boundary; keep the original supervisor cutoff and immutable event cutoff/deadline; defer post-start evidence until the next eligible cycle; surface elapsed events only as their exact expired events.",
+      "remaining_status": "TESTED; genuinely slow/live acquisition remains UNVERIFIED / TEST GATE."
+    },
+    {
+      "id": "B",
+      "title": "Recovery must not infer complete trade history from contiguous bars",
+      "original_defect": "The recovery predicate used archived bar continuity as proof that a disconnect gap was repaired, although REST only exposes a bounded latest-100-trade page without a cursor or historical backfill.",
+      "pre_fix_reproduction": {
+        "result": "FAILED",
+        "baseline_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+        "fixture": "Temporary baseline check invoked the original recovery predicate on a fresh contiguous-bar snapshot and required trade completeness to remain unproven.",
+        "observed": "The original bar-overlap predicate returned true and could authorize aggregate source recovery without trade-continuity evidence."
+      },
+      "root_cause": "Bar continuity and trade-history continuity were combined into one aggregate recovery claim.",
+      "corrected_files": [
+        "src/atlas/v2/runtime/production.py",
+        "tests/v2/test_session031_acquisition_recovery_remediation.py",
+        "src/atlas/v2/science/session031_s3_provenance.py"
+      ],
+      "passing_regressions": [
+        "test_rate_limit_and_disconnect_fail_closed_and_recovery_does_not_claim_trade_repair",
+        "test_restart_keeps_epoch_bound_and_does_not_duplicate_event_or_receipt",
+        "test_exact_persisted_lineage_is_recognized_but_recent_rest_is_not_continuity_proof",
+        "test_blocked_event_and_conflicting_trade_identity_fail"
+      ],
+      "fix": "Persist separate endpoint reachability, bar coverage/gap, observed-trade, trade-continuity and S3-coverage fields. After an unhealthy transition, bounded REST cannot prove the missing trade history, so recovery remains fail-closed and S3 remains TEST GATE / NOT ESTIMABLE.",
+      "remaining_status": "TEST GATE; a separate qualified trade-continuity capability or versioned change is required before recovery can assert completeness. No WebSocket or historical backfill was added."
+    },
+    {
+      "id": "C",
+      "title": "Decision-calendar origins must follow the persisted source trigger",
+      "original_defect": "The calendar compared expected M15 close origins to event information cutoffs, so a handoff received two seconds after bar close could be recorded as missing and instrument identity could be collapsed.",
+      "pre_fix_reproduction": {
+        "result": "FAILED",
+        "baseline_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+        "test": "test_origin_matching_uses_persisted_bar_close_and_instrument",
+        "observed": "The baseline reported no observed M15 handoff although the persisted final bar closed at the expected origin and its receipt/cutoff was T + 2 seconds."
+      },
+      "root_cause": "Expected origins and observed events were keyed by different timestamps, and the old accounting key was not a full instrument identity.",
+      "corrected_files": [
+        "src/atlas/v2/science/session031_preflight.py",
+        "src/atlas/v2/data/collector.py",
+        "tests/v2/test_session031_preflight_remediation.py"
+      ],
+      "passing_regressions": [
+        "test_origin_matching_uses_persisted_bar_close_and_instrument",
+        "test_late_duplicate_invalid_and_missing_handoffs_are_not_collapsed",
+        "test_same_revision_does_not_merge_distinct_instrument_origins"
+      ],
+      "fix": "Resolve the immutable event through exact trigger, observation, confirmed bar and product references; match on bar close, full instrument key and revision; report information cutoff, receipt, availability, processing, deadline and missing/ineligible evidence separately. Keep native S3 M1 slots separate.",
+      "remaining_status": "TESTED; absent slots are not labeled absent opportunities."
+    },
+    {
+      "id": "D",
+      "title": "Science artifact inventory and unsupported stores",
+      "original_defect": "Displayed science counts included classes outside the retrieved type set, causing real persisted M0 evidence to appear as zero; research calibration had no supported artifact-index query.",
+      "pre_fix_reproduction": {
+        "result": "FAILED",
+        "baseline_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+        "test": "test_science_inventory_counts_as_of_payloads_and_keeps_unavailable_distinct",
+        "observed": "A qualifying as-of M0 calibration was reported as count zero instead of one."
+      },
+      "root_cause": "The report's displayed science type set and its artifact query contract did not match.",
+      "corrected_files": [
+        "src/atlas/v2/science/session031_preflight.py",
+        "src/atlas/v2/memory/repository.py",
+        "tests/v2/test_session031_preflight_remediation.py"
+      ],
+      "passing_regressions": [
+        "test_science_inventory_counts_as_of_payloads_and_keeps_unavailable_distinct",
+        "test_pretrade_typed_artifact_hash_and_as_of_availability_are_counted_correctly",
+        "test_malformed_index_row_blocks_science_zero_or_passing_counts"
+      ],
+      "fix": "Inventory exact persisted M0, M1, analogue, pretrade, execution, cost and Discovery Lab artifact types; validate typed payload versions, exact fields and hashes; filter by available_at_ns before paging. Unsupported research calibration is unavailable with an explanation, not zero. Malformed index rows gate science counts to null.",
+      "remaining_status": "TESTED; an unavailable producer/store remains explicitly UNAVAILABLE."
+    },
+    {
+      "id": "E",
+      "title": "Complete bounded artifact inventory above 10000 rows",
+      "original_defect": "A single capped mixed query could truncate a large campaign inventory, leaving partial denominators despite reporting truncation.",
+      "pre_fix_reproduction": {
+        "result": "FAILED",
+        "baseline_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+        "test": "test_keyset_pages_have_no_equal_timestamp_gaps_and_snapshot_excludes_concurrent_writer",
+        "observed": "The baseline repository had no read_snapshot API and could not provide one consistent bounded multi-page read."
+      },
+      "root_cause": "The report did not have stable cursor pagination across a consistent read transaction.",
+      "corrected_files": [
+        "src/atlas/v2/memory/repository.py",
+        "src/atlas/v2/science/session031_preflight.py",
+        "tests/v2/test_session031_preflight_remediation.py"
+      ],
+      "passing_regressions": [
+        "test_keyset_inventory_over_ten_thousand_is_complete_and_bounded",
+        "test_interrupted_inventory_is_explicit_and_never_reports_partial_counts_as_complete",
+        "test_keyset_pages_have_no_equal_timestamp_gaps_and_snapshot_excludes_concurrent_writer",
+        "test_malformed_page_row_is_counted_and_cursor_still_advances"
+      ],
+      "fix": "Use read-only SQLite snapshot transactions and keyset order (created_at_ns DESC, artifact_ref DESC), applying the as-of filter in SQL. Page and record work are bounded; detail retention and chronology samples are capped; interrupted or invalid inventories are explicit, and incomplete aggregate counts become null.",
+      "remaining_status": "TESTED; histories beyond configured page/work limits report TEST GATE rather than a complete denominator."
+    },
+    {
+      "id": "F",
+      "title": "S3 readiness must prove persisted causal lineage",
+      "original_defect": "A large synthetic residual array and placeholder VWAP references tested numerical readiness but did not prove that production preflight validated persisted causal artifacts.",
+      "pre_fix_reproduction": {
+        "result": "FAILED",
+        "baseline_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+        "test": "test_preflight_keeps_s3_unqualified_without_persisted_lineage_and_trade_continuity",
+        "observed": "The baseline report did not produce the persisted per-instrument evidence view required to distinguish lineage from array counts."
+      },
+      "root_cause": "The pure numerical evaluator's inputs were being treated as sufficient production evidence without a separate persisted-reference validation layer.",
+      "corrected_files": [
+        "src/atlas/v2/science/session031_s3_provenance.py",
+        "src/atlas/v2/science/session031_preflight.py",
+        "src/atlas/v2/science/session031_readiness.py",
+        "tests/v2/test_session031_s3_persisted_lineage.py"
+      ],
+      "passing_regressions": [
+        "test_exact_persisted_lineage_is_recognized_but_recent_rest_is_not_continuity_proof",
+        "test_made_up_vwap_reference_does_not_validate_a_correct_count",
+        "test_future_available_residual_is_excluded_as_of_cutoff",
+        "test_noncontiguous_or_duplicate_m1_lineage_fails",
+        "test_mismatched_instrument_revision_cannot_substitute_for_vwap_lineage",
+        "test_one_second_bbo_and_current_source_health_gates_fail_closed",
+        "test_blocked_event_and_conflicting_trade_identity_fail",
+        "test_m15_handoff_never_counts_as_native_m1_s3_coverage"
+      ],
+      "fix": "Validate exact M1 bars, trade identities, persisted VWAP inputs and source-health refs, residual-to-bar/VWAP links, timestamps, cutoff availability, 10081-bar coverage, 120 strictly preceding residuals, event gate and fresh BBO. The evaluator's arrays are only mathematical sufficiency; REST trade continuity remains unproven.",
+      "remaining_status": "TEST GATE / NOT ESTIMABLE for deployed S3 qualification; policy and native M1 cadence are unchanged."
+    },
+    {
+      "id": "LATENCY",
+      "title": "Whole-cycle public request and event-freshness budget",
+      "original_defect": "Individual HTTP timeouts did not bound total sequential acquisition time; the 13 market-data calls could outlast the frozen five-second final-M15 event freshness window.",
+      "pre_fix_reproduction": {
+        "result": "FAILED",
+        "baseline_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+        "test": "test_bounded_request_profile_and_acquisition_deadline_are_deterministic",
+        "observed": "The original snapshot had no request-count or whole-acquisition-duration accounting; the bounded-deadline assertion could not pass."
+      },
+      "root_cause": "Per-request timeouts were not composed under one monotonic collection deadline.",
+      "corrected_files": [
+        "src/atlas/v2/data/bybit_source.py",
+        "src/atlas/v2/runtime/production.py",
+        "tests/v2/test_session031_acquisition_recovery_remediation.py"
+      ],
+      "passing_regressions": [
+        "test_bounded_request_profile_and_acquisition_deadline_are_deterministic",
+        "test_repeated_transport_timeouts_do_not_retry_or_expand_request_budget",
+        "test_malformed_and_partial_snapshots_remain_bounded_and_fail_closed",
+        "test_stale_market_observation_is_not_replayed_as_timely",
+        "test_final_m15_bar_that_expires_during_acquisition_never_becomes_a_handoff"
+      ],
+      "request_budget": {
+        "market_data_requests_per_snapshot": 13,
+        "profile": "one server-time, eight kline, two ticker and two recent-trade requests, sequentially",
+        "optional_metadata_bootstrap": "One separate bounded product-info request during startup or metadata refresh; included in the same five-second monotonic collection budget.",
+        "physical_http_call_bound": "At most 14 when metadata bootstrap is required; otherwise 13.",
+        "per_request_timeout_maximum_ms": 1250,
+        "whole_collection_deadline_ms": 5000,
+        "retry_or_parallel_burst": false
+      },
+      "remaining_status": "TEST GATE; live public throughput and owner-host latency remain UNVERIFIED. Existing event windows were not enlarged."
+    }
+  ],
+  "tested_files": [
+    "src/atlas/v2/data/bybit_source.py",
+    "src/atlas/v2/data/collector.py",
+    "src/atlas/v2/memory/repository.py",
+    "src/atlas/v2/runtime/production.py",
+    "src/atlas/v2/science/session031_preflight.py",
+    "src/atlas/v2/science/session031_readiness.py",
+    "src/atlas/v2/science/session031_s3_provenance.py",
+    "tests/v2/test_session031_acquisition_recovery_remediation.py",
+    "tests/v2/test_session031_preflight_remediation.py",
+    "tests/v2/test_session031_s3_persisted_lineage.py"
+  ],
+  "test_results": {
+    "final_tree_commands": [
+      {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+        "passed": 602,
+        "skipped": 2,
+        "failed": 0,
+        "elapsed_seconds": 1000.51,
+        "result": "TESTED"
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
+        "passed": 485,
+        "skipped": 3,
+        "failed": 0,
+        "elapsed_seconds": 218.21,
+        "result": "TESTED"
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+        "passed": 10,
+        "skipped": 0,
+        "failed": 0,
+        "elapsed_seconds": 4.99,
+        "result": "TESTED"
+      },
+      {
+        "command": ".venv/bin/ruff check .",
+        "result": "TESTED"
+      },
+      {
+        "command": ".venv/bin/mypy src",
+        "result": "TESTED",
+        "source_files": 205
+      },
+      {
+        "command": ".venv/bin/python -m compileall -q src tests",
+        "result": "TESTED"
+      },
+      {
+        "command": ".venv/bin/python -m pip check",
+        "result": "TESTED",
+        "output": "No broken requirements found."
+      },
+      {
+        "command": "git diff --check",
+        "result": "TESTED"
+      },
+      {
+        "command": "sha256sum docs/v2/V1_GOLDEN_BASELINE.json",
+        "result": "TESTED",
+        "sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251"
+      },
+      {
+        "command": "sha256sum requirements-lock.txt requirements-agent-lock.txt",
+        "result": "TESTED",
+        "hashes": {
+          "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+          "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3"
+        }
+      },
+      {
+        "command": "value-suppressing staged-diff secret scan",
+        "result": "TESTED",
+        "high_confidence_hits": 0,
+        "matched_values_printed": false,
+        "real_dotenv_files_found": 0
+      }
+    ],
+    "baseline_failure_and_final_pass_evidence": {
+      "a_advancing_receipt_fixture": "The equivalent deterministic fixture failed on a941c4d and passed on the tested remediation implementation; the committed advancing-clock regression is included in the final V2 run.",
+      "b_recovery_completeness_fixture": "The original bar-overlap predicate returned true for contiguous bars without trade-continuity evidence; the final disconnect/rate-limit regression keeps eligibility closed.",
+      "c_d_origin_fixture": "The copied remediation tests failed on a941c4d (zero M15 handoffs; zero M0 calibrations) and the corrected tests pass in the final V2 suite.",
+      "e_inventory_fixture": "The copied pagination test failed on a941c4d because OpsRepository had no read_snapshot API; the corrected keyset tests pass in the final V2 suite.",
+      "f_s3_fixture": "The copied production-preflight test failed on a941c4d because no per-instrument persisted-lineage view was present; the corrected lineage and fail-closed tests pass in the final V2 suite.",
+      "latency_fixture": "The bounded acquisition regression failed on a941c4d because snapshot request/duration accounting was absent; the corrected bounded timing tests pass in the final V2 suite."
+    },
+    "skip_reasons": {
+      "full_v2": [
+        "Two optional local SDK MockTransport tests skip in the core environment because the optional provider SDKs are absent; prior accepted isolated locked MockTransport checks remain unchanged.",
+        "No provider calls were made."
+      ],
+      "full_non_v2": [
+        "Bybit authenticated testnet, Binance authenticated testnet and public testnet connectivity are opt-in and were not enabled."
+      ]
+    }
+  },
+  "security_and_network": {
+    "real_paid_provider_calls": 0,
+    "authenticated_venue_or_account_calls": 0,
+    "real_public_market_http_calls": 0,
+    "deepseek_openai_nvidia_nim_calls": 0,
+    "test_network_calls": 0,
+    "github_use": "Fetch, branch push and remote SHA verification only.",
+    "credentials_configured_or_consumed": false,
+    "staged_diff_secret_scan_high_confidence_hits": 0,
+    "matched_secret_values_printed": false,
+    "real_dotenv_files_found": 0
+  },
+  "subagent_accounting": {
+    "subagent_a": {
+      "primary_files": [
+        "src/atlas/v2/data/bybit_source.py",
+        "src/atlas/v2/runtime/production.py",
+        "tests/v2/test_session031_acquisition_recovery_remediation.py"
+      ],
+      "scope": "Acquisition timing, request bounds, source recovery and focused regressions."
+    },
+    "subagent_b": {
+      "primary_files": [
+        "src/atlas/v2/science/session031_preflight.py",
+        "src/atlas/v2/memory/repository.py",
+        "tests/v2/test_session031_preflight_remediation.py"
+      ],
+      "scope": "Read-only reporting, origin reconciliation, science inventory and bounded pagination."
+    },
+    "main_agent": {
+      "files": [
+        "src/atlas/v2/data/collector.py",
+        "src/atlas/v2/science/session031_readiness.py",
+        "src/atlas/v2/science/session031_s3_provenance.py",
+        "tests/v2/test_session031_s3_persisted_lineage.py"
+      ],
+      "scope": "Authority/design review, S3 provenance, integration, final regression, evidence and commit/push verification."
+    },
+    "shared_workspace_note": "Agents shared the workspace; primary ownership was file-disjoint. Main-agent edits and review were sequential after delegated work completed. No overlapping edits remained in the final diff; the final review was performed by the main agent. Development agents added no deployed ATLAS agent runtime."
+  },
+  "safety_and_remaining_gates": {
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "critic_decision_influence": false,
+    "critic_admission_influence": false,
+    "provider_or_model_substitution": false,
+    "final_holdout_accessed": false,
+    "economic_value": "NOT ESTIMABLE",
+    "merge_performed": false,
+    "session032_authorized": false,
+    "maximum_engineering_ceiling": "ENGINEERING_PASS subject to independent coordinating acceptance",
+    "owner_windows_wsl_host": "UNVERIFIED / TEST GATE",
+    "live_public_data_continuity": "UNVERIFIED / TEST GATE",
+    "native_s3_m1_production_cadence": "TEST GATE",
+    "historical_bootstrap_route": "TEST GATE",
+    "continuous_matured_outcome_producer": "TEST GATE",
+    "72_hour_live_public_campaign": "TEST GATE; not started",
+    "eight_week_prospective_floor_and_200_matured_opportunities": "REQUIRED; not started or shortened",
+    "regime_coverage_dependence_aware_inference_and_after_cost_evidence": "REQUIRED; no economic claim",
+    "final_remote_tip": "The documentation closeout commit is the containing commit for this record; its exact GitHub-verified SHA is returned in the final handoff."
+  }
+}

@@ -239,7 +239,6 @@
       "status": "IMPLEMENTED"
     }
   },
-  "gate_content_hash": "a95eb86734a927e0512cdd1616dddc8694d36c55ad5c6a9d17f733c11aa8b38d",
   "gates": {
     "actual_continuous_72_hour_campaign": "TEST GATE",
     "assisted_execution_enabled": false,
@@ -365,5 +364,21 @@
   "starting_branch": "impl/session-030-agent-prospective-shadow-runtime-readiness",
   "starting_sha": "8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57",
   "tested_implementation_sha": "df9f8e807497a449631d0a46f3c15050c3a4f952",
-  "version": "PUBLIC_SHADOW_CAMPAIGN_READINESS_GATE_V1"
+  "version": "PUBLIC_SHADOW_CAMPAIGN_READINESS_GATE_V1",
+  "independent_review_remediation": {
+    "artifact": "docs/v2/SESSION031_INDEPENDENT_REVIEW_REMEDIATION_V1.json",
+    "original_reviewed_s31_sha": "a941c4dc7a6f7411e2a4c208c70af9889ae3e048",
+    "tested_implementation_sha": "659e9833753602c77c877bd1fc08b18e848eb43f",
+    "status": "TESTED; submitted for independent coordinating review",
+    "maximum_engineering_ceiling": "ENGINEERING_PASS subject to independent coordinating acceptance",
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "final_holdout_accessed": false,
+    "economic_value": "NOT ESTIMABLE",
+    "merge_performed": false,
+    "session032_authorized": false,
+    "final_remote_tip": "Exact documentation-closeout tip is recorded in the returned handoff after GitHub verification.",
+    "implementation_remote_tip_verified_after_push": "659e9833753602c77c877bd1fc08b18e848eb43f"
+  },
+  "gate_content_hash": "7380d4c55fe6ab3b63fd4be3d647075919a4c346348ff73b3414de955ef41b8b"
 }
