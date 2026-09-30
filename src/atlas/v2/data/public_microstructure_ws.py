@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 import time
+from collections import deque
 from collections.abc import AsyncIterator, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Any, cast
 from urllib.parse import urlencode
@@ -23,6 +25,11 @@ from .microstructure import AggressiveTradeV2, BookLevelV2, L2DeltaV2, L2Sequenc
 from .microstructure_archive import L2RawFrameV2
 
 MAX_PUBLIC_FRAME_BYTES = 2_000_000
+MAX_PUBLIC_SUBSCRIPTION_TOPICS = 32
+DEFAULT_PUBLIC_FRAME_QUEUE_ITEMS = 512
+DEFAULT_PUBLIC_FRAME_QUEUE_BYTES = 16_000_000
+DEFAULT_PUBLIC_FRAME_DRAIN_ITEMS = 64
+PUBLIC_WS_RECEIVE_QUEUE_ITEMS = 16
 _BYBIT_WS_HOST = "stream.bybit.com"
 _BINANCE_WS_HOST = "fstream.binance.com"
 
@@ -36,11 +43,15 @@ class CapturedPublicFrameV2:
     raw_payload_hash: str
     received_at_ns: int
     available_at_ns: int
+    connection_epoch: int | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "venue", VenueV2(self.venue))
-        if not self.source_id or not self.channel or not isinstance(self.raw_payload_bytes, bytes):
+        if (not self.source_id or len(self.source_id) > 128 or not self.channel or len(self.channel) > 256
+                or not isinstance(self.raw_payload_bytes, bytes)):
             raise ValueError("captured public frame identity and exact bytes are required")
+        if len(self.raw_payload_bytes) > MAX_PUBLIC_FRAME_BYTES:
+            raise ValueError("public WebSocket frame exceeds strict size bound")
         sha256_ref(self.raw_payload_hash, field="raw_payload_hash")
         if hashlib.sha256(self.raw_payload_bytes).hexdigest() != self.raw_payload_hash:
             raise ValueError("captured public frame hash does not match exact bytes")
@@ -48,6 +59,230 @@ class CapturedPublicFrameV2:
         timestamp(self.available_at_ns, field="available_at_ns")
         if self.available_at_ns < self.received_at_ns:
             raise ValueError("frame availability cannot precede receipt")
+        if self.connection_epoch is not None and (type(self.connection_epoch) is not int or self.connection_epoch <= 0):
+            raise ValueError("connection_epoch must be a positive integer when present")
+
+
+@dataclass(frozen=True)
+class PublicFrameHandoffStatusV2:
+    """Bounded, read-only observations for a single public stream handoff."""
+
+    venue: VenueV2
+    topics: tuple[str, ...]
+    queue_items: int
+    queue_bytes: int
+    max_queue_items: int
+    max_queue_bytes: int
+    max_drain_items: int
+    high_water_items: int
+    high_water_bytes: int
+    frames_received: int
+    frames_drained: int
+    controls_received: int
+    frames_rejected: int
+    closed_rejections: int
+    overflowed: bool
+    backpressure: bool
+    connected: bool
+    closed: bool
+    disconnect_count: int
+    last_disconnect_at_ns: int | None
+    heartbeat_count: int
+    last_heartbeat_at_ns: int | None
+    last_activity_at_ns: int | None
+    last_error_code: str | None
+    last_error_at_ns: int | None
+
+
+class PublicFrameHandoffOverflowV2(RuntimeError):
+    """Raised by the stream pump after the bounded queue rejects a frame."""
+
+
+def bybit_btc_eth_linear_topics() -> tuple[str, ...]:
+    """Return the explicit S32 Bybit USDT-linear BTC/ETH book and trade set."""
+    return (
+        "orderbook.50.BTCUSDT", "publicTrade.BTCUSDT",
+        "orderbook.50.ETHUSDT", "publicTrade.ETHUSDT",
+    )
+
+
+def _validate_subscription(venue: VenueV2, topics: tuple[str, ...]) -> None:
+    if (not topics or len(topics) > MAX_PUBLIC_SUBSCRIPTION_TOPICS
+            or len(set(topics)) != len(topics)
+            or any(not isinstance(topic, str) or len(topic) > 256 for topic in topics)):
+        raise ValueError("public WebSocket subscription must be a small, unique explicit topic set")
+    if any(not _topic_allowed(venue, topic) for topic in topics):
+        raise ValueError("only allowlisted public L2/trade/liquidation channels are accepted")
+
+
+class BoundedPublicFrameHandoffV2:
+    """Thread-safe, nonblocking bounded queue from one network producer to a controller.
+
+    Queue overflow is observable and sticky. ``offer`` never waits for a drain;
+    a rejected data frame returns ``False`` and increments the loss counters.
+    Control acknowledgements are observed and counted without entering the
+    market-data queue. No persistence or venue state is changed here.
+    """
+
+    def __init__(self, *, venue: VenueV2, topics: tuple[str, ...],
+                 max_queue_items: int = DEFAULT_PUBLIC_FRAME_QUEUE_ITEMS,
+                 max_queue_bytes: int = DEFAULT_PUBLIC_FRAME_QUEUE_BYTES,
+                 max_drain_items: int = DEFAULT_PUBLIC_FRAME_DRAIN_ITEMS) -> None:
+        self.venue = VenueV2(venue)
+        _validate_subscription(self.venue, topics)
+        for value, name in ((max_queue_items, "max_queue_items"),
+                            (max_queue_bytes, "max_queue_bytes"),
+                            (max_drain_items, "max_drain_items")):
+            if type(value) is not int or value <= 0:
+                raise ValueError(f"{name} must be a positive integer")
+        if max_queue_bytes > 2_000_000_000 or max_queue_items > 100_000 or max_drain_items > 10_000:
+            raise ValueError("public frame handoff bounds exceed hard safety ceilings")
+        self.topics = tuple(topics)
+        self.max_queue_items = max_queue_items
+        self.max_queue_bytes = max_queue_bytes
+        self.max_drain_items = max_drain_items
+        self._queue: deque[CapturedPublicFrameV2] = deque()
+        self._queue_bytes = 0
+        self._lock = threading.Lock()
+        self._high_water_items = 0
+        self._high_water_bytes = 0
+        self._frames_received = 0
+        self._frames_drained = 0
+        self._controls_received = 0
+        self._frames_rejected = 0
+        self._closed_rejections = 0
+        self._overflowed = False
+        self._backpressure = False
+        self._connected = False
+        self._closed = False
+        self._disconnect_count = 0
+        self._last_disconnect_at_ns: int | None = None
+        self._heartbeat_count = 0
+        self._last_heartbeat_at_ns: int | None = None
+        self._last_activity_at_ns: int | None = None
+        self._last_error_code: str | None = None
+        self._last_error_at_ns: int | None = None
+
+    def offer(self, frame: CapturedPublicFrameV2) -> bool:
+        """Offer one immutable frame without blocking; return false on loss/closure."""
+        if frame.venue != self.venue:
+            self.observe_error("WRONG_VENUE", frame.received_at_ns)
+            raise ValueError("public frame venue does not match the handoff")
+        if frame.channel == "CONTROL":
+            try:
+                control = json.loads(frame.raw_payload_bytes)
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                self.observe_error("MALFORMED_CONTROL", frame.received_at_ns)
+                raise ValueError("malformed public WebSocket control frame") from exc
+            if self.venue != VenueV2.BYBIT or not isinstance(control, dict) or control.get("op") not in {
+                "ping", "pong", "subscribe",
+            }:
+                self.observe_error("UNEXPECTED_CONTROL", frame.received_at_ns)
+                raise ValueError("unrecognized public WebSocket control frame")
+            with self._lock:
+                if self._closed:
+                    self._closed_rejections += 1
+                    return False
+                self._controls_received += 1
+                self._last_activity_at_ns = frame.received_at_ns
+                if control.get("op") in {"ping", "pong"} or control.get("ret_msg") == "pong":
+                    self._heartbeat_count += 1
+                    self._last_heartbeat_at_ns = frame.received_at_ns
+                if control.get("success") is False:
+                    self._set_error_locked("VENUE_CONTROL_ERROR", frame.received_at_ns)
+            return True
+        if frame.channel not in self.topics:
+            self.observe_error("UNEXPECTED_TOPIC", frame.received_at_ns)
+            raise ValueError("public frame topic does not match the explicit subscription")
+        size = len(frame.raw_payload_bytes)
+        with self._lock:
+            self._last_activity_at_ns = frame.received_at_ns
+            if self._closed:
+                self._closed_rejections += 1
+                return False
+            if size > self.max_queue_bytes or len(self._queue) >= self.max_queue_items \
+                    or self._queue_bytes + size > self.max_queue_bytes:
+                self._frames_rejected += 1
+                self._overflowed = True
+                self._backpressure = True
+                self._set_error_locked("FRAME_QUEUE_OVERFLOW", frame.received_at_ns)
+                return False
+            self._queue.append(frame)
+            self._queue_bytes += size
+            self._frames_received += 1
+            self._high_water_items = max(self._high_water_items, len(self._queue))
+            self._high_water_bytes = max(self._high_water_bytes, self._queue_bytes)
+            if (len(self._queue) * 4 >= self.max_queue_items * 3
+                    or self._queue_bytes * 4 >= self.max_queue_bytes * 3):
+                self._backpressure = True
+        return True
+
+    def drain(self, *, max_items: int | None = None) -> tuple[CapturedPublicFrameV2, ...]:
+        """Remove at most the configured per-call work bound, preserving FIFO order."""
+        limit = self.max_drain_items if max_items is None else max_items
+        if type(limit) is not int or limit <= 0 or limit > self.max_drain_items:
+            raise ValueError("drain request must be positive and no greater than max_drain_items")
+        with self._lock:
+            count = min(limit, len(self._queue))
+            rows = tuple(self._queue.popleft() for _ in range(count))
+            self._queue_bytes -= sum(len(frame.raw_payload_bytes) for frame in rows)
+            self._frames_drained += len(rows)
+            return rows
+
+    def observe_connected(self, at_ns: int) -> None:
+        at_ns = timestamp(at_ns, field="connected_at_ns")
+        with self._lock:
+            if not self._closed:
+                self._connected = True
+                self._last_activity_at_ns = at_ns
+
+    def observe_disconnected(self, at_ns: int) -> None:
+        at_ns = timestamp(at_ns, field="disconnected_at_ns")
+        with self._lock:
+            if self._connected:
+                self._disconnect_count += 1
+                self._last_disconnect_at_ns = at_ns
+            self._connected = False
+            self._last_activity_at_ns = at_ns
+
+    def observe_heartbeat(self, at_ns: int) -> None:
+        at_ns = timestamp(at_ns, field="heartbeat_at_ns")
+        with self._lock:
+            self._heartbeat_count += 1
+            self._last_heartbeat_at_ns = at_ns
+            self._last_activity_at_ns = at_ns
+
+    def observe_error(self, code: str, at_ns: int) -> None:
+        at_ns = timestamp(at_ns, field="error_at_ns")
+        if not code or len(code) > 64 or not code.replace("_", "").isalnum():
+            raise ValueError("public stream error code must be a short stable identifier")
+        with self._lock:
+            self._set_error_locked(code, at_ns)
+
+    def _set_error_locked(self, code: str, at_ns: int) -> None:
+        self._last_error_code = code
+        self._last_error_at_ns = at_ns
+
+    def close(self, at_ns: int) -> None:
+        at_ns = timestamp(at_ns, field="closed_at_ns")
+        with self._lock:
+            self._closed = True
+            self._connected = False
+            self._last_activity_at_ns = at_ns
+
+    def snapshot(self) -> PublicFrameHandoffStatusV2:
+        with self._lock:
+            return PublicFrameHandoffStatusV2(
+                self.venue, self.topics, len(self._queue), self._queue_bytes,
+                self.max_queue_items, self.max_queue_bytes, self.max_drain_items,
+                self._high_water_items, self._high_water_bytes, self._frames_received,
+                self._frames_drained, self._controls_received, self._frames_rejected,
+                self._closed_rejections, self._overflowed, self._backpressure,
+                self._connected, self._closed, self._disconnect_count,
+                self._last_disconnect_at_ns, self._heartbeat_count,
+                self._last_heartbeat_at_ns, self._last_activity_at_ns,
+                self._last_error_code, self._last_error_at_ns,
+            )
 
 
 def _topic_allowed(venue: VenueV2, topic: str) -> bool:
@@ -65,8 +300,7 @@ def _binance_route(topic: str) -> str | None:
 
 
 def _venue_url(venue: VenueV2, topics: tuple[str, ...]) -> str:
-    if not topics or any(not _topic_allowed(venue, topic) for topic in topics):
-        raise ValueError("only allowlisted public L2/trade/liquidation channels are accepted")
+    _validate_subscription(venue, topics)
     if venue == VenueV2.BYBIT:
         return "wss://stream.bybit.com/v5/public/linear"
     routes = {_binance_route(topic) for topic in topics}
@@ -74,6 +308,44 @@ def _venue_url(venue: VenueV2, topics: tuple[str, ...]) -> str:
         raise ValueError("Binance public depth and market trades require separate WebSocket routes")
     route = next(iter(routes))
     return f"wss://fstream.binance.com/{route}/stream?" + urlencode({"streams": "/".join(topics)})
+
+
+def capture_public_frame_message(*, venue: VenueV2, topics: tuple[str, ...], message: str | bytes,
+                                 source_id: str, clock_ns: Callable[[], int] = time.time_ns
+                                 ) -> CapturedPublicFrameV2:
+    """Validate and capture one received message, useful for fake stream adapters too."""
+    venue = VenueV2(venue)
+    _validate_subscription(venue, topics)
+    if not source_id or len(source_id) > 128:
+        raise ValueError("public WebSocket source identity must be bounded and non-empty")
+    received = timestamp(clock_ns(), field="received_at_ns")
+    if isinstance(message, bytes):
+        raw = message
+    elif isinstance(message, str):
+        raw = message.encode("utf-8")
+    else:
+        raise ValueError("public WebSocket message must be text or exact bytes")
+    if len(raw) > MAX_PUBLIC_FRAME_BYTES:
+        raise ValueError("public WebSocket frame exceeds strict size bound")
+    try:
+        payload = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("public WebSocket frame is not valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("public WebSocket frame must be a JSON object")
+    if venue == VenueV2.BYBIT and "topic" not in payload and "stream" not in payload:
+        if payload.get("op") not in {"ping", "pong", "subscribe"}:
+            raise ValueError("Bybit public frame is neither subscribed data nor a recognized control")
+        channel = "CONTROL"
+    else:
+        channel_value = payload.get("topic", payload.get("stream"))
+        if not isinstance(channel_value, str) or channel_value not in topics:
+            raise ValueError("public WebSocket frame topic does not match the explicit subscription")
+        channel = channel_value
+    available = max(received, timestamp(clock_ns(), field="available_at_ns"))
+    return CapturedPublicFrameV2(
+        venue, source_id, channel, raw, hashlib.sha256(raw).hexdigest(), received, available,
+    )
 
 
 async def capture_public_frames(*, venue: VenueV2, topics: tuple[str, ...],
@@ -95,22 +367,38 @@ async def capture_public_frames(*, venue: VenueV2, topics: tuple[str, ...],
         raise RuntimeError("locked websockets public transport dependency is unavailable") from exc
     name = source_id or f"{venue.value}_PUBLIC_WS"
     async with connect(url, open_timeout=10, ping_interval=20, ping_timeout=20,
-                       close_timeout=5, max_size=MAX_PUBLIC_FRAME_BYTES) as socket:
+                       close_timeout=5, max_size=MAX_PUBLIC_FRAME_BYTES,
+                       max_queue=PUBLIC_WS_RECEIVE_QUEUE_ITEMS) as socket:
         if venue == VenueV2.BYBIT:
             await socket.send(json.dumps({"op": "subscribe", "args": list(topics)}, separators=(",", ":")))
         async for message in socket:
-            received = clock_ns()
-            raw = message if isinstance(message, bytes) else message.encode("utf-8")
-            if len(raw) > MAX_PUBLIC_FRAME_BYTES:
-                raise ValueError("public WebSocket frame exceeds strict size bound")
-            payload_hash = hashlib.sha256(raw).hexdigest()
-            try:
-                parsed = json.loads(raw)
-                channel = str(parsed.get("topic", parsed.get("stream", "UNKNOWN"))) if isinstance(parsed, dict) else "UNKNOWN"
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                channel = "UNPARSEABLE"
-            available = clock_ns()
-            yield CapturedPublicFrameV2(venue, name, channel, raw, payload_hash, received, available)
+            yield capture_public_frame_message(
+                venue=venue, topics=topics, message=message, source_id=name, clock_ns=clock_ns,
+            )
+
+
+async def handoff_public_frames(frames: AsyncIterator[CapturedPublicFrameV2], *,
+                                handoff: BoundedPublicFrameHandoffV2,
+                                connection_epoch: int | None = None,
+                                clock_ns: Callable[[], int] = time.time_ns) -> None:
+    """Pump one already-open stream into a handoff; never retries or persists."""
+    if connection_epoch is not None and (type(connection_epoch) is not int or connection_epoch <= 0):
+        raise ValueError("connection_epoch must be a positive integer when present")
+    handoff.observe_connected(clock_ns())
+    try:
+        async for frame in frames:
+            if connection_epoch is not None:
+                frame = replace(frame, connection_epoch=connection_epoch)
+            if not handoff.offer(frame):
+                raise PublicFrameHandoffOverflowV2("bounded public frame handoff rejected a frame")
+    except Exception as exc:
+        error_code = "FRAME_QUEUE_OVERFLOW" if isinstance(exc, PublicFrameHandoffOverflowV2) else (
+            "STREAM_" + type(exc).__name__.upper()[:52]
+        )
+        handoff.observe_error(error_code, clock_ns())
+        raise
+    finally:
+        handoff.observe_disconnected(clock_ns())
 
 
 def _parsed_availability(frame: CapturedPublicFrameV2, processed_at_ns: int | None) -> int:

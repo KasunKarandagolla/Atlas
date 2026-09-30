@@ -84,7 +84,9 @@ class PublicCollectorV2:
         self.health = SourceHealthTrackerV2()
         self._last_sequence: dict[tuple[str, str], int] = {}
         self._pending_archive: list[ImportedObservationV2] = []
+        self._pending_records: dict[str, ImportedObservationV2] = {}
         self._pending_instrument_keys: dict[str, InstrumentKeyV2] = {}
+        self._pending_index_as_public_observation: dict[str, bool] = {}
         self._health_state: dict[str, PublicSourceStateV2] = {}
         self._cursor_hashes: dict[tuple[str, str], dict[str, str]] = {}
         self._conflicts: list[ConflictingDuplicateV2] = []
@@ -176,7 +178,16 @@ class PublicCollectorV2:
         bar: CausalBarV2 | None = None,
         sequence_channel: str | None = None,
         sequence_is_contiguous: bool = False,
+        update_source_health: bool = True,
+        index_as_public_observation: bool = True,
+        retain_in_memory: bool = True,
     ) -> CollectorIngestResultV2:
+        if type(update_source_health) is not bool:
+            raise ValueError("update_source_health must be bool")
+        if type(index_as_public_observation) is not bool:
+            raise ValueError("index_as_public_observation must be bool")
+        if type(retain_in_memory) is not bool:
+            raise ValueError("retain_in_memory must be bool")
         if instrument_key is None:
             instrument_key = self.registry.resolve_key_for_revision(observation.instrument_revision)
         elif (
@@ -193,14 +204,16 @@ class PublicCollectorV2:
             raise ValueError("archived raw payload bytes must match RawObservationV2.raw_payload_hash")
         if bar is not None and (bar.raw.content_hash != observation.content_hash or not bar.final):
             raise ValueError("collector bars must be final and bound to the exact raw observation")
-        index_ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": observation.record_id})
+        index_type = ("PublicObservationIndexV2" if index_as_public_observation
+                      else "PublicStreamTradeObservationIndexV1")
+        index_ref = sha256_json({"artifact_type": index_type, "record_id": observation.record_id})
         persisted_entry = self.repository.get_artifact(index_ref)
         persistent_hash: str | None = None
         if persisted_entry is not None:
             indexed = dict(persisted_entry.metadata)
             persistent_hash = str(indexed.get("raw_payload_hash", ""))
             persistent_matches = (
-                persisted_entry.artifact_type == "PublicObservationIndexV2"
+                persisted_entry.artifact_type == index_type
                 and indexed.get("record_id") == observation.record_id
                 and indexed.get("instrument_revision") == observation.instrument_revision
                 and indexed.get("event_type") in (None, observation.event_type)
@@ -222,17 +235,68 @@ class PublicCollectorV2:
             )
             persistent_conflict = not persistent_matches
         else:
-            append = self.store.append(observation)
             persistent_conflict = False
-            if append.status == AppendStatusV2.DUPLICATE and self._bar_hashes.get(observation.record_id) != (
-                bar.content_hash if bar is not None else None
-            ):
-                append = AppendResultV2(AppendStatusV2.CONFLICT_QUARANTINED, append.stored, observation)
+            if retain_in_memory:
+                append = self.store.append(observation)
+                pending_index_mode = self._pending_index_as_public_observation.get(observation.record_id)
+                if append.status == AppendStatusV2.DUPLICATE and (
+                    self._bar_hashes.get(observation.record_id) != (bar.content_hash if bar is not None else None)
+                    or (pending_index_mode is not None and pending_index_mode != index_as_public_observation)
+                ):
+                    append = AppendResultV2(AppendStatusV2.CONFLICT_QUARANTINED, append.stored, observation)
+            else:
+                pending = self._pending_records.get(observation.record_id)
+                if pending is None:
+                    append = AppendResultV2(AppendStatusV2.INSERTED, observation, observation)
+                else:
+                    prior = pending.observation
+                    pending_index_mode = self._pending_index_as_public_observation[observation.record_id]
+                    same = (
+                        prior.raw_payload_hash == observation.raw_payload_hash
+                        and (
+                            prior.instrument_revision,
+                            prior.source_id,
+                            prior.event_type,
+                            prior.sequence,
+                            prior.event_at_ns,
+                            prior.published_at_ns,
+                            prior.translation_version,
+                            prior.revision_of,
+                            prior.quality_flags,
+                            prior.availability_class,
+                            prior.replay_available_at_ns,
+                        ) == (
+                            observation.instrument_revision,
+                            observation.source_id,
+                            observation.event_type,
+                            observation.sequence,
+                            observation.event_at_ns,
+                            observation.published_at_ns,
+                            observation.translation_version,
+                            observation.revision_of,
+                            observation.quality_flags,
+                            observation.availability_class,
+                            observation.replay_available_at_ns,
+                        )
+                        and (pending.bar is not None) == (bar is not None)
+                        and (pending.bar.content_hash if pending.bar is not None else None)
+                        == (bar.content_hash if bar is not None else None)
+                        and pending_index_mode == index_as_public_observation
+                    )
+                    append = AppendResultV2(
+                        AppendStatusV2.DUPLICATE if same else AppendStatusV2.CONFLICT_QUARANTINED,
+                        prior, observation,
+                    )
         if append.status == AppendStatusV2.CONFLICT_QUARANTINED or persistent_conflict:
             prior_hash = persistent_hash
             if prior_hash is None:
                 existing = self.store.get(observation.record_id)
-                prior_hash = existing.raw_payload_hash if existing is not None else observation.raw_payload_hash
+                pending = self._pending_records.get(observation.record_id)
+                prior_hash = (
+                    existing.raw_payload_hash if existing is not None
+                    else pending.observation.raw_payload_hash if pending is not None
+                    else observation.raw_payload_hash
+                )
             if self.archive is None:
                 raise RuntimeError(
                     "Parquet observation archive is required to durably quarantine a conflicting duplicate"
@@ -264,7 +328,8 @@ class PublicCollectorV2:
                 self.clock_ns(),
                 quarantine_chunk_id,
             )
-            self._conflicts.append(conflict)
+            if retain_in_memory:
+                self._conflicts.append(conflict)
             metadata = {
                 "record_id": conflict.record_id,
                 "existing_payload_hash": conflict.existing_payload_hash,
@@ -283,20 +348,23 @@ class PublicCollectorV2:
                     metadata,
                 )
             )
-            self._record_health(
-                observation.source_id,
-                PublicSourceStateV2.SEQUENCE_GAP_CONFLICT,
-                at_ns=conflict.observed_at_ns,
-                details="conflicting duplicate event identity quarantined",
-            )
+            if update_source_health:
+                self._record_health(
+                    observation.source_id,
+                    PublicSourceStateV2.SEQUENCE_GAP_CONFLICT,
+                    at_ns=conflict.observed_at_ns,
+                    details="conflicting duplicate event identity quarantined",
+                )
             return CollectorIngestResultV2(append, persistent_conflict=persistent_conflict)
         if append.status == AppendStatusV2.DUPLICATE:
             return CollectorIngestResultV2(append)
-        self._pending_archive.append(
-            ImportedObservationV2(len(self._pending_archive) + 1, observation, payload_bytes, bar)
-        )
+        imported = ImportedObservationV2(len(self._pending_archive) + 1, observation, payload_bytes, bar)
+        self._pending_archive.append(imported)
+        self._pending_records[observation.record_id] = imported
         self._pending_instrument_keys[observation.record_id] = instrument_key
-        self._bar_hashes[observation.record_id] = bar.content_hash if bar is not None else None
+        self._pending_index_as_public_observation[observation.record_id] = index_as_public_observation
+        if retain_in_memory:
+            self._bar_hashes[observation.record_id] = bar.content_hash if bar is not None else None
 
         gap: SequenceGapV2 | None = None
         if sequence_channel is not None and sequence_is_contiguous and observation.sequence is not None:
@@ -309,23 +377,26 @@ class PublicCollectorV2:
                 previous = self._last_sequence.get(cursor)
                 if previous is not None and sequence > previous + 1:
                     gap = SequenceGapV2(observation.source_id, sequence_channel, previous, sequence)
-                    self._record_health(
-                        observation.source_id,
-                        PublicSourceStateV2.SEQUENCE_GAP_CONFLICT,
-                        at_ns=self.clock_ns(),
-                        details=str(gap),
-                    )
+                    if update_source_health:
+                        self._record_health(
+                            observation.source_id,
+                            PublicSourceStateV2.SEQUENCE_GAP_CONFLICT,
+                            at_ns=self.clock_ns(),
+                            details=str(gap),
+                        )
                 elif previous is not None and sequence < previous:
                     gap = SequenceGapV2(observation.source_id, sequence_channel, previous, sequence)
-                    self._record_health(
-                        observation.source_id,
-                        PublicSourceStateV2.INCOMPLETE_SNAPSHOT,
-                        at_ns=self.clock_ns(),
-                        details="out-of-order contiguous sequence requires source reconciliation",
-                    )
+                    if update_source_health:
+                        self._record_health(
+                            observation.source_id,
+                            PublicSourceStateV2.INCOMPLETE_SNAPSHOT,
+                            at_ns=self.clock_ns(),
+                            details="out-of-order contiguous sequence requires source reconciliation",
+                        )
                 self._last_sequence[cursor] = max(previous or sequence, sequence)
                 self._cursor_hashes.setdefault(cursor, {})[observation.record_id] = observation.raw_payload_hash
-        if gap is None and self._health_state.get(observation.source_id) in (None, PublicSourceStateV2.HEALTHY_CURRENT):
+        if (update_source_health and gap is None
+                and self._health_state.get(observation.source_id) in (None, PublicSourceStateV2.HEALTHY_CURRENT)):
             self._record_health(
                 observation.source_id,
                 PublicSourceStateV2.HEALTHY_CURRENT,
@@ -351,11 +422,14 @@ class PublicCollectorV2:
         index_entries: list[ArtifactIndexEntryV2] = []
         for item in items:
             observation = item.observation
-            index_ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": observation.record_id})
+            public_index = self._pending_index_as_public_observation[observation.record_id]
+            index_type = ("PublicObservationIndexV2" if public_index
+                          else "PublicStreamTradeObservationIndexV1")
+            index_ref = sha256_json({"artifact_type": index_type, "record_id": observation.record_id})
             index_entries.append(
                 ArtifactIndexEntryV2(
                     index_ref,
-                    "PublicObservationIndexV2",
+                    index_type,
                     observation.content_hash,
                     observation.received_at_ns,
                     observation.available_at_ns,
@@ -374,12 +448,15 @@ class PublicCollectorV2:
                         "replay_available_at_ns": observation.replay_available_at_ns,
                         "raw_payload_hash": observation.raw_payload_hash,
                         "bar_content_hash": item.bar.content_hash if item.bar is not None else None,
+                        "archive_chunk_id": chunk_id,
                     },
                 )
             )
         self.repository.register_artifacts(index_entries)
         self._pending_archive.clear()
+        self._pending_records.clear()
         self._pending_instrument_keys.clear()
+        self._pending_index_as_public_observation.clear()
         return str(path)
 
     def quarantined_conflicts(self) -> tuple[ConflictingDuplicateV2, ...]:

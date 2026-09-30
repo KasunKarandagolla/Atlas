@@ -539,10 +539,17 @@ class OpsSupervisorV2:
         return True
 
     def close(self) -> None:
-        if self.repository is not None:
-            self.repository.close()
-            self.repository = None
-        self._closed = True
+        if self._closed:
+            return
+        try:
+            close_port = getattr(self.port, "close", None)
+            if callable(close_port):
+                close_port()
+        finally:
+            if self.repository is not None:
+                self.repository.close()
+                self.repository = None
+            self._closed = True
 
     @staticmethod
     def _health_state(

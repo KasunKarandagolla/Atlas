@@ -140,6 +140,16 @@ class BybitPublicCycleSourceV1:
         self._bootstrap_cycle_pending = False
 
     @property
+    def current_products(self) -> tuple[ProductContractV2, ...]:
+        """Return the exact metadata revision backing the current bounded snapshot.
+
+        The supervisor-owned controller uses this after acquisition to bind
+        stream frames to a point-in-time contract revision. The source itself
+        remains read-only and does not mutate the repository or registry.
+        """
+        return self._metadata.products if self._metadata is not None else ()
+
+    @property
     def required_source_ids(self) -> tuple[str, ...]:
         return (SOURCE_ID,)
 

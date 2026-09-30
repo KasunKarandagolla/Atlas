@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
@@ -19,25 +20,47 @@ from typing import Any, Protocol, cast
 
 from atlas.domain.risk import RiskPolicy
 
-from .._serialization import canonical_json, json_value, sha256_json, sha256_ref
+from .._serialization import canonical_json, json_value, sha256_json, sha256_ref, timestamp
 from ..contracts import CandidateActionV2, CandidateSetV2, PolicySpecV2
 from ..data.bars import BarIntervalV2, CausalBarStoreV2
 from ..data.binance import translate_agg_trades
 from ..data.bybit import translate_recent_trades
 from ..data.collector import PublicCollectorV2
-from ..data.health import PublicSourceHealthV2
+from ..data.health import PublicSourceHealthV2, PublicSourceStateV2
 from ..data.history import (
     ParquetObservationArchiveV2,
     reconstruct_causal_bars_from_archive,
     reconstruct_public_observations_from_archive,
 )
+from ..data.microstructure import (
+    L2DeltaV2,
+    L2SequenceFaultV2,
+    L2SnapshotV2,
+    SequenceValidBookV2,
+)
+from ..data.microstructure_archive import L2FrameArchiveV2, L2RawFrameV2
 from ..data.public_http import PublicDataError
-from ..data.raw import AvailabilityClassV2
+from ..data.public_microstructure_ws import (
+    CapturedPublicFrameV2,
+    bybit_btc_eth_linear_topics,
+    parse_bybit_orderbook_frame,
+    parse_bybit_trades,
+    raw_archive_record,
+)
+from ..data.public_stream_continuity import (
+    PublicStreamContinuityStateV1,
+    PublicStreamContinuityTrackerV1,
+    PublicStreamObservationKindV1,
+    PublicStreamObservationV1,
+    build_public_stream_continuity_report,
+)
+from ..data.public_stream_source import PublicStreamSourceV2
+from ..data.raw import AvailabilityClassV2, RawObservationV2
 from ..data.subscriptions import SubscriptionPlanV2
 from ..data.universe import ComputeTierV2, DynamicUniverseRuntimeV2, UniverseObservationV2
 from ..features.joins import asof_join
 from ..features.pipeline import feature_snapshot
-from ..instruments import InstrumentKeyV2, InstrumentRegistryV2, ProductContractV2, UniverseContractV2
+from ..instruments import InstrumentKeyV2, InstrumentRegistryV2, ProductContractV2, UniverseContractV2, VenueV2
 from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
 from ..risk import (
     AccountRiskSnapshotV2,
@@ -116,6 +139,11 @@ from .ops_supervisor import (
 OPS_PRODUCTION_ADAPTER_ID = "ATLAS_V2_PRODUCTION_OPS_COMPOSITION_V1"
 OPS_RUNTIME_DECISION_ARTIFACT_TYPE = "OpsRuntimeDecisionEvidenceV1"
 _FEATURE_CONTEXT_BARS_V1 = {"M15": 60, "H1": 100, "H4": 100}
+BYBIT_PUBLIC_WS_SOURCE_ID_V1 = "BYBIT_PUBLIC_WS"
+PUBLIC_STREAM_STALE_NS_V1 = 30_000_000_000
+PUBLIC_STREAM_METADATA_MAX_AGE_NS_V1 = 3_600_000_000_000
+PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 = 32
+PUBLIC_STREAM_MAX_TRADES_PER_FRAME_V1 = 256
 _POLICIES: Mapping[str, PolicySpecV2] = MappingProxyType(
     {policy.policy_hash: policy for policy in (S1_POLICY, S2_POLICY, S3_POLICY)}
 )
@@ -827,15 +855,38 @@ class ProductionOpsCyclePortV1:
         self,
         *,
         public_source: Any | None = None,
+        public_stream_source: PublicStreamSourceV2 | Any | None = None,
         inputs_provider: ProductionEventInputsProviderV1 | None = None,
         crash_after_checkpoint: Callable[[PipelineStageV1], None] | None = None,
+        clock_ns: Callable[[], int] = time.time_ns,
     ) -> None:
         self.public_source = public_source or IndexedPublicCycleSourceV1()
+        self.public_stream_source = public_stream_source
         self.inputs_provider = inputs_provider or IndexedProductionEventInputsV1()
         self.crash_after_checkpoint = crash_after_checkpoint
+        self.clock_ns = clock_ns
         self._collector_recovery: ProductionCollectorRecoveryV1 | None = None
+        self._stream_archive: L2FrameArchiveV2 | None = None
+        self._stream_trackers: dict[tuple[str, str, str], PublicStreamContinuityTrackerV1] = {}
+        self._stream_books: dict[tuple[str, str, str], SequenceValidBookV2 | None] = {}
+        self._stream_products: dict[str, ProductContractV2] = {}
+        self._stream_connection_epochs: dict[tuple[str, str, str], int | None] = {}
+        self._stream_disconnect_count = 0
+        self._stream_overflow_seen = False
+        self._stream_last_error_code: str | None = None
+        self._stream_first_connection_allowed: set[tuple[str, str, str]] = set()
+        self._stream_disconnect_seen: set[tuple[str, str, str]] = set()
+        self._stream_run_epoch = ""
+        self._stream_metadata_errors: set[str] = set()
         self._recovery_calls = 0
         self._collection_calls = 0
+
+    def close(self) -> None:
+        """Stop the opt-in producer; persistence remains exclusively in collect/recover."""
+        if self.public_stream_source is not None:
+            close = getattr(self.public_stream_source, "close", None)
+            if callable(close):
+                close()
 
     def recover(self, repository: OpsRepository, *, now_ns: int) -> OpsRecoverySnapshotV1:
         """Restore collector cursors, active watches and subscriptions first."""
@@ -896,6 +947,12 @@ class ProductionOpsCyclePortV1:
         self._collector_recovery = ProductionCollectorRecoveryV1(
             collector, restart.subscriptions, source_ids, had_prior, recovery_epoch_ref
         )
+        if self.public_stream_source is not None:
+            self._restore_public_stream_state(repository, collector, now_ns=now_ns)
+            start_stream = getattr(self.public_stream_source, "start", None)
+            if not callable(start_stream):
+                raise ValueError("opt-in public stream source must expose its bounded start lifecycle")
+            start_stream()
         self._recovery_calls += 1
         return OpsRecoverySnapshotV1(
             source_ids,
@@ -917,6 +974,8 @@ class ProductionOpsCyclePortV1:
             raise RuntimeError("PublicCollectorV2 recovery must precede production collection")
         if self._collector_recovery.collector.repository is not repository:
             raise ValueError("production collector must reuse the supervisor-owned OpsRepository")
+        if self.public_stream_source is not None:
+            self._collect_public_stream_evidence(repository, now_ns=now_ns)
         acquire_snapshot = getattr(self.public_source, "acquire_snapshot", None)
         if callable(acquire_snapshot):
             # Network acquisition returns bounded immutable records. Only this
@@ -925,6 +984,7 @@ class ProductionOpsCyclePortV1:
             if callable(begin_collection_cycle):
                 begin_collection_cycle(now_ns=now_ns)
             snapshot = acquire_snapshot(now_ns=now_ns)
+            self._register_refreshed_stream_products(repository, snapshot)
             snapshot_eligible = self._persist_public_snapshot(repository, snapshot, now_ns=now_ns)
             if not snapshot_eligible:
                 self._record_late_public_events(
@@ -1000,6 +1060,883 @@ class ProductionOpsCyclePortV1:
             raise ValueError("production public collector must preserve its observed cycle collection time")
         self._collection_calls += 1
         return batch
+
+    @staticmethod
+    def _stream_feed_key(
+        instrument: InstrumentKeyV2, source_id: str, channel: str,
+    ) -> tuple[str, str, str]:
+        return instrument.content_hash, source_id, channel
+
+    @staticmethod
+    def _stream_topic_identity(channel: str) -> tuple[str, str] | None:
+        if channel.startswith("orderbook.50."):
+            symbol = channel.removeprefix("orderbook.50.")
+        elif channel.startswith("publicTrade."):
+            symbol = channel.removeprefix("publicTrade.")
+        else:
+            return None
+        return (symbol, channel) if symbol in {"BTCUSDT", "ETHUSDT"} else None
+
+    @staticmethod
+    def _latest_stream_product(
+        registry: InstrumentRegistryV2, symbol: str, *, as_of_ns: int,
+    ) -> ProductContractV2 | None:
+        eligible = [
+            product for product in registry.contracts()
+            if product.key.venue.value == "BYBIT"
+            and product.key.environment.value == "MAINNET"
+            and product.key.product.value == "LINEAR_PERPETUAL"
+            and product.key.native_symbol == symbol
+            and product.effective_at_ns <= as_of_ns
+            and product.observed_at_ns <= as_of_ns
+            and product.available_at_ns <= as_of_ns
+        ]
+        return max(
+            eligible,
+            key=lambda product: (product.effective_at_ns, product.available_at_ns, product.content_hash),
+            default=None,
+        )
+
+    @staticmethod
+    def _read_latest_stream_states(
+        repository: OpsRepository, *, as_of_ns: int,
+    ) -> dict[tuple[str, str], PublicStreamContinuityStateV1]:
+        entries = repository.artifact_entries_by_types(
+            ("PublicStreamContinuityStateV1",), limit=10_000, available_before_ns=as_of_ns,
+        )
+        latest: dict[
+            tuple[str, str],
+            tuple[int, int, int, int, int, int, str, PublicStreamContinuityStateV1],
+        ] = {}
+        for entry in entries:
+            body = entry.metadata.get("state")
+            if not isinstance(body, Mapping):
+                continue
+            try:
+                state = PublicStreamContinuityStateV1.from_dict(json_value(body))
+            except (ArithmeticError, KeyError, TypeError, ValueError):
+                continue
+            if entry.artifact_ref != state.content_hash or entry.content_hash != state.content_hash:
+                continue
+            identity = (state.instrument.native_symbol, state.channel)
+            old = latest.get(identity)
+            candidate = (
+                state.last_available_at_ns or 0,
+                state.recovery_epoch,
+                state.observed_trade_count,
+                state.last_transport_receipt_at_ns or 0,
+                state.gap_count,
+                entry.available_at_ns,
+                entry.artifact_ref,
+                state,
+            )
+            if old is None or candidate[:7] > old[:7]:
+                latest[identity] = candidate
+        return {identity: value[-1] for identity, value in latest.items()}
+
+    def _persist_stream_decision(
+        self,
+        repository: OpsRepository,
+        observation: PublicStreamObservationV1,
+        decision: Any,
+    ) -> None:
+        # Raw frames/trades and ordinary accepted transitions are archived in
+        # their bounded data archives. SQLite receives only recovery and fault
+        # observations, avoiding one ops row per high-frequency market frame.
+        classification = getattr(decision.classification, "value", str(decision.classification))
+        if classification not in {
+            "GAP_RECORDED", "RECOVERY_EPOCH_STARTED", "CONFLICTING_TRADE_ID",
+            "TRADE_ID_HISTORY_UNAVAILABLE", "OUT_OF_ORDER_TRADE_EVENT_TIME",
+            "OUT_OF_ORDER_TRADE_RECEIPT_TIME", "OUT_OF_ORDER_RECEIPT_TIME",
+        }:
+            return
+        body = {"observation": observation.to_dict(), "decision": decision.to_dict()}
+        ref = sha256_json({"artifact_type": "PublicStreamContinuityEventV1", "body": body})
+        repository.register_artifact(ArtifactIndexEntryV2(
+            ref, "PublicStreamContinuityEventV1", ref,
+            observation.available_at_ns, observation.available_at_ns, body,
+        ))
+
+    def _apply_stream_observation(
+        self,
+        repository: OpsRepository,
+        tracker: PublicStreamContinuityTrackerV1,
+        observation: PublicStreamObservationV1,
+        *,
+        durable_prior_payload_hash: str | None = None,
+    ) -> Any:
+        decision = tracker.apply(observation, durable_prior_payload_hash=durable_prior_payload_hash)
+        self._persist_stream_decision(repository, observation, decision)
+        return decision
+
+    def _restore_public_stream_state(
+        self, repository: OpsRepository, collector: PublicCollectorV2, *, now_ns: int,
+    ) -> None:
+        if self.public_stream_source is None:
+            return
+        if tuple(getattr(self.public_stream_source, "topics", ())) != bybit_btc_eth_linear_topics():
+            raise ValueError("S32 public stream source must use exactly the explicit four Bybit BTC/ETH topics")
+        if getattr(self.public_stream_source, "venue", None) is not None and str(
+            getattr(self.public_stream_source.venue, "value", self.public_stream_source.venue)
+        ) != "BYBIT":
+            raise ValueError("S32 public stream source must be Bybit public linear")
+        recovery = cast(ProductionCollectorRecoveryV1, self._collector_recovery)
+        self._stream_run_epoch = recovery.recovery_epoch_ref
+        self._stream_archive = L2FrameArchiveV2(Path(repository.path).parent / "ops-l2-frames", repository)
+        prior_states = self._read_latest_stream_states(repository, as_of_ns=now_ns)
+        products = {
+            symbol: product
+            for symbol in ("BTCUSDT", "ETHUSDT")
+            if (product := self._latest_stream_product(collector.registry, symbol, as_of_ns=now_ns)) is not None
+        }
+        self._stream_products = products
+        for product in products.values():
+            for channel in (f"orderbook.50.{product.key.native_symbol}", f"publicTrade.{product.key.native_symbol}"):
+                key = self._stream_feed_key(product.key, BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel)
+                prior = prior_states.get((product.key.native_symbol, channel))
+                exact_prior = bool(
+                    prior is not None
+                    and prior.instrument == product.key
+                    and prior.metadata_ref == product.metadata_ref
+                    and prior.source_id == BYBIT_PUBLIC_WS_SOURCE_ID_V1
+                )
+                if exact_prior:
+                    tracker = PublicStreamContinuityTrackerV1.from_state(cast(PublicStreamContinuityStateV1, prior))
+                    epoch_id = f"{self._stream_run_epoch}:controller"
+                    transition = PublicStreamObservationV1.transport(
+                        instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
+                        metadata_ref=product.metadata_ref, epoch_id=epoch_id,
+                        kind=PublicStreamObservationKindV1.CONTROLLER_RESTART,
+                        observed_at_ns=max(now_ns, tracker.state.last_available_at_ns or 0),
+                    )
+                    self._apply_stream_observation(repository, tracker, transition)
+                    book = (
+                        SequenceValidBookV2(
+                            instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                            channel=channel, sequence_semantics="BYBIT_U",
+                        ) if channel.startswith("orderbook.") else None
+                    )
+                    if book is not None:
+                        book.reconnect(max(now_ns, tracker.state.last_available_at_ns or now_ns))
+                    self._stream_books[key] = book
+                elif prior is not None and prior.source_id == BYBIT_PUBLIC_WS_SOURCE_ID_V1:
+                    old_tracker = PublicStreamContinuityTrackerV1.from_state(prior)
+                    epoch_id = f"{self._stream_run_epoch}:metadata"
+                    tracker, transition = old_tracker.rebind_metadata(
+                        instrument=product.key, metadata_ref=product.metadata_ref,
+                        epoch_id=epoch_id, observed_at_ns=max(now_ns, prior.last_available_at_ns or 0),
+                    )
+                    self._apply_stream_observation(repository, tracker, transition)
+                    book = (
+                        SequenceValidBookV2(
+                            instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                            channel=channel, sequence_semantics="BYBIT_U",
+                        ) if channel.startswith("orderbook.") else None
+                    )
+                    if book is not None:
+                        book.reconnect(max(now_ns, tracker.state.last_available_at_ns or now_ns))
+                    self._stream_books[key] = book
+                else:
+                    tracker = PublicStreamContinuityTrackerV1(
+                        instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                        channel=channel, metadata_ref=product.metadata_ref,
+                        epoch_id=f"{self._stream_run_epoch}:pending",
+                        prior_recovery_ref=prior.current_recovery_ref if prior is not None else None,
+                    )
+                    self._stream_books[key] = SequenceValidBookV2(
+                        instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                        channel=channel, sequence_semantics="BYBIT_U",
+                    )
+                    self._stream_first_connection_allowed.add(key)
+                self._stream_trackers[key] = tracker
+                self._stream_connection_epochs[key] = None
+                self._persist_stream_state(repository, tracker.to_state(), available_at_ns=now_ns)
+
+    @staticmethod
+    def _persist_stream_state(
+        repository: OpsRepository,
+        state: PublicStreamContinuityStateV1,
+        *,
+        available_at_ns: int,
+    ) -> None:
+        """Index one immutable continuity snapshot once, including empty restart markers."""
+        ref = state.content_hash
+        existing = repository.get_artifact(ref)
+        if existing is not None:
+            if (existing.artifact_type != "PublicStreamContinuityStateV1"
+                    or existing.content_hash != ref
+                    or json_value(existing.metadata.get("state")) != state.to_dict()):
+                raise ValueError("stored public stream continuity state identity conflicts")
+            return
+        available = max(available_at_ns, state.last_available_at_ns or 0)
+        repository.register_artifact(ArtifactIndexEntryV2(
+            ref, "PublicStreamContinuityStateV1", ref, available, available,
+            {"state": state.to_dict()},
+        ))
+
+    def _register_refreshed_stream_products(self, repository: OpsRepository, snapshot: Any) -> None:
+        del snapshot
+        products = getattr(self.public_source, "current_products", ())
+        if callable(products):
+            products = products()
+        if not isinstance(products, (list, tuple)):
+            return
+        recovery = cast(ProductionCollectorRecoveryV1, self._collector_recovery)
+        for product in products:
+            if not isinstance(product, ProductContractV2):
+                continue
+            if (product.key.venue.value != "BYBIT" or product.key.environment.value != "MAINNET"
+                    or product.key.product.value != "LINEAR_PERPETUAL"
+                    or product.key.native_symbol not in {"BTCUSDT", "ETHUSDT"}):
+                self._stream_metadata_errors.add("OUT_OF_SCOPE_POINT_IN_TIME_METADATA")
+                continue
+            if product.available_at_ns > max(self.clock_ns(), recovery.collector.clock_ns()):
+                # The future contract remains unavailable to this controller cutoff.
+                continue
+            try:
+                recovery.collector.registry.register(product)
+                repository.register_artifact(ArtifactIndexEntryV2(
+                    product.content_hash, "ProductContractV2", product.content_hash,
+                    product.observed_at_ns, product.available_at_ns, {"product": product.to_dict()},
+                ))
+            except (ValueError, TypeError):
+                self._stream_metadata_errors.add("CONFLICTING_OR_UNSAFE_METADATA_REVISION")
+
+    def _connection_epoch_id(self, attempt: int | None) -> str:
+        suffix = f"connection:{attempt}" if attempt is not None and attempt > 0 else "pending"
+        return f"{self._stream_run_epoch}:{suffix}"
+
+    def _ensure_stream_tracker(
+        self,
+        repository: OpsRepository,
+        product: ProductContractV2,
+        channel: str,
+        *,
+        epoch_number: int | None,
+        available_at_ns: int,
+    ) -> tuple[tuple[str, str, str], PublicStreamContinuityTrackerV1, SequenceValidBookV2 | None]:
+        key = self._stream_feed_key(product.key, BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel)
+        tracker = self._stream_trackers.get(key)
+        if tracker is None:
+            previous_item = next((
+                (existing_key, existing)
+                for existing_key, existing in reversed(tuple(self._stream_trackers.items()))
+                if existing.state.instrument.native_symbol == product.key.native_symbol
+                and existing.state.channel == channel
+                and existing.state.source_id == BYBIT_PUBLIC_WS_SOURCE_ID_V1
+            ), None)
+            epoch_id = self._connection_epoch_id(epoch_number)
+            book: SequenceValidBookV2 | None
+            if previous_item is not None:
+                previous_key, previous = previous_item
+                tracker, observation = previous.rebind_metadata(
+                    instrument=product.key, metadata_ref=product.metadata_ref,
+                    epoch_id=epoch_id, observed_at_ns=available_at_ns,
+                )
+                self._apply_stream_observation(repository, tracker, observation)
+                book = SequenceValidBookV2(
+                    instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                    channel=channel, sequence_semantics="BYBIT_U",
+                )
+                book.reconnect(available_at_ns)
+                self._stream_books[key] = book
+                self._stream_trackers.pop(previous_key, None)
+                self._stream_books.pop(previous_key, None)
+                self._stream_connection_epochs.pop(previous_key, None)
+                self._stream_disconnect_seen.discard(previous_key)
+                self._stream_first_connection_allowed.discard(previous_key)
+            else:
+                tracker = PublicStreamContinuityTrackerV1(
+                    instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                    channel=channel, metadata_ref=product.metadata_ref, epoch_id=epoch_id,
+                )
+                book = (
+                    SequenceValidBookV2(instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                                        channel=channel, sequence_semantics="BYBIT_U")
+                    if channel.startswith("orderbook.") else None
+                )
+                self._stream_books[key] = book
+            self._stream_trackers[key] = tracker
+            self._stream_connection_epochs[key] = epoch_number
+            return key, tracker, self._stream_books.get(key)
+
+        if tracker.state.metadata_ref != product.metadata_ref:
+            tracker, observation = tracker.rebind_metadata(
+                instrument=product.key, metadata_ref=product.metadata_ref,
+                epoch_id=self._connection_epoch_id(epoch_number), observed_at_ns=available_at_ns,
+            )
+            self._apply_stream_observation(repository, tracker, observation)
+            book = (
+                SequenceValidBookV2(
+                    instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                    channel=channel, sequence_semantics="BYBIT_U",
+                ) if channel.startswith("orderbook.") else None
+            )
+            if book is not None:
+                book.reconnect(available_at_ns)
+            self._stream_trackers[key] = tracker
+            self._stream_books[key] = book
+            self._stream_connection_epochs[key] = epoch_number
+            return key, tracker, book
+
+        active_number = self._stream_connection_epochs.get(key)
+        if epoch_number is not None and active_number != epoch_number:
+            if key in self._stream_first_connection_allowed and tracker.state.last_available_at_ns is None:
+                tracker = PublicStreamContinuityTrackerV1(
+                    instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                    channel=channel, metadata_ref=product.metadata_ref,
+                    epoch_id=self._connection_epoch_id(epoch_number),
+                )
+                self._stream_trackers[key] = tracker
+                self._stream_first_connection_allowed.discard(key)
+            else:
+                transition = PublicStreamObservationV1.transport(
+                    instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
+                    metadata_ref=product.metadata_ref, epoch_id=self._connection_epoch_id(epoch_number),
+                    kind=PublicStreamObservationKindV1.RECONNECT,
+                    observed_at_ns=max(available_at_ns, tracker.state.last_available_at_ns or 0),
+                )
+                self._apply_stream_observation(repository, tracker, transition)
+                book = self._stream_books.get(key)
+                if book is not None:
+                    book.reconnect(max(available_at_ns, tracker.state.last_available_at_ns or available_at_ns))
+            self._stream_connection_epochs[key] = epoch_number
+        return key, tracker, self._stream_books.get(key)
+
+    def _collect_public_stream_evidence(self, repository: OpsRepository, *, now_ns: int) -> None:
+        if self.public_stream_source is None or self._stream_archive is None:
+            return
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        drain = getattr(self.public_stream_source, "drain", None)
+        get_status = getattr(self.public_stream_source, "status", None)
+        if not callable(drain) or not callable(get_status):
+            raise ValueError("opt-in public stream source must expose bounded drain and status")
+        frames = tuple(drain(max_items=PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1))
+        if len(frames) > PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 or any(
+            not isinstance(frame, CapturedPublicFrameV2) for frame in frames
+        ):
+            raise ValueError("public stream source returned a frame batch outside the controller bound")
+        status = get_status()
+        attempt_count = getattr(status, "attempt_count", 0)
+        if type(attempt_count) is not int or attempt_count < 0:
+            attempt_count = 0
+        handoff = getattr(status, "handoff", None)
+        if handoff is None:
+            raise ValueError("public stream source status is missing its bounded handoff report")
+        disconnect_count = getattr(handoff, "disconnect_count", 0)
+        disconnect_at = getattr(handoff, "last_disconnect_at_ns", None)
+        disconnect_changed = type(disconnect_count) is int and disconnect_count > self._stream_disconnect_count
+        self._stream_disconnect_seen.clear()
+        ingested_at_ns = max(
+            now_ns, timestamp(self.clock_ns(), field="public stream ingestion clock"),
+            max((frame.available_at_ns for frame in frames), default=now_ns),
+            getattr(handoff, "last_activity_at_ns", None) or 0,
+        )
+        registry = collector.registry
+        raw_archive_groups: dict[tuple[str, str, str], list[L2RawFrameV2]] = {}
+        for original_frame in frames:
+            topic_identity = self._stream_topic_identity(original_frame.channel)
+            if (original_frame.venue.value != "BYBIT" or original_frame.source_id != BYBIT_PUBLIC_WS_SOURCE_ID_V1
+                    or topic_identity is None):
+                self._persist_unbound_stream_frame(repository, original_frame, ingested_at_ns,
+                                                   reason="FRAME_SOURCE_OR_TOPIC_OUTSIDE_S32_SCOPE")
+                continue
+            symbol, channel = topic_identity
+            product = self._latest_stream_product(registry, symbol, as_of_ns=original_frame.received_at_ns)
+            if product is None:
+                self._persist_unbound_stream_frame(repository, original_frame, ingested_at_ns,
+                                                   reason="POINT_IN_TIME_METADATA_UNAVAILABLE")
+                continue
+            epoch_number = original_frame.connection_epoch if original_frame.connection_epoch is not None else attempt_count
+            prior_feed_key = self._stream_feed_key(product.key, BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel)
+            prior_tracker = self._stream_trackers.get(prior_feed_key)
+            if (prior_tracker is not None and disconnect_changed
+                    and prior_feed_key not in self._stream_disconnect_seen
+                    and epoch_number != self._stream_connection_epochs.get(prior_feed_key)
+                    and disconnect_at is not None and original_frame.received_at_ns >= disconnect_at):
+                disconnect_observation = PublicStreamObservationV1.transport(
+                    instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
+                    metadata_ref=product.metadata_ref, epoch_id=prior_tracker.state.epoch_id,
+                    kind=PublicStreamObservationKindV1.DISCONNECT,
+                    observed_at_ns=max(disconnect_at, prior_tracker.state.last_available_at_ns or 0),
+                    available_at_ns=ingested_at_ns,
+                )
+                self._apply_stream_observation(repository, prior_tracker, disconnect_observation)
+                prior_book = self._stream_books.get(prior_feed_key)
+                if prior_book is not None:
+                    prior_book.disconnect(disconnect_observation.available_at_ns)
+                self._stream_disconnect_seen.add(prior_feed_key)
+            feed_key, tracker, book = self._ensure_stream_tracker(
+                repository, product, channel, epoch_number=epoch_number if epoch_number > 0 else None,
+                available_at_ns=ingested_at_ns,
+            )
+            frame = replace(original_frame, available_at_ns=max(original_frame.available_at_ns, ingested_at_ns))
+            health, health_epoch_id = self._stream_health_for_frame(
+                repository, tracker, product, frame, status=status, handoff=handoff,
+                attempt_count=attempt_count, available_at_ns=ingested_at_ns,
+            )
+            try:
+                frame_observation = PublicStreamObservationV1.from_frame(
+                    frame, instrument=product.key, metadata_ref=product.metadata_ref,
+                    epoch_id=tracker.state.epoch_id, source_health_ref=health.content_hash,
+                    source_health_epoch_id=health_epoch_id, persisted_at_ns=ingested_at_ns,
+                )
+            except ValueError:
+                malformed = PublicStreamObservationV1.transport(
+                    instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
+                    metadata_ref=product.metadata_ref, epoch_id=tracker.state.epoch_id,
+                    kind=PublicStreamObservationKindV1.MALFORMED_FRAME,
+                    observed_at_ns=frame.received_at_ns, available_at_ns=ingested_at_ns,
+                    reason_code="FRAME_JSON_OR_TOPIC_INVALID",
+                    source_health_ref=health.content_hash,
+                    source_health_epoch_id=health_epoch_id,
+                )
+                self._apply_stream_observation(repository, tracker, malformed)
+                raw_frame = raw_archive_record(
+                    frame, instrument=product.key,
+                    frame_type=f"MALFORMED_FRAME_{frame.raw_payload_hash[:16]}",
+                    sequence_semantics=("BYBIT_U" if channel.startswith("orderbook.")
+                                        else "BYBIT_TRADE_ID_IS_IDENTITY_NOT_REPLAY_CURSOR"),
+                    source_health="INCOMPLETE_SNAPSHOT", source_health_ref=health.content_hash,
+                )
+                raw_archive_groups.setdefault(feed_key, []).append(raw_frame)
+                continue
+            self._apply_stream_observation(repository, tracker, frame_observation)
+
+            event: L2SnapshotV2 | L2DeltaV2 | L2SequenceFaultV2 | None = None
+            parsed_trades: tuple[Any, ...] = ()
+            trade_rows: list[Mapping[str, Any]] = []
+            try:
+                if channel.startswith("orderbook."):
+                    event = parse_bybit_orderbook_frame(
+                        frame, instrument=product.key, declared_depth=50,
+                        source_health=health.state.value, source_health_ref=health.content_hash,
+                        processed_at_ns=ingested_at_ns,
+                    )
+                else:
+                    payload = json.loads(frame.raw_payload_bytes)
+                    rows = payload.get("data") if isinstance(payload, Mapping) else None
+                    if not isinstance(rows, list) or len(rows) > PUBLIC_STREAM_MAX_TRADES_PER_FRAME_V1:
+                        raise ValueError("TRADE_FRAME_ROW_LIMIT_OR_SHAPE")
+                    if any(not isinstance(row, Mapping) for row in rows):
+                        raise ValueError("TRADE_FRAME_ROW_SHAPE")
+                    trade_rows = list(rows)
+                    parsed_trades = parse_bybit_trades(
+                        frame, instrument=product.key, source_health=health.state.value,
+                        source_health_ref=health.content_hash, processed_at_ns=ingested_at_ns,
+                    )
+                    if len(parsed_trades) != len(trade_rows):
+                        raise ValueError("TRADE_TRANSLATION_COUNT_MISMATCH")
+            except (ArithmeticError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                malformed = PublicStreamObservationV1.transport(
+                    instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
+                    metadata_ref=product.metadata_ref, epoch_id=tracker.state.epoch_id,
+                    kind=PublicStreamObservationKindV1.MALFORMED_FRAME,
+                    observed_at_ns=ingested_at_ns,
+                    reason_code=(str(exc) if str(exc).replace("_", "").isalnum()
+                                 and len(str(exc)) <= 80 else "MALFORMED_PUBLIC_FRAME_UNPARSEABLE"),
+                    source_health_ref=health.content_hash,
+                    source_health_epoch_id=health_epoch_id,
+                )
+                self._apply_stream_observation(repository, tracker, malformed)
+                event = None
+                parsed_trades = ()
+                trade_rows = []
+
+            if isinstance(event, L2SequenceFaultV2):
+                tracker_observation = PublicStreamObservationV1.from_book_event(
+                    event, metadata_ref=product.metadata_ref, epoch_id=tracker.state.epoch_id,
+                    persisted_at_ns=ingested_at_ns,
+                )
+                self._apply_stream_observation(repository, tracker, tracker_observation)
+                if book is not None:
+                    book.apply_fault(event)
+                raw_frame = raw_archive_record(
+                    frame, instrument=product.key, frame_type="SEQUENCE_FAULT",
+                    sequence_semantics="BYBIT_U", event_at_ns=event.event_at_ns,
+                    source_health=event.source_health, source_health_ref=event.source_health_ref,
+                )
+            elif isinstance(event, (L2SnapshotV2, L2DeltaV2)):
+                tracker_observation = PublicStreamObservationV1.from_book_event(
+                    event, metadata_ref=product.metadata_ref, epoch_id=tracker.state.epoch_id,
+                    persisted_at_ns=ingested_at_ns,
+                )
+                self._apply_stream_observation(repository, tracker, tracker_observation)
+                if book is not None:
+                    if isinstance(event, L2SnapshotV2):
+                        book.apply_snapshot(event)
+                    else:
+                        book.apply_delta(event)
+                raw_frame = raw_archive_record(
+                    frame, instrument=product.key,
+                    frame_type="SNAPSHOT" if isinstance(event, L2SnapshotV2) else "DELTA",
+                    sequence_semantics="BYBIT_U", last_update_id=event.last_update_id,
+                    event_at_ns=event.event_at_ns, source_health=event.source_health,
+                    source_health_ref=event.source_health_ref,
+                )
+            elif channel.startswith("publicTrade."):
+                trade_event_times = [trade.event_at_ns for trade in parsed_trades if trade.event_at_ns is not None]
+                raw_frame = raw_archive_record(
+                    frame, instrument=product.key,
+                    frame_type=f"TRADE_FRAME_{frame.raw_payload_hash[:16]}",
+                    sequence_semantics="BYBIT_TRADE_ID_IS_IDENTITY_NOT_REPLAY_CURSOR",
+                    event_at_ns=max(trade_event_times, default=None),
+                    source_health=health.state.value, source_health_ref=health.content_hash,
+                )
+                for trade, row in zip(parsed_trades, trade_rows, strict=True):
+                    if not trade.trade_id:
+                        malformed_trade = PublicStreamObservationV1.transport(
+                            instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
+                            metadata_ref=product.metadata_ref, epoch_id=tracker.state.epoch_id,
+                            kind=PublicStreamObservationKindV1.MALFORMED_FRAME,
+                            observed_at_ns=ingested_at_ns, reason_code="BYBIT_TRADE_ID_MISSING",
+                        )
+                        self._apply_stream_observation(repository, tracker, malformed_trade)
+                        continue
+                    payload_bytes = canonical_json(row).encode("utf-8")
+                    raw_observation = RawObservationV2.build(
+                        instrument_revision=product.key.contract_revision,
+                        source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, event_type="TRADE",
+                        event_at_ns=trade.event_at_ns, published_at_ns=None,
+                        received_at_ns=frame.received_at_ns, ingested_at_ns=ingested_at_ns,
+                        available_at_ns=max(frame.available_at_ns, ingested_at_ns),
+                        translation_version="bybit-public-ws-trade-v1", payload=payload_bytes,
+                        quality_flags=("TRADE_COMPLETENESS_UNPROVEN",),
+                        sequence=str(trade.trade_id),
+                    )
+                    observation = PublicStreamObservationV1.from_trade(
+                        trade, metadata_ref=product.metadata_ref, epoch_id=tracker.state.epoch_id,
+                        persisted_at_ns=ingested_at_ns, exact_trade_payload_hash=raw_observation.raw_payload_hash,
+                    )
+                    index_ref = sha256_json({
+                        "artifact_type": "PublicStreamTradeObservationIndexV1",
+                        "record_id": raw_observation.record_id,
+                    })
+                    prior_entry = repository.get_artifact(index_ref)
+                    prior_observation = collector.store.get(raw_observation.record_id)
+                    durable_hash = (
+                        str(prior_entry.metadata.get("raw_payload_hash"))
+                        if prior_entry is not None and isinstance(prior_entry.metadata.get("raw_payload_hash"), str)
+                        else prior_observation.raw_payload_hash if prior_observation is not None else None
+                    )
+                    self._apply_stream_observation(
+                        repository, tracker, observation,
+                        durable_prior_payload_hash=durable_hash,
+                    )
+                    collector.ingest(
+                        raw_observation, raw_payload=payload_bytes, instrument_key=product.key,
+                        update_source_health=False, index_as_public_observation=False,
+                        retain_in_memory=False,
+                    )
+            else:
+                raw_frame = raw_archive_record(
+                    frame, instrument=product.key,
+                    frame_type=f"MALFORMED_FRAME_{frame.raw_payload_hash[:16]}",
+                    sequence_semantics=("BYBIT_U" if channel.startswith("orderbook.")
+                                        else "BYBIT_TRADE_ID_IS_IDENTITY_NOT_REPLAY_CURSOR"),
+                    source_health="INCOMPLETE_SNAPSHOT",
+                )
+            raw_archive_groups.setdefault(feed_key, []).append(raw_frame)
+
+        self._write_stream_frame_archives(repository, raw_archive_groups)
+        collector.flush_archive()
+        status_epoch = self._connection_epoch_id(attempt_count if attempt_count > 0 else None)
+        overflowed = bool(getattr(handoff, "overflowed", False))
+        connected = bool(getattr(handoff, "connected", False)) and getattr(status, "state", None) == "RUNNING"
+        last_error = getattr(status, "last_error_code", None) or getattr(handoff, "last_error_code", None)
+        all_keys = tuple(self._stream_trackers)
+        for key in all_keys:
+            tracker = self._stream_trackers[key]
+            instrument = tracker.state.instrument
+            channel = tracker.state.channel
+            if disconnect_changed and key not in self._stream_disconnect_seen:
+                has_current_epoch_frame = any(
+                    frame.connection_epoch == attempt_count and frame.channel == channel
+                    and (topic_identity := self._stream_topic_identity(frame.channel)) is not None
+                    and topic_identity[0] == instrument.native_symbol
+                    for frame in frames
+                )
+                if not has_current_epoch_frame or not connected:
+                    disconnect_observation = PublicStreamObservationV1.transport(
+                        instrument=instrument, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
+                        metadata_ref=tracker.state.metadata_ref, epoch_id=tracker.state.epoch_id,
+                        kind=PublicStreamObservationKindV1.DISCONNECT,
+                        observed_at_ns=max(disconnect_at or ingested_at_ns,
+                                           tracker.state.last_available_at_ns or 0),
+                        available_at_ns=max(ingested_at_ns, disconnect_at or 0),
+                    )
+                    self._apply_stream_observation(repository, tracker, disconnect_observation)
+                    book = self._stream_books.get(key)
+                    if book is not None:
+                        book.disconnect(disconnect_observation.observed_at_ns)
+                self._stream_disconnect_seen.add(key)
+            if overflowed and not self._stream_overflow_seen:
+                overflow_observation = PublicStreamObservationV1.transport(
+                    instrument=instrument, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
+                    metadata_ref=tracker.state.metadata_ref, epoch_id=tracker.state.epoch_id,
+                    kind=PublicStreamObservationKindV1.QUEUE_OVERFLOW,
+                    observed_at_ns=max(ingested_at_ns, tracker.state.last_available_at_ns or 0),
+                )
+                self._apply_stream_observation(repository, tracker, overflow_observation)
+                book = self._stream_books.get(key)
+                if book is not None:
+                    book.disconnect(overflow_observation.observed_at_ns)
+            if last_error and last_error != self._stream_last_error_code and not overflowed:
+                error_observation = PublicStreamObservationV1.transport(
+                    instrument=instrument, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
+                    metadata_ref=tracker.state.metadata_ref, epoch_id=tracker.state.epoch_id,
+                    kind=PublicStreamObservationKindV1.CONNECTION_ERROR,
+                    observed_at_ns=max(ingested_at_ns, tracker.state.last_available_at_ns or 0),
+                    reason_code=(last_error if last_error.replace("_", "").isalnum()
+                                 and len(last_error) <= 80 else "PUBLIC_STREAM_CONNECTION_ERROR"),
+                )
+                self._apply_stream_observation(repository, tracker, error_observation)
+                book = self._stream_books.get(key)
+                if book is not None:
+                    book.disconnect(error_observation.observed_at_ns)
+        self._stream_disconnect_count = disconnect_count if type(disconnect_count) is int else self._stream_disconnect_count
+        self._stream_overflow_seen = self._stream_overflow_seen or overflowed
+        self._stream_last_error_code = last_error
+
+        report_as_of = max(ingested_at_ns, now_ns, timestamp(self.clock_ns(), field="stream report clock"))
+        for key, tracker in tuple(self._stream_trackers.items()):
+            product = self._latest_stream_product(registry, tracker.state.instrument.native_symbol,
+                                                  as_of_ns=report_as_of)
+            channel = tracker.state.channel
+            active_epoch_matches = tracker.state.epoch_id == status_epoch
+            recent_receipt = bool(
+                tracker.state.last_transport_receipt_at_ns is not None
+                and tracker.state.last_transport_receipt_at_ns <= report_as_of
+                and report_as_of - tracker.state.last_transport_receipt_at_ns <= PUBLIC_STREAM_STALE_NS_V1
+            )
+            if overflowed:
+                state = PublicSourceStateV2.INCOMPLETE_SNAPSHOT
+                details = "bounded WebSocket queue overflowed; observed local loss"
+            elif not connected:
+                state = PublicSourceStateV2.DISCONNECTED
+                details = "public WebSocket is not connected at the controller cutoff"
+            elif not active_epoch_matches or not recent_receipt:
+                state = PublicSourceStateV2.STALE
+                details = "channel receipt is absent, stale, or belongs to a different connection epoch"
+            else:
+                state = PublicSourceStateV2.HEALTHY_CURRENT
+                details = "active public WebSocket epoch and channel receipt passed the local freshness bound"
+            health_observed = max(
+                now_ns,
+                tracker.state.last_transport_receipt_at_ns or 0,
+                getattr(handoff, "last_activity_at_ns", None) or 0,
+            )
+            health_body = {
+                "version": "PUBLIC_STREAM_SOURCE_HEALTH_V1",
+                "source_id": BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                "instrument": tracker.state.instrument.to_dict(),
+                "channel": channel,
+                "metadata_ref": tracker.state.metadata_ref,
+                "epoch_id": tracker.state.epoch_id,
+                "observed_at_ns": health_observed,
+                "available_at_ns": report_as_of,
+                "state": state.value,
+                "details": details,
+                "connection_attempt": attempt_count,
+                "reconnect_count": getattr(status, "reconnect_count", 0),
+                "disconnect_count": disconnect_count,
+                "last_disconnect_at_ns": disconnect_at,
+                "last_heartbeat_at_ns": getattr(handoff, "last_heartbeat_at_ns", None),
+                "queue_items": getattr(handoff, "queue_items", 0),
+                "queue_bytes": getattr(handoff, "queue_bytes", 0),
+                "queue_capacity_items": getattr(handoff, "max_queue_items", 0),
+                "queue_capacity_bytes": getattr(handoff, "max_queue_bytes", 0),
+                "high_water_items": getattr(handoff, "high_water_items", 0),
+                "high_water_bytes": getattr(handoff, "high_water_bytes", 0),
+                "overflowed": overflowed,
+                "backpressure_observed": bool(getattr(handoff, "backpressure", False)),
+                "producer_state": str(getattr(status, "state", "UNKNOWN")),
+                "last_error_code": last_error,
+                "reason_codes": sorted(self._stream_metadata_errors),
+            }
+            health = PublicSourceHealthV2(
+                BYBIT_PUBLIC_WS_SOURCE_ID_V1, health_observed, report_as_of, state,
+                sha256_json(health_body), details,
+            )
+            repository.register_artifact(ArtifactIndexEntryV2(
+                health.content_hash, "PublicStreamSourceHealthV1", health.content_hash,
+                report_as_of, report_as_of, {"health": health.to_dict(), "transport": health_body},
+            ))
+            book = self._stream_books.get(key)
+            report = build_public_stream_continuity_report(
+                tracker, as_of_ns=report_as_of, source_health=health,
+                source_health_epoch_id=status_epoch if active_epoch_matches else None,
+                metadata=product, max_source_health_age_ns=PUBLIC_STREAM_STALE_NS_V1,
+                max_metadata_age_ns=PUBLIC_STREAM_METADATA_MAX_AGE_NS_V1,
+                book=book if channel.startswith("orderbook.") else None,
+                book_metadata_ref=tracker.state.metadata_ref if book is not None else None,
+            )
+            state_snapshot = tracker.to_state()
+            state_ref = state_snapshot.content_hash
+            self._persist_stream_state(repository, state_snapshot, available_at_ns=report_as_of)
+            repository.register_artifact(ArtifactIndexEntryV2(
+                report.content_hash, "PublicStreamContinuityReportV1", report.content_hash,
+                report_as_of, report_as_of,
+                {"report": report.to_dict(), "state_ref": state_ref,
+                 "source_health_ref": health.content_hash,
+                 "transport": health_body},
+            ))
+        for symbol in self._stream_products:
+            product = self._stream_products[symbol]
+            if self._latest_stream_product(registry, symbol, as_of_ns=report_as_of) is None:
+                self._persist_metadata_gate(repository, product, report_as_of,
+                                            "NO_POINT_IN_TIME_METADATA_FOR_ACTIVE_CUTOFF")
+
+    def _stream_health_for_frame(
+        self,
+        repository: OpsRepository,
+        tracker: PublicStreamContinuityTrackerV1,
+        product: ProductContractV2,
+        frame: CapturedPublicFrameV2,
+        *,
+        status: Any,
+        handoff: Any,
+        attempt_count: int,
+        available_at_ns: int,
+    ) -> tuple[PublicSourceHealthV2, str]:
+        frame_epoch_id = self._connection_epoch_id(frame.connection_epoch or attempt_count or None)
+        active = bool(
+            getattr(handoff, "connected", False)
+            and getattr(status, "state", None) == "RUNNING"
+            and not getattr(handoff, "overflowed", False)
+            and frame.connection_epoch is not None
+            and frame.connection_epoch == attempt_count
+        )
+        health_state = PublicSourceStateV2.HEALTHY_CURRENT if active else PublicSourceStateV2.INCOMPLETE_SNAPSHOT
+        details = ("frame belongs to the active connection attempt" if active
+                   else "frame connection epoch is not proven to be the active healthy attempt")
+        body = {
+            "version": "PUBLIC_STREAM_FRAME_HEALTH_V1", "source_id": BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+            "instrument_hash": product.key.content_hash, "channel": frame.channel,
+            "metadata_ref": product.metadata_ref, "epoch_id": frame_epoch_id,
+            "observed_at_ns": frame.received_at_ns, "available_at_ns": available_at_ns,
+            "state": health_state.value, "frame_ref": frame.raw_payload_hash,
+            "connection_attempt": frame.connection_epoch,
+            "active_attempt": attempt_count, "overflowed": bool(getattr(handoff, "overflowed", False)),
+        }
+        health = PublicSourceHealthV2(
+            BYBIT_PUBLIC_WS_SOURCE_ID_V1, frame.received_at_ns, available_at_ns,
+            health_state, sha256_json(body), details,
+        )
+        repository.register_artifact(ArtifactIndexEntryV2(
+            health.content_hash, "PublicStreamSourceHealthV1", health.content_hash,
+            available_at_ns, available_at_ns, {"health": health.to_dict(), "transport": body},
+        ))
+        return health, frame_epoch_id
+
+    def _persist_unbound_stream_frame(
+        self, repository: OpsRepository, frame: CapturedPublicFrameV2, available_at_ns: int, *, reason: str,
+    ) -> None:
+        available = max(available_at_ns, frame.available_at_ns)
+        body = {
+            "version": "PUBLIC_STREAM_UNBOUND_FRAME_V1", "source_id": frame.source_id,
+            "venue": frame.venue.value, "channel": frame.channel,
+            "raw_payload_hash": frame.raw_payload_hash,
+            "received_at_ns": frame.received_at_ns, "available_at_ns": available,
+            "connection_epoch": frame.connection_epoch, "reason_code": reason,
+            "authority": "ZERO",
+        }
+        ref = sha256_json(body)
+        repository.register_artifact(ArtifactIndexEntryV2(
+            ref, "PublicStreamUnboundFrameV1", ref, available, available, {"frame": body},
+        ))
+
+    def _persist_metadata_gate(
+        self, repository: OpsRepository, product: ProductContractV2, at_ns: int, reason: str,
+    ) -> None:
+        available = max(at_ns, product.available_at_ns)
+        body = {
+            "version": "PUBLIC_STREAM_METADATA_GATE_V1", "symbol": product.key.native_symbol,
+            "instrument": product.key.to_dict(), "metadata_ref": product.metadata_ref,
+            "contract_revision": product.key.contract_revision, "status": product.trading_status.value,
+            "observed_at_ns": product.observed_at_ns, "available_at_ns": available,
+            "reason_code": reason, "qualification_status": "TEST GATE", "authority": "ZERO",
+        }
+        ref = sha256_json(body)
+        repository.register_artifact(ArtifactIndexEntryV2(
+            ref, "PublicStreamMetadataGateV1", ref, available, available, {"gate": body},
+        ))
+
+    def _write_stream_frame_archives(
+        self,
+        repository: OpsRepository,
+        groups: Mapping[tuple[str, str, str], list[L2RawFrameV2]],
+    ) -> None:
+        if self._stream_archive is None:
+            return
+        for _feed_key, incoming_frames in groups.items():
+            unique: dict[str, L2RawFrameV2] = {}
+            for frame in incoming_frames:
+                local_prior = unique.get(frame.record_id)
+                index_ref = sha256_json({"artifact_type": "PublicStreamFrameIndexV1",
+                                         "record_id": frame.record_id})
+                stored = repository.get_artifact(index_ref)
+                prior_hash = (str(stored.metadata.get("raw_payload_hash"))
+                              if stored is not None else None)
+                prior_frame: L2RawFrameV2 | None = local_prior
+                if prior_frame is None and stored is not None and prior_hash != frame.raw_payload_hash:
+                    chunk_id = stored.metadata.get("archive_chunk_id")
+                    if isinstance(chunk_id, str):
+                        for row in self._stream_archive.read_chunk(chunk_id):
+                            if row.get("record_id") == frame.record_id:
+                                prior_frame = _l2_raw_frame_from_archive_row(row)
+                                break
+                if local_prior is not None and local_prior.raw_payload_hash == frame.raw_payload_hash:
+                    continue
+                if stored is not None and prior_hash == frame.raw_payload_hash:
+                    continue
+                if prior_frame is not None and prior_frame.raw_payload_hash != frame.raw_payload_hash:
+                    self._stream_archive.write_conflict_quarantine(prior_frame, frame)
+                    conflict_available = max(prior_frame.available_at_ns, frame.available_at_ns)
+                    conflict = {
+                        "version": "PUBLIC_STREAM_FRAME_CONFLICT_V1",
+                        "record_id": frame.record_id,
+                        "existing_payload_hash": prior_frame.raw_payload_hash,
+                        "incoming_payload_hash": frame.raw_payload_hash,
+                        "instrument_hash": frame.instrument.content_hash,
+                        "source_id": frame.source_id, "channel": frame.channel,
+                        "available_at_ns": conflict_available,
+                        "authority": "ZERO",
+                    }
+                    ref = sha256_json(conflict)
+                    repository.register_artifact(ArtifactIndexEntryV2(
+                        ref, "PublicStreamFrameConflictV1", ref, conflict_available,
+                        conflict_available, {"conflict": conflict},
+                    ))
+                    continue
+                unique[frame.record_id] = frame
+            if not unique:
+                continue
+            chunk_id, _path = self._stream_archive.write_chunk(tuple(unique.values()))
+            entries = []
+            for frame in unique.values():
+                index_ref = sha256_json({"artifact_type": "PublicStreamFrameIndexV1",
+                                         "record_id": frame.record_id})
+                index_body = {
+                    "record_id": frame.record_id,
+                    "instrument": frame.instrument.to_dict(),
+                    "instrument_hash": frame.instrument.content_hash,
+                    "source_id": frame.source_id, "channel": frame.channel,
+                    "frame_type": frame.frame_type,
+                    "event_at_ns": frame.event_at_ns,
+                    "received_at_ns": frame.received_at_ns,
+                    "available_at_ns": frame.available_at_ns,
+                    "raw_payload_hash": frame.raw_payload_hash,
+                    "archive_chunk_id": chunk_id,
+                    "sequence_semantics": frame.sequence_semantics,
+                    "authority": "ZERO",
+                }
+                index_hash = sha256_json(index_body)
+                entries.append(ArtifactIndexEntryV2(
+                    index_ref, "PublicStreamFrameIndexV1", index_hash,
+                    frame.available_at_ns, frame.available_at_ns, index_body,
+                ))
+            repository.register_artifacts(entries)
 
     @staticmethod
     def _public_source_states_as_of(
@@ -2527,6 +3464,59 @@ def create_bybit_public_port() -> ProductionOpsCyclePortV1:
     from ..data.bybit_source import BybitPublicCycleSourceV1
 
     return ProductionOpsCyclePortV1(public_source=BybitPublicCycleSourceV1())
+
+
+def create_bybit_public_ws_port(
+    *,
+    public_source: Any | None = None,
+    public_stream_source: PublicStreamSourceV2 | Any | None = None,
+    clock_ns: Callable[[], int] = time.time_ns,
+) -> ProductionOpsCyclePortV1:
+    """Explicit opt-in Bybit REST plus bounded WebSocket evidence adapter.
+
+    The WebSocket producer starts only when the supervisor calls ``recover``
+    on this port. The normal factory and the S31 REST-only factory are unchanged.
+    """
+    from ..data.bybit_source import BybitPublicCycleSourceV1
+
+    source = public_stream_source or PublicStreamSourceV2(
+        venue=VenueV2.BYBIT,
+        topics=bybit_btc_eth_linear_topics(),
+        source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+    )
+    return ProductionOpsCyclePortV1(
+        public_source=public_source or BybitPublicCycleSourceV1(),
+        public_stream_source=source,
+        clock_ns=clock_ns,
+    )
+
+
+def _l2_raw_frame_from_archive_row(row: Mapping[str, Any]) -> L2RawFrameV2:
+    """Rebuild the exact typed frame needed to quarantine a durable identity conflict."""
+    instrument = row.get("instrument")
+    raw_payload = row.get("raw_payload_bytes")
+    if not isinstance(instrument, Mapping) or not isinstance(raw_payload, (bytes, bytearray, memoryview)):
+        raise ValueError("archived raw frame row is missing its typed instrument or exact bytes")
+    return L2RawFrameV2(
+        instrument=InstrumentKeyV2.from_dict(instrument),
+        source_id=str(row["source_id"]),
+        channel=str(row["channel"]),
+        frame_type=str(row["frame_type"]),
+        raw_payload_bytes=bytes(raw_payload),
+        raw_payload_hash=str(row["raw_payload_hash"]),
+        event_at_ns=int(row["event_at_ns"]) if row.get("event_at_ns") is not None else None,
+        received_at_ns=int(row["received_at_ns"]),
+        available_at_ns=int(row["available_at_ns"]),
+        first_update_id=int(row["first_update_id"]) if row.get("first_update_id") is not None else None,
+        last_update_id=int(row["last_update_id"]) if row.get("last_update_id") is not None else None,
+        previous_update_id=(int(row["previous_update_id"])
+                            if row.get("previous_update_id") is not None else None),
+        sequence_semantics=str(row["sequence_semantics"]),
+        source_health=str(row["source_health"]),
+        availability_class=str(row["availability_class"]),
+        source_health_ref=(str(row["source_health_ref"])
+                           if row.get("source_health_ref") is not None else None),
+    )
 
 
 def decision_event_from_dict(body: Mapping[str, object]) -> OpsDecisionEventV1:
