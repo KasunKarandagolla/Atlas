@@ -1,0 +1,266 @@
+{
+  "session": "033",
+  "objective": "Add deterministic, bounded, restart-safe production of supported MaturedOutcomeV2 artifacts from the immutable decision calendar.",
+  "status_ceiling": "ENGINEERING_PASS",
+  "submission_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW",
+  "economic_status": "NOT_ESTIMABLE",
+  "repository": {
+    "origin": "KasunKarandagolla/Atlas",
+    "starting_branch": "impl/session-032-public-stream-continuity-recovery",
+    "starting_remote_sha": "ccc5a42b30bd43a9ebad05ef2eba9d28c528f135",
+    "tested_s32_implementation_ancestor": "41f0d063efd130b988918953eb22837203e6b3f2",
+    "accepted_s31_ancestor": "cd0cf72fa1dedca765c298a281633ee1b7056614",
+    "implementation_branch": "impl/session-033-continuous-matured-outcome-production",
+    "tested_implementation_sha": "7c7826391184f15de06eef744ddba4c010d4803f",
+    "documentation_commit_sha": null,
+    "documentation_commit_sha_note": "The documentation commit SHA is reported in the final Codex handoff and remote verification; a commit cannot contain its own SHA without changing that SHA.",
+    "merge_performed": false
+  },
+  "authority_documents": [
+    {
+      "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+      "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "read_completely": true
+    },
+    {
+      "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "read_completely": true
+    },
+    {
+      "path": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "read_completely": true
+    },
+    {
+      "path": "ATLAS_72_Hour_Consultation.pdf",
+      "sha256": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e",
+      "read_completely": true,
+      "status": "CONSULTATION_ONLY",
+      "alternate_duration_adopted": false
+    }
+  ],
+  "accepted_economic_claim_floor": {
+    "prospective_shadow_weeks_minimum": 8,
+    "genuinely_matured_opportunities_minimum": 200,
+    "regime_coverage_required": true,
+    "dependence_aware_inference_required": true,
+    "exact_chronology_required": true,
+    "accepted_multiplicity_discipline_required": true,
+    "protected_final_holdout_required": true
+  },
+  "discovery": {
+    "existing_decision_calendar": "DecisionCalendarEntryV2 persistence and index validation already existed.",
+    "existing_outcome_contract": "MaturedOutcomeV2 (MATURED_OUTCOME_V2_V3), its validators, and index_matured_outcome already existed and remain authoritative.",
+    "existing_evidence": [
+      "CandidateActionV2 exact horizon and frozen action identity",
+      "CandidateExpiryEvidenceV2",
+      "DiagnosticTargetEvidenceV2 and predeclared DiagnosticTargetDefinitionV2",
+      "ReplayPathV2 and PolicyPayoffV2 typed relationships",
+      "ActualClosedPositionSourceV2 and ActualActionPositionBindingV2",
+      "action-critic maturity linking to an existing validated outcome"
+    ],
+    "continuous_producer_found_at_start": false,
+    "missing_seam": "No bounded controller-owned maturity coordinator, restart checkpoint, per-decision maturity status, or continuous decision-calendar-to-outcome production path was present.",
+    "duplicate_outcome_schema_created": false,
+    "new_execution_simulator_created": false,
+    "payoff_replay_artifacts_created": false,
+    "action_critic_produces_labels": false,
+    "reviewed_checkpoints": "No Session 033 or newer reviewed checkpoint or outcome producer was found on another branch at preflight."
+  },
+  "implementation": {
+    "changed_files": [
+      "src/atlas/v2/memory/repository.py",
+      "src/atlas/v2/memory/schema.py",
+      "src/atlas/v2/runtime/ops_supervisor.py",
+      "src/atlas/v2/runtime/outcome_maturity.py",
+      "src/atlas/v2/science/outcome_resolution.py",
+      "tests/v2/test_session033_outcome_maturity.py",
+      "tests/v2/test_session033_outcome_resolution.py",
+      "tests/v2/test_session033_outcome_runtime.py"
+    ],
+    "lifecycle": {
+      "pending": "A decision remains PENDING until its exact persisted CandidateActionV2 horizon is reached.",
+      "maturable": "After the exact horizon, the coordinator attempts resolution immediately. The report counts unresolved, horizon-elapsed items as maturable backlog; no separate outcome label is emitted.",
+      "matured": "Only a complete, causal, unambiguous evidence chain accepted by the existing validators is indexed as MaturedOutcomeV2.",
+      "unresolved": "Missing or ambiguous evidence is retained as an append-only OutcomeMaturityStatusV1 and may be retried. It never becomes zero payoff or zero cost.",
+      "censored": "An exact expiry record can produce a value-free CENSORED MaturedOutcomeV2 after its declared horizon.",
+      "unsupported": "No declared candidate/horizon or unsupported target is explicitly retained as lifecycle status without inventing a target."
+    },
+    "outcome_schema": "Existing MaturedOutcomeV2 and index_matured_outcome reused without validator relaxation.",
+    "availability": "Decision, action, diagnostic, replay, actual-close, cost, funding, and source evidence identities are checked and admitted only at their available_at_ns. Outcome availability is no earlier than the resolution time or any required evidence; outcome maturity is no earlier than horizon completion.",
+    "provenance": {
+      "actual": "Requires the exact frozen action, typed actual closed-position source, reconciled execution and account-cash sources, exact action-position/economics observations, quantity/state agreement, and the existing actual binding validator.",
+      "simulated": "Uses only an existing accepted PolicyPayoffV2/ReplayPathV2 chain and the current payoff validator. No replay is generated or improved by S33.",
+      "counterfactual": "Uses only existing replay evidence for declared action outcomes or an exact predeclared diagnostic target. Diagnostic outcomes carry no executable fill or USDT payoff.",
+      "reconstructed_market_as_actual": false
+    },
+    "execution_and_cost_rules": {
+      "no_fill": "Only an exact supported PolicyPayoffV2 or actual binding can establish NO_FILL; absent fill evidence remains unresolved.",
+      "partial_fill": "Uses the exact supported filled quantity and does not score the unfilled remainder.",
+      "full_fill": "Must equal exact requested quantity under existing validators.",
+      "fees": "Required typed fee evidence and recorded fee rows are counted once; missing fee evidence prevents monetary maturity.",
+      "funding": "A cutoff-known funding schedule and exact settlement coverage are required where applicable; sign is preserved and net payoff is gross minus fees plus funding.",
+      "mfe_mae": "Absent because no qualifying exact extrema evidence source exists; no extrema are reconstructed."
+    },
+    "decision_calendar_classes": {
+      "selected": "Retained; terminal executable labels require exact supported action evidence.",
+      "unselected": "Retained; only an exact predeclared diagnostic/counterfactual target can produce a value label.",
+      "rejected": "Retained with original rejection identity; no action fill is fabricated.",
+      "no_candidate": "Retained as unsupported when there is no exact declared candidate horizon.",
+      "selection_not_estimable": "Retained with original selection state and explicit lifecycle status.",
+      "admission_no_trade": "Original admission state is copied; any monetary result requires existing supported replay/actual evidence.",
+      "admission_not_estimable": "Original admission state is copied; any monetary result requires existing supported replay/actual evidence.",
+      "expired": "Retained; exact expiry evidence may produce value-free CENSORED outcome.",
+      "no_fill": "Only exact execution/replay evidence qualifies.",
+      "partial_fill": "Exact partial quantity preserved.",
+      "full_fill": "Exact requested quantity required.",
+      "unresolved": "Retained in append-only lifecycle status; no interim label is indexed.",
+      "censored": "Retained with exact expiry evidence and no monetary value.",
+      "non_executable_diagnostic": "Uses the existing diagnostic target fields only; never coerced into trading P&L."
+    },
+    "resource_bounds": {
+      "calendar_entries_inspected_per_cycle": 8,
+      "outcome_attempts_per_cycle": 8,
+      "metadata_identity_matches_per_query": 8,
+      "existing_outcome_matches_per_decision": 1,
+      "metadata_identity_lookups_per_decision": 16,
+      "artifact_pages_per_cycle_max": 146,
+      "raw_evidence_rows_per_resolution_max": 1024,
+      "raw_evidence_rows_per_cycle_max": 8290,
+      "replay_artifacts_per_decision_max": 512,
+      "replay_artifacts_per_cycle_max": 4096,
+      "retained_in_memory_work_items_max": 10,
+      "identity_indexes": [
+        "MaturedOutcomeV2 by decision_ref",
+        "ActualActionPositionBindingV2 by action_hash",
+        "PolicyPayoffV2 by action_hash",
+        "DiagnosticTargetEvidenceV2 by decision_ref",
+        "OutcomeMaturityStatusV1 by decision_ref"
+      ],
+      "backlog_metrics": "Per bounded page: pending, maturable, matured, unresolved, censored, unsupported, bound exhaustion, oldest pending/maturable age, and read counts. These are telemetry, not a second source of truth."
+    },
+    "restart_and_persistence": {
+      "cursor": "Immutable versioned OutcomeMaturityCheckpointV1 with generation and stable descending keyset cursor.",
+      "status": "Append-only OutcomeMaturityStatusV1; no historical evidence is edited.",
+      "duplicate_prevention": "Exact bounded outcome lookup per decision. Existing typed outcomes are revalidated through index_matured_outcome before being treated as complete.",
+      "starvation": "Every bounded page is fully attempted before cursor advance; deterministic traversal wraps so older entries are eventually reached.",
+      "writer": "The existing atlas-ops OpsRepository supplied by OpsSupervisorV2 is the only writer. No separate connection, daemon, or worker was added.",
+      "decision_isolation": "Maintenance runs after cycle and decision receipts are indexed. Sanitized failures cannot alter sealed receipts or decision output."
+    },
+    "critic_boundary": "The hidden critic remains downstream and zero authority. The existing linker accepts only a validated available MaturedOutcomeV2 and cannot create a label."
+  },
+  "subagents": {
+    "maturity_coordinator": {
+      "files": [
+        "src/atlas/v2/runtime/outcome_maturity.py",
+        "tests/v2/test_session033_outcome_maturity.py"
+      ],
+      "focused_result": "8 passed during development; main-agent integration adjusted the cycle bound to process every inspected decision."
+    },
+    "evidence_resolver": {
+      "files": [
+        "src/atlas/v2/science/outcome_resolution.py",
+        "tests/v2/test_session033_outcome_resolution.py"
+      ],
+      "focused_result": "The initial run had 12 passed and one invalid ACTUAL fixture. Main-agent review corrected the fixture to use exact matching instrument identity and canonical decimal wires, then strengthened source validation. Final S33 focused suite passed."
+    },
+    "main_agent": {
+      "files": [
+        "src/atlas/v2/memory/repository.py",
+        "src/atlas/v2/memory/schema.py",
+        "src/atlas/v2/runtime/ops_supervisor.py",
+        "tests/v2/test_session033_outcome_runtime.py"
+      ],
+      "responsibilities": "Preflight, authority reading, prior-producer discovery, repository and supervisor integration, actual evidence review, full regression, evidence documents, commit, push, and remote verification."
+    },
+    "ownership_conflicts": "Primary implementation files were disjoint. Main agent reviewed and made integration fixes; no subagent pushed, merged, or altered accepted history."
+  },
+  "validation": {
+    "focused_s33": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session033_outcome_maturity.py tests/v2/test_session033_outcome_resolution.py tests/v2/test_session033_outcome_runtime.py",
+      "result": "26 passed"
+    },
+    "changed_seam_batches": [
+      {
+        "coverage": "S33, candidate selection/calendar, replay, matured outcomes, evaluation, phase-2 integration, and selection audits",
+        "result": "91 passed"
+      },
+      {
+        "coverage": "S27 supervisor/production and S29/S30 critic isolation",
+        "result": "82 passed, 1 skipped"
+      },
+      {
+        "coverage": "S31 preflight/public-shadow and S32 stream continuity, integration, source, and websocket acquisition",
+        "result": "68 passed"
+      }
+    ],
+    "final_regression": {
+      "v2_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+      "v2_result": "659 passed, 2 skipped in 1372.85s",
+      "non_v2_command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
+      "non_v2_result": "485 passed, 3 skipped in 272.40s",
+      "contracts_golden_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+      "contracts_golden_result": "10 passed"
+    },
+    "static_and_environment": {
+      "ruff": "All checks passed.",
+      "mypy": "Success: no issues found in 209 source files.",
+      "compileall": "Passed: .venv/bin/python -m compileall -q src tests",
+      "pip_check": "Passed: no broken requirements found.",
+      "git_diff_check": "Passed: no whitespace errors.",
+      "staged_diff_secret_scan": "No credential-pattern matches; scanner suppresses values."
+    },
+    "hashes": {
+      "v1_golden_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+      "requirements_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements_agent_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "provider_and_model_locks_changed": false
+    }
+  },
+  "network_and_provider_usage": {
+    "github_fetch_and_push": "Used only for required repository verification and branch publication.",
+    "paid_provider_calls": 0,
+    "authenticated_venue_or_account_calls": 0,
+    "public_venue_network_calls": 0,
+    "order_submissions": 0,
+    "openai_deepseek_nim_runtime_calls": 0,
+    "real_credentials_used": false,
+    "final_holdout_accessed": false,
+    "live_or_72_hour_campaign_run": false
+  },
+  "safety": {
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "critic_authority": "ZERO",
+    "strategy_policy_changed": false,
+    "risk_policy_changed": false,
+    "model_or_provider_changed": false,
+    "final_holdout_touched": false,
+    "profitability_claim": false,
+    "economic_value": "NOT_ESTIMABLE",
+    "session_034_authorized": false
+  },
+  "remaining_gates": [
+    "Historical/bootstrap warmup",
+    "Native S3 M1 production cadence",
+    "Genuinely qualified public continuity",
+    "Owner Windows/WSL host qualification",
+    "Real 72-hour endurance",
+    "At least 8 weeks of genuine prospective shadow",
+    "At least 200 genuinely matured opportunities",
+    "Regime coverage",
+    "Dependence-aware inference",
+    "Exact chronology and accepted multiplicity discipline",
+    "Protected final holdout",
+    "Independent capital and execution qualification"
+  ],
+  "decisions": {
+    "engineering_status_ceiling": "ENGINEERING_PASS",
+    "independent_review_required": true,
+    "merge_authorized": false,
+    "72_hour_campaign_authorized": false,
+    "capital_authorized": false,
+    "session_034_authorized": false
+  }
+}
