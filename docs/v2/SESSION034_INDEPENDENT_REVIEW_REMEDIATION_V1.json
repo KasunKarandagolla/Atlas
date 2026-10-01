@@ -1,0 +1,391 @@
+{
+  "schema_version": 1,
+  "session": "ATLAS_CODEX_SESSION_034_INDEPENDENT_REVIEW_REMEDIATION_V1",
+  "status": "ENGINEERING_PASS",
+  "review_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW",
+  "scope": "OFFLINE_ENGINEERING_ONLY",
+  "repository": {
+    "remote": "KasunKarandagolla/Atlas",
+    "branch": "impl/session-034-native-s3-m1-warmup-readiness",
+    "reviewed_starting_sha": "bd0300280daf2a29880d29a51e501031a4665d0c",
+    "original_s34_tested_implementation_sha": "d6d21b9caebb8106ad67138d012a698f9a52db2f",
+    "accepted_s33_sha": "486a513dd873d53ac2bfef0e710f0b6332650537",
+    "tested_remediation_implementation_sha": "87096240d7c673e98d2cd96a49cd96e68e19d7ed",
+    "documentation_sha": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_DOCUMENTATION_COMMIT",
+    "final_remote_tip": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_PUSH",
+    "ancestry_verified": true,
+    "no_s35_branch_created": true,
+    "history_rewritten": false,
+    "merge_performed": false,
+    "preflight_remote_was_unchanged_at_reviewed_start": true,
+    "owner_authority_files_preserved_untracked": [
+      "ATLAS_72_Hour_Consultation.pdf",
+      "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "atlas-session005.zip"
+    ]
+  },
+  "authority": {
+    "documents_read_in_full": [
+      {
+        "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+        "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c"
+      },
+      {
+        "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+        "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+      },
+      {
+        "path": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+        "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+      },
+      {
+        "path": "ATLAS_72_Hour_Consultation.pdf",
+        "sha256": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e",
+        "classification": "CONSULTATION_ONLY"
+      },
+      {
+        "path": "docs/handoffs/session-034.md",
+        "read_in_full": true
+      },
+      {
+        "path": "docs/v2/SESSION034_NATIVE_S3_M1_WARMUP_VALIDATION.json",
+        "read_in_full": true
+      },
+      {
+        "path": "docs/v2/S3_NATIVE_CADENCE_WARMUP_ENGINEERING_GATE_V1.json",
+        "read_in_full": true
+      },
+      {
+        "path": "relevant S31-S33 handoffs",
+        "read_in_full": true
+      }
+    ],
+    "accepted_positive_economic_claim_floor": {
+      "prospective_shadow_weeks_minimum": 8,
+      "genuinely_matured_opportunities_minimum": 200,
+      "regime_coverage": true,
+      "dependence_aware_inference": true,
+      "accepted_multiplicity_discipline": true,
+      "exact_chronology": true,
+      "protected_final_holdout": true
+    },
+    "consultation_alternate_evidence_duration_adopted": false
+  },
+  "historical_review_findings": {
+    "finding_a_causal_timestamp_backdating": {
+      "status_at_reviewed_tip": "REPRODUCED",
+      "root_cause": "S34 composed derived trade, BBO and readiness evidence after the M1 source cutoff but persisted those derived artifacts with availability at the source cutoff.",
+      "deterministic_pre_fix_reproduction": {
+        "reviewed_tip": "bd0300280daf2a29880d29a51e501031a4665d0c",
+        "t0_m1_close_ns": 3500100000000000,
+        "t1_fixed_source_cutoff_ns": 3500100000000000,
+        "t2_computation_started_ns": 3500100000001000,
+        "t3_computation_finished_ns": 3500100000002000,
+        "t4_persistence_ns": 3500100000002001,
+        "backdated_artifacts": [
+          {
+            "type": "S3ForwardTradeEvidenceV1",
+            "ref": "bff9b5d4253a95373fc8a470cdb60cd90aceeb0d7054474b4fbab5aeb32691d0",
+            "created_at_ns": 3500100000000000,
+            "available_at_ns": 3500100000000000
+          },
+          {
+            "type": "S3NativeWarmupReadinessV1",
+            "ref": "ed58f12090b2b754a46f166fa296fc430cd2c5100c5f8211ef79c389961149a5",
+            "created_at_ns": 3500100000000000,
+            "available_at_ns": 3500100000000000
+          }
+        ],
+        "quote_bridge_present_in_fixture": false,
+        "chronology_violation": "T3 and T4 were later than the artifacts' claimed creation and availability at T1."
+      }
+    },
+    "finding_b_incomplete_native_m1_origin_accounting": {
+      "status_at_reviewed_tip": "REPRODUCED",
+      "root_cause": "Production reconstructed a bounded recent M1 history but selected essentially the latest bar for native event creation. Older newly visible closes had no event and no explicit late/missed-origin record.",
+      "deterministic_pre_fix_reproduction": {
+        "reviewed_tip": "bd0300280daf2a29880d29a51e501031a4665d0c",
+        "all_three_bars_newly_visible_together_at": "12:03 plus 10 seconds",
+        "discovered_final_m1_closes": ["12:01", "12:02", "12:03"],
+        "only_origin_with_durable_late_gate": {
+          "close": "12:03",
+          "origin_ref": "c621259f9451893c9d3d725990455809ad6e9d155ac00a700c4602cbeaa50ffa"
+        },
+        "silent_unaccounted_origins": [
+          {
+            "close_at_ns": 43260000000000,
+            "origin_ref": "7de64b92db024c279861ca66700979df273bc4af14d04756db0e7f2ea864ab86"
+          },
+          {
+            "close_at_ns": 43320000000000,
+            "origin_ref": "4496f939a4f91b95aff01867d6f377049619795d176c8110db26291310780521"
+          }
+        ],
+        "native_events_created": 0,
+        "late_gates_created": 1
+      }
+    },
+    "original_s34_record_preserved": true,
+    "original_s34_validation_files_were_not_rewritten_as_if_findings_never_existed": true
+  },
+  "finding_a_remediation": {
+    "frozen_event_field": "OpsDecisionEventV1.information_cutoff_ns",
+    "field_semantics_preserved": "Fixed latest admissible source/evidence time for the exact M1 origin. It was not moved to computation time.",
+    "versioned_contract_amendment_required": false,
+    "timing_context": {
+      "type": "S3NativeComputationContextV1",
+      "fields": [
+        "evidence_cutoff_ns",
+        "computation_started_ns",
+        "computation_finished_ns",
+        "produced_at_ns",
+        "consumer_deadline_ns"
+      ],
+      "produced_at_rule": "produced_at_ns equals computation_finished_ns",
+      "fixed_event_deadline_rule": "M1 source close plus five seconds; no rebasing"
+    },
+    "invariant": "max(source input available_at_ns) <= information_cutoff_ns <= computation_started_ns <= computation_finished_ns <= result.available_at_ns <= consumer_decision_deadline_ns",
+    "artifact_classification": {
+      "decision_affecting_inputs": {
+        "examples": [
+          "exact final M1 bar and PublicObservationIndexV2",
+          "exact ProductContractV2 revision",
+          "cutoff-visible source health",
+          "cutoff-visible trade observations and continuity report",
+          "cutoff-visible BBO frames, continuity report and SequenceValidBookV2 bridge sources",
+          "cutoff-visible residual/VWAP, EventGate and other frozen source refs"
+        ],
+        "resolver_rule": "Every admitted source value is bounded by event.information_cutoff_ns, which remains the immutable evidence_cutoff_ns."
+      },
+      "diagnostic_readiness_evidence": {
+        "types": [
+          "S3ForwardTradeEvidenceV1",
+          "S3SequenceBookQuoteEvidenceV1",
+          "S3NativeWarmupReadinessV1"
+        ],
+        "rule": "Derived validation is diagnostic only. It records its source cutoff and actual computation context; it cannot grant candidate or decision authority and cannot admit later source evidence."
+      },
+      "pure_projection": {
+        "type": "S3NativeM1DiagnosticIdentityV1",
+        "rule": "Maps the exact M1 event to the immutable set of already validated diagnostic outputs; repository created_at_ns and available_at_ns record its actual persistence time."
+      }
+    },
+    "derived_artifact_timestamps": "Trade evidence, BBO bridge, readiness and diagnostic identity are indexed only after computation and carry availability no earlier than completion. Their source receipt, source availability, continuity report time, health time and BBO receipt remain unchanged.",
+    "consumer_behavior": "Native M1 composition has no universe or candidates. Diagnostics are persisted by the fixed event deadline. If computation or persistence crosses that deadline, the origin fails closed. Supervisor validates all event input refs at the immutable cutoff; native M1 output and receipt times may advance only within the original deadline.",
+    "future_evidence_exclusion": [
+      "trade available at or after T2 is excluded",
+      "BBO received/available after T1 is excluded",
+      "source-health evidence after T1 is excluded",
+      "later continuity reports, metadata, residuals, VWAP and EventGate evidence are excluded",
+      "retry resolves the same event cutoff and reuses the persisted diagnostic identity; cutoff drift fails closed"
+    ],
+    "fixed_deadline_overrun": "A computation finishing after the original close-origin deadline produces no diagnostic outputs and the decision fails closed."
+  },
+  "finding_b_remediation": {
+    "logical_origin_identity": "Exact full InstrumentKeyV2 plus M1 close_at_ns; stable origin and event hashes exclude payload revision and restart time.",
+    "source_eligibility": "Only exact indexed, archived final BAR_1M with ACTUAL_SYSTEM availability and full InstrumentKeyV2 identity. Nonfinal, RECONSTRUCTED_MARKET, absent and missing-minute inputs do not create origin accounting.",
+    "work_bound_per_supervisor_cycle": {
+      "max_origins": 4,
+      "constant": "MAX_M1_ORIGINS_ACCOUNTED_PER_CYCLE",
+      "justification": "Small fixed oldest-first batch; one M15 window of four finalized minutes can be drained per cycle while each named Parquet source chunk has its own 10,000-row hard limit.",
+      "unbounded_historical_rescan_per_cycle": false
+    },
+    "origin_disposition": {
+      "within_fixed_close_deadline": "Create or reuse one immutable CONFIRMED_1M_CLOSE event with original cutoff and close-plus-five-second deadline.",
+      "late_or_event_prerequisite_unavailable": "Persist one exact-origin OpsPublicAcquisitionDeadlineGateV1 with TEST GATE and ZERO authority. Do not create a retrospective candidate, NO_TRADE, fill or P&L."
+    },
+    "checkpoint": {
+      "type": "S3NativeM1OriginAccountingCheckpointV1",
+      "properties": [
+        "append-only and content-hash validated",
+        "controller-owned through the existing ops.sqlite writer",
+        "full InstrumentKeyV2 and contract revision bound",
+        "source-availability window and close keyset are deterministic and restart safe",
+        "oldest unaccounted close first",
+        "checkpoint advances only after every page origin has a durable event or gate",
+        "conflicting same-origin state fails closed",
+        "no capital authority"
+      ]
+    },
+    "crash_restart_evidence": [
+      "late gates persisted before checkpoint failure are reused with identical refs",
+      "timely event persisted before checkpoint failure is reused with identical event ID, cutoff and deadline",
+      "checkpoint generations advance only after durable origin accounting",
+      "repeated cycles produce no duplicate or contradictory state",
+      "different contract revisions use independent checkpoint sequences"
+    ],
+    "three_minute_delay_regression": {
+      "closes": ["12:01", "12:02", "12:03"],
+      "result": "All three were durably accounted oldest-first as explicit late TEST GATE evidence; restart created no new artifacts.",
+      "rebased_cutoffs": 0,
+      "silent_origins": 0
+    },
+    "larger_backlog_regression": {
+      "work_bound": 4,
+      "initial_backlog": 11,
+      "drain_order": "Oldest-first across three cycles, 4 then 4 then 3 origins.",
+      "new_later_origin": "Stayed behind the frozen source window and was handled on the next window; the prior backlog did not starve.",
+      "restart_midway": "Produced the same event and gate identities as uninterrupted progression."
+    }
+  },
+  "preserved_s34_contracts": {
+    "native_event": "CONFIRMED_1M_CLOSE",
+    "full_instrument_key_binding": true,
+    "restart_event_reuse": true,
+    "close_origin_deadline_ns": 5000000000,
+    "s1_s2_m15_only": true,
+    "m1_routes_to_s3_only": true,
+    "required_contiguous_m1_bars": 10081,
+    "preceding_residual_requirement": 120,
+    "trade_derived_vwap_only": true,
+    "candle_vwap_substitute": false,
+    "typed_trade_index": "PublicStreamTradeObservationIndexV1",
+    "trade_ids_are_identity_not_replay_cursor": true,
+    "trade_completeness_proven": false,
+    "recent_rest_trades_repair_trade_history": false,
+    "book_bridge": "Existing SequenceValidBookV2 and persisted S32 continuity report",
+    "max_bbo_age_ns": 1000000000,
+    "actual_system_vs_reconstructed_market_separated": true,
+    "risk_policy_sizing_leverage_stop_changed": false,
+    "single_controller_owned_ops_sqlite_writer": true
+  },
+  "changed_files": [
+    "src/atlas/v2/data/history.py",
+    "src/atlas/v2/data/s3_forward_evidence.py",
+    "src/atlas/v2/memory/repository.py",
+    "src/atlas/v2/memory/schema.py",
+    "src/atlas/v2/runtime/ops_supervisor.py",
+    "src/atlas/v2/runtime/production.py",
+    "src/atlas/v2/runtime/s3_native_cadence.py",
+    "tests/v2/test_session027_production.py",
+    "tests/v2/test_session034_causal_timing.py",
+    "tests/v2/test_session034_production_remediation.py",
+    "tests/v2/test_session034_s3_forward_evidence.py",
+    "tests/v2/test_session034_s3_native_origin_accounting.py",
+    "docs/v2/SESSION034_INDEPENDENT_REVIEW_REMEDIATION_V1.json",
+    "docs/v2/SESSION034_NATIVE_S3_M1_WARMUP_VALIDATION.json",
+    "docs/v2/S3_NATIVE_CADENCE_WARMUP_ENGINEERING_GATE_V1.json",
+    "docs/handoffs/session-034.md"
+  ],
+  "subagents": {
+    "A_causal_timing": {
+      "status": "COMPLETED",
+      "owned_files": [
+        "src/atlas/v2/data/s3_forward_evidence.py",
+        "tests/v2/test_session034_s3_forward_evidence.py",
+        "tests/v2/test_session034_causal_timing.py"
+      ]
+    },
+    "B_origin_accounting": {
+      "status": "COMPLETED",
+      "owned_files": [
+        "src/atlas/v2/runtime/s3_native_cadence.py",
+        "src/atlas/v2/memory/repository.py",
+        "src/atlas/v2/memory/schema.py",
+        "tests/v2/test_session034_s3_native_origin_accounting.py"
+      ]
+    },
+    "main_agent": {
+      "owned_files": [
+        "src/atlas/v2/runtime/production.py",
+        "src/atlas/v2/runtime/ops_supervisor.py",
+        "src/atlas/v2/data/history.py",
+        "tests/v2/test_session027_production.py",
+        "tests/v2/test_session034_production_remediation.py",
+        "documentation and final integration"
+      ],
+      "conflict_review": "Main agent reviewed both subagent diffs, kept module ownership separate, and performed sequential integration. Neither subagent pushed or merged."
+    }
+  },
+  "validation": {
+    "focused_s34_tests": "51 passed",
+    "targeted_after_final_supervisor_scope_fix": {
+      "test_session027_production.py::test_default_production_native_m1_s3_stays_closed_without_trade_completeness": "1 passed",
+      "test_session033_outcome_runtime.py::test_supervisor_advancing_clock_keeps_fixed_cutoff_and_sealed_receipts": "1 passed"
+    },
+    "changed_seam_run_history": {
+      "initial_broad_run": "117 passed and 2 assertion failures; the failures were frozen metadata tuple/map comparisons plus non-M1 clock sampling changing an existing receipt identity.",
+      "corrections": "Assertion comparisons were normalized; advancing clock sampling was scoped to native M1 so M15/S1/S2 receipt behavior stays stable.",
+      "corrected_affected_tests": "Both affected production and supervisor tests passed individually; all V2 tests passed in the final full run."
+    },
+    "full_v2": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+      "passed": 722,
+      "skipped": 2,
+      "failed": 0,
+      "duration_seconds": 3477.08
+    },
+    "full_non_v2": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
+      "passed": 485,
+      "skipped": 3,
+      "failed": 0,
+      "duration_seconds": 353.02
+    },
+    "contracts_and_golden": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+      "passed": 10,
+      "failed": 0
+    },
+    "static_environment_and_integrity": {
+      "ruff": "PASS: .venv/bin/ruff check .",
+      "mypy": "PASS: .venv/bin/mypy src; 211 source files",
+      "compileall": "PASS: .venv/bin/python -m compileall -q src tests",
+      "pip_check": "PASS: .venv/bin/python -m pip check; no broken requirements",
+      "git_diff_check": "PASS: git diff --check"
+    },
+    "sha256": {
+      "v1_golden_baseline": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+      "requirements_lock": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "agent_lock": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3"
+    },
+    "value_suppressing_secret_scan": {
+      "files": 12,
+      "added_lines": 3256,
+      "high_confidence_matches": 0,
+      "matched_values_printed": false
+    },
+    "external_call_counts": {
+      "public_market_network": 0,
+      "authenticated_venue_or_account": 0,
+      "order_submission": 0,
+      "paid_provider_or_model_runtime": 0,
+      "real_credentials": 0,
+      "github_fetch_and_push": "Repository coordination only; exact operations recorded in the final handoff."
+    }
+  },
+  "safety_and_remaining_gates": {
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "critic_authority": "ZERO",
+    "risk_policy_changed": false,
+    "strategy_threshold_changed": false,
+    "model_or_provider_changed": false,
+    "ops_sqlite_writer_count": 1,
+    "final_holdout_touched": false,
+    "economics": "NOT ESTIMABLE",
+    "current_native_m1_engineering_status": "ENGINEERING_PASS",
+    "current_s3_warmup_status": "NOT ESTIMABLE / TEST GATE",
+    "remaining_gates": [
+      "Accepted source capability proving exact complete S3 historical trade coverage",
+      "Genuine prospective S3 warmup under that accepted source capability",
+      "Windows/WSL real-public qualification",
+      "Live-public continuity qualification",
+      "Separately authorized 72-hour endurance only after prior gates",
+      "At least eight weeks of prospective shadow",
+      "At least 200 genuinely matured opportunities",
+      "Regime and dependence-aware qualification",
+      "Accepted multiplicity discipline and exact chronology",
+      "Protected final holdout",
+      "Separate capital and execution qualification"
+    ],
+    "not_authorized": [
+      "No live-public campaign",
+      "No 72-hour campaign",
+      "No final holdout",
+      "No capital authorization",
+      "No Session 035"
+    ]
+  }
+}

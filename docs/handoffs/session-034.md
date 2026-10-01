@@ -106,3 +106,47 @@ Changed files:
 S34 is submitted for independent coordinating review only. The maximum status is **ENGINEERING_PASS**. No merge, live-public campaign, 72-hour endurance run, capital authorization, final-holdout analysis or Session 035 is authorized.
 
 Session 034 implementation is submitted for independent coordinating principal engineering review. Passing Codex tests are not self-acceptance. No merge, live-public campaign, 72-hour endurance run, capital authorization, or Session 035 is authorized.
+
+## K — Independent Review Remediation (2026-10-01)
+
+This section records the two defects found by the independent coordinating review of the original S34 docs tip. Sections A–J above remain the historical S34 record; they are not rewritten to imply these defects were absent.
+
+### Repository and review state
+
+- Reviewed S34 starting tip: `bd0300280daf2a29880d29a51e501031a4665d0c`.
+- Remediation implementation commit, tested by the final suites: `87096240d7c673e98d2cd96a49cd96e68e19d7ed`.
+- Branch remains `impl/session-034-native-s3-m1-warmup-readiness`. No S35 branch, merge, force-push, or history rewrite.
+- Documentation commit SHA and post-push remote tip are recorded in the final Codex handoff because their values are established after the documentation commit and push.
+- The complete remediation evidence is in [`SESSION034_INDEPENDENT_REVIEW_REMEDIATION_V1.json`](../v2/SESSION034_INDEPENDENT_REVIEW_REMEDIATION_V1.json).
+
+### Finding A — Derived evidence timing
+
+At the reviewed tip, a deterministic reproduction used T0/T1 `3500100000000000`, T2 `3500100000001000`, T3 `3500100000002000`, and T4 `3500100000002001`. `S3ForwardTradeEvidenceV1` ref `bff9b5d4253a95373fc8a470cdb60cd90aceeb0d7054474b4fbab5aeb32691d0` and `S3NativeWarmupReadinessV1` ref `ed58f12090b2b754a46f166fa296fc430cd2c5100c5f8211ef79c389961149a5` claimed creation and availability at T1, although computation completed at T3 and persistence occurred at T4. No quote bridge was present in that reproduction.
+
+The fix adds `S3NativeComputationContextV1`. `OpsDecisionEventV1.information_cutoff_ns` retains its frozen meaning as T1, the latest market evidence admitted for that exact origin. All source resolvers stay cutoff-bounded. Derived trade evidence, sequence-book bridge, readiness, and identity record T2/T3 and are persisted at T4, no earlier than computation completion and no later than the original close-plus-five-second deadline. A late finish or persistence fails closed. New trade, BBO, continuity report, source health, metadata, residual, VWAP, or EventGate evidence after T1 is not admitted. Same-origin retry reuses the exact result; a changed cutoff conflicts with the stored identity.
+
+The artifacts are classified as follows. Market observations, reports, source health, residuals, VWAP and EventGate are cutoff-bound inputs. Trade evidence and the BBO bridge are diagnostic projections of those validated inputs. Warmup readiness and the diagnostic identity are diagnostic outputs; they cannot produce candidates or grant decision authority. The native M1 path continues to yield no universe and no candidate while trade completeness is unproven. Input refs remain available by T1; diagnostic result availability is honestly recorded at or after T3/T4 and before the fixed deadline.
+
+### Finding B — Complete M1 origin accounting
+
+At the reviewed tip, final bars for 12:01, 12:02 and 12:03 were visible together at approximately 12:03 plus ten seconds. The latest-only path created a late gate for 12:03 (origin ref `c621259f9451893c9d3d725990455809ad6e9d155ac00a700c4602cbeaa50ffa`) and left 12:01 (ref `7de64b92db024c279861ca66700979df273bc4af14d04756db0e7f2ea864ab86`) and 12:02 (ref `4496f939a4f91b95aff01867d6f377049619795d176c8110db26291310780521`) without either an event or late-origin record.
+
+The exact identity is full `InstrumentKeyV2` plus `close_at_ns`. A controller-owned, append-only, hash-validated checkpoint isolates each contract revision and advances only after durable event or gate persistence. The fixed work bound is **four origins per supervisor cycle**; pages process the oldest close first. A first handling inside the original five-second deadline creates or reuses one normal `CONFIRMED_1M_CLOSE`. A late first handling creates one durable `TEST GATE` and never rebases cutoff or deadline. Nonfinal, reconstructed, or absent bars do not create an origin; missing minutes remain source gaps.
+
+The three-minute restart regression accounts for all three origins as late gates and creates no new artifacts on restart. The 11-origin backlog regression drains oldest-first in batches of 4, 4 and 3, then admits a newer origin on its next source window. Injected crashes after event persistence or after gate persistence but before checkpoint advancement replay to the same durable identities. Conflicting state and incompatible contract revisions fail closed or remain isolated.
+
+### Validation and current gates
+
+- Focused S34 modules: **51 passed**. The corrected advancing-clock S27 production test and S33 supervisor receipt test each passed individually after their respective assertion/scope corrections.
+- Full V2: **722 passed, 2 skipped**.
+- Full non-V2: **485 passed, 3 skipped**.
+- Contracts/V1 golden: **10 passed**.
+- Ruff, mypy (**211 source files**), compileall, pip check and `git diff --check`: passed.
+- V1 golden SHA-256 remains `be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251`; requirements lock remains `711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b`; agent lock remains `47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3`.
+- Value-suppressing scan of the implementation commit checked 3,256 added lines and found zero high-confidence secret matches. No matched values were printed.
+- Public market calls: **0**. Authenticated venue/account calls: **0**. Order submissions: **0**. Paid provider/model runtime calls: **0**. Real credentials: **0**.
+- Trade completeness remains `false`; current S3 warmup remains **NOT ESTIMABLE / TEST GATE**. Thresholds, VWAP math, BBO age, risk policy, sizing, leverage, stop policy, and writer count are unchanged.
+- Capital and assisted execution remain disabled; critic authority is **ZERO**; economics remain **NOT ESTIMABLE**; the final holdout remains untouched.
+- Remaining gates include an accepted source proving complete S3 trade coverage, genuine prospective warmup, Windows/WSL and live-public continuity qualification, any separately authorized endurance run, at least eight weeks and 200 matured prospective opportunities, regime/dependence/multiplicity qualification, protected holdout, and separate capital/execution qualification.
+
+Session 034 remediation is at **ENGINEERING_PASS**, pending independent coordinating principal engineering review. No merge, live-public campaign, 72-hour endurance run, capital authorization, final holdout use, or Session 035 is authorized.

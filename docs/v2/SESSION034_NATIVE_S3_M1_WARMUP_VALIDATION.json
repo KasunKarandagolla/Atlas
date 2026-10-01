@@ -312,5 +312,39 @@
       "gate": "Protected final holdout and any future capital/execution qualification remain untouched and unapproved."
     }
   ],
-  "checkpoint": "ENGINEERING_PASS ceiling; independent coordinating principal engineering review required."
+  "checkpoint": "ENGINEERING_PASS ceiling; independent coordinating principal engineering review required.",
+  "independent_review_remediation": {
+    "record": "docs/v2/SESSION034_INDEPENDENT_REVIEW_REMEDIATION_V1.json",
+    "reviewed_starting_sha": "bd0300280daf2a29880d29a51e501031a4665d0c",
+    "tested_remediation_implementation_sha": "87096240d7c673e98d2cd96a49cd96e68e19d7ed",
+    "documentation_sha": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_DOCUMENTATION_COMMIT",
+    "final_remote_tip": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_PUSH",
+    "status": "ENGINEERING_PASS",
+    "review_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW",
+    "original_s34_record_preserved": true,
+    "finding_a": {
+      "status_at_reviewed_tip": "REPRODUCED_AND_REMEDIATED",
+      "detail": "Derived S3 trade, BBO and readiness artifacts previously claimed availability at the M1 source cutoff despite later computation. Fixed cutoff remains OpsDecisionEventV1.information_cutoff_ns; honest computation and persistence times now remain within the original deadline.",
+      "advancing_clock_regression": "PASS: T0 close <= T1 evidence cutoff <= T2 start <= T3 completion <= T4 persistence <= fixed deadline; post-T1 trade, BBO and health are excluded; cutoff drift fails closed."
+    },
+    "finding_b": {
+      "status_at_reviewed_tip": "REPRODUCED_AND_REMEDIATED",
+      "detail": "Latest-only scheduling previously left older newly visible exact M1 origins without events or late gates. Exact full-key plus close origins now use bounded oldest-first catch-up with durable gates/events and monotone checkpoints.",
+      "maximum_origins_per_cycle": 4,
+      "restart_and_crash_regressions": "PASS: 12:01/12:02/12:03 all accounted; 11-origin backlog drains 4/4/3 oldest-first; crash after event/gate before checkpoint is idempotent."
+    },
+    "validation": {
+      "full_v2": "722 passed, 2 skipped",
+      "full_non_v2": "485 passed, 3 skipped",
+      "contracts_and_golden": "10 passed",
+      "ruff": "PASS",
+      "mypy": "PASS, 211 source files",
+      "compileall": "PASS",
+      "pip_check": "PASS",
+      "git_diff_check": "PASS",
+      "trade_completeness_proven": false,
+      "economics": "NOT ESTIMABLE"
+    }
+  },
+  "remediation_authority_note": "The preceding S34 record is retained as historical evidence. The separate remediation record documents both reproduced defects and their fixes."
 }
