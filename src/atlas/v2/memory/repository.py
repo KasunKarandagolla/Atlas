@@ -139,6 +139,7 @@ class ArtifactIndexPageV2:
     entries: tuple[ArtifactIndexEntryV2, ...]
     next_cursor: tuple[int, str] | None
     invalid_entry_count: int = 0
+    raw_keys: tuple[tuple[int, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -838,7 +839,7 @@ class OpsRepository:
                     or not isinstance(after[1], str)):
                 raise ValueError("artifact cursor must be a (created_at_ns, artifact_ref) pair")
             timestamp(after[0], field="cursor.created_at_ns")
-            sha256_ref(after[1], field="cursor.artifact_ref")
+            # Raw-key pagination must also cross malformed blank refs exactly.
         marks = ",".join("?" for _ in types)
         cursor_clause = " AND (created_at_ns,artifact_ref)<(?,?)" if after is not None else ""
         params: tuple[Any, ...] = (
@@ -859,7 +860,8 @@ class OpsRepository:
             except (KeyError, TypeError, ValueError, json.JSONDecodeError):
                 invalid += 1
         next_cursor = (int(rows[-1]["created_at_ns"]), str(rows[-1]["artifact_ref"])) if rows else None
-        return ArtifactIndexPageV2(tuple(entries), next_cursor, invalid)
+        raw_keys = tuple((int(row["created_at_ns"]), str(row["artifact_ref"])) for row in rows)
+        return ArtifactIndexPageV2(tuple(entries), next_cursor, invalid, raw_keys)
 
     def artifact_entries_by_metadata_identity(
         self,

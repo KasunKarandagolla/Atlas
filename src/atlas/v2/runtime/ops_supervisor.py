@@ -490,10 +490,12 @@ class OpsSupervisorV2:
         port: OpsCyclePortV1,
         *,
         clock_ns: Callable[[], int] = time.time_ns,
+        monotonic_ns: Callable[[], int] = time.monotonic_ns,
         sleep_fn: Callable[[float], None] = time.sleep,
         max_events_per_cycle: int = 64,
         post_receipt_shadow: Callable[[OpsSupervisorReceiptV1, str, OpsRepository], None] | None = None,
         post_cycle_maintenance: Callable[[OpsRepository, int], object] | None = None,
+        outcome_maintenance_budget_ns: int | None = None,
     ) -> None:
         raw_path = str(database_path)
         if raw_path.startswith("file:") or "://" in raw_path or not raw_path:
@@ -503,13 +505,26 @@ class OpsSupervisorV2:
         self.database_path = raw_path
         self.port = port
         self.clock_ns = clock_ns
+        self.monotonic_ns = monotonic_ns
         self.sleep_fn = sleep_fn
         self.max_events_per_cycle = max_events_per_cycle
         self.post_receipt_shadow = post_receipt_shadow
+        self._default_outcome_maturity: Callable[..., object] | None = None
         if post_cycle_maintenance is None:
             from .outcome_maturity import run_outcome_maturity_cycle
 
+            self._default_outcome_maturity = run_outcome_maturity_cycle
             post_cycle_maintenance = run_outcome_maturity_cycle
+            if outcome_maintenance_budget_ns is None:
+                from .outcome_maturity import OUTCOME_MAINTENANCE_BUDGET_NS_V1
+
+                outcome_maintenance_budget_ns = OUTCOME_MAINTENANCE_BUDGET_NS_V1
+        if outcome_maintenance_budget_ns is not None and (
+            type(outcome_maintenance_budget_ns) is not int
+            or not 1 <= outcome_maintenance_budget_ns <= 1_000_000_000
+        ):
+            raise ValueError("outcome maintenance budget must be between 1 ns and 1 s")
+        self.outcome_maintenance_budget_ns = outcome_maintenance_budget_ns
         self.post_cycle_maintenance = post_cycle_maintenance
         self.repository: OpsRepository | None = None
         self.recovery: OpsRecoverySnapshotV1 | None = None
@@ -972,16 +987,31 @@ class OpsSupervisorV2:
                 cycle_id, "OpsSupervisorCycleReceiptV1", cycle_id, started_at_ns, started_at_ns, cycle.to_dict()
             )
         )
-        if self.post_cycle_maintenance is not None:
+        if self._default_outcome_maturity is not None or self.post_cycle_maintenance is not None:
             try:
                 # Decision receipts are sealed before bounded downstream outcome work begins.
-                maintenance_report = self.post_cycle_maintenance(repository, started_at_ns)
+                if self._default_outcome_maturity is not None:
+                    maintenance_report = self._default_outcome_maturity(
+                        repository,
+                        evidence_cutoff_ns=started_at_ns,
+                        production_clock_ns=self.clock_ns,
+                        monotonic_ns=self.monotonic_ns,
+                        maintenance_budget_ns=self.outcome_maintenance_budget_ns,
+                    )
+                else:
+                    # Preserve the legacy callback signature for injected maintenance seams.
+                    assert self.post_cycle_maintenance is not None
+                    maintenance_report = self.post_cycle_maintenance(repository, started_at_ns)
                 from .outcome_maturity import OutcomeMaturityCycleReportV1
 
                 if isinstance(maintenance_report, OutcomeMaturityCycleReportV1):
                     report_body = maintenance_report.to_dict()
                     report_ref = sha256_json(report_body)
-                    available_at_ns = max(started_at_ns, timestamp(self.clock_ns(), field="maintenance report time"))
+                    available_at_ns = max(
+                        started_at_ns,
+                        maintenance_report.cycle_at_ns,
+                        timestamp(self.clock_ns(), field="maintenance report time"),
+                    )
                     repository.register_artifact(
                         ArtifactIndexEntryV2(
                             report_ref,
@@ -996,20 +1026,27 @@ class OpsSupervisorV2:
                 failure_type = type(error).__name__
                 if not failure_type.isascii() or not failure_type.isidentifier() or len(failure_type) > 64:
                     failure_type = "Exception"
-                failure = {
-                    "version": "OPS_OUTCOME_MATURITY_FAILURE_V1",
-                    "attempted_at_ns": started_at_ns,
-                    "failure_type": failure_type,
-                    "reason_code": "OUTCOME_MATURITY_CYCLE_FAILED",
-                }
-                failure_ref = sha256_json(failure)
                 try:
+                    # This operational artifact records when the failure was
+                    # observed, while attempted_at_ns remains the fixed cycle cutoff.
+                    failure_at_ns = max(
+                        started_at_ns,
+                        timestamp(self.clock_ns(), field="maintenance failure time"),
+                    )
+                    failure = {
+                        "version": "OPS_OUTCOME_MATURITY_FAILURE_V1",
+                        "attempted_at_ns": started_at_ns,
+                        "produced_at_ns": failure_at_ns,
+                        "failure_type": failure_type,
+                        "reason_code": "OUTCOME_MATURITY_CYCLE_FAILED",
+                    }
+                    failure_ref = sha256_json(failure)
                     repository.register_artifact(ArtifactIndexEntryV2(
                         failure_ref,
                         "OpsOutcomeMaturityFailureV1",
                         failure_ref,
-                        started_at_ns,
-                        started_at_ns,
+                        failure_at_ns,
+                        failure_at_ns,
                         failure,
                     ))
                 except Exception:

@@ -15,8 +15,9 @@ from atlas.v2.risk import (
     index_research_evidence,
     index_risk_evidence,
 )
+from atlas.v2.science import outcomes as outcome_contract
 from atlas.v2.science.action_critic_outcomes import link_action_critic_matured_outcome
-from atlas.v2.science.outcome_resolution import resolve_decision_outcome
+from atlas.v2.science.outcome_resolution import resolve_decision_outcome as _resolve_decision_outcome
 from atlas.v2.science.outcomes import (
     ActualActionPositionBindingV2,
     AdmissionStateV2,
@@ -45,6 +46,15 @@ def _calendar_index(repo: OpsRepository, ref: str) -> ArtifactIndexEntryV2:
     entry = repo.get_artifact(ref)
     assert entry is not None
     return entry
+
+
+def _resolve_deterministically(
+    repo: OpsRepository, calendar_entry: ArtifactIndexEntryV2, evidence_cutoff_ns: int,
+):
+    """Keep legacy fixed-time assertions deterministic with an injected UTC clock."""
+    return _resolve_decision_outcome(
+        repo, calendar_entry, evidence_cutoff_ns, clock_ns=lambda: evidence_cutoff_ns,
+    )
 
 
 def _skip_payoff_registration(repo: OpsRepository, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -102,12 +112,12 @@ def test_replay_outcome_keeps_exact_fill_cost_funding_and_chronology(
         decision = _calendar_index(repo, fixture_outcome.decision_ref)
         now_ns = payoff.available_at_ns + 7
 
-        before = resolve_decision_outcome(repo, decision, fixture_outcome.horizon_end_ns - 1)
+        before = _resolve_deterministically(repo, decision, fixture_outcome.horizon_end_ns - 1)
         assert before.status == "PENDING" and before.outcome is None
-        at_horizon = resolve_decision_outcome(repo, decision, fixture_outcome.horizon_end_ns)
+        at_horizon = _resolve_deterministically(repo, decision, fixture_outcome.horizon_end_ns)
         assert at_horizon.status == "UNRESOLVED" and at_horizon.outcome is None
 
-        result = resolve_decision_outcome(repo, decision, now_ns)
+        result = _resolve_deterministically(repo, decision, now_ns)
         assert result.status == "MATURED" and result.outcome is not None, result.reason_code
         outcome = result.outcome
         assert outcome.label_state == LabelStateV2.MATURED
@@ -126,8 +136,127 @@ def test_replay_outcome_keeps_exact_fill_cost_funding_and_chronology(
         assert outcome.actual_closed_source_ref is None and outcome.actual_action_binding_ref is None
         assert outcome.available_at_ns == now_ns
         assert outcome.matured_at_ns >= max(outcome.horizon_end_ns, payoff.available_at_ns)
-        assert resolve_decision_outcome(repo, decision, now_ns).outcome == outcome
+        assert _resolve_deterministically(repo, decision, now_ns).outcome == outcome
         assert index_matured_outcome(repo, outcome) == outcome.content_hash
+
+
+def test_advancing_clock_separates_cutoff_from_production_and_defers_late_evidence(
+    tmp_path, monkeypatch,
+):
+    with OpsRepository(tmp_path / "advancing-clock.sqlite") as repo:
+        _case, _action, payoff, fixture_outcome = s18._payoff_case(repo)
+        decision = _calendar_index(repo, fixture_outcome.decision_ref)
+        evidence_cutoff_ns = payoff.available_at_ns + 7  # T0
+        sealed_receipt_ns = evidence_cutoff_ns + 1  # T1
+        computation_started_ns = sealed_receipt_ns + 1  # T2
+        validation_finished_ns = computation_started_ns + 1  # T3
+        production_at_ns = validation_finished_ns + 1  # T4
+        clock_reads: list[int] = []
+
+        def clock_ns() -> int:
+            value = computation_started_ns if not clock_reads else production_at_ns
+            clock_reads.append(value)
+            return value
+
+        validation_completed: list[int] = []
+        validate = outcome_contract._validate_policy_payoff
+
+        def finish_later(repository, outcome, identity):
+            validate(repository, outcome, identity)
+            validation_completed.append(validation_finished_ns)
+
+        lookup_cutoffs: list[int] = []
+        query = repo.artifact_entries_by_metadata_identity
+
+        before_horizon = _resolve_decision_outcome(
+            repo, decision, fixture_outcome.horizon_end_ns - 1,
+            clock_ns=lambda: production_at_ns + 100,
+        )
+        assert before_horizon.status == "PENDING" and before_horizon.outcome is None
+
+        def track_cutoff(*args, **kwargs):
+            lookup_cutoffs.append(kwargs["as_of_ns"])
+            return query(*args, **kwargs)
+
+        monkeypatch.setattr(outcome_contract, "_validate_policy_payoff", finish_later)
+        monkeypatch.setattr(repo, "artifact_entries_by_metadata_identity", track_cutoff)
+        result = _resolve_decision_outcome(
+            repo, decision, evidence_cutoff_ns, clock_ns=clock_ns,
+        )
+
+        assert result.status == "MATURED" and result.outcome is not None, result.reason_code
+        assert evidence_cutoff_ns < sealed_receipt_ns < computation_started_ns
+        assert computation_started_ns < validation_finished_ns < production_at_ns
+        assert validation_completed == [validation_finished_ns]
+        assert set(lookup_cutoffs) == {evidence_cutoff_ns}
+        assert result.outcome.available_at_ns == production_at_ns
+        assert result.outcome.available_at_ns >= validation_finished_ns
+        assert result.outcome.matured_at_ns >= max(result.outcome.horizon_end_ns, payoff.available_at_ns)
+
+        # Evidence arrives during maintenance, after T0. The same fixed cutoff must
+        # exclude it even though the resolver itself now runs after its availability.
+        with OpsRepository(tmp_path / "late-evidence.sqlite") as late_repo:
+            case = risk_case(late_repo, include_s2=True)
+            candidate = (case.s2_candidate if case.candidate_set.selected_candidate_id == case.candidate.candidate_id
+                         else case.candidate)
+            assert candidate is not None and candidate.horizon_end_ns <= evidence_cutoff_ns
+            selection = next(row for row in case.candidate_set.candidates
+                             if row.candidate_id == candidate.candidate_id)
+            late_decision = DecisionCalendarEntryV2(
+                case.candidate_set.content_hash, candidate.content_hash, selection.policy_id, "1",
+                candidate.policy_hash, CUTOFF, SelectionStateV2.UNSELECTED,
+                AdmissionStateV2.NOT_APPLICABLE, None, None, DecisionSourceStageV2.CANDIDATE_SET,
+                (), case.candidate_set.content_hash, CUTOFF, CUTOFF,
+            )
+            late_decision_ref = index_decision_calendar_entry(late_repo, late_decision)
+            declaration = {"label_definition": "future_mid_return_v1", "unit": "FRACTION"}
+            declaration_ref = sha256_json(declaration)
+            index_research_evidence(late_repo, "DiagnosticTargetDefinitionV2", declaration_ref,
+                                    CUTOFF, declaration)
+            source_body = {"candidate_ref": candidate.content_hash, "value": "0.02"}
+            source_ref = sha256_json(source_body)
+            index_research_evidence(late_repo, "CausalMarketDiagnosticV2", source_ref,
+                                    validation_finished_ns, source_body)
+            diagnostic = DiagnosticTargetEvidenceV2(
+                late_decision_ref, case.candidate_set.content_hash, candidate.content_hash,
+                "future_mid_return_v1", declaration_ref, CUTOFF, candidate.horizon_end_ns,
+                Decimal("0.02"), "FRACTION", (source_ref,), validation_finished_ns,
+                validation_finished_ns,
+            )
+            diagnostic_ref = index_diagnostic_target_evidence(late_repo, diagnostic)
+
+            deferred = _resolve_decision_outcome(
+                late_repo, _calendar_index(late_repo, late_decision_ref), evidence_cutoff_ns,
+                clock_ns=clock_ns,
+            )
+            assert deferred.status == "UNRESOLVED" and deferred.outcome is None
+            assert deferred.reason_code == "DIAGNOSTIC_TARGET_EVIDENCE_MISSING"
+
+            later_cutoff_ns = production_at_ns + 1
+            later_result = _resolve_decision_outcome(
+                late_repo, _calendar_index(late_repo, late_decision_ref), later_cutoff_ns,
+                clock_ns=lambda: later_cutoff_ns + 1,
+            )
+            assert later_result.status == "MATURED" and later_result.outcome is not None
+            assert later_result.outcome.diagnostic_evidence_ref == diagnostic_ref
+            assert later_result.outcome.available_at_ns >= later_cutoff_ns + 1
+
+
+def test_decision_identity_after_cutoff_is_not_consumed(tmp_path):
+    with OpsRepository(tmp_path / "future-decision-identity.sqlite") as repo:
+        _case, _action, payoff, fixture_outcome = s18._payoff_case(repo)
+        indexed = _calendar_index(repo, fixture_outcome.decision_ref)
+        cutoff = payoff.available_at_ns + 7
+        decision = DecisionCalendarEntryV2.from_dict(json_value(indexed.metadata["decision_entry"]))
+        repo._connection.execute(
+            "UPDATE artifact_index SET available_at_ns=? WHERE artifact_ref=?",
+            (cutoff + 1, decision.decision_identity_ref),
+        )
+        result = _resolve_decision_outcome(
+            repo, indexed, cutoff, clock_ns=lambda: cutoff + 10,
+        )
+        assert result.status == "UNRESOLVED" and result.outcome is None
+        assert result.reason_code == "DECISION_IDENTITY_NOT_YET_AVAILABLE"
 
 
 def test_supported_no_fill_requires_exact_replay_record(tmp_path, monkeypatch):
@@ -140,7 +269,7 @@ def test_supported_no_fill_requires_exact_replay_record(tmp_path, monkeypatch):
     with OpsRepository(tmp_path / "supported-no-fill.sqlite") as repo:
         _case, _action, payoff, fixture_outcome = s18._payoff_case(repo)
         assert payoff.status.value == "NO_FILL" and payoff.entry is None
-        result = resolve_decision_outcome(
+        result = _resolve_deterministically(
             repo, _calendar_index(repo, fixture_outcome.decision_ref), payoff.available_at_ns + 1
         )
         assert result.status == "MATURED" and result.outcome is not None
@@ -153,7 +282,7 @@ def test_supported_no_fill_requires_exact_replay_record(tmp_path, monkeypatch):
     with OpsRepository(tmp_path / "missing-no-fill.sqlite") as repo:
         _skip_payoff_registration(repo, monkeypatch)
         _case, _action, _payoff, fixture_outcome = s18._payoff_case(repo)
-        result = resolve_decision_outcome(
+        result = _resolve_deterministically(
             repo, _calendar_index(repo, fixture_outcome.decision_ref), fixture_outcome.horizon_end_ns + 1
         )
         assert result.status == "UNRESOLVED" and result.outcome is None
@@ -171,7 +300,7 @@ def test_missing_cost_or_replay_evidence_never_matures(mutation, tmp_path, monke
     with OpsRepository(tmp_path / f"missing-{mutation}.sqlite") as repo:
         _tamper_payoff_registration(repo, monkeypatch, mutation)
         _case, _action, payoff, fixture_outcome = s18._payoff_case(repo)
-        result = resolve_decision_outcome(
+        result = _resolve_deterministically(
             repo, _calendar_index(repo, fixture_outcome.decision_ref), payoff.available_at_ns + 1
         )
         assert result.status == "UNRESOLVED" and result.outcome is None
@@ -189,7 +318,7 @@ def test_conflicting_replay_paths_fail_closed(tmp_path):
             ref, "PolicyPayoffV2", ref, indexed.created_at_ns, indexed.available_at_ns,
             {"payoff": body, "input_refs": indexed.metadata["input_refs"]},
         ))
-        result = resolve_decision_outcome(
+        result = _resolve_deterministically(
             repo, _calendar_index(repo, fixture_outcome.decision_ref), payoff.available_at_ns + 1
         )
         assert result.status == "UNRESOLVED" and result.outcome is None
@@ -275,7 +404,7 @@ def test_actual_provenance_requires_exact_close_and_action_binding(tmp_path, mon
             actual.position_epoch_id, link_ref, economics_ref, available,
         )
         index_actual_action_position_binding(repo, binding)
-        result = resolve_decision_outcome(
+        result = _resolve_deterministically(
             repo, _calendar_index(repo, replay_outcome.decision_ref), available + 1
         )
         assert result.status == "MATURED" and result.outcome is not None, result.reason_code
@@ -316,7 +445,7 @@ def test_predeclared_diagnostic_for_unselected_candidate_is_non_executable(tmp_p
             candidate.horizon_end_ns + 1,
         )
         diagnostic_ref = index_diagnostic_target_evidence(repo, diagnostic)
-        result = resolve_decision_outcome(repo, _calendar_index(repo, decision_ref), diagnostic.available_at_ns)
+        result = _resolve_deterministically(repo, _calendar_index(repo, decision_ref), diagnostic.available_at_ns)
         assert result.status == "MATURED" and result.outcome is not None
         outcome = result.outcome
         assert outcome.outcome_target == OutcomeTargetV2.NON_EXECUTABLE_DIAGNOSTIC
@@ -345,7 +474,7 @@ def test_expired_decision_is_censored_only_with_exact_expiry_evidence(tmp_path):
             candidate.deadline_ns, candidate.deadline_ns,
         )
         decision_ref = index_decision_calendar_entry(repo, decision)
-        result = resolve_decision_outcome(repo, _calendar_index(repo, decision_ref), candidate.horizon_end_ns + 1)
+        result = _resolve_deterministically(repo, _calendar_index(repo, decision_ref), candidate.horizon_end_ns + 1)
         assert result.status == "CENSORED" and result.outcome is not None
         assert result.outcome.label_state == LabelStateV2.CENSORED
         assert result.outcome.reason == "EXPIRED_BEFORE_FROZEN_ACTION"

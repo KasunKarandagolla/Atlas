@@ -6,8 +6,9 @@ Persistence remains in the atlas-ops controller through ``index_matured_outcome`
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from dataclasses import dataclass
+import time
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Literal
 
@@ -95,7 +96,7 @@ def _wire_decimal(value: object, *, field: str) -> Decimal:
 def _actual_close_source(
     repository: OpsRepository,
     source_ref: str,
-    now_ns: int,
+    evidence_cutoff_ns: int,
     *,
     candidate: CandidateActionV2,
     horizon_end_ns: int,
@@ -104,7 +105,7 @@ def _actual_close_source(
     body = json_value(entry.metadata) if entry is not None else None
     if (entry is None or entry.artifact_type != "ActualClosedPositionSourceV2"
             or entry.artifact_ref != source_ref or entry.content_hash != source_ref
-            or entry.available_at_ns > now_ns or not isinstance(body, Mapping)):
+            or entry.available_at_ns > evidence_cutoff_ns or not isinstance(body, Mapping)):
         raise ValueError("indexed actual close source unavailable")
     account_scope = body.get("account_scope")
     position_epoch_id = body.get("position_epoch_id")
@@ -149,10 +150,10 @@ def _actual_close_source(
         "close_at_ns": actual.close_at_ns,
     }
     execution = _reference_entry(
-        repository, actual.execution_source_ref, "V2ActualExecutionCloseObservationV1", as_of_ns=now_ns
+        repository, actual.execution_source_ref, "V2ActualExecutionCloseObservationV1", as_of_ns=evidence_cutoff_ns
     )
     economics = _reference_entry(
-        repository, actual.economic_source_ref, "V2ActualAccountPnlObservationV1", as_of_ns=now_ns
+        repository, actual.economic_source_ref, "V2ActualAccountPnlObservationV1", as_of_ns=evidence_cutoff_ns
     )
     execution_body = json_value(execution.metadata)
     economics_body = json_value(economics.metadata)
@@ -179,6 +180,28 @@ def _result(
     outcome: MaturedOutcomeV2 | None = None,
 ) -> OutcomeResolutionV1:
     return OutcomeResolutionV1(decision_ref, status, outcome, horizon_end_ns, reason_code)
+
+
+def _publish_outcome(
+    outcome: MaturedOutcomeV2,
+    *,
+    clock_ns: Callable[[], int],
+    computation_started_ns: int,
+    evidence_cutoff_ns: int,
+) -> MaturedOutcomeV2:
+    """Timestamp a fully validated derived label at its production availability."""
+
+    production_at_ns = clock_ns()
+    timestamp(production_at_ns, field="outcome production time")
+    return replace(
+        outcome,
+        available_at_ns=max(
+            outcome.available_at_ns,
+            computation_started_ns,
+            evidence_cutoff_ns,
+            production_at_ns,
+        ),
+    )
 
 
 def _lookup(
@@ -393,24 +416,24 @@ def _validate_replay_support(
     action: _ActionIdentity,
     payoff: Mapping[str, object],
     payoff_entry: ArtifactIndexEntryV2,
-    now_ns: int,
+    evidence_cutoff_ns: int,
 ) -> tuple[Mapping[str, object], Mapping[str, object], Mapping[str, object], tuple[str, ...]]:
     """Require explicit causal fee, funding and replay support before monetary maturity."""
 
     path_ref = payoff.get("path_ref")
-    path_entry = _reference_entry(repository, path_ref, "ReplayPathV2", as_of_ns=now_ns)
+    path_entry = _reference_entry(repository, path_ref, "ReplayPathV2", as_of_ns=evidence_cutoff_ns)
     path = path_entry.metadata.get("path")
     if not isinstance(path, Mapping) or sha256_json(path) != path_ref:
         raise ValueError("replay path payload invalid")
 
     assumptions_ref = payoff.get("replay_assumptions_ref")
-    assumptions_entry = _reference_entry(repository, assumptions_ref, "ReplayAssumptionsV2", as_of_ns=now_ns)
+    assumptions_entry = _reference_entry(repository, assumptions_ref, "ReplayAssumptionsV2", as_of_ns=evidence_cutoff_ns)
     assumptions = json_value(assumptions_entry.metadata)
     if not isinstance(assumptions, Mapping) or sha256_json(assumptions) != assumptions_ref:
         raise ValueError("typed replay assumptions invalid")
 
     fee_ref = payoff.get("fee_ref")
-    fee_entry = _reference_entry(repository, fee_ref, "FeeScheduleV2", as_of_ns=now_ns)
+    fee_entry = _reference_entry(repository, fee_ref, "FeeScheduleV2", as_of_ns=evidence_cutoff_ns)
     fee = json_value(fee_entry.metadata)
     if (not isinstance(fee, Mapping) or sha256_json(fee) != fee_ref
             or fee.get("version") != "V2_TAKER_FEES_V1"
@@ -422,12 +445,12 @@ def _validate_replay_support(
     exit_fee_rate = _wire_decimal(fee.get("exit_taker_rate"), field="exit_taker_rate")
     if not Decimal(0) <= entry_fee_rate <= Decimal(1) or not Decimal(0) <= exit_fee_rate <= Decimal(1):
         raise ValueError("fee rate outside supported range")
-    fee_source = _reference_entry(repository, fee.get("source_ref"), None, as_of_ns=now_ns)
+    fee_source = _reference_entry(repository, fee.get("source_ref"), None, as_of_ns=evidence_cutoff_ns)
     if fee_source.available_at_ns > fee_entry.available_at_ns:
         raise ValueError("fee source was unavailable when fee schedule was declared")
 
     funding_ref = payoff.get("funding_schedule_ref")
-    funding_entry = _reference_entry(repository, funding_ref, "FundingScheduleV2", as_of_ns=now_ns)
+    funding_entry = _reference_entry(repository, funding_ref, "FundingScheduleV2", as_of_ns=evidence_cutoff_ns)
     funding_schedule = json_value(funding_entry.metadata)
     expected_times = funding_schedule.get("expected_settlement_times_ns") if isinstance(funding_schedule, Mapping) else None
     explicit_zero = funding_schedule.get("explicit_zero_funding") if isinstance(funding_schedule, Mapping) else None
@@ -444,12 +467,12 @@ def _validate_replay_support(
             or (not explicit_zero and not expected_times)):
         raise ValueError("cutoff-known funding schedule is missing or contradictory")
     funding_source = _reference_entry(repository, funding_schedule.get("source_ref"), None,
-                                      as_of_ns=now_ns)
+                                      as_of_ns=evidence_cutoff_ns)
     if funding_source.available_at_ns > funding_entry.available_at_ns:
         raise ValueError("funding schedule source was unavailable when declared")
 
     product_ref = action.identity.get("product_ref")
-    product_entry = _reference_entry(repository, product_ref, "ProductContractV2", as_of_ns=now_ns)
+    product_entry = _reference_entry(repository, product_ref, "ProductContractV2", as_of_ns=evidence_cutoff_ns)
     product = product_entry.metadata.get("product")
     product_contract = ProductContractV2.from_dict(json_value(product)) if isinstance(product, Mapping) else None
     if (product_contract is None or product_contract.content_hash != product_ref
@@ -491,7 +514,7 @@ def _validate_replay_support(
     if not required_refs.issubset(set(input_refs)):
         raise ValueError("replay omitted a required typed execution/cost input")
     for ref in input_refs:
-        _reference_entry(repository, ref, expected_types.get(ref), as_of_ns=now_ns)
+        _reference_entry(repository, ref, expected_types.get(ref), as_of_ns=evidence_cutoff_ns)
 
     return path, fee, {**funding_schedule, "source_ref": funding_schedule.get("source_ref")}, input_refs
 
@@ -502,7 +525,7 @@ def _replay_economics(
     payoff_entry: ArtifactIndexEntryV2,
     path: Mapping[str, object],
     funding_schedule: Mapping[str, object],
-    now_ns: int,
+    evidence_cutoff_ns: int,
 ) -> tuple[Decimal, Decimal, Decimal, Decimal, Decimal]:
     """Sum exact recorded replay cash rows and require declared funding coverage.
 
@@ -556,7 +579,7 @@ def _replay_economics(
     for ref in path_funding_refs:
         if not isinstance(ref, str):
             raise ValueError("replay path funding ref malformed")
-        funding = _reference_entry(repository, ref, "FundingCashflowV2", as_of_ns=now_ns)
+        funding = _reference_entry(repository, ref, "FundingCashflowV2", as_of_ns=evidence_cutoff_ns)
         body = json_value(funding.metadata)
         if (not isinstance(body, Mapping) or sha256_json(body) != ref
                 or body.get("version") != "V2_SETTLED_FUNDING_V1"
@@ -595,16 +618,18 @@ def _resolve_diagnostic(
     repository: OpsRepository,
     decision: DecisionCalendarEntryV2,
     candidate: CandidateActionV2,
-    now_ns: int,
+    evidence_cutoff_ns: int,
     *,
     horizon_end_ns: int,
+    clock_ns: Callable[[], int],
+    computation_started_ns: int,
 ) -> OutcomeResolutionV1:
     lookup = _lookup(
         repository,
         artifact_type="DiagnosticTargetEvidenceV2",
         metadata_path=("diagnostic", "decision_ref"),
         identity_value=decision.content_hash,
-        as_of_ns=now_ns,
+        as_of_ns=evidence_cutoff_ns,
     )
     if lookup.problem is not None:
         return _result(decision.content_hash, "UNRESOLVED", horizon_end_ns=horizon_end_ns,
@@ -612,8 +637,9 @@ def _resolve_diagnostic(
     if not lookup.entries:
         if (decision.source_stage.value == "EXPIRY"
                 and decision.admission_state == AdmissionStateV2.EXPIRED):
-            return _censored_expiry(repository, decision, candidate, now_ns,
-                                    horizon_end_ns=horizon_end_ns)
+            return _censored_expiry(repository, decision, candidate, evidence_cutoff_ns,
+                                    horizon_end_ns=horizon_end_ns, clock_ns=clock_ns,
+                                    computation_started_ns=computation_started_ns)
         return _result(decision.content_hash, "UNRESOLVED", horizon_end_ns=horizon_end_ns,
                        reason_code="DIAGNOSTIC_TARGET_EVIDENCE_MISSING")
     if len(lookup.entries) != 1:
@@ -630,7 +656,7 @@ def _resolve_diagnostic(
                 or diagnostic.decision_at_ns != decision.decision_at_ns
                 or diagnostic.horizon_end_ns != horizon_end_ns
                 or diagnostic.available_at_ns != entry.available_at_ns
-                or diagnostic.available_at_ns > now_ns):
+                or diagnostic.available_at_ns > evidence_cutoff_ns):
             return _result(decision.content_hash, "UNSUPPORTED", horizon_end_ns=horizon_end_ns,
                            reason_code="DIAGNOSTIC_TARGET_IDENTITY_UNSUPPORTED")
         declaration = repository.get_artifact(diagnostic.target_declaration_ref)
@@ -643,7 +669,8 @@ def _resolve_diagnostic(
             return _result(decision.content_hash, "UNSUPPORTED", horizon_end_ns=horizon_end_ns,
                            reason_code="DIAGNOSTIC_TARGET_NOT_PREDECLARED")
         source_entries = tuple(repository.get_artifact(ref) for ref in diagnostic.source_refs)
-        if any(source is None or source.available_at_ns > diagnostic.completed_at_ns for source in source_entries):
+        if any(source is None or source.available_at_ns > diagnostic.completed_at_ns
+               or source.available_at_ns > evidence_cutoff_ns for source in source_entries):
             return _result(decision.content_hash, "UNRESOLVED", horizon_end_ns=horizon_end_ns,
                            reason_code="DIAGNOSTIC_SOURCE_INCOMPLETE")
         matured_at_ns = max(
@@ -653,7 +680,7 @@ def _resolve_diagnostic(
             declaration.available_at_ns,
             *(source.available_at_ns for source in source_entries if source is not None),
         )
-        if matured_at_ns > now_ns:
+        if matured_at_ns > evidence_cutoff_ns:
             return _result(decision.content_hash, "UNRESOLVED", horizon_end_ns=horizon_end_ns,
                            reason_code="DIAGNOSTIC_EVIDENCE_NOT_YET_AVAILABLE")
         refs = (*diagnostic.source_refs, diagnostic.target_declaration_ref, entry.artifact_ref)
@@ -663,7 +690,7 @@ def _resolve_diagnostic(
             action=None,
             horizon_end_ns=horizon_end_ns,
             matured_at_ns=matured_at_ns,
-            available_at_ns=max(now_ns, matured_at_ns),
+            available_at_ns=matured_at_ns,
             execution_state=ExecutionOutcomeStateV2.NOT_APPLICABLE,
             label_state=LabelStateV2.MATURED,
             provenance=OutcomeProvenanceV2.COUNTERFACTUAL,
@@ -678,6 +705,10 @@ def _resolve_diagnostic(
             diagnostic_evidence_ref=entry.artifact_ref,
         )
         outcome_contract._validate_diagnostic_target(repository, outcome)
+        outcome = _publish_outcome(
+            outcome, clock_ns=clock_ns, computation_started_ns=computation_started_ns,
+            evidence_cutoff_ns=evidence_cutoff_ns,
+        )
         return _result(decision.content_hash, "MATURED", horizon_end_ns=horizon_end_ns, outcome=outcome)
     except (KeyError, TypeError, ValueError, ArithmeticError):
         return _result(decision.content_hash, "UNRESOLVED", horizon_end_ns=horizon_end_ns,
@@ -688,9 +719,11 @@ def _censored_expiry(
     repository: OpsRepository,
     decision: DecisionCalendarEntryV2,
     candidate: CandidateActionV2,
-    now_ns: int,
+    evidence_cutoff_ns: int,
     *,
     horizon_end_ns: int,
+    clock_ns: Callable[[], int],
+    computation_started_ns: int,
 ) -> OutcomeResolutionV1:
     """Retain exact terminal expiry as a censored calendar observation."""
 
@@ -702,7 +735,7 @@ def _censored_expiry(
         if (indexed is None or indexed.artifact_type != "CandidateExpiryEvidenceV2"
                 or indexed.content_hash != decision.source_artifact_ref or expiry is None
                 or expiry.content_hash != decision.source_artifact_ref
-                or indexed.available_at_ns > now_ns
+                or indexed.available_at_ns > evidence_cutoff_ns
                 or indexed.available_at_ns != decision.available_at_ns
                 or expiry.candidate_set_ref != decision.candidate_set_ref
                 or expiry.candidate_ref != decision.candidate_ref
@@ -717,7 +750,7 @@ def _censored_expiry(
             action=None,
             horizon_end_ns=horizon_end_ns,
             matured_at_ns=matured_at_ns,
-            available_at_ns=max(now_ns, matured_at_ns),
+            available_at_ns=matured_at_ns,
             execution_state=ExecutionOutcomeStateV2.NOT_APPLICABLE,
             label_state=LabelStateV2.CENSORED,
             provenance=OutcomeProvenanceV2.COUNTERFACTUAL,
@@ -728,6 +761,10 @@ def _censored_expiry(
             evidence_quality="EXPIRY_ONLY",
             label_definition="calendar",
             reason="EXPIRED_BEFORE_FROZEN_ACTION",
+        )
+        outcome = _publish_outcome(
+            outcome, clock_ns=clock_ns, computation_started_ns=computation_started_ns,
+            evidence_cutoff_ns=evidence_cutoff_ns,
         )
         return _result(decision.content_hash, "CENSORED", horizon_end_ns=horizon_end_ns,
                        reason_code="EXPIRED_BEFORE_FROZEN_ACTION", outcome=outcome)
@@ -741,16 +778,18 @@ def _resolve_actual(
     decision: DecisionCalendarEntryV2,
     candidate: CandidateActionV2,
     action: _ActionIdentity,
-    now_ns: int,
+    evidence_cutoff_ns: int,
     *,
     horizon_end_ns: int,
+    clock_ns: Callable[[], int],
+    computation_started_ns: int,
 ) -> tuple[OutcomeResolutionV1 | None, bool]:
     lookup = _lookup(
         repository,
         artifact_type="ActualActionPositionBindingV2",
         metadata_path=("binding", "action_hash"),
         identity_value=action.action_hash,
-        as_of_ns=now_ns,
+        as_of_ns=evidence_cutoff_ns,
     )
     if lookup.problem is not None:
         return (_result(decision.content_hash, "UNRESOLVED", horizon_end_ns=horizon_end_ns,
@@ -773,10 +812,10 @@ def _resolve_actual(
                 or binding.candidate_ref != decision.candidate_ref
                 or binding.candidate_set_ref != decision.candidate_set_ref
                 or binding.available_at_ns != indexed_binding.available_at_ns
-                or binding.available_at_ns > now_ns):
+                or binding.available_at_ns > evidence_cutoff_ns):
             raise ValueError("actual binding identity mismatch")
         source, actual_source = _actual_close_source(
-            repository, binding.actual_closed_source_ref, now_ns,
+            repository, binding.actual_closed_source_ref, evidence_cutoff_ns,
             candidate=candidate, horizon_end_ns=horizon_end_ns,
         )
         if (actual_source.account_scope != binding.account_scope
@@ -801,7 +840,7 @@ def _resolve_actual(
                 or link.content_hash != binding.action_position_observation_ref
                 or economics.available_at_ns > binding.available_at_ns
                 or link.available_at_ns > binding.available_at_ns
-                or economics.available_at_ns > now_ns or link.available_at_ns > now_ns):
+                or economics.available_at_ns > evidence_cutoff_ns or link.available_at_ns > evidence_cutoff_ns):
             raise ValueError("actual execution/economic observation unavailable")
         economics_body = json_value(economics.metadata)
         link_body = json_value(link.metadata)
@@ -845,7 +884,7 @@ def _resolve_actual(
             economics.available_at_ns,
             link.available_at_ns,
         )
-        if matured_at_ns > now_ns:
+        if matured_at_ns > evidence_cutoff_ns:
             return (_result(decision.content_hash, "UNRESOLVED", horizon_end_ns=horizon_end_ns,
                             reason_code="ACTUAL_EVIDENCE_NOT_YET_AVAILABLE"), True)
         refs = (
@@ -860,7 +899,7 @@ def _resolve_actual(
             action=action,
             horizon_end_ns=horizon_end_ns,
             matured_at_ns=matured_at_ns,
-            available_at_ns=max(now_ns, matured_at_ns),
+            available_at_ns=matured_at_ns,
             execution_state=state,
             label_state=LabelStateV2.MATURED,
             provenance=OutcomeProvenanceV2.ACTUAL,
@@ -880,6 +919,10 @@ def _resolve_actual(
             requested_quantity=requested,
         )
         outcome_contract._validate_actual_binding(repository, outcome)
+        outcome = _publish_outcome(
+            outcome, clock_ns=clock_ns, computation_started_ns=computation_started_ns,
+            evidence_cutoff_ns=evidence_cutoff_ns,
+        )
         return _result(decision.content_hash, "MATURED", horizon_end_ns=horizon_end_ns,
                        outcome=outcome), True
     except (KeyError, TypeError, ValueError, ArithmeticError):
@@ -892,16 +935,18 @@ def _resolve_replay(
     decision: DecisionCalendarEntryV2,
     candidate: CandidateActionV2,
     action: _ActionIdentity,
-    now_ns: int,
+    evidence_cutoff_ns: int,
     *,
     horizon_end_ns: int,
+    clock_ns: Callable[[], int],
+    computation_started_ns: int,
 ) -> OutcomeResolutionV1:
     lookup = _lookup(
         repository,
         artifact_type="PolicyPayoffV2",
         metadata_path=("payoff", "action_hash"),
         identity_value=action.action_hash,
-        as_of_ns=now_ns,
+        as_of_ns=evidence_cutoff_ns,
     )
     if lookup.problem is not None:
         return _result(decision.content_hash, "UNRESOLVED", horizon_end_ns=horizon_end_ns,
@@ -918,7 +963,7 @@ def _resolve_replay(
         if (payoff.get("action_hash") != action.action_hash
                 or payoff.get("action_artifact_ref") != action.artifact_ref
                 or payoff.get("available_at_ns") != entry.available_at_ns
-                or entry.available_at_ns > now_ns):
+                or entry.available_at_ns > evidence_cutoff_ns):
             raise ValueError("replay identity mismatch")
         payoff_status = payoff.get("status")
         if not isinstance(payoff_status, str):
@@ -938,19 +983,19 @@ def _resolve_replay(
                 or state == ExecutionOutcomeStateV2.FULL_FILL and fill != action.quantity):
             raise ValueError("replay fill quantity disagrees with terminal state")
         path, fee, funding_schedule, replay_refs = _validate_replay_support(
-            repository, decision, candidate, action, payoff, entry, now_ns
+            repository, decision, candidate, action, payoff, entry, evidence_cutoff_ns
         )
         gross, fees, funding, net, supported_fill = _replay_economics(
-            repository, payoff, entry, path, funding_schedule, now_ns
+            repository, payoff, entry, path, funding_schedule, evidence_cutoff_ns
         )
         if supported_fill != fill:
             raise ValueError("replay filled quantity changed during resolution")
         refs = tuple(sorted({entry.artifact_ref, *replay_refs}))
         reference_entries = tuple(
-            _reference_entry(repository, ref, None, as_of_ns=now_ns) for ref in refs
+            _reference_entry(repository, ref, None, as_of_ns=evidence_cutoff_ns) for ref in refs
         )
         matured_at_ns = max(horizon_end_ns, *(item.available_at_ns for item in reference_entries))
-        if matured_at_ns > now_ns:
+        if matured_at_ns > evidence_cutoff_ns:
             return _result(decision.content_hash, "UNRESOLVED", horizon_end_ns=horizon_end_ns,
                            reason_code="REPLAY_EVIDENCE_NOT_YET_AVAILABLE")
         admission_provenance = (
@@ -965,7 +1010,7 @@ def _resolve_replay(
             action=action,
             horizon_end_ns=horizon_end_ns,
             matured_at_ns=matured_at_ns,
-            available_at_ns=max(now_ns, matured_at_ns),
+            available_at_ns=matured_at_ns,
             execution_state=state,
             label_state=LabelStateV2.MATURED,
             provenance=admission_provenance,
@@ -983,6 +1028,10 @@ def _resolve_replay(
             requested_quantity=action.quantity,
         )
         outcome_contract._validate_policy_payoff(repository, outcome, action.identity)
+        outcome = _publish_outcome(
+            outcome, clock_ns=clock_ns, computation_started_ns=computation_started_ns,
+            evidence_cutoff_ns=evidence_cutoff_ns,
+        )
         return _result(decision.content_hash, "MATURED", horizon_end_ns=horizon_end_ns,
                        outcome=outcome)
     except (KeyError, TypeError, ValueError, ArithmeticError):
@@ -993,22 +1042,35 @@ def _resolve_replay(
 def resolve_decision_outcome(
     repository: OpsRepository,
     calendar_entry: ArtifactIndexEntryV2,
-    now_ns: int,
+    evidence_cutoff_ns: int,
+    *,
+    clock_ns: Callable[[], int] | None = None,
 ) -> OutcomeResolutionV1:
     """Resolve one immutable indexed calendar entry without persisting or guessing.
 
-    A matured outcome is returned only after its exact horizon has elapsed and one
-    complete, unambiguous existing evidence chain validates. Missing evidence never
-    becomes a no-fill or zero-cost result. Intermediate states carry no label because
-    the repository has no accepted outcome supersession semantics.
+    Evidence queries and horizon eligibility use the fixed ``evidence_cutoff_ns``.
+    ``clock_ns`` timestamps the derived label only after its complete evidence chain
+    has validated. Missing evidence never becomes a no-fill or zero-cost result.
+    Intermediate states carry no label because the repository has no accepted outcome
+    supersession semantics.
     """
 
-    timestamp(now_ns, field="now_ns")
+    timestamp(evidence_cutoff_ns, field="evidence_cutoff_ns")
+    production_clock = time.time_ns if clock_ns is None else clock_ns
+    computation_started_ns = production_clock()
+    timestamp(computation_started_ns, field="computation_started_ns")
     decision_ref = calendar_entry.artifact_ref
+    if calendar_entry.available_at_ns > evidence_cutoff_ns:
+        return _result(decision_ref, "UNRESOLVED", reason_code="DECISION_CALENDAR_NOT_YET_AVAILABLE")
     try:
         decision = _decision(repository, calendar_entry)
     except (KeyError, TypeError, ValueError):
         return _result(decision_ref, "UNSUPPORTED", reason_code="INVALID_DECISION_CALENDAR_EVIDENCE")
+    decision_identity = repository.get_artifact(decision.decision_identity_ref)
+    if decision_identity is None or decision_identity.available_at_ns > evidence_cutoff_ns:
+        return _result(
+            decision_ref, "UNRESOLVED", reason_code="DECISION_IDENTITY_NOT_YET_AVAILABLE",
+        )
     if decision.candidate_ref is None:
         return _result(decision_ref, "UNSUPPORTED", reason_code="NO_DECLARED_CANDIDATE_HORIZON")
     try:
@@ -1016,7 +1078,7 @@ def resolve_decision_outcome(
     except (KeyError, TypeError, ValueError):
         return _result(decision_ref, "UNSUPPORTED", reason_code="INVALID_CANDIDATE_HORIZON_EVIDENCE")
     horizon_end_ns = candidate.horizon_end_ns
-    if now_ns < horizon_end_ns:
+    if evidence_cutoff_ns < horizon_end_ns:
         return _result(decision_ref, "PENDING", horizon_end_ns=horizon_end_ns,
                        reason_code="DECLARED_HORIZON_NOT_REACHED")
 
@@ -1033,16 +1095,19 @@ def resolve_decision_outcome(
 
     if action is None:
         return _resolve_diagnostic(
-            repository, decision, candidate, now_ns, horizon_end_ns=horizon_end_ns
+            repository, decision, candidate, evidence_cutoff_ns, horizon_end_ns=horizon_end_ns,
+            clock_ns=production_clock, computation_started_ns=computation_started_ns,
         )
 
     actual, actual_evidence_exists = _resolve_actual(
-        repository, decision, candidate, action, now_ns, horizon_end_ns=horizon_end_ns
+        repository, decision, candidate, action, evidence_cutoff_ns, horizon_end_ns=horizon_end_ns,
+        clock_ns=production_clock, computation_started_ns=computation_started_ns,
     )
     if actual is not None and actual.status != "MATURED":
         return actual
     replay = _resolve_replay(
-        repository, decision, candidate, action, now_ns, horizon_end_ns=horizon_end_ns
+        repository, decision, candidate, action, evidence_cutoff_ns, horizon_end_ns=horizon_end_ns,
+        clock_ns=production_clock, computation_started_ns=computation_started_ns,
     )
     if actual_evidence_exists:
         if actual is None or actual.status != "MATURED":
