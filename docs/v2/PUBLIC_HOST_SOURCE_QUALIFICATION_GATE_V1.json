@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "gate_id": "PUBLIC_HOST_SOURCE_QUALIFICATION_GATE_V1",
+  "gate_version": "1.0.0",
+  "session": "035",
+  "implementation_commit": "03bf3f78cf002669003b7f667c5de95bb93fa347",
+  "status": "ENGINEERING_PASS",
+  "review_status": "SUBMITTED_FOR_INDEPENDENT_REVIEW",
+  "scope": "one fresh Linux host check and one explicit credential-free public smoke capped at 30 declared seconds and 180 seconds absolute maximum",
+  "qualification": {
+    "host_environment": "TESTED",
+    "public_runtime": "TEST GATE",
+    "public_rest_transport": "TEST GATE",
+    "public_websocket_transport": "TEST GATE",
+    "book_continuity": "TEST GATE",
+    "observed_trade_evidence": "TEST GATE",
+    "trade_completeness": "NOT ESTIMABLE",
+    "s1_s2_live_cadence": "TEST GATE",
+    "s3_native_cadence": "TEST GATE",
+    "s3_strategy_input_readiness": "NOT ESTIMABLE",
+    "economics": "NOT ESTIMABLE",
+    "capital": "DISABLED",
+    "assisted_execution": "DISABLED",
+    "critic_authority": "ZERO"
+  },
+  "host": {
+    "class": "LINUX",
+    "filesystem_class": "LINUX_FILESYSTEM",
+    "python_version": "3.12.13",
+    "sqlite_runtime_version": "3.50.4",
+    "sqlite_journal_mode": "WAL",
+    "sqlite_synchronous": "FULL",
+    "writable_and_space_checked": true,
+    "single_writer_lock": "TESTED",
+    "wall_clock_regressed": false,
+    "configuration_changed": false,
+    "private_host_identifiers_emitted": false
+  },
+  "smoke": {
+    "evidence_ref": "docs/evidence/session-035-public-smoke-summary.json",
+    "websocket_endpoint": "wss://stream.bybit.com/v5/public/linear",
+    "rest_endpoint_attempted": "GET /v5/market/instruments-info (linear, limit 1000)",
+    "duration_seconds": 15.313171001,
+    "declared_duration_seconds": 30,
+    "absolute_duration_ceiling_seconds": 180,
+    "connection_attempts": 1,
+    "automatic_retry": false,
+    "subscription_acknowledged": false,
+    "data_frames_received": 0,
+    "trade_rows_observed": 0,
+    "public_rest_get_count": 1,
+    "recent_trade_requests_per_symbol": {
+      "BTCUSDT": 0,
+      "ETHUSDT": 0
+    },
+    "queue_overflow": false,
+    "account_calls": 0,
+    "order_calls": 0,
+    "credentialed_calls": 0,
+    "provider_model_calls": 0,
+    "raw_frames_committed": false
+  },
+  "trade_completeness": {
+    "proven": false,
+    "status": "NOT ESTIMABLE",
+    "gate_status": "TEST GATE",
+    "capability_matrix_changed": false,
+    "exact_reason_codes": [
+      "BYBIT_PUBLIC_TRADE_NO_REPLAY_CURSOR",
+      "BYBIT_RECENT_TRADE_BOUNDED_SUFFIX_ONLY",
+      "BYBIT_WS_DISCONNECT_INTERVAL_NO_REPAIR",
+      "BYBIT_HISTORICAL_ARCHIVE_CONTRACT_UNSPECIFIED",
+      "BYBIT_SOURCE_REVISION_SEMANTICS_UNSPECIFIED",
+      "S3_TRADE_POPULATION_COVERAGE_UNPROVEN"
+    ],
+    "exact_instrument_key_resolution": "BLOCKED BY ENVIRONMENT",
+    "exact_instrument_key_reason": "BYBIT_METADATA_BOOTSTRAP_UNAVAILABLE"
+  },
+  "s3_policy": {
+    "required_contiguous_m1_observations": 10081,
+    "strictly_preceding_residual_observations": 120,
+    "trade_derived_vwap_required": true,
+    "fresh_bbo_max_age_ns": 1000000000,
+    "requirements_changed": false,
+    "warmup_promoted": false,
+    "strategy_qualification_promoted": false,
+    "prospective_shadow_promoted": false
+  },
+  "unchanged_authority": {
+    "risk_policy_changed": false,
+    "strategy_thresholds_changed": false,
+    "s33_outcome_path_changed": false,
+    "s34_candidate_set_or_calendar_changed": false,
+    "final_holdout_touched": false,
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "critic_authority": "ZERO",
+    "economic_value": "NOT ESTIMABLE"
+  },
+  "merge_authorized": false,
+  "endurance_72h_authorized": false,
+  "session_036_authorized": false
+}

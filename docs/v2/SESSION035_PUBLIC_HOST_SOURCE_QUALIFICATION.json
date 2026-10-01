@@ -1,0 +1,255 @@
+{
+  "schema_version": 1,
+  "artifact_type": "SESSION035_PUBLIC_HOST_SOURCE_QUALIFICATION",
+  "session": "035",
+  "retrieved_on": "2026-10-01",
+  "repository": {
+    "accepted_start_branch": "impl/session-034-native-s3-m1-warmup-readiness",
+    "accepted_start_sha": "e13994752f165ad8b42f7f7c441076078d4388cc",
+    "s34_tested_implementation_sha": "cec7cc253058823a3298e3b09c6afff537c8f504",
+    "s34_tested_sha_in_start_ancestry": true,
+    "branch": "impl/session-035-public-host-source-qualification",
+    "tested_implementation_sha": "03bf3f78cf002669003b7f667c5de95bb93fa347",
+    "existing_session_035_or_newer_accepted_checkpoint_at_preflight": false,
+    "authority_sha256": {
+      "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "ATLAS_72_Hour_Consultation.pdf": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e"
+    },
+    "consultation_use": "CONSULTATION ONLY; accepted evidence-duration rule unchanged",
+    "economic_floor": {
+      "minimum_genuine_prospective_shadow_weeks": 8,
+      "minimum_genuinely_matured_opportunities": 200,
+      "regime_coverage_required": true,
+      "dependence_aware_inference_required": true,
+      "multiplicity_discipline_required": true,
+      "exact_chronology_required": true,
+      "protected_final_holdout_required": true
+    }
+  },
+  "qualification_status": {
+    "maximum_engineering_status": "ENGINEERING_PASS",
+    "host_environment": "TESTED",
+    "public_runtime": "TEST GATE",
+    "public_rest_transport": "TEST GATE",
+    "public_websocket_transport": "TEST GATE",
+    "book_continuity": "TEST GATE",
+    "observed_trade_evidence": "TEST GATE",
+    "trade_completeness": "NOT ESTIMABLE",
+    "s1_s2_live_cadence": "TEST GATE",
+    "s3_native_cadence": "TEST GATE",
+    "s3_strategy_input_readiness": "NOT ESTIMABLE",
+    "economics": "NOT ESTIMABLE",
+    "capital": "DISABLED",
+    "assisted_execution": "DISABLED",
+    "critic_authority": "ZERO"
+  },
+  "host_qualification": {
+    "host_class": "LINUX",
+    "wsl": false,
+    "python_version": "3.12.13",
+    "dependency_lock_hashes": {
+      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3"
+    },
+    "sqlite_runtime_version": "3.50.4",
+    "data_root_class": "LINUX_FILESYSTEM",
+    "data_root_absolute_value_emitted": false,
+    "qualification_database": "ops.sqlite",
+    "observation_archive": "ops-observations",
+    "websocket_raw_archive": "ops-l2-frames",
+    "writable": true,
+    "free_bytes_at_smoke_probe": 105477357568,
+    "configuration_changed": false,
+    "journal_mode": "WAL",
+    "synchronous": "FULL",
+    "single_writer_lock": "TESTED",
+    "utc_clock_wall_regressed": false,
+    "git_sha": "03bf3f78cf002669003b7f667c5de95bb93fa347",
+    "tracked_working_tree_dirty": false,
+    "configuration_sha256": "8006b25d52be92ba13732fb9a2c95659ae6d0116dbcc83894db4d95e8f74ecc2",
+    "queue_configuration": {
+      "queue_items": 512,
+      "queue_bytes": 16000000,
+      "websocket_receive_queue_items": 16,
+      "controller_frames_per_cycle": 32,
+      "default_drain_items": 64
+    },
+    "resource_observation": {
+      "rss_bytes_at_host_probe_start": 26591232,
+      "rss_bytes_at_smoke_finish": 81039360
+    },
+    "sanitization": {
+      "username_stored": false,
+      "private_ip_stored": false,
+      "mac_address_stored": false,
+      "machine_serial_stored": false,
+      "home_directory_path_stored": false,
+      "environment_values_read_or_emitted": false,
+      "credentials_read_or_emitted": false
+    }
+  },
+  "provider_semantics_adjudication": {
+    "documentation_retrieved_on": "2026-10-01",
+    "official_documentation_refs": [
+      "https://bybit-exchange.github.io/docs/v5/websocket/public/trade",
+      "https://bybit-exchange.github.io/docs/v5/market/recent-trade",
+      "https://www.bybit.com/en/derivative-activity/history-data",
+      "https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook",
+      "https://bybit-exchange.github.io/docs/v5/ws/connect"
+    ],
+    "public_trade_websocket": {
+      "trade_identity_field": "i",
+      "cross_sequence_field": "seq",
+      "up_to_trades_per_futures_or_spot_message": 1024,
+      "multiple_messages_may_share_seq": true,
+      "seq_is_a_complete_population_cursor": false,
+      "sequence_consecutiveness_guaranteed": false,
+      "missed_message_detection_guaranteed": false
+    },
+    "recent_public_trade_rest": {
+      "endpoint": "GET /v5/market/recent-trade",
+      "linear_limit_range": [1, 1000],
+      "accepted_atlas_page_limit": 100,
+      "cursor_parameter_documented": false,
+      "start_time_or_end_time_parameter_documented": false,
+      "exact_replay_or_pagination_contract": false,
+      "classification": "recent bounded suffix"
+    },
+    "historical_download": {
+      "linked_by_recent_trade_documentation": true,
+      "official_page": "https://www.bybit.com/en/derivative-activity/history-data",
+      "page_observed_as": "dynamic data-product catalog with Product Line and Data category filters",
+      "exact_linear_trade_set_completeness_contract_reviewed": false,
+      "replay_cursor_or_gap_repair_contract_reviewed": false,
+      "event_and_later_receipt_time_contract_reviewed": false,
+      "deterministic_correction_or_revision_contract_reviewed": false,
+      "sufficient_to_qualify_repair": false
+    },
+    "orderbook_websocket": {
+      "channel_scope": "orderbook.50.BTCUSDT and orderbook.50.ETHUSDT",
+      "snapshot_delta_and_u_semantics_documented": true,
+      "does_not_prove_trade_population_completeness": true
+    },
+    "completeness_contract_answers": {
+      "A_complete_population_sequence_or_cursor": {"supported": false, "answer": null},
+      "B_every_trade_for_one_exact_symbol_guaranteed": false,
+      "C_multiple_messages_with_one_seq_handled_as_distinct_trade_messages": true,
+      "D_missed_message_detection_guaranteed": false,
+      "E_missed_interval_repair_supported": false,
+      "F_exact_historical_trade_set_replay_supported": false,
+      "G_original_event_and_later_receipt_or_availability_time_preserved_by_repair": false,
+      "H_reconnect_and_restart_reconciled": false,
+      "I_source_revision_or_correction_deterministic": false,
+      "J_each_s3_minute_vwap_interval_fully_supported": false
+    },
+    "capability_matrix_changed": false,
+    "trade_completeness_proven": false,
+    "trade_completeness_status": "NOT ESTIMABLE",
+    "gate_status": "TEST GATE",
+    "reason_codes": [
+      "BYBIT_PUBLIC_TRADE_NO_REPLAY_CURSOR",
+      "BYBIT_RECENT_TRADE_BOUNDED_SUFFIX_ONLY",
+      "BYBIT_WS_DISCONNECT_INTERVAL_NO_REPAIR",
+      "BYBIT_HISTORICAL_ARCHIVE_CONTRACT_UNSPECIFIED",
+      "BYBIT_SOURCE_REVISION_SEMANTICS_UNSPECIFIED",
+      "S3_TRADE_POPULATION_COVERAGE_UNPROVEN"
+    ]
+  },
+  "trade_completeness_assessment": {
+    "artifact_type": "BybitPublicTradeCompletenessAssessmentV1",
+    "source_id": "BYBIT_PUBLIC_WS",
+    "channels": ["publicTrade.BTCUSDT", "publicTrade.ETHUSDT"],
+    "assessed_at_ns": 1790863664312173153,
+    "capability_matrix_ref": "294b47506e8a7b2a73275a70e13494acd37c4f1216df53e422f0ad863f848b81",
+    "instrument_key_resolution": {
+      "status": "BLOCKED BY ENVIRONMENT",
+      "requested_scope": {
+        "venue": "BYBIT",
+        "environment": "MAINNET",
+        "product": "LINEAR_PERPETUAL",
+        "native_symbols": ["BTCUSDT", "ETHUSDT"]
+      },
+      "exact_instrument_keys": [],
+      "reason_code": "BYBIT_METADATA_BOOTSTRAP_UNAVAILABLE",
+      "reason": "The one public metadata bootstrap request failed; no contract revision was available. No synthetic InstrumentKeyV2 revision was substituted."
+    },
+    "websocket_semantics_ref": "provider_semantics_adjudication.public_trade_websocket",
+    "rest_repair_semantics_ref": "provider_semantics_adjudication.recent_public_trade_rest",
+    "historical_repair_semantics_ref": "provider_semantics_adjudication.historical_download",
+    "live_smoke_evidence_refs": ["docs/evidence/session-035-public-smoke-summary.json"],
+    "trade_completeness_status": "NOT ESTIMABLE",
+    "gate_status": "TEST GATE",
+    "completeness_proven": false,
+    "reason_codes": [
+      "BYBIT_PUBLIC_TRADE_NO_REPLAY_CURSOR",
+      "BYBIT_RECENT_TRADE_BOUNDED_SUFFIX_ONLY",
+      "BYBIT_WS_DISCONNECT_INTERVAL_NO_REPAIR",
+      "BYBIT_HISTORICAL_ARCHIVE_CONTRACT_UNSPECIFIED",
+      "BYBIT_SOURCE_REVISION_SEMANTICS_UNSPECIFIED",
+      "S3_TRADE_POPULATION_COVERAGE_UNPROVEN"
+    ],
+    "s3_warmup_contract": {
+      "required_contiguous_m1_observations": 10081,
+      "strictly_preceding_residual_observations": 120,
+      "trade_derived_vwap_required": true,
+      "fresh_bbo_max_age_ns": 1000000000,
+      "readiness": "NOT ESTIMABLE"
+    },
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "authority": "ZERO"
+  },
+  "s3_frozen_contract": {
+    "required_contiguous_m1_observations": 10081,
+    "strictly_preceding_residual_observations": 120,
+    "trade_derived_vwap_required": true,
+    "fresh_bbo_max_age_ns": 1000000000,
+    "warmup_status": "NOT ESTIMABLE",
+    "candidate_set_and_calendar_behavior_from_s34_preserved": true,
+    "s33_outcome_path_preserved": true,
+    "reconstructed_history_relabelled_as_actual_system": false
+  },
+  "validation": {
+    "focused_session035_and_affected_seams": "97 passed",
+    "contract_and_v1_golden": "10 passed",
+    "full_v2": "757 passed, 2 skipped",
+    "full_v2_duration_seconds": 2203.2,
+    "post_full_v2_source_delta": "Only typing annotations/casts were adjusted after the full run to satisfy mypy; the Session-035 focused tests, Ruff, mypy, compileall, and dependency checks passed afterward.",
+    "non_v2_suite": "SKIPPED; changes confined to V2 data transport/runtime qualification and V2 tests, no shared V1 contracts or dependencies changed",
+    "ruff": "PASS",
+    "mypy": "PASS",
+    "compileall": "PASS",
+    "pip_check": "PASS",
+    "v1_golden_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+    "requirements_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "requirements_agent_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3"
+  },
+  "safety": {
+    "public_market_data_only": true,
+    "credentials_required": false,
+    "credentials_read": false,
+    "account_calls": 0,
+    "order_calls": 0,
+    "provider_model_calls": 0,
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "critic_authority": "ZERO",
+    "risk_policy_changed": false,
+    "strategy_thresholds_changed": false,
+    "final_holdout_touched": false,
+    "economic_value": "NOT ESTIMABLE"
+  },
+  "remaining_gates": [
+    "A separately qualified trade source with exact repair/replay semantics or a separately reviewed evidence amendment",
+    "Genuine S3 forward warmup under the frozen 10081 M1 / 120 residual / trade-VWAP / fresh-BBO contract",
+    "Longer live-public continuity qualification",
+    "Separately authorized 72-hour endurance qualification",
+    "At least eight weeks of genuine prospective shadow and at least 200 genuinely matured opportunities",
+    "Regime coverage, dependence-aware inference, multiplicity discipline, exact chronology, and protected final holdout",
+    "Separate capital and execution qualification"
+  ],
+  "session_036_authorized": false,
+  "merge_authorized": false
+}

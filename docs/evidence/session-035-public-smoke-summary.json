@@ -1,0 +1,229 @@
+{
+  "schema_version": 1,
+  "artifact_type": "SESSION035_PUBLIC_SMOKE_SUMMARY",
+  "retrieved_at_date": "2026-10-01",
+  "implementation_sha": "03bf3f78cf002669003b7f667c5de95bb93fa347",
+  "authority": "ZERO",
+  "smoke": {
+    "status": "TEST GATE",
+    "stop_reason": "SUBSCRIPTION_ACK_NOT_OBSERVED_WITHIN_BOUND",
+    "started_at_ns": 1790863648999007264,
+    "finished_at_ns": 1790863664312173153,
+    "duration_ns": 15313171001,
+    "duration_seconds": 15.313171001,
+    "declared_maximum_seconds": 30,
+    "maximum_allowed_seconds": 180,
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "topics": [
+      "orderbook.50.BTCUSDT",
+      "publicTrade.BTCUSDT",
+      "orderbook.50.ETHUSDT",
+      "publicTrade.ETHUSDT"
+    ],
+    "connection_attempts": 1,
+    "connection_epochs": [1],
+    "connection_opened": true,
+    "subscription_ack_count": 0,
+    "subscription_acknowledged": false,
+    "source_state_before_shutdown": "RUNNING",
+    "disconnect_count_before_shutdown": 0,
+    "planned_shutdown_disconnect_count": 1,
+    "error_code": null,
+    "automatic_retry": false
+  },
+  "host": {
+    "status": "TESTED",
+    "host_class": "LINUX",
+    "filesystem_class": "LINUX_FILESYSTEM",
+    "absolute_path_emitted": false,
+    "python_version": "3.12.13",
+    "sqlite_runtime_version": "3.50.4",
+    "journal_mode": "WAL",
+    "synchronous": "FULL",
+    "writable": true,
+    "free_bytes_at_probe": 105477357568,
+    "single_writer_lock": "TESTED",
+    "clock_wall_regressed": false,
+    "clock_probe_started_at_ns": 1790863648266893450,
+    "clock_probe_finished_at_ns": 1790863648933015829,
+    "tracked_working_tree_dirty": false,
+    "configuration_sha256": "8006b25d52be92ba13732fb9a2c95659ae6d0116dbcc83894db4d95e8f74ecc2",
+    "dependency_lock_hashes": {
+      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3"
+    }
+  },
+  "network_calls": {
+    "bybit_public_rest_gets": 1,
+    "bybit_public_websocket_connection_attempts": 1,
+    "credentialed_calls": 0,
+    "account_calls": 0,
+    "order_calls": 0,
+    "provider_model_calls": 0
+  },
+  "public_rest": {
+    "status": "TEST GATE",
+    "metadata_endpoint_attempted": "GET /v5/market/instruments-info (linear, limit 1000)",
+    "market_request_count": 0,
+    "successful_market_request_count": 0,
+    "metadata_request_count": 1,
+    "successful_metadata_request_count": 0,
+    "metadata_bootstrap_reason_code": "BYBIT_METADATA_BOOTSTRAP_UNAVAILABLE",
+    "recent_trade_page_limit_per_symbol": 100,
+    "recent_trade_requests_per_symbol": {
+      "BTCUSDT": 0,
+      "ETHUSDT": 0
+    },
+    "recent_trade_overlap": {
+      "BTCUSDT": {
+        "statuses": ["NOT ESTIMABLE"],
+        "ws_trade_ids_observed": 0,
+        "rest_trade_ids_observed": 0,
+        "overlapping_ids": 0,
+        "missing_from_ws": 0,
+        "missing_from_rest": 0,
+        "conflicting_content": 0,
+        "shared_event_time_window": null,
+        "completeness_proven": false
+      },
+      "ETHUSDT": {
+        "statuses": ["NOT ESTIMABLE"],
+        "ws_trade_ids_observed": 0,
+        "rest_trade_ids_observed": 0,
+        "overlapping_ids": 0,
+        "missing_from_ws": 0,
+        "missing_from_rest": 0,
+        "conflicting_content": 0,
+        "shared_event_time_window": null,
+        "completeness_proven": false
+      }
+    }
+  },
+  "public_websocket": {
+    "status": "TEST GATE",
+    "endpoint": "wss://stream.bybit.com/v5/public/linear",
+    "connection_attempt_limit": 1,
+    "automatic_retry": false,
+    "queue_configuration": {
+      "queue_items": 512,
+      "queue_bytes": 16000000,
+      "receive_queue_items": 16,
+      "controller_frames_per_cycle": 32,
+      "default_drain_items": 64
+    },
+    "frames": {
+      "network_frames_offered": 0,
+      "received": 0,
+      "drained": 0,
+      "control_frames": 0,
+      "network_bytes_offered": 0,
+      "bytes_received": 0,
+      "bytes_drained": 0,
+      "first_receipt_at_ns": null,
+      "last_receipt_at_ns": null,
+      "archived_by_topic": {}
+    },
+    "queue": {
+      "high_water_items": 0,
+      "high_water_bytes": 0,
+      "capacity_items": 512,
+      "capacity_bytes": 16000000,
+      "frames_rejected": 0,
+      "closed_rejections": 0,
+      "overflowed": false,
+      "backpressure": false,
+      "pending_items_at_close": 0
+    },
+    "malformed_frame_count": 0,
+    "source_health_transitions": {},
+    "continuity_report_count": 0,
+    "latest_continuity_reports": {},
+    "book_sequence_validity": {},
+    "archive_index_watermarks": {}
+  },
+  "trade_observations": {
+    "status": "TEST GATE",
+    "btc_trade_ids_observed": 0,
+    "eth_trade_ids_observed": 0,
+    "trade_rows_observed": 0,
+    "duplicate_ids": 0,
+    "conflicting_ids": 0,
+    "same_seq_across_multiple_messages": 0,
+    "diagnostic_scan_truncated": false,
+    "completeness_proven": false
+  },
+  "supervisor": {
+    "receipt_count": 0,
+    "m1_origin_count": 0,
+    "m15_origin_count": 0,
+    "m1_supervisor_receipts": 0,
+    "m15_supervisor_receipts": 0,
+    "candidate_set_receipts": 0,
+    "decision_calendar_entries": 0,
+    "s3_not_estimable_receipts": 0,
+    "outcome_maintenance_reports": 14,
+    "matured_outcome_count": 0
+  },
+  "qualification": {
+    "host_environment": "TESTED",
+    "public_runtime": "TEST GATE",
+    "public_rest_transport": "TEST GATE",
+    "public_websocket_transport": "TEST GATE",
+    "book_continuity": "TEST GATE",
+    "observed_trade_evidence": "TEST GATE",
+    "trade_completeness": "NOT ESTIMABLE",
+    "trade_completeness_proven": false,
+    "trade_completeness_reason_codes": [
+      "BYBIT_PUBLIC_TRADE_NO_REPLAY_CURSOR",
+      "BYBIT_RECENT_TRADE_BOUNDED_SUFFIX_ONLY",
+      "BYBIT_WS_DISCONNECT_INTERVAL_NO_REPAIR",
+      "BYBIT_HISTORICAL_ARCHIVE_CONTRACT_UNSPECIFIED",
+      "BYBIT_SOURCE_REVISION_SEMANTICS_UNSPECIFIED",
+      "S3_TRADE_POPULATION_COVERAGE_UNPROVEN"
+    ],
+    "s1_s2_live_cadence": "TEST GATE",
+    "s3_native_cadence": "TEST GATE",
+    "s3_strategy_input_readiness": "NOT ESTIMABLE",
+    "economics": "NOT ESTIMABLE",
+    "capital": "DISABLED",
+    "assisted": "DISABLED",
+    "critic_authority": "ZERO"
+  },
+  "sqlite": {
+    "database_size_bytes_start": 143360,
+    "database_size_bytes_end": 176128,
+    "database_size_delta_bytes": 32768,
+    "wal_size_bytes_start": 0,
+    "wal_size_bytes_end": 0,
+    "wal_size_delta_bytes": 0,
+    "shm_size_bytes_start": 0,
+    "shm_size_bytes_end": 32768,
+    "shm_size_delta_bytes": 32768
+  },
+  "resource_observation": {
+    "process_rss_start_bytes": 26591232,
+    "process_rss_end_bytes": 81039360
+  },
+  "read_only_preflight": {
+    "report_identity": "ea1e6be3079f2c0ca8f19b7e1d30aef1d7bf2fc70d6800e5611fbaa003902735",
+    "as_of_ns": 1790863664312173153,
+    "public_receipts": 0,
+    "calendar_entries": 0,
+    "matured_outcomes": 0,
+    "outcome_producer_status": "TEST GATE",
+    "outcome_producer_reason": "PRODUCTION_MATURED_OUTCOME_PRODUCER_NOT_QUALIFIED",
+    "decision_influence": false,
+    "admission_influence": false,
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "economic_value": "NOT ESTIMABLE",
+    "read_only": true
+  },
+  "sanitization": {
+    "raw_frames_committed": false,
+    "raw_market_values_committed": false,
+    "private_host_identifiers_emitted": false,
+    "secrets_read_or_emitted": false,
+    "disposable_data_root": true
+  }
+}
