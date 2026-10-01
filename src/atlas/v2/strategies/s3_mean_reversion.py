@@ -641,8 +641,11 @@ class S3ShadowCoordinator:
         quote: ExecutableQuote | None, tick_size: Decimal, universe: UniverseContractV2,
         event_gate: EventGate | None, bar_health: PublicSourceHealthV2 | None,
         trade_health: PublicSourceHealthV2 | None,
+        trade_completeness_proven: bool,
     ) -> S3DecisionV2:
         timestamp(cutoff_ns, field="S3.cutoff_ns")
+        if type(trade_completeness_proven) is not bool:
+            raise ValueError("S3 trade completeness qualification must be bool")
         replay_view = feature.replay_view.value
         # Filter by availability before choosing a revision so future corrections
         # cannot rewrite an already emitted setup.
@@ -710,6 +713,8 @@ class S3ShadowCoordinator:
             state = self._state(key=key, cutoff_ns=cutoff_ns, status="NO_CANDIDATE", reason="EVENT_GATE_BLOCKED",
                                 refs=refs, replay_view=feature.replay_view.value)
             return S3DecisionV2("NO_CANDIDATE", "EVENT_GATE_BLOCKED", state)
+        if not trade_completeness_proven:
+            return fail("TRADE_COMPLETENESS_UNPROVEN")
         if quote is None or quote.key != key or not quote.valid_at(cutoff_ns, BBO_MAX_AGE_NS):
             return fail("BBO_STALE_OR_UNAVAILABLE")
         if not context.h4 or not context.m15:
@@ -867,10 +872,13 @@ class S3ShadowCoordinator:
         frozen_vwap: TradeVwapSnapshotV2, residual_sigma: float, quote: ExecutableQuote | None,
         tick_size: Decimal, feature: FeatureArtifactV2, universe: UniverseContractV2,
         event_gate: EventGate | None, bar_health: PublicSourceHealthV2 | None,
+        trade_completeness_proven: bool,
     ) -> S3DecisionV2:
         watch = self.repository.get_watch(watch_id)
         if watch is None:
             raise KeyError(watch_id)
+        if type(trade_completeness_proven) is not bool:
+            raise ValueError("S3 trade completeness qualification must be bool")
         refs: tuple[str, ...] = (watch.thesis_hash, trigger.content_hash, frozen_vwap.content_hash, feature.content_hash,
                                  event_gate.evidence_ref if event_gate else "", quote.evidence_ref if quote else "")
         refs = tuple(sorted({ref for ref in refs if ref}))
@@ -888,6 +896,8 @@ class S3ShadowCoordinator:
 
         if watch.state != WatchStateV2.WAITING_FOR_EVENT:
             return no("WATCH_NOT_WAITING", "NO_CANDIDATE")
+        if not trade_completeness_proven:
+            return no("TRADE_COMPLETENESS_UNPROVEN")
         if cutoff_ns < trigger.close_at_ns or trigger.interval != BarIntervalV2.M1 or not trigger.final:
             return no("TRIGGER_BAR_NOT_COMPLETED")
         if trigger.instrument_revision != watch.key.contract_revision or frozen_vwap.key != watch.key:

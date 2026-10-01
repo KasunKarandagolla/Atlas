@@ -594,6 +594,7 @@ def test_s3_production_setup_consumes_causal_seven_day_prefix_and_fails_residual
                 quote=inputs["quote"], tick_size=Decimal("0.1"), universe=inputs["universe"],
                 event_gate=inputs["event_gate"], bar_health=inputs["bar_health"],
                 trade_health=inputs["trade_health"],
+                trade_completeness_proven=True,
             )
 
         result = evaluate()
@@ -784,6 +785,7 @@ def test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_se
             watch_id=watch_id, trigger=trigger, cutoff_ns=cutoff, frozen_vwap=vwap, residual_sigma=0.01,
             quote=quote, tick_size=Decimal("0.1"), feature=feature, universe=universe,
             event_gate=blocked_projection, bar_health=source_health,
+            trade_completeness_proven=True,
         )
         assert blocked.reason == "EVENT_GATE_UNKNOWN_OR_BLOCKED"
         unknown = coordinator.on_subsequent_bar(
@@ -791,6 +793,7 @@ def test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_se
             quote=quote, tick_size=Decimal("0.1"), feature=feature, universe=universe,
             event_gate=EventGate(EventState.UNKNOWN, cutoff, H, "EVENT_SAFETY_GATE_V2_1"),
             bar_health=source_health,
+            trade_completeness_proven=True,
         )
         assert unknown.reason == "EVENT_GATE_UNKNOWN_OR_BLOCKED"
         stale_quote = replace(quote, observed_at_ns=cutoff - 2 * NS, available_at_ns=cutoff - 2 * NS)
@@ -798,6 +801,7 @@ def test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_se
             watch_id=watch_id, trigger=trigger, cutoff_ns=cutoff, frozen_vwap=vwap, residual_sigma=0.01,
             quote=stale_quote, tick_size=Decimal("0.1"), feature=feature, universe=universe,
             event_gate=event_gate, bar_health=source_health,
+            trade_completeness_proven=True,
         )
         assert stale_bbo.reason == "BBO_STALE_OR_UNAVAILABLE"
         future_vwap = TradeVwapSnapshotV2(
@@ -808,6 +812,7 @@ def test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_se
             watch_id=watch_id, trigger=trigger, cutoff_ns=cutoff, frozen_vwap=future_vwap, residual_sigma=0.01,
             quote=quote, tick_size=Decimal("0.1"), feature=feature, universe=universe,
             event_gate=event_gate, bar_health=source_health,
+            trade_completeness_proven=True,
         )
         assert moved_target.reason == "FROZEN_ENTRY_VWAP_MISMATCH"
         result = S3ShadowCoordinator(repository).on_subsequent_bar(
@@ -815,6 +820,7 @@ def test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_se
             quote=quote, tick_size=Decimal("0.1"), feature=feature, universe=universe,
             event_gate=event_gate,
             bar_health=source_health,
+            trade_completeness_proven=True,
         )
         assert result.status == "CANDIDATE" and result.candidate is not None
         assert result.candidate.side == V2Side.SHORT and result.candidate.quantity is None
@@ -835,6 +841,7 @@ def test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_se
             quote=quote, tick_size=Decimal("0.1"), feature=feature, universe=universe,
             event_gate=event_gate,
             bar_health=source_health,
+            trade_completeness_proven=True,
         )
         assert duplicate.candidate is None
         assert duplicate.reason == "DUPLICATE_TRIGGER"

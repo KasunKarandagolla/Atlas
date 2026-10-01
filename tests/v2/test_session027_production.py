@@ -519,6 +519,7 @@ def _seed_default_s3_candidate_evidence(
         event_gate=setup["event_gate"],
         bar_health=setup["bar_health"],
         trade_health=setup["trade_health"],
+        trade_completeness_proven=True,
     )
     assert setup_result.status == "WATCH" and setup_result.watch is not None
     event_cutoff_ns = setup_cutoff_ns + BarIntervalV2.M15.duration_ns
@@ -538,6 +539,7 @@ def _seed_default_s3_candidate_evidence(
             {
                 "record_id": observation.record_id,
                 "source_id": observation.source_id,
+                "event_type": observation.event_type,
                 "instrument_revision": observation.instrument_revision,
                 "instrument_key_json": KEY.to_canonical_json(),
                 "event_at_ns": observation.event_at_ns,
@@ -592,7 +594,7 @@ def _seed_default_s3_candidate_evidence(
     for ordinal, close_at_ns in enumerate(range(m15_start, setup_cutoff_ns, BarIntervalV2.M15.duration_ns)):
         add_context_bar(BarIntervalV2.M15, close_at_ns, ordinal)
     add_context_bar(BarIntervalV2.M15, setup_cutoff_ns, 30 * 24 * 4 - 1)
-    trigger_bar = add_context_bar(BarIntervalV2.M15, event_cutoff_ns, 30 * 24 * 4)
+    add_context_bar(BarIntervalV2.M15, event_cutoff_ns, 30 * 24 * 4)
     h1_start = setup_cutoff_ns - 30 * 24 * 60 * 60 * 1_000_000_000 + BarIntervalV2.H1.duration_ns
     for ordinal, close_at_ns in enumerate(range(h1_start, setup_cutoff_ns + 1, BarIntervalV2.H1.duration_ns)):
         add_context_bar(BarIntervalV2.H1, close_at_ns, ordinal)
@@ -600,6 +602,7 @@ def _seed_default_s3_candidate_evidence(
     for ordinal, close_at_ns in enumerate(range(h4_start, setup_cutoff_ns, BarIntervalV2.H4.duration_ns)):
         add_context_bar(BarIntervalV2.H4, close_at_ns, ordinal)
 
+    trigger_bar: CausalBarV2 | None = None
     for index in range(1, 16):
         close_at_ns = setup_cutoff_ns + index * BarIntervalV2.M1.duration_ns
         close = Decimal("100.001")
@@ -612,9 +615,12 @@ def _seed_default_s3_candidate_evidence(
             received_at_ns=close_at_ns, ingested_at_ns=close_at_ns, available_at_ns=close_at_ns,
             translation_version="session027-s3-public-bars-v1", sequence=str(open_at_ns), payload=payload,
         )
-        ingest_bar(CausalBarV2(
+        minute_bar = CausalBarV2(
             raw, BarIntervalV2.M1, open_at_ns, close_at_ns, close, high, low, close, Decimal("1"), True,
-        ))
+        )
+        ingest_bar(minute_bar)
+        if index == 15:
+            trigger_bar = minute_bar
 
     trade_row = {
         "symbol": KEY.native_symbol, "execId": "session027-s3-current-trade",
@@ -670,6 +676,7 @@ def _seed_default_s3_candidate_evidence(
         key=KEY, cutoff_ns=event_cutoff_ns, coverage=coverage, scheduled_events=(),
         abnormality=abnormality, incidents=(),
     )
+    assert trigger_bar is not None
     return setup_cutoff_ns, event_cutoff_ns, product, setup_result.watch.watch_id, trigger_bar
 
 
@@ -908,14 +915,17 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
             entry.artifact_type == "FeatureArtifactV2" and entry.artifact_ref == candidate.snapshot_hash
             for entry in feature_entries
         )
-        assert {"S1", "S2", "S3"}.issubset(set(coordinator_calls))
+        # S3 has moved to its native one-minute event. The M15 decision must
+        # continue to invoke only the unchanged S1/S2 production sleeves.
+        assert {"S1", "S2"}.issubset(set(coordinator_calls))
+        assert "S3" not in coordinator_calls
         indexed_candidates = tuple(repository.artifact_entries("CandidateActionV2"))
         assert {entry.artifact_ref for entry in indexed_candidates} == set(
             candidate_set_entry.metadata["identity"]["candidate_refs"]
         )
         s3_states = [entry for entry in repository.artifact_entries("S3MeanReversionStateV2")
                      if entry.available_at_ns <= event.information_cutoff_ns]
-        assert s3_states and all(entry.metadata["state"]["status"] == "NOT_ESTIMABLE" for entry in s3_states)
+        assert not s3_states
         assert not any(
             CandidateActionV2.from_dict(json_value(entry.metadata["candidate"])).policy_hash == S3_POLICY.policy_hash
             for entry in repository.artifact_entries("CandidateActionV2")
@@ -1016,7 +1026,7 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
     assert after_restart == before_restart
 
 
-def test_default_production_wires_real_s3_evidence_and_natural_candidate_path(tmp_path, monkeypatch):
+def test_default_production_native_m1_s3_stays_closed_without_trade_completeness(tmp_path, monkeypatch):
     from atlas.v2.selection import accept_research_candidates
     from atlas.v2.strategies.s1_trend import S1_POLICY
     from atlas.v2.strategies.s2_breakout import S2_POLICY
@@ -1029,10 +1039,37 @@ def test_default_production_wires_real_s3_evidence_and_natural_candidate_path(tm
         _setup_cutoff, event_cutoff, product, watch_id, trigger_bar = _seed_default_s3_candidate_evidence(
             repository, archive_root=archive_root, setup_cutoff_ns=setup_cutoff,
         )
-        assert repository.get_watch(watch_id) is not None
+        watch = repository.get_watch(watch_id)
+        assert watch is not None
+        frozen_vwap_refs = tuple(
+            entry.artifact_ref for entry in repository.artifact_entries("S3TradeVwapSnapshotV2")
+            if entry.artifact_ref in watch.evidence_refs
+        )
+        assert len(frozen_vwap_refs) == 1
         assert repository.artifact_entries("CandidateActionV2") == ()
-        event = production._public_bar_event(repository, product, trigger_bar, now_ns=event_cutoff)
+        event = production._native_s3_m1_public_bar_event(
+            repository, product, trigger_bar, now_ns=event_cutoff,
+        )
         assert event is not None
+        from atlas.v2.runtime.s3_native_cadence import s3_m1_event_id
+
+        observation_ref = sha256_json({
+            "artifact_type": "PublicObservationIndexV2", "record_id": trigger_bar.raw.record_id,
+        })
+        source_health_entries = [
+            entry for entry in repository.artifact_entries("PublicSourceHealthV2")
+            if entry.metadata.get("health", {}).get("source_id") == trigger_bar.raw.source_id
+            and entry.available_at_ns <= trigger_bar.raw.available_at_ns
+        ]
+        source_health_ref = max(
+            source_health_entries, key=lambda item: (item.available_at_ns, item.artifact_ref),
+        ).artifact_ref
+        assert event.event_type == "CONFIRMED_1M_CLOSE"
+        assert event.event_id == s3_m1_event_id(product.key, trigger_bar.close_at_ns)
+        assert event.information_cutoff_ns == trigger_bar.raw.available_at_ns
+        assert event.deadline_ns == trigger_bar.close_at_ns + 5_000_000_000
+        assert {observation_ref, trigger_bar.content_hash, product.content_hash} <= set(event.causal_input_refs)
+        assert source_health_ref in event.causal_input_refs
 
     def forbid_network(*args, **kwargs):
         raise AssertionError("default S3 composition attempted a network request")
@@ -1041,6 +1078,7 @@ def test_default_production_wires_real_s3_evidence_and_natural_candidate_path(tm
     monkeypatch.setattr(urllib.request, "urlopen", forbid_network)
     received: list[dict[str, Any]] = []
     subsequent: list[Any] = []
+    subsequent_frozen_refs: list[str] = []
     original_evaluate = S3ShadowCoordinator.evaluate_setup
     original_subsequent = S3ShadowCoordinator.on_subsequent_bar
 
@@ -1051,10 +1089,18 @@ def test_default_production_wires_real_s3_evidence_and_natural_candidate_path(tm
     def capture_subsequent(self, *args, **kwargs):
         result = original_subsequent(self, *args, **kwargs)
         subsequent.append(result)
+        subsequent_frozen_refs.append(kwargs["frozen_vwap"].content_hash)
         return result
 
     monkeypatch.setattr(S3ShadowCoordinator, "evaluate_setup", capture_evaluate)
     monkeypatch.setattr(S3ShadowCoordinator, "on_subsequent_bar", capture_subsequent)
+
+    def forbid_s1_s2(*args, **kwargs):
+        raise AssertionError("native M1 event invoked an S1/S2 decision sleeve")
+
+    monkeypatch.setattr(production.S1ShadowCoordinator, "create_watch", forbid_s1_s2)
+    monkeypatch.setattr(production.S1ShadowCoordinator, "on_bar", forbid_s1_s2)
+    monkeypatch.setattr(production.S2ShadowCoordinator, "on_trigger_close", forbid_s1_s2)
     port = production.create_production_port()
     assert type(port.public_source) is production.IndexedPublicCycleSourceV1
     assert type(port.inputs_provider) is production.IndexedProductionEventInputsV1
@@ -1063,16 +1109,27 @@ def test_default_production_wires_real_s3_evidence_and_natural_candidate_path(tm
         assert resolved is not None
         assert received
         s3_args = received[-1]
-        assert s3_args["residuals"]
-        assert len(s3_args["residuals"]) >= 7 * 24 * 60 + 1
-        assert s3_args["current_vwap"] is not None
-        assert s3_args["trades"]
-        assert s3_args["trade_health"].state == PublicSourceStateV2.HEALTHY_CURRENT
-        assert s3_args["current_vwap"].trade_refs
-        assert subsequent and any(item.candidate is not None for item in subsequent)
+        assert s3_args["residuals"] == ()
+        assert s3_args["current_vwap"] is None
+        assert not s3_args["trades"]
+        assert s3_args["trade_health"] is None
+        assert subsequent and all(item.candidate is None for item in subsequent)
+        assert subsequent_frozen_refs == [frozen_vwap_refs[0]]
         s3_candidates = [item for item in resolved.candidates if item.policy_hash == S3_POLICY.policy_hash]
-        assert s3_candidates
+        assert not s3_candidates
         assert all(item.quantity is None for item in s3_candidates)
+        readiness = repository.artifact_entries("S3NativeWarmupReadinessV1")
+        assert readiness
+        report = readiness[-1].metadata["readiness"]
+        assert report["required_m1_bars"] == 10_081
+        assert report["trade_completeness_proven"] is False
+        assert report["status"] == "NOT_ESTIMABLE"
+        assert report["gate_status"] == "TEST GATE"
+        assert report["trade_evidence_status"] == "NOT_ESTIMABLE"
+        assert tuple(report["trade_evidence_reason_codes"]) == (
+            "S32_CONTINUITY_OR_CURRENT_HEALTH_UNAVAILABLE",
+        )
+        assert "TEST_GATE_BYBIT_TRADE_COMPLETENESS_UNPROVEN" in report["reason_codes"]
         candidate_set = assemble_multisleeve_research_candidate_set(
             repository, universe=resolved.universe, decision_event_id=event.event_id,
             cutoff_ns=event.information_cutoff_ns, candidates=resolved.candidates,
@@ -1083,9 +1140,8 @@ def test_default_production_wires_real_s3_evidence_and_natural_candidate_path(tm
             repository, candidate_set, resolved.candidates,
             accepted_at_ns=event.information_cutoff_ns,
         )
-        assert {item.candidate_id for item in candidate_set.candidates}.intersection(
-            item.candidate_id for item in s3_candidates
-        )
+        assert not candidate_set.candidates
+        assert candidate_set.selected_candidate_id is None
         assert product.content_hash in {
             entry.artifact_ref for entry in repository.artifact_entries("ProductContractV2")
         }

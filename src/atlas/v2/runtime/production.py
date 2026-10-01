@@ -56,6 +56,12 @@ from ..data.public_stream_continuity import (
 )
 from ..data.public_stream_source import PublicStreamSourceV2
 from ..data.raw import AvailabilityClassV2, RawObservationV2
+from ..data.s3_forward_evidence import (
+    S3ForwardTradeEvidenceV1,
+    evaluate_s3_warmup_readiness,
+    quote_from_valid_continuity_report,
+    reconstruct_s3_stream_trade_evidence,
+)
 from ..data.subscriptions import SubscriptionPlanV2
 from ..data.universe import ComputeTierV2, DynamicUniverseRuntimeV2, UniverseObservationV2
 from ..features.joins import asof_join
@@ -134,6 +140,15 @@ from .ops_supervisor import (
     OpsStageStatusV1,
     OpsTerminalStatusV1,
     PipelineStageV1,
+)
+from .s3_native_cadence import (
+    S3_M1_DEFAULT_MAX_LATENESS_NS,
+    S3_M1_EVENT_TYPE,
+    S3M1BarDisposition,
+    classify_s3_m1_bar,
+    find_s3_m1_origin_event,
+    s3_m1_event_id,
+    s3_m1_origin_metadata,
 )
 
 OPS_PRODUCTION_ADAPTER_ID = "ATLAS_V2_PRODUCTION_OPS_COMPOSITION_V1"
@@ -385,6 +400,98 @@ class IndexedPublicCycleSourceV1:
                     refs.append(event_entry.artifact_ref)
                     seen_event_ids.add(event.event_id)
 
+        native_m1_bars_by_key: dict[InstrumentKeyV2, tuple[Any, ...]] = {}
+        if healthy:
+            native_entries = repository.artifact_entries("OpsDecisionEventSourceV1")
+            for product in collector.registry.contracts():
+                bars = reconstruct_causal_bars_from_archive(
+                    repository, archive_root, key=product.key, interval=BarIntervalV2.M1,
+                    information_cutoff_ns=now_ns, availability_class=AvailabilityClassV2.ACTUAL_SYSTEM,
+                    limit=100_000,
+                )
+                native_m1_bars_by_key[product.key] = tuple(item.bar for item in bars)
+                if not bars:
+                    continue
+                trigger = bars[-1].bar
+                prior = find_s3_m1_origin_event(native_entries, product.key, trigger.close_at_ns)
+                if prior is not None:
+                    prior_body = prior.metadata.get("event")
+                    if not isinstance(prior_body, Mapping):
+                        raise ValueError("durable native M1 event lost its typed event body")
+                    event = decision_event_from_dict(prior_body)
+                    if (event.available_at_ns <= now_ns and event.event_id not in seen_event_ids
+                            and repository.get_artifact(_ops_receipt_identity_ref(event.event_id)) is None):
+                        events.append(event)
+                        refs.append(prior.artifact_ref)
+                        seen_event_ids.add(event.event_id)
+                    continue
+
+                disposition = classify_s3_m1_bar(trigger, now_ns=now_ns)
+                if disposition == S3M1BarDisposition.LATE:
+                    _persist_late_s3_m1_origin_gate(
+                        repository, product, trigger, observed_at_ns=now_ns,
+                    )
+                    continue
+                if disposition != S3M1BarDisposition.TIMELY:
+                    continue
+                base = _native_s3_m1_public_bar_event(
+                    repository, product, trigger, now_ns=now_ns,
+                )
+                if base is None:
+                    continue
+                generated = IndexedProductionEventInputsV1().resolve(repository, base)
+                if generated is None:
+                    continue
+                causal_refs = set(base.causal_input_refs)
+                causal_refs.add(generated.universe.content_hash)
+                causal_refs.update(generated.causal_feature_refs)
+                causal_refs.update(generated.causal_source_refs)
+                causal_refs.update(item.content_hash for item in generated.candidates)
+                causal_refs.update(ref for refs_for_candidate in generated.scanner_evidence_refs.values()
+                                   for ref in refs_for_candidate)
+                for candidate in generated.candidates:
+                    causal_refs.update(candidate.envelope.input_refs)
+                event = OpsDecisionEventV1(
+                    base.event_id, base.event_type, base.source_id, base.trigger_ref,
+                    base.source_event_at_ns, base.source_published_at_ns, base.received_at_ns,
+                    base.available_at_ns, base.information_cutoff_ns, base.deadline_ns,
+                    tuple(sorted(causal_refs)),
+                )
+                native_origin = s3_m1_origin_metadata(
+                    product.key, trigger.close_at_ns, bar_ref=trigger.content_hash,
+                )["native_m1_origin"]
+                if not isinstance(native_origin, Mapping):
+                    raise ValueError("native M1 origin metadata must be an object")
+                _persist_public_event(
+                    repository, event, trigger.raw.record_id, now_ns,
+                    native_m1_origin=native_origin,
+                )
+                event_entry = repository.get_artifact(event.content_hash)
+                if (event_entry is not None and event.event_id not in seen_event_ids
+                        and repository.get_artifact(_ops_receipt_identity_ref(event.event_id)) is None):
+                    events.append(event)
+                    refs.append(event_entry.artifact_ref)
+                    native_entries = (*native_entries, event_entry)
+                    seen_event_ids.add(event.event_id)
+
+        for product in collector.registry.contracts():
+            late_scan_bars = native_m1_bars_by_key.get(product.key)
+            if late_scan_bars is None:
+                late_scan_bars = tuple(item.bar for item in reconstruct_causal_bars_from_archive(
+                    repository, archive_root, key=product.key, interval=BarIntervalV2.M1,
+                    information_cutoff_ns=now_ns, availability_class=AvailabilityClassV2.ACTUAL_SYSTEM,
+                    limit=100_000,
+                ))
+            if not late_scan_bars:
+                continue
+            late_trigger = late_scan_bars[-1]
+            if (find_s3_m1_origin_event(repository.artifact_entries("OpsDecisionEventSourceV1"),
+                                        product.key, late_trigger.close_at_ns) is None
+                    and classify_s3_m1_bar(late_trigger, now_ns=now_ns) == S3M1BarDisposition.LATE):
+                _persist_late_s3_m1_origin_gate(
+                    repository, product, late_trigger, observed_at_ns=now_ns,
+                )
+
         events.sort(key=lambda item: (item.available_at_ns, item.information_cutoff_ns, item.event_id))
         source_ids_tuple = tuple(sorted(source_ids | {event.source_id for event in events}))
         state_rows: list[OpsSourceStateV1] = []
@@ -408,6 +515,42 @@ class IndexedPublicCycleSourceV1:
 
 def _ops_receipt_identity_ref(event_id: str) -> str:
     return sha256_json({"artifact_type": "OpsSupervisorReceiptIdentityV1", "event_id": event_id})
+
+
+def _persist_late_s3_m1_origin_gate(
+    repository: OpsRepository,
+    product: ProductContractV2,
+    bar: Any,
+    *,
+    observed_at_ns: int,
+) -> None:
+    """Record a first-seen late M1 origin without inventing an event cutoff."""
+    origin = s3_m1_origin_metadata(product.key, bar.close_at_ns, bar_ref=bar.content_hash)["native_m1_origin"]
+    if not isinstance(origin, Mapping):
+        return
+    origin_ref = origin.get("origin_ref")
+    for entry in repository.artifact_entries("OpsPublicAcquisitionDeadlineGateV1"):
+        if entry.metadata.get("native_m1_origin_ref") == origin_ref:
+            return
+    body = {
+        "version": "OPS_PUBLIC_ACQUISITION_DEADLINE_GATE_V1",
+        "observed_at_ns": observed_at_ns,
+        "eligible_cutoff_ns": bar.close_at_ns,
+        "event_ids": [s3_m1_event_id(product.key, bar.close_at_ns)],
+        "deadlines_ns": [bar.close_at_ns + S3_M1_DEFAULT_MAX_LATENESS_NS],
+        "status": "TEST GATE",
+        "reason_code": "NATIVE_M1_BAR_FIRST_SEEN_AFTER_FIXED_DEADLINE",
+        "native_m1_origin_ref": origin_ref,
+        "native_m1_bar_ref": bar.content_hash,
+        "authority": "ZERO",
+    }
+    ref = sha256_json(body)
+    repository.register_artifact(ArtifactIndexEntryV2(
+        ref, "OpsPublicAcquisitionDeadlineGateV1", ref,
+        observed_at_ns, observed_at_ns, {"deadline_gate": body,
+                                        "native_m1_origin_ref": origin_ref,
+                                        "native_m1_origin": dict(origin)},
+    ))
 
 
 def _new_recovery_epoch(repository: OpsRepository, *, started_at_ns: int) -> str:
@@ -605,11 +748,100 @@ def _public_bar_event(
     )
 
 
+def _native_s3_m1_public_bar_event(
+    repository: OpsRepository,
+    product: ProductContractV2,
+    trigger: Any,
+    *,
+    now_ns: int,
+) -> OpsDecisionEventV1 | None:
+    """Create one native S3 event from the exact, timely indexed final M1 bar."""
+    if (trigger.interval != BarIntervalV2.M1 or not trigger.final
+            or trigger.instrument_revision != product.key.contract_revision
+            or product.effective_at_ns > trigger.close_at_ns
+            or product.observed_at_ns > trigger.raw.available_at_ns
+            or product.available_at_ns > trigger.raw.available_at_ns
+            or classify_s3_m1_bar(trigger, now_ns=now_ns) != S3M1BarDisposition.TIMELY):
+        return None
+    index_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                             "record_id": trigger.raw.record_id})
+    indexed = repository.get_artifact(index_ref)
+    if (indexed is None or indexed.artifact_type != "PublicObservationIndexV2"
+            or indexed.available_at_ns > now_ns
+            or indexed.content_hash != trigger.raw.content_hash
+            or indexed.metadata.get("record_id") != trigger.raw.record_id
+            or indexed.metadata.get("instrument_revision") != product.key.contract_revision
+            or indexed.metadata.get("event_type") != "BAR_1M"
+            or indexed.metadata.get("event_at_ns") != trigger.raw.event_at_ns
+            or indexed.metadata.get("published_at_ns") != trigger.raw.published_at_ns
+            or indexed.metadata.get("translation_version") != trigger.raw.translation_version
+            or indexed.metadata.get("revision_of") != trigger.raw.revision_of
+            or tuple(indexed.metadata.get("quality_flags", ())) != trigger.raw.quality_flags
+            or indexed.metadata.get("availability_class") != trigger.raw.availability_class.value
+            or indexed.metadata.get("replay_available_at_ns") != trigger.raw.replay_available_at_ns
+            or indexed.metadata.get("bar_content_hash") != trigger.content_hash
+            or indexed.metadata.get("instrument_key_json") != product.key.to_canonical_json()
+            or indexed.metadata.get("raw_payload_hash") != trigger.raw.raw_payload_hash
+            or indexed.metadata.get("availability_class") != AvailabilityClassV2.ACTUAL_SYSTEM.value):
+        return None
+    _index_causal_bar(repository, trigger, index_ref)
+
+    # The M1 cutoff is fixed to source evidence available for this close. Later
+    # source recovery is not allowed to move it forward to make the bar timely.
+    health_entries = [
+        item for item in repository.artifact_entries("PublicSourceHealthV2")
+        if item.available_at_ns <= trigger.raw.available_at_ns
+        and isinstance(item.metadata.get("health"), Mapping)
+        and item.metadata["health"].get("source_id") == trigger.raw.source_id
+    ]
+    if not health_entries:
+        return None
+    health_entry = max(health_entries, key=lambda item: (item.available_at_ns, item.artifact_ref))
+    health_body = health_entry.metadata["health"]
+    health = PublicSourceHealthV2.from_dict(health_body)
+    if (health.content_hash != health_entry.artifact_ref or not health.data_eligible
+            or health.observed_at_ns > trigger.raw.available_at_ns
+            or health.available_at_ns > trigger.raw.available_at_ns):
+        return None
+    cutoff = max(trigger.raw.available_at_ns, health.available_at_ns)
+    deadline = trigger.close_at_ns + S3_M1_DEFAULT_MAX_LATENESS_NS
+    if cutoff > now_ns or cutoff > deadline:
+        return None
+
+    trigger_body = {
+        "version": "OPS_PUBLIC_FINAL_BAR_TRIGGER_V1",
+        "source_observation_ref": index_ref,
+        "bar_ref": trigger.content_hash,
+        "product_ref": product.content_hash,
+        "source_id": trigger.raw.source_id,
+        "source_event_at_ns": trigger.raw.event_at_ns,
+        "source_published_at_ns": trigger.raw.published_at_ns,
+        "received_at_ns": trigger.raw.received_at_ns,
+        "available_at_ns": trigger.raw.available_at_ns,
+        "information_cutoff_ns": cutoff,
+        "authority": "ZERO",
+    }
+    trigger_ref = sha256_json(trigger_body)
+    repository.register_artifact(ArtifactIndexEntryV2(
+        trigger_ref, "OpsPublicFinalBarTriggerV1", trigger_ref,
+        trigger.raw.available_at_ns, trigger.raw.available_at_ns, {"trigger": trigger_body},
+    ))
+    return OpsDecisionEventV1(
+        s3_m1_event_id(product.key, trigger.close_at_ns), S3_M1_EVENT_TYPE,
+        trigger.raw.source_id, trigger_ref,
+        trigger.raw.event_at_ns or trigger.close_at_ns, trigger.raw.published_at_ns,
+        trigger.raw.received_at_ns, trigger.raw.available_at_ns, cutoff, deadline,
+        tuple(sorted({trigger_ref, index_ref, trigger.content_hash, product.content_hash, health.content_hash})),
+    )
+
+
 def _persist_public_event(
     repository: OpsRepository,
     event: OpsDecisionEventV1,
     trigger_record_id: str,
     now_ns: int,
+    *,
+    native_m1_origin: Mapping[str, object] | None = None,
 ) -> None:
     if event.information_cutoff_ns > now_ns:
         raise ValueError("public event handoff cannot be created before its information cutoff")
@@ -617,7 +849,8 @@ def _persist_public_event(
         event.content_hash, "OpsDecisionEventSourceV1", event.content_hash,
         event.information_cutoff_ns, event.information_cutoff_ns,
         {"event": event.to_dict(), "trigger_record_id": trigger_record_id,
-         "composition_id": OPS_PRODUCTION_ADAPTER_ID},
+         "composition_id": OPS_PRODUCTION_ADAPTER_ID,
+         **({"native_m1_origin": dict(native_m1_origin)} if native_m1_origin is not None else {})},
     ))
 
 
@@ -3075,10 +3308,13 @@ def _compose_public_event_inputs(
     event: OpsDecisionEventV1,
     trigger_body: Mapping[str, Any],
 ) -> ProductionEventInputsV1:
-    """Run accepted point-in-time features and S1/S2/S3 coordinators on archived evidence."""
+    """Run each sleeve only on its frozen native cadence and archived inputs."""
     if (trigger_body.get("version") != "OPS_PUBLIC_FINAL_BAR_TRIGGER_V1"
-            or trigger_body.get("information_cutoff_ns") != event.information_cutoff_ns):
+            or trigger_body.get("information_cutoff_ns") != event.information_cutoff_ns
+            or event.event_type not in {"CONFIRMED_15M_CLOSE", S3_M1_EVENT_TYPE}):
         return _empty_event_inputs(repository, event)
+    native_m1 = event.event_type == S3_M1_EVENT_TYPE
+    trigger_interval = BarIntervalV2.M1 if native_m1 else BarIntervalV2.M15
     product_entry = repository.get_artifact(str(trigger_body.get("product_ref", "")))
     product_body = product_entry.metadata.get("product") if product_entry is not None else None
     if (product_entry is None or product_entry.artifact_type != "ProductContractV2"
@@ -3151,12 +3387,14 @@ def _compose_public_event_inputs(
             repository.register_artifacts(tuple(missing_bar_entries))
 
     primary_frames = histories.get(trigger_product.key.to_canonical_json(), {})
-    primary_m15 = primary_frames.get(BarIntervalV2.M15, ())
-    trigger_bar = next((bar for bar in primary_m15
+    primary_trigger_bars = primary_frames.get(trigger_interval, ())
+    trigger_bar = next((bar for bar in primary_trigger_bars
                         if bar.content_hash == trigger_body.get("bar_ref")), None)
     if trigger_bar is None:
         return _empty_event_inputs(repository, event)
-    if (trigger_bar.raw.source_id != event.source_id or trigger_bar.close_at_ns > event.information_cutoff_ns
+    if (trigger_bar.interval != trigger_interval
+            or (native_m1 and event.event_id != s3_m1_event_id(trigger_product.key, trigger_bar.close_at_ns))
+            or trigger_bar.raw.source_id != event.source_id or trigger_bar.close_at_ns > event.information_cutoff_ns
             or trigger_bar.raw.available_at_ns > event.information_cutoff_ns):
         return _empty_event_inputs(repository, event)
 
@@ -3165,6 +3403,7 @@ def _compose_public_event_inputs(
     observations_for_universe: list[UniverseObservationV2] = []
     universe_observation_refs: dict[str, str] = {}
     eligible_order: list[tuple[Decimal, str]] = []
+    active_watches = repository.list_active_watches()
     for product in products:
         key_json = product.key.to_canonical_json()
         frames = histories.get(key_json, {})
@@ -3173,13 +3412,25 @@ def _compose_public_event_inputs(
         h4 = frames.get(BarIntervalV2.H4, ())
         if not m15:
             continue
-        source_id = m15[-1].raw.source_id
+        m1 = frames.get(BarIntervalV2.M1, ())
+        source_bar = (
+            trigger_bar if native_m1 and product.key == trigger_product.key
+            else m1[-1] if native_m1 and m1 else m15[-1]
+        )
+        source_id = source_bar.raw.source_id
         source_health = latest_health.get(source_id)
         if source_health is None or not source_health.data_eligible:
             continue
         quote, mark, quote_refs = _indexed_quote_and_mark(
             repository, archive_root, product, cutoff_ns=event.information_cutoff_ns,
         )
+        if native_m1:
+            stream_quote, stream_quote_refs, _recovery_epoch, _bbo_age = _indexed_s3_stream_quote(
+                repository, product, cutoff_ns=event.information_cutoff_ns, rest_quote=quote,
+            )
+            quote_refs = tuple(sorted({*quote_refs, *stream_quote_refs}))
+            if stream_quote is not None:
+                quote = stream_quote
         gate, gate_ref = _latest_event_gate(repository, event.information_cutoff_ns)
         source_refs.update((source_health.content_hash, *quote_refs))
         if gate_ref is not None:
@@ -3199,7 +3450,23 @@ def _compose_public_event_inputs(
         observed_days = len({bar.close_at_ns // (24 * 60 * 60 * 1_000_000_000) for bar in m15})
         s1_days = min(len(h4) // 6, len(h1) // 24, len(m15) // 96)
         s2_days = len(m15) // 96
-        s3_days = len(frames.get(BarIntervalV2.M1, ())) // 1440
+        s3_days = len(m1) // 1440
+        # Keep the M15 universe snapshot at the same S3 watch boundary as its
+        # frozen cadence, so native M1 watch timing cannot change S1/S2 inputs.
+        m15_decision_close = (
+            trigger_bar.close_at_ns if trigger_interval == BarIntervalV2.M15
+            else event.source_event_at_ns
+        )
+        previous_m15_close = max(
+            (bar.close_at_ns for bar in m15 if bar.close_at_ns < m15_decision_close),
+            default=m15_decision_close - BarIntervalV2.M15.duration_ns,
+        )
+        active_watch = any(
+            watch.key == product.key
+            and (native_m1 or watch.policy_hash != S3_POLICY.policy_hash
+                 or watch.created_at_ns <= previous_m15_close)
+            for watch in active_watches
+        )
         health_age_ok = (source_health.available_at_ns <= event.information_cutoff_ns
                          and source_health.observed_at_ns <= event.information_cutoff_ns)
         if quote_valid and spread is not None and health_age_ok:
@@ -3211,7 +3478,7 @@ def _compose_public_event_inputs(
                 {S1_POLICY.policy_id: s1_days, S2_POLICY.policy_id: s2_days,
                  S3_POLICY.policy_id: s3_days}, source_health.available_at_ns,
                 open_position=False,
-                active_watch=any(watch.key == product.key for watch in repository.list_active_watches()),
+                active_watch=active_watch,
             )
             observations_for_universe.append(observation)
             observation_body = {
@@ -3258,9 +3525,17 @@ def _compose_public_event_inputs(
     else:
         trigger_health, gate, quote, mark, tick_size = trigger_market
     if trigger_health is not None:
-        join = asof_join(store, trigger_product.key, cutoff_ns=event.information_cutoff_ns,
-                         trigger_ref=trigger_bar.content_hash, source_health=trigger_health)
-        if join.status == "AVAILABLE":
+        feature_trigger = trigger_bar
+        if native_m1:
+            feature_trigger = next((bar for bar in reversed(frames.get(BarIntervalV2.M15, ()))
+                                    if bar.close_at_ns <= event.information_cutoff_ns
+                                    and bar.raw.available_at_ns <= event.information_cutoff_ns), None)
+        join = (
+            asof_join(store, trigger_product.key, cutoff_ns=event.information_cutoff_ns,
+                      trigger_ref=feature_trigger.content_hash, source_health=trigger_health)
+            if feature_trigger is not None else None
+        )
+        if join is not None and join.status == "AVAILABLE":
             # Structure features repeatedly inspect prior confirmed swings.
             # The strategy sleeves retain the full as-of history in ``join``;
             # the shared causal snapshot receives the bounded context window
@@ -3281,72 +3556,134 @@ def _compose_public_event_inputs(
             source_refs.update(feature.envelope.input_refs)
             if gate is not None:
                 source_refs.add(gate.evidence_ref)
-            s3_residuals, s3_current_vwap, s3_trades, s3_trade_health, s3_refs = _resolve_indexed_s3_inputs(
-                repository, archive_root, trigger_product.key,
-                cutoff_ns=event.information_cutoff_ns,
-                completed_1m=frames.get(BarIntervalV2.M1, ()),
-                health_by_source=latest_health,
-            )
-            source_refs.update(s3_refs)
             waiting = [watch for watch in repository.list_active_watches()
                        if watch.key == trigger_product.key and watch.state.value == "WAITING_FOR_EVENT"]
-            s1_waiting = [watch for watch in waiting if watch.policy_hash == S1_POLICY.policy_hash]
-            s1 = S1ShadowCoordinator(repository)
-            if s1_waiting:
-                for watch in s1_waiting:
-                    decision = s1.on_bar(watch.watch_id, join, feature, event_gate=gate,
-                                         bbo=quote, mark_index=mark)
+            if not native_m1:
+                s1_waiting = [watch for watch in waiting if watch.policy_hash == S1_POLICY.policy_hash]
+                s1 = S1ShadowCoordinator(repository)
+                if s1_waiting:
+                    for watch in s1_waiting:
+                        decision = s1.on_bar(watch.watch_id, join, feature, event_gate=gate,
+                                             bbo=quote, mark_index=mark)
+                        if decision.candidate is not None:
+                            candidates[decision.candidate.candidate_id] = decision.candidate
+                else:
+                    decision = s1.create_watch(join, feature, event_gate=gate, universe=universe)
                     if decision.candidate is not None:
                         candidates[decision.candidate.candidate_id] = decision.candidate
-            else:
-                decision = s1.create_watch(join, feature, event_gate=gate, universe=universe)
-                if decision.candidate is not None:
-                    candidates[decision.candidate.candidate_id] = decision.candidate
-            s2 = S2ShadowCoordinator(repository).on_trigger_close(
-                join, feature, universe=universe, bbo=quote,
-            )
-            if s2.candidate is not None:
-                candidates[s2.candidate.candidate_id] = s2.candidate
-            s3 = S3ShadowCoordinator(repository)
-            completed_m1 = tuple(
-                bar for bar in frames.get(BarIntervalV2.M1, ())
-                if bar.final and bar.close_at_ns <= event.information_cutoff_ns
-                and bar.raw.available_at_ns <= event.information_cutoff_ns
-            )
-            for watch in waiting:
-                if watch.policy_hash != S3_POLICY.policy_hash:
-                    continue
-                trigger_m1 = next(
-                    (bar for bar in reversed(completed_m1) if bar.close_at_ns > watch.created_at_ns), None,
+                s2 = S2ShadowCoordinator(repository).on_trigger_close(
+                    join, feature, universe=universe, bbo=quote,
                 )
-                if trigger_m1 is None:
-                    continue
-                setup = repository.get_artifact(watch.thesis_hash)
-                setup_state = setup.metadata.get("state") if setup is not None else None
-                sigma = setup_state.get("residual_sigma") if isinstance(setup_state, Mapping) else None
-                frozen = [item for item in _indexed_s3_vwaps(
-                    repository, watch.key, cutoff_ns=event.information_cutoff_ns,
-                ) if item.content_hash in watch.evidence_refs]
-                if len(frozen) != 1 or isinstance(sigma, bool) or not isinstance(sigma, (int, float)):
-                    continue
-                result = s3.on_subsequent_bar(
-                    watch_id=watch.watch_id, trigger=trigger_m1,
-                    cutoff_ns=event.information_cutoff_ns, frozen_vwap=frozen[0],
-                    residual_sigma=float(sigma), quote=quote, tick_size=tick_size,
-                    feature=feature, universe=universe, event_gate=gate,
-                    bar_health=trigger_health,
+                if s2.candidate is not None:
+                    candidates[s2.candidate.candidate_id] = s2.candidate
+
+            if native_m1:
+                trade_evidence, stream_trade_health = _indexed_s3_forward_trade_evidence(
+                    repository, archive_root, trigger_product, cutoff_ns=event.information_cutoff_ns,
                 )
-                if result.candidate is not None:
-                    candidates[result.candidate.candidate_id] = result.candidate
-            # Missing trade VWAP, 1M residuals or health remain S3's existing
-            # NOT_ESTIMABLE contract; the coordinator receives only resolved evidence.
-            s3.evaluate_setup(
-                key=trigger_product.key, cutoff_ns=event.information_cutoff_ns,
-                residuals=s3_residuals, current_vwap=s3_current_vwap, trades=s3_trades,
-                completed_1m=frames.get(BarIntervalV2.M1, ()), context=join,
-                feature=feature, quote=quote, tick_size=tick_size, universe=universe,
-                event_gate=gate, bar_health=trigger_health, trade_health=s3_trade_health,
-            )
+                trade_evidence_body = trade_evidence.to_dict()
+                trade_evidence_ref = sha256_json({
+                    "artifact_type": "S3ForwardTradeEvidenceV1", "evidence": trade_evidence_body,
+                })
+                repository.register_artifact(ArtifactIndexEntryV2(
+                    trade_evidence_ref, "S3ForwardTradeEvidenceV1", trade_evidence_ref,
+                    event.information_cutoff_ns, event.information_cutoff_ns,
+                    {"evidence": trade_evidence_body},
+                ))
+                s3_quote, s3_quote_refs, quote_recovery_epoch, _quote_age = _indexed_s3_stream_quote(
+                    repository, trigger_product, cutoff_ns=event.information_cutoff_ns, rest_quote=quote,
+                )
+                source_refs.update((*trade_evidence.trade_refs, trade_evidence_ref, *s3_quote_refs))
+                if trade_evidence.continuity_report_ref is not None:
+                    source_refs.add(trade_evidence.continuity_report_ref)
+                if trade_evidence.source_health_ref is not None:
+                    source_refs.add(trade_evidence.source_health_ref)
+
+                readiness_residuals = _indexed_s3_residuals(
+                    repository, trigger_product.key, cutoff_ns=event.information_cutoff_ns,
+                )
+                readiness_vwaps = _indexed_s3_vwaps(
+                    repository, trigger_product.key, cutoff_ns=event.information_cutoff_ns,
+                )
+                trigger_universe_entries = [
+                    item for item in universe.entries if item.key == trigger_product.key
+                ]
+                trigger_s3_eligibility = (
+                    trigger_universe_entries[0].strategy_eligibility.get(S3_POLICY.policy_id)
+                    if len(trigger_universe_entries) == 1 else None
+                )
+                readiness = evaluate_s3_warmup_readiness(
+                    key=trigger_product.key, cutoff_ns=event.information_cutoff_ns,
+                    bars=frames.get(BarIntervalV2.M1, ()), residuals=readiness_residuals,
+                    trade_vwaps=readiness_vwaps, trades=trade_evidence.trades,
+                    bar_source_health=trigger_health, trade_source_health=stream_trade_health,
+                    quote=s3_quote, event_gate=gate,
+                    point_in_time_universe_eligible=bool(
+                        len(trigger_universe_entries) == 1
+                        and trigger_universe_entries[0].data_eligible
+                        and not trigger_universe_entries[0].capital_eligible
+                        and trigger_s3_eligibility is not None
+                        and trigger_s3_eligibility.status.value == "ELIGIBLE"
+                    ),
+                    recovery_epoch=(trade_evidence.recovery_epoch
+                                    if trade_evidence.recovery_epoch is not None else quote_recovery_epoch),
+                    trade_recovery_epoch=trade_evidence.recovery_epoch,
+                    book_recovery_epoch=quote_recovery_epoch,
+                    trade_evidence_status=trade_evidence.status,
+                    trade_evidence_reason_codes=trade_evidence.reason_codes,
+                    additional_evidence_refs=tuple(sorted({
+                        trade_evidence_ref, *s3_quote_refs,
+                        *([trade_evidence.continuity_report_ref]
+                          if trade_evidence.continuity_report_ref is not None else []),
+                    })),
+                )
+                readiness_body = readiness.to_dict()
+                readiness_ref = sha256_json({
+                    "artifact_type": "S3NativeWarmupReadinessV1", "readiness": readiness_body,
+                })
+                repository.register_artifact(ArtifactIndexEntryV2(
+                    readiness_ref, "S3NativeWarmupReadinessV1", readiness_ref,
+                    event.information_cutoff_ns, event.information_cutoff_ns,
+                    {"readiness": readiness_body, "decision_event_id": event.event_id,
+                     "trigger_bar_ref": trigger_bar.content_hash,
+                     "forward_trade_evidence_ref": trade_evidence_ref},
+                ))
+                source_refs.update((readiness_ref, *readiness.evidence_refs))
+                s3 = S3ShadowCoordinator(repository)
+                for watch in waiting:
+                    if watch.policy_hash != S3_POLICY.policy_hash:
+                        continue
+                    if trigger_bar.close_at_ns <= watch.created_at_ns:
+                        continue
+                    setup = repository.get_artifact(watch.thesis_hash)
+                    setup_state = setup.metadata.get("state") if setup is not None else None
+                    sigma = setup_state.get("residual_sigma") if isinstance(setup_state, Mapping) else None
+                    frozen = [item for item in _indexed_s3_vwaps(
+                        repository, watch.key, cutoff_ns=event.information_cutoff_ns,
+                    ) if item.content_hash in watch.evidence_refs]
+                    if len(frozen) != 1 or isinstance(sigma, bool) or not isinstance(sigma, (int, float)):
+                        continue
+                    result = s3.on_subsequent_bar(
+                        watch_id=watch.watch_id, trigger=trigger_bar,
+                        cutoff_ns=event.information_cutoff_ns, frozen_vwap=frozen[0],
+                        residual_sigma=float(sigma), quote=s3_quote, tick_size=tick_size,
+                        feature=feature, universe=universe, event_gate=gate,
+                        bar_health=trigger_health,
+                        trade_completeness_proven=trade_evidence.trade_completeness_proven,
+                    )
+                    if result.candidate is not None:
+                        candidates[result.candidate.candidate_id] = result.candidate
+                # The S32 report explicitly leaves complete Bybit trade coverage
+                # unproven. Keep the observations diagnostic and prevent them
+                # from producing VWAPs, residuals, WATCHes, or candidates.
+                s3.evaluate_setup(
+                    key=trigger_product.key, cutoff_ns=event.information_cutoff_ns,
+                    residuals=(), current_vwap=None, trades=trade_evidence.trades,
+                    completed_1m=frames.get(BarIntervalV2.M1, ()), context=join,
+                    feature=feature, quote=s3_quote, tick_size=tick_size, universe=universe,
+                    event_gate=gate, bar_health=trigger_health, trade_health=stream_trade_health,
+                    trade_completeness_proven=trade_evidence.trade_completeness_proven,
+                )
 
     scanner_refs: dict[str, tuple[str, ...]] = {}
     sorted_universe = sorted(eligible_order, key=lambda row: (-row[0], row[1]))
@@ -3397,6 +3734,108 @@ def _latest_event_gate(repository: OpsRepository, cutoff_ns: int) -> tuple[Event
     except (KeyError, ValueError, TypeError):
         return None, None
     return gate, entry.artifact_ref
+
+
+def _latest_stream_continuity_report_ref(
+    repository: OpsRepository,
+    product: ProductContractV2,
+    *,
+    channel: str,
+    cutoff_ns: int,
+) -> str | None:
+    candidates: list[ArtifactIndexEntryV2] = []
+    for entry in repository.artifact_entries("PublicStreamContinuityReportV1"):
+        report = entry.metadata.get("report")
+        if (entry.available_at_ns > cutoff_ns or not isinstance(report, Mapping)
+                or report.get("source_id") != BYBIT_PUBLIC_WS_SOURCE_ID_V1
+                or report.get("channel") != channel
+                or report.get("contract_revision") != product.key.contract_revision
+                or report.get("metadata_ref") != product.metadata_ref
+                or report.get("as_of_ns") != entry.available_at_ns
+                or type(report.get("as_of_ns")) is not int or report["as_of_ns"] > cutoff_ns):
+            continue
+        try:
+            if InstrumentKeyV2.from_dict(report["instrument"]) != product.key:
+                continue
+            if sha256_json({"artifact_type": "PublicStreamContinuityReportV1", "report": dict(report)}) != entry.artifact_ref:
+                continue
+        except (KeyError, TypeError, ValueError):
+            continue
+        candidates.append(entry)
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: (item.available_at_ns, item.artifact_ref)).artifact_ref
+
+
+def _indexed_s3_stream_quote(
+    repository: OpsRepository,
+    product: ProductContractV2,
+    *,
+    cutoff_ns: int,
+    rest_quote: ExecutableQuote | None,
+) -> tuple[ExecutableQuote | None, tuple[str, ...], int | None, int | None]:
+    """Read a persisted S32 sequence-book view or an already-fresh REST fallback."""
+    report_ref = _latest_stream_continuity_report_ref(
+        repository, product, channel=f"orderbook.50.{product.key.native_symbol}", cutoff_ns=cutoff_ns,
+    )
+    refs: set[str] = set()
+    book_quote: ExecutableQuote | None = None
+    recovery_epoch: int | None = None
+    bbo_age: int | None = None
+    if report_ref is not None:
+        bridge = quote_from_valid_continuity_report(
+            repository, product, cutoff_ns=cutoff_ns, continuity_report_ref=report_ref,
+        )
+        bridge_body = bridge.to_dict()
+        repository.register_artifact(ArtifactIndexEntryV2(
+            bridge.evidence_ref, "S3SequenceBookQuoteEvidenceV1", bridge.evidence_ref,
+            cutoff_ns, cutoff_ns, {"bridge": bridge_body},
+        ))
+        refs.update((report_ref, bridge.evidence_ref, *bridge.input_refs))
+        recovery_epoch = bridge.recovery_epoch
+        bbo_age = bridge.bbo_age_ns
+        book_quote = bridge.quote
+    if book_quote is not None:
+        return book_quote, tuple(sorted(refs)), recovery_epoch, bbo_age
+    if rest_quote is not None and rest_quote.valid_at(cutoff_ns, 1_000_000_000):
+        refs.add(rest_quote.evidence_ref)
+        return rest_quote, tuple(sorted(refs)), recovery_epoch, cutoff_ns - rest_quote.observed_at_ns
+    return None, tuple(sorted(refs)), recovery_epoch, bbo_age
+
+
+def _indexed_s3_forward_trade_evidence(
+    repository: OpsRepository,
+    archive_root: Path,
+    product: ProductContractV2,
+    *,
+    cutoff_ns: int,
+) -> tuple[S3ForwardTradeEvidenceV1, PublicSourceHealthV2 | None]:
+    report_ref = _latest_stream_continuity_report_ref(
+        repository, product, channel=f"publicTrade.{product.key.native_symbol}", cutoff_ns=cutoff_ns,
+    )
+    if report_ref is None:
+        evidence = S3ForwardTradeEvidenceV1(
+            product.key, cutoff_ns, (), (), None, None, None, 0, False, "NOT_ESTIMABLE",
+            ("S32_CONTINUITY_OR_CURRENT_HEALTH_UNAVAILABLE",),
+        )
+        return evidence, None
+    evidence = reconstruct_s3_stream_trade_evidence(
+        repository, archive_root, product=product, cutoff_ns=cutoff_ns,
+        continuity_report_ref=report_ref,
+    )
+    health: PublicSourceHealthV2 | None = None
+    if evidence.source_health_ref is not None:
+        entry = repository.get_artifact(evidence.source_health_ref)
+        body = entry.metadata.get("health") if entry is not None else None
+        if (entry is not None and entry.artifact_type == "PublicStreamSourceHealthV1"
+                and entry.content_hash == evidence.source_health_ref and isinstance(body, Mapping)):
+            try:
+                parsed = PublicSourceHealthV2.from_dict(body)
+            except (KeyError, TypeError, ValueError):
+                parsed = None
+            if parsed is not None and parsed.content_hash == evidence.source_health_ref:
+                health = parsed
+    return evidence, health
 
 
 def _indexed_quote_and_mark(
