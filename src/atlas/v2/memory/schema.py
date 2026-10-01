@@ -101,9 +101,47 @@ _DDL = (
         CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.status.decision_ref') END,
         created_at_ns DESC, artifact_ref DESC, available_at_ns
     ) WHERE artifact_type='OutcomeMaturityStatusV1'""",
+    """CREATE INDEX public_native_m1_source_window_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END,
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_type') END,
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.availability_class') END,
+        available_at_ns,
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_at_ns') END,
+        artifact_ref
+    ) WHERE artifact_type='PublicObservationIndexV2'""",
+    """CREATE INDEX public_observation_source_id_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.source_id') END
+    ) WHERE artifact_type='PublicObservationIndexV2'""",
+    """CREATE INDEX public_reconciliation_source_id_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.reconciliation.source_id') END,
+        created_at_ns DESC, artifact_ref DESC
+    ) WHERE artifact_type='OpsPublicSourceReconciliationV1'""",
+    """CREATE INDEX native_m1_event_origin_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.native_m1_origin.origin_ref') END,
+        created_at_ns DESC, artifact_ref DESC
+    ) WHERE artifact_type='OpsDecisionEventSourceV1'""",
+    """CREATE INDEX native_m1_event_id_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event.event_id') END,
+        created_at_ns DESC, artifact_ref DESC
+    ) WHERE artifact_type='OpsDecisionEventSourceV1'""",
+    """CREATE INDEX ops_decision_event_available_order ON artifact_index (
+        available_at_ns, created_at_ns, artifact_ref
+    ) WHERE artifact_type='OpsDecisionEventSourceV1'""",
+    """CREATE INDEX ops_receipt_event_id_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_id') END
+    ) WHERE artifact_type='OpsSupervisorReceiptIdentityV1'""",
+    """CREATE INDEX native_m1_gate_origin_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.native_m1_origin_ref') END,
+        created_at_ns DESC, artifact_ref DESC
+    ) WHERE artifact_type='OpsPublicAcquisitionDeadlineGateV1'""",
+    """CREATE INDEX native_m1_checkpoint_key_generation_lookup ON artifact_index (
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END,
+        CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.checkpoint.generation') END DESC,
+        artifact_ref DESC
+    ) WHERE artifact_type='S3NativeM1OriginAccountingCheckpointV1'""",
 )
 
-_ARTIFACT_IDENTITY_INDEX_DDL = _DDL[-5:]
+_ARTIFACT_IDENTITY_INDEX_DDL = _DDL[9:]
 
 
 def initialize(connection: sqlite3.Connection) -> None:

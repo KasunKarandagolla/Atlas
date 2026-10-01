@@ -505,6 +505,9 @@ class OpsSupervisorV2:
         self.database_path = raw_path
         self.port = port
         self.clock_ns = clock_ns
+        bind_runtime_clock = getattr(port, "bind_runtime_clock", None)
+        if callable(bind_runtime_clock):
+            bind_runtime_clock(clock_ns)
         self.monotonic_ns = monotonic_ns
         self.sleep_fn = sleep_fn
         self.max_events_per_cycle = max_events_per_cycle
@@ -702,7 +705,11 @@ class OpsSupervisorV2:
             raise ValueError("failed stages are retryable and cannot be committed as complete checkpoints")
         if result.completed_at_ns < event.available_at_ns or result.completed_at_ns > now_ns:
             raise ValueError("stage completion time is outside the observed event/cycle interval")
-        limit = event.information_cutoff_ns if result.stage in _CAUSAL_STAGES else event.deadline_ns
+        # Event inputs were already frozen and validated against
+        # information_cutoff_ns before processing. A stage result is an output
+        # of computation; it may be produced after that cutoff, but never after
+        # the event's original consumer deadline.
+        limit = event.deadline_ns
         for ref in result.artifact_refs:
             entry = repository.get_artifact(ref)
             if entry is None or entry.available_at_ns > min(limit, now_ns):
@@ -867,6 +874,12 @@ class OpsSupervisorV2:
                                 pass
                         continue
 
+                    decision_started_at_ns = started_at_ns
+                    if event.event_type == "CONFIRMED_1M_CLOSE":
+                        decision_started_at_ns = max(
+                            started_at_ns,
+                            timestamp(self.clock_ns(), field="event computation start"),
+                        )
                     event_inputs_available = all(
                         (entry := repository.get_artifact(ref)) is not None
                         and entry.available_at_ns <= event.information_cutoff_ns
@@ -875,21 +888,22 @@ class OpsSupervisorV2:
                     if not event_inputs_available:
                         result = self._terminal_without_pipeline(
                             event,
-                            started_at_ns,
+                            decision_started_at_ns,
                             OpsTerminalStatusV1.NOT_ESTIMABLE,
                             "MISSING_OR_FUTURE_CAUSAL_EVENT_EVIDENCE",
                         )
-                    elif started_at_ns > event.deadline_ns:
+                    elif decision_started_at_ns > event.deadline_ns:
                         result = self._terminal_without_pipeline(
                             event,
-                            started_at_ns,
+                            decision_started_at_ns,
                             OpsTerminalStatusV1.EXPIRED,
                             "DECISION_DEADLINE_EXPIRED_BEFORE_RECOVERY_REPLAY",
                         )
-                    elif source_health != "HEALTHY_CURRENT":
+                    elif (source_health != "HEALTHY_CURRENT"
+                          and event.event_type != "CONFIRMED_1M_CLOSE"):
                         result = self._terminal_without_pipeline(
                             event,
-                            started_at_ns,
+                            decision_started_at_ns,
                             OpsTerminalStatusV1.NOT_ESTIMABLE,
                             f"SOURCE_HEALTH_{source_health}",
                         )
@@ -900,19 +914,26 @@ class OpsSupervisorV2:
                             stage_result: OpsStageResultV1,
                             current_event: OpsDecisionEventV1 = event,
                             current_completed: dict[PipelineStageV1, OpsStageResultV1] = completed,
+                            current_started_at_ns: int = decision_started_at_ns,
                         ) -> None:
+                            checkpoint_now_ns = started_at_ns
+                            if current_event.event_type == "CONFIRMED_1M_CLOSE":
+                                checkpoint_now_ns = max(
+                                    current_started_at_ns,
+                                    timestamp(self.clock_ns(), field="stage checkpoint observation"),
+                                )
                             self._checkpoint_stage(
                                 repository,
                                 current_event,
                                 stage_result,
                                 current_completed,
-                                now_ns=started_at_ns,
+                                now_ns=checkpoint_now_ns,
                             )
 
                         result = self.port.process_event(
                             repository,
                             event,
-                            now_ns=started_at_ns,
+                            now_ns=decision_started_at_ns,
                             source_health_state=source_health,
                             completed_stages=completed,
                             checkpoint=checkpoint,
@@ -921,10 +942,19 @@ class OpsSupervisorV2:
                             checkpoint(stage_result)
                         self._validate_result_against_checkpoints(result, completed)
 
+                    receipt_at_ns = started_at_ns
+                    if event.event_type == "CONFIRMED_1M_CLOSE":
+                        receipt_at_ns = max(
+                            started_at_ns,
+                            timestamp(self.clock_ns(), field="event receipt persistence"),
+                        )
+                    if (prior_receipt is None and receipt_at_ns > event.deadline_ns
+                            and result.terminal_status != OpsTerminalStatusV1.EXPIRED):
+                        raise ValueError("decision result missed its fixed consumer deadline")
                     receipt = self._make_event_receipt(
                         event,
                         result,
-                        now_ns=started_at_ns,
+                        now_ns=receipt_at_ns,
                         source_health_state=source_health,
                         source_states=source_states,
                     )

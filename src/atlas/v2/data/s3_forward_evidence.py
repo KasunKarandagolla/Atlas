@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
@@ -48,6 +48,75 @@ MAX_ARCHIVE_FILES = 20_000
 MAX_ARCHIVE_ROWS = 2_000_000
 MAX_RECONSTRUCTED_TRADES = 100_000
 MAX_REPORTED_GAP_OPENS = 1_000
+
+
+@dataclass(frozen=True)
+class S3NativeComputationContextV1:
+    """Fixed market cutoff and honest timing for one S34 derived computation.
+
+    ``evidence_cutoff_ns`` is the immutable source boundary. The computation
+    and its derived output may occur later, but never after the consumer's
+    fixed decision deadline. Persisted artifact indexes can use a later
+    availability timestamp, provided it remains at or before that deadline.
+    """
+
+    evidence_cutoff_ns: int
+    computation_started_ns: int
+    computation_finished_ns: int
+    consumer_deadline_ns: int
+
+    def __post_init__(self) -> None:
+        for name in (
+            "evidence_cutoff_ns", "computation_started_ns", "computation_finished_ns",
+            "consumer_deadline_ns",
+        ):
+            timestamp(getattr(self, name), field=f"s3_computation.{name}")
+        if not (
+            self.evidence_cutoff_ns <= self.computation_started_ns
+            <= self.computation_finished_ns <= self.consumer_deadline_ns
+        ):
+            raise ValueError("S3 computation timing violates the fixed causal deadline")
+
+    @property
+    def produced_at_ns(self) -> int:
+        """The earliest honest availability of the completed derived result."""
+        return self.computation_finished_ns
+
+    def to_dict(self) -> dict[str, int]:
+        return {
+            "schema_version": 1,
+            "evidence_cutoff_ns": self.evidence_cutoff_ns,
+            "computation_started_ns": self.computation_started_ns,
+            "computation_finished_ns": self.computation_finished_ns,
+            "produced_at_ns": self.produced_at_ns,
+            "consumer_deadline_ns": self.consumer_deadline_ns,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> S3NativeComputationContextV1:
+        fields = {
+            "schema_version", "evidence_cutoff_ns", "computation_started_ns",
+            "computation_finished_ns", "produced_at_ns", "consumer_deadline_ns",
+        }
+        body = strict_fields(value, expected=fields, required=fields, name=cls.__name__)
+        if type(body["schema_version"]) is not int or body["schema_version"] != 1:
+            raise ValueError("unsupported S3 computation context schema")
+        parsed = cls(
+            body["evidence_cutoff_ns"], body["computation_started_ns"],
+            body["computation_finished_ns"], body["consumer_deadline_ns"],
+        )
+        if body["produced_at_ns"] != parsed.produced_at_ns:
+            raise ValueError("S3 produced time must equal computation completion")
+        return parsed
+
+
+def _validate_computation_context(
+    context: S3NativeComputationContextV1 | None,
+    *,
+    cutoff_ns: int,
+) -> None:
+    if context is not None and context.evidence_cutoff_ns != cutoff_ns:
+        raise ValueError("S3 computation context cannot rebase the fixed evidence cutoff")
 
 
 def _strict_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -175,6 +244,10 @@ class S3ForwardTradeEvidenceV1:
     trade_completeness_proven: bool
     status: str
     reason_codes: tuple[str, ...]
+    computation_context: S3NativeComputationContextV1 | None = None
+    continuity_report_as_of_ns: int | None = None
+    source_health_observed_at_ns: int | None = None
+    source_health_available_at_ns: int | None = None
 
     def __post_init__(self) -> None:
         timestamp(self.cutoff_ns, field="s3_trade_evidence.cutoff_ns")
@@ -198,9 +271,18 @@ class S3ForwardTradeEvidenceV1:
             sha256_ref(self.source_health_ref, field="source_health_ref")
         if self.recovery_epoch is not None and (type(self.recovery_epoch) is not int or self.recovery_epoch < 0):
             raise ValueError("recovery epoch must be nonnegative")
+        _validate_computation_context(self.computation_context, cutoff_ns=self.cutoff_ns)
+        for name in (
+            "continuity_report_as_of_ns", "source_health_observed_at_ns", "source_health_available_at_ns",
+        ):
+            value = getattr(self, name)
+            if value is not None:
+                timestamp(value, field=f"s3_trade_evidence.{name}")
+                if value > self.cutoff_ns:
+                    raise ValueError(f"{name} exceeds the fixed evidence cutoff")
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        body = {
             "schema_version": 1,
             "key": self.key.to_dict(),
             "cutoff_ns": self.cutoff_ns,
@@ -214,9 +296,41 @@ class S3ForwardTradeEvidenceV1:
             "status": self.status,
             "reason_codes": list(self.reason_codes),
         }
+        if self.computation_context is not None:
+            body.update({
+                "computation_context": self.computation_context.to_dict(),
+                "produced_at_ns": self.computation_context.produced_at_ns,
+                "continuity_report_as_of_ns": self.continuity_report_as_of_ns,
+                "source_health_observed_at_ns": self.source_health_observed_at_ns,
+                "source_health_available_at_ns": self.source_health_available_at_ns,
+            })
+        return body
+
+    def with_computation_context(
+        self,
+        context: S3NativeComputationContextV1,
+        *,
+        repository: OpsRepository | None = None,
+    ) -> S3ForwardTradeEvidenceV1:
+        """Return this fixed-cutoff result with actual computation timing."""
+        _validate_computation_context(context, cutoff_ns=self.cutoff_ns)
+        report_as_of = self.continuity_report_as_of_ns
+        health_observed = self.source_health_observed_at_ns
+        health_available = self.source_health_available_at_ns
+        if repository is not None:
+            report_as_of, health_observed, health_available = _persisted_source_times(
+                repository, report_ref=self.continuity_report_ref,
+                health_ref=self.source_health_ref, cutoff_ns=self.cutoff_ns,
+            )
+        return replace(
+            self, computation_context=context,
+            continuity_report_as_of_ns=report_as_of,
+            source_health_observed_at_ns=health_observed,
+            source_health_available_at_ns=health_available,
+        )
 
 
-def reconstruct_s3_stream_trade_evidence(
+def _reconstruct_s3_stream_trade_evidence_at_cutoff(
     repository: OpsRepository,
     archive_root: str | Path,
     *,
@@ -485,6 +599,73 @@ def reconstruct_s3_stream_trade_evidence(
     )
 
 
+def _persisted_source_times(
+    repository: OpsRepository,
+    *,
+    report_ref: str | None,
+    health_ref: str | None,
+    cutoff_ns: int,
+) -> tuple[int | None, int | None, int | None]:
+    report_as_of: int | None = None
+    health_observed: int | None = None
+    health_available: int | None = None
+    report_entry = repository.get_artifact(report_ref) if report_ref is not None else None
+    report = report_entry.metadata.get("report") if report_entry is not None else None
+    if (report_entry is not None and report_entry.artifact_type == CONTINUITY_REPORT_TYPE_V1
+            and report_entry.content_hash == report_ref and isinstance(report, Mapping)):
+        candidate = report.get("as_of_ns")
+        if type(candidate) is int and candidate <= cutoff_ns:
+            report_as_of = candidate
+    health_entry = repository.get_artifact(health_ref) if health_ref is not None else None
+    health_body = health_entry.metadata.get("health") if health_entry is not None else None
+    if (health_entry is not None and health_entry.artifact_type == STREAM_HEALTH_TYPE_V1
+            and health_entry.content_hash == health_ref and isinstance(health_body, Mapping)):
+        try:
+            health = PublicSourceHealthV2.from_dict(health_body)
+        except (ArithmeticError, KeyError, TypeError, ValueError):
+            health = None
+        if health is not None and health.content_hash == health_ref:
+            if health.observed_at_ns <= cutoff_ns:
+                health_observed = health.observed_at_ns
+            if health.available_at_ns <= cutoff_ns:
+                health_available = health.available_at_ns
+    return report_as_of, health_observed, health_available
+
+
+def reconstruct_s3_stream_trade_evidence(
+    repository: OpsRepository,
+    archive_root: str | Path,
+    *,
+    product: ProductContractV2,
+    cutoff_ns: int,
+    continuity_report_ref: str,
+    limit: int = MAX_RECONSTRUCTED_TRADES,
+    computation_context: S3NativeComputationContextV1 | None = None,
+) -> S3ForwardTradeEvidenceV1:
+    """Reconstruct source rows at ``cutoff_ns`` and optionally record S34 timing.
+
+    The context only timestamps the derived validation. It cannot widen the
+    archive/index/report resolver cutoff supplied as ``cutoff_ns``.
+    """
+    _validate_computation_context(computation_context, cutoff_ns=cutoff_ns)
+    result = _reconstruct_s3_stream_trade_evidence_at_cutoff(
+        repository, archive_root, product=product, cutoff_ns=cutoff_ns,
+        continuity_report_ref=continuity_report_ref, limit=limit,
+    )
+    if computation_context is None:
+        return result
+    report_as_of, health_observed, health_available = _persisted_source_times(
+        repository, report_ref=result.continuity_report_ref,
+        health_ref=result.source_health_ref, cutoff_ns=cutoff_ns,
+    )
+    return replace(
+        result, computation_context=computation_context,
+        continuity_report_as_of_ns=report_as_of,
+        source_health_observed_at_ns=health_observed,
+        source_health_available_at_ns=health_available,
+    )
+
+
 @dataclass(frozen=True)
 class S3QuoteBridgeResultV1:
     """Serializable cutoff-bound projection of the accepted sequence-valid book."""
@@ -506,6 +687,10 @@ class S3QuoteBridgeResultV1:
     status: str
     reason_code: str | None
     evidence_ref: str
+    computation_context: S3NativeComputationContextV1 | None = None
+    continuity_report_as_of_ns: int | None = None
+    source_health_observed_at_ns: int | None = None
+    source_health_available_at_ns: int | None = None
 
     def __post_init__(self) -> None:
         timestamp(self.cutoff_ns, field="quote_bridge.cutoff_ns")
@@ -513,6 +698,15 @@ class S3QuoteBridgeResultV1:
             sha256_ref(getattr(self, name), field=name)
         if self.contract_revision != self.key.contract_revision:
             raise ValueError("quote contract revision differs from full instrument identity")
+        _validate_computation_context(self.computation_context, cutoff_ns=self.cutoff_ns)
+        for name in (
+            "continuity_report_as_of_ns", "source_health_observed_at_ns", "source_health_available_at_ns",
+        ):
+            value = getattr(self, name)
+            if value is not None:
+                timestamp(value, field=f"quote_bridge.{name}")
+                if value > self.cutoff_ns:
+                    raise ValueError(f"{name} exceeds the fixed evidence cutoff")
         if type(self.recovery_epoch) is not int or self.recovery_epoch < 0:
             raise ValueError("quote recovery epoch must be nonnegative")
         for ref in self.input_refs:
@@ -540,7 +734,7 @@ class S3QuoteBridgeResultV1:
             raise ValueError("quote bid and ask must be present together")
 
     def _body(self) -> dict[str, Any]:
-        return {
+        body = {
             "schema_version": 1,
             "key": self.key.to_dict(),
             "contract_revision": self.contract_revision,
@@ -559,6 +753,16 @@ class S3QuoteBridgeResultV1:
             "status": self.status,
             "reason_code": self.reason_code,
         }
+        if self.computation_context is not None:
+            body.update({
+                "computation_context": self.computation_context.to_dict(),
+                "produced_at_ns": self.computation_context.produced_at_ns,
+                "source_available_at_ns": self.available_at_ns,
+                "continuity_report_as_of_ns": self.continuity_report_as_of_ns,
+                "source_health_observed_at_ns": self.source_health_observed_at_ns,
+                "source_health_available_at_ns": self.source_health_available_at_ns,
+            })
+        return body
 
     def to_dict(self) -> dict[str, Any]:
         body = self._body()
@@ -568,17 +772,37 @@ class S3QuoteBridgeResultV1:
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> S3QuoteBridgeResultV1:
-        fields = {
+        base_fields = {
             "schema_version", "key", "contract_revision", "cutoff_ns", "continuity_report_ref",
             "source_health_ref", "sequence_state", "recovery_epoch", "sequence_feature_ref", "bid", "ask",
             "observed_at_ns", "available_at_ns", "bbo_age_ns", "input_refs", "status", "reason_code",
             "evidence_ref",
         }
-        body = strict_fields(value, expected=fields, required=fields, name=cls.__name__)
+        timed_fields = {
+            "computation_context", "produced_at_ns", "source_available_at_ns",
+            "continuity_report_as_of_ns", "source_health_observed_at_ns", "source_health_available_at_ns",
+        }
+        body = strict_fields(
+            value, expected=base_fields | timed_fields, required=base_fields, name=cls.__name__,
+        )
+        present_timing = set(body) & timed_fields
+        if present_timing and present_timing != timed_fields:
+            raise ValueError("timed S3 quote bridge must carry its complete timing fields")
         if type(body["schema_version"]) is not int or body["schema_version"] != 1:
             raise ValueError("unsupported S3 quote bridge schema")
         if not isinstance(body["key"], Mapping) or not isinstance(body["input_refs"], (tuple, list)):
             raise ValueError("S3 quote bridge identity or refs have invalid wire types")
+        context = (
+            S3NativeComputationContextV1.from_dict(body["computation_context"])
+            if present_timing else None
+        )
+        if present_timing:
+            if context is None:
+                raise ValueError("timed S3 quote bridge has no computation context")
+            if body["produced_at_ns"] != context.produced_at_ns:
+                raise ValueError("quote bridge produced time differs from computation completion")
+            if body["source_available_at_ns"] != body["available_at_ns"]:
+                raise ValueError("quote bridge source availability alias is inconsistent")
         parsed = cls(
             InstrumentKeyV2.from_dict(body["key"]), str(body["contract_revision"]), body["cutoff_ns"],
             str(body["continuity_report_ref"]), str(body["source_health_ref"]), str(body["sequence_state"]),
@@ -589,9 +813,40 @@ class S3QuoteBridgeResultV1:
             tuple(body["input_refs"]), str(body["status"]),
             str(body["reason_code"]) if body["reason_code"] is not None else None,
             str(body["evidence_ref"]),
+            context,
+            body.get("continuity_report_as_of_ns"),
+            body.get("source_health_observed_at_ns"),
+            body.get("source_health_available_at_ns"),
         )
         parsed.to_dict()
         return parsed
+
+    def with_computation_context(
+        self,
+        context: S3NativeComputationContextV1,
+        *,
+        repository: OpsRepository | None = None,
+    ) -> S3QuoteBridgeResultV1:
+        """Attach production timing while retaining source quote times."""
+        _validate_computation_context(context, cutoff_ns=self.cutoff_ns)
+        report_as_of = self.continuity_report_as_of_ns
+        health_observed = self.source_health_observed_at_ns
+        health_available = self.source_health_available_at_ns
+        if repository is not None:
+            report_as_of, health_observed, health_available = _persisted_source_times(
+                repository, report_ref=self.continuity_report_ref,
+                health_ref=self.source_health_ref, cutoff_ns=self.cutoff_ns,
+            )
+        timed = replace(
+            self, computation_context=context,
+            continuity_report_as_of_ns=report_as_of,
+            source_health_observed_at_ns=health_observed,
+            source_health_available_at_ns=health_available,
+        )
+        evidence_ref = sha256_json({
+            "artifact_type": "S3SequenceBookQuoteEvidenceV1", "evidence": timed._body(),
+        })
+        return replace(timed, evidence_ref=evidence_ref)
 
     @property
     def quote(self) -> ExecutableQuote | None:
@@ -602,7 +857,7 @@ class S3QuoteBridgeResultV1:
                                self.available_at_ns, self.evidence_ref)
 
 
-def sequence_valid_s3_quote(
+def _sequence_valid_s3_quote_at_cutoff(
     repository: OpsRepository,
     book: SequenceValidBookV2,
     *,
@@ -675,7 +930,51 @@ def sequence_valid_s3_quote(
     )
 
 
-def quote_from_valid_continuity_report(
+def _timed_quote_bridge(
+    repository: OpsRepository,
+    result: S3QuoteBridgeResultV1,
+    *,
+    computation_context: S3NativeComputationContextV1 | None,
+) -> S3QuoteBridgeResultV1:
+    if computation_context is None:
+        return result
+    _validate_computation_context(computation_context, cutoff_ns=result.cutoff_ns)
+    report_as_of, health_observed, health_available = _persisted_source_times(
+        repository, report_ref=result.continuity_report_ref,
+        health_ref=result.source_health_ref, cutoff_ns=result.cutoff_ns,
+    )
+    timed = replace(
+        result,
+        computation_context=computation_context,
+        continuity_report_as_of_ns=report_as_of,
+        source_health_observed_at_ns=health_observed,
+        source_health_available_at_ns=health_available,
+    )
+    evidence_ref = sha256_json({
+        "artifact_type": "S3SequenceBookQuoteEvidenceV1", "evidence": timed._body(),
+    })
+    return replace(timed, evidence_ref=evidence_ref)
+
+
+def sequence_valid_s3_quote(
+    repository: OpsRepository,
+    book: SequenceValidBookV2,
+    *,
+    product: ProductContractV2,
+    cutoff_ns: int,
+    continuity_report_ref: str,
+    computation_context: S3NativeComputationContextV1 | None = None,
+) -> S3QuoteBridgeResultV1:
+    """Project the book at the fixed cutoff and timestamp derived validation."""
+    _validate_computation_context(computation_context, cutoff_ns=cutoff_ns)
+    result = _sequence_valid_s3_quote_at_cutoff(
+        repository, book, product=product, cutoff_ns=cutoff_ns,
+        continuity_report_ref=continuity_report_ref,
+    )
+    return _timed_quote_bridge(repository, result, computation_context=computation_context)
+
+
+def _quote_from_valid_continuity_report_at_cutoff(
     repository: OpsRepository,
     product: ProductContractV2,
     *,
@@ -793,6 +1092,22 @@ def quote_from_valid_continuity_report(
         quote_bid, quote_ask, quote_observed_at, quote_available_at,
         quote_age, refs, quote_status, reason, evidence_ref,
     )
+
+
+def quote_from_valid_continuity_report(
+    repository: OpsRepository,
+    product: ProductContractV2,
+    *,
+    cutoff_ns: int,
+    continuity_report_ref: str,
+    computation_context: S3NativeComputationContextV1 | None = None,
+) -> S3QuoteBridgeResultV1:
+    """Rebuild the source cutoff view and attach honest derived timing."""
+    _validate_computation_context(computation_context, cutoff_ns=cutoff_ns)
+    result = _quote_from_valid_continuity_report_at_cutoff(
+        repository, product, cutoff_ns=cutoff_ns, continuity_report_ref=continuity_report_ref,
+    )
+    return _timed_quote_bridge(repository, result, computation_context=computation_context)
 
 
 def _continuity_invalidation_between(
@@ -1045,9 +1360,11 @@ class S3WarmupReadinessV1:
     book_recovery_epoch: int | None = None
     trade_evidence_status: str = "NOT_ESTIMABLE"
     trade_evidence_reason_codes: tuple[str, ...] = ()
+    computation_context: S3NativeComputationContextV1 | None = None
 
     def __post_init__(self) -> None:
         timestamp(self.cutoff_ns, field="s3_warmup.cutoff_ns")
+        _validate_computation_context(self.computation_context, cutoff_ns=self.cutoff_ns)
         if self.required_m1_bars != AR_OBSERVATION_COUNT or self.required_residuals != AR_OBSERVATION_COUNT:
             raise ValueError("S3 warmup thresholds must preserve the frozen 10,081 observation requirement")
         if self.required_trade_vwap_refs != AR_OBSERVATION_COUNT:
@@ -1076,7 +1393,7 @@ class S3WarmupReadinessV1:
             raise ValueError("S3 trade evidence reasons must be sorted and unique")
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        body = {
             "schema_version": 1,
             "key": self.key.to_dict(),
             "cutoff_ns": self.cutoff_ns,
@@ -1118,6 +1435,18 @@ class S3WarmupReadinessV1:
             "reason_codes": list(self.reason_codes),
             "evidence_refs": list(self.evidence_refs),
         }
+        if self.computation_context is not None:
+            body["computation_context"] = self.computation_context.to_dict()
+            body["produced_at_ns"] = self.computation_context.produced_at_ns
+        return body
+
+    def with_computation_context(
+        self,
+        context: S3NativeComputationContextV1,
+    ) -> S3WarmupReadinessV1:
+        """Return readiness timestamped after its computation, still diagnostic."""
+        _validate_computation_context(context, cutoff_ns=self.cutoff_ns)
+        return replace(self, computation_context=context)
 
 
 def evaluate_s3_warmup_readiness(
@@ -1140,6 +1469,7 @@ def evaluate_s3_warmup_readiness(
     trade_evidence_status: str = "NOT_ESTIMABLE",
     trade_evidence_reason_codes: Sequence[str] = (),
     additional_evidence_refs: Sequence[str] = (),
+    computation_context: S3NativeComputationContextV1 | None = None,
 ) -> S3WarmupReadinessV1:
     """Derive exact S3 warmup counts without maintaining mutable readiness state.
 
@@ -1149,6 +1479,7 @@ def evaluate_s3_warmup_readiness(
     observations do not provide that proof.
     """
     timestamp(cutoff_ns, field="cutoff_ns")
+    _validate_computation_context(computation_context, cutoff_ns=cutoff_ns)
     if not isinstance(key, InstrumentKeyV2):
         raise ValueError("S3 warmup requires full InstrumentKeyV2")
     view = AvailabilityClassV2(availability_view)
@@ -1329,4 +1660,5 @@ def evaluate_s3_warmup_readiness(
         universe_status, key.contract_revision, view.value, selected_epoch, "NOT_PROVEN", False,
         "NOT_ESTIMABLE", "TEST GATE", tuple(sorted(reasons)), tuple(sorted(refs)),
         selected_trade_epoch, book_recovery_epoch, trade_evidence_status, trade_reasons,
+        computation_context,
     )

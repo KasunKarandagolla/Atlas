@@ -643,6 +643,10 @@ def _seed_default_s3_candidate_evidence(
         "record_ids": [item.observation.record_id for item in archived],
     })
     ParquetObservationArchiveV2(archive_root).write_observation_chunk(chunk_id, archived)
+    observation_entries = [
+        replace(entry, metadata={**dict(entry.metadata), "archive_chunk_id": chunk_id})
+        for entry in observation_entries
+    ]
     repository.register_artifacts(tuple(observation_entries))
     for source_id in ("PUBLIC_BARS", "PUBLIC_TRADES", "PUBLIC_QUOTE"):
         health = PublicSourceHealthV2(
@@ -1027,10 +1031,7 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
 
 
 def test_default_production_native_m1_s3_stays_closed_without_trade_completeness(tmp_path, monkeypatch):
-    from atlas.v2.selection import accept_research_candidates
-    from atlas.v2.strategies.s1_trend import S1_POLICY
-    from atlas.v2.strategies.s2_breakout import S2_POLICY
-    from atlas.v2.strategies.s3_mean_reversion import S3ShadowCoordinator
+    from atlas.v2.data.health import PublicSourceStateV2
 
     path = tmp_path / "s3-default.sqlite"
     archive_root = tmp_path / "ops-observations"
@@ -1071,77 +1072,186 @@ def test_default_production_native_m1_s3_stays_closed_without_trade_completeness
         assert {observation_ref, trigger_bar.content_hash, product.content_hash} <= set(event.causal_input_refs)
         assert source_health_ref in event.causal_input_refs
 
+        # Add cutoff-visible sequence-book evidence plus later trade, BBO and
+        # bar-health records. The computation may finish after T1, but none of
+        # these T2 records may enter the fixed-origin result.
+        from .test_session034_s3_forward_evidence import _report_context, _ws_trade
+
+        source_cutoff = event.information_cutoff_ns
+        computation_start = source_cutoff + 100
+        computation_finish = source_cutoff + 200
+        persisted_at = source_cutoff + 300
+        assert persisted_at <= event.deadline_ns
+        book_channel = f"orderbook.50.{product.key.native_symbol}"
+        book_received = source_cutoff - 150_000_000
+        raw_book_ref = sha256_json({"session034-advancing-clock-book": book_received})
+        frame_body = {
+            "record_id": sha256_json({"session034-frame": raw_book_ref}),
+            "instrument": product.key.to_dict(),
+            "instrument_hash": product.key.content_hash,
+            "source_id": production.BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+            "channel": book_channel,
+            "frame_type": "SNAPSHOT",
+            "event_at_ns": book_received,
+            "received_at_ns": book_received,
+            "available_at_ns": book_received,
+            "raw_payload_hash": raw_book_ref,
+            "archive_chunk_id": sha256_json({"session034-frame-chunk": raw_book_ref}),
+            "sequence_semantics": "BYBIT_U",
+            "authority": "ZERO",
+        }
+        frame_ref = sha256_json({
+            "artifact_type": "PublicStreamFrameIndexV1", "record_id": frame_body["record_id"],
+        })
+        repository.register_artifact(ArtifactIndexEntryV2(
+            frame_ref, "PublicStreamFrameIndexV1", sha256_json(frame_body),
+            book_received, book_received, frame_body,
+        ))
+        book_report_ref, book_health, _book_state = _report_context(
+            repository, product, channel=book_channel, as_of_ns=source_cutoff,
+            latest_valid_bbo={
+                "bid_price": "100", "ask_price": "101", "received_at_ns": book_received,
+                "data_age_ns": source_cutoff - book_received, "input_refs": [raw_book_ref],
+            },
+            book_sequence_valid=True, observed_trade_count=0,
+        )
+        trade_channel = f"publicTrade.{product.key.native_symbol}"
+        trade_report_ref, trade_health, _trade_state = _report_context(
+            repository, product, channel=trade_channel, as_of_ns=source_cutoff,
+            observed_trade_count=0,
+        )
+        later_trade_report_ref, later_trade_health, _later_trade_state = _report_context(
+            repository, product, channel=trade_channel, as_of_ns=computation_start + 1,
+            observed_trade_count=1, last_trade_receipt_at_ns=computation_start + 1,
+        )
+        future_trade_ref = _ws_trade(
+            repository, archive_root, product, cutoff_ns=computation_start + 1,
+            event_at_ns=computation_start + 1, available_at_ns=computation_start + 1,
+            received_at_ns=computation_start + 1,
+        )
+        later_book_report_ref, _later_book_health, _later_book_state = _report_context(
+            repository, product, channel=book_channel, as_of_ns=computation_start + 2,
+            latest_valid_bbo={
+                "bid_price": "90", "ask_price": "91", "received_at_ns": computation_start + 1,
+                "data_age_ns": 1, "input_refs": [sha256_json("future-bbo-frame")],
+            },
+            book_sequence_valid=True, observed_trade_count=0,
+        )
+        later_bar_health = PublicSourceHealthV2(
+            trigger_bar.raw.source_id, computation_start + 3, computation_start + 3,
+            PublicSourceStateV2.DISCONNECTED,
+            sha256_json({"later-bar-health": computation_start + 3}),
+            "after the immutable M1 evidence cutoff",
+        )
+        repository.register_artifact(ArtifactIndexEntryV2(
+            later_bar_health.content_hash, "PublicSourceHealthV2", later_bar_health.content_hash,
+            later_bar_health.available_at_ns, later_bar_health.available_at_ns,
+            {"health": later_bar_health.to_dict()},
+        ))
+
     def forbid_network(*args, **kwargs):
         raise AssertionError("default S3 composition attempted a network request")
 
     monkeypatch.setattr(socket, "create_connection", forbid_network)
     monkeypatch.setattr(urllib.request, "urlopen", forbid_network)
-    received: list[dict[str, Any]] = []
-    subsequent: list[Any] = []
-    subsequent_frozen_refs: list[str] = []
-    original_evaluate = S3ShadowCoordinator.evaluate_setup
-    original_subsequent = S3ShadowCoordinator.on_subsequent_bar
-
-    def capture_evaluate(self, *args, **kwargs):
-        received.append(kwargs)
-        return original_evaluate(self, *args, **kwargs)
-
-    def capture_subsequent(self, *args, **kwargs):
-        result = original_subsequent(self, *args, **kwargs)
-        subsequent.append(result)
-        subsequent_frozen_refs.append(kwargs["frozen_vwap"].content_hash)
-        return result
-
-    monkeypatch.setattr(S3ShadowCoordinator, "evaluate_setup", capture_evaluate)
-    monkeypatch.setattr(S3ShadowCoordinator, "on_subsequent_bar", capture_subsequent)
-
     def forbid_s1_s2(*args, **kwargs):
         raise AssertionError("native M1 event invoked an S1/S2 decision sleeve")
 
     monkeypatch.setattr(production.S1ShadowCoordinator, "create_watch", forbid_s1_s2)
     monkeypatch.setattr(production.S1ShadowCoordinator, "on_bar", forbid_s1_s2)
     monkeypatch.setattr(production.S2ShadowCoordinator, "on_trigger_close", forbid_s1_s2)
-    port = production.create_production_port()
+
+    class AdvancingClock:
+        def __init__(self, values):
+            self._values = iter(values)
+
+        def __call__(self):
+            return next(self._values)
+
+    clock = AdvancingClock((computation_start, computation_finish, persisted_at))
+    port = production.ProductionOpsCyclePortV1(clock_ns=clock)
     assert type(port.public_source) is production.IndexedPublicCycleSourceV1
     assert type(port.inputs_provider) is production.IndexedProductionEventInputsV1
     with OpsRepository(path) as repository:
         resolved = port.inputs_provider.resolve(repository, event)
         assert resolved is not None
-        assert received
-        s3_args = received[-1]
-        assert s3_args["residuals"] == ()
-        assert s3_args["current_vwap"] is None
-        assert not s3_args["trades"]
-        assert s3_args["trade_health"] is None
-        assert subsequent and all(item.candidate is None for item in subsequent)
-        assert subsequent_frozen_refs == [frozen_vwap_refs[0]]
-        s3_candidates = [item for item in resolved.candidates if item.policy_hash == S3_POLICY.policy_hash]
-        assert not s3_candidates
-        assert all(item.quantity is None for item in s3_candidates)
+        assert resolved.universe is None
+        assert resolved.candidates == ()
         readiness = repository.artifact_entries("S3NativeWarmupReadinessV1")
-        assert readiness
+        assert len(readiness) == 1
         report = readiness[-1].metadata["readiness"]
         assert report["required_m1_bars"] == 10_081
         assert report["trade_completeness_proven"] is False
         assert report["status"] == "NOT_ESTIMABLE"
         assert report["gate_status"] == "TEST GATE"
         assert report["trade_evidence_status"] == "NOT_ESTIMABLE"
-        assert tuple(report["trade_evidence_reason_codes"]) == (
-            "S32_CONTINUITY_OR_CURRENT_HEALTH_UNAVAILABLE",
-        )
         assert "TEST_GATE_BYBIT_TRADE_COMPLETENESS_UNPROVEN" in report["reason_codes"]
-        candidate_set = assemble_multisleeve_research_candidate_set(
-            repository, universe=resolved.universe, decision_event_id=event.event_id,
-            cutoff_ns=event.information_cutoff_ns, candidates=resolved.candidates,
-            policies={policy.policy_hash: policy for policy in (S1_POLICY, S2_POLICY, S3_POLICY)},
-            scanner_evidence_refs=resolved.scanner_evidence_refs,
+        assert tuple(report["trade_evidence_reason_codes"]) == (
+            "NO_EXACT_CUTOFF_AVAILABLE_WS_TRADES",
         )
-        accept_research_candidates(
-            repository, candidate_set, resolved.candidates,
-            accepted_at_ns=event.information_cutoff_ns,
+        trade_entries = repository.artifact_entries("S3ForwardTradeEvidenceV1")
+        quote_entries = repository.artifact_entries("S3SequenceBookQuoteEvidenceV1")
+        assert len(trade_entries) == len(quote_entries) == 1
+        trade_entry = trade_entries[0]
+        quote_entry = quote_entries[0]
+        assert trade_entry.available_at_ns == persisted_at > event.information_cutoff_ns
+        assert quote_entry.available_at_ns == persisted_at > event.information_cutoff_ns
+        assert report["cutoff_ns"] == event.information_cutoff_ns
+        assert dict(report["computation_context"]) == {
+            "schema_version": 1,
+            "evidence_cutoff_ns": event.information_cutoff_ns,
+            "computation_started_ns": computation_start,
+            "computation_finished_ns": computation_finish,
+            "produced_at_ns": computation_finish,
+            "consumer_deadline_ns": event.deadline_ns,
+        }
+        assert trade_entry.metadata["evidence"]["continuity_report_as_of_ns"] == event.information_cutoff_ns
+        assert trade_entry.metadata["evidence"]["source_health_available_at_ns"] == trade_health.available_at_ns
+        assert trade_entry.metadata["evidence"]["trade_refs"] == ()
+        assert future_trade_ref not in trade_entry.metadata["evidence"]["trade_refs"]
+        assert trade_entry.metadata["evidence"]["continuity_report_ref"] == trade_report_ref
+        assert later_trade_report_ref != trade_report_ref
+        assert later_trade_health.available_at_ns > event.information_cutoff_ns
+        bridge = quote_entry.metadata["bridge"]
+        assert bridge["continuity_report_ref"] == book_report_ref
+        assert bridge["continuity_report_as_of_ns"] == event.information_cutoff_ns
+        assert bridge["source_health_ref"] == book_health.content_hash
+        assert bridge["observed_at_ns"] == book_received < event.information_cutoff_ns
+        assert later_book_report_ref != book_report_ref
+        assert later_bar_health.content_hash not in report["evidence_refs"]
+        assert all(
+            (entry := repository.get_artifact(ref)) is not None
+            and entry.available_at_ns <= event.information_cutoff_ns
+            for ref in event.causal_input_refs
         )
-        assert not candidate_set.candidates
-        assert candidate_set.selected_candidate_id is None
+        timed_refs = tuple(resolved.causal_source_refs)
+        assert timed_refs
+        assert all(
+            (entry := repository.get_artifact(ref)) is not None
+            and entry.available_at_ns == persisted_at
+            for ref in timed_refs
+        )
+        before_refs = tuple(entry.artifact_ref for entry in readiness + trade_entries + quote_entries)
+        retry_resolved = production.IndexedProductionEventInputsV1(
+            clock_ns=lambda: event.deadline_ns,
+        ).resolve(repository, event)
+        assert retry_resolved is not None
+        after_refs = tuple(
+            entry.artifact_ref
+            for artifact_type in (
+                "S3NativeWarmupReadinessV1", "S3ForwardTradeEvidenceV1",
+                "S3SequenceBookQuoteEvidenceV1",
+            )
+            for entry in repository.artifact_entries(artifact_type)
+        )
+        assert set(after_refs) == set(before_refs)
+        rebased_event = __import__("dataclasses").replace(
+            event, information_cutoff_ns=event.information_cutoff_ns + 1,
+        )
+        with pytest.raises(ValueError, match="conflicts with the fixed event"):
+            production.IndexedProductionEventInputsV1(
+                clock_ns=lambda: event.deadline_ns,
+            ).resolve(repository, rebased_event)
         assert product.content_hash in {
             entry.artifact_ref for entry in repository.artifact_entries("ProductContractV2")
         }

@@ -13,7 +13,7 @@ from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 from .._serialization import FrozenMap, canonical_json, json_value, nonblank, sha256_json, sha256_ref, timestamp
@@ -27,6 +27,9 @@ _ACTIVE_STATES = (
     WatchStateV2.READY_FOR_RECHECK.value,
     WatchStateV2.CONFIRMED.value,
 )
+
+if TYPE_CHECKING:
+    from ..instruments import InstrumentKeyV2
 
 
 class StaleWatchVersion(RuntimeError):
@@ -152,6 +155,30 @@ class ArtifactMetadataIdentityPageV1:
     invalid_entry_count: int = 0
 
 
+@dataclass(frozen=True)
+class NativeM1OriginObservationPageV1:
+    """Bounded page of exact ACTUAL_SYSTEM final-M1 source origins.
+
+    The page is keyed by full InstrumentKeyV2 and ordered by the immutable
+    M1 close origin (`event_at_ns`). Multiple source revisions for one close
+    produce one representative source entry, chosen by earliest availability
+    and then artifact ref.
+    """
+
+    entries: tuple[ArtifactIndexEntryV2, ...]
+    has_more: bool
+    last_close_at_ns: int | None
+
+
+@dataclass(frozen=True)
+class PendingDecisionEventPageV1:
+    """Bounded oldest-first page of event handoffs without durable receipts."""
+
+    entries: tuple[ArtifactIndexEntryV2, ...]
+    has_more: bool
+    invalid_entry_count: int = 0
+
+
 _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS: dict[tuple[str, tuple[str, ...]], str] = {
     ("MaturedOutcomeV2", ("outcome", "decision_ref")):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.outcome.decision_ref') END",
@@ -163,6 +190,18 @@ _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS: dict[tuple[str, tuple[str, ...]], str] 
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.diagnostic.decision_ref') END",
     ("OutcomeMaturityStatusV1", ("status", "decision_ref")):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.status.decision_ref') END",
+    ("OpsDecisionEventSourceV1", ("native_m1_origin", "origin_ref")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.native_m1_origin.origin_ref') END",
+    ("OpsDecisionEventSourceV1", ("event", "event_id")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event.event_id') END",
+    ("OpsSupervisorReceiptIdentityV1", ("event_id",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_id') END",
+    ("OpsPublicAcquisitionDeadlineGateV1", ("native_m1_origin_ref",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.native_m1_origin_ref') END",
+    ("OpsPublicSourceReconciliationV1", ("reconciliation", "source_id")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.reconciliation.source_id') END",
+    ("S3NativeM1OriginAccountingCheckpointV1", ("instrument_key_json",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END",
 }
 
 
@@ -862,6 +901,247 @@ class OpsRepository:
         next_cursor = (int(rows[-1]["created_at_ns"]), str(rows[-1]["artifact_ref"])) if rows else None
         raw_keys = tuple((int(row["created_at_ns"]), str(row["artifact_ref"])) for row in rows)
         return ArtifactIndexPageV2(tuple(entries), next_cursor, invalid, raw_keys)
+
+    def native_m1_origin_observation_page(
+        self,
+        instrument_key: InstrumentKeyV2,
+        *,
+        available_from_ns: int,
+        available_through_ns: int,
+        after_close_at_ns: int | None = None,
+        limit: int = 4,
+    ) -> NativeM1OriginObservationPageV1:
+        """Read a bounded oldest-close-first page of new exact native M1 bars.
+
+        The inclusive availability bounds define one frozen source discovery
+        window. A one-timestamp overlap makes same-clock source-index writes
+        restart safe; durable event/gate state makes the overlap idempotent.
+        The caller persists that window
+        in its revision-bound checkpoint and only moves the close cursor after
+        the corresponding event/gate records are durable. A later source
+        window starts with no close cursor, so delayed older bars are still
+        discovered without rescanning already completed source history.
+
+        Only controller-indexed public observations with a non-null bar ref,
+        full exact instrument identity, BAR_1M, and ACTUAL_SYSTEM availability
+        are returned. `event_at_ns` is the canonical source M1 close for the
+        native Bybit kline translator. Duplicate revisions at one close
+        collapse to the earliest available indexed observation.
+        """
+        # Local import avoids making the memory package depend on runtime code.
+        from ..data.raw import AvailabilityClassV2
+        from ..instruments import InstrumentKeyV2
+
+        if not isinstance(instrument_key, InstrumentKeyV2):
+            raise ValueError("native M1 source paging requires a full InstrumentKeyV2")
+        available_from = timestamp(available_from_ns, field="available_from_ns")
+        available_through = timestamp(available_through_ns, field="available_through_ns")
+        if available_from > available_through:
+            raise ValueError("native M1 source availability window is reversed")
+        if type(limit) is not int or not 1 <= limit <= 2_000:
+            raise ValueError("native M1 source page limit must be between 1 and 2000")
+        if after_close_at_ns is not None:
+            timestamp(after_close_at_ns, field="after_close_at_ns")
+            if after_close_at_ns % 60_000_000_000:
+                raise ValueError("native M1 close cursor must align to a UTC minute")
+
+        key_json = instrument_key.to_canonical_json()
+        close_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_at_ns') END"
+        key_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END"
+        event_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_type') END"
+        availability_expr = (
+            "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.availability_class') END"
+        )
+        bar_ref_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.bar_content_hash') END"
+        close_filter = f" AND {close_expr}>?" if after_close_at_ns is not None else ""
+        params: tuple[Any, ...] = (
+            key_json,
+            "BAR_1M",
+            AvailabilityClassV2.ACTUAL_SYSTEM.value,
+            available_from,
+            available_through,
+            *((after_close_at_ns,) if after_close_at_ns is not None else ()),
+            limit + 1,
+            limit + 1,
+        )
+        query = f"""
+            WITH eligible AS (
+                SELECT artifact_ref,
+                       CAST({close_expr} AS INTEGER) AS close_at_ns,
+                       available_at_ns
+                FROM artifact_index
+                WHERE artifact_type='PublicObservationIndexV2'
+                  AND {key_expr}=?
+                  AND {event_expr}=?
+                  AND {availability_expr}=?
+                  AND {bar_ref_expr} IS NOT NULL
+                  AND json_type(
+                        CASE WHEN json_valid(metadata_json) THEN metadata_json ELSE '{{}}' END,
+                        '$.event_at_ns'
+                  )='integer'
+                  AND (CAST({close_expr} AS INTEGER) % 60000000000)=0
+                  AND available_at_ns>=? AND available_at_ns<=?
+                  {close_filter}
+            ), first_revision AS (
+                SELECT close_at_ns, MIN(available_at_ns) AS first_available_at_ns
+                FROM eligible
+                GROUP BY close_at_ns
+            ), representative AS (
+                SELECT e.close_at_ns, MIN(e.artifact_ref) AS artifact_ref
+                FROM eligible e
+                JOIN first_revision f
+                  ON f.close_at_ns=e.close_at_ns
+                 AND f.first_available_at_ns=e.available_at_ns
+                GROUP BY e.close_at_ns
+                ORDER BY e.close_at_ns ASC
+                LIMIT ?
+            ), selected AS (
+                SELECT close_at_ns, artifact_ref
+                FROM representative
+                ORDER BY close_at_ns ASC
+                LIMIT ?
+            )
+            SELECT a.*
+            FROM selected s
+            JOIN artifact_index a ON a.artifact_ref=s.artifact_ref
+            ORDER BY s.close_at_ns ASC
+        """
+        with self._lock:
+            rows = self._connection.execute(query, params).fetchall()
+
+        has_more = len(rows) > limit
+        selected_rows = rows[:limit]
+        entries: list[ArtifactIndexEntryV2] = []
+        for row in selected_rows:
+            entry = ArtifactIndexEntryV2._from_storage_row(row)
+            metadata = entry.metadata
+            close_at_ns = metadata.get("event_at_ns")
+            if (entry.artifact_type != "PublicObservationIndexV2"
+                    or metadata.get("instrument_key_json") != key_json
+                    or metadata.get("event_type") != "BAR_1M"
+                    or metadata.get("availability_class") != AvailabilityClassV2.ACTUAL_SYSTEM.value
+                    or type(close_at_ns) is not int or close_at_ns % 60_000_000_000
+                    or metadata.get("bar_content_hash") is None
+                    or not available_from <= entry.available_at_ns <= available_through):
+                raise ValueError("native M1 source page contains conflicting indexed metadata")
+            sha256_ref(str(metadata["bar_content_hash"]), field="bar_content_hash")
+            entries.append(entry)
+        close_values = [int(entry.metadata["event_at_ns"]) for entry in entries]
+        if close_values != sorted(set(close_values)):
+            raise ValueError("native M1 source page is not unique and oldest-close-first")
+        return NativeM1OriginObservationPageV1(
+            tuple(entries), has_more, close_values[-1] if close_values else None,
+        )
+
+    def public_observation_source_ids(self, *, limit: int = 128) -> tuple[str, ...]:
+        """Return a bounded distinct source-ID set without enumerating observation history."""
+        if type(limit) is not int or not 1 <= limit <= 2_000:
+            raise ValueError("public observation source-ID bound must be between 1 and 2000")
+        with self._lock:
+            rows = self._connection.execute(
+                """SELECT DISTINCT json_extract(metadata_json, '$.source_id') AS source_id
+                   FROM artifact_index
+                   WHERE artifact_type='PublicObservationIndexV2'
+                     AND json_valid(metadata_json)
+                     AND json_type(metadata_json, '$.source_id')='text'
+                   ORDER BY source_id LIMIT ?""",
+                (limit + 1,),
+            ).fetchall()
+        if len(rows) > limit:
+            raise ValueError("public observation source-ID set exceeded its deterministic bound")
+        values = tuple(str(row["source_id"]) for row in rows)
+        if any(not value.strip() for value in values) or values != tuple(sorted(set(values))):
+            raise ValueError("public observation source-ID inventory is invalid or ambiguous")
+        return values
+
+    def public_reconciliation_source_ids(self, *, limit: int = 128) -> tuple[str, ...]:
+        """Return a bounded distinct reconciliation source-ID set."""
+        if type(limit) is not int or not 1 <= limit <= 2_000:
+            raise ValueError("reconciliation source-ID bound must be between 1 and 2000")
+        with self._lock:
+            rows = self._connection.execute(
+                """SELECT DISTINCT json_extract(metadata_json, '$.reconciliation.source_id') AS source_id
+                   FROM artifact_index
+                   WHERE artifact_type='OpsPublicSourceReconciliationV1'
+                     AND json_valid(metadata_json)
+                     AND json_type(metadata_json, '$.reconciliation.source_id')='text'
+                   ORDER BY source_id LIMIT ?""",
+                (limit + 1,),
+            ).fetchall()
+        if len(rows) > limit:
+            raise ValueError("reconciliation source-ID set exceeded its deterministic bound")
+        values = tuple(str(row["source_id"]) for row in rows)
+        if any(not value.strip() for value in values) or values != tuple(sorted(set(values))):
+            raise ValueError("reconciliation source-ID inventory is invalid or ambiguous")
+        return values
+
+    def pending_decision_event_page(
+        self,
+        *,
+        as_of_ns: int,
+        limit: int = 1_024,
+    ) -> PendingDecisionEventPageV1:
+        """Read bounded unreceipted event handoffs in oldest-availability order."""
+        cutoff = timestamp(as_of_ns, field="as_of_ns")
+        if type(limit) is not int or not 1 <= limit <= 2_000:
+            raise ValueError("pending event page size must be between 1 and 2000")
+        query = """SELECT e.* FROM artifact_index AS e
+                   WHERE e.artifact_type='OpsDecisionEventSourceV1'
+                     AND e.available_at_ns<=?
+                     AND json_valid(e.metadata_json)
+                     AND json_type(e.metadata_json, '$.event.event_id')='text'
+                     AND NOT EXISTS (
+                         SELECT 1 FROM artifact_index AS r
+                         WHERE r.artifact_type='OpsSupervisorReceiptIdentityV1'
+                           AND json_valid(r.metadata_json)
+                           AND json_extract(r.metadata_json, '$.event_id')=
+                               json_extract(e.metadata_json, '$.event.event_id')
+                     )
+                   ORDER BY e.available_at_ns, e.created_at_ns, e.artifact_ref
+                   LIMIT ?"""
+        with self._lock:
+            rows = self._connection.execute(query, (cutoff, limit + 1)).fetchall()
+        has_more = len(rows) > limit
+        selected = rows[:limit]
+        entries: list[ArtifactIndexEntryV2] = []
+        invalid = 0
+        for row in selected:
+            try:
+                entries.append(ArtifactIndexEntryV2._from_storage_row(row))
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                invalid += 1
+        return PendingDecisionEventPageV1(tuple(entries), has_more, invalid)
+
+    def latest_native_m1_origin_accounting_checkpoint(
+        self,
+        instrument_key: InstrumentKeyV2,
+    ) -> ArtifactIndexEntryV2 | None:
+        """Read the latest exact-key checkpoint in constant bounded work."""
+        from ..instruments import InstrumentKeyV2
+
+        if not isinstance(instrument_key, InstrumentKeyV2):
+            raise ValueError("native M1 checkpoint lookup requires full InstrumentKeyV2")
+        with self._lock:
+            rows = self._connection.execute(
+                """SELECT * FROM artifact_index
+                   WHERE artifact_type='S3NativeM1OriginAccountingCheckpointV1'
+                     AND json_valid(metadata_json)
+                     AND json_extract(metadata_json, '$.instrument_key_json')=?
+                   ORDER BY CAST(json_extract(metadata_json, '$.checkpoint.generation') AS INTEGER) DESC,
+                            artifact_ref DESC
+                   LIMIT 2""",
+                (instrument_key.to_canonical_json(),),
+            ).fetchall()
+        if not rows:
+            return None
+        entries = tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        if len(entries) > 1:
+            top = entries[0].metadata.get("checkpoint")
+            next_body = entries[1].metadata.get("checkpoint")
+            if (not isinstance(top, Mapping) or not isinstance(next_body, Mapping)
+                    or top.get("generation") == next_body.get("generation")):
+                raise ValueError("native M1 checkpoint generation has conflicting durable rows")
+        return entries[0]
 
     def artifact_entries_by_metadata_identity(
         self,

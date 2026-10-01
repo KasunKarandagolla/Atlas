@@ -30,6 +30,7 @@ from ..data.health import PublicSourceHealthV2, PublicSourceStateV2
 from ..data.history import (
     ParquetObservationArchiveV2,
     reconstruct_causal_bars_from_archive,
+    reconstruct_native_m1_bars_from_index_page,
     reconstruct_public_observations_from_archive,
 )
 from ..data.microstructure import (
@@ -58,6 +59,8 @@ from ..data.public_stream_source import PublicStreamSourceV2
 from ..data.raw import AvailabilityClassV2, RawObservationV2
 from ..data.s3_forward_evidence import (
     S3ForwardTradeEvidenceV1,
+    S3NativeComputationContextV1,
+    S3QuoteBridgeResultV1,
     evaluate_s3_warmup_readiness,
     quote_from_valid_continuity_report,
     reconstruct_s3_stream_trade_evidence,
@@ -142,13 +145,20 @@ from .ops_supervisor import (
     PipelineStageV1,
 )
 from .s3_native_cadence import (
+    MAX_M1_ORIGINS_ACCOUNTED_PER_CYCLE,
+    S3_M1_ACCOUNTING_CHECKPOINT_TYPE,
     S3_M1_DEFAULT_MAX_LATENESS_NS,
     S3_M1_EVENT_TYPE,
     S3M1BarDisposition,
+    S3M1OriginAccountingAction,
+    S3NativeM1OriginAccountingCheckpointV1,
+    advance_s3_m1_origin_checkpoint,
     classify_s3_m1_bar,
-    find_s3_m1_origin_event,
+    find_s3_m1_origin_accounting_state,
+    plan_s3_m1_origin_accounting,
     s3_m1_event_id,
     s3_m1_origin_metadata,
+    s3_m1_origin_ref,
 )
 
 OPS_PRODUCTION_ADAPTER_ID = "ATLAS_V2_PRODUCTION_OPS_COMPOSITION_V1"
@@ -227,7 +237,9 @@ class ProductionEconomicInputsV1:
 class ProductionEventInputsV1:
     """Causal universe and exact unsized sleeve outputs for one event."""
 
-    universe: UniverseContractV2
+    # Native M1 S3 warmup produces diagnostic evidence only while public-trade
+    # completeness is unproven. It intentionally has no decision universe.
+    universe: UniverseContractV2 | None
     candidates: tuple[CandidateActionV2, ...]
     scanner_evidence_refs: Mapping[str, tuple[str, ...]]
     risk_inputs: Mapping[str, ProductionRiskInputsV1]
@@ -300,16 +312,8 @@ class IndexedPublicCycleSourceV1:
         del recovery
         archive_root = Path(repository.path).parent / "ops-observations"
         source_ids = set(self.required_source_ids) | set(repository.source_health_sources())
-        source_ids.update(
-            str(entry.metadata.get("source_id"))
-            for entry in repository.artifact_entries("OpsPublicSourceReconciliationV1")
-            if isinstance(entry.metadata.get("source_id"), str)
-        )
-        source_ids.update(
-            str(entry.metadata.get("source_id"))
-            for entry in repository.artifact_entries("PublicObservationIndexV2")
-            if isinstance(entry.metadata.get("source_id"), str)
-        )
+        source_ids.update(repository.public_reconciliation_source_ids())
+        source_ids.update(repository.public_observation_source_ids())
         recovery_epoch_ref = _current_recovery_epoch_ref(repository, now_ns=now_ns)
         _reconcile_public_sources(
             repository, collector, tuple(sorted(source_ids)), now_ns=now_ns,
@@ -318,7 +322,10 @@ class IndexedPublicCycleSourceV1:
 
         events: list[OpsDecisionEventV1] = []
         refs: list[str] = []
-        for entry in repository.artifact_entries("OpsDecisionEventSourceV1"):
+        pending_events = repository.pending_decision_event_page(as_of_ns=now_ns, limit=64)
+        if pending_events.invalid_entry_count:
+            raise ValueError("pending decision event page contains corrupt source handoffs")
+        for entry in pending_events.entries:
             body = entry.metadata.get("event")
             if entry.available_at_ns > now_ns or not isinstance(body, Mapping):
                 continue
@@ -375,7 +382,7 @@ class IndexedPublicCycleSourceV1:
                 if base is None:
                     continue
                 generated = IndexedProductionEventInputsV1().resolve(repository, base)
-                if generated is None:
+                if generated is None or generated.universe is None:
                     continue
                 causal_refs = set(base.causal_input_refs)
                 causal_refs.add(generated.universe.content_hash)
@@ -400,97 +407,133 @@ class IndexedPublicCycleSourceV1:
                     refs.append(event_entry.artifact_ref)
                     seen_event_ids.add(event.event_id)
 
-        native_m1_bars_by_key: dict[InstrumentKeyV2, tuple[Any, ...]] = {}
         if healthy:
-            native_entries = repository.artifact_entries("OpsDecisionEventSourceV1")
             for product in collector.registry.contracts():
-                bars = reconstruct_causal_bars_from_archive(
-                    repository, archive_root, key=product.key, interval=BarIntervalV2.M1,
-                    information_cutoff_ns=now_ns, availability_class=AvailabilityClassV2.ACTUAL_SYSTEM,
-                    limit=100_000,
-                )
-                native_m1_bars_by_key[product.key] = tuple(item.bar for item in bars)
-                if not bars:
-                    continue
-                trigger = bars[-1].bar
-                prior = find_s3_m1_origin_event(native_entries, product.key, trigger.close_at_ns)
-                if prior is not None:
-                    prior_body = prior.metadata.get("event")
-                    if not isinstance(prior_body, Mapping):
-                        raise ValueError("durable native M1 event lost its typed event body")
-                    event = decision_event_from_dict(prior_body)
-                    if (event.available_at_ns <= now_ns and event.event_id not in seen_event_ids
-                            and repository.get_artifact(_ops_receipt_identity_ref(event.event_id)) is None):
-                        events.append(event)
-                        refs.append(prior.artifact_ref)
-                        seen_event_ids.add(event.event_id)
-                    continue
+                previous = _load_latest_s3_m1_origin_checkpoint(repository, product.key)
+                if previous is None:
+                    available_from_ns, available_through_ns, after_close_at_ns = 0, now_ns, None
+                elif previous.scan_complete:
+                    if now_ns <= previous.source_available_through_ns:
+                        continue
+                    available_from_ns = previous.source_available_through_ns
+                    available_through_ns, after_close_at_ns = now_ns, None
+                else:
+                    available_from_ns = previous.source_available_from_ns
+                    available_through_ns = previous.source_available_through_ns
+                    after_close_at_ns = previous.source_scan_after_close_at_ns
 
-                disposition = classify_s3_m1_bar(trigger, now_ns=now_ns)
-                if disposition == S3M1BarDisposition.LATE:
-                    _persist_late_s3_m1_origin_gate(
-                        repository, product, trigger, observed_at_ns=now_ns,
+                page = repository.native_m1_origin_observation_page(
+                    product.key,
+                    available_from_ns=available_from_ns,
+                    available_through_ns=available_through_ns,
+                    after_close_at_ns=after_close_at_ns,
+                    limit=MAX_M1_ORIGINS_ACCOUNTED_PER_CYCLE,
+                )
+                page_bars = reconstruct_native_m1_bars_from_index_page(
+                    repository, archive_root, key=product.key,
+                    index_entries=page.entries,
+                    max_origins=MAX_M1_ORIGINS_ACCOUNTED_PER_CYCLE,
+                )
+                page_events: dict[str, ArtifactIndexEntryV2] = {}
+                page_gates: dict[str, ArtifactIndexEntryV2] = {}
+                for indexed_bar in page_bars:
+                    close_at_ns = indexed_bar.bar.close_at_ns
+                    event_entries, gate_entries = _native_m1_origin_state_entries(
+                        repository, product.key, close_at_ns, as_of_ns=now_ns,
                     )
-                    continue
-                if disposition != S3M1BarDisposition.TIMELY:
-                    continue
-                base = _native_s3_m1_public_bar_event(
-                    repository, product, trigger, now_ns=now_ns,
+                    page_events.update((entry.artifact_ref, entry) for entry in event_entries)
+                    page_gates.update((entry.artifact_ref, entry) for entry in gate_entries)
+                plans = plan_s3_m1_origin_accounting(
+                    (item.bar for item in page_bars), product.key,
+                    now_ns=now_ns,
+                    event_entries=tuple(page_events.values()),
+                    gate_entries=tuple(page_gates.values()),
+                    after_close_at_ns=after_close_at_ns,
+                    max_origins=MAX_M1_ORIGINS_ACCOUNTED_PER_CYCLE,
                 )
-                if base is None:
-                    continue
-                generated = IndexedProductionEventInputsV1().resolve(repository, base)
-                if generated is None:
-                    continue
-                causal_refs = set(base.causal_input_refs)
-                causal_refs.add(generated.universe.content_hash)
-                causal_refs.update(generated.causal_feature_refs)
-                causal_refs.update(generated.causal_source_refs)
-                causal_refs.update(item.content_hash for item in generated.candidates)
-                causal_refs.update(ref for refs_for_candidate in generated.scanner_evidence_refs.values()
-                                   for ref in refs_for_candidate)
-                for candidate in generated.candidates:
-                    causal_refs.update(candidate.envelope.input_refs)
-                event = OpsDecisionEventV1(
-                    base.event_id, base.event_type, base.source_id, base.trigger_ref,
-                    base.source_event_at_ns, base.source_published_at_ns, base.received_at_ns,
-                    base.available_at_ns, base.information_cutoff_ns, base.deadline_ns,
-                    tuple(sorted(causal_refs)),
-                )
-                native_origin = s3_m1_origin_metadata(
-                    product.key, trigger.close_at_ns, bar_ref=trigger.content_hash,
-                )["native_m1_origin"]
-                if not isinstance(native_origin, Mapping):
-                    raise ValueError("native M1 origin metadata must be an object")
-                _persist_public_event(
-                    repository, event, trigger.raw.record_id, now_ns,
-                    native_m1_origin=native_origin,
-                )
-                event_entry = repository.get_artifact(event.content_hash)
-                if (event_entry is not None and event.event_id not in seen_event_ids
-                        and repository.get_artifact(_ops_receipt_identity_ref(event.event_id)) is None):
-                    events.append(event)
-                    refs.append(event_entry.artifact_ref)
-                    native_entries = (*native_entries, event_entry)
-                    seen_event_ids.add(event.event_id)
 
-        for product in collector.registry.contracts():
-            late_scan_bars = native_m1_bars_by_key.get(product.key)
-            if late_scan_bars is None:
-                late_scan_bars = tuple(item.bar for item in reconstruct_causal_bars_from_archive(
-                    repository, archive_root, key=product.key, interval=BarIntervalV2.M1,
-                    information_cutoff_ns=now_ns, availability_class=AvailabilityClassV2.ACTUAL_SYSTEM,
-                    limit=100_000,
-                ))
-            if not late_scan_bars:
-                continue
-            late_trigger = late_scan_bars[-1]
-            if (find_s3_m1_origin_event(repository.artifact_entries("OpsDecisionEventSourceV1"),
-                                        product.key, late_trigger.close_at_ns) is None
-                    and classify_s3_m1_bar(late_trigger, now_ns=now_ns) == S3M1BarDisposition.LATE):
-                _persist_late_s3_m1_origin_gate(
-                    repository, product, late_trigger, observed_at_ns=now_ns,
+                accounted_close_at_ns: int | None = None
+                bars_by_close = {item.bar.close_at_ns: item.bar for item in page_bars}
+                for plan in plans:
+                    bar = bars_by_close[plan.close_at_ns]
+                    if plan.action == S3M1OriginAccountingAction.CREATE_LATE_TEST_GATE:
+                        _persist_late_s3_m1_origin_gate(
+                            repository, product, bar, observed_at_ns=now_ns,
+                        )
+                    elif plan.action == S3M1OriginAccountingAction.CREATE_TIMELY_EVENT:
+                        native_event = _native_s3_m1_public_bar_event(
+                            repository, product, bar, now_ns=now_ns,
+                        )
+                        if native_event is None:
+                            _persist_late_s3_m1_origin_gate(
+                                repository, product, bar, observed_at_ns=now_ns,
+                                reason_code="NATIVE_M1_ORIGIN_EVENT_PREREQUISITE_UNAVAILABLE",
+                            )
+                        else:
+                            native_origin = s3_m1_origin_metadata(
+                                product.key, bar.close_at_ns, bar_ref=bar.content_hash,
+                            )["native_m1_origin"]
+                            if not isinstance(native_origin, Mapping):
+                                raise ValueError("native M1 origin metadata must be an object")
+                            _persist_public_event(
+                                repository, native_event, bar.raw.record_id, now_ns,
+                                native_m1_origin=native_origin,
+                            )
+                            event_entry = repository.get_artifact(native_event.content_hash)
+                            if (event_entry is not None and native_event.event_id not in seen_event_ids
+                                    and repository.get_artifact(
+                                        _ops_receipt_identity_ref(native_event.event_id),
+                                    ) is None):
+                                events.append(native_event)
+                                refs.append(event_entry.artifact_ref)
+                                seen_event_ids.add(native_event.event_id)
+                    elif plan.action == S3M1OriginAccountingAction.REUSE_TIMELY_EVENT:
+                        event_entries, _ = _native_m1_origin_state_entries(
+                            repository, product.key, plan.close_at_ns, as_of_ns=now_ns,
+                        )
+                        matching = [entry for entry in event_entries
+                                    if entry.artifact_ref == plan.existing_accounting_ref]
+                        if len(matching) != 1:
+                            raise ValueError("native M1 reused event disappeared or conflicts")
+                        body = matching[0].metadata.get("event")
+                        if not isinstance(body, Mapping):
+                            raise ValueError("native M1 reused event lost its typed event body")
+                        event = decision_event_from_dict(body)
+                        if (event.available_at_ns <= now_ns and event.event_id not in seen_event_ids
+                                and repository.get_artifact(_ops_receipt_identity_ref(event.event_id)) is None):
+                            events.append(event)
+                            refs.append(matching[0].artifact_ref)
+                            seen_event_ids.add(event.event_id)
+                    elif plan.action == S3M1OriginAccountingAction.REUSE_LATE_TEST_GATE:
+                        _native_m1_origin_state_entries(
+                            repository, product.key, plan.close_at_ns, as_of_ns=now_ns,
+                        )
+                    else:
+                        raise ValueError("native M1 origin planner returned an unsupported action")
+
+                    event_entries, gate_entries = _native_m1_origin_state_entries(
+                        repository, product.key, plan.close_at_ns, as_of_ns=now_ns,
+                    )
+                    durable = find_s3_m1_origin_accounting_state(
+                        event_entries, gate_entries, product.key, plan.close_at_ns,
+                    )
+                    if durable is None:
+                        raise ValueError("native M1 origin was not durably accounted before cursor advance")
+                    if plan.existing_accounting_ref is not None and durable[1].artifact_ref != plan.existing_accounting_ref:
+                        raise ValueError("native M1 origin accounting changed during idempotent replay")
+                    accounted_close_at_ns = plan.close_at_ns
+
+                if page.has_more and page.last_close_at_ns is None:
+                    raise ValueError("native M1 origin page claims more rows without a close cursor")
+                checkpoint = advance_s3_m1_origin_checkpoint(
+                    previous, product.key,
+                    now_ns=now_ns,
+                    source_available_through_ns=available_through_ns,
+                    next_close_cursor_ns=page.last_close_at_ns if page.has_more else None,
+                    accounted_close_at_ns=accounted_close_at_ns,
+                    has_more=page.has_more,
                 )
+                _persist_s3_m1_origin_checkpoint(repository, checkpoint)
 
         events.sort(key=lambda item: (item.available_at_ns, item.information_cutoff_ns, item.event_id))
         source_ids_tuple = tuple(sorted(source_ids | {event.source_id for event in events}))
@@ -523,15 +566,26 @@ def _persist_late_s3_m1_origin_gate(
     bar: Any,
     *,
     observed_at_ns: int,
+    reason_code: str = "NATIVE_M1_BAR_FIRST_SEEN_AFTER_FIXED_DEADLINE",
 ) -> None:
-    """Record a first-seen late M1 origin without inventing an event cutoff."""
+    """Record a missed M1 origin without inventing an event cutoff."""
     origin = s3_m1_origin_metadata(product.key, bar.close_at_ns, bar_ref=bar.content_hash)["native_m1_origin"]
     if not isinstance(origin, Mapping):
         return
     origin_ref = origin.get("origin_ref")
-    for entry in repository.artifact_entries("OpsPublicAcquisitionDeadlineGateV1"):
-        if entry.metadata.get("native_m1_origin_ref") == origin_ref:
-            return
+    event_entries, gate_entries = _native_m1_origin_state_entries(
+        repository, product.key, bar.close_at_ns, as_of_ns=observed_at_ns,
+    )
+    existing = find_s3_m1_origin_accounting_state(
+        event_entries, gate_entries, product.key, bar.close_at_ns,
+    )
+    if existing is not None:
+        if existing[0] == S3M1OriginAccountingAction.REUSE_TIMELY_EVENT:
+            raise ValueError("native M1 origin already has a timely event and cannot gain a late gate")
+        body = existing[1].metadata.get("deadline_gate")
+        if not isinstance(body, Mapping) or body.get("reason_code") != reason_code:
+            raise ValueError("native M1 origin already has a conflicting missed-origin gate")
+        return
     body = {
         "version": "OPS_PUBLIC_ACQUISITION_DEADLINE_GATE_V1",
         "observed_at_ns": observed_at_ns,
@@ -539,7 +593,7 @@ def _persist_late_s3_m1_origin_gate(
         "event_ids": [s3_m1_event_id(product.key, bar.close_at_ns)],
         "deadlines_ns": [bar.close_at_ns + S3_M1_DEFAULT_MAX_LATENESS_NS],
         "status": "TEST GATE",
-        "reason_code": "NATIVE_M1_BAR_FIRST_SEEN_AFTER_FIXED_DEADLINE",
+        "reason_code": reason_code,
         "native_m1_origin_ref": origin_ref,
         "native_m1_bar_ref": bar.content_hash,
         "authority": "ZERO",
@@ -550,6 +604,104 @@ def _persist_late_s3_m1_origin_gate(
         observed_at_ns, observed_at_ns, {"deadline_gate": body,
                                         "native_m1_origin_ref": origin_ref,
                                         "native_m1_origin": dict(origin)},
+    ))
+
+
+def _native_m1_origin_state_entries(
+    repository: OpsRepository,
+    key: InstrumentKeyV2,
+    close_at_ns: int,
+    *,
+    as_of_ns: int,
+) -> tuple[tuple[ArtifactIndexEntryV2, ...], tuple[ArtifactIndexEntryV2, ...]]:
+    origin_ref = s3_m1_origin_ref(key, close_at_ns)
+    event_id = s3_m1_event_id(key, close_at_ns)
+    event_rows: dict[str, ArtifactIndexEntryV2] = {}
+    for path, identity in (("native_m1_origin", origin_ref), ("event_id", event_id)):
+        metadata_path = (("native_m1_origin", "origin_ref") if path == "native_m1_origin"
+                         else ("event", "event_id"))
+        page = repository.artifact_entries_by_metadata_identity(
+            "OpsDecisionEventSourceV1", metadata_path, identity,
+            as_of_ns=as_of_ns, limit=2,
+        )
+        if page.invalid_entry_count or page.has_more:
+            raise ValueError("native M1 event accounting identity is invalid or ambiguous")
+        event_rows.update((entry.artifact_ref, entry) for entry in page.entries)
+    gate_page = repository.artifact_entries_by_metadata_identity(
+        "OpsPublicAcquisitionDeadlineGateV1", ("native_m1_origin_ref",), origin_ref,
+        as_of_ns=as_of_ns, limit=2,
+    )
+    if gate_page.invalid_entry_count or gate_page.has_more:
+        raise ValueError("native M1 late-gate accounting identity is invalid or ambiguous")
+    return tuple(event_rows.values()), gate_page.entries
+
+
+def _load_latest_s3_m1_origin_checkpoint(
+    repository: OpsRepository,
+    key: InstrumentKeyV2,
+) -> S3NativeM1OriginAccountingCheckpointV1 | None:
+    entry = repository.latest_native_m1_origin_accounting_checkpoint(key)
+    if entry is None:
+        return None
+    body = entry.metadata.get("checkpoint")
+    if not isinstance(body, Mapping):
+        raise ValueError("native M1 origin checkpoint has no typed body")
+    checkpoint = S3NativeM1OriginAccountingCheckpointV1.from_dict(body)
+    if (entry.artifact_type != S3_M1_ACCOUNTING_CHECKPOINT_TYPE
+            or entry.artifact_ref != checkpoint.content_hash
+            or entry.content_hash != checkpoint.content_hash
+            or entry.created_at_ns != checkpoint.created_at_ns
+            or entry.available_at_ns != checkpoint.available_at_ns
+            or checkpoint.instrument_key != key
+            or entry.metadata.get("instrument_key_json") != key.to_canonical_json()):
+        raise ValueError("native M1 origin checkpoint failed exact-key content validation")
+    if checkpoint.generation == 1:
+        if checkpoint.previous_checkpoint_ref is not None:
+            raise ValueError("native M1 root checkpoint unexpectedly has a predecessor")
+        return checkpoint
+    previous_entry = repository.get_artifact(checkpoint.previous_checkpoint_ref or "")
+    previous_body = previous_entry.metadata.get("checkpoint") if previous_entry is not None else None
+    if (previous_entry is None or previous_entry.artifact_type != S3_M1_ACCOUNTING_CHECKPOINT_TYPE
+            or not isinstance(previous_body, Mapping)):
+        raise ValueError("native M1 checkpoint predecessor is missing")
+    previous = S3NativeM1OriginAccountingCheckpointV1.from_dict(previous_body)
+    if (previous.content_hash != checkpoint.previous_checkpoint_ref
+            or previous_entry.content_hash != previous.content_hash
+            or previous_entry.artifact_ref != previous.content_hash
+            or previous.instrument_key != key
+            or previous.generation + 1 != checkpoint.generation):
+        raise ValueError("native M1 checkpoint predecessor hash or revision does not verify")
+    if previous.scan_complete:
+        if (checkpoint.source_available_from_ns < previous.source_available_through_ns
+                or checkpoint.source_available_through_ns <= previous.source_available_through_ns):
+            raise ValueError("native M1 completed source watermark regressed")
+    elif (checkpoint.source_available_from_ns != previous.source_available_from_ns
+          or checkpoint.source_available_through_ns != previous.source_available_through_ns
+          or (checkpoint.source_scan_after_close_at_ns is not None
+              and previous.source_scan_after_close_at_ns is not None
+              and checkpoint.source_scan_after_close_at_ns <= previous.source_scan_after_close_at_ns)):
+        raise ValueError("native M1 active source window or close cursor was rebased")
+    if (checkpoint.last_accounted_close_at_ns is not None
+            and previous.last_accounted_close_at_ns is not None
+            and checkpoint.last_accounted_close_at_ns < previous.last_accounted_close_at_ns):
+        raise ValueError("native M1 checkpoint accounted close regressed")
+    return checkpoint
+
+
+def _persist_s3_m1_origin_checkpoint(
+    repository: OpsRepository,
+    checkpoint: S3NativeM1OriginAccountingCheckpointV1,
+) -> None:
+    body = checkpoint.to_dict()
+    repository.register_artifact(ArtifactIndexEntryV2(
+        checkpoint.content_hash,
+        S3_M1_ACCOUNTING_CHECKPOINT_TYPE,
+        checkpoint.content_hash,
+        checkpoint.created_at_ns,
+        checkpoint.available_at_ns,
+        {"checkpoint": body,
+         "instrument_key_json": checkpoint.instrument_key.to_canonical_json(),
+         "authority": "ZERO"},
     ))
 
 
@@ -635,22 +787,19 @@ def _reconcile_public_sources(
     recovery_epoch_ref: str | None,
 ) -> None:
     """Reconcile only from a persisted, exact public snapshot/gap-repair receipt."""
-    by_source: dict[str, list[ArtifactIndexEntryV2]] = {}
-    observation_entries = {
-        item.artifact_ref: item for item in repository.artifact_entries("PublicObservationIndexV2")
-    }
-    for entry in repository.artifact_entries("OpsPublicSourceReconciliationV1"):
-        body = entry.metadata.get("reconciliation")
-        if isinstance(body, Mapping):
-            by_source.setdefault(str(body.get("source_id", "")), []).append(entry)
     for source_id in source_ids:
         current = collector.health.latest(source_id)
         if current is not None and current.data_eligible and current.available_at_ns <= now_ns:
             continue
         if current is not None and current.observed_at_ns >= now_ns:
             continue
-        for entry in sorted(by_source.get(source_id, ()),
-                            key=lambda item: (item.available_at_ns, item.artifact_ref), reverse=True):
+        page = repository.artifact_entries_by_metadata_identity(
+            "OpsPublicSourceReconciliationV1", ("reconciliation", "source_id"),
+            source_id, as_of_ns=now_ns, limit=32,
+        )
+        if page.invalid_entry_count or page.has_more:
+            continue
+        for entry in page.entries:
             body = entry.metadata.get("reconciliation")
             if (not isinstance(body, Mapping) or entry.content_hash != entry.artifact_ref
                     or sha256_json(body) != entry.artifact_ref
@@ -667,8 +816,10 @@ def _reconcile_public_sources(
             if not isinstance(refs, (list, tuple)) or not refs or tuple(refs) != tuple(sorted(set(refs))):
                 continue
             evidence_ok = True
+            if len(refs) > 10_000:
+                continue
             for ref in refs:
-                item = observation_entries.get(str(ref))
+                item = repository.get_artifact(str(ref))
                 if (item is None or item.artifact_type != "PublicObservationIndexV2"
                         or item.available_at_ns > entry.available_at_ns
                         or item.metadata.get("source_id") != source_id):
@@ -1095,9 +1246,9 @@ class ProductionOpsCyclePortV1:
     ) -> None:
         self.public_source = public_source or IndexedPublicCycleSourceV1()
         self.public_stream_source = public_stream_source
-        self.inputs_provider = inputs_provider or IndexedProductionEventInputsV1()
-        self.crash_after_checkpoint = crash_after_checkpoint
         self.clock_ns = clock_ns
+        self.inputs_provider = inputs_provider or IndexedProductionEventInputsV1(clock_ns=clock_ns)
+        self.crash_after_checkpoint = crash_after_checkpoint
         self._collector_recovery: ProductionCollectorRecoveryV1 | None = None
         self._stream_archive: L2FrameArchiveV2 | None = None
         self._stream_trackers: dict[tuple[str, str, str], PublicStreamContinuityTrackerV1] = {}
@@ -1120,6 +1271,12 @@ class ProductionOpsCyclePortV1:
             close = getattr(self.public_stream_source, "close", None)
             if callable(close):
                 close()
+
+    def bind_runtime_clock(self, clock_ns: Callable[[], int]) -> None:
+        """Use the supervisor's single clock for event and computation timing."""
+        self.clock_ns = clock_ns
+        if isinstance(self.inputs_provider, IndexedProductionEventInputsV1):
+            self.inputs_provider.clock_ns = clock_ns
 
     def recover(self, repository: OpsRepository, *, now_ns: int) -> OpsRecoverySnapshotV1:
         """Restore collector cursors, active watches and subscriptions first."""
@@ -2458,11 +2615,42 @@ class ProductionOpsCyclePortV1:
         completed_stages: Mapping[PipelineStageV1, OpsStageResultV1],
         checkpoint: Callable[[OpsStageResultV1], None],
     ) -> OpsDecisionResultV1:
+        if event.event_type == S3_M1_EVENT_TYPE:
+            if completed_stages:
+                raise ValueError("native M1 event has incompatible prior decision-pipeline checkpoints")
+            inputs = self.inputs_provider.resolve(repository, event)
+            if inputs is None or inputs.candidates or inputs.universe is not None:
+                raise ValueError("native M1 diagnostic path produced decision-affecting inputs")
+            completed_at_ns = max(
+                now_ns,
+                timestamp(self.clock_ns(), field="native S3 decision completion"),
+            )
+            if completed_at_ns > event.deadline_ns:
+                raise ValueError("native S3 decision missed its fixed consumer deadline")
+            native_stages: dict[PipelineStageV1, OpsStageResultV1] = {}
+            for stage in PIPELINE_STAGE_ORDER:
+                terminal_stage = stage == PipelineStageV1.DECISION_CALENDAR
+                result = OpsStageResultV1(
+                    stage,
+                    OpsStageStatusV1.NOT_ESTIMABLE if terminal_stage else OpsStageStatusV1.SKIPPED,
+                    (), completed_at_ns,
+                    "BYBIT_TRADE_COMPLETENESS_UNPROVEN" if terminal_stage
+                    else "NATIVE_M1_S3_DIAGNOSTIC_ONLY",
+                )
+                checkpoint(result)
+                native_stages[stage] = result
+            return _result(
+                native_stages, OpsTerminalStatusV1.NOT_ESTIMABLE,
+                "BYBIT_TRADE_COMPLETENESS_UNPROVEN",
+            )
+
         if source_health_state != "HEALTHY_CURRENT":
             raise ValueError("production event processing requires reconciled current public source health")
         inputs = self.inputs_provider.resolve(repository, event)
         if inputs is None:
             inputs = _empty_event_inputs(repository, event)
+        if inputs.universe is None:
+            raise ValueError("non-native-M1 production event has no decision universe")
         if inputs.universe.envelope.available_at_ns > event.information_cutoff_ns:
             raise ValueError("production universe is unavailable at the event information cutoff")
         if inputs.universe.decision_slot_ns < event.information_cutoff_ns:
@@ -2777,7 +2965,26 @@ class ProductionOpsCyclePortV1:
 class IndexedProductionEventInputsV1:
     """Compose causal public inputs or resolve the exact artifacts already bound by an event."""
 
+    def __init__(self, *, clock_ns: Callable[[], int] = time.time_ns) -> None:
+        self.clock_ns = clock_ns
+
     def resolve(self, repository: OpsRepository, event: OpsDecisionEventV1) -> ProductionEventInputsV1 | None:
+        if event.event_type == S3_M1_EVENT_TYPE:
+            trigger = repository.get_artifact(event.trigger_ref)
+            trigger_body = trigger.metadata.get("trigger") if trigger is not None else None
+            if (trigger is None or trigger.artifact_type != "OpsPublicFinalBarTriggerV1"
+                    or not isinstance(trigger_body, Mapping)):
+                return ProductionEventInputsV1(None, (), {}, {}, {}, (), ())
+            computation_started_ns = max(
+                event.information_cutoff_ns,
+                timestamp(self.clock_ns(), field="native S3 computation start"),
+            )
+            return _compose_s3_native_diagnostics(
+                repository, event, trigger_body,
+                computation_started_ns=computation_started_ns,
+                clock_ns=self.clock_ns,
+            )
+
         causal_refs = set(event.causal_input_refs)
         universe: UniverseContractV2 | None = None
         for ref in sorted(causal_refs):
@@ -2859,6 +3066,304 @@ class IndexedProductionEventInputsV1:
         return _resolve_indexed_economic_inputs(
             repository, event, candidate_set, candidate, action, risk, now_ns=now_ns,
         )
+
+
+def _s3_native_diagnostics_identity_ref(event_id: str) -> str:
+    return sha256_json({
+        "artifact_type": "S3NativeM1DiagnosticIdentityV1",
+        "decision_event_id": event_id,
+    })
+
+
+def _reuse_s3_native_diagnostics(
+    repository: OpsRepository,
+    event: OpsDecisionEventV1,
+) -> tuple[str, ...] | None:
+    """Load the one atomically published diagnostic set for a fixed M1 origin."""
+    identity_ref = _s3_native_diagnostics_identity_ref(event.event_id)
+    identity_entry = repository.get_artifact(identity_ref)
+    if identity_entry is None:
+        return None
+    identity = identity_entry.metadata.get("identity")
+    if (identity_entry.artifact_type != "S3NativeM1DiagnosticIdentityV1"
+            or not isinstance(identity, Mapping)
+            or identity_entry.content_hash != sha256_json(identity)
+            or identity.get("decision_event_id") != event.event_id
+            or identity.get("evidence_cutoff_ns") != event.information_cutoff_ns
+            or identity.get("consumer_deadline_ns") != event.deadline_ns
+            or identity.get("authority") != "ZERO"):
+        raise ValueError("native M1 diagnostic identity conflicts with the fixed event")
+    refs = identity.get("artifact_refs")
+    expected = {
+        "forward_trade_evidence": "S3ForwardTradeEvidenceV1",
+        "sequence_book_quote_evidence": "S3SequenceBookQuoteEvidenceV1",
+        "warmup_readiness": "S3NativeWarmupReadinessV1",
+    }
+    if not isinstance(refs, Mapping) or set(refs) != set(expected):
+        raise ValueError("native M1 diagnostic identity is incomplete")
+    validated: list[str] = []
+    for name, artifact_type in expected.items():
+        ref = refs[name]
+        if ref is None and name == "sequence_book_quote_evidence":
+            continue
+        if not isinstance(ref, str):
+            raise ValueError("native M1 diagnostic identity contains an invalid artifact ref")
+        sha256_ref(ref, field="native M1 diagnostic artifact ref")
+        entry = repository.get_artifact(ref)
+        if (entry is None or entry.artifact_type != artifact_type or entry.artifact_ref != ref
+                or entry.content_hash != ref or entry.available_at_ns > event.deadline_ns):
+            raise ValueError("native M1 diagnostic identity points to conflicting or late evidence")
+        body_key = {
+            "S3ForwardTradeEvidenceV1": "evidence",
+            "S3SequenceBookQuoteEvidenceV1": "bridge",
+            "S3NativeWarmupReadinessV1": "readiness",
+        }[artifact_type]
+        body = entry.metadata.get(body_key)
+        if not isinstance(body, Mapping):
+            raise ValueError("native M1 diagnostic artifact has no typed body")
+        context_body = body.get("computation_context")
+        if not isinstance(context_body, Mapping):
+            raise ValueError("native M1 diagnostic artifact has no honest computation timing")
+        context = S3NativeComputationContextV1.from_dict(context_body)
+        if (context.evidence_cutoff_ns != event.information_cutoff_ns
+                or context.consumer_deadline_ns != event.deadline_ns
+                or entry.available_at_ns < context.computation_finished_ns):
+            raise ValueError("native M1 diagnostic artifact violates the fixed causal timeline")
+        if artifact_type == "S3ForwardTradeEvidenceV1":
+            if (body.get("cutoff_ns") != event.information_cutoff_ns
+                    or body.get("trade_completeness_proven") is not False
+                    or sha256_json({"artifact_type": artifact_type, "evidence": dict(body)}) != ref):
+                raise ValueError("native M1 forward-trade artifact failed its cutoff or content check")
+        elif artifact_type == "S3SequenceBookQuoteEvidenceV1":
+            bridge = S3QuoteBridgeResultV1.from_dict(body)
+            if bridge.evidence_ref != ref or bridge.cutoff_ns != event.information_cutoff_ns:
+                raise ValueError("native M1 sequence-book artifact failed its cutoff or content check")
+        else:
+            if (body.get("cutoff_ns") != event.information_cutoff_ns
+                    or body.get("trade_completeness_proven") is not False
+                    or sha256_json({"artifact_type": artifact_type, "readiness": dict(body)}) != ref):
+                raise ValueError("native M1 readiness artifact failed its cutoff or content check")
+        validated.append(ref)
+    if identity_entry.available_at_ns > event.deadline_ns:
+        raise ValueError("native M1 diagnostic identity was published after the fixed deadline")
+    return tuple(sorted(validated))
+
+
+def _compose_s3_native_diagnostics(
+    repository: OpsRepository,
+    event: OpsDecisionEventV1,
+    trigger_body: Mapping[str, Any],
+    *,
+    computation_started_ns: int,
+    clock_ns: Callable[[], int],
+) -> ProductionEventInputsV1:
+    """Compose S3 evidence outputs at one frozen source cutoff, without candidates."""
+    cached_refs = _reuse_s3_native_diagnostics(repository, event)
+    if cached_refs is not None:
+        return ProductionEventInputsV1(None, (), {}, {}, {}, (), cached_refs)
+
+    cutoff_ns = event.information_cutoff_ns
+    if (trigger_body.get("version") != "OPS_PUBLIC_FINAL_BAR_TRIGGER_V1"
+            or trigger_body.get("information_cutoff_ns") != cutoff_ns
+            or event.event_type != S3_M1_EVENT_TYPE
+            or event.deadline_ns < cutoff_ns):
+        return ProductionEventInputsV1(None, (), {}, {}, {}, (), ())
+    for ref in event.causal_input_refs:
+        entry = repository.get_artifact(ref)
+        if entry is None or entry.available_at_ns > cutoff_ns:
+            raise ValueError("native M1 source input exceeds the immutable evidence cutoff")
+
+    product_ref = trigger_body.get("product_ref")
+    bar_ref = trigger_body.get("bar_ref")
+    if not isinstance(product_ref, str) or not isinstance(bar_ref, str):
+        return ProductionEventInputsV1(None, (), {}, {}, {}, (), ())
+    product_entry = repository.get_artifact(product_ref)
+    product_body = product_entry.metadata.get("product") if product_entry is not None else None
+    if (product_entry is None or product_entry.artifact_type != "ProductContractV2"
+            or product_entry.available_at_ns > cutoff_ns or not isinstance(product_body, Mapping)):
+        return ProductionEventInputsV1(None, (), {}, {}, {}, (), ())
+    product = ProductContractV2.from_dict(json_value(product_body))
+    if (product.content_hash != product_ref or product.effective_at_ns > event.source_event_at_ns
+            or product.observed_at_ns > cutoff_ns or product.available_at_ns > cutoff_ns):
+        raise ValueError("native M1 product metadata is not exact and cutoff-visible")
+    if (event.event_id != s3_m1_event_id(product.key, event.source_event_at_ns)
+            or event.deadline_ns != event.source_event_at_ns + S3_M1_DEFAULT_MAX_LATENESS_NS
+            or trigger_body.get("source_id") != event.source_id
+            or trigger_body.get("source_event_at_ns") != event.source_event_at_ns):
+        raise ValueError("native M1 origin identity or fixed close deadline changed")
+
+    archive_root = Path(repository.path).parent / "ops-observations"
+    indexed_bars = reconstruct_causal_bars_from_archive(
+        repository, archive_root, key=product.key, interval=BarIntervalV2.M1,
+        information_cutoff_ns=cutoff_ns,
+        availability_class=AvailabilityClassV2.ACTUAL_SYSTEM,
+        limit=100_000,
+    )
+    bars = tuple(item.bar for item in indexed_bars)
+    trigger_bar = next((bar for bar in bars if bar.content_hash == bar_ref), None)
+    if (trigger_bar is None or trigger_bar.close_at_ns != event.source_event_at_ns
+            or trigger_bar.close_at_ns > cutoff_ns or trigger_bar.raw.available_at_ns > cutoff_ns
+            or trigger_bar.raw.availability_class != AvailabilityClassV2.ACTUAL_SYSTEM):
+        raise ValueError("native M1 event no longer resolves to its exact cutoff-visible final bar")
+
+    health_entries: list[tuple[ArtifactIndexEntryV2, PublicSourceHealthV2]] = []
+    for entry in repository.artifact_entries("PublicSourceHealthV2"):
+        body = entry.metadata.get("health")
+        if entry.available_at_ns > cutoff_ns or not isinstance(body, Mapping):
+            continue
+        try:
+            health = PublicSourceHealthV2.from_dict(dict(body))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if (health.content_hash == entry.artifact_ref == entry.content_hash
+                and health.source_id == trigger_bar.raw.source_id
+                and health.observed_at_ns <= cutoff_ns and health.available_at_ns <= cutoff_ns):
+            health_entries.append((entry, health))
+    if health_entries:
+        _health_entry, bar_health = max(
+            health_entries, key=lambda item: (item[0].available_at_ns, item[0].artifact_ref),
+        )
+    else:
+        bar_health = None
+
+    rest_quote, _mark, rest_refs = _indexed_quote_and_mark(
+        repository, archive_root, product, cutoff_ns=cutoff_ns,
+    )
+    bridge: S3QuoteBridgeResultV1 | None = None
+    report_ref = _latest_stream_continuity_report_ref(
+        repository, product, channel=f"orderbook.50.{product.key.native_symbol}", cutoff_ns=cutoff_ns,
+    )
+    if report_ref is not None:
+        bridge = quote_from_valid_continuity_report(
+            repository, product, cutoff_ns=cutoff_ns, continuity_report_ref=report_ref,
+        )
+    stream_quote = bridge.quote if bridge is not None else None
+    quote = stream_quote or (
+        rest_quote if rest_quote is not None and rest_quote.valid_at(cutoff_ns, 1_000_000_000) else None
+    )
+    quote_refs: set[str] = set(rest_refs)
+    if bridge is not None:
+        if report_ref is None:
+            raise ValueError("native M1 quote bridge lost its continuity report identity")
+        quote_refs.update((report_ref, bridge.evidence_ref, *bridge.input_refs))
+    if quote is not None:
+        quote_refs.add(quote.evidence_ref)
+
+    trade_evidence, trade_health = _indexed_s3_forward_trade_evidence(
+        repository, archive_root, product, cutoff_ns=cutoff_ns,
+    )
+    residuals = _indexed_s3_residuals(repository, product.key, cutoff_ns=cutoff_ns)
+    vwaps = _indexed_s3_vwaps(repository, product.key, cutoff_ns=cutoff_ns)
+    gate, gate_ref = _latest_event_gate(repository, cutoff_ns)
+
+    raw_trade_body = trade_evidence.to_dict()
+    raw_trade_ref = sha256_json({
+        "artifact_type": "S3ForwardTradeEvidenceV1", "evidence": raw_trade_body,
+    })
+    readiness = evaluate_s3_warmup_readiness(
+        key=product.key,
+        cutoff_ns=cutoff_ns,
+        bars=bars,
+        residuals=residuals,
+        trade_vwaps=vwaps,
+        trades=trade_evidence.trades,
+        bar_source_health=bar_health,
+        trade_source_health=trade_health,
+        quote=quote,
+        event_gate=gate,
+        point_in_time_universe_eligible=False,
+        recovery_epoch=trade_evidence.recovery_epoch if trade_evidence.recovery_epoch is not None
+        else (bridge.recovery_epoch if bridge is not None else None),
+        trade_recovery_epoch=trade_evidence.recovery_epoch,
+        book_recovery_epoch=bridge.recovery_epoch if bridge is not None else None,
+        trade_evidence_status=trade_evidence.status,
+        trade_evidence_reason_codes=trade_evidence.reason_codes,
+        additional_evidence_refs=tuple(sorted({raw_trade_ref, *quote_refs,
+                                                *([gate_ref] if gate_ref is not None else [])})),
+    )
+
+    computation_finished_ns = max(
+        computation_started_ns,
+        timestamp(clock_ns(), field="native S3 diagnostic completion"),
+    )
+    context = S3NativeComputationContextV1(
+        cutoff_ns, computation_started_ns, computation_finished_ns, event.deadline_ns,
+    )
+    trade_evidence = trade_evidence.with_computation_context(context, repository=repository)
+    trade_body = trade_evidence.to_dict()
+    trade_ref = sha256_json({"artifact_type": "S3ForwardTradeEvidenceV1", "evidence": trade_body})
+    timed_bridge = bridge.with_computation_context(context, repository=repository) if bridge is not None else None
+    bridge_body = timed_bridge.to_dict() if timed_bridge is not None else None
+    bridge_ref = timed_bridge.evidence_ref if timed_bridge is not None else None
+
+    readiness_refs = set(readiness.evidence_refs)
+    readiness_refs.discard(raw_trade_ref)
+    if bridge is not None:
+        readiness_refs.discard(bridge.evidence_ref)
+    readiness_refs.update((trade_ref, *rest_refs))
+    if timed_bridge is not None and bridge_ref is not None:
+        readiness_refs.update((bridge_ref, *timed_bridge.input_refs))
+    if gate_ref is not None:
+        readiness_refs.add(gate_ref)
+    readiness = replace(
+        readiness,
+        evidence_refs=tuple(sorted(readiness_refs)),
+        computation_context=context,
+    )
+    readiness_body = readiness.to_dict()
+    readiness_ref = sha256_json({
+        "artifact_type": "S3NativeWarmupReadinessV1", "readiness": readiness_body,
+    })
+
+    persisted_at_ns = max(
+        computation_finished_ns,
+        timestamp(clock_ns(), field="native S3 diagnostic persistence"),
+    )
+    if persisted_at_ns > event.deadline_ns:
+        raise ValueError("native S3 diagnostic computation missed its fixed consumer deadline")
+    output_entries = [
+        ArtifactIndexEntryV2(
+            trade_ref, "S3ForwardTradeEvidenceV1", trade_ref,
+            persisted_at_ns, persisted_at_ns,
+            {"evidence": trade_body, "decision_event_id": event.event_id,
+             "trigger_bar_ref": trigger_bar.content_hash, "authority": "ZERO"},
+        ),
+        ArtifactIndexEntryV2(
+            readiness_ref, "S3NativeWarmupReadinessV1", readiness_ref,
+            persisted_at_ns, persisted_at_ns,
+            {"readiness": readiness_body, "decision_event_id": event.event_id,
+             "trigger_bar_ref": trigger_bar.content_hash,
+             "forward_trade_evidence_ref": trade_ref, "authority": "ZERO"},
+        ),
+    ]
+    if timed_bridge is not None and bridge_body is not None and bridge_ref is not None:
+        output_entries.append(ArtifactIndexEntryV2(
+            bridge_ref, "S3SequenceBookQuoteEvidenceV1", bridge_ref,
+            persisted_at_ns, persisted_at_ns,
+            {"bridge": bridge_body, "decision_event_id": event.event_id,
+             "trigger_bar_ref": trigger_bar.content_hash, "authority": "ZERO"},
+        ))
+    identity_body = {
+        "version": "S3_NATIVE_M1_DIAGNOSTIC_IDENTITY_V1",
+        "decision_event_id": event.event_id,
+        "evidence_cutoff_ns": cutoff_ns,
+        "consumer_deadline_ns": event.deadline_ns,
+        "artifact_refs": {
+            "forward_trade_evidence": trade_ref,
+            "sequence_book_quote_evidence": bridge_ref,
+            "warmup_readiness": readiness_ref,
+        },
+        "authority": "ZERO",
+    }
+    identity_ref = _s3_native_diagnostics_identity_ref(event.event_id)
+    output_entries.append(ArtifactIndexEntryV2(
+        identity_ref, "S3NativeM1DiagnosticIdentityV1", sha256_json(identity_body),
+        persisted_at_ns, persisted_at_ns, {"identity": identity_body},
+    ))
+    repository.register_artifacts(tuple(output_entries))
+    refs = tuple(sorted(entry.artifact_ref for entry in output_entries
+                        if entry.artifact_type != "S3NativeM1DiagnosticIdentityV1"))
+    return ProductionEventInputsV1(None, (), {}, {}, {}, (), refs)
 
 
 def _resolve_indexed_risk_inputs(

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
+
 from atlas.v2._serialization import canonical_json, sha256_json
 from atlas.v2.data.bars import BarIntervalV2, CausalBarV2
 from atlas.v2.data.health import PublicSourceHealthV2, PublicSourceStateV2
@@ -18,6 +20,7 @@ from atlas.v2.data.s3_forward_evidence import (
     STREAM_HEALTH_TYPE_V1,
     TRADE_INDEX_TYPE_V1,
     S3ForwardTradeEvidenceV1,
+    S3NativeComputationContextV1,
     evaluate_s3_warmup_readiness,
     quote_from_valid_continuity_report,
     reconstruct_s3_stream_trade_evidence,
@@ -163,6 +166,7 @@ def _ws_trade(
     cutoff_ns: int,
     event_at_ns: int = T0,
     available_at_ns: int = T0 + 100_000_000,
+    received_at_ns: int = T0 + 50_000_000,
     index_type: str = TRADE_INDEX_TYPE_V1,
     key_json: str | None = None,
     revision: str | None = None,
@@ -180,7 +184,7 @@ def _ws_trade(
         instrument_revision=revision or product.key.contract_revision,
         source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
         event_type="TRADE", event_at_ns=event_at_ns, published_at_ns=None,
-        received_at_ns=T0 + 50_000_000, ingested_at_ns=available_at_ns,
+        received_at_ns=received_at_ns, ingested_at_ns=available_at_ns,
         available_at_ns=available_at_ns, translation_version="bybit-public-ws-trade-v1",
         payload=raw_bytes, quality_flags=("TRADE_COMPLETENESS_UNPROVEN",), sequence="trade-s34-1",
     )
@@ -241,6 +245,75 @@ def test_ws_trade_reconstructs_exact_identity_but_never_proves_completeness(tmp_
         assert result.trade_completeness_proven is False
         assert result.status == "TEST GATE"
         assert "BYBIT_TRADE_COMPLETENESS_UNPROVEN" in result.reason_codes
+
+
+def test_forward_trade_timing_keeps_source_cutoff_and_records_real_production(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        product = _product()
+        cutoff = T0 + 1_000_000_000
+        report_ref, health, _state = _report_context(
+            repo, product, channel="publicTrade.BTCUSDT", as_of_ns=cutoff,
+            last_trade_receipt_at_ns=T0 + 50_000_000,
+        )
+        _ws_trade(repo, tmp_path / "archive", product, cutoff_ns=cutoff)
+        context = S3NativeComputationContextV1(
+            cutoff, cutoff + 10, cutoff + 20, cutoff + 100,
+        )
+
+        source_view = reconstruct_s3_stream_trade_evidence(
+            repo, tmp_path / "archive", product=product, cutoff_ns=cutoff,
+            continuity_report_ref=report_ref,
+        )
+        result = source_view.with_computation_context(context, repository=repo)
+        body = result.to_dict()
+
+        assert result.cutoff_ns == cutoff
+        assert body["computation_context"]["evidence_cutoff_ns"] == cutoff
+        assert body["computation_context"]["computation_started_ns"] == cutoff + 10
+        assert body["computation_context"]["computation_finished_ns"] == cutoff + 20
+        assert body["computation_context"]["produced_at_ns"] == cutoff + 20
+        assert body["computation_context"]["consumer_deadline_ns"] == cutoff + 100
+        assert body["continuity_report_as_of_ns"] == cutoff
+        assert body["source_health_observed_at_ns"] == health.observed_at_ns == cutoff
+        assert body["source_health_available_at_ns"] == health.available_at_ns == cutoff
+        assert body["trades"][0]["received_at_ns"] <= cutoff
+        assert body["trades"][0]["available_at_ns"] <= cutoff
+        assert result.trade_completeness_proven is False
+
+
+def test_later_source_health_report_is_not_admitted_at_fixed_trade_cutoff(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        product = _product()
+        cutoff = T0 + 500_000_000
+        later_report_ref, _health, _state = _report_context(
+            repo, product, channel="publicTrade.BTCUSDT", as_of_ns=cutoff + 1,
+            last_trade_receipt_at_ns=T0 + 50_000_000,
+        )
+        _ws_trade(repo, tmp_path / "archive", product, cutoff_ns=cutoff,
+                  available_at_ns=cutoff)
+        context = S3NativeComputationContextV1(
+            cutoff, cutoff + 5, cutoff + 10, cutoff + 50,
+        )
+
+        result = reconstruct_s3_stream_trade_evidence(
+            repo, tmp_path / "archive", product=product, cutoff_ns=cutoff,
+            continuity_report_ref=later_report_ref, computation_context=context,
+        )
+
+        assert result.trades == ()
+        assert result.status == "NOT_ESTIMABLE"
+        assert result.computation_context == context
+        assert result.continuity_report_as_of_ns is None
+        assert result.source_health_ref is None
+
+
+def test_context_roundtrip_and_fixed_deadline_validation():
+    cutoff = T0 + 1_000
+    context = S3NativeComputationContextV1(cutoff, cutoff + 1, cutoff + 2, cutoff + 10)
+
+    assert S3NativeComputationContextV1.from_dict(context.to_dict()) == context
+    with pytest.raises(ValueError, match="fixed causal deadline"):
+        S3NativeComputationContextV1(cutoff, cutoff + 1, cutoff + 11, cutoff + 10)
 
 
 def test_wrong_generic_index_type_does_not_reconstruct_stream_trade(tmp_path):
@@ -450,18 +523,59 @@ def test_valid_persisted_sequence_report_bridges_fresh_bbo_and_roundtrips(tmp_pa
             book_sequence_valid=True, observed_trade_count=0,
         )
 
-        bridge = quote_from_valid_continuity_report(
-            repo, product, cutoff_ns=as_of + 100_000_000, continuity_report_ref=report_ref,
+        source_cutoff = as_of + 100_000_000
+        context = S3NativeComputationContextV1(
+            source_cutoff, source_cutoff + 10, source_cutoff + 20, source_cutoff + 100,
         )
+        bridge = quote_from_valid_continuity_report(
+            repo, product, cutoff_ns=source_cutoff, continuity_report_ref=report_ref,
+        ).with_computation_context(context, repository=repo)
         roundtrip = type(bridge).from_dict(bridge.to_dict())
 
         assert bridge.status == "AVAILABLE"
         assert bridge.continuity_report_ref == report_ref
         assert bridge.bbo_age_ns == 150_000_000
+        assert bridge.observed_at_ns == received
+        assert bridge.available_at_ns == as_of
+        assert bridge.computation_context == context
+        assert bridge.to_dict()["source_available_at_ns"] == as_of
+        assert bridge.to_dict()["continuity_report_as_of_ns"] == as_of
+        assert bridge.to_dict()["source_health_observed_at_ns"] == as_of
+        assert bridge.to_dict()["produced_at_ns"] == source_cutoff + 20
+        assert bridge.to_dict()["produced_at_ns"] > bridge.cutoff_ns
         assert bridge.quote is not None
-        assert bridge.quote.valid_at(as_of + 100_000_000, 1_000_000_000)
+        assert bridge.quote.valid_at(source_cutoff, 1_000_000_000)
         assert report_ref in bridge.input_refs
         assert roundtrip.to_dict() == bridge.to_dict()
+
+
+def test_bbo_report_cannot_admit_a_quote_received_after_the_fixed_cutoff(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        product = _product()
+        channel = "orderbook.50.BTCUSDT"
+        cutoff = T0 + 1_000_000_000
+        report_ref, _health, _state = _report_context(
+            repo, product, channel=channel, as_of_ns=cutoff,
+            latest_valid_bbo={
+                "bid_price": "100", "ask_price": "101", "received_at_ns": cutoff + 1,
+                "data_age_ns": 0, "input_refs": [sha256_json("future-book-frame")],
+            },
+            book_sequence_valid=True, observed_trade_count=0,
+        )
+        context = S3NativeComputationContextV1(cutoff, cutoff + 5, cutoff + 10, cutoff + 50)
+
+        result = quote_from_valid_continuity_report(
+            repo, product, cutoff_ns=cutoff, continuity_report_ref=report_ref,
+        ).with_computation_context(context, repository=repo)
+
+        body = result.to_dict()
+        assert result.status == "NOT_ESTIMABLE"
+        assert result.quote is None
+        assert result.cutoff_ns == cutoff
+        assert result.observed_at_ns is None
+        assert result.available_at_ns is None
+        assert body["computation_context"]["produced_at_ns"] == cutoff + 10
+        assert body["computation_context"]["evidence_cutoff_ns"] == cutoff
 
 
 def test_stale_or_invalid_book_report_never_supplies_s3_quote(tmp_path):
@@ -587,6 +701,27 @@ def _readiness(product, bars, *, view="ACTUAL_SYSTEM"):
         bar_source_health=health, trade_source_health=health, quote=quote, event_gate=gate,
         point_in_time_universe_eligible=True, availability_view=view, recovery_epoch=1,
     )
+
+
+def test_readiness_reports_production_after_cutoff_without_changing_readiness_authority():
+    product = _product()
+    bar = _m1_bar(product, T0 - T0 % M1_NS)
+    source_cutoff = bar.close_at_ns
+    context = S3NativeComputationContextV1(
+        source_cutoff, source_cutoff + 10, source_cutoff + 20, source_cutoff + 100,
+    )
+
+    readiness = _readiness(product, (bar,)).with_computation_context(context)
+    body = readiness.to_dict()
+
+    assert readiness.cutoff_ns == source_cutoff
+    assert body["computation_context"]["evidence_cutoff_ns"] == source_cutoff
+    assert body["computation_context"]["computation_started_ns"] == source_cutoff + 10
+    assert body["produced_at_ns"] == source_cutoff + 20
+    assert body["produced_at_ns"] > readiness.cutoff_ns
+    assert readiness.status == "NOT_ESTIMABLE"
+    assert readiness.gate_status == "TEST GATE"
+    assert readiness.trade_completeness_proven is False
 
 
 def test_warmup_keeps_exact_10081_bar_requirement_and_hard_completeness_gate():

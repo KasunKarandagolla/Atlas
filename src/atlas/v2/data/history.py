@@ -20,6 +20,7 @@ from .raw import AvailabilityClassV2, RawObservationV2
 
 MAX_CAUSAL_ARCHIVE_FILES = 20_000
 MAX_CAUSAL_ARCHIVE_ROWS = 2_000_000
+MAX_NATIVE_M1_ORIGIN_CHUNK_ROWS = 10_000
 
 
 class ArchiveScanBoundExceededV2(RuntimeError):
@@ -612,3 +613,160 @@ def reconstruct_causal_bars_from_archive(
             selected[open_at] = (revision_key, candidate)
     rows = [selected[open_at][1] for open_at in sorted(selected)]
     return tuple(rows[-limit:])
+
+
+def reconstruct_native_m1_bars_from_index_page(
+    repository: OpsRepository,
+    archive_root: str | Path,
+    *,
+    key: InstrumentKeyV2,
+    index_entries: tuple[Any, ...],
+    max_origins: int = 4,
+) -> tuple[IndexedCausalBarV2, ...]:
+    """Rebuild only a bounded page of exact M1 origins from their indexed chunks.
+
+    Unlike full-history reconstruction, this reads only the immutable Parquet
+    chunks named by the already paged public-observation index rows. Each
+    chunk has a hard row bound and the selected record ids are checked against
+    both the archived bytes and the complete typed source index.
+    """
+    import json
+
+    import pyarrow.parquet as pq
+
+    if not isinstance(key, InstrumentKeyV2):
+        raise ValueError("native M1 reconstruction requires full InstrumentKeyV2")
+    if type(max_origins) is not int or not 1 <= max_origins <= 4:
+        raise ValueError("native M1 reconstruction page exceeds the fixed origin work bound")
+    if len(index_entries) > max_origins:
+        raise ValueError("native M1 reconstruction received more rows than its bounded page")
+    if not index_entries:
+        return ()
+
+    from ..memory.repository import ArtifactIndexEntryV2
+
+    by_chunk: dict[str, dict[str, ArtifactIndexEntryV2]] = {}
+    for entry in index_entries:
+        if not isinstance(entry, ArtifactIndexEntryV2):
+            raise ValueError("native M1 source page contains an invalid artifact entry")
+        metadata = entry.metadata
+        record_id = metadata.get("record_id")
+        chunk_id = metadata.get("archive_chunk_id")
+        if (entry.artifact_type != "PublicObservationIndexV2"
+                or not isinstance(record_id, str) or not record_id.strip()
+                or not isinstance(chunk_id, str) or not chunk_id.strip()
+                or metadata.get("event_type") != "BAR_1M"
+                or metadata.get("instrument_key_json") != key.to_canonical_json()
+                or metadata.get("instrument_revision") != key.contract_revision
+                or metadata.get("availability_class") != AvailabilityClassV2.ACTUAL_SYSTEM.value
+                or type(metadata.get("event_at_ns")) is not int
+                or entry.artifact_ref != sha256_json({
+                    "artifact_type": "PublicObservationIndexV2", "record_id": record_id,
+                })):
+            raise ValueError("native M1 source page index identity is invalid")
+        sha256_ref(chunk_id, field="archive_chunk_id")
+        if record_id in by_chunk.setdefault(chunk_id, {}):
+            raise ValueError("native M1 source page repeats an exact source record")
+        by_chunk[chunk_id][record_id] = entry
+
+    root = Path(archive_root)
+    rows_by_ref: dict[str, IndexedCausalBarV2] = {}
+    required_columns = {
+        "record_id", "instrument_revision", "event_type", "event_at_ns", "published_at_ns",
+        "received_at_ns", "ingested_at_ns", "available_at_ns", "replay_available_at_ns",
+        "raw_payload_hash", "translation_version", "revision_of", "quality_flags_json",
+        "availability_class", "observation_json", "raw_payload_bytes", "bar_json",
+        "archive_record_kind",
+    }
+    for chunk_id, expected_rows in by_chunk.items():
+        path = root / f"{chunk_id}.parquet"
+        if path.is_symlink() or not path.is_file():
+            raise ValueError("native M1 source page points to a missing or unsafe archive chunk")
+        parquet = pq.ParquetFile(path)
+        if (parquet.metadata.num_rows > MAX_NATIVE_M1_ORIGIN_CHUNK_ROWS
+                or not required_columns.issubset(set(parquet.schema.names))):
+            raise ArchiveScanBoundExceededV2("native-M1-chunk-row-count", MAX_NATIVE_M1_ORIGIN_CHUNK_ROWS)
+        found: set[str] = set()
+        for batch in parquet.iter_batches(columns=sorted(required_columns), batch_size=256):
+            for row in batch.to_pylist():
+                record_id = row.get("record_id")
+                index_entry = expected_rows.get(record_id) if isinstance(record_id, str) else None
+                if index_entry is None:
+                    continue
+                observation_bytes = row.get("raw_payload_bytes")
+                if (not isinstance(observation_bytes, bytes)
+                        or hashlib.sha256(observation_bytes).hexdigest() != row.get("raw_payload_hash")
+                        or row.get("archive_record_kind") != ArchiveRecordKindV2.PUBLIC_OBSERVATION.value
+                        or row.get("availability_class") != AvailabilityClassV2.ACTUAL_SYSTEM.value
+                        or row.get("event_type") != "BAR_1M"):
+                    raise ValueError("native M1 archived source row failed its exact byte or class check")
+                observation_wire = json.loads(row["observation_json"])
+                observation = RawObservationV2.from_dict(observation_wire)
+                if canonical_json(observation.to_dict()) != row["observation_json"]:
+                    raise ValueError("native M1 archived observation JSON is not canonical")
+                metadata = index_entry.metadata
+                if (observation.record_id != record_id
+                        or observation.instrument_revision != key.contract_revision
+                        or observation.source_id != metadata.get("source_id")
+                        or observation.event_type != "BAR_1M"
+                        or observation.event_at_ns != metadata.get("event_at_ns")
+                        or observation.published_at_ns != metadata.get("published_at_ns")
+                        or observation.received_at_ns != index_entry.created_at_ns
+                        or observation.available_at_ns != index_entry.available_at_ns
+                        or observation.content_hash != index_entry.content_hash
+                        or observation.raw_payload_hash != metadata.get("raw_payload_hash")
+                        or observation.translation_version != metadata.get("translation_version")
+                        or observation.revision_of != metadata.get("revision_of")
+                        or observation.quality_flags != tuple(metadata.get("quality_flags", ()))
+                        or observation.availability_class != AvailabilityClassV2.ACTUAL_SYSTEM
+                        or observation.replay_available_at_ns is not None):
+                    raise ValueError("native M1 archived observation conflicts with its exact source index")
+                bar_wire = json.loads(row["bar_json"])
+                if not isinstance(bar_wire, Mapping):
+                    raise ValueError("native M1 index points to an archived row without a typed bar")
+                if type(bar_wire.get("final")) is not bool:
+                    raise ValueError("native M1 archived bar has an invalid final flag")
+                if canonical_json(dict(bar_wire)) != row["bar_json"]:
+                    raise ValueError("native M1 archived bar JSON is not canonical")
+                if bar_wire.get("final") is not True:
+                    # A typed source index may point at a forming bar; it is
+                    # simply not an accountable final origin.
+                    if sha256_json(dict(bar_wire)) != metadata.get("bar_content_hash"):
+                        raise ValueError("native M1 non-final bar conflicts with its source index")
+                    found.add(record_id)
+                    continue
+                if (type(bar_wire.get("open_at_ns")) is not int
+                        or type(bar_wire.get("close_at_ns")) is not int):
+                    raise ValueError("native M1 archived bar timestamps are malformed")
+                bar = CausalBarV2(
+                    observation,
+                    BarIntervalV2(str(bar_wire["interval"])),
+                    int(bar_wire["open_at_ns"]),
+                    int(bar_wire["close_at_ns"]),
+                    Decimal(str(bar_wire["open"])),
+                    Decimal(str(bar_wire["high"])),
+                    Decimal(str(bar_wire["low"])),
+                    Decimal(str(bar_wire["close"])),
+                    Decimal(str(bar_wire["volume"])),
+                    bar_wire["final"],
+                )
+                if (bar.interval != BarIntervalV2.M1 or not bar.final
+                        or bar.instrument_revision != key.contract_revision
+                        or bar.raw.content_hash != observation.content_hash
+                        or bar.close_at_ns != observation.event_at_ns
+                        or bar.close_at_ns != metadata.get("event_at_ns")
+                        or bar.raw.available_at_ns != index_entry.available_at_ns
+                        or bar.content_hash != metadata.get("bar_content_hash")
+                        or sha256_json(dict(bar_wire)) != bar.content_hash):
+                    raise ValueError("native M1 bar does not verify against its exact source origin")
+                rows_by_ref[index_entry.artifact_ref] = IndexedCausalBarV2(bar, index_entry.artifact_ref)
+                found.add(record_id)
+        if found != set(expected_rows):
+            raise ValueError("native M1 source records are missing from their exact archive chunks")
+
+    result = tuple(sorted(rows_by_ref.values(), key=lambda item: (
+        item.bar.close_at_ns, item.bar.raw.available_at_ns, item.observation_index_ref,
+    )))
+    if len(result) > max_origins:
+        raise ValueError("native M1 archive reconstruction exceeded its bounded result count")
+    return result
