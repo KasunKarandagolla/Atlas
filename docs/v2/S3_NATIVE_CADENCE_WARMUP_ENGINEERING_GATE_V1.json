@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "gate_id": "S3_NATIVE_CADENCE_WARMUP_ENGINEERING_GATE_V1",
+  "session": "ATLAS_CODEX_SESSION_034",
+  "status": "ENGINEERING_PASS",
+  "maximum_status_ceiling": "ENGINEERING_PASS",
+  "review_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW",
+  "remote": "KasunKarandagolla/Atlas",
+  "branch": "impl/session-034-native-s3-m1-warmup-readiness",
+  "starting_sha": "486a513dd873d53ac2bfef0e710f0b6332650537",
+  "tested_implementation_sha": "d6d21b9caebb8106ad67138d012a698f9a52db2f",
+  "documentation_sha": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_DOCUMENTATION_COMMIT",
+  "final_remote_tip": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_PUSH",
+  "gates": [
+    {
+      "id": "s33_start_and_ancestry",
+      "status": "TESTED",
+      "evidence": "Authoritative remote tip and S32/S33 original/remediation/documentation ancestry matched the requested exact SHAs."
+    },
+    {
+      "id": "duplicate_s34_preflight",
+      "status": "TESTED",
+      "evidence": "No reviewed S34 implementation or later accepted checkpoint existed; owner untracked authority documents and archive were preserved."
+    },
+    {
+      "id": "native_m1_event",
+      "status": "IMPLEMENTED",
+      "evidence": "CONFIRMED_1M_CLOSE event binds exact ACTUAL_SYSTEM final indexed M1 bar, product revision, observation, cutoff-available source health, causal refs and fixed close-origin plus five-second deadline."
+    },
+    {
+      "id": "native_m1_identity_and_restart",
+      "status": "TESTED",
+      "evidence": "Exact instrument revision and close origin map to one durable event identity; restart reuses its cutoff/deadline, processed receipts prevent recreation and conflicting identities fail closed."
+    },
+    {
+      "id": "late_and_future_m1_evidence",
+      "status": "TESTED",
+      "evidence": "Nonfinal, future-available, reconstructed, stale and late-first-seen M1 bars are rejected; late first-seen origin records the existing explicit TEST GATE."
+    },
+    {
+      "id": "s1_s2_m15_preservation",
+      "status": "TESTED",
+      "evidence": "M15 continues S1/S2; M1 composes S3 only. S1/S2 calculations and authority are not invoked by M1 events."
+    },
+    {
+      "id": "native_s3_watch_cadence",
+      "status": "TESTED",
+      "evidence": "The M1 production fixture reopens a persisted S3 WATCH and invokes the later M1-bar evaluation with the original frozen VWAP ref."
+    },
+    {
+      "id": "s3_bar_warmup_threshold",
+      "status": "TESTED",
+      "evidence": "10,080 contiguous M1 rows are insufficient; 10,081 satisfies only the bar-count component. Threshold remains unchanged."
+    },
+    {
+      "id": "s3_residual_standardization_threshold",
+      "status": "TESTED",
+      "evidence": "120 residual rows do not provide 120 strictly preceding plus current; 121 satisfy only that component. Runtime still requires 10,081 exact residual/VWAP observations."
+    },
+    {
+      "id": "gap_and_conflict_handling",
+      "status": "TESTED",
+      "evidence": "Missing opens and conflicting bars remain explicit and stop the contiguous-tail count; reported gap lists are bounded while exact counts are retained."
+    },
+    {
+      "id": "actual_vs_reconstructed_history",
+      "status": "TESTED",
+      "evidence": "RECONSTRUCTED_MARKET availability is explicit, uses replay availability and is ineligible for ACTUAL_SYSTEM readiness; no receipts were forged or backdated."
+    },
+    {
+      "id": "websocket_trade_typed_reconstruction",
+      "status": "TESTED",
+      "evidence": "S3-only reader admits exact PublicStreamTradeObservationIndexV1 plus matching archive bytes/hash, raw identity, revision, canonical key, source, trade ID, event/receipt/availability and continuity evidence."
+    },
+    {
+      "id": "trade_index_type_and_payload_conflict",
+      "status": "TESTED",
+      "evidence": "Wrong generic index type, wrong instrument/revision, conflicting archive payload and post-cutoff trades fail closed. Generic historical reconstruction was not weakened."
+    },
+    {
+      "id": "trade_completeness",
+      "status": "TEST GATE",
+      "evidence": "S32 Bybit semantics do not declare a cursor or historical repair. Healthy transport, IDs, no local overflow, contiguous bars and recent REST rows do not prove complete history."
+    },
+    {
+      "id": "trade_vwap_and_residual",
+      "status": "NOT ESTIMABLE",
+      "evidence": "Without exact completeness proof, no qualified trade VWAP or residual is produced. Existing CausalTradeV2/TradeVwapSnapshotV2/utc_day_trade_vwap/ResidualObservationV2 contracts remain authoritative; candle proxies are absent."
+    },
+    {
+      "id": "sequence_book_bbo_bridge",
+      "status": "TESTED",
+      "evidence": "Persisted S32 SequenceValidBookV2/report is bridged only with valid sequence, exact identity/health/epoch/support refs, cutoff availability, bid below ask and age no greater than one second."
+    },
+    {
+      "id": "stale_book_and_rest_fallback",
+      "status": "TESTED",
+      "evidence": "Invalid or stale book yields no S3 BBO; the existing REST quote fallback is admitted only when exact age is at most one second."
+    },
+    {
+      "id": "metadata_revision_isolation",
+      "status": "TESTED",
+      "evidence": "Native event identity and history reconstruction bind full InstrumentKeyV2/contract revision; no cross-revision warmup compatibility is invented."
+    },
+    {
+      "id": "candidate_set_and_risk_path",
+      "status": "TESTED",
+      "evidence": "M1 output remains ProductionEventInputsV1 and ordinary CandidateSet composition. Current correctly empty S3 proposal set continues through the ordinary downstream event pipeline."
+    },
+    {
+      "id": "capital_and_execution_authority",
+      "status": "TESTED",
+      "evidence": "Capital and assisted execution stay disabled. RiskPolicy, sizing rules, selection, deterministic admission and critic authority are unchanged; critic authority remains ZERO."
+    },
+    {
+      "id": "single_writer_supervisor_authority",
+      "status": "TESTED",
+      "evidence": "Existing OpsSupervisor/controller persistence remains the single writer; no second supervisor or writer was introduced."
+    },
+    {
+      "id": "current_s3_readiness",
+      "status": "NOT ESTIMABLE",
+      "evidence": "Readiness is reported as NOT_ESTIMABLE with TEST GATE because accepted source evidence cannot prove complete seven-day trade-derived VWAP history. No seven-day live history is claimed."
+    },
+    {
+      "id": "offline_scope",
+      "status": "TESTED",
+      "evidence": "Zero public market, venue/account, order submission or paid provider/model calls. Deterministic local fixtures only; required GitHub fetch/push operations are separately reported."
+    },
+    {
+      "id": "full_regression_and_static_checks",
+      "status": "TESTED",
+      "evidence": "V2 701 passed/2 skipped; non-V2 485 passed/3 skipped; contracts/golden 10 passed; Ruff, mypy (211 source files), compileall, pip check and diff check passed."
+    },
+    {
+      "id": "economic_value_and_final_holdout",
+      "status": "NOT ESTIMABLE",
+      "evidence": "No economic value claim, final-holdout analysis, tuning or profitability analysis was performed. The accepted prospective floor remains at least eight weeks and 200 matured opportunities with the frozen inference/chronology/holdout disciplines."
+    },
+    {
+      "id": "windows_wsl_and_endurance",
+      "status": "UNVERIFIED",
+      "evidence": "Owner Windows/WSL real-public qualification, live continuity and any future 72-hour endurance remain unrun and unauthorized by S34."
+    }
+  ],
+  "unverified_or_blocked_environment_items": [
+    {
+      "status": "BLOCKED BY ENVIRONMENT",
+      "item": "Dedicated gitleaks, trufflehog and detect-secrets executables were unavailable. A value-suppressing high-confidence staged-additions scan found zero matches across 3,084 added lines."
+    }
+  ],
+  "remaining_qualification": [
+    "Qualify a supported forward trade source contract that proves exact complete trade coverage for every required UTC minute VWAP interval.",
+    "Accumulate genuine prospective ACTUAL_SYSTEM M1 and trade-derived residual history under that accepted source contract.",
+    "Complete owner Windows/WSL real-public and continuity qualification before any endurance campaign is separately considered.",
+    "Only after separate authorization, satisfy at least eight weeks of prospective shadow and 200 genuinely matured opportunities, regime coverage, dependence-aware inference, multiplicity discipline, exact chronology and protected final holdout.",
+    "Any capital or execution qualification requires a separate accepted gate."
+  ],
+  "prohibited_actions_not_taken": [
+    "No merge",
+    "No capital use or order submission",
+    "No 72-hour campaign",
+    "No final holdout access",
+    "No Session 035 authorization"
+  ]
+}

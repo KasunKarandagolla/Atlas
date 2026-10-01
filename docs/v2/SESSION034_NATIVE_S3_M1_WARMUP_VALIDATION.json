@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "session": "ATLAS_CODEX_SESSION_034",
+  "status": "ENGINEERING_PASS",
+  "review_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW",
+  "scope": "OFFLINE_ENGINEERING_ONLY",
+  "repository": {
+    "remote": "KasunKarandagolla/Atlas",
+    "branch": "impl/session-034-native-s3-m1-warmup-readiness",
+    "starting_sha": "486a513dd873d53ac2bfef0e710f0b6332650537",
+    "required_ancestry": [
+      "ccc5a42b30bd43a9ebad05ef2eba9d28c528f135",
+      "7c7826391184f15de06eef744ddba4c010d4803f",
+      "88b6641419da0470d7a61f7b785effd248c6e388",
+      "486a513dd873d53ac2bfef0e710f0b6332650537"
+    ],
+    "tested_implementation_sha": "d6d21b9caebb8106ad67138d012a698f9a52db2f",
+    "documentation_sha": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_DOCUMENTATION_COMMIT",
+    "final_remote_tip": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_PUSH",
+    "preflight": "TESTED",
+    "preflight_findings": [
+      "Fetched authoritative GitHub before editing; S33 remote tip exactly matched the required SHA.",
+      "Verified all four required ancestry checkpoints.",
+      "Enumerated local and remote branches; no reviewed S34 or later accepted checkpoint existed.",
+      "Preserved all owner-provided untracked authority files and archive; none was staged or committed."
+    ]
+  },
+  "authority": {
+    "documents_read_in_full": [
+      {
+        "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+        "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c"
+      },
+      {
+        "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+        "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+      },
+      {
+        "path": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+        "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+      },
+      {
+        "path": "ATLAS_72_Hour_Consultation.pdf",
+        "sha256": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e",
+        "classification": "CONSULTATION_ONLY"
+      }
+    ],
+    "accepted_positive_economic_claim_floor": {
+      "prospective_shadow_weeks_minimum": 8,
+      "genuinely_matured_opportunities_minimum": 200,
+      "regime_coverage": true,
+      "dependence_aware_inference": true,
+      "multiplicity_discipline": true,
+      "exact_chronology": true,
+      "protected_final_holdout": true
+    },
+    "consultation_alternate_economic_rule_adopted": false
+  },
+  "existing_implementation_discovery": {
+    "s3_policy_preexisted": true,
+    "native_decision_contract": "CONFIRMED_1M_CLOSE",
+    "prior_runtime_event_origin": "CONFIRMED_15M_CLOSE",
+    "prior_composition_behavior": "S1, S2 and S3 were composed while processing the M15 public event.",
+    "frozen_s3_requirements": {
+      "contiguous_final_m1_observations": 10081,
+      "strictly_preceding_standardization_residuals": 120,
+      "fresh_bbo_max_age_ns": 1000000000,
+      "vwap_input": "EXACT_TRADE_DERIVED_UTC_DAY_VWAP",
+      "residual_binding": [
+        "EXACT_M1_BAR_REF",
+        "EXACT_TRADE_VWAP_SNAPSHOT_REF"
+      ]
+    },
+    "trade_indexing_discovery": {
+      "s32_websocket_trade_index": "PublicStreamTradeObservationIndexV1",
+      "legacy_generic_reconstruction_index": "PublicObservationIndexV2",
+      "legacy_generic_reconstruction_admitted_s32_ws_trades": false,
+      "generic_validator_weakened": false
+    },
+    "book_discovery": "S32 SequenceValidBookV2 and persisted PublicStreamContinuityReportV1 were reused; no second order book was added.",
+    "trade_coverage_discovery": "The accepted Bybit S32 contract has no declared trade replay cursor or historical repair and explicitly leaves completeness unproven."
+  },
+  "native_m1_runtime": {
+    "status": "IMPLEMENTED",
+    "event_type": "CONFIRMED_1M_CLOSE",
+    "event_identity": "Content hash over exact InstrumentKeyV2 plus UTC M1 close origin; independent of payload revision and restart time.",
+    "event_binds": [
+      "Exact final ACTUAL_SYSTEM M1 CausalBarV2 and PublicObservationIndexV2 ref",
+      "Exact ProductContractV2 revision",
+      "Source observation, source ID, receipt and optional publication time",
+      "Causal source-health artifact available by the bar receipt cutoff",
+      "Fixed information cutoff and close-origin plus five-second deadline",
+      "Exact causal input refs"
+    ],
+    "first_event_lateness_limit_ns": 5000000000,
+    "duplicate_behavior": "Durable native_m1_origin metadata maps one instrument revision and M1 close to one event. Conflicting duplicate identities fail closed.",
+    "restart_behavior": "Existing durable unprocessed event is reused with its original cutoff and deadline. A processed receipt prevents recreation. Supervisor retains the existing expiry path for late queued events.",
+    "late_first_seen_behavior": "Persists OpsPublicAcquisitionDeadlineGateV1 with TEST GATE; does not create a new decision cutoff.",
+    "future_nonfinal_stale_or_reconstructed_bars_create_event": false,
+    "cadence_routing": {
+      "CONFIRMED_15M_CLOSE": ["S1", "S2"],
+      "CONFIRMED_1M_CLOSE": ["S3"]
+    },
+    "s1_s2_m15_preservation": "M15 generation and S1/S2 calls remain on the existing M15 path. M1 composition does not invoke S1/S2. M15 S3-watch projection is held at the previous M15 close so intermediate M1 watch timing cannot change S1/S2 M15 inputs.",
+    "supervisor_or_writer_authority_changed": false
+  },
+  "forward_warmup_readiness": {
+    "status": "IMPLEMENTED",
+    "calculation": "Read-only deterministic derivation from immutable indexed bars, VWAP snapshots, residuals, trades, current health, EventGate, universe and BBO evidence.",
+    "required_m1_bars": 10081,
+    "required_exact_trade_vwap_residuals": 10081,
+    "required_strictly_preceding_residuals": 120,
+    "minimum_residual_rows_for_120_preceding_plus_current": 121,
+    "fixture_results": {
+      "10080_contiguous_m1_rows": "INSUFFICIENT_CONTIGUOUS_M1_BARS",
+      "10081_contiguous_m1_rows": "BAR_COUNT_COMPONENT_ONLY; trade completeness and exact residual requirements still gate readiness",
+      "internal_gap_or_conflicting_open": "NOT_ESTIMABLE; exact gap/conflict count remains visible",
+      "120_residual_rows": "INSUFFICIENT_FOR_120_PRECEDING_PLUS_CURRENT",
+      "121_residual_rows": "SATISFIES_STANDARDIZATION_COMPONENT_ONLY",
+      "reconstructed_market_rows": "Explicit RECONSTRUCTED_MARKET view; cannot qualify ACTUAL_SYSTEM warmup"
+    },
+    "current_final_status": "NOT_ESTIMABLE",
+    "current_gate_status": "TEST GATE",
+    "readiness_fields": [
+      "required and observed contiguous bars",
+      "earliest/latest contiguous M1 closes",
+      "gaps, exact count and truncation marker",
+      "required and valid residual/VWAP counts",
+      "current bar/trade source health",
+      "current BBO age",
+      "EventGate and point-in-time universe status",
+      "exact contract revision and availability view",
+      "trade and book recovery epochs",
+      "observed trade count and explicit trade-completeness state",
+      "reason codes and exact evidence refs"
+    ],
+    "thresholds_reduced_or_policy_math_changed": false,
+    "historical_receipts_forged_or_availability_backdated": false
+  },
+  "trade_vwap_and_bbo": {
+    "stream_trade_reconstruction": {
+      "status": "IMPLEMENTED",
+      "typed_path": "reconstruct_s3_stream_trade_evidence",
+      "accepted_index": "PublicStreamTradeObservationIndexV1 only",
+      "checks": [
+        "Exact index type, record ID, ref, content hash and instrument-key JSON",
+        "Exact raw observation identity and immutable archived payload bytes/hash",
+        "Exact contract revision, source, trade ID and event timestamp",
+        "Actual receipt/availability cutoff and ACTUAL_SYSTEM classification",
+        "Accepted S32 continuity report, health, state, epoch and invalidation events",
+        "Payload conflicts fail closed"
+      ],
+      "trade_id_used_as_replay_cursor": false
+    },
+    "trade_completeness": {
+      "status": "NOT ESTIMABLE",
+      "gate_status": "TEST GATE",
+      "trade_completeness_proven": false,
+      "reason": "Accepted Bybit WS semantics provide trade identity but no declared cursor/history repair; current health, increasing IDs, continuity without local overflow, contiguous candles and recent REST rows do not prove complete historical market coverage.",
+      "recent_rest_trades_repair_unknown_history": false,
+      "observed_trades_used_to_create_qualified_s3_vwap_or_residual": false
+    },
+    "vwap_path": "Existing CausalTradeV2, TradeVwapSnapshotV2, utc_day_trade_vwap, ResidualObservationV2 and persist_trade_vwap_v2 contracts remain the only S3 VWAP/residual path.",
+    "candle_volume_or_typical_price_substitute": false,
+    "bbo_path": {
+      "status": "IMPLEMENTED",
+      "source": "Persisted S32 sequence-valid order-book report and SequenceValidBookV2",
+      "guards": [
+        "Exact instrument revision, report, health and recovery epoch",
+        "VALID sequence state with exact supporting frame/health refs",
+        "Cutoff-available latest BBO, bid below ask and no invalidating continuity event",
+        "Age at cutoff no more than one second"
+      ],
+      "rest_fallback": "Existing REST quote is accepted only if its exact age is at most one second.",
+      "stale_or_invalid_book_result": "BBO unavailable"
+    }
+  },
+  "watch_and_candidate_path": {
+    "status": "TESTED",
+    "native_event_s3_only": true,
+    "existing_watch_reloaded_and_later_m1_close_evaluated": true,
+    "frozen_setup_vwap_recomputed_or_moved": false,
+    "current_s3_candidate_created": false,
+    "current_candidate_block_reason": "TRADE_COMPLETENESS_UNPROVEN",
+    "normal_candidate_set_path": "The M1 production fixture reaches normal ProductionEventInputsV1/CandidateSet assembly; the correct candidate set is empty while completeness is unproven.",
+    "risk_sizing_selection_admission_or_critic_authority_changed": false
+  },
+  "changed_files": [
+    "src/atlas/v2/data/s3_forward_evidence.py",
+    "src/atlas/v2/runtime/production.py",
+    "src/atlas/v2/runtime/s3_native_cadence.py",
+    "src/atlas/v2/strategies/s3_mean_reversion.py",
+    "tests/v2/test_session021_data_s3.py",
+    "tests/v2/test_session027_production.py",
+    "tests/v2/test_session034_s3_forward_evidence.py",
+    "tests/v2/test_session034_s3_native_cadence.py",
+    "docs/v2/SESSION034_NATIVE_S3_M1_WARMUP_VALIDATION.json",
+    "docs/v2/S3_NATIVE_CADENCE_WARMUP_ENGINEERING_GATE_V1.json",
+    "docs/handoffs/session-034.md"
+  ],
+  "subagents": {
+    "A_forward_s3_evidence": {
+      "status": "TESTED",
+      "files": [
+        "src/atlas/v2/data/s3_forward_evidence.py",
+        "tests/v2/test_session034_s3_forward_evidence.py"
+      ],
+      "focused_test_cases_collected": 15,
+      "scope": "Typed WS trade reconstruction, continuity validation, BBO bridge and readiness derivation."
+    },
+    "B_native_s3_cadence": {
+      "status": "TESTED",
+      "files": [
+        "src/atlas/v2/runtime/s3_native_cadence.py",
+        "tests/v2/test_session034_s3_native_cadence.py"
+      ],
+      "focused_test_cases_collected": 15,
+      "scope": "Exact M1 origin identity, duplicate/restart/expiry rules and bar eligibility classification."
+    },
+    "main_agent": {
+      "status": "TESTED",
+      "scope": "Authority/preflight, production/supervisor integration, S1/S2 review, final regression, documentation, commit and remote verification."
+    },
+    "ownership_conflicts": "None; helpers were isolated and production.py integration was performed by the main agent."
+  },
+  "validation": {
+    "focused_final_tree": {
+      "command": "pytest tests/v2/test_session021_data_s3.py tests/v2/test_session031_s3_persisted_lineage.py tests/v2/test_session034_s3_native_cadence.py tests/v2/test_session034_s3_forward_evidence.py tests/v2/test_session027_production.py::test_default_production_native_m1_s3_stays_closed_without_trade_completeness",
+      "result": "56 passed"
+    },
+    "changed_seam_run": {
+      "test_cases": 192,
+      "result": "The first run had 191 passes and one assertion-format mismatch (tuple vs list); the test was corrected and rerun successfully. Full V2 then passed all corrected seam tests."
+    },
+    "full_v2": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+      "result": "701 passed, 2 skipped"
+    },
+    "full_non_v2": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
+      "result": "485 passed, 3 skipped"
+    },
+    "contracts_and_v1_golden": {
+      "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+      "result": "10 passed"
+    },
+    "static_and_environment_checks": {
+      "ruff": "TESTED: .venv/bin/ruff check . passed",
+      "mypy": "TESTED: .venv/bin/mypy src passed; 211 source files",
+      "compileall": "TESTED: .venv/bin/python -m compileall -q src tests passed",
+      "pip_check": "TESTED: .venv/bin/python -m pip check passed; no broken requirements",
+      "diff_check": "TESTED: git diff --check passed"
+    },
+    "locked_hashes": {
+      "v1_golden_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+      "requirements_lock_sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "agent_lock_sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3"
+    },
+    "secret_scan": {
+      "status": "TESTED",
+      "method": "Value-suppressing high-confidence pattern scan over staged additions",
+      "staged_added_lines": 3674,
+      "high_confidence_matches": 0,
+      "dedicated_scanners": "BLOCKED BY ENVIRONMENT: gitleaks, trufflehog and detect-secrets were not installed; matched values were not printed."
+    }
+  },
+  "network_and_provider_usage": {
+    "public_market_calls": 0,
+    "venue_account_calls": 0,
+    "order_submissions": 0,
+    "paid_provider_or_model_calls": 0,
+    "git_authority_operations": "Required GitHub fetch, push and post-push verification only."
+  },
+  "safety_and_claims": {
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "critic_authority": "ZERO",
+    "risk_policy_changed": false,
+    "strategy_thresholds_or_math_changed": false,
+    "model_or_provider_changed": false,
+    "final_holdout_touched": false,
+    "economic_value": "NOT ESTIMABLE",
+    "genuine_seven_day_live_s3_history_claimed": false,
+    "trade_completeness_manufactured": false,
+    "72_hour_campaign_started": false,
+    "merge_performed": false,
+    "session_035_authorized": false
+  },
+  "remaining_gates": [
+    {
+      "status": "TEST GATE",
+      "gate": "Qualify an accepted forward trade source contract that proves the exact completeness required for every minute VWAP interval; S32 Bybit WS/REST semantics do not."
+    },
+    {
+      "status": "NOT ESTIMABLE",
+      "gate": "Genuine seven-day S3 warmup and qualified trade-derived residual history."
+    },
+    {
+      "status": "UNVERIFIED",
+      "gate": "Owner Windows/WSL real-public qualification and live public continuity."
+    },
+    {
+      "status": "UNVERIFIED",
+      "gate": "Future 72-hour endurance after live-public qualification; not run in S34."
+    },
+    {
+      "status": "NOT ESTIMABLE",
+      "gate": "At least eight weeks prospective shadow and at least 200 genuinely matured opportunities with regime coverage and dependence-aware/multiplicity-controlled evaluation."
+    },
+    {
+      "status": "UNVERIFIED",
+      "gate": "Protected final holdout and any future capital/execution qualification remain untouched and unapproved."
+    }
+  ],
+  "checkpoint": "ENGINEERING_PASS ceiling; independent coordinating principal engineering review required."
+}
