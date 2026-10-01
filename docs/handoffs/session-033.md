@@ -118,3 +118,74 @@ The consultation PDF remains consultation only. Its alternate evidence-duration 
 The maximum Codex status is `ENGINEERING_PASS`, subject to independent coordinating review. This branch is submitted for independent engineering review only. No merge, 72-hour campaign, capital authorization, or Session 034 is authorized.
 
 Session 033 implementation is submitted for independent coordinating principal engineering review. Passing Codex tests are not self-acceptance. No merge, 72-hour campaign, capital authorization, or Session 034 is authorized.
+
+## J — Independent Review Remediation (Additive Closeout)
+
+The original S33 implementation and documentation history remain intact. The independent review findings and their pre-fix reproductions are recorded in [SESSION033_INDEPENDENT_REVIEW_REMEDIATION_V1.json](../v2/SESSION033_INDEPENDENT_REVIEW_REMEDIATION_V1.json).
+
+### A — Repository
+
+- Existing branch: `impl/session-033-continuous-matured-outcome-production`.
+- Verified remote starting tip: `37c453100a37375b2632f3403b9e1edb78d357c6`.
+- Original S33 tested implementation: `7c7826391184f15de06eef744ddba4c010d4803f`.
+- S32 accepted checkpoint: `ccc5a42b30bd43a9ebad05ef2eba9d28c528f135`.
+- Tested remediation implementation: `88b6641419da0470d7a61f7b785effd248c6e388`.
+- The documentation commit and final remote tip are reported in the final Codex handoff because the docs commit cannot contain its own SHA.
+- Remediation code/test files: `src/atlas/v2/memory/repository.py`, `src/atlas/v2/runtime/ops_supervisor.py`, `src/atlas/v2/runtime/outcome_maturity.py`, `src/atlas/v2/science/outcome_resolution.py`, `tests/v2/test_session033_outcome_maturity.py`, `tests/v2/test_session033_outcome_resolution.py`, and `tests/v2/test_session033_outcome_runtime.py`. No schema version changed.
+
+### B — Finding A: Causal Timing
+
+- **Original reproduction:** At the original S33 tip, a resolver run made `outcome.available_at_ns=1814460000000007` while validation completed at `1814460000000010`. An archived supervisor reproduction at `T0=1800000000000000` showed outcome, status, checkpoint, and report availability all claiming T0 after about `44606201` monotonic nanoseconds of maintenance.
+- **Root cause:** The cycle-start evidence cutoff was reused as the production clock throughout the resolver, coordinator, status/checkpoint writer, and report path.
+- **Repair:** The supervisor passes `evidence_cutoff_ns`, an injected UTC `production_clock_ns`, an injected `monotonic_ns`, and a configured maintenance allowance. Evidence queries and horizon eligibility stay at the fixed cutoff. Derived availability is sampled after its required validation. Late evidence stays deferred until a later cutoff.
+- **Advancing-clock result:** The integrated T0–T4 test passed. It confirms outcome availability is at least T3/T4, status/checkpoint/report availability is later than T0, late diagnostic evidence is deferred, and sealed event/decision/cycle results equal the baseline.
+
+### C — Finding B: Malformed Calendar Liveness
+
+- **Original reproduction:** Eight malformed newest calendar rows filled a page above one older valid maturable decision. Three original S33 cycles each reported eight invalid entries, inspected zero decisions, wrote no advancing checkpoint, and never called the resolver for the older row.
+- **Root cause:** The coordinator returned on empty decoded entries before advancing over the raw page cursor.
+- **Repair:** The bounded page API returns exact raw keys alongside valid decoded entries. The coordinator durably accounts malformed keys, reports `MALFORMED_CALENDAR_INDEX_ROWS`, and advances only through fully accounted keys. The checkpoint remains deterministic across restart; malformed content never becomes a decision or outcome.
+- **Progress result:** Malformed-only restart, older-row reachability, and malformed/valid interleaving tests passed. No valid calendar row was skipped.
+
+### D — Finding C: Maintenance Elapsed-Time Budget
+
+- **Original reproduction:** The original coordinator had no elapsed-time budget. A controlled resolver advanced fake monotonic time to 200 ns against a 50 ns harness allowance and still processed both items without reporting an overrun.
+- **Budget:** `OutcomeMaintenanceBudgetV1` defaults to 50,000,000 ns (50 ms), 5% of the existing 1 s S3 BBO freshness window, with a 1 s configuration ceiling. Host adequacy remains `UNVERIFIED / TEST GATE`.
+- **Behavior:** Injected monotonic time governs elapsed work; UTC nanoseconds continue to govern evidence and availability. The coordinator checks before starting another decision or resolver evidence-query unit. It reports `MAINTENANCE_BUDGET_EXHAUSTED` when work does not start and `MAINTENANCE_DEADLINE_OVERRUN` when a non-preemptible operation returns late. The completed result is accounted safely, no later decision begins, and the checkpoint resumes after the last fully accounted key.
+- **Limits:** SQLite and resolver work is cooperative and cannot be preempted. These offline tests do not establish a strict real-time bound or WSL/real-host latency.
+
+### E — Subagents
+
+- **Subagent A — causal timing:** `src/atlas/v2/science/outcome_resolution.py` and `tests/v2/test_session033_outcome_resolution.py`.
+- **Subagent B — maturity traversal/budget:** `src/atlas/v2/runtime/outcome_maturity.py`, `src/atlas/v2/memory/repository.py`, and `tests/v2/test_session033_outcome_maturity.py`.
+- **Main agent:** `src/atlas/v2/runtime/ops_supervisor.py` and `tests/v2/test_session033_outcome_runtime.py`; reviewed both subagent changes and verified receipt equivalence.
+- File ownership did not conflict. Subagents did not commit or push.
+
+### F — Validation
+
+- Changed seams: **157 passed**; final S33 resolver/maturity/runtime rerun: **38 passed**.
+- Full V2, approved unsandboxed: **671 passed, 2 skipped** in 1,347.79 seconds.
+- Full non-V2, approved unsandboxed: **485 passed, 3 skipped** in 392.65 seconds.
+- Contracts/golden: **10 passed** in 14.49 seconds.
+- Ruff, mypy (209 source files), compileall, pip check, and `git diff --check` passed.
+- A restricted preliminary V2 run reported 15 failures: 14 direct local socket, Bubblewrap, and home-directory permission failures plus one stream shutdown timeout during that run. All 15 passed in the approved unsandboxed rerun.
+- Golden and lock hashes remain `be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251`, `711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b`, and `47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3`.
+- No standard secret scanner executable was installed. A value-suppressing high-confidence scan of staged additions found no credential matches.
+- Paid provider calls, venue/account calls, public market requests, orders, and model-provider runtime calls: **zero**. GitHub fetch/push was limited to repository verification and publication.
+
+### G — Safety
+
+Capital and assisted execution remain disabled. Critic decision and admission influence remain false. No RiskPolicy, strategy, model, provider, or lock change was made. The final holdout remains untouched. Economic value remains `NOT_ESTIMABLE`. No merge or Session 034 is authorized.
+
+### H — Remaining Gates
+
+- Real public continuity qualification.
+- Historical/bootstrap warmup.
+- Native S3 M1 production cadence.
+- Owner Windows/WSL maintenance latency qualification (`UNVERIFIED / TEST GATE`).
+- Real 72-hour endurance.
+- At least 8 weeks of prospective shadow and at least 200 genuinely matured opportunities.
+- Regime and dependence-aware scientific qualification with accepted multiplicity discipline.
+- Protected final holdout and independent capital/execution qualification.
+
+This remediation is submitted for independent coordinating principal engineering review only. No merge, 72-hour campaign, capital authorization, assisted execution, or Session 034 is authorized.

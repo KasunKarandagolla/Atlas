@@ -1,5 +1,6 @@
 {
   "session": "033",
+  "independent_review_remediation_record": "docs/v2/SESSION033_INDEPENDENT_REVIEW_REMEDIATION_V1.json",
   "objective": "Add deterministic, bounded, restart-safe production of supported MaturedOutcomeV2 artifacts from the immutable decision calendar.",
   "status_ceiling": "ENGINEERING_PASS",
   "submission_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW",
@@ -195,13 +196,24 @@
         "result": "68 passed"
       }
     ],
-    "final_regression": {
+    "original_s33_final_regression": {
       "v2_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
       "v2_result": "659 passed, 2 skipped in 1372.85s",
       "non_v2_command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
       "non_v2_result": "485 passed, 3 skipped in 272.40s",
       "contracts_golden_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
       "contracts_golden_result": "10 passed"
+    },
+    "remediation_final_regression": {
+      "tested_implementation_sha": "88b6641419da0470d7a61f7b785effd248c6e388",
+      "changed_seams": "157 passed in 409.93s; final S33 resolver/maturity/runtime rerun passed 38 tests in 58.30s after annotation/import cleanup.",
+      "v2_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+      "v2_result": "671 passed, 2 skipped in 1347.79s; approved unsandboxed verification.",
+      "restricted_v2_attempt": "656 passed, 2 skipped, 15 failed in the workspace-restricted environment: 14 failures directly involved local socket, trusted Bubblewrap, or /home/kasun write restrictions, and one public-stream shutdown timeout occurred under that run. The approved unsandboxed rerun passed all 671 tests with 2 skips.",
+      "non_v2_command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
+      "non_v2_result": "485 passed, 3 skipped in 392.65s; approved unsandboxed verification.",
+      "contracts_golden_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+      "contracts_golden_result": "10 passed in 14.49s"
     },
     "static_and_environment": {
       "ruff": "All checks passed.",
@@ -210,6 +222,14 @@
       "pip_check": "Passed: no broken requirements found.",
       "git_diff_check": "Passed: no whitespace errors.",
       "staged_diff_secret_scan": "No credential-pattern matches; scanner suppresses values."
+    },
+    "remediation_static_and_environment": {
+      "ruff": "All checks passed after final import cleanup.",
+      "mypy": "Success: no issues found in 209 source files.",
+      "compileall": "Passed after final implementation cleanup.",
+      "pip_check": "No broken requirements found.",
+      "git_diff_check": "Passed.",
+      "secret_scan": "No gitleaks, detect-secrets, or trufflehog executable was installed. Value-suppressing scan of staged additions found no high-confidence private-key, AWS key ID, or credential-assignment matches."
     },
     "hashes": {
       "v1_golden_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",

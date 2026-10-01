@@ -1,0 +1,210 @@
+{
+  "version": "SESSION033_INDEPENDENT_REVIEW_REMEDIATION_V1",
+  "session": "033",
+  "status_ceiling": "ENGINEERING_PASS",
+  "submission_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_PRINCIPAL_ENGINEERING_REVIEW",
+  "economic_status": "NOT_ESTIMABLE",
+  "repository": {
+    "branch": "impl/session-033-continuous-matured-outcome-production",
+    "required_and_verified_start_remote_sha": "37c453100a37375b2632f3403b9e1edb78d357c6",
+    "s32_accepted_checkpoint": "ccc5a42b30bd43a9ebad05ef2eba9d28c528f135",
+    "original_s33_tested_implementation_sha": "7c7826391184f15de06eef744ddba4c010d4803f",
+    "original_s33_documentation_tip": "37c453100a37375b2632f3403b9e1edb78d357c6",
+    "tested_remediation_implementation_sha": "88b6641419da0470d7a61f7b785effd248c6e388",
+    "documentation_commit_sha": null,
+    "documentation_commit_sha_note": "The documentation commit SHA is reported by final remote verification and the Codex handoff; a commit cannot contain its own SHA without changing that SHA.",
+    "verified_ancestry": [
+      "ccc5a42b30bd43a9ebad05ef2eba9d28c528f135",
+      "7c7826391184f15de06eef744ddba4c010d4803f",
+      "37c453100a37375b2632f3403b9e1edb78d357c6",
+      "88b6641419da0470d7a61f7b785effd248c6e388"
+    ],
+    "newer_reviewed_remediation_at_preflight": false,
+    "s34_branch_found_at_preflight": false,
+    "merge_performed": false
+  },
+  "original_findings_and_pre_fix_reproductions": {
+    "P1_causal_availability_backdating": {
+      "reproduced_at_original_s33_tip": "37c453100a37375b2632f3403b9e1edb78d357c6",
+      "root_cause": "OpsSupervisorV2 supplied the cycle-start timestamp to post-cycle maintenance. The resolver, status writer, checkpoint writer, and report then reused that evidence cutoff as their production or availability timestamp.",
+      "reproduction": {
+        "resolver_level": "A deterministic advancing-clock reproduction at the original implementation returned outcome.available_at_ns=1814460000000007 although evidence validation completed at 1814460000000010.",
+        "supervisor_level": "An archived checkout of the original S33 tip used T0=1800000000000000 for the maintenance report, outcome status observed/available time, checkpoint written/available time, and derived outcome availability. Monotonic maintenance work elapsed approximately 44606201 ns.",
+        "result": "New derived artifacts claimed availability at T0 although they were produced after the sealed cycle work."
+      }
+    },
+    "P2_malformed_calendar_page_liveness": {
+      "reproduced_at_original_s33_tip": "37c453100a37375b2632f3403b9e1edb78d357c6",
+      "root_cause": "The page API counted malformed raw rows but returned no decoded entries. The coordinator returned on the empty-entry condition before persisting page.next_cursor, so each restart reread the same malformed-only page.",
+      "reproduction": {
+        "repository_order": "Eight malformed newest calendar raw rows filled one page; one older valid maturable decision followed them.",
+        "observed_cycles": "Three original S33 cycles each reported 8 invalid rows, 0 inspected decisions, no advancing checkpoint, and no resolver call for the older valid decision.",
+        "result": "Older valid history was starved indefinitely by the same raw page."
+      }
+    },
+    "TEST_GATE_unbounded_synchronous_elapsed_work": {
+      "reproduced_at_original_s33_tip": "37c453100a37375b2632f3403b9e1edb78d357c6",
+      "root_cause": "The coordinator bounded row and artifact counts but had no monotonic elapsed-time allowance or deadline checks.",
+      "reproduction": {
+        "harness_allowance_ns": 50,
+        "controlled_resolver_elapsed_ns": 200,
+        "items_processed": 2,
+        "observed_budget_status": "No budget or overrun status existed; both items ran after the harness allowance elapsed.",
+        "result": "Synchronous maintenance elapsed time was not cooperatively bounded or reported."
+      }
+    }
+  },
+  "remediation": {
+    "P1_causal_timing": {
+      "timing_contract": {
+        "evidence_cutoff": "Fixed to the sealed deterministic supervisor cycle boundary and used for all outcome evidence eligibility and exact horizon maturity.",
+        "computation_started": "Captured using the injected UTC production clock after monotonic maintenance timing starts.",
+        "computation_finished_and_availability": "Sampled from the injected UTC production clock after the relevant evidence validation completes; derived outcome availability is no earlier than computation start, validation production time, evidence cutoff, and required evidence availability.",
+        "elapsed_budget_clock": "Injected monotonic_ns; never used to form causal UTC timestamps."
+      },
+      "input_queries_and_horizon": "Resolver identity/evidence queries and horizon eligibility remain fixed to evidence_cutoff_ns. Evidence that becomes available during maintenance remains ineligible until a later maturity cycle cutoff.",
+      "derived_artifact_timestamps": "MaturedOutcomeV2, OutcomeMaturityStatusV1, OutcomeMaturityCheckpointV1, OutcomeMaturityCycleReportV1, and supervisor maintenance failure artifacts are not backdated to the cycle start.",
+      "historical_evidence": "Decision, horizon, input evidence, decision cutoff, and already sealed receipt times are preserved. No prior evidence is rewritten.",
+      "advancing_clock_test": {
+        "test": "tests/v2/test_session033_outcome_runtime.py::test_supervisor_advancing_clock_keeps_fixed_cutoff_and_sealed_receipts",
+        "timeline": "Distinct deterministic T0 cycle cutoff, T1 receipt-seal point, T2 maintenance start, T3 validation completion, and T4 derived availability, with T0 < T1 <= T2 <= T3 <= T4.",
+        "verified": [
+          "Resolver queries use T0 for eligible evidence.",
+          "Evidence arriving after T0 and by T3 is deferred until a later maturity cycle cutoff.",
+          "Outcome availability is at least T3 and T4, and later than T0.",
+          "Status, checkpoint, and maintenance report availability are later than T0 and do not precede their validated production boundary.",
+          "Event/decision results and sealed cycle receipt content remain equivalent to the baseline without outcome production.",
+          "A later cutoff makes the late diagnostic evidence eligible and produces the supported outcome without changing the prior decision."
+        ],
+        "result": "PASS"
+      }
+    },
+    "P2_malformed_calendar_liveness": {
+      "repository_api": "ArtifactIndexPageV2 exposes a bounded raw_keys page alongside decoded valid entries. Malformed raw rows never deserialize into DecisionCalendarEntryV2.",
+      "durable_accounting": "The coordinator appends exact malformed raw keys to the cycle report and checkpoint accounting and exposes MALFORMED_CALENDAR_INDEX_ROWS as a visible gate/failure indication.",
+      "cursor_safety": "The checkpoint advances only across exact raw keys fully accounted in the cycle. If a decoded valid decision is not fully processed, the cursor stays at the last fully accounted key.",
+      "restart_and_order": "Stable descending keyset order and immutable checkpoint generations reproduce traversal on restart. Interleaved malformed and valid rows are accounted individually without skipping valid decisions.",
+      "tests": [
+        "tests/v2/test_session033_outcome_maturity.py::test_malformed_only_page_is_accounted_then_restart_reaches_older_decision",
+        "tests/v2/test_session033_outcome_maturity.py::test_malformed_and_valid_calendar_rows_interleaved_without_skips"
+      ],
+      "result": "PASS; malformed-only page progress, explicit degradation, restart, older-decision reachability, and interleaved-row accounting verified."
+    },
+    "TEST_GATE_elapsed_maintenance_budget": {
+      "version": "OutcomeMaintenanceBudgetV1",
+      "default_budget_ns": 50000000,
+      "maximum_configurable_budget_ns": 1000000000,
+      "default_justification": "A conservative 50 ms engineering allowance, 5% of the existing 1 s S3 BBO freshness window. Real-host adequacy remains UNVERIFIED / TEST GATE.",
+      "clock": "Injected monotonic_ns for elapsed work; injected UTC clock_ns remains separate for evidence and availability timestamps.",
+      "cooperative_behavior": "Checks remaining budget before each next decision and before resolver evidence-query units. Expiry before work records MAINTENANCE_BUDGET_EXHAUSTED and starts no next unit. A running SQLite operation or resolver is not preempted; a completed overrun is recorded as MAINTENANCE_DEADLINE_OVERRUN and no later maturity decision begins that cycle.",
+      "cursor_behavior": "Checkpoint cursor advances only over fully accounted raw keys and fully completed decision work. Incomplete work is replayed deterministically after restart; immutable outcome indexing remains idempotent.",
+      "hard_realtime_claim": false,
+      "real_host_timing_qualification": "UNVERIFIED / TEST GATE",
+      "tests": [
+        "tests/v2/test_session033_outcome_maturity.py::test_elapsed_budget_expires_before_next_decision_and_restart_resumes",
+        "tests/v2/test_session033_outcome_maturity.py::test_resolver_overrun_is_reported_and_completed_result_is_kept",
+        "tests/v2/test_session033_outcome_maturity.py::test_permanently_slow_first_item_does_not_starve_older_decisions"
+      ],
+      "result": "PASS for deterministic offline cooperative behavior; no claim of WSL or real-host latency qualification."
+    }
+  },
+  "implementation_and_ownership": {
+    "exact_remediation_files": [
+      "src/atlas/v2/memory/repository.py",
+      "src/atlas/v2/runtime/ops_supervisor.py",
+      "src/atlas/v2/runtime/outcome_maturity.py",
+      "src/atlas/v2/science/outcome_resolution.py",
+      "tests/v2/test_session033_outcome_maturity.py",
+      "tests/v2/test_session033_outcome_resolution.py",
+      "tests/v2/test_session033_outcome_runtime.py"
+    ],
+    "schema_version_changed": false,
+    "subagents": {
+      "A_causal_timing": {
+        "files": [
+          "src/atlas/v2/science/outcome_resolution.py",
+          "tests/v2/test_session033_outcome_resolution.py"
+        ],
+        "responsibility": "Separate evidence cutoff and production availability, bound resolver inputs and horizons to the fixed cutoff, and add advancing-clock tests."
+      },
+      "B_maturity_budget_and_traversal": {
+        "files": [
+          "src/atlas/v2/runtime/outcome_maturity.py",
+          "src/atlas/v2/memory/repository.py",
+          "tests/v2/test_session033_outcome_maturity.py"
+        ],
+        "responsibility": "Add production clocks, malformed raw-key accounting, deterministic checkpoint progress, monotonic elapsed budget, and restart tests."
+      },
+      "main_agent": {
+        "files": [
+          "src/atlas/v2/runtime/ops_supervisor.py",
+          "tests/v2/test_session033_outcome_runtime.py"
+        ],
+        "responsibility": "Preserve the custom callback seam, integrate fixed cutoff plus injected UTC/monotonic clocks, verify baseline receipt equivalence, and review both subagent diffs."
+      },
+      "ownership_conflicts": false,
+      "subagent_commits_or_pushes": false
+    }
+  },
+  "validation": {
+    "changed_seam_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session033_outcome_resolution.py tests/v2/test_session033_outcome_maturity.py tests/v2/test_session033_outcome_runtime.py tests/v2/test_session018_remediation.py tests/v2/test_session016_candidate_selection.py tests/v2/test_session017_replay.py tests/v2/test_session027_ops_supervisor.py tests/v2/test_session027_production.py tests/v2/test_session030_action_critic_runtime.py tests/v2/test_session031_preflight_remediation.py tests/v2/test_session032_public_stream_integration.py tests/science/test_decision_calendar.py tests/science/test_policy_replay_pnl.py",
+    "changed_seam_result": "157 passed in 409.93s",
+    "final_s33_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session033_outcome_resolution.py tests/v2/test_session033_outcome_maturity.py tests/v2/test_session033_outcome_runtime.py",
+    "final_s33_result": "38 passed in 58.30s after the final annotation/import cleanup.",
+    "final_regression": {
+      "v2_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+      "v2_result": "671 passed, 2 skipped in 1347.79s (unsandboxed approved verification).",
+      "restricted_v2_attempt": "656 passed, 2 skipped, 15 failed in the workspace-restricted environment: 14 failures directly involved local socket, trusted Bubblewrap, or /home/kasun write restrictions, and one public-stream shutdown timeout occurred under that run. The approved unsandboxed rerun passed all 671 tests with 2 skips.",
+      "non_v2_command": ".venv/bin/python -m pytest -q -o addopts='' tests --ignore=tests/v2",
+      "non_v2_result": "485 passed, 3 skipped in 392.65s (unsandboxed approved verification).",
+      "contracts_golden_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_contracts.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py",
+      "contracts_golden_result": "10 passed in 14.49s."
+    },
+    "static_and_environment": {
+      "ruff": "All checks passed after final import cleanup.",
+      "mypy": "Success: no issues found in 209 source files.",
+      "compileall": "Passed after final implementation cleanup.",
+      "pip_check": "No broken requirements found.",
+      "git_diff_check": "Passed.",
+      "secret_scan": "No gitleaks, detect-secrets, or trufflehog executable was installed. A value-suppressing high-confidence credential scan over staged additions found no private-key headers, AWS key IDs, or credential assignments."
+    },
+    "sha256": {
+      "v1_golden": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+      "requirements_lock": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements_agent_lock": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "locks_or_golden_changed": false
+    }
+  },
+  "network_provider_and_safety": {
+    "github_fetch_and_push": "Only required repository verification and publication; fetch/push completion is recorded in the final handoff.",
+    "paid_provider_calls": 0,
+    "authenticated_venue_or_account_calls": 0,
+    "public_market_http_or_websocket_calls": 0,
+    "order_submissions": 0,
+    "openai_deepseek_nim_runtime_calls": 0,
+    "real_credentials_used": false,
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "critic_decision_influence": false,
+    "critic_admission_influence": false,
+    "risk_policy_changed": false,
+    "strategy_or_model_provider_changed": false,
+    "final_holdout_touched": false,
+    "economic_value": "NOT_ESTIMABLE",
+    "merge_performed": false,
+    "session_034_authorized": false
+  },
+  "remaining_test_gates": [
+    "Real public continuity qualification",
+    "Historical/bootstrap warmup",
+    "Native S3 M1 production cadence",
+    "Owner Windows/WSL maintenance latency qualification; offline tests do not establish host adequacy",
+    "Real 72-hour endurance",
+    "At least 8 weeks of prospective shadow",
+    "At least 200 genuinely matured opportunities",
+    "Regime and dependence-aware scientific qualification with accepted multiplicity discipline",
+    "Protected final holdout remains untouched",
+    "Independent capital and execution qualification"
+  ],
+  "final_decision": "ENGINEERING_PASS_SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW_ONLY; no merge, 72-hour campaign, capital authorization, assisted execution, or Session 034 is authorized."
+}
