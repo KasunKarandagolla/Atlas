@@ -105,6 +105,12 @@ from ..science.research_selection import (
     persist_research_sleeve_audit,
     research_selection_universe,
 )
+from ..science.s3_calendar import (
+    ensure_native_s3_research_universe,
+    persist_native_s3_not_estimable_calendar,
+    persist_native_s3_not_estimable_candidate_set,
+    persist_s3_late_origin_missingness,
+)
 from ..selection import (
     SELECTION_POLICY_HASH,
     ScannerRankEvidenceV1,
@@ -505,8 +511,21 @@ class IndexedPublicCycleSourceV1:
                             refs.append(matching[0].artifact_ref)
                             seen_event_ids.add(event.event_id)
                     elif plan.action == S3M1OriginAccountingAction.REUSE_LATE_TEST_GATE:
-                        _native_m1_origin_state_entries(
+                        event_entries, gate_entries = _native_m1_origin_state_entries(
                             repository, product.key, plan.close_at_ns, as_of_ns=now_ns,
+                        )
+                        durable_gate = find_s3_m1_origin_accounting_state(
+                            event_entries, gate_entries, product.key, plan.close_at_ns,
+                        )
+                        if (durable_gate is None
+                                or durable_gate[0] != S3M1OriginAccountingAction.REUSE_LATE_TEST_GATE):
+                            raise ValueError("native M1 reused late gate disappeared or conflicts")
+                        gate_body = durable_gate[1].metadata.get("deadline_gate")
+                        if not isinstance(gate_body, Mapping) or not isinstance(gate_body.get("reason_code"), str):
+                            raise ValueError("native M1 reused late gate lost its exact TEST GATE reason")
+                        _persist_late_s3_m1_origin_gate(
+                            repository, product, bar, observed_at_ns=now_ns,
+                            reason_code=gate_body["reason_code"],
                         )
                     else:
                         raise ValueError("native M1 origin planner returned an unsupported action")
@@ -567,11 +586,11 @@ def _persist_late_s3_m1_origin_gate(
     *,
     observed_at_ns: int,
     reason_code: str = "NATIVE_M1_BAR_FIRST_SEEN_AFTER_FIXED_DEADLINE",
-) -> None:
+) -> str:
     """Record a missed M1 origin without inventing an event cutoff."""
     origin = s3_m1_origin_metadata(product.key, bar.close_at_ns, bar_ref=bar.content_hash)["native_m1_origin"]
     if not isinstance(origin, Mapping):
-        return
+        raise ValueError("native M1 late-origin metadata must be an object")
     origin_ref = origin.get("origin_ref")
     event_entries, gate_entries = _native_m1_origin_state_entries(
         repository, product.key, bar.close_at_ns, as_of_ns=observed_at_ns,
@@ -585,7 +604,17 @@ def _persist_late_s3_m1_origin_gate(
         body = existing[1].metadata.get("deadline_gate")
         if not isinstance(body, Mapping) or body.get("reason_code") != reason_code:
             raise ValueError("native M1 origin already has a conflicting missed-origin gate")
-        return
+        gate_ref = existing[1].artifact_ref
+        persist_s3_late_origin_missingness(
+            repository,
+            instrument_key=product.key,
+            decision_slot_ns=bar.close_at_ns,
+            origin_ref=str(origin_ref),
+            late_gate_ref=gate_ref,
+            created_at_ns=max(observed_at_ns, existing[1].available_at_ns),
+            available_at_ns=max(observed_at_ns, existing[1].available_at_ns),
+        )
+        return gate_ref
     body = {
         "version": "OPS_PUBLIC_ACQUISITION_DEADLINE_GATE_V1",
         "observed_at_ns": observed_at_ns,
@@ -605,6 +634,16 @@ def _persist_late_s3_m1_origin_gate(
                                         "native_m1_origin_ref": origin_ref,
                                         "native_m1_origin": dict(origin)},
     ))
+    persist_s3_late_origin_missingness(
+        repository,
+        instrument_key=product.key,
+        decision_slot_ns=bar.close_at_ns,
+        origin_ref=str(origin_ref),
+        late_gate_ref=ref,
+        created_at_ns=observed_at_ns,
+        available_at_ns=observed_at_ns,
+    )
+    return ref
 
 
 def _native_m1_origin_state_entries(
@@ -2616,25 +2655,71 @@ class ProductionOpsCyclePortV1:
         checkpoint: Callable[[OpsStageResultV1], None],
     ) -> OpsDecisionResultV1:
         if event.event_type == S3_M1_EVENT_TYPE:
-            if completed_stages:
-                raise ValueError("native M1 event has incompatible prior decision-pipeline checkpoints")
             inputs = self.inputs_provider.resolve(repository, event)
             if inputs is None or inputs.candidates or inputs.universe is not None:
                 raise ValueError("native M1 diagnostic path produced decision-affecting inputs")
-            completed_at_ns = max(
+            diagnostic_refs = inputs.causal_source_refs
+            diagnostic_available_at_ns = event.information_cutoff_ns
+            for ref in diagnostic_refs:
+                diagnostic_entry = repository.get_artifact(ref)
+                if diagnostic_entry is None:
+                    raise ValueError("native M1 diagnostic reference is not durably indexed")
+                diagnostic_available_at_ns = max(
+                    diagnostic_available_at_ns, diagnostic_entry.available_at_ns,
+                )
+            universe_created_at_ns = max(
                 now_ns,
+                diagnostic_available_at_ns,
                 timestamp(self.clock_ns(), field="native S3 decision completion"),
             )
-            if completed_at_ns > event.deadline_ns:
-                raise ValueError("native S3 decision missed its fixed consumer deadline")
+            universe_available_at_ns = max(
+                universe_created_at_ns,
+                timestamp(self.clock_ns(), field="native S3 universe availability"),
+            )
+            universe = ensure_native_s3_research_universe(
+                repository,
+                event,
+                diagnostic_refs,
+                created_at_ns=universe_created_at_ns,
+                available_at_ns=universe_available_at_ns,
+            )
+            computation_started_ns = max(
+                now_ns,
+                event.information_cutoff_ns,
+                universe.envelope.available_at_ns,
+                diagnostic_available_at_ns,
+                timestamp(self.clock_ns(), field="native S3 CandidateSet computation start"),
+            )
+            computation_finished_ns = max(
+                computation_started_ns,
+                timestamp(self.clock_ns(), field="native S3 CandidateSet computation finish"),
+            )
+            candidate_set_available_at_ns = max(
+                computation_finished_ns,
+                timestamp(self.clock_ns(), field="native S3 CandidateSet availability"),
+            )
+            candidate_set = persist_native_s3_not_estimable_candidate_set(
+                repository,
+                event,
+                universe,
+                diagnostic_refs,
+                computation_started_ns=computation_started_ns,
+                computation_finished_ns=computation_finished_ns,
+                available_at_ns=candidate_set_available_at_ns,
+            )
+            calendar_ref = persist_native_s3_not_estimable_calendar(repository, candidate_set, event)
             native_stages: dict[PipelineStageV1, OpsStageResultV1] = {}
             for stage in PIPELINE_STAGE_ORDER:
-                terminal_stage = stage == PipelineStageV1.DECISION_CALENDAR
+                candidate_stage = stage == PipelineStageV1.CANDIDATE_SET
+                calendar_stage = stage == PipelineStageV1.DECISION_CALENDAR
+                refs = ((candidate_set.content_hash,) if candidate_stage else
+                        (calendar_ref,) if calendar_stage else ())
                 result = OpsStageResultV1(
                     stage,
-                    OpsStageStatusV1.NOT_ESTIMABLE if terminal_stage else OpsStageStatusV1.SKIPPED,
-                    (), completed_at_ns,
-                    "BYBIT_TRADE_COMPLETENESS_UNPROVEN" if terminal_stage
+                    OpsStageStatusV1.COMPLETE if candidate_stage else
+                    OpsStageStatusV1.NOT_ESTIMABLE if calendar_stage else OpsStageStatusV1.SKIPPED,
+                    refs, candidate_set.envelope.available_at_ns,
+                    "BYBIT_TRADE_COMPLETENESS_UNPROVEN" if candidate_stage or calendar_stage
                     else "NATIVE_M1_S3_DIAGNOSTIC_ONLY",
                 )
                 checkpoint(result)

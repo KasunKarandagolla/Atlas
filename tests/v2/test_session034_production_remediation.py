@@ -27,7 +27,6 @@ from atlas.v2.runtime.ops_supervisor import (
     OpsDecisionEventV1,
     OpsRecoverySnapshotV1,
     OpsStageResultV1,
-    OpsTerminalStatusV1,
 )
 from atlas.v2.runtime.s3_native_cadence import (
     MAX_M1_ORIGINS_ACCOUNTED_PER_CYCLE,
@@ -405,10 +404,9 @@ def test_timely_native_origin_event_is_reused_after_event_before_checkpoint_cras
         )
 
 
-def test_native_event_computation_finishes_before_deadline_or_fails_closed(tmp_path):
+def test_native_event_missing_exact_source_artifacts_fails_closed(tmp_path):
     close_at_ns = 1_000 * MINUTE_NS
     cutoff_ns = close_at_ns + 100
-    deadline_ns = close_at_ns + 5 * NS
     event = OpsDecisionEventV1(
         "e" * 64,
         S3_M1_EVENT_TYPE,
@@ -419,7 +417,7 @@ def test_native_event_computation_finishes_before_deadline_or_fails_closed(tmp_p
         cutoff_ns,
         cutoff_ns,
         cutoff_ns,
-        deadline_ns,
+        close_at_ns + 5 * NS,
         (),
     )
 
@@ -434,31 +432,15 @@ def test_native_event_computation_finishes_before_deadline_or_fails_closed(tmp_p
     )
     checkpoints: list[OpsStageResultV1] = []
     with OpsRepository(tmp_path / "ops.sqlite") as repository:
-        result = port.process_event(
-            repository,
-            event,
-            now_ns=cutoff_ns + 100,
-            source_health_state="UNKNOWN",
-            completed_stages={},
-            checkpoint=checkpoints.append,
-        )
-        assert result.terminal_status == OpsTerminalStatusV1.NOT_ESTIMABLE
-        assert [item.stage for item in checkpoints] == list(production.PIPELINE_STAGE_ORDER)
-        assert all(item.completed_at_ns == completed_at_ns for item in checkpoints)
-        assert all(not item.artifact_refs for item in checkpoints)
-
-        late_port = production.ProductionOpsCyclePortV1(
-            inputs_provider=DiagnosticOnlyInputs(),  # type: ignore[arg-type]
-            clock_ns=lambda: deadline_ns + 1,
-        )
-        late_checkpoints: list[OpsStageResultV1] = []
-        with pytest.raises(ValueError, match="missed its fixed consumer deadline"):
-            late_port.process_event(
+        with pytest.raises(ValueError, match="does not bind its exact cutoff-visible trigger"):
+            port.process_event(
                 repository,
                 event,
                 now_ns=cutoff_ns + 100,
                 source_health_state="UNKNOWN",
                 completed_stages={},
-                checkpoint=late_checkpoints.append,
+                checkpoint=checkpoints.append,
             )
-        assert late_checkpoints == []
+        assert checkpoints == []
+        assert repository.artifact_entries("CandidateSetV2") == ()
+        assert repository.artifact_entries("DecisionCalendarEntryV2") == ()

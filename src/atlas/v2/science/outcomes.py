@@ -30,6 +30,7 @@ from atlas.v2.risk import (
 VERSION = "MATURED_OUTCOME_V2_V3"
 DECISION_ENTRY_VERSION = "DECISION_CALENDAR_ENTRY_V2_V1"
 ECONOMIC_EVALUATION_VERSION = "EVALUATION_ARTIFACT_V2_AMENDED_V1"
+S3_NATIVE_TIMED_CANDIDATE_SET_PRODUCER = "S3_NATIVE_M1_NOT_ESTIMABLE_CANDIDATE_SET_V1"
 ECONOMIC_EVALUATION_VERSIONS = frozenset({
     ECONOMIC_EVALUATION_VERSION,
     "EVALUATION_ARTIFACT_V2_AMENDED_V2",
@@ -220,7 +221,30 @@ def _resolve_candidate_set(repo: OpsRepository, ref: str) -> tuple[CandidateSetV
     if type(cutoff_ns) is not int:
         raise ValueError("CandidateSet identity must declare an exact integer cutoff")
     candidate_refs = tuple(identity.get("candidate_refs", ()))
-    if (candidate_set.content_hash != ref or cutoff_ns != candidate_set.envelope.available_at_ns
+    timed_native_s3 = identity.get("producer_version") == S3_NATIVE_TIMED_CANDIDATE_SET_PRODUCER
+    if timed_native_s3:
+        started = identity.get("computation_started_ns")
+        finished = identity.get("computation_finished_ns")
+        available = identity.get("candidate_set_available_at_ns")
+        deadline = identity.get("deadline_ns")
+        if (type(started) is not int or type(finished) is not int or type(available) is not int
+                or type(deadline) is not int or not cutoff_ns <= started <= finished <= available <= deadline
+                or candidate_set.envelope.created_at_ns != finished
+                or candidate_set.envelope.available_at_ns != available
+                or identity.get("universe_ref") != candidate_set.universe_ref
+                or tuple(identity.get("diagnostic_refs", ())) != tuple(sorted(set(identity.get("diagnostic_refs", ()))))):
+            raise ValueError("native S3 CandidateSet production timing or derived lineage is invalid")
+        for input_ref in candidate_set.envelope.input_refs:
+            indexed_input = repo.get_artifact(input_ref)
+            if indexed_input is None or indexed_input.available_at_ns > cutoff_ns:
+                raise ValueError("native S3 CandidateSet contains future or missing cutoff evidence")
+        universe_entry = repo.get_artifact(candidate_set.universe_ref)
+        if (universe_entry is None or universe_entry.artifact_type != "UniverseContractV2"
+                or universe_entry.available_at_ns > started):
+            raise ValueError("native S3 CandidateSet universe was unavailable at computation start")
+    elif cutoff_ns != candidate_set.envelope.available_at_ns:
+        raise ValueError("CandidateSet cutoff must equal its envelope availability")
+    if (candidate_set.content_hash != ref
             or candidate_refs != tuple(sorted(set(candidate_refs)))
             or not set(candidate_refs).issubset(set(candidate_set.envelope.input_refs))
             or len(candidate_refs) != len(candidate_set.candidates)
@@ -252,12 +276,14 @@ def _resolve_candidate_set(repo: OpsRepository, ref: str) -> tuple[CandidateSetV
         "decision_event_id": candidate_set.decision_event_id, "universe_ref": candidate_set.universe_ref,
         "selection_policy_hash": candidate_set.selection_policy_hash})
     decision_index = repo.get_artifact(decision_index_ref)
+    expected_index_at = candidate_set.envelope.available_at_ns if timed_native_s3 else identity.get("cutoff_ns")
     if (decision_index is None or decision_index.artifact_type != "CandidateSetDecisionIndexV1"
             or decision_index.metadata.get("candidate_set_ref") != ref
             or decision_index.metadata.get("cutoff_ns") != identity.get("cutoff_ns")
+            or (timed_native_s3 and decision_index.metadata.get("deadline_ns") != identity.get("deadline_ns"))
             or decision_index.content_hash != sha256_json(decision_index.metadata)
-            or decision_index.created_at_ns != identity.get("cutoff_ns")
-            or decision_index.available_at_ns != identity.get("cutoff_ns")):
+            or decision_index.created_at_ns != expected_index_at
+            or decision_index.available_at_ns != expected_index_at):
         raise ValueError("CandidateSet lacks its exact immutable decision-event index")
     return candidate_set, identity
 
