@@ -485,6 +485,7 @@ def _index_reconnect_reconciliation(
 
 def _seed_default_s3_candidate_evidence(
     repository: OpsRepository, *, archive_root: Path, setup_cutoff_ns: int,
+    trigger_receipt_delta_ns: int = 0,
 ) -> tuple[int, int, ProductContractV2, str, CausalBarV2]:
     """Seed public evidence plus a real S3 WATCH produced by the accepted coordinator."""
     import math
@@ -605,6 +606,7 @@ def _seed_default_s3_candidate_evidence(
     trigger_bar: CausalBarV2 | None = None
     for index in range(1, 16):
         close_at_ns = setup_cutoff_ns + index * BarIntervalV2.M1.duration_ns
+        received_at_ns = close_at_ns + (trigger_receipt_delta_ns if index == 15 else 0)
         close = Decimal("100.001")
         high, low = close + Decimal("0.001"), close - Decimal("0.001")
         open_at_ns = close_at_ns - BarIntervalV2.M1.duration_ns
@@ -612,7 +614,8 @@ def _seed_default_s3_candidate_evidence(
         raw = RawObservationV2.build(
             instrument_revision=KEY.contract_revision, source_id="PUBLIC_BARS",
             event_type="BAR_1M", event_at_ns=close_at_ns,
-            received_at_ns=close_at_ns, ingested_at_ns=close_at_ns, available_at_ns=close_at_ns,
+            received_at_ns=received_at_ns, ingested_at_ns=received_at_ns,
+            available_at_ns=received_at_ns,
             translation_version="session027-s3-public-bars-v1", sequence=str(open_at_ns), payload=payload,
         )
         minute_bar = CausalBarV2(
@@ -1039,6 +1042,7 @@ def test_default_production_native_m1_s3_stays_closed_without_trade_completeness
     with OpsRepository(path) as repository:
         _setup_cutoff, event_cutoff, product, watch_id, trigger_bar = _seed_default_s3_candidate_evidence(
             repository, archive_root=archive_root, setup_cutoff_ns=setup_cutoff,
+            trigger_receipt_delta_ns=250_000_000,
         )
         watch = repository.get_watch(watch_id)
         assert watch is not None
@@ -1049,9 +1053,10 @@ def test_default_production_native_m1_s3_stays_closed_without_trade_completeness
         assert len(frozen_vwap_refs) == 1
         assert repository.artifact_entries("CandidateActionV2") == ()
         event = production._native_s3_m1_public_bar_event(
-            repository, product, trigger_bar, now_ns=event_cutoff,
+            repository, product, trigger_bar, now_ns=trigger_bar.raw.available_at_ns,
         )
         assert event is not None
+        assert event.source_event_at_ns < event.information_cutoff_ns
         from atlas.v2.runtime.s3_native_cadence import s3_m1_event_id
 
         observation_ref = sha256_json({
