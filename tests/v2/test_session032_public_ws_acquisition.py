@@ -94,6 +94,7 @@ def test_two_symbol_fake_stream_preserves_exact_bytes_receipt_and_bounds_transpo
     assert connect_options["max_size"] == MAX_PUBLIC_FRAME_BYTES
     assert connect_options["max_queue"] == 16
     assert connect_options["ping_interval"] == 20 and connect_options["ping_timeout"] == 20
+    assert connect_options["proxy"] is None
 
 
 def test_capture_rejects_wrong_topic_malformed_and_oversized_messages() -> None:

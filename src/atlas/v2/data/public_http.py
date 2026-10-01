@@ -10,7 +10,7 @@ from enum import StrEnum
 from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener
 
 
 class PublicVenueV2(StrEnum):
@@ -97,7 +97,10 @@ class HttpGetter(Protocol):
 def _stdlib_get(url: str, timeout: float) -> tuple[int, bytes]:
     request = Request(url, method="GET", headers={"Accept": "application/json", "User-Agent": "ATLAS-V2-public-research/1"})
     try:
-        with urlopen(request, timeout=timeout) as response:
+        # Public qualification must use the allowlisted venue endpoint directly;
+        # urllib's ambient proxy configuration is deliberately not consulted.
+        opener = build_opener(ProxyHandler({}))
+        with opener.open(request, timeout=timeout) as response:
             return int(response.status), response.read(2_000_001)
     except HTTPError as exc:
         body = exc.read(16_384)

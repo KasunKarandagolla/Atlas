@@ -78,7 +78,16 @@ class PublicFrameHandoffStatusV2:
     high_water_bytes: int
     frames_received: int
     frames_drained: int
+    frames_offered: int
+    frame_bytes_offered: int
+    frame_bytes_received: int
+    frame_bytes_drained: int
+    first_frame_received_at_ns: int | None
+    last_frame_received_at_ns: int | None
     controls_received: int
+    successful_subscription_ack_count: int
+    failed_subscription_ack_count: int
+    subscription_ack_topics: tuple[str, ...]
     frames_rejected: int
     closed_rejections: int
     overflowed: bool
@@ -148,7 +157,16 @@ class BoundedPublicFrameHandoffV2:
         self._high_water_bytes = 0
         self._frames_received = 0
         self._frames_drained = 0
+        self._frames_offered = 0
+        self._frame_bytes_offered = 0
+        self._frame_bytes_received = 0
+        self._frame_bytes_drained = 0
+        self._first_frame_received_at_ns: int | None = None
+        self._last_frame_received_at_ns: int | None = None
         self._controls_received = 0
+        self._successful_subscription_ack_count = 0
+        self._failed_subscription_ack_count = 0
+        self._subscription_ack_topics: tuple[str, ...] = ()
         self._frames_rejected = 0
         self._closed_rejections = 0
         self._overflowed = False
@@ -168,6 +186,9 @@ class BoundedPublicFrameHandoffV2:
         if frame.venue != self.venue:
             self.observe_error("WRONG_VENUE", frame.received_at_ns)
             raise ValueError("public frame venue does not match the handoff")
+        with self._lock:
+            self._frames_offered += 1
+            self._frame_bytes_offered += len(frame.raw_payload_bytes)
         if frame.channel == "CONTROL":
             try:
                 control = json.loads(frame.raw_payload_bytes)
@@ -185,6 +206,12 @@ class BoundedPublicFrameHandoffV2:
                     return False
                 self._controls_received += 1
                 self._last_activity_at_ns = frame.received_at_ns
+                if control.get("op") == "subscribe":
+                    if control.get("success") is True:
+                        self._successful_subscription_ack_count += 1
+                        self._subscription_ack_topics = self.topics
+                    else:
+                        self._failed_subscription_ack_count += 1
                 if control.get("op") in {"ping", "pong"} or control.get("ret_msg") == "pong":
                     self._heartbeat_count += 1
                     self._last_heartbeat_at_ns = frame.received_at_ns
@@ -210,6 +237,10 @@ class BoundedPublicFrameHandoffV2:
             self._queue.append(frame)
             self._queue_bytes += size
             self._frames_received += 1
+            self._frame_bytes_received += size
+            if self._first_frame_received_at_ns is None:
+                self._first_frame_received_at_ns = frame.received_at_ns
+            self._last_frame_received_at_ns = frame.received_at_ns
             self._high_water_items = max(self._high_water_items, len(self._queue))
             self._high_water_bytes = max(self._high_water_bytes, self._queue_bytes)
             if (len(self._queue) * 4 >= self.max_queue_items * 3
@@ -227,6 +258,7 @@ class BoundedPublicFrameHandoffV2:
             rows = tuple(self._queue.popleft() for _ in range(count))
             self._queue_bytes -= sum(len(frame.raw_payload_bytes) for frame in rows)
             self._frames_drained += len(rows)
+            self._frame_bytes_drained += sum(len(frame.raw_payload_bytes) for frame in rows)
             return rows
 
     def observe_connected(self, at_ns: int) -> None:
@@ -276,7 +308,12 @@ class BoundedPublicFrameHandoffV2:
                 self.venue, self.topics, len(self._queue), self._queue_bytes,
                 self.max_queue_items, self.max_queue_bytes, self.max_drain_items,
                 self._high_water_items, self._high_water_bytes, self._frames_received,
-                self._frames_drained, self._controls_received, self._frames_rejected,
+                self._frames_drained, self._frames_offered, self._frame_bytes_offered,
+                self._frame_bytes_received, self._frame_bytes_drained,
+                self._first_frame_received_at_ns, self._last_frame_received_at_ns,
+                self._controls_received, self._successful_subscription_ack_count,
+                self._failed_subscription_ack_count, self._subscription_ack_topics,
+                self._frames_rejected,
                 self._closed_rejections, self._overflowed, self._backpressure,
                 self._connected, self._closed, self._disconnect_count,
                 self._last_disconnect_at_ns, self._heartbeat_count,
@@ -366,7 +403,7 @@ async def capture_public_frames(*, venue: VenueV2, topics: tuple[str, ...],
     except ImportError as exc:  # pragma: no cover - exercised by installation gate
         raise RuntimeError("locked websockets public transport dependency is unavailable") from exc
     name = source_id or f"{venue.value}_PUBLIC_WS"
-    async with connect(url, open_timeout=10, ping_interval=20, ping_timeout=20,
+    async with connect(url, proxy=None, open_timeout=10, ping_interval=20, ping_timeout=20,
                        close_timeout=5, max_size=MAX_PUBLIC_FRAME_BYTES,
                        max_queue=PUBLIC_WS_RECEIVE_QUEUE_ITEMS) as socket:
         if venue == VenueV2.BYBIT:
