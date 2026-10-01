@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "record": "ATLAS_SESSION034_DECISION_CALENDAR_REMEDIATION_V1",
+  "status": "ENGINEERING_PASS",
+  "review_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW",
+  "scope": "CLOSE_NATIVE_S3_M1_SCIENTIFIC_DENOMINATOR_BLOCKER_ONLY",
+  "repository": {
+    "remote": "KasunKarandagolla/Atlas",
+    "branch": "impl/session-034-native-s3-m1-warmup-readiness",
+    "required_starting_remote_sha": "f818cb260faf3c6e9ed2e4a7d6344e5078fcd18f",
+    "tested_implementation_sha": "cec7cc253058823a3298e3b09c6afff537c8f504",
+    "documentation_sha": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_DOCUMENTATION_COMMIT",
+    "final_remote_tip": "RECORDED_IN_FINAL_CODEX_HANDOFF_AFTER_PUSH",
+    "accepted_s33_ancestor": "486a513dd873d53ac2bfef0e710f0b6332650537",
+    "s34_implementation_ancestors": [
+      "87096240d7c673e98d2cd96a49cd96e68e19d7ed",
+      "7cb35c4bd92a8c56b347e7be839e7ce34ccbf183"
+    ],
+    "ancestry_verified": true,
+    "branches_enumerated_before_edit": true,
+    "s35_or_newer_reviewed_checkpoint_found": false,
+    "no_merge": true,
+    "no_force_push": true,
+    "no_s35_created_or_authorized": true,
+    "owner_authority_documents_and_archives_preserved_untracked": true
+  },
+  "authority": {
+    "required_documents_read_in_full": [
+      {
+        "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+        "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c"
+      },
+      {
+        "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+        "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+      },
+      {
+        "path": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+        "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+      },
+      {
+        "path": "ATLAS_72_Hour_Consultation.pdf",
+        "sha256": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e",
+        "classification": "CONSULTATION_ONLY",
+        "alternate_economic_evidence_rule_adopted": false
+      }
+    ],
+    "preserved_hashes": {
+      "v1_golden": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+      "requirements_lock": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "agent_lock": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3"
+    }
+  },
+  "pre_fix_reproduction": {
+    "reviewed_tip": "f818cb260faf3c6e9ed2e4a7d6344e5078fcd18f",
+    "command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2/test_session034_scientific_calendar_closure.py",
+    "result": "2 passed in 2.81s",
+    "timely_native_m1": {
+      "event_type": "CONFIRMED_1M_CLOSE",
+      "terminal_status": "NOT_ESTIMABLE",
+      "CandidateSetV2_for_event_count": 0,
+      "DecisionCalendarEntryV2_for_event_count": 0,
+      "decision_calendar_checkpoint_ref": null
+    },
+    "late_origin": {
+      "existing_record": "OpsPublicAcquisitionDeadlineGateV1 TEST GATE",
+      "typed_scientific_missingness_artifact_existed": false,
+      "governed_denominator_surface_existed": false,
+      "s33_maturity_input": "DecisionCalendarEntryV2 only",
+      "scientific_denominator_result": "late origin was not surfaced"
+    },
+    "history_note": "These reproductions were run before the remediation implementation was applied; the focused test file was then expanded for the final matrix."
+  },
+  "timely_native_m1_closure": {
+    "flow": [
+      "exact immutable CONFIRMED_1M_CLOSE event",
+      "cutoff-bounded S3 trade/BBO/readiness diagnostics",
+      "existing CandidateSetV2 with selection_status NOT_ESTIMABLE",
+      "existing DecisionCalendarEntryV2 with selection_state NOT_ESTIMABLE",
+      "terminal NOT_ESTIMABLE"
+    ],
+    "candidate_set": {
+      "schema": "CandidateSetV2; unchanged",
+      "identity": "CandidateSetDecisionIndexV1 binds exact decision_event_id, exact UniverseContractV2 ref and accepted research selection policy hash; CandidateSet body hash and producer identity are immutable.",
+      "decision_event_id": "exact immutable native M1 event ID",
+      "candidate_count": 0,
+      "selected_candidate_id": null,
+      "selection_status": "NOT_ESTIMABLE",
+      "selection_policy": "existing MULTI_SLEEVE_SELECTION_HASH",
+      "universe_ref": "exact immutable cutoff-lineaged UniverseContractV2",
+      "tie_break_rule": "NO_SELECTION_WHILE_BYBIT_TRADE_COMPLETENESS_IS_UNPROVEN",
+      "authority": "ZERO",
+      "not_no_candidate": true,
+      "candidate_action_created": false
+    },
+    "universe": {
+      "identity": "S3NativeM1ResearchUniverseIdentityV1 is keyed by exact native M1 event ID.",
+      "population": "One exact originating InstrumentKeyV2 and ProductContractV2 revision, observed from the exact final M1 trigger.",
+      "s3_eligibility": "NOT_ESTIMABLE / BYBIT_TRADE_COMPLETENESS_UNPROVEN",
+      "eligibility_flags": {
+        "data": false,
+        "scanner": false,
+        "deep_analysis": false,
+        "capital": false
+      },
+      "source_input_refs": "Exact event causal input refs; each is indexed and available by the immutable evidence cutoff.",
+      "decision_slot": "Original close plus fixed five-second consumer deadline, allowing an honestly produced post-cutoff immutable research universe without making it ELIGIBLE."
+    },
+    "calendar": {
+      "schema": "DecisionCalendarEntryV2; wire schema and enum values unchanged",
+      "identity": "Existing DecisionCalendarIdentityV2 derived from exact CandidateSet ref, null candidate ref and accepted policy hash.",
+      "decision_at_ns": "event.information_cutoff_ns; fixed and never rebased",
+      "selection_state": "NOT_ESTIMABLE",
+      "admission_state": "NOT_APPLICABLE",
+      "candidate_ref": null,
+      "action_hash": null,
+      "action_artifact_ref": null,
+      "source_stage": "CANDIDATE_SET",
+      "candidate_set_ref": "exact persisted CandidateSetV2 content ref",
+      "source_artifact_ref": "exact persisted CandidateSetV2 content ref",
+      "reason_codes": ["BYBIT_TRADE_COMPLETENESS_UNPROVEN"],
+      "created_at_ns_and_available_at_ns": "Exact honest CandidateSet publication time; never earlier than CandidateSet completion/availability."
+    },
+    "pipeline": {
+      "candidate_set_checkpoint": "COMPLETE with exact CandidateSetV2 ref",
+      "decision_calendar_checkpoint": "NOT_ESTIMABLE with exact DecisionCalendarEntryV2 ref",
+      "other_stages": "SKIPPED",
+      "terminal_status": "NOT_ESTIMABLE"
+    },
+    "causal_timing": {
+      "fixed_evidence_cutoff": "OpsDecisionEventV1.information_cutoff_ns, unchanged",
+      "invariant": "all event source input available_at_ns <= evidence_cutoff_ns <= computation_started_ns <= computation_finished_ns <= CandidateSetV2.available_at_ns <= original event.deadline_ns",
+      "universe_availability": "UniverseContractV2 available no later than CandidateSet computation start; its input refs remain exact cutoff-visible event refs.",
+      "diagnostic_availability": "Cutoff-bounded diagnostic outputs carry actual computation context and are indexed no later than the original deadline.",
+      "deadline": "M1 close plus five seconds; no rebasing. Missing outputs fail closed after this bound."
+    },
+    "retry_and_conflict_behavior": {
+      "candidate_set": "Reuses the immutable decision index and exact CandidateSetV2; candidate identity and original cutoff/timestamps are preserved.",
+      "calendar": "Reuses the exact DecisionCalendarEntryV2 and DecisionCalendarIdentityV2.",
+      "partial_checkpoint_restart": "Previously completed stages are validated against identical persisted refs/timestamps; remaining stages resume in fixed order.",
+      "conflicting_index_or_payload": "Fails closed; no replacement artifact is created.",
+      "evidence_cutoff": "Never changed on retry; later evidence cannot be added to event source inputs."
+    }
+  },
+  "late_missed_origin_denominator": {
+    "artifact": "S3DecisionCalendarMissingnessV1",
+    "schema_status": "Small additive typed artifact; not a DecisionCalendarEntryV2, CandidateSetV2, decision event, candidate, outcome, fill or payoff.",
+    "fields": [
+      "exact InstrumentKeyV2",
+      "S3 policy ID/version/hash",
+      "exact M1 close decision slot",
+      "stable native M1 origin ref",
+      "exact late-gate artifact ref",
+      "TEST GATE state and existing reason code",
+      "honest created/available timestamps",
+      "authority ZERO"
+    ],
+    "denominator_reader": {
+      "surface": "s3_decision_calendar_denominator(repository)",
+      "timely_class": "TIMELY_NOT_ESTIMABLE from a real DecisionCalendarEntryV2",
+      "late_class": "LATE_OR_MISSED_TEST_GATE from typed S3DecisionCalendarMissingnessV1; legacy exact S3 gates remain visible as gate rows until typed closure exists",
+      "classes_are_distinct": true,
+      "missing_or_conflicting_timely_calendar": "fails closed instead of silently dropping an event"
+    },
+    "outcome_and_pnl": {
+      "late_record_becomes_MaturedOutcomeV2": false,
+      "fill_created": false,
+      "payoff_created": false,
+      "no_NO_TRADE_classification": true,
+      "late_records_are_not_input_to_S33_maturity": true
+    }
+  },
+  "s33_interaction": {
+    "timely_not_estimable_calendar": "Remains in DecisionCalendarEntryV2 and is inspected by the existing maturity reader; current resolution is UNSUPPORTED because no candidate horizon exists, with no MaturedOutcomeV2.",
+    "late_missingness": "Not a calendar entry and not inspected as a decision/outcome; no MaturedOutcomeV2 is produced.",
+    "outcome_semantics_changed": false
+  },
+  "preserved_s34_contracts": {
+    "native_confirmed_1m_close_cadence": true,
+    "m1_origin_accounting_and_oldest_first_backlog": true,
+    "maximum_origins_per_cycle": 4,
+    "restart_safe_origin_checkpoints": true,
+    "fixed_five_second_deadline": true,
+    "causal_timing_remediation": true,
+    "required_m1_bars": 10081,
+    "required_residuals": 120,
+    "trade_derived_vwap_requirement": true,
+    "bbo_max_age_ns": 1000000000,
+    "trade_completeness_proven": false,
+    "reconstructed_market_vs_actual_system_separation": true,
+    "s1_s2_m15_cadence_unchanged": true,
+    "risk_selection_admission_authority_changed": false,
+    "capital_disabled": true,
+    "assisted_execution_disabled": true,
+    "critic_authority": "ZERO",
+    "risk_policy_changed": false,
+    "final_holdout_touched": false,
+    "economics": "NOT ESTIMABLE"
+  },
+  "validation": {
+    "focused_s34_and_scientific_calendar_seams": "68 passed",
+    "focused_scientific_calendar_closure_file": "8 passed",
+    "contracts_and_v1_golden": "10 passed",
+    "full_v2": "730 passed, 2 skipped",
+    "full_v2_command": ".venv/bin/python -m pytest -q -o addopts='' tests/v2",
+    "full_non_v2": {
+      "status": "SKIPPED",
+      "reason": "Final implementation changes are confined to V2 runtime/science, V2 tests and docs; the exact contracts/V1 golden regression gate passed."
+    },
+    "static_and_security": {
+      "ruff": "PASS",
+      "mypy": "PASS, 212 source files",
+      "compileall": "PASS",
+      "pip_check": "PASS, no broken requirements",
+      "git_diff_check": "PASS",
+      "value_suppressed_secret_scan": "PASS, zero high-confidence matches; values suppressed"
+    },
+    "preserved_hashes": {
+      "v1_golden": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+      "requirements_lock": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "agent_lock": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3"
+    },
+    "external_calls": {
+      "public_market": 0,
+      "authenticated_venue_or_account": 0,
+      "orders": 0,
+      "paid_model_or_provider_runtime": 0,
+      "real_credentials": 0,
+      "github_git_fetch_and_push": "Required repository synchronization only"
+    }
+  },
+  "remaining_gates": [
+    "Accepted source capability proving exact S3 trade completeness",
+    "Genuine forward S3 warmup under accepted complete-trade coverage",
+    "Windows/WSL public qualification",
+    "Live-public continuity qualification",
+    "Separately authorized 72-hour endurance run",
+    "At least eight weeks prospective shadow",
+    "At least 200 genuinely matured opportunities",
+    "Regime, dependence and multiplicity qualification",
+    "Protected final holdout",
+    "Separate capital and execution qualification"
+  ],
+  "authorization": {
+    "maximum_status": "ENGINEERING_PASS",
+    "pending": "Independent coordinating principal engineering review",
+    "merge": false,
+    "live_public_campaign": false,
+    "72_hour_endurance": false,
+    "capital_authorization": false,
+    "session_035": false
+  },
+  "changed_files": [
+    "src/atlas/v2/runtime/production.py",
+    "src/atlas/v2/science/outcomes.py",
+    "src/atlas/v2/science/s3_calendar.py",
+    "tests/v2/test_session034_production_remediation.py",
+    "tests/v2/test_session034_scientific_calendar_closure.py",
+    "docs/v2/SESSION034_DECISION_CALENDAR_REMEDIATION_V1.json",
+    "docs/v2/SESSION034_INDEPENDENT_REVIEW_REMEDIATION_V1.json",
+    "docs/v2/SESSION034_NATIVE_S3_M1_WARMUP_VALIDATION.json",
+    "docs/v2/S3_NATIVE_CADENCE_WARMUP_ENGINEERING_GATE_V1.json",
+    "docs/handoffs/session-034.md"
+  ]
+}

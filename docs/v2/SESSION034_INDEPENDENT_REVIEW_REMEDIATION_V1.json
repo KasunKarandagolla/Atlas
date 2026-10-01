@@ -397,5 +397,22 @@
       "No capital authorization",
       "No Session 035"
     ]
+  },
+  "scientific_calendar_closure": {
+    "record": "docs/v2/SESSION034_DECISION_CALENDAR_REMEDIATION_V1.json",
+    "reviewed_starting_sha": "f818cb260faf3c6e9ed2e4a7d6344e5078fcd18f",
+    "tested_implementation_sha": "cec7cc253058823a3298e3b09c6afff537c8f504",
+    "status": "ENGINEERING_PASS",
+    "review_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW",
+    "pre_fix_reproduction": "Timely CONFIRMED_1M_CLOSE terminated NOT_ESTIMABLE with zero CandidateSetV2 and DecisionCalendarEntryV2 records; late TEST GATE origins were not represented in a governed scientific denominator.",
+    "validation": {
+      "focused_s34_and_scientific_calendar_seams": "68 passed",
+      "contracts_and_v1_golden": "10 passed",
+      "full_v2": "730 passed, 2 skipped",
+      "full_non_v2": "SKIPPED; implementation stayed within V2 runtime/science/tests/docs and V1 golden/contracts passed"
+    },
+    "trade_completeness_proven": false,
+    "economics": "NOT ESTIMABLE",
+    "no_s35_or_merge": true
   }
 }

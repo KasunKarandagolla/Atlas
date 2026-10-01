@@ -151,3 +151,36 @@ The three-minute restart regression accounts for all three origins as late gates
 - Remaining gates include an accepted source proving complete S3 trade coverage, genuine prospective warmup, Windows/WSL and live-public continuity qualification, any separately authorized endurance run, at least eight weeks and 200 matured prospective opportunities, regime/dependence/multiplicity qualification, protected holdout, and separate capital/execution qualification.
 
 Session 034 remediation is at **ENGINEERING_PASS**, pending independent coordinating principal engineering review. No merge, live-public campaign, 72-hour endurance run, capital authorization, final holdout use, or Session 035 is authorized.
+
+## L — Scientific Decision-Calendar Closure (2026-10-01)
+
+This additive final S34 remediation closes the native S3 M1 scientific-denominator blocker. Sections A–K above remain the earlier historical and remediation record.
+
+- **Reviewed start:** fetched authoritative GitHub and confirmed S34 remote tip `f818cb260faf3c6e9ed2e4a7d6344e5078fcd18f`. Accepted S33 `486a513dd873d53ac2bfef0e710f0b6332650537` and S34 commits `87096240d7c673e98d2cd96a49cd96e68e19d7ed`, `7cb35c4bd92a8c56b347e7be839e7ce34ccbf183` are ancestors. Branch enumeration found no S35 or later reviewed S34 checkpoint. Owner authority files, consultation PDF, and archive remained untracked.
+- **Tested implementation:** `cec7cc253058823a3298e3b09c6afff537c8f504`. Documentation commit SHA and final remote tip are recorded in the final Codex handoff after push.
+- **Pre-fix reproduction:** the focused reproduction at the reviewed tip returned terminal `NOT_ESTIMABLE` for a timely `CONFIRMED_1M_CLOSE`, with zero `CandidateSetV2` and `DecisionCalendarEntryV2` records. A late origin had an `OpsPublicAcquisitionDeadlineGateV1` TEST GATE but no typed scientific missingness artifact or denominator reader. The focused reproduction command returned 2 passed before implementation.
+
+### Timely M1
+
+- Every valid timely event now reuses existing `CandidateSetV2` with exact event ID, empty candidates, no selected candidate, `NOT_ESTIMABLE`, accepted research selection policy, and ZERO authority. The minimal exact-instrument `UniverseContractV2` records the S3 trade-completeness blocker and leaves all eligibility flags false.
+- Cutoff-visible event refs stay at or before the fixed `information_cutoff_ns`. Universe publication and CandidateSet computation happen afterward with honest times, before the original close-plus-five-second deadline. CandidateSet creation/availability is recorded at actual computation completion/publication; it is not backdated to market cutoff.
+- The unchanged `DecisionCalendarEntryV2` records `NOT_ESTIMABLE`, `NOT_APPLICABLE`, no candidate/action refs, `CANDIDATE_SET`, exact CandidateSet ref, fixed event cutoff, and `BYBIT_TRADE_COMPLETENESS_UNPROVEN`. Its pipeline checkpoint contains the exact calendar artifact ref.
+- Retry and partial-stage restart reuse the same CandidateSet and calendar identities and checkpoint timestamps. Conflicting durable identities fail closed.
+
+### Late/missed M1 and maturity
+
+- Late origins persist `S3DecisionCalendarMissingnessV1`, a separate scientific denominator artifact with exact instrument revision, close slot, policy identity, stable native origin ref, exact late-gate ref, `TEST GATE`, reason code, honest times, and ZERO authority. It creates no event, CandidateSet, candidate, action, fill, outcome, NO_TRADE label, or payoff.
+- `s3_decision_calendar_denominator(repository)` separates `TIMELY_NOT_ESTIMABLE` calendar entries from `LATE_OR_MISSED_TEST_GATE` rows. A native timely event missing its CandidateSet/calendar makes the reader fail closed rather than disappear from the denominator.
+- S33 still inspects timely calendar entries. With no candidate horizon it returns unsupported and creates no `MaturedOutcomeV2`; missingness is not an S33 input.
+
+### Validation
+
+- Focused S34/scientific-calendar seams: **68 passed** (including 8 closure tests).
+- Contracts and V1 golden: **10 passed**.
+- One full V2 suite: **730 passed, 2 skipped**.
+- Full non-V2 was skipped because the final implementation is confined to V2 runtime/science, V2 tests, and docs. The specified V1 contracts/golden gate passed.
+- Preserved hashes: V1 golden `be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251`; requirements lock `711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b`; agent lock `47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3`.
+- Final-tree Ruff, mypy, compileall, pip check, `git diff --check`, value-suppressed secret scan, and authority-hash results are recorded in [`SESSION034_DECISION_CALENDAR_REMEDIATION_V1.json`](../v2/SESSION034_DECISION_CALENDAR_REMEDIATION_V1.json) and the post-push Codex handoff.
+- Public-market calls, authenticated venue/account calls, orders, paid model/provider calls, and real credentials: **zero**. GitHub fetch and push are the only external repository operations.
+
+Capital and assisted execution remain disabled, critic authority remains **ZERO**, trade completeness remains **false**, and economics remain **NOT ESTIMABLE**. The maximum S34 status is **ENGINEERING_PASS**, pending independent coordinating principal engineering review. No merge, live-public campaign, 72-hour endurance run, capital authorization, final-holdout analysis, or Session 035 is authorized.

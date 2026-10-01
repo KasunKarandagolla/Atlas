@@ -196,5 +196,26 @@
       "economics": "NOT ESTIMABLE"
     }
   },
-  "remediation_authority_note": "The preceding S34 record is retained as historical evidence. The separate remediation record documents both reproduced defects and their fixes."
+  "remediation_authority_note": "The preceding S34 record is retained as historical evidence. The separate remediation record documents both reproduced defects and their fixes.",
+  "scientific_calendar_closure": {
+    "record": "docs/v2/SESSION034_DECISION_CALENDAR_REMEDIATION_V1.json",
+    "reviewed_starting_sha": "f818cb260faf3c6e9ed2e4a7d6344e5078fcd18f",
+    "tested_implementation_sha": "cec7cc253058823a3298e3b09c6afff537c8f504",
+    "CandidateSetV2": "NOT_ESTIMABLE, empty, exact M1 event identity, causal UniverseContractV2, honest post-cutoff publication time",
+    "DecisionCalendarEntryV2": "NOT_ESTIMABLE, NOT_APPLICABLE admission, no candidate/action, exact CandidateSet ref and completeness blocker reason",
+    "late_origin": "Separate TEST GATE missingness record with exact origin/gate refs and ZERO authority; never a decision or payoff",
+    "validation": {
+      "focused_seams": "68 passed",
+      "contracts_and_v1_golden": "10 passed",
+      "full_v2": "730 passed, 2 skipped",
+      "full_non_v2": "SKIPPED; no V1/runtime/shared non-V2/dependency-lock changes"
+    },
+    "status": "ENGINEERING_PASS",
+    "review_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW",
+    "trade_completeness_proven": false,
+    "capital_disabled": true,
+    "assisted_execution_disabled": true,
+    "critic_authority": "ZERO",
+    "economics": "NOT ESTIMABLE"
+  }
 }

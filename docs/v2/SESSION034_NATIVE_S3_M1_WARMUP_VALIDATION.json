@@ -346,5 +346,26 @@
       "economics": "NOT ESTIMABLE"
     }
   },
-  "remediation_authority_note": "The preceding S34 record is retained as historical evidence. The separate remediation record documents both reproduced defects and their fixes."
+  "remediation_authority_note": "The preceding S34 record is retained as historical evidence. The separate remediation record documents both reproduced defects and their fixes.",
+  "scientific_calendar_closure": {
+    "record": "docs/v2/SESSION034_DECISION_CALENDAR_REMEDIATION_V1.json",
+    "reviewed_starting_sha": "f818cb260faf3c6e9ed2e4a7d6344e5078fcd18f",
+    "tested_implementation_sha": "cec7cc253058823a3298e3b09c6afff537c8f504",
+    "timely_event_output": [
+      "CandidateSetV2 NOT_ESTIMABLE with zero candidates and exact M1 event ID",
+      "DecisionCalendarEntryV2 NOT_ESTIMABLE with fixed cutoff and BYBIT_TRADE_COMPLETENESS_UNPROVEN",
+      "DECISION_CALENDAR checkpoint contains exact calendar ref"
+    ],
+    "late_origin_output": "Additive S3DecisionCalendarMissingnessV1 TEST GATE with exact instrument, close slot, native origin ref and late-gate ref; separate denominator class; no candidate, decision event, outcome, fill or payoff.",
+    "trade_completeness_proven": false,
+    "economics": "NOT ESTIMABLE",
+    "validation": {
+      "focused_seams": "68 passed",
+      "contracts_and_v1_golden": "10 passed",
+      "full_v2": "730 passed, 2 skipped",
+      "full_non_v2": "SKIPPED; final implementation is confined to V2 runtime/science/tests/docs"
+    },
+    "status": "ENGINEERING_PASS",
+    "review_status": "SUBMITTED_FOR_INDEPENDENT_COORDINATING_REVIEW"
+  }
 }
