@@ -138,6 +138,7 @@ The three-minute restart regression accounts for all three origins as late gates
 ### Validation and current gates
 
 - Focused S34 modules: **51 passed**. The corrected advancing-clock S27 production test and S33 supervisor receipt test each passed individually after their respective assertion/scope corrections.
+- The integrated timing fixture uses distinct times: `T0 = M1 close`, `T1 = T0 + 250,000,000 ns`, `T2 = T1 + 100 ns`, `T3 = T1 + 200 ns`, `T4 = T1 + 300 ns`, and fixed deadline `T0 + 5,000,000,000 ns`; the targeted test passed after this strict ordering was added.
 - Full V2: **722 passed, 2 skipped**.
 - Full non-V2: **485 passed, 3 skipped**.
 - Contracts/V1 golden: **10 passed**.

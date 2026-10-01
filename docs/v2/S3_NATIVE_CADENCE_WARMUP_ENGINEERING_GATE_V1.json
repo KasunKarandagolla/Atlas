@@ -175,7 +175,7 @@
     "finding_a": {
       "status_at_reviewed_tip": "REPRODUCED_AND_REMEDIATED",
       "detail": "Derived S3 trade, BBO and readiness artifacts previously claimed availability at the M1 source cutoff despite later computation. Fixed cutoff remains OpsDecisionEventV1.information_cutoff_ns; honest computation and persistence times now remain within the original deadline.",
-      "advancing_clock_regression": "PASS: T0 close <= T1 evidence cutoff <= T2 start <= T3 completion <= T4 persistence <= fixed deadline; post-T1 trade, BBO and health are excluded; cutoff drift fails closed."
+      "advancing_clock_regression": "PASS: integrated fixture uses strict T0 < T1 < T2 < T3 < T4 <= fixed deadline; T1 is T0 + 250000000 ns, T2/T3/T4 are T1 + 100/200/300 ns; post-T1 trade, BBO and health are excluded; cutoff drift fails closed."
     },
     "finding_b": {
       "status_at_reviewed_tip": "REPRODUCED_AND_REMEDIATED",

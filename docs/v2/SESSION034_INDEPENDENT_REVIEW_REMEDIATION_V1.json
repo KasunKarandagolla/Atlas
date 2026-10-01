@@ -146,6 +146,16 @@
       "fixed_event_deadline_rule": "M1 source close plus five seconds; no rebasing"
     },
     "invariant": "max(source input available_at_ns) <= information_cutoff_ns <= computation_started_ns <= computation_finished_ns <= result.available_at_ns <= consumer_decision_deadline_ns",
+    "integrated_advancing_clock_fixture": {
+      "t0_m1_close_ns": "trigger_bar.close_at_ns",
+      "t1_fixed_evidence_cutoff_ns": "T0 + 250000000",
+      "t2_computation_started_ns": "T1 + 100",
+      "t3_computation_finished_ns": "T1 + 200",
+      "t4_result_persisted_ns": "T1 + 300",
+      "fixed_deadline_ns": "T0 + 5000000000",
+      "strict_order": "T0 < T1 < T2 < T3 < T4 <= fixed deadline",
+      "future_trade_bbo_and_source_health_excluded": true
+    },
     "artifact_classification": {
       "decision_affecting_inputs": {
         "examples": [
