@@ -21,7 +21,10 @@ INNO_VERSION = "6.5.4"
 
 def prune_development_payload(payload: Path) -> None:
     """Remove dependency test/source artifacts that hooks may add after spec filtering."""
-    forbidden_parts = {"tests", "test", "examples", "docs", "__pycache__"}
+    forbidden_parts = {
+        ".agents", ".aws", ".codex", ".git", ".hypothesis", ".mypy_cache", ".pytest_cache",
+        ".ruff_cache", ".venv", "tests", "test", "examples", "docs", "__pycache__",
+    }
     forbidden_suffixes = {".pyx", ".pxd", ".pyi"}
     for path in sorted(payload.rglob("*"), reverse=True):
         relative = path.relative_to(payload)
