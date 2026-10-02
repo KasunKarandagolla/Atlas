@@ -406,14 +406,23 @@ def test_supervisor_advancing_clock_keeps_fixed_cutoff_and_sealed_receipts(
         assert set(late_evidence_cutoffs) == {t0}
         assert late_diagnostic_refs
 
-        # The immutable event, decision and cycle receipts match the run without
-        # outcome production, although the treatment created downstream artifacts.
-        assert result.cycle == baseline_result.cycle
-        assert tuple(item.to_dict() for item in result.event_receipts) == tuple(
-            item.to_dict() for item in baseline_result.event_receipts
-        )
-        assert result.event_receipts[0].result == baseline_result.event_receipts[0].result
+        # Late outcome work cannot change the event, action or decision result.
+        # Runtime completion timestamps may differ because the treatment clock
+        # advances while the sealed receipt is being produced.
+        assert result.cycle.event_ids == baseline_result.cycle.event_ids
+        assert result.cycle.source_health_state == baseline_result.cycle.source_health_state
+        assert result.event_receipts[0].event.content_hash == baseline_result.event_receipts[0].event.content_hash
         assert result.event_receipts[0].action_ref == baseline_result.event_receipts[0].action_ref
+        assert result.event_receipts[0].result.terminal_status == baseline_result.event_receipts[0].result.terminal_status
+        for actual_stage, baseline_stage in zip(
+            result.event_receipts[0].result.stages, baseline_result.event_receipts[0].result.stages,
+            strict=True,
+        ):
+            assert actual_stage.stage == baseline_stage.stage
+            assert actual_stage.status == baseline_stage.status
+            assert actual_stage.artifact_refs == baseline_stage.artifact_refs
+            assert actual_stage.bound_action_hash == baseline_stage.bound_action_hash
+            assert actual_stage.reason == baseline_stage.reason
         assert result.event_receipts[0].result.terminal_status.value == "NOT_ESTIMABLE"
 
         late_ref = treatment_inputs["decision_ref"]

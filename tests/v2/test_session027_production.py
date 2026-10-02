@@ -1485,7 +1485,11 @@ def test_actual_adapter_recovers_before_collecting_and_uses_existing_pipeline_ap
         event, inputs, case, expected_set, selected, _, _, _ = _production_event(repo)
         source = ReconciledFixturePublicSource(event)
         provider = StaticInputsProvider(event.event_id, inputs)
-        port = production.ProductionOpsCyclePortV1(public_source=source, inputs_provider=provider)
+        port = production.ProductionOpsCyclePortV1(
+            public_source=source,
+            inputs_provider=provider,
+            clock_ns=lambda: CUTOFF + 100,
+        )
         wrappers = (
             ("candidate_set", "assemble_multisleeve_research_candidate_set"),
             ("acceptance", "accept_research_candidates"),

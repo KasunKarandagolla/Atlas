@@ -897,8 +897,7 @@ class OpsSupervisorV2:
                             OpsTerminalStatusV1.EXPIRED,
                             "DECISION_DEADLINE_EXPIRED_BEFORE_RECOVERY_REPLAY",
                         )
-                    elif (source_health != "HEALTHY_CURRENT"
-                          and event.event_type != "CONFIRMED_1M_CLOSE"):
+                    elif source_health != "HEALTHY_CURRENT":
                         result = self._terminal_without_pipeline(
                             event,
                             decision_started_at_ns,

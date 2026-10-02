@@ -325,7 +325,7 @@ class IndexedPublicCycleSourceV1:
             field="minimum_m15_origin_close_at_ns")
 
     def _account_m15_origins(self, repository: OpsRepository, collector: PublicCollectorV2,
-                            *, now_ns: int) -> tuple[OpsDecisionEventV1, ...]:
+                            *, now_ns: int, allow_events: bool = True) -> tuple[OpsDecisionEventV1, ...]:
         events: list[OpsDecisionEventV1] = []
         for product in collector.registry.contracts():
             latest = repository.latest_m15_origin_accounting_checkpoint(product.key)
@@ -376,7 +376,14 @@ class IndexedPublicCycleSourceV1:
                     continue
                 event: OpsDecisionEventV1 | None = None
                 missingness = plan.missingness
-                if plan.action == M15OriginAccountingAction.ATTEMPT_TIMELY_EVENT:
+                if plan.action == M15OriginAccountingAction.ATTEMPT_TIMELY_EVENT and not allow_events:
+                    missingness = M15OpportunityMissingnessV1(
+                        product.key, plan.bar.close_at_ns, plan.origin_ref, plan.bar.content_hash,
+                        plan.bar.observation_index_ref, plan.bar.raw.received_at_ns,
+                        plan.bar.raw.available_at_ns, observed, plan.bar.close_at_ns + 5_000_000_000,
+                        "M15_SOURCE_HEALTH_NOT_CURRENT",
+                    )
+                elif plan.action == M15OriginAccountingAction.ATTEMPT_TIMELY_EVENT:
                     base = _public_bar_event(repository, product, plan.bar, now_ns=now_ns)
                     generated = (IndexedProductionEventInputsV1(clock_ns=self.clock_ns).resolve(repository, base)
                                  if base else None)
@@ -427,6 +434,7 @@ class IndexedPublicCycleSourceV1:
         *,
         now_ns: int,
         recovery: OpsRecoverySnapshotV1,
+        allow_events: bool = True,
     ) -> OpsCycleBatchV1:
         del recovery
         archive_root = Path(repository.path).parent / "ops-observations"
@@ -463,18 +471,26 @@ class IndexedPublicCycleSourceV1:
             )
             for source_id in sorted(source_ids)
         }
-        healthy = bool(health_states) and all(
-            state is not None and state.data_eligible and state.available_at_ns <= now_ns
-            for state in health_states.values()
-        )
+        healthy = bool(health_states)
+        for source_id, state in health_states.items():
+            history = [
+                item for item in collector.health.history(source_id)
+                if item.available_at_ns <= now_ns and item.observed_at_ns <= now_ns
+            ]
+            latest_observed = max((item.observed_at_ns for item in history), default=None)
+            if (state is None or latest_observed is None
+                    or any(not item.data_eligible for item in history
+                           if item.observed_at_ns == latest_observed)):
+                healthy = False
         if not healthy:
             # Durable events remain queued until this recovery epoch has exact
             # source-health reconciliation evidence for every required source.
             events.clear()
             refs.clear()
             seen_event_ids.clear()
-        m15_events = self._account_m15_origins(repository, collector, now_ns=now_ns)
-        if healthy:
+        events_allowed = allow_events and healthy
+        m15_events = self._account_m15_origins(repository, collector, now_ns=now_ns, allow_events=events_allowed)
+        if events_allowed:
             for event in m15_events:
                 if (event.event_id not in seen_event_ids
                         and repository.get_artifact(_ops_receipt_identity_ref(event.event_id)) is None):
@@ -579,6 +595,11 @@ class IndexedPublicCycleSourceV1:
                 if plan.action == S3M1OriginAccountingAction.CREATE_LATE_TEST_GATE:
                     _persist_late_s3_m1_origin_gate(
                         repository, product, bar, observed_at_ns=now_ns,
+                    )
+                elif plan.action == S3M1OriginAccountingAction.CREATE_TIMELY_EVENT and not events_allowed:
+                    _persist_late_s3_m1_origin_gate(
+                        repository, product, bar, observed_at_ns=now_ns,
+                        reason_code="NATIVE_M1_SOURCE_HEALTH_NOT_CURRENT",
                     )
                 elif plan.action == S3M1OriginAccountingAction.CREATE_TIMELY_EVENT:
                     native_event = _native_s3_m1_public_bar_event(
@@ -1538,6 +1559,7 @@ class ProductionOpsCyclePortV1:
                 IndexedPublicCycleSourceV1(clock_ns=self.clock_ns,
                     minimum_m15_origin_close_at_ns=self.minimum_m15_origin_close_at_ns).collect(
                     repository, self._collector_recovery.collector, now_ns=now_ns, recovery=recovery,
+                    allow_events=False,
                 )
                 self._record_late_public_events(
                     repository, eligible_at_ns=now_ns, completed_at_ns=snapshot.observed_at_ns,
