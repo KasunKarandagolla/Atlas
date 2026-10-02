@@ -51,7 +51,7 @@
   "capabilities": [
     {
       "capability": "Fresh Windows installer and bundled runtime",
-      "status": "UNVERIFIED",
+      "status": "IMPLEMENTED",
       "development_classification": null,
       "ordinary_engineering_blocker_ids": [
         "ENG-01"
@@ -59,7 +59,7 @@
     },
     {
       "capability": "First-run configuration and protected secrets",
-      "status": "UNVERIFIED",
+      "status": "IMPLEMENTED",
       "development_classification": null,
       "ordinary_engineering_blocker_ids": [
         "ENG-02"
@@ -67,7 +67,7 @@
     },
     {
       "capability": "Installed process and research-run lifecycle",
-      "status": "UNVERIFIED",
+      "status": "IMPLEMENTED",
       "development_classification": null,
       "ordinary_engineering_blocker_ids": [
         "ENG-03"
@@ -75,7 +75,7 @@
     },
     {
       "capability": "Exclusive ops writer",
-      "status": "UNVERIFIED",
+      "status": "IMPLEMENTED",
       "development_classification": null,
       "ordinary_engineering_blocker_ids": [
         "ENG-04"
@@ -83,7 +83,7 @@
     },
     {
       "capability": "M15 opportunity denominator",
-      "status": "UNVERIFIED",
+      "status": "IMPLEMENTED",
       "development_classification": null,
       "ordinary_engineering_blocker_ids": [
         "ENG-05"
@@ -91,7 +91,7 @@
     },
     {
       "capability": "Honest derived timing",
-      "status": "UNVERIFIED",
+      "status": "TEST GATE",
       "development_classification": null,
       "ordinary_engineering_blocker_ids": [
         "ENG-06"
@@ -195,8 +195,8 @@
         "requirements-lock.txt:2",
         "pyproject.toml"
       ],
-      "finding": "Existing spec packages observer/projection only; no installer or complete public runtime bundle. Existing dependency lock targets manylinux.",
-      "required": "Implement Windows wheel-only locks, complete bundle, per-user installer, manifests/signing and native validation harness."
+      "finding": "Windows bundle, wheel-only lock, per-user installer, payload manifest and validation harness are implemented; native Windows build/signature execution is unverified here.",
+      "required": "Run the exact workflow on Windows and verify installer, signature, clean install, upgrade and uninstall preservation."
     },
     {
       "id": "ENG-02",
@@ -205,8 +205,8 @@
         "src/atlas/desktop/app.py:319",
         "src/atlas/v2/agent_intelligence/broker.py:780"
       ],
-      "finding": "Desktop requires externally started projection port/token. Provider secrets are supplied through broker environment; no first-run protected secret surface exists.",
-      "required": "Add immutable non-secret run profiles, Windows protected secret backend and usable setup/run controls."
+      "finding": "Product setup, immutable run profiles and a DPAPI-backed secret surface are implemented; native DPAPI and provider conformance remain unverified.",
+      "required": "Verify native first-run and protected-secret behavior on Windows without exposing secrets to child arguments/logs."
     },
     {
       "id": "ENG-03",
@@ -215,8 +215,8 @@
         "src/atlas/v2/runtime/ops_supervisor.py",
         "src/atlas/v2/runtime/production.py"
       ],
-      "finding": "No installed launcher creates a run and starts public acquisition, writer, projection and optional broker together. Default production factory consumes indexed archives.",
-      "required": "Compose existing public factory under one deterministic launcher; preserve run identity, recovery epochs, stop/resume/export."
+      "finding": "The installed launcher, writer lifecycle, optional broker, stop/resume and report path are implemented and offline-smoke tested.",
+      "required": "Verify the complete lifecycle on native Windows and then observe long-run recovery behavior."
     },
     {
       "id": "ENG-04",
@@ -224,8 +224,8 @@
       "evidence": [
         "src/atlas/v2/memory/repository.py:216"
       ],
-      "finding": "Repository has a thread RLock but no process-level exclusive writer lock.",
-      "required": "Acquire a cross-platform OS lock before writable DB initialization; release on close and failed initialization; prove duplicate-writer exclusion."
+      "finding": "Cross-process writer locking and duplicate-writer tests are implemented.",
+      "required": "Retain the lock behavior in native installer smoke and restart tests."
     },
     {
       "id": "ENG-05",
@@ -233,8 +233,8 @@
       "evidence": [
         "src/atlas/v2/runtime/production.py:357"
       ],
-      "finding": "M15 source reconstructs history, takes bars[-1], and silently skips triggers older than five seconds. Native M1 durable origin accounting does not cover this path.",
-      "required": "Persist every relevant M15 origin or explicit missed/late missingness with stable revision identity and bounded restart-safe paging."
+      "finding": "Bounded M15 origin pages, exact revision identity, terminal missingness and restart-safe checkpoints are implemented and focused tested.",
+      "required": "Verify prospective denominator behavior during the live public run."
     },
     {
       "id": "ENG-06",
@@ -295,8 +295,8 @@
       "evidence": [
         "src/atlas/v2/runtime/production.py:2547"
       ],
-      "finding": "REST recovery requires trade_continuity_proven, permanently false for current source. Unsupported trade completeness can prevent independent bar-based sleeves recovering.",
-      "required": "Scope recovery to actual required capabilities; retain missing origins and keep S3 completeness fail-closed."
+      "finding": "Recovery now scopes confirmed bars, metadata and ticker independently from unsupported exact trade continuity, while preserving the Bybit trade gate.",
+      "required": "Verify source-health and continuity behavior against real public responses."
     },
     {
       "id": "ENG-12",
@@ -304,8 +304,8 @@
       "evidence": [
         "src/atlas/v2/data/s3_forward_evidence.py:233"
       ],
-      "finding": "Forward evidence is explicitly Bybit-specific and forbids completeness. No integrated generic completeness-capable source/repair interface was identified.",
-      "required": "Add the smallest typed completeness/coverage/repair boundary and exact lineage checks. Current Bybit remains NOT ESTIMABLE / TEST GATE."
+      "finding": "A provider-neutral typed completeness/coverage/repair port with fail-closed Bybit capability status is implemented.",
+      "required": "Qualify an exact completeness-capable source separately; current Bybit remains NOT ESTIMABLE / TEST GATE."
     },
     {
       "id": "ENG-13",
@@ -325,8 +325,8 @@
         "src/atlas/v2/models",
         "src/atlas/v2/runtime/production.py"
       ],
-      "finding": "Model Arena/provider ABI exists but scouts found no production composition caller. Exact sealed payload binding and bounded identity caches require review.",
-      "required": "Wire explicit registered research-only model configurations, persist exact input/model/config identities, fail closed with no fallback, bound retention."
+      "finding": "Registered typed research routing, bounded statistical shadow, exact request/terminal identities and no-fallback behavior are implemented and focused tested.",
+      "required": "Tune and compare variants during live research; native heavy-worker isolation remains separately unverified."
     },
     {
       "id": "ENG-15",
