@@ -825,10 +825,12 @@ def main() -> int:
         run = create_run(args.data_root, ResearchRunConfigV1())
         result = run_component(run, smoke=True)
         state = _read_json(run / "status.json")
+        report_failure = _read_json(run / "report-failure.json") if (run / "report-failure.json").exists() else None
         print(json.dumps({"status": "TESTED" if result == 0 else "TEST GATE",
                           "reason": state.get("reason"), "run_id": run.name,
                           "capital_enabled": False, "assisted_enabled": False,
-                          "live_qualification": "TEST GATE", "runtime_dependencies": dependencies}))
+                          "live_qualification": "TEST GATE", "runtime_dependencies": dependencies,
+                          "report_failure": report_failure}))
         return result
     if args.component in {"ops", "critic-broker"}:
         if args.run_root is None:
