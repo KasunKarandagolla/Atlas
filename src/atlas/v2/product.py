@@ -650,7 +650,9 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
         export_run(run)
     except Exception as exc:
         _publish(run / "report-failure.json", {"status": "TEST GATE", "reason": "REPORT_UNAVAILABLE",
-                                               "error_type": type(exc).__name__, "run_id": manifest["run_id"]})
+                                               "error_type": type(exc).__name__,
+                                               "error_detail": str(exc)[:256],
+                                               "run_id": manifest["run_id"]})
         result_code = 2
     return result_code
 
