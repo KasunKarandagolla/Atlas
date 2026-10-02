@@ -1,13 +1,13 @@
 # Windows deployment/build gate V1
 
 Status: **IMPLEMENTED / TESTED (CI)**. The self-contained Windows build and installer pipeline is implemented in `packaging/windows/`, `atlas-product.spec`, the pinned Windows lock, and `scripts/windows_*.py`.
-Native GitHub Windows execution: **TESTED** by workflow run `36992091277` against implementation SHA `2cb4efcb861117ac94e77d90d3c02b3dd79eae2f`. The run passed the PyInstaller build, payload/resource manifest, packaged offline smoke, Inno installer, install, reinstall/upgrade preservation and uninstall preservation checks.
+Native GitHub Windows Server 2025 execution: **TESTED** by workflow run `37013260805` against implementation SHA `e775946d3b57e32865da649ac64763383e4fdda7`. The run passed the PyInstaller build, payload/resource manifest, packaged offline report smoke, authenticated named-pipe/current-user ACL fixture, disposable DPAPI roundtrip/damaged-ciphertext rejection, Inno installer, install, reinstall/upgrade preservation and uninstall preservation checks.
 Actual clean owner Windows 11 execution remains **BLOCKED BY ENVIRONMENT** in this Linux workspace.
 No signed owner delivery is claimed: the signing certificate is not present. Unsigned CI output is diagnostic only.
 
 The Windows PyInstaller directory bundle contains the public research product, Qt/Arrow/DuckDB dependencies, versioned resources and the isolated optional critic broker entrypoint. The separate wheel-only lock is hash-pinned and excludes developer/test/secrets material. The accepted Linux lock remains unchanged.
 
-Required implementation:
+Implemented architecture:
 
 - Build on Windows from an exact source SHA, using Python 3.12 and separate hash-locked, wheel-only Windows runtime/build dependencies. Resolve the scope of the frozen Nautilus capital dependency explicitly; public research packaging must not accidentally import a disabled capital runtime.
 - Use an allowlisted PyInstaller directory bundle containing the real public ops runtime, projection, functional desktop, optional permitted broker and required versioned resources. Add a bundle-resource locator instead of source-tree parent assumptions.
@@ -26,4 +26,6 @@ Native validation harness requirements:
 5. Validate application-data paths, secret protection/ACLs, log exclusion, low-disk behavior, upgrade preservation and normal uninstall preservation.
 6. Verify installer signature and manifest. Native Windows success must be recorded against the exact artifact; Linux static inspection cannot mark it TESTED.
 
-Current evidence: portable manifest, wheel-lock, payload, resource, launcher and broker harness checks pass in Linux; native GitHub Windows CI run `36992091277` passed the packaged product and installer checks. Required owner-machine gates remain: clean Windows 11 first-run operation, native protected-secret operation, native broker pipe/ACL behavior, signed release verification and live-public qualification.
+Current evidence: portable manifest, wheel-lock, payload, resource, launcher and broker harness checks pass in Linux; native GitHub Windows CI run `37013260805` passed the packaged product and installer checks. Required owner-machine gates remain: clean Windows 11 first-run operation, complete real-provider/broker integration, cross-version upgrade, signed release verification and live-public qualification.
+
+Exact native CI artifact: `11229131008`, archive digest `sha256:e5a32eb52358d367737496fb294aee7f74259cad4055e5df7b8f70ca13c616c4`. The broker/DPAPI fixture uses synthetic disposable material, rejects wrong authentication and damaged ciphertext, and does not read an owner key or call a provider. The CI host is Windows Server 2025; it is not the owner Windows 11 laptop.

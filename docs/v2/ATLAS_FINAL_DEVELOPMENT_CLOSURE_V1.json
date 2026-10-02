@@ -11,68 +11,379 @@
     "branch": "impl/session-036-final-development-closure-windows-tune-ready",
     "candidate_s35_remote_sha": "702325b44ad487e699c60e682ad06031f4ecdb86",
     "preserved_s35_local_sha": "af78d7a",
-    "implementation_sha": "2cb4efcb861117ac94e77d90d3c02b3dd79eae2f",
-    "runtime_changes": true
+    "implementation_sha": "e775946d3b57e32865da649ac64763383e4fdda7",
+    "runtime_changes": true,
+    "worktree": "/home/kasun/Music/atlas-session-036"
   },
-  "execution_interruption": null,
+  "execution_interruption": {
+    "reason": "Execution environment reset removed the temporary worktree and running test processes. Pushed implementation was recovered from GitHub; uncommitted closure drafts were reconstructed.",
+    "affected_evidence": "Corrected comprehensive V2 attempt at 09e9710 had no retained final log; no pass is inferred.",
+    "recovery": "Persistent worktree and persistent validation directory; new comprehensive regression against e775946."
+  },
   "authority": [
-    {"file": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md", "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c", "hash_verified": true, "read_in_full": true},
-    {"file": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md", "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78", "hash_verified": true, "read_in_full": true},
-    {"file": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md", "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d", "hash_verified": true, "read_in_full": true}
+    {
+      "file": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+      "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "hash_verified": true,
+      "read_in_full": true
+    },
+    {
+      "file": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "hash_verified": true,
+      "read_in_full": true
+    },
+    {
+      "file": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "hash_verified": true,
+      "read_in_full": true
+    }
   ],
   "classification_rule": "Only genuinely post-development limitations receive an allowed classification. Unresolved ordinary engineering remains an explicit blocker and prevents readiness.",
-  "allowed_post_development_categories": ["CODE_COMPLETE", "LIVE_ENVIRONMENT_ONLY", "LIVE_SOURCE_CAPABILITY_ONLY", "INTELLIGENCE_TUNING_ONLY", "PIPELINE_RELIABILITY_OBSERVATION_ONLY", "PROSPECTIVE_ECONOMIC_EVIDENCE_ONLY", "AUTHENTICATED_CAPITAL_QUALIFICATION_ONLY", "FINAL_UI_UX_DESIGN_ONLY", "DEFERRED_BY_FREEZE", "REQUIRES_VERSIONED_AMENDMENT"],
+  "allowed_post_development_categories": [
+    "CODE_COMPLETE",
+    "LIVE_ENVIRONMENT_ONLY",
+    "LIVE_SOURCE_CAPABILITY_ONLY",
+    "INTELLIGENCE_TUNING_ONLY",
+    "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
+    "PROSPECTIVE_ECONOMIC_EVIDENCE_ONLY",
+    "AUTHENTICATED_CAPITAL_QUALIFICATION_ONLY",
+    "FINAL_UI_UX_DESIGN_ONLY",
+    "DEFERRED_BY_FREEZE",
+    "REQUIRES_VERSIONED_AMENDMENT"
+  ],
   "capabilities": [
-    {"capability": "Fresh Windows installer and bundled runtime", "status": "IMPLEMENTED", "development_classification": "LIVE_ENVIRONMENT_ONLY", "ordinary_engineering_blocker_ids": []},
-    {"capability": "First-run configuration and protected secrets", "status": "IMPLEMENTED", "development_classification": "LIVE_ENVIRONMENT_ONLY", "ordinary_engineering_blocker_ids": []},
-    {"capability": "Installed process and research-run lifecycle", "status": "IMPLEMENTED", "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY", "ordinary_engineering_blocker_ids": []},
-    {"capability": "Exclusive ops writer", "status": "TESTED", "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY", "ordinary_engineering_blocker_ids": []},
-    {"capability": "M15 opportunity denominator", "status": "TESTED", "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY", "ordinary_engineering_blocker_ids": []},
-    {"capability": "Honest derived timing", "status": "TEST GATE", "development_classification": null, "ordinary_engineering_blocker_ids": ["ENG-06"]},
-    {"capability": "Meaningful negative and missing decision states", "status": "IMPLEMENTED", "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY", "ordinary_engineering_blocker_ids": []},
-    {"capability": "Research risk/economic input publishers", "status": "UNVERIFIED", "development_classification": null, "ordinary_engineering_blocker_ids": ["ENG-08"]},
-    {"capability": "Analogue production integration", "status": "UNVERIFIED", "development_classification": null, "ordinary_engineering_blocker_ids": ["ENG-09"]},
-    {"capability": "Automatic outcome evidence production", "status": "UNVERIFIED", "development_classification": null, "ordinary_engineering_blocker_ids": ["ENG-10"]},
-    {"capability": "Capability-scoped source recovery", "status": "IMPLEMENTED", "development_classification": "LIVE_SOURCE_CAPABILITY_ONLY", "ordinary_engineering_blocker_ids": []},
-    {"capability": "Provider-neutral S3 completeness and repair port", "status": "IMPLEMENTED", "development_classification": "LIVE_SOURCE_CAPABILITY_ONLY", "ordinary_engineering_blocker_ids": []},
-    {"capability": "Windows intelligence and model isolation", "status": "UNVERIFIED", "development_classification": "DEFERRED_BY_FREEZE", "ordinary_engineering_blocker_ids": []},
-    {"capability": "Typed production research model routing", "status": "TESTED", "development_classification": "INTELLIGENCE_TUNING_ONLY", "ordinary_engineering_blocker_ids": []},
-    {"capability": "Bounded long-run resource behavior", "status": "UNVERIFIED", "development_classification": null, "ordinary_engineering_blocker_ids": ["ENG-15"]},
-    {"capability": "Compact automatic tuning exports and reports", "status": "IMPLEMENTED", "development_classification": null, "ordinary_engineering_blocker_ids": ["ENG-16"]},
-    {"capability": "Comprehensive validation gates", "status": "TESTED", "development_classification": null, "ordinary_engineering_blocker_ids": []}
+    {
+      "capability": "Fresh Windows installer and bundled runtime",
+      "status": "IMPLEMENTED",
+      "development_classification": "LIVE_ENVIRONMENT_ONLY",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "First-run configuration and protected secrets",
+      "status": "IMPLEMENTED",
+      "development_classification": "LIVE_ENVIRONMENT_ONLY",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "Installed process and research-run lifecycle",
+      "status": "IMPLEMENTED",
+      "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "Exclusive ops writer",
+      "status": "TESTED",
+      "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "M15 opportunity denominator",
+      "status": "TESTED",
+      "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "Honest derived timing",
+      "status": "UNVERIFIED",
+      "development_classification": null,
+      "ordinary_engineering_blocker_ids": [
+        "ENG-06"
+      ]
+    },
+    {
+      "capability": "Meaningful negative and missing decision states",
+      "status": "IMPLEMENTED",
+      "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "Research risk/economic input publishers",
+      "status": "UNVERIFIED",
+      "development_classification": null,
+      "ordinary_engineering_blocker_ids": [
+        "ENG-08"
+      ]
+    },
+    {
+      "capability": "Analogue production integration",
+      "status": "IMPLEMENTED",
+      "development_classification": "REQUIRES_VERSIONED_AMENDMENT",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "Automatic outcome evidence production",
+      "status": "UNVERIFIED",
+      "development_classification": null,
+      "ordinary_engineering_blocker_ids": [
+        "ENG-10"
+      ]
+    },
+    {
+      "capability": "Capability-scoped source recovery",
+      "status": "IMPLEMENTED",
+      "development_classification": "LIVE_SOURCE_CAPABILITY_ONLY",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "Provider-neutral S3 completeness and repair port",
+      "status": "IMPLEMENTED",
+      "development_classification": "LIVE_SOURCE_CAPABILITY_ONLY",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "Windows intelligence and model isolation",
+      "status": "UNVERIFIED",
+      "development_classification": "DEFERRED_BY_FREEZE",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "Typed production research model routing",
+      "status": "TESTED",
+      "development_classification": "INTELLIGENCE_TUNING_ONLY",
+      "ordinary_engineering_blocker_ids": []
+    },
+    {
+      "capability": "Bounded long-run resource behavior",
+      "status": "UNVERIFIED",
+      "development_classification": null,
+      "ordinary_engineering_blocker_ids": [
+        "ENG-15"
+      ]
+    },
+    {
+      "capability": "Compact automatic tuning exports and reports",
+      "status": "IMPLEMENTED",
+      "development_classification": null,
+      "ordinary_engineering_blocker_ids": [
+        "ENG-16"
+      ]
+    },
+    {
+      "capability": "Comprehensive validation gates",
+      "status": "UNVERIFIED",
+      "development_classification": null,
+      "ordinary_engineering_blocker_ids": []
+    }
   ],
   "ordinary_engineering_blockers": [
-    {"id": "ENG-06", "capability": "Honest derived timing", "evidence": ["src/atlas/v2/science/evaluation_service.py", "src/atlas/v2/runtime/production.py"], "finding": "Evaluation still backdates derived created/computed timestamps and the full production chronology is not represented as a causal stage graph.", "required": "Separate market cutoff from actual stage computation/publication times throughout composition and validators without changing frozen hashes."},
-    {"id": "ENG-08", "capability": "Research risk/economic input publishers", "evidence": ["src/atlas/v2/runtime/production.py"], "finding": "Fresh public composition lacks the complete versioned risk/account/fee/stress/venue-capability and event prerequisite publisher set.", "required": "Add explicit zero-authority research assumptions and supported publishers; retain unsupported capital/execution evidence as NOT ESTIMABLE."},
-    {"id": "ENG-09", "capability": "Analogue production integration", "evidence": ["src/atlas/v2/runtime/production.py", "src/atlas/v2/science/analogue.py"], "finding": "The production action path still emits the compatibility failure directly; the existing frozen analogue identity also makes historical support overly restrictive.", "required": "Connect compatible cutoff-matured retrieval and resolve the frozen identity defect through a reviewed versioned amendment."},
-    {"id": "ENG-10", "capability": "Automatic outcome evidence production", "evidence": ["src/atlas/v2/runtime/research_prediction_outcomes.py", "src/atlas/v2/science/outcome_resolution.py"], "finding": "Diagnostic prediction outcomes are connected, but the complete later-market action-bearing after-cost producer and denominator reconciliation are not complete.", "required": "Add bounded exact-decision-linked outcome production where source support exists and preserve unresolved cost/execution ambiguity."},
-    {"id": "ENG-15", "capability": "Bounded long-run resource behavior", "evidence": ["src/atlas/v2/data/history.py", "src/atlas/v2/agent_intelligence/broker.py"], "finding": "Some archive/history and broker/cache paths remain insufficiently bounded and observable for multi-day operation.", "required": "Bound retrieval, admission, caches and pressure behavior; expose disk/archive/SQLite/WAL/resource diagnostics."},
-    {"id": "ENG-16", "capability": "Compact automatic tuning exports and reports", "evidence": ["src/atlas/v2/science/tuning_export.py", "docs/v2/LIVE_TUNING_SCHEMA_V1.md"], "finding": "The compact exporter is implemented, but the installed report lifecycle still lacks the full denominator, calibration, regime, feature-stability and variant comparison projections required by the product brief.", "required": "Complete the report projections and periodic/final publication wiring against the same decision calendar."}
+    {
+      "id": "ENG-06",
+      "capability": "Honest derived timing",
+      "evidence": [
+        "src/atlas/v2/science/evaluation_service.py",
+        "src/atlas/v2/runtime/production.py"
+      ],
+      "finding": "M0, scenario and evaluation publication now sample the actual production clock. The full feature/candidate/sizing/action chronology still uses cutoff-time compatibility paths and is not closed end to end.",
+      "required": "Separate market cutoff from actual stage computation/publication times throughout composition and validators without changing frozen hashes.",
+      "code_references": [
+        "src/atlas/v2/runtime/production.py:2924",
+        "src/atlas/v2/science/m0.py:388",
+        "src/atlas/v2/science/m1.py:1001"
+      ]
+    },
+    {
+      "id": "ENG-08",
+      "capability": "Research risk/economic input publishers",
+      "evidence": [
+        "src/atlas/v2/runtime/production.py"
+      ],
+      "finding": "Fresh public composition lacks the complete versioned risk/account/fee/stress/venue-capability and event prerequisite publisher set.",
+      "required": "Add explicit zero-authority research assumptions and supported publishers; retain unsupported capital/execution evidence as NOT ESTIMABLE.",
+      "code_references": [
+        "src/atlas/v2/runtime/production.py:3629",
+        "src/atlas/v2/runtime/production.py:3766"
+      ]
+    },
+    {
+      "id": "ENG-10",
+      "capability": "Automatic outcome evidence production",
+      "evidence": [
+        "src/atlas/v2/runtime/research_prediction_outcomes.py",
+        "src/atlas/v2/science/outcome_resolution.py"
+      ],
+      "finding": "Diagnostic prediction outcomes are connected. The complete later-market action-bearing after-cost producer and expected-opportunity reconciliation are not complete.",
+      "required": "Add bounded exact-decision-linked outcome production where source support exists and preserve unresolved cost/execution ambiguity.",
+      "code_references": [
+        "src/atlas/v2/science/outcome_resolution.py:933",
+        "src/atlas/v2/runtime/research_prediction_outcomes.py"
+      ]
+    },
+    {
+      "id": "ENG-15",
+      "capability": "Bounded long-run resource behavior",
+      "evidence": [
+        "src/atlas/v2/data/history.py",
+        "src/atlas/v2/agent_intelligence/broker.py"
+      ],
+      "finding": "Broker signed-expiry replay/concurrency and physical archive allocation bounds are corrected. M0/M1 training and some indexed product/health/scanner/risk/history/recovery paths still materialize an unbounded population.",
+      "required": "Bound retrieval and computation with explicit overflow evidence; retain causal archives and expose pressure/resource diagnostics.",
+      "code_references": [
+        "src/atlas/v2/science/m0.py:495",
+        "src/atlas/v2/science/m1.py:266",
+        "src/atlas/v2/science/m1.py:1035",
+        "src/atlas/v2/runtime/production.py:4071"
+      ]
+    },
+    {
+      "id": "ENG-16",
+      "capability": "Compact automatic tuning exports and reports",
+      "evidence": [
+        "src/atlas/v2/science/tuning_export.py",
+        "docs/v2/LIVE_TUNING_SCHEMA_V1.md"
+      ],
+      "finding": "Reports now reconcile recorded origins, terminal stages and exact outcome coverage and summarize diagnostic prediction errors/interval coverage. Complete expected-origin, regime, feature-stability, M0/M1 disagreement, stage-latency and registered-variant comparison projections remain incomplete.",
+      "required": "Complete remaining projections against the same decision calendar; do not infer absent origins, labels or independent samples.",
+      "code_references": [
+        "src/atlas/v2/science/tuning_export.py",
+        "docs/v2/LIVE_TUNING_SCHEMA_V1.md"
+      ]
+    }
   ],
   "external_gates": [
-    {"capability": "Actual Windows installer execution on clean hardware", "development_classification": "LIVE_ENVIRONMENT_ONLY", "status": "BLOCKED BY ENVIRONMENT", "prerequisite_blockers": ["native Win11 clean install, upgrade/uninstall and signature verification"]},
-    {"capability": "Current Bybit exact S3 trade completeness", "development_classification": "LIVE_SOURCE_CAPABILITY_ONLY", "status": "NOT ESTIMABLE", "prerequisite_blockers": ["exact completeness-capable public source"]},
-    {"capability": "Provider/model/prompt calibration and usefulness", "development_classification": "INTELLIGENCE_TUNING_ONLY", "status": "UNVERIFIED", "prerequisite_blockers": ["prospective live research evidence"]},
-    {"capability": "Genuine uninterrupted live-public endurance and resources", "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY", "status": "TEST GATE", "prerequisite_blockers": ["48h+ native run"]},
-    {"capability": "Positive economic qualification", "development_classification": "PROSPECTIVE_ECONOMIC_EVIDENCE_ONLY", "status": "NOT ESTIMABLE", "minimum_weeks": 8, "minimum_matured_candidates": 200, "additional_requirements": ["regime coverage", "dependence-aware inference", "other frozen scientific requirements"]},
-    {"capability": "Optional authenticated capital/execution/protection", "development_classification": "AUTHENTICATED_CAPITAL_QUALIFICATION_ONLY", "status": "TEST GATE"},
-    {"capability": "Exact final visual and interaction design", "development_classification": "FINAL_UI_UX_DESIGN_ONLY", "status": "UNVERIFIED"},
-    {"capability": "S8 capital, cross-venue routing and other explicit frozen deferrals", "development_classification": "DEFERRED_BY_FREEZE", "status": "TEST GATE"}
+    {
+      "capability": "Historical analogue compatibility semantics",
+      "development_classification": "REQUIRES_VERSIONED_AMENDMENT",
+      "status": "NOT ESTIMABLE",
+      "proposal": "docs/v2/SESSION036_ANALOGUE_AMENDMENT_PROPOSAL_V1.md",
+      "prerequisite_blockers": [
+        "Independent review of relative compatibility; frozen hashes remain unchanged."
+      ]
+    },
+    {
+      "capability": "Actual Windows installer execution on clean hardware",
+      "development_classification": "LIVE_ENVIRONMENT_ONLY",
+      "status": "BLOCKED BY ENVIRONMENT",
+      "prerequisite_blockers": [
+        "native Win11 clean install, upgrade/uninstall and signature verification"
+      ]
+    },
+    {
+      "capability": "Current Bybit exact S3 trade completeness",
+      "development_classification": "LIVE_SOURCE_CAPABILITY_ONLY",
+      "status": "NOT ESTIMABLE",
+      "prerequisite_blockers": [
+        "exact completeness-capable public source"
+      ]
+    },
+    {
+      "capability": "Provider/model/prompt calibration and usefulness",
+      "development_classification": "INTELLIGENCE_TUNING_ONLY",
+      "status": "UNVERIFIED",
+      "prerequisite_blockers": [
+        "prospective live research evidence"
+      ]
+    },
+    {
+      "capability": "Genuine uninterrupted live-public endurance and resources",
+      "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
+      "status": "TEST GATE",
+      "prerequisite_blockers": [
+        "48h+ native run"
+      ]
+    },
+    {
+      "capability": "Positive economic qualification",
+      "development_classification": "PROSPECTIVE_ECONOMIC_EVIDENCE_ONLY",
+      "status": "NOT ESTIMABLE",
+      "minimum_weeks": 8,
+      "minimum_matured_candidates": 200,
+      "additional_requirements": [
+        "regime coverage",
+        "dependence-aware inference",
+        "other frozen scientific requirements"
+      ]
+    },
+    {
+      "capability": "Optional authenticated capital/execution/protection",
+      "development_classification": "AUTHENTICATED_CAPITAL_QUALIFICATION_ONLY",
+      "status": "TEST GATE"
+    },
+    {
+      "capability": "Exact final visual and interaction design",
+      "development_classification": "FINAL_UI_UX_DESIGN_ONLY",
+      "status": "UNVERIFIED"
+    },
+    {
+      "capability": "S8 capital, cross-venue routing and other explicit frozen deferrals",
+      "development_classification": "DEFERRED_BY_FREEZE",
+      "status": "TEST GATE"
+    }
   ],
-  "safety": {"capital_enabled": false, "assisted_enabled": false, "critic_authority": "ZERO", "holdout_accessed": false, "orders_submitted": 0, "authenticated_venue_calls": 0, "paid_provider_calls": 0, "two_day_live_test_started": false},
+  "safety": {
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "critic_authority": "ZERO",
+    "holdout_accessed": false,
+    "orders_submitted": 0,
+    "authenticated_venue_calls": 0,
+    "paid_provider_calls": 0,
+    "two_day_live_test_started": false
+  },
   "validation": {
-    "focused_runtime": "TESTED: product/M15/missingness 19; repository/M15/windows broker 51; combined core 44; model/export/analogue 41; session020/031/034 20; legacy session027 target passed",
-    "comprehensive_v2": "TESTED: 868 passed, 2 skipped",
+    "focused_runtime": "TESTED: follow-up chronology/broker/archive/analogue/export group 40; corrected production recovery/API cases 2; critic/runtime 51 with 1 skip; added critic pair cases 5; portable native harness/broker 36; earlier product/M15/missingness 19, repository/M15/windows broker 51, core 44, model/export/analogue 41, session020/031/034 20",
+    "comprehensive_v2": "UNVERIFIED: persistent-worktree regression running against e775946d3b57e32865da649ac64763383e4fdda7; prior revision passed 868 tests with 2 skips",
     "non_v2": "TESTED: 485 passed, 3 skipped",
     "contracts_golden": "TESTED: 3 passed",
-    "ruff": "TESTED on changed source",
-    "mypy": "TESTED on changed source groups",
+    "ruff": "TESTED: entire repository",
+    "mypy": "TESTED: 224 source files under repository configuration",
     "compileall": "TESTED on src",
     "dependency_check": "TESTED: pip check and portable Windows pipeline invariants",
-    "windows_build": "TESTED on native GitHub Windows runner: run 36992091277 passed PyInstaller build, payload/resource manifest, packaged offline smoke, Inno installer, install, upgrade/reinstall preservation and uninstall preservation for implementation SHA 2cb4efcb861117ac94e77d90d3c02b3dd79eae2f. Clean owner Windows 11 hardware, release signing and protected-secret/broker native qualification remain unverified.",
+    "windows_build": "TESTED on native GitHub Windows Server 2025: run 37013260805 for e775946d3b57e32865da649ac64763383e4fdda7. PyInstaller build, payload/resource manifest, packaged report smoke, authenticated named-pipe/current-user ACL fixture, disposable DPAPI roundtrip/damaged-ciphertext rejection, Inno installer, reinstall and uninstall preservation passed. Clean owner Windows 11 hardware, signed release and complete real-provider integration remain unverified.",
     "freeze_hashes": "Matched all three supplied authority identities",
     "dependency_locks": "Matched accepted core and agent lock hashes",
     "secret_scan": "TESTED: no secret values committed",
-    "documentation_checks": "TESTED: JSON parses and closure/handoff/build/schema documents reviewed"
-  }
+    "documentation_checks": "TESTED: JSON parses and closure/handoff/build/schema documents reviewed",
+    "corrected_regression_attempt": {
+      "source_sha": "360c96a8ed10340df6387ef90968fd26224f358e",
+      "result": "547 passed, 1 skipped, 47 setup errors before intentional interruption",
+      "finding": "Critic assumed one analogue ref; production retains result plus retrieval receipt.",
+      "fix_sha": "09e9710d443e5aa16317c18e07e9a6a8c9df451d",
+      "validation": "51 passed, 1 skipped; 5 added pair-validation cases passed separately"
+    },
+    "windows_ci": {
+      "status": "TESTED",
+      "workflow_run_id": 37013260805,
+      "source_sha": "e775946d3b57e32865da649ac64763383e4fdda7",
+      "platform": "GitHub Windows Server 2025",
+      "signed_release": false,
+      "artifact_id": 11229131008,
+      "artifact_archive_digest": "sha256:e5a32eb52358d367737496fb294aee7f74259cad4055e5df7b8f70ca13c616c4"
+    }
+  },
+  "context_sources_read": [
+    {
+      "file": "ATLAS_72_Hour_Consultation.pdf",
+      "authority": "CONSULTATION ONLY"
+    },
+    {
+      "file": "ATLAS_REVISED_ARCHITECTURE_AND_ADVERSARIAL_REVIEW.md",
+      "authority": "CONSULTATION ONLY"
+    },
+    {
+      "file": "ATLAS_V2_INTELLIGENCE_ADVERSARIAL_REVIEW_AND_ADDENDUM.md",
+      "authority": "CONSULTATION ONLY"
+    }
+  ],
+  "repository_sources_read": [
+    "docs/handoffs/session-009.md",
+    "docs/handoffs/session-025.md",
+    "docs/handoffs/session-027.md",
+    "docs/handoffs/session-030.md",
+    "docs/handoffs/session-031.md",
+    "docs/handoffs/session-032.md",
+    "docs/handoffs/session-033.md",
+    "docs/handoffs/session-034.md",
+    "remote S35 docs/handoffs/session-035.md",
+    "docs/v2/ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md",
+    "docs/v2/ATLAS_AGENT_ACTION_CRITIC_DEEPSEEK_V41_SHADOW_AMENDMENT_V1.md"
+  ],
+  "expected_sources_unavailable": [
+    "ground-level implementation architecture",
+    "ATLAS ASTRA context/optimized review",
+    "finalized retail proposal",
+    "V2 architecture review",
+    "V2 implementation specification"
+  ]
 }
