@@ -379,7 +379,7 @@ class IndexedPublicCycleSourceV1:
                 if plan.action == M15OriginAccountingAction.ATTEMPT_TIMELY_EVENT and not allow_events:
                     missingness = M15OpportunityMissingnessV1(
                         product.key, plan.bar.close_at_ns, plan.origin_ref, plan.bar.content_hash,
-                        plan.bar.observation_index_ref, plan.bar.raw.received_at_ns,
+                        plan.observation_index_ref, plan.bar.raw.received_at_ns,
                         plan.bar.raw.available_at_ns, observed, plan.bar.close_at_ns + 5_000_000_000,
                         "M15_SOURCE_HEALTH_NOT_CURRENT",
                     )
