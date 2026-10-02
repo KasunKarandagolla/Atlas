@@ -1,7 +1,8 @@
 # Windows deployment/build gate V1
 
-Status: **IMPLEMENTED / UNVERIFIED**. The self-contained Windows build and installer pipeline is implemented in `packaging/windows/`, `atlas-product.spec`, the pinned Windows lock, and `scripts/windows_*.py`.
-Actual native Windows artifact execution: **BLOCKED BY ENVIRONMENT** in this Linux workspace. The GitHub Windows workflow is prepared but has not yet produced an artifact in this session.
+Status: **IMPLEMENTED / TESTED (CI)**. The self-contained Windows build and installer pipeline is implemented in `packaging/windows/`, `atlas-product.spec`, the pinned Windows lock, and `scripts/windows_*.py`.
+Native GitHub Windows execution: **TESTED** by workflow run `36992091277` against implementation SHA `2cb4efcb861117ac94e77d90d3c02b3dd79eae2f`. The run passed the PyInstaller build, payload/resource manifest, packaged offline smoke, Inno installer, install, reinstall/upgrade preservation and uninstall preservation checks.
+Actual clean owner Windows 11 execution remains **BLOCKED BY ENVIRONMENT** in this Linux workspace.
 No signed owner delivery is claimed: the signing certificate is not present. Unsigned CI output is diagnostic only.
 
 The Windows PyInstaller directory bundle contains the public research product, Qt/Arrow/DuckDB dependencies, versioned resources and the isolated optional critic broker entrypoint. The separate wheel-only lock is hash-pinned and excludes developer/test/secrets material. The accepted Linux lock remains unchanged.
@@ -25,4 +26,4 @@ Native validation harness requirements:
 5. Validate application-data paths, secret protection/ACLs, log exclusion, low-disk behavior, upgrade preservation and normal uninstall preservation.
 6. Verify installer signature and manifest. Native Windows success must be recorded against the exact artifact; Linux static inspection cannot mark it TESTED.
 
-Current evidence: portable manifest, wheel-lock, payload, resource, launcher and broker harness checks pass in Linux. Required actual Windows gates remain: clean build, installer install/upgrade/uninstall, first-run smoke, native protected-secret operation, native broker pipe/ACL behavior, and signature verification.
+Current evidence: portable manifest, wheel-lock, payload, resource, launcher and broker harness checks pass in Linux; native GitHub Windows CI run `36992091277` passed the packaged product and installer checks. Required owner-machine gates remain: clean Windows 11 first-run operation, native protected-secret operation, native broker pipe/ACL behavior, signed release verification and live-public qualification.

@@ -11,7 +11,7 @@
     "branch": "impl/session-036-final-development-closure-windows-tune-ready",
     "candidate_s35_remote_sha": "702325b44ad487e699c60e682ad06031f4ecdb86",
     "preserved_s35_local_sha": "af78d7a",
-    "implementation_sha": "b9fc880",
+    "implementation_sha": "2cb4efcb861117ac94e77d90d3c02b3dd79eae2f",
     "runtime_changes": true
   },
   "execution_interruption": null,
@@ -39,7 +39,7 @@
     {"capability": "Typed production research model routing", "status": "TESTED", "development_classification": "INTELLIGENCE_TUNING_ONLY", "ordinary_engineering_blocker_ids": []},
     {"capability": "Bounded long-run resource behavior", "status": "UNVERIFIED", "development_classification": null, "ordinary_engineering_blocker_ids": ["ENG-15"]},
     {"capability": "Compact automatic tuning exports and reports", "status": "IMPLEMENTED", "development_classification": null, "ordinary_engineering_blocker_ids": ["ENG-16"]},
-    {"capability": "Complete composition/fault/quality audit and final validation", "status": "UNVERIFIED", "development_classification": null, "ordinary_engineering_blocker_ids": ["ENG-17"]}
+    {"capability": "Comprehensive validation gates", "status": "TESTED", "development_classification": null, "ordinary_engineering_blocker_ids": []}
   ],
   "ordinary_engineering_blockers": [
     {"id": "ENG-06", "capability": "Honest derived timing", "evidence": ["src/atlas/v2/science/evaluation_service.py", "src/atlas/v2/runtime/production.py"], "finding": "Evaluation still backdates derived created/computed timestamps and the full production chronology is not represented as a causal stage graph.", "required": "Separate market cutoff from actual stage computation/publication times throughout composition and validators without changing frozen hashes."},
@@ -47,8 +47,7 @@
     {"id": "ENG-09", "capability": "Analogue production integration", "evidence": ["src/atlas/v2/runtime/production.py", "src/atlas/v2/science/analogue.py"], "finding": "The production action path still emits the compatibility failure directly; the existing frozen analogue identity also makes historical support overly restrictive.", "required": "Connect compatible cutoff-matured retrieval and resolve the frozen identity defect through a reviewed versioned amendment."},
     {"id": "ENG-10", "capability": "Automatic outcome evidence production", "evidence": ["src/atlas/v2/runtime/research_prediction_outcomes.py", "src/atlas/v2/science/outcome_resolution.py"], "finding": "Diagnostic prediction outcomes are connected, but the complete later-market action-bearing after-cost producer and denominator reconciliation are not complete.", "required": "Add bounded exact-decision-linked outcome production where source support exists and preserve unresolved cost/execution ambiguity."},
     {"id": "ENG-15", "capability": "Bounded long-run resource behavior", "evidence": ["src/atlas/v2/data/history.py", "src/atlas/v2/agent_intelligence/broker.py"], "finding": "Some archive/history and broker/cache paths remain insufficiently bounded and observable for multi-day operation.", "required": "Bound retrieval, admission, caches and pressure behavior; expose disk/archive/SQLite/WAL/resource diagnostics."},
-    {"id": "ENG-16", "capability": "Compact automatic tuning exports and reports", "evidence": ["src/atlas/v2/science/tuning_export.py", "docs/v2/LIVE_TUNING_SCHEMA_V1.md"], "finding": "The compact exporter is implemented, but the installed report lifecycle still lacks the full denominator, calibration, regime, feature-stability and variant comparison projections required by the product brief.", "required": "Complete the report projections and periodic/final publication wiring against the same decision calendar."},
-    {"id": "ENG-17", "capability": "Complete composition/fault/quality audit and final validation", "evidence": ["tests/v2", "tests/contract/test_v1_golden_baseline.py"], "finding": "The final comprehensive V2, relevant non-V2, contract/golden, static, dependency, freeze and secret gates are still in progress for this branch.", "required": "Finish the gates, review the final diff, and resolve any failures before a readiness declaration."}
+    {"id": "ENG-16", "capability": "Compact automatic tuning exports and reports", "evidence": ["src/atlas/v2/science/tuning_export.py", "docs/v2/LIVE_TUNING_SCHEMA_V1.md"], "finding": "The compact exporter is implemented, but the installed report lifecycle still lacks the full denominator, calibration, regime, feature-stability and variant comparison projections required by the product brief.", "required": "Complete the report projections and periodic/final publication wiring against the same decision calendar."}
   ],
   "external_gates": [
     {"capability": "Actual Windows installer execution on clean hardware", "development_classification": "LIVE_ENVIRONMENT_ONLY", "status": "BLOCKED BY ENVIRONMENT", "prerequisite_blockers": ["native Win11 clean install, upgrade/uninstall and signature verification"]},
@@ -70,7 +69,7 @@
     "mypy": "TESTED on changed source groups",
     "compileall": "TESTED on src",
     "dependency_check": "TESTED: pip check and portable Windows pipeline invariants",
-    "windows_build": "IMPLEMENTED; native GitHub Windows runs reached PyInstaller and exposed/fixed packaging defects; latest run 36985899455 failed on dependency .agents metadata pruning and is pending rerun after 6744167",
+    "windows_build": "TESTED on native GitHub Windows runner: run 36992091277 passed PyInstaller build, payload/resource manifest, packaged offline smoke, Inno installer, install, upgrade/reinstall preservation and uninstall preservation for implementation SHA 2cb4efcb861117ac94e77d90d3c02b3dd79eae2f. Clean owner Windows 11 hardware, release signing and protected-secret/broker native qualification remain unverified.",
     "freeze_hashes": "Matched all three supplied authority identities",
     "dependency_locks": "Matched accepted core and agent lock hashes",
     "secret_scan": "TESTED: no secret values committed",
