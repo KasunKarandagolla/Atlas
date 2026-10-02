@@ -48,7 +48,7 @@ def runtime_modules(package):
                  if not any(part.lower() in {"tests", "test", "examples"} for part in name.split(".")))
 
 
-hidden = runtime_modules("atlas.v2") + ["atlas.desktop.app"]
+hidden = list(runtime_modules("atlas.v2")) + ["atlas.desktop.app"]
 hidden += runtime_modules("pydantic_ai") + runtime_modules("pydantic_graph")
 hidden += ["PySide6.QtCore", "PySide6.QtGui", "PySide6.QtWidgets", "pyarrow.parquet", "duckdb", "lightgbm"]
 a = Analysis(
