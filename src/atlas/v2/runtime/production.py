@@ -489,7 +489,7 @@ class IndexedPublicCycleSourceV1:
                 bars = reconstruct_causal_bars_from_archive(
                     repository, archive_root, key=product.key, interval=BarIntervalV2.M15,
                     information_cutoff_ns=now_ns, availability_class=AvailabilityClassV2.ACTUAL_SYSTEM,
-                    limit=100_000,
+                    limit=128,
                 )
                 if not bars:
                     continue
