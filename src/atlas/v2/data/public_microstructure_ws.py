@@ -366,7 +366,7 @@ async def capture_public_frames(*, venue: VenueV2, topics: tuple[str, ...],
     except ImportError as exc:  # pragma: no cover - exercised by installation gate
         raise RuntimeError("locked websockets public transport dependency is unavailable") from exc
     name = source_id or f"{venue.value}_PUBLIC_WS"
-    async with connect(url, open_timeout=10, ping_interval=20, ping_timeout=20,
+    async with connect(url, proxy=None, open_timeout=10, ping_interval=20, ping_timeout=20,
                        close_timeout=5, max_size=MAX_PUBLIC_FRAME_BYTES,
                        max_queue=PUBLIC_WS_RECEIVE_QUEUE_ITEMS) as socket:
         if venue == VenueV2.BYBIT:

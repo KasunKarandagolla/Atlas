@@ -1,0 +1,83 @@
+name: Windows product build and offline qualification
+
+on:
+  push:
+    branches:
+      - impl/session-036-final-development-closure-windows-tune-ready
+  workflow_dispatch:
+    inputs:
+      signed_release:
+        description: Produce owner release using protected Authenticode certificate
+        type: boolean
+        default: false
+      installer_version:
+        description: Four-component version for Windows installer
+        type: string
+        default: 2.0.36.0
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-product-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: 3.12.10
+          architecture: x64
+      - name: Create isolated wheel-only build environment
+        run: |
+          python -m venv "$env:RUNNER_TEMP\atlas-build-env"
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pip install --disable-pip-version-check --no-deps --only-binary=:all: --require-hashes -r requirements-windows-lock.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Hash-locked wheel installation failed' }
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Installed dependency graph invalid' }
+      - name: Install pinned Inno Setup compiler on build host
+        run: |
+          $installer = "$env:RUNNER_TEMP\innosetup-6.5.4.exe"
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-6_5_4/innosetup-6.5.4.exe' -OutFile $installer
+          $expected = 'fa73bf47a4da250d185d07561c2bfda387e5e20db77e4570004cf6a133cc10b1'
+          if ((Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Compiler installer hash mismatch' }
+          $destination = "$env:RUNNER_TEMP\inno-6.5.4"
+          $process = Start-Process $installer -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$destination" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Compiler installation failed' }
+      - name: Build, validate payload and exercise offline product
+        env:
+          ATLAS_SIGNING_PFX_BASE64: ${{ inputs.signed_release && secrets.ATLAS_SIGNING_PFX_BASE64 || '' }}
+          ATLAS_SIGNING_PASSWORD: ${{ inputs.signed_release && secrets.ATLAS_SIGNING_PASSWORD || '' }}
+          SIGNED_RELEASE: ${{ inputs.signed_release || false }}
+          INSTALLER_VERSION: ${{ inputs.installer_version || '2.0.36.0' }}
+        run: |
+          $arguments = @('scripts/windows_build.py', '--iscc', "$env:RUNNER_TEMP\inno-6.5.4\ISCC.exe", '--installer-version', $env:INSTALLER_VERSION)
+          if ($env:SIGNED_RELEASE -eq 'true') { $arguments += '--signed-release' }
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'Native product build failed' }
+      - name: Validate installer, reinstall and uninstall preservation
+        run: |
+          $manifest = Get-Content dist/windows-release-manifest.json | ConvertFrom-Json
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" scripts/windows_install_smoke.py --installer "dist/$($manifest.installer)" --output dist/windows-installer-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw 'Installer lifecycle validation failed' }
+      - name: Archive exact artifact and evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: atlas-windows-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            dist/ATLAS-*-win11-x64-setup.exe
+            dist/windows-*.json
+            dist/atlas-product/build-manifest.json
+            build/atlas-product/warn-atlas-product.txt

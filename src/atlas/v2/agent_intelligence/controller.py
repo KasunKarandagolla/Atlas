@@ -445,7 +445,7 @@ class ActionAssessmentController:
                     ("PROVIDER_REFUSAL" if provider_result.refusal else "PROVIDER_TRUNCATED"))
                 status = "REFUSED" if provider_result.refusal else (
                     "UNAVAILABLE" if reason in {"PROVIDER_TIMEOUT", "RATE_LIMITED", "PROVIDER_UNAVAILABLE",
-                        "BROKER_UNAVAILABLE", "PROVIDER_ERROR"} else "INVALID")
+                        "BROKER_UNAVAILABLE", "BROKER_SATURATED", "PROVIDER_ERROR"} else "INVALID")
                 receipt = ActionAssessmentValidationReceiptV1.create(request_hash=request.content_hash,
                     packet_ref=packet.packet_ref, packet_hash=packet.content_hash, action_hash=packet.action_hash,
                     provider_output_hash=provider_output_hash, status=status, reasons=(reason,), at_ns=received_at)
@@ -621,7 +621,7 @@ class ActionAssessmentController:
 
 
 def _critic_failure_code(value: Any) -> str:
-    allowed = {"BROKER_UNAVAILABLE", "PROVIDER_UNAVAILABLE", "PROVIDER_TIMEOUT", "RATE_LIMITED",
+    allowed = {"BROKER_UNAVAILABLE", "BROKER_SATURATED", "PROVIDER_UNAVAILABLE", "PROVIDER_TIMEOUT", "RATE_LIMITED",
         "PROVIDER_REFUSAL", "PROVIDER_TRUNCATED", "PROVIDER_ERROR", "PROVIDER_AUTHENTICATION_FAILED",
         "PROVIDER_REQUEST_REJECTED", "RETURNED_MODEL_ID_DRIFT", "RETURNED_MODEL_ID_MISSING",
         "AGENT_DEPENDENCY_UNAVAILABLE", "INPUT_TOKEN_BUDGET_EXCEEDED", "TOKEN_LIMIT_EXCEEDED",

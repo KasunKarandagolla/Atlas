@@ -20,6 +20,7 @@ from .._serialization import FrozenMap, canonical_json, json_value, nonblank, sh
 from ..contracts import OpportunityWatchV2, WatchStateV2
 from ..models.protocol import ModelManifestV2
 from .schema import OPS_SCHEMA_NAMESPACE, OPS_SCHEMA_VERSION, initialize, validate_read_only
+from .writer_lock import OpsWriterLock
 
 _ACTIVE_STATES = (
     WatchStateV2.DETECTED.value,
@@ -194,6 +195,8 @@ _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS: dict[tuple[str, tuple[str, ...]], str] 
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.native_m1_origin.origin_ref') END",
     ("OpsDecisionEventSourceV1", ("event", "event_id")):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event.event_id') END",
+    ("OpsDecisionEventSourceV1", ("trigger_record_id",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.trigger_record_id') END",
     ("OpsSupervisorReceiptIdentityV1", ("event_id",)):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_id') END",
     ("OpsPublicAcquisitionDeadlineGateV1", ("native_m1_origin_ref",)):
@@ -202,7 +205,66 @@ _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS: dict[tuple[str, tuple[str, ...]], str] 
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.reconciliation.source_id') END",
     ("S3NativeM1OriginAccountingCheckpointV1", ("instrument_key_json",)):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END",
+    ("M15OriginAccountingCheckpointV1", ("instrument_key_json",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END",
+    ("M15OriginAccountingRecordV1", ("m15_origin_ref",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.m15_origin_ref') END",
+    ("ResearchPredictionOutcomeCheckpointV1", ("checkpoint", "run_id")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.checkpoint.run_id') END",
+    ("ResearchPredictionOutcomeV1", ("prediction_outcome", "prediction_id")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.prediction_outcome.prediction_id') END",
 }
+
+
+def _archive_json_expression(name: str) -> str:
+    # Only internal, fixed field names are passed here; never caller SQL.
+    return f"CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.{name}') END"
+
+
+_ARCHIVE_QUERY_INDEXES = (
+    "CREATE INDEX IF NOT EXISTS source_health_state_lookup ON source_health "
+    "(source_id,status,observed_at_ns)",
+    "CREATE INDEX IF NOT EXISTS source_health_gap_lookup ON source_health "
+    "(source_id,observed_at_ns DESC) WHERE status<>'HEALTHY_CURRENT'",
+    "CREATE INDEX IF NOT EXISTS source_health_available_lookup ON source_health "
+    "(source_id,available_at_ns DESC,observed_at_ns DESC)",
+    "CREATE INDEX IF NOT EXISTS public_origin_window_lookup ON artifact_index ("
+    + ",".join(_archive_json_expression(name) for name in (
+        "instrument_key_json", "event_type", "availability_class"))
+    + ",available_at_ns," + _archive_json_expression("event_at_ns")
+    + ",artifact_ref) WHERE artifact_type='PublicObservationIndexV2'",
+    "CREATE INDEX IF NOT EXISTS m15_accounting_origin_lookup ON artifact_index ("
+    + _archive_json_expression("m15_origin_ref")
+    + ",available_at_ns,created_at_ns DESC,artifact_ref DESC) "
+    "WHERE artifact_type='M15OriginAccountingRecordV1'",
+    "CREATE INDEX IF NOT EXISTS m15_checkpoint_key_generation_lookup ON artifact_index ("
+    + _archive_json_expression("instrument_key_json")
+    + ",CAST(CASE WHEN json_valid(metadata_json) THEN "
+    "json_extract(metadata_json, '$.checkpoint.generation') END AS INTEGER) DESC,artifact_ref DESC) "
+    "WHERE artifact_type='M15OriginAccountingCheckpointV1'",
+    "CREATE INDEX IF NOT EXISTS research_prediction_checkpoint_run_lookup ON artifact_index ("
+    "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.checkpoint.run_id') END,"
+    "created_at_ns DESC,artifact_ref DESC,available_at_ns) "
+    "WHERE artifact_type='ResearchPredictionOutcomeCheckpointV1'",
+    "CREATE INDEX IF NOT EXISTS research_prediction_outcome_identity_lookup ON artifact_index ("
+    "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, "
+    "'$.prediction_outcome.prediction_id') END,created_at_ns DESC,artifact_ref DESC,available_at_ns) "
+    "WHERE artifact_type='ResearchPredictionOutcomeV1'",
+    "CREATE INDEX IF NOT EXISTS decision_event_trigger_record_lookup ON artifact_index ("
+    + _archive_json_expression("trigger_record_id")
+    + ",available_at_ns,created_at_ns DESC,artifact_ref DESC) "
+    "WHERE artifact_type='OpsDecisionEventSourceV1'",
+    "CREATE INDEX IF NOT EXISTS public_archive_history_lookup ON artifact_index ("
+    + ",".join(_archive_json_expression(name) for name in (
+        "instrument_key_json", "instrument_revision", "event_type", "availability_class", "event_at_ns"))
+    + ",available_at_ns,artifact_ref) WHERE artifact_type='PublicObservationIndexV2'",
+    "CREATE INDEX IF NOT EXISTS public_archive_receipt_lookup ON artifact_index ("
+    + _archive_json_expression("instrument_revision")
+    + ",available_at_ns DESC,artifact_ref DESC) WHERE artifact_type='PublicObservationIndexV2'",
+    "CREATE INDEX IF NOT EXISTS l2_archive_restart_lookup ON artifact_index ("
+    + ",".join(_archive_json_expression(name) for name in ("instrument_hash", "source_id", "channel"))
+    + ",available_at_ns DESC,artifact_ref DESC) WHERE artifact_type='L2FrameArchiveCheckpointV2'",
+)
 
 
 @dataclass(frozen=True)
@@ -223,6 +285,21 @@ class OpsRepository:
         self.path = raw_path
         self.read_only = read_only
         self._lock = threading.RLock()
+        self._writer_lease = None if read_only or raw_path == ":memory:" else OpsWriterLock(raw_path)
+        if self._writer_lease is not None:
+            self._writer_lease.acquire()
+        try:
+            self._open_connection()
+        except BaseException:
+            connection = getattr(self, "_connection", None)
+            if connection is not None:
+                connection.close()
+            if self._writer_lease is not None:
+                self._writer_lease.close()
+            raise
+
+    def _open_connection(self) -> None:
+        read_only = self.read_only
         if read_only:
             if self.path == ":memory:":
                 raise ValueError("read-only atlas-ops access requires an existing local database file")
@@ -250,6 +327,11 @@ class OpsRepository:
             raise RuntimeError("atlas-ops SQLite synchronous=FULL is unavailable")
         try:
             validate_read_only(self._connection) if read_only else initialize(self._connection)
+            if not read_only:
+                # These are rebuildable access indexes over accepted artifact
+                # rows, not new evidence tables or a new schema authority.
+                for statement in _ARCHIVE_QUERY_INDEXES:
+                    self._connection.execute(statement)
         except BaseException:
             self._connection.close()
             raise
@@ -284,7 +366,28 @@ class OpsRepository:
 
     def close(self) -> None:
         with self._lock:
-            self._connection.close()
+            try:
+                self._connection.close()
+            finally:
+                if self._writer_lease is not None:
+                    self._writer_lease.close()
+
+    def checkpoint(self) -> tuple[int, int, int]:
+        """Attempt passive WAL maintenance without waiting for active readers.
+
+        Return SQLite's busy flag, WAL frame count and checkpointed frame count.
+        Call only at a writer cycle boundary; incomplete checkpoints are health
+        observations, never a reason to discard evidence or interrupt readers.
+        """
+        if self.read_only:
+            raise RuntimeError("read-only atlas-ops repository cannot checkpoint WAL")
+        with self._lock:
+            if self._connection.in_transaction:
+                raise RuntimeError("cannot checkpoint WAL inside an active transaction")
+            row = self._connection.execute("PRAGMA wal_checkpoint(PASSIVE)").fetchone()
+            if row is None or len(row) != 3:
+                raise RuntimeError("SQLite returned an invalid WAL checkpoint result")
+            return int(row[0]), int(row[1]), int(row[2])
 
     def __enter__(self) -> OpsRepository:
         return self
@@ -648,6 +751,47 @@ class OpsRepository:
             ).fetchall()
         return tuple(row[0] for row in rows)
 
+    def source_had_unhealthy_after_healthy(self, source_id: str) -> bool:
+        """Read the sticky recovery requirement without loading health history.
+
+        A later healthy observation cannot erase a prior gap. The earliest
+        healthy point and latest non-healthy point are sufficient to test the
+        chronological invariant. Availability never rescues earlier health.
+        """
+        nonblank(source_id, field="source_id")
+        with self._lock:
+            first = self._connection.execute(
+                "SELECT observed_at_ns FROM source_health WHERE source_id=? "
+                "AND status='HEALTHY_CURRENT' ORDER BY observed_at_ns LIMIT 1",
+                (source_id,),
+            ).fetchone()
+            if first is None:
+                return False
+            last = self._connection.execute(
+                "SELECT observed_at_ns FROM source_health WHERE source_id=? "
+                "AND status<>'HEALTHY_CURRENT' ORDER BY observed_at_ns DESC LIMIT 1",
+                (source_id,),
+            ).fetchone()
+        return last is not None and int(last[0]) > int(first[0])
+
+    def latest_source_health_at(self, source_id: str, *, as_of_ns: int) -> SourceHealthV2 | None:
+        """Return the latest exact source health available at a causal cutoff."""
+        nonblank(source_id, field="source_id")
+        cutoff = timestamp(as_of_ns, field="as_of_ns")
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT payload_json,payload_hash FROM source_health WHERE source_id=? "
+                "AND available_at_ns<=? AND observed_at_ns<=? "
+                "ORDER BY available_at_ns DESC,observed_at_ns DESC LIMIT 1",
+                (source_id, cutoff, cutoff),
+            ).fetchone()
+        if row is None:
+            return None
+        payload = json.loads(row["payload_json"])
+        if sha256_json(payload) != row["payload_hash"]:
+            raise RuntimeError("stored source health hash mismatch")
+        return SourceHealthV2(**payload)
+
     def register_model_manifest(self, manifest: ModelManifestV2) -> str:
         manifest_hash = manifest.manifest_hash
         manifest_json = manifest.to_canonical_json()
@@ -819,6 +963,124 @@ class OpsRepository:
             for row in rows
         )
 
+    def public_archive_history_entries(
+        self,
+        *,
+        instrument_revision: str,
+        event_types: tuple[str, ...],
+        information_cutoff_ns: int,
+        limit: int,
+        instrument_key_json: str | None = None,
+        availability_class: str | None = None,
+    ) -> tuple[ArtifactIndexEntryV2, ...]:
+        """Select bounded source locators before opening any raw archive file.
+
+        Bar queries include every cutoff-visible revision of the most recent
+        ``limit`` source close origins. Receipt queries select the most recent
+        exact observations by availability and record identity. A fixed result
+        budget fails explicitly rather than truncating revisions silently.
+        """
+        sha256_ref(instrument_revision, field="instrument_revision")
+        cutoff = timestamp(information_cutoff_ns, field="information_cutoff_ns")
+        kinds = tuple(sorted(set(event_types)))
+        if not kinds or any(not isinstance(kind, str) or not kind.strip() for kind in kinds):
+            raise ValueError("archive source lookup requires event types")
+        if type(limit) is not int or not 1 <= limit <= 100_000:
+            raise ValueError("archive source lookup limit exceeds its bound")
+        clauses = ["artifact_type='PublicObservationIndexV2'",
+                   _archive_json_expression("instrument_revision") + "=?",
+                   _archive_json_expression("event_type") + " IN (" + ",".join("?" for _ in kinds) + ")"]
+        params: list[Any] = [instrument_revision, *kinds]
+        if instrument_key_json is not None:
+            nonblank(instrument_key_json, field="instrument_key_json")
+            clauses.append(_archive_json_expression("instrument_key_json") + "=?")
+            params.append(instrument_key_json)
+        if availability_class is not None:
+            if availability_class not in {"ACTUAL_SYSTEM", "RECONSTRUCTED_MARKET"}:
+                raise ValueError("archive source lookup availability view is invalid")
+            clauses.append(_archive_json_expression("availability_class") + "=?")
+            params.append(availability_class)
+        effective = ("available_at_ns" if availability_class != "RECONSTRUCTED_MARKET"
+                     else _archive_json_expression("replay_available_at_ns"))
+        clauses.append(effective + "<=?")
+        params.append(cutoff)
+        if instrument_key_json is None or not all(kind.startswith("BAR_") for kind in kinds):
+            query = ("SELECT * FROM artifact_index WHERE " + " AND ".join(clauses)
+                     + " ORDER BY available_at_ns DESC," + _archive_json_expression("record_id")
+                     + " DESC LIMIT ?")
+            params.append(limit)
+        else:
+            close = _archive_json_expression("event_at_ns")
+            clauses.append(_archive_json_expression("bar_content_hash") + " IS NOT NULL")
+            clauses.append("json_type(CASE WHEN json_valid(metadata_json) THEN metadata_json ELSE '{}' END,"
+                           "'$.event_at_ns')='integer'")
+            query = ("WITH eligible AS (SELECT * FROM artifact_index WHERE " + " AND ".join(clauses)
+                     + "), origins AS (SELECT " + close + " AS close_at_ns FROM eligible GROUP BY "
+                     + close + " ORDER BY close_at_ns DESC LIMIT ?) SELECT * FROM eligible WHERE "
+                     + close + " IN (SELECT close_at_ns FROM origins) ORDER BY " + close + " DESC,"
+                     + effective + " DESC," + _archive_json_expression("record_id") + " DESC LIMIT 100001")
+            params.append(limit)
+        with self._lock:
+            rows = self._connection.execute(query, tuple(params)).fetchall()
+        if len(rows) > 100_000:
+            raise ValueError("archive source lookup exceeded its revision-row bound (100000)")
+        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+
+    def confirmed_bar_observation_entries(
+        self, instrument_key: InstrumentKeyV2, *, event_type: str,
+        close_at_ns: int, as_of_ns: int, limit: int = 128,
+    ) -> tuple[ArtifactIndexEntryV2, ...]:
+        """All bounded exact-close actual source revisions, earliest receipt first.
+
+        Finality is verified from archived typed bar bytes by the reconstructor.
+        Overflow fails explicitly; a latest-history window cannot hide a target.
+        """
+        from ..instruments import InstrumentKeyV2
+
+        if not isinstance(instrument_key, InstrumentKeyV2):
+            raise ValueError("exact bar lookup requires full InstrumentKeyV2")
+        intervals = {"BAR_1M": 60_000_000_000, "BAR_15M": 900_000_000_000}
+        if event_type not in intervals:
+            raise ValueError("exact bar lookup only supports M1 and M15 sources")
+        close = timestamp(close_at_ns, field="close_at_ns")
+        cutoff = timestamp(as_of_ns, field="as_of_ns")
+        if close % intervals[event_type]:
+            raise ValueError("exact bar close must align to its interval")
+        if type(limit) is not int or not 1 <= limit <= 128:
+            raise ValueError("exact bar source revision bound must be between 1 and 128")
+        query = ("SELECT * FROM artifact_index WHERE artifact_type='PublicObservationIndexV2' "
+                 "AND " + _archive_json_expression("instrument_key_json") + "=? AND "
+                 + _archive_json_expression("instrument_revision") + "=? AND "
+                 + _archive_json_expression("event_type") + "=? AND "
+                 + _archive_json_expression("availability_class") + "='ACTUAL_SYSTEM' AND "
+                 + _archive_json_expression("event_at_ns") + "=? AND "
+                 + _archive_json_expression("bar_content_hash") + " IS NOT NULL "
+                 "AND available_at_ns<=? ORDER BY available_at_ns,"
+                 + _archive_json_expression("record_id") + ",artifact_ref LIMIT ?")
+        with self._lock:
+            rows = self._connection.execute(query, (instrument_key.to_canonical_json(),
+                instrument_key.contract_revision, event_type, close, cutoff, limit + 1)).fetchall()
+        if len(rows) > limit:
+            raise ValueError("exact bar source revision lookup exceeded its explicit bound")
+        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+
+    def l2_archive_restart_checkpoints(self, *, limit: int = 1_024) -> tuple[ArtifactIndexEntryV2, ...]:
+        """Return one latest checkpoint per stream without loading frame history."""
+        if type(limit) is not int or not 1 <= limit <= 10_000:
+            raise ValueError("L2 restart stream limit exceeds its bound")
+        fields = tuple(_archive_json_expression(name) for name in ("instrument_hash", "source_id", "channel"))
+        partition = ",".join(fields)
+        query = ("WITH ranked AS (SELECT artifact_ref,ROW_NUMBER() OVER (PARTITION BY " + partition
+                 + " ORDER BY available_at_ns DESC,artifact_ref DESC) AS stream_rank FROM artifact_index "
+                 "WHERE artifact_type='L2FrameArchiveCheckpointV2') SELECT a.* FROM ranked r "
+                 "JOIN artifact_index a ON a.artifact_ref=r.artifact_ref WHERE r.stream_rank=1 "
+                 "ORDER BY a.artifact_ref LIMIT ?")
+        with self._lock:
+            rows = self._connection.execute(query, (limit + 1,)).fetchall()
+        if len(rows) > limit:
+            raise ValueError("L2 restart exceeded its distinct-stream bound")
+        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+
     def artifact_entries_by_types(
         self,
         artifact_types: tuple[str, ...],
@@ -903,15 +1165,39 @@ class OpsRepository:
         return ArtifactIndexPageV2(tuple(entries), next_cursor, invalid, raw_keys)
 
     def native_m1_origin_observation_page(
+        self, instrument_key: InstrumentKeyV2, *, available_from_ns: int,
+        available_through_ns: int, after_close_at_ns: int | None = None, limit: int = 4,
+    ) -> NativeM1OriginObservationPageV1:
+        """Compatibility port for exact native M1 source origins."""
+        return self.native_bar_origin_observation_page(
+            instrument_key, event_type="BAR_1M", available_from_ns=available_from_ns,
+            available_through_ns=available_through_ns, after_close_at_ns=after_close_at_ns, limit=limit,
+        )
+
+    def m15_origin_observation_page(
+        self, instrument_key: InstrumentKeyV2, *, available_from_ns: int,
+        available_through_ns: int, after_close_at_ns: int | None = None, limit: int = 4,
+        min_close_at_ns: int = 0,
+    ) -> NativeM1OriginObservationPageV1:
+        """Exact native M15 origin page; late older bars remain discoverable."""
+        return self.native_bar_origin_observation_page(
+            instrument_key, event_type="BAR_15M", available_from_ns=available_from_ns,
+            available_through_ns=available_through_ns, after_close_at_ns=after_close_at_ns, limit=limit,
+            min_close_at_ns=min_close_at_ns,
+        )
+
+    def native_bar_origin_observation_page(
         self,
         instrument_key: InstrumentKeyV2,
         *,
+        event_type: str,
         available_from_ns: int,
         available_through_ns: int,
         after_close_at_ns: int | None = None,
         limit: int = 4,
+        min_close_at_ns: int = 0,
     ) -> NativeM1OriginObservationPageV1:
-        """Read a bounded oldest-close-first page of new exact native M1 bars.
+        """Read a bounded oldest-close-first page of exact native M1 or M15 bars.
 
         The inclusive availability bounds define one frozen source discovery
         window. A one-timestamp overlap makes same-clock source-index writes
@@ -923,9 +1209,9 @@ class OpsRepository:
         discovered without rescanning already completed source history.
 
         Only controller-indexed public observations with a non-null bar ref,
-        full exact instrument identity, BAR_1M, and ACTUAL_SYSTEM availability
-        are returned. `event_at_ns` is the canonical source M1 close for the
-        native Bybit kline translator. Duplicate revisions at one close
+        full exact instrument identity, the declared bar interval, and
+        ACTUAL_SYSTEM availability are returned. `event_at_ns` is the canonical
+        source close. Duplicate revisions at one close
         collapse to the earliest available indexed observation.
         """
         # Local import avoids making the memory package depend on runtime code.
@@ -933,18 +1219,23 @@ class OpsRepository:
         from ..instruments import InstrumentKeyV2
 
         if not isinstance(instrument_key, InstrumentKeyV2):
-            raise ValueError("native M1 source paging requires a full InstrumentKeyV2")
+            raise ValueError("native bar source paging requires a full InstrumentKeyV2")
         available_from = timestamp(available_from_ns, field="available_from_ns")
         available_through = timestamp(available_through_ns, field="available_through_ns")
+        min_close = timestamp(min_close_at_ns, field="min_close_at_ns")
         if available_from > available_through:
-            raise ValueError("native M1 source availability window is reversed")
+            raise ValueError("native bar source availability window is reversed")
         if type(limit) is not int or not 1 <= limit <= 2_000:
-            raise ValueError("native M1 source page limit must be between 1 and 2000")
+            raise ValueError("native bar source page limit must be between 1 and 2000")
         if after_close_at_ns is not None:
             timestamp(after_close_at_ns, field="after_close_at_ns")
-            if after_close_at_ns % 60_000_000_000:
-                raise ValueError("native M1 close cursor must align to a UTC minute")
 
+        intervals = {"BAR_1M": 60_000_000_000, "BAR_15M": 900_000_000_000}
+        if event_type not in intervals:
+            raise ValueError("native origin paging only supports M1 and M15 bars")
+        duration_ns = intervals[event_type]
+        if after_close_at_ns is not None and after_close_at_ns % duration_ns:
+            raise ValueError("native close cursor must align to its source interval")
         key_json = instrument_key.to_canonical_json()
         close_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_at_ns') END"
         key_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END"
@@ -956,10 +1247,11 @@ class OpsRepository:
         close_filter = f" AND {close_expr}>?" if after_close_at_ns is not None else ""
         params: tuple[Any, ...] = (
             key_json,
-            "BAR_1M",
+            event_type,
             AvailabilityClassV2.ACTUAL_SYSTEM.value,
             available_from,
             available_through,
+            min_close,
             *((after_close_at_ns,) if after_close_at_ns is not None else ()),
             limit + 1,
             limit + 1,
@@ -979,8 +1271,9 @@ class OpsRepository:
                         CASE WHEN json_valid(metadata_json) THEN metadata_json ELSE '{{}}' END,
                         '$.event_at_ns'
                   )='integer'
-                  AND (CAST({close_expr} AS INTEGER) % 60000000000)=0
+                  AND (CAST({close_expr} AS INTEGER) % {duration_ns})=0
                   AND available_at_ns>=? AND available_at_ns<=?
+                  AND CAST({close_expr} AS INTEGER)>=?
                   {close_filter}
             ), first_revision AS (
                 SELECT close_at_ns, MIN(available_at_ns) AS first_available_at_ns
@@ -1018,17 +1311,17 @@ class OpsRepository:
             close_at_ns = metadata.get("event_at_ns")
             if (entry.artifact_type != "PublicObservationIndexV2"
                     or metadata.get("instrument_key_json") != key_json
-                    or metadata.get("event_type") != "BAR_1M"
+                    or metadata.get("event_type") != event_type
                     or metadata.get("availability_class") != AvailabilityClassV2.ACTUAL_SYSTEM.value
-                    or type(close_at_ns) is not int or close_at_ns % 60_000_000_000
+                    or type(close_at_ns) is not int or close_at_ns % duration_ns
                     or metadata.get("bar_content_hash") is None
                     or not available_from <= entry.available_at_ns <= available_through):
-                raise ValueError("native M1 source page contains conflicting indexed metadata")
+                raise ValueError("native bar source page contains conflicting indexed metadata")
             sha256_ref(str(metadata["bar_content_hash"]), field="bar_content_hash")
             entries.append(entry)
         close_values = [int(entry.metadata["event_at_ns"]) for entry in entries]
         if close_values != sorted(set(close_values)):
-            raise ValueError("native M1 source page is not unique and oldest-close-first")
+            raise ValueError("native bar source page is not unique and oldest-close-first")
         return NativeM1OriginObservationPageV1(
             tuple(entries), has_more, close_values[-1] if close_values else None,
         )
@@ -1141,6 +1434,43 @@ class OpsRepository:
             if (not isinstance(top, Mapping) or not isinstance(next_body, Mapping)
                     or top.get("generation") == next_body.get("generation")):
                 raise ValueError("native M1 checkpoint generation has conflicting durable rows")
+        return entries[0]
+
+    def latest_m15_origin_accounting_checkpoint(
+        self, instrument_key: InstrumentKeyV2,
+    ) -> ArtifactIndexEntryV2 | None:
+        """Read the newest exact-revision M15 checkpoint with a bounded indexed query."""
+        from ..instruments import InstrumentKeyV2
+        from ..science.m15_origin_accounting import M15OriginAccountingCheckpointV1
+
+        if not isinstance(instrument_key, InstrumentKeyV2):
+            raise ValueError("M15 checkpoint lookup requires full InstrumentKeyV2")
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM artifact_index WHERE artifact_type='M15OriginAccountingCheckpointV1' "
+                "AND CASE WHEN json_valid(metadata_json) THEN "
+                "json_extract(metadata_json, '$.instrument_key_json') END=? "
+                "ORDER BY CAST(CASE WHEN json_valid(metadata_json) THEN "
+                "json_extract(metadata_json, '$.checkpoint.generation') END AS INTEGER) DESC,"
+                "artifact_ref DESC LIMIT 2",
+                (instrument_key.to_canonical_json(),),
+            ).fetchall()
+        if not rows:
+            return None
+        entries = tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        records: list[M15OriginAccountingCheckpointV1] = []
+        for entry in entries:
+            body = entry.metadata.get("checkpoint")
+            if not isinstance(body, Mapping):
+                raise ValueError("M15 checkpoint requires a typed durable payload")
+            record = M15OriginAccountingCheckpointV1.from_dict(body)
+            if (record.instrument_key != instrument_key or entry.artifact_ref != record.content_hash
+                    or entry.content_hash != record.content_hash
+                    or entry.available_at_ns != record.observed_at_ns):
+                raise ValueError("M15 checkpoint identity conflicts with its durable index")
+            records.append(record)
+        if len(records) > 1 and records[0].generation == records[1].generation:
+            raise ValueError("M15 checkpoint generation has conflicting durable rows")
         return entries[0]
 
     def artifact_entries_by_metadata_identity(

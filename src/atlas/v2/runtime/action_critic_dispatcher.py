@@ -197,8 +197,8 @@ class ActionAssessmentShadowDispatcher:
                     result = _sanitize_result(self._io_port.execute(work))
                 except TimeoutError:
                     result = _failure_result("PROVIDER_TIMEOUT")
-                except Exception:
-                    result = _failure_result("BROKER_UNAVAILABLE")
+                except Exception as exc:
+                    result = _failure_result(getattr(exc, "code", "BROKER_UNAVAILABLE"))
             received_at_ns = max(started_at_ns, self._now_ns())
             completion = ActionAssessmentDispatchCompletionV1(
                 work.identity, result, started_at_ns, received_at_ns)
@@ -211,7 +211,7 @@ class ActionAssessmentShadowDispatcher:
 
 
 _SAFE_FAILURES = frozenset({
-    "BROKER_UNAVAILABLE", "PROVIDER_UNAVAILABLE", "PROVIDER_TIMEOUT", "RATE_LIMITED",
+    "BROKER_UNAVAILABLE", "BROKER_SATURATED", "PROVIDER_UNAVAILABLE", "PROVIDER_TIMEOUT", "RATE_LIMITED",
     "PROVIDER_REFUSAL", "PROVIDER_TRUNCATED", "PROVIDER_ERROR", "PROVIDER_AUTHENTICATION_FAILED",
     "PROVIDER_REQUEST_REJECTED", "RETURNED_MODEL_ID_DRIFT", "RETURNED_MODEL_ID_MISSING",
     "AGENT_DEPENDENCY_UNAVAILABLE", "INPUT_TOKEN_BUDGET_EXCEEDED", "TOKEN_LIMIT_EXCEEDED",

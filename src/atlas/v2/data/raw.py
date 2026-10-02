@@ -206,9 +206,16 @@ class AppendResultV2:
 
 
 class RawObservationStoreV2:
-    """Idempotent append index; conflicting identities remain explicitly quarantined."""
+    """In-memory append index; bounded mode requires durable caller deduplication.
 
-    def __init__(self) -> None:
+    The production collector checks its accepted repository index before this
+    cache. Eviction never deletes that index or its immutable archive bytes.
+    """
+
+    def __init__(self, *, max_records: int | None = None) -> None:
+        if max_records is not None and (type(max_records) is not int or max_records < 1):
+            raise ValueError("raw observation cache bound must be positive")
+        self.max_records = max_records
         self._records: dict[str, RawObservationV2] = {}
         self._quarantine: list[tuple[RawObservationV2, RawObservationV2]] = []
 
@@ -216,6 +223,8 @@ class RawObservationStoreV2:
         current = self._records.get(observation.record_id)
         if current is None:
             self._records[observation.record_id] = observation
+            if self.max_records is not None and len(self._records) > self.max_records:
+                del self._records[next(iter(self._records))]
             return AppendResultV2(AppendStatusV2.INSERTED, observation, observation)
         if current.raw_payload_hash == observation.raw_payload_hash and (
             current.instrument_revision,
@@ -244,6 +253,8 @@ class RawObservationStoreV2:
         ):
             return AppendResultV2(AppendStatusV2.DUPLICATE, current, observation)
         self._quarantine.append((current, observation))
+        if self.max_records is not None and len(self._quarantine) > self.max_records:
+            del self._quarantine[0]
         return AppendResultV2(AppendStatusV2.CONFLICT_QUARANTINED, current, observation)
 
     def get(self, record_id: str) -> RawObservationV2 | None:

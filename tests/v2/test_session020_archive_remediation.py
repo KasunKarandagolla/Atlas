@@ -172,12 +172,13 @@ def _seed_revision_archive(repository: OpsRepository, root: Path, availability_c
     return key_a, (obs_a, obs_b, obs_other), (bar_a, bar_b, bar_other), paths, refs
 
 
-def _rename_chunks(paths: dict[str, Path], *, old: str, new: str, other: str) -> None:
-    names = {"old": old, "new": new, "other": other}
-    for label, path in paths.items():
-        target = path.parent / names[label]
-        path.rename(target)
-        paths[label] = target
+def _recreate_chunks_in_order(paths: dict[str, Path], labels: tuple[str, ...]) -> None:
+    """Vary directory insertion order while preserving immutable chunk locators."""
+    contents = {label: path.read_bytes() for label, path in paths.items()}
+    for path in paths.values():
+        path.unlink()
+    for label in labels:
+        paths[label].write_bytes(contents[label])
 
 
 def _reconstruct(repository, root, key, cutoff_ns, availability_class):
@@ -195,7 +196,7 @@ def _reconstruct(repository, root, key, cutoff_ns, availability_class):
     "availability_class",
     [AvailabilityClassV2.ACTUAL_SYSTEM, AvailabilityClassV2.RECONSTRUCTED_MARKET],
 )
-def test_same_bar_revision_selection_is_cutoff_and_filename_independent(
+def test_same_bar_revision_selection_is_cutoff_and_directory_order_independent(
     tmp_path, availability_class
 ) -> None:
     root = tmp_path / "archive"
@@ -219,14 +220,9 @@ def test_same_bar_revision_selection_is_cutoff_and_filename_independent(
         assert repository.get_artifact(refs["old"]) is not None
         assert repository.get_artifact(refs["new"]) is not None
 
-        # The newer revision sorts first by filename, so traversal order would
-        # incorrectly leave revision A selected after revision B is available.
-        _rename_chunks(
-            paths,
-            old="z-old.parquet",
-            new="a-new.parquet",
-            other="m-other-venue.parquet",
-        )
+        # The indexed locator owns filenames; directory insertion order cannot
+        # determine which cutoff-visible revision supplies the feature bar.
+        _recreate_chunks_in_order(paths, ("new", "other", "old"))
         before_b = availability_b - 1
         earlier = _reconstruct(repository, root, key, before_b, availability_class)
         assert len(earlier) == 1
@@ -258,13 +254,7 @@ def test_same_bar_revision_selection_is_cutoff_and_filename_independent(
         assert chart.bars[0].observation_ref == chart_source[0].observation_index_ref
         assert chart.bars[0].close == str(bar_b.close)
 
-        # Change only file names/order. Selection remains the same for both readers.
-        _rename_chunks(
-            paths,
-            old="a-old.parquet",
-            new="z-new.parquet",
-            other="m-other-venue.parquet",
-        )
+        _recreate_chunks_in_order(paths, ("old", "other", "new"))
         reordered = _reconstruct(repository, root, key, after_other, availability_class)
         assert len(reordered) == 1
         assert reordered[0] == later[0]
@@ -282,7 +272,7 @@ def test_same_bar_revision_selection_is_cutoff_and_filename_independent(
 
 @pytest.mark.parametrize(
     ("bound", "maximum"),
-    [("file-count", 2), ("row-count", 2)],
+    [("file-count", 1), ("row-count", 1)],
 )
 def test_archive_scan_bound_exhaustion_raises_without_returning_partial_rows(
     tmp_path, monkeypatch, bound, maximum
@@ -329,3 +319,15 @@ def test_malformed_unrelated_archive_file_is_skipped_without_hiding_valid_rows(t
         assert len(result) == 1
         assert result[0].bar == bars[1]
         assert result[0].observation_index_ref == refs["new"]
+
+
+def test_missing_immutable_index_locator_fails_closed_without_glob_rediscovery(tmp_path) -> None:
+    root = tmp_path / "archive"
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        key, observations, _, paths, _ = _seed_revision_archive(
+            repository, root, AvailabilityClassV2.ACTUAL_SYSTEM
+        )
+        paths["new"].rename(root / "renamed-but-valid.parquet")
+        with pytest.raises(ValueError, match="missing or unsafe"):
+            _reconstruct(repository, root, key, observations[-1].available_at_ns,
+                AvailabilityClassV2.ACTUAL_SYSTEM)

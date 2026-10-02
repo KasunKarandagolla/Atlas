@@ -80,8 +80,22 @@ class PublicSourceHealthV2:
 
 
 class SourceHealthTrackerV2:
-    def __init__(self) -> None:
+    """Bounded recent projection; the repository retains authoritative history."""
+
+    def __init__(self, *, max_history_per_source: int = 2048) -> None:
+        if type(max_history_per_source) is not int or max_history_per_source < 1:
+            raise ValueError("source health cache bound must be positive")
+        self.max_history_per_source = max_history_per_source
         self._history: dict[str, list[PublicSourceHealthV2]] = {}
+        self._healthy_seen: set[str] = set()
+        self._unhealthy_after_healthy: set[str] = set()
+
+    def seed_prior_gap(self, source_id: str) -> None:
+        self._healthy_seen.add(source_id)
+        self._unhealthy_after_healthy.add(source_id)
+
+    def had_unhealthy_after_healthy(self, source_id: str) -> bool:
+        return source_id in self._unhealthy_after_healthy
 
     def append(self, observation: PublicSourceHealthV2) -> bool:
         history = self._history.setdefault(observation.source_id, [])
@@ -92,6 +106,12 @@ class SourceHealthTrackerV2:
                 return False
             raise ValueError("conflicting source health at the same observation time")
         history.append(observation)
+        if observation.data_eligible:
+            self._healthy_seen.add(observation.source_id)
+        elif observation.source_id in self._healthy_seen:
+            self._unhealthy_after_healthy.add(observation.source_id)
+        if len(history) > self.max_history_per_source:
+            del history[0]
         return True
 
     def latest(self, source_id: str) -> PublicSourceHealthV2 | None:

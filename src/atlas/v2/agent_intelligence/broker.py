@@ -46,6 +46,7 @@ MAX_BROKER_FRAME_BYTES = 256_000
 BROKER_SOCKET_TIMEOUT_SECONDS = 35.0
 MAX_CAPABILITY_LIFETIME_NS = 120_000_000_000
 MAX_REPLAY_CACHE_ENTRIES = 256
+MAX_BROKER_CONNECTIONS = 4
 ALLOWED_PROVIDER = "openai"
 ALLOWED_MODEL_ID = "gpt-6-astra"
 
@@ -636,16 +637,27 @@ class InferenceBrokerServer:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._socket: socket.socket | None = None
+        self._endpoint_identity: tuple[int, int] | None = None
+        self._handler_slots = threading.BoundedSemaphore(MAX_BROKER_CONNECTIONS)
+        self._connections: set[socket.socket] = set()
+        self._connections_lock = threading.Lock()
 
     def start(self) -> None:
         self.socket_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         if self.socket_path.exists() or self.socket_path.is_symlink():
             raise RuntimeError("broker socket path already exists")
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        server.bind(str(self.socket_path))
-        os.chmod(self.socket_path, stat.S_IRUSR | stat.S_IWUSR)
-        server.listen(4)
-        server.settimeout(0.5)
+        try:
+            server.bind(str(self.socket_path))
+            endpoint_stat = self.socket_path.stat()
+            self._endpoint_identity = (endpoint_stat.st_dev, endpoint_stat.st_ino)
+            os.chmod(self.socket_path, stat.S_IRUSR | stat.S_IWUSR)
+            server.listen(MAX_BROKER_CONNECTIONS)
+            server.settimeout(0.5)
+        except BaseException:
+            server.close()
+            self._remove_owned_endpoint()
+            raise
         self._socket = server
         self._thread = threading.Thread(target=self._serve, name="atlas-agent-inference-broker", daemon=True)
         self._thread.start()
@@ -659,11 +671,30 @@ class InferenceBrokerServer:
                 continue
             except OSError:
                 return
-            threading.Thread(target=self._handle, args=(connection,), daemon=True).start()
+            if not self._handler_slots.acquire(blocking=False):
+                try:
+                    connection.settimeout(0.1)
+                    _write_frame(connection, {"protocol_version": BROKER_PROTOCOL_VERSION,
+                        "request_id": None, "ok": False, "error": "BROKER_SATURATED"})
+                except OSError:
+                    pass
+                finally:
+                    connection.close()
+                continue
+            with self._connections_lock:
+                self._connections.add(connection)
+            try:
+                threading.Thread(target=self._handle, args=(connection,), daemon=True).start()
+            except BaseException:
+                with self._connections_lock:
+                    self._connections.discard(connection)
+                connection.close()
+                self._handler_slots.release()
+                raise
 
     def _handle(self, connection: socket.socket) -> None:
-        connection.settimeout(BROKER_SOCKET_TIMEOUT_SECONDS)
         try:
+            connection.settimeout(BROKER_SOCKET_TIMEOUT_SECONDS)
             raw = _read_frame(connection)
             data = json.loads(raw.decode("utf-8"))
             if not isinstance(data, Mapping):
@@ -704,6 +735,9 @@ class InferenceBrokerServer:
                 pass
         finally:
             connection.close()
+            with self._connections_lock:
+                self._connections.discard(connection)
+            self._handler_slots.release()
 
     def close(self) -> None:
         self._stop.set()
@@ -711,10 +745,25 @@ class InferenceBrokerServer:
             self._socket.close()
         if self._thread is not None:
             self._thread.join(timeout=2)
-        try:
-            self.socket_path.unlink()
-        except FileNotFoundError:
-            pass
+        with self._connections_lock:
+            connections = tuple(self._connections)
+        for connection in connections:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            connection.close()
+        self._remove_owned_endpoint()
+
+    def _remove_owned_endpoint(self) -> None:
+        identity, self._endpoint_identity = self._endpoint_identity, None
+        if identity is not None:
+            try:
+                current = self.socket_path.lstat()
+                if (current.st_dev, current.st_ino) == identity:
+                    self.socket_path.unlink()
+            except FileNotFoundError:
+                pass
 
 
 class InferenceBrokerClient:

@@ -166,7 +166,8 @@ def _selection_stage_inputs_only(repo: OpsRepository, source_ref: str, cutoff_ns
 
 def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe: UniverseContractV2,
         decision_event_id: str, cutoff_ns: int, candidates: Sequence[CandidateActionV2],
-        policies: Mapping[str, PolicySpecV2], scanner_evidence_refs: Mapping[str, Sequence[str]]) -> CandidateSetV2:
+        policies: Mapping[str, PolicySpecV2], scanner_evidence_refs: Mapping[str, Sequence[str]],
+        generation_missing_reasons: Sequence[str] = ()) -> CandidateSetV2:
     """Build the separately versioned research set using selection-stage data only.
 
     M0/M1/analogue values are intentionally absent from this function's inputs.
@@ -175,6 +176,10 @@ def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe
         raise ValueError("multi-sleeve decision identity/cutoff is required")
     if any(not isinstance(item, CandidateActionV2) for item in candidates):
         raise TypeError("only complete single-action CandidateActionV2 competitors may enter the research set")
+    missing_reasons = tuple(sorted(set(generation_missing_reasons)))
+    if len(missing_reasons) > 32 or any(not isinstance(reason, str) or not 1 <= len(reason) <= 192
+                                       for reason in missing_reasons):
+        raise ValueError("candidate generation missingness must be bounded explicit reasons")
     if universe.selection_policy_hash != MULTI_SLEEVE_SELECTION_HASH:
         raise ValueError("multi-sleeve selection requires its separately versioned research universe")
     if universe.envelope.available_at_ns > cutoff_ns or cutoff_ns > universe.decision_slot_ns:
@@ -267,7 +272,7 @@ def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe
         item.side, selected_refs.get(item.candidate_id, ()), statuses[item.candidate_id],
         positions.get(item.candidate_id), "SCANNER_RANK_POLICY_KEY_CANDIDATE_ID" if item.candidate_id in positions else None,
         reasons.get(item.candidate_id)) for item in ordered)
-    if uncertain:
+    if uncertain or missing_reasons:
         selection_state, selected_id = CandidateSelectionStatus.NOT_ESTIMABLE, None
     elif ranking:
         selection_state, selected_id = CandidateSelectionStatus.SELECTED, ranking[0].candidate_id
@@ -279,6 +284,8 @@ def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe
         "causal_input_refs": sorted(causal_refs),
         "attempted_scanner_evidence_refs": {key: list(value) for key, value in attempted.items()},
         "cutoff_ns": cutoff_ns, "producer_version": "MULTI_SLEEVE_RESEARCH_CANDIDATE_PIPELINE_V1"}
+    if missing_reasons:
+        identity["generation_missing_reasons"] = list(missing_reasons)
     identity_ref = sha256_json(identity)
     envelope = ArtifactEnvelope(1, identity_ref, cutoff_ns, cutoff_ns,
         "MULTI_SLEEVE_RESEARCH_CANDIDATE_PIPELINE_V1", tuple(sorted(causal_refs)))

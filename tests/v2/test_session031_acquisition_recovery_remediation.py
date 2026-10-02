@@ -306,6 +306,10 @@ def test_rate_limit_and_disconnect_fail_closed_and_recovery_does_not_claim_trade
             assert "BYBIT_RECENT_TRADE_WINDOW_DOES_NOT_PROVE_TRADE_CONTINUITY" in latest_evidence["reason_codes"]
             assert recovery_cycle.cycle.source_health_state != "HEALTHY_CURRENT"
             assert len(supervisor.repository.artifact_entries("OpsSupervisorReceiptV1")) == current_receipts
+            assert latest_evidence["bar_snapshot_reconciled"] is True
+            assert latest_evidence["exact_trade_history_status"] == "NOT ESTIMABLE"
+            assert "EXACT_TRADE_HISTORY" not in latest_evidence["reconciliation_scope"]
+            assert supervisor.run_once().cycle.source_health_state == "HEALTHY_CURRENT"
 
 
 def test_stale_market_observation_is_not_replayed_as_timely(tmp_path):

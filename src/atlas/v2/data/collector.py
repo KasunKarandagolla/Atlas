@@ -16,6 +16,8 @@ from .raw import AppendResultV2, AppendStatusV2, RawObservationStoreV2, RawObser
 from .subscriptions import SubscriptionPlanV2, restore_subscription_plan
 from .universe import ComputeTierV2
 
+MAX_RECENT_CURSOR_HASHES_V2 = 512
+
 
 class SequenceGapV2(RuntimeError):
     def __init__(self, source_id: str, channel: str, previous: int, incoming: int) -> None:
@@ -80,7 +82,7 @@ class PublicCollectorV2:
         self.archive = archive
         self.backoff = backoff or BoundedBackoffV2()
         self.required_recovery_epoch_ref = required_recovery_epoch_ref
-        self.store = RawObservationStoreV2()
+        self.store = RawObservationStoreV2(max_records=8192)
         self.health = SourceHealthTrackerV2()
         self._last_sequence: dict[tuple[str, str], int] = {}
         self._pending_archive: list[ImportedObservationV2] = []
@@ -96,7 +98,9 @@ class PublicCollectorV2:
 
     def _restore_health(self) -> None:
         for source_id in self.repository.source_health_sources():
-            history = self.repository.source_health_history(source_id)
+            history = self.repository.source_health_history(source_id, limit=1)
+            if self.repository.source_had_unhealthy_after_healthy(source_id):
+                self.health.seed_prior_gap(source_id)
             if not history:
                 continue
             latest = history[-1]
@@ -135,7 +139,8 @@ class PublicCollectorV2:
                 hashes = metadata.get("recent_payload_hashes", {})
                 if isinstance(hashes, Mapping):
                     self._cursor_hashes[cursor] = {
-                        str(record_id): str(payload_hash) for record_id, payload_hash in hashes.items()
+                        str(record_id): str(payload_hash)
+                        for record_id, payload_hash in sorted(hashes.items())[-MAX_RECENT_CURSOR_HASHES_V2:]
                     }
 
     def _record_health(
@@ -207,6 +212,8 @@ class PublicCollectorV2:
         index_type = ("PublicObservationIndexV2" if index_as_public_observation
                       else "PublicStreamTradeObservationIndexV1")
         index_ref = sha256_json({"artifact_type": index_type, "record_id": observation.record_id})
+        if len(self._pending_archive) >= 512:
+            self.flush_archive()
         persisted_entry = self.repository.get_artifact(index_ref)
         persistent_hash: str | None = None
         if persisted_entry is not None:
@@ -330,6 +337,8 @@ class PublicCollectorV2:
             )
             if retain_in_memory:
                 self._conflicts.append(conflict)
+                if len(self._conflicts) > 128:
+                    del self._conflicts[0]
             metadata = {
                 "record_id": conflict.record_id,
                 "existing_payload_hash": conflict.existing_payload_hash,
@@ -394,7 +403,12 @@ class PublicCollectorV2:
                             details="out-of-order contiguous sequence requires source reconciliation",
                         )
                 self._last_sequence[cursor] = max(previous or sequence, sequence)
-                self._cursor_hashes.setdefault(cursor, {})[observation.record_id] = observation.raw_payload_hash
+                recent = self._cursor_hashes.setdefault(cursor, {})
+                recent[observation.record_id] = observation.raw_payload_hash
+                if len(recent) > MAX_RECENT_CURSOR_HASHES_V2:
+                    # Durable observation indexes retain full duplicate/conflict evidence.
+                    for record_id in sorted(recent)[:-MAX_RECENT_CURSOR_HASHES_V2]:
+                        del recent[record_id]
         if (update_source_health and gap is None
                 and self._health_state.get(observation.source_id) in (None, PublicSourceStateV2.HEALTHY_CURRENT)):
             self._record_health(
@@ -457,6 +471,7 @@ class PublicCollectorV2:
         self._pending_records.clear()
         self._pending_instrument_keys.clear()
         self._pending_index_as_public_observation.clear()
+        self._bar_hashes.clear()
         return str(path)
 
     def quarantined_conflicts(self) -> tuple[ConflictingDuplicateV2, ...]:

@@ -874,12 +874,10 @@ class OpsSupervisorV2:
                                 pass
                         continue
 
-                    decision_started_at_ns = started_at_ns
-                    if event.event_type == "CONFIRMED_1M_CLOSE":
-                        decision_started_at_ns = max(
-                            started_at_ns,
-                            timestamp(self.clock_ns(), field="event computation start"),
-                        )
+                    decision_started_at_ns = max(
+                        started_at_ns,
+                        timestamp(self.clock_ns(), field="event computation start"),
+                    )
                     event_inputs_available = all(
                         (entry := repository.get_artifact(ref)) is not None
                         and entry.available_at_ns <= event.information_cutoff_ns
@@ -916,12 +914,10 @@ class OpsSupervisorV2:
                             current_completed: dict[PipelineStageV1, OpsStageResultV1] = completed,
                             current_started_at_ns: int = decision_started_at_ns,
                         ) -> None:
-                            checkpoint_now_ns = started_at_ns
-                            if current_event.event_type == "CONFIRMED_1M_CLOSE":
-                                checkpoint_now_ns = max(
-                                    current_started_at_ns,
-                                    timestamp(self.clock_ns(), field="stage checkpoint observation"),
-                                )
+                            checkpoint_now_ns = max(
+                                current_started_at_ns,
+                                timestamp(self.clock_ns(), field="stage checkpoint observation"),
+                            )
                             self._checkpoint_stage(
                                 repository,
                                 current_event,
@@ -942,12 +938,10 @@ class OpsSupervisorV2:
                             checkpoint(stage_result)
                         self._validate_result_against_checkpoints(result, completed)
 
-                    receipt_at_ns = started_at_ns
-                    if event.event_type == "CONFIRMED_1M_CLOSE":
-                        receipt_at_ns = max(
-                            started_at_ns,
-                            timestamp(self.clock_ns(), field="event receipt persistence"),
-                        )
+                    receipt_at_ns = max(
+                        started_at_ns,
+                        timestamp(self.clock_ns(), field="event receipt persistence"),
+                    )
                     if (prior_receipt is None and receipt_at_ns > event.deadline_ns
                             and result.terminal_status != OpsTerminalStatusV1.EXPIRED):
                         raise ValueError("decision result missed its fixed consumer deadline")

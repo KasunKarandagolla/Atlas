@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "fixture_kind": "OFFLINE_FIRST_RUN",
+  "configuration": {
+    "profile": "PUBLIC_BYBIT_BASELINE_V1",
+    "report_interval_seconds": 21600,
+    "minimum_free_disk_bytes": 1073741824,
+    "provider_profile": "DISABLED"
+  },
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "provider_secret_required": false,
+  "expected_diagnostics": ["source_sha", "version", "capital_enabled", "assisted_enabled"],
+  "broker_smoke_contract": "atlas-product.exe --broker-smoke; authenticated current-user-only AF_PIPE fake completion, no provider calls or credentials; bounded handlers close cleanly",
+  "smoke_contract": "atlas-product.exe --smoke --data-root PATH; no internet, credentials or orders; exit 0 and emit JSON with status TESTED"
+}

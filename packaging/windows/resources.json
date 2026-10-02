@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "files": [
+    "requirements-lock.txt",
+    "requirements-agent-lock.txt",
+    "requirements-windows-lock.txt",
+    "docs/v2/ATLAS_FINAL_DEVELOPMENT_CLOSURE_V1.json",
+    "configs/agent_intelligence/provider_pricing_v1.json",
+    "configs/agent_intelligence/provider_pricing_deepseek_v41_flash_v1.json",
+    "docs/v2/EVIDENCE_CAPABILITY_MATRIX_V2.json",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+    "docs/v2/ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md",
+    "docs/v2/ATLAS_AGENT_ACTION_CRITIC_DEEPSEEK_V41_SHADOW_AMENDMENT_V1.md"
+  ],
+  "configuration_directories": ["configs/v2"],
+  "excluded_runtime": ["nautilus_trader"],
+  "boundary": "Public research and zero-authority intelligence only. Authenticated capital execution remains disabled and is not installed."
+}

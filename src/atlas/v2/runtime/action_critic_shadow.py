@@ -630,12 +630,17 @@ class ActionAssessmentShadowCoordinator:
 
 
 def create_action_assessment_shadow(database_path: str, socket_path: str | None, *,
-                                    repository_root: str | None = None) -> ActionAssessmentShadowCoordinator:
+                                    repository_root: str | None = None,
+                                    capability_signing_key: bytes | None = None,
+                                    broker_port: DirectActionAssessmentBrokerPort | None = None,
+                                    ) -> ActionAssessmentShadowCoordinator:
     """Compose only the fixed local broker operation and writer-owned shadow ledger."""
     import os
     from pathlib import Path
 
-    root = Path(repository_root) if repository_root is not None else Path(__file__).resolve().parents[4]
+    from atlas.v2.resources import resource_file
+
+    root = Path(repository_root) if repository_root is not None else resource_file(".")
     schedule = DeepSeekPriceScheduleV1.load(
         root / "configs/agent_intelligence/provider_pricing_deepseek_v41_flash_v1.json")
     profile = deepseek_v41_flash_action_critic_profile(price_schedule=schedule,
@@ -643,13 +648,13 @@ def create_action_assessment_shadow(database_path: str, socket_path: str | None,
     ledger = ActionAssessmentRepository(database_path, price_schedule=schedule)
     signing_text = os.environ.get("ATLAS_AGENT_CAPABILITY_KEY", "")
     try:
-        signing_key = bytes.fromhex(signing_text) if signing_text else None
+        signing_key = capability_signing_key if capability_signing_key is not None else (bytes.fromhex(signing_text) if signing_text else None)
     except ValueError:
         signing_key = None
     if signing_key is not None and len(signing_key) < 32:
         signing_key = None
     usable_socket = socket_path if socket_path and Path(socket_path).exists() else None
-    io_port = _UnixBrokerClientPort(usable_socket) if usable_socket else None
+    io_port = broker_port if broker_port is not None else (_UnixBrokerClientPort(usable_socket) if usable_socket else None)
     dispatcher = ActionAssessmentShadowDispatcher(io_port) if io_port is not None and signing_key is not None else None
     controller = ActionAssessmentController(ledger=ledger, profile=profile,
         capability_signing_key=signing_key, provider=io_port)

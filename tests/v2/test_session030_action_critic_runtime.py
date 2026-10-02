@@ -491,6 +491,7 @@ def test_action_critic_ledger_v1_migrates_additively_to_observation_projection_v
 
 @pytest.mark.parametrize(("result", "expected_status"), [
     (ProviderResultV1("", None, None, False, False, 0, 0, None, "PROVIDER_TIMEOUT"), "UNAVAILABLE"),
+    (ProviderResultV1("", None, None, False, False, 0, 0, None, "BROKER_SATURATED"), "UNAVAILABLE"),
     (ProviderResultV1("", None, None, True, False, 0, 0, None), "REFUSED"),
     (ProviderResultV1("{bad", "deepseek-flash", None, False, False, 1, 1, None), "INVALID"),
     (ProviderResultV1("", "different-model", None, False, False, 1, 1, None), "INVALID"),

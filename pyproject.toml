@@ -33,6 +33,7 @@ desktop = [
 ]
 
 [project.scripts]
+atlas-product = "atlas.v2.product:main"
 atlas-v2-projection = "atlas.v2.desktop.ipc:main"
 atlas-desktop = "atlas.desktop.app:main"
 atlas-v2-public-qualification = "atlas.v2.data.qualification:main"

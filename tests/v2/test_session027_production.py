@@ -436,6 +436,31 @@ def _seed_default_public_evidence(repository: OpsRepository, *, archive_root: Pa
         missed_interval_repaired=True,
         snapshot_refs=observation_refs,
     )
+    # This fixture exercises a complete selection seam. A missing event gate
+    # makes S1 NOT_ESTIMABLE and must not disappear when S2 produces a candidate.
+    from atlas.v2.news.events import (
+        AbnormalityEvidenceV2,
+        AbnormalityStateV2,
+        CalendarCoverageV2,
+        EventSafetyGateBuilderV2,
+    )
+
+    calendar_ref = sha256_json({"fixture_calendar": cutoff_ns})
+    abnormality_ref = sha256_json({"fixture_abnormality": cutoff_ns})
+    repository.register_artifacts((
+        ArtifactIndexEntryV2(calendar_ref, "CalendarSourceFixtureV2", calendar_ref,
+                            cutoff_ns, cutoff_ns, {"ref": calendar_ref}),
+        ArtifactIndexEntryV2(abnormality_ref, "AbnormalitySourceFixtureV2", abnormality_ref,
+                            cutoff_ns, cutoff_ns, {"ref": abnormality_ref}),
+    ))
+    EventSafetyGateBuilderV2(repository).evaluate(
+        key=KEY, cutoff_ns=cutoff_ns,
+        coverage=CalendarCoverageV2("SCHEDULE_FIXTURE", cutoff_ns - BarIntervalV2.M15.duration_ns,
+            cutoff_ns + BarIntervalV2.H4.duration_ns, cutoff_ns, cutoff_ns, cutoff_ns,
+            True, "fixture-r1", calendar_ref, "VERIFIED"),
+        scheduled_events=(), abnormality=AbnormalityEvidenceV2(
+            AbnormalityStateV2.NORMAL, cutoff_ns, cutoff_ns, abnormality_ref), incidents=(),
+    )
     return cutoff_ns, product
 
 
@@ -1632,7 +1657,11 @@ def test_builtin_event_handoff_waits_for_collector_reconnect_reconciliation(tmp_
         )
         second = supervisor.run_once()
     assert len(second.event_receipts) == 1
-    assert second.event_receipts[0].result.terminal_status == OpsTerminalStatusV1.NO_CANDIDATE
+    assert second.event_receipts[0].result.terminal_status == OpsTerminalStatusV1.NOT_ESTIMABLE
+    assert second.event_receipts[0].candidate_set_ref is not None
+    with OpsRepository(path, read_only=True) as reader:
+        calendar = reader.get_artifact(second.event_receipts[0].calendar_refs[0])
+        assert "CAUSAL_FEATURE_EVIDENCE_UNAVAILABLE" in calendar.metadata["decision_entry"]["reason_codes"]
 
 
 def test_successful_production_composition_preserves_ids_and_binds_zero_authority_diagnostics(tmp_path):
