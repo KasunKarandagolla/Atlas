@@ -8,6 +8,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +17,22 @@ from windows_manifest import create, digest, verify, write_json
 
 PYTHON_VERSION = "3.12.10"
 INNO_VERSION = "6.5.4"
+
+
+def prune_development_payload(payload: Path) -> None:
+    """Remove dependency test/source artifacts that hooks may add after spec filtering."""
+    forbidden_parts = {"tests", "test", "examples", "docs", "__pycache__"}
+    forbidden_suffixes = {".pyx", ".pxd", ".pyi"}
+    for path in sorted(payload.rglob("*"), reverse=True):
+        relative = path.relative_to(payload)
+        if path.is_dir() and path.name == "__pycache__":
+            shutil.rmtree(path)
+            continue
+        if not path.is_file():
+            continue
+        if ({part.lower() for part in relative.parts} & forbidden_parts
+                or path.suffix.lower() in forbidden_suffixes):
+            path.unlink()
 
 
 def run(command: list[str], *, root: Path, capture: bool = False) -> str:
@@ -59,6 +76,7 @@ def main() -> int:
     run([sys.executable, "-m", "pip", "check"], root=root)
     run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "atlas-product.spec"], root=root)
     payload = root / "dist/atlas-product"
+    prune_development_payload(payload)
     native_dependencies = json.loads(run(
         [sys.executable, str(root / "scripts/windows_pe_dependencies.py"), "--payload", str(payload)],
         root=root, capture=True))

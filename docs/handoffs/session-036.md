@@ -6,7 +6,7 @@ ATLAS is a continuously operating causal public-market research, intelligence an
 
 The three governing freezes were read in full and hash-verified: V1 `c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c`, amended V2 `e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78`, and agent freeze `d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d`. The consultation PDF and the revised architecture/intelligence adversarial reviews were read as non-authoritative context. The expected ground-level architecture, ASTRA context review, finalized retail proposal, V2 architecture review and V2 implementation specification were not found and were not invented.
 
-The branch starts from accepted S34 `e13994752f165ad8b42f7f7c441076078d4388cc`; remote S35 remains `702325b44ad487e699c60e682ad06031f4ecdb86` and is not the base. The dedicated branch is `impl/session-036-final-development-closure-windows-tune-ready` in `/tmp/atlas-session-036`. The original S35 checkout and owner files remain untouched. There is no implementation or documentation commit yet and no push has been made.
+The branch starts from accepted S34 `e13994752f165ad8b42f7f7c441076078d4388cc`; remote S35 remains `702325b44ad487e699c60e682ad06031f4ecdb86` and is not the base. The dedicated branch is `impl/session-036-final-development-closure-windows-tune-ready` in `/tmp/atlas-session-036`. The original S35 checkout and owner files remain untouched. The latest implementation/documentation tip is `2baf8a2` and it has been pushed; the final remote verification is recorded after validation.
 
 Implemented seams include the per-user Windows build/installer pipeline, wheel-only lock, PyInstaller bundle, payload/build manifest checks, launcher, first-run surface, DPAPI secret store, external data root, upgrade/uninstall preservation and native validation harness. Actual Windows execution and signing remain unverified in Linux.
 
@@ -24,7 +24,7 @@ Remaining ordinary blockers are:
 4. Diagnostic prediction maturation is implemented, but full action-bearing later-market after-cost evidence and expected-opportunity denominator reconciliation are incomplete.
 5. Whole-run boundedness and reporting need one final pass over every history/cursor/cache path and explicit stage latency, calibration, regime, feature-stability and dependent-variant projections.
 6. Heavy/tool-using Windows model isolation has no verified enforced sandbox. The direct broker is bounded and authenticated; the stronger worker capability remains `DEFERRED_BY_FREEZE` / `BLOCKED BY ENVIRONMENT` until native verification or amendment.
-7. Comprehensive final V2/non-V2, contracts/golden, static/type/compile/dependency/package/freeze/hash/secret gates have not been run after the latest integration.
+7. Comprehensive final V2/non-V2, contracts/golden and final package/freeze/hash gates are still in progress after the latest integration.
 
 Focused Session 036 product, M15 accounting, missingness and routing/model/export/analogue tests pass under Python 3.12. The model/export/analogue group passed 41 tests. Portable Windows broker, M15 planner, source/completeness, writer/bounds, repository-port and exporter suites passed in focused runs. Ruff and targeted mypy checks pass for changed product/runtime seams. Linux offline smoke reports `OFFLINE_COMPOSITION_FIXTURE_ONLY` / `TEST GATE`; it does not qualify Windows or public source.
 
