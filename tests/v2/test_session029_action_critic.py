@@ -240,6 +240,45 @@ def test_packet_sealer_skips_when_exact_frozen_action_is_absent(tmp_path: Path):
                                      "EXACT_FROZEN_ACTION_OR_EVIDENCE_UNAVAILABLE")]
 
 
+@pytest.mark.parametrize("mode", ["reverse", "legacy", "ambiguous", "wrong_action", "wrong_result"])
+def test_packet_sealer_validates_analogue_result_and_retrieval_pair(frozen_case, mode):
+    path, receipt, _receipt_ref, _sealed, profile, _schedule = frozen_case
+    with OpsRepository(path) as repository:
+        stages = list(receipt.result.stages)
+        stage = stages[9]
+        result_ref, retrieval_ref = stage.artifact_refs
+        if mode == "reverse":
+            refs = (retrieval_ref, result_ref)
+        elif mode == "legacy":
+            refs = (result_ref,)
+        elif mode == "ambiguous":
+            refs = (result_ref, stages[8].artifact_refs[0])
+        else:
+            retrieval_entry = repository.get_artifact(retrieval_ref)
+            assert retrieval_entry is not None
+            body = dict(retrieval_entry.metadata["receipt"])
+            body["action_hash" if mode == "wrong_action" else "result_ref"] = "f" * 64
+            changed_ref = sha256_json(body)
+            repository.register_artifact(ArtifactIndexEntryV2(changed_ref,
+                "RuntimeAnalogueRetrievalReceiptV1", changed_ref,
+                retrieval_entry.created_at_ns, retrieval_entry.available_at_ns, {"receipt": body}))
+            refs = (result_ref, changed_ref)
+        stages[9] = replace(stage, artifact_refs=refs)
+        changed_receipt = replace(receipt, result=replace(receipt.result, stages=tuple(stages)))
+        changed_receipt_ref = sha256_json({"test_receipt": changed_receipt.content_hash})
+        repository.register_artifact(ArtifactIndexEntryV2(changed_receipt_ref, "OpsSupervisorReceiptV1",
+            changed_receipt.content_hash, receipt.created_at_ns, receipt.created_at_ns,
+            {"receipt": changed_receipt.to_dict()}))
+        if mode in {"reverse", "legacy"}:
+            packet = build_sealed_action_assessment(repository=repository, receipt=changed_receipt,
+                receipt_ref=changed_receipt_ref, profile=profile).packet
+            assert packet.analogue_diagnostic_ref == result_ref
+        else:
+            with pytest.raises(Exception, match="ANALOGUE_RETRIEVAL_(BINDING_MISMATCH|EVIDENCE_AMBIGUOUS)"):
+                build_sealed_action_assessment(repository=repository, receipt=changed_receipt,
+                    receipt_ref=changed_receipt_ref, profile=profile)
+
+
 def test_packet_sealer_rejects_ambiguous_portfolio_es(frozen_case):
     path, receipt, receipt_ref, _sealed, profile, _schedule = frozen_case
     with OpsRepository(path) as repository:

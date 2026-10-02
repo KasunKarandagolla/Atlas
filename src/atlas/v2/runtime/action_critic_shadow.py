@@ -210,7 +210,32 @@ def build_sealed_action_assessment(*, repository: OpsRepository, receipt: OpsSup
                 or m1_body.get("action_artifact_ref") != action_ref
                 or (m1_body.get("kind") not in (None, "M1"))):
             raise ActionAssessmentPacketUnavailable("M1_ACTION_BINDING_MISMATCH")
-        analogue_ref = _need_single_ref(receipt, PipelineStageV1.ANALOGUE_DIAGNOSTIC)
+        analogue_refs = _receipt_stage(receipt, PipelineStageV1.ANALOGUE_DIAGNOSTIC).artifact_refs
+        if len(analogue_refs) == 1:
+            analogue_ref = analogue_refs[0]
+        elif len(analogue_refs) == 2 and len(set(analogue_refs)) == 2:
+            results = [ref for ref in analogue_refs
+                       if _entry(repository, ref).artifact_type == "AnalogueActionValueV2"]
+            receipts = [ref for ref in analogue_refs
+                        if _entry(repository, ref).artifact_type == "RuntimeAnalogueRetrievalReceiptV1"]
+            if len(results) != 1 or len(receipts) != 1:
+                raise ActionAssessmentPacketUnavailable("ANALOGUE_RETRIEVAL_EVIDENCE_AMBIGUOUS")
+            analogue_ref = results[0]
+            retrieval_entry = _entry(repository, receipts[0], "RuntimeAnalogueRetrievalReceiptV1")
+            retrieval = _typed_body(retrieval_entry, "receipt")
+            if (retrieval.get("version") != "RuntimeAnalogueRetrievalReceiptV1"
+                    or retrieval.get("result_ref") != analogue_ref
+                    or retrieval.get("action_ref") != action_ref
+                    or retrieval.get("action_hash") != action_hash
+                    or retrieval.get("candidate_ref") != candidate_ref
+                    or retrieval.get("candidate_set_ref") != candidate_set_ref
+                    or retrieval.get("information_cutoff_ns") != receipt.event.information_cutoff_ns
+                    or retrieval.get("available_at_ns") != retrieval_entry.available_at_ns
+                    or _entry(repository, analogue_ref).available_at_ns > retrieval_entry.available_at_ns
+                    or retrieval.get("authority") != "ZERO"):
+                raise ActionAssessmentPacketUnavailable("ANALOGUE_RETRIEVAL_BINDING_MISMATCH")
+        else:
+            raise ActionAssessmentPacketUnavailable("ANALOGUE_RETRIEVAL_EVIDENCE_AMBIGUOUS")
         analogue_entry = _entry(repository, analogue_ref)
         analogue_key = "analogue" if analogue_entry.artifact_type == "AnalogueActionValueV2" else "diagnostic"
         analogue_body = _typed_body(analogue_entry, analogue_key)
