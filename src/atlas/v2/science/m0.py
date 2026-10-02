@@ -4,13 +4,21 @@ from __future__ import annotations
 
 import math
 import statistics
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
 from atlas.domain.money import canonical_decimal_str
-from atlas.v2._serialization import canonical_json, decimal_value, json_value, sha256_json, sha256_ref, strict_fields
+from atlas.v2._serialization import (
+    canonical_json,
+    decimal_value,
+    json_value,
+    sha256_json,
+    sha256_ref,
+    strict_fields,
+    timestamp,
+)
 from atlas.v2.contracts import CandidateActionV2, CandidateSetV2, FeatureArtifactV2
 from atlas.v2.instruments import InstrumentKeyV2, ProductContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
@@ -337,6 +345,13 @@ class M0ArtifactV2:
 
 
 def _index(repo: OpsRepository, kind: str, ref: str, at_ns: int, key: str, body: Mapping[str, Any]) -> None:
+    existing = repo.get_artifact(ref)
+    if existing is not None:
+        if (existing.artifact_type != kind or existing.content_hash != ref
+                or canonical_json(existing.metadata) != canonical_json({key: body})
+                or existing.available_at_ns > at_ns):
+            raise ValueError("M0 immutable artifact conflicts with an existing publication")
+        return
     repo.register_artifact(ArtifactIndexEntryV2(ref, kind, ref, at_ns, at_ns, {key: body}))
 
 
@@ -675,7 +690,18 @@ def fit_m0(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
            candidate_set: CandidateSetV2, cutoff_ns: int, available_at_ns: int,
            min_training_samples: int = 30, min_independent_support: int = 20,
            min_oof_training_samples: int = 5, min_oof_calibration_samples: int = 30,
-           ridge: float = 1.0, huber_delta: float = 1.345) -> tuple[M0ArtifactV2, M0PredictionV2, M0SupportV2, M0CalibrationV2, tuple[M0OOFRowV2, ...]]:
+           ridge: float = 1.0, huber_delta: float = 1.345,
+           clock_ns: Callable[[], int] | None = None) -> tuple[M0ArtifactV2, M0PredictionV2, M0SupportV2, M0CalibrationV2, tuple[M0OOFRowV2, ...]]:
+    def publication_time() -> int:
+        nonlocal available_at_ns
+        if clock_ns is not None:
+            observed = timestamp(clock_ns(), field="M0 publication clock")
+            if observed < available_at_ns:
+                raise ValueError("M0 clock regressed during computation")
+            available_at_ns = observed
+        if available_at_ns >= candidate.deadline_ns:
+            raise ValueError("M0 computation missed the decision deadline")
+        return available_at_ns
     if (min_training_samples < 30 or min_independent_support < 20 or
             min_oof_training_samples < 5 or min_oof_calibration_samples < 30 or
             not math.isfinite(ridge) or ridge <= 0 or
@@ -688,7 +714,7 @@ def fit_m0(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
     current_vector = action_features(repo, action.content_hash, cutoff_ns=cutoff_ns)
     if current_vector.action_hash != action.action.action_hash:
         raise ValueError("M0 current prediction action identity mismatch")
-    current_feature_ref = index_m0_feature_vector(repo, current_vector, available_at_ns)
+    current_feature_ref = index_m0_feature_vector(repo, current_vector, publication_time())
     all_rows = _training_rows(repo, cutoff_ns)
     compatible = tuple(row for row in all_rows if row.compatibility_key == current_vector.compatibility_key
                        and row.available_at_ns <= cutoff_ns)
@@ -697,7 +723,7 @@ def fit_m0(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
                             min_training_samples=min_oof_training_samples)
     oof_ref_body = {"version": M0_RESIDUAL_ARCHIVE_VERSION, "feature_schema_version": M0_FEATURE_SCHEMA_VERSION,
         "model_version": M0_MODEL_VERSION, "rows": [row.to_dict() for row in oof]}
-    oof_ref = _persist(repo, "M0OOFResidualArchiveV2", available_at_ns, oof_ref_body, "oof_archive")
+    oof_ref = _persist(repo, "M0OOFResidualArchiveV2", publication_time(), oof_ref_body, "oof_archive")
     missing_indices = tuple(i for i, name in enumerate(FEATURE_ORDER) if name.startswith("missing:"))
     missing_count = sum(any(row.features[i] != 0.0 for i in missing_indices) for row in compatible)
     missing_coverage = Decimal(missing_count) / Decimal(len(compatible)) if compatible else Decimal(1)
@@ -709,12 +735,12 @@ def fit_m0(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
         min((r.decision_at_ns for r in compatible), default=None), max((r.decision_at_ns for r in compatible), default=None),
         tuple(r.outcome_ref for r in compatible), current_vector.compatibility_key,
         "SUPPORTED" if len(compatible) >= min_training_samples and _independent_count(compatible) >= min_independent_support else "INSUFFICIENT")
-    support_ref = _persist(repo, "M0SupportV2", available_at_ns, support.to_dict(), "support")
+    support_ref = _persist(repo, "M0SupportV2", publication_time(), support.to_dict(), "support")
     calibration = chronological_oof_calibration(action_hash=action.action.action_hash,
         training_cutoff_ns=cutoff_ns, oof_archive_ref=oof_ref, rows=oof,
         minimum_samples=min_oof_calibration_samples)
     cal_status = calibration.status
-    calibration_ref = _persist(repo, "M0CalibrationV2", available_at_ns, calibration.to_dict(), "calibration")
+    calibration_ref = _persist(repo, "M0CalibrationV2", publication_time(), calibration.to_dict(), "calibration")
     ood_limit = Decimal("6")
     ood_max: Decimal | None = None
     ood_state: bool | None = None
@@ -733,7 +759,7 @@ def fit_m0(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
         ood_status = "OOD" if ood_state else "IN_DISTRIBUTION"
     ood = M0OODV2(action.action.action_hash, current_vector.content_hash,
         tuple(row.outcome_ref for row in compatible), ood_limit, ood_max, ood_state, ood_status)
-    ood_ref = _persist(repo, "M0OODV2", available_at_ns, ood.to_dict(), "ood")
+    ood_ref = _persist(repo, "M0OODV2", publication_time(), ood.to_dict(), "ood")
     reasons: list[str] = []
     if len(compatible) < min_training_samples:
         reasons.append("INSUFFICIENT_MATURED_EXECUTABLE_ACTION_VALUE_HISTORY")
@@ -792,7 +818,8 @@ def fit_m0(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
     # This is the independently resolvable fitted parameter artifact. The run
     # artifact below points to the prediction; prediction points back here, so
     # immutable references remain acyclic.
-    model_ref = _persist(repo, "M0ModelFitV2", available_at_ns, model_body, "model_fit")
+    model_ref = _persist(repo, "M0ModelFitV2", publication_time(), model_body, "model_fit")
+    publication_time()
     prediction = M0PredictionV2(action.action.action_hash, action.content_hash, current_vector.content_hash,
         model_ref, cutoff_ns, available_at_ns, expected, estimate_se, conv_error, support_ref, oof_ref,
         calibration_ref, ood_ref, "AVAILABLE" if not reasons else "NOT_ESTIMABLE", tuple(sorted(set(reasons))))

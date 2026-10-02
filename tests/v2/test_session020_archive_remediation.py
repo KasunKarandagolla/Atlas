@@ -272,7 +272,7 @@ def test_same_bar_revision_selection_is_cutoff_and_directory_order_independent(
 
 @pytest.mark.parametrize(
     ("bound", "maximum"),
-    [("file-count", 1), ("row-count", 1)],
+    [("file-count", 1), ("row-count", 1), ("chunk-file-bytes", 1), ("chunk-decoded-bytes", 1)],
 )
 def test_archive_scan_bound_exhaustion_raises_without_returning_partial_rows(
     tmp_path, monkeypatch, bound, maximum
@@ -286,8 +286,12 @@ def test_archive_scan_bound_exhaustion_raises_without_returning_partial_rows(
         )
         if bound == "file-count":
             monkeypatch.setattr(history, "MAX_CAUSAL_ARCHIVE_FILES", maximum)
-        else:
+        elif bound == "row-count":
             monkeypatch.setattr(history, "MAX_CAUSAL_ARCHIVE_ROWS", maximum)
+        elif bound == "chunk-file-bytes":
+            monkeypatch.setattr(history, "MAX_ARCHIVE_CHUNK_FILE_BYTES", maximum)
+        else:
+            monkeypatch.setattr(history, "MAX_ARCHIVE_CHUNK_DECODED_BYTES", maximum)
         returned = None
         with pytest.raises(ArchiveScanBoundExceededV2) as raised:
             returned = _reconstruct(

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 
 from atlas.domain.risk import RiskPolicy
 
-from .._serialization import canonical_json
+from .._serialization import canonical_json, sha256_json, timestamp
 from ..contracts import CandidateActionV2, CandidateSetV2
 from ..instruments import ProductContractV2
 from ..memory.repository import OpsRepository
@@ -38,7 +38,6 @@ from .admission import (
     build_decision_time_portfolio_scenarios,
     decide_admission,
     evaluate_deterministic_stress,
-    index_admission_evidence,
     index_lcb_method,
     index_portfolio_completeness,
     index_venue_capability_snapshot,
@@ -51,6 +50,9 @@ from .admission import (
     make_portfolio_es,
     make_scenario_support,
     persist_economic_decision,
+)
+from .admission import (
+    index_admission_evidence as _index_admission_evidence,
 )
 from .m0 import M0OODV2, M0PredictionV2, fit_m0
 from .pretrade import CausalInputV2
@@ -104,6 +106,7 @@ def run_phase2_economic_evaluation(
     available_at_ns: int,
     scenario_seed: int,
     scenario_count: int = 100,
+    clock_ns: Callable[[], int] | None = None,
 ) -> Phase2EvaluationResultV2:
     """Run M0 through terminal economic calendar using the supplied ops writer.
 
@@ -141,6 +144,37 @@ def run_phase2_economic_evaluation(
     if available_at_ns >= candidate.deadline_ns:
         raise ValueError("economic evaluation must finish before the selected action deadline")
 
+    def sample_time() -> int:
+        nonlocal available_at_ns
+        if clock_ns is not None:
+            observed = timestamp(clock_ns(), field="economic computation clock")
+            if observed < available_at_ns:
+                raise ValueError("economic clock regressed during computation")
+            available_at_ns = observed
+        if available_at_ns >= candidate.deadline_ns:
+            raise ValueError("economic computation missed the decision deadline")
+        return available_at_ns
+
+    def index_admission_evidence(
+        repo: OpsRepository, kind: str, body: Mapping[str, object], supplied_time: int,
+    ) -> str:
+        # Supplied time is the latest stage boundary in explicit offline callers;
+        # production samples the clock after the body has been computed.
+        if supplied_time > available_at_ns:
+            raise ValueError("economic evidence cannot be published from a future stage")
+        at_ns = sample_time()
+        ref = sha256_json(body)
+        existing = repo.get_artifact(ref)
+        if existing is not None:
+            if (existing.artifact_type != kind or existing.content_hash != ref
+                    or canonical_json(existing.metadata) != canonical_json({"evidence": body})
+                    or existing.available_at_ns > at_ns):
+                raise ValueError("economic immutable artifact conflicts with an existing publication")
+            return ref
+        return _index_admission_evidence(repo, kind, body, at_ns)
+
+    sample_time()
+
     _, prediction, m0_support, calibration, _ = fit_m0(
         repository,
         action=action,
@@ -148,7 +182,10 @@ def run_phase2_economic_evaluation(
         candidate_set=candidate_set,
         cutoff_ns=candidate.decision_at_ns,
         available_at_ns=available_at_ns,
+        clock_ns=clock_ns,
     )
+    available_at_ns = prediction.available_at_ns
+    sample_time()
     scenario, payoffs = generate_pretrade_scenarios(
         repository,
         action=action,
@@ -160,13 +197,15 @@ def run_phase2_economic_evaluation(
         fee=fee,
         base_units_per_contract=product.base_units_per_contract,
         cutoff_ns=candidate.decision_at_ns,
-        created_at_ns=available_at_ns - 2,
-        computed_at_ns=available_at_ns - 1,
+        created_at_ns=available_at_ns,
+        computed_at_ns=available_at_ns,
         available_at_ns=available_at_ns,
         expires_at_ns=candidate.deadline_ns,
         seed=scenario_seed,
         scenario_count=scenario_count,
+        clock_ns=clock_ns,
     )
+    available_at_ns = scenario.available_at_ns
 
     scenario_support = make_scenario_support(repository, action=action, scenario=scenario, support_unit_refs=())
     index_admission_evidence(repository, "ScenarioSupportV2", scenario_support.to_dict(), available_at_ns)
@@ -287,6 +326,7 @@ def run_phase2_economic_evaluation(
         capability=capability,
         account_scope=account.account_scope,
     )
+    sample_time()
     evaluation = make_amended_evaluation(
         action=action,
         candidate=candidate,

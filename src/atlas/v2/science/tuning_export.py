@@ -13,6 +13,7 @@ import math
 import os
 import re
 import sqlite3
+import threading
 import time
 import uuid
 from collections import Counter
@@ -33,7 +34,7 @@ from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.models.baseline import BaselineInputsV2
 from atlas.v2.models.protocol import ForecastArtifactV2
 from atlas.v2.models.worker_protocol import WorkerRequestV2
-from atlas.v2.runtime.s3_native_cadence import find_s3_m1_origin_late_gate
+from atlas.v2.runtime.s3_native_cadence import find_s3_m1_origin_late_gate, s3_m1_event_id
 from atlas.v2.science.outcomes import (
     DecisionCalendarEntryV2,
     MaturedOutcomeV2,
@@ -57,6 +58,7 @@ _TYPES = (
     "ResearchModelRequestV1", "ResearchModelForecastV1", "ResearchModelTerminalV1",
     "ResearchModelValuesV1", "ResearchModelRoutingRegistryV1", "ResearchModelShadowDiagnosticV1",
     "ResearchPredictionOutcomeV1",
+    "M15OriginAccountingRecordV1", "M15OpportunityMissingnessV1",
 )
 _METRIC_NAMES = frozenset({
     "latency_ns", "dispatch_to_result_latency_ns", "queue_items", "queue_bytes", "high_water_items",
@@ -231,12 +233,15 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
         "model_missing_outputs_json": None,
         "prediction_id": None, "prediction_target_ref": None, "horizon_ns": None, "horizon_end_ns": None,
         "measured_log_return": None, "predicted_log_return": None,
+        "accounting_kind": None,
     }
     body = json_value(entry.metadata)
     if entry.artifact_type.startswith("ResearchModel"):
         body = _model_projection(repository, entry, row)
     if entry.artifact_type == "ResearchPredictionOutcomeV1":
         body = _prediction_projection(repository, entry, row)
+    elif entry.artifact_type in {"M15OriginAccountingRecordV1", "M15OpportunityMissingnessV1"}:
+        body = _m15_projection(repository, entry, row)
     elif entry.artifact_type == "DecisionCalendarEntryV2":
         decision = DecisionCalendarEntryV2.from_dict(body["decision_entry"])
         if index_decision_calendar_entry(repository, decision) != entry.artifact_ref:
@@ -280,7 +285,8 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
             raise ValueError("missingness lost its supporting gate")
         body = missing.to_dict()
         row.update(row_kind="MISSINGNESS", decision_at_ns=missing.decision_slot_ns, status=missing.state,
-                   instrument_key_json=canonical_json(missing.instrument_key.to_dict()))
+                   instrument_key_json=canonical_json(missing.instrument_key.to_dict()),
+                   event_id=s3_m1_event_id(missing.instrument_key, missing.decision_slot_ns))
     elif entry.artifact_type == "ActionCriticShadowObservationV1":
         observation = ActionCriticShadowObservationV1.from_dict(body["observation"])
         if index_action_critic_shadow_observation(repository, observation) != entry.artifact_ref:
@@ -324,6 +330,62 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
     row["reason_codes"] = reasons
     row["evidence_refs"] = refs
     return row
+
+
+def _m15_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
+                    row: dict[str, Any]) -> Mapping[str, Any]:
+    from atlas.v2.runtime.production import decision_event_from_dict
+    from atlas.v2.science.m15_origin_accounting import M15OpportunityMissingnessV1, M15OriginAccountingRecordV1
+
+    record = (M15OriginAccountingRecordV1.from_dict(json_value(entry.metadata["accounting"]))
+              if entry.artifact_type == M15OriginAccountingRecordV1.VERSION
+              else M15OpportunityMissingnessV1.from_dict(json_value(entry.metadata["missingness"])))
+    if (entry.artifact_ref != record.content_hash or entry.content_hash != record.content_hash
+            or entry.available_at_ns != record.observed_at_ns or entry.created_at_ns != record.observed_at_ns):
+        raise ValueError("M15 origin accounting hash or observation chronology mismatch")
+    source = repository.get_artifact(record.observation_index_ref)
+    if (source is None or source.artifact_type != "PublicObservationIndexV2"
+            or source.available_at_ns > record.observed_at_ns
+            or source.metadata.get("bar_content_hash") != record.bar_ref
+            or source.metadata.get("instrument_key_json") != record.instrument_key.to_canonical_json()
+            or source.metadata.get("instrument_revision") != record.instrument_key.contract_revision
+            or source.metadata.get("availability_class") != "ACTUAL_SYSTEM"
+            or source.metadata.get("event_type") != "BAR_15M"
+            or source.metadata.get("event_at_ns") != record.close_at_ns
+            or source.artifact_ref != sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                                   "record_id": source.metadata.get("record_id")})):
+        raise ValueError("M15 origin lost its exact instrument/raw-bar evidence")
+    row.update(origin_ref=record.origin_ref, decision_at_ns=record.close_at_ns,
+               instrument_key_json=canonical_json(record.instrument_key.to_dict()))
+    if isinstance(record, M15OpportunityMissingnessV1):
+        if source.available_at_ns != record.source_available_at_ns:
+            raise ValueError("M15 missingness source availability mismatch")
+        row.update(row_kind="MISSINGNESS", status=record.status)
+    else:
+        terminal = repository.get_artifact(record.accounting_ref)
+        if (terminal is None or terminal.artifact_type != record.accounting_kind
+                or terminal.available_at_ns > record.observed_at_ns):
+            raise ValueError("M15 origin accounting lost its exact terminal evidence")
+        if record.accounting_kind == M15OpportunityMissingnessV1.VERSION:
+            missing_row: dict[str, Any] = {}
+            _m15_projection(repository, terminal, missing_row)
+            if missing_row["origin_ref"] != record.origin_ref:
+                raise ValueError("M15 accounting/missingness origin mismatch")
+        else:
+            event = decision_event_from_dict(json_value(terminal.metadata["event"]))
+            trigger = repository.get_artifact(event.trigger_ref)
+            trigger_body = trigger.metadata.get("trigger") if trigger is not None else None
+            if (event.content_hash != terminal.artifact_ref or terminal.content_hash != terminal.artifact_ref
+                    or event.source_event_at_ns != record.close_at_ns
+                    or trigger is None or trigger.artifact_type != "OpsPublicFinalBarTriggerV1"
+                    or not isinstance(trigger_body, Mapping) or sha256_json(trigger_body) != trigger.artifact_ref
+                    or trigger.content_hash != trigger.artifact_ref or trigger.available_at_ns > terminal.available_at_ns
+                    or trigger_body.get("source_observation_ref") != record.observation_index_ref
+                    or trigger_body.get("bar_ref") != record.bar_ref):
+                raise ValueError("M15 accounting/event source binding mismatch")
+            row["event_id"] = event.event_id
+        row.update(row_kind="ORIGIN", accounting_kind=record.accounting_kind)
+    return record.to_dict()
 
 
 def _prediction_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
@@ -580,9 +642,148 @@ def _schema() -> Any:
         "model_missing_outputs_json",
         "prediction_id", "prediction_target_ref", "horizon_ns", "horizon_end_ns",
         "measured_log_return", "predicted_log_return",
+        "accounting_kind",
     )
     return pa.schema([(name, pa.int64() if name in integer_names else pa.list_(pa.string())
                        if name in list_names else pa.string()) for name in names])
+
+
+def _reconciled_report(root: Path, previous: Mapping[str, Any] | None, partition: Path,
+                       identity: TuningRunIdentityV1, *, seconds: float) -> dict[str, Any]:
+    """Bounded disposable analytics over checksummed, manifested rows only.
+
+    Origin/event identities reconcile stages; they do not estimate independent
+    observations. Unregistered expected origins cannot be inferred from silence.
+    """
+    import duckdb
+
+    started = time.monotonic()
+    paths = [str(partition)]
+    seen: set[str] = set()
+    prior = previous
+    while prior is not None:
+        if time.monotonic() - started >= seconds or len(paths) >= 4096:
+            return {"status": "TEST GATE", "reason": "ANALYSIS_HISTORY_OR_TIME_BUDGET_EXCEEDED"}
+        digest = sha256_json(prior)
+        if digest in seen or prior["run_identity"] != identity.to_dict():
+            raise ValueError("analysis manifest chain identity or cycle mismatch")
+        seen.add(digest)
+        checksum = prior["partition_sha256"]
+        sha256_ref(checksum, field="analysis partition_sha256")
+        path = root / "partitions" / f"{checksum}.parquet"
+        if _file_hash(path) != checksum:
+            raise ValueError("analysis partition checksum mismatch")
+        paths.append(str(path))
+        predecessor = prior["previous_manifest_sha256"]
+        if predecessor is None:
+            break
+        sha256_ref(predecessor, field="analysis previous_manifest_sha256")
+        prior = json.loads((root / "manifests" / f"{predecessor}.json").read_text())
+        if sha256_json(prior) != predecessor:
+            raise ValueError("analysis manifest predecessor checksum mismatch")
+    remaining = seconds - (time.monotonic() - started)
+    if remaining <= 0:
+        return {"status": "TEST GATE", "reason": "ANALYSIS_HISTORY_OR_TIME_BUDGET_EXCEEDED"}
+    # No operational connection or persistent analytics database is opened.
+    connection = duckdb.connect(":memory:", config={"memory_limit": "128MB", "threads": "1",
+                                                  "max_temp_directory_size": "0B"})
+    timer = threading.Timer(remaining, connection.interrupt)
+    timer.daemon = True
+    timer.start()
+    truncated = False
+
+    def groups(sql: str) -> list[dict[str, Any]]:
+        nonlocal truncated
+        cursor = connection.execute(sql + " LIMIT 257")
+        names = [column[0] for column in cursor.description]
+        values = cursor.fetchall()
+        truncated |= len(values) > 256
+        return [dict(zip(names, row, strict=True)) for row in values[:256]]
+
+    try:
+        connection.from_parquet(paths, union_by_name=True).create_view("rows")
+        connection.execute("""CREATE VIEW origin_events AS
+            SELECT DISTINCT event_id, origin_ref FROM rows
+            WHERE row_kind='ORIGIN' AND event_id IS NOT NULL""")
+        connection.execute("""CREATE VIEW decisions AS
+            SELECT r.*, coalesce(o.origin_ref, r.event_id) AS opportunity_ref
+            FROM rows r LEFT JOIN origin_events o ON r.event_id=o.event_id
+            WHERE r.row_kind='DECISION'""")
+        summary = connection.execute("""WITH opportunities AS (
+            SELECT opportunity_ref AS ref FROM decisions
+            UNION SELECT origin_ref FROM rows WHERE row_kind='ORIGIN'
+            UNION SELECT coalesce(event_id, origin_ref) FROM rows WHERE row_kind='MISSINGNESS'
+        ) SELECT count(*) FILTER (WHERE ref IS NOT NULL), count(*) FILTER (WHERE ref IS NULL)
+          FROM opportunities""").fetchone()
+        if summary is None:
+            raise ValueError("analysis opportunity aggregate did not return a row")
+        stages = groups("""SELECT policy_id, policy_hash, source_stage, selection_state, admission_state,
+            count(*) AS calendar_rows, count(DISTINCT opportunity_ref) AS distinct_recorded_origins,
+            count(DISTINCT candidate_ref) AS distinct_candidates,
+            count(DISTINCT action_hash) AS distinct_actions
+            FROM decisions GROUP BY ALL ORDER BY policy_id, policy_hash, source_stage, selection_state, admission_state""")
+        coverage = groups("""SELECT d.policy_id, d.policy_hash, d.source_stage, d.selection_state,
+            d.admission_state, count(DISTINCT d.decision_ref) AS calendar_entries,
+            count(DISTINCT o.decision_ref) AS entries_with_any_outcome,
+            count(DISTINCT o.decision_ref) FILTER (WHERE o.label_state='MATURED') AS entries_with_matured_outcome,
+            count(DISTINCT o.decision_ref) FILTER (WHERE o.label_state IN ('UNRESOLVED','CENSORED'))
+                AS entries_with_unresolved_or_censored_outcome
+            FROM decisions d LEFT JOIN rows o ON o.row_kind='OUTCOME' AND o.decision_ref=d.decision_ref
+            GROUP BY ALL ORDER BY d.policy_id, d.policy_hash, d.source_stage, d.selection_state, d.admission_state""")
+        outcome_labels = groups("""SELECT outcome_target, provenance, label_state,
+            count(*) AS label_rows, count(DISTINCT decision_ref) AS distinct_decisions,
+            count(DISTINCT action_hash) AS distinct_actions FROM rows WHERE row_kind='OUTCOME'
+            GROUP BY ALL ORDER BY outcome_target, provenance, label_state""")
+        predictions = groups("""SELECT prediction_target_ref, horizon_ns, model_profile_hash, route_ref,
+            instrument_key_json, label_state, count(*) AS label_rows,
+            count(DISTINCT request_ref) AS distinct_requests,
+            count(DISTINCT decision_ref) AS distinct_decisions,
+            count(predicted_log_return) FILTER (WHERE label_state='MATURED' AND measured_log_return IS NOT NULL)
+                AS paired_prediction_labels,
+            avg(abs(try_cast(measured_log_return AS DOUBLE)-try_cast(predicted_log_return AS DOUBLE)))
+                FILTER (WHERE label_state='MATURED') AS mean_absolute_log_return_error,
+            sqrt(avg(pow(try_cast(measured_log_return AS DOUBLE)-try_cast(predicted_log_return AS DOUBLE),2))
+                FILTER (WHERE label_state='MATURED')) AS root_mean_squared_log_return_error,
+            avg(try_cast(measured_log_return AS DOUBLE)-try_cast(predicted_log_return AS DOUBLE))
+                FILTER (WHERE label_state='MATURED') AS mean_log_return_error,
+            count(json_extract_string(metrics_json,'$.quantile_interval_covered'))
+                FILTER (WHERE label_state='MATURED') AS interval_label_pairs,
+            avg(try_cast(json_extract_string(metrics_json,'$.quantile_interval_covered') AS DOUBLE))
+                FILTER (WHERE label_state='MATURED') AS observed_90pct_interval_coverage
+            FROM rows WHERE row_kind='MODEL_OUTCOME' GROUP BY ALL
+            ORDER BY prediction_target_ref,horizon_ns,model_profile_hash,route_ref,instrument_key_json,label_state""")
+        origins = groups("""SELECT artifact_type, accounting_kind, status,
+            count(*) AS record_rows, count(DISTINCT origin_ref) AS distinct_recorded_origins
+            FROM rows WHERE row_kind IN ('ORIGIN','MISSINGNESS') GROUP BY ALL
+            ORDER BY artifact_type,accounting_kind,status""")
+        reconciliation = connection.execute("""SELECT
+            (SELECT count(*) FROM rows o WHERE o.row_kind='OUTCOME' AND NOT EXISTS
+                (SELECT 1 FROM decisions d WHERE d.decision_ref=o.decision_ref)) AS outcomes_without_exported_calendar,
+            (SELECT count(*) FROM rows o WHERE o.row_kind='ORIGIN' AND o.event_id IS NOT NULL AND NOT EXISTS
+                (SELECT 1 FROM decisions d WHERE d.event_id=o.event_id)) AS registered_events_without_exported_calendar,
+            (SELECT count(*) FROM (SELECT event_id FROM origin_events GROUP BY event_id
+                HAVING count(DISTINCT origin_ref)>1)) AS conflicting_event_origin_bindings""").fetchone()
+        if reconciliation is None:
+            raise ValueError("analysis reconciliation aggregate did not return a row")
+        return {"status": "TEST GATE" if truncated or reconciliation[2] else "TESTED",
+                "scope": "VALIDATED_RECORDED_ORIGINS_ONLY", "group_limit": 256,
+                "group_limit_exceeded": truncated, "distinct_recorded_opportunities": summary[0],
+                "unidentified_opportunity_rows": summary[1], "stage_funnel": stages,
+                "origin_accounting": origins, "outcome_coverage_by_calendar_stage": coverage,
+                "outcome_labels_by_target_and_provenance": outcome_labels,
+                "prediction_diagnostics_by_target_horizon_route_instrument": predictions,
+                "outcomes_without_exported_calendar": reconciliation[0],
+                "registered_events_without_exported_calendar": reconciliation[1],
+                "conflicting_event_origin_bindings": reconciliation[2],
+                "expected_unregistered_origin_count": None,
+                "economic_significance": "NOT ESTIMABLE",
+                "independence": "SHARED_MARKET_HISTORY_AND_OVERLAPPING_LABELS_REQUIRE_DEPENDENCE_AWARE_INFERENCE"}
+    except duckdb.Error:
+        return {"status": "TEST GATE", "reason": "ANALYSIS_QUERY_OR_RESOURCE_BUDGET_FAILED"}
+    finally:
+        timer.cancel()
+        timer.join()
+        connection.close()
 
 
 def export_tuning_snapshot(
@@ -750,6 +951,10 @@ def export_tuning_snapshot(
                     and has_more == previous["has_more"]
                     and blocked_future == previous["blocked_future_evidence"]):
                 return previous
+            reconciliation = _reconciled_report(
+                root, previous, target, identity,
+                seconds=max(0.0, max_snapshot_seconds - (time.monotonic() - started)),
+            )
             manifest: dict[str, Any] = {
                 "version": VERSION, "run_identity": identity.to_dict(), "cutoff_ns": cutoff_ns,
                 "after_rowid": after, "through_rowid": through, "rows_written": rows_written,
@@ -760,7 +965,8 @@ def export_tuning_snapshot(
                 "validation_failures": dict(sorted(failures.items())),
                 "metric_summaries": dict(sorted(metric_summaries.items())),
                 "report": {
-                    "status": "TEST GATE" if failures or has_more or blocked_future else "TESTED",
+                    "status": "TEST GATE" if failures or has_more or blocked_future
+                    or reconciliation["status"] != "TESTED" else "TESTED",
                     "scope": "READ_ONLY_OFFLINE_EVIDENCE_PROJECTION",
                     "calendar_rows": counts["row_kind:DECISION"],
                     "missing_origin_rows": counts["row_kind:MISSINGNESS"],
@@ -778,8 +984,9 @@ def export_tuning_snapshot(
                                                    if key.startswith(("status:", "metric_state:", "reason:"))},
                     "recorded_resource_and_latency_summaries": metric_summaries,
                     "invalid_rows": counts["row_kind:INVALID"],
-                    "denominator_definition": "CALENDAR_ENTRY_ROWS_BY_STAGE_WITH_MISSING_ORIGINS_SEPARATE",
-                    "opportunity_denominator": "NOT_ESTIMABLE_UNTIL_ORIGIN_AND_STAGE_RECONCILIATION",
+                    "denominator_definition": "DISTINCT_VALIDATED_RECORDED_ORIGINS_WITH_CALENDAR_STAGES_SEPARATE",
+                    "opportunity_denominator": reconciliation.get("distinct_recorded_opportunities"),
+                    "recorded_opportunity_reconciliation": reconciliation,
                     "independence": "CONFIGURATIONS_SHARE_MARKET_HISTORY_AND_ARE_NOT_INDEPENDENT_SAMPLES",
                     "unsupported_metrics": [
                         "economic_significance_without_prospective_duration_regimes_dependence_and_support",

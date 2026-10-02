@@ -87,7 +87,12 @@ from ..risk import (
     size_selected_candidate,
 )
 from ..science.action import ActionArtifactV2, freeze_action
-from ..science.admission import AdmissionPolicyV2, VenueCapabilitySnapshotV2
+from ..science.admission import (
+    AdmissionPolicyV2,
+    AmendedEvaluationArtifactV2,
+    VenueCapabilitySnapshotV2,
+    index_amended_evaluation,
+)
 from ..science.analogue import not_estimable_analogue, persist_analogue
 from ..science.evaluation_service import Phase2EvaluationResultV2, run_phase2_economic_evaluation
 from ..science.m1 import M1RunV2, fit_m1
@@ -148,6 +153,7 @@ from ..strategies.s3_mean_reversion import (
     residual_observation,
     utc_day_trade_vwap,
 )
+from .analogue_diagnostic import run_analogue_diagnostic_v1
 from .ops_supervisor import (
     PIPELINE_STAGE_ORDER,
     OpsCycleBatchV1,
@@ -3073,9 +3079,18 @@ class ProductionOpsCyclePortV1:
             economic_inputs, economic_resolution_reason = self.inputs_provider.resolve_economic(
                 repository, event, candidate_set, selected, action, risk_inputs, now_ns=now_ns,
             )
-        evaluation: Phase2EvaluationResultV2 | None = None
+        evaluation: Phase2EvaluationResultV2 | _RecoveredEconomicEvaluationV1 | None = (
+            _recover_economic_evaluation(repository, action, selected, candidate_set, now_ns=now_ns)
+        )
         evaluation_reason = economic_resolution_reason or _evaluation_inputs_reason(economic_inputs, event)
-        if economic_inputs is not None and economic_inputs.complete and evaluation_reason is None:
+        if evaluation is not None:
+            evaluation_reason = None
+            save(PipelineStageV1.ECONOMIC_EVALUATION,
+                 {"CANDIDATE": OpsStageStatusV1.COMPLETE, "NO_TRADE": OpsStageStatusV1.NO_TRADE,
+                  "NOT_ESTIMABLE": OpsStageStatusV1.NOT_ESTIMABLE}[evaluation.evaluation.decision.value],
+                 (evaluation.evaluation_ref,),
+                 reason=evaluation.evaluation.reason_codes[0] if evaluation.evaluation.reason_codes else None)
+        elif economic_inputs is not None and economic_inputs.complete and evaluation_reason is None:
             try:
                 evaluation = run_phase2_economic_evaluation(
                     repository,
@@ -3096,6 +3111,7 @@ class ProductionOpsCyclePortV1:
                     available_at_ns=_required(economic_inputs.available_at_ns),
                     scenario_seed=_required(economic_inputs.scenario_seed),
                     scenario_count=economic_inputs.scenario_count,
+                    clock_ns=self.clock_ns,
                 )
             except Exception as error:
                 evaluation_reason = f"ECONOMIC_EVALUATION_FAILED_{type(error).__name__}"
@@ -3125,36 +3141,42 @@ class ProductionOpsCyclePortV1:
         diagnostic_at = max(now_ns, timestamp(self.clock_ns(), field="action diagnostic computation start"))
         m1_reason: str | None
         if diagnostic_at >= selected.deadline_ns:
-            m1_ref, diagnostic_failure_reason = _persist_action_diagnostic_failure(
-                repository, action, kind="M1", reason="DECISION_DEADLINE_EXPIRED", available_at_ns=now_ns
-            )
-            save(PipelineStageV1.M1_DIAGNOSTIC, OpsStageStatusV1.NOT_ESTIMABLE, (m1_ref,),
-                 action_hash=action.action.action_hash, reason=diagnostic_failure_reason)
-            analogue = _not_estimable_analogue(repository, action, selected, candidate_set, now_ns,
-                                                "NOT_ESTIMABLE_DECISION_DEADLINE_EXPIRED")
-            save(PipelineStageV1.ANALOGUE_DIAGNOSTIC, OpsStageStatusV1.NOT_ESTIMABLE, (analogue,),
-                 action_hash=action.action.action_hash, reason="NOT_ESTIMABLE_DECISION_DEADLINE_EXPIRED")
+            if PipelineStageV1.M1_DIAGNOSTIC not in stages:
+                m1_ref, diagnostic_failure_reason = _persist_action_diagnostic_failure(
+                    repository, action, kind="M1", reason="DECISION_DEADLINE_EXPIRED", available_at_ns=diagnostic_at
+                )
+                save(PipelineStageV1.M1_DIAGNOSTIC, OpsStageStatusV1.NOT_ESTIMABLE, (m1_ref,),
+                     action_hash=action.action.action_hash, reason=diagnostic_failure_reason)
+            if PipelineStageV1.ANALOGUE_DIAGNOSTIC not in stages:
+                analogue = _not_estimable_analogue(repository, action, selected, candidate_set, diagnostic_at,
+                                                    "NOT_ESTIMABLE_DECISION_DEADLINE_EXPIRED")
+                save(PipelineStageV1.ANALOGUE_DIAGNOSTIC, OpsStageStatusV1.NOT_ESTIMABLE, (analogue,),
+                     action_hash=action.action.action_hash, reason="NOT_ESTIMABLE_DECISION_DEADLINE_EXPIRED")
         else:
-            m1_ref, m1_reason = _run_m1(repository, action, selected, candidate_set, event,
-                                        diagnostic_at, dependency_lock_hash())
-            save(
-                PipelineStageV1.M1_DIAGNOSTIC,
-                OpsStageStatusV1.NOT_ESTIMABLE if m1_reason else OpsStageStatusV1.COMPLETE,
-                (m1_ref,),
-                action_hash=action.action.action_hash,
-                reason=m1_reason,
-            )
-            analogue_ref = _not_estimable_analogue(
-                repository, action, selected, candidate_set, diagnostic_at,
-                "NOT_ESTIMABLE_NO_COMPATIBLE_MATURED_ANALOGUES",
-            )
-            save(
-                PipelineStageV1.ANALOGUE_DIAGNOSTIC,
-                OpsStageStatusV1.NOT_ESTIMABLE,
-                (analogue_ref,),
-                action_hash=action.action.action_hash,
-                reason="NOT_ESTIMABLE_NO_COMPATIBLE_MATURED_ANALOGUES",
-            )
+            if PipelineStageV1.M1_DIAGNOSTIC not in stages:
+                m1_ref, m1_reason = _run_m1(repository, action, selected, candidate_set, event,
+                                            diagnostic_at, dependency_lock_hash())
+                save(
+                    PipelineStageV1.M1_DIAGNOSTIC,
+                    OpsStageStatusV1.NOT_ESTIMABLE if m1_reason else OpsStageStatusV1.COMPLETE,
+                    (m1_ref,),
+                    action_hash=action.action.action_hash,
+                    reason=m1_reason,
+                )
+            if PipelineStageV1.ANALOGUE_DIAGNOSTIC not in stages:
+                analogue_diagnostic = run_analogue_diagnostic_v1(
+                    repository, action=action, candidate=selected, candidate_set=candidate_set,
+                    cutoff_ns=event.information_cutoff_ns,
+                    available_at_ns=max(diagnostic_at, timestamp(self.clock_ns(), field="analogue start")),
+                    clock_ns=self.clock_ns,
+                )
+                save(
+                    PipelineStageV1.ANALOGUE_DIAGNOSTIC,
+                    OpsStageStatusV1.NOT_ESTIMABLE if analogue_diagnostic.reason else OpsStageStatusV1.COMPLETE,
+                    (analogue_diagnostic.result_ref, analogue_diagnostic.retrieval_receipt_ref),
+                    action_hash=action.action.action_hash,
+                    reason=analogue_diagnostic.reason,
+                )
 
         if evaluation is not None:
             calendar_ref = evaluation.calendar_ref
@@ -4920,6 +4942,48 @@ def _risk_input_reason(inputs: ProductionRiskInputsV1 | None, event: OpsDecision
     if any(at_ns > event.information_cutoff_ns for at_ns in required_times):
         return "FUTURE_REQUIRED_HARD_RISK_EVIDENCE"
     return None
+
+
+@dataclass(frozen=True)
+class _RecoveredEconomicEvaluationV1:
+    evaluation: AmendedEvaluationArtifactV2
+    evaluation_ref: str
+    calendar_ref: str
+
+
+def _recover_economic_evaluation(
+    repository: OpsRepository, action: ActionArtifactV2, candidate: CandidateActionV2,
+    candidate_set: CandidateSetV2, *, now_ns: int,
+) -> _RecoveredEconomicEvaluationV1 | None:
+    identity_ref = sha256_json({"version": "DECISION_CALENDAR_IDENTITY_V2_V1",
+        "candidate_set_ref": candidate_set.content_hash, "candidate_ref": candidate.content_hash,
+        "policy_hash": candidate.policy_hash})
+    identity = repository.get_artifact(identity_ref)
+    if identity is None:
+        return None
+    calendar_ref = identity.metadata.get("decision_ref")
+    calendar_entry = repository.get_artifact(calendar_ref) if isinstance(calendar_ref, str) else None
+    if (identity.artifact_type != "DecisionCalendarIdentityV2" or calendar_entry is None
+            or calendar_entry.artifact_type != "DecisionCalendarEntryV2"
+            or identity.content_hash != calendar_entry.artifact_ref
+            or calendar_entry.available_at_ns > now_ns):
+        raise ValueError("recovered economic calendar identity is invalid or future")
+    calendar = DecisionCalendarEntryV2.from_dict(json_value(calendar_entry.metadata["decision_entry"]))
+    if index_decision_calendar_entry(repository, calendar) != calendar_entry.artifact_ref:
+        raise ValueError("recovered economic calendar failed its exact persisted graph")
+    if calendar.source_stage != DecisionSourceStageV2.ECONOMIC_EVALUATION:
+        return None
+    entry = repository.get_artifact(calendar.source_artifact_ref)
+    if entry is None or entry.artifact_type != "EvaluationArtifactV2":
+        raise ValueError("recovered economic evaluation is missing")
+    evaluation = AmendedEvaluationArtifactV2.from_dict(json_value(entry.metadata["evaluation"]))
+    if (evaluation.action_hash != action.action.action_hash or evaluation.action_artifact_ref != action.content_hash
+            or evaluation.candidate_ref != candidate.content_hash
+            or evaluation.candidate_set_ref != candidate_set.content_hash
+            or evaluation.available_at_ns != entry.available_at_ns or entry.available_at_ns > now_ns
+            or index_amended_evaluation(repository, evaluation) != entry.artifact_ref):
+        raise ValueError("recovered economic evaluation failed its exact persisted graph")
+    return _RecoveredEconomicEvaluationV1(evaluation, entry.artifact_ref, calendar_entry.artifact_ref)
 
 
 def _not_estimable_analogue(

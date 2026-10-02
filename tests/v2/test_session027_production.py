@@ -1497,7 +1497,7 @@ def test_actual_adapter_recovers_before_collecting_and_uses_existing_pipeline_ap
             ("action", "freeze_action"),
             ("evaluation", "run_phase2_economic_evaluation"),
             ("m1", "fit_m1"),
-            ("analogue", "not_estimable_analogue"),
+            ("analogue", "run_analogue_diagnostic_v1"),
             ("calendar", "index_decision_calendar_entry"),
         )
         original = {name: getattr(production, name) for _, name in wrappers}

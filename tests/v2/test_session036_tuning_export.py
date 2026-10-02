@@ -9,12 +9,18 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from atlas.v2._serialization import canonical_json, sha256_json
+from atlas.v2._serialization import canonical_json, json_value, sha256_json
 from atlas.v2.agent_intelligence.shadow_measurement import ActionCriticShadowObservationV1
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.runtime import production
 from atlas.v2.science import tuning_export
-from atlas.v2.science.outcomes import index_matured_outcome
+from atlas.v2.science.outcomes import (
+    AdmissionStateV2,
+    DecisionCalendarEntryV2,
+    DecisionSourceStageV2,
+    index_decision_calendar_entry,
+    index_matured_outcome,
+)
 from atlas.v2.science.tuning_export import TuningRunIdentityV1, export_tuning_snapshot
 
 from . import test_session018_remediation as s18
@@ -56,6 +62,9 @@ def test_native_calendar_and_late_missingness_keep_separate_denominators(tmp_pat
     assert manifest["report"]["calendar_rows"] == 1
     assert manifest["report"]["missing_origin_rows"] == 1
     assert manifest["report"]["outcome_rows"] == 0
+    reconciliation = manifest["report"]["recorded_opportunity_reconciliation"]
+    assert reconciliation["distinct_recorded_opportunities"] == 2
+    assert reconciliation["stage_funnel"][0]["distinct_recorded_origins"] == 1
     rows = _rows(tmp_path / "reports", manifest)
     decision = next(row for row in rows if row["row_kind"] == "DECISION")
     assert decision["selection_state"] == "NOT_ESTIMABLE" and decision["candidate_ref"] is None
@@ -152,7 +161,8 @@ def test_product_telemetry_keeps_recorded_units_without_invented_utilization(tmp
         assert metrics["telemetry." + name] == telemetry[name]
     assert not any("cpu_percent" in name for name in metrics)
     assert row["epoch_id"] == "epoch-036" and "HEALTHY" in row["reason_codes"]
-    assert manifest["report"]["opportunity_denominator"] == "NOT_ESTIMABLE_UNTIL_ORIGIN_AND_STAGE_RECONCILIATION"
+    assert manifest["report"]["opportunity_denominator"] == 0
+    assert manifest["report"]["recorded_opportunity_reconciliation"]["expected_unregistered_origin_count"] is None
 
 
 def test_exact_outcome_join_is_validated_and_later_maturity_is_incremental(tmp_path):
@@ -238,3 +248,101 @@ def test_snapshot_timeout_does_not_advance_manifest(tmp_path, monkeypatch):
     with pytest.raises(tuning_export.TuningExportBudgetExceeded):
         export_tuning_snapshot(path, tmp_path / "reports", IDENTITY, cutoff_ns=10, max_snapshot_seconds=1)
     assert not (tmp_path / "reports" / IDENTITY.run_id / "head.json").exists()
+
+
+def test_opportunity_reconciliation_keeps_stage_denominators_and_late_labels(tmp_path):
+    path = tmp_path / "ops.sqlite"
+    with OpsRepository(path) as repo:
+        case, _action, _payoff, outcome = s18._payoff_case(repo)
+        hard_risk = DecisionCalendarEntryV2.from_dict(
+            json_value(repo.get_artifact(outcome.decision_ref).metadata["decision_entry"]))
+        # Each candidate keeps its frozen one-terminal calendar identity. A
+        # different CandidateSet at the same origin is a dependent observation.
+        other = replace(case.candidate, candidate_id=sha256_json("reconciliation-other-candidate"),
+                        envelope=replace(case.candidate.envelope,
+                                         artifact_id="reconciliation-other-candidate", content_hash=""))
+        other_universe = replace(case.universe,
+            envelope=replace(case.universe.envelope, artifact_id="reconciliation-other-universe", content_hash=""))
+        other_case = s18.risk_case(repo, candidate_override=other, universe_override=other_universe)
+        selection = replace(hard_risk, source_stage=DecisionSourceStageV2.CANDIDATE_SET,
+                            candidate_set_ref=other_case.candidate_set.content_hash,
+                            candidate_ref=other.content_hash,
+                            source_artifact_ref=other_case.candidate_set.content_hash,
+                            admission_state=AdmissionStateV2.NOT_EVALUATED, action_hash=None, action_artifact_ref=None,
+                            created_at_ns=case.candidate_set.envelope.available_at_ns,
+                            available_at_ns=case.candidate_set.envelope.available_at_ns)
+        index_decision_calendar_entry(repo, selection)
+        first = export_tuning_snapshot(path, tmp_path / "reports", IDENTITY,
+                                       cutoff_ns=outcome.available_at_ns, max_rows=1)
+        while first["has_more"]:
+            first = export_tuning_snapshot(path, tmp_path / "reports", IDENTITY,
+                                           cutoff_ns=outcome.available_at_ns, max_rows=1)
+        report = first["report"]["recorded_opportunity_reconciliation"]
+        assert report["status"] == "TESTED"
+        assert report["distinct_recorded_opportunities"] == 1
+        assert len(report["stage_funnel"]) == 2
+        assert all(stage["calendar_rows"] == stage["distinct_recorded_origins"] == 1
+                   for stage in report["stage_funnel"])
+        assert all(stage["entries_with_any_outcome"] == 0 for stage in report["outcome_coverage_by_calendar_stage"])
+        index_matured_outcome(repo, outcome)
+        later = export_tuning_snapshot(path, tmp_path / "reports", IDENTITY, cutoff_ns=outcome.available_at_ns)
+        report = later["report"]["recorded_opportunity_reconciliation"]
+        assert report["distinct_recorded_opportunities"] == 1
+        hard = next(stage for stage in report["outcome_coverage_by_calendar_stage"] if stage["source_stage"] == "HARD_RISK")
+        selected = next(stage for stage in report["outcome_coverage_by_calendar_stage"] if stage["source_stage"] == "CANDIDATE_SET")
+        assert hard["entries_with_matured_outcome"] == 1 and selected["entries_with_matured_outcome"] == 0
+        assert report["outcome_labels_by_target_and_provenance"][0]["provenance"] == "SIMULATED"
+
+
+def test_received_m15_missing_origins_are_validated_and_counted_once(tmp_path):
+    from atlas.v2.runtime.production import IndexedPublicCycleSourceV1
+
+    from .test_session036_m15_origin_accounting import BASE, STEP
+    from .test_session036_m15_production_accounting import seed
+
+    now = BASE + STEP + 20
+    path = tmp_path / "ops.sqlite"
+    with OpsRepository(path) as repo:
+        collector = seed(repo, (BASE, BASE + STEP), now)
+        IndexedPublicCycleSourceV1(clock_ns=lambda: now)._account_m15_origins(repo, collector, now_ns=now)
+        manifest = export_tuning_snapshot(path, tmp_path / "reports", IDENTITY, cutoff_ns=now)
+    report = manifest["report"]["recorded_opportunity_reconciliation"]
+    assert manifest["validation_failures"] == {}
+    assert report["distinct_recorded_opportunities"] == 2
+    assert manifest["report"]["missing_origin_rows"] == 2
+    assert sum(group["record_rows"] for group in report["origin_accounting"]) == 4
+    assert report["expected_unregistered_origin_count"] is None
+
+
+def test_prediction_report_pairs_only_matured_same_target_route_and_instrument(tmp_path):
+    import pyarrow as pa
+
+    rows = [{"row_kind": "MODEL_OUTCOME", "artifact_type": "ResearchPredictionOutcomeV1",
+             "prediction_target_ref": "c" * 64, "horizon_ns": 10, "model_profile_hash": "d" * 64,
+             "route_ref": route, "instrument_key_json": "instrument-A", "label_state": label,
+             "request_ref": str(index), "decision_ref": str(index),
+             "measured_log_return": observed, "predicted_log_return": predicted,
+             "metrics_json": canonical_json({"quantile_interval_covered": coverage}) if coverage is not None else "{}"}
+            for index, (route, label, observed, predicted, coverage) in enumerate((
+                ("route-A", "MATURED", "0.2", "0.1", 1),
+                ("route-A", "MATURED", "0.4", "0.1", 0),
+                ("route-A", "UNRESOLVED", None, None, None),
+                ("route-B", "MATURED", "0.2", None, None))) ]
+    partition = tmp_path / "rows.parquet"
+    pq.write_table(pa.Table.from_pylist(rows, schema=tuning_export._schema()), partition)
+    report = tuning_export._reconciled_report(tmp_path, None, partition, IDENTITY, seconds=10)
+    assert report["status"] == "TESTED"
+    groups = report["prediction_diagnostics_by_target_horizon_route_instrument"]
+    paired = next(group for group in groups if group["route_ref"] == "route-A" and group["label_state"] == "MATURED")
+    assert paired["paired_prediction_labels"] == 2
+    assert paired["mean_absolute_log_return_error"] == pytest.approx(0.2)
+    assert paired["root_mean_squared_log_return_error"] == pytest.approx((0.05) ** 0.5)
+    assert paired["observed_90pct_interval_coverage"] == 0.5
+    absent = next(group for group in groups if group["route_ref"] == "route-B")
+    assert absent["paired_prediction_labels"] == 0 and absent["mean_absolute_log_return_error"] is None
+    assert report["economic_significance"] == "NOT ESTIMABLE"
+
+
+def test_analysis_budget_failure_is_explicit_and_does_not_invent_denominator(tmp_path):
+    report = tuning_export._reconciled_report(tmp_path, None, tmp_path / "absent.parquet", IDENTITY, seconds=0)
+    assert report["status"] == "TEST GATE" and "distinct_recorded_opportunities" not in report

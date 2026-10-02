@@ -21,6 +21,8 @@ from .raw import AvailabilityClassV2, RawObservationV2
 MAX_CAUSAL_ARCHIVE_FILES = 20_000
 MAX_CAUSAL_ARCHIVE_ROWS = 2_000_000
 MAX_NATIVE_M1_ORIGIN_CHUNK_ROWS = 10_000
+MAX_ARCHIVE_CHUNK_FILE_BYTES = 256 * 1024 * 1024
+MAX_ARCHIVE_CHUNK_DECODED_BYTES = 256 * 1024 * 1024
 
 
 class ArchiveScanBoundExceededV2(RuntimeError):
@@ -30,6 +32,21 @@ class ArchiveScanBoundExceededV2(RuntimeError):
         super().__init__(f"causal archive reconstruction exceeded its {bound} scan bound ({maximum})")
         self.bound = bound
         self.maximum = maximum
+
+
+def _open_bounded_archive_chunk_v2(path: Path) -> Any:
+    """Check immutable segment allocation budgets before decoding Arrow batches."""
+    import pyarrow.parquet as pq
+
+    if path.stat().st_size > MAX_ARCHIVE_CHUNK_FILE_BYTES:
+        raise ArchiveScanBoundExceededV2("chunk-file-bytes", MAX_ARCHIVE_CHUNK_FILE_BYTES)
+    parquet = pq.ParquetFile(path)
+    decoded_bytes = sum(parquet.metadata.row_group(index).total_byte_size
+                        for index in range(parquet.metadata.num_row_groups))
+    if decoded_bytes > MAX_ARCHIVE_CHUNK_DECODED_BYTES:
+        parquet.close()
+        raise ArchiveScanBoundExceededV2("chunk-decoded-bytes", MAX_ARCHIVE_CHUNK_DECODED_BYTES)
+    return parquet
 
 
 def causal_revision_order_key(effective_available_at_ns: int, record_id: str) -> tuple[int, str]:
@@ -419,8 +436,6 @@ def reconstruct_public_observations_from_archive(
     """Read exact persisted public payloads after checking archive and index identities."""
     import json
 
-    import pyarrow.parquet as pq
-
     from .._serialization import sha256_json
 
     sha256_ref(instrument_revision, field="instrument_revision")
@@ -452,8 +467,11 @@ def reconstruct_public_observations_from_archive(
     found: dict[str, IndexedPublicObservationV2] = {}
     examined = 0
     for path, selected_record_ids in paths:
+        parquet = None
         try:
-            parquet = pq.ParquetFile(path)
+            parquet = _open_bounded_archive_chunk_v2(path)
+            if parquet.metadata.num_rows > MAX_CAUSAL_ARCHIVE_ROWS - examined:
+                raise ArchiveScanBoundExceededV2("row-count", MAX_CAUSAL_ARCHIVE_ROWS)
             if not columns.issubset(set(parquet.schema.names)):
                 continue
             for batch in parquet.iter_batches(columns=sorted(columns), batch_size=512):
@@ -484,6 +502,9 @@ def reconstruct_public_observations_from_archive(
                     found[observation.record_id] = IndexedPublicObservationV2(observation, raw_bytes, index_ref)
         except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
             continue
+        finally:
+            if parquet is not None:
+                parquet.close()
     indexed = repository.get_artifact_metadata_by_refs(
         tuple(item.observation_index_ref for item in found.values())
     )
@@ -527,8 +548,6 @@ def reconstruct_causal_bars_from_archive(
     """
     import json
 
-    import pyarrow.parquet as pq
-
     from .._serialization import sha256_json
 
     if not isinstance(key, InstrumentKeyV2):
@@ -567,8 +586,11 @@ def reconstruct_causal_bars_from_archive(
     )
     paths = _indexed_archive_paths_v1(root, source_entries)
     for path, selected_record_ids in paths:
+        parquet = None
         try:
-            parquet = pq.ParquetFile(path)
+            parquet = _open_bounded_archive_chunk_v2(path)
+            if parquet.metadata.num_rows > MAX_CAUSAL_ARCHIVE_ROWS - examined:
+                raise ArchiveScanBoundExceededV2("row-count", MAX_CAUSAL_ARCHIVE_ROWS)
             if not columns.issubset(set(parquet.schema.names)):
                 continue
             for batch in parquet.iter_batches(columns=sorted(columns), batch_size=512):
@@ -636,6 +658,9 @@ def reconstruct_causal_bars_from_archive(
                     indexed_candidates[ref] = (bar.open_at_ns, revision_key, IndexedCausalBarV2(bar, ref))
         except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
             continue
+        finally:
+            if parquet is not None:
+                parquet.close()
     indexed = repository.get_artifact_metadata_by_refs(tuple(indexed_candidates))
     for ref, (open_at, revision_key, candidate) in indexed_candidates.items():
         entry = indexed.get(ref)
@@ -692,8 +717,6 @@ def reconstruct_native_bars_from_index_page(
     """
     import json
 
-    import pyarrow.parquet as pq
-
     if not isinstance(key, InstrumentKeyV2):
         raise ValueError("native bar reconstruction requires full InstrumentKeyV2")
     if type(max_origins) is not int or not 1 <= max_origins <= 128:
@@ -745,7 +768,7 @@ def reconstruct_native_bars_from_index_page(
         path = root / f"{chunk_id}.parquet"
         if path.is_symlink() or not path.is_file():
             raise ValueError("native bar source page points to a missing or unsafe archive chunk")
-        parquet = pq.ParquetFile(path)
+        parquet = _open_bounded_archive_chunk_v2(path)
         if (parquet.metadata.num_rows > MAX_NATIVE_M1_ORIGIN_CHUNK_ROWS
                 or not required_columns.issubset(set(parquet.schema.names))):
             raise ArchiveScanBoundExceededV2("native-bar-chunk-row-count", MAX_NATIVE_M1_ORIGIN_CHUNK_ROWS)

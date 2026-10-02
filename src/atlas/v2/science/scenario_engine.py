@@ -9,14 +9,22 @@ from __future__ import annotations
 
 import hashlib
 import random
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
 from atlas.domain.money import canonical_decimal_str
-from atlas.v2._serialization import canonical_json, decimal_value, json_value, sha256_json, sha256_ref, strict_fields
+from atlas.v2._serialization import (
+    canonical_json,
+    decimal_value,
+    json_value,
+    sha256_json,
+    sha256_ref,
+    strict_fields,
+    timestamp,
+)
 from atlas.v2.contracts import CandidateActionV2
 from atlas.v2.instruments import InstrumentKeyV2, ProductContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
@@ -648,8 +656,24 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
         joint_data_refs: Sequence[str], fee: FeeScheduleV2, base_units_per_contract: Decimal,
         cutoff_ns: int, created_at_ns: int, computed_at_ns: int, available_at_ns: int,
         expires_at_ns: int, seed: int, scenario_count: int,
-        stress_refs: Sequence[str] = (), allow_synthetic_fixtures: bool = False) -> tuple[PretradeExecutionScenarioV2, tuple[PretradePathPayoffV2, ...]]:
+        stress_refs: Sequence[str] = (), allow_synthetic_fixtures: bool = False,
+        clock_ns: Callable[[], int] | None = None) -> tuple[PretradeExecutionScenarioV2, tuple[PretradePathPayoffV2, ...]]:
     """Resample intact joint paths with a deterministic seed; support stays template-count based."""
+    if clock_ns is not None:
+        actual_start = timestamp(clock_ns(), field="scenario computation start")
+        if actual_start < max(cutoff_ns, available_at_ns):
+            raise ValueError("scenario clock regressed before computation")
+        created_at_ns = computed_at_ns = available_at_ns = actual_start
+
+    def seal_time() -> None:
+        nonlocal computed_at_ns, available_at_ns
+        if clock_ns is not None:
+            actual_finish = timestamp(clock_ns(), field="scenario computation finish")
+            if actual_finish < available_at_ns:
+                raise ValueError("scenario clock regressed during computation")
+            computed_at_ns = available_at_ns = actual_finish
+        if available_at_ns >= expires_at_ns:
+            raise ValueError("scenario computation missed the decision deadline")
     if scenario_count <= 0 or seed < 0:
         raise ValueError("scenario count must be positive and seed nonnegative")
     if not isinstance(base_units_per_contract, Decimal) or not base_units_per_contract.is_finite() or base_units_per_contract <= 0:
@@ -708,6 +732,7 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
              "template_support_count": template_support_count}))
 
     if not supported:
+        seal_time()
         scenario = PretradeExecutionScenarioV2(action.action.action_hash, action.content_hash, cutoff_ns,
             model_input, calibration_input, execution_model_input, sources, (), source_data_refs, (), tuple(sorted(set(stress_refs))),
             SCENARIO_GENERATOR_VERSION, common_id, created_at_ns, computed_at_ns, available_at_ns,
@@ -716,6 +741,7 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
         persist_scenario(scenario, 0)
         return scenario, ()
     if len({datum.joint_path_id for datum in supported}) != len(supported):
+        seal_time()
         scenario = PretradeExecutionScenarioV2(action.action.action_hash, action.content_hash, cutoff_ns,
             model_input, calibration_input, execution_model_input, sources, (), source_data_refs, (), tuple(sorted(set(stress_refs))),
             SCENARIO_GENERATOR_VERSION, common_id, created_at_ns, computed_at_ns, available_at_ns,
@@ -736,6 +762,7 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
                 sha256_json({"preflight_scenario": datum.content_hash}),
                 sha256_json({"preflight_payload": datum.content_hash}), available_at_ns)
     except ValueError:
+        seal_time()
         scenario = PretradeExecutionScenarioV2(action.action.action_hash, action.content_hash, cutoff_ns,
             model_input, calibration_input, execution_model_input, sources, (), source_data_refs, (), tuple(sorted(set(stress_refs))),
             SCENARIO_GENERATOR_VERSION, common_id, created_at_ns, computed_at_ns, available_at_ns,
@@ -746,6 +773,7 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
         return scenario, ()
     # The draw unit is the complete joint path, never an independently shuffled component.
     sampled_rows = _sampled_probability_rows(supported, seed=seed, scenario_count=scenario_count)
+    seal_time()
     payload_refs: dict[str, str] = {}
     data_by_path = {datum.joint_path_id: datum for datum in supported}
     for datum in supported:

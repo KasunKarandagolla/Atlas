@@ -422,8 +422,40 @@ class InferenceBroker:
         self.__signing_key = bytes(signing_key)
         self._now_ns = now_ns
         self._lock = threading.Lock()
-        self._seen: OrderedDict[tuple[str, str], tuple[str, ProviderResultV1]] = OrderedDict()
+        self._seen: OrderedDict[tuple[str, str], tuple[str, ProviderResultV1, int]] = OrderedDict()
         self._busy: set[str] = set()
+        self._last_admitted_at_ns = 0
+
+    def _admit_dispatch(self, key: tuple[str, str], input_hash: str,
+                        authorization_id: str, now_ns: int) -> ProviderResultV1 | None:
+        """Retain replay protection for exactly the signed capability lifetime.
+
+        Expired capabilities cannot pass verification again. A clock rollback is
+        rejected so it cannot revive a completion removed from this bounded cache.
+        The durable controller remains the owner of accepted result recovery.
+        """
+        with self._lock:
+            if now_ns < self._last_admitted_at_ns:
+                raise BrokerProtocolError("BROKER_CLOCK_REGRESSION")
+            self._last_admitted_at_ns = now_ns
+            for prior_key, (_, _, expires_at_ns) in tuple(self._seen.items()):
+                if expires_at_ns <= now_ns:
+                    del self._seen[prior_key]
+            prior = self._seen.get(key)
+            if prior is not None:
+                if prior[0] != input_hash:
+                    raise BrokerProtocolError("CALL_INDEX_CONTRADICTION")
+                return prior[1]
+            if authorization_id in self._busy:
+                raise BrokerProtocolError("DISPATCH_ALREADY_IN_PROGRESS")
+            if self._busy:
+                raise BrokerProtocolError("BROKER_SATURATED")
+            # Reserve a completion slot before the provider effect. Concurrent
+            # requests may never overrun the replay-protection memory budget.
+            if len(self._seen) + len(self._busy) >= MAX_REPLAY_CACHE_ENTRIES:
+                raise BrokerProtocolError("REPLAY_CACHE_FULL")
+            self._busy.add(authorization_id)
+        return None
 
     def assess_action_v1(self, *, capability: str, authorization_id: str, attempt_id: str,
                          request_data: Mapping[str, Any], packet_data: Mapping[str, Any],
@@ -457,17 +489,9 @@ class InferenceBroker:
         key = (authorization_id, body["capability_nonce"])
         input_hash = sha256_json({"request": request.to_dict(), "packet": packet.to_dict(),
                                   "attempt_id": attempt_id, "profile_hash": self._profile.content_hash})
-        with self._lock:
-            prior = self._seen.get(key)
-            if prior is not None:
-                if prior[0] != input_hash:
-                    raise BrokerProtocolError("CALL_INDEX_CONTRADICTION")
-                return prior[1]
-            if len(self._seen) >= MAX_REPLAY_CACHE_ENTRIES:
-                raise BrokerProtocolError("REPLAY_CACHE_FULL")
-            if authorization_id in self._busy:
-                raise BrokerProtocolError("DISPATCH_ALREADY_IN_PROGRESS")
-            self._busy.add(authorization_id)
+        prior_result = self._admit_dispatch(key, input_hash, authorization_id, now)
+        if prior_result is not None:
+            return prior_result
         try:
             result = self._provider.assess(request, packet)
             if not isinstance(result, ProviderResultV1):
@@ -478,19 +502,19 @@ class InferenceBroker:
                     result.input_tokens, result.output_tokens, result.provider_request_id,
                     "TOKEN_LIMIT_EXCEEDED", False)
             with self._lock:
-                self._seen[key] = (input_hash, result)
+                self._seen[key] = (input_hash, result, body["expires_at_ns"])
             return result
         except ResearchProviderUnavailable as exc:
             result = ProviderResultV1("", None, None, exc.code == "PROVIDER_REFUSAL", False, 0, 0,
                                       None, exc.code, False)
             with self._lock:
-                self._seen[key] = (input_hash, result)
+                self._seen[key] = (input_hash, result, body["expires_at_ns"])
             return result
         except Exception:
             result = ProviderResultV1("", None, None, False, False, 0, 0,
                                       None, "PROVIDER_ERROR", False)
             with self._lock:
-                self._seen[key] = (input_hash, result)
+                self._seen[key] = (input_hash, result, body["expires_at_ns"])
             return result
         finally:
             with self._lock:
@@ -558,17 +582,9 @@ class InferenceBroker:
                                   "lease_epoch": lease_epoch, "call_index": call_index,
                                   "model_profile_hash": request.model_profile_hash,
                                   "evidence_hash": body["evidence_hash"], "evidence": list(evidence)})
-        with self._lock:
-            prior = self._seen.get(idempotency_key)
-            if prior is not None:
-                if prior[0] != input_hash:
-                    raise BrokerProtocolError("CALL_INDEX_CONTRADICTION")
-                return prior[1]
-            if len(self._seen) >= MAX_REPLAY_CACHE_ENTRIES:
-                raise BrokerProtocolError("REPLAY_CACHE_FULL")
-            if body["authorization_id"] in self._busy:
-                raise BrokerProtocolError("DISPATCH_ALREADY_IN_PROGRESS")
-            self._busy.add(body["authorization_id"])
+        prior_result = self._admit_dispatch(idempotency_key, input_hash, body["authorization_id"], now)
+        if prior_result is not None:
+            return prior_result
         try:
             result = self._provider.propose(request, evidence)
             if not isinstance(result, ProviderResultV1):
@@ -579,13 +595,13 @@ class InferenceBroker:
                     result.input_tokens, result.output_tokens, result.provider_request_id,
                     "TOKEN_LIMIT_EXCEEDED", False)
             with self._lock:
-                self._seen[idempotency_key] = (input_hash, result)
+                self._seen[idempotency_key] = (input_hash, result, body["expires_at_ns"])
             return result
         except ResearchProviderUnavailable as exc:
             result = ProviderResultV1("", None, None, exc.code == "PROVIDER_REFUSAL", False, 0, 0,
                                       None, exc.code, exc.retryable)
             with self._lock:
-                self._seen[idempotency_key] = (input_hash, result)
+                self._seen[idempotency_key] = (input_hash, result, body["expires_at_ns"])
             return result
         except BrokerProtocolError:
             raise
@@ -593,7 +609,7 @@ class InferenceBroker:
             result = ProviderResultV1("", None, None, False, False, 0, 0,
                                       None, "PROVIDER_ERROR", False)
             with self._lock:
-                self._seen[idempotency_key] = (input_hash, result)
+                self._seen[idempotency_key] = (input_hash, result, body["expires_at_ns"])
             return result
         finally:
             with self._lock:
