@@ -64,6 +64,8 @@ def smoke(payload: Path, *, expected_sha: str | None = None, data_root: Path | N
             or broker.get("damaged_secret_rejected") is not True
             or broker.get("owner_secret_accessed") is not False):
         raise ValueError("Native broker transport/completion/shutdown fixture failed")
+    if broker.get("owner_process_death_observed") is not True:
+        raise ValueError("Native broker owner lifetime fixture failed")
     with tempfile.TemporaryDirectory(prefix="atlas-windows-smoke-") as temporary:
         evidence_root = data_root or Path(temporary) / "research"
         result = json_command(payload / "atlas-product.exe", ["--smoke", "--data-root", str(evidence_root)],

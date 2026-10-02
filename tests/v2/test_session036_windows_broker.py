@@ -291,6 +291,69 @@ class WinFunction:
         return self.call(*args)
 
 
+def owner_kernel(*, ticks: int = (123 << 32) | 456, wait: int = 258,
+                 opens: bool = True, times: bool = True) -> tuple[Any, list[Any], list[Any]]:
+    opened, closed = [], []
+
+    def open_process(access: int, inherit: bool, pid: int) -> int:
+        opened.append((access, inherit, pid))
+        return (1 << 40) + 42 if opens else 0
+
+    def process_times(_handle: int, created: Any, *_unused: Any) -> bool:
+        creation = ctypes.cast(created, ctypes.POINTER(pipe._ProcessFileTime)).contents
+        creation.low, creation.high = ticks & 0xFFFFFFFF, ticks >> 32
+        return times
+
+    kernel = SimpleNamespace(OpenProcess=WinFunction(open_process), GetProcessTimes=WinFunction(process_times),
+                             WaitForSingleObject=WinFunction(lambda _handle, timeout: wait), CloseHandle=closed.append)
+    return kernel, opened, closed
+
+
+def test_owner_process_binds_creation_identity_observes_death_and_closes_once() -> None:
+    kernel, opened, closed = owner_kernel()
+    identity = pipe._owner_identity_for_pid(123, _kernel=kernel)
+    assert identity == {"pid": 123, "creation_filetime_ticks": (123 << 32) | 456}
+    assert closed == [(1 << 40) + 42]
+    with pipe.WindowsOwnerProcessV1(identity, _kernel=kernel) as owner:
+        assert owner.alive()
+        kernel.WaitForSingleObject = WinFunction(lambda handle, timeout: 0)
+        assert not owner.alive()
+    owner.close()
+    assert not owner.alive()
+    assert opened == [(0x00100000 | 0x1000, False, 123)] * 2
+    assert closed == [(1 << 40) + 42] * 2
+
+
+@pytest.mark.parametrize("fault", ["pid_reused", "times_unavailable", "already_stopped", "wait_failed", "open_failed"])
+def test_owner_process_rejects_unverifiable_identity_and_closes_failed_handle(fault: str) -> None:
+    kernel, opened, closed = owner_kernel(ticks=999 if fault == "pid_reused" else (123 << 32) | 456,
+        times=fault != "times_unavailable", opens=fault != "open_failed",
+        wait=0 if fault == "already_stopped" else 0xFFFFFFFF if fault == "wait_failed" else 258)
+    with pytest.raises((ValueError, OSError)):
+        pipe.WindowsOwnerProcessV1({"pid": 123, "creation_filetime_ticks": (123 << 32) | 456}, _kernel=kernel)
+    assert len(opened) == 1
+    assert len(closed) == (0 if fault == "open_failed" else 1)
+
+
+@pytest.mark.parametrize("identity", [
+    {"pid": True, "creation_filetime_ticks": 1}, {"pid": 0, "creation_filetime_ticks": 1},
+    {"pid": 123, "creation_filetime_ticks": 0}, {"pid": 123, "creation_filetime_ticks": True},
+    {"pid": 123, "creation_filetime_ticks": 1, "alias": "another-owner"},
+])
+def test_owner_process_rejects_malformed_identity_without_opening_handle(identity: dict[str, Any]) -> None:
+    kernel, opened, closed = owner_kernel()
+    with pytest.raises((ValueError, TypeError)):
+        pipe.WindowsOwnerProcessV1(identity, _kernel=kernel)
+    assert not opened and not closed
+
+
+def test_owner_creation_lookup_closes_handle_on_failure() -> None:
+    kernel, _opened, closed = owner_kernel(times=False)
+    with pytest.raises(OSError):
+        pipe._owner_identity_for_pid(123, _kernel=kernel)
+    assert closed == [(1 << 40) + 42]
+
+
 def test_native_pipe_creation_specifies_current_user_acl_and_remote_rejection() -> None:
     calls: dict[str, Any] = {}
     freed: list[Any] = []

@@ -42,7 +42,10 @@ def _fixture(repo):
         ref = sha256_json({"fixture_observation": raw.record_id})
         repo.register_artifact(ArtifactIndexEntryV2(ref, "PublicObservationIndexV2", raw.content_hash,
             raw.available_at_ns, raw.available_at_ns,
-            {"instrument_key_json": product.key.to_canonical_json(), "bar_content_hash": bar.content_hash}))
+            {"instrument_key_json": product.key.to_canonical_json(), "bar_content_hash": bar.content_hash,
+             "instrument_revision": product.key.contract_revision, "event_type": raw.event_type,
+             "event_at_ns": raw.event_at_ns, "record_id": raw.record_id, "raw_payload_hash": raw.raw_payload_hash,
+             "availability_class": raw.availability_class.value}))
         bars.append(IndexedCausalBarV2(bar, ref))
     return receipt, tuple(bars), [now + 1]
 

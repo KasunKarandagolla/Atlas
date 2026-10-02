@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import ctypes
 import hashlib
+import heapq
 import json
 import os
 import shutil
@@ -25,7 +26,7 @@ from typing import Any, cast
 
 from atlas import __version__
 
-from ._serialization import canonical_json, sha256_json
+from ._serialization import canonical_json, sha256_json, sha256_ref
 from .resources import resource_file
 
 RUN_PROFILE = "PUBLIC_BYBIT_BASELINE_V1"
@@ -153,7 +154,9 @@ def create_run(data_root: Path, config: ResearchRunConfigV1) -> Path:
     return run
 
 
-def load_run(run: Path) -> dict[str, Any]:
+def load_run(run: Path, *, require_current_build: bool = True) -> dict[str, Any]:
+    from .models.protocol import ModelManifestV2
+
     body = _read_json(run / "run.json")
     fields = {"schema_version", "run_id", "started_at_ns", "source_sha", "build_identity_hash",
               "configuration", "config_hash", "provider_configuration", "research_model_configuration",
@@ -167,12 +170,23 @@ def load_run(run: Path) -> dict[str, Any]:
             or body["holdout_access"] is not False or body["run_id"] != run.name
             or type(body["started_at_ns"]) is not int or body["started_at_ns"] <= 0):
         raise ValueError("run identity/configuration drift")
-    if body["build_identity_hash"] != sha256_json(build_identity()):
-        raise ValueError("resume requires the exact original build; create a new run after upgrade")
+    source = body["source_sha"]
+    if (not isinstance(source, str) or len(source) != 40
+            or any(c not in "0123456789abcdef" for c in source)):
+        raise ValueError("run source identity is invalid")
+    sha256_ref(body["build_identity_hash"], field="build_identity_hash")
     if body["provider_configuration"] != provider_configuration(config.provider_profile):
         raise ValueError("registered provider configuration drift")
-    if body["research_model_configuration"] != research_model_configuration(build_identity()):
+    model = ModelManifestV2.from_dict(body["research_model_configuration"]["manifest"])
+    original = {"source_sha": source, "runtime_lock_sha256": model.environment_lock_hash}
+    if body["research_model_configuration"] != research_model_configuration(original):
         raise ValueError("registered research model configuration drift")
+    if require_current_build:
+        current = build_identity()
+        if body["build_identity_hash"] != sha256_json(current) or source != current["source_sha"]:
+            raise ValueError("resume requires the exact original build; create a new run after upgrade")
+        if body["research_model_configuration"] != research_model_configuration(current):
+            raise ValueError("registered research model configuration drift")
     return body
 
 
@@ -284,7 +298,7 @@ class WindowsSecretStore:
 def export_run(run: Path) -> Any:
     from .science.tuning_export import TuningRunIdentityV1, export_tuning_snapshot
 
-    manifest = load_run(run)
+    manifest = load_run(run, require_current_build=False)
     identity = TuningRunIdentityV1(manifest["run_id"], manifest["config_hash"],
                                   manifest["source_sha"], manifest["started_at_ns"])
     cutoff = time.time_ns()
@@ -398,9 +412,19 @@ def _load_broker_context(run: Path, path: Path) -> dict[str, Any]:
     if not cipher or len(cipher) > 65_536:
         raise ValueError("protected broker context exceeds its bound")
     context = json.loads(WindowsSecretStore._crypt(cipher, decrypt=True))
-    fields = {"schema_version", "run_id", "epoch_id", "pipe_name", "authentication_key", "signing_key"}
-    if not isinstance(context, dict) or set(context) != fields or context["schema_version"] != 1:
+    fields = {"schema_version", "run_id", "epoch_id", "pipe_name", "authentication_key", "signing_key", "owner_process"}
+    if not isinstance(context, dict) or set(context) != fields or context["schema_version"] != 2:
         raise ValueError("invalid broker context contract")
+    from .agent_intelligence.windows_broker import PIPE_NAME_RE
+
+    owner = context["owner_process"]
+    if (not isinstance(owner, dict) or set(owner) != {"pid", "creation_filetime_ticks"}
+            or type(owner["pid"]) is not int or not 0 < owner["pid"] <= 0xFFFFFFFF
+            or type(owner["creation_filetime_ticks"]) is not int
+            or not 0 < owner["creation_filetime_ticks"] <= 0xFFFFFFFFFFFFFFFF
+            or not isinstance(context["pipe_name"], str)
+            or PIPE_NAME_RE.fullmatch(context["pipe_name"]) is None):
+        raise ValueError("invalid broker owner or endpoint identity")
     epoch = context["epoch_id"]
     if (context["run_id"] != run.name or not isinstance(epoch, str) or len(epoch) != 32
             or any(c not in "0123456789abcdef" for c in epoch)
@@ -415,16 +439,25 @@ def _load_broker_context(run: Path, path: Path) -> dict[str, Any]:
 
 def run_critic_broker(run: Path, context_path: Path, *, stop_requested: Callable[[], bool]) -> int:
     """The only installed component allowed to retrieve a provider credential."""
+    from .agent_intelligence.windows_broker import WindowsOwnerProcessV1
+
+    manifest = load_run(run)
+    if manifest["configuration"]["provider_profile"] != "deepseek-v41-action-critic-v1":
+        raise ValueError("this run did not authorize the fixed critic provider")
+    context = _load_broker_context(run, context_path)
+    with WindowsOwnerProcessV1(context["owner_process"]) as owner:
+        return _serve_critic_broker(run, context, stop_requested=lambda: stop_requested() or not owner.alive())
+
+
+def _serve_critic_broker(run: Path, context: dict[str, Any], *, stop_requested: Callable[[], bool]) -> int:
     from .agent_intelligence.broker import InferenceBroker
     from .agent_intelligence.budget import DeepSeekPriceScheduleV1
     from .agent_intelligence.profile import deepseek_v41_flash_action_critic_profile
     from .agent_intelligence.provider import DeepSeekResponsesActionAssessmentProvider
     from .agent_intelligence.windows_broker import WindowsActionCriticBrokerServer
 
-    manifest = load_run(run)
-    if manifest["configuration"]["provider_profile"] != "deepseek-v41-action-critic-v1":
-        raise ValueError("this run did not authorize the fixed critic provider")
-    context = _load_broker_context(run, context_path)
+    if stop_requested():
+        return 0
     schedule = DeepSeekPriceScheduleV1.load(resource_file(
         "configs/agent_intelligence/provider_pricing_deepseek_v41_flash_v1.json"))
     profile = deepseek_v41_flash_action_critic_profile(price_schedule=schedule,
@@ -487,11 +520,12 @@ def _stop_child(process: subprocess.Popen[bytes]) -> None:
 
 
 def _start_installed_critic(run: Path, epoch_id: str) -> _InstalledCriticRuntime:
-    from .agent_intelligence.windows_broker import WindowsActionCriticClientPort
+    from .agent_intelligence.windows_broker import WindowsActionCriticClientPort, current_owner_identity
     from .runtime.action_critic_shadow import create_action_assessment_shadow
 
-    context: dict[str, Any] = {"schema_version": 1, "run_id": run.name, "epoch_id": epoch_id,
-               "pipe_name": "\\\\.\\pipe\\atlas-critic-" + uuid.uuid4().hex,
+    context: dict[str, Any] = {"schema_version": 2, "run_id": run.name, "epoch_id": epoch_id,
+               "owner_process": current_owner_identity(),
+               "pipe_name": "\\\\.\\pipe\\AtlasCritic-" + str(uuid.uuid4()),
                "authentication_key": os.urandom(32).hex(), "signing_key": os.urandom(32).hex()}
     context_path = run / "epochs" / (epoch_id + "-broker.dpapi")
     cipher = WindowsSecretStore._crypt(canonical_json(context).encode(), decrypt=False)
@@ -651,10 +685,59 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
     except Exception as exc:
         _publish(run / "report-failure.json", {"status": "TEST GATE", "reason": "REPORT_UNAVAILABLE",
                                                "error_type": type(exc).__name__,
-                                               "error_detail": str(exc)[:256],
                                                "run_id": manifest["run_id"]})
         result_code = 2
     return result_code
+
+
+def _refresh_run_selector(selector: Any, data_root: Path, *, preferred_run: Path | None = None) -> None:
+    preferred = str(preferred_run) if preferred_run is not None else selector.currentData()
+
+    def records():
+        for index, path in enumerate((data_root.expanduser() / "runs").glob("*/run.json")):
+            if index >= 4096:
+                raise ValueError("run inventory exceeds its browse budget; select another data folder")
+            try:
+                body = load_run(path.parent, require_current_build=False)
+                yield body["started_at_ns"], body["run_id"], str(path.parent)
+            except (OSError, ValueError, TypeError, KeyError):
+                continue
+
+    entries = heapq.nlargest(128, records())
+    if preferred and all(item[2] != preferred for item in entries):
+        path = Path(preferred)
+        if path.parent == data_root.expanduser() / "runs":
+            body = load_run(path, require_current_build=False)
+            entries = [(body["started_at_ns"], body["run_id"], str(path)), *entries[:127]]
+    selector.clear()
+    for _created_at, run_id, path in entries:
+        selector.addItem(run_id, path)
+    selected_index = selector.findData(preferred)
+    if selected_index >= 0:
+        selector.setCurrentIndex(selected_index)
+
+
+def _runtime_status_text(state: dict[str, Any], *, now_ns: int) -> str:
+    heartbeat = state.get("observed_at_ns")
+    stopped = state.get("stopped_at_ns") is not None
+    runtime_status = state.get("status", "UNVERIFIED")
+    reason = state.get("reason", "No live qualification claimed")
+    if type(heartbeat) is not int or heartbeat <= 0:
+        runtime_status, reason, age = "TEST GATE", "RUNTIME_HEARTBEAT_UNAVAILABLE", None
+    elif now_ns < heartbeat:
+        runtime_status, reason, age = "TEST GATE", "RUNTIME_CLOCK_REGRESSION", None
+    else:
+        age = (now_ns - heartbeat) // 1_000_000_000
+        if not stopped and age > 30:
+            runtime_status, reason = "TEST GATE", "RUNTIME_HEARTBEAT_STALE"
+    activity = "Stopped" if stopped else "Heartbeat unavailable" if age is None else f"Heartbeat age {age}s"
+    return (f"Run {state['run_id']}\nRuntime: {runtime_status} / {activity}\n"
+            f"Data: {state.get('source_health', 'UNVERIFIED')}\n"
+            f"Provider: {state.get('provider_health', 'DISABLED')}\n"
+            f"Decisions in last cycle: {state.get('decision_count', 'UNVERIFIED')}\n"
+            f"Disk free: {state.get('disk_free_bytes', 'UNVERIFIED')} bytes; "
+            f"DB/WAL: {state.get('db_bytes', 'UNVERIFIED')}/{state.get('wal_bytes', 'UNVERIFIED')} bytes\n"
+            f"Reason: {reason}\nCapital disabled.")
 
 
 def desktop() -> int:
@@ -689,6 +772,7 @@ def desktop() -> int:
     provider = QComboBox()
     provider.addItem("Intelligence disabled", "DISABLED")
     provider.addItem("Optional DeepSeek V4.1 Flash action critic", "deepseek-v41-action-critic-v1")
+    layout.addWidget(QLabel("Intelligence configuration for new runs"))
     layout.addWidget(provider)
     status_label = QLabel("Capital disabled. Public collection requires no API key.")
     status_label.setWordWrap(True)
@@ -703,15 +787,11 @@ def desktop() -> int:
     reports = ThreadPoolExecutor(max_workers=1, thread_name_prefix="atlas-report")
     pending_report: Any = None
 
-    def refresh_runs() -> None:
-        runs.clear()
-        root = Path(root_edit.text()).expanduser() / "runs"
-        for path in sorted(root.glob("*/run.json"), reverse=True)[:128]:
-            try:
-                manifest = load_run(path.parent)
-                runs.addItem(manifest["run_id"], str(path.parent))
-            except (OSError, ValueError, TypeError):
-                continue
+    def refresh_runs(preferred_run: Path | None = None) -> None:
+        try:
+            _refresh_run_selector(runs, Path(root_edit.text()), preferred_run=preferred_run)
+        except (OSError, ValueError, TypeError, KeyError):
+            status_label.setText("Run inventory: TEST GATE. Select a data folder with a supported run inventory.")
 
     def selected() -> Path:
         value = runs.currentData()
@@ -723,8 +803,8 @@ def desktop() -> int:
         nonlocal pending_report
         try:
             if name == "Create run":
-                create_run(Path(root_edit.text()), ResearchRunConfigV1(provider_profile=provider.currentData()))
-                refresh_runs()
+                created = create_run(Path(root_edit.text()), ResearchRunConfigV1(provider_profile=provider.currentData()))
+                refresh_runs(created)
             elif name == "Start / resume":
                 launch_run(selected())
             elif name == "Stop":
@@ -768,14 +848,8 @@ def desktop() -> int:
             buttons["Export report"].setEnabled(True)
         try:
             status = _read_json(selected() / "status.json")
-            age = max(0, (time.time_ns() - status.get("observed_at_ns", 0)) // 1_000_000_000)
-            stopped = status.get("stopped_at_ns") is not None
-            status_label.setText(f"Run {status['run_id']}\n{status['status']} / "
-                                 f"{'Stopped' if stopped else 'Heartbeat age ' + str(age) + 's'}\n"
-                                 f"Data: {status.get('source_health', 'UNKNOWN')}\n"
-                                 f"Provider: {status.get('provider_health', 'DISABLED')}\n"
-                                 f"Reason: {status.get('reason', 'No live qualification claimed')}\nCapital disabled.")
-        except (OSError, ValueError, TypeError):
+            status_label.setText(_runtime_status_text(status, now_ns=time.time_ns()))
+        except (OSError, ValueError, TypeError, KeyError):
             status_label.setText("No runtime status. Create/start a public run. Capital disabled.")
 
     for name, button in buttons.items():

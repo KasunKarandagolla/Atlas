@@ -52,6 +52,79 @@ def test_public_profile_rejects_undeclared_provider_and_unbounded_limits():
         product.ResearchRunConfigV1(minimum_free_disk_bytes=0)
 
 
+def test_read_only_export_preserves_original_identity_after_upgrade(tmp_path, build, monkeypatch):
+    run = product.create_run(tmp_path, product.ResearchRunConfigV1())
+    with OpsRepository(run / "ops.sqlite"):
+        pass
+    original = (run / "run.json").read_bytes()
+    monkeypatch.setattr(product, "build_identity", lambda: dict(build, source_sha="c" * 40))
+    with pytest.raises(ValueError, match="exact original build"):
+        product.load_run(run)
+    assert product.load_run(run, require_current_build=False)["source_sha"] == "a" * 40
+    result = product.export_run(run)
+    assert result["report"]["status"] in {"TESTED", "TEST GATE", "IMPLEMENTED", "NOT ESTIMABLE"}
+    assert (run / "run.json").read_bytes() == original
+    manifest = json.loads(original)
+    manifest["source_sha"] = "d" * 40
+    manifest["content_hash"] = sha256_json({k: v for k, v in manifest.items() if k != "content_hash"})
+    (run / "run.json").write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="model configuration drift"):
+        product.load_run(run, require_current_build=False)
+
+
+def test_run_selector_selects_new_run_and_preserves_explicit_selection(tmp_path, build, monkeypatch):
+    class Selector:
+        def __init__(self):
+            self.items = []
+            self.index = -1
+
+        def currentData(self):
+            return self.items[self.index][1] if self.index >= 0 else None
+
+        def clear(self):
+            self.items, self.index = [], -1
+
+        def addItem(self, label, data):
+            self.items.append((label, data))
+            if self.index == -1:
+                self.index = 0
+
+        def findData(self, data):
+            return next((i for i, item in enumerate(self.items) if item[1] == data), -1)
+
+        def setCurrentIndex(self, index):
+            self.index = index
+
+    selector = Selector()
+    first = product.create_run(tmp_path, product.ResearchRunConfigV1())
+    product._refresh_run_selector(selector, tmp_path, preferred_run=first)
+    second = product.create_run(tmp_path, product.ResearchRunConfigV1())
+    product._refresh_run_selector(selector, tmp_path, preferred_run=second)
+    assert selector.currentData() == str(second)
+    selector.setCurrentIndex(selector.findData(str(first)))
+    monkeypatch.setattr(product, "build_identity", lambda: dict(build, source_sha="c" * 40))
+    product._refresh_run_selector(selector, tmp_path)
+    assert selector.currentData() == str(first)
+    assert len(selector.items) == 2
+
+
+@pytest.mark.parametrize("heartbeat,stopped,reason", [
+    (99_000_000_000, False, "READY"),
+    (60_000_000_000, False, "RUNTIME_HEARTBEAT_STALE"),
+    (101_000_000_000, False, "RUNTIME_CLOCK_REGRESSION"),
+    (None, False, "RUNTIME_HEARTBEAT_UNAVAILABLE"),
+    (60_000_000_000, True, "READY"),
+])
+def test_runtime_status_exposes_stale_missing_and_future_heartbeats(heartbeat, stopped, reason):
+    state = {"run_id": "run", "observed_at_ns": heartbeat, "status": "IMPLEMENTED", "reason": "READY"}
+    if stopped:
+        state["stopped_at_ns"] = heartbeat
+    text = product._runtime_status_text(state, now_ns=100_000_000_000)
+    assert f"Reason: {reason}" in text
+    assert ("Runtime: TEST GATE" in text) == (reason != "READY")
+    assert "Nones" not in text and "-1s" not in text
+
+
 def test_offline_real_composition_reopens_db_new_epoch_and_exports(tmp_path, build):
     run = product.create_run(tmp_path, product.ResearchRunConfigV1())
     assert product.run_component(run, smoke=True) == 0
@@ -193,12 +266,25 @@ def test_broker_context_binds_run_epoch_and_has_bounded_protected_bytes(tmp_path
     run = product.create_run(tmp_path, product.ResearchRunConfigV1())
     epoch = "e" * 32
     path = run / "epochs" / (epoch + "-broker.dpapi")
-    context = {"schema_version": 1, "run_id": run.name, "epoch_id": epoch,
-               "pipe_name": r"\\.\pipe\atlas-critic-fixture",
+    context = {"schema_version": 2, "run_id": run.name, "epoch_id": epoch,
+               "owner_process": {"pid": 123, "creation_filetime_ticks": 456},
+               "pipe_name": r"\\.\pipe\AtlasCritic-12345678-1234-1234-1234-123456789abc",
                "authentication_key": "a" * 64, "signing_key": "b" * 64}
     path.write_bytes(b"cipher-fixture")
     monkeypatch.setattr(product.WindowsSecretStore, "_crypt", lambda raw, decrypt: json.dumps(context).encode())
     assert product._load_broker_context(run, path) == context
+    context["owner_process"]["pid"] = True
+    with pytest.raises(ValueError, match="owner or endpoint"):
+        product._load_broker_context(run, path)
+    context["owner_process"]["pid"] = 123
+    context["pipe_name"] = r"\\.\pipe\atlas-critic-wrong-format"
+    with pytest.raises(ValueError, match="owner or endpoint"):
+        product._load_broker_context(run, path)
+    context["pipe_name"] = r"\\.\pipe\AtlasCritic-12345678-1234-1234-1234-123456789abc"
+    context["schema_version"] = 1
+    with pytest.raises(ValueError, match="context contract"):
+        product._load_broker_context(run, path)
+    context["schema_version"] = 2
     context["run_id"] = "another-run"
     with pytest.raises(ValueError, match="run and epoch"):
         product._load_broker_context(run, path)
@@ -224,6 +310,34 @@ def test_shadow_shutdown_failure_still_stops_credential_process(tmp_path, build)
     assert stop == {"run_id": run.name, "epoch_id": "e" * 32}
 
 
+def test_broker_binds_live_controller_before_accessing_secret(tmp_path, build, monkeypatch):
+    from atlas.v2.agent_intelligence import windows_broker
+
+    run = product.create_run(tmp_path, product.ResearchRunConfigV1(provider_profile="deepseek-v41-action-critic-v1"))
+    context = {"owner_process": {"pid": 123, "creation_filetime_ticks": 456}}
+    monkeypatch.setattr(product, "_load_broker_context", lambda *args: context)
+    calls = []
+
+    class Owner:
+        def __init__(self, identity):
+            assert identity == context["owner_process"]
+            calls.append("bind")
+
+        def __enter__(self):
+            return self
+
+        def alive(self):
+            return False
+
+        def __exit__(self, *args):
+            calls.append("close")
+
+    monkeypatch.setattr(windows_broker, "WindowsOwnerProcessV1", Owner)
+    monkeypatch.setattr(product, "_serve_critic_broker", lambda *args, stop_requested: 0 if stop_requested() else 2)
+    assert product.run_critic_broker(run, run / "unused", stop_requested=lambda: False) == 0
+    assert calls == ["bind", "close"]
+
+
 def test_configured_broker_loss_stops_run_without_fallback(tmp_path, build, monkeypatch):
     run = product.create_run(tmp_path, product.ResearchRunConfigV1(provider_profile="deepseek-v41-action-critic-v1"))
     closed = []
@@ -234,3 +348,29 @@ def test_configured_broker_loss_stops_run_without_fallback(tmp_path, build, monk
     status = json.loads((run / "status.json").read_text())
     assert status["reason"] == "CONFIGURED_PROVIDER_BROKER_LOST"
     assert status["provider_health"] == "TEST GATE" and closed == [True]
+
+
+def test_installed_critic_generates_transport_valid_owner_bound_context(tmp_path, build, monkeypatch):
+    from atlas.v2.agent_intelligence import windows_broker
+    from atlas.v2.runtime import action_critic_shadow
+
+    run = product.create_run(tmp_path, product.ResearchRunConfigV1(provider_profile="deepseek-v41-action-critic-v1"))
+    epoch = "e" * 32
+    owner = {"pid": 123, "creation_filetime_ticks": 456}
+    monkeypatch.setattr(windows_broker, "current_owner_identity", lambda: owner)
+    monkeypatch.setattr(product.WindowsSecretStore, "_crypt", lambda raw, decrypt: raw)
+    shadow = SimpleNamespace(close=lambda: None)
+    monkeypatch.setattr(action_critic_shadow, "create_action_assessment_shadow", lambda *args, **kwargs: shadow)
+    child = SimpleNamespace(poll=lambda: None, wait=lambda timeout: None)
+
+    def start(*args, **kwargs):
+        product._publish(run / "epochs" / (epoch + "-broker-status.json"),
+            {"run_id": run.name, "epoch_id": epoch, "health": {"status": "IMPLEMENTED"}})
+        return child
+
+    monkeypatch.setattr(product.subprocess, "Popen", start)
+    runtime = product._start_installed_critic(run, epoch)
+    context = product._load_broker_context(run, run / "epochs" / (epoch + "-broker.dpapi"))
+    assert context["owner_process"] == owner and context["schema_version"] == 2
+    assert windows_broker.PIPE_NAME_RE.fullmatch(context["pipe_name"])
+    runtime.close()

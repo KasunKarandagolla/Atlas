@@ -39,6 +39,101 @@ PIPE_NAME_RE = re.compile(r"^\\\\\.\\pipe\\AtlasCritic-[0-9a-f]{8}-[0-9a-f]{4}-[
 PIPE_TIMEOUT_SECONDS_V1 = 35.0
 
 
+class _ProcessFileTime(ctypes.Structure):
+    _fields_ = [("low", ctypes.c_uint32), ("high", ctypes.c_uint32)]
+
+
+def _owner_process_kernel() -> Any:
+    if os.name != "nt":
+        raise RuntimeError("Windows owner process binding requires native Windows")
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.GetProcessTimes.argtypes = [wintypes.HANDLE, *([ctypes.POINTER(_ProcessFileTime)] * 4)]
+    kernel.GetProcessTimes.restype = wintypes.BOOL
+    kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel.WaitForSingleObject.restype = wintypes.DWORD
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    return kernel
+
+
+def _process_creation_ticks(kernel: Any, handle: int) -> int:
+    creation, exited, kernel_time, user_time = (_ProcessFileTime() for _ in range(4))
+    if not kernel.GetProcessTimes(handle, ctypes.byref(creation), ctypes.byref(exited),
+                                  ctypes.byref(kernel_time), ctypes.byref(user_time)):
+        raise OSError("Windows owner process creation identity unavailable")
+    ticks = (creation.high << 32) | creation.low
+    if ticks <= 0:
+        raise ValueError("Windows owner process creation identity invalid")
+    return ticks
+
+
+def _owner_identity_for_pid(pid: int, *, _kernel: Any = None) -> dict[str, int]:
+    if type(pid) is not int or not 0 < pid <= 0xFFFFFFFF:
+        raise ValueError("Windows owner PID invalid")
+    kernel = _owner_process_kernel() if _kernel is None else _kernel
+    handle = kernel.OpenProcess(0x00100000 | 0x1000, False, pid)
+    if not handle:
+        raise OSError("Windows owner process unavailable")
+    try:
+        return {"pid": pid, "creation_filetime_ticks": _process_creation_ticks(kernel, handle)}
+    finally:
+        kernel.CloseHandle(handle)
+
+
+def current_owner_identity() -> dict[str, int]:
+    """Bind the controller's current process instance, including PID reuse protection."""
+    return _owner_identity_for_pid(os.getpid())
+
+
+class WindowsOwnerProcessV1:
+    """Retain an OS handle to the exact controller instance; never infer PID liveness."""
+
+    def __init__(self, identity: Mapping[str, Any], *, _kernel: Any = None) -> None:
+        fields = {"pid", "creation_filetime_ticks"}
+        row = strict_fields(identity, expected=fields, required=fields, name="WindowsOwnerProcessV1")
+        if (type(row["pid"]) is not int or not 0 < row["pid"] <= 0xFFFFFFFF
+                or type(row["creation_filetime_ticks"]) is not int
+                or not 0 < row["creation_filetime_ticks"] <= 0xFFFFFFFFFFFFFFFF):
+            raise ValueError("Windows owner process identity invalid")
+        self._kernel = _owner_process_kernel() if _kernel is None else _kernel
+        self._handle = self._kernel.OpenProcess(0x00100000 | 0x1000, False, row["pid"])
+        if not self._handle:
+            raise OSError("Windows owner process unavailable")
+        try:
+            if _process_creation_ticks(self._kernel, self._handle) != row["creation_filetime_ticks"]:
+                raise ValueError("Windows owner process creation identity differs")
+            if not self.alive():
+                raise OSError("Windows owner process already stopped")
+        except BaseException:
+            self.close()
+            raise
+
+    def alive(self) -> bool:
+        if not self._handle:
+            return False
+        result = self._kernel.WaitForSingleObject(self._handle, 0)
+        if result == 258:  # WAIT_TIMEOUT: the exact process is still running.
+            return True
+        if result == 0:  # WAIT_OBJECT_0: the retained process instance has exited.
+            return False
+        raise OSError("Windows owner process wait failed")
+
+    def close(self) -> None:
+        handle, self._handle = self._handle, None
+        if handle:
+            self._kernel.CloseHandle(handle)
+
+    def __enter__(self) -> WindowsOwnerProcessV1:
+        return self
+
+    def __exit__(self, *_args: Any) -> None:
+        self.close()
+
+
 def _pipe_name(value: str) -> str:
     if not isinstance(value, str) or PIPE_NAME_RE.fullmatch(value) is None:
         raise ValueError("critic endpoint must be an ATLAS local named pipe")
@@ -493,10 +588,31 @@ def native_windows_critic_broker_smoke_v1() -> dict[str, Any]:
 
     # Exercise the installed DPAPI backend with disposable synthetic material.
     # Never read or replace the owner's configured provider credential.
+    import subprocess
     import tempfile
     from pathlib import Path
 
     from ..product import WindowsSecretStore
+
+    # A disposable Windows system process provides a real process-instance
+    # handle fixture even when sys.executable is the frozen ATLAS application.
+    executable = Path(os.environ["SYSTEMROOT"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
+    owner = subprocess.Popen([str(executable), "-NoLogo", "-NoProfile", "-NonInteractive",
+                              "-Command", "Start-Sleep -Seconds 30"],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        identity = _owner_identity_for_pid(owner.pid)
+        with WindowsOwnerProcessV1(identity) as bound_owner:
+            if not bound_owner.alive():
+                raise RuntimeError("native owner process fixture was not alive")
+            owner.terminate()
+            owner.wait(timeout=5)
+            if bound_owner.alive():
+                raise RuntimeError("native owner process death was not observed")
+    finally:
+        if owner.poll() is None:
+            owner.kill()
+            owner.wait(timeout=5)
 
     with tempfile.TemporaryDirectory(prefix="atlas-protected-secret-smoke-") as temporary:
         store = WindowsSecretStore(Path(temporary))
@@ -553,4 +669,4 @@ def native_windows_critic_broker_smoke_v1() -> dict[str, Any]:
             "max_handlers": MAX_BROKER_CONNECTIONS, "no_provider_calls": True,
             "wrong_key_rejected": True, "current_user_dacl_verified": True,
             "protected_secret_roundtrip": "TESTED", "damaged_secret_rejected": True,
-            "owner_secret_accessed": False}
+            "owner_secret_accessed": False, "owner_process_death_observed": True}

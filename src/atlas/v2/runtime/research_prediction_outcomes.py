@@ -290,7 +290,7 @@ def validate_research_prediction_outcome_v1(repo: OpsRepository, item: ResearchP
     if (measurement.get("terminal_ref") != item.terminal_ref
             or measurement.get("prediction_id") != item.prediction_id
             or measurement.get("target_definition_ref") != item.target_definition_ref
-            or measurement.get("source_refs") != list(item.source_refs)
+            or tuple(measurement.get("source_refs", ())) != item.source_refs
             or measurement.get("authority") != "ZERO"):
         raise ValueError("prediction measured endpoint evidence has a different identity")
     for name, expected_boundary, expected_price in (
@@ -302,7 +302,10 @@ def validate_research_prediction_outcome_v1(repo: OpsRepository, item: ResearchP
         source_ref = measurement[name + "_source_ref"]
         entry = repo.get_artifact(source_ref)
         if (source_ref not in item.source_refs or entry is None
-                or entry.metadata.get("bar_content_hash") != measurement[name].get("bar_content_hash", entry.metadata.get("bar_content_hash"))
+                or entry.metadata.get("bar_content_hash") != sha256_json(bar)
+                or entry.metadata.get("record_id") != bar.get("record_id")
+                or entry.metadata.get("raw_payload_hash") != bar.get("raw_payload_hash")
+                or bar.get("final") is not True
                 or bar.get("close_at_ns") != expected_boundary
                 or Decimal(str(bar.get("close"))) != expected_price
                 or entry.available_at_ns > item.available_at_ns
@@ -483,24 +486,27 @@ class ResearchPredictionOutcomeMaintenanceV1:
             horizons = packet.request.requested_horizons
             if type(horizon_index) is not int or not 0 <= horizon_index < len(horizons) or len(horizons) > 8:
                 raise ValueError("prediction checkpoint horizon cursor is invalid")
-            item = self._measure(repo, current.artifact_ref, horizons[horizon_index], cutoff)
-            completion_key = sha256_json({"version": "ResearchPredictionCompletionIdentityV1", "prediction_id": item.prediction_id})
+            prediction_id = sha256_json({"version": "ResearchPredictionIdentityV1",
+                "terminal_ref": current.artifact_ref, "target_definition_ref": RESEARCH_PREDICTION_TARGET_REF_V1,
+                "horizon_ns": horizons[horizon_index]})
+            completion_key = sha256_json({"version": "ResearchPredictionCompletionIdentityV1", "prediction_id": prediction_id})
             completed = repo.get_artifact(completion_key)
             writes = 0
             if completed is not None:
                 binding = completed.metadata.get("prediction_completion")
                 if (completed.artifact_type != "ResearchPredictionCompletionIdentityV1"
                         or not isinstance(binding, Mapping) or sha256_json(binding) != completed.content_hash
-                        or binding.get("prediction_id") != item.prediction_id):
+                        or binding.get("prediction_id") != prediction_id):
                     raise ValueError("prediction completed label identity is corrupt")
                 label = repo.get_artifact(binding["outcome_ref"])
                 if label is None or label.artifact_type != "ResearchPredictionOutcomeV1":
                     raise ValueError("prediction completed label evidence is missing")
                 typed_label = ResearchPredictionOutcomeV1.from_dict(json_value(label.metadata["prediction_outcome"]))
                 validate_research_prediction_outcome_v1(repo, typed_label)
-                if typed_label.label_state != "MATURED" or typed_label.prediction_id != item.prediction_id:
+                if typed_label.label_state != "MATURED" or typed_label.prediction_id != prediction_id:
                     raise ValueError("prediction completion does not bind a measured label")
             else:
+                item = self._measure(repo, current.artifact_ref, horizons[horizon_index], cutoff)
                 support_page = repo.artifact_entries_by_metadata_identity("ResearchPredictionOutcomeV1",
                     ("prediction_outcome", "prediction_id"), item.prediction_id, as_of_ns=cutoff, limit=1)
                 if support_page.invalid_entry_count:
