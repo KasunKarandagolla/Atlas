@@ -33,7 +33,13 @@ def prune_development_payload(payload: Path) -> None:
             continue
         if not path.is_file():
             continue
-        if ({part.lower() for part in relative.parts} & forbidden_parts
+        lower_parts = {part.lower() for part in relative.parts}
+        project_document = (
+            bool(relative.parts)
+            and (relative.parts[0].lower() == "docs"
+                 or relative.parts[:2] == ("_internal", "docs"))
+        )
+        if ((lower_parts & forbidden_parts and not project_document)
                 or path.suffix.lower() in forbidden_suffixes):
             path.unlink()
 
