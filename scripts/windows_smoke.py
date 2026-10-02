@@ -26,8 +26,13 @@ def fresh_machine_environment() -> dict[str, str]:
 
 
 def json_command(executable: Path, arguments: list[str], *, environment: dict[str, str]) -> dict:
-    result = subprocess.run([str(executable), *arguments], env=environment, cwd=executable.parent,
-                            text=True, capture_output=True, timeout=120, check=True)
+    try:
+        result = subprocess.run([str(executable), *arguments], env=environment, cwd=executable.parent,
+                                text=True, capture_output=True, timeout=120, check=True)
+    except subprocess.CalledProcessError as error:
+        stdout = (error.stdout or "")[-4000:]
+        stderr = (error.stderr or "")[-4000:]
+        raise ValueError(f"Packaged runtime command failed ({error.returncode}); stdout={stdout!r}; stderr={stderr!r}") from error
     lines = result.stdout.strip().splitlines()
     if not lines:
         raise ValueError("Packaged runtime emitted no diagnostic result")
