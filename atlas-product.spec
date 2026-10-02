@@ -28,11 +28,28 @@ for relative in resources["configuration_directories"]:
             if source.is_symlink() or not source.resolve().is_relative_to(root.resolve()):
                 raise ValueError("Symlink configuration is not a package resource")
             datas.append((str(source), str(source.relative_to(root).parent)))
-datas += collect_data_files("certifi")
-datas += collect_data_files("pydantic_ai")
-datas += collect_data_files("pydantic_graph")
-hidden = collect_submodules("atlas.v2") + ["atlas.desktop.app"]
-hidden += collect_submodules("pydantic_ai") + collect_submodules("pydantic_graph")
+def runtime_data(package):
+    result = []
+    for source, destination in collect_data_files(package):
+        path = Path(source)
+        parts = {part.lower() for part in path.parts}
+        if (parts & {"tests", "test", "__pycache__", "docs", "examples"}
+                or path.suffix.lower() in {".pyx", ".pxd", ".pyi"}):
+            continue
+        result.append((source, destination))
+    return result
+
+
+datas += runtime_data("certifi")
+datas += runtime_data("pydantic_ai")
+datas += runtime_data("pydantic_graph")
+def runtime_modules(package):
+    return tuple(name for name in collect_submodules(package)
+                 if not any(part.lower() in {"tests", "test", "examples"} for part in name.split(".")))
+
+
+hidden = runtime_modules("atlas.v2") + ["atlas.desktop.app"]
+hidden += runtime_modules("pydantic_ai") + runtime_modules("pydantic_graph")
 hidden += ["PySide6.QtCore", "PySide6.QtGui", "PySide6.QtWidgets", "pyarrow.parquet", "duckdb", "lightgbm"]
 a = Analysis(
     [str(root / "src/atlas_product_entry.py")], pathex=[str(root / "src")],
