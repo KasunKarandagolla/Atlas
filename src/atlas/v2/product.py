@@ -312,8 +312,9 @@ def runtime_dependency_smoke() -> dict[str, str]:
             raise RuntimeError("analytics runtime failed its deterministic fixture")
     if pyarrow.table({"fixture": [1]}).num_rows != 1 or application is None:
         raise RuntimeError("desktop/columnar runtime fixture failed")
-    return {"qt": qVersion(), "pyarrow": pyarrow.__version__,
-            "duckdb": duckdb.__version__, "lightgbm": lightgbm.__version__}
+    return {"qt": qVersion(), "pyarrow": str(getattr(pyarrow, "__version__", "unknown")),
+            "duckdb": str(getattr(duckdb, "__version__", "unknown")),
+            "lightgbm": str(getattr(lightgbm, "__version__", "unknown"))}
 
 
 def _component_command(component: str, run: Path) -> list[str]:
