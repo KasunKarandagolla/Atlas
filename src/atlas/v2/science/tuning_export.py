@@ -736,7 +736,7 @@ def export_tuning_snapshot(
                 cursor.close()
                 connection.set_progress_handler(None, 0)
             writer.close()
-            with temporary.open("rb") as sealed_partition:
+            with temporary.open("r+b") as sealed_partition:
                 os.fsync(sealed_partition.fileno())
             file_hash = _file_hash(temporary)
             target = partitions / f"{file_hash}.parquet"
