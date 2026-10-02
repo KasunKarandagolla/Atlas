@@ -1,0 +1,53 @@
+# Live-run tuning evidence schema V1
+
+The Session 036 exporter is IMPLEMENTED. Its focused deterministic tests cover snapshot consistency, incremental late insertion, exact outcome joins, failed evidence validation, fixed cutoffs, bounded pagination, immutable configuration, secret exclusion and interrupted publication. This document describes the implemented projection, including its limitations; it does not qualify the entire live research pipeline.
+
+## Evidence ownership
+
+The existing operational SQLite artifact index remains authoritative for its accepted roles. `export_tuning_snapshot()` opens it read-only and holds one consistent WAL snapshot. It neither registers new operational evidence nor calls a provider. Analysis files are derived products and can be rebuilt from retained operational evidence.
+
+Existing accepted raw archives retain source and instrument identities, source/event/receipt/ingestion/availability chronology, translation provenance and payload hashes. L2 raw-frame chunks retain exact raw payload bytes in immutable Zstandard Parquet and their indexed checkpoint references. The tuning exporter does not delete or rotate raw archives and does not copy raw ticks, prompts, provider responses or secret fields into analysis rows. Retention required for reconstruction must be managed by the existing archive owner.
+
+## Run identity and publication
+
+`TuningRunIdentityV1` contains a bounded run ID, canonical configuration SHA256, exact 40-character source Git SHA and start time. The product launcher supplies this identity from its sealed run manifest and assigns each run its own operational database. A changed configuration or source identity cannot reuse an existing export directory.
+
+Each call accepts a fixed `cutoff_ns`, at most 100,000 rows, batches of at most 256 rows and a snapshot budget of at most 30 seconds. Defaults are 100,000 rows, 128 rows per batch and 10 seconds. SQLite insertion `rowid`, rather than decision time or availability time, is the incremental cursor. A later insertion with an earlier timestamp is therefore preserved by the next partition. Rows are eligible only when their recorded availability is no later than the fixed cutoff. A future row stops cursor advancement and sets `blocked_future_evidence`; it cannot silently disappear behind the cursor. `has_more` requires another bounded call before export is complete.
+
+The directory `<output_root>/<run_id>/` contains an immutable `run-identity.json`, compressed content-addressed Parquet partitions, immutable content-addressed manifests, immutable compact JSON reports and an atomically replaced `head.json`. An OS file lock permits one exporter publisher. A manifest binds the prior manifest, cutoff, insertion cursor, partition checksum, cumulative source-record digest and report counters. Head advances only after the partition, manifest and report are sealed. Interrupted temporary or orphan files are not dataset members. A snapshot timeout leaves the prior head intact. Repeating an unchanged completed or blocked snapshot reuses its manifest; newly inserted evidence can change the status even at an unchanged cutoff.
+
+## Compact Parquet rows
+
+One explicitly typed long-form schema is used; filter `row_kind` and `artifact_type` to form logical tables. Every row binds `run_id`, `config_hash`, `source_sha`, operational `source_rowid`, artifact type/hash and created/available times. Null means absent or unsupported; it never means zero.
+
+| Logical table / row kind | Stored compact evidence |
+| --- | --- |
+| Decisions / `DECISION` | Validated calendar reference, origin event, decision time, CandidateSet/candidate/action hashes, policy identity, source stage, selection/admission states, reason codes, evidence references and exact instrument key when a candidate supplies one |
+| Missing origins / `MISSINGNESS` | Native M1 late-origin calendar missingness, exact instrument revision/key, origin reference, slot time, supporting gate and reason; kept separately from calendar rows |
+| Outcomes / `OUTCOME` | Exact calendar/candidate/action/policy binding, target, label state, ACTUAL/SIMULATED/COUNTERFACTUAL provenance, decimal payoff wire value, instrument key when an exact action exists and evidence references |
+| Intelligence / `INTELLIGENCE` | Validated critic receipt/calendar/packet/request/action chain, provider/model profile hashes, terminal status, failure reasons, measured dispatch latency and evidence references; zero authority |
+| Model requests / `MODEL_REQUEST` | Immutable route/provider/manifest, exact typed request/input hash, source references, original deadline, run/configuration, exact action when present or negative decision-calendar/event binding; transported inputs remain referenced rather than duplicated |
+| Model forecasts / `MODEL_FORECAST` | Exact sealed request/calendar/action references, manifest/input identity, actual inference/receipt/expiry timestamps, validated numerical-values reference, output status and recorded horizon sample counts in `model_sample_counts_json`; counts are not independent economic samples |
+| Model values / `MODEL_VALUES` | Checksummed bounded numerical baseline values in `model_values_json`, using the declared `log_return:<horizon_ns>:mean` and quantile grammar; provider text is excluded |
+| Model terminals / `MODEL_TERMINAL` | Exact immutable request/configuration/route/action/calendar bindings, measured queue/run time, usable/failure state and forecast/value references |
+| Model registry and missingness / `MODEL_REGISTRY`, `MODEL_MISSINGNESS` | Explicit fixed routes and per-receipt unavailable/expired/invalid-source cases, including negative opportunities with no frozen action |
+| Source/runtime/model evidence / `EVIDENCE` | Allowlisted source-health, continuity, recovery, supervisor, outcome-maturity, M0/M1 support/prediction/calibration, analogue/evaluation, readiness and resource artifacts projected into closed metric/identity/reason fields |
+| Rejected evidence / `INVALID` | Original indexed type/hash/times plus `INDEXED_EVIDENCE_FAILED_VALIDATION`; no inferred payoff or reconstructed success |
+
+The projector reuses existing full calendar/outcome/critic index validators through a read-only adapter that requires the exact previously persisted artifact. Wrong action joins are rejected. Critic dependencies must have been available by observation recording. Native M1 missingness must bind its valid late-origin gate. Product resource telemetry must match the exact run/configuration, content hash, availability and ZERO authority. Model request/forecast/terminal projections validate the immutable declared registry, fixed source cutoff, exact action/calendar/event/deadline bindings and actual inference chronology. Derived baseline input snapshots are published at actual computation time, separately from the market cutoff.
+
+`metrics_json` contains only closed, recorded scalar metrics; `reason_codes` and `evidence_refs` are bounded projections. Product telemetry preserves `cpu_seconds`, `threads`, `disk_free_bytes`, `rss_bytes`, `handles`, `peak_rss_bytes`, `db_bytes` and `wal_bytes` when recorded. CPU seconds are cumulative process time; Linux peak RSS is a peak and cannot be relabeled current RSS. No CPU utilization percentage is inferred. Summaries of cumulative measurements describe recorded samples and do not substitute for rates or utilization.
+
+## Periodic and final reports
+
+The launcher invokes the same exporter periodically and on shutdown. JSON reports contain cumulative calendar-entry, missing-origin, outcome, intelligence and invalid-row counts; counts by policy, source stage, selection/admission state, status and closed reason; recorded metric count/sum/min/max; validation failures; explicit truncation/future flags; and disabled capital/assisted-execution status. A TESTED report qualifies only its read-only offline projection. Invalid, incomplete or future-blocked exports report TEST GATE.
+
+Calendar entries can represent several stages of one origin. They must not be counted as independent opportunities. The current report explicitly marks the distinct opportunity denominator NOT ESTIMABLE pending origin/stage reconciliation. Missing native M1 origins are reported separately. The exporter preserves operational evidence, but cannot invent expected origins that production failed to register.
+
+Read-only DuckDB or Arrow can query only manifest-listed partitions. Useful supported questions include which recorded stages/states reject most calendar entries, which missingness reasons recur, which policy states have outcomes, which model/provider profile failed, where measured latency accumulates, and how memory/handles/DB/WAL/disk samples change. Join outcomes to `decision_ref` and actions to `action_hash`; compare configurations as dependent observations sharing market history.
+
+## Explicit software limitations
+
+The projection does not yet supply distinct expected-opportunity reconciliation, typed prediction-to-label calibration/error summaries, mature regime/support comparisons, feature stability, M0/M1 disagreement analysis, complete variant comparison or per-stage latency when production has not recorded those measurements. The installed statistical model lane is connected to the writer-owned postreceipt callback with bounded causal M15 context, exact source references, durable completion reuse and explicit expired/missing cases. Its scalar return forecasts are research diagnostics; automatic executable-policy payoff generation remains a separate ordinary engineering limitation. Missing software cannot be resolved by observing a live test.
+
+A 48-hour report supports diagnosis and hypotheses only. Positive economic claims retain the frozen prospective-duration, matured-opportunity, regime, dependence and holdout requirements.
