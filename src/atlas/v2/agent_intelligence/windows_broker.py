@@ -491,6 +491,30 @@ def native_windows_critic_broker_smoke_v1() -> dict[str, Any]:
     if os.name != "nt":
         return {"status": "BLOCKED BY ENVIRONMENT", "transport": "AF_PIPE", "no_provider_calls": True}
 
+    # Exercise the installed DPAPI backend with disposable synthetic material.
+    # Never read or replace the owner's configured provider credential.
+    import tempfile
+    from pathlib import Path
+
+    from ..product import WindowsSecretStore
+
+    with tempfile.TemporaryDirectory(prefix="atlas-protected-secret-smoke-") as temporary:
+        store = WindowsSecretStore(Path(temporary))
+        profile = "deepseek-v41-action-critic-v1"
+        synthetic = "ATLAS_OFFLINE_SECRET_FIXTURE_" + secrets.token_hex(32)
+        store.put_provider_key(profile, synthetic)
+        protected = (Path(temporary) / "deepseek-action-critic.dpapi").read_bytes()
+        if synthetic.encode() in protected or store.get_provider_key(profile) != synthetic:
+            raise RuntimeError("native protected secret roundtrip failed")
+        corrupted = bytearray(protected)
+        corrupted[len(corrupted) // 2] ^= 1
+        try:
+            WindowsSecretStore._crypt(bytes(corrupted), decrypt=True)
+        except RuntimeError:
+            pass
+        else:
+            raise RuntimeError("native protected secret admitted a damaged ciphertext")
+
     class FakeBroker:
         calls = 0
 
@@ -527,4 +551,6 @@ def native_windows_critic_broker_smoke_v1() -> dict[str, Any]:
         raise RuntimeError("native critic pipe handlers did not shut down")
     return {"status": "TESTED", "transport": "AF_PIPE", "active_handlers_after_close": 0,
             "max_handlers": MAX_BROKER_CONNECTIONS, "no_provider_calls": True,
-            "wrong_key_rejected": True, "current_user_dacl_verified": True}
+            "wrong_key_rejected": True, "current_user_dacl_verified": True,
+            "protected_secret_roundtrip": "TESTED", "damaged_secret_rejected": True,
+            "owner_secret_accessed": False}
