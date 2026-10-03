@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from windows_manifest import (
     RUNTIME_PLATFORM,
     inventory,
     locked_versions,
+    source_bound_locks,
     verify,
     write_json,
 )
@@ -30,6 +32,12 @@ def require_rejection(callback, message: str) -> None:
 
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
+    source_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True, timeout=15).strip()
+    source_bound_locks(root, source_sha)
+    attributes = (root / ".gitattributes").read_text(encoding="utf-8").splitlines()
+    for name in ("requirements-lock.txt", "requirements-agent-lock.txt", "requirements-windows-lock.txt"):
+        if f"{name} text eol=lf" not in attributes:
+            raise AssertionError("Native checkout may change frozen lock bytes: " + name)
     for path in [*sorted((root / "scripts").glob("windows_*.py")), root / "atlas-product.spec"]:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     resource_config = json.loads((root / "packaging/windows/resources.json").read_text(encoding="utf-8"))
@@ -69,7 +77,31 @@ def main() -> int:
     if triggers["workflow_dispatch"]["inputs"]["signed_release"]["default"] is not False:
         raise AssertionError("Diagnostic push must not imply a signed owner release")
     with tempfile.TemporaryDirectory(prefix="atlas-windows-pipeline-check-") as temporary:
-        payload = Path(temporary)
+        repository = Path(temporary) / "source-fixture"
+        repository.mkdir()
+        def git(*arguments):
+            return subprocess.check_output(["git", "-C", str(repository), *arguments],
+                stderr=subprocess.PIPE, timeout=15).decode().strip()
+        git("init", "--quiet")
+        git("config", "user.name", "ATLAS offline validation")
+        git("config", "user.email", "offline-validation@example.invalid")
+        git("config", "core.autocrlf", "false")
+        hooks = repository / "disabled-hooks"
+        hooks.mkdir()
+        git("config", "core.hooksPath", str(hooks))
+        for name in ("requirements-lock.txt", "requirements-agent-lock.txt", "requirements-windows-lock.txt"):
+            (repository / name).write_bytes(b"fixture==1.0\n")
+            git("add", name)
+        git("commit", "--quiet", "-m", "Synthetic source lock fixture")
+        fixture_sha = git("rev-parse", "HEAD")
+        source_bound_locks(repository, fixture_sha)
+        altered = repository / "requirements-agent-lock.txt"
+        altered.write_bytes(b"fixture==1.0\r\n")
+        require_rejection(lambda: source_bound_locks(repository, fixture_sha), "CRLF lock drift accepted")
+        altered.write_bytes(b"fixture==2.0\n")
+        require_rejection(lambda: source_bound_locks(repository, fixture_sha), "Changed source lock accepted")
+        payload = Path(temporary) / "payload"
+        payload.mkdir()
         file = payload / "fixture.txt"
         file.write_text("source-bound fixture\n", encoding="utf-8")
         entries = inventory(payload)

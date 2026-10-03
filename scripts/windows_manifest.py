@@ -8,6 +8,7 @@ import importlib.metadata
 import json
 import platform
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -81,6 +82,24 @@ def locked_versions(path: Path) -> dict[str, str]:
     return dict(re.findall(r"^([A-Za-z0-9_.-]+)==([^\s\\]+)", path.read_text(encoding="utf-8"), re.MULTILINE))
 
 
+def source_bound_locks(root: Path, source_sha: str) -> dict[str, str]:
+    """Require checkout bytes to match Git blobs, including native line endings."""
+    if re.fullmatch(r"[a-f0-9]{40}", source_sha) is None:
+        raise ValueError("Source SHA must be exact Git commit identity")
+    result = {}
+    for name in LOCKS:
+        try:
+            blob = subprocess.check_output(["git", "cat-file", "blob", f"{source_sha}:{name}"],
+                cwd=root, stderr=subprocess.PIPE, timeout=15)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
+            raise ValueError("Source dependency lock Git blob unavailable: " + name) from exc
+        expected = hashlib.sha256(blob).hexdigest()
+        if digest(root / name) != expected:
+            raise ValueError("Checkout dependency lock differs from exact source bytes: " + name)
+        result[name] = expected
+    return result
+
+
 def validate_native_payload(entries: list[dict], root: Path) -> None:
     paths = {entry["path"] for entry in entries}
     required = {"atlas-product.exe", "_internal/python312.dll"}
@@ -104,6 +123,7 @@ def create(payload: Path, root: Path, *, source_sha: str, version: str) -> dict:
     if (platform.system() != "Windows" or platform.machine().upper() not in {"AMD64", "X86_64"}
             or platform.python_implementation() != "CPython" or platform.python_version() != PYTHON_VERSION):
         raise ValueError("Package manifest requires pinned native Windows x64 CPython " + PYTHON_VERSION)
+    source_locks = source_bound_locks(root, source_sha)
     entries = inventory(payload)
     validate_native_payload(entries, root)
     versions = locked_versions(root / "requirements-windows-lock.txt")
@@ -118,7 +138,7 @@ def create(payload: Path, root: Path, *, source_sha: str, version: str) -> dict:
         "source_sha": source_sha, "version": version, "python_version": sys.version.split()[0],
         "runtime_platform": RUNTIME_PLATFORM,
         "runtime_lock_sha256": digest(root / "requirements-windows-lock.txt"),
-        "dependency_locks": {name: digest(root / name) for name in LOCKS},
+        "dependency_locks": source_locks,
         "dependency_composition_overrides": LOCK_COMPOSITION_OVERRIDES,
         "build_dependencies": installed, "payload": entries,
         "payload_tree_sha256": hashlib.sha256(json.dumps(entries, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
@@ -161,9 +181,8 @@ def verify(payload: Path, *, expected_sha: str | None = None, root: Path | None 
         raise ValueError("Payload tree identity mismatch")
     if root is not None:
         validate_native_payload(actual, root)
-        for name in LOCKS:
-            if digest(root / name) != manifest["dependency_locks"][name]:
-                raise ValueError("Source dependency lock differs from package")
+        if source_bound_locks(root, manifest["source_sha"]) != manifest["dependency_locks"]:
+            raise ValueError("Source dependency lock differs from package")
     return manifest
 
 

@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from windows_manifest import create, digest, verify, write_json
+from windows_manifest import create, digest, source_bound_locks, verify, write_json
 
 PYTHON_VERSION = "3.12.10"
 INNO_VERSION = "6.5.4"
@@ -73,6 +73,7 @@ def main() -> int:
     if run(["git", "status", "--porcelain"], root=root, capture=True):
         parser.error("Build requires a clean committed checkout, including untracked files")
     source_sha = run(["git", "rev-parse", "HEAD"], root=root, capture=True)
+    source_bound_locks(root, source_sha)
     os.environ["SOURCE_DATE_EPOCH"] = run(["git", "show", "-s", "--format=%ct", "HEAD"], root=root, capture=True)
     os.environ["PYTHONHASHSEED"] = "0"
     # The pinned installer is hash-verified by the workflow. ISCC's help text
