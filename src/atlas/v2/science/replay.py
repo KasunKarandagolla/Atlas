@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -251,8 +251,14 @@ def _economic_result(*, action: ActionArtifactV2, path: ReplayPathV2,
 def replay_action(repo: OpsRepository, *, action: ActionArtifactV2, candidate: CandidateActionV2,
                   path: ReplayPathV2, existing_portfolio_ref: str,
                   assumptions: ReplayAssumptionsV2, fee: FeeScheduleV2, schedule: FundingScheduleV2,
-                  product: ProductContractV2, replay_cutoff_ns: int) -> PolicyPayoffV2:
-    """Replay IOC, fixed MarkPrice stop, S2 failed break and strategy time exit."""
+                  product: ProductContractV2, replay_cutoff_ns: int,
+                  production_clock_ns: Callable[[], int] | None = None) -> PolicyPayoffV2:
+    """Replay IOC, fixed MarkPrice stop, S2 failed break and strategy time exit.
+
+    replay_cutoff_ns remains the immutable information cutoff. An optional
+    production clock stamps availability after computation; offline callers
+    retain their existing cutoff-stamped results.
+    """
     if candidate.content_hash != action.candidate_ref or candidate.key != action.action.key:
         raise ValueError("action/candidate mismatch")
     if action.action.policy_hash not in (S1_POLICY.policy_hash, S2_POLICY.policy_hash):
@@ -351,8 +357,13 @@ def replay_action(repo: OpsRepository, *, action: ActionArtifactV2, candidate: C
             input_refs.append(str(setup_ref))
         if any(_indexed(repo, ref, replay_cutoff_ns) is None for ref in input_refs):
             raise ValueError("payoff input ref unavailable at replay cutoff")
+        if production_clock_ns is not None:
+            from atlas.v2.chronology import sample
+            published_at = sample(production_clock_ns, floor_ns=replay_cutoff_ns)
+            result = replace(result, available_at_ns=published_at)
         repo.register_artifact(ArtifactIndexEntryV2(result.content_hash, "PolicyPayoffV2", result.content_hash,
-            replay_cutoff_ns, replay_cutoff_ns, {"payoff": result.to_dict(), "input_refs": sorted(set(input_refs))}))
+            result.available_at_ns, result.available_at_ns,
+            {"payoff": result.to_dict(), "input_refs": sorted(set(input_refs))}))
         return result
     if arrival > candidate.deadline_ns:
         return finish(None, (), (), ReplayStatusV2.NO_FILL, "DEADLINE_EXPIRED_BEFORE_ARRIVAL")

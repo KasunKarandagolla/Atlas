@@ -41,7 +41,10 @@ MAX_OUTCOMES_ATTEMPTED = 8
 CHECKPOINT_READ_LIMIT = 2
 MAX_METADATA_IDENTITY_LOOKUPS_PER_DECISION = 16
 MAX_METADATA_IDENTITY_MATCHES_PER_QUERY = 8
-MAX_RAW_EVIDENCE_ROWS_PER_DECISION = 1_024
+# A supported source may bind 1,024 raw rows, 256 minute artifacts, 256
+# funding records, and 256 closed bars with their raw records, plus exact
+# decision/action/cost identities and bounded resolver metadata pages.
+MAX_RAW_EVIDENCE_ROWS_PER_DECISION = 4_096
 MAX_REPLAY_ARTIFACTS_PER_DECISION = 512
 MAX_CANDIDATE_DECISIONS_INSPECTED = DECISION_PAGE_SIZE
 MAX_ARTIFACT_PAGES_READ = (
@@ -64,6 +67,7 @@ OUTCOME_MAINTENANCE_BUDGET_VERSION = "OutcomeMaintenanceBudgetV1"
 # Real-host adequacy remains UNVERIFIED / TEST GATE.
 OUTCOME_MAINTENANCE_BUDGET_NS_V1 = 50_000_000
 MAX_OUTCOME_MAINTENANCE_BUDGET_NS = 1_000_000_000
+OUTCOME_DUE_RETRY_INTERVAL_NS_V1 = 60_000_000_000
 
 DECISION_CALENDAR_ARTIFACT_TYPE = "DecisionCalendarEntryV2"
 OUTCOME_ARTIFACT_TYPE = "MaturedOutcomeV2"
@@ -227,6 +231,8 @@ class OutcomeMaturityCycleReportV1:
     checkpoint_ref: str | None = None
     failure_code: str | None = None
     failure_type: str | None = None
+    due_work: Mapping[str, Any] | None = None
+    due_work_discovery: Mapping[str, Any] | None = None
 
     VERSION = "OutcomeMaturityCycleReportV1"
 
@@ -378,6 +384,7 @@ class _BudgetedRepository:
         self._identity_lookups = 0
         self._resolver_active = False
         self._resolver_read_allowed = resolver_read_allowed
+        self._artifact_cache: dict[str, ArtifactIndexEntryV2 | None] = {}
 
     @property
     def read_only(self) -> bool:
@@ -412,10 +419,13 @@ class _BudgetedRepository:
         self._resolver_active = False
 
     def get_artifact(self, artifact_ref: str) -> ArtifactIndexEntryV2 | None:
+        if artifact_ref in self._artifact_cache:
+            return self._artifact_cache[artifact_ref]
         self._reserve(rows=1)
         entry = self._repository.get_artifact(artifact_ref)
         if entry is not None and entry.artifact_type in {"PolicyPayoffV2", "ReplayPathV2"}:
             self._reserve(replay=1)
+        self._artifact_cache[artifact_ref] = entry
         return entry
 
     def artifact_entries_by_metadata_identity(
@@ -462,9 +472,12 @@ class _BudgetedRepository:
         return page
 
     def register_artifact(self, entry: ArtifactIndexEntryV2) -> ArtifactIndexEntryV2:
+        self._artifact_cache.pop(entry.artifact_ref, None)
         return self._repository.register_artifact(entry)
 
     def register_artifacts(self, entries: tuple[ArtifactIndexEntryV2, ...]) -> tuple[ArtifactIndexEntryV2, ...]:
+        for entry in entries:
+            self._artifact_cache.pop(entry.artifact_ref, None)
         return self._repository.register_artifacts(entries)
 
 
@@ -546,6 +559,8 @@ def run_outcome_maturity_cycle(
     production_clock_ns: Callable[[], int] | None = None,
     monotonic_ns: Callable[[], int] | None = None,
     maintenance_budget_ns: int = OUTCOME_MAINTENANCE_BUDGET_NS_V1,
+    use_due_work: bool = True,
+    action_producer: Callable[..., Any] | None = None,
 ) -> OutcomeMaturityCycleReportV1:
     """Process one bounded, causally fixed and restart-safe calendar page.
 
@@ -583,6 +598,7 @@ def run_outcome_maturity_cycle(
     budget_status = "WITHIN_BUDGET"
     budget_overrun_ns = 0
     invalid_raw_keys: list[tuple[int, str]] = []
+    due_discovery: Mapping[str, Any] | None = None
 
     def _budget_expired() -> bool:
         observed = mono_clock()
@@ -637,6 +653,9 @@ def run_outcome_maturity_cycle(
             invalid_calendar_raw_keys=tuple(invalid_raw_keys),
             failure_code=failure_code,
             failure_type=failure_type,
+            due_work=repository.due_work_pressure("ACTION_OUTCOME", as_of_ns=evidence_cutoff_ns,
+                page_limit=DECISION_PAGE_SIZE) if use_due_work and not repository.read_only else None,
+            due_work_discovery=due_discovery,
             **values,
         )
 
@@ -673,10 +692,15 @@ def run_outcome_maturity_cycle(
     generation = checkpoint.generation if checkpoint is not None else 0
     page_read_started = mono_clock()
     try:
-        page = repository.artifact_entries_by_types_page(
-            (DECISION_CALENDAR_ARTIFACT_TYPE,), as_of_ns=evidence_cutoff_ns,
-            after=cursor, limit=DECISION_PAGE_SIZE,
-        )
+        if use_due_work:
+            due_discovery = repository.discover_due_work()
+            page = repository.due_artifact_page("ACTION_OUTCOME", as_of_ns=evidence_cutoff_ns,
+                limit=DECISION_PAGE_SIZE)
+        else:
+            page = repository.artifact_entries_by_types_page(
+                (DECISION_CALENDAR_ARTIFACT_TYPE,), as_of_ns=evidence_cutoff_ns,
+                after=cursor, limit=DECISION_PAGE_SIZE,
+            )
     except Exception as error:
         return _report(failure_code="CALENDAR_PAGE_READ_FAILURE", failure_type=_safe_exception_type(error),
                        raw_evidence_rows_inspected=checkpoint_rows, artifact_pages_read=1)
@@ -688,6 +712,9 @@ def run_outcome_maturity_cycle(
     base_pages = 2
 
     if not raw_keys:
+        if use_due_work:
+            return _report(checkpoint_ref=None if checkpoint is None else checkpoint.content_hash,
+                artifact_pages_read=base_pages, raw_evidence_rows_inspected=base_rows)
         if page_read_overrun:
             return _report(
                 checkpoint_ref=None if checkpoint is None else checkpoint.content_hash,
@@ -707,7 +734,7 @@ def run_outcome_maturity_cycle(
                        raw_evidence_rows_inspected=base_rows)
 
     if (page.next_cursor is None or page.next_cursor != raw_keys[-1]
-            or (cursor is not None and page.next_cursor >= cursor)):
+            or (not use_due_work and cursor is not None and page.next_cursor >= cursor)):
         return _report(failure_code="NON_MONOTONIC_CALENDAR_CURSOR",
                        decisions_inspected=len(page.entries), invalid_calendar_entries=page.invalid_entry_count,
                        artifact_pages_read=base_pages, raw_evidence_rows_inspected=base_rows)
@@ -750,6 +777,21 @@ def run_outcome_maturity_cycle(
             status_written += status_ref is not None
             if status_error is not None and cycle_failure is None:
                 cycle_failure = status_error
+            if use_due_work and status_error in {"MALFORMED_STATUS_INDEX", "AMBIGUOUS_STATUS_ORDER",
+                    "MALFORMED_STATUS_ARTIFACT", "TERMINAL_STATUS_REGRESSION", "NONMONOTONIC_STATUS_TRANSITION"}:
+                repository.quarantine_due_work("ACTION_OUTCOME", decision_ref, reason_code=status_error)
+            if use_due_work and status_error is None:
+                if reason in {"MALFORMED_CALENDAR_ENTRY", "CONFLICTING_OUTCOME",
+                        "MALFORMED_OUTCOME", "NONTERMINAL_OUTCOME_EXISTS"}:
+                    repository.quarantine_due_work("ACTION_OUTCOME", decision_ref, reason_code=reason)
+                elif status in {"MATURED", "CENSORED", "UNSUPPORTED"}:
+                    repository.retire_due_work("ACTION_OUTCOME", decision_ref, reason_code=status)
+                else:
+                    due_at_ns = max(evidence_cutoff_ns + OUTCOME_DUE_RETRY_INTERVAL_NS_V1,
+                        horizon or evidence_cutoff_ns) if status == "PENDING" else (
+                            evidence_cutoff_ns + OUTCOME_DUE_RETRY_INTERVAL_NS_V1)
+                    repository.reschedule_due_work("ACTION_OUTCOME", decision_ref,
+                        due_at_ns=due_at_ns, reason_code=reason or status)
         except Exception as error:
             if cycle_failure is None:
                 cycle_failure = "STATUS_WRITE_FAILURE"
@@ -846,6 +888,17 @@ def run_outcome_maturity_cycle(
 
             budgeted.begin_resolver()
             try:
+                if use_due_work and decision.action_artifact_ref is not None:
+                    from .action_outcome_producer import RetrospectiveActionOutcomeProducerV1
+                    producer = action_producer or RetrospectiveActionOutcomeProducerV1(clock_ns=production_now_ns)
+                    production = producer(cast(OpsRepository, budgeted), indexed_calendar,
+                        evidence_cutoff_ns, clock_ns=production_now_ns)
+                    # Newly published payoff becomes readable only in a subsequent
+                    # fixed-cutoff cycle; later computation never extends this one.
+                    if production.payoff_ref is not None and (payoff_entry := budgeted.get_artifact(production.payoff_ref)) is not None and payoff_entry.available_at_ns > evidence_cutoff_ns:
+                        unresolved += 1
+                        record("UNRESOLVED", None, "ACTION_PAYOFF_AWAITING_NEXT_CUTOFF")
+                        return True
                 resolution = resolver(
                     cast(OpsRepository, budgeted), indexed_calendar, evidence_cutoff_ns,
                     clock_ns=production_now_ns,
@@ -953,6 +1006,9 @@ def run_outcome_maturity_cycle(
             if cycle_failure is None:
                 cycle_failure = "MALFORMED_CALENDAR_INDEX_ROWS"
             completed = True
+            if use_due_work:
+                repository.quarantine_due_work("ACTION_OUTCOME", raw_key[1],
+                    reason_code="MALFORMED_CALENDAR_INDEX_ROWS")
         else:
             decisions_inspected += 1
             completed = process_calendar_entry(indexed_calendar)
@@ -973,7 +1029,7 @@ def run_outcome_maturity_cycle(
 
     cursor_after_cycle = page.next_cursor if processed_raw_keys == len(raw_keys) else last_accounted_cursor
     checkpoint_ref = checkpoint.content_hash if checkpoint is not None else None
-    if cursor_after_cycle != cursor:
+    if cursor_after_cycle != cursor or (use_due_work and processed_raw_keys):
         try:
             checkpoint_started = mono_clock()
             checkpoint_ref = _write_checkpoint(

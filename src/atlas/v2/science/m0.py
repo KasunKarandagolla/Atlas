@@ -23,6 +23,7 @@ from atlas.v2.contracts import CandidateActionV2, CandidateSetV2, FeatureArtifac
 from atlas.v2.instruments import InstrumentKeyV2, ProductContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.science.action import ActionArtifactV2, FrozenActionV2
+from atlas.v2.science.active_training import bounded_training_entries, require_row_budget
 from atlas.v2.science.outcomes import (
     ExecutionOutcomeStateV2,
     LabelStateV2,
@@ -385,11 +386,12 @@ def _compatibility(action: FrozenActionV2, product: ProductContractV2, decision_
         "base_units_per_contract": canonical_decimal_str(product.base_units_per_contract)})
 
 
-def action_features(repo: OpsRepository, action_artifact_ref: str, *, cutoff_ns: int) -> M0FeatureVectorV2:
+def action_features(repo: OpsRepository, action_artifact_ref: str, *, cutoff_ns: int, consumer_at_ns: int | None = None) -> M0FeatureVectorV2:
     artifact_body = _body(repo, action_artifact_ref, "ActionArtifactV2", "action_artifact")
     identity_body = _body(repo, action_artifact_ref, "ActionArtifactV2", "action_identity")
     action_entry = repo.get_artifact(action_artifact_ref)
-    if action_entry is None or action_entry.available_at_ns > cutoff_ns:
+    consumer_at_ns = cutoff_ns if consumer_at_ns is None else consumer_at_ns
+    if action_entry is None or action_entry.available_at_ns > consumer_at_ns:
         raise ValueError("frozen action artifact unavailable by M0 cutoff")
     candidate_ref = artifact_body.get("candidate_ref")
     candidate_body = _body(repo, str(candidate_ref), "CandidateActionV2", "candidate")
@@ -406,22 +408,27 @@ def action_features(repo: OpsRepository, action_artifact_ref: str, *, cutoff_ns:
     if (candidate_set_entry is None or candidate_set_entry.artifact_type != "CandidateSetV2" or
             candidate_set_entry.content_hash != candidate_set_ref or not isinstance(candidate_set_body, Mapping)):
         raise ValueError("M0 exact CandidateSet is unavailable")
+    from atlas.v2.chronology import causal_artifact
+    for derived_ref in (action_artifact_ref, str(candidate_set_ref), str(candidate_ref), candidate.snapshot_hash):
+        if not causal_artifact(repo, derived_ref, cutoff_ns=candidate.decision_at_ns,
+                consumer_at_ns=action_entry.available_at_ns, deadline_ns=candidate.deadline_ns):
+            raise ValueError("M0 refuses invalid derived chronology")
     candidate_set = CandidateSetV2.from_dict(json_value(candidate_set_body))
     if (candidate_set.content_hash != candidate_set_ref or
             candidate_set.selected_candidate_id != candidate.candidate_id or
-            candidate_set.envelope.available_at_ns > candidate.decision_at_ns):
+            candidate_set.envelope.available_at_ns > action_entry.available_at_ns):
         raise ValueError("M0 candidate selection identity mismatch")
     feature_entry = repo.get_artifact(candidate.snapshot_hash)
     feature_body = feature_entry.metadata.get("feature") if feature_entry is not None else None
     if (feature_entry is None or feature_entry.artifact_type != "FeatureArtifactV2" or
             feature_entry.content_hash != candidate.snapshot_hash or not isinstance(feature_body, Mapping) or
-            feature_entry.available_at_ns > candidate.decision_at_ns):
+            feature_entry.available_at_ns > action_entry.available_at_ns):
         raise ValueError("original cutoff FeatureArtifactV2 unavailable")
     feature = FeatureArtifactV2.from_dict(json_value(feature_body))
     key = InstrumentKeyV2.from_dict(identity_body["key"])
     if (feature.content_hash != candidate.snapshot_hash or feature.key != key or
             feature.information_cutoff_ns > candidate.decision_at_ns or
-            feature.envelope.available_at_ns > candidate.decision_at_ns or
+            feature.envelope.available_at_ns > action_entry.available_at_ns or
             feature.replay_view.value not in {"ACTUAL_SYSTEM", "RECONSTRUCTED_MARKET"}):
         raise ValueError("M0 refuses future/revised feature evidence")
     product_entry = repo.get_artifact(str(artifact_body.get("product_ref")))
@@ -494,7 +501,7 @@ def action_features(repo: OpsRepository, action_artifact_ref: str, *, cutoff_ns:
 
 def _training_rows(repo: OpsRepository, cutoff_ns: int, *, compatibility_key: str | None = None) -> tuple[M0TrainingRowV2, ...]:
     rows: list[M0TrainingRowV2] = []
-    for entry in repo.artifact_entries("MaturedOutcomeV2"):
+    for entry in bounded_training_entries(repo, cutoff_ns):
         raw = entry.metadata.get("outcome")
         if not isinstance(raw, Mapping):
             continue
@@ -709,9 +716,9 @@ def fit_m0(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
         raise ValueError("M0 configuration cannot lower versioned support floors or use invalid Huber/ridge parameters")
     if (action.action.action_hash != sha256_json(action.action.to_dict()) or candidate.content_hash != action.candidate_ref
             or candidate_set.content_hash != action.candidate_set_ref or candidate.decision_at_ns != cutoff_ns
-            or action.available_at_ns > cutoff_ns or available_at_ns < cutoff_ns or available_at_ns >= candidate.deadline_ns):
+            or action.available_at_ns > available_at_ns or available_at_ns < cutoff_ns or available_at_ns >= candidate.deadline_ns):
         raise ValueError("M0 training cutoff must equal the exact frozen action decision cutoff")
-    current_vector = action_features(repo, action.content_hash, cutoff_ns=cutoff_ns)
+    current_vector = action_features(repo, action.content_hash, cutoff_ns=cutoff_ns, consumer_at_ns=available_at_ns)
     if current_vector.action_hash != action.action.action_hash:
         raise ValueError("M0 current prediction action identity mismatch")
     current_feature_ref = index_m0_feature_vector(repo, current_vector, publication_time())
@@ -719,6 +726,7 @@ def fit_m0(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
     compatible = tuple(row for row in all_rows if row.compatibility_key == current_vector.compatibility_key
                        and row.available_at_ns <= cutoff_ns)
     # OOF fits are expanding and each label must be available strictly before that row's own decision cutoff.
+    require_row_budget(repo, compatible, cutoff_ns=cutoff_ns)
     oof = chronological_oof(compatible, ridge=ridge, huber_delta=huber_delta,
                             min_training_samples=min_oof_training_samples)
     oof_ref_body = {"version": M0_RESIDUAL_ARCHIVE_VERSION, "feature_schema_version": M0_FEATURE_SCHEMA_VERSION,
@@ -842,7 +850,7 @@ def validate_m0_fit_evidence(repo: OpsRepository, *, action: ActionArtifactV2,
         ood_body: Mapping[str, Any]) -> None:
     """Reproduce the stored M0 fit and every support/calibration/OOD result."""
     cutoff_ns = feature_vector.information_cutoff_ns
-    current = action_features(repo, action.content_hash, cutoff_ns=cutoff_ns)
+    current = action_features(repo, action.content_hash, cutoff_ns=cutoff_ns, consumer_at_ns=prediction.available_at_ns)
     if (current.content_hash != feature_vector.content_hash or prediction.action_hash != action.action.action_hash or
             prediction.action_artifact_ref != action.content_hash or prediction.feature_vector_ref != feature_vector.content_hash or
             prediction.training_cutoff_ns != cutoff_ns or prediction.model_ref is None):
@@ -887,6 +895,7 @@ def validate_m0_fit_evidence(repo: OpsRepository, *, action: ActionArtifactV2,
             sha256_json(calibration_body) != prediction.calibration_ref or
             sha256_json(ood_body) != prediction.ood_ref):
         raise ValueError("M0 outcome/support/calibration/OOD refs do not resolve to exact training inputs")
+    require_row_budget(repo, training_rows, cutoff_ns=cutoff_ns)
     oof_rows = chronological_oof(training_rows, ridge=float(ridge), huber_delta=float(huber_delta),
         min_training_samples=config["minimum_oof_training_samples"])
     expected_oof = {"version": M0_RESIDUAL_ARCHIVE_VERSION,

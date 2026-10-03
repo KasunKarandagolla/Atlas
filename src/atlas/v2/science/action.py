@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
@@ -118,7 +118,7 @@ def action_identity(candidate: CandidateActionV2, sizing: SizingDecisionV2,
 
 def freeze_action(repo: OpsRepository, *, candidate: CandidateActionV2, candidate_set: CandidateSetV2,
                   sizing: SizingDecisionV2, product: ProductContractV2, policy: PolicySpecV2,
-                  v1: RiskPolicy, v2: RiskPolicyV2) -> ActionArtifactV2:
+                  v1: RiskPolicy, v2: RiskPolicyV2, clock_ns: Callable[[], int] | None = None) -> ActionArtifactV2:
     """Index a pure research action only after exact selected sizing evidence exists."""
     if candidate_set.selected_candidate_id != candidate.candidate_id or sizing.candidate_set_ref != candidate_set.content_hash:
         raise ValueError("selected CandidateSet mismatch")
@@ -126,9 +126,35 @@ def freeze_action(repo: OpsRepository, *, candidate: CandidateActionV2, candidat
     if indexed_sizing is None or indexed_sizing.artifact_type != "SizingDecisionV2" or canonical_json(
             indexed_sizing.metadata.get("sizing")) != canonical_json(sizing.to_dict()):
         raise ValueError("sizing evidence must already be indexed")
+    from atlas.v2.chronology import record_computation, sample
+    identity_ref = sha256_json({"version": "ActionComputationIdentityV1", "sizing_ref": sizing.content_hash,
+        "candidate_ref": candidate.content_hash, "candidate_set_ref": candidate_set.content_hash})
+    if clock_ns and (prior_identity := repo.get_artifact(identity_ref)) is not None:
+        if (prior_identity.artifact_type != "ActionComputationIdentityV1"
+                or prior_identity.content_hash != sha256_json(prior_identity.metadata)
+                or prior_identity.metadata.get("authority") != "ZERO"):
+            raise ValueError("sealed action identity receipt conflicts")
+        prior = repo.get_artifact(str(prior_identity.metadata.get("action_ref")))
+        if prior is None or prior.artifact_type != "ActionArtifactV2":
+            raise ValueError("sealed action computation is missing")
+        action = action_identity(candidate, sizing, product, policy, v1, v2)
+        artifact = ActionArtifactV2(action, candidate.content_hash, sizing.content_hash,
+            candidate_set.content_hash, prior.available_at_ns)
+        from atlas.v2.chronology import causal_artifact
+        consumed_at = sample(clock_ns, floor_ns=prior.available_at_ns)
+        if (artifact.content_hash != prior.artifact_ref or prior.content_hash != artifact.content_hash or canonical_json(prior.metadata["action_identity"]) != canonical_json(action.to_dict())
+                or not causal_artifact(repo, prior.artifact_ref, cutoff_ns=candidate.decision_at_ns,
+                    consumer_at_ns=consumed_at, deadline_ns=candidate.deadline_ns)):
+            raise ValueError("sealed action computation identity conflicts")
+        return artifact
+    started = sample(clock_ns, floor_ns=sizing.available_at_ns) if clock_ns else sizing.available_at_ns
     action = action_identity(candidate, sizing, product, policy, v1, v2)
+    finished = sample(clock_ns, floor_ns=started) if clock_ns else started
+    available = sample(clock_ns, floor_ns=finished) if clock_ns else finished
+    if available > candidate.deadline_ns:
+        raise ValueError("action computation missed the unextendable deadline")
     artifact = ActionArtifactV2(action, candidate.content_hash, sizing.content_hash,
-                                candidate_set.content_hash, sizing.available_at_ns)
+                                candidate_set.content_hash, available)
     refs = (candidate.content_hash, sizing.content_hash, candidate_set.content_hash,
             product.content_hash, v1.policy_hash(), v2.policy_hash)
     if any((item := repo.get_artifact(ref)) is None or item.available_at_ns > artifact.available_at_ns for ref in refs):
@@ -137,4 +163,11 @@ def freeze_action(repo: OpsRepository, *, candidate: CandidateActionV2, candidat
         artifact.content_hash, artifact.available_at_ns, artifact.available_at_ns,
         {"action_artifact": artifact.to_dict(), "action_identity": action.to_dict(),
          "input_refs": sorted(refs)}))
+    if clock_ns:
+        record_computation(repo, artifact_ref=artifact.content_hash, information_cutoff_ns=candidate.decision_at_ns,
+            started_ns=started, finished_ns=finished, available_ns=available,
+            input_refs=refs, deadline_ns=candidate.deadline_ns)
+        body = {"action_ref": artifact.content_hash, "authority": "ZERO"}
+        repo.register_artifact(ArtifactIndexEntryV2(identity_ref, "ActionComputationIdentityV1",
+            sha256_json(body), available, available, body))
     return artifact

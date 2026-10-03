@@ -222,6 +222,8 @@ def _resolve_candidate_set(repo: OpsRepository, ref: str) -> tuple[CandidateSetV
         raise ValueError("CandidateSet identity must declare an exact integer cutoff")
     candidate_refs = tuple(identity.get("candidate_refs", ()))
     timed_native_s3 = identity.get("producer_version") == S3_NATIVE_TIMED_CANDIDATE_SET_PRODUCER
+    timed_derived = False
+    candidate_consumer_ns = cutoff_ns
     if timed_native_s3:
         started = identity.get("computation_started_ns")
         finished = identity.get("computation_finished_ns")
@@ -243,7 +245,20 @@ def _resolve_candidate_set(repo: OpsRepository, ref: str) -> tuple[CandidateSetV
                 or universe_entry.available_at_ns > started):
             raise ValueError("native S3 CandidateSet universe was unavailable at computation start")
     elif cutoff_ns != candidate_set.envelope.available_at_ns:
-        raise ValueError("CandidateSet cutoff must equal its envelope availability")
+        from atlas.v2.chronology import causal_artifact, chronology_ref
+        receipt = repo.get_artifact(chronology_ref(ref))
+        chronology = receipt.metadata.get("chronology") if receipt is not None else None
+        if (not isinstance(chronology, Mapping)
+                or type(chronology.get("consumer_deadline_ns")) is not int
+                or not causal_artifact(repo, ref, cutoff_ns=cutoff_ns,
+                    consumer_at_ns=candidate_set.envelope.available_at_ns,
+                    deadline_ns=chronology["consumer_deadline_ns"])
+                or chronology.get("computation_finished_ns") != candidate_set.envelope.created_at_ns
+                or indexed.created_at_ns != candidate_set.envelope.created_at_ns
+                or indexed.available_at_ns != candidate_set.envelope.available_at_ns):
+            raise ValueError("CandidateSet later publication requires exact causal computation receipt")
+        candidate_consumer_ns = chronology["computation_started_ns"]
+        timed_derived = True
     if (candidate_set.content_hash != ref
             or candidate_refs != tuple(sorted(set(candidate_refs)))
             or not set(candidate_refs).issubset(set(candidate_set.envelope.input_refs))
@@ -263,7 +278,7 @@ def _resolve_candidate_set(repo: OpsRepository, ref: str) -> tuple[CandidateSetV
             raise ValueError("CandidateSet references an unavailable typed candidate")
         candidate = CandidateActionV2.from_dict(json_value(candidate_body))
         if (candidate.content_hash != candidate_ref or candidate.candidate_id in indexed_candidates
-                or candidate.envelope.available_at_ns > cutoff_ns):
+                or candidate.envelope.available_at_ns > candidate_consumer_ns):
             raise ValueError("CandidateSet candidate identity is duplicate or contradictory")
         indexed_candidates[candidate.candidate_id] = candidate
     if set(indexed_candidates) != {item.candidate_id for item in candidate_set.candidates}:
@@ -276,13 +291,14 @@ def _resolve_candidate_set(repo: OpsRepository, ref: str) -> tuple[CandidateSetV
         "decision_event_id": candidate_set.decision_event_id, "universe_ref": candidate_set.universe_ref,
         "selection_policy_hash": candidate_set.selection_policy_hash})
     decision_index = repo.get_artifact(decision_index_ref)
-    expected_index_at = candidate_set.envelope.available_at_ns if timed_native_s3 else identity.get("cutoff_ns")
+    expected_index_at = candidate_set.envelope.available_at_ns if timed_native_s3 or timed_derived else identity.get("cutoff_ns")
+    expected_index_created = candidate_set.envelope.created_at_ns if timed_derived else expected_index_at
     if (decision_index is None or decision_index.artifact_type != "CandidateSetDecisionIndexV1"
             or decision_index.metadata.get("candidate_set_ref") != ref
             or decision_index.metadata.get("cutoff_ns") != identity.get("cutoff_ns")
             or (timed_native_s3 and decision_index.metadata.get("deadline_ns") != identity.get("deadline_ns"))
             or decision_index.content_hash != sha256_json(decision_index.metadata)
-            or decision_index.created_at_ns != expected_index_at
+            or decision_index.created_at_ns != expected_index_created
             or decision_index.available_at_ns != expected_index_at):
         raise ValueError("CandidateSet lacks its exact immutable decision-event index")
     return candidate_set, identity
@@ -366,7 +382,7 @@ def index_decision_calendar_entry(repo: OpsRepository, entry: DecisionCalendarEn
         if (state != SelectionStateV2.SELECTED or candidate is None or source is None
                 or source.artifact_type != "SizingDecisionV2" or source.content_hash != entry.source_artifact_ref
                 or not isinstance(body, Mapping) or sha256_json(body) != entry.source_artifact_ref
-                or source.available_at_ns != entry.available_at_ns
+                or source.available_at_ns > entry.available_at_ns
                 or body.get("candidate_ref") != entry.candidate_ref
                 or body.get("candidate_set_ref") != entry.candidate_set_ref
                 or body.get("selected_candidate_id") != candidate.candidate_id
@@ -416,6 +432,8 @@ def index_decision_calendar_entry(repo: OpsRepository, entry: DecisionCalendarEn
                 raise ValueError("SIZED risk evidence must bind frozen action")
         elif entry.action_hash is not None:
             raise ValueError("hard-risk rejection cannot carry an action")
+        elif source.available_at_ns != entry.available_at_ns:
+            raise ValueError("hard-risk rejection publication must bind its exact sizing evidence")
     elif stage == DecisionSourceStageV2.ECONOMIC_EVALUATION:
         source = repo.get_artifact(entry.source_artifact_ref)
         body = source.metadata.get("evaluation") if source is not None else None
@@ -468,6 +486,11 @@ def index_decision_calendar_entry(repo: OpsRepository, entry: DecisionCalendarEn
                     and action_body.get("sizing_ref") != entry.source_artifact_ref)
                 or action.available_at_ns > entry.available_at_ns):
             raise ValueError("decision entry frozen action identity mismatch")
+        if entry.source_stage == DecisionSourceStageV2.HARD_RISK:
+            sizing_entry = repo.get_artifact(entry.source_artifact_ref)
+            if sizing_entry is None or entry.available_at_ns != max(sizing_entry.available_at_ns,
+                                                                    action.available_at_ns):
+                raise ValueError("hard-risk calendar publication must wait for sizing and frozen action")
 
     existing = repo.get_artifact(entry.decision_identity_ref)
     if existing is not None and (existing.artifact_type != "DecisionCalendarIdentityV2"

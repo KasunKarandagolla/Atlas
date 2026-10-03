@@ -451,14 +451,16 @@ def _readiness_for_product(repository: OpsRepository, product: ProductContractV2
     s1_feature, s2_feature, feature_refs, feature_inventory = _persisted_feature_readiness(
         repository, product.key, cutoff_ns,
     )
-    watches = [item for item in repository.list_watches(limit=10_000)
+    watch_rows = repository.list_watches(limit=10_000)
+    watches = [item for item in watch_rows
                if item.key == product.key and item.strategy_id == "S1_MTF_TREND_PULLBACK"
                and item.created_at_ns <= cutoff_ns]
     watch_ids = {item.watch_id for item in watches}
-    transitions = [item for item in repository.watch_transition_history(limit=10_000)
+    transition_rows = repository.watch_transition_history(limit=10_000)
+    transitions = [item for item in transition_rows
                    if item.get("watch_id") in watch_ids and item.get("transition_at_ns", cutoff_ns + 1) <= cutoff_ns]
-    watch_inventory_complete = len(watches) < 10_000
-    transition_inventory_complete = len(transitions) < 10_000
+    watch_inventory_complete = len(watch_rows) < 10_000
+    transition_inventory_complete = len(transition_rows) < 10_000
     transitions_by_watch: dict[str, list[dict[str, Any]]] = {}
     for item in transitions:
         watch_id = str(item["watch_id"])

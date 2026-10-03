@@ -7,8 +7,10 @@ capital mutation API and is intentionally separate from V1 live-control data.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import threading
+import time
 from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -157,6 +159,15 @@ class ArtifactMetadataIdentityPageV1:
 
 
 @dataclass(frozen=True)
+class LatestArtifactPageV1:
+    """Newest available typed evidence with explicit bounded-read overflow."""
+
+    entries: tuple[ArtifactIndexEntryV2, ...]
+    has_more: bool
+    invalid_entry_count: int = 0
+
+
+@dataclass(frozen=True)
 class NativeM1OriginObservationPageV1:
     """Bounded page of exact ACTUAL_SYSTEM final-M1 source origins.
 
@@ -180,7 +191,64 @@ class PendingDecisionEventPageV1:
     invalid_entry_count: int = 0
 
 
+@dataclass(frozen=True)
+class DueWorkItemV1:
+    lane: str
+    work_id: str
+    source_ref: str
+    created_at_ns: int
+    due_at_ns: int
+    payload: Mapping[str, Any]
+    attempts: int
+
+
+_DUE_SOURCE_LANES = {
+    "DecisionCalendarEntryV2": "ACTION_OUTCOME",
+    "ResearchModelTerminalV1": "PREDICTION_TERMINAL",
+    "OpsDecisionEventSourceV1": "OPS_EVENT",
+}
+
+
+def prediction_due_lane_v1(lane: str, run_id: str, config_hash: str) -> str:
+    """Keep the scheduling projection isolated by immutable producer run."""
+    if lane not in {"PREDICTION_TERMINAL", "PREDICTION_OUTCOME"}:
+        raise ValueError("unsupported prediction due-work lane")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,96}", run_id):
+        raise ValueError("prediction due-work run identity must be bounded")
+    sha256_ref(config_hash, field="config_hash")
+    return f"{lane}:{sha256_json({'run_id': run_id, 'config_hash': config_hash})}"
+
+
+def _due_source_lane(artifact_type: str, metadata: Mapping[str, Any]) -> str | None:
+    lane = _DUE_SOURCE_LANES.get(artifact_type)
+    routing = metadata.get("routing")
+    if lane == "PREDICTION_TERMINAL" and isinstance(routing, Mapping):
+        run_id, config_hash = routing.get("run_id"), routing.get("config_hash")
+        if isinstance(run_id, str) and isinstance(config_hash, str):
+            try:
+                return prediction_due_lane_v1(lane, run_id, config_hash)
+            except ValueError:
+                pass
+    return lane
+
+
 _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS: dict[tuple[str, tuple[str, ...]], str] = {
+    ("CandidateSetDecisionIndexV1", ("decision_event_id",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.decision_event_id') END",
+    ("CandidateSetV2", ("candidate_set", "decision_event_id")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.candidate_set.decision_event_id') END",
+    ("NewsEventV2", ("event", "source_url")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event.source_url') END",
+    ("NewsEventV2", ("event", "duplicate_group")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event.duplicate_group') END",
+    ("EventAlertV2", ("duplicate_group",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.duplicate_group') END",
+    ("PublicStreamContinuityReportV1", ("report", "channel")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.report.channel') END",
+    ("NewsEventV2", ("event", "source_id")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event.source_id') END",
+    ("ActionReplaySourceEvidenceV1", ("source_evidence", "decision_ref")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.source_evidence.decision_ref') END",
     ("MaturedOutcomeV2", ("outcome", "decision_ref")):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.outcome.decision_ref') END",
     ("ActualActionPositionBindingV2", ("binding", "action_hash")):
@@ -213,6 +281,18 @@ _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS: dict[tuple[str, tuple[str, ...]], str] 
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.checkpoint.run_id') END",
     ("ResearchPredictionOutcomeV1", ("prediction_outcome", "prediction_id")):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.prediction_outcome.prediction_id') END",
+    ("PublicSourceHealthV2", ("health", "source_id")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.health.source_id') END",
+    ("ScannerRankEvidenceV1", ("candidate_id",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.candidate_id') END",
+    ("ScannerRankEvidenceV1", ("decision_event_id",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.decision_event_id') END",
+    ("EventSafetyGateV2", ("cutoff_ns",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.cutoff_ns') END",
+    ("ResearchPrerequisiteInventoryV1", ("prerequisites", "event_id")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.prerequisites.event_id') END",
+    ("ProductContractV2", ("product", "key", "contract_revision")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.product.key.contract_revision') END",
 }
 
 
@@ -221,7 +301,48 @@ def _archive_json_expression(name: str) -> str:
     return f"CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.{name}') END"
 
 
+_RECEIPT_REPLAY_CANDIDATE_LIMIT = 100_000
+_RECEIPT_EVENT_TYPE_LIMIT = 16
+_RECEIPT_QUERY_INDEXES = tuple(
+    f"CREATE INDEX IF NOT EXISTS public_exact_receipt_{scope}_{view}_lookup ON artifact_index ("
+    + ",".join(_archive_json_expression(name) for name in (
+        ("instrument_revision", "instrument_key_json", "event_type", "availability_class")
+        if scope == "key" else ("instrument_revision", "event_type", "availability_class")))
+    + "," + ("available_at_ns" if view == "actual" else _archive_json_expression("replay_available_at_ns"))
+    + " DESC," + _archive_json_expression("record_id") + " DESC,artifact_ref DESC) "
+    "WHERE artifact_type='PublicObservationIndexV2'"
+    for scope in ("key", "revision") for view in ("actual", "replay")
+)
+
+
 _ARCHIVE_QUERY_INDEXES = (
+    "CREATE INDEX IF NOT EXISTS s3_residual_context_window ON artifact_index ("
+    "json_extract(metadata_json,'$.residual.key'),json_extract(metadata_json,'$.residual.close_at_ns') DESC,"
+    "artifact_ref) WHERE artifact_type='S3ResidualObservationV2'",
+    "CREATE INDEX IF NOT EXISTS s3_vwap_context_window ON artifact_index ("
+    "json_extract(metadata_json,'$.vwap.key'),json_extract(metadata_json,'$.vwap.information_cutoff_ns') DESC,"
+    "artifact_ref) WHERE artifact_type='S3TradeVwapSnapshotV2'",
+    "CREATE INDEX IF NOT EXISTS public_origin_discovery_lookup ON artifact_index ("
+    + ",".join(_archive_json_expression(name) for name in (
+        "instrument_key_json", "event_type", "availability_class"))
+    + ",available_at_ns,artifact_ref) WHERE artifact_type='PublicObservationIndexV2'",
+    "CREATE INDEX IF NOT EXISTS artifact_type_insertion_lookup ON artifact_index (artifact_type)",
+    "CREATE INDEX IF NOT EXISTS artifact_latest_available ON artifact_index "
+    "(artifact_type,available_at_ns DESC,artifact_ref DESC)",
+    "CREATE INDEX IF NOT EXISTS artifact_type_created_order ON artifact_index "
+    "(artifact_type,created_at_ns DESC,artifact_ref DESC,available_at_ns)",
+    "CREATE INDEX IF NOT EXISTS watch_created_order ON watch "
+    "(json_extract(payload_json,'$.created_at_ns') DESC,watch_id DESC)",
+    "CREATE INDEX IF NOT EXISTS watch_transition_time_order ON watch_transition "
+    "(transition_at_ns,watch_id,state_version)",
+    "CREATE INDEX IF NOT EXISTS native_m1_checkpoint_exact_generation ON artifact_index ("
+    + _archive_json_expression("instrument_key_json") + ",CAST("
+    + _archive_json_expression("checkpoint.generation") + " AS INTEGER) DESC,artifact_ref DESC) "
+    "WHERE artifact_type='S3NativeM1OriginAccountingCheckpointV1'",
+    "CREATE INDEX IF NOT EXISTS m15_checkpoint_exact_generation ON artifact_index ("
+    + _archive_json_expression("instrument_key_json") + ",CAST("
+    + _archive_json_expression("checkpoint.generation") + " AS INTEGER) DESC,artifact_ref DESC) "
+    "WHERE artifact_type='M15OriginAccountingCheckpointV1'",
     "CREATE INDEX IF NOT EXISTS source_health_state_lookup ON source_health "
     "(source_id,status,observed_at_ns)",
     "CREATE INDEX IF NOT EXISTS source_health_gap_lookup ON source_health "
@@ -264,6 +385,21 @@ _ARCHIVE_QUERY_INDEXES = (
     "CREATE INDEX IF NOT EXISTS l2_archive_restart_lookup ON artifact_index ("
     + ",".join(_archive_json_expression(name) for name in ("instrument_hash", "source_id", "channel"))
     + ",available_at_ns DESC,artifact_ref DESC) WHERE artifact_type='L2FrameArchiveCheckpointV2'",
+) + _RECEIPT_QUERY_INDEXES
+
+_LATEST_METADATA_INDEXES = tuple(
+    f"CREATE INDEX IF NOT EXISTS latest_metadata_{sha256_json([artifact_type, list(path)])[:16]} "
+    f"ON artifact_index ({expression},available_at_ns DESC,artifact_ref DESC) "
+    f"WHERE artifact_type='{artifact_type}'"
+    for (artifact_type, path), expression in _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS.items()
+)
+
+_METADATA_IDENTITY_RAW_LIMIT = 1024
+_CREATED_METADATA_INDEXES = tuple(
+    f"CREATE INDEX IF NOT EXISTS created_metadata_{sha256_json([artifact_type, list(path)])[:16]} "
+    f"ON artifact_index ({expression},created_at_ns DESC,artifact_ref DESC,available_at_ns) "
+    f"WHERE artifact_type='{artifact_type}'"
+    for (artifact_type, path), expression in _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS.items()
 )
 
 
@@ -285,6 +421,7 @@ class OpsRepository:
         self.path = raw_path
         self.read_only = read_only
         self._lock = threading.RLock()
+        self._savepoint_counter = 0
         self._writer_lease = None if read_only or raw_path == ":memory:" else OpsWriterLock(raw_path)
         if self._writer_lease is not None:
             self._writer_lease.acquire()
@@ -330,7 +467,7 @@ class OpsRepository:
             if not read_only:
                 # These are rebuildable access indexes over accepted artifact
                 # rows, not new evidence tables or a new schema authority.
-                for statement in _ARCHIVE_QUERY_INDEXES:
+                for statement in (*_ARCHIVE_QUERY_INDEXES, *_LATEST_METADATA_INDEXES, *_CREATED_METADATA_INDEXES):
                     self._connection.execute(statement)
         except BaseException:
             self._connection.close()
@@ -402,11 +539,17 @@ class OpsRepository:
         class Transaction:
             def __init__(self, repository: OpsRepository) -> None:
                 self.repository = repository
+                self.savepoint: str | None = None
 
             def __enter__(self) -> sqlite3.Connection:
                 self.repository._lock.acquire()
                 try:
-                    self.repository._connection.execute("BEGIN IMMEDIATE")
+                    if self.repository._connection.in_transaction:
+                        self.repository._savepoint_counter += 1
+                        self.savepoint = f"atlas_composition_{self.repository._savepoint_counter}"
+                        self.repository._connection.execute(f"SAVEPOINT {self.savepoint}")
+                    else:
+                        self.repository._connection.execute("BEGIN IMMEDIATE")
                 except BaseException:
                     self.repository._lock.release()
                     raise
@@ -414,7 +557,11 @@ class OpsRepository:
 
             def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
                 try:
-                    if exc_type:
+                    if self.savepoint is not None:
+                        if exc_type:
+                            self.repository._connection.execute(f"ROLLBACK TO SAVEPOINT {self.savepoint}")
+                        self.repository._connection.execute(f"RELEASE SAVEPOINT {self.savepoint}")
+                    elif exc_type:
                         self.repository._connection.rollback()
                     else:
                         try:
@@ -426,6 +573,16 @@ class OpsRepository:
                     self.repository._lock.release()
 
         return Transaction(self)
+
+    @contextmanager
+    def atomic_composition(self):
+        """Commit controller watch transitions and evidence as one composition.
+
+        Existing mutation methods use nested savepoints; an escaping exception
+        rolls back every operation in this context, including due projections.
+        """
+        with self._transaction():
+            yield self
 
     @staticmethod
     def _watch_from_row(row: sqlite3.Row) -> OpportunityWatchV2:
@@ -476,13 +633,25 @@ class OpsRepository:
             row = self._connection.execute("SELECT * FROM watch WHERE watch_id=?", (watch_id,)).fetchone()
         return None if row is None else self._watch_from_row(row)
 
-    def list_active_watches(self) -> tuple[OpportunityWatchV2, ...]:
+    def list_active_watches(self, *, limit: int | None = None) -> tuple[OpportunityWatchV2, ...]:
+        if limit is not None and (type(limit) is not int or not 1 <= limit <= 4096):
+            raise ValueError("active watch read limit must be between 1 and 4096")
         marks = ",".join("?" for _ in _ACTIVE_STATES)
         with self._lock:
-            rows = self._connection.execute(
-                f"SELECT * FROM watch WHERE state IN ({marks}) ORDER BY expires_at_ns, watch_id",
-                _ACTIVE_STATES,
-            ).fetchall()
+            if limit is None:
+                rows = self._connection.execute(
+                    f"SELECT * FROM watch WHERE state IN ({marks}) ORDER BY expires_at_ns, watch_id",
+                    _ACTIVE_STATES).fetchall()
+            else:
+                # A multi-state IN plus global ordering sorts all active watches
+                # before applying LIMIT. Merge separately bounded equality seeks.
+                rows = []
+                for state in _ACTIVE_STATES:
+                    rows.extend(self._connection.execute(
+                        "SELECT * FROM watch INDEXED BY watch_active_order WHERE state=? "
+                        "ORDER BY expires_at_ns,watch_id LIMIT ?", (state, limit)).fetchall())
+                rows.sort(key=lambda row: (row["expires_at_ns"], row["watch_id"]))
+                rows = rows[:limit]
         return tuple(self._watch_from_row(row) for row in rows)
 
     def list_watches(self, *, limit: int | None = None) -> tuple[OpportunityWatchV2, ...]:
@@ -744,12 +913,29 @@ class OpsRepository:
             result.append(SourceHealthV2(**payload))
         return tuple(result)
 
-    def source_health_sources(self) -> tuple[str, ...]:
+    def source_health_sources(self, *, limit: int = 128) -> tuple[str, ...]:
+        """Seek distinct source successors without scanning health history."""
+        if type(limit) is not int or not 1 <= limit <= 2_000:
+            raise ValueError("source health source-ID bound must be between 1 and 2000")
+        values: list[str] = []
+        previous = ""
         with self._lock:
-            rows = self._connection.execute(
-                "SELECT DISTINCT source_id FROM source_health ORDER BY source_id"
-            ).fetchall()
-        return tuple(row[0] for row in rows)
+            for index in range(limit + 1):
+                comparison = ">=" if index == 0 else ">"
+                row = self._connection.execute(
+                    "SELECT source_id FROM source_health WHERE source_id" + comparison
+                    + "? ORDER BY source_id LIMIT 1", (previous,),
+                ).fetchone()
+                if row is None:
+                    break
+                source_id = row["source_id"]
+                if not isinstance(source_id, str) or not source_id.strip():
+                    raise ValueError("source health source-ID inventory is invalid")
+                values.append(source_id)
+                previous = source_id
+        if len(values) > limit:
+            raise ValueError("source health source-ID set exceeded its deterministic bound")
+        return tuple(values)
 
     def source_had_unhealthy_after_healthy(self, source_id: str) -> bool:
         """Read the sticky recovery requirement without loading health history.
@@ -901,7 +1087,418 @@ class OpsRepository:
                         metadata_json,
                     ),
                 )
+                lane = _due_source_lane(entry.artifact_type, entry.metadata)
+                if lane is not None:
+                    self._schedule_artifact_origin(connection, entry, lane)
+                if entry.artifact_type == "OpsSupervisorReceiptIdentityV1":
+                    event_id = entry.metadata.get("event_id")
+                    if isinstance(event_id, str):
+                        updated = connection.execute(
+                            "UPDATE due_work SET state='RETIRED',reason_code='RECEIPTED' "
+                            "WHERE lane='OPS_EVENT' AND work_id=? AND state='PENDING'", (event_id,))
+                        if updated.rowcount:
+                            connection.execute("UPDATE due_work_pressure SET pending_count=pending_count-1,"
+                                               "retired_count=retired_count+1 WHERE lane='OPS_EVENT'")
+                if entry.artifact_type == "PublicCollectorCursorV2":
+                    self._update_collector_head(connection, entry)
+                if entry.artifact_type == "PublicObservationIndexV2":
+                    close = entry.metadata.get("event_at_ns")
+                    event_type = entry.metadata.get("event_type")
+                    key_json = entry.metadata.get("instrument_key_json")
+                    if (isinstance(event_type, str) and event_type.startswith("BAR_")
+                            and isinstance(key_json, str) and type(close) is int
+                            and entry.metadata.get("bar_content_hash") is not None):
+                        connection.execute(
+                            "UPDATE active_history_head SET dirty_available_at_ns="
+                            "CASE WHEN dirty_available_at_ns IS NULL THEN ? "
+                            "ELSE MIN(dirty_available_at_ns,?) END "
+                            "WHERE instrument_key_json=? AND interval=? AND scan_close_at_ns>=?",
+                            (entry.available_at_ns, entry.available_at_ns, key_json,
+                             event_type.removeprefix("BAR_"), close))
+                        connection.execute(
+                            "UPDATE native_origin_window_head SET complete=0,cursor_available_ns="
+                            "available_from_ns-1,cursor_ref='' WHERE instrument_key_json=? AND event_type=? "
+                            "AND ? BETWEEN available_from_ns AND available_through_ns "
+                            "AND (?,?)<=(cursor_available_ns,cursor_ref)",
+                            (key_json,event_type,entry.available_at_ns,entry.available_at_ns,entry.artifact_ref))
         return batch
+
+    def active_history_head(self, key: InstrumentKeyV2, interval: str) -> dict[str, Any] | None:
+        """Read one bounded rebuildable indicator checkpoint in the single-writer store."""
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT * FROM active_history_head WHERE instrument_key_json=? AND interval=?",
+                (key.to_canonical_json(), interval)).fetchone()
+        return dict(row) if row is not None else None
+
+    def s3_context_window_entries(self, key: InstrumentKeyV2, artifact_type: str, *,
+                                  cutoff_ns: int) -> tuple[ArtifactIndexEntryV2,...]:
+        """Seek only the frozen seven-day AR context plus its 120-minute warmup."""
+        specs = {"S3ResidualObservationV2":("residual","close_at_ns","s3_residual_context_window"),
+                 "S3TradeVwapSnapshotV2":("vwap","information_cutoff_ns","s3_vwap_context_window")}
+        if artifact_type not in specs:
+            raise ValueError("unsupported S3 context artifact type")
+        timestamp(cutoff_ns,field="cutoff_ns")
+        wrapper,time_field,index = specs[artifact_type]
+        earliest = max(0,cutoff_ns-(7*1440+120)*60_000_000_000)
+        with self._lock:
+            rows = self._connection.execute(
+                f"SELECT * FROM artifact_index INDEXED BY {index} WHERE artifact_type='{artifact_type}' "
+                f"AND json_extract(metadata_json,'$.{wrapper}.key')=? "
+                f"AND json_extract(metadata_json,'$.{wrapper}.{time_field}') BETWEEN ? AND ? "
+                f"ORDER BY json_extract(metadata_json,'$.{wrapper}.{time_field}') DESC,artifact_ref LIMIT 16385",
+                (key.to_canonical_json(),earliest,cutoff_ns)).fetchall()
+        if len(rows)>16384:
+            if not self.read_only:
+                pressure = {"version": "OpsActiveWorkPressureV1", "lane": "S3_CONTEXT",
+                    "artifact_type": artifact_type, "instrument_key_json": key.to_canonical_json(),
+                    "information_cutoff_ns": cutoff_ns, "limit": 16384, "observed_count": len(rows),
+                    "observed_count_is_lower_bound": True,
+                    "reason": "S3_CONTEXT_WINDOW_POPULATION_OVERFLOW", "authority": "ZERO"}
+                ref = sha256_json(pressure)
+                if self.get_artifact(ref) is None:
+                    published = max(time.time_ns(),cutoff_ns)
+                    self.register_artifact(ArtifactIndexEntryV2(ref,"OpsActiveWorkPressureV1",ref,
+                        published,published,{"pressure":pressure}))
+            raise ValueError("S3_CONTEXT_WINDOW_POPULATION_OVERFLOW")
+        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows
+                     if row["available_at_ns"]<=cutoff_ns)
+
+    def latest_healthy_source_before(self, source_id: str, *, before_ns: int) -> SourceHealthV2 | None:
+        """Seek the latest certified healthy boundary preceding a repair attempt."""
+        nonblank(source_id, field="source_id")
+        timestamp(before_ns, field="before_ns")
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT payload_json,payload_hash FROM source_health INDEXED BY source_health_state_lookup "
+                "WHERE source_id=? AND status='HEALTHY_CURRENT' AND observed_at_ns<? "
+                "ORDER BY observed_at_ns DESC LIMIT 1", (source_id,before_ns)).fetchone()
+        if row is None:
+            return None
+        body = json.loads(row["payload_json"])
+        if sha256_json(body)!=row["payload_hash"]:
+            raise RuntimeError("stored healthy-boundary payload hash mismatch")
+        return SourceHealthV2(**body)
+
+    def public_bar_repair_head(self, key: InstrumentKeyV2, interval: str) -> dict[str,Any] | None:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT * FROM public_bar_repair_head WHERE instrument_key_json=? AND interval=?",
+                (key.to_canonical_json(),interval)).fetchone()
+        return dict(row) if row is not None else None
+
+    def save_public_bar_repair_head(self, key: InstrumentKeyV2, interval: str, *,
+                                    started_ns: int, close_ns: int, certificate_ref: str,
+                                    available_at_ns: int) -> None:
+        for name,value in (("started_ns",started_ns),("close_ns",close_ns),("available_at_ns",available_at_ns)):
+            timestamp(value,field=name)
+        sha256_ref(certificate_ref,field="certificate_ref")
+        with self._transaction() as connection:
+            connection.execute("INSERT INTO public_bar_repair_head VALUES(?,?,?,?,?,?) "
+                "ON CONFLICT(instrument_key_json,interval) DO UPDATE SET "
+                "recovery_started_at_ns=excluded.recovery_started_at_ns,"
+                "verified_close_at_ns=excluded.verified_close_at_ns,"
+                "certificate_ref=excluded.certificate_ref,available_at_ns=excluded.available_at_ns",
+                (key.to_canonical_json(),interval,started_ns,close_ns,certificate_ref,available_at_ns))
+
+    def save_active_history_head(self, key: InstrumentKeyV2, interval: str, *,
+                                state: Mapping[str, Any] | None, state_ref: str | None,
+                                scan_close_at_ns: int, cutoff_ns: int, available_at_ns: int) -> None:
+        """Replace only the bounded cache; immutable checkpoint/raw evidence remains retained."""
+        for name, value in (("scan_close_at_ns", scan_close_at_ns), ("cutoff_ns", cutoff_ns),
+                            ("available_at_ns", available_at_ns)):
+            timestamp(value, field=name)
+        if state_ref is not None:
+            sha256_ref(state_ref, field="state_ref")
+        with self._transaction() as connection:
+            connection.execute(
+                "INSERT INTO active_history_head VALUES(?,?,?,?,?,?,?,NULL) "
+                "ON CONFLICT(instrument_key_json,interval) DO UPDATE SET "
+                "state_json=excluded.state_json,state_ref=excluded.state_ref,"
+                "scan_close_at_ns=excluded.scan_close_at_ns,cutoff_ns=excluded.cutoff_ns,"
+                "available_at_ns=excluded.available_at_ns,"
+                "dirty_available_at_ns=CASE WHEN active_history_head.dirty_available_at_ns>? "
+                "THEN active_history_head.dirty_available_at_ns ELSE NULL END",
+                (key.to_canonical_json(), interval, canonical_json(state) if state is not None else None,
+                 state_ref, scan_close_at_ns, cutoff_ns, available_at_ns, cutoff_ns))
+
+    def active_history_source_page(self, key: InstrumentKeyV2, interval: str, *,
+                                   after_close_at_ns: int, cutoff_ns: int,
+                                   limit: int = 128) -> tuple[tuple[ArtifactIndexEntryV2, ...], int, bool]:
+        """Seek a fixed row page, then include every visible revision at those exact origins.
+
+        The first seek includes unavailable revisions so its work cannot grow
+        with rejected future rows. Source close bounds and the final revision
+        inventory remain explicit; overflow refuses the whole page.
+        """
+        if interval not in {"1M", "15M", "1H", "4H"} or type(limit) is not int or not 1 <= limit <= 128:
+            raise ValueError("active history page has unsupported interval/budget")
+        timestamp(after_close_at_ns, field="after_close_at_ns")
+        timestamp(cutoff_ns, field="cutoff_ns")
+        prefix = " AND ".join(_archive_json_expression(name) + "=?" for name in (
+            "instrument_key_json", "instrument_revision", "event_type", "availability_class"))
+        close = _archive_json_expression("event_at_ns")
+        params = (key.to_canonical_json(), key.contract_revision, "BAR_" + interval, "ACTUAL_SYSTEM")
+        with self._lock:
+            origins = self._connection.execute(
+                "SELECT " + close + " AS close_at_ns FROM artifact_index "
+                "INDEXED BY public_archive_history_lookup "
+                "WHERE artifact_type='PublicObservationIndexV2' AND " + prefix
+                + " AND " + close + ">? AND " + close + "<=? ORDER BY " + close
+                + ",available_at_ns,artifact_ref LIMIT ?",
+                (*params, after_close_at_ns, cutoff_ns, limit + 1)).fetchall()
+            if not origins:
+                return (), after_close_at_ns, False
+            closes = tuple(sorted({int(row[0]) for row in origins[:limit]}))
+            rows = self._connection.execute(
+                "SELECT * FROM artifact_index INDEXED BY public_archive_history_lookup "
+                "WHERE artifact_type='PublicObservationIndexV2' AND "
+                + prefix + " AND " + close + " IN (" + ",".join("?" for _ in closes)
+                + ") LIMIT ?",
+                (*params, *closes, limit + 1)).fetchall()
+        if len(rows) > limit:
+            raise ValueError("ACTIVE_HISTORY_REVISION_PAGE_OVERFLOW")
+        if any(row["available_at_ns"] > cutoff_ns for row in rows):
+            raise ValueError("ACTIVE_HISTORY_FUTURE_REVISION_PENDING")
+        return (tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows),
+                closes[-1], len(origins) > limit)
+
+    @staticmethod
+    def _update_collector_head(connection: sqlite3.Connection, entry: ArtifactIndexEntryV2) -> None:
+        source, channel, sequence = (entry.metadata.get(name) for name in (
+            "source_id", "channel", "high_water_sequence"))
+        if (not isinstance(source, str) or not source.strip() or not isinstance(channel, str)
+                or not channel.strip() or type(sequence) is not int or sequence < 0):
+            raise ValueError("collector checkpoint head identity is invalid")
+        connection.execute("INSERT INTO collector_cursor_head VALUES(?,?,?,?,?) "
+            "ON CONFLICT(source_id,channel) DO UPDATE SET artifact_ref=excluded.artifact_ref,"
+            "high_water_sequence=excluded.high_water_sequence,created_at_ns=excluded.created_at_ns "
+            "WHERE (excluded.high_water_sequence,excluded.created_at_ns,excluded.artifact_ref)>"
+            "(collector_cursor_head.high_water_sequence,collector_cursor_head.created_at_ns,"
+            "collector_cursor_head.artifact_ref)", (source, channel, entry.artifact_ref, sequence, entry.created_at_ns))
+
+    def collector_cursor_heads(self, *, limit: int = 128) -> tuple[ArtifactIndexEntryV2, ...]:
+        """Read one materialized immutable checkpoint per stream, with bounded migration."""
+        if type(limit) is not int or not 1 <= limit <= 128:
+            raise ValueError("collector stream inventory exceeds its bound")
+        with self._transaction() as connection:
+            marker = connection.execute("SELECT last_rowid FROM due_work_discovery "
+                "WHERE projection_id='COLLECTOR_HEADS_V1'").fetchone()
+            cursor = int(marker[0]) if marker else 0
+            if cursor >= 0:
+                legacy = connection.execute("SELECT rowid AS cursor_rowid,* FROM artifact_index "
+                    "WHERE artifact_type='PublicCollectorCursorV2' AND rowid>? ORDER BY rowid LIMIT 129",
+                    (cursor,)).fetchall()
+                for row in legacy[:128]:
+                    self._update_collector_head(connection, ArtifactIndexEntryV2._from_storage_row(row))
+                cursor = int(legacy[127]["cursor_rowid"]) if len(legacy) > 128 else -1
+                connection.execute("INSERT INTO due_work_discovery VALUES('COLLECTOR_HEADS_V1',?) "
+                    "ON CONFLICT(projection_id) DO UPDATE SET last_rowid=excluded.last_rowid", (cursor,))
+            rows = connection.execute("SELECT a.* FROM collector_cursor_head h "
+                "JOIN artifact_index a ON a.artifact_ref=h.artifact_ref "
+                "ORDER BY h.source_id,h.channel LIMIT ?", (limit + 1,)).fetchall()
+        if cursor >= 0:
+            raise ValueError("collector checkpoint migration pending; bounded restart must continue")
+        if len(rows) > limit:
+            raise ValueError("collector stream head inventory overflow")
+        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+
+    @staticmethod
+    def _schedule_artifact_origin(connection: sqlite3.Connection, entry: ArtifactIndexEntryV2,
+                                  lane: str) -> None:
+        work_id = entry.artifact_ref
+        if lane == "OPS_EVENT":
+            body = entry.metadata.get("event")
+            if isinstance(body, Mapping) and isinstance(body.get("event_id"), str):
+                work_id = body["event_id"]
+                receipt_ref = sha256_json({"artifact_type": "OpsSupervisorReceiptIdentityV1",
+                                          "event_id": work_id})
+                if connection.execute("SELECT 1 FROM artifact_index WHERE artifact_ref=?", (receipt_ref,)).fetchone():
+                    return
+        OpsRepository._enqueue_due_work(connection, lane=lane, work_id=work_id,
+            source_ref=entry.artifact_ref, created_at_ns=entry.created_at_ns,
+            due_at_ns=entry.available_at_ns, payload={})
+
+    @staticmethod
+    def _enqueue_due_work(connection: sqlite3.Connection, *, lane: str, work_id: str,
+                          source_ref: str, created_at_ns: int, due_at_ns: int,
+                          payload: Mapping[str, Any]) -> None:
+        encoded = canonical_json(payload)
+        prior = connection.execute(
+            "SELECT source_ref,created_at_ns,payload_json FROM due_work WHERE lane=? AND work_id=?",
+            (lane, work_id),
+        ).fetchone()
+        if prior is not None:
+            if tuple(prior) != (source_ref, created_at_ns, encoded):
+                raise ValueError("due-work immutable source identity conflicts")
+            return
+        connection.execute(
+            "INSERT INTO due_work(lane,work_id,source_ref,created_at_ns,due_at_ns,payload_json) VALUES(?,?,?,?,?,?)",
+            (lane, work_id, source_ref, created_at_ns, due_at_ns, encoded),
+        )
+        connection.execute(
+            "INSERT INTO due_work_pressure(lane,pending_count) VALUES(?,1) "
+            "ON CONFLICT(lane) DO UPDATE SET pending_count=pending_count+1", (lane,),
+        )
+
+    def enqueue_due_work(self, *, lane: str, work_id: str, source_ref: str,
+                         created_at_ns: int, due_at_ns: int, payload: Mapping[str, Any]) -> None:
+        """Schedule exact immutable evidence using the existing controller writer."""
+        for name, value in (("lane", lane), ("work_id", work_id), ("source_ref", source_ref)):
+            nonblank(value, field=name)
+            if len(value) > 128:
+                raise ValueError("due-work identities must be bounded")
+        timestamp(created_at_ns, field="created_at_ns")
+        timestamp(due_at_ns, field="due_at_ns")
+        if len(canonical_json(payload)) > 4096:
+            raise ValueError("due-work payload exceeds its bound")
+        with self._transaction() as connection:
+            self._enqueue_due_work(connection, lane=lane, work_id=work_id, source_ref=source_ref,
+                created_at_ns=created_at_ns, due_at_ns=due_at_ns, payload=payload)
+
+    def discover_due_work(self, *, limit: int = 64) -> Mapping[str, Any]:
+        """Catch up a migrated store by insertion rowid, never wrapping history.
+
+        New artifacts enqueue atomically, so this bounded migration lane cannot
+        delay newly published opportunities behind an old inventory.
+        """
+        if type(limit) is not int or not 1 <= limit <= 512:
+            raise ValueError("due-work discovery limit must be between 1 and 512")
+        with self._transaction() as connection:
+            previous = connection.execute(
+                "SELECT last_rowid FROM due_work_discovery WHERE projection_id='ORIGINS_V1'"
+            ).fetchone()
+            cursor = int(previous[0]) if previous else 0
+            rows = connection.execute(
+                "SELECT rowid AS origin_rowid,artifact_ref,artifact_type,created_at_ns,available_at_ns,metadata_json "
+                "FROM artifact_index WHERE rowid>? ORDER BY rowid LIMIT ?", (cursor, limit),
+            ).fetchall()
+            for row in rows:
+                lane = _DUE_SOURCE_LANES.get(row["artifact_type"])
+                if lane is not None:
+                    metadata: Mapping[str, Any] = {}
+                    try:
+                        parsed = json.loads(row["metadata_json"])
+                        if isinstance(parsed, Mapping):
+                            metadata = parsed
+                            lane = _due_source_lane(row["artifact_type"], metadata) or lane
+                    except (TypeError, ValueError):
+                        pass  # Keep malformed origins reachable for quarantine.
+                    try:
+                        entry = ArtifactIndexEntryV2(row["artifact_ref"], row["artifact_type"],
+                            row["artifact_ref"], row["created_at_ns"], row["available_at_ns"], metadata)
+                        self._schedule_artifact_origin(connection, entry, lane)
+                    except (TypeError, ValueError):
+                        self._enqueue_due_work(connection, lane=lane, work_id=row["artifact_ref"],
+                            source_ref=row["artifact_ref"], created_at_ns=row["created_at_ns"],
+                            due_at_ns=row["available_at_ns"], payload={})
+            if rows:
+                cursor = int(rows[-1]["origin_rowid"])
+            connection.execute(
+                "INSERT INTO due_work_discovery(projection_id,last_rowid) VALUES('ORIGINS_V1',?) "
+                "ON CONFLICT(projection_id) DO UPDATE SET last_rowid=excluded.last_rowid", (cursor,),
+            )
+            remaining = connection.execute(
+                "SELECT 1 FROM artifact_index WHERE rowid>? LIMIT 1", (cursor,),
+            ).fetchone() is not None
+        return {"rows_inspected": len(rows), "last_rowid": cursor, "has_more": remaining}
+
+    def due_work_items(self, lane: str, *, as_of_ns: int, limit: int = 8) -> tuple[DueWorkItemV1, ...]:
+        nonblank(lane, field="lane")
+        timestamp(as_of_ns, field="as_of_ns")
+        if type(limit) is not int or not 1 <= limit <= 64:
+            raise ValueError("due-work page limit must be between 1 and 64")
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM due_work WHERE lane=? AND state='PENDING' AND due_at_ns<=? "
+                "ORDER BY due_at_ns,work_id LIMIT ?", (lane, as_of_ns, limit),
+            ).fetchall()
+        return tuple(DueWorkItemV1(row["lane"], row["work_id"], row["source_ref"],
+            row["created_at_ns"], row["due_at_ns"], json.loads(row["payload_json"]), row["attempts"])
+            for row in rows)
+
+    def due_artifact_page(self, lane: str, *, as_of_ns: int, limit: int = 8) -> ArtifactIndexPageV2:
+        """Resolve only the bounded due selection, accounting malformed sources."""
+        items = self.due_work_items(lane, as_of_ns=as_of_ns, limit=limit)
+        entries: list[ArtifactIndexEntryV2] = []
+        raw_keys: list[tuple[int, str]] = []
+        invalid = 0
+        for item in items:
+            raw_keys.append((item.created_at_ns, item.source_ref))
+            try:
+                entry = self.get_artifact(item.source_ref)
+                if entry is None or entry.created_at_ns != item.created_at_ns or entry.available_at_ns > as_of_ns:
+                    raise ValueError("due source identity or availability is invalid")
+                entries.append(entry)
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                invalid += 1
+        raw_keys.sort(reverse=True)
+        return ArtifactIndexPageV2(tuple(entries), raw_keys[-1] if raw_keys else None, invalid, tuple(raw_keys))
+
+    def reschedule_due_work(self, lane: str, work_id: str, *, due_at_ns: int, reason_code: str) -> None:
+        timestamp(due_at_ns, field="due_at_ns")
+        nonblank(reason_code, field="reason_code")
+        with self._transaction() as connection:
+            result = connection.execute(
+                "UPDATE due_work SET due_at_ns=?,attempts=attempts+1,reason_code=? "
+                "WHERE lane=? AND work_id=? AND state='PENDING'", (due_at_ns, reason_code, lane, work_id),
+            )
+            if result.rowcount != 1:
+                raise ValueError("due-work reschedule requires an active exact identity")
+
+    def retire_due_work(self, lane: str, work_id: str, *, reason_code: str) -> None:
+        self._finish_due_work(lane, work_id, reason_code=reason_code, state="RETIRED")
+
+    def quarantine_due_work(self, lane: str, work_id: str, *, reason_code: str) -> None:
+        """Preserve an exact malformed source and diagnostic without hot retries."""
+        self._finish_due_work(lane, work_id, reason_code=reason_code, state="QUARANTINED")
+
+    def _finish_due_work(self, lane: str, work_id: str, *, reason_code: str, state: str) -> None:
+        nonblank(reason_code, field="reason_code")
+        with self._transaction() as connection:
+            result = connection.execute(
+                "UPDATE due_work SET state=?,reason_code=? WHERE lane=? AND work_id=? AND state='PENDING'",
+                (state, reason_code, lane, work_id),
+            )
+            if result.rowcount:
+                connection.execute(
+                    "UPDATE due_work_pressure SET pending_count=pending_count-1,retired_count=retired_count+1 "
+                    "WHERE lane=?", (lane,),
+                )
+                if state == "QUARANTINED":
+                    connection.execute(
+                        "INSERT INTO due_work_quarantine_pressure(lane,quarantined_count) VALUES(?,1) "
+                        "ON CONFLICT(lane) DO UPDATE SET quarantined_count=quarantined_count+1", (lane,),
+                    )
+
+    def due_work_pressure(self, lane: str, *, as_of_ns: int, page_limit: int = 8) -> Mapping[str, Any]:
+        """Constant-size counters and indexed oldest/overflow observations."""
+        nonblank(lane, field="lane")
+        timestamp(as_of_ns, field="as_of_ns")
+        if type(page_limit) is not int or not 1 <= page_limit <= 64:
+            raise ValueError("due-work pressure page limit must be between 1 and 64")
+        with self._lock:
+            counts = self._connection.execute(
+                "SELECT pending_count,retired_count FROM due_work_pressure WHERE lane=?", (lane,),
+            ).fetchone()
+            quarantine = self._connection.execute(
+                "SELECT quarantined_count FROM due_work_quarantine_pressure WHERE lane=?", (lane,),
+            ).fetchone()
+            oldest = self._connection.execute(
+                "SELECT created_at_ns FROM due_work WHERE lane=? AND state='PENDING' "
+                "ORDER BY created_at_ns,work_id LIMIT 1", (lane,),
+            ).fetchone()
+            ready = self._connection.execute(
+                "SELECT due_at_ns FROM due_work WHERE lane=? AND state='PENDING' AND due_at_ns<=? "
+                "ORDER BY due_at_ns,work_id LIMIT ?", (lane, as_of_ns, page_limit + 1),
+            ).fetchall()
+        return {"version": "DueWorkPressureV1", "lane": lane,
+            "pending_count": int(counts[0]) if counts else 0,
+            "retired_count": int(counts[1]) if counts else 0,
+            "quarantined_count": int(quarantine[0]) if quarantine else 0,
+            "due_count_lower_bound": len(ready), "due_page_overflow": len(ready) > page_limit,
+            "oldest_pending_age_ns": max(0, as_of_ns - int(oldest[0])) if oldest else None,
+            "oldest_due_age_ns": max(0, as_of_ns - int(ready[0][0])) if ready else None}
 
     def get_artifact(self, artifact_ref: str) -> ArtifactIndexEntryV2 | None:
         sha256_ref(artifact_ref, field="artifact_ref")
@@ -963,6 +1560,53 @@ class OpsRepository:
             for row in rows
         )
 
+    def latest_artifact_entries(
+        self, artifact_type: str, *, as_of_ns: int, limit: int,
+        metadata_path: tuple[str, ...] | None = None, identity_value: str | int | None = None,
+    ) -> LatestArtifactPageV1:
+        """Read at most ``limit + 1`` indexed newest rows, reporting malformed rows.
+
+        Exact metadata filtering uses the same registered identity expressions
+        as maturation lookups. Callers must handle overflow explicitly.
+        """
+        nonblank(artifact_type, field="artifact_type")
+        cutoff = timestamp(as_of_ns, field="as_of_ns")
+        if type(limit) is not int or not 1 <= limit <= 4096:
+            raise ValueError("latest artifact page size must be between 1 and 4096")
+        if (metadata_path is None) != (identity_value is None):
+            raise ValueError("latest artifact metadata path and identity must be supplied together")
+        params: tuple[Any, ...]
+        if metadata_path is not None:
+            if (not isinstance(metadata_path, tuple) or not metadata_path or any(
+                    not isinstance(item, str) or not item or not item.isascii()
+                    or not item.replace("_", "a").isalnum() for item in metadata_path)):
+                raise ValueError("latest artifact metadata path must contain ASCII identifier components")
+            expression = _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS.get((artifact_type, metadata_path))
+            if expression is None:
+                raise ValueError("metadata identity path has no bounded artifact index")
+            if isinstance(identity_value, str):
+                nonblank(identity_value, field="identity_value")
+            elif type(identity_value) is not int or not -(2**63) <= identity_value < 2**63:
+                raise ValueError("metadata identity must be a string or a SQLite integer")
+            query = ("SELECT * FROM artifact_index WHERE "
+                f"artifact_type='{artifact_type}' AND {expression}=? AND available_at_ns<=? "
+                "ORDER BY available_at_ns DESC,artifact_ref DESC LIMIT ?")
+            params = (identity_value, cutoff, limit + 1)
+        else:
+            query = ("SELECT * FROM artifact_index WHERE artifact_type=? AND available_at_ns<=? "
+                "ORDER BY available_at_ns DESC,artifact_ref DESC LIMIT ?")
+            params = (artifact_type, cutoff, limit + 1)
+        with self._lock:
+            rows = self._connection.execute(query, params).fetchall()
+        entries: list[ArtifactIndexEntryV2] = []
+        invalid = 0
+        for row in rows[:limit]:
+            try:
+                entries.append(ArtifactIndexEntryV2._from_storage_row(row))
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                invalid += 1
+        return LatestArtifactPageV1(tuple(entries), len(rows) > limit, invalid)
+
     def public_archive_history_entries(
         self,
         *,
@@ -987,45 +1631,90 @@ class OpsRepository:
             raise ValueError("archive source lookup requires event types")
         if type(limit) is not int or not 1 <= limit <= 100_000:
             raise ValueError("archive source lookup limit exceeds its bound")
-        clauses = ["artifact_type='PublicObservationIndexV2'",
-                   _archive_json_expression("instrument_revision") + "=?",
-                   _archive_json_expression("event_type") + " IN (" + ",".join("?" for _ in kinds) + ")"]
-        params: list[Any] = [instrument_revision, *kinds]
         if instrument_key_json is not None:
             nonblank(instrument_key_json, field="instrument_key_json")
-            clauses.append(_archive_json_expression("instrument_key_json") + "=?")
-            params.append(instrument_key_json)
         if availability_class is not None:
             if availability_class not in {"ACTUAL_SYSTEM", "RECONSTRUCTED_MARKET"}:
                 raise ValueError("archive source lookup availability view is invalid")
-            clauses.append(_archive_json_expression("availability_class") + "=?")
-            params.append(availability_class)
         effective = ("available_at_ns" if availability_class != "RECONSTRUCTED_MARKET"
                      else _archive_json_expression("replay_available_at_ns"))
-        clauses.append(effective + "<=?")
-        params.append(cutoff)
         if instrument_key_json is None or not all(kind.startswith("BAR_") for kind in kinds):
-            query = ("SELECT * FROM artifact_index WHERE " + " AND ".join(clauses)
-                     + " ORDER BY available_at_ns DESC," + _archive_json_expression("record_id")
-                     + " DESC LIMIT ?")
-            params.append(limit)
+            if len(kinds) > _RECEIPT_EVENT_TYPE_LIMIT:
+                raise ValueError("archive receipt event-type population exceeds its bound (16)")
+            classes = ((availability_class,) if availability_class is not None else
+                       ("ACTUAL_SYSTEM", "RECONSTRUCTED_MARKET"))
+            scope = "key" if instrument_key_json is not None else "revision"
+            replay = availability_class == "RECONSTRUCTED_MARKET"
+            view = "replay" if replay else "actual"
+            # A multi-event IN query can choose the broad revision/receipt
+            # index and walk every rejected historical observation. Seek each
+            # exact event/class lane before merging its bounded top rows.
+            rows_by_ref: dict[str, sqlite3.Row] = {}
+            with self._lock:
+                for kind in kinds:
+                    for source_class in classes:
+                        names = ["instrument_revision"]
+                        values: list[Any] = [instrument_revision]
+                        if instrument_key_json is not None:
+                            names.append("instrument_key_json")
+                            values.append(instrument_key_json)
+                        names.extend(("event_type", "availability_class"))
+                        values.extend((kind, source_class))
+                        lane = " AND ".join(_archive_json_expression(name) + "=?" for name in names)
+                        order_time = effective if replay else "available_at_ns"
+                        budget = _RECEIPT_REPLAY_CANDIDATE_LIMIT + 1 if replay else limit
+                        query = ("SELECT * FROM artifact_index INDEXED BY "
+                                 f"public_exact_receipt_{scope}_{view}_lookup "
+                                 "WHERE artifact_type='PublicObservationIndexV2' AND " + lane
+                                 + " AND " + effective + "<=? ORDER BY " + order_time + " DESC,"
+                                 + _archive_json_expression("record_id") + " DESC,artifact_ref DESC LIMIT ?")
+                        lane_rows = self._connection.execute(query, (*values, cutoff, budget)).fetchall()
+                        # Reconstructed replay eligibility and actual receipt
+                        # ordering differ. Preserve the existing ordering only
+                        # when the entire eligible population fits the explicit
+                        # work budget; never silently sample the replay prefix.
+                        if replay and len(lane_rows) > _RECEIPT_REPLAY_CANDIDATE_LIMIT:
+                            raise ValueError("archive reconstructed receipt population exceeds its bound (100000)")
+                        rows_by_ref.update((row["artifact_ref"], row) for row in lane_rows)
+                        if replay and len(rows_by_ref) > _RECEIPT_REPLAY_CANDIDATE_LIMIT:
+                            raise ValueError("archive reconstructed receipt population exceeds its bound (100000)")
+            rows = sorted(rows_by_ref.values(), key=lambda row: (
+                int(row["available_at_ns"]),
+                str(json.loads(row["metadata_json"]).get("record_id", "")),
+                str(row["artifact_ref"])), reverse=True)[:limit]
+            return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
         else:
             close = _archive_json_expression("event_at_ns")
-            clauses.append(_archive_json_expression("bar_content_hash") + " IS NOT NULL")
-            clauses.append("json_type(CASE WHEN json_valid(metadata_json) THEN metadata_json ELSE '{}' END,"
-                           "'$.event_at_ns')='integer'")
-            query = ("WITH eligible AS (SELECT * FROM artifact_index WHERE " + " AND ".join(clauses)
-                     + "), origins AS (SELECT " + close + " AS close_at_ns FROM eligible GROUP BY "
-                     + close + " ORDER BY close_at_ns DESC LIMIT ?) SELECT * FROM eligible WHERE "
-                     + close + " IN (SELECT close_at_ns FROM origins) ORDER BY " + close + " DESC,"
-                     + effective + " DESC," + _archive_json_expression("record_id") + " DESC LIMIT 100001")
-            params.append(limit)
-        with self._lock:
-            rows = self._connection.execute(query, tuple(params)).fetchall()
-        if len(rows) > 100_000:
-            raise ValueError("archive source lookup exceeded its revision-row bound (100000)")
-        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
-
+            if len(kinds) != 1:
+                raise ValueError("bounded causal bar history requires one exact interval")
+            # Seek distinct close origins directly. GROUP BY over a materialized
+            # retained-history CTE made a small output limit conceal a full scan.
+            base = " AND ".join(_archive_json_expression(name)+"=?" for name in (
+                "instrument_key_json","instrument_revision","event_type","availability_class"))
+            exact = (instrument_key_json,instrument_revision,kinds[0],availability_class or "ACTUAL_SYSTEM")
+            entries: list[ArtifactIndexEntryV2] = []
+            cursor_close = cutoff+1
+            with self._lock:
+                for _ in range(limit):
+                    origin = self._connection.execute(
+                        "SELECT " + close + " FROM artifact_index INDEXED BY public_archive_history_lookup "
+                        "WHERE artifact_type='PublicObservationIndexV2' AND " + base + " AND "
+                        + close + "<? ORDER BY " + close + " DESC LIMIT 1",
+                        (*exact,cursor_close)).fetchone()
+                    if origin is None:
+                        break
+                    cursor_close = int(origin[0])
+                    revisions = self._connection.execute(
+                        "SELECT * FROM artifact_index INDEXED BY public_archive_history_lookup "
+                        "WHERE artifact_type='PublicObservationIndexV2' AND " + base + " AND "
+                        + close + "=? AND " + effective + "<=? LIMIT 129",
+                        (*exact,cursor_close,cutoff)).fetchall()
+                    if len(revisions)>128:
+                        raise ValueError("archive exact-origin revision work bound exceeded (128)")
+                    entries.extend(ArtifactIndexEntryV2._from_storage_row(row) for row in revisions)
+                    if len(entries)>100_000:
+                        raise ValueError("archive source lookup exceeded its revision-row bound (100000)")
+            return tuple(entries)
     def confirmed_bar_observation_entries(
         self, instrument_key: InstrumentKeyV2, *, event_type: str,
         close_at_ns: int, as_of_ns: int, limit: int = 128,
@@ -1069,17 +1758,79 @@ class OpsRepository:
         if type(limit) is not int or not 1 <= limit <= 10_000:
             raise ValueError("L2 restart stream limit exceeds its bound")
         fields = tuple(_archive_json_expression(name) for name in ("instrument_hash", "source_id", "channel"))
-        partition = ",".join(fields)
-        query = ("WITH ranked AS (SELECT artifact_ref,ROW_NUMBER() OVER (PARTITION BY " + partition
-                 + " ORDER BY available_at_ns DESC,artifact_ref DESC) AS stream_rank FROM artifact_index "
-                 "WHERE artifact_type='L2FrameArchiveCheckpointV2') SELECT a.* FROM ranked r "
-                 "JOIN artifact_index a ON a.artifact_ref=r.artifact_ref WHERE r.stream_rank=1 "
-                 "ORDER BY a.artifact_ref LIMIT ?")
+        # Seek the next distinct stream, then its latest receipt. A ROW_NUMBER
+        # partition used to visit every retained frame before applying LIMIT.
+        rows: list[sqlite3.Row] = []
+        previous = ("", "", "")
         with self._lock:
-            rows = self._connection.execute(query, (limit + 1,)).fetchall()
+            for position in range(limit + 1):
+                identity = None
+                # SQLite expression indexes do not turn a tuple comparison into
+                # a complete range seek. Seek each hierarchy level explicitly
+                # so finding the end of one stream never walks its frame history.
+                levels = (-1,) if position == 0 else (2, 1, 0)
+                for level in levels:
+                    conditions = [] if level < 0 else [field + "=?" for field in fields[:level]]
+                    if level >= 0:
+                        conditions.append(fields[level] + ">?")
+                    successor = "" if not conditions else " AND " + " AND ".join(conditions)
+                    identity = self._connection.execute(
+                        "SELECT " + ",".join(fields) + " FROM artifact_index INDEXED BY l2_archive_restart_lookup "
+                        "WHERE artifact_type='L2FrameArchiveCheckpointV2'" + successor
+                        + " ORDER BY " + ",".join(fields[max(level, 0):]) + " LIMIT 1",
+                        () if level < 0 else previous[:level + 1]).fetchone()
+                    if identity is not None:
+                        break
+                if identity is None:
+                    break
+                previous = tuple(identity)
+                if any(not isinstance(value, str) or not value.strip() for value in previous):
+                    raise ValueError("L2 restart stream identity is invalid")
+                row = self._connection.execute(
+                    "SELECT * FROM artifact_index INDEXED BY l2_archive_restart_lookup "
+                    "WHERE artifact_type='L2FrameArchiveCheckpointV2' AND "
+                    + " AND ".join(field + "=?" for field in fields)
+                    + " ORDER BY available_at_ns DESC,artifact_ref DESC LIMIT 1", previous).fetchone()
+                if row is not None:
+                    rows.append(row)
         if len(rows) > limit:
             raise ValueError("L2 restart exceeded its distinct-stream bound")
+        rows.sort(key=lambda row: row["artifact_ref"])
         return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+
+    def _typed_creation_rows(self, types: tuple[str, ...], *, cutoff: int | None,
+            after: tuple[int, str] | None, limit: int) -> list[sqlite3.Row]:
+        """Bound raw candidates before availability filtering and global merge."""
+        if len(types) > 128:
+            raise ValueError("typed artifact namespace population exceeds its bound (128)")
+        maximum = 16_384
+        collected: list[sqlite3.Row] = []
+        with self._lock:
+            for kind in types:
+                lane_cursor = after
+                examined = 0
+                visible: list[sqlite3.Row] = []
+                while len(visible) < limit:
+                    cursor = " AND (created_at_ns,artifact_ref)<(?,?)" if lane_cursor is not None else ""
+                    batch = min(limit + 1, maximum - examined + 1)
+                    raw = self._connection.execute(
+                        "SELECT * FROM artifact_index INDEXED BY artifact_type_created_order "
+                        "WHERE artifact_type=?" + cursor + " ORDER BY created_at_ns DESC,artifact_ref DESC LIMIT ?",
+                        (kind, *((lane_cursor[0], lane_cursor[1]) if lane_cursor is not None else ()), batch)).fetchall()
+                    for row in raw:
+                        examined += 1
+                        if examined > maximum:
+                            raise ValueError("TYPED_ARTIFACT_CAUSAL_WINDOW_OVERFLOW")
+                        if cutoff is None or row["available_at_ns"] <= cutoff:
+                            visible.append(row)
+                            if len(visible) == limit:
+                                break
+                    if len(raw) < batch or len(visible) >= limit:
+                        break
+                    lane_cursor = (raw[-1]["created_at_ns"], raw[-1]["artifact_ref"])
+                collected.extend(visible[:limit])
+        collected.sort(key=lambda row: (row["created_at_ns"], row["artifact_ref"]), reverse=True)
+        return collected[:limit]
 
     def artifact_entries_by_types(
         self,
@@ -1097,15 +1848,7 @@ class OpsRepository:
         cutoff = (
             timestamp(available_before_ns, field="available_before_ns") if available_before_ns is not None else None
         )
-        marks = ",".join("?" for _ in types)
-        availability_filter = " AND available_at_ns<=?" if cutoff is not None else ""
-        params: tuple[Any, ...] = (*types, *((cutoff,) if cutoff is not None else ()), limit)
-        with self._lock:
-            rows = self._connection.execute(
-                f"SELECT * FROM artifact_index WHERE artifact_type IN ({marks}){availability_filter} "
-                "ORDER BY created_at_ns DESC, artifact_ref DESC LIMIT ?",
-                params,
-            ).fetchall()
+        rows = self._typed_creation_rows(types, cutoff=cutoff, after=None, limit=limit)
         rows.reverse()
         return tuple(
             ArtifactIndexEntryV2._from_storage_row(row)
@@ -1141,18 +1884,7 @@ class OpsRepository:
                 raise ValueError("artifact cursor must be a (created_at_ns, artifact_ref) pair")
             timestamp(after[0], field="cursor.created_at_ns")
             # Raw-key pagination must also cross malformed blank refs exactly.
-        marks = ",".join("?" for _ in types)
-        cursor_clause = " AND (created_at_ns,artifact_ref)<(?,?)" if after is not None else ""
-        params: tuple[Any, ...] = (
-            *types, cutoff, *((after[0], after[1]) if after is not None else ()), limit,
-        )
-        with self._lock:
-            rows = self._connection.execute(
-                f"SELECT * FROM artifact_index WHERE artifact_type IN ({marks}) "
-                f"AND available_at_ns<=?{cursor_clause} "
-                "ORDER BY created_at_ns DESC,artifact_ref DESC LIMIT ?",
-                params,
-            ).fetchall()
+        rows = self._typed_creation_rows(types, cutoff=cutoff, after=after, limit=limit)
         entries: list[ArtifactIndexEntryV2] = []
         invalid = 0
         for row in rows:
@@ -1237,70 +1969,68 @@ class OpsRepository:
         if after_close_at_ns is not None and after_close_at_ns % duration_ns:
             raise ValueError("native close cursor must align to its source interval")
         key_json = instrument_key.to_canonical_json()
-        close_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_at_ns') END"
         key_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END"
         event_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_type') END"
         availability_expr = (
             "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.availability_class') END"
         )
-        bar_ref_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.bar_content_hash') END"
-        close_filter = f" AND {close_expr}>?" if after_close_at_ns is not None else ""
-        params: tuple[Any, ...] = (
-            key_json,
-            event_type,
-            AvailabilityClassV2.ACTUAL_SYSTEM.value,
-            available_from,
-            available_through,
-            min_close,
-            *((after_close_at_ns,) if after_close_at_ns is not None else ()),
-            limit + 1,
-            limit + 1,
-        )
-        query = f"""
-            WITH eligible AS (
-                SELECT artifact_ref,
-                       CAST({close_expr} AS INTEGER) AS close_at_ns,
-                       available_at_ns
-                FROM artifact_index
-                WHERE artifact_type='PublicObservationIndexV2'
-                  AND {key_expr}=?
-                  AND {event_expr}=?
-                  AND {availability_expr}=?
-                  AND {bar_ref_expr} IS NOT NULL
-                  AND json_type(
-                        CASE WHEN json_valid(metadata_json) THEN metadata_json ELSE '{{}}' END,
-                        '$.event_at_ns'
-                  )='integer'
-                  AND (CAST({close_expr} AS INTEGER) % {duration_ns})=0
-                  AND available_at_ns>=? AND available_at_ns<=?
-                  AND CAST({close_expr} AS INTEGER)>=?
-                  {close_filter}
-            ), first_revision AS (
-                SELECT close_at_ns, MIN(available_at_ns) AS first_available_at_ns
-                FROM eligible
-                GROUP BY close_at_ns
-            ), representative AS (
-                SELECT e.close_at_ns, MIN(e.artifact_ref) AS artifact_ref
-                FROM eligible e
-                JOIN first_revision f
-                  ON f.close_at_ns=e.close_at_ns
-                 AND f.first_available_at_ns=e.available_at_ns
-                GROUP BY e.close_at_ns
-                ORDER BY e.close_at_ns ASC
-                LIMIT ?
-            ), selected AS (
-                SELECT close_at_ns, artifact_ref
-                FROM representative
-                ORDER BY close_at_ns ASC
-                LIMIT ?
-            )
-            SELECT a.*
-            FROM selected s
-            JOIN artifact_index a ON a.artifact_ref=s.artifact_ref
-            ORDER BY s.close_at_ns ASC
-        """
-        with self._lock:
-            rows = self._connection.execute(query, params).fetchall()
+        window_ref = sha256_json({"version": "NativeOriginWindowProjectionV1", "key": key_json,
+            "event_type": event_type, "from_ns": available_from, "through_ns": available_through})
+        with self._transaction() as connection:
+            head = connection.execute("SELECT * FROM native_origin_window_head "
+                "WHERE instrument_key_json=? AND event_type=?", (key_json,event_type)).fetchone()
+            if head is None or head["window_ref"] != window_ref:
+                connection.execute("INSERT INTO native_origin_window_head VALUES(?,?,?,?,?,?,?,0) "
+                    "ON CONFLICT(instrument_key_json,event_type) DO UPDATE SET window_ref=excluded.window_ref,"
+                    "available_from_ns=excluded.available_from_ns,available_through_ns=excluded.available_through_ns,"
+                    "cursor_available_ns=excluded.cursor_available_ns,cursor_ref='',complete=0",
+                    (key_json,event_type,window_ref,available_from,available_through,available_from-1,""))
+                cursor_available, cursor_ref, complete = available_from-1, "", False
+            else:
+                cursor_available, cursor_ref, complete = head["cursor_available_ns"],head["cursor_ref"],bool(head["complete"])
+            if not complete:
+                source_rows = connection.execute(
+                    "SELECT * FROM artifact_index INDEXED BY public_origin_discovery_lookup "
+                    "WHERE artifact_type='PublicObservationIndexV2' AND " + key_expr + "=? AND "
+                    + event_expr + "=? AND " + availability_expr + "=? "
+                    "AND available_at_ns>=? AND available_at_ns<=? "
+                    "AND (available_at_ns,artifact_ref)>(?,?) "
+                    "ORDER BY available_at_ns,artifact_ref LIMIT 129",
+                    (key_json,event_type,AvailabilityClassV2.ACTUAL_SYSTEM.value,
+                     available_from,available_through,cursor_available,cursor_ref)).fetchall()
+                for row in source_rows[:128]:
+                    body = json.loads(row["metadata_json"])
+                    close_value = body.get("event_at_ns")
+                    if (type(close_value) is int and close_value>=0 and close_value % duration_ns==0
+                            and body.get("bar_content_hash") is not None):
+                        connection.execute("INSERT INTO native_origin_window VALUES(?,?,?,?) "
+                            "ON CONFLICT(window_ref,close_at_ns) DO UPDATE SET "
+                            "available_at_ns=excluded.available_at_ns,artifact_ref=excluded.artifact_ref "
+                            "WHERE (excluded.available_at_ns,excluded.artifact_ref)<"
+                            "(native_origin_window.available_at_ns,native_origin_window.artifact_ref)",
+                            (window_ref,close_value,row["available_at_ns"],row["artifact_ref"]))
+                if source_rows:
+                    last = source_rows[min(len(source_rows),128)-1]
+                    cursor_available,cursor_ref = last["available_at_ns"],last["artifact_ref"]
+                complete = len(source_rows)<=128
+                connection.execute("UPDATE native_origin_window_head SET cursor_available_ns=?,"
+                    "cursor_ref=?,complete=? WHERE instrument_key_json=? AND event_type=?",
+                    (cursor_available,cursor_ref,int(complete),key_json,event_type))
+            if not complete:
+                pressure = {"version": "OpsActiveWorkPressureV1", "lane": "NATIVE_ORIGIN_DISCOVERY",
+                    "instrument_key_json": key_json, "event_type": event_type,
+                    "window_ref": window_ref, "cursor_available_at_ns": cursor_available,
+                    "cursor_ref": cursor_ref, "max_rows_per_cycle": 128, "backlog": True, "authority": "ZERO"}
+                ref = sha256_json(pressure)
+                published = max(time.time_ns(),available_through)
+                self.register_artifact(ArtifactIndexEntryV2(ref,"OpsActiveWorkPressureV1",ref,
+                    published,published,{"pressure":pressure}))
+                return NativeM1OriginObservationPageV1((),True,after_close_at_ns or 0)
+            rows = connection.execute(
+                "SELECT a.* FROM native_origin_window w CROSS JOIN artifact_index a ON a.artifact_ref=w.artifact_ref "
+                "WHERE w.window_ref=? AND w.close_at_ns>=? "
+                "ORDER BY w.close_at_ns LIMIT ?",
+                (window_ref,max(min_close,after_close_at_ns+1 if after_close_at_ns is not None else 0),limit+1)).fetchall()
 
         has_more = len(rows) > limit
         selected_rows = rows[:limit]
@@ -1327,46 +2057,59 @@ class OpsRepository:
         )
 
     def public_observation_source_ids(self, *, limit: int = 128) -> tuple[str, ...]:
-        """Return a bounded distinct source-ID set without enumerating observation history."""
+        """Seek distinct source successors using the exact source-ID index."""
         if type(limit) is not int or not 1 <= limit <= 2_000:
             raise ValueError("public observation source-ID bound must be between 1 and 2000")
+        expression = _archive_json_expression("source_id")
+        values: list[str] = []
+        previous = ""
         with self._lock:
-            rows = self._connection.execute(
-                """SELECT DISTINCT json_extract(metadata_json, '$.source_id') AS source_id
-                   FROM artifact_index
-                   WHERE artifact_type='PublicObservationIndexV2'
-                     AND json_valid(metadata_json)
-                     AND json_type(metadata_json, '$.source_id')='text'
-                   ORDER BY source_id LIMIT ?""",
-                (limit + 1,),
-            ).fetchall()
-        if len(rows) > limit:
+            for index in range(limit + 1):
+                comparison = ">=" if index == 0 else ">"
+                row = self._connection.execute(
+                    "SELECT " + expression + " AS source_id,json_type(metadata_json,'$.source_id') AS source_type "
+                    "FROM artifact_index INDEXED BY public_observation_source_id_lookup "
+                    "WHERE artifact_type='PublicObservationIndexV2' AND "
+                    + expression + comparison + "? ORDER BY " + expression + " LIMIT 1", (previous,),
+                ).fetchone()
+                if row is None:
+                    break
+                source_id = row["source_id"]
+                if row["source_type"] != "text" or not isinstance(source_id, str) or not source_id.strip():
+                    raise ValueError("public observation source-ID inventory is invalid")
+                values.append(source_id)
+                previous = source_id
+        if len(values) > limit:
             raise ValueError("public observation source-ID set exceeded its deterministic bound")
-        values = tuple(str(row["source_id"]) for row in rows)
-        if any(not value.strip() for value in values) or values != tuple(sorted(set(values))):
-            raise ValueError("public observation source-ID inventory is invalid or ambiguous")
-        return values
+        return tuple(values)
 
     def public_reconciliation_source_ids(self, *, limit: int = 128) -> tuple[str, ...]:
-        """Return a bounded distinct reconciliation source-ID set."""
+        """Seek distinct reconciliation successors through its source-ID index."""
         if type(limit) is not int or not 1 <= limit <= 2_000:
             raise ValueError("reconciliation source-ID bound must be between 1 and 2000")
+        expression = _archive_json_expression("reconciliation.source_id")
+        values: list[str] = []
+        previous = ""
         with self._lock:
-            rows = self._connection.execute(
-                """SELECT DISTINCT json_extract(metadata_json, '$.reconciliation.source_id') AS source_id
-                   FROM artifact_index
-                   WHERE artifact_type='OpsPublicSourceReconciliationV1'
-                     AND json_valid(metadata_json)
-                     AND json_type(metadata_json, '$.reconciliation.source_id')='text'
-                   ORDER BY source_id LIMIT ?""",
-                (limit + 1,),
-            ).fetchall()
-        if len(rows) > limit:
+            for index in range(limit + 1):
+                comparison = ">=" if index == 0 else ">"
+                row = self._connection.execute(
+                    "SELECT " + expression + " AS source_id,"
+                    "json_type(metadata_json,'$.reconciliation.source_id') AS source_type FROM artifact_index "
+                    "INDEXED BY public_reconciliation_source_id_lookup "
+                    "WHERE artifact_type='OpsPublicSourceReconciliationV1' AND "
+                    + expression + comparison + "? ORDER BY " + expression + " LIMIT 1", (previous,),
+                ).fetchone()
+                if row is None:
+                    break
+                source_id = row["source_id"]
+                if row["source_type"] != "text" or not isinstance(source_id, str) or not source_id.strip():
+                    raise ValueError("reconciliation source-ID inventory is invalid")
+                values.append(source_id)
+                previous = source_id
+        if len(values) > limit:
             raise ValueError("reconciliation source-ID set exceeded its deterministic bound")
-        values = tuple(str(row["source_id"]) for row in rows)
-        if any(not value.strip() for value in values) or values != tuple(sorted(set(values))):
-            raise ValueError("reconciliation source-ID inventory is invalid or ambiguous")
-        return values
+        return tuple(values)
 
     def pending_decision_event_page(
         self,
@@ -1378,20 +2121,12 @@ class OpsRepository:
         cutoff = timestamp(as_of_ns, field="as_of_ns")
         if type(limit) is not int or not 1 <= limit <= 2_000:
             raise ValueError("pending event page size must be between 1 and 2000")
-        query = """SELECT e.* FROM artifact_index AS e
-                   WHERE e.artifact_type='OpsDecisionEventSourceV1'
-                     AND e.available_at_ns<=?
-                     AND json_valid(e.metadata_json)
-                     AND json_type(e.metadata_json, '$.event.event_id')='text'
-                     AND NOT EXISTS (
-                         SELECT 1 FROM artifact_index AS r
-                         WHERE r.artifact_type='OpsSupervisorReceiptIdentityV1'
-                           AND json_valid(r.metadata_json)
-                           AND json_extract(r.metadata_json, '$.event_id')=
-                               json_extract(e.metadata_json, '$.event.event_id')
-                     )
-                   ORDER BY e.available_at_ns, e.created_at_ns, e.artifact_ref
-                   LIMIT ?"""
+        if not self.read_only:
+            self.discover_due_work(limit=64)
+        query = """SELECT e.* FROM due_work AS d
+                   JOIN artifact_index AS e ON e.artifact_ref=d.source_ref
+                   WHERE d.lane='OPS_EVENT' AND d.state='PENDING' AND d.due_at_ns<=?
+                   ORDER BY d.due_at_ns,d.work_id LIMIT ?"""
         with self._lock:
             rows = self._connection.execute(query, (cutoff, limit + 1)).fetchall()
         has_more = len(rows) > limit
@@ -1416,11 +2151,10 @@ class OpsRepository:
             raise ValueError("native M1 checkpoint lookup requires full InstrumentKeyV2")
         with self._lock:
             rows = self._connection.execute(
-                """SELECT * FROM artifact_index
+                """SELECT * FROM artifact_index INDEXED BY native_m1_checkpoint_exact_generation
                    WHERE artifact_type='S3NativeM1OriginAccountingCheckpointV1'
-                     AND json_valid(metadata_json)
-                     AND json_extract(metadata_json, '$.instrument_key_json')=?
-                   ORDER BY CAST(json_extract(metadata_json, '$.checkpoint.generation') AS INTEGER) DESC,
+                     AND CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END=?
+                   ORDER BY CAST(CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.checkpoint.generation') END AS INTEGER) DESC,
                             artifact_ref DESC
                    LIMIT 2""",
                 (instrument_key.to_canonical_json(),),
@@ -1447,7 +2181,7 @@ class OpsRepository:
             raise ValueError("M15 checkpoint lookup requires full InstrumentKeyV2")
         with self._lock:
             rows = self._connection.execute(
-                "SELECT * FROM artifact_index WHERE artifact_type='M15OriginAccountingCheckpointV1' "
+                "SELECT * FROM artifact_index INDEXED BY m15_checkpoint_exact_generation WHERE artifact_type='M15OriginAccountingCheckpointV1' "
                 "AND CASE WHEN json_valid(metadata_json) THEN "
                 "json_extract(metadata_json, '$.instrument_key_json') END=? "
                 "ORDER BY CAST(CASE WHEN json_valid(metadata_json) THEN "
@@ -1488,7 +2222,9 @@ class OpsRepository:
         JSON path components are restricted to ASCII identifiers so the generated
         SQLite JSON path cannot change query structure. ``has_more`` exposes
         overflow; callers resolving immutable evidence should fail closed rather
-        than choose among a truncated set.
+        than choose among a truncated set. Creation-order paging examines at
+        most 1024 exact-identity rows; an excessive unavailable prefix refuses
+        the query rather than hiding a retained-history scan behind LIMIT.
         """
         nonblank(artifact_type, field="artifact_type")
         path = tuple(metadata_path)
@@ -1518,17 +2254,21 @@ class OpsRepository:
             identity_value,
             cutoff,
             *((after[0], after[1]) if after is not None else ()),
-            limit + 1,
+            _METADATA_IDENTITY_RAW_LIMIT + 1,
         )
+        index = "created_metadata_" + sha256_json([artifact_type, list(path)])[:16]
         with self._lock:
             rows = self._connection.execute(
-                "SELECT * FROM artifact_index WHERE "
-                f"artifact_type='{artifact_type}' AND {identity_expression}=? AND available_at_ns<=?"
+                f"SELECT * FROM artifact_index INDEXED BY {index} WHERE "
+                f"artifact_type='{artifact_type}' AND {identity_expression}=? AND created_at_ns<=?"
                 f"{cursor_clause} ORDER BY created_at_ns DESC,artifact_ref DESC LIMIT ?",
                 params,
             ).fetchall()
-        has_more = len(rows) > limit
-        selected_rows = rows[:limit]
+        visible_rows = [row for row in rows[:_METADATA_IDENTITY_RAW_LIMIT] if row["available_at_ns"] <= cutoff]
+        if len(rows) > _METADATA_IDENTITY_RAW_LIMIT and len(visible_rows) <= limit:
+            raise ValueError("METADATA_IDENTITY_CAUSAL_WINDOW_OVERFLOW")
+        has_more = len(visible_rows) > limit
+        selected_rows = visible_rows[:limit]
         entries: list[ArtifactIndexEntryV2] = []
         invalid = 0
         for row in selected_rows:

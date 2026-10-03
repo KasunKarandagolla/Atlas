@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 
 from atlas.v2._serialization import FrozenMap, sha256_json
+from atlas.v2.chronology import sample
 from atlas.v2.contracts import ArtifactEnvelope, FeatureArtifactV2, FeatureValueV2, ReplayViewV2
+from atlas.v2.data.active_history import ActiveCausalHistoryStateV1
+from atlas.v2.data.bars import BarIntervalV2
 
 from .candles import CausalTrade, candle_geometry, prior_utc_day_range, utc_day_vwap
 from .joins import JoinedBars
@@ -14,11 +17,15 @@ from .structure import confirmed_legs, confirmed_swings, fibonacci, morphology, 
 from .technical import technical_series
 
 FEATURE_SET_VERSION = "INTRADAY_CORE_V1"
+EXACT_PREFIX_FEATURE_SET_VERSION = "INTRADAY_CORE_EXACT_PREFIX_EMA_ATR_V1"
 
 
 def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
                      trades: Sequence[CausalTrade] = (),
-                     replay_view: ReplayViewV2 = ReplayViewV2.ACTUAL_SYSTEM) -> FeatureArtifactV2:
+                     replay_view: ReplayViewV2 = ReplayViewV2.ACTUAL_SYSTEM,
+                     clock_ns: Callable[[], int] | None = None,
+                     exact_histories: Mapping[BarIntervalV2, ActiveCausalHistoryStateV1] | None = None) -> FeatureArtifactV2:
+    started = sample(clock_ns, floor_ns=join.cutoff_ns) if clock_ns else join.cutoff_ns
     if join.source_health_ref is None:
         raise ValueError("feature snapshot requires causal source-health evidence")
     if source_health_ref is not None and source_health_ref != join.source_health_ref:
@@ -38,8 +45,20 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
              "bollinger_width20": "fraction", "range": "price", "range20_mean": "price",
              "donchian_high20": "price", "donchian_low20": "price", "donchian_breakout": "state"}
     technical_by_frame = {}
+    history_refs: set[str] = set()
     for label, bars in (("h4", join.h4), ("h1", join.h1), ("m15", join.m15)):
         series = technical_series(bars) if bars else ()
+        frame = {"h4": BarIntervalV2.H4,"h1":BarIntervalV2.H1,"m15":BarIntervalV2.M15}[label]
+        if exact_histories is not None and bars:
+            history = exact_histories.get(frame)
+            if (history is None or history.key != join.key or history.interval != frame
+                    or history.max_source_available_at_ns > join.cutoff_ns or len(history.tail)<len(bars)
+                    or tuple(item.bar.content_hash for item in history.tail[-len(bars):])
+                    != tuple(bar.content_hash for bar in bars)):
+                raise ValueError("feature exact-prefix checkpoint does not match causal frame")
+            history_refs.add(history.content_hash)
+            for row,history_item in zip(series,history.tail[-len(bars):],strict=True):
+                row.update({"ema20":history_item.ema20,"ema50":history_item.ema50,"atr14":history_item.atr14})
         technical_by_frame[label] = series
         technical = series[-1] if series else dict.fromkeys(units)
         for name, value in technical.items():
@@ -98,9 +117,12 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
         "1_observed", None if values["m15.realized_variance20"].value is not None else "VOLATILITY_HISTORY_MISSING")
     for axis in ("liquidity_state", "crowding_state", "event_state", "unknown_or_ood_state"):
         values[f"regime.{axis}"] = FeatureValueV2(None, "state", "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT")
-    refs = tuple(sorted({bar.content_hash for bar in all_bars} | {source_health_ref} | set(trade_refs)))
-    artifact_id = sha256_json({"feature_set": FEATURE_SET_VERSION, "key": join.key.to_dict(), "cutoff": join.cutoff_ns,
+    version = EXACT_PREFIX_FEATURE_SET_VERSION if exact_histories is not None else FEATURE_SET_VERSION
+    refs = tuple(sorted({bar.content_hash for bar in all_bars} | {source_health_ref} | set(trade_refs) | history_refs))
+    artifact_id = sha256_json({"feature_set": version, "key": join.key.to_dict(), "cutoff": join.cutoff_ns,
                               "inputs": refs, "view": replay_view.value})
-    envelope = ArtifactEnvelope(1, artifact_id, join.cutoff_ns, join.cutoff_ns, FEATURE_SET_VERSION, refs)
-    return FeatureArtifactV2(envelope, join.key, FEATURE_SET_VERSION, join.cutoff_ns, join.cutoff_ns,
+    finished = sample(clock_ns, floor_ns=started) if clock_ns else join.cutoff_ns
+    available = sample(clock_ns, floor_ns=finished) if clock_ns else finished
+    envelope = ArtifactEnvelope(1, artifact_id, finished, available, version, refs)
+    return FeatureArtifactV2(envelope, join.key, version, join.cutoff_ns, join.cutoff_ns,
                              FrozenMap(values), source_health_ref, replay_view, state_ref)

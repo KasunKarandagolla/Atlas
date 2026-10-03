@@ -85,6 +85,9 @@ def _run_cycle(repo: OpsRepository, evidence_cutoff_ns: int, **kwargs: Any):
         evidence_cutoff_ns=evidence_cutoff_ns,
         production_clock_ns=kwargs.pop("production_clock_ns", lambda: evidence_cutoff_ns),
         monotonic_ns=kwargs.pop("monotonic_ns", lambda: 0),
+        # These S33 assertions preserve the accepted historical sweep wire.
+        # S37 exercises the production default indexed due-work scheduler.
+        use_due_work=kwargs.pop("use_due_work", False),
         **kwargs,
     )
 
@@ -597,7 +600,7 @@ def test_evidence_arriving_during_maintenance_is_deferred_to_later_cutoff(
         monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolver)
         first = coordinator.run_outcome_maturity_cycle(
             repository, evidence_cutoff_ns=cutoff, production_clock_ns=lambda: cutoff + 2,
-            monotonic_ns=lambda: 0,
+            monotonic_ns=lambda: 0, use_due_work=False,
         )
         assert first.unsupported_count == 1
         assert observed == [False]
@@ -606,12 +609,12 @@ def test_evidence_arriving_during_maintenance_is_deferred_to_later_cutoff(
         # revisits it under the later cutoff and can now see the evidence.
         coordinator.run_outcome_maturity_cycle(
             repository, evidence_cutoff_ns=later_cutoff, production_clock_ns=lambda: later_cutoff + 1,
-            monotonic_ns=lambda: 0,
+            monotonic_ns=lambda: 0, use_due_work=False,
         )
         next_cutoff = later_cutoff + 2
         coordinator.run_outcome_maturity_cycle(
             repository, evidence_cutoff_ns=next_cutoff,
-            production_clock_ns=lambda: next_cutoff + 1, monotonic_ns=lambda: 0,
+            production_clock_ns=lambda: next_cutoff + 1, monotonic_ns=lambda: 0, use_due_work=False,
         )
         assert observed == [False, True]
         stored = repository.get_artifact(decision.content_hash)

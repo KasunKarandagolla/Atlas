@@ -563,8 +563,10 @@ def _start_installed_critic(run: Path, epoch_id: str) -> _InstalledCriticRuntime
 
 
 def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[], bool] = lambda: False) -> int:
+    from .runtime.active_history import ActiveHistoryMaintenanceV1
     from .runtime.ops_supervisor import OpsSupervisorV2
     from .runtime.production import create_bybit_public_ws_port, create_production_port
+    from .runtime.public_context import PublicContextMaintenanceV1
     from .runtime.research_model_shadow import StatisticalResearchShadowV1
     from .runtime.research_prediction_outcomes import ResearchPredictionOutcomeMaintenanceV1
 
@@ -589,13 +591,22 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
         run_id=manifest["run_id"], config_hash=manifest["config_hash"],
         archive_root=run / "ops-observations")
     target_registered = False
+    public_context: PublicContextMaintenanceV1 | None = None
+    history_maintenance = ActiveHistoryMaintenanceV1(run / "ops-observations")
 
     def post_cycle(repo: Any, at_ns: int) -> Any:
         nonlocal target_registered
+        if public_context is not None:
+            public_context.run_cycle(repo, information_cutoff_ns=at_ns)
+        if not smoke:
+            history_maintenance.run_cycle(repo, cutoff_ns=at_ns)
         if not target_registered:
             prediction_maintenance.register_target(repo, available_at_ns=manifest["started_at_ns"])
             target_registered = True
-        return prediction_maintenance.run_cycle(repo, evidence_cutoff_ns=at_ns)
+        prediction_maintenance.run_cycle(repo, evidence_cutoff_ns=at_ns)
+        from .runtime.outcome_maturity import run_outcome_maturity_cycle
+        return run_outcome_maturity_cycle(repo, evidence_cutoff_ns=at_ns,
+            production_clock_ns=time.time_ns, maintenance_budget_ns=200_000_000)
 
     with OpsSupervisorV2(run / "ops.sqlite", port, post_cycle_maintenance=post_cycle,
                          outcome_maintenance_budget_ns=250_000_000) as supervisor:
@@ -604,6 +615,8 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
         last_telemetry = float("-inf")
         critic: _InstalledCriticRuntime | None = None
         try:
+            if not smoke:
+                public_context = PublicContextMaintenanceV1()
             statistical = StatisticalResearchShadowV1(run_id=manifest["run_id"],
                 config_hash=manifest["config_hash"], source_sha=manifest["source_sha"],
                 environment_lock_hash=manifest["research_model_configuration"]["manifest"]["environment_lock_hash"],
@@ -671,6 +684,8 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
             state.update(status="TEST GATE", reason="RUNTIME_COMPONENT_FAILED", error_type=type(exc).__name__)
             result_code = 2
         finally:
+            if public_context is not None:
+                public_context.close()
             if critic is not None:
                 try:
                     critic.close()

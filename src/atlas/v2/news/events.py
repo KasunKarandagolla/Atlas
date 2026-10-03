@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from email.utils import parsedate_to_datetime
 from enum import StrEnum
+from itertools import islice
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from atlas.v2._serialization import artifact_wire, seal_envelope, sha256_json, timestamp
@@ -39,6 +40,9 @@ EVENT_REACTION_VERSION = "S7_DIRECTIONAL_REACTION_V1"
 ALERT_VERSION = "EVENT_ALERT_V2_1"
 PRODUCER_VERSION = "S7_EVENT_PIPELINE_V2_1"
 RAW_BODY_MAX_BYTES = 5_000_000
+NEWS_COLLECTION_MAX_ITEMS_V1 = 128
+NEWS_URL_HISTORY_LIMIT_V1 = 128
+NEWS_DUPLICATE_GROUP_LIMIT_V1 = 64
 CALENDAR_MAX_AGE_NS = 24 * 60 * 60 * 1_000_000_000
 ABNORMALITY_MAX_AGE_NS = 60 * 60 * 1_000_000_000
 REACTION_SOURCE_HEALTH_MAX_AGE_NS = 60_000_000_000
@@ -476,6 +480,15 @@ class _StoredNewsRow:
     content_hash: str
 
 
+class NewsCollectionBoundedError(ValueError):
+    """The archived response cannot be interpreted within the declared bounds."""
+
+    def __init__(self, reason: str, raw_ref: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.raw_ref = raw_ref
+
+
 class NewsCollectionPipelineV2:
     def __init__(
         self, repository: OpsRepository, *, clock_ns: Callable[[], int],
@@ -484,6 +497,7 @@ class NewsCollectionPipelineV2:
         asset_aliases: Mapping[str, str] | None = None,
         source_health: Callable[[str, int], PublicSourceHealthV2 | None] | None = None,
         authentication: Callable[[NewsSourceConfigV2, int], tuple[str, str | None]] | None = None,
+        publication_clock_ns: Callable[[], int] | None = None,
     ) -> None:
         self.repository = repository
         self.clock_ns = clock_ns
@@ -495,6 +509,7 @@ class NewsCollectionPipelineV2:
         self.asset_aliases = dict(asset_aliases or {})
         self.source_health = source_health
         self.authentication = authentication or (lambda _source, _at: ("UNKNOWN", None))
+        self.publication_clock_ns = publication_clock_ns
 
     def _fetch(self, source: NewsSourceConfigV2) -> FetchedDocumentV2:
         fetch = getattr(self.transport, "fetch", None)
@@ -532,13 +547,45 @@ class NewsCollectionPipelineV2:
         ))
         return raw_ref, receipt_ref
 
-    def _events(self, source_id: str) -> tuple[NewsEventV2, ...]:
-        result = []
-        for entry in self.repository.artifact_entries("NewsEventV2"):
-            body = entry.metadata.get("event")
-            if isinstance(body, Mapping) and body.get("source_id") == source_id:
-                result.append(_event_from_dict(body))
+    def _events(self, *, path: tuple[str, ...], identity: str, at_ns: int,
+                limit: int, raw_ref: str) -> tuple[NewsEventV2, ...]:
+        page = self.repository.latest_artifact_entries(
+            "NewsEventV2", as_of_ns=at_ns, limit=limit,
+            metadata_path=path, identity_value=identity,
+        )
+        if page.has_more or page.invalid_entry_count:
+            raise NewsCollectionBoundedError("NEWS_IDENTITY_HISTORY_OVERFLOW_OR_CORRUPT", raw_ref)
+        result: list[NewsEventV2] = []
+        for entry in page.entries:
+            try:
+                body = entry.metadata.get("event")
+                if not isinstance(body, Mapping):
+                    raise ValueError("missing indexed event body")
+                event = _event_from_dict(body)
+                if (entry.artifact_ref != event.event_id or entry.content_hash != event.semantic_hash
+                        or entry.available_at_ns != event.available_at_ns
+                        or body.get(path[-1]) != identity):
+                    raise ValueError("indexed event identity/hash mismatch")
+                result.append(event)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise NewsCollectionBoundedError("NEWS_SELECTED_EVENT_CORRUPT", raw_ref) from exc
         return tuple(result)
+
+    def _group_alerted(self, group: str, at_ns: int, raw_ref: str) -> bool:
+        page = self.repository.latest_artifact_entries(
+            "EventAlertV2", as_of_ns=at_ns, limit=1,
+            metadata_path=("duplicate_group",), identity_value=group,
+        )
+        if page.has_more or page.invalid_entry_count:
+            raise NewsCollectionBoundedError("NEWS_ALERT_IDENTITY_OVERFLOW_OR_CORRUPT", raw_ref)
+        for entry in page.entries:
+            body = entry.metadata.get("alert")
+            if (not isinstance(body, Mapping) or body.get("duplicate_group") != group
+                    or body.get("alert_id") != entry.artifact_ref
+                    or body.get("available_at_ns") != entry.available_at_ns
+                    or sha256_json(body) != entry.content_hash):
+                raise NewsCollectionBoundedError("NEWS_SELECTED_ALERT_CORRUPT", raw_ref)
+        return bool(page.entries)
 
     def collect(self, source_id: str) -> NewsCollectionResultV2:
         source = self.sources.get(source_id)
@@ -547,7 +594,9 @@ class NewsCollectionPipelineV2:
         response = self._fetch(source)
         raw_ref, receipt_ref = self._archive_raw(source, response)
         # The immutable raw payload and receipt are committed before parser invocation.
-        items = tuple(self.parser(response.body, response.final_url))
+        items = tuple(islice(iter(self.parser(response.body, response.final_url)), NEWS_COLLECTION_MAX_ITEMS_V1 + 1))
+        if len(items) > NEWS_COLLECTION_MAX_ITEMS_V1:
+            raise NewsCollectionBoundedError("NEWS_PARSE_ITEM_LIMIT_EXCEEDED", raw_ref)
         extracted_at = self.clock_ns()
         if extracted_at < response.received_at_ns:
             raise ValueError("news extraction completion cannot precede actual receipt")
@@ -572,12 +621,12 @@ class NewsCollectionPipelineV2:
         if auth_state in ("AUTHENTICATED", "EXPLICITLY_RESOLVED") and (
                 auth_ref is None or not _source_evidence_available(self.repository, auth_ref, extracted_at)):
             auth_state, auth_ref = "UNKNOWN", None
-        stored = self._events(source_id)
-        alerts = self.repository.artifact_entries("EventAlertV2")
-        duplicate_groups_alerted = {entry.metadata.get("duplicate_group") for entry in alerts}
         event_refs: list[str] = []
         alert_refs: list[str] = []
         duplicates = 0
+        # Subsequent items may depend on an earlier item published during this
+        # batch. Preserve that visibility without moving the raw receipt cutoff.
+        item_visible_at = extracted_at
         for item in items:
             item_url = canonical_url(urljoin(response.final_url, item.url))
             published = _published_ns(item.published_claim)
@@ -586,7 +635,10 @@ class NewsCollectionPipelineV2:
             item_bytes = json.dumps({"title": title, "text": item_text, "url": item_url},
                                     sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             item_hash = hashlib.sha256(item_bytes).hexdigest()
-            prior = [event for event in stored if event.source_url == item_url]
+            prior = [event for event in self._events(
+                path=("event", "source_url"), identity=item_url, at_ns=item_visible_at,
+                limit=NEWS_URL_HISTORY_LIMIT_V1, raw_ref=raw_ref,
+            ) if event.source_id == source_id]
             # Authentication can become explicitly known after first receipt.
             # Treat that state transition as a new immutable event revision while
             # keeping repeated identical content/authentication idempotent.
@@ -609,9 +661,12 @@ class NewsCollectionPipelineV2:
                                  "authentication_state": auth_state,
                                  "authentication_ref": auth_ref})
             event_id = sha256_json(identity)
+            event_completed_at = self.publication_clock_ns() if self.publication_clock_ns else extracted_at
+            if event_completed_at < item_visible_at:
+                raise NewsCollectionBoundedError("NEWS_EXTRACTION_CLOCK_REGRESSION", raw_ref)
             event = NewsEventV2(
                 event_id, source_id, source.source_class, item_url, item_hash, published,
-                response.received_at_ns, extracted_at, asset_ids, event_type, severity, confidence,
+                response.received_at_ns, event_completed_at, asset_ids, event_type, severity, confidence,
                 tuple(span for span in (title, item_text[:400]) if span), duplicate_group,
                 raw_ref, receipt_ref, health_ref, auth_state, auth_ref, mapping_state, supersedes,
                 source_health_state=health_state,
@@ -620,13 +675,12 @@ class NewsCollectionPipelineV2:
                 event.event_id, "NewsEventV2", event.semantic_hash, response.received_at_ns,
                 event.available_at_ns, {"event": event.to_dict()},
             ))
-            stored = (*stored, event)
+            item_visible_at = event.available_at_ns
             event_refs.append(event.event_id)
-            related: list[NewsEventV2] = []
-            for indexed in self.repository.artifact_entries("NewsEventV2"):
-                indexed_body = indexed.metadata.get("event")
-                if isinstance(indexed_body, Mapping) and indexed_body.get("duplicate_group") == duplicate_group:
-                    related.append(_event_from_dict(indexed_body))
+            related = self._events(
+                path=("event", "duplicate_group"), identity=duplicate_group,
+                at_ns=event.available_at_ns, limit=NEWS_DUPLICATE_GROUP_LIMIT_V1, raw_ref=raw_ref,
+            )
             if len({other.source_id for other in related}) > 1:
                 conflict = {"schema_version": 1, "duplicate_group": duplicate_group,
                             "event_refs": sorted(other.event_id for other in related),
@@ -640,7 +694,7 @@ class NewsCollectionPipelineV2:
             relevant = event.severity in ("HIGH", "CRITICAL") or event.event_type in (
                 "US_CPI", "US_PAYROLL", "FOMC_RATE_DECISION", "VENUE_INCIDENT", "SECURITY_INCIDENT")
             if (relevant and event.authentication_state in ("AUTHENTICATED", "EXPLICITLY_RESOLVED")
-                    and event.duplicate_group not in duplicate_groups_alerted):
+                    and not self._group_alerted(event.duplicate_group, event.available_at_ns, raw_ref)):
                 alert_id = sha256_json({"event_alert": ALERT_VERSION, "duplicate_group": event.duplicate_group})
                 alert = EventAlertV2(alert_id, event.event_id, event.duplicate_group,
                                      event.available_at_ns, event.available_at_ns, "AUTHENTICATED_RELEVANT_EVENT")
@@ -649,7 +703,6 @@ class NewsCollectionPipelineV2:
                     alert.available_at_ns, {"alert": alert.to_dict(), "duplicate_group": event.duplicate_group},
                 ))
                 alert_refs.append(alert.alert_id)
-                duplicate_groups_alerted.add(event.duplicate_group)
         return NewsCollectionResultV2(raw_ref, tuple(event_refs), tuple(alert_refs), duplicates,
                                       hashlib.sha256(response.body).hexdigest())
 

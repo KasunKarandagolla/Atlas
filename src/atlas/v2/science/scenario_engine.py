@@ -687,7 +687,10 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
             expires_at_ns > candidate_deadline or
             not cutoff_ns <= created_at_ns <= computed_at_ns <= available_at_ns < expires_at_ns):
         raise ValueError("scenario chronology exceeds candidate decision window")
-    if (action.available_at_ns > cutoff_ns or action.action.action_hash != sha256_json(action.action.to_dict())
+    from atlas.v2.chronology import causal_artifact
+    if (not causal_artifact(repo, action.content_hash, cutoff_ns=cutoff_ns,
+            consumer_at_ns=created_at_ns, deadline_ns=expires_at_ns)
+            or action.action.action_hash != sha256_json(action.action.to_dict())
             or fee.available_at_ns > cutoff_ns or fee.key != action.action.key):
         raise ValueError("exact action/fee evidence unavailable by cutoff")
     fee_entry = repo.get_artifact(fee.content_hash)

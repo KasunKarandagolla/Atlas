@@ -142,6 +142,36 @@ def test_offline_real_composition_reopens_db_new_epoch_and_exports(tmp_path, bui
         assert reader.artifact_entries("OpsSupervisorCycleReceiptV1")
 
 
+def test_installed_public_run_connects_context_to_writer_and_closes(tmp_path, build, monkeypatch):
+    import threading
+
+    from atlas.v2.runtime import production, public_context
+
+    run = product.create_run(tmp_path, product.ResearchRunConfigV1())
+    calls = []
+    stopped = False
+    owner_thread = threading.get_ident()
+
+    class Context:
+        def run_cycle(self, repo, *, information_cutoff_ns):
+            nonlocal stopped
+            assert not repo.read_only and threading.get_ident() == owner_thread
+            calls.append(("cycle", information_cutoff_ns))
+            stopped = True
+
+        def close(self):
+            calls.append(("close", None))
+
+    monkeypatch.setattr(public_context, "PublicContextMaintenanceV1", Context)
+    monkeypatch.setattr(production, "create_bybit_public_ws_port", production.create_production_port)
+    monkeypatch.setattr(product.time, "sleep", lambda _: None)
+    assert product.run_component(run, stop_requested=lambda: stopped) == 0
+    assert [kind for kind, _ in calls] == ["cycle", "close"]
+    state = json.loads((run / "status.json").read_text())
+    assert state["capital_enabled"] is state["assisted_enabled"] is False
+    assert state["reason"] == "PROCESS_STOP_REQUESTED"
+
+
 def test_duplicate_writer_does_not_replace_existing_status(tmp_path, build):
     run = product.create_run(tmp_path, product.ResearchRunConfigV1())
     state = {"run_id": run.name, "epoch_id": "owner-epoch", "status": "IMPLEMENTED"}

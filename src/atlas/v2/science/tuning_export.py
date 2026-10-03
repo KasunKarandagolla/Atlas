@@ -24,7 +24,8 @@ from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any
 
-from atlas.v2._serialization import canonical_json, json_value, sha256_json, sha256_ref, timestamp
+from atlas.domain.money import canonical_decimal_str
+from atlas.v2._serialization import canonical_json, decimal_value, json_value, sha256_json, sha256_ref, timestamp
 from atlas.v2.agent_intelligence.shadow_measurement import (
     ActionCriticShadowObservationV1,
     index_action_critic_shadow_observation,
@@ -44,6 +45,7 @@ from atlas.v2.science.outcomes import (
 from atlas.v2.science.s3_calendar import S3DecisionCalendarMissingnessV1
 
 VERSION = "ATLAS_TUNING_EXPORT_V1"
+MAX_ANALYSIS_PARTITIONS = 128
 _SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$")
 _SAFE_CODE = re.compile(r"^[A-Z][A-Z0-9_ /.-]{0,127}$")
 _TYPES = (
@@ -59,6 +61,12 @@ _TYPES = (
     "ResearchModelValuesV1", "ResearchModelRoutingRegistryV1", "ResearchModelShadowDiagnosticV1",
     "ResearchPredictionOutcomeV1",
     "M15OriginAccountingRecordV1", "M15OpportunityMissingnessV1",
+    "FeatureArtifactV2", "OpsSupervisorStageCheckpointV1",
+    "DerivedComputationChronologyV1", "ResearchPrerequisiteInventoryV1",
+    "ActionReplayLifecycleSummaryV1", "ActionReplaySourceEvidenceV1",
+    "OpsActiveWorkPressureV1", "ActiveTrainingWorkPressureV1",
+    "PublicBarGapRepairPageV1",
+    "PublicContextCycleReportV1", "NewsEventV2",
 )
 _METRIC_NAMES = frozenset({
     "latency_ns", "dispatch_to_result_latency_ns", "queue_items", "queue_bytes", "high_water_items",
@@ -76,6 +84,14 @@ _METRIC_NAMES = frozenset({
     "queue_wait_ns", "run_elapsed_ns", "inference_started_ns", "completed_ns", "received_ns", "expires_ns",
     "measured_log_return", "predicted_log_return", "absolute_prediction_error", "squared_prediction_error",
     "quantile_interval_covered", "prediction_error",
+    "limit", "observed_count", "observed_count_is_lower_bound", "invalid_rows",
+    "invalid_entry_count", "has_more", "consumer_eligible", "entry_to_exit_duration_ns",
+    "frozen_sizing_margin", "net_margin_roi", "computation_duration_ns", "publication_latency_ns",
+    "confidence", "duplicate_count", "inflight_count", "completed_slot_count",
+    "ready", "processed_bar_count", "last_close_at_ns", "max_rows_per_cycle",
+    "verified_close_at_ns", "target_close_at_ns", "max_source_rows_per_cycle",
+    "backlog", "cursor_available_at_ns", "quarantined_count", "retired_count",
+    "due_count_lower_bound", "due_page_overflow", "oldest_due_age_ns",
 })
 _IDENTITY_NAMES = frozenset({
     "event_id", "decision_event_id", "decision_ref", "decision_calendar_ref", "candidate_ref",
@@ -196,7 +212,7 @@ def _compact_values(body: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, 
                        "critic_terminal_status", "selection_state", "admission_state", "source_stage", "decision"}:
                 if isinstance(value, str) and _SAFE_CODE.fullmatch(value):
                     reasons.add(value)
-            if key in {"reason_codes", "reasons"} and isinstance(value, list):
+            if key in {"reason_codes", "reasons", "missing_reasons"} and isinstance(value, list):
                 reasons.update(item for item in value if isinstance(item, str) and _SAFE_CODE.fullmatch(item))
             if key in _METRIC_NAMES:
                 if (value is None or isinstance(value, (bool, int))
@@ -234,14 +250,74 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
         "prediction_id": None, "prediction_target_ref": None, "horizon_ns": None, "horizon_end_ns": None,
         "measured_log_return": None, "predicted_log_return": None,
         "accounting_kind": None,
+        "feature_ref": None, "feature_schema": None, "features_json": None, "regimes_json": None,
+        "action_artifact_ref": None, "expected_net_value": None, "method_id": None,
+        "method_config_hash": None, "stage_completed_at_ns": None, "stage_order": None,
+        "source_event_at_ns": None, "received_at_ns": None, "information_cutoff_ns": None,
+        "registered_routes_json": None,
+        "computation_started_ns": None, "computation_finished_ns": None,
+        "computation_duration_ns": None, "publication_latency_ns": None,
+        "entry_at_ns": None, "exit_at_ns": None, "entry_to_exit_duration_ns": None,
+        "fees": None, "funding_cashflow": None, "frozen_sizing_margin": None, "net_margin_roi": None,
     }
     body = json_value(entry.metadata)
     if entry.artifact_type.startswith("ResearchModel"):
         body = _model_projection(repository, entry, row)
-    if entry.artifact_type == "ResearchPredictionOutcomeV1":
+    if entry.artifact_type == "DerivedComputationChronologyV1":
+        body = _chronology_projection(repository, entry, row)
+    elif entry.artifact_type == "ResearchPrerequisiteInventoryV1":
+        body = _prerequisite_projection(repository, entry, row)
+    elif entry.artifact_type == "ActionReplayLifecycleSummaryV1":
+        body = _lifecycle_projection(repository, entry, row)
+    elif entry.artifact_type == "ActionReplaySourceEvidenceV1":
+        from atlas.v2.runtime.action_outcome_producer import ActionReplaySourceEvidenceV1, _validate_source
+
+        source = ActionReplaySourceEvidenceV1.from_dict(body["source_evidence"])
+        if (source.content_hash != entry.artifact_ref or source.content_hash != entry.content_hash
+                or source.available_at_ns != entry.available_at_ns or entry.created_at_ns != entry.available_at_ns):
+            raise ValueError("replay source evidence identity or publication mismatch")
+        calendar = repository.get_artifact(source.decision_ref)
+        if calendar is None:
+            raise ValueError("replay source calendar unavailable")
+        _validate_source(repository, source, calendar, source.available_at_ns)
+        body = source.to_dict()
+        row.update(row_kind="REPLAY_SOURCE", decision_ref=source.decision_ref, action_artifact_ref=source.action_ref)
+    elif entry.artifact_type in {"OpsActiveWorkPressureV1", "ActiveTrainingWorkPressureV1"}:
+        pressure = body["pressure"]
+        if (not isinstance(pressure, Mapping) or pressure.get("version") != entry.artifact_type
+                or pressure.get("authority") != "ZERO" or sha256_json(pressure) != entry.content_hash
+                or entry.artifact_ref != entry.content_hash or entry.created_at_ns != entry.available_at_ns):
+            raise ValueError("active pressure identity or publication mismatch")
+        body = pressure
+        row.update(row_kind="PRESSURE", status="AVAILABLE" if pressure.get("ready") is True else "NOT_ESTIMABLE")
+        lane = pressure.get("lane")
+        interval = pressure.get("interval", pressure.get("event_type"))
+        row["source_stage"] = (str(lane) + ":" + str(interval)
+                               if lane is not None and interval is not None else lane)
+        row["instrument_key_json"] = pressure.get("instrument_key_json")
+    elif entry.artifact_type == "PublicBarGapRepairPageV1":
+        proof = body["repair"]
+        if (not isinstance(proof, Mapping) or proof.get("version") != entry.artifact_type
+                or proof.get("authority") != "ZERO" or sha256_json(proof) != entry.content_hash
+                or entry.artifact_ref != entry.content_hash
+                or proof.get("available_at_ns") != entry.available_at_ns
+                or entry.created_at_ns != entry.available_at_ns):
+            raise ValueError("bar repair proof identity or publication mismatch")
+        body = proof
+        row.update(row_kind="PRESSURE", status="AVAILABLE" if proof.get("reason_code") ==
+                   "CONFIRMED_BAR_GAP_REPAIRED" else "NOT_ESTIMABLE")
+    elif entry.artifact_type == "ResearchPredictionOutcomeV1":
         body = _prediction_projection(repository, entry, row)
     elif entry.artifact_type in {"M15OriginAccountingRecordV1", "M15OpportunityMissingnessV1"}:
         body = _m15_projection(repository, entry, row)
+    elif entry.artifact_type == "FeatureArtifactV2":
+        body = _feature_projection(repository, entry, row)
+    elif entry.artifact_type in {"M0PredictionV2", "M1PredictionV2"}:
+        body = _action_prediction_projection(repository, entry, row)
+    elif entry.artifact_type == "OpsSupervisorStageCheckpointV1":
+        body = _stage_projection(repository, entry, row)
+    elif entry.artifact_type == "OpsSupervisorReceiptV1":
+        body = _receipt_projection(repository, entry, row)
     elif entry.artifact_type == "DecisionCalendarEntryV2":
         decision = DecisionCalendarEntryV2.from_dict(body["decision_entry"])
         if index_decision_calendar_entry(repository, decision) != entry.artifact_ref:
@@ -259,6 +335,7 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
             if candidate is None:
                 raise ValueError("decision lost its exact candidate")
             row["instrument_key_json"] = canonical_json(candidate.metadata["candidate"]["key"])
+            _decision_feature_context(repository, candidate, row)
     elif entry.artifact_type == "MaturedOutcomeV2":
         outcome = MaturedOutcomeV2.from_dict(body["outcome"])
         if index_matured_outcome(repository, outcome) != entry.artifact_ref:
@@ -330,6 +407,455 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
     row["reason_codes"] = reasons
     row["evidence_refs"] = refs
     return row
+
+
+def _computation_times(body: Mapping[str, Any], row: dict[str, Any]) -> None:
+    cutoff, start, finish, published = (timestamp(body[name], field=name) for name in (
+        "information_cutoff_ns", "computation_started_ns", "computation_finished_ns", "available_at_ns"))
+    market_cutoff = timestamp(body.get("market_information_cutoff_ns", cutoff), field="market_information_cutoff_ns")
+    if not market_cutoff <= cutoff <= start <= finish <= published:
+        raise ValueError("computation projection chronology invalid")
+    row.update(information_cutoff_ns=cutoff, computation_started_ns=start, computation_finished_ns=finish,
+        computation_duration_ns=finish - start, publication_latency_ns=published - market_cutoff)
+
+
+def _chronology_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
+                           row: dict[str, Any]) -> Mapping[str, Any]:
+    from atlas.v2.chronology import (
+        DERIVED_TYPES,
+        MAX_DEPENDENCIES,
+        RECEIPT_FIELDS,
+        _declared_inputs,
+        causal_artifact,
+        chronology_ref,
+    )
+    from atlas.v2.chronology import VERSION as chronology_version
+
+    body = json_value(entry.metadata["chronology"])
+    target = repository.get_artifact(body["artifact_ref"])
+    if (set(body) != RECEIPT_FIELDS or body.get("version") != chronology_version
+            or entry.artifact_ref != chronology_ref(body["artifact_ref"])
+            or sha256_json(body) != entry.content_hash or target is None
+            or target.content_hash != body["artifact_content_hash"] or target.artifact_type != body["artifact_type"]
+            or target.artifact_type not in DERIVED_TYPES
+            or entry.available_at_ns != body["available_at_ns"] or entry.created_at_ns != entry.available_at_ns
+            or target.available_at_ns != entry.available_at_ns or body.get("authority") != "ZERO"
+            or body.get("consumer_eligible") != (entry.available_at_ns <= body["consumer_deadline_ns"])):
+        raise ValueError("computation receipt identity, artifact or publication mismatch")
+    _computation_times(body, row)
+    refs = body.get("input_refs")
+    cache: dict[str, ArtifactIndexEntryV2 | None] = {}
+    budget = [0]
+    if (not isinstance(refs, list) or len(refs) > MAX_DEPENDENCIES or not set(_declared_inputs(target)).issubset(refs)
+            or any(not causal_artifact(repository, ref,
+            cutoff_ns=body["market_information_cutoff_ns"], consumer_at_ns=body["computation_started_ns"],
+            deadline_ns=body["consumer_deadline_ns"], _cache=cache, _budget=budget) for ref in refs)):
+        raise ValueError("computation receipt dependency unavailable or noncausal")
+    actual_cutoff = body["market_information_cutoff_ns"]
+    for ref in refs:
+        dependency = cache.get(ref)
+        if dependency is None:
+            raise ValueError("computation receipt dependency unavailable")
+        actual_cutoff = max(actual_cutoff, dependency.available_at_ns)
+    if actual_cutoff != body["information_cutoff_ns"]:
+        raise ValueError("computation receipt input cutoff mismatch")
+    row.update(row_kind="COMPUTATION", source_stage=body["artifact_type"],
+        status="AVAILABLE" if body["consumer_eligible"] else "NOT_ESTIMABLE")
+    return body
+
+
+def _prerequisite_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
+                             row: dict[str, Any]) -> Mapping[str, Any]:
+    from atlas.v2.runtime.research_prerequisites import _publication, prerequisite_identity_ref
+
+    publication = _publication(entry)
+    body = json_value(entry.metadata["prerequisites"])
+    if entry.artifact_ref != prerequisite_identity_ref(body["event_id"], body["product_ref"]):
+        raise ValueError("prerequisite inventory locator mismatch")
+    for ref in body["input_refs"]:
+        dependency = repository.get_artifact(ref)
+        if dependency is None or dependency.available_at_ns > body["information_cutoff_ns"]:
+            raise ValueError("prerequisite input unavailable at market cutoff")
+    gate = repository.get_artifact(publication.event_gate_ref)
+    from atlas.v2.contracts import ArtifactEnvelope
+    from atlas.v2.news.events import EventSafetyGateV2
+
+    gate_body = gate.metadata.get("gate") if gate else None
+    if (gate is None or gate.artifact_type != EventSafetyGateV2.ARTIFACT_TYPE
+            or gate.available_at_ns != entry.available_at_ns or not isinstance(gate_body, Mapping)
+            or not isinstance(gate_body.get("envelope"), Mapping)):
+        raise ValueError("prerequisite event gate publication mismatch")
+    envelope = ArtifactEnvelope.from_dict(json_value(gate_body["envelope"]))
+    preimage = {**gate_body, "envelope": envelope.to_dict(include_hash=False)}
+    if (sha256_json({"artifact_type": EventSafetyGateV2.ARTIFACT_TYPE, "artifact": preimage}) != gate.content_hash
+            or envelope.content_hash != publication.event_gate_ref or gate.content_hash != publication.event_gate_ref
+            or envelope.available_at_ns != gate.available_at_ns or envelope.created_at_ns != gate.created_at_ns
+            or gate_body.get("cutoff_ns") != body["information_cutoff_ns"]):
+        raise ValueError("prerequisite event gate content or market cutoff mismatch")
+    _computation_times(body, row)
+    row.update(row_kind="PREREQUISITES", event_id=body["event_id"], status=publication.status)
+    return body
+
+
+def _lifecycle_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
+                          row: dict[str, Any]) -> Mapping[str, Any]:
+    from atlas.v2.runtime.action_outcome_producer import ActionReplayLifecycleSummaryV1
+
+    body = json_value(entry.metadata["summary"])
+    fields = ActionReplayLifecycleSummaryV1.__dataclass_fields__
+    if set(body) != set(fields) | {"version"} or body.get("version") != "ACTION_REPLAY_LIFECYCLE_SUMMARY_V1":
+        raise ValueError("lifecycle summary schema mismatch")
+    summary = ActionReplayLifecycleSummaryV1(**{name: body[name] for name in fields})
+    if (summary.content_hash != entry.content_hash or summary.artifact_ref != entry.artifact_ref
+            or summary.available_at_ns != entry.available_at_ns or entry.created_at_ns != entry.available_at_ns
+            or not summary.evidence_cutoff_ns <= summary.payoff_available_at_ns <= summary.available_at_ns):
+        raise ValueError("lifecycle summary identity, locator or publication mismatch")
+    required_refs = {summary.decision_ref, summary.action_ref, summary.payoff_ref, summary.source_evidence_ref}
+    if set(entry.metadata.get("input_refs", ())) != required_refs:
+        raise ValueError("lifecycle summary exact input refs mismatch")
+    linked: dict[str, ArtifactIndexEntryV2] = {}
+    for ref, kind in ((summary.decision_ref, "DecisionCalendarEntryV2"), (summary.action_ref, "ActionArtifactV2"),
+            (summary.payoff_ref, "PolicyPayoffV2"), (summary.source_evidence_ref, "ActionReplaySourceEvidenceV1")):
+        item = repository.get_artifact(ref)
+        if item is None or item.artifact_type != kind or item.available_at_ns > summary.available_at_ns:
+            raise ValueError("lifecycle required source unavailable")
+        linked[kind] = item
+    _validated_row(repository, linked["ActionReplaySourceEvidenceV1"])
+    decision_entry = linked["DecisionCalendarEntryV2"]
+    decision = DecisionCalendarEntryV2.from_dict(json_value(decision_entry.metadata["decision_entry"]))
+    if (decision.content_hash != decision_entry.content_hash or decision.content_hash != summary.decision_ref
+            or decision.available_at_ns != decision_entry.available_at_ns):
+        raise ValueError("lifecycle calendar identity or availability mismatch")
+    action_entry = linked["ActionArtifactV2"]
+    action, identity = action_entry.metadata["action_artifact"], action_entry.metadata["action_identity"]
+    source = linked["ActionReplaySourceEvidenceV1"].metadata["source_evidence"]
+    payoff_entry = linked["PolicyPayoffV2"]
+    payoff = json_value(payoff_entry.metadata["payoff"])
+    if (sha256_json(action) != summary.action_ref or action_entry.content_hash != summary.action_ref
+            or action["available_at_ns"] != action_entry.available_at_ns or sha256_json(identity) != action["action_hash"]
+            or decision.action_artifact_ref != summary.action_ref or decision.action_hash != action["action_hash"]
+            or decision.candidate_ref != action["candidate_ref"] or decision.candidate_set_ref != action["candidate_set_ref"]
+            or source["decision_ref"] != summary.decision_ref or source["action_ref"] != summary.action_ref
+            or sha256_json(payoff) != summary.payoff_ref or payoff_entry.content_hash != summary.payoff_ref
+            or payoff["version"] != "S1_S2_EXECUTION_REPLAY_V1" or payoff["action_hash"] != decision.action_hash
+            or payoff["action_artifact_ref"] != summary.action_ref
+            or payoff["available_at_ns"] != summary.payoff_available_at_ns
+            or payoff_entry.available_at_ns != summary.payoff_available_at_ns
+            or payoff["path_ref"] != source["path_ref"]
+            or any(payoff[name] != source[name] for name in (
+                "existing_portfolio_ref", "replay_assumptions_ref", "fee_ref", "funding_schedule_ref"))
+            or source["available_at_ns"] > summary.evidence_cutoff_ns):
+        raise ValueError("lifecycle payoff/calendar/action/source linkage mismatch")
+    fills = payoff["exits"]
+    opening = payoff["entry"]
+    payoff_inputs = payoff_entry.metadata.get("input_refs")
+    if (not isinstance(payoff_inputs, (tuple, list)) or len(payoff_inputs) > 2048
+            or not {summary.action_ref, source["path_ref"]}.issubset(payoff_inputs)):
+        raise ValueError("lifecycle payoff required action/path references absent or unbounded")
+    for ref in payoff_inputs:
+        dependency = repository.get_artifact(ref)
+        if dependency is None or dependency.available_at_ns > payoff_entry.available_at_ns:
+            raise ValueError("lifecycle payoff dependency unavailable")
+    if (summary.execution_status != payoff["status"] or summary.exit_reason != payoff["exit_reason"]
+            or summary.entry_at_ns != (opening["at_ns"] if opening else None)
+            or list(summary.exit_at_ns) != [fill["at_ns"] for fill in fills]
+            or summary.filled_quantity != payoff["filled_quantity"]
+            or summary.remaining_quantity != payoff["remaining_quantity"]):
+        raise ValueError("lifecycle fill summary differs from exact payoff")
+    def amount(value: Any) -> Decimal:
+        return decimal_value(value, field="lifecycle monetary value", wire=True)
+
+    net = amount(payoff["payoff"]) if payoff["payoff"] is not None else None
+    fees = funding = None
+    closed = payoff["status"] in {"NO_FILL", "PARTIAL_FILL", "FULL_FILL"} and not payoff["reasons"]
+    if closed:
+        filled = amount(payoff["filled_quantity"])
+        requested = amount(identity["quantity"])
+        if (amount(payoff["remaining_quantity"]) != 0 or net is None or not 0 <= filled <= requested
+                or (payoff["status"] == "FULL_FILL" and filled != requested)
+                or (payoff["status"] == "PARTIAL_FILL" and not 0 < filled < requested)):
+            raise ValueError("lifecycle claimed closed payoff without resolved economics")
+        if opening is None:
+            if payoff["status"] != "NO_FILL" or fills or payoff["funding_cashflows"] or filled != 0 or net != 0:
+                raise ValueError("lifecycle no-fill economics mismatch")
+            fees = funding = Decimal(0)
+        else:
+            for fill in [opening, *fills]:
+                if (amount(fill["quantity"]) <= 0 or amount(fill["price"]) <= 0 or amount(fill["fee"]) < 0
+                        or not decision.decision_at_ns <= timestamp(fill["at_ns"], field="lifecycle fill") <= payoff_entry.available_at_ns):
+                    raise ValueError("lifecycle fill monetary value or availability invalid")
+            if (amount(opening["quantity"]) != filled or sum((amount(fill["quantity"]) for fill in fills), Decimal(0)) != filled
+                    or any(fill["at_ns"] < opening["at_ns"] for fill in fills)):
+                raise ValueError("lifecycle closed fill quantity or chronology mismatch")
+            fees = amount(opening["fee"]) + sum((amount(fill["fee"]) for fill in fills), Decimal(0))
+            path_entry = repository.get_artifact(source["path_ref"])
+            if path_entry is None:
+                raise ValueError("lifecycle funding path unavailable")
+            for fund in payoff["funding_cashflows"]:
+                if (not isinstance(fund, list) or len(fund) != 2
+                        or fund[0] not in path_entry.metadata["path"].get("funding_refs", ())):
+                    raise ValueError("lifecycle funding source mismatch")
+            funding = sum((amount(fund[1]) for fund in payoff["funding_cashflows"]), Decimal(0))
+            product = repository.get_artifact(source["product_ref"])
+            if product is None:
+                raise ValueError("lifecycle product multiplier unavailable")
+            multiplier = amount(product.metadata["product"]["base_units_per_contract"])
+            direction = {"LONG": Decimal(1), "SHORT": Decimal(-1)}[identity["side"]]
+            gross = direction * multiplier * (sum((amount(fill["quantity"]) * amount(fill["price"]) for fill in fills),
+                Decimal(0)) - filled * amount(opening["price"]))
+            if fees < 0 or net != gross - fees + funding:
+                raise ValueError("lifecycle net payoff component mismatch")
+    sizing_entry = repository.get_artifact(action["sizing_ref"])
+    sizing = sizing_entry.metadata.get("sizing") if sizing_entry else None
+    if (sizing_entry is None or sizing_entry.artifact_type != "SizingDecisionV2" or not isinstance(sizing, Mapping)
+            or sha256_json(sizing) != action["sizing_ref"] or sizing_entry.content_hash != action["sizing_ref"]
+            or sizing["available_at_ns"] != sizing_entry.available_at_ns or sizing_entry.available_at_ns > action_entry.available_at_ns
+            or sizing["candidate_ref"] != decision.candidate_ref or sizing["candidate_set_ref"] != decision.candidate_set_ref
+            or sizing["product_ref"] != identity["product_ref"]
+            or sizing["risk_policy_hash"] != identity["risk_policy_hash"]
+            or sizing["risk_policy_v2_hash"] != identity["risk_policy_v2_hash"]
+            or sizing["quantity"] != identity["quantity"] or sizing["status"] != "SIZED"):
+        raise ValueError("lifecycle frozen sizing linkage mismatch")
+    margin = amount(sizing["margin"]) if sizing.get("margin") is not None else None
+    if margin is not None and margin < 0:
+        raise ValueError("lifecycle frozen margin invalid")
+    last_exit = max(summary.exit_at_ns) if summary.exit_at_ns else None
+    duration = last_exit - summary.entry_at_ns if closed and last_exit is not None and summary.entry_at_ns is not None else None
+    roi = net / margin if closed and net is not None and margin is not None and margin > 0 else None
+    compact = {**body, "fees": canonical_decimal_str(fees) if fees is not None else None,
+        "funding_cashflow": canonical_decimal_str(funding) if funding is not None else None,
+        "net_payoff": canonical_decimal_str(net) if net is not None else None,
+        "frozen_sizing_margin": canonical_decimal_str(margin) if margin is not None else None,
+        "net_margin_roi": canonical_decimal_str(roi) if roi is not None else None,
+        "entry_to_exit_duration_ns": duration, "authority": "ZERO"}
+    row.update(row_kind="ACTION_LIFECYCLE", decision_ref=summary.decision_ref, decision_at_ns=decision.decision_at_ns,
+        action_artifact_ref=summary.action_ref, action_hash=decision.action_hash, candidate_ref=decision.candidate_ref,
+        candidate_set_ref=decision.candidate_set_ref, policy_id=decision.policy_id, policy_hash=decision.policy_hash,
+        instrument_key_json=canonical_json(identity["key"]), status=summary.execution_status, provenance="SIMULATED",
+        entry_at_ns=summary.entry_at_ns, exit_at_ns=last_exit, entry_to_exit_duration_ns=duration,
+        net_payoff=compact["net_payoff"], fees=compact["fees"], funding_cashflow=compact["funding_cashflow"],
+        frozen_sizing_margin=compact["frozen_sizing_margin"], net_margin_roi=compact["net_margin_roi"])
+    return compact
+
+
+def _feature_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
+                        row: dict[str, Any]) -> Mapping[str, Any]:
+    from atlas.v2.chronology import causal_artifact
+    from atlas.v2.contracts import FeatureArtifactV2
+
+    feature = FeatureArtifactV2.from_dict(json_value(entry.metadata["feature"]))
+    if (feature.content_hash != entry.artifact_ref or entry.content_hash != entry.artifact_ref
+            or feature.envelope.created_at_ns != entry.created_at_ns
+            or feature.envelope.available_at_ns != entry.available_at_ns or len(feature.values) > 256):
+        raise ValueError("feature identity, publication chronology or width mismatch")
+    # The envelope can include derived dependencies published after the market
+    # cutoff. Their actual publication must precede this feature's availability.
+    cache: dict[str, ArtifactIndexEntryV2 | None] = {}
+    budget = [0]
+    for ref in feature.envelope.input_refs:
+        dependency = repository.get_artifact(ref)
+        if dependency is None or not causal_artifact(repository, ref,
+                cutoff_ns=feature.information_cutoff_ns, consumer_at_ns=entry.available_at_ns,
+                deadline_ns=entry.available_at_ns, _cache=cache, _budget=budget):
+            raise ValueError("feature lost a reconstructable causal input")
+    values = {name: value.to_dict() for name, value in feature.values.items()
+              if re.fullmatch(r"[A-Za-z0-9_.-]{1,96}", name)}
+    if len(values) != len(feature.values):
+        raise ValueError("feature identifier exceeds the compact projection contract")
+    row.update(row_kind="FEATURE", feature_ref=entry.artifact_ref,
+               feature_schema=feature.feature_set_version, decision_at_ns=feature.information_cutoff_ns,
+               instrument_key_json=feature.key.to_canonical_json(),
+               features_json=canonical_json(values),
+               regimes_json=canonical_json({name: value for name, value in values.items()
+                                             if name.startswith("regime.")}))
+    return feature.to_dict()
+
+
+def _decision_feature_context(repository: OpsRepository, candidate_entry: ArtifactIndexEntryV2,
+                             row: dict[str, Any]) -> None:
+    from atlas.v2.contracts import CandidateActionV2
+
+    candidate = CandidateActionV2.from_dict(json_value(candidate_entry.metadata["candidate"]))
+    if candidate.content_hash != candidate_entry.artifact_ref or candidate_entry.content_hash != candidate.content_hash:
+        raise ValueError("decision candidate identity mismatch")
+    feature_entry = repository.get_artifact(candidate.snapshot_hash)
+    row["feature_ref"] = candidate.snapshot_hash
+    if feature_entry is None or feature_entry.artifact_type != "FeatureArtifactV2":
+        return  # An absent feature is never a zero or a synthetic regime.
+    context: dict[str, Any] = {}
+    _feature_projection(repository, feature_entry, context)
+    if (context["instrument_key_json"] != candidate.key.to_canonical_json()
+            or context["decision_at_ns"] > candidate.decision_at_ns
+            or feature_entry.available_at_ns > candidate_entry.available_at_ns):
+        raise ValueError("decision feature context identity or chronology mismatch")
+    for name in ("feature_schema", "regimes_json"):
+        row[name] = context[name]
+
+
+def _action_prediction_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
+                                  row: dict[str, Any]) -> Mapping[str, Any]:
+    from atlas.v2.science.m0 import M0_CONFIG_VERSION, M0_FEATURE_SCHEMA_VERSION, M0_MODEL_VERSION, M0PredictionV2
+    from atlas.v2.science.m1 import (
+        M1_FEATURE_POLICY_HASH,
+        M1_MODEL_FIT_VERSION,
+        M1_POLICY_HASH,
+        M1_POLICY_ID,
+        M1_PREDICTION_VERSION,
+        M1PredictionV2,
+    )
+
+    body = json_value(entry.metadata["prediction"])
+    if entry.artifact_type == "M0PredictionV2":
+        body = M0PredictionV2.from_dict(body).to_dict()
+        cutoff = body["training_cutoff_ns"]
+        model_ref, model_kind = body["model_ref"], "M0ModelFitV2"
+    else:
+        if (body.get("version") != M1_PREDICTION_VERSION
+                or set(body) != set(M1PredictionV2.__dataclass_fields__) | {"version"}):
+            raise ValueError("unsupported M1 prediction version")
+        parsed = {name: body[name] for name in M1PredictionV2.__dataclass_fields__}
+        for name in ("training_row_refs", "reasons"):
+            parsed[name] = tuple(parsed[name])
+        parsed["expected_net_value"] = (Decimal(parsed["expected_net_value"])
+                                        if parsed["expected_net_value"] is not None else None)
+        if canonical_json(M1PredictionV2(**parsed).to_dict()) != canonical_json(body):
+            raise ValueError("M1 prediction schema mismatch")
+        cutoff = body["information_cutoff_ns"]
+        model_ref, model_kind = body["model_fit_ref"], "M1ModelFitV2"
+    timestamp(cutoff, field="action prediction cutoff_ns")
+    if (sha256_json(body) != entry.artifact_ref or entry.content_hash != entry.artifact_ref
+            or body["available_at_ns"] != entry.available_at_ns or cutoff > entry.available_at_ns):
+        raise ValueError("action prediction content or chronology mismatch")
+    action = repository.get_artifact(body["action_artifact_ref"])
+    if (action is None or action.artifact_type != "ActionArtifactV2"
+            or sha256_json(action.metadata["action_artifact"]) != action.artifact_ref
+            or action.content_hash != action.artifact_ref
+            or sha256_json(action.metadata["action_identity"]) != body["action_hash"]
+            or action.metadata["action_artifact"]["action_hash"] != body["action_hash"]
+            or action.available_at_ns > entry.available_at_ns):
+        raise ValueError("prediction lost its exact frozen action")
+    model = repository.get_artifact(model_ref)
+    model_body = model.metadata.get("model_fit") if model is not None else None
+    if (model is None or model.artifact_type != model_kind or not isinstance(model_body, Mapping)
+            or sha256_json(model_body) != model_ref or model.content_hash != model_ref
+            or model.available_at_ns > entry.available_at_ns):
+        raise ValueError("prediction lost its immutable fitted method")
+    prefix = "M0" if entry.artifact_type == "M0PredictionV2" else "M1"
+    dependencies = {"support_ref": (prefix + "SupportV2", "support"),
+                    "calibration_ref": (prefix + "CalibrationV2", "calibration"),
+                    "oof_archive_ref": ("M0OOFResidualArchiveV2" if prefix == "M0" else "M1OOFArchiveV2",
+                                        "oof_archive" if prefix == "M0" else "archive"),
+                    "ood_ref": (prefix + "OODV2", "ood"),
+                    "feature_vector_ref": (prefix + "FeatureVectorV2", "feature_vector")}
+    for name, (kind, key) in dependencies.items():
+        dependency = repository.get_artifact(body[name])
+        dependency_body = dependency.metadata.get(key) if dependency is not None else None
+        if (dependency is None or dependency.artifact_type != kind
+                or dependency.available_at_ns > entry.available_at_ns
+                or not isinstance(dependency_body, Mapping)
+                or sha256_json(dependency_body) != body[name] or dependency.content_hash != body[name]
+                or ("action_hash" in dependency_body and dependency_body["action_hash"] != body["action_hash"])):
+            raise ValueError("prediction dependency identity or availability mismatch")
+        if name == "feature_vector_ref" and (
+                dependency_body["action_artifact_ref"] != action.artifact_ref
+                or dependency_body["information_cutoff_ns"] != cutoff
+                or dependency_body["candidate_ref"] != action.metadata["action_artifact"]["candidate_ref"]):
+            raise ValueError("prediction feature vector lost its exact action/cutoff")
+    value = body["expected_net_value"]
+    if value is not None and (not isinstance(value, str) or not Decimal(value).is_finite()):
+        raise ValueError("action prediction value is not a finite exact decimal")
+    if body["status"] not in {"AVAILABLE", "NOT_ESTIMABLE"} or (body["status"] == "AVAILABLE") != (value is not None):
+        raise ValueError("prediction support status conflicts with its value")
+    if entry.artifact_type == "M0PredictionV2":
+        if (model_body["version"] != M0_MODEL_VERSION
+                or model_body["config_version"] != M0_CONFIG_VERSION
+                or model_body["feature_schema_version"] != M0_FEATURE_SCHEMA_VERSION
+                or model_body["current_action_hash"] != body["action_hash"]
+                or model_body["current_action_artifact_ref"] != action.artifact_ref
+                or model_body["current_feature_vector_ref"] != body["feature_vector_ref"]
+                or model_body["training_cutoff_ns"] != cutoff):
+            raise ValueError("M0 fitted method lost its exact action/cutoff")
+        method_id = model_body["version"]
+        config = {name: json_value(model_body.get(name)) for name in
+                  ("version", "config_version", "feature_schema_version", "hyperparameters", "support_config")}
+        config_hash = sha256_json(config)
+    else:
+        if (body["candidate_ref"] != action.metadata["action_artifact"]["candidate_ref"]
+                or body["candidate_set_ref"] != action.metadata["action_artifact"]["candidate_set_ref"]
+                or model_body["version"] != M1_MODEL_FIT_VERSION
+                or model_body["feature_policy_hash"] != M1_FEATURE_POLICY_HASH
+                or model_body["model_policy_hash"] != M1_POLICY_HASH
+                or model_body["compatibility_key"] != body["compatibility_key"]
+                or model_body["fit_cutoff_ns"] != cutoff
+                or model_body["available_at_ns"] != model.available_at_ns):
+            raise ValueError("M1 method or exact candidate identity mismatch")
+        method_id = M1_POLICY_ID
+        config_hash = sha256_json({name: json_value(model_body.get(name)) for name in (
+            "model_policy_hash", "feature_policy_hash", "selected_parameters", "dependency_lock_hash",
+            "lightgbm_version", "seed", "thread_count", "objective", "validation_metric", "tie_break")})
+    row.update(row_kind="ACTION_PREDICTION", action_artifact_ref=action.artifact_ref,
+               action_hash=body["action_hash"], candidate_ref=action.metadata["action_artifact"]["candidate_ref"],
+               candidate_set_ref=action.metadata["action_artifact"]["candidate_set_ref"],
+               policy_hash=action.metadata["action_identity"]["policy_hash"],
+               instrument_key_json=canonical_json(action.metadata["action_identity"]["key"]),
+               decision_at_ns=cutoff, expected_net_value=value, status=body["status"],
+               method_id=method_id, method_config_hash=config_hash, model_profile_hash=model_ref)
+    return body
+
+
+def _stage_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
+                      row: dict[str, Any]) -> Mapping[str, Any]:
+    from atlas.v2.runtime.ops_supervisor import PIPELINE_STAGE_ORDER, OpsStageResultV1, OpsSupervisorV2
+
+    body = json_value(entry.metadata["stage_result"])
+    stage = OpsStageResultV1.from_dict(body)
+    event_id = entry.metadata["event_id"]
+    sha256_ref(event_id, field="checkpoint event_id")
+    if (canonical_json(body) != canonical_json(stage.to_dict())
+            or entry.artifact_ref != OpsSupervisorV2._checkpoint_ref(event_id, stage.stage)
+            or stage.content_hash != entry.content_hash or stage.completed_at_ns != entry.available_at_ns
+            or entry.created_at_ns != entry.available_at_ns):
+        raise ValueError("stage checkpoint identity or completion chronology mismatch")
+    for ref in stage.artifact_refs:
+        dependency = repository.get_artifact(ref)
+        if dependency is None or dependency.available_at_ns > stage.completed_at_ns:
+            raise ValueError("stage completion precedes its output")
+    row.update(row_kind="PIPELINE_STAGE", event_id=event_id, source_stage=stage.stage.value,
+               stage_completed_at_ns=stage.completed_at_ns, stage_order=PIPELINE_STAGE_ORDER.index(stage.stage),
+               action_hash=stage.bound_action_hash, status=stage.status.value)
+    return stage.to_dict()
+
+
+def _receipt_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
+                      row: dict[str, Any]) -> Mapping[str, Any]:
+    from atlas.v2.runtime.ops_supervisor import _receipt_from_dict
+    from atlas.v2.runtime.production import decision_event_from_dict
+
+    body = json_value(entry.metadata["receipt"])
+    try:
+        restored = _receipt_from_dict(body)
+    except RuntimeError as error:
+        raise ValueError("receipt schema mismatch") from error
+    if canonical_json(restored.to_dict()) != canonical_json(body):
+        raise ValueError("receipt schema mismatch")
+    event = decision_event_from_dict(body["decision_event"])
+    source = repository.get_artifact(event.content_hash)
+    content_hash = sha256_json(body)
+    receipt_ref = sha256_json({"artifact_type": "OpsSupervisorReceiptV1", "content_hash": content_hash})
+    if (receipt_ref != entry.artifact_ref or entry.content_hash != content_hash
+            or body["created_at_ns"] != entry.available_at_ns or entry.created_at_ns != entry.available_at_ns
+            or source is None or source.artifact_type != "OpsDecisionEventSourceV1"
+            or source.content_hash != event.content_hash
+            or canonical_json(source.metadata["event"]) != canonical_json(event.to_dict())
+            or source.available_at_ns > entry.available_at_ns or body["agent_mode"] != "DISABLED"
+            or body["capital_enabled"] is not False or body["assisted_enabled"] is not False
+            or body["created_at_ns"] < event.information_cutoff_ns):
+        raise ValueError("receipt exact source identity, chronology or authority mismatch")
+    row.update(row_kind="PIPELINE_RECEIPT", event_id=event.event_id,
+               source_event_at_ns=event.source_event_at_ns, received_at_ns=event.received_at_ns,
+               information_cutoff_ns=event.information_cutoff_ns, decision_at_ns=event.information_cutoff_ns,
+               status=body["terminal_status"])
+    return body
 
 
 def _m15_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
@@ -476,6 +1002,24 @@ def _model_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
         raise ValueError("model routing content identity mismatch")
     if "run_id" in body:
         row["_model_run_id"], row["_model_config_hash"] = body["run_id"], body["config_hash"]
+    if entry.artifact_type == "ResearchModelRoutingRegistryV1":
+        from atlas.v2.models.research_routing import ResearchModelRouteV1
+
+        routes = body["routes"]
+        if not isinstance(routes, list) or len(routes) > 16:
+            raise ValueError("registered model route list exceeds its bound")
+        projected_routes = []
+        for wire in routes:
+            route = ResearchModelRouteV1(wire["route_id"], wire["provider_key"], wire["manifest_hash"], wire["settings"])
+            if canonical_json(route.to_dict()) != canonical_json(wire):
+                raise ValueError("registered model route schema mismatch")
+            model = repository.get_model_manifest(route.manifest_hash)
+            if model is None or model.manifest_hash != route.manifest_hash:
+                raise ValueError("registered route lost its exact manifest")
+            projected_routes.append({"route_ref": route.content_hash, "provider_key": route.provider_key,
+                                     "manifest_hash": route.manifest_hash})
+        row.update(row_kind="MODEL_REGISTRY", registered_routes_json=canonical_json(projected_routes))
+        return body
     if entry.artifact_type == "ResearchModelRequestV1":
         packet = WorkerRequestV2.from_dict(body["worker_packet"])
         if packet.content_hash != body["worker_packet_hash"]:
@@ -627,7 +1171,10 @@ def _model_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
 def _schema() -> Any:
     import pyarrow as pa
 
-    integer_names = {"created_at_ns", "available_at_ns", "decision_at_ns", "source_rowid", "horizon_ns", "horizon_end_ns"}
+    integer_names = {"created_at_ns", "available_at_ns", "decision_at_ns", "source_rowid", "horizon_ns", "horizon_end_ns",
+                     "stage_completed_at_ns", "stage_order", "source_event_at_ns", "received_at_ns", "information_cutoff_ns",
+                     "computation_started_ns", "computation_finished_ns", "computation_duration_ns", "publication_latency_ns",
+                     "entry_at_ns", "exit_at_ns", "entry_to_exit_duration_ns"}
     list_names = {"reason_codes", "evidence_refs"}
     names = (
         "run_id", "config_hash", "source_sha", "source_rowid", "artifact_ref", "artifact_type",
@@ -643,6 +1190,12 @@ def _schema() -> Any:
         "prediction_id", "prediction_target_ref", "horizon_ns", "horizon_end_ns",
         "measured_log_return", "predicted_log_return",
         "accounting_kind",
+        "feature_ref", "feature_schema", "features_json", "regimes_json", "action_artifact_ref",
+        "expected_net_value", "method_id", "method_config_hash", "stage_completed_at_ns", "stage_order",
+        "source_event_at_ns", "received_at_ns", "information_cutoff_ns", "registered_routes_json",
+        "computation_started_ns", "computation_finished_ns", "computation_duration_ns", "publication_latency_ns",
+        "entry_at_ns", "exit_at_ns", "entry_to_exit_duration_ns", "fees", "funding_cashflow",
+        "frozen_sizing_margin", "net_margin_roi",
     )
     return pa.schema([(name, pa.int64() if name in integer_names else pa.list_(pa.string())
                        if name in list_names else pa.string()) for name in names])
@@ -661,9 +1214,11 @@ def _reconciled_report(root: Path, previous: Mapping[str, Any] | None, partition
     paths = [str(partition)]
     seen: set[str] = set()
     prior = previous
+    windowed = False
     while prior is not None:
-        if time.monotonic() - started >= seconds or len(paths) >= 4096:
-            return {"status": "TEST GATE", "reason": "ANALYSIS_HISTORY_OR_TIME_BUDGET_EXCEEDED"}
+        if len(paths) >= MAX_ANALYSIS_PARTITIONS or time.monotonic() - started >= seconds / 2:
+            windowed = True
+            break
         digest = sha256_json(prior)
         if digest in seen or prior["run_identity"] != identity.to_dict():
             raise ValueError("analysis manifest chain identity or cycle mismatch")
@@ -702,6 +1257,8 @@ def _reconciled_report(root: Path, previous: Mapping[str, Any] | None, partition
 
     try:
         connection.from_parquet(paths, union_by_name=True).create_view("rows")
+        window = connection.execute("""SELECT min(source_rowid),max(source_rowid),min(available_at_ns),
+            max(available_at_ns),count(*) FROM rows""").fetchone()
         connection.execute("""CREATE VIEW origin_events AS
             SELECT DISTINCT event_id, origin_ref FROM rows
             WHERE row_kind='ORIGIN' AND event_id IS NOT NULL""")
@@ -756,6 +1313,110 @@ def _reconciled_report(root: Path, previous: Mapping[str, Any] | None, partition
             count(*) AS record_rows, count(DISTINCT origin_ref) AS distinct_recorded_origins
             FROM rows WHERE row_kind IN ('ORIGIN','MISSINGNESS') GROUP BY ALL
             ORDER BY artifact_type,accounting_kind,status""")
+        regimes = groups("""SELECT d.policy_id,d.policy_hash,d.source_stage,d.selection_state,d.admission_state,
+            d.feature_schema,d.regimes_json,count(DISTINCT d.decision_ref) AS calendar_rows,
+            count(DISTINCT d.opportunity_ref) AS distinct_recorded_origins,
+            count(DISTINCT o.decision_ref) FILTER (WHERE o.label_state='MATURED') AS matured_decisions
+            FROM decisions d LEFT JOIN rows o ON o.row_kind='OUTCOME' AND o.decision_ref=d.decision_ref
+            GROUP BY ALL ORDER BY d.policy_id,d.policy_hash,d.source_stage,d.regimes_json""")
+        features = groups("""SELECT r.instrument_key_json,r.feature_schema,
+            floor(r.decision_at_ns/21600000000000)::BIGINT AS utc_six_hour_bucket,
+            f.key AS feature_id,json_extract_string(f.value,'$.unit') AS unit,
+            count(*) AS recorded_snapshots,
+            count(*) FILTER (WHERE json_extract_string(f.value,'$.value') IS NULL) AS missing_snapshots,
+            avg(try_cast(json_extract_string(f.value,'$.value') AS DOUBLE)) AS observed_mean,
+            stddev_pop(try_cast(json_extract_string(f.value,'$.value') AS DOUBLE)) AS observed_stddev,
+            min(try_cast(json_extract_string(f.value,'$.value') AS DOUBLE)) AS observed_min,
+            max(try_cast(json_extract_string(f.value,'$.value') AS DOUBLE)) AS observed_max
+            FROM rows r,json_each(r.features_json) f WHERE r.row_kind='FEATURE'
+            GROUP BY ALL ORDER BY r.instrument_key_json,r.feature_schema,utc_six_hour_bucket,feature_id""")
+        feature_missingness = groups("""SELECT r.feature_schema,f.key AS feature_id,
+            json_extract_string(f.value,'$.missing_reason') AS missing_reason,count(*) AS snapshots
+            FROM rows r,json_each(r.features_json) f WHERE r.row_kind='FEATURE'
+            AND json_extract_string(f.value,'$.value') IS NULL
+            GROUP BY ALL ORDER BY r.feature_schema,feature_id,missing_reason""")
+        disagreements = groups("""WITH p AS (
+            SELECT *,row_number() OVER (PARTITION BY action_artifact_ref,action_hash,artifact_type
+                ORDER BY available_at_ns DESC,artifact_ref DESC) AS position
+            FROM rows WHERE row_kind='ACTION_PREDICTION'), pairs AS (
+            SELECT coalesce(a.action_artifact_ref,b.action_artifact_ref) AS action_artifact_ref,
+                coalesce(a.action_hash,b.action_hash) AS action_hash,
+                coalesce(a.policy_hash,b.policy_hash) AS policy_hash,
+                coalesce(a.instrument_key_json,b.instrument_key_json) AS instrument_key_json,
+                a.method_config_hash AS m0_config_hash,b.method_config_hash AS m1_config_hash,
+                a.status AS m0_status,b.status AS m1_status,
+                try_cast(a.expected_net_value AS DOUBLE) AS m0_value,
+                try_cast(b.expected_net_value AS DOUBLE) AS m1_value
+            FROM (SELECT * FROM p WHERE artifact_type='M0PredictionV2' AND position=1) a
+            FULL OUTER JOIN (SELECT * FROM p WHERE artifact_type='M1PredictionV2' AND position=1) b
+                ON a.action_artifact_ref=b.action_artifact_ref AND a.action_hash=b.action_hash)
+            SELECT policy_hash,instrument_key_json,m0_config_hash,m1_config_hash,m0_status,m1_status,
+                count(*) AS exact_action_rows,
+                count(*) FILTER (WHERE m0_value IS NOT NULL AND m1_value IS NOT NULL) AS paired_estimates,
+                avg(abs(m0_value-m1_value)) AS mean_absolute_disagreement,
+                count(*) FILTER (WHERE (m0_value<0 AND m1_value>0) OR (m0_value>0 AND m1_value<0))
+                    AS opposed_sign_estimates
+            FROM pairs GROUP BY ALL ORDER BY policy_hash,instrument_key_json,m0_config_hash,m1_config_hash""")
+        stage_latency = groups("""WITH timed AS (
+            SELECT s.*,lag(stage_completed_at_ns) OVER (PARTITION BY event_id ORDER BY stage_order)
+                AS previous_completion,lag(stage_order) OVER (PARTITION BY event_id ORDER BY stage_order)
+                AS previous_stage_order FROM rows s WHERE row_kind='PIPELINE_STAGE')
+            SELECT t.source_stage,t.status,count(*) AS checkpoints,
+                count(*) FILTER (WHERE previous_stage_order=t.stage_order-1
+                    AND t.stage_completed_at_ns>=previous_completion) AS consecutive_completion_pairs,
+                avg(t.stage_completed_at_ns-previous_completion) FILTER
+                    (WHERE previous_stage_order=t.stage_order-1
+                        AND t.stage_completed_at_ns>=previous_completion) AS mean_completion_interval_ns,
+                max(t.stage_completed_at_ns-previous_completion) FILTER
+                    (WHERE previous_stage_order=t.stage_order-1
+                        AND t.stage_completed_at_ns>=previous_completion) AS max_completion_interval_ns,
+                count(*) FILTER (WHERE t.stage_order>0 AND (previous_stage_order IS NULL
+                    OR previous_stage_order<t.stage_order-1)) AS missing_predecessor_checkpoints,
+                count(*) FILTER (WHERE t.stage_completed_at_ns<previous_completion) AS clock_regressions,
+                avg(t.stage_completed_at_ns-r.information_cutoff_ns) AS mean_cutoff_to_completion_ns
+            FROM timed t LEFT JOIN rows r ON r.row_kind='PIPELINE_RECEIPT' AND t.event_id=r.event_id
+            GROUP BY ALL ORDER BY t.source_stage,t.status""")
+        receipt_latency = groups("""SELECT status,count(*) AS receipts,
+            avg(received_at_ns-source_event_at_ns) AS mean_source_to_receipt_ns,
+            avg(available_at_ns-information_cutoff_ns) AS mean_cutoff_to_terminal_ns,
+            max(available_at_ns-information_cutoff_ns) AS max_cutoff_to_terminal_ns
+            FROM rows WHERE row_kind='PIPELINE_RECEIPT' GROUP BY ALL ORDER BY status""")
+        methods = groups("""SELECT method_id,method_config_hash,policy_hash,instrument_key_json,status,
+            count(*) AS prediction_rows,count(DISTINCT action_artifact_ref) AS distinct_exact_actions,
+            count(expected_net_value) AS estimable_predictions,avg(try_cast(expected_net_value AS DOUBLE))
+                AS mean_recorded_estimate FROM rows WHERE row_kind='ACTION_PREDICTION'
+            GROUP BY ALL ORDER BY method_id,method_config_hash,policy_hash,instrument_key_json,status""")
+        computations = groups("""SELECT artifact_type,source_stage,status,count(*) AS recorded_computations,
+            avg(computation_duration_ns) AS mean_computation_duration_ns,
+            avg(publication_latency_ns) AS mean_publication_latency_ns,
+            max(publication_latency_ns) AS max_publication_latency_ns
+            FROM rows WHERE row_kind IN ('COMPUTATION','PREREQUISITES')
+            GROUP BY ALL ORDER BY artifact_type,source_stage,status""")
+        lifecycles = groups("""SELECT status,provenance,count(*) AS lifecycle_rows,
+            count(DISTINCT action_artifact_ref) AS distinct_exact_actions,
+            count(net_payoff) AS resolved_payoffs,avg(try_cast(net_payoff AS DOUBLE)) AS mean_recorded_net_payoff,
+            avg(try_cast(fees AS DOUBLE)) AS mean_recorded_fees,
+            avg(try_cast(funding_cashflow AS DOUBLE)) AS mean_recorded_funding_cashflow,
+            avg(entry_to_exit_duration_ns) AS mean_entry_to_exit_duration_ns,
+            count(net_margin_roi) AS supported_margin_roi_rows,
+            avg(try_cast(net_margin_roi AS DOUBLE)) AS mean_recorded_net_margin_roi
+            FROM rows WHERE row_kind='ACTION_LIFECYCLE' GROUP BY ALL ORDER BY status,provenance""")
+        pressure = groups("""SELECT artifact_type,source_stage,instrument_key_json,status,reason_codes,
+            count(*) AS pressure_rows FROM rows WHERE row_kind='PRESSURE'
+            GROUP BY ALL ORDER BY artifact_type,source_stage,reason_codes""")
+        prerequisites = groups("""SELECT status,reason_codes,count(*) AS inventory_rows
+            FROM rows WHERE row_kind='PREREQUISITES' GROUP BY ALL ORDER BY status,reason_codes""")
+        routes = groups("""WITH declared AS (
+            SELECT DISTINCT json_extract_string(route.value,'$.route_ref') AS route_ref,
+                json_extract_string(route.value,'$.provider_key') AS provider_key,
+                json_extract_string(route.value,'$.manifest_hash') AS model_profile_hash
+            FROM rows r,json_each(r.registered_routes_json) route WHERE r.row_kind='MODEL_REGISTRY')
+            SELECT d.route_ref,d.provider_key,d.model_profile_hash,
+                count(*) FILTER (WHERE r.row_kind='MODEL_REQUEST') AS request_rows,
+                count(*) FILTER (WHERE r.row_kind='MODEL_TERMINAL') AS terminal_rows,
+                count(*) FILTER (WHERE r.row_kind='MODEL_OUTCOME' AND r.label_state='MATURED') AS matured_labels
+            FROM declared d LEFT JOIN rows r ON r.route_ref=d.route_ref
+            GROUP BY ALL ORDER BY d.route_ref""")
         reconciliation = connection.execute("""SELECT
             (SELECT count(*) FROM rows o WHERE o.row_kind='OUTCOME' AND NOT EXISTS
                 (SELECT 1 FROM decisions d WHERE d.decision_ref=o.decision_ref)) AS outcomes_without_exported_calendar,
@@ -765,17 +1426,38 @@ def _reconciled_report(root: Path, previous: Mapping[str, Any] | None, partition
                 HAVING count(DISTINCT origin_ref)>1)) AS conflicting_event_origin_bindings""").fetchone()
         if reconciliation is None:
             raise ValueError("analysis reconciliation aggregate did not return a row")
-        return {"status": "TEST GATE" if truncated or reconciliation[2] else "TESTED",
-                "scope": "VALIDATED_RECORDED_ORIGINS_ONLY", "group_limit": 256,
+        return {"status": "TEST GATE" if truncated or reconciliation[2] or windowed else "TESTED",
+                "scope": "VALIDATED_RECENT_PARTITION_WINDOW" if windowed else "VALIDATED_RECORDED_ORIGINS_ONLY",
+                "history_omitted": windowed, "partition_count": len(paths),
+                "partition_limit": MAX_ANALYSIS_PARTITIONS, "window_source_rowid_from": window[0] if window else None,
+                "window_source_rowid_through": window[1] if window else None,
+                "window_available_at_from_ns": window[2] if window else None,
+                "window_available_at_through_ns": window[3] if window else None,
+                "window_rows": window[4] if window else 0, "group_limit": 256,
                 "group_limit_exceeded": truncated, "distinct_recorded_opportunities": summary[0],
                 "unidentified_opportunity_rows": summary[1], "stage_funnel": stages,
                 "origin_accounting": origins, "outcome_coverage_by_calendar_stage": coverage,
                 "outcome_labels_by_target_and_provenance": outcome_labels,
                 "prediction_diagnostics_by_target_horizon_route_instrument": predictions,
+                "regime_context_by_calendar_stage": regimes,
+                "descriptive_feature_stability_by_six_hour_bucket": features,
+                "feature_missingness": feature_missingness,
+                "m0_m1_exact_action_disagreement": disagreements,
+                "pipeline_stage_completion_latency": stage_latency,
+                "pipeline_receipt_latency": receipt_latency,
+                "registered_action_method_comparisons": methods,
+                "derived_computation_publication_latency": computations,
+                "action_replay_lifecycle_diagnostics": lifecycles,
+                "action_margin_roi_scope": "SIMULATED_EXACT_FROZEN_SIZING_MARGIN_DESCRIPTIVE_ONLY_NO_LEVERAGE_RULE",
+                "active_work_pressure": pressure, "research_prerequisite_missingness": prerequisites,
+                "registered_model_route_coverage": routes,
+                "stage_latency_definition": "CHECKPOINT_COMPLETION_INTERVALS_INCLUDE_QUEUE_AND_OTHER_WORK_NOT_ISOLATED_COMPUTE",
+                "feature_stability_claim": "DESCRIPTIVE_RECORDED_VALUES_ONLY_NOT_DRIFT_SIGNIFICANCE",
                 "outcomes_without_exported_calendar": reconciliation[0],
                 "registered_events_without_exported_calendar": reconciliation[1],
                 "conflicting_event_origin_bindings": reconciliation[2],
                 "expected_unregistered_origin_count": None,
+                "expected_origin_scope": "REGISTERED_ORIGINS_ONLY_NO_INSTRUMENT_SLOT_EXPECTATION_CONTRACT",
                 "economic_significance": "NOT ESTIMABLE",
                 "independence": "SHARED_MARKET_HISTORY_AND_OVERLAPPING_LABELS_REQUIRE_DEPENDENCE_AWARE_INFERENCE"}
     except duckdb.Error:
@@ -991,7 +1673,7 @@ def export_tuning_snapshot(
                     "unsupported_metrics": [
                         "economic_significance_without_prospective_duration_regimes_dependence_and_support",
                         "prediction_calibration_without_typed_prediction_target_and_exact_matured_labels",
-                        "per_stage_latency_without_recorded_computation_timestamps",
+                        "isolated_per_stage_compute_latency_without_recorded_start_and_end_timestamps",
                         "expected_origins_missing_from_the_operational_calendar",
                     ],
                     "capital": "DISABLED", "assisted_execution": "DISABLED", "authority": "ZERO",

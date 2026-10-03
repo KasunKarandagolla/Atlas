@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import ROUND_FLOOR, Decimal
 from enum import StrEnum
@@ -471,9 +472,14 @@ def _floor_step(value: Decimal, step: Decimal) -> Decimal:
 
 
 def _selected(repo: OpsRepository, candidate_set: CandidateSetV2, candidate: CandidateActionV2,
-              universe: UniverseContractV2, policy: PolicySpecV2, cutoff_ns: int) -> None:
-    indexed_set = _indexed(repo, candidate_set.content_hash, cutoff_ns, "CandidateSetV2")
-    indexed_candidate = _indexed(repo, candidate.content_hash, cutoff_ns, "CandidateActionV2")
+              universe: UniverseContractV2, policy: PolicySpecV2, cutoff_ns: int, consumer_at_ns: int | None = None) -> None:
+    from atlas.v2.chronology import causal_artifact
+    consumer_at_ns = cutoff_ns if consumer_at_ns is None else consumer_at_ns
+    for ref in (candidate_set.content_hash, candidate.content_hash, universe.content_hash):
+        if not causal_artifact(repo, ref, cutoff_ns=cutoff_ns, consumer_at_ns=consumer_at_ns, deadline_ns=candidate.deadline_ns):
+            raise ValueError("selected derived evidence chronology is invalid")
+    indexed_set = _indexed(repo, candidate_set.content_hash, consumer_at_ns, "CandidateSetV2")
+    indexed_candidate = _indexed(repo, candidate.content_hash, consumer_at_ns, "CandidateActionV2")
     if indexed_set is None or indexed_candidate is None:
         raise ValueError("selected CandidateSet and candidate must be durably indexed")
     if canonical_json(indexed_set.metadata.get("candidate_set")) != candidate_set.to_canonical_json():
@@ -491,7 +497,7 @@ def _selected(repo: OpsRepository, candidate_set: CandidateSetV2, candidate: Can
     if not any(x.candidate_id == candidate.candidate_id and x.key == candidate.key and x.side == candidate.side
                for x in candidate_set.candidates):
         raise ValueError("selected candidate entry mismatch")
-    if _indexed(repo, universe.content_hash, cutoff_ns, "UniverseContractV2") is None:
+    if _indexed(repo, universe.content_hash, consumer_at_ns, "UniverseContractV2") is None:
         raise ValueError("universe artifact unavailable")
 
 
@@ -502,15 +508,46 @@ def size_selected_candidate(repo: OpsRepository, *, candidate_set: CandidateSetV
                             exposures: tuple[PossibleRiskV2, ...], outcomes: tuple[ClosedV2Outcome, ...],
                             venue: VenueSizingLimitsV2, stress: StressBoundV2,
                             fee: FeeScheduleV2,
-                            cutoff_ns: int) -> SizingDecisionV2:
+                            cutoff_ns: int, clock_ns: Callable[[], int] | None = None) -> SizingDecisionV2:
     """Size the selected shadow candidate from indexed, cutoff-causal hard-risk evidence."""
-    _selected(repo, candidate_set, candidate, universe, policy, cutoff_ns)
+    from atlas.v2.chronology import record_computation, sample
+    started = sample(clock_ns, floor_ns=max(cutoff_ns, candidate_set.envelope.available_at_ns,
+        candidate.envelope.available_at_ns, universe.envelope.available_at_ns)) if clock_ns else cutoff_ns
+    _selected(repo, candidate_set, candidate, universe, policy, cutoff_ns, started)
     if v1.policy_hash() != v2.base_v1_risk_policy_hash:
         raise ValueError("V1/V2 risk policy binding mismatch")
     base_refs = {candidate_set.content_hash, candidate.content_hash, universe.content_hash}
     optional = (v1.policy_hash(), v2.policy_hash, account.content_hash, product.content_hash,
                 venue.content_hash, stress.content_hash, fee.content_hash)
     valid_refs = base_refs | {ref for ref in optional if _indexed(repo, ref, cutoff_ns) is not None}
+    computation_identity = sha256_json({"version": "SizingComputationIdentityV1",
+        "candidate_set_ref": candidate_set.content_hash, "candidate_ref": candidate.content_hash,
+        "risk_refs": list(optional), "exposures": [item.content_hash for item in exposures],
+        "outcomes": [item.content_hash for item in outcomes], "cutoff_ns": cutoff_ns})
+    if clock_ns and (prior_identity := repo.get_artifact(computation_identity)) is not None:
+        if (prior_identity.artifact_type != "SizingComputationIdentityV1"
+                or prior_identity.content_hash != sha256_json(prior_identity.metadata)
+                or prior_identity.metadata.get("authority") != "ZERO"):
+            raise ValueError("sealed sizing identity receipt conflicts")
+        prior = repo.get_artifact(str(prior_identity.metadata.get("sizing_ref")))
+        if prior is None or prior.artifact_type != "SizingDecisionV2":
+            raise ValueError("sealed sizing computation is missing")
+        body = dict(prior.metadata["sizing"])
+        body.pop("version")
+        body.pop("notional_convention")
+        for field in ("quantity", "normal_risk", "stress_risk", "notional", "margin", "leverage",
+                "notional_reference_price", "rolling_loss_consumed", "rolling_new_risk_consumed"):
+            if body[field] is not None:
+                body[field] = Decimal(body[field])
+        body["status"] = SizingStatus(body["status"])
+        body["risk_input_refs"] = tuple(body["risk_input_refs"])
+        body["reasons"] = tuple(body["reasons"])
+        decision = SizingDecisionV2(**body)
+        from atlas.v2.chronology import causal_artifact
+        if (decision.content_hash != prior.artifact_ref or prior.content_hash != decision.content_hash or not causal_artifact(repo, prior.artifact_ref,
+                cutoff_ns=cutoff_ns, consumer_at_ns=started, deadline_ns=candidate.deadline_ns)):
+            raise ValueError("sealed sizing computation content or chronology mismatch")
+        return decision
     def not_est(reason: str) -> SizingDecisionV2:
         return persist(SizingStatus.NOT_ESTIMABLE, (reason,))
     def no_trade(reason: str) -> SizingDecisionV2:
@@ -521,12 +558,23 @@ def size_selected_candidate(repo: OpsRepository, *, candidate_set: CandidateSetV
                 leverage: Decimal | None = None, notional_price: Decimal | None = None,
                 loss: Decimal | None = None,
                 rolling: Decimal | None = None) -> SizingDecisionV2:
+        finished = sample(clock_ns, floor_ns=started) if clock_ns else cutoff_ns
+        available = sample(clock_ns, floor_ns=finished) if clock_ns else cutoff_ns
+        if available > candidate.deadline_ns:
+            status, why, q = SizingStatus.NOT_ESTIMABLE, ("SIZING_DEADLINE_EXPIRED",), None
         decision = SizingDecisionV2(candidate.content_hash, candidate_set.content_hash, candidate.candidate_id,
             v1.policy_hash(), v2.policy_hash, account.content_hash, product.content_hash, tuple(sorted(valid_refs)),
             q, normal, stressed, notional, margin, leverage, notional_price,
-            loss, rolling, status, why, cutoff_ns)
+            loss, rolling, status, why, available)
         repo.register_artifact(ArtifactIndexEntryV2(decision.content_hash, "SizingDecisionV2", decision.content_hash,
-            cutoff_ns, cutoff_ns, {"sizing": decision.to_dict(), "diagnostic_reasons": list(why)}))
+            finished, available, {"sizing": decision.to_dict(), "diagnostic_reasons": list(why)}))
+        if clock_ns:
+            record_computation(repo, artifact_ref=decision.content_hash, information_cutoff_ns=cutoff_ns,
+                started_ns=started, finished_ns=finished, available_ns=available,
+                input_refs=decision.risk_input_refs, deadline_ns=candidate.deadline_ns)
+            body = {"sizing_ref": decision.content_hash, "authority": "ZERO"}
+            repo.register_artifact(ArtifactIndexEntryV2(computation_identity, "SizingComputationIdentityV1",
+                sha256_json(body), available, available, body))
         return decision
     if (v1.policy_effective_at_ns > cutoff_ns or v2.effective_at_ns > cutoff_ns or
             account.available_at_ns > cutoff_ns or fee.available_at_ns > cutoff_ns or product.available_at_ns > cutoff_ns or

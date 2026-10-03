@@ -20,7 +20,7 @@ from atlas.v2.data.bars import BarIntervalV2
 from atlas.v2.data.history import IndexedCausalBarV2, reconstruct_indexed_causal_bars_v1
 from atlas.v2.data.raw import AvailabilityClassV2
 from atlas.v2.instruments import InstrumentKeyV2
-from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
+from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository, prediction_due_lane_v1
 from atlas.v2.models.baseline import BaselineInputsV2
 from atlas.v2.models.protocol import ForecastArtifactV2
 from atlas.v2.models.worker_protocol import WorkerRequestV2
@@ -43,6 +43,13 @@ RESEARCH_PREDICTION_TARGET_DEFINITION_V1 = {
 }
 RESEARCH_PREDICTION_TARGET_REF_V1 = sha256_json(RESEARCH_PREDICTION_TARGET_DEFINITION_V1)
 MAINTENANCE_INTERVAL_NS_V1 = 60_000_000_000
+MAX_PREDICTION_TERMINALS_PER_CYCLE_V1 = 8
+MAX_PREDICTION_HORIZONS_PER_CYCLE_V1 = 8
+
+
+class _PredictionPublicationPending(Exception):
+    def __init__(self, available_at_ns: int):
+        self.available_at_ns = available_at_ns
 
 
 @dataclass(frozen=True)
@@ -329,7 +336,7 @@ def index_research_prediction_outcome_v1(repo: OpsRepository, item: ResearchPred
 
 
 class ResearchPredictionOutcomeMaintenanceV1:
-    """One horizon per minute, bounded index/archive reads and restart-safe retries."""
+    """Indexed due horizons, bounded reads and restart-safe immutable labels."""
 
     def __init__(self, *, run_id: str, config_hash: str, archive_root: str | Path,
                  clock_ns: Callable[[], int] = time.time_ns,
@@ -447,109 +454,213 @@ class ResearchPredictionOutcomeMaintenanceV1:
 
     def run_cycle(self, repo: OpsRepository, *, evidence_cutoff_ns: int) -> Mapping[str, Any]:
         cutoff = timestamp(evidence_cutoff_ns, field="evidence_cutoff_ns")
+        terminal_lane = prediction_due_lane_v1("PREDICTION_TERMINAL", self.run_id, self.config_hash)
+        outcome_lane = prediction_due_lane_v1("PREDICTION_OUTCOME", self.run_id, self.config_hash)
         if repo.read_only:
             raise ValueError("prediction maintenance uses the existing controller writer")
-        checkpoint_page = repo.artifact_entries_by_metadata_identity("ResearchPredictionOutcomeCheckpointV1",
+        page = repo.artifact_entries_by_metadata_identity("ResearchPredictionOutcomeCheckpointV1",
             ("checkpoint", "run_id"), self.run_id, as_of_ns=cutoff, limit=1)
-        if checkpoint_page.invalid_entry_count:
+        if page.invalid_entry_count:
             raise ValueError("prediction maintenance checkpoint index is corrupt")
-        previous = checkpoint_page.entries[0] if checkpoint_page.entries else None
+        previous = page.entries[0] if page.entries else None
         checkpoint = previous.metadata.get("checkpoint") if previous else None
         if previous is not None and (not isinstance(checkpoint, Mapping)
                 or sha256_json(checkpoint) != previous.content_hash
-                or previous.artifact_ref != previous.content_hash or checkpoint.get("config_hash") != self.config_hash):
+                or checkpoint.get("config_hash") != self.config_hash):
             raise ValueError("prediction maintenance checkpoint identity conflicts")
         if previous is not None and cutoff < previous.available_at_ns + MAINTENANCE_INTERVAL_NS_V1:
-            return {"status": "IMPLEMENTED", "horizons_inspected": 0, "labels_written": 0, "reason_code": "BOUNDED_INTERVAL"}
-        cursor = tuple(checkpoint["cursor"]) if checkpoint and checkpoint.get("cursor") else None
-        current_ref = checkpoint.get("current_terminal_ref") if checkpoint else None
-        horizon_index = checkpoint.get("horizon_index", 0) if checkpoint else 0
-        sweep_cutoff = checkpoint.get("sweep_cutoff_ns", cutoff) if checkpoint else cutoff
-        if current_ref is not None:
-            current = repo.get_artifact(current_ref)
-        else:
-            page = repo.artifact_entries_by_types_page(("ResearchModelTerminalV1",), as_of_ns=sweep_cutoff,
-                                                      after=cursor, limit=1)
-            if page.invalid_entry_count:
-                raise ValueError("prediction model terminal index is corrupt")
-            current = page.entries[0] if page.entries else None
-        next_state: dict[str, Any]
-        if current is None:
-            if checkpoint is None or (cursor is None and current_ref is None and sweep_cutoff == cutoff):
-                return {"status": "IMPLEMENTED", "horizons_inspected": 0, "labels_written": 0, "reason_code": "NO_MODEL_TERMINALS"}
-            next_state = {"cursor": None, "current_terminal_ref": None, "horizon_index": 0, "sweep_cutoff_ns": cutoff}
-            writes = 0
-        else:
-            terminal, _seal, packet = _producer(repo, current.artifact_ref, cutoff)
-            if terminal["run_id"] != self.run_id or terminal["config_hash"] != self.config_hash:
-                raise ValueError("prediction terminal belongs to another immutable run")
-            horizons = packet.request.requested_horizons
-            if type(horizon_index) is not int or not 0 <= horizon_index < len(horizons) or len(horizons) > 8:
-                raise ValueError("prediction checkpoint horizon cursor is invalid")
-            prediction_id = sha256_json({"version": "ResearchPredictionIdentityV1",
-                "terminal_ref": current.artifact_ref, "target_definition_ref": RESEARCH_PREDICTION_TARGET_REF_V1,
-                "horizon_ns": horizons[horizon_index]})
-            completion_key = sha256_json({"version": "ResearchPredictionCompletionIdentityV1", "prediction_id": prediction_id})
-            completed = repo.get_artifact(completion_key)
-            writes = 0
-            if completed is not None:
-                binding = completed.metadata.get("prediction_completion")
-                if (completed.artifact_type != "ResearchPredictionCompletionIdentityV1"
-                        or not isinstance(binding, Mapping) or sha256_json(binding) != completed.content_hash
-                        or binding.get("prediction_id") != prediction_id):
-                    raise ValueError("prediction completed label identity is corrupt")
-                label = repo.get_artifact(binding["outcome_ref"])
-                if label is None or label.artifact_type != "ResearchPredictionOutcomeV1":
-                    raise ValueError("prediction completed label evidence is missing")
-                typed_label = ResearchPredictionOutcomeV1.from_dict(json_value(label.metadata["prediction_outcome"]))
-                validate_research_prediction_outcome_v1(repo, typed_label)
-                if typed_label.label_state != "MATURED" or typed_label.prediction_id != prediction_id:
-                    raise ValueError("prediction completion does not bind a measured label")
-            else:
-                item = self._measure(repo, current.artifact_ref, horizons[horizon_index], cutoff)
-                support_page = repo.artifact_entries_by_metadata_identity("ResearchPredictionOutcomeV1",
-                    ("prediction_outcome", "prediction_id"), item.prediction_id, as_of_ns=cutoff, limit=1)
-                if support_page.invalid_entry_count:
-                    raise ValueError("prediction support state index is corrupt")
-                old_item = ResearchPredictionOutcomeV1.from_dict(json_value(support_page.entries[0].metadata["prediction_outcome"])) if support_page.entries else None
-                if old_item is not None:
-                    validate_research_prediction_outcome_v1(repo, old_item)
-                current_support = item.to_dict()
-                previous_support = old_item.to_dict() if old_item is not None else None
-                current_support.pop("available_at_ns")
-                if previous_support is not None:
-                    previous_support.pop("available_at_ns")
-                if old_item is None or current_support != previous_support:
-                    try:
-                        ref = index_research_prediction_outcome_v1(repo, item)
-                    except (ValueError, TypeError, KeyError, ArithmeticError):
-                        item = replace(item, label_state="UNRESOLVED", reason_code="PREDICTION_FORECAST_LINEAGE_INVALID",
-                            measured_log_return=None, measured_origin_close=None, measured_horizon_close=None,
-                            source_refs=(), measurement_ref=None)
-                        ref = index_research_prediction_outcome_v1(repo, item)
-                    writes = 1
+            return {"status": "IMPLEMENTED", "horizons_inspected": 0, "labels_written": 0,
+                "reason_code": "BOUNDED_INTERVAL", "due_work": repo.due_work_pressure(
+                    outcome_lane, as_of_ns=cutoff, page_limit=MAX_PREDICTION_HORIZONS_PER_CYCLE_V1)}
+        discovery = repo.discover_due_work()
+        failure: str | None = None
+        diagnostics: list[Mapping[str, Any]] = []
+        terminal_count = 0
+        terminals = repo.due_work_items(terminal_lane, as_of_ns=cutoff,
+            limit=MAX_PREDICTION_TERMINALS_PER_CYCLE_V1)
+        remaining = MAX_PREDICTION_TERMINALS_PER_CYCLE_V1 - len(terminals)
+        if remaining:
+            terminals += repo.due_work_items("PREDICTION_TERMINAL", as_of_ns=cutoff, limit=remaining)
+        for work in terminals:
+            terminal_count += 1
+            try:
+                # Route legacy projection rows without judging another run's evidence.
+                if work.lane == "PREDICTION_TERMINAL":
+                    entry = repo.get_artifact(work.source_ref)
+                    routing = entry.metadata.get("routing") if entry is not None else None
+                    if (isinstance(routing, Mapping) and isinstance(routing.get("run_id"), str)
+                            and isinstance(routing.get("config_hash"), str)):
+                        scoped = prediction_due_lane_v1(work.lane, routing["run_id"], routing["config_hash"])
+                        repo.enqueue_due_work(lane=scoped, work_id=work.work_id,
+                            source_ref=work.source_ref, created_at_ns=work.created_at_ns,
+                            due_at_ns=work.due_at_ns, payload=work.payload)
+                        repo.retire_due_work(work.lane, work.work_id, reason_code="RUN_LANE_MIGRATED")
+                        continue
+                terminal, _seal, packet = _producer(repo, work.source_ref, cutoff)
+                if terminal["run_id"] != self.run_id or terminal["config_hash"] != self.config_hash:
+                    raise ValueError("prediction terminal belongs to another immutable run")
+                horizons = packet.request.requested_horizons
+                if not 1 <= len(horizons) <= 8:
+                    raise ValueError("prediction horizon population exceeds its bound")
+                for horizon in horizons:
+                    identity = sha256_json({"version": "ResearchPredictionIdentityV1",
+                        "terminal_ref": work.source_ref, "target_definition_ref": RESEARCH_PREDICTION_TARGET_REF_V1,
+                        "horizon_ns": horizon})
+                    repo.enqueue_due_work(lane=outcome_lane, work_id=identity,
+                        source_ref=work.source_ref, created_at_ns=work.created_at_ns,
+                        due_at_ns=work.due_at_ns, payload={"horizon_ns": horizon})
+                repo.retire_due_work(work.lane, work.work_id, reason_code="HORIZONS_ENQUEUED")
+            except (ValueError, TypeError, KeyError):
+                failure = "PREDICTION_TERMINAL_LINEAGE_INVALID"
+                repo.quarantine_due_work(work.lane, work.work_id, reason_code=failure)
+                diagnostics.append({"source_ref": work.source_ref, "work_id": work.work_id,
+                    "reason_code": failure, "disposition": "QUARANTINED"})
+        writes = inspected = 0
+        legacy_horizons = repo.due_work_items("PREDICTION_OUTCOME", as_of_ns=cutoff,
+            limit=MAX_PREDICTION_HORIZONS_PER_CYCLE_V1)
+        for work in legacy_horizons:
+            try:
+                entry = repo.get_artifact(work.source_ref)
+                routing = entry.metadata.get("routing") if entry is not None else None
+                if not isinstance(routing, Mapping):
+                    raise ValueError("prediction source run identity is missing")
+                scoped = prediction_due_lane_v1("PREDICTION_OUTCOME", routing["run_id"], routing["config_hash"])
+                repo.enqueue_due_work(lane=scoped, work_id=work.work_id,
+                    source_ref=work.source_ref, created_at_ns=work.created_at_ns,
+                    due_at_ns=work.due_at_ns, payload=work.payload)
+                repo.retire_due_work(work.lane, work.work_id, reason_code="RUN_LANE_MIGRATED")
+            except (ValueError, TypeError, KeyError):
+                failure = "PREDICTION_FORECAST_LINEAGE_INVALID"
+                repo.quarantine_due_work(work.lane, work.work_id, reason_code=failure)
+                diagnostics.append({"source_ref": work.source_ref, "work_id": work.work_id,
+                    "reason_code": failure, "disposition": "QUARANTINED"})
+        terminal_reasons = {
+            "PREDICTION_TARGET_ABI_UNSUPPORTED", "PREDICTION_HORIZON_UNSUPPORTED",
+            "PREDICTION_TARGET_ALREADY_ELAPSED_AT_CUTOFF", "PREDICTION_TARGET_NOT_PREDECLARED",
+            "PREDICTION_MODEL_TERMINAL_UNUSABLE",
+        }
+        for work in repo.due_work_items(outcome_lane, as_of_ns=cutoff,
+                                        limit=MAX_PREDICTION_HORIZONS_PER_CYCLE_V1):
+            inspected += 1
+            try:
+                item, written = self._maintain_due_horizon(repo, work.source_ref, work.payload["horizon_ns"], cutoff)
+                writes += written
+                if item.reason_code == "PREDICTION_FORECAST_LINEAGE_INVALID":
+                    repo.quarantine_due_work(work.lane, work.work_id, reason_code=item.reason_code)
+                    failure = item.reason_code
+                    diagnostics.append({"source_ref": work.source_ref, "work_id": work.work_id,
+                        "reason_code": failure, "disposition": "QUARANTINED"})
+                elif item.label_state == "MATURED" or item.reason_code in terminal_reasons:
+                    repo.retire_due_work(work.lane, work.work_id,
+                        reason_code="MATURED" if item.label_state == "MATURED" else item.reason_code or "UNSUPPORTED")
                 else:
-                    assert old_item is not None
-                    item, ref = old_item, old_item.content_hash
-                if item.label_state == "MATURED":
-                    binding = {"version": "ResearchPredictionCompletionIdentityV1", "prediction_id": item.prediction_id,
-                               "outcome_ref": ref, "authority": "ZERO"}
-                    repo.register_artifact(ArtifactIndexEntryV2(completion_key, "ResearchPredictionCompletionIdentityV1",
-                        sha256_json(binding), item.available_at_ns, item.available_at_ns, {"prediction_completion": binding}))
-            horizon_index += 1
-            finished = horizon_index == len(horizons)
-            next_state = {"cursor": [current.created_at_ns, current.artifact_ref] if finished else list(cursor) if cursor else None,
-                "current_terminal_ref": None if finished else current.artifact_ref,
-                "horizon_index": 0 if finished else horizon_index, "sweep_cutoff_ns": sweep_cutoff}
-        published = self.clock_ns()
+                    due = max(cutoff + MAINTENANCE_INTERVAL_NS_V1,
+                        item.horizon_end_ns or cutoff) if item.reason_code == "PREDICTION_HORIZON_PENDING" else (
+                            cutoff + MAINTENANCE_INTERVAL_NS_V1)
+                    repo.reschedule_due_work(work.lane, work.work_id, due_at_ns=due,
+                        reason_code=item.reason_code or "PREDICTION_UNRESOLVED")
+            except _PredictionPublicationPending as pending:
+                repo.reschedule_due_work(work.lane, work.work_id,
+                    due_at_ns=max(cutoff + MAINTENANCE_INTERVAL_NS_V1, pending.available_at_ns),
+                    reason_code="PREDICTION_PRIOR_PUBLICATION_PENDING")
+            except (ValueError, TypeError, KeyError, ArithmeticError):
+                failure = "PREDICTION_FORECAST_LINEAGE_INVALID"
+                repo.quarantine_due_work(work.lane, work.work_id, reason_code=failure)
+                diagnostics.append({"source_ref": work.source_ref, "work_id": work.work_id,
+                    "reason_code": failure, "disposition": "QUARANTINED"})
+        pressure = repo.due_work_pressure(outcome_lane, as_of_ns=cutoff,
+                                         page_limit=MAX_PREDICTION_HORIZONS_PER_CYCLE_V1)
+        published = timestamp(self.clock_ns(), field="prediction maintenance publication")
         if published < cutoff:
             raise ValueError("prediction maintenance publication clock precedes its evidence cutoff")
         next_checkpoint = {"version": "ResearchPredictionOutcomeCheckpointV1", "run_id": self.run_id,
             "config_hash": self.config_hash, "generation": checkpoint.get("generation", 0) + 1 if checkpoint else 0,
             "previous_checkpoint_ref": previous.artifact_ref if previous else None, "available_at_ns": published,
-            **next_state, "authority": "ZERO"}
+            "cursor": None, "current_terminal_ref": None, "horizon_index": 0, "sweep_cutoff_ns": cutoff,
+            "method": "INDEXED_DUE_WORK_V1", "discovery": discovery, "due_work": pressure,
+            "terminal_due_work": repo.due_work_pressure(terminal_lane, as_of_ns=cutoff,
+                page_limit=MAX_PREDICTION_TERMINALS_PER_CYCLE_V1),
+            "unscoped_terminal_due_work": repo.due_work_pressure("PREDICTION_TERMINAL", as_of_ns=cutoff,
+                page_limit=MAX_PREDICTION_TERMINALS_PER_CYCLE_V1),
+            "unscoped_outcome_due_work": repo.due_work_pressure("PREDICTION_OUTCOME", as_of_ns=cutoff,
+                page_limit=MAX_PREDICTION_HORIZONS_PER_CYCLE_V1),
+            "legacy_horizons_inspected": len(legacy_horizons),
+            "diagnostics": diagnostics, "failure_code": failure, "authority": "ZERO"}
         ref = sha256_json(next_checkpoint)
         repo.register_artifact(ArtifactIndexEntryV2(ref, "ResearchPredictionOutcomeCheckpointV1", ref,
             published, published, {"checkpoint": next_checkpoint}))
-        return {"status": "IMPLEMENTED", "horizons_inspected": int(current is not None),
-                "labels_written": writes, "checkpoint_ref": ref, "authority": "ZERO"}
+        return {"status": "IMPLEMENTED", "horizons_inspected": inspected, "labels_written": writes,
+            "terminals_inspected": terminal_count, "checkpoint_ref": ref, "due_work": pressure,
+            "terminal_due_work": next_checkpoint["terminal_due_work"],
+            "unscoped_terminal_due_work": next_checkpoint["unscoped_terminal_due_work"],
+            "unscoped_outcome_due_work": next_checkpoint["unscoped_outcome_due_work"],
+            "legacy_horizons_inspected": len(legacy_horizons),
+            "diagnostics": diagnostics, "discovery": discovery, "failure_code": failure, "authority": "ZERO"}
+
+    def _maintain_due_horizon(self, repo: OpsRepository, terminal_ref: str, horizon: int,
+                             cutoff: int) -> tuple[ResearchPredictionOutcomeV1, int]:
+        prediction_id = sha256_json({"version": "ResearchPredictionIdentityV1", "terminal_ref": terminal_ref,
+            "target_definition_ref": RESEARCH_PREDICTION_TARGET_REF_V1, "horizon_ns": horizon})
+        completion_key = sha256_json({"version": "ResearchPredictionCompletionIdentityV1", "prediction_id": prediction_id})
+        completed = repo.get_artifact(completion_key)
+        if completed is not None:
+            if completed.available_at_ns > cutoff:
+                raise _PredictionPublicationPending(completed.available_at_ns)
+            binding = completed.metadata.get("prediction_completion")
+            if (completed.artifact_type != "ResearchPredictionCompletionIdentityV1"
+                    or not isinstance(binding, Mapping) or sha256_json(binding) != completed.content_hash
+                    or binding.get("prediction_id") != prediction_id or binding.get("authority") != "ZERO"):
+                raise ValueError("prediction completed label identity is corrupt")
+            label = repo.get_artifact(binding["outcome_ref"])
+            if label is None or label.artifact_type != "ResearchPredictionOutcomeV1":
+                raise ValueError("prediction completed label evidence is missing")
+            item = ResearchPredictionOutcomeV1.from_dict(json_value(label.metadata["prediction_outcome"]))
+            validate_research_prediction_outcome_v1(repo, item)
+            if (item.label_state != "MATURED" or item.prediction_id != prediction_id
+                    or label.artifact_ref != item.content_hash or label.content_hash != item.content_hash
+                    or label.created_at_ns != item.available_at_ns or label.available_at_ns != item.available_at_ns
+                    or completed.created_at_ns != item.available_at_ns or completed.available_at_ns != item.available_at_ns):
+                raise ValueError("prediction completion does not bind a measured label")
+            return item, 0
+        support_page = repo.artifact_entries_by_metadata_identity("ResearchPredictionOutcomeV1",
+            ("prediction_outcome", "prediction_id"), prediction_id, as_of_ns=2**63 - 1, limit=1)
+        if support_page.invalid_entry_count:
+            raise ValueError("prediction support state index is corrupt")
+        # Queue recovery checks physical publication progress without consuming
+        # future label contents or remeasuring an already published horizon.
+        if support_page.entries and support_page.entries[0].available_at_ns > cutoff:
+            raise _PredictionPublicationPending(support_page.entries[0].available_at_ns)
+        old_item = ResearchPredictionOutcomeV1.from_dict(json_value(
+            support_page.entries[0].metadata["prediction_outcome"])) if support_page.entries else None
+        if old_item is not None:
+            validate_research_prediction_outcome_v1(repo, old_item)
+            entry = support_page.entries[0]
+            if (entry.artifact_ref != old_item.content_hash or entry.content_hash != old_item.content_hash
+                    or entry.created_at_ns != old_item.available_at_ns or entry.available_at_ns != old_item.available_at_ns):
+                raise ValueError("prediction support publication identity is corrupt")
+        # A crash after label publication but before completion never remeasures
+        # the horizon against a later market revision.
+        item = old_item if old_item is not None and old_item.label_state == "MATURED" else self._measure(
+            repo, terminal_ref, horizon, cutoff)
+        current_support, previous_support = item.to_dict(), old_item.to_dict() if old_item else None
+        current_support.pop("available_at_ns")
+        if previous_support is not None:
+            previous_support.pop("available_at_ns")
+        writes = int(old_item is None or current_support != previous_support)
+        if writes:
+            try:
+                ref = index_research_prediction_outcome_v1(repo, item)
+            except (ValueError, TypeError, KeyError, ArithmeticError):
+                item = replace(item, label_state="UNRESOLVED", reason_code="PREDICTION_FORECAST_LINEAGE_INVALID",
+                    measured_log_return=None, measured_origin_close=None, measured_horizon_close=None,
+                    source_refs=(), measurement_ref=None)
+                ref = index_research_prediction_outcome_v1(repo, item)
+        else:
+            assert old_item is not None
+            item, ref = old_item, old_item.content_hash
+        if item.label_state == "MATURED":
+            binding = {"version": "ResearchPredictionCompletionIdentityV1", "prediction_id": item.prediction_id,
+                "outcome_ref": ref, "authority": "ZERO"}
+            repo.register_artifact(ArtifactIndexEntryV2(completion_key, "ResearchPredictionCompletionIdentityV1",
+                sha256_json(binding), item.available_at_ns, item.available_at_ns, {"prediction_completion": binding}))
+        return item, writes

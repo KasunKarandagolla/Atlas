@@ -143,6 +143,63 @@ _DDL = (
 
 _ARTIFACT_IDENTITY_INDEX_DDL = _DDL[9:]
 
+# Controller-owned, rebuildable scheduling projections. They carry no outcome
+# or authority; immutable artifact_index evidence remains authoritative. Keeping
+# this additive extension separate preserves the accepted schema-v1 wire.
+_DUE_WORK_DDL = (
+    """CREATE TABLE IF NOT EXISTS public_bar_repair_head (
+        instrument_key_json TEXT NOT NULL, interval TEXT NOT NULL,
+        recovery_started_at_ns INTEGER NOT NULL, verified_close_at_ns INTEGER NOT NULL,
+        certificate_ref TEXT, available_at_ns INTEGER NOT NULL,
+        PRIMARY KEY(instrument_key_json,interval)
+    )""",
+    """CREATE TABLE IF NOT EXISTS native_origin_window_head (
+        instrument_key_json TEXT NOT NULL, event_type TEXT NOT NULL,
+        window_ref TEXT NOT NULL, available_from_ns INTEGER NOT NULL,
+        available_through_ns INTEGER NOT NULL, cursor_available_ns INTEGER NOT NULL,
+        cursor_ref TEXT NOT NULL, complete INTEGER NOT NULL,
+        PRIMARY KEY(instrument_key_json,event_type)
+    )""",
+    """CREATE TABLE IF NOT EXISTS native_origin_window (
+        window_ref TEXT NOT NULL, close_at_ns INTEGER NOT NULL,
+        available_at_ns INTEGER NOT NULL, artifact_ref TEXT NOT NULL,
+        PRIMARY KEY(window_ref,close_at_ns)
+    )""",
+    """CREATE TABLE IF NOT EXISTS active_history_head (
+        instrument_key_json TEXT NOT NULL, interval TEXT NOT NULL,
+        state_json TEXT, state_ref TEXT, scan_close_at_ns INTEGER NOT NULL,
+        cutoff_ns INTEGER NOT NULL, available_at_ns INTEGER NOT NULL,
+        dirty_available_at_ns INTEGER,
+        PRIMARY KEY(instrument_key_json,interval)
+    )""",
+    """CREATE TABLE IF NOT EXISTS collector_cursor_head (
+        source_id TEXT NOT NULL, channel TEXT NOT NULL, artifact_ref TEXT NOT NULL,
+        high_water_sequence INTEGER NOT NULL, created_at_ns INTEGER NOT NULL,
+        PRIMARY KEY(source_id,channel)
+    )""",
+    """CREATE TABLE IF NOT EXISTS due_work (
+        lane TEXT NOT NULL, work_id TEXT NOT NULL, source_ref TEXT NOT NULL,
+        created_at_ns INTEGER NOT NULL, due_at_ns INTEGER NOT NULL,
+        payload_json TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+        state TEXT NOT NULL DEFAULT 'PENDING', reason_code TEXT,
+        PRIMARY KEY(lane, work_id)
+    )""",
+    """CREATE INDEX IF NOT EXISTS due_work_ready ON due_work
+        (lane, due_at_ns, work_id) WHERE state='PENDING'""",
+    """CREATE INDEX IF NOT EXISTS due_work_oldest ON due_work
+        (lane, created_at_ns, work_id) WHERE state='PENDING'""",
+    """CREATE TABLE IF NOT EXISTS due_work_pressure (
+        lane TEXT PRIMARY KEY, pending_count INTEGER NOT NULL DEFAULT 0,
+        retired_count INTEGER NOT NULL DEFAULT 0
+    )""",
+    """CREATE TABLE IF NOT EXISTS due_work_discovery (
+        projection_id TEXT PRIMARY KEY, last_rowid INTEGER NOT NULL
+    )""",
+    """CREATE TABLE IF NOT EXISTS due_work_quarantine_pressure (
+        lane TEXT PRIMARY KEY, quarantined_count INTEGER NOT NULL DEFAULT 0
+    )""",
+)
+
 
 def initialize(connection: sqlite3.Connection) -> None:
     """Initialize only an empty ops DB, or validate the known schema version."""
@@ -169,6 +226,11 @@ def initialize(connection: sqlite3.Connection) -> None:
         try:
             for statement in _ARTIFACT_IDENTITY_INDEX_DDL:
                 connection.execute(statement.replace("CREATE INDEX ", "CREATE INDEX IF NOT EXISTS ", 1))
+            for statement in _DUE_WORK_DDL:
+                connection.execute(statement)
+            if "collector_cursor_head" not in tables:
+                connection.execute("INSERT OR IGNORE INTO due_work_discovery(projection_id,last_rowid) "
+                                   "VALUES('COLLECTOR_HEADS_V1',0)")
             connection.commit()
         except BaseException:
             connection.rollback()
@@ -180,6 +242,10 @@ def initialize(connection: sqlite3.Connection) -> None:
     try:
         for statement in _DDL:
             connection.execute(statement)
+        for statement in _DUE_WORK_DDL:
+            connection.execute(statement)
+        connection.execute("INSERT INTO due_work_discovery(projection_id,last_rowid) "
+                           "VALUES('COLLECTOR_HEADS_V1',-1)")
         connection.execute(
             "INSERT INTO schema_meta(namespace, schema_version) VALUES (?, ?)",
             (OPS_SCHEMA_NAMESPACE, OPS_SCHEMA_VERSION),

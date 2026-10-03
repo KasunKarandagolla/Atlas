@@ -387,7 +387,12 @@ def persist_native_s3_not_estimable_candidate_set(
     if any(entry is None for entry in diagnostic_entries):
         raise ValueError("native S3 CandidateSet lost a persisted diagnostic artifact")
     index_ref = _native_candidate_set_index_ref(event.event_id, universe.content_hash)
-    for prior_index in repository.artifact_entries("CandidateSetDecisionIndexV1"):
+    prior_indexes = repository.artifact_entries_by_metadata_identity(
+        "CandidateSetDecisionIndexV1", ("decision_event_id",), event.event_id,
+        as_of_ns=9_223_372_036_854_775_807, limit=2)
+    if prior_indexes.has_more or prior_indexes.invalid_entry_count:
+        raise ValueError("native S3 decision has an excessive or invalid CandidateSet index population")
+    for prior_index in prior_indexes.entries:
         if (prior_index.metadata.get("decision_event_id") == event.event_id
                 and prior_index.artifact_ref != index_ref):
             raise ValueError("native S3 decision already has a conflicting CandidateSet index identity")
@@ -397,12 +402,10 @@ def persist_native_s3_not_estimable_candidate_set(
             repository, index_entry, index_ref, event, universe, source_refs, diagnostics,
         )
 
-    stray = []
-    for entry in repository.artifact_entries("CandidateSetV2"):
-        body = entry.metadata.get("candidate_set")
-        if isinstance(body, Mapping) and body.get("decision_event_id") == event.event_id:
-            stray.append(entry)
-    if stray:
+    stray = repository.artifact_entries_by_metadata_identity(
+        "CandidateSetV2", ("candidate_set", "decision_event_id"), event.event_id,
+        as_of_ns=9_223_372_036_854_775_807, limit=2)
+    if stray.entries or stray.has_more or stray.invalid_entry_count:
         raise ValueError("native S3 decision already has an unindexed CandidateSet identity")
 
     if not (max(event.information_cutoff_ns, universe.envelope.available_at_ns,

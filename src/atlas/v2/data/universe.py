@@ -153,12 +153,15 @@ class DynamicUniverseRuntimeV2:
         top_tier_2: int = 20,
         top_tier_3: int = 5,
         input_refs: Sequence[str] = (),
+        publication_at_ns: int | None = None,
     ) -> UniverseRuntimeResultV2:
         timestamp(decision_slot_ns, field="decision_slot_ns")
         timestamp(information_cutoff_ns, field="information_cutoff_ns")
         timestamp(created_at_ns, field="created_at_ns")
-        if information_cutoff_ns > decision_slot_ns or created_at_ns > information_cutoff_ns:
+        if information_cutoff_ns > decision_slot_ns or (publication_at_ns is None and created_at_ns > information_cutoff_ns):
             raise ValueError("universe snapshot must be available at its information cutoff")
+        if publication_at_ns is not None and not information_cutoff_ns <= created_at_ns <= publication_at_ns:
+            raise ValueError("universe derived publication chronology invalid")
         if top_tier_2 < 0 or top_tier_3 < 0:
             raise ValueError("compute tier sizes must be nonnegative")
         causal_refs = tuple(input_refs)
@@ -266,7 +269,7 @@ class DynamicUniverseRuntimeV2:
             1,
             f"universe-{decision_slot_ns}-{sha256_json(artifact_refs)[:16]}",
             created_at_ns,
-            created_at_ns,
+            created_at_ns if publication_at_ns is None else publication_at_ns,
             "dynamic-universe-v1",
             artifact_refs,
         )

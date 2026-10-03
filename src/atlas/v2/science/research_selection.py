@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
-from atlas.v2._serialization import canonical_json, sha256_json
+from atlas.v2._serialization import canonical_json, json_value, sha256_json
 from atlas.v2.contracts import (
     ArtifactEnvelope,
     CandidateActionV2,
@@ -108,7 +108,9 @@ def persist_research_sleeve_audit(repo: OpsRepository, *, available_at_ns: int) 
 
 
 def _candidate_is_indexed(repo: OpsRepository, candidate: CandidateActionV2, policy: PolicySpecV2,
-        universe: UniverseContractV2, cutoff_ns: int) -> ArtifactIndexEntryV2:
+        universe: UniverseContractV2, cutoff_ns: int, consumer_at_ns: int | None = None) -> ArtifactIndexEntryV2:
+    from atlas.v2.chronology import causal_artifact
+    consumer_at_ns = cutoff_ns if consumer_at_ns is None else consumer_at_ns
     entry = repo.get_artifact(candidate.content_hash)
     if (entry is None or entry.artifact_type != "CandidateActionV2" or entry.content_hash != candidate.content_hash
         or canonical_json(entry.metadata.get("candidate")) != candidate.to_canonical_json()):
@@ -124,9 +126,10 @@ def _candidate_is_indexed(repo: OpsRepository, candidate: CandidateActionV2, pol
         raise ValueError("multi-sleeve candidate stop is on the wrong side")
     if candidate.quantity is not None:
         raise ValueError("CandidateSet selection accepts only unsized exact action hypotheses")
-    if candidate.decision_at_ns != cutoff_ns or candidate.envelope.available_at_ns > cutoff_ns:
+    if candidate.decision_at_ns != cutoff_ns or candidate.envelope.available_at_ns > consumer_at_ns:
         raise ValueError("multi-sleeve candidate decision/cutoff identity mismatch")
-    if entry.available_at_ns > cutoff_ns:
+    if not causal_artifact(repo, candidate.content_hash, cutoff_ns=cutoff_ns,
+                           consumer_at_ns=consumer_at_ns, deadline_ns=candidate.deadline_ns):
         raise ValueError("multi-sleeve candidate artifact is unavailable at selection cutoff")
     if candidate.key not in {row.key for row in universe.entries}:
         raise ValueError("exact action candidate instrument absent from point-in-time universe")
@@ -167,22 +170,29 @@ def _selection_stage_inputs_only(repo: OpsRepository, source_ref: str, cutoff_ns
 def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe: UniverseContractV2,
         decision_event_id: str, cutoff_ns: int, candidates: Sequence[CandidateActionV2],
         policies: Mapping[str, PolicySpecV2], scanner_evidence_refs: Mapping[str, Sequence[str]],
-        generation_missing_reasons: Sequence[str] = ()) -> CandidateSetV2:
+        generation_missing_reasons: Sequence[str] = (), clock_ns: Callable[[], int] | None = None,
+        deadline_ns: int | None = None) -> CandidateSetV2:
     """Build the separately versioned research set using selection-stage data only.
 
     M0/M1/analogue values are intentionally absent from this function's inputs.
     """
-    if not decision_event_id or type(cutoff_ns) is not int or cutoff_ns < 0:
-        raise ValueError("multi-sleeve decision identity/cutoff is required")
+    from atlas.v2.chronology import causal_artifact, record_computation, sample
     if any(not isinstance(item, CandidateActionV2) for item in candidates):
         raise TypeError("only complete single-action CandidateActionV2 competitors may enter the research set")
+    started = sample(clock_ns, floor_ns=max(cutoff_ns, universe.envelope.available_at_ns,
+        *(item.envelope.available_at_ns for item in candidates))) if clock_ns else cutoff_ns
+    deadline = deadline_ns if deadline_ns is not None else min((item.deadline_ns for item in candidates), default=cutoff_ns + 5_000_000_000)
+    if not decision_event_id or type(cutoff_ns) is not int or cutoff_ns < 0:
+        raise ValueError("multi-sleeve decision identity/cutoff is required")
     missing_reasons = tuple(sorted(set(generation_missing_reasons)))
     if len(missing_reasons) > 32 or any(not isinstance(reason, str) or not 1 <= len(reason) <= 192
                                        for reason in missing_reasons):
         raise ValueError("candidate generation missingness must be bounded explicit reasons")
     if universe.selection_policy_hash != MULTI_SLEEVE_SELECTION_HASH:
         raise ValueError("multi-sleeve selection requires its separately versioned research universe")
-    if universe.envelope.available_at_ns > cutoff_ns or cutoff_ns > universe.decision_slot_ns:
+    if ((clock_ns is not None and not causal_artifact(repo, universe.content_hash, cutoff_ns=cutoff_ns,
+                           consumer_at_ns=started, deadline_ns=deadline))
+            or universe.envelope.available_at_ns > started or cutoff_ns > universe.decision_slot_ns):
         raise ValueError("multi-sleeve universe is not causal at the selection cutoff")
     candidate_ids = [item.candidate_id for item in candidates]
     if len(candidate_ids) != len(set(candidate_ids)):
@@ -194,7 +204,7 @@ def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe
         policy = policies.get(candidate.policy_hash)
         if policy is None:
             raise ValueError("multi-sleeve policy specification missing")
-        _candidate_is_indexed(repo, candidate, policy, universe, cutoff_ns)
+        _candidate_is_indexed(repo, candidate, policy, universe, cutoff_ns, started)
     repo.register_artifact(ArtifactIndexEntryV2(MULTI_SLEEVE_SELECTION_HASH,
         "ResearchSelectionPolicyV2", MULTI_SLEEVE_SELECTION_HASH, 0, 0, MULTI_SLEEVE_SELECTION_BODY))
     repo.register_artifact(ArtifactIndexEntryV2(universe.content_hash, "UniverseContractV2",
@@ -239,7 +249,10 @@ def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe
             uncertain = True
             continue
         evidence_ref = refs[0]
-        evidence_entry = _indexed_causal(repo, evidence_ref, cutoff_ns)
+        evidence_entry = _indexed_causal(repo, evidence_ref, started)
+        if evidence_entry is not None and not causal_artifact(repo, evidence_ref, cutoff_ns=cutoff_ns,
+                                                              consumer_at_ns=started, deadline_ns=deadline):
+            evidence_entry = None
         if evidence_entry is None or evidence_entry.artifact_type != "ScannerRankEvidenceV1":
             statuses[candidate.candidate_id] = EligibilityStatusV2.NOT_ESTIMABLE
             reasons[candidate.candidate_id] = "SCANNER_EVIDENCE_UNAVAILABLE"
@@ -247,14 +260,14 @@ def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe
             continue
         evidence = ScannerRankEvidenceV1(**{name: evidence_entry.metadata[name]
             for name in ScannerRankEvidenceV1.__dataclass_fields__})
-        if not _selection_stage_inputs_only(repo, evidence.source_artifact_ref, cutoff_ns):
+        if not _selection_stage_inputs_only(repo, evidence.source_artifact_ref, started):
             statuses[candidate.candidate_id] = EligibilityStatusV2.NOT_ESTIMABLE
             reasons[candidate.candidate_id] = "MODEL_OR_OUTCOME_EVIDENCE_FORBIDDEN_AT_SELECTION"
             uncertain = True
             continue
         if (evidence.content_hash != evidence_ref or evidence.candidate_id != candidate.candidate_id
             or evidence.universe_ref != universe.content_hash or evidence.decision_event_id != decision_event_id
-            or evidence.available_at_ns > cutoff_ns or cutoff_ns - evidence.available_at_ns > RANK_MAX_AGE_NS
+            or evidence.available_at_ns > started or started - evidence.available_at_ns > RANK_MAX_AGE_NS
             or not _matching_scanner_source(repo, evidence.source_artifact_ref, evidence.to_dict(), key=candidate.key)):
             statuses[candidate.candidate_id] = EligibilityStatusV2.NOT_ESTIMABLE
             reasons[candidate.candidate_id] = "SCANNER_EVIDENCE_STALE_OR_CONTRADICTORY"
@@ -287,7 +300,22 @@ def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe
     if missing_reasons:
         identity["generation_missing_reasons"] = list(missing_reasons)
     identity_ref = sha256_json(identity)
-    envelope = ArtifactEnvelope(1, identity_ref, cutoff_ns, cutoff_ns,
+    decision_index_ref = sha256_json({"artifact_type": "CandidateSetDecisionIndexV1",
+        "decision_event_id": decision_event_id, "universe_ref": universe.content_hash,
+        "selection_policy_hash": MULTI_SLEEVE_SELECTION_HASH})
+    prior_index = repo.get_artifact(decision_index_ref)
+    if prior_index is not None:
+        prior = repo.get_artifact(str(prior_index.metadata.get("candidate_set_ref")))
+        if (prior is None or canonical_json(prior.metadata.get("identity")) != canonical_json(identity)
+                or not causal_artifact(repo, prior.artifact_ref, cutoff_ns=cutoff_ns,
+                                       consumer_at_ns=started, deadline_ns=deadline)):
+            raise ValueError("research decision conflicts with sealed CandidateSet")
+        return CandidateSetV2.from_dict(json_value(prior.metadata["candidate_set"]))
+    finished = sample(clock_ns, floor_ns=started) if clock_ns else cutoff_ns
+    available = sample(clock_ns, floor_ns=finished) if clock_ns else finished
+    if available > deadline:
+        raise ValueError("CandidateSet computation exceeded decision deadline")
+    envelope = ArtifactEnvelope(1, identity_ref, finished, available,
         "MULTI_SLEEVE_RESEARCH_CANDIDATE_PIPELINE_V1", tuple(sorted(causal_refs)))
     result = CandidateSetV2(envelope, decision_event_id, universe.content_hash,
         MULTI_SLEEVE_SELECTION_HASH, entries, selected_id,
@@ -302,10 +330,15 @@ def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe
     existing_index = repo.get_artifact(decision_index_ref)
     if existing_index is not None and canonical_json(existing_index.metadata) != canonical_json(index_body):
         raise ValueError("research decision cannot be rewritten with a different immutable CandidateSet")
-    if any(_indexed_causal(repo, ref, cutoff_ns) is None for ref in causal_refs):
+    if any(not causal_artifact(repo, ref, cutoff_ns=cutoff_ns,
+                               consumer_at_ns=started, deadline_ns=deadline) for ref in causal_refs):
         raise ValueError("multi-sleeve CandidateSet contains unavailable causal references")
     repo.register_artifact(ArtifactIndexEntryV2(result.content_hash, "CandidateSetV2", result.content_hash,
-        cutoff_ns, cutoff_ns, {"candidate_set": result.to_dict(), "identity": identity}))
+        finished, available, {"candidate_set": result.to_dict(), "identity": identity}))
     repo.register_artifact(ArtifactIndexEntryV2(decision_index_ref, "CandidateSetDecisionIndexV1",
-        sha256_json(index_body), cutoff_ns, cutoff_ns, index_body))
+        sha256_json(index_body), finished, available, index_body))
+    if clock_ns:
+        record_computation(repo, artifact_ref=result.content_hash, information_cutoff_ns=cutoff_ns,
+            started_ns=started, finished_ns=finished, available_ns=available,
+            input_refs=tuple(causal_refs), deadline_ns=deadline)
     return result

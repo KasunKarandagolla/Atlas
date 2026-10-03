@@ -5,6 +5,7 @@ No order, reservation, approval, leverage, protection or quantity API exists her
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
@@ -21,9 +22,10 @@ from atlas.v2.contracts import (
     V2Side,
     WatchStateV2,
 )
+from atlas.v2.data.active_history import ALGORITHM_VERSION, ActiveCausalHistoryStateV1, HistoryTailItemV1
 from atlas.v2.data.bars import BarIntervalV2
 from atlas.v2.features.joins import JoinedBars
-from atlas.v2.features.technical import technical_series
+from atlas.v2.features.technical import ema
 from atlas.v2.instruments import InstrumentKeyV2, UniverseContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 
@@ -177,11 +179,32 @@ def _gate(gate: EventGate | None, cutoff_ns: int) -> tuple[str, str]:
     return "AVAILABLE", "CLEAR"
 
 
-def _regime(join: JoinedBars) -> V2Side | None:
+def exact_prefix_items(join: JoinedBars, history: ActiveCausalHistoryStateV1,
+                       interval: BarIntervalV2) -> tuple[HistoryTailItemV1, ...]:
+    """Require the exact cutoff-visible suffix, never reseed a mismatched tail."""
+    bars = {BarIntervalV2.H1: join.h1, BarIntervalV2.H4: join.h4,
+            BarIntervalV2.M15: join.m15}[interval]
+    if (not isinstance(history, ActiveCausalHistoryStateV1) or history.key != join.key
+            or history.interval != interval or not bars or len(bars) > len(history.tail)
+            or history.max_source_available_at_ns > join.cutoff_ns):
+        raise ValueError("EXACT_PREFIX_HISTORY_MISMATCH")
+    items = history.tail[-len(bars):]
+    if any(item.bar.content_hash != bar.content_hash or bar.close_at_ns > join.cutoff_ns
+           or bar.raw.available_at_ns > join.cutoff_ns
+           for item, bar in zip(items, bars, strict=True)):
+        raise ValueError("EXACT_PREFIX_HISTORY_MISMATCH")
+    return items
+
+
+def _regime(join: JoinedBars, h4_history: ActiveCausalHistoryStateV1 | None = None) -> V2Side | None:
+    items = exact_prefix_items(join, h4_history, BarIntervalV2.H4) if h4_history is not None else None
     if len(join.h4) < 50:
         return None
-    values = technical_series(join.h4)[-1]
-    e20, e50 = values["ema20"], values["ema50"]
+    if items is None:
+        closes = [float(bar.close) for bar in join.h4]
+        e20, e50 = ema(closes, 20)[-1], ema(closes, 50)[-1]
+    else:
+        e20, e50 = items[-1].ema20, items[-1].ema50
     assert e20 is not None and e50 is not None
     close = float(join.h4[-1].close)
     if close > e50 and e20 > e50:
@@ -191,17 +214,22 @@ def _regime(join: JoinedBars) -> V2Side | None:
     return None
 
 
-def _setup(join: JoinedBars) -> tuple[V2Side, Decimal, tuple[str, ...]] | None:
-    side = _regime(join)
+def _setup(join: JoinedBars, h1_history: ActiveCausalHistoryStateV1 | None = None,
+           h4_history: ActiveCausalHistoryStateV1 | None = None) -> tuple[V2Side, Decimal, tuple[str, ...]] | None:
+    items = exact_prefix_items(join, h1_history, BarIntervalV2.H1) if h1_history is not None else None
+    side = _regime(join, h4_history)
     if side is None or len(join.h1) < 50:
         return None
-    series = technical_series(join.h1)
     bars = join.h1[-3:]
-    features = series[-3:]
-    if len(bars) != 3 or any(x["ema20"] is None or x["ema50"] is None for x in features):
+    if items is None:
+        closes = [float(bar.close) for bar in join.h1]
+        e20, e50 = ema(closes, 20)[-3:], ema(closes, 50)[-3:]
+    else:
+        e20, e50 = tuple(item.ema20 for item in items[-3:]), tuple(item.ema50 for item in items[-3:])
+    if len(bars) != 3 or any(value is None for value in (*e20, *e50)):
         return None
-    ema20 = [float(row["ema20"]) for row in features if row["ema20"] is not None]
-    ema50 = [float(row["ema50"]) for row in features if row["ema50"] is not None]
+    ema20 = [float(value) for value in e20 if value is not None]
+    ema50 = [float(value) for value in e50 if value is not None]
     if side == V2Side.LONG:
         touched = any(float(bar.low) <= level for bar, level in zip(bars, ema20, strict=True))
         reclaimed = float(bars[-1].close) > ema20[-1] and float(bars[-1].close) > ema50[-1]
@@ -220,23 +248,28 @@ def _id(value: object) -> str:
 
 
 class S1ShadowCoordinator:
-    def __init__(self, repository: OpsRepository, *, policy: PolicySpecV2 = S1_POLICY, cost_model_ref: str = "S1_SHADOW_COST_UNESTIMATED_V1") -> None:
+    def __init__(self, repository: OpsRepository, *, policy: PolicySpecV2 = S1_POLICY, cost_model_ref: str = "S1_SHADOW_COST_UNESTIMATED_V1", clock_ns: Callable[[], int] | None = None) -> None:
         if policy.policy_id != POLICY_ID or policy.policy_hash != S1_POLICY.policy_hash:
             raise ValueError("baseline coordinator requires exact S1 baseline policy")
         self.repository = repository
         self.policy = policy
         self.cost_model_ref = cost_model_ref
+        self.clock_ns = clock_ns
 
     def create_watch(self, join: JoinedBars, feature: FeatureArtifactV2, *, event_gate: EventGate | None,
-                     universe: UniverseContractV2) -> S1Decision:
+                     universe: UniverseContractV2, h1_history: ActiveCausalHistoryStateV1 | None = None,
+                     h4_history: ActiveCausalHistoryStateV1 | None = None) -> S1Decision:
+        from atlas.v2.chronology import record_computation, sample
+        started = sample(self.clock_ns, floor_ns=max(join.cutoff_ns, feature.envelope.available_at_ns,
+            universe.envelope.available_at_ns)) if self.clock_ns else join.cutoff_ns
         if join.status != "AVAILABLE" or join.key != feature.key or feature.information_cutoff_ns != join.cutoff_ns:
             return S1Decision("NOT_ESTIMABLE", join.reason or "FEATURE_OR_JOIN_MISMATCH")
         if feature.values["location.utc_day_trade_vwap"].value is not None:
             return S1Decision("NOT_ESTIMABLE", "OPTIONAL_INPUT_REQUIRES_POLICY_VARIANT")
-        gate_status, gate_reason = _gate(event_gate, join.cutoff_ns)
+        gate_status, gate_reason = _gate(event_gate, started)
         if gate_status != "AVAILABLE":
             return S1Decision(gate_status, gate_reason)
-        if not (universe.envelope.available_at_ns <= join.cutoff_ns <= universe.decision_slot_ns):
+        if not (universe.envelope.available_at_ns <= started and join.cutoff_ns <= universe.decision_slot_ns):
             return S1Decision("NOT_ESTIMABLE", "UNIVERSE_NOT_AVAILABLE_AT_CUTOFF")
         entries = [entry for entry in universe.entries if entry.key == join.key]
         if len(entries) != 1 or not entries[0].scanner_eligible or not entries[0].data_eligible or (
@@ -248,7 +281,12 @@ class S1ShadowCoordinator:
             return S1Decision("NOT_ESTIMABLE", "VOLATILITY_WARMUP_MISSING")
         if len(join.h4) < 50 or len(join.h1) < 50:
             return S1Decision("NOT_ESTIMABLE", "EMA_WARMUP_MISSING")
-        setup = _setup(join)
+        try:
+            setup = _setup(join, h1_history, h4_history)
+        except ValueError as exc:
+            if str(exc) != "EXACT_PREFIX_HISTORY_MISMATCH":
+                raise
+            return S1Decision("NOT_ESTIMABLE", str(exc))
         if setup is None:
             return S1Decision("NO_CANDIDATE", "SETUP_RULE_FAILED")
         self.repository.register_artifact(ArtifactIndexEntryV2(feature.content_hash, "FeatureArtifactV2",
@@ -261,9 +299,11 @@ class S1ShadowCoordinator:
                     "setup_window_extreme": str(extreme), "h4_ref": join.h4[-1].content_hash,
                     "h1_ref": join.h1[-1].content_hash, "m15_at_creation_ref": join.m15[-1].content_hash,
                     "feature_ref": feature.content_hash, "event_gate_ref": event_gate.evidence_ref}
+        history_refs = tuple(sorted({state.content_hash for state in (h1_history, h4_history) if state is not None}))
+        if history_refs:
+            evidence.update({"indicator_algorithm_version": ALGORITHM_VERSION,
+                             "indicator_history_state_refs": history_refs})
         thesis = _id(evidence)
-        self.repository.register_artifact(ArtifactIndexEntryV2(thesis, "S1SetupEvidenceV1", thesis, join.cutoff_ns,
-                                                                 join.cutoff_ns, evidence))
         watch_id = _id({"thesis": thesis, "policy": self.policy.policy_hash})
         prior = self.repository.get_watch(watch_id)
         if prior is not None:
@@ -271,22 +311,36 @@ class S1ShadowCoordinator:
                 raise ValueError("existing watch conflicts with immutable S1 setup")
             return S1Decision("WATCH" if prior.state == WatchStateV2.WAITING_FOR_EVENT else "NO_CANDIDATE",
                               "DUPLICATE_SETUP", prior)
+        finished = sample(self.clock_ns, floor_ns=started) if self.clock_ns else join.cutoff_ns
+        available = sample(self.clock_ns, floor_ns=finished) if self.clock_ns else finished
+        self.repository.register_artifact(ArtifactIndexEntryV2(thesis, "S1SetupEvidenceV1", thesis, finished,
+                                                                 available, evidence))
+        if self.clock_ns:
+            record_computation(self.repository, artifact_ref=thesis, information_cutoff_ns=join.cutoff_ns,
+                started_ns=started, finished_ns=finished, available_ns=available,
+                input_refs=(feature.content_hash, event_gate.evidence_ref, *setup_refs,
+                            join.h4[-1].content_hash, join.h1[-1].content_hash, *history_refs),
+                deadline_ns=join.cutoff_ns + 5_000_000_000)
         expires = join.cutoff_ns + 4 * INTERVAL_NS + 1
         watch = OpportunityWatchV2(watch_id, join.key, POLICY_ID, POLICY_VERSION, self.policy.policy_hash,
-                                   WatchStateV2.DETECTED, 0, join.cutoff_ns, join.cutoff_ns, thesis,
+                                   WatchStateV2.DETECTED, 0, available, available, thesis,
                                    tuple(sorted({thesis, feature.content_hash, *setup_refs, join.h4[-1].content_hash,
-                                                 join.h1[-1].content_hash, event_gate.evidence_ref})),
-                                   "CANDLE_CLOSED_15M", expires, join.cutoff_ns)
+                                                 join.h1[-1].content_hash, event_gate.evidence_ref, *history_refs})),
+                                   "CANDLE_CLOSED_15M", expires, available)
         watch = self.repository.create_watch(watch)
         if watch.state == WatchStateV2.DETECTED:
             watch = self.repository.transition_watch(watch.watch_id, expected_state_version=watch.state_version,
                 event_id=_id({"watch": watch_id, "event": "WAIT"}), event_at_ns=join.cutoff_ns,
-                transition_at_ns=join.cutoff_ns, target_state=WatchStateV2.WAITING_FOR_EVENT,
+                transition_at_ns=available, target_state=WatchStateV2.WAITING_FOR_EVENT,
                 outbox_id=_id({"watch": watch_id, "outbox": "WAIT"})).watch
         return S1Decision("WATCH", "QUALIFIED_SETUP", watch)
 
     def on_bar(self, watch_id: str, join: JoinedBars, feature: FeatureArtifactV2, *, event_gate: EventGate | None,
-               bbo: ExecutableQuote | None, mark_index: MarkIndexEvidence | None) -> S1Decision:
+               bbo: ExecutableQuote | None, mark_index: MarkIndexEvidence | None,
+               h1_history: ActiveCausalHistoryStateV1 | None = None,
+               h4_history: ActiveCausalHistoryStateV1 | None = None) -> S1Decision:
+        from atlas.v2.chronology import record_computation, sample
+        started = sample(self.clock_ns, floor_ns=max(join.cutoff_ns, feature.envelope.available_at_ns)) if self.clock_ns else join.cutoff_ns
         watch = self.repository.get_watch(watch_id)
         if watch is None:
             raise KeyError(watch_id)
@@ -297,24 +351,37 @@ class S1ShadowCoordinator:
             return S1Decision("NOT_ESTIMABLE", join.reason or "REVISION_OR_JOIN_MISMATCH", watch)
         if feature.values["location.utc_day_trade_vwap"].value is not None:
             return S1Decision("NOT_ESTIMABLE", "OPTIONAL_INPUT_REQUIRES_POLICY_VARIANT", watch)
+        try:
+            if h1_history is not None:
+                exact_prefix_items(join, h1_history, BarIntervalV2.H1)
+            if h4_history is not None:
+                exact_prefix_items(join, h4_history, BarIntervalV2.H4)
+        except ValueError as exc:
+            if str(exc) != "EXACT_PREFIX_HISTORY_MISMATCH":
+                raise
+            return S1Decision("NOT_ESTIMABLE", str(exc), watch)
         bar = join.m15[-1]
-        if bar.close_at_ns <= watch.created_at_ns or bar.raw.available_at_ns > join.cutoff_ns:
+        setup_at_ns = watch.created_at_ns
+        thesis_entry = self.repository.get_artifact(watch.thesis_hash)
+        if thesis_entry is not None and type(thesis_entry.metadata.get("created_at_ns")) is int:
+            setup_at_ns = thesis_entry.metadata["created_at_ns"]
+        if bar.close_at_ns <= setup_at_ns or bar.raw.available_at_ns > join.cutoff_ns:
             return S1Decision("NO_CANDIDATE", "PRE_WATCH_OR_UNCONFIRMED_BAR", watch)
         if join.cutoff_ns - bar.close_at_ns > 5_000_000_000:
             return S1Decision("NOT_ESTIMABLE", "LATE_OLD_BAR_REPLAY", watch)
-        if bar.close_at_ns > watch.created_at_ns + 4 * INTERVAL_NS or join.cutoff_ns > watch.expires_at_ns:
+        if bar.close_at_ns > setup_at_ns + 4 * INTERVAL_NS or join.cutoff_ns > watch.expires_at_ns:
             expired = self.repository.transition_watch(watch_id, expected_state_version=watch.state_version,
                 event_id=_id({"watch": watch_id, "event": "EXPIRE"}), event_at_ns=max(join.cutoff_ns, watch.expires_at_ns),
-                transition_at_ns=max(join.cutoff_ns, watch.expires_at_ns), target_state=WatchStateV2.EXPIRED,
+                transition_at_ns=max(started, watch.expires_at_ns), target_state=WatchStateV2.EXPIRED,
                 outbox_id=_id({"watch": watch_id, "outbox": "EXPIRE"})).watch
             return S1Decision("NO_CANDIDATE", "FOUR_BAR_EXPIRY", expired)
 
         def no_candidate(status: str, reason: str) -> S1Decision:
-            if bar.close_at_ns < watch.created_at_ns + 4 * INTERVAL_NS:
+            if bar.close_at_ns < setup_at_ns + 4 * INTERVAL_NS:
                 return S1Decision(status, reason, watch)
             expired = self.repository.transition_watch(watch_id, expected_state_version=watch.state_version,
                 event_id=_id({"watch": watch_id, "bar": bar.content_hash, "event": "EXPIRE"}),
-                event_at_ns=bar.close_at_ns, transition_at_ns=watch.expires_at_ns,
+                event_at_ns=bar.close_at_ns, transition_at_ns=max(started, watch.expires_at_ns),
                 target_state=WatchStateV2.EXPIRED,
                 outbox_id=_id({"watch": watch_id, "bar": bar.content_hash, "outbox": "EXPIRE"})).watch
             return S1Decision(status, "FOUR_BAR_EXPIRY" if reason == "TRIGGER_RULE_FAILED" else reason, expired)
@@ -324,14 +391,14 @@ class S1ShadowCoordinator:
             return no_candidate("NOT_ESTIMABLE", "SETUP_EVIDENCE_UNAVAILABLE")
         setup = evidence_entry.metadata
         side = V2Side(str(setup["side"]))
-        if _regime(join) != side:
+        if _regime(join, h4_history) != side:
             invalid = self.repository.transition_watch(watch_id, expected_state_version=watch.state_version,
                 event_id=_id({"watch": watch_id, "bar": bar.content_hash, "event": "CONTRARY_REGIME"}),
-                event_at_ns=bar.close_at_ns, transition_at_ns=join.cutoff_ns,
+                event_at_ns=bar.close_at_ns, transition_at_ns=started,
                 target_state=WatchStateV2.INVALIDATED, reason="CONTRARY_CONFIRMED_4H_REGIME",
                 outbox_id=_id({"watch": watch_id, "bar": bar.content_hash, "outbox": "INVALIDATE"})).watch
             return S1Decision("NO_CANDIDATE", "CONTRARY_CONFIRMED_4H_REGIME", invalid)
-        gate_status, gate_reason = _gate(event_gate, join.cutoff_ns)
+        gate_status, gate_reason = _gate(event_gate, started)
         if gate_status != "AVAILABLE":
             return no_candidate(gate_status, gate_reason)
         if len(join.m15) < 2 or join.m15[-2].close_at_ns >= bar.close_at_ns:
@@ -360,10 +427,16 @@ class S1ShadowCoordinator:
         self.repository.register_artifact(ArtifactIndexEntryV2(feature.content_hash, "FeatureArtifactV2",
             feature.content_hash, feature.envelope.created_at_ns, feature.envelope.available_at_ns,
             {"feature": feature.to_dict()}))
+        history_refs = tuple(sorted({state.content_hash for state in (h1_history, h4_history) if state is not None}))
         refs = tuple(sorted({watch.thesis_hash, feature.content_hash, bar.content_hash, previous.content_hash,
-                             bbo.evidence_ref, mark_index.evidence_ref, event_gate.evidence_ref if event_gate else ""} - {""}))
+                             bbo.evidence_ref, mark_index.evidence_ref, *history_refs,
+                             event_gate.evidence_ref if event_gate else ""} - {""}))
         candidate_id = _id({"watch_id": watch_id, "trigger_ref": bar.content_hash, "policy_hash": self.policy.policy_hash})
-        envelope = ArtifactEnvelope(1, candidate_id, join.cutoff_ns, join.cutoff_ns, "S1_SHADOW_V1", refs)
+        finished = sample(self.clock_ns, floor_ns=started) if self.clock_ns else join.cutoff_ns
+        available = sample(self.clock_ns, floor_ns=finished) if self.clock_ns else finished
+        if available > join.cutoff_ns + 5_000_000_000:
+            return no_candidate("NOT_ESTIMABLE", "CANDIDATE_COMPUTATION_DEADLINE_EXPIRED")
+        envelope = ArtifactEnvelope(1, candidate_id, finished, available, "S1_SHADOW_V1", refs)
         candidate = CandidateActionV2(envelope, candidate_id, watch.key, self.policy.policy_hash,
             feature.content_hash, side, join.cutoff_ns, join.cutoff_ns + 5_000_000_000,
             join.cutoff_ns + 4 * HOUR_NS, reference, collar, stop, watch.state_version + 2,
@@ -376,15 +449,21 @@ class S1ShadowCoordinator:
              "bbo_observed_at_ns": bbo.observed_at_ns, "bbo_available_at_ns": bbo.available_at_ns,
              "mark_index_ref": mark_index.evidence_ref, "mark_index_available_at_ns": mark_index.available_at_ns,
              "event_gate_ref": event_gate.evidence_ref if event_gate else "",
+             **({"indicator_algorithm_version": ALGORITHM_VERSION,
+                 "indicator_history_state_refs": history_refs} if history_refs else {}),
              "entry_policy": "IOC_NO_SAME_EPOCH_REPRICE"}))
+        if self.clock_ns:
+            record_computation(self.repository, artifact_ref=candidate.content_hash,
+                information_cutoff_ns=join.cutoff_ns, started_ns=started, finished_ns=finished,
+                available_ns=available, input_refs=refs, deadline_ns=candidate.deadline_ns)
         ready = self.repository.transition_watch(watch_id, expected_state_version=watch.state_version,
             event_id=_id({"watch": watch_id, "bar": bar.content_hash, "event": "READY"}),
-            event_at_ns=bar.close_at_ns, transition_at_ns=join.cutoff_ns,
+            event_at_ns=bar.close_at_ns, transition_at_ns=available,
             target_state=WatchStateV2.READY_FOR_RECHECK,
             outbox_id=_id({"watch": watch_id, "bar": bar.content_hash, "outbox": "READY"})).watch
         confirmed = self.repository.transition_watch(watch_id, expected_state_version=ready.state_version,
             event_id=_id({"watch": watch_id, "bar": bar.content_hash, "event": "CONFIRMED"}),
-            event_at_ns=bar.close_at_ns, transition_at_ns=join.cutoff_ns,
+            event_at_ns=bar.close_at_ns, transition_at_ns=available,
             target_state=WatchStateV2.CONFIRMED,
             outbox_id=_id({"watch": watch_id, "bar": bar.content_hash, "outbox": "CONFIRMED"})).watch
         return S1Decision("CANDIDATE", "SHADOW_TRIGGER", confirmed, candidate)

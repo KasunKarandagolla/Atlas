@@ -23,6 +23,11 @@ from atlas.v2.contracts import CandidateActionV2, CandidateSetV2
 from atlas.v2.instruments import InstrumentKeyV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.science.action import ActionArtifactV2
+from atlas.v2.science.active_training import (
+    bounded_artifact_entries,
+    bounded_training_entries,
+    require_row_budget,
+)
 from atlas.v2.science.m0 import (
     FEATURE_ORDER as M0_FEATURE_ORDER,
 )
@@ -270,9 +275,7 @@ def build_m1_training_rows(repo: OpsRepository, *, cutoff_ns: int,
     rows: list[M1TrainingRowV2] = []
     if exclude_action_hash is not None:
         sha256_ref(exclude_action_hash, field="exclude_action_hash")
-    for entry in repo.artifact_entries("MaturedOutcomeV2"):
-        if entry.available_at_ns > cutoff_ns:
-            continue
+    for entry in bounded_training_entries(repo, cutoff_ns):
         raw = entry.metadata.get("outcome")
         if not isinstance(raw, Mapping):
             continue
@@ -311,6 +314,7 @@ def build_m1_training_rows(repo: OpsRepository, *, cutoff_ns: int,
             outcome.net_payoff, outcome.provenance.value, outcome.execution_state.value,
             outcome.requested_quantity, outcome.fill_quantity, outcome.gross_payoff, outcome.fees,
             outcome.funding_cashflow, outcome.execution_evidence_ref))
+    require_row_budget(repo, rows, cutoff_ns=cutoff_ns)
     return tuple(sorted(rows, key=lambda item: (item.label_available_at_ns, item.decision_at_ns, item.outcome_ref)))
 
 
@@ -619,6 +623,7 @@ class M1ChronologyV2:
 def build_walk_forward_chronology(rows: Sequence[M1TrainingRowV2], *, as_of_ns: int,
         embargo_ns: int = OOF_EMBARGO_NS, reserved_holdout_refs: Sequence[str] = ()) -> M1ChronologyV2:
     """Declare 180/30/30 monthly windows and reserve an untouched 30-day tail."""
+    require_row_budget(None, rows, cutoff_ns=as_of_ns)
     matured = tuple(row for row in rows if row.label_available_at_ns <= as_of_ns)
     if embargo_ns < max((row.horizon_end_ns - row.decision_at_ns for row in matured), default=0):
         raise ValueError("M1 embargo must be at least the maximum compatible policy holding horizon")
@@ -659,6 +664,7 @@ def build_walk_forward_chronology(rows: Sequence[M1TrainingRowV2], *, as_of_ns: 
 def chronological_oof(rows: Sequence[M1TrainingRowV2], *, embargo_ns: int = OOF_EMBARGO_NS,
         minimum_training_rows: int = MIN_TRAINING_ROWS) -> tuple[M1OOFRowV2, ...]:
     """Expanding strictly-prior OOF. There is intentionally no shuffle/CV option."""
+    require_row_budget(None, rows)
     if minimum_training_rows < MIN_TRAINING_ROWS or embargo_ns < max(
         (row.horizon_end_ns - row.decision_at_ns for row in rows), default=0):
         raise ValueError("M1 OOF cannot lower support floors or holding-horizon embargo")
@@ -726,6 +732,7 @@ def chronological_oof(rows: Sequence[M1TrainingRowV2], *, embargo_ns: int = OOF_
 def walk_forward_oof(rows: Sequence[M1TrainingRowV2], chronology: M1ChronologyV2
         ) -> tuple[tuple[M1OOFRowV2, ...], tuple[Mapping[str, Any], ...]]:
     """Run the preregistered 180/30/30 outer folds; never fit on outer targets."""
+    require_row_budget(None, rows, cutoff_ns=chronology.as_of_ns)
     by_ref = {row.outcome_ref: row for row in rows}
     output: list[M1OOFRowV2] = []
     fits: list[Mapping[str, Any]] = []
@@ -811,6 +818,7 @@ class _NativeLightGBMEstimator:
 
 
 def _fit_predictor(rows: Sequence[M1TrainingRowV2], params: Mapping[str, int | float]) -> tuple[Any, tuple[float, ...], tuple[float, ...]]:
+    require_row_budget(None, rows)
     centers, scales = _median_scale([row.features for row in rows])
     X = [_transform(row.features, centers, scales) for row in rows]
     y = [float(row.target_net_value) for row in rows]
@@ -830,6 +838,7 @@ class M1SearchFailure(RuntimeError):
 def choose_parameters(train_rows: Sequence[M1TrainingRowV2], validation_rows: Sequence[M1TrainingRowV2]
         ) -> tuple[dict[str, int | float], tuple[float, ...], tuple[float, ...], tuple[tuple[str, str, str | None], ...]]:
     """Run the exact small chronological search; scaler fits on train rows only."""
+    require_row_budget(None, range(len(train_rows) + len(validation_rows)))
     if len(train_rows) < MIN_TRAINING_ROWS or not validation_rows:
         raise ValueError("M1 chronological search requires training and later validation rows")
     if max(row.decision_at_ns for row in train_rows) >= min(row.decision_at_ns for row in validation_rows):
@@ -968,6 +977,9 @@ def reserve_m1_final_holdout(repo: OpsRepository, *, compatibility_key: str,
     sha256_ref(compatibility_key, field="compatibility_key")
     if cutoff_ns < 0 or available_at_ns < cutoff_ns:
         raise ValueError("M1 holdout reservation chronology invalid")
+    # Spending is a global irreversible permission, not a market feature. A
+    # historical model cutoff cannot reset a population already marked SPENT.
+    holdout_states = bounded_artifact_entries(repo, "DiscoveryHoldoutStateV2", 9_223_372_036_854_775_807)
     index_ref = sha256_json({"version": "M1_HOLDOUT_DECISION_INDEX_V1", "policy_hash": M1_POLICY_HASH,
         "compatibility_key": compatibility_key})
     existing = repo.get_artifact(index_ref)
@@ -993,9 +1005,25 @@ def reserve_m1_final_holdout(repo: OpsRepository, *, compatibility_key: str,
             available_at_ns, available_at_ns, index_body))
     if any(isinstance((state := entry.metadata.get("holdout_state")), Mapping)
         and state.get("holdout_ref") == reservation_ref and state.get("state") == "SPENT"
-        for entry in repo.artifact_entries("DiscoveryHoldoutStateV2")):
+        for entry in holdout_states):
         raise ValueError("M1 final holdout is SPENT; redesign requires a new declared family and fresh future evidence")
     return int(body["start_ns"]), int(body["end_ns"]), reservation_ref
+
+
+def _reserved_holdout_refs(repo: OpsRepository, *, cutoff_ns: int, policy_hash: str,
+        start_ns: int, end_ns: int) -> tuple[str, ...]:
+    """Bind population membership without parsing or evaluating holdout payoffs."""
+    refs: list[str] = []
+    for entry in bounded_training_entries(repo, cutoff_ns):
+        body = entry.metadata.get("outcome")
+        if (not isinstance(body, Mapping) or body.get("policy_hash") != policy_hash
+            or not start_ns <= int(body.get("decision_at_ns", -1)) < end_ns):
+            continue
+        if (entry.content_hash != sha256_json(body)
+            or body.get("available_at_ns") != entry.available_at_ns):
+            raise ValueError("M1 holdout membership index/body identity or availability mismatch")
+        refs.append(entry.content_hash)
+    return tuple(sorted(refs))
 
 
 def fit_m1(repo: OpsRepository, *, action: ActionArtifactV2, candidate: CandidateActionV2,
@@ -1011,10 +1039,16 @@ def fit_m1(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
         or candidate.content_hash != action.candidate_ref
         or candidate_set.content_hash != action.candidate_set_ref
         or candidate_set.selected_candidate_id != candidate.candidate_id
-        or candidate.decision_at_ns != cutoff_ns or action.available_at_ns > cutoff_ns
+        or candidate.decision_at_ns != cutoff_ns
         or available_at_ns <= cutoff_ns or available_at_ns >= candidate.deadline_ns):
         raise ValueError("M1 requires the exact selected frozen action at its original decision cutoff")
-    query_m0 = action_features(repo, action.content_hash, cutoff_ns=cutoff_ns)
+    from atlas.v2.chronology import causal_artifact
+
+    if not causal_artifact(repo, action.content_hash, cutoff_ns=cutoff_ns,
+            consumer_at_ns=available_at_ns, deadline_ns=candidate.deadline_ns):
+        raise ValueError("M1 refuses unavailable or noncausal frozen action publication")
+    query_m0 = action_features(repo, action.content_hash, cutoff_ns=cutoff_ns,
+        consumer_at_ns=available_at_ns)
     if query_m0.action_hash != action.action.action_hash:
         raise ValueError("M1 current feature evidence differs from the frozen action")
     query_feature = project_m0_features(query_m0, candidate_set_ref=candidate_set.content_hash)
@@ -1032,11 +1066,8 @@ def fit_m1(repo: OpsRepository, *, action: ActionArtifactV2, candidate: Candidat
     compatible = tuple(row for row in rows_all if row.label_available_at_ns <= holdout_start
         and row.horizon_end_ns <= holdout_start - embargo_ns)
     current_training_rows = tuple(row for row in compatible if row.decision_at_ns >= holdout_start - 210 * DAY_NS)
-    reserved = tuple(entry.content_hash for entry in repo.artifact_entries("MaturedOutcomeV2")
-        if isinstance((body := entry.metadata.get("outcome")), Mapping)
-        and body.get("policy_hash") == candidate.policy_hash
-        and holdout_start <= int(body.get("decision_at_ns", -1)) < holdout_end
-        and entry.available_at_ns <= cutoff_ns)
+    reserved = _reserved_holdout_refs(repo, cutoff_ns=cutoff_ns, policy_hash=candidate.policy_hash,
+        start_ns=holdout_start, end_ns=holdout_end)
     chronology = build_walk_forward_chronology(rows_all, as_of_ns=holdout_end, embargo_ns=embargo_ns,
         reserved_holdout_refs=reserved)
     chronology_ref = persist_m1_artifact(repo, "M1ChronologyV2", chronology.to_dict(),

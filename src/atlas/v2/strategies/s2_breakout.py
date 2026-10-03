@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from statistics import median, pstdev
@@ -17,12 +17,13 @@ from atlas.v2.contracts import (
     PolicySpecV2,
     V2Side,
 )
+from atlas.v2.data.active_history import ALGORITHM_VERSION, ActiveCausalHistoryStateV1
 from atlas.v2.data.bars import BarIntervalV2, CausalBarV2
 from atlas.v2.features.joins import JoinedBars
 from atlas.v2.features.technical import atr
 from atlas.v2.instruments import UniverseContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
-from atlas.v2.strategies.s1_trend import ExecutableQuote
+from atlas.v2.strategies.s1_trend import ExecutableQuote, exact_prefix_items
 
 POLICY_ID = "S2_COMPRESSION_BREAKOUT"
 POLICY_VERSION = "1.0.0-shadow"
@@ -141,17 +142,28 @@ class S2ShadowCoordinator:
         self.cost_model_ref = cost_model_ref
 
     def on_trigger_close(self, join: JoinedBars, feature: FeatureArtifactV2, *,
-                         universe: UniverseContractV2, bbo: ExecutableQuote | None) -> S2Decision:
+                         universe: UniverseContractV2, bbo: ExecutableQuote | None,
+                         clock_ns: Callable[[], int] | None = None,
+                         m15_history: ActiveCausalHistoryStateV1 | None = None) -> S2Decision:
+        from atlas.v2.chronology import record_computation, sample
+        started = sample(clock_ns, floor_ns=max(join.cutoff_ns, feature.envelope.available_at_ns,
+            universe.envelope.available_at_ns)) if clock_ns else join.cutoff_ns
         if join.status != "AVAILABLE" or join.key != feature.key or feature.information_cutoff_ns != join.cutoff_ns:
             return S2Decision("NOT_ESTIMABLE", join.reason or "FEATURE_OR_JOIN_MISMATCH")
         cutoff = join.cutoff_ns
-        if not join.m15 or join.m15[-1].close_at_ns != cutoff or cutoff - join.m15[-1].close_at_ns > FRESHNESS_NS:
+        if not join.m15 or not (join.m15[-1].close_at_ns <= cutoff <= join.m15[-1].close_at_ns + 5_000_000_000) or cutoff - join.m15[-1].close_at_ns > FRESHNESS_NS:
             return S2Decision("NOT_ESTIMABLE", "TRIGGER_NOT_LATEST_CONFIRMED_CLOSE")
         if not join.h1:
             return S2Decision("NOT_ESTIMABLE", "MISSING_1H_CONTEXT")
         if not join.h4:
             return S2Decision("NOT_ESTIMABLE", "MISSING_4H_CONTEXT")
         bars = join.m15
+        try:
+            prefix_items = exact_prefix_items(join, m15_history, BarIntervalV2.M15) if m15_history is not None else None
+        except ValueError as exc:
+            if str(exc) != "EXACT_PREFIX_HISTORY_MISMATCH":
+                raise
+            return S2Decision("NOT_ESTIMABLE", str(exc))
         if len(bars) < SAMPLE_SIZE + 21:
             return S2Decision("NOT_ESTIMABLE", "INSUFFICIENT_30_DAY_HISTORY_AFTER_WARMUP")
         used = bars[-(SAMPLE_SIZE + 21):]
@@ -162,11 +174,11 @@ class S2ShadowCoordinator:
             return S2Decision("NOT_ESTIMABLE", "INCOMPLETE_30_DAY_HISTORY")
         if bbo is None or bbo.key != join.key or not bbo.valid_at(cutoff, FRESHNESS_NS):
             return S2Decision("NOT_ESTIMABLE", "BBO_STALE_OR_UNAVAILABLE")
-        if (feature.envelope.available_at_ns > cutoff or
+        if (feature.envelope.available_at_ns > started or
                 not {join.m15[-1].content_hash, join.h1[-1].content_hash,
                      join.h4[-1].content_hash}.issubset(feature.envelope.input_refs)):
             return S2Decision("NOT_ESTIMABLE", "FEATURE_NOT_CAUSAL_FOR_TRIGGER")
-        if universe.envelope.available_at_ns > cutoff or cutoff > universe.decision_slot_ns:
+        if universe.envelope.available_at_ns > started or cutoff > universe.decision_slot_ns:
             return S2Decision("NOT_ESTIMABLE", "UNIVERSE_NOT_AVAILABLE_AT_CUTOFF")
         entries = [entry for entry in universe.entries if entry.key == join.key]
         if len(entries) != 1 or not entries[0].data_eligible or not entries[0].scanner_eligible or (
@@ -177,7 +189,7 @@ class S2ShadowCoordinator:
         # The comparison window has exactly 2880 measurements, ending at t-2.
         # The candidate measurement is t-1; t enters none of these indicators.
         pre = bars[:-1]
-        atr_values = atr(pre)
+        atr_values = atr(pre) if prefix_items is None else tuple(item.atr14 for item in prefix_items[:-1])
         latest_atr = atr_values[-1]
         start = len(pre) - SAMPLE_SIZE - 1
         sample_atr = atr_values[start:-1]
@@ -231,6 +243,13 @@ class S2ShadowCoordinator:
             "range_high": str(range_high), "range_low": str(range_low), "range_width": str(width),
             "volume_median": str(volume_median), "h1_ref": join.h1[-1].content_hash,
             "h4_ref": join.h4[-1].content_hash}
+        history_refs = (m15_history.content_hash,) if m15_history is not None else ()
+        if history_refs:
+            assert m15_history is not None
+            setup.update({"indicator_algorithm_version": ALGORITHM_VERSION,
+                          "indicator_history_state_refs": history_refs,
+                          "indicator_prefix_bar_count": m15_history.total_count,
+                          "indicator_history_refs_semantics": "RETAINED_TAIL_WITH_EXACT_SEALED_PREFIX_STATE"})
         setup_ref = sha256_json(setup)
         trigger_body = {"version": "S2_TRIGGER_V1", "setup_ref": setup_ref,
             "trigger_ref": trigger.content_hash, "trigger_close": str(trigger.close),
@@ -245,8 +264,20 @@ class S2ShadowCoordinator:
         self.repository.register_artifact(ArtifactIndexEntryV2(feature.content_hash, "FeatureArtifactV2",
             feature.content_hash, feature.envelope.created_at_ns, feature.envelope.available_at_ns,
             {"feature": feature.to_dict()}))
-        _index(self.repository, setup_ref, "S2SetupEvidenceV1", cutoff, setup)
-        _index(self.repository, trigger_ref, "S2TriggerEvidenceV1", cutoff, trigger_body)
+        finished = sample(clock_ns, floor_ns=started) if clock_ns else cutoff
+        available = sample(clock_ns, floor_ns=finished) if clock_ns else finished
+        if available > cutoff + FRESHNESS_NS:
+            return S2Decision("NOT_ESTIMABLE", "CANDIDATE_COMPUTATION_DEADLINE_EXPIRED")
+        _index(self.repository, setup_ref, "S2SetupEvidenceV1", available, setup)
+        _index(self.repository, trigger_ref, "S2TriggerEvidenceV1", available, trigger_body)
+        if clock_ns:
+            for ref, deps in ((setup_ref, (feature.content_hash, universe.content_hash,
+                                         *(bar.content_hash for bar in pre), *history_refs)),
+                              (trigger_ref, (feature.content_hash, universe.content_hash,
+                                             trigger.content_hash, bbo.evidence_ref))):
+                record_computation(self.repository, artifact_ref=ref, information_cutoff_ns=cutoff,
+                    started_ns=started, finished_ns=finished, available_ns=available,
+                    input_refs=deps, deadline_ns=cutoff + FRESHNESS_NS)
         reference = bbo.ask if side == V2Side.LONG else bbo.bid
         collar = reference * (Decimal("1.0005") if side == V2Side.LONG else Decimal("0.9995"))
         stop = range_low if side == V2Side.LONG else range_high
@@ -254,16 +285,27 @@ class S2ShadowCoordinator:
             "trigger_ref": trigger_ref, "key": join.key.to_dict()})
         refs = tuple(sorted({setup_ref, trigger_ref, feature.content_hash, self.policy.policy_hash,
             universe.content_hash, trigger.content_hash, bbo.evidence_ref, join.h1[-1].content_hash,
-            join.h4[-1].content_hash, *(bar.content_hash for bar in range_bars)}))
-        envelope = ArtifactEnvelope(1, candidate_id, cutoff, cutoff, "S2_SHADOW_V1", refs)
+            join.h4[-1].content_hash, *(bar.content_hash for bar in range_bars), *history_refs}))
+        candidate_started = sample(clock_ns, floor_ns=available) if clock_ns else cutoff
+        candidate_finished = sample(clock_ns, floor_ns=candidate_started) if clock_ns else cutoff
+        candidate_available = sample(clock_ns, floor_ns=candidate_finished) if clock_ns else cutoff
+        if candidate_available > cutoff + FRESHNESS_NS:
+            return S2Decision("NOT_ESTIMABLE", "CANDIDATE_COMPUTATION_DEADLINE_EXPIRED")
+        envelope = ArtifactEnvelope(1, candidate_id, candidate_finished, candidate_available, "S2_SHADOW_V1", refs)
         candidate = CandidateActionV2(envelope, candidate_id, join.key, self.policy.policy_hash,
             feature.content_hash, side, cutoff, cutoff + FRESHNESS_NS, cutoff + 2 * HOUR_NS,
             reference, collar, stop, 0, self.cost_model_ref, quantity=None)
         self.repository.register_artifact(ArtifactIndexEntryV2(candidate.content_hash, "CandidateActionV2",
-            candidate.content_hash, cutoff, cutoff, {"candidate": candidate.to_dict(),
+            candidate.content_hash, candidate_finished, candidate_available, {"candidate": candidate.to_dict(),
                 "feature_hash": feature.content_hash, "setup_evidence_ref": setup_ref,
                 "trigger_evidence_ref": trigger_ref, "universe_ref": universe.content_hash,
+                **({"indicator_algorithm_version": ALGORITHM_VERSION,
+                    "indicator_history_state_refs": history_refs} if history_refs else {}),
                 "entry_policy": "IOC_NO_SAME_EPOCH_REPRICE"}))
+        if clock_ns:
+            record_computation(self.repository, artifact_ref=candidate.content_hash,
+                information_cutoff_ns=cutoff, started_ns=candidate_started, finished_ns=candidate_finished,
+                available_ns=candidate_available, input_refs=refs, deadline_ns=candidate.deadline_ns)
         return S2Decision("CANDIDATE", "SHADOW_TRIGGER", candidate, setup_ref, trigger_ref)
 
 

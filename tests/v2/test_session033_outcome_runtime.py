@@ -461,7 +461,7 @@ def test_supervisor_advancing_clock_keeps_fixed_cutoff_and_sealed_receipts(
 
         # Later evidence is eligible once a subsequent maturity cycle has a later
         # evidence cutoff; the first fixed-cutoff attempt left it unresolved.
-        later_cutoff = t4 + 1
+        later_cutoff = t4 + outcome_maturity.OUTCOME_DUE_RETRY_INTERVAL_NS_V1 + 1
         matured_late = False
         for _ in range(4):
             production_at = later_cutoff + 1
@@ -594,13 +594,18 @@ def test_metadata_identity_lookup_is_exact_bounded_and_causal(tmp_path: Path) ->
             "PolicyPayoffV2", ("payoff", "action_hash"), identity,
             as_of_ns=9, limit=2,
         ).entries
+        expected_index = "created_metadata_" + sha256_json(
+            ["PolicyPayoffV2", ["payoff", "action_hash"]]
+        )[:16]
         plan = reader._connection.execute(
-            "EXPLAIN QUERY PLAN SELECT * FROM artifact_index WHERE artifact_type='PolicyPayoffV2' "
+            f"EXPLAIN QUERY PLAN SELECT * FROM artifact_index INDEXED BY {expected_index} "
+            "WHERE artifact_type='PolicyPayoffV2' "
             "AND CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.payoff.action_hash') END=? "
-            "AND available_at_ns<=? ORDER BY created_at_ns DESC,artifact_ref DESC LIMIT ?",
+            "AND created_at_ns<=? ORDER BY created_at_ns DESC,artifact_ref DESC LIMIT ?",
             (identity, 20, 2),
         ).fetchall()
-        assert any("artifact_policy_payoff_action_lookup" in row["detail"] for row in plan)
+        assert any(expected_index in row["detail"] for row in plan)
+        assert not any("TEMP B-TREE" in row["detail"] for row in plan)
 
 
 def test_repository_restores_additive_lookup_indexes_on_existing_schema(tmp_path: Path) -> None:

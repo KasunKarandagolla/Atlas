@@ -17,6 +17,7 @@ from .subscriptions import SubscriptionPlanV2, restore_subscription_plan
 from .universe import ComputeTierV2
 
 MAX_RECENT_CURSOR_HASHES_V2 = 512
+MAX_RESTORED_COLLECTOR_STREAMS_V1 = 128
 
 
 class SequenceGapV2(RuntimeError):
@@ -128,20 +129,33 @@ class PublicCollectorV2:
                 )
 
     def _restore_cursors(self) -> None:
-        for entry in self.repository.artifact_entries("PublicCollectorCursorV2"):
+        for entry in self.repository.collector_cursor_heads(limit=MAX_RESTORED_COLLECTOR_STREAMS_V1):
             metadata = dict(entry.metadata)
-            source_id = str(metadata.get("source_id", ""))
-            channel = str(metadata.get("channel", ""))
+            source_id = metadata.get("source_id")
+            channel = metadata.get("channel")
             sequence = metadata.get("high_water_sequence")
-            if source_id and channel and isinstance(sequence, int):
-                cursor = (source_id, channel)
-                self._last_sequence[cursor] = max(self._last_sequence.get(cursor, sequence), sequence)
-                hashes = metadata.get("recent_payload_hashes", {})
-                if isinstance(hashes, Mapping):
-                    self._cursor_hashes[cursor] = {
-                        str(record_id): str(payload_hash)
-                        for record_id, payload_hash in sorted(hashes.items())[-MAX_RECENT_CURSOR_HASHES_V2:]
-                    }
+            checkpoint_at = metadata.get("checkpoint_at_ns")
+            hashes = metadata.get("recent_payload_hashes")
+            if (entry.artifact_type != "PublicCollectorCursorV2"
+                    or not isinstance(source_id, str) or not source_id.strip()
+                    or not isinstance(channel, str) or not channel.strip()
+                    or type(sequence) is not int or sequence < 0
+                    or type(checkpoint_at) is not int
+                    or entry.created_at_ns != checkpoint_at or entry.available_at_ns != checkpoint_at
+                    or entry.content_hash != sha256_json(metadata)
+                    or entry.artifact_ref != sha256_json({"artifact_type": "PublicCollectorCursorV2", "metadata": metadata})
+                    or not isinstance(hashes, Mapping) or len(hashes) > MAX_RECENT_CURSOR_HASHES_V2):
+                raise ValueError("collector cursor head identity or chronology is invalid")
+            validated_hashes: dict[str, str] = {}
+            for record_id, payload_hash in hashes.items():
+                if any(not isinstance(value, str) or len(value) != 64
+                       or any(character not in "0123456789abcdef" for character in value)
+                       for value in (record_id, payload_hash)):
+                    raise ValueError("collector cursor recent payload identity is invalid")
+                validated_hashes[record_id] = payload_hash
+            cursor = (source_id, channel)
+            self._last_sequence[cursor] = sequence
+            self._cursor_hashes[cursor] = validated_hashes
 
     def _record_health(
         self, source_id: str, state: PublicSourceStateV2, *, at_ns: int, details: str
@@ -515,6 +529,7 @@ class PublicCollectorV2:
     def reconcile_after_reconnect(
         self, source_id: str, *, at_ns: int, complete_snapshot: bool, missed_interval_repaired: bool,
         snapshot_refs: tuple[str, ...] = (), recovery_epoch_ref: str | None = None,
+        repair_certificate_refs: tuple[str, ...] = (),
     ) -> PublicSourceHealthV2:
         healthy = complete_snapshot and missed_interval_repaired
         state = PublicSourceStateV2.HEALTHY_CURRENT if healthy else PublicSourceStateV2.INCOMPLETE_SNAPSHOT
@@ -522,6 +537,23 @@ class PublicCollectorV2:
         refs = tuple(sorted(set(snapshot_refs)))
         if snapshot_refs and refs != snapshot_refs:
             raise ValueError("snapshot reconciliation refs must be sorted and unique")
+        if (len(repair_certificate_refs) > 8
+                or repair_certificate_refs != tuple(sorted(set(repair_certificate_refs)))):
+            raise ValueError("bar repair certificate refs must be bounded, sorted and unique")
+        for certificate_ref in repair_certificate_refs:
+            certificate = self.repository.get_artifact(certificate_ref)
+            proof = certificate.metadata.get("repair") if certificate is not None else None
+            if (certificate is None or certificate.artifact_type != "PublicBarGapRepairPageV1"
+                    or certificate.available_at_ns > at_ns or not isinstance(proof, Mapping)
+                    or certificate.artifact_ref != certificate.content_hash
+                    or certificate.content_hash != sha256_json(proof)
+                    or proof.get("source_id") != source_id
+                    or proof.get("authority") != "ZERO"
+                    or proof.get("reason_code") != "CONFIRMED_BAR_GAP_REPAIRED"
+                    or type(proof.get("target_close_at_ns")) is not int
+                    or type(proof.get("verified_close_at_ns")) is not int
+                    or proof["verified_close_at_ns"] < proof["target_close_at_ns"]):
+                raise ValueError("reconciliation requires exact completed bar repair certificates")
         if (self.required_recovery_epoch_ref is not None
                 and recovery_epoch_ref != self.required_recovery_epoch_ref):
             raise ValueError("production reconnect reconciliation must bind the current recovery epoch")
@@ -552,6 +584,8 @@ class PublicCollectorV2:
                     "available_at_ns": at_ns, "complete_snapshot": True,
                     "missed_interval_repaired": True, "evidence_refs": list(refs),
                     "recovery_epoch_ref": recovery_epoch_ref}
+            if repair_certificate_refs:
+                body["bar_repair_certificate_refs"] = list(repair_certificate_refs)
             ref = sha256_json(body)
             self.repository.register_artifact(ArtifactIndexEntryV2(
                 ref, "OpsPublicSourceReconciliationV1", ref, at_ns, at_ns,

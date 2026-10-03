@@ -723,9 +723,9 @@ def reconstruct_native_bars_from_index_page(
         raise ValueError("native bar reconstruction page exceeds the fixed origin work bound")
     if len(index_entries) > max_origins:
         raise ValueError("native bar reconstruction received more rows than its bounded page")
-    if interval not in (BarIntervalV2.M1, BarIntervalV2.M15):
-        raise ValueError("native indexed reconstruction only supports M1 and M15 intervals")
-    event_type = "BAR_1M" if interval == BarIntervalV2.M1 else "BAR_15M"
+    if interval not in (BarIntervalV2.M1, BarIntervalV2.M15, BarIntervalV2.H1, BarIntervalV2.H4):
+        raise ValueError("native indexed reconstruction only supports registered causal intervals")
+    event_type = "BAR_" + interval.value
     if not index_entries:
         return ()
 

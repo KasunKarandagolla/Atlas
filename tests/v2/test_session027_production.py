@@ -247,6 +247,7 @@ def _make_fixture_inputs(
             stress=case.stress,
             fee=case.fee,
             cutoff_ns=CUTOFF,
+            clock_ns=lambda:CUTOFF+100,
         )
         if sizing.status.value == "SIZED":
             expected_sizing_ref = sizing.content_hash
@@ -259,6 +260,7 @@ def _make_fixture_inputs(
                 policy=S1_POLICY,
                 v1=case.v1,
                 v2=case.v2,
+                clock_ns=lambda:CUTOFF+100,
             )
             expected_action_ref = action.content_hash
             expected_action_hash = action.action.action_hash
@@ -847,6 +849,26 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
     with OpsRepository(path) as repository:
         cutoff_ns, product = _seed_default_public_evidence(repository, archive_root=archive_root)
         assert repository.artifact_entries("CandidateActionV2") == ()
+        # The live product warms an exact retained prefix in bounded pages.
+        # This decision/restart fixture starts with that prior maintenance
+        # complete, preserving its original full-source indicator seeds.
+        from atlas.v2.runtime.active_history import maintain_history
+        for interval in (BarIntervalV2.M15,BarIntervalV2.H1,BarIntervalV2.H4):
+            ready = False
+            for step in range(32):
+                warm_cutoff = cutoff_ns - 10_000 + step*100
+                page = maintain_history(repository,archive_root,key=product.key,interval=interval,
+                    cutoff_ns=warm_cutoff,clock_ns=lambda at=warm_cutoff:at+1,deadline_ns=warm_cutoff+10)
+                if page.ready:
+                    ready = True
+                    break
+            assert ready
+        for _ in range(24):
+            discovered = repository.m15_origin_observation_page(product.key,
+                available_from_ns=0,available_through_ns=cutoff_ns+1,limit=4)
+            if discovered.entries:
+                break
+        assert discovered.entries
 
     def forbid_network(*args, **kwargs):
         raise AssertionError("default production composition attempted a network request")
@@ -922,7 +944,12 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
         }
         feature_entries = repository.artifact_entries("FeatureArtifactV2")
         assert feature_entries
-        assert all(entry.available_at_ns <= event.information_cutoff_ns for entry in feature_entries)
+        from atlas.v2.chronology import causal_artifact
+        assert all(event.information_cutoff_ns < entry.available_at_ns <= event.deadline_ns
+                   for entry in feature_entries)
+        assert all(causal_artifact(repository, entry.artifact_ref,
+                   cutoff_ns=event.information_cutoff_ns, consumer_at_ns=event.deadline_ns,
+                   deadline_ns=event.deadline_ns) for entry in feature_entries)
         candidate_set_checkpoint = repository.get_artifact(
             OpsSupervisorV2._checkpoint_ref(event.event_id, PipelineStageV1.CANDIDATE_SET)
         )
@@ -1207,7 +1234,9 @@ def test_default_production_native_m1_s3_stays_closed_without_trade_completeness
         def __call__(self):
             return next(self._values)
 
-    clock = AdvancingClock((computation_start, computation_finish, persisted_at))
+    # Prerequisite computation/publication now has its own actual clock samples.
+    clock = AdvancingClock((computation_start, computation_start, computation_start,
+                            computation_start, computation_finish, persisted_at))
     port = production.ProductionOpsCyclePortV1(clock_ns=clock)
     assert type(port.public_source) is production.IndexedPublicCycleSourceV1
     assert type(port.inputs_provider) is production.IndexedProductionEventInputsV1
@@ -1563,7 +1592,7 @@ def test_public_collector_restart_subscriptions_cursor_and_health_are_used_by_ad
             "channel": "KLINE_15M",
             "high_water_sequence": 42,
             "checkpoint_at_ns": CUTOFF,
-            "recent_payload_hashes": {"record-41": sha256_json("payload-41")},
+            "recent_payload_hashes": {sha256_json("record-41"): sha256_json("payload-41")},
         }
         cursor_ref = sha256_json({"artifact_type": "PublicCollectorCursorV2", "metadata": cursor_metadata})
         repo.register_artifact(ArtifactIndexEntryV2(
