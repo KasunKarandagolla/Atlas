@@ -16,7 +16,7 @@ Unavailable: ground-level implementation architecture, ATLAS ASTRA context/optim
 
 ## C — Repository
 
-Accepted start `e13994752f165ad8b42f7f7c441076078d4388cc`; branch `impl/session-036-final-development-closure-windows-tune-ready`; implementation `e775946d3b57e32865da649ac64763383e4fdda7`. Final documentation and fetched remote SHAs are reported after push. Remote S35 remains `702325b44ad487e699c60e682ad06031f4ecdb86` and is not the base. Original checkout `af78d7ade6f05668ab4080893ef340e84d61d1ca` and its modified/untracked owner files remain untouched. No merge or force-push.
+Accepted start `e13994752f165ad8b42f7f7c441076078d4388cc`; branch `impl/session-036-final-development-closure-windows-tune-ready`; implementation/build `e673b8a3166acd5cb66dd2d3599a916353fe74d9`; runtime `bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254`. Final documentation and fetched remote SHAs are reported after push. Remote S35 remains `702325b44ad487e699c60e682ad06031f4ecdb86` and is not the base. Original checkout `af78d7ade6f05668ab4080893ef340e84d61d1ca` and its modified/untracked owner files remain untouched. No merge or force-push. The full accepted-base diff is reviewed; final statistics and fetched remote identity are reported after the documentation push.
 
 Worktree: `/home/kasun/Music/atlas-session-036`. An environment reset removed `/tmp/atlas-session-036` and running processes; pushed implementation was recovered and uncommitted closure drafts reconstructed. Validation now uses persistent storage.
 
@@ -26,12 +26,14 @@ Implemented: Windows installer/build pipeline, hashed wheel-only lock, PyInstall
 
 Follow-up fixes sample actual M0/scenario/evaluation publication times, reject clock regression/deadline expiry, reuse exact sealed M0 inputs and validated evaluation/calendar on restart, and avoid completed M1/analogue redispatch. Production invokes bounded analogue retrieval and retains its receipt. Critic sealing validates the result/receipt pair and legacy result-only records, rejecting ambiguous/wrong-action evidence. Parquet physical/decoded byte and row limits precede allocation; scan handles close explicitly. Useful S35 credential-free transport hardening was selectively reused; its defective generic whole-runtime success promotion was not imported, and failed historical evidence was not rewritten.
 
+Final lifecycle/evidence review corrected canonical endpoint-price validation (including frozen source-reference lists), checks completed labels before raw reconstruction, binds the Windows broker to an exact controller process handle/PID/creation time, and fixes the installed pipe name. Context v2 rejects ownerless legacy contexts. New-run selection, preserved explicit selection and bounded inventory browsing are corrected. Read-only export remains available after upgrade with original identities while resume requires the original build. Missing/stale/future heartbeats are explicit gates; persisted report failure messages omit exception text.
+
 Five ordinary blockers remain, with code references and required work in the closure JSON:
 
 1. **ENG-06:** complete feature/candidate/sizing/action computation/publication chronology and validators.
 2. **ENG-08:** complete versioned public research risk/account/fee/stress/venue-capability and event prerequisite publishers, without invented capital facts or assumptions.
 3. **ENG-10:** complete bounded action-bearing after-cost outcomes and expected-opportunity reconciliation; diagnostic return labels are not executable payoff.
-4. **ENG-15:** bound M0/M1 populations and remaining indexed product/health/scanner/risk/history/recovery scans with explicit overflow evidence.
+4. **ENG-15:** bound M0/M1 populations and remaining indexed product/health/scanner/risk/history/recovery scans with explicit overflow evidence; replace historical prediction sweeps with bounded new/unresolved work to avoid growing maturation delays.
 5. **ENG-16:** complete expected-origin, regime, feature stability, M0/M1 disagreement, stage latency and registered-variant reporting against the same calendar.
 
 Analogue retrieval is connected, but absolute action/liquidity compatibility prevents useful historical support and requires a reviewed amendment. `SESSION036_ANALOGUE_AMENDMENT_PROPOSAL_V1.md` is unapproved; frozen hashes remain unchanged. Heavy/tool-using Windows worker isolation stays `DEFERRED_BY_FREEZE` / `BLOCKED BY ENVIRONMENT`; the direct critic has no dynamic tools.
@@ -44,9 +46,13 @@ Offline cases cover missing/stale source, reconnect/metadata failure, frame loss
 
 ## G — Windows product
 
-Windows Server 2025 CI run `37013260805` passed for implementation `e775946d3b57e32865da649ac64763383e4fdda7`: wheel lock, PyInstaller, payload/resources, packaged report, named-pipe authentication/current-user ACL, disposable DPAPI roundtrip/damaged-ciphertext rejection, Inno installer, reinstall and uninstall preservation. Artifact `11229131008`; archive digest `sha256:e5a32eb52358d367737496fb294aee7f74259cad4055e5df7b8f70ca13c616c4`.
+Native Windows Server 2025 CI [run 37085899018](https://github.com/KasunKarandagolla/Atlas/actions/runs/37085899018) passed exact build source `e673b8a3166acd5cb66dd2d3599a916353fe74d9` (runtime `bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254`). Checks cover wheel-only dependencies, PyInstaller payload/resources, packaged offline report/first-run fixture, authenticated named-pipe/current-user ACL, disposable DPAPI roundtrip/damaged ciphertext, exact controller process/owner death, install, reinstall and uninstall preservation. Artifact `11260498264`, API archive digest `sha256:1a5f6634dcdcdfef3cc61a1769139807a170cda85869ed13776a8c79e74144d0`.
 
-Python, Qt and research/native dependencies are bundled. Binaries and selected external data/configuration paths are separate per-user directories. Public operation needs no secret. Optional API keys use DPAPI, separate from hashable provider/model/run identity; paid inference requires explicit configuration. Evidence survives upgrade/uninstall. Clean owner Windows 11, signed release, cross-version upgrade and full real-provider integration remain unverified. No signed owner delivery is claimed.
+Downloaded installer `ATLAS-2.0.36.0-e673b8a3166a-win11-x64-setup.exe` independently matches SHA256 `131fdbc1f4224d07f8f8403b3babbbaa9f5800d9c261fd66e55c5b390fdc6dfd`. All three packaged lock hashes match exact source Git blobs; bundled agent freeze manifest matches `d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d`. Native dependency closure verified 278 PE files. Runtime and installer execution were native CI checks; Linux independently checked the downloaded artifact evidence and checksum.
+
+Python 3.12.10, Qt and research/native dependencies are bundled. Per-user binaries: `%LOCALAPPDATA%\Programs\ATLAS`; default data/configuration: `%LOCALAPPDATA%\Atlas` (owner can select an external research-data location). API keys use DPAPI in the separate protected secret directory. Public operation needs no secret. Non-secret provider/model/run configuration is hashable and immutable; stored keys alone do not activate paid inference. Evidence survives ordinary reinstall/uninstall. Clean owner Windows 11, signed release, cross-version upgrade and full real-provider integration remain unverified. This is an unsigned diagnostic artifact.
+
+Historical run `37046927320` at `bf64ea0` passed runtime/installer smoke, but independent review found CRLF-converted dependency locks. Its artifact `11244518429` remains explicitly `TEST GATE` for source-lock binding. Build fixes `02741fc` and `e673b8a` preserve exact lock/authority/resource bytes and compare checkout hashes with Git blobs before build and during package verification. Portable fault tests reject CRLF drift and dependency changes; corrected native artifact identities pass. Historical failed evidence is retained in the validation JSON.
 
 ## H–I — Research evidence and intelligence
 
@@ -60,10 +66,16 @@ Clean Windows/live-public qualification, exact S3 completeness, intelligence tun
 
 ## K — Validation
 
-Earlier implementation: V2 868 passed/2 skipped; non-V2 485 passed/3 skipped; contracts/golden 3 passed. Follow-up: chronology/broker/archive/analogue/export 40; corrected production seams 2; critic/runtime 51 with one skip; five new pair cases; portable Windows broker/harness 36. Ruff, mypy over 224 files, compileall, pip check, package, authority/lock hashes and value-suppressing secret checks passed.
+Final frozen runtime `bf64ea0`: **907 V2 passed, 2 optional SDK skips, no failures/errors**. Three disjoint file groups cover all 909 expected collected node IDs; durable per-phase journals and JUnit XML reconcile exactly. Later changes affect build scripts, attributes and documentation; `src` and `tests/v2` are unchanged. Two optional provider MockTransport cases pass separately in the exact agent-lock environment (26 dependencies), without provider network calls.
 
-The first follow-up comprehensive attempt recorded 547 passes, one skip and 47 critic setup errors before intentional interruption; corrected in `09e9710d443e5aa16317c18e07e9a6a8c9df451d`. The subsequent attempt lost its temporary log/process during environment reset and is not claimed passed. A fresh comprehensive run is pending, with persistent XML/logs in `/home/kasun/Music/atlas-session-036-validation`. Final results will update the closure JSON.
+Non-V2: **485 passed, 3 skipped**; corresponding source remains unchanged by subsequent follow-ups. Final contracts/golden: **3 passed**. Focused groups cover chronology, recovery, archives, analogue result/receipt, model routing, prediction endpoint tampering and restart, installed critic context, owner process death and resource limits. The final product/prediction/broker group passed 76 cases plus the generated installed context case.
+
+Ruff passed; mypy passed under repository configuration across 224 source files; compileall, pip check, portable Windows pipeline (47 locked dependencies), native package/PE/installer checks, three supplied freeze hashes and accepted core/agent locks passed. Final source/secret and owner-file checks are recorded in `SESSION036_OFFLINE_VALIDATION_V1.json`. Raw local journals/XML remain in `/home/kasun/Music/atlas-session-036-validation`; their checksums are published without a massive raw dump.
+
+Interrupted history is not a full pass: the initial follow-up run had 547 passes, one skip and 47 critic setup errors; `09e9710` corrected analogue ref-pair validation. A later temporary process/log was lost during environment reset. A pre-freeze attempt had 598 passes/two skips before code changes; the first grouped attempt was also interrupted by process reset. All were replaced by the completed source-frozen durable run. None is counted toward its 907 passes.
 
 ## L — Verdict
 
 **DEVELOPMENT NOT READY.** ENG-06/08/10/15/16 remain ordinary engineering blockers. Packaging success and partial research evidence do not meet the development-complete gate.
+
+Review artifacts: [closure capability/blocker ledger](../v2/ATLAS_FINAL_DEVELOPMENT_CLOSURE_V1.json), [offline/native validation](../v2/SESSION036_OFFLINE_VALIDATION_V1.json), [tuning schema](../v2/LIVE_TUNING_SCHEMA_V1.md), [Windows build gate](../v2/WINDOWS_DEPLOYMENT_BUILD_GATE_V1.md), and [unapproved analogue amendment proposal](../v2/SESSION036_ANALOGUE_AMENDMENT_PROPOSAL_V1.md).

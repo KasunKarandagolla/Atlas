@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "artifact_id": "SESSION036_OFFLINE_VALIDATION_V1",
+  "status": "TESTED",
+  "verdict": "DEVELOPMENT NOT READY",
+  "development_complete": false,
+  "accepted_start_sha": "e13994752f165ad8b42f7f7c441076078d4388cc",
+  "runtime_source_sha": "bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254",
+  "build_source_sha": "e673b8a3166acd5cb66dd2d3599a916353fe74d9",
+  "runtime_and_v2_tests_unchanged_after_final_regression": true,
+  "comprehensive_v2": {
+    "source_sha": "bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254",
+    "status": "TESTED",
+    "expected_node_count": 909,
+    "completed_node_count": 909,
+    "passed": 907,
+    "skipped": 2,
+    "failures": 0,
+    "errors": 0,
+    "groups": [
+      {
+        "group": 0,
+        "passed": 349,
+        "skipped": 1,
+        "errors": 0,
+        "failures": 0,
+        "journal_sha256": "0761fbaffe4dc7c1c671457d7f4951133edb585024ea919e87fd1f489674b4b2",
+        "junit_sha256": "4ee4a5843a1f1d9b4b9ed1e2086579867ade5d0648b62ce9e5351f1d6560dcdc"
+      },
+      {
+        "group": 1,
+        "passed": 318,
+        "skipped": 1,
+        "errors": 0,
+        "failures": 0,
+        "journal_sha256": "41770408704868250ef7211a713af5a223ce03d5d3349f509fd69151000ac89c",
+        "junit_sha256": "2cb5012d59193522eee77c427edb4ecb902afd008501e7f1c4a26c288816d534"
+      },
+      {
+        "group": 2,
+        "passed": 240,
+        "skipped": 0,
+        "errors": 0,
+        "failures": 0,
+        "journal_sha256": "264b4987dc26bc6bb2c076d5b11cf3f7eb84ee6c11ae765dd7ed54de93a7b34a",
+        "junit_sha256": "454be1b23d8dc47a7965761d02b0cb9b6a9d539f1a658aea0f2dca433ae183cd"
+      }
+    ],
+    "slowest_offline_fixtures": [
+      {
+        "nodeid": "tests/v2/test_session027_production.py::test_default_production_composes_public_to_risk_action_and_economics_after_restart",
+        "fixture_seconds": 1035.513
+      },
+      {
+        "nodeid": "tests/v2/test_session027_production.py::test_default_production_native_m1_s3_stays_closed_without_trade_completeness",
+        "fixture_seconds": 325.95
+      },
+      {
+        "nodeid": "tests/v2/test_session031_s3_persisted_lineage.py::test_one_second_bbo_and_current_source_health_gates_fail_closed",
+        "fixture_seconds": 191.387
+      },
+      {
+        "nodeid": "tests/v2/test_session031_s3_persisted_lineage.py::test_made_up_vwap_reference_does_not_validate_a_correct_count",
+        "fixture_seconds": 182.366
+      },
+      {
+        "nodeid": "tests/v2/test_session021_data_s3.py::test_s3_production_setup_consumes_causal_seven_day_prefix_and_fails_residual_tampering",
+        "fixture_seconds": 155.052
+      }
+    ],
+    "duration_scope": "Offline fixtures in this local environment; does not qualify live Windows latency."
+  },
+  "non_v2": {
+    "status": "TESTED",
+    "passed": 485,
+    "skipped": 3,
+    "scope": "Previously completed Session036 run; V1/non-V2 source unchanged by later runtime/build follow-ups."
+  },
+  "contracts_golden": {
+    "status": "TESTED",
+    "passed": 3,
+    "source_sha": "bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254"
+  },
+  "static_checks": {
+    "ruff": "TESTED",
+    "mypy": "TESTED: 224 files under repository configuration",
+    "compileall": "TESTED: src and build scripts",
+    "pip_check": "TESTED",
+    "portable_windows_pipeline": "TESTED: 47 locked dependencies; source lock CRLF/change rejection"
+  },
+  "optional_sdk_mock_transport": {
+    "status": "TESTED",
+    "cases": 2,
+    "isolated_hash_locked_dependencies": 26,
+    "provider_calls": false
+  },
+  "windows": {
+    "status": "TESTED",
+    "workflow_run_id": 37085899018,
+    "workflow_url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37085899018",
+    "source_sha": "e673b8a3166acd5cb66dd2d3599a916353fe74d9",
+    "platform": "GitHub Windows Server 2025",
+    "artifact_id": 11260498264,
+    "artifact_archive_digest": "sha256:1a5f6634dcdcdfef3cc61a1769139807a170cda85869ed13776a8c79e74144d0",
+    "archive_digest_scope": "GitHub artifact API reported digest; downloaded files independently verified below",
+    "installer": "ATLAS-2.0.36.0-e673b8a3166a-win11-x64-setup.exe",
+    "installer_sha256": "131fdbc1f4224d07f8f8403b3babbbaa9f5800d9c261fd66e55c5b390fdc6dfd",
+    "downloaded_installer_hash_verified": true,
+    "payload_tree_sha256": "803858f4b81fec804cd752064487a7d42d5a3dfa5f6083a533f46198bcab9a6a",
+    "dependency_locks": {
+      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
+    },
+    "source_lock_binding": "TESTED",
+    "bundled_agent_freeze_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "bundled_agent_freeze_manifest_verified": true,
+    "native_pe_files": 278,
+    "unbundled_compiler_runtimes": [],
+    "native_broker": {
+      "active_handlers_after_close": 0,
+      "current_user_dacl_verified": true,
+      "damaged_secret_rejected": true,
+      "max_handlers": 4,
+      "no_provider_calls": true,
+      "owner_process_death_observed": true,
+      "owner_secret_accessed": false,
+      "protected_secret_roundtrip": "TESTED",
+      "status": "TESTED",
+      "transport": "AF_PIPE",
+      "wrong_key_rejected": true
+    },
+    "first_run_configuration": "TESTED",
+    "child_path_contains_python_git": false,
+    "install_reinstall_uninstall_preservation": "TESTED",
+    "actual_fresh_windows11_laptop": "UNVERIFIED",
+    "cross_version_upgrade": "UNVERIFIED",
+    "signed_release": false,
+    "authenticode_signature": "UNVERIFIED",
+    "live_public_runtime": "TEST GATE",
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "artifact_files_sha256": {
+      "atlas-product/build-manifest.json": "9ba65476fc3ed92c664de06584991735e53777f0ce675c84538bbfc71985bb92",
+      "windows-installer-smoke.json": "1051762e923b3184aa22bdd26766f2ef9bae48bae15dc58200ccdd6ad5cc721f",
+      "windows-native-dependencies.json": "7b1609611ddd9915948c588651bc1a0fa3d6adcb397d2917016b139a570adc8f",
+      "windows-native-smoke.json": "f7b19a2122baece79a33c97a5a8337766fa24c3dfe1241fdb36dd040dada2223",
+      "windows-release-manifest.json": "cfc50fd797c17ca0e4b0aeb636d2f7d128e0b89bf2d5b9086e564053b3665e24"
+    }
+  },
+  "historical_windows_source_lock_defect": {
+    "status": "TESTED",
+    "workflow_run_id": 37046927320,
+    "source_sha": "bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254",
+    "platform": "GitHub Windows Server 2025",
+    "signed_release": false,
+    "artifact_id": 11244518429,
+    "artifact_archive_digest": "sha256:5aa49a141f1fece7082a2e4a84667bae8b10301865a9218a1fbb24abefe1971a",
+    "owner_process_death_observed": true,
+    "installer": "ATLAS-2.0.36.0-bf64ea0f7cc7-win11-x64-setup.exe",
+    "installer_sha256": "98ef4d5a88e6448d7956216ad0be92032a57d3f9420f05094e45beb412d90a17",
+    "payload_tree_sha256": "a83e3e27c482e3bbe49a3f3483aafff8c583c7c129da6850a2762ab3aee057a8",
+    "downloaded_installer_hash_verified": true,
+    "native_pe_files": 278,
+    "source_lock_binding": "TEST GATE",
+    "source_lock_binding_defect": "Windows autocrlf changed three deployed lock byte hashes. Earlier native smoke passed but did not compare checkout bytes to Git blobs.",
+    "observed_deployed_locks": {
+      "requirements-agent-lock.txt": "a3ec3f038f2eae9d7ee7206d1440347bfb5c2bfd85beee1c9bb1f6e97c3f3dab",
+      "requirements-lock.txt": "69a5ed161831a94f39107774f8d04aef28a2bb25793c530169e7d3404120932f",
+      "requirements-windows-lock.txt": "c8a9b2f6a334fa4a7cc16a8f2f2d0286cec3f168ad0b6b0b6bb7c4e36fea63b9"
+    },
+    "expected_source_locks": {
+      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
+    }
+  },
+  "ordinary_engineering_blockers": [
+    "ENG-06",
+    "ENG-08",
+    "ENG-10",
+    "ENG-15",
+    "ENG-16"
+  ],
+  "evidence_directory": "/home/kasun/Music/atlas-session-036-validation",
+  "raw_test_journals_committed": false,
+  "safety": {
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "critic_authority": "ZERO",
+    "holdout_accessed": false,
+    "orders_submitted": 0,
+    "authenticated_venue_calls": 0,
+    "paid_provider_calls": 0,
+    "two_day_live_test_started": false
+  },
+  "security_and_freezes": {
+    "source_sha": "e673b8a3166acd5cb66dd2d3599a916353fe74d9",
+    "scope": "Accepted S34 to final Session036 implementation/build and uncommitted final documentation",
+    "status": "TESTED",
+    "check": "CHANGED_TRACKED_CREDENTIAL_PATTERN_SCAN",
+    "files_checked": 74,
+    "high_confidence_matches": 0,
+    "matched_values_printed": false,
+    "supplied_freeze_hashes_match": true,
+    "authority_sha256": {
+      "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "dependency_locks": {
+      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
+    },
+    "v1_golden_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
+    "owner_archive_pdf_environment_key_files_committed": false,
+    "frozen_v1_risk_recovery_persistence_scanner_unchanged": true
+  }
+}
