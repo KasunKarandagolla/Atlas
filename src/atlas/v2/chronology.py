@@ -21,7 +21,9 @@ RECEIPT_FIELDS = frozenset({"version", "artifact_ref", "artifact_content_hash", 
 DERIVED_TYPES = frozenset({"UniverseObservationV2", "UniverseContractV2", "FeatureArtifactV2",
     "CandidateActionV2", "CandidateSetV2", "ScannerSelectionSourceV1", "ScannerRankEvidenceV1",
     "S1SetupEvidenceV1", "S2SetupEvidenceV1", "S2TriggerEvidenceV1", "SizingDecisionV2", "ActionArtifactV2",
-    "EventSafetyGateV2", "ResearchPrerequisiteInventoryV1", "ActiveCausalHistoryStateV1"})
+    "EventSafetyGateV2", "ResearchPrerequisiteInventoryV1", "ActiveCausalHistoryStateV1",
+    "OpsEconomicEvidenceResolutionV1", "JointExecutionDataV2", "ScenarioSupportUnitV2",
+    "PretradeExecutionScenarioV2", "DecisionTimePortfolioCompletenessV2"})
 MAX_DEPENDENCIES = 200_000  # Fixed archive context, never a history-sized walk.
 
 
@@ -57,6 +59,33 @@ def _declared_inputs(entry: ArtifactIndexEntryV2) -> tuple[str, ...]:
     elif entry.artifact_type in {"ScannerSelectionSourceV1", "ScannerRankEvidenceV1"}:
         refs = (*entry.metadata.get("input_refs", ()), entry.metadata["universe_ref"],
             *([entry.metadata["source_artifact_ref"]] if entry.artifact_type == "ScannerRankEvidenceV1" else []))
+    elif entry.artifact_type in {"JointExecutionDataV2", "ScenarioSupportUnitV2",
+            "OpsEconomicEvidenceResolutionV1", "PretradeExecutionScenarioV2",
+            "DecisionTimePortfolioCompletenessV2"}:
+        key = {"JointExecutionDataV2": "joint_execution_data", "ScenarioSupportUnitV2": "evidence",
+            "OpsEconomicEvidenceResolutionV1": "resolution", "PretradeExecutionScenarioV2": "scenario",
+            "DecisionTimePortfolioCompletenessV2": "evidence"}[entry.artifact_type]
+        body = entry.metadata.get(key)
+        if not isinstance(body, Mapping):
+            raise ValueError("derived economic target body is unavailable")
+        singles = {"JointExecutionDataV2": ("action_artifact_ref", "source_ref", "execution_model_ref", "fee_ref"),
+            "ScenarioSupportUnitV2": ("source_episode_ref", "execution_model_ref", "calibration_ref", "template_ref"),
+            "OpsEconomicEvidenceResolutionV1": ("candidate_set_ref", "candidate_ref", "action_artifact_ref",
+                "product_ref", "account_ref", "source_manifest_ref", "capability_ref"),
+            "PretradeExecutionScenarioV2": ("action_artifact_ref",),
+            "DecisionTimePortfolioCompletenessV2": ("account_snapshot_ref",)}[entry.artifact_type]
+        vectors = {"ScenarioSupportUnitV2": ("source_bundle_refs",),
+            "OpsEconomicEvidenceResolutionV1": ("causal_input_refs",),
+            "PretradeExecutionScenarioV2": ("source_joint_data_refs",),
+            "DecisionTimePortfolioCompletenessV2": ("existing_exposure_refs", "pending_exposure_refs",)}
+        refs = [*entry.metadata.get("input_refs", ())]
+        refs.extend(body[name] for name in singles if body.get(name) is not None)
+        refs.extend(ref for name in vectors.get(entry.artifact_type, ()) for ref in body.get(name, ()))
+        if entry.metadata.get("binding_source_ref") is not None:
+            refs.append(entry.metadata["binding_source_ref"])
+        if entry.artifact_type == "PretradeExecutionScenarioV2":
+            refs.extend(body[name]["ref"] for name in ("model_input", "calibration_input", "execution_model_input"))
+            refs.extend(item["ref"] for item in body["source_inputs"])
     else:
         refs = entry.metadata.get("input_refs", ())
     if not isinstance(refs, (tuple, list)) or len(refs) > MAX_DEPENDENCIES:

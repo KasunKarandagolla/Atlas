@@ -243,6 +243,12 @@ class ProductionEconomicInputsV1:
     available_at_ns: int | None
     scenario_seed: int | None
     scenario_count: int = 100
+    source_inputs: tuple[CausalInputV2, ...] = ()
+    joint_data_refs: tuple[str, ...] = ()
+    support_unit_refs: tuple[str, ...] = ()
+    execution_residual_refs: tuple[str, ...] = ()
+    stress_input_ref: str | None = None
+    existing_portfolio_path_refs: tuple[str, ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -3000,7 +3006,8 @@ class ProductionOpsCyclePortV1:
         risk_reason = _risk_input_reason(risk_inputs, event)
         if risk_reason is not None and isinstance(self.inputs_provider, IndexedProductionEventInputsV1):
             risk_inputs, resolution_reason = self.inputs_provider.resolve_risk(
-                repository, event, candidate_set, selected, universe, now_ns=now_ns,
+                repository, event, candidate_set, selected, universe,
+                now_ns=sample(self.clock_ns, floor_ns=candidate_set.envelope.available_at_ns),
             )
             risk_reason = resolution_reason or _risk_input_reason(risk_inputs, event)
         if risk_reason is not None:
@@ -3089,12 +3096,14 @@ class ProductionOpsCyclePortV1:
 
         economic_inputs = inputs.economic_inputs.get(selected.candidate_id)
         economic_resolution_reason: str | None = None
+        economic_at = sample(self.clock_ns, floor_ns=action.available_at_ns)
         if economic_inputs is None and isinstance(self.inputs_provider, IndexedProductionEventInputsV1):
             economic_inputs, economic_resolution_reason = self.inputs_provider.resolve_economic(
-                repository, event, candidate_set, selected, action, risk_inputs, now_ns=now_ns,
+                repository, event, candidate_set, selected, action, risk_inputs,
+                now_ns=economic_at, clock_ns=self.clock_ns,
             )
         evaluation: Phase2EvaluationResultV2 | _RecoveredEconomicEvaluationV1 | None = (
-            _recover_economic_evaluation(repository, action, selected, candidate_set, now_ns=now_ns)
+            _recover_economic_evaluation(repository, action, selected, candidate_set, now_ns=economic_at)
         )
         evaluation_reason = economic_resolution_reason or _evaluation_inputs_reason(economic_inputs, event)
         if evaluation is not None:
@@ -3125,6 +3134,12 @@ class ProductionOpsCyclePortV1:
                     available_at_ns=_required(economic_inputs.available_at_ns),
                     scenario_seed=_required(economic_inputs.scenario_seed),
                     scenario_count=economic_inputs.scenario_count,
+                    source_inputs=economic_inputs.source_inputs,
+                    joint_data_refs=economic_inputs.joint_data_refs,
+                    support_unit_refs=economic_inputs.support_unit_refs,
+                    execution_residual_refs=economic_inputs.execution_residual_refs,
+                    stress_input_ref=economic_inputs.stress_input_ref,
+                    existing_portfolio_path_refs=economic_inputs.existing_portfolio_path_refs,
                     clock_ns=self.clock_ns,
                 )
             except Exception as error:
@@ -3462,10 +3477,10 @@ class IndexedProductionEventInputsV1:
     def resolve_economic(
         self, repository: OpsRepository, event: OpsDecisionEventV1, candidate_set: CandidateSetV2,
         candidate: CandidateActionV2, action: ActionArtifactV2, risk: ProductionRiskInputsV1,
-        *, now_ns: int,
+        *, now_ns: int, clock_ns: Callable[[], int] | None = None,
     ) -> tuple[ProductionEconomicInputsV1 | None, str | None]:
         return _resolve_indexed_economic_inputs(
-            repository, event, candidate_set, candidate, action, risk, now_ns=now_ns,
+            repository, event, candidate_set, candidate, action, risk, now_ns=now_ns, clock_ns=clock_ns,
         )
 
 
@@ -3893,11 +3908,129 @@ def _resolve_indexed_risk_inputs(
     return result, None
 
 
+def _resolve_declared_economic_inputs(
+    repository: OpsRepository, event: OpsDecisionEventV1, candidate_set: CandidateSetV2,
+    candidate: CandidateActionV2, action: ActionArtifactV2, risk: ProductionRiskInputsV1,
+    *, now_ns: int, clock_ns: Callable[[], int] | None,
+) -> tuple[ProductionEconomicInputsV1 | None, str | None, bool]:
+    """Bind predeclared sources after action creation; raw vintages stay at T0."""
+    from ..science.scenario_engine import scenario_seed
+    from .economic_binding import bind_economic_templates
+    from .economic_sources import resolve_economic_source_manifest
+
+    if risk.product is None or risk.account is None or risk.fee is None:
+        return None, "MANDATORY_HARD_RISK_EVIDENCE_UNAVAILABLE", True
+    manifest, reason = resolve_economic_source_manifest(repository, product=risk.product,
+        account_scope=risk.account.account_scope, policy_hash=candidate.policy_hash,
+        cutoff_ns=event.information_cutoff_ns)
+    if manifest is None:
+        return None, reason, reason != "ECONOMIC_SOURCE_MANIFEST_MISSING"
+    capabilities: list[VenueCapabilitySnapshotV2] = []
+    for entry in _bounded_evidence(repository, "VenueCapabilitySnapshotV2",
+            cutoff_ns=event.information_cutoff_ns):
+        try:
+            capability = VenueCapabilitySnapshotV2.from_dict(json_value(entry.metadata["capability"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if (capability.content_hash == entry.content_hash == entry.artifact_ref
+                and capability.available_at_ns == entry.available_at_ns
+                and capability.product_ref == risk.product.content_hash
+                and capability.instrument_key_ref == candidate.key.content_hash
+                and capability.account_scope == risk.account.account_scope):
+            capabilities.append(capability)
+    if not capabilities:
+        return None, "EXACT_VENUE_CAPABILITY_UNAVAILABLE", True
+    latest = max(item.available_at_ns for item in capabilities)
+    recent = [item for item in capabilities if item.available_at_ns == latest]
+    if len({item.content_hash for item in recent}) != 1:
+        return None, "AMBIGUOUS_EXACT_VENUE_CAPABILITY", True
+    capability = recent[0]
+    identity = {"version": "OPS_DECLARED_ECONOMIC_RESOLUTION_V1", "event_id": event.event_id,
+        "candidate_set_ref": candidate_set.content_hash, "candidate_ref": candidate.content_hash,
+        "action_artifact_ref": action.content_hash}
+    resolution_ref = sha256_json(identity)
+    prior = repository.get_artifact(resolution_ref)
+    clock = clock_ns if clock_ns is not None else lambda: now_ns
+    consumer_at = sample(clock, floor_ns=max(now_ns, action.available_at_ns))
+    if prior is not None:
+        body = prior.metadata.get("resolution")
+        if (not isinstance(body, Mapping) or any(body.get(key) != value for key, value in identity.items())
+                or prior.artifact_type != "OpsEconomicEvidenceResolutionV1"
+                or prior.content_hash != sha256_json(body)
+                or body.get("source_manifest_ref") != manifest.content_hash
+                or body.get("capability_ref") != capability.content_hash
+                or body.get("available_at_ns") != prior.available_at_ns
+                or body.get("authority") != "ZERO"
+                or not causal_artifact(repository, resolution_ref, cutoff_ns=event.information_cutoff_ns,
+                    consumer_at_ns=consumer_at, deadline_ns=event.deadline_ns)):
+            return None, "SEALED_ECONOMIC_RESOLUTION_CONFLICT", True
+        joint_refs, support_refs = tuple(body["joint_data_refs"]), tuple(body["support_unit_refs"])
+        try:
+            expected_joint, expected_support = bind_economic_templates(repository, action=action,
+                cutoff_ns=event.information_cutoff_ns, deadline_ns=candidate.deadline_ns,
+                execution_model_ref=manifest.execution_model_input.ref, fee_ref=risk.fee.content_hash,
+                joint_data_refs=manifest.joint_data_refs, support_unit_refs=manifest.support_unit_refs,
+                clock_ns=clock)
+        except (TypeError, ValueError, KeyError):
+            return None, "SEALED_ECONOMIC_RESOLUTION_CONFLICT", True
+        if (joint_refs != expected_joint or support_refs != expected_support
+                or body.get("market_information_cutoff_ns") != event.information_cutoff_ns
+                or body.get("consumer_deadline_ns") != candidate.deadline_ns
+                or body.get("action_hash") != action.action.action_hash
+                or body.get("product_ref") != risk.product.content_hash
+                or body.get("account_ref") != risk.account.content_hash):
+            return None, "SEALED_ECONOMIC_RESOLUTION_CONFLICT", True
+        published_at = prior.available_at_ns
+    else:
+        if consumer_at >= min(event.deadline_ns, candidate.deadline_ns):
+            return None, "ECONOMIC_EVIDENCE_UNAVAILABLE_BEFORE_ACTION_DEADLINE", True
+        try:
+            joint_refs, support_refs = bind_economic_templates(repository, action=action,
+                cutoff_ns=event.information_cutoff_ns, deadline_ns=candidate.deadline_ns,
+                execution_model_ref=manifest.execution_model_input.ref, fee_ref=risk.fee.content_hash,
+                joint_data_refs=manifest.joint_data_refs, support_unit_refs=manifest.support_unit_refs,
+                clock_ns=clock)
+        except (TypeError, ValueError, KeyError):
+            return None, "EXACT_ECONOMIC_TEMPLATE_BINDING_UNSUPPORTED", True
+        input_refs = tuple(sorted({manifest.content_hash, candidate_set.content_hash, candidate.content_hash,
+            action.content_hash, risk.product.content_hash, risk.account.content_hash, capability.content_hash,
+            *manifest.input_refs, *joint_refs, *support_refs}))
+        started = sample(clock, floor_ns=max(consumer_at,
+            *(_required_artifact(repository, ref).available_at_ns for ref in input_refs)))
+        finished = sample(clock, floor_ns=started)
+        published_at = sample(clock, floor_ns=finished)
+        if published_at >= min(event.deadline_ns, candidate.deadline_ns):
+            return None, "ECONOMIC_EVIDENCE_UNAVAILABLE_BEFORE_ACTION_DEADLINE", True
+        body = {**identity, "market_information_cutoff_ns": event.information_cutoff_ns,
+            "consumer_deadline_ns": candidate.deadline_ns, "action_hash": action.action.action_hash,
+            "source_manifest_ref": manifest.content_hash, "product_ref": risk.product.content_hash,
+            "account_ref": risk.account.content_hash, "capability_ref": capability.content_hash,
+            "causal_input_refs": [manifest.model_input.ref, manifest.calibration_input.ref,
+                manifest.execution_model_input.ref], "joint_data_refs": list(joint_refs),
+            "support_unit_refs": list(support_refs), "available_at_ns": published_at, "authority": "ZERO"}
+        with repository.atomic_composition():
+            repository.register_artifact(ArtifactIndexEntryV2(resolution_ref, "OpsEconomicEvidenceResolutionV1",
+                sha256_json(body), started, published_at, {"resolution": body, "input_refs": list(input_refs)}))
+            record_computation(repository, artifact_ref=resolution_ref,
+                information_cutoff_ns=event.information_cutoff_ns, started_ns=started, finished_ns=finished,
+                available_ns=published_at, input_refs=input_refs, deadline_ns=candidate.deadline_ns)
+    result = ProductionEconomicInputsV1(manifest.admission_policy, capability, manifest.model_input,
+        manifest.calibration_input, manifest.execution_model_input, published_at,
+        scenario_seed(action.action.action_hash, event.information_cutoff_ns), manifest.scenario_count,
+        manifest.source_inputs, joint_refs, support_refs, manifest.execution_residual_refs,
+        manifest.stress_input_ref, manifest.existing_portfolio_path_refs)
+    return result, None, True
+
+
 def _resolve_indexed_economic_inputs(
     repository: OpsRepository, event: OpsDecisionEventV1, candidate_set: CandidateSetV2,
     candidate: CandidateActionV2, action: ActionArtifactV2, risk: ProductionRiskInputsV1,
-    *, now_ns: int,
+    *, now_ns: int, clock_ns: Callable[[], int] | None = None,
 ) -> tuple[ProductionEconomicInputsV1 | None, str | None]:
+    declared, declared_reason, handled = _resolve_declared_economic_inputs(
+        repository, event, candidate_set, candidate, action, risk, now_ns=now_ns, clock_ns=clock_ns)
+    if handled:
+        return declared, declared_reason
     policy_rows: list[tuple[ArtifactIndexEntryV2, AdmissionPolicyV2]] = []
     for entry in _bounded_evidence(repository, "OpsAdmissionPolicyEvidenceV1"):
         body = entry.metadata.get("admission_policy_evidence")
@@ -4241,6 +4374,11 @@ def _indexed_public_prerequisite_evidence(repository: OpsRepository, product: Pr
     if "ACCOUNT" in supplied and "VENUE_CAPABILITY" in supplied and (
             supplied["ACCOUNT"].account_scope != supplied["VENUE_CAPABILITY"].account_scope):
         supplied.pop("VENUE_CAPABILITY")
+    from .economic_sources import declared_execution_model
+    execution_model = declared_execution_model(repository, product,
+        supplied["ACCOUNT"].account_scope if "ACCOUNT" in supplied else None, cutoff_ns)
+    if execution_model is not None:
+        supplied["EXECUTION_MODEL"] = execution_model
     return supplied
 
 

@@ -67,6 +67,7 @@ _TYPES = (
     "OpsActiveWorkPressureV1", "ActiveTrainingWorkPressureV1",
     "PublicBarGapRepairPageV1",
     "PublicContextCycleReportV1", "NewsEventV2",
+    "EconomicSourceManifestV1", "OpsEconomicEvidenceResolutionV1",
 )
 _METRIC_NAMES = frozenset({
     "latency_ns", "dispatch_to_result_latency_ns", "queue_items", "queue_bytes", "high_water_items",
@@ -92,6 +93,7 @@ _METRIC_NAMES = frozenset({
     "verified_close_at_ns", "target_close_at_ns", "max_source_rows_per_cycle",
     "backlog", "cursor_available_at_ns", "quarantined_count", "retired_count",
     "due_count_lower_bound", "due_page_overflow", "oldest_due_age_ns",
+    "scenario_count", "max_manifest_rows", "observed_row_count",
 })
 _IDENTITY_NAMES = frozenset({
     "event_id", "decision_event_id", "decision_ref", "decision_calendar_ref", "candidate_ref",
@@ -267,6 +269,36 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
         body = _chronology_projection(repository, entry, row)
     elif entry.artifact_type == "ResearchPrerequisiteInventoryV1":
         body = _prerequisite_projection(repository, entry, row)
+    elif entry.artifact_type == "EconomicSourceManifestV1":
+        from atlas.v2.runtime.economic_sources import validate_economic_source_manifest
+
+        manifest = validate_economic_source_manifest(repository, entry, cutoff_ns=entry.available_at_ns)
+        body = manifest.to_dict()
+        row.update(row_kind="ECONOMIC_CONFIGURATION", method_id=manifest.version,
+            method_config_hash=manifest.content_hash, policy_hash=manifest.policy_hash,
+            information_cutoff_ns=manifest.available_at_ns, status="DECLARED")
+    elif entry.artifact_type == "OpsEconomicEvidenceResolutionV1":
+        from atlas.v2.chronology import causal_artifact
+
+        resolution = body.get("resolution")
+        if (not isinstance(resolution, Mapping) or sha256_json(resolution) != entry.content_hash
+                or resolution.get("authority") != "ZERO"):
+            raise ValueError("economic resolution content or authority mismatch")
+        if resolution.get("version") == "OPS_DECLARED_ECONOMIC_RESOLUTION_V1":
+            if (resolution.get("available_at_ns") != entry.available_at_ns or not causal_artifact(
+                    repository, entry.artifact_ref, cutoff_ns=resolution["market_information_cutoff_ns"],
+                    consumer_at_ns=entry.available_at_ns, deadline_ns=resolution["consumer_deadline_ns"])):
+                raise ValueError("economic resolution derived binding chronology invalid")
+            row.update(method_config_hash=resolution["source_manifest_ref"],
+                information_cutoff_ns=resolution["market_information_cutoff_ns"])
+        elif (resolution.get("version") != "OPS_ECONOMIC_EVIDENCE_RESOLUTION_V1"
+                or entry.artifact_ref != entry.content_hash):
+            raise ValueError("unsupported economic resolution")
+        body = resolution
+        row.update(row_kind="ECONOMIC_BINDING", event_id=resolution["event_id"],
+            candidate_ref=resolution["candidate_ref"], candidate_set_ref=resolution["candidate_set_ref"],
+            action_artifact_ref=resolution["action_artifact_ref"], action_hash=resolution["action_hash"],
+            method_id=resolution["version"], status="BOUND")
     elif entry.artifact_type == "ActionReplayLifecycleSummaryV1":
         body = _lifecycle_projection(repository, entry, row)
     elif entry.artifact_type == "ActionReplaySourceEvidenceV1":

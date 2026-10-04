@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 
 from atlas.domain.risk import RiskPolicy
 
-from .._serialization import canonical_json, sha256_json, timestamp
+from .._serialization import canonical_json, json_value, sha256_json, timestamp
+from ..chronology import record_computation
 from ..contracts import CandidateActionV2, CandidateSetV2
 from ..instruments import ProductContractV2
-from ..memory.repository import OpsRepository
+from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
 from ..risk import AccountRiskSnapshotV2, FeeScheduleV2, RiskPolicyV2, SizingDecisionV2, SizingStatus
 from .action import ActionArtifactV2
 from .admission import (
@@ -23,7 +24,9 @@ from .admission import (
     DecisionTimePortfolioScenariosV2,
     DeterministicStressV2,
     EstimationUncertaintyV2,
+    ExecutionCalibrationResidualV2,
     ExecutionModelUncertaintyV2,
+    ExistingPortfolioPathV2,
     InferenceSupportV2,
     LCBMethodV2,
     M0CalibrationV2,
@@ -38,8 +41,9 @@ from .admission import (
     build_decision_time_portfolio_scenarios,
     decide_admission,
     evaluate_deterministic_stress,
+    index_execution_calibration_residual,
     index_lcb_method,
-    index_portfolio_completeness,
+    index_numerical_convergence_run,
     index_venue_capability_snapshot,
     make_amended_evaluation,
     make_estimation_uncertainty,
@@ -50,6 +54,7 @@ from .admission import (
     make_portfolio_es,
     make_scenario_support,
     persist_economic_decision,
+    stress_input_from_wire,
 )
 from .admission import (
     index_admission_evidence as _index_admission_evidence,
@@ -107,6 +112,12 @@ def run_phase2_economic_evaluation(
     scenario_seed: int,
     scenario_count: int = 100,
     clock_ns: Callable[[], int] | None = None,
+    source_inputs: Sequence[CausalInputV2] = (),
+    joint_data_refs: Sequence[str] = (),
+    support_unit_refs: Sequence[str] = (),
+    execution_residual_refs: Sequence[str] = (),
+    stress_input_ref: str | None = None,
+    existing_portfolio_path_refs: Sequence[str] = (),
 ) -> Phase2EvaluationResultV2:
     """Run M0 through terminal economic calendar using the supplied ops writer.
 
@@ -116,6 +127,13 @@ def run_phase2_economic_evaluation(
     """
     if repository.read_only:
         raise ValueError("Phase-2 economic evaluation requires the caller's writable OpsRepository")
+    supplied_refs = (*joint_data_refs, *support_unit_refs, *execution_residual_refs,
+        *existing_portfolio_path_refs, *(item.ref for item in source_inputs))
+    if len(supplied_refs) + (stress_input_ref is not None) > 128:
+        raise ValueError("economic evaluation source population exceeds its declared bound")
+    for refs in (joint_data_refs, support_unit_refs, execution_residual_refs, existing_portfolio_path_refs):
+        if tuple(refs) != tuple(sorted(set(refs))):
+            raise ValueError("economic evaluation source refs must be sorted and unique")
     if admission_policy.version != ADMISSION_POLICY_VERSION:
         raise ValueError("unsupported Phase-2 admission policy version")
     if (
@@ -192,8 +210,8 @@ def run_phase2_economic_evaluation(
         model_input=model_input,
         calibration_input=calibration_input,
         execution_model_input=execution_model_input,
-        source_inputs=(),
-        joint_data_refs=(),
+        source_inputs=source_inputs,
+        joint_data_refs=joint_data_refs,
         fee=fee,
         base_units_per_contract=product.base_units_per_contract,
         cutoff_ns=candidate.decision_at_ns,
@@ -207,7 +225,8 @@ def run_phase2_economic_evaluation(
     )
     available_at_ns = scenario.available_at_ns
 
-    scenario_support = make_scenario_support(repository, action=action, scenario=scenario, support_unit_refs=())
+    scenario_support = make_scenario_support(repository, action=action, scenario=scenario,
+        support_unit_refs=support_unit_refs)
     index_admission_evidence(repository, "ScenarioSupportV2", scenario_support.to_dict(), available_at_ns)
     support = make_inference_support(action.action.action_hash, m0_support, scenario_support)
     index_admission_evidence(repository, "InferenceSupportV2", support.to_dict(), available_at_ns)
@@ -224,10 +243,23 @@ def run_phase2_economic_evaluation(
     estimation_ref = index_admission_evidence(
         repository, "EstimationUncertaintyV2", estimation.to_dict(), available_at_ns
     )
+    residuals: list[ExecutionCalibrationResidualV2] = []
+    for ref in execution_residual_refs:
+        entry = repository.get_artifact(ref)
+        body = entry.metadata.get("residual") if entry is not None else None
+        if (entry is None or entry.artifact_type != "ExecutionCalibrationResidualV2"
+                or entry.content_hash != ref or not isinstance(body, Mapping)
+                or sha256_json(body) != ref or entry.available_at_ns > candidate.decision_at_ns):
+            raise ValueError("economic execution calibration is missing, future or invalid")
+        residual = ExecutionCalibrationResidualV2.from_dict(json_value(body), evidence_ref=ref)
+        if residual.available_at_ns != entry.available_at_ns:
+            raise ValueError("economic execution calibration publication mismatch")
+        index_execution_calibration_residual(repository, residual)
+        residuals.append(residual)
     execution = make_execution_uncertainty(
         action.action.action_hash,
         execution_model_input.ref,
-        (),
+        residuals,
         compatibility_key=m0_support.compatibility_key,
         cutoff_ns=candidate.decision_at_ns,
         minimum_support=admission_policy.minimum_execution_calibration,
@@ -235,8 +267,32 @@ def run_phase2_economic_evaluation(
     execution_ref = index_admission_evidence(
         repository, "ExecutionModelUncertaintyV2", execution.to_dict(), available_at_ns
     )
-    numerical = make_numerical_error(repository, action=action, scenario=scenario, prediction=prediction)
+    # Two fixed independent seeds diagnose Monte Carlo error; they are not new
+    # historical observations or hidden attempts to rescue an unsupported model.
+    run_refs: list[str] = []
+    if scenario.status.value == "AVAILABLE" and not scenario.synthetic_fixture and prediction.numerical_conversion_error is not None:
+        run_refs.append(index_numerical_convergence_run(repository, action=action, scenario_ref=scenario.content_hash))
+        sample_time()
+        alternate, _ = generate_pretrade_scenarios(repository, action=action,
+            model_input=model_input, calibration_input=calibration_input,
+            execution_model_input=execution_model_input, source_inputs=source_inputs,
+            joint_data_refs=joint_data_refs, fee=fee, base_units_per_contract=product.base_units_per_contract,
+            cutoff_ns=candidate.decision_at_ns, created_at_ns=available_at_ns, computed_at_ns=available_at_ns,
+            available_at_ns=available_at_ns, expires_at_ns=candidate.deadline_ns,
+            seed=scenario_seed ^ 0xA71A537, scenario_count=scenario_count, clock_ns=clock_ns)
+        available_at_ns = alternate.available_at_ns
+        run_refs.append(index_numerical_convergence_run(repository, action=action, scenario_ref=alternate.content_hash))
+    numerical = make_numerical_error(repository, action=action, scenario=scenario, prediction=prediction,
+        run_a_ref=run_refs[0] if run_refs else None, run_b_ref=run_refs[1] if run_refs else None)
     numerical_ref = index_admission_evidence(repository, "NumericalErrorV2", numerical.to_dict(), available_at_ns)
+    stress_input = None
+    if stress_input_ref is not None:
+        entry = repository.get_artifact(stress_input_ref)
+        if (entry is None or entry.artifact_type != "StressSuiteEvidenceV2"
+                or entry.content_hash != stress_input_ref or sha256_json(entry.metadata) != stress_input_ref
+                or entry.available_at_ns > candidate.decision_at_ns):
+            raise ValueError("economic stress source is missing, future or invalid")
+        stress_input = stress_input_from_wire(json_value(entry.metadata["stress_input"]))
     stress = evaluate_deterministic_stress(
         repository,
         action=action,
@@ -245,31 +301,57 @@ def run_phase2_economic_evaluation(
         eligible_equity=account.eligible_equity,
         drawdown=account.drawdown,
         product_base_units=product.base_units_per_contract,
-        stress_input=None,
-        stress_evidence_ref=None,
+        stress_input=stress_input,
+        stress_evidence_ref=stress_input_ref,
         cutoff_ns=candidate.decision_at_ns,
     )
     index_admission_evidence(repository, "DeterministicStressV2", stress.to_dict(), available_at_ns)
 
+    existing_paths: list[ExistingPortfolioPathV2] = []
+    for ref in existing_portfolio_path_refs:
+        entry = repository.get_artifact(ref)
+        body = entry.metadata.get("evidence") if entry is not None else None
+        if (entry is None or entry.artifact_type != "ExistingPortfolioPathV2" or entry.content_hash != ref
+                or not isinstance(body, Mapping) or sha256_json(body) != ref
+                or entry.available_at_ns > candidate.decision_at_ns):
+            raise ValueError("economic portfolio source is missing, future or invalid")
+        existing_paths.append(ExistingPortfolioPathV2.from_dict(json_value(body)))
+    existing_paths.sort(key=lambda item: item.common_path_id)
+    flat = not account.existing_exposure_refs and not account.pending_risk_refs
+    if flat and scenario.status.value == "AVAILABLE" and not existing_paths:
+        existing_paths = [ExistingPortfolioPathV2(path_id, scenario.common_scenario_set_id, probability, Decimal(0))
+            for path_id, probability, _ in scenario.rows]
+    completeness_started = sample_time()
+    completeness_available = sample_time()
     completeness = DecisionTimePortfolioCompletenessV2(
         account.content_hash,
         scenario.common_scenario_set_id,
         tuple(sorted(account.existing_exposure_refs)),
         tuple(sorted(account.pending_risk_refs)),
         (),
-        (),
+        tuple(path_id for path_id, _, _ in scenario.rows),
         account.eligible_equity,
         account.drawdown,
-        candidate.decision_at_ns,
-        "NOT_ESTIMABLE",
+        completeness_available,
+        "COMPLETE" if scenario.status.value == "AVAILABLE" and not scenario.synthetic_fixture
+            and (flat or bool(existing_paths)) else "NOT_ESTIMABLE",
     )
-    index_portfolio_completeness(repository, completeness)
+    completeness_inputs = tuple(sorted({account.content_hash, account.exposure_completeness_ref,
+        scenario.content_hash, *account.existing_exposure_refs, *account.pending_risk_refs,
+        *existing_portfolio_path_refs}))
+    repository.register_artifact(ArtifactIndexEntryV2(completeness.content_hash,
+        "DecisionTimePortfolioCompletenessV2", completeness.content_hash, completeness_started,
+        completeness_available, {"evidence": completeness.to_dict(), "input_refs": list(completeness_inputs)}))
+    record_computation(repository, artifact_ref=completeness.content_hash,
+        information_cutoff_ns=candidate.decision_at_ns, started_ns=completeness_started,
+        finished_ns=completeness_available, available_ns=completeness_available,
+        input_refs=completeness_inputs, deadline_ns=candidate.deadline_ns)
     portfolio = build_decision_time_portfolio_scenarios(
         action=action,
         repo=repository,
         scenario=scenario,
         payoffs=payoffs,
-        existing_paths=(),
+        existing_paths=existing_paths,
         completeness=completeness,
     )
     index_admission_evidence(repository, "DecisionTimePortfolioScenariosV2", portfolio.to_dict(), available_at_ns)

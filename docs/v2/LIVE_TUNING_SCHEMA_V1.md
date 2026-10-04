@@ -66,3 +66,12 @@ The installed price-return diagnostic remains separate from action payoff. Exact
 Endpoint prices and source identities remain validated against the exact indexed canonical bar checksum, raw record and payload hash. Completed identities are checked before raw reconstruction. Prediction and action maturation use durable bounded due-work projections with visible backlog and original identities. Atomic composition and incremental manifests preserve restart/recovery without another operational writer.
 
 A 48-hour report supports diagnosis and hypotheses only. Positive economic claims retain the frozen prospective-duration, matured-opportunity, regime, dependence and holdout requirements.
+
+
+`EconomicSourceManifestV1` projects as `ECONOMIC_CONFIGURATION`, with its immutable
+manifest hash as `method_config_hash`. `OpsEconomicEvidenceResolutionV1` projects
+as `ECONOMIC_BINDING`, linking that configuration to the exact event/candidate/
+action and sealed market cutoff. Both retain raw references; account scope text
+and complete model/configuration bodies are not copied into compact exports.
+Declared prerequisite source availability is separate from later exact-action
+binding and from scientific execution qualification.

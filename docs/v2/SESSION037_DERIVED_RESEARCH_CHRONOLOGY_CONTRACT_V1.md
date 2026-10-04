@@ -57,3 +57,42 @@ Tests: `test_session037_chronology.py`, `test_session037_tuning_analysis.py`,
 `test_session037_training_bounds.py`, and production composition/restart tests.
 This contract is not a replay availability exception and does not turn later raw
 receipt into historical knowledge.
+
+
+Economic composition uses the same additive receipt. `EconomicSourceManifestV1`
+is a strict, zero-authority, cutoff-known declaration scoped to the full
+instrument/product revision, account scope and policy hash. It names immutable
+model/calibration/execution sources and the admission configuration. Its fixed
+seed method binds the exact action hash and market cutoff. Missing, ambiguous,
+foreign, future or overflowing declarations cannot select a global latest model.
+No account, fee, source or qualification evidence is supplied implicitly.
+
+`OpsEconomicEvidenceResolutionV1` is computed only after the candidate, sizing
+and exact action exist. Its later publication binds the declared manifest and
+exact decision/action identities with the original market prefix and deadline.
+Restart reuses that publication; later declarations cannot revise the decision.
+Bare post-cutoff legacy role wrappers remain unusable without this causal path.
+
+Explicit cutoff-known `JointExecutionDataV2` may be rebound only when its semantic
+action hash, requested quantity, cutoff, execution model and fee identity already
+match exactly. Binding changes only `action_artifact_ref` and actual computation /
+publication timestamps. Prices, depth, fill assumptions, latency, funding,
+management, qualification and fixture markers remain identical. The validator
+reproduces this equality against the original template; a receipt alone cannot
+license altered scientific facts. Support binding changes only the template ref
+and publication time, preserving source episode/window/bundle and compatibility.
+This is exact identity binding, not a template generator or compatibility rescue.
+
+The evaluator consumes declared joint sources/support, execution residuals,
+stress and synchronized existing-portfolio valuations rather than substituting
+empty populations. Missing support stays `NOT_ESTIMABLE`. An evidenced flat
+account yields zero existing-portfolio value, not fabricated candidate payoff.
+Scenario and portfolio-completeness publications receive actual later receipts.
+Two fixed independent scenario seeds can measure numerical convergence when the
+model and real template evidence support it; they create no new market samples.
+
+Work is capped at 128 source declarations, 128 requested references, 16,384
+points per execution template and the declared fixed provenance limits. Whole
+population overflow refuses inference and source-manifest overflow publishes
+pressure evidence. All contracts here are additive research evidence; existing
+V1/V2 serialized wires, capital gates and RiskPolicy remain unchanged.

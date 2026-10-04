@@ -278,3 +278,16 @@ repository ancestry, installer evidence, secret scan and final blocker verdict
 must be recorded by the principal in the closure ledger and handoff. Longer
 prospective evidence and separately authorized capital qualification remain
 governed gates, not automatic consequences of an engineering pass.
+
+
+The final composition audit reproduced an ordinary economic wiring defect:
+exact-candidate prerequisite wrappers were required before the market cutoff,
+although the candidate identity is honestly published later. The scoped
+`EconomicSourceManifestV1` declares cutoff-known sources/configuration; production
+creates a later `OpsEconomicEvidenceResolutionV1` after freezing the action.
+Explicit exactly compatible joint execution templates are rebound without
+changing any scientific fact. Real M0 fitting and declared scenario/support,
+execution uncertainty, stress and portfolio evaluation are connected. Missing
+sources and support still abstain. This removes a software impossibility; it
+provides no qualification, profitability or arbitrary new action-template model.
+The chronology contract records the exact additive binding and refusal rules.

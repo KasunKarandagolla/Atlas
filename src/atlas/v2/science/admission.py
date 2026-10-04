@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -27,6 +27,7 @@ from atlas.science.stresses import (
     suite_is_estimable,
 )
 from atlas.v2._serialization import canonical_json, decimal_value, json_value, sha256_json, sha256_ref, strict_fields
+from atlas.v2.chronology import causal_artifact
 from atlas.v2.contracts import (
     TRADE_PLAN_VERSION_V2,
     ArtifactEnvelope,
@@ -1059,14 +1060,16 @@ def build_decision_time_portfolio_scenarios(*, action: ActionArtifactV2,
         account.existing_exposure_refs == completeness.existing_exposure_refs and
         account.pending_risk_refs == completeness.pending_exposure_refs and
         account.eligible_equity == completeness.eligible_equity and account.drawdown == completeness.drawdown)
+    completeness_causal = causal_artifact(repo, completeness_ref, cutoff_ns=horizon_start_ns,
+        consumer_at_ns=scenario.available_at_ns if completeness_entry is None else max(
+            scenario.available_at_ns, completeness_entry.available_at_ns), deadline_ns=scenario.expires_at_ns)
     completeness_matches = (completeness_entry is not None and
         completeness_entry.artifact_type == "DecisionTimePortfolioCompletenessV2" and
         completeness_entry.content_hash == completeness_ref and isinstance(completeness_body, Mapping) and
         sha256_json(completeness_body) == completeness_ref and
         canonical_json(completeness_body) == canonical_json(completeness.to_dict()) and
-        completeness_entry.available_at_ns <= horizon_start_ns)
+        completeness.available_at_ns == completeness_entry.available_at_ns and completeness_causal)
     if (not account_matches or not completeness_matches or completeness.status != "COMPLETE" or
-            completeness.available_at_ns > horizon_start_ns or
             completeness.common_scenario_set_id != scenario.common_scenario_set_id or
             completeness.common_path_ids != scenario_ids or unknown_exposure_present or
             existing_ids != scenario_ids or
@@ -1431,14 +1434,31 @@ def index_scenario_support_unit(repo: OpsRepository, unit: ScenarioSupportUnitV2
     return ref
 
 
-def _load_scenario_support_unit(repo: OpsRepository, ref: str, cutoff_ns: int) -> ScenarioSupportUnitV2:
+def _load_scenario_support_unit(repo: OpsRepository, ref: str, cutoff_ns: int,
+        *, consumer_at_ns: int | None = None, deadline_ns: int | None = None) -> ScenarioSupportUnitV2:
     entry = repo.get_artifact(ref)
     body = entry.metadata.get("evidence") if entry is not None else None
     unit = ScenarioSupportUnitV2.from_dict(json_value(body)) if isinstance(body, Mapping) else None
+    at = cutoff_ns if consumer_at_ns is None else consumer_at_ns
+    deadline = cutoff_ns if deadline_ns is None else deadline_ns
     if (entry is None or entry.artifact_type != "ScenarioSupportUnitV2" or entry.content_hash != ref or
             not isinstance(body, Mapping) or sha256_json(body) != ref or unit is None or
-            unit.content_hash != ref or entry.available_at_ns > cutoff_ns or unit.available_at_ns > cutoff_ns):
+            unit.content_hash != ref or unit.available_at_ns != entry.available_at_ns or
+            not causal_artifact(repo, ref, cutoff_ns=cutoff_ns, consumer_at_ns=at, deadline_ns=deadline)):
         raise ValueError("scenario support unit is missing, future or hash-mismatched")
+    original_ref = entry.metadata.get("binding_source_ref")
+    if original_ref is not None:
+        original_entry = repo.get_artifact(str(original_ref))
+        original_body = original_entry.metadata.get("evidence") if original_entry is not None else None
+        original = ScenarioSupportUnitV2.from_dict(json_value(original_body)) if isinstance(original_body, Mapping) else None
+        template_entry = repo.get_artifact(unit.template_ref)
+        if (original_entry is None or original is None or original_entry.artifact_type != "ScenarioSupportUnitV2"
+                or original.content_hash != original_ref or original_entry.content_hash != original_ref
+                or original_entry.available_at_ns != original.available_at_ns or original.available_at_ns > cutoff_ns
+                or "binding_source_ref" in original_entry.metadata or template_entry is None
+                or template_entry.metadata.get("binding_source_ref") != original.template_ref
+                or unit != replace(original, template_ref=unit.template_ref, available_at_ns=unit.available_at_ns)):
+            raise ValueError("scenario support binding changed historical episode provenance")
     return unit
 
 
@@ -1466,7 +1486,8 @@ def make_scenario_support(repo: OpsRepository, *, action: ActionArtifactV2,
     refs = tuple(sorted(set(support_unit_refs)))
     if tuple(support_unit_refs) != refs:
         raise ValueError("scenario support unit refs must be sorted and unique")
-    units = tuple(_load_scenario_support_unit(repo, ref, scenario.information_cutoff_ns) for ref in refs)
+    units = tuple(_load_scenario_support_unit(repo, ref, scenario.information_cutoff_ns,
+        consumer_at_ns=scenario.available_at_ns, deadline_ns=scenario.expires_at_ns) for ref in refs)
     policy_class, action_class = scenario_support_compatibility_classes(action)
     template_by_ref = {unit.template_ref: unit for unit in units}
     complete_units = set(template_by_ref) == set(scenario.template_support_refs)
@@ -2091,15 +2112,16 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
             completeness_body.get("existing_exposure_refs") != portfolio_body.get("existing_exposure_refs") or
             completeness_body.get("pending_exposure_refs") != portfolio_body.get("pending_exposure_refs") or
             bool(completeness_body.get("unknown_exposure_refs")) != portfolio_body.get("unknown_exposure_present") or
-            completeness_entry.available_at_ns > evaluation.decision_at_ns):
+            not causal_artifact(repo, str(completeness_ref), cutoff_ns=evaluation.decision_at_ns,
+                consumer_at_ns=evaluation.available_at_ns, deadline_ns=evaluation.action_expiry_ns)):
         raise ValueError("evaluation portfolio completeness evidence is missing or mismatched")
     if (account_body.get("existing_exposure_refs") != completeness_body.get("existing_exposure_refs") or
             account_body.get("pending_risk_refs") != completeness_body.get("pending_exposure_refs") or
             account_body.get("eligible_equity") != completeness_body.get("eligible_equity") or
             account_body.get("drawdown") != completeness_body.get("drawdown") or
             (completeness_body.get("status") == "COMPLETE" and
-                completeness_body.get("common_path_ids") != [row[0] for row in
-                    PretradeExecutionScenarioV2.from_dict(json_value(scenario_body)).rows])):
+                tuple(completeness_body.get("common_path_ids", ())) != tuple(row[0] for row in
+                    PretradeExecutionScenarioV2.from_dict(json_value(scenario_body)).rows))):
         raise ValueError("evaluation portfolio completeness does not match account/path inventory")
     portfolio_paths = tuple(PortfolioPathV2(row["common_path_id"],
         decimal_value(row["probability"], field="probability", wire=True),

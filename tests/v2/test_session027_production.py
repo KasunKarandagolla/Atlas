@@ -1236,7 +1236,7 @@ def test_default_production_native_m1_s3_stays_closed_without_trade_completeness
 
     # Prerequisite computation/publication now has its own actual clock samples.
     clock = AdvancingClock((computation_start, computation_start, computation_start,
-                            computation_start, computation_finish, persisted_at))
+                            computation_start, computation_start, computation_finish, persisted_at))
     port = production.ProductionOpsCyclePortV1(clock_ns=clock)
     assert type(port.public_source) is production.IndexedPublicCycleSourceV1
     assert type(port.inputs_provider) is production.IndexedProductionEventInputsV1

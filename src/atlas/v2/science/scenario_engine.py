@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import random
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -485,8 +485,23 @@ def _lookup_joint_data(repo: OpsRepository, ref: str) -> JointExecutionDataV2:
     if entry is None or entry.artifact_type != "JointExecutionDataV2" or entry.content_hash != ref or not isinstance(body, Mapping):
         raise ValueError("strict typed V2 execution data required")
     data = JointExecutionDataV2.from_dict(json_value(body))
-    if data.content_hash != ref or entry.available_at_ns != data.available_at_ns:
+    if (data.content_hash != ref or entry.available_at_ns != data.available_at_ns
+            or entry.created_at_ns != data.computed_at_ns):
         raise ValueError("joint execution data identity mismatch")
+    original_ref = entry.metadata.get("binding_source_ref")
+    if original_ref is not None:
+        original_entry = repo.get_artifact(str(original_ref))
+        original_body = original_entry.metadata.get("joint_execution_data") if original_entry is not None else None
+        original = JointExecutionDataV2.from_dict(json_value(original_body)) if isinstance(original_body, Mapping) else None
+        if (original_entry is None or original is None or original_entry.artifact_type != "JointExecutionDataV2"
+                or original.content_hash != original_ref or original_entry.content_hash != original_ref
+                or original_entry.available_at_ns != original.available_at_ns
+                or original_entry.created_at_ns != original.computed_at_ns
+                or original.available_at_ns > data.information_cutoff_ns
+                or "binding_source_ref" in original_entry.metadata
+                or data != replace(original, action_artifact_ref=data.action_artifact_ref,
+                    computed_at_ns=data.computed_at_ns, available_at_ns=data.available_at_ns)):
+            raise ValueError("joint execution binding changed cutoff-known scientific facts")
     return data
 
 
@@ -709,14 +724,14 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
     if tuple(joint_data_refs) != tuple(sorted(set(joint_data_refs))):
         raise ValueError("joint execution data refs must be sorted and unique")
     data = tuple(_lookup_joint_data(repo, ref) for ref in joint_data_refs)
-    if any(d.available_at_ns > cutoff_ns or d.computed_at_ns > cutoff_ns or
-           d.information_cutoff_ns > cutoff_ns for d in data):
+    if any(d.information_cutoff_ns > cutoff_ns or not causal_artifact(repo, d.content_hash,
+            cutoff_ns=cutoff_ns, consumer_at_ns=created_at_ns, deadline_ns=expires_at_ns) for d in data):
         raise ValueError("joint execution template is future evidence for this cutoff")
     source_data_refs = tuple(d.content_hash for d in data)
     # A real generator needs cutoff-qualified joint execution templates and an
     # explicit fee schedule. Empty/unsupported support is represented as an
     # honest non-estimable artifact, never synthetic probabilities.
-    supported = tuple(d for d in data if d.available_at_ns <= cutoff_ns and
+    supported = tuple(d for d in data if
         d.action_hash == action.action.action_hash and d.action_artifact_ref == action.content_hash and
         d.requested_quantity == action.action.quantity and d.execution_model_ref == execution_model_input.ref and
         d.fee_ref == fee.content_hash and d.source_ref in source_refs and
@@ -729,10 +744,16 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
         "manifest": manifest, "scenario_version": PRETRADE_EXECUTION_SCENARIO_VERSION})
 
     def persist_scenario(artifact: PretradeExecutionScenarioV2, template_support_count: int) -> None:
+        from atlas.v2.chronology import record_computation
+        refs = tuple(sorted({action.content_hash, fee.content_hash,
+            *(item.ref for item in inputs), *source_data_refs}))
         repo.register_artifact(ArtifactIndexEntryV2(artifact.content_hash, "PretradeExecutionScenarioV2",
             artifact.content_hash, artifact.created_at_ns, artifact.available_at_ns,
             {"scenario": artifact.to_dict(), "seed": artifact.seed, "scenario_count": artifact.scenario_count,
-             "template_support_count": template_support_count}))
+             "template_support_count": template_support_count, "input_refs": list(refs)}))
+        record_computation(repo, artifact_ref=artifact.content_hash, information_cutoff_ns=cutoff_ns,
+            started_ns=artifact.created_at_ns, finished_ns=artifact.computed_at_ns,
+            available_ns=artifact.available_at_ns, input_refs=refs, deadline_ns=expires_at_ns)
 
     if not supported:
         seal_time()
@@ -822,13 +843,11 @@ def validate_pretrade_scenario_evidence(repo: OpsRepository, *, action: ActionAr
     if tuple(scenario.source_joint_data_refs) != tuple(sorted(set(scenario.source_joint_data_refs))):
         raise ValueError("pretrade source joint data refs are not canonical")
     data = tuple(_lookup_joint_data(repo, ref) for ref in scenario.source_joint_data_refs)
-    if any(item.available_at_ns > scenario.information_cutoff_ns or
-            item.computed_at_ns > scenario.information_cutoff_ns or
-            item.information_cutoff_ns > scenario.information_cutoff_ns for item in data):
-        raise ValueError("pretrade joint data is future evidence")
-    if any((entry := repo.get_artifact(item.content_hash)) is None or
-            entry.created_at_ns > scenario.information_cutoff_ns for item in data):
-        raise ValueError("pretrade joint data artifact was created after its information cutoff")
+    from atlas.v2.chronology import causal_artifact
+    if any(item.information_cutoff_ns > scenario.information_cutoff_ns or not causal_artifact(
+            repo, item.content_hash, cutoff_ns=scenario.information_cutoff_ns,
+            consumer_at_ns=scenario.created_at_ns, deadline_ns=scenario.expires_at_ns) for item in data):
+        raise ValueError("pretrade joint data is future evidence or lacks a causal binding receipt")
     manifest = sha256_json({"version": "PRETRADE_EXECUTION_CAUSAL_MANIFEST_V1",
         "inputs": [item.to_dict() for item in inputs],
         "data_refs": list(scenario.source_joint_data_refs), "generator": scenario.generation_version})
