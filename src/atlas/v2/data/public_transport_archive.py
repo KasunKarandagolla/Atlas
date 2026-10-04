@@ -36,7 +36,9 @@ def archive_transport_batch(repository: OpsRepository, frames: tuple[CapturedPub
         temporary = path.with_suffix(".parquet.tmp")
         try:
             pq.write_table(pa.Table.from_pylist(rows), temporary, compression="zstd")
-            with temporary.open("rb") as handle:
+            # Windows _commit requires a writable descriptor. r+b preserves
+            # the completed Parquet bytes while qualifying the same fsync.
+            with temporary.open("r+b") as handle:
                 os.fsync(handle.fileno())
             temporary.replace(path)
         finally:
