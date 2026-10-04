@@ -408,7 +408,7 @@ def run_phase2_economic_evaluation(
         capability=capability,
         account_scope=account.account_scope,
     )
-    sample_time()
+    evaluation_started = sample_time()
     evaluation = make_amended_evaluation(
         action=action,
         candidate=candidate,
@@ -440,8 +440,13 @@ def run_phase2_economic_evaluation(
         evaluation,
         policy_id=action.action.policy_id,
         policy_version=action.action.policy_version,
-        created_at_ns=available_at_ns,
+        created_at_ns=evaluation_started,
+        clock_ns=clock_ns,
     )
+    sealed_entry = repository.get_artifact(evaluation_ref)
+    if sealed_entry is None:
+        raise ValueError("terminal evaluation publication missing")
+    evaluation = AmendedEvaluationArtifactV2.from_dict(json_value(sealed_entry.metadata["evaluation"]))
     return Phase2EvaluationResultV2(
         prediction,
         m0_support,

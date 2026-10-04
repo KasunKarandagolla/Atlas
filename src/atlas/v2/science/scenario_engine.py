@@ -779,10 +779,11 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
         raise ValueError("invalid retrospective joint path")
     # Validate mechanics before writing any path/payload that the downstream
     # scenario could appear to endorse. Missing ordering remains NOT_ESTIMABLE.
+    computed_payoffs: dict[str, PretradePathPayoffV2] = {}
     try:
         for datum in supported:
             _validate_policy_management(repo, action, datum)
-            _payoff(action, datum, fee, base_units_per_contract,
+            computed_payoffs[datum.joint_path_id] = _payoff(action, datum, fee, base_units_per_contract,
                 sha256_json({"preflight_scenario": datum.content_hash}),
                 sha256_json({"preflight_payload": datum.content_hash}), available_at_ns)
     except ValueError:
@@ -820,7 +821,10 @@ def generate_pretrade_scenarios(repo: OpsRepository, *, action: ActionArtifactV2
     payoffs: list[PretradePathPayoffV2] = []
     for path_id, _, payload_ref in probability_rows:
         datum = data_by_path[path_id]
-        payoff = _payoff(action, datum, fee, base_units_per_contract, scenario_ref, payload_ref, available_at_ns)
+        # All cashflow arithmetic completed before seal_time. Only final
+        # publication identities/timestamps are attached after that boundary.
+        payoff = replace(computed_payoffs[datum.joint_path_id], scenario_artifact_ref=scenario_ref,
+            joint_payload_ref=payload_ref, available_at_ns=available_at_ns)
         payoffs.append(payoff)
         repo.register_artifact(ArtifactIndexEntryV2(payoff.content_hash, "PretradePathPayoffV2",
             payoff.content_hash, available_at_ns, available_at_ns, {"path_payoff": payoff.to_dict(), "payload_ref": payload_ref}))

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, replace
 from decimal import Decimal
 from enum import StrEnum
@@ -27,7 +27,7 @@ from atlas.science.stresses import (
     suite_is_estimable,
 )
 from atlas.v2._serialization import canonical_json, decimal_value, json_value, sha256_json, sha256_ref, strict_fields
-from atlas.v2.chronology import causal_artifact
+from atlas.v2.chronology import causal_artifact, sample
 from atlas.v2.contracts import (
     TRADE_PLAN_VERSION_V2,
     ArtifactEnvelope,
@@ -1767,7 +1767,8 @@ def make_amended_evaluation(*, action: ActionArtifactV2, candidate: CandidateAct
 
 
 def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationArtifactV2, *,
-        allow_synthetic_fixtures: bool = False) -> str:
+        allow_synthetic_fixtures: bool = False, clock_ns: Callable[[], int] | None = None,
+        computation_started_ns: int | None = None) -> str:
     action_entry = repo.get_artifact(evaluation.action_artifact_ref)
     action_body = action_entry.metadata.get("action_artifact") if action_entry is not None else None
     identity = action_entry.metadata.get("action_identity") if action_entry is not None else None
@@ -1937,7 +1938,9 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
     feature_entry = repo.get_artifact(evaluation.feature_artifact_ref)
     if (feature_entry is None or feature_entry.artifact_type != "FeatureArtifactV2" or
             feature_entry.content_hash != evaluation.feature_artifact_ref or
-            feature_entry.available_at_ns > candidate.decision_at_ns):
+            not causal_artifact(repo, evaluation.feature_artifact_ref,
+                cutoff_ns=candidate.decision_at_ns, consumer_at_ns=evaluation.available_at_ns,
+                deadline_ns=candidate.deadline_ns)):
         raise ValueError("evaluation original cutoff feature artifact is unavailable")
     if repo.get_artifact(evaluation.causal_state_ref) is None:
         raise ValueError("evaluation causal state artifact unavailable")
@@ -2308,29 +2311,54 @@ def index_amended_evaluation(repo: OpsRepository, evaluation: AmendedEvaluationA
             portfolio_es.es_before_fraction != evaluation.es_before or
             portfolio_es.es_after_fraction != evaluation.es_after):
         raise ValueError("amended evaluation decision/LCB/ES does not reproduce its indexed evidence")
+    started = evaluation.available_at_ns if computation_started_ns is None else computation_started_ns
+    if not evaluation.decision_at_ns <= started <= evaluation.available_at_ns:
+        raise ValueError("evaluation computation start exceeds its publication boundary")
+    if clock_ns is not None:
+        finished = sample(clock_ns, floor_ns=evaluation.available_at_ns)
+        if finished >= evaluation.action_expiry_ns:
+            raise ValueError("evaluation validation missed the original action deadline")
+        evaluation = replace(evaluation, available_at_ns=finished)
     body = evaluation.to_dict()
     ref = evaluation.content_hash
+    prior = repo.get_artifact(ref)
+    if prior is not None:
+        if (prior.artifact_type != "EvaluationArtifactV2" or prior.content_hash != ref
+                or prior.available_at_ns != evaluation.available_at_ns
+                or canonical_json(prior.metadata) != canonical_json({"evaluation": body})):
+            raise ValueError("sealed evaluation publication conflicts with its immutable body")
+        return ref
     repo.register_artifact(ArtifactIndexEntryV2(ref, "EvaluationArtifactV2", ref,
-        evaluation.decision_at_ns, evaluation.available_at_ns, {"evaluation": body}))
+        started, evaluation.available_at_ns, {"evaluation": body}))
     return ref
 
 
 def persist_economic_decision(repo: OpsRepository, evaluation: AmendedEvaluationArtifactV2,
-        *, policy_id: str, policy_version: str, created_at_ns: int) -> tuple[str, str]:
+        *, policy_id: str, policy_version: str, created_at_ns: int,
+        clock_ns: Callable[[], int] | None = None) -> tuple[str, str]:
     """Persist amended evaluation first, then its one terminal economic calendar row."""
-    evaluation_ref = index_amended_evaluation(repo, evaluation)
-    admission = {
-        DecisionStatusV2.CANDIDATE: AdmissionStateV2.CANDIDATE,
-        DecisionStatusV2.NO_TRADE: AdmissionStateV2.NO_TRADE,
-        DecisionStatusV2.NOT_ESTIMABLE: AdmissionStateV2.NOT_ESTIMABLE,
-    }[evaluation.decision]
-    calendar = DecisionCalendarEntryV2(
-        evaluation.candidate_set_ref, evaluation.candidate_ref, policy_id, policy_version,
-        evaluation.policy_hash, evaluation.decision_at_ns, SelectionStateV2.SELECTED, admission,
-        evaluation.action_hash, evaluation.action_artifact_ref, DecisionSourceStageV2.ECONOMIC_EVALUATION,
-        evaluation.reason_codes, evaluation_ref, created_at_ns, evaluation.available_at_ns)
-    calendar_ref = index_decision_calendar_entry(repo, calendar)
-    return evaluation_ref, calendar_ref
+    # Evaluation and its terminal calendar describe one atomic publication.
+    with repo.atomic_composition():
+        evaluation_ref = index_amended_evaluation(repo, evaluation, clock_ns=clock_ns,
+            computation_started_ns=created_at_ns if clock_ns is not None else None)
+        if clock_ns is not None:
+            indexed = repo.get_artifact(evaluation_ref)
+            if indexed is None:
+                raise ValueError("sealed evaluation publication missing")
+            evaluation = AmendedEvaluationArtifactV2.from_dict(json_value(indexed.metadata["evaluation"]))
+            created_at_ns = evaluation.available_at_ns
+        admission = {
+            DecisionStatusV2.CANDIDATE: AdmissionStateV2.CANDIDATE,
+            DecisionStatusV2.NO_TRADE: AdmissionStateV2.NO_TRADE,
+            DecisionStatusV2.NOT_ESTIMABLE: AdmissionStateV2.NOT_ESTIMABLE,
+        }[evaluation.decision]
+        calendar = DecisionCalendarEntryV2(
+            evaluation.candidate_set_ref, evaluation.candidate_ref, policy_id, policy_version,
+            evaluation.policy_hash, evaluation.decision_at_ns, SelectionStateV2.SELECTED, admission,
+            evaluation.action_hash, evaluation.action_artifact_ref, DecisionSourceStageV2.ECONOMIC_EVALUATION,
+            evaluation.reason_codes, evaluation_ref, created_at_ns, evaluation.available_at_ns)
+        calendar_ref = index_decision_calendar_entry(repo, calendar)
+        return evaluation_ref, calendar_ref
 
 
 class VenueCapabilityStatusV2(StrEnum):

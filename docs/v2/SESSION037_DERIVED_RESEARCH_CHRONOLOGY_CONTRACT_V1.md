@@ -96,3 +96,5 @@ points per execution template and the declared fixed provenance limits. Whole
 population overflow refuses inference and source-manifest overflow publishes
 pressure evidence. All contracts here are additive research evidence; existing
 V1/V2 serialized wires, capital gates and RiskPolicy remain unchanged.
+
+The economic validator accepts a later FeatureArtifactV2 only through its exact original-cutoff receipt. Scenario cashflow arithmetic completes before its clock is sealed; final identities are attached afterward. Production evaluation construction and full evidence validation finish before the final publication clock is sampled. Its artifact-index creation records the actual computation start rather than the market cutoff. Evaluation and terminal calendar retain their existing equal-publication contract and commit atomically. Revalidation/recovery preserves the original immutable publication.

@@ -9,6 +9,7 @@ import pytest
 
 from atlas.v2._serialization import canonical_json, json_value, sha256_json
 from atlas.v2.chronology import causal_artifact, chronology_ref, record_computation
+from atlas.v2.contracts import FeatureArtifactV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.risk import size_selected_candidate
 from atlas.v2.runtime import production
@@ -51,7 +52,7 @@ def _source(repo, case, kind):
     return CausalInputV2(ref, kind, CUTOFF, CUTOFF)
 
 
-def _fixture(repo, *, declaration="valid", joint_template=False, synthetic_template=False):
+def _fixture(repo, *, declaration="valid", joint_template=False, synthetic_template=False, late_feature=False):
     case = research_case(repo)
     manifest = EconomicSourceManifestV1(case.product.key.content_hash, case.product.content_hash,
         case.account.account_scope, S1_POLICY.policy_hash, _admission_policy(),
@@ -106,6 +107,18 @@ def _fixture(repo, *, declaration="valid", joint_template=False, synthetic_templ
     event = make_event(cutoff_ns=CUTOFF, deadline_delta_ns=5_000_000_000)
     clock = itertools.count(CUTOFF + 10).__next__
     original = case.candidate
+    if late_feature:
+        feature = FeatureArtifactV2.from_dict(json_value(repo.get_artifact(original.snapshot_hash).metadata["feature"]))
+        started, finished, published = clock(), clock(), clock()
+        feature = replace(feature, envelope=replace(feature.envelope, content_hash="",
+            created_at_ns=started, available_at_ns=published))
+        repo.register_artifact(ArtifactIndexEntryV2(feature.content_hash, "FeatureArtifactV2", feature.content_hash,
+            started, published, {"feature": feature.to_dict()}))
+        record_computation(repo, artifact_ref=feature.content_hash, information_cutoff_ns=CUTOFF,
+            started_ns=started, finished_ns=finished, available_ns=published,
+            input_refs=feature.envelope.input_refs, deadline_ns=event.deadline_ns)
+        original = replace(original, snapshot_hash=feature.content_hash,
+            envelope=replace(original.envelope, content_hash="", input_refs=(feature.content_hash,)))
     at = clock()
     candidate = replace(original, envelope=replace(original.envelope, created_at_ns=at,
         available_at_ns=at, content_hash=""))
@@ -159,9 +172,10 @@ def _evaluate(repo, fixture, economic):
         existing_portfolio_path_refs=economic.existing_portfolio_path_refs)
 
 
-def test_installed_selected_late_action_reaches_real_m0_evaluation_and_calendar(tmp_path):
+@pytest.mark.parametrize("late_feature", [False, True])
+def test_installed_selected_late_action_reaches_real_m0_evaluation_and_calendar(tmp_path, late_feature):
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
-        fixture = _fixture(repo)
+        fixture = _fixture(repo, late_feature=late_feature)
         event, case, candidate, candidate_set, sizing, action, manifest, _risk, clock = fixture
         economic, reason = _resolve(repo, fixture)
         assert reason is None and economic is not None and economic.complete
@@ -191,6 +205,11 @@ def test_installed_selected_late_action_reaches_real_m0_evaluation_and_calendar(
         assert len(predictions) == 1
         assert predictions[0].available_at_ns > action.available_at_ns > CUTOFF
         assert result.evaluation.available_at_ns >= predictions[0].available_at_ns
+        evaluation_entry = repo.get_artifact(result.evaluation_ref)
+        assert CUTOFF < evaluation_entry.created_at_ns <= evaluation_entry.available_at_ns
+        assert evaluation_entry.available_at_ns == result.evaluation.available_at_ns
+        feature_entry = repo.get_artifact(candidate.snapshot_hash)
+        assert (feature_entry.available_at_ns > CUTOFF) == late_feature
         calendar = DecisionCalendarEntryV2.from_dict(json_value(repo.get_artifact(result.calendar_ref).metadata["decision_entry"]))
         assert calendar.source_artifact_ref == result.evaluation_ref
         assert calendar.action_hash == action.action.action_hash and calendar.action_artifact_ref == action.content_hash
@@ -198,6 +217,12 @@ def test_installed_selected_late_action_reaches_real_m0_evaluation_and_calendar(
         assert calendar.selection_state.value == "SELECTED" and calendar.admission_state == AdmissionStateV2.NOT_ESTIMABLE
         assert CUTOFF < calendar.available_at_ns < candidate.deadline_ns == event.deadline_ns
         assert result.evaluation.reason_codes
+        if late_feature:
+            recovered = production._recover_economic_evaluation(repo, action, candidate, candidate_set,
+                now_ns=clock())
+            assert recovered is not None and recovered.evaluation == result.evaluation
+            assert recovered.evaluation_ref == result.evaluation_ref and recovered.calendar_ref == result.calendar_ref
+            assert repo.get_artifact(result.evaluation_ref) == evaluation_entry
 
 
 @pytest.mark.parametrize("synthetic_template", [False, True])

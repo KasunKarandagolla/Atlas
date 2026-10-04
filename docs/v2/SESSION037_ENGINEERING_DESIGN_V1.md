@@ -291,3 +291,5 @@ execution uncertainty, stress and portfolio evaluation are connected. Missing
 sources and support still abstain. This removes a software impossibility; it
 provides no qualification, profitability or arbitrary new action-template model.
 The chronology contract records the exact additive binding and refusal rules.
+
+The source-declaration reader refuses more than 128 raw members/provenance refs or 16,384 path points before typed parsing. Later-feature admission uses the original-cutoff receipt. Economic cashflows are computed before sealing, and evaluation validation finishes before its actual publication clock; the terminal calendar shares its atomic publication. These changes preserve scientific amounts, frozen serialization and capital authority.

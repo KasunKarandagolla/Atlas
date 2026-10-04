@@ -193,3 +193,44 @@ def test_existing_joint_declaration_is_retained_without_inventing_execution_qual
         # Declaration preserves this marker; production cannot promote it to
         # real execution support merely because the manifest is valid.
         assert repo.get_artifact(data.content_hash).metadata["joint_execution_data"]["synthetic_fixture"] is True
+
+
+def test_manifest_wire_refuses_oversized_members_before_individual_parsing(setup):
+    _, _, manifest = setup
+    wire = manifest.to_dict()
+    wire["source_inputs"] = [{}] * 129
+    with pytest.raises(ValueError, match="wire population"):
+        EconomicSourceManifestV1.from_dict(wire)
+
+
+def test_declaration_reader_refuses_path_population_before_typed_parsing(tmp_path, monkeypatch):
+    from atlas.v2.runtime import economic_sources
+
+    from .test_session019_scenarios import _fixture
+
+    with OpsRepository(tmp_path / "path-bound.sqlite") as repo:
+        _, data, scenario, _ = _fixture(repo)
+        case = risk_case(repo)
+        manifest = EconomicSourceManifestV1(case.product.key.content_hash, case.product.content_hash,
+            case.account.account_scope, case.candidate.policy_hash, _admission_policy(),
+            scenario.model_input, scenario.calibration_input, scenario.execution_model_input,
+            100, scenario.information_cutoff_ns, scenario.information_cutoff_ns,
+            source_inputs=scenario.source_inputs, joint_data_refs=(data.content_hash,))
+        monkeypatch.setattr(economic_sources, "MAX_PATH_POINTS", 1)
+
+        def unexpected_parse(*_args, **_kwargs):
+            raise AssertionError("overflow must be refused before per-point conversion")
+
+        monkeypatch.setattr(economic_sources.JointExecutionDataV2, "from_dict", unexpected_parse)
+        with pytest.raises(ValueError, match="path population"):
+            index_economic_source_manifest(repo, manifest)
+
+
+def test_declaration_reader_refuses_provenance_population_before_typed_parsing(setup):
+    repo, _, manifest = setup
+    wire = {"source_refs": ["e" * 64] * 129}
+    ref = sha256_json(wire)
+    repo.register_artifact(ArtifactIndexEntryV2(ref, "ExistingPortfolioPathV2", ref,
+        manifest.available_at_ns, manifest.available_at_ns, {"evidence": wire}))
+    with pytest.raises(ValueError, match="provenance population"):
+        index_economic_source_manifest(repo, replace(manifest, existing_portfolio_path_refs=(ref,)))

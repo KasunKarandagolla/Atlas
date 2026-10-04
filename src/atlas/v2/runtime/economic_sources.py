@@ -28,6 +28,7 @@ ARTIFACT_TYPE = "EconomicSourceManifestV1"
 SEED_METHOD = "ACTION_HASH_CUTOFF_SCENARIO_SEED_V1"
 MAX_REFERENCES = 128
 MAX_MANIFESTS = 128
+MAX_PATH_POINTS = 16384
 _FORBIDDEN = FORBIDDEN_PRETRADE_TYPES | {
     "ActionReplaySourceEvidenceV1", "ActionReplayLifecycleSummaryV1", "ActionReplayMinuteEvidenceV1",
 }
@@ -71,6 +72,10 @@ class EconomicSourceManifestV1:
         timestamp(self.effective_at_ns, field="manifest effective_at_ns")
         if self.effective_at_ns > self.available_at_ns:
             raise ValueError("economic manifest effective time exceeds its publication")
+        for name in ("source_inputs", "joint_data_refs", "support_unit_refs", "execution_residual_refs",
+                     "existing_portfolio_path_refs"):
+            if len(getattr(self, name)) > MAX_REFERENCES:
+                raise ValueError("economic declaration wire population exceeds its bound")
         inputs = (self.model_input, self.calibration_input, self.execution_model_input, *self.source_inputs)
         for item in inputs:
             if (type(item) is not CausalInputV2 or item.kind in _FORBIDDEN
@@ -116,6 +121,11 @@ class EconomicSourceManifestV1:
     def from_dict(cls, data: Mapping[str, Any]) -> EconomicSourceManifestV1:
         names = set(cls.__dataclass_fields__)
         body = dict(strict_fields(data, expected=names, required=names, name=ARTIFACT_TYPE))
+        # Refuse the raw wire population before parsing its individual members.
+        for name in ("source_inputs", "joint_data_refs", "support_unit_refs", "execution_residual_refs",
+                     "existing_portfolio_path_refs"):
+            if not isinstance(body[name], (list, tuple)) or len(body[name]) > MAX_REFERENCES:
+                raise ValueError("economic declaration wire population exceeds its bound")
         body["admission_policy"] = AdmissionPolicyV2.from_dict(body["admission_policy"])
         for name in ("model_input", "calibration_input", "execution_model_input"):
             body[name] = CausalInputV2.from_dict(body[name])
@@ -180,6 +190,17 @@ def _validate_sources(repository: OpsRepository, manifest: EconomicSourceManifes
         for ref in refs:
             source = _entry(repository, ref, at, kind)
             wire = source.metadata if wrapper is None else source.metadata.get(wrapper)
+            if isinstance(wire, Mapping):
+                if kind == "JointExecutionDataV2":
+                    points = wire.get("points")
+                    if not isinstance(points, (list, tuple)) or not 1 <= len(points) <= MAX_PATH_POINTS:
+                        raise ValueError("economic declaration path population exceeds its bound")
+                # A source's provenance belongs to the same bounded manifest
+                # population; inspect lengths before hashing or typed parsing.
+                for field in ("source_bundle_refs", "source_refs", "exposure_refs"):
+                    if field in wire and (not isinstance(wire[field], (list, tuple))
+                            or len(wire[field]) > MAX_REFERENCES):
+                        raise ValueError("economic declaration provenance population exceeds its bound")
             if not isinstance(wire, Mapping) or sha256_json(wire) != ref:
                 raise ValueError("economic optional evidence canonical content mismatch")
             if wrapper is not None and canonical_json(source.metadata) != canonical_json({wrapper: wire}):
