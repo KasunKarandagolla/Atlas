@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "session": "S38_PUBLIC_STREAM_RELIABILITY",
-  "status": "TEST GATE",
+  "status": "TESTED",
   "start": {
     "branch": "impl/session-037-final-engineering-intelligence-closure",
     "sha": "a51a302e09bda84449ab3867d28df545d39445f2",
@@ -9,18 +9,21 @@
   },
   "implementation": {
     "branch": "fix/session-038-public-stream-reliability",
-    "sha": "934487a460ecca7f70543b5810ed88dd76e0ce0b",
+    "sha": "2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
     "ordinary_blockers_closed": [
       "PUBLIC_STREAM_SERVICE_STARVATION",
       "PUBLIC_STREAM_RAW_UNBOUND_RETENTION",
-      "PUBLIC_STREAM_STALE_EPOCH_ERROR_POISONING"
+      "PUBLIC_STREAM_STALE_EPOCH_ERROR_POISONING",
+      "PUBLIC_STREAM_HISTORY_SERVICE_COST",
+      "PUBLIC_STREAM_SYNCHRONOUS_REPORT_STARVATION",
+      "PUBLIC_REST_REPEATED_CONNECTION_SETUP",
+      "PUBLIC_STREAM_TRADE_LOOKUP_AFTER_CACHE_EVICTION",
+      "PUBLIC_STREAM_TERMINAL_FAULT_REPEAT",
+      "WINDOWS_CLOSED_BROKER_HANDLE_CLEANUP",
+      "WINDOWS_RAW_TRANSPORT_ARCHIVE_FSYNC"
     ],
-    "ordinary_blockers_remaining": [
-      "S38_SUSTAINED_CAPACITY_REGRESSION_PENDING",
-      "S38_COMPLETE_OFFLINE_VALIDATION_PENDING",
-      "S38_EXACT_CORRECTED_NATIVE_PACKAGE_PENDING"
-    ],
-    "engineering_validation_complete": false
+    "ordinary_blockers_remaining": [],
+    "engineering_validation_complete": true
   },
   "live_evidence": {
     "run_id": "8b83143aec6549f5b504b0f5e7e703a9",
@@ -34,7 +37,11 @@
     "reported_acquisition_mean_seconds": 4.95,
     "reported_acquisition_max_seconds": 6.453,
     "evidence_origin": "Owner-provided report summary; raw exported run evidence was not located in this workspace.",
-    "raw_export_independently_inspected": false
+    "raw_export_independently_inspected": false,
+    "source_not_current_or_stale_items": 296,
+    "reported_acquisition_total_seconds": 366.315,
+    "derived_publication_latency_approximately_seconds": 22,
+    "latency_attribution": "UNVERIFIED for the exact owner events without the raw export. Strict history decoding/repeated writes and synchronous acquisition/reporting were measured or reproduced contributors; they are not dismissed as warmup."
   },
   "fixes": {
     "rest_service": "one immutable acquisition worker; <=20ms poll waits plus measured bounded writer-service cost, one pending completion, no backdating or deadline extension",
@@ -48,7 +55,8 @@
     "history_service": "eight-entry exact-wire verified-head LRU; strict serviced restart decoding; unchanged histories are not rewritten; history preparation/locator validation services stream outside watch/seal atomicity; native archive reads service between batches",
     "continuity": "full 2048-entry bounded replay cache retained; validated immutable cache reuse and deferred exact decision hashing; completed durable trade-ID lookup explicitly distinguishes a new ID from unavailable history after cache eviction",
     "failure_service": "terminal interpretation fault preserves raw bytes, closes stream, requires restart, and does not repeat the same failure on every idle poll",
-    "windows_broker": "already-closed handle toleration preserves connection cleanup and slot release"
+    "windows_broker": "already-closed handle toleration preserves connection cleanup and slot release",
+    "windows_transport_archive": "Native Windows durability flush uses writable r+b descriptor without modifying completed Parquet bytes; earlier read-only descriptor raises EBADF under Windows _commit."
   },
   "authority": {
     "capital_enabled": false,
@@ -60,22 +68,73 @@
     "provider_model_versions_changed": false
   },
   "validation": {
-    "status": "TEST GATE",
+    "status": "TESTED",
     "detail_ref": "docs/v2/SESSION038_OFFLINE_VALIDATION_V1.json",
-    "zero_provider_calls": true
+    "zero_provider_calls": true,
+    "comprehensive_offline": "TESTED"
   },
   "remaining_categories": [
+    "LIVE_ENVIRONMENT_ONLY",
     "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
-    "LIVE_SOURCE_CAPABILITY_ONLY",
-    "BLOCKED BY ENVIRONMENT"
+    "LIVE_SOURCE_CAPABILITY_ONLY"
   ],
   "native_package": {
-    "status": "TEST GATE",
-    "installer_version_intended": "2.0.38.3",
-    "previous_run": "37204018826",
-    "previous_source_sha": "9cde88638ed70a4533d921a46507549292681886",
-    "previous_package_superseded": true,
-    "qualification": "complete offline regression -> native sustained synthetic stream -> native build/install/reinstall/uninstall; no live-source qualification"
+    "status": "TESTED",
+    "checkpoint_sha": "2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
+    "workflow_run": 37220833586,
+    "workflow_url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37220833586",
+    "artifact_id": 11309419275,
+    "artifact_name": "atlas-windows-2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
+    "installer_filename": "ATLAS-2.0.38.3-2f57e5db4fcd-win11-x64-setup.exe",
+    "installer_sha256": "9285b6eba8aab197dc899487e22c05842539a9ffd23fc3e087a30231976567c5",
+    "installer_version": "2.0.38.3",
+    "payload_tree_sha256": "8e23a381173a89ce59c340b4e314ccb16151704f5acb7cda4f8f5fd285c34c49",
+    "signed_release": false,
+    "artifact_hashes": {
+      "build-manifest.json": "5fe782a2608fbad1146df389bbb1daa36ea53f4d9963de055087bfee4756be48",
+      "windows-installer-smoke.json": "49064c3db23aa95696ee49b45222115587e345423cc4dbfae9015efa80228bee",
+      "windows-native-dependencies.json": "7b1609611ddd9915948c588651bc1a0fa3d6adcb397d2917016b139a570adc8f",
+      "windows-native-smoke.json": "d3b527651499da286216238470403ca0567d3626654f630e439ae6da12360672",
+      "windows-release-manifest.json": "74e689424d025bc174672539f638651fbd525261b376ea889a50c14e1cc66d48",
+      "windows-stream-host.json": "a2df33545d53494b523ba5e30e6a3261864e43f15cfc67bbb45dae6b47b7cb8f"
+    },
+    "native_tests": {
+      "tests": 45,
+      "passed": 45,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "seconds": 138.256,
+      "junit_sha256": "913df5dd89537b67309a77e11f48999d285d53c1ac03ad592bd86f72b73e968a"
+    },
+    "capacity_metrics": {
+      "frames": 19200,
+      "elapsed_s": 122.094,
+      "high_water_items": 488,
+      "rejected": 0,
+      "max_producer_lateness_s": 0.05974999999995134,
+      "acquisition": {
+        "closed": false,
+        "pending": false,
+        "completion_ready": false,
+        "active_workers": 0,
+        "started_count": 17,
+        "consumed_count": 17,
+        "wait_timeout_count": 0
+      },
+      "history_rows_restored": 1200
+    },
+    "host": {
+      "memory_bytes": 17174360064,
+      "source_sha": "2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
+      "provider_calls": 0,
+      "cpu": {
+        "Name": "AMD EPYC 7763 64-Core Processor                ",
+        "NumberOfCores": 2,
+        "NumberOfLogicalProcessors": 4
+      }
+    },
+    "qualification": "Complete offline/static regression, declared synthetic stream, native build/PE closure/product/DPAPI/owner-process lifetime, install/reinstall/uninstall preservation. Actual Windows 11, cross-version upgrade and live source/endurance remain UNVERIFIED / TEST GATE."
   },
   "remaining_live_gates": [
     {
@@ -90,5 +149,6 @@
       "status": "UNVERIFIED",
       "gate": "Owner-hardware network/frame-size/cadence/resource behavior; CI cannot prove it"
     }
-  ]
+  ],
+  "review_status": "UNVERIFIED; independent coordinating review required before acceptance; no merge"
 }

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "session": "S38",
-  "status": "TEST GATE",
-  "implementation_sha": "934487a460ecca7f70543b5810ed88dd76e0ce0b",
+  "status": "TESTED",
+  "implementation_sha": "2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
   "local_tests": [
     {
       "artifact": "s38-seams-pre-native.xml",
@@ -63,13 +63,25 @@
       "time": "4.468",
       "timestamp": "2026-10-04T19:19:24.174323+05:30",
       "hostname": "Kasun"
+    },
+    {
+      "artifact": "s38-windows-fsync-fix.xml",
+      "sha256": "998e7f295fe76805f91dd55d33e3bf94d7929da31e3436aa9c406d86d6d5b6e1",
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "1",
+      "tests": "6",
+      "time": "32.704",
+      "timestamp": "2026-10-04T23:00:51.976129+05:30",
+      "hostname": "Kasun"
     }
   ],
   "ruff": "TESTED",
   "mypy_v2_and_added_tests": "TESTED; 141 source files, plus five HTTP/acquisition files",
-  "compileall": "TESTED; src/scripts/tests before final HTTP addition; native comprehensive rerun pending",
+  "compileall": "TESTED; complete src/scripts/tests on exact CI checkpoint",
   "dependencies": "TESTED; pip check, existing runtime locks unchanged",
-  "secret_scan": "TESTED; no recognized credential/private-key findings in 30 changed task files; final scan pending",
+  "secret_scan": "TESTED; no recognized credential/private-key findings in 35 changed task files; values suppressed",
   "local_wall_probes": {
     "status": "TEST GATE",
     "host": "Intel Celeron N3060; 2 cores; 4GB RAM, below frozen 4-core/8GB target; other owner workloads active",
@@ -84,9 +96,48 @@
     "short_probe_is_not_sustained_qualification": true
   },
   "native_sustained_probe": {
-    "status": "TEST GATE",
+    "status": "TESTED",
     "workload": "120 seconds at 160 frames/s: 120 L2 (one changed bid and ask per frame), 40 one-record trades; BTC/ETH; repeated five-second fake REST; actual SQLite/Parquet; explicit overload regression; no provider calls",
-    "source_health": "strict metadata/current-receipt/zero-gap checks; book warmup retained; unsupported trade completeness remains false"
+    "source_health": "strict metadata/current-receipt/zero-gap checks; book warmup retained; unsupported trade completeness remains false",
+    "workflow_run": 37220833586,
+    "job_id": 111491364968,
+    "metrics": {
+      "frames": 19200,
+      "elapsed_s": 122.094,
+      "high_water_items": 488,
+      "rejected": 0,
+      "max_producer_lateness_s": 0.05974999999995134,
+      "acquisition": {
+        "closed": false,
+        "pending": false,
+        "completion_ready": false,
+        "active_workers": 0,
+        "started_count": 17,
+        "consumed_count": 17,
+        "wait_timeout_count": 0
+      },
+      "history_rows_restored": 1200
+    },
+    "host": {
+      "memory_bytes": 17174360064,
+      "source_sha": "2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
+      "provider_calls": 0,
+      "cpu": {
+        "Name": "AMD EPYC 7763 64-Core Processor                ",
+        "NumberOfCores": 2,
+        "NumberOfLogicalProcessors": 4
+      }
+    },
+    "tests": {
+      "tests": 45,
+      "passed": 45,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "seconds": 138.256,
+      "junit_sha256": "913df5dd89537b67309a77e11f48999d285d53c1ac03ad592bd86f72b73e968a"
+    },
+    "burst_margin": "Observed high-water 488/512; no rejection under the declared workload, limited burst margin. This is not qualification of real Bybit traffic, other message sizes, owner hardware or 48h+ endurance."
   },
   "authority_sources": {
     "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
@@ -97,5 +148,211 @@
     "ATLAS_CHATGPT_PROJECT_CURRENT_STATE_2026-10-04.md": "a3f5eb5e76dfcb4273cdc523727b1ca846b5ea0170badd96fd7cc8438e64a341",
     "ATLAS_72_Hour_Consultation.pdf": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e"
   },
-  "remote_complete_validation": "TEST GATE"
+  "remote_complete_validation": "TESTED; full offline/static job and native stream/build/install/reinstall/uninstall jobs passed at the exact implementation checkpoint in workflow 37220833586",
+  "comprehensive_offline": {
+    "status": "TESTED",
+    "workflow_run": 37220833586,
+    "checkpoint_sha": "2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
+    "tests": 1677,
+    "passed": 1671,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 6,
+    "v2": {
+      "passed": 1186,
+      "skipped": 3
+    },
+    "non_v2": {
+      "passed": 485,
+      "skipped": 3
+    },
+    "seconds": 163.613,
+    "junit_sha256": "edeb3ccf646bb92bbe71d7f82bc42919a75dc38ca1ab8ed80650bf389b51064e",
+    "skips": [
+      "two authenticated-testnet opt-ins",
+      "one public-testnet opt-in",
+      "one wall-capacity opt-in executed separately on Windows",
+      "two optional isolated-agent SDK import checks"
+    ],
+    "ruff": "TESTED",
+    "mypy_linux_sources": "TESTED",
+    "mypy_windows_scripts": "TESTED",
+    "compileall": "TESTED",
+    "pip_check": "TESTED",
+    "test_host_policy": "Disposable Ubuntu 24.04 runner supplies Bubblewrap/EGL and disables host AppArmor unprivileged-userns restriction. Existing ATLAS --unshare-all sandbox and all denial tests remain unchanged."
+  },
+  "ci_attempts_retained": [
+    {
+      "run": 37207125359,
+      "status": "TEST GATE",
+      "reason": "invalid workflow YAML; no job executed"
+    },
+    {
+      "run": 37207582719,
+      "status": "BLOCKED BY ENVIRONMENT",
+      "passed": 1660,
+      "failed": 11,
+      "skipped": 6,
+      "reason": "missing CI Bubblewrap/EGL test-host dependencies"
+    },
+    {
+      "run": 37207956362,
+      "status": "BLOCKED BY ENVIRONMENT",
+      "passed": 1664,
+      "failed": 7,
+      "skipped": 6,
+      "reason": "CI host denied sandbox namespace setup"
+    },
+    {
+      "run": 37208226014,
+      "status": "TEST GATE",
+      "passed": 1670,
+      "failed": 1,
+      "skipped": 6,
+      "reason": "test incorrectly required visible home directory when sandbox fully hides it; assertion portability corrected, all denial checks retained"
+    },
+    {
+      "run": 37208573099,
+      "status": "TEST GATE",
+      "passed": 1671,
+      "failed": 0,
+      "skipped": 6,
+      "reason": "tests/Ruff passed; Linux type invocation on unchanged Windows-only APIs failed; packaging scripts subsequently checked with --platform win32"
+    },
+    {
+      "run": 37208961950,
+      "status": "BLOCKED BY ENVIRONMENT",
+      "reason": "Full offline job passed; native test collection failed because separate tools lacked reused fixture Hypothesis dependency. No sustained probe executed."
+    },
+    {
+      "run": 37209430327,
+      "status": "TEST GATE",
+      "reason": "Cancelled after cross-platform wheel check found Linux-only Hypothesis hash; independently verified PyPI Windows wheel hash then pinned in separate test lock."
+    },
+    {
+      "run": 37209548958,
+      "status": "TEST GATE",
+      "reason": "Full offline job passed; native stream gate 37 passed/8 failed/0 skipped. New raw transport archive fsync on read-only descriptor failed Windows _commit; writable descriptor fix implemented at 2f57e5d. Sustained capacity not qualified."
+    }
+  ],
+  "native_test_tools": "TESTED; eight exact wheel downloads for CPython 3.12 win_amd64 verified with hashes; excluded from product payload",
+  "previous_comprehensive_offline": {
+    "status": "TESTED",
+    "workflow_run": 37208961950,
+    "checkpoint_sha": "2c55f584f3a71e77070c84642ed7ac7b634b7399",
+    "tests": 1677,
+    "passed": 1671,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 6,
+    "v2": {
+      "passed": 1186,
+      "skipped": 3
+    },
+    "non_v2": {
+      "passed": 485,
+      "skipped": 3
+    },
+    "seconds": 221.005,
+    "junit_sha256": "7f81a088808e060ecf27f54e5c7384de2da2ba73803100cac7441baad232742d",
+    "skips": [
+      "two authenticated-testnet opt-ins",
+      "one public-testnet opt-in",
+      "one wall-capacity opt-in executed separately on Windows",
+      "two optional isolated-agent SDK import checks"
+    ],
+    "ruff": "TESTED",
+    "mypy_linux_sources": "TESTED",
+    "mypy_windows_scripts": "TESTED",
+    "compileall": "TESTED",
+    "pip_check": "TESTED",
+    "test_host_policy": "Disposable Ubuntu 24.04 runner supplies Bubblewrap/EGL and disables host AppArmor unprivileged-userns restriction. Existing ATLAS --unshare-all sandbox and all denial tests remain unchanged."
+  },
+  "native_package": {
+    "status": "TESTED",
+    "checkpoint_sha": "2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
+    "workflow_run": 37220833586,
+    "workflow_url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37220833586",
+    "artifact_id": 11309419275,
+    "artifact_name": "atlas-windows-2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
+    "installer_filename": "ATLAS-2.0.38.3-2f57e5db4fcd-win11-x64-setup.exe",
+    "installer_sha256": "9285b6eba8aab197dc899487e22c05842539a9ffd23fc3e087a30231976567c5",
+    "installer_version": "2.0.38.3",
+    "payload_tree_sha256": "8e23a381173a89ce59c340b4e314ccb16151704f5acb7cda4f8f5fd285c34c49",
+    "signed_release": false,
+    "artifact_hashes": {
+      "build-manifest.json": "5fe782a2608fbad1146df389bbb1daa36ea53f4d9963de055087bfee4756be48",
+      "windows-installer-smoke.json": "49064c3db23aa95696ee49b45222115587e345423cc4dbfae9015efa80228bee",
+      "windows-native-dependencies.json": "7b1609611ddd9915948c588651bc1a0fa3d6adcb397d2917016b139a570adc8f",
+      "windows-native-smoke.json": "d3b527651499da286216238470403ca0567d3626654f630e439ae6da12360672",
+      "windows-release-manifest.json": "74e689424d025bc174672539f638651fbd525261b376ea889a50c14e1cc66d48",
+      "windows-stream-host.json": "a2df33545d53494b523ba5e30e6a3261864e43f15cfc67bbb45dae6b47b7cb8f"
+    },
+    "native_tests": {
+      "tests": 45,
+      "passed": 45,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "seconds": 138.256,
+      "junit_sha256": "913df5dd89537b67309a77e11f48999d285d53c1ac03ad592bd86f72b73e968a"
+    },
+    "capacity_metrics": {
+      "frames": 19200,
+      "elapsed_s": 122.094,
+      "high_water_items": 488,
+      "rejected": 0,
+      "max_producer_lateness_s": 0.05974999999995134,
+      "acquisition": {
+        "closed": false,
+        "pending": false,
+        "completion_ready": false,
+        "active_workers": 0,
+        "started_count": 17,
+        "consumed_count": 17,
+        "wait_timeout_count": 0
+      },
+      "history_rows_restored": 1200
+    },
+    "host": {
+      "memory_bytes": 17174360064,
+      "source_sha": "2f57e5db4fcd2e28d8bb9161ad529754fb71e00b",
+      "provider_calls": 0,
+      "cpu": {
+        "Name": "AMD EPYC 7763 64-Core Processor                ",
+        "NumberOfCores": 2,
+        "NumberOfLogicalProcessors": 4
+      }
+    },
+    "qualification": "Complete offline/static regression, declared synthetic stream, native build/PE closure/product/DPAPI/owner-process lifetime, install/reinstall/uninstall preservation. Actual Windows 11, cross-version upgrade and live source/endurance remain UNVERIFIED / TEST GATE."
+  },
+  "final_freeze_context_refresh": "TESTED; main personally reread all three freezes and root context in full after context loss and before final handoff; relevant consultation pages 23\u201326 reread without changing authority.",
+  "final_identity_secret_check": {
+    "artifact": "s38-final-identity-secret.json",
+    "sha256": "fdc7aebba87a7ee8a307685889d82e233f8211f465d4bc96b449e8800130489e",
+    "scanned_changed_files": 35,
+    "findings": 0,
+    "values_suppressed": true,
+    "runtime_locks_byte_equal_to_start": true,
+    "owner_root_files_committed": false
+  },
+  "cold_history_probe": {
+    "status": "TESTED",
+    "scope": "One strict 1200-row restore on the local host with service callbacks; exact identity preserved; diagnostic only, not throughput qualification",
+    "artifact": "s38-cold-history-service-gap.log",
+    "rows": 1200,
+    "seconds": 0.839411236003798,
+    "service_callbacks": 78,
+    "maximum_unserviced_interval_s": 0.2534753960062517,
+    "final_unserviced_interval_s": 0.2534753960062517,
+    "identity_preserved": true
+  },
+  "final_diff_review": {
+    "status": "TESTED",
+    "changed_files": 35,
+    "scope": "bounded live-public reliability remediation, regression/CI/native package evidence and handoff",
+    "capital_recovery_policy_and_runtime_locks_changed": false,
+    "owner_files_or_sensitive_logs_committed": false,
+    "docs_only_final_checkpoint": true
+  }
 }
