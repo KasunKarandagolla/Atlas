@@ -20,7 +20,7 @@ from .bybit import (
     translate_recent_trades,
     translate_ticker,
 )
-from .public_http import PublicDataError, PublicHttpClientV2, PublicVenueV2
+from .public_http import PublicDataError, PublicHttpClientV2, PublicHttpsSessionV1, PublicVenueV2
 from .raw import RawObservationV2
 
 CAMPAIGN_SYMBOLS = ("BTCUSDT", "ETHUSDT")
@@ -125,7 +125,8 @@ class BybitPublicCycleSourceV1:
         max_acquisition_duration_ns: int = MAX_ACQUISITION_DURATION_NS,
     ) -> None:
         if reader is None:
-            reader = BybitPublicReaderV2(PublicHttpClientV2(PublicVenueV2.BYBIT, timeout_s=1.25))
+            reader = BybitPublicReaderV2(PublicHttpClientV2(PublicVenueV2.BYBIT, timeout_s=1.25,
+                getter=PublicHttpsSessionV1(PublicVenueV2.BYBIT)))
         if type(max_acquisition_duration_ns) is not int or not 0 < max_acquisition_duration_ns <= MAX_ACQUISITION_DURATION_NS:
             raise ValueError("Bybit acquisition budget must be positive and no greater than five seconds")
         self.reader = reader
@@ -148,6 +149,12 @@ class BybitPublicCycleSourceV1:
         remains read-only and does not mutate the repository or registry.
         """
         return self._metadata.products if self._metadata is not None else ()
+
+    def close(self) -> None:
+        """Called only after the acquisition worker completes, never during I/O."""
+        close = getattr(getattr(getattr(self.reader, "client", None), "getter", None), "close", None)
+        if callable(close):
+            close()
 
     @property
     def required_source_ids(self) -> tuple[str, ...]:

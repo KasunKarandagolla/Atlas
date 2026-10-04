@@ -26,6 +26,12 @@ class ControlledSource:
         self.call_count = 0
         self.begin_threads: list[int] = []
         self.acquire_threads: list[int] = []
+        self.close_threads: list[int] = []
+        self.closed = threading.Event()
+
+    def close(self) -> None:
+        self.close_threads.append(threading.get_ident())
+        self.closed.set()
 
     def begin_collection_cycle(self, *, now_ns: int) -> None:
         del now_ns
@@ -148,9 +154,12 @@ def test_close_is_bounded_with_blocked_worker_and_rejects_new_requests() -> None
         with pytest.raises(RuntimeError, match="closed"):
             helper.acquire(now_ns=200, service=lambda: None)
         assert source.call_count == 1
+        assert not source.closed.is_set()
     finally:
         source.release.set()
         assert helper.close(timeout_s=0.1)
+        assert source.closed.wait(0.2)
+        assert len(source.close_threads) == 1
 
 
 @pytest.mark.parametrize("wait_s", [0, -1, 5.01, float("nan"), float("inf")])

@@ -46,6 +46,7 @@ class ServicedPublicAcquisitionV1:
         self._worker: threading.Thread | None = None
         self._result: BybitPublicSnapshotV1 | None = None
         self._closed = False
+        self._source_closed = False
         self._started_count = 0
         self._consumed_count = 0
         self._wait_timeout_count = 0
@@ -81,6 +82,18 @@ class ServicedPublicAcquisitionV1:
         with self._lock:
             self._result = result
             self._completed.set()
+            closed = self._closed
+        if closed:
+            self._close_source()
+
+    def _close_source(self) -> None:
+        with self._lock:
+            if self._source_closed:
+                return
+            self._source_closed = True
+        close = getattr(self.source, "close", None)
+        if callable(close):
+            close()
 
     def acquire(self, *, now_ns: int, service: Callable[[], None]) -> BybitPublicSnapshotV1:
         """Wait a bounded time, servicing FIFO stream evidence between polls.
@@ -145,4 +158,7 @@ class ServicedPublicAcquisitionV1:
             worker = self._worker
         if worker is not None:
             worker.join(timeout=timeout_s)
-        return worker is None or not worker.is_alive()
+        completed = worker is None or not worker.is_alive()
+        if completed:
+            self._close_source()
+        return completed

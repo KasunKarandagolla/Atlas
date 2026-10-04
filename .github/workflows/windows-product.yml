@@ -95,7 +95,7 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           $env:PYTHONPATH = "$testTools;$pwd\src"
           @{cpu = (Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors); memory_bytes = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory; source_sha = '${{ github.sha }}'; provider_calls = 0} | ConvertTo-Json -Depth 4 | Set-Content dist/windows-stream-host.json
-          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_s38_sustained_public_stream.py tests/v2/test_session038_history_service.py tests/v2/test_session038_stream_identity_cache.py tests/v2/test_session038_serviced_acquisition.py tests/v2/test_session038_transport_archive.py tests/v2/test_session038_report_worker.py tests/v2/test_session032_public_stream_integration.py --junitxml=dist/windows-stream-regression.xml 2>&1 | Tee-Object dist/windows-stream-regression.txt
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_s38_sustained_public_stream.py tests/v2/test_session038_history_service.py tests/v2/test_session038_stream_identity_cache.py tests/v2/test_session038_serviced_acquisition.py tests/v2/test_session038_transport_archive.py tests/v2/test_session038_report_worker.py tests/v2/test_session038_public_http_session.py tests/v2/test_session032_public_stream_integration.py --junitxml=dist/windows-stream-regression.xml 2>&1 | Tee-Object dist/windows-stream-regression.txt
           if ($LASTEXITCODE -ne 0) { throw 'Offline stream regression failed; no package qualification' }
       - name: Build, validate payload and exercise offline product
         env:

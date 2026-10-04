@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from http.client import HTTPException, HTTPSConnection
 from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
 
 
@@ -105,6 +107,55 @@ def _stdlib_get(url: str, timeout: float) -> tuple[int, bytes]:
         raise PublicDataError(f"public endpoint returned HTTP {exc.code}: {body[:256]!r}", status_code=exc.code) from exc
     except (URLError, TimeoutError, OSError) as exc:
         raise PublicDataError(f"credential-free public request failed: {type(exc).__name__}") from exc
+
+
+class PublicHttpsSessionV1:
+    """One reusable credential-free connection, owned by one acquisition caller.
+
+    No redirects, proxies, authentication or implicit request retries. A failed
+    exchange closes the connection; the next explicit request can reconnect.
+    This reduces repeated TLS setup without changing acquisition budgets or
+    receipt times. Socket-operation timeouts are not total wall-clock deadlines.
+    """
+
+    def __init__(self, venue: PublicVenueV2) -> None:
+        self.venue = PublicVenueV2(venue)
+        self._host = urlsplit(_BASE_URLS[self.venue]).netloc
+        self._connection: HTTPSConnection | None = None
+
+    def close(self) -> None:
+        connection, self._connection = self._connection, None
+        if connection is not None:
+            connection.close()
+
+    def __call__(self, url: str, timeout: float) -> tuple[int, bytes]:
+        parsed = urlsplit(url)
+        if (parsed.scheme != "https" or parsed.netloc != self._host
+                or parsed.path not in _PATHS[self.venue] or parsed.fragment):
+            raise ValueError("persistent public request is outside its exact venue allowlist")
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("public socket timeout must be finite and positive")
+        if self._connection is None:
+            self._connection = HTTPSConnection(self._host, timeout=timeout)
+        connection = self._connection
+        connection.timeout = timeout
+        try:
+            if connection.sock is not None:
+                connection.sock.settimeout(timeout)
+            connection.request("GET", parsed.path + ("?" + parsed.query if parsed.query else ""),
+                headers={"Accept": "application/json", "User-Agent": "ATLAS-V2-public-research/1"})
+            response = connection.getresponse()
+            try:
+                status, body = int(response.status), response.read(2_000_001)
+            finally:
+                response.close()
+            if len(body) > 2_000_000:
+                self.close()
+                raise PublicDataError("public response exceeds the bounded 2 MB response limit")
+            return status, body
+        except (HTTPException, TimeoutError, OSError) as exc:
+            self.close()
+            raise PublicDataError(f"credential-free public request failed: {type(exc).__name__}") from exc
 
 
 class PublicHttpClientV2:

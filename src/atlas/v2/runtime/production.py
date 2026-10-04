@@ -1468,6 +1468,10 @@ class ProductionOpsCyclePortV1:
                 close()
         if self._serviced_acquisition is not None:
             self._serviced_acquisition.close(timeout_s=0.1)
+        else:
+            close = getattr(self.public_source, "close", None)
+            if callable(close):
+                close()
 
     def service_public_stream(self, repository: OpsRepository) -> None:
         """Service at most four FIFO batches, checking a 50ms allowance between them.
@@ -2066,7 +2070,9 @@ class ProductionOpsCyclePortV1:
             # Amortize archive/checkpoint cost when there is real backlog. Each
             # handoff drain retains its old 32-frame bound and FIFO ordering.
             queued = getattr(self.public_stream_source.status().handoff, "queue_items", 0)
-            drain_count = min(8, (queued + 31) // 32) if type(queued) is int and queued >= 64 else 1
+            drain_count = (min(PUBLIC_STREAM_MAX_FRAMES_PER_SERVICE_V1 // PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1,
+                (queued + PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 - 1) // PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1)
+                if type(queued) is int and queued >= 64 else 1)
             incoming: list[CapturedPublicFrameV2] = []
             for _ in range(drain_count):
                 batch = tuple(self.public_stream_source.drain(max_items=PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1))
