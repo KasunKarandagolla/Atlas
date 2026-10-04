@@ -55,7 +55,8 @@ jobs:
           mkdir -p validation
           python -m pytest tests --junitxml=validation/offline-regression.xml
           ruff check src scripts tests
-          mypy src/atlas scripts
+          mypy src/atlas
+          mypy --platform win32 scripts
           python -m compileall -q src scripts tests
           python -m pip check
       - name: Retain offline validation evidence
