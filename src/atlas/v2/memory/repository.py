@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
-from .._serialization import FrozenMap, canonical_json, json_value, nonblank, sha256_json, sha256_ref, timestamp
+from .._serialization import FrozenMap, canonical_json, nonblank, sha256_json, sha256_ref, timestamp
 from ..contracts import OpportunityWatchV2, WatchStateV2
 from ..models.protocol import ModelManifestV2
 from .schema import OPS_SCHEMA_NAMESPACE, OPS_SCHEMA_VERSION, initialize, validate_read_only
@@ -135,7 +135,7 @@ class ArtifactIndexEntryV2:
         timestamp(self.available_at_ns, field="available_at_ns")
         if self.available_at_ns < self.created_at_ns:
             raise ValueError("artifact available_at_ns cannot precede created_at_ns")
-        object.__setattr__(self, "metadata", FrozenMap(json_value(self.metadata)))
+        object.__setattr__(self, "metadata", FrozenMap.from_json(self.metadata))
 
 
 @dataclass(frozen=True)

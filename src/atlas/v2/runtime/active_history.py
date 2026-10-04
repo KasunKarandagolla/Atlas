@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Callable
+from collections import OrderedDict
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+from weakref import WeakKeyDictionary
 
 from .._serialization import sha256_json
 from ..chronology import record_computation, sample
@@ -20,6 +23,71 @@ from ..data.bars import BarIntervalV2
 from ..data.history import IndexedCausalBarV2, reconstruct_native_bars_from_index_page
 from ..instruments import InstrumentKeyV2
 from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
+
+# These objects are disposable acceleration only. Exact durable JSON and its
+# checksum still identify every entry, and recovery validates the wire again.
+MAX_VERIFIED_HISTORY_HEADS_V1 = 8
+HISTORY_DECODE_SERVICE_ITEMS_V1 = 32
+
+
+@dataclass(frozen=True)
+class _VerifiedHead:
+    state_json: str
+    state_ref: str
+    state: ActiveCausalHistoryStateV1
+
+
+_VERIFIED_HEADS: WeakKeyDictionary[OpsRepository, OrderedDict[tuple[str, str], _VerifiedHead]] = WeakKeyDictionary()
+
+
+def _remember_head(repository: OpsRepository, head: Any, state: ActiveCausalHistoryStateV1) -> None:
+    if head is None or head["state_json"] is None or head["state_ref"] != state.content_hash:
+        raise ValueError("ACTIVE_HISTORY_HEAD_IDENTITY_CONFLICT")
+    identity = (state.key.to_canonical_json(), state.interval.value)
+    cache = _VERIFIED_HEADS.setdefault(repository, OrderedDict())
+    cache[identity] = _VerifiedHead(head["state_json"], head["state_ref"], state)
+    cache.move_to_end(identity)
+    while len(cache) > MAX_VERIFIED_HISTORY_HEADS_V1:
+        cache.popitem(last=False)
+
+
+class _ServicedWireTail(list[Any]):
+    """Keep the strict decoder unchanged while yielding between source items."""
+
+    def __init__(self, items: list[Any], service: Callable[[], None]) -> None:
+        super().__init__(items)
+        self._service = service
+
+    def __iter__(self) -> Iterator[Any]:
+        for position, item in enumerate(super().__iter__()):
+            if position % HISTORY_DECODE_SERVICE_ITEMS_V1 == 0:
+                self._service()
+            yield item
+        self._service()
+
+
+def _decode_head(repository: OpsRepository, head: Any, *, key: InstrumentKeyV2,
+                 interval: BarIntervalV2, service: Callable[[], None] | None) -> ActiveCausalHistoryStateV1 | None:
+    if head is None or head["state_json"] is None:
+        return None
+    identity = (key.to_canonical_json(), interval.value)
+    cache = _VERIFIED_HEADS.setdefault(repository, OrderedDict())
+    previous = cache.get(identity)
+    if (previous is not None and previous.state_ref == head["state_ref"]
+            and previous.state_json == head["state_json"]):
+        cache.move_to_end(identity)
+        return previous.state
+    wire = json.loads(head["state_json"])
+    if service is not None and isinstance(wire, dict) and isinstance(wire.get("tail"), list):
+        # The callback is supplied only at a safe writer boundary, never while
+        # the caller has an outer composition transaction open. It does not
+        # change this captured immutable wire or any of its strict validators.
+        wire["tail"] = _ServicedWireTail(wire["tail"], service)
+    state = ActiveCausalHistoryStateV1.from_dict(wire)
+    if state.key != key or state.interval != interval or state.content_hash != head["state_ref"]:
+        raise ValueError("ACTIVE_HISTORY_HEAD_IDENTITY_CONFLICT")
+    _remember_head(repository, head, state)
+    return state
 
 
 @dataclass(frozen=True)
@@ -37,11 +105,11 @@ class ActiveHistoryPageV1:
 
 def maintain_history(repository: OpsRepository, archive_root: Path, *, key: InstrumentKeyV2,
                      interval: BarIntervalV2, cutoff_ns: int,
-                     clock_ns: Callable[[], int], deadline_ns: int) -> ActiveHistoryPageV1:
+                     clock_ns: Callable[[], int], deadline_ns: int,
+                     service: Callable[[], None] | None = None) -> ActiveHistoryPageV1:
     """Advance at most 128 source rows once; never sweep or silently reseed history."""
     head = repository.active_history_head(key, interval.value)
-    state = (ActiveCausalHistoryStateV1.from_dict(json.loads(head["state_json"]))
-             if head is not None and head["state_json"] is not None else None)
+    state = _decode_head(repository, head, key=key, interval=interval, service=service)
     if state is not None and (head is None or state.key != key or state.interval != interval
                               or state.content_hash != head["state_ref"]):
         raise ValueError("ACTIVE_HISTORY_HEAD_IDENTITY_CONFLICT")
@@ -75,10 +143,14 @@ def maintain_history(repository: OpsRepository, archive_root: Path, *, key: Inst
             reason = str(exc) if str(exc).startswith("ACTIVE_HISTORY_") else "EXACT_PREFIX_SOURCE_UNSUPPORTED"
     else:
         try:
+            if service is not None:
+                service()
             rows, new_cursor, more = repository.active_history_source_page(
                 key, interval.value, after_close_at_ns=cursor, cutoff_ns=cutoff_ns)
             indexed = reconstruct_native_bars_from_index_page(repository, archive_root,
-                key=key, interval=interval, index_entries=rows, max_origins=128)
+                key=key, interval=interval, index_entries=rows, max_origins=128, service=service)
+            if service is not None:
+                service()
             selected: dict[int, IndexedCausalBarV2] = {}
             for item in indexed:
                 previous = selected.get(item.bar.close_at_ns)
@@ -87,6 +159,8 @@ def maintain_history(repository: OpsRepository, archive_root: Path, *, key: Inst
                     selected[item.bar.close_at_ns] = item
             new_bars = tuple(selected[close] for close in sorted(selected))
             next_state = advance(state, new_bars, key=key, interval=interval) if new_bars else state
+            if service is not None:
+                service()
             available = int(head["available_at_ns"]) if head is not None and not rebuild else started
             with repository.atomic_composition():
                 if next_state is not None and next_state is not state:
@@ -114,10 +188,16 @@ def maintain_history(repository: OpsRepository, archive_root: Path, *, key: Inst
                                 or sha256_json(existing.metadata["history"]) != next_state.content_hash):
                             raise ValueError("ACTIVE_HISTORY_CHECKPOINT_IDENTITY_CONFLICT")
                         available = existing.available_at_ns
-                repository.save_active_history_head(key, interval.value,
-                    state=next_state.to_dict() if next_state is not None else None,
-                    state_ref=next_state.content_hash if next_state is not None else None,
-                    scan_close_at_ns=new_cursor, cutoff_ns=cutoff_ns, available_at_ns=available)
+                if (head is None or rebuild or next_state is not state or new_cursor != cursor):
+                    repository.save_active_history_head(key, interval.value,
+                        state=next_state.to_dict() if next_state is not None else None,
+                        state_ref=next_state.content_hash if next_state is not None else None,
+                        scan_close_at_ns=new_cursor, cutoff_ns=cutoff_ns, available_at_ns=available)
+            if next_state is not None:
+                # This state was constructed and validated on the same writer.
+                # Read back the exact persisted JSON before retaining it. If an
+                # outer transaction later rolls back, its old JSON will miss.
+                _remember_head(repository, repository.active_history_head(key, interval.value), next_state)
             state, ready = next_state, not more and next_state is not None
             reason = ("EXACT_PREFIX_AVAILABLE" if ready else "EXACT_PREFIX_SOURCE_MISSING"
                       if next_state is None and not more else
@@ -155,7 +235,8 @@ class ActiveHistoryMaintenanceV1:
         self._cursor = 0
         self._next_cutoff_ns = 0
 
-    def run_cycle(self, repository: OpsRepository, *, cutoff_ns: int) -> ActiveHistoryPageV1 | None:
+    def run_cycle(self, repository: OpsRepository, *, cutoff_ns: int,
+                  service: Callable[[], None] | None = None) -> ActiveHistoryPageV1 | None:
         if cutoff_ns < self._next_cutoff_ns:
             return None
         self._next_cutoff_ns = cutoff_ns + 500_000_000
@@ -170,4 +251,5 @@ class ActiveHistoryMaintenanceV1:
         key, interval = lanes[self._cursor % len(lanes)]
         self._cursor += 1
         return maintain_history(repository, self.archive_root, key=key, interval=interval,
-            cutoff_ns=cutoff_ns, clock_ns=self.clock_ns, deadline_ns=cutoff_ns + 250_000_000)
+            cutoff_ns=cutoff_ns, clock_ns=self.clock_ns, deadline_ns=cutoff_ns + 250_000_000,
+            service=service)

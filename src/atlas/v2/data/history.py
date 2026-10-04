@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
@@ -538,6 +538,7 @@ def reconstruct_causal_bars_from_archive(
     information_cutoff_ns: int,
     availability_class: AvailabilityClassV2 = AvailabilityClassV2.ACTUAL_SYSTEM,
     limit: int = 100_000,
+    service: Callable[[], None] | None = None,
 ) -> tuple[IndexedCausalBarV2, ...]:
     """Rebuild immutable bars from collected Parquet rows and their exact ops refs.
 
@@ -586,6 +587,8 @@ def reconstruct_causal_bars_from_archive(
     )
     paths = _indexed_archive_paths_v1(root, source_entries)
     for path, selected_record_ids in paths:
+        if service is not None:
+            service()
         parquet = None
         try:
             parquet = _open_bounded_archive_chunk_v2(path)
@@ -594,6 +597,8 @@ def reconstruct_causal_bars_from_archive(
             if not columns.issubset(set(parquet.schema.names)):
                 continue
             for batch in parquet.iter_batches(columns=sorted(columns), batch_size=512):
+                if service is not None:
+                    service()
                 for row in batch.to_pylist():
                     examined += 1
                     if examined > MAX_CAUSAL_ARCHIVE_ROWS:
@@ -707,6 +712,7 @@ def reconstruct_native_bars_from_index_page(
     interval: BarIntervalV2,
     index_entries: tuple[Any, ...],
     max_origins: int = 4,
+    service: Callable[[], None] | None = None,
 ) -> tuple[IndexedCausalBarV2, ...]:
     """Rebuild only a bounded page of exact M1 origins from their indexed chunks.
 
@@ -765,6 +771,8 @@ def reconstruct_native_bars_from_index_page(
         "archive_record_kind",
     }
     for chunk_id, expected_rows in by_chunk.items():
+        if service is not None:
+            service()
         path = root / f"{chunk_id}.parquet"
         if path.is_symlink() or not path.is_file():
             raise ValueError("native bar source page points to a missing or unsafe archive chunk")
@@ -774,6 +782,8 @@ def reconstruct_native_bars_from_index_page(
             raise ArchiveScanBoundExceededV2("native-bar-chunk-row-count", MAX_NATIVE_M1_ORIGIN_CHUNK_ROWS)
         found: set[str] = set()
         for batch in parquet.iter_batches(columns=sorted(required_columns), batch_size=256):
+            if service is not None:
+                service()
             for row in batch.to_pylist():
                 record_id = row.get("record_id")
                 index_entry = expected_rows.get(record_id) if isinstance(record_id, str) else None

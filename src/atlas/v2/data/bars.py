@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
+from functools import cached_property
 
 from atlas.domain.money import ensure_positive_decimal
 
@@ -84,7 +85,7 @@ class CausalBarV2:
     def replay_available_at_ns(self) -> int | None:
         return self.raw.replay_available_at_ns
 
-    @property
+    @cached_property
     def content_hash(self) -> str:
         return hashlib.sha256(canonical_json(self.to_dict()).encode("utf-8")).hexdigest()
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import cached_property
 from typing import Any
 
 from .._serialization import nonblank, sha256_json, strict_fields, timestamp
@@ -45,7 +46,7 @@ class PublicSourceHealthV2:
         nonblank(self.transition_id, field="transition_id")
         nonblank(self.details, field="details")
 
-    @property
+    @cached_property
     def content_hash(self) -> str:
         return sha256_json(self.to_dict())
 

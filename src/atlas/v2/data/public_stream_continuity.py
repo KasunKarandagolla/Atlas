@@ -31,10 +31,6 @@ from .public_microstructure_ws import CapturedPublicFrameV2
 PUBLIC_STREAM_CONTINUITY_VERSION = "PUBLIC_STREAM_CONTINUITY_V1"
 MAX_TRADE_ID_CACHE = 2048
 MAX_OBSERVATION_REPLAY_CACHE = 2048
-# The schema retains the strict 2048-item ceiling for restart compatibility,
-# while the live hot path keeps a smaller recent window. Older replay and trade
-# identities are resolved through the durable indexes, which remain fail-closed.
-LIVE_OBSERVATION_REPLAY_CACHE = 128
 MAX_GAP_REASON_CODES = 64
 MAX_SERIALIZED_CACHE_ITEMS = max(MAX_TRADE_ID_CACHE, MAX_OBSERVATION_REPLAY_CACHE)
 
@@ -362,6 +358,21 @@ def _default_reason(kind: PublicStreamObservationKindV1) -> str:
     }.get(kind, "UNSPECIFIED_STREAM_GAP")
 
 
+class _ValidatedTradeCache(tuple[tuple[str, str], ...]):
+    """Immutable internal cache; validate new rows once, including on restore."""
+
+    def append_row(self, row: tuple[str, str]) -> _ValidatedTradeCache:
+        nonblank(row[0], field="trade_id")
+        sha256_ref(row[1], field="trade_payload_hash")
+        return tuple.__new__(_ValidatedTradeCache, (*self, row)[-MAX_TRADE_ID_CACHE:])
+
+
+class _ValidatedReplayCache(tuple[str, ...]):
+    def append_ref(self, ref: str) -> _ValidatedReplayCache:
+        sha256_ref(ref, field="observation_hash")
+        return tuple.__new__(_ValidatedReplayCache, (*self, ref)[-MAX_OBSERVATION_REPLAY_CACHE:])
+
+
 @dataclass(frozen=True)
 class PublicStreamContinuityStateV1:
     instrument: InstrumentKeyV2
@@ -389,8 +400,12 @@ class PublicStreamContinuityStateV1:
     def __post_init__(self) -> None:
         # Own immutable copies before caching this state's exact identity. Wire
         # decoders already supply tuples; direct callers may supply arrays.
-        object.__setattr__(self, "trade_identity_cache", tuple(tuple(row) for row in self.trade_identity_cache))
-        object.__setattr__(self, "observation_replay_cache", tuple(self.observation_replay_cache))
+        trade_cache_validated = isinstance(self.trade_identity_cache, _ValidatedTradeCache)
+        replay_cache_validated = isinstance(self.observation_replay_cache, _ValidatedReplayCache)
+        if not trade_cache_validated:
+            object.__setattr__(self, "trade_identity_cache", tuple(tuple(row) for row in self.trade_identity_cache))
+        if not replay_cache_validated:
+            object.__setattr__(self, "observation_replay_cache", tuple(self.observation_replay_cache))
         object.__setattr__(self, "gap_reason_codes", tuple(self.gap_reason_codes))
         _validate_source_identity(self.instrument, self.source_id, self.channel,
                                   self.metadata_ref, self.epoch_id)
@@ -412,13 +427,17 @@ class PublicStreamContinuityStateV1:
             raise ValueError("trade identity cache exceeds strict bound")
         if len(self.observation_replay_cache) > MAX_OBSERVATION_REPLAY_CACHE:
             raise ValueError("observation replay cache exceeds strict bound")
-        for trade_id, payload_hash in self.trade_identity_cache:
-            nonblank(trade_id, field="trade_id")
-            sha256_ref(payload_hash, field="trade_payload_hash")
-        if len({trade_id for trade_id, _ in self.trade_identity_cache}) != len(self.trade_identity_cache):
-            raise ValueError("trade identity cache keys must be unique")
-        for ref in self.observation_replay_cache:
-            sha256_ref(ref, field="observation_hash")
+        if not trade_cache_validated:
+            for trade_id, payload_hash in self.trade_identity_cache:
+                nonblank(trade_id, field="trade_id")
+                sha256_ref(payload_hash, field="trade_payload_hash")
+            if len({trade_id for trade_id, _ in self.trade_identity_cache}) != len(self.trade_identity_cache):
+                raise ValueError("trade identity cache keys must be unique")
+            object.__setattr__(self, "trade_identity_cache", tuple.__new__(_ValidatedTradeCache, self.trade_identity_cache))
+        if not replay_cache_validated:
+            for ref in self.observation_replay_cache:
+                sha256_ref(ref, field="observation_hash")
+            object.__setattr__(self, "observation_replay_cache", tuple.__new__(_ValidatedReplayCache, self.observation_replay_cache))
         if len(self.gap_reason_codes) > MAX_GAP_REASON_CODES:
             raise ValueError("gap reason list exceeds strict bound")
         for reason in self.gap_reason_codes:
@@ -501,6 +520,28 @@ class PublicStreamContinuityDecisionV1:
         return sha256_json({"artifact_type": "PublicStreamContinuityDecisionV1", "decision": self.to_dict()})
 
 
+@dataclass(frozen=True)
+class _DeferredContinuityDecision:
+    """Operational transition; seal the existing wire contract only on use.
+
+    The captured state is immutable. Ordinary transitions need classification
+    only; faults, external callers and serializers still receive exact hashes.
+    """
+
+    observation: PublicStreamObservationV1 | str
+    classification: PublicStreamClassificationV1
+    reason_code: str | None
+    state: PublicStreamContinuityStateV1
+
+    def seal(self) -> PublicStreamContinuityDecisionV1:
+        ref = self.observation if isinstance(self.observation, str) else self.observation.content_hash
+        return PublicStreamContinuityDecisionV1(ref, self.classification,
+                                               self.reason_code, self.state.content_hash)
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.seal().to_dict()
+
+
 class PublicStreamContinuityTrackerV1:
     """Apply one immutable observation at a time to a strictly bounded state."""
 
@@ -560,7 +601,14 @@ class PublicStreamContinuityTrackerV1:
         return new_tracker, observation
 
     def apply(self, observation: PublicStreamObservationV1, *,
-              durable_prior_payload_hash: str | None = None) -> PublicStreamContinuityDecisionV1:
+              durable_prior_payload_hash: str | None = None,
+              durable_lookup_complete: bool = False) -> PublicStreamContinuityDecisionV1:
+        return self.apply_deferred(observation, durable_prior_payload_hash=durable_prior_payload_hash,
+                                   durable_lookup_complete=durable_lookup_complete).seal()
+
+    def apply_deferred(self, observation: PublicStreamObservationV1, *,
+                       durable_prior_payload_hash: str | None = None,
+                       durable_lookup_complete: bool = False) -> _DeferredContinuityDecision:
         state = self._state
         if (observation.instrument, observation.source_id, observation.channel, observation.metadata_ref) != (
             state.instrument, state.source_id, state.channel, state.metadata_ref
@@ -568,36 +616,38 @@ class PublicStreamContinuityTrackerV1:
             raise ValueError("observation does not match tracker instrument/source/channel/metadata revision")
         if durable_prior_payload_hash is not None:
             sha256_ref(durable_prior_payload_hash, field="durable_prior_payload_hash")
+        if type(durable_lookup_complete) is not bool:
+            raise ValueError("durable lookup completion must be explicit boolean")
         event_hash = observation.idempotency_ref
         if event_hash in state.observation_replay_cache:
-            return PublicStreamContinuityDecisionV1(
+            return _DeferredContinuityDecision(
                 event_hash, PublicStreamClassificationV1.DUPLICATE_OBSERVATION,
-                "IDEMPOTENT_OBSERVATION_REPLAY", state.content_hash,
+                "IDEMPOTENT_OBSERVATION_REPLAY", state,
             )
         if observation.epoch_id != state.epoch_id:
             if observation.kind not in _EPOCH_START_KINDS:
-                return PublicStreamContinuityDecisionV1(
+                return _DeferredContinuityDecision(
                     event_hash, PublicStreamClassificationV1.STALE_EPOCH_OBSERVATION,
-                    "OBSERVATION_EPOCH_DOES_NOT_MATCH_ACTIVE_STREAM", state.content_hash,
+                    "OBSERVATION_EPOCH_DOES_NOT_MATCH_ACTIVE_STREAM", state,
                 )
             if observation.available_at_ns < (state.last_available_at_ns or 0):
-                return PublicStreamContinuityDecisionV1(
+                return _DeferredContinuityDecision(
                     event_hash, PublicStreamClassificationV1.OUT_OF_ORDER_AVAILABILITY,
-                    "EPOCH_TRANSITION_ARRIVED_BEFORE_CURRENT_STATE", state.content_hash,
+                    "EPOCH_TRANSITION_ARRIVED_BEFORE_CURRENT_STATE", state,
                 )
             self._start_epoch(observation, event_hash)
             return self._decision(observation, PublicStreamClassificationV1.RECOVERY_EPOCH_STARTED,
                                   observation.reason_code)
         if observation.available_at_ns < (state.last_available_at_ns or 0):
-            return PublicStreamContinuityDecisionV1(
+            return _DeferredContinuityDecision(
                 event_hash, PublicStreamClassificationV1.OUT_OF_ORDER_AVAILABILITY,
-                "OBSERVATION_AVAILABILITY_PRECEDES_ACTIVE_STATE", state.content_hash,
+                "OBSERVATION_AVAILABILITY_PRECEDES_ACTIVE_STATE", state,
             )
 
         self._remember_observation(event_hash)
         state = self._state
         if observation.kind in _TRADE_KINDS:
-            decision = self._apply_trade(observation, durable_prior_payload_hash)
+            decision = self._apply_trade(observation, durable_prior_payload_hash, durable_lookup_complete)
             return decision
         if observation.kind in _GAP_KINDS:
             self._add_gap(observation.reason_code or _default_reason(observation.kind))
@@ -689,7 +739,8 @@ class PublicStreamContinuityTrackerV1:
         self._state = state
 
     def _apply_trade(self, observation: PublicStreamObservationV1,
-                     durable_prior_payload_hash: str | None) -> PublicStreamContinuityDecisionV1:
+                     durable_prior_payload_hash: str | None,
+                     durable_lookup_complete: bool) -> _DeferredContinuityDecision:
         state = self._state
         trade_id = observation.trade_id
         payload_hash = observation.trade_payload_hash
@@ -715,7 +766,7 @@ class PublicStreamContinuityTrackerV1:
             if receipt_out_of_order:
                 reason = f"{reason};RECEIPT_ORDER_REGRESSED"
             return self._decision(observation, classification, reason)
-        if not state.trade_identity_cache_complete:
+        if not state.trade_identity_cache_complete and not durable_lookup_complete:
             self._add_gap("TRADE_IDENTITY_LOOKUP_REQUIRED_AFTER_BOUNDED_CACHE_EVICTION")
             if receipt_out_of_order:
                 self._add_gap("OUT_OF_ORDER_RECEIPT_TIME")
@@ -729,11 +780,10 @@ class PublicStreamContinuityTrackerV1:
         if receipt_out_of_order:
             self._add_gap("OUT_OF_ORDER_RECEIPT_TIME")
             state = self._state
-        cache = list(state.trade_identity_cache)
-        cache.append((trade_id, payload_hash))
+        cache = _ValidatedTradeCache(state.trade_identity_cache).append_row((trade_id, payload_hash))
         cache_complete: bool = state.trade_identity_cache_complete
-        if len(cache) > MAX_TRADE_ID_CACHE:
-            evicted_id, _ = cache.pop(0)
+        if len(state.trade_identity_cache) == MAX_TRADE_ID_CACHE:
+            evicted_id, _ = state.trade_identity_cache[0]
             self._trade_identity_lookup.pop(evicted_id, None)
             cache_complete = False
         self._trade_identity_lookup[trade_id] = payload_hash
@@ -748,7 +798,7 @@ class PublicStreamContinuityTrackerV1:
                                     if state.last_trade_event_at_ns is not None and observation.event_at_ns is not None
                                     else observation.event_at_ns or state.last_trade_event_at_ns),
             observed_trade_count=state.observed_trade_count + 1,
-            trade_identity_cache=tuple(cache),
+            trade_identity_cache=cache,
             trade_identity_cache_complete=cache_complete,
         )
         if event_out_of_order:
@@ -779,9 +829,9 @@ class PublicStreamContinuityTrackerV1:
         )
 
     def _remember_observation(self, event_hash: str) -> None:
-        cache = (*self._state.observation_replay_cache, event_hash)
+        cache = _ValidatedReplayCache(self._state.observation_replay_cache).append_ref(event_hash)
         self._state = replace(self._state,
-                              observation_replay_cache=cache[-LIVE_OBSERVATION_REPLAY_CACHE:])
+                              observation_replay_cache=cache)
 
     def _add_gap(self, reason: str) -> None:
         state = self._state
@@ -791,9 +841,9 @@ class PublicStreamContinuityTrackerV1:
 
     def _decision(self, observation: PublicStreamObservationV1,
                   classification: PublicStreamClassificationV1,
-                  reason_code: str | None) -> PublicStreamContinuityDecisionV1:
-        return PublicStreamContinuityDecisionV1(observation.content_hash, classification,
-                                                reason_code, self._state.content_hash)
+                  reason_code: str | None) -> _DeferredContinuityDecision:
+        return _DeferredContinuityDecision(observation, classification,
+                                           reason_code, self._state)
 
 
 def _append_bounded(values: tuple[str, ...], value: str, maximum: int) -> tuple[str, ...]:

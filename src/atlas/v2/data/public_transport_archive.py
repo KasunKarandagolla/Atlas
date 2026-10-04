@@ -14,7 +14,7 @@ def archive_transport_batch(repository: OpsRepository, frames: tuple[CapturedPub
                             *, clock_ns: Callable[[], int], floor_ns: int) -> str | None:
     if not frames:
         return None
-    if len(frames) > 32:
+    if len(frames) > 256:
         raise ValueError("transport archive batch exceeds the writer service bound")
     import pyarrow as pa
     import pyarrow.parquet as pq

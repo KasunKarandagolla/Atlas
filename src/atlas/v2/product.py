@@ -603,7 +603,7 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
             public_context.run_cycle(repo, information_cutoff_ns=at_ns)
             supervisor.service_public_stream()
         if not smoke:
-            history_maintenance.run_cycle(repo, cutoff_ns=at_ns)
+            history_maintenance.run_cycle(repo, cutoff_ns=at_ns, service=supervisor.service_public_stream)
             supervisor.service_public_stream()
         if not target_registered:
             prediction_maintenance.register_target(repo, available_at_ns=manifest["started_at_ns"])

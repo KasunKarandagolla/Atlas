@@ -460,7 +460,13 @@ class WindowsActionCriticBrokerServer:
                 return
 
     def _handle(self, channel: Any) -> None:
-        watchdog = threading.Timer(PIPE_TIMEOUT_SECONDS_V1, channel.close)
+        def close_channel() -> None:
+            try:
+                channel.close()
+            except OSError:
+                pass
+
+        watchdog = threading.Timer(PIPE_TIMEOUT_SECONDS_V1, close_channel)
         watchdog.daemon = True
         watchdog.start()
         bounded = _DeadlineBytesConnection(channel, time.monotonic() + PIPE_TIMEOUT_SECONDS_V1)
@@ -473,7 +479,7 @@ class WindowsActionCriticBrokerServer:
             pass
         finally:
             watchdog.cancel()
-            channel.close()
+            close_channel()
             with self._lock:
                 self._connections.discard(channel)
             self._slots.release()

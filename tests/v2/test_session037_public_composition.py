@@ -44,9 +44,16 @@ def test_small_no_candidate_public_composition_seals_actual_chronology(tmp_path,
             lambda *a, interval, **k: frames[interval])
         monkeypatch.setattr(production, '_indexed_quote_and_mark', lambda *a, **k: (None, None, ()))
         clock = Clock(cutoff)
-        provider = IndexedProductionEventInputsV1(clock_ns=clock)
+        service_calls = []
+        def service(repository):
+            assert not repository._connection.in_transaction
+            service_calls.append(1)
+        provider = IndexedProductionEventInputsV1(clock_ns=clock, stream_service=service)
         result = provider.resolve(repo, event)
         assert result.universe is not None and result.candidates == ()
         assert result.universe.envelope.available_at_ns > cutoff
         assert result.causal_feature_refs
+        assert len(service_calls) >= 8
+        before = len(service_calls)
         assert provider.resolve(repo, event) == result
+        assert len(service_calls) == before

@@ -47,13 +47,15 @@ def archive(monkeypatch):
     indexed = {}
     calls = []
 
-    def reconstruct(repository, _root, *, key, interval, index_entries, max_origins):
+    def reconstruct(repository, _root, *, key, interval, index_entries, max_origins, service=None):
         assert key == KEY and max_origins == 128
         assert len(index_entries) <= 128
         calls.append(tuple(entry.artifact_ref for entry in index_entries))
         result = tuple(indexed[entry.artifact_ref] for entry in index_entries)
         assert all(item.bar.interval == interval for item in result)
         assert all(repository.get_artifact(item.observation_index_ref) is not None for item in result)
+        if service is not None:
+            service()
         return result
 
     monkeypatch.setattr(runtime, "reconstruct_native_bars_from_index_page", reconstruct)

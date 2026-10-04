@@ -149,6 +149,27 @@ def test_authenticated_roundtrip_and_one_shot_lifecycle() -> None:
         server.start()
 
 
+def test_handler_releases_slot_if_native_close_reports_already_closed(monkeypatch) -> None:
+    server = pipe.WindowsActionCriticBrokerServer(ENDPOINT, Broker(), authentication_key=KEY)
+    a, channel = pair()
+    server._connections.add(channel)
+    assert server._slots.acquire(blocking=False)
+
+    def unavailable(*_args, **_kwargs):
+        raise EOFError
+
+    def already_closed():
+        raise OSError(6, "fake invalid handle")
+
+    monkeypatch.setattr(pipe, "_authenticate", unavailable)
+    monkeypatch.setattr(channel, "close", already_closed)
+    server._handle(channel)
+    assert server.active_handlers == 0
+    assert server._slots.acquire(blocking=False)
+    server._slots.release()
+    a.closed = True
+
+
 def test_wrong_authentication_key_never_reaches_provider() -> None:
     listener, broker = Listener(ENDPOINT), Broker()
     server = pipe.WindowsActionCriticBrokerServer(ENDPOINT, broker, authentication_key=KEY,

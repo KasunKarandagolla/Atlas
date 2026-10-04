@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import FrozenInstanceError, replace
+from decimal import Decimal
+from enum import Enum
 from typing import Any, cast
 
 import pytest
 
-from atlas.v2._serialization import sha256_json
+from atlas.v2._serialization import FrozenMap, json_value, sha256_json
 from atlas.v2.data.capabilities import default_evidence_capability_matrix_v2
 from atlas.v2.data.microstructure_archive import L2RawFrameV2
 from atlas.v2.data.public_stream_continuity import (
@@ -123,3 +125,45 @@ def test_default_capability_cache_is_immutable_and_does_not_share_mutable_wire()
     assert revised.content_hash != expected
     with pytest.raises(FrozenInstanceError):
         matrix.version = "mutated"  # type: ignore[misc]
+
+
+def test_deferred_transition_keeps_exact_state_and_requires_durable_lookup_after_eviction() -> None:
+    from .test_session032_public_stream_continuity import tracker, trade_observation
+
+    original = tracker()
+    # A bounded cache eviction is not evidence that a newly observed ID was
+    # already seen. Only a completed authoritative index query can disambiguate.
+    original._state = replace(original.state, trade_identity_cache_complete=False)
+    denied = original.apply(trade_observation("new-one"))
+    assert denied.classification.value == "TRADE_ID_HISTORY_UNAVAILABLE"
+    restored = PublicStreamContinuityTrackerV1.from_state(original.state)
+    observation = trade_observation("new-two")
+    deferred = restored.apply_deferred(observation, durable_lookup_complete=True)
+    assert deferred.classification.value == "TRADE_ACCEPTED"
+    captured = deferred.seal()
+    wire = restored.state.to_dict()
+    assert captured.state_ref == sha256_json({"artifact_type": "PublicStreamContinuityStateV1", "state": wire})
+    restored.apply(trade_observation("new-three"), durable_lookup_complete=True)
+    assert deferred.seal() == captured
+    assert restored.state.observed_trade_count == 2
+    duplicate = restored.apply(observation, durable_prior_payload_hash=observation.trade_payload_hash,
+                               durable_lookup_complete=True)
+    assert duplicate.classification.value == "DUPLICATE_OBSERVATION"
+    assert restored.state.observed_trade_count == 2
+
+
+def test_fused_canonical_metadata_preserves_values_identity_and_caller_ownership() -> None:
+    class Number(Enum):
+        ONE = 1
+
+    source: dict[str, Any] = {"decimal": Decimal("1.20"), "enum": Number.ONE,
+              "nested": [{"values": [1, None, True, "x"]}], "map": FrozenMap({"d": Decimal("2.5")})}
+    expected = FrozenMap(json_value(source))
+    actual = FrozenMap.from_json(source)
+    assert actual == expected
+    assert sha256_json(actual) == sha256_json(expected)
+    source["nested"][0]["values"].clear()
+    assert actual == expected
+    for bad in ({"x": float("nan")}, {"x": float("inf")}, {"x": object()}, {1: "value"}):
+        with pytest.raises(ValueError):
+            FrozenMap.from_json(cast(Any, bad))

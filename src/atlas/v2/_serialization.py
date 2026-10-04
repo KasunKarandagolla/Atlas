@@ -55,6 +55,52 @@ class FrozenMap(Mapping[str, Any]):
     def to_dict(self) -> dict[str, Any]:
         return {key: json_value(value) for key, value in self._items}
 
+    @classmethod
+    def from_json(cls, values: Mapping[str, Any]) -> FrozenMap:
+        """Fuse canonical conversion and freezing without an intermediate tree.
+
+        This is exactly FrozenMap(json_value(values)), including decimal/enum
+        conversion, strict object keys and ownership of caller arrays.
+        """
+        if not isinstance(values, (dict, FrozenMap)):
+            values = json_value(values)
+        result = object.__new__(cls)
+        items = []
+        for key, value in values.items():
+            if not isinstance(key, str) or not key:
+                raise ValueError("object keys must be non-empty strings")
+            items.append((key, _freeze_canonical_json(value)))
+        object.__setattr__(result, "_items", tuple(sorted(items, key=lambda pair: pair[0])))
+        return result
+
+
+def _freeze_canonical_json(value: Any) -> Any:
+    if value is None or type(value) in (str, bool, int):
+        return value
+    if isinstance(value, Enum):
+        # json_value returns the Enum value directly; preserve the former
+        # freezing semantics even for non-scalar Enum values.
+        return freeze_json(value.value)
+    if isinstance(value, Decimal):
+        return canonical_decimal_str(value)
+    if isinstance(value, FrozenMap):
+        # Stored maps may contain Decimal/Enum objects; canonical metadata
+        # converts them just as the former json_value+freeze construction did.
+        return FrozenMap.from_json(value)
+    if isinstance(value, (tuple, list)):
+        return tuple(_freeze_canonical_json(item) for item in value)
+    if isinstance(value, dict):
+        return FrozenMap.from_json(value)
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("NaN/Infinity is not authoritative JSON")
+        return value
+    if isinstance(value, (str, bool, int)):
+        return value
+    if hasattr(value, "to_dict"):
+        return _freeze_canonical_json(value.to_dict())
+    raise ValueError(f"unsupported canonical JSON type {type(value).__name__}")
+
 
 def freeze_json(value: Any, *, field: str = "value") -> Any:
     if value is None or isinstance(value, (str, bool, int, Decimal, Enum)):

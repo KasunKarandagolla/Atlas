@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
+from functools import partial
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Protocol, cast
@@ -192,6 +193,7 @@ BYBIT_PUBLIC_WS_SOURCE_ID_V1 = "BYBIT_PUBLIC_WS"
 PUBLIC_STREAM_STALE_NS_V1 = 30_000_000_000
 PUBLIC_STREAM_METADATA_MAX_AGE_NS_V1 = 3_600_000_000_000
 PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 = 32
+PUBLIC_STREAM_MAX_FRAMES_PER_SERVICE_V1 = 256
 PUBLIC_STREAM_MAX_TRADES_PER_FRAME_V1 = 256
 _POLICIES: Mapping[str, PolicySpecV2] = MappingProxyType(
     {policy.policy_hash: policy for policy in (S1_POLICY, S2_POLICY, S3_POLICY)}
@@ -335,6 +337,7 @@ class IndexedPublicCycleSourceV1:
     def __init__(self, *, clock_ns: Callable[[], int] = time.time_ns,
                  minimum_m15_origin_close_at_ns: int = 0) -> None:
         self.clock_ns = clock_ns
+        self.stream_service: Callable[[OpsRepository], None] | None = None
         self.minimum_m15_origin_close_at_ns = timestamp(minimum_m15_origin_close_at_ns,
             field="minimum_m15_origin_close_at_ns")
 
@@ -404,7 +407,8 @@ class IndexedPublicCycleSourceV1:
                     )
                 elif plan.action == M15OriginAccountingAction.ATTEMPT_TIMELY_EVENT:
                     base = _public_bar_event(repository, product, plan.bar, now_ns=now_ns)
-                    generated = (IndexedProductionEventInputsV1(clock_ns=self.clock_ns).resolve(repository, base)
+                    generated = (IndexedProductionEventInputsV1(clock_ns=self.clock_ns,
+                        stream_service=self.stream_service).resolve(repository, base)
                                  if base else None)
                     if base is not None and generated is not None and generated.universe is not None:
                         event = base
@@ -542,7 +546,8 @@ class IndexedPublicCycleSourceV1:
                             seen_event_ids.add(event.event_id)
                     continue
                 base = _public_bar_event(repository, product, trigger, now_ns=now_ns)
-                generated = (IndexedProductionEventInputsV1(clock_ns=self.clock_ns).resolve(repository, base)
+                generated = (IndexedProductionEventInputsV1(clock_ns=self.clock_ns,
+                    stream_service=self.stream_service).resolve(repository, base)
                              if base else None)
                 if generated is None or generated.universe is None or base is None:
                     continue
@@ -1445,6 +1450,7 @@ class ProductionOpsCyclePortV1:
         self._stream_ingestion_failed = False
         self._serviced_acquisition: Any | None = None
         self._stream_last_service_at_ns: int | None = None
+        self._stream_last_report_at_ns: int | None = None
         self._stream_max_service_gap_ns = 0
         self._stream_max_service_duration_ns = 0
         self._stream_service_frames = 0
@@ -1469,17 +1475,33 @@ class ProductionOpsCyclePortV1:
         Called only by the supervisor writer at safe boundaries. Individual
         batch cost and missed servicing headroom are measured, never hidden.
         """
-        if self.public_stream_source is None or self._collector_recovery is None:
+        if (self.public_stream_source is None or self._collector_recovery is None
+                or self._stream_ingestion_failed):
+            # The first failed interpretation already closes the source and
+            # raises durable supervisor failure evidence. Collection cycles
+            # continue to fail closed until restart; idle polling must not
+            # repeat that terminal failure fifty times per second.
             return
         started = time.monotonic_ns()
         for _ in range(4):
             status = self.public_stream_source.status()
             now = sample(self.clock_ns, floor_ns=0)
             queued = getattr(status.handoff, "queue_items", 0)
+            if (0 < queued < PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1
+                    and self._stream_last_service_at_ns is not None
+                    and now - self._stream_last_service_at_ns < 200_000_000
+                    and getattr(status, "state", None) == "RUNNING"
+                    and getattr(status.handoff, "connected", False)
+                    and not getattr(status.handoff, "overflowed", False)):
+                # A bounded 200ms accumulation avoids tiny Parquet commits at
+                # every poll. Pressure/loss bypass this accumulation immediately.
+                break
             if not queued and self._stream_last_service_at_ns is not None and (
                     now - self._stream_last_service_at_ns < 1_000_000_000):
                 break
-            self._collect_public_stream_evidence(repository, now_ns=now)
+            self._collect_public_stream_evidence(repository, now_ns=now, publish_report=(
+                self._stream_last_report_at_ns is None
+                or now - self._stream_last_report_at_ns >= 1_000_000_000))
             if not queued or time.monotonic_ns() - started >= 50_000_000:
                 break
 
@@ -1488,8 +1510,10 @@ class ProductionOpsCyclePortV1:
         self.clock_ns = clock_ns
         if isinstance(self.public_source, IndexedPublicCycleSourceV1):
             self.public_source.clock_ns = clock_ns
+            self.public_source.stream_service = lambda repository: self.service_public_stream(repository)
         if isinstance(self.inputs_provider, IndexedProductionEventInputsV1):
             self.inputs_provider.clock_ns = clock_ns
+            self.inputs_provider.stream_service = lambda repository: self.service_public_stream(repository)
 
     def recover(self, repository: OpsRepository, *, now_ns: int) -> OpsRecoverySnapshotV1:
         """Restore collector cursors, active watches and subscriptions first."""
@@ -1787,8 +1811,10 @@ class ProductionOpsCyclePortV1:
         observation: PublicStreamObservationV1,
         *,
         durable_prior_payload_hash: str | None = None,
+        durable_lookup_complete: bool = False,
     ) -> Any:
-        decision = tracker.apply(observation, durable_prior_payload_hash=durable_prior_payload_hash)
+        decision = tracker.apply_deferred(observation, durable_prior_payload_hash=durable_prior_payload_hash,
+                                           durable_lookup_complete=durable_lookup_complete)
         self._persist_stream_decision(repository, observation, decision)
         return decision
 
@@ -1964,6 +1990,7 @@ class ProductionOpsCyclePortV1:
                 book.reconnect(available_at_ns)
                 self._stream_books[key] = book
                 self._stream_trackers.pop(previous_key, None)
+                self._stream_epoch_first_receipt.pop(previous_key, None)
                 self._stream_books.pop(previous_key, None)
                 self._stream_connection_epochs.pop(previous_key, None)
                 self._stream_disconnect_seen.discard(previous_key)
@@ -2026,7 +2053,8 @@ class ProductionOpsCyclePortV1:
             self._stream_connection_epochs[key] = epoch_number
         return key, tracker, self._stream_books.get(key)
 
-    def _collect_public_stream_evidence(self, repository: OpsRepository, *, now_ns: int) -> None:
+    def _collect_public_stream_evidence(self, repository: OpsRepository, *, now_ns: int,
+                                        publish_report: bool = True) -> None:
         if self.public_stream_source is None or self._stream_archive is None:
             return
         if self._stream_ingestion_failed:
@@ -2035,10 +2063,20 @@ class ProductionOpsCyclePortV1:
 
         started = time.monotonic_ns()
         try:
-            frames = tuple(self.public_stream_source.drain(max_items=PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1))
-            if len(frames) > PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 or any(
-                    not isinstance(frame, CapturedPublicFrameV2) for frame in frames):
-                raise ValueError("public stream source returned a frame batch outside the controller bound")
+            # Amortize archive/checkpoint cost when there is real backlog. Each
+            # handoff drain retains its old 32-frame bound and FIFO ordering.
+            queued = getattr(self.public_stream_source.status().handoff, "queue_items", 0)
+            drain_count = min(8, (queued + 31) // 32) if type(queued) is int and queued >= 64 else 1
+            incoming: list[CapturedPublicFrameV2] = []
+            for _ in range(drain_count):
+                batch = tuple(self.public_stream_source.drain(max_items=PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1))
+                if len(batch) > PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 or any(
+                        not isinstance(frame, CapturedPublicFrameV2) for frame in batch):
+                    raise ValueError("public stream source returned a frame batch outside the controller bound")
+                incoming.extend(batch)
+                if len(batch) < PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1:
+                    break
+            frames = tuple(incoming)
             # Commit exact transport bytes before interpretation. Unbound and
             # failed interpretation remain reconstructable after restart.
             self._stream_transport_ref = archive_transport_batch(
@@ -2047,7 +2085,8 @@ class ProductionOpsCyclePortV1:
             # retain their existing savepoint validation. A failed batch cannot
             # reuse mutated in-memory continuity state after rollback.
             with repository.atomic_composition():
-                self._persist_public_stream_batch(repository, now_ns=now_ns, frames=frames)
+                self._persist_public_stream_batch(repository, now_ns=now_ns, frames=frames,
+                                                  publish_report=publish_report)
         except Exception:
             self._stream_ingestion_failed = True
             if self.public_stream_source is not None:
@@ -2065,7 +2104,8 @@ class ProductionOpsCyclePortV1:
         self._stream_service_calls += 1
 
     def _persist_public_stream_batch(self, repository: OpsRepository, *, now_ns: int,
-                                     frames: tuple[CapturedPublicFrameV2, ...]) -> None:
+                                     frames: tuple[CapturedPublicFrameV2, ...],
+                                     publish_report: bool = True) -> None:
         if self.public_stream_source is None or self._stream_archive is None:
             return
         collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
@@ -2074,6 +2114,8 @@ class ProductionOpsCyclePortV1:
         if not callable(drain) or not callable(get_status):
             raise ValueError("opt-in public stream source must expose bounded drain and status")
         status = get_status()
+        prior_recoveries = {key: (tracker.state.current_recovery_ref, tracker.state.gap_count)
+                            for key, tracker in self._stream_trackers.items()}
         attempt_count = getattr(status, "attempt_count", 0)
         if type(attempt_count) is not int or attempt_count < 0:
             attempt_count = 0
@@ -2091,6 +2133,7 @@ class ProductionOpsCyclePortV1:
         )
         registry = collector.registry
         raw_archive_groups: dict[tuple[str, str, str], list[L2RawFrameV2]] = {}
+        batch_health: dict[tuple[str, str, str, int | None], tuple[PublicSourceHealthV2, str]] = {}
         for original_frame in frames:
             topic_identity = self._stream_topic_identity(original_frame.channel)
             if (original_frame.venue.value != "BYBIT" or original_frame.source_id != BYBIT_PUBLIC_WS_SOURCE_ID_V1
@@ -2131,10 +2174,15 @@ class ProductionOpsCyclePortV1:
             first = self._stream_epoch_first_receipt.get(feed_key)
             if first is None or first[0] != epoch_number:
                 self._stream_epoch_first_receipt[feed_key] = (epoch_number, original_frame.received_at_ns)
-            health, health_epoch_id = self._stream_health_for_frame(
-                repository, tracker, product, frame, status=status, handoff=handoff,
-                attempt_count=attempt_count, available_at_ns=ingested_at_ns,
-            )
+            health_key = (product.key.content_hash, product.metadata_ref, channel, frame.connection_epoch)
+            cached_health = batch_health.get(health_key)
+            if cached_health is None:
+                cached_health = self._stream_health_for_frame(
+                    repository, tracker, product, frame, status=status, handoff=handoff,
+                    attempt_count=attempt_count, available_at_ns=ingested_at_ns,
+                )
+                batch_health[health_key] = cached_health
+            health, health_epoch_id = cached_health
             event: L2SnapshotV2 | L2DeltaV2 | L2SequenceFaultV2 | None = None
             parsed_trades: tuple[Any, ...] = ()
             trade_rows: list[Mapping[str, Any]] = []
@@ -2268,6 +2316,7 @@ class ProductionOpsCyclePortV1:
                     self._apply_stream_observation(
                         repository, tracker, observation,
                         durable_prior_payload_hash=durable_hash,
+                        durable_lookup_complete=True,
                     )
                     collector.ingest(
                         raw_observation, raw_payload=payload_bytes, instrument_key=product.key,
@@ -2354,7 +2403,17 @@ class ProductionOpsCyclePortV1:
         self._stream_overflow_seen = self._stream_overflow_seen or overflowed
         self._stream_last_error_code = last_error
 
+        # Raw evidence commits every batch; compact state/health checkpoints
+        # publish at least once per second and immediately on a fault/recovery.
+        # Restart still starts a new recovery epoch, never reuses a warm book.
+        changed_recovery = any(prior_recoveries.get(key) != (
+            tracker.state.current_recovery_ref, tracker.state.gap_count)
+            for key, tracker in self._stream_trackers.items())
+        if not publish_report and not changed_recovery and not overflowed and not disconnect_changed:
+            return
+
         report_as_of = max(ingested_at_ns, now_ns, timestamp(self.clock_ns(), field="stream report clock"))
+        self._stream_last_report_at_ns = report_as_of
         for key, tracker in tuple(self._stream_trackers.items()):
             product = self._latest_stream_product(registry, tracker.state.instrument.native_symbol,
                                                   as_of_ns=report_as_of)
@@ -2473,11 +2532,11 @@ class ProductionOpsCyclePortV1:
         details = ("frame belongs to the active connection attempt" if active
                    else "frame connection epoch is not proven to be the active healthy attempt")
         body = {
-            "version": "PUBLIC_STREAM_FRAME_HEALTH_V1", "source_id": BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+            "version": "PUBLIC_STREAM_BATCH_FRAME_HEALTH_V2", "source_id": BYBIT_PUBLIC_WS_SOURCE_ID_V1,
             "instrument_hash": product.key.content_hash, "channel": frame.channel,
             "metadata_ref": product.metadata_ref, "epoch_id": frame_epoch_id,
             "observed_at_ns": frame.received_at_ns, "available_at_ns": available_at_ns,
-            "state": health_state.value, "frame_ref": frame.raw_payload_hash,
+            "state": health_state.value, "transport_batch_ref": self._stream_transport_ref,
             "connection_attempt": frame.connection_epoch,
             "active_attempt": attempt_count, "overflowed": bool(getattr(handoff, "overflowed", False)),
         }
@@ -2534,16 +2593,22 @@ class ProductionOpsCyclePortV1:
             return
         for _feed_key, incoming_frames in groups.items():
             unique: dict[str, L2RawFrameV2] = {}
+            index_refs = {frame.record_id: sha256_json({"artifact_type": "PublicStreamFrameIndexV1",
+                                                       "record_id": frame.record_id})
+                          for frame in incoming_frames}
+            stored_rows = repository.get_artifact_metadata_by_refs(tuple(index_refs.values()))
             for frame in incoming_frames:
                 local_prior = unique.get(frame.record_id)
-                index_ref = sha256_json({"artifact_type": "PublicStreamFrameIndexV1",
-                                         "record_id": frame.record_id})
-                stored = repository.get_artifact(index_ref)
-                prior_hash = (str(stored.metadata.get("raw_payload_hash"))
+                index_ref = index_refs[frame.record_id]
+                stored = stored_rows.get(index_ref)
+                if stored is not None and (stored.get("artifact_type") != "PublicStreamFrameIndexV1"
+                                           or not isinstance(stored.get("metadata"), Mapping)):
+                    raise ValueError("public stream frame index identity conflict")
+                prior_hash = (str(stored["metadata"].get("raw_payload_hash"))
                               if stored is not None else None)
                 prior_frame: L2RawFrameV2 | None = local_prior
                 if prior_frame is None and stored is not None and prior_hash != frame.raw_payload_hash:
-                    chunk_id = stored.metadata.get("archive_chunk_id")
+                    chunk_id = stored["metadata"].get("archive_chunk_id")
                     if isinstance(chunk_id, str):
                         for row in self._stream_archive.read_chunk(chunk_id):
                             if row.get("record_id") == frame.record_id:
@@ -3439,8 +3504,10 @@ def _load_public_composition(repository: OpsRepository, event: OpsDecisionEventV
 class IndexedProductionEventInputsV1:
     """Compose causal public inputs or resolve the exact artifacts already bound by an event."""
 
-    def __init__(self, *, clock_ns: Callable[[], int] = time.time_ns) -> None:
+    def __init__(self, *, clock_ns: Callable[[], int] = time.time_ns,
+                 stream_service: Callable[[OpsRepository], None] | None = None) -> None:
         self.clock_ns = clock_ns
+        self.stream_service = stream_service
 
     def resolve(self, repository: OpsRepository, event: OpsDecisionEventV1) -> ProductionEventInputsV1 | None:
         if event.event_type == S3_M1_EVENT_TYPE:
@@ -3453,10 +3520,12 @@ class IndexedProductionEventInputsV1:
                 event.information_cutoff_ns,
                 timestamp(self.clock_ns(), field="native S3 computation start"),
             )
+            stream_service = self.stream_service
             return _compose_s3_native_diagnostics(
                 repository, event, trigger_body,
                 computation_started_ns=computation_started_ns,
                 clock_ns=self.clock_ns,
+                service=partial(stream_service, repository) if stream_service is not None else None,
             )
 
         sealed = _load_public_composition(repository, event)
@@ -3489,11 +3558,19 @@ class IndexedProductionEventInputsV1:
             if (trigger is not None and trigger.artifact_type == "OpsPublicFinalBarTriggerV1"
                     and isinstance(trigger_body, Mapping)):
                 try:
+                    sealed = _load_public_composition(repository, event)
+                    if sealed is not None:
+                        return sealed
+                    stream_service = self.stream_service
+                    prepared_histories = _prepare_public_histories(repository, event,
+                        clock_ns=self.clock_ns, service=partial(stream_service, repository)
+                        if stream_service is not None else None)
                     with repository.atomic_composition():
                         sealed = _load_public_composition(repository, event)
                         if sealed is not None:
                             return sealed
-                        inputs = _compose_public_event_inputs(repository, event, trigger_body, clock_ns=self.clock_ns)
+                        inputs = _compose_public_event_inputs(repository, event, trigger_body, clock_ns=self.clock_ns,
+                                                              prepared_histories=prepared_histories)
                         _seal_public_composition(repository, event, inputs, clock_ns=self.clock_ns)
                         return inputs
                 except ActiveEvidenceOverflowV1 as error:
@@ -3657,6 +3734,7 @@ def _compose_s3_native_diagnostics(
     *,
     computation_started_ns: int,
     clock_ns: Callable[[], int],
+    service: Callable[[], None] | None = None,
 ) -> ProductionEventInputsV1:
     """Compose S3 evidence outputs at one frozen source cutoff, without candidates."""
     cached_refs = _reuse_s3_native_diagnostics(repository, event)
@@ -3699,6 +3777,7 @@ def _compose_s3_native_diagnostics(
         information_cutoff_ns=cutoff_ns,
         availability_class=AvailabilityClassV2.ACTUAL_SYSTEM,
         limit=7 * 1440 + 121,
+        service=service,
     )
     bars = tuple(item.bar for item in indexed_bars)
     trigger_bar = next((bar for bar in bars if bar.content_hash == bar_ref), None)
@@ -4563,11 +4642,57 @@ def _publish_public_prerequisites(repository: OpsRepository, event: OpsDecisionE
     return publication
 
 
+def _prepare_public_histories(repository: OpsRepository, event: OpsDecisionEventV1, *,
+                              clock_ns: Callable[[], int], service: Callable[[], None] | None
+                              ) -> dict[str, dict[BarIntervalV2, ActiveHistoryPageV1]]:
+    """Prepare immutable cutoff-bound histories before watch/seal atomicity.
+
+    Stream service publishes only later evidence, which cannot enter this
+    captured event prefix. History certificates are independent evidence and
+    keep their own atomic head publication on failure of later composition.
+    """
+    pages: dict[str, dict[BarIntervalV2, ActiveHistoryPageV1]] = {}
+    for product in _causal_products(repository, cutoff_ns=event.information_cutoff_ns):
+        frames = {}
+        for interval in (BarIntervalV2.M15, BarIntervalV2.H1, BarIntervalV2.H4, BarIntervalV2.M1):
+            frames[interval] = maintain_history(repository, Path(repository.path).parent / "ops-observations",
+                key=product.key, interval=interval, cutoff_ns=event.information_cutoff_ns,
+                clock_ns=clock_ns, deadline_ns=event.deadline_ns, service=service)
+            # Validate retained bar locators in small units before entering the
+            # transaction owning watch changes. No market cutoff is advanced.
+            bars = frames[interval].bars
+            for offset in range(0, len(bars), 64):
+                entries = tuple(_causal_bar_entry(item.bar, item.observation_index_ref)
+                                for item in bars[offset:offset + 64])
+                existing = repository.get_artifact_metadata_by_refs(tuple(entry.artifact_ref for entry in entries))
+                missing = []
+                for entry in entries:
+                    prior = existing.get(entry.artifact_ref)
+                    if prior is None:
+                        missing.append(entry)
+                    elif (prior.get("artifact_type") != "CausalBarV2"
+                          or prior.get("content_hash") != entry.content_hash
+                          or prior.get("available_at_ns") != entry.available_at_ns
+                          or not isinstance(prior.get("metadata"), Mapping)
+                          or canonical_json(prior["metadata"].get("bar"))
+                          != canonical_json(entry.metadata.get("bar"))):
+                        raise ValueError("causal bar ref already indexes conflicting immutable evidence")
+                if missing:
+                    repository.register_artifacts(tuple(missing))
+                if service is not None:
+                    service()
+            if service is not None:
+                service()
+        pages[product.key.to_canonical_json()] = frames
+    return pages
+
+
 def _compose_public_event_inputs(
     repository: OpsRepository,
     event: OpsDecisionEventV1,
     trigger_body: Mapping[str, Any],
     *, clock_ns: Callable[[], int] = time.time_ns,
+    prepared_histories: dict[str, dict[BarIntervalV2, ActiveHistoryPageV1]] | None = None,
 ) -> ProductionEventInputsV1:
     """Run each sleeve only on its frozen native cadence and archived inputs."""
     if (trigger_body.get("version") != "OPS_PUBLIC_FINAL_BAR_TRIGGER_V1"
@@ -4609,11 +4734,12 @@ def _compose_public_event_inputs(
         frames: dict[BarIntervalV2, tuple[Any, ...]] = {}
         pages: dict[BarIntervalV2, ActiveHistoryPageV1] = {}
         for interval in (BarIntervalV2.M15, BarIntervalV2.H1, BarIntervalV2.H4, BarIntervalV2.M1):
-            page = maintain_history(
+            page = (prepared_histories[product.key.to_canonical_json()][interval]
+                    if prepared_histories is not None else maintain_history(
                 repository, archive_root, key=product.key, interval=interval,
                 cutoff_ns=event.information_cutoff_ns, clock_ns=clock_ns,
                 deadline_ns=event.deadline_ns,
-            )
+            ))
             pages[interval] = page
             if not page.ready:
                 history_missing_reasons.add("HISTORY:" + interval.value + ":" + page.reason_code)
@@ -4623,9 +4749,10 @@ def _compose_public_event_inputs(
             bars = tuple(item.bar for item in indexed_bars)
             frames[interval] = bars
             for item in indexed_bars:
-                causal_bar_entries[item.bar.content_hash] = _causal_bar_entry(
-                    item.bar, item.observation_index_ref,
-                )
+                if prepared_histories is None:
+                    causal_bar_entries[item.bar.content_hash] = _causal_bar_entry(
+                        item.bar, item.observation_index_ref,
+                    )
                 store.append(item.bar)
                 source_refs.update((item.observation_index_ref, item.bar.content_hash))
         histories[product.key.to_canonical_json()] = frames

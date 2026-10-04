@@ -91,6 +91,10 @@ class InstrumentKeyV2:
         }
 
     def to_canonical_json(self) -> str:
+        return self._canonical_json
+
+    @cached_property
+    def _canonical_json(self) -> str:
         return canonical_json(self.to_dict())
 
     @cached_property
@@ -211,7 +215,7 @@ class ProductContractV2:
     def to_canonical_json(self) -> str:
         return canonical_json(self.to_dict())
 
-    @property
+    @cached_property
     def content_hash(self) -> str:
         return sha256_json({"contract_type": "ProductContractV2", "product": self.to_dict()})
 
