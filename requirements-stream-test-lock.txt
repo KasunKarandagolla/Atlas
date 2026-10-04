@@ -1,11 +1,11 @@
 # Native offline stream regression tools only; excluded from the product payload.
-# Exact versions/hashes copied from requirements-lock.txt.
+# Exact versions from requirements-lock.txt; hashes bind the Windows wheels.
 colorama==0.4.6 \
     --hash=sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44 \
     --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
     # via pyqtgraph
 hypothesis==6.168.0 \
-    --hash=sha256:5920d267f7d8cfd376672f2bde5905cdf284d47519582e41ce7c142d48ee46c4
+    --hash=sha256:f62bdabf278db9ff61df5f3203d608949f0d893d0e30cdac3f2330e67e41ae68
     # reused S14/S37 history fixtures
 iniconfig==2.3.0 \
     --hash=sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12
