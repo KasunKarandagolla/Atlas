@@ -487,11 +487,17 @@ class WindowsActionCriticBrokerServer:
     def close(self) -> None:
         self._stop.set()
         if self._listener is not None:
-            self._listener.close()
+            try:
+                self._listener.close()
+            except OSError:
+                pass
         with self._lock:
             channels = tuple(self._connections)
         for channel in channels:
-            channel.close()
+            try:
+                channel.close()
+            except OSError:
+                pass
         if self._thread is not None:
             self._thread.join(timeout=2)
 
@@ -549,7 +555,10 @@ class WindowsActionCriticClientPort(DirectActionAssessmentBrokerPort):
             raise BrokerProtocolError("BROKER_UNAVAILABLE") from exc
         finally:
             watchdog.cancel()
-            channel.close()
+            try:
+                channel.close()
+            except OSError:
+                pass
 
     def assess(self, *, capability: str, authorization_id: str, attempt_id: str,
                request: ActionAssessmentRequestV2, packet: SealedActionAssessmentPacketV1) -> ProviderResultV1:
