@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "session": "S38_PUBLIC_STREAM_RELIABILITY",
+  "status": "TEST GATE",
+  "classification": "DEVELOPMENT NOT READY",
+  "start": {
+    "branch": "impl/session-037-final-engineering-intelligence-closure",
+    "sha": "a51a302e09bda84449ab3867d28df545d39445f2",
+    "ancestry_verified": true
+  },
+  "implementation": {
+    "branch": "fix/session-038-public-stream-reliability",
+    "sha": "56153a61ba5125af1355e866505f96387c843fe7",
+    "ordinary_blockers_closed": ["PUBLIC_STREAM_SERVICE_STARVATION", "PUBLIC_STREAM_RAW_UNBOUND_RETENTION", "PUBLIC_STREAM_STALE_EPOCH_ERROR_POISONING"],
+    "ordinary_blockers_remaining": ["WINDOWS_NATIVE_PACKAGE_PENDING", "OWNER_CORRECTED_LIVE_RETEST_PENDING"]
+  },
+  "live_evidence": {
+    "run_id": "8b83143aec6549f5b504b0f5e7e703a9",
+    "status": "TEST GATE",
+    "failed_run_retained": true,
+    "queue_overflow_items": 296,
+    "no_recent_frame_receipt_items": 289,
+    "incomplete_snapshot_items": 405,
+    "sequence_gap_conflict_items": 20,
+    "reported_acquisition_observations": 74,
+    "reported_acquisition_mean_seconds": 4.95,
+    "reported_acquisition_max_seconds": 6.453
+  },
+  "fixes": {
+    "rest_service": "one bounded immutable acquisition worker; writer services stream every <=20ms while waiting; one retained completion; timeout remains explicit",
+    "stream_service": "same single writer drains bounded FIFO batches at safe cycle/event/maintenance boundaries; no second repository writer",
+    "raw_retention": "exact drained transport bytes archived in bounded PublicStreamTransportBatchV1 parquet batches before interpretation",
+    "write_cost": "one batch atomic composition plus immutable identity memoization and removal of redundant valid-frame state transition",
+    "recovery": "historical producer error is applied only when it belongs to the active epoch; failed writer batch requires restart",
+    "reports": "read-only report worker has one bounded slot and cannot block writer or queue reruns",
+    "telemetry": "service calls, frames, maximum service gap/duration and transport batch identity are exposed in source health transport evidence"
+  },
+  "authority": {
+    "capital_enabled": false,
+    "assisted_execution_enabled": false,
+    "model_critic_authority": "ZERO",
+    "risk_policy_changed": false,
+    "leverage_policy_changed": false,
+    "s3_completeness_promoted": false,
+    "provider_model_versions_changed": false
+  },
+  "validation": {
+    "focused_stream_acquisition_reports_archive": "TESTED",
+    "contract_and_integration_tests": "TESTED",
+    "ruff": "TESTED",
+    "mypy_changed_files": "TESTED",
+    "compileall": "TESTED",
+    "windows_native_package": "UNVERIFIED",
+    "owner_windows_live_source": "TEST GATE"
+  },
+  "remaining_categories": ["PIPELINE_RELIABILITY_OBSERVATION_ONLY", "LIVE_SOURCE_CAPABILITY_ONLY", "BLOCKED BY ENVIRONMENT"]
+}
