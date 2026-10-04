@@ -22,6 +22,8 @@ from typing import Any
 import pyarrow.parquet as pq
 import pytest
 
+from atlas.v2.data.active_history import advance
+from atlas.v2.data.bars import BarIntervalV2
 from atlas.v2.data.bybit_source import BybitPublicSnapshotV1
 from atlas.v2.data.public_microstructure_ws import (
     BoundedPublicFrameHandoffV2,
@@ -29,9 +31,11 @@ from atlas.v2.data.public_microstructure_ws import (
     bybit_btc_eth_linear_topics,
 )
 from atlas.v2.instruments import VenueV2
-from atlas.v2.runtime import production
+from atlas.v2.runtime import active_history, production
 from atlas.v2.runtime.ops_supervisor import OpsCycleBatchV1, OpsSupervisorV2
 from atlas.v2.runtime.serviced_acquisition import ServicedPublicAcquisitionV1
+
+from .test_session037_active_history import KEY, indexed
 
 # Reuse the established S32 metadata fixture.
 _S32 = runpy.run_path(str(Path(__file__).with_name("test_session032_public_stream_integration.py")))
@@ -254,6 +258,15 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
     helper = ServicedPublicAcquisitionV1(SlowREST(), clock_ns=time.time_ns)
     producer_lateness: list[float] = []
     writer_threads: set[int] = set()
+    # Restore a genuinely serialized history while arrivals continue. This is
+    # the formerly synchronous strict decoding seam, not a simulated delay.
+    history = None
+    for offset in range(0, 1200, 128):
+        history = advance(history, tuple(indexed(i) for i in range(offset, min(offset + 128, 1200))),
+                          key=KEY, interval=BarIntervalV2.M15)
+    assert history is not None
+    history_head = {"state_json": json.dumps(history.to_dict()), "state_ref": history.content_hash}
+    history_restored = False
     with OpsSupervisorV2(tmp_path / "ops.sqlite", port, clock_ns=time.time_ns) as supervisor:
         supervisor.run_once()
         repository = supervisor.repository
@@ -286,6 +299,11 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
             helper.acquire(now_ns=time.time_ns(), service=lambda: port.service_public_stream(repository))
             next_rest = time.monotonic() + 1
             while producer.is_alive() and not stream.handoff.snapshot().overflowed:
+                if not history_restored and time.monotonic() - started >= min(10, seconds / 2):
+                    restored = active_history._decode_head(repository, history_head, key=KEY,
+                        interval=BarIntervalV2.M15, service=lambda: port.service_public_stream(repository))
+                    assert restored is not None and restored.content_hash == history.content_hash
+                    history_restored = True
                 if time.monotonic() >= next_rest and time.monotonic() - started < seconds - 6:
                     helper.acquire(now_ns=time.time_ns(), service=lambda: port.service_public_stream(repository))
                     next_rest = time.monotonic() + 1
@@ -303,11 +321,12 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
             print({"frames": len(expected), "elapsed_s": elapsed,
                    "high_water_items": status.high_water_items, "rejected": status.frames_rejected,
                    "max_producer_lateness_s": max(producer_lateness, default=0),
-                   "acquisition": helper.status()})
+                   "acquisition": helper.status(), "history_rows_restored": 1200 if history_restored else 0})
             assert not status.overflowed, "actual writer throughput did not sustain the declared 160 fps"
             assert len(expected) == status.frames_drained == frame_count
             assert status.queue_items == 0 and status.frames_rejected == 0
             assert writer_threads == {threading.get_ident()}
+            assert history_restored
             rows = transport_rows(repository, tmp_path)
             assert [row["raw_payload_bytes"] for row in rows] == [frame.raw_payload_bytes for frame in expected]
             assert_current_reports(repository, book_warm=seconds >= 32)
