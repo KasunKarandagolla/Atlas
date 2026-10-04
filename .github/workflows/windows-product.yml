@@ -37,7 +37,11 @@ jobs:
           python-version: 3.12.10
       - name: Install exact offline validation dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap libegl1 libgl1 libopengl0 libxkbcommon0
           python -m pip install --disable-pip-version-check --no-deps --only-binary=:all: --require-hashes -r requirements-lock.txt
+          mkdir -p validation
+          dpkg-query -W bubblewrap libegl1 libgl1 libopengl0 libxkbcommon0 > validation/test-host-packages.txt
       - name: Validate complete offline regression and static gates
         run: |
           mkdir -p validation

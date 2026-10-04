@@ -293,6 +293,7 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
                     return
 
         producer = threading.Thread(target=produce, name="s38-fake-public-producer", daemon=True)
+        offered_started_ns = time.time_ns()
         producer.start()
         started = time.monotonic()
         try:
@@ -325,11 +326,19 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
             assert not status.overflowed, "actual writer throughput did not sustain the declared 160 fps"
             assert len(expected) == status.frames_drained == frame_count
             assert status.queue_items == 0 and status.frames_rejected == 0
+            assert max(producer_lateness, default=0) < 1.0, "host did not deliver the declared workload on time"
             assert writer_threads == {threading.get_ident()}
             assert history_restored
             rows = transport_rows(repository, tmp_path)
             assert [row["raw_payload_bytes"] for row in rows] == [frame.raw_payload_bytes for frame in expected]
             assert_current_reports(repository, book_warm=seconds >= 32)
+            # Initial reports correctly lack receipt evidence. Once every
+            # channel has arrived, inspect the whole run, not just its end.
+            current_reports = [entry.metadata["report"] for entry in
+                repository.artifact_entries("PublicStreamContinuityReportV1")
+                if entry.available_at_ns >= offered_started_ns + 1_000_000_000]
+            assert current_reports and all(report["source_current"] and report["transport_received"]
+                                           for report in current_reports)
         finally:
             stop.set()
             producer.join(timeout=1)
