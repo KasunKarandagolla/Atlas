@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import cached_property, lru_cache
 from typing import Any, ClassVar
 
 from .._serialization import canonical_json, nonblank, sha256_json, timestamp
@@ -203,7 +204,7 @@ class EvidenceCapabilityMatrixV2:
     def to_canonical_json(self) -> str:
         return canonical_json(self.to_dict())
 
-    @property
+    @cached_property
     def content_hash(self) -> str:
         return sha256_json({"artifact_type": "EvidenceCapabilityMatrixV2", "matrix": self.to_dict()})
 
@@ -234,6 +235,7 @@ _DOC_BINANCE_OI = "https://developers.binance.com/docs/derivatives/usds-margined
 _LOCAL = "repo:docs/v2/EVIDENCE_CAPABILITY_MATRIX_V1.json"
 
 
+@lru_cache(maxsize=1)
 def default_evidence_capability_matrix_v2() -> EvidenceCapabilityMatrixV2:
     """Return conservative public feed declarations; none imply live qualification."""
     shared_unsupported = (

@@ -75,6 +75,10 @@ def freeze_json(value: Any, *, field: str = "value") -> Any:
 
 
 def json_value(value: Any) -> Any:
+    # Most high-rate evidence consists of already canonical scalar fields.
+    # Exact types keep Enum subclasses on the existing conversion path.
+    if value is None or type(value) in (str, bool, int):
+        return value
     if isinstance(value, Enum):
         return value.value
     if isinstance(value, Decimal):

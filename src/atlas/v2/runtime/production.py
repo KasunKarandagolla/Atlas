@@ -1442,6 +1442,15 @@ class ProductionOpsCyclePortV1:
         self._stream_disconnect_seen: set[tuple[str, str, str]] = set()
         self._stream_run_epoch = ""
         self._stream_metadata_errors: set[str] = set()
+        self._stream_ingestion_failed = False
+        self._serviced_acquisition: Any | None = None
+        self._stream_last_service_at_ns: int | None = None
+        self._stream_max_service_gap_ns = 0
+        self._stream_max_service_duration_ns = 0
+        self._stream_service_frames = 0
+        self._stream_service_calls = 0
+        self._stream_transport_ref: str | None = None
+        self._stream_epoch_first_receipt: dict[tuple[str, str, str], tuple[int | None, int]] = {}
         self._recovery_calls = 0
         self._collection_calls = 0
 
@@ -1451,6 +1460,28 @@ class ProductionOpsCyclePortV1:
             close = getattr(self.public_stream_source, "close", None)
             if callable(close):
                 close()
+        if self._serviced_acquisition is not None:
+            self._serviced_acquisition.close(timeout_s=0.1)
+
+    def service_public_stream(self, repository: OpsRepository) -> None:
+        """Service at most four FIFO batches, checking a 50ms allowance between them.
+
+        Called only by the supervisor writer at safe boundaries. Individual
+        batch cost and missed servicing headroom are measured, never hidden.
+        """
+        if self.public_stream_source is None or self._collector_recovery is None:
+            return
+        started = time.monotonic_ns()
+        for _ in range(4):
+            status = self.public_stream_source.status()
+            now = sample(self.clock_ns, floor_ns=0)
+            queued = getattr(status.handoff, "queue_items", 0)
+            if not queued and self._stream_last_service_at_ns is not None and (
+                    now - self._stream_last_service_at_ns < 1_000_000_000):
+                break
+            self._collect_public_stream_evidence(repository, now_ns=now)
+            if not queued or time.monotonic_ns() - started >= 50_000_000:
+                break
 
     def bind_runtime_clock(self, clock_ns: Callable[[], int]) -> None:
         """Use the supervisor's single clock for event and computation timing."""
@@ -1560,9 +1591,14 @@ class ProductionOpsCyclePortV1:
             # Network acquisition returns bounded immutable records. Only this
             # supervisor-owned controller persists them through the collector.
             begin_collection_cycle = getattr(self.public_source, "begin_collection_cycle", None)
-            if callable(begin_collection_cycle):
+            if self._serviced_acquisition is not None:
+                snapshot = self._serviced_acquisition.acquire(
+                    now_ns=now_ns, service=lambda: self.service_public_stream(repository))
+            elif callable(begin_collection_cycle):
                 begin_collection_cycle(now_ns=now_ns)
-            snapshot = acquire_snapshot(now_ns=now_ns)
+                snapshot = acquire_snapshot(now_ns=now_ns)
+            else:
+                snapshot = acquire_snapshot(now_ns=now_ns)
             self._register_refreshed_stream_products(repository, snapshot)
             snapshot_eligible = self._persist_public_snapshot(repository, snapshot, now_ns=now_ns)
             if not snapshot_eligible:
@@ -1993,16 +2029,50 @@ class ProductionOpsCyclePortV1:
     def _collect_public_stream_evidence(self, repository: OpsRepository, *, now_ns: int) -> None:
         if self.public_stream_source is None or self._stream_archive is None:
             return
+        if self._stream_ingestion_failed:
+            raise RuntimeError("PUBLIC_STREAM_WRITER_RESTART_REQUIRED")
+        from ..data.public_transport_archive import archive_transport_batch
+
+        started = time.monotonic_ns()
+        try:
+            frames = tuple(self.public_stream_source.drain(max_items=PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1))
+            if len(frames) > PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 or any(
+                    not isinstance(frame, CapturedPublicFrameV2) for frame in frames):
+                raise ValueError("public stream source returned a frame batch outside the controller bound")
+            # Commit exact transport bytes before interpretation. Unbound and
+            # failed interpretation remain reconstructable after restart.
+            self._stream_transport_ref = archive_transport_batch(
+                repository, frames, clock_ns=self.clock_ns, floor_ns=now_ns)
+            # One bounded batch shares a commit; individual immutable writes
+            # retain their existing savepoint validation. A failed batch cannot
+            # reuse mutated in-memory continuity state after rollback.
+            with repository.atomic_composition():
+                self._persist_public_stream_batch(repository, now_ns=now_ns, frames=frames)
+        except Exception:
+            self._stream_ingestion_failed = True
+            if self.public_stream_source is not None:
+                self.public_stream_source.close()
+            raise
+        finally:
+            self._stream_max_service_duration_ns = max(
+                self._stream_max_service_duration_ns, time.monotonic_ns() - started)
+        at = sample(self.clock_ns, floor_ns=now_ns)
+        if self._stream_last_service_at_ns is not None:
+            self._stream_max_service_gap_ns = max(
+                self._stream_max_service_gap_ns, at - self._stream_last_service_at_ns)
+        self._stream_last_service_at_ns = at
+        self._stream_service_frames += len(frames)
+        self._stream_service_calls += 1
+
+    def _persist_public_stream_batch(self, repository: OpsRepository, *, now_ns: int,
+                                     frames: tuple[CapturedPublicFrameV2, ...]) -> None:
+        if self.public_stream_source is None or self._stream_archive is None:
+            return
         collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
         drain = getattr(self.public_stream_source, "drain", None)
         get_status = getattr(self.public_stream_source, "status", None)
         if not callable(drain) or not callable(get_status):
             raise ValueError("opt-in public stream source must expose bounded drain and status")
-        frames = tuple(drain(max_items=PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1))
-        if len(frames) > PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 or any(
-            not isinstance(frame, CapturedPublicFrameV2) for frame in frames
-        ):
-            raise ValueError("public stream source returned a frame batch outside the controller bound")
         status = get_status()
         attempt_count = getattr(status, "attempt_count", 0)
         if type(attempt_count) is not int or attempt_count < 0:
@@ -2058,41 +2128,17 @@ class ProductionOpsCyclePortV1:
                 available_at_ns=ingested_at_ns,
             )
             frame = replace(original_frame, available_at_ns=max(original_frame.available_at_ns, ingested_at_ns))
+            first = self._stream_epoch_first_receipt.get(feed_key)
+            if first is None or first[0] != epoch_number:
+                self._stream_epoch_first_receipt[feed_key] = (epoch_number, original_frame.received_at_ns)
             health, health_epoch_id = self._stream_health_for_frame(
                 repository, tracker, product, frame, status=status, handoff=handoff,
                 attempt_count=attempt_count, available_at_ns=ingested_at_ns,
             )
-            try:
-                frame_observation = PublicStreamObservationV1.from_frame(
-                    frame, instrument=product.key, metadata_ref=product.metadata_ref,
-                    epoch_id=tracker.state.epoch_id, source_health_ref=health.content_hash,
-                    source_health_epoch_id=health_epoch_id, persisted_at_ns=ingested_at_ns,
-                )
-            except ValueError:
-                malformed = PublicStreamObservationV1.transport(
-                    instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
-                    metadata_ref=product.metadata_ref, epoch_id=tracker.state.epoch_id,
-                    kind=PublicStreamObservationKindV1.MALFORMED_FRAME,
-                    observed_at_ns=frame.received_at_ns, available_at_ns=ingested_at_ns,
-                    reason_code="FRAME_JSON_OR_TOPIC_INVALID",
-                    source_health_ref=health.content_hash,
-                    source_health_epoch_id=health_epoch_id,
-                )
-                self._apply_stream_observation(repository, tracker, malformed)
-                raw_frame = raw_archive_record(
-                    frame, instrument=product.key,
-                    frame_type=f"MALFORMED_FRAME_{frame.raw_payload_hash[:16]}",
-                    sequence_semantics=("BYBIT_U" if channel.startswith("orderbook.")
-                                        else "BYBIT_TRADE_ID_IS_IDENTITY_NOT_REPLAY_CURSOR"),
-                    source_health="INCOMPLETE_SNAPSHOT", source_health_ref=health.content_hash,
-                )
-                raw_archive_groups.setdefault(feed_key, []).append(raw_frame)
-                continue
-            self._apply_stream_observation(repository, tracker, frame_observation)
-
             event: L2SnapshotV2 | L2DeltaV2 | L2SequenceFaultV2 | None = None
             parsed_trades: tuple[Any, ...] = ()
             trade_rows: list[Mapping[str, Any]] = []
+            parse_failed = False
             try:
                 if channel.startswith("orderbook."):
                     event = parse_bybit_orderbook_frame(
@@ -2115,6 +2161,7 @@ class ProductionOpsCyclePortV1:
                     if len(parsed_trades) != len(trade_rows):
                         raise ValueError("TRADE_TRANSLATION_COUNT_MISMATCH")
             except (ArithmeticError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                parse_failed = True
                 malformed = PublicStreamObservationV1.transport(
                     instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
                     metadata_ref=product.metadata_ref, epoch_id=tracker.state.epoch_id,
@@ -2129,6 +2176,18 @@ class ProductionOpsCyclePortV1:
                 event = None
                 parsed_trades = ()
                 trade_rows = []
+
+            # A parsed book/trade event carries the same actual receipt and
+            # advances transport freshness. Avoiding a second FRAME_RECEIVED
+            # state transition halves the hot-path continuity hashing cost.
+            if (not parse_failed and event is None and not parsed_trades
+                    and channel.startswith("publicTrade.")):
+                frame_observation = PublicStreamObservationV1.from_frame(
+                    frame, instrument=product.key, metadata_ref=product.metadata_ref,
+                    epoch_id=tracker.state.epoch_id, source_health_ref=health.content_hash,
+                    source_health_epoch_id=health_epoch_id, persisted_at_ns=ingested_at_ns,
+                )
+                self._apply_stream_observation(repository, tracker, frame_observation)
 
             if isinstance(event, L2SequenceFaultV2):
                 tracker_observation = PublicStreamObservationV1.from_book_event(
@@ -2227,6 +2286,11 @@ class ProductionOpsCyclePortV1:
 
         self._write_stream_frame_archives(repository, raw_archive_groups)
         collector.flush_archive()
+        # Transport can change while a batch is being archived. Reports must
+        # observe that change rather than publish the pre-work status as current.
+        status = get_status()
+        handoff = status.handoff
+        attempt_count = getattr(status, "attempt_count", 0)
         status_epoch = self._connection_epoch_id(attempt_count if attempt_count > 0 else None)
         overflowed = bool(getattr(handoff, "overflowed", False))
         connected = bool(getattr(handoff, "connected", False)) and getattr(status, "state", None) == "RUNNING"
@@ -2268,7 +2332,12 @@ class ProductionOpsCyclePortV1:
                 book = self._stream_books.get(key)
                 if book is not None:
                     book.disconnect(overflow_observation.observed_at_ns)
-            if last_error and last_error != self._stream_last_error_code and not overflowed:
+            error_at = getattr(handoff, "last_error_at_ns", None)
+            first_receipt = self._stream_epoch_first_receipt.get(key)
+            error_in_active_epoch = (not connected or (type(error_at) is int
+                and first_receipt is not None and error_at >= first_receipt[1]))
+            if (last_error and last_error != self._stream_last_error_code and not overflowed
+                    and error_in_active_epoch):
                 error_observation = PublicStreamObservationV1.transport(
                     instrument=instrument, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel,
                     metadata_ref=tracker.state.metadata_ref, epoch_id=tracker.state.epoch_id,
@@ -2340,6 +2409,12 @@ class ProductionOpsCyclePortV1:
                 "producer_state": str(getattr(status, "state", "UNKNOWN")),
                 "last_error_code": last_error,
                 "reason_codes": sorted(self._stream_metadata_errors),
+                "service_version": "PUBLIC_STREAM_WRITER_SERVICE_V1",
+                "service_frames": self._stream_service_frames,
+                "service_calls": self._stream_service_calls,
+                "max_service_gap_ns": self._stream_max_service_gap_ns,
+                "max_service_duration_ns": self._stream_max_service_duration_ns,
+                "transport_batch_ref": self._stream_transport_ref,
             }
             health = PublicSourceHealthV2(
                 BYBIT_PUBLIC_WS_SOURCE_ID_V1, health_observed, report_as_of, state,
@@ -2426,6 +2501,7 @@ class ProductionOpsCyclePortV1:
             "raw_payload_hash": frame.raw_payload_hash,
             "received_at_ns": frame.received_at_ns, "available_at_ns": available,
             "connection_epoch": frame.connection_epoch, "reason_code": reason,
+            "transport_batch_ref": self._stream_transport_ref,
             "authority": "ZERO",
         }
         ref = sha256_json(body)
@@ -2642,7 +2718,16 @@ class ProductionOpsCyclePortV1:
                 collector.on_disconnect(SOURCE_ID, at_ns=reconciliation_at_ns)
 
             ingestion_complete = snapshot.complete
-            for record in snapshot.records:
+            for record_number, record in enumerate(snapshot.records):
+                if record_number % 16 == 0 and self._serviced_acquisition is not None:
+                    # Restore the collector clock before using its stream lane.
+                    collector.clock_ns = prior_clock
+                    self.service_public_stream(repository)
+                    ingestion_at_ns = sample(self.clock_ns, floor_ns=ingestion_at_ns)
+                    reconciliation_at_ns = ingestion_at_ns
+                    def fixed_reconciliation_clock(current: int = reconciliation_at_ns) -> int:
+                        return current
+                    collector.clock_ns = fixed_reconciliation_clock
                 try:
                     # The HTTP adapter records exact receipt times. Collector
                     # validation/ingestion happens only after the complete bounded
@@ -5172,11 +5257,16 @@ def create_bybit_public_ws_port(
         topics=bybit_btc_eth_linear_topics(),
         source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
     )
-    return ProductionOpsCyclePortV1(
+    port = ProductionOpsCyclePortV1(
         public_source=public_source or BybitPublicCycleSourceV1(),
         public_stream_source=source,
         clock_ns=clock_ns,
     )
+    if public_source is None:
+        from .serviced_acquisition import ServicedPublicAcquisitionV1
+
+        port._serviced_acquisition = ServicedPublicAcquisitionV1(port.public_source, clock_ns=clock_ns)
+    return port
 
 
 def _l2_raw_frame_from_archive_row(row: Mapping[str, Any]) -> L2RawFrameV2:

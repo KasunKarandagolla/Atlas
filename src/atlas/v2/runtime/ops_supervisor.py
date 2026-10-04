@@ -984,6 +984,9 @@ class OpsSupervisorV2:
                         )
                     )
                     failures.append(type(error).__name__)
+                # A completed event is a safe writer boundary. Service stream
+                # evidence between events without re-entering event composition.
+                self.service_public_stream()
 
         cycle_body = {
             "version": OPS_SUPERVISOR_VERSION,
@@ -1010,6 +1013,7 @@ class OpsSupervisorV2:
                 cycle_id, "OpsSupervisorCycleReceiptV1", cycle_id, started_at_ns, started_at_ns, cycle.to_dict()
             )
         )
+        self.service_public_stream()
         if self._default_outcome_maturity is not None or self.post_cycle_maintenance is not None:
             try:
                 # Decision receipts are sealed before bounded downstream outcome work begins.
@@ -1076,6 +1080,32 @@ class OpsSupervisorV2:
                     # Downstream failure persistence must not alter the sealed cycle receipt.
                     pass
         return OpsRunResultV1(cycle, tuple(receipts))
+
+    def service_public_stream(self) -> None:
+        """Cooperative source service on this same writer, without a new cycle."""
+        service = getattr(self.port, "service_public_stream", None)
+        if callable(service) and self.repository is not None:
+            try:
+                service(self.repository)
+            except Exception as error:
+                # A stream service fault must become durable TEST GATE evidence
+                # without taking down the single writer or hiding the cycle.
+                error_type = type(error).__name__
+                if (not error_type.isascii() or not error_type.isidentifier()
+                        or len(error_type) > 64):
+                    error_type = "Exception"
+                at_ns = timestamp(self.clock_ns(), field="stream service failure time")
+                body = {
+                    "version": "OPS_PUBLIC_STREAM_SERVICE_FAILURE_V1",
+                    "observed_at_ns": at_ns,
+                    "status": "TEST GATE",
+                    "error_type": error_type,
+                    "authority": "ZERO",
+                }
+                ref = sha256_json(body)
+                if self.repository.get_artifact(ref) is None:
+                    self.repository.register_artifact(ArtifactIndexEntryV2(
+                        ref, "OpsPublicStreamServiceFailureV1", ref, at_ns, at_ns, body))
 
     def run_forever(
         self,

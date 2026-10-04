@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, replace
 from enum import StrEnum
+from functools import cached_property
 from typing import Any, ClassVar
 
 from .._serialization import nonblank, sha256_json, sha256_ref, strict_fields, timestamp
@@ -30,6 +31,10 @@ from .public_microstructure_ws import CapturedPublicFrameV2
 PUBLIC_STREAM_CONTINUITY_VERSION = "PUBLIC_STREAM_CONTINUITY_V1"
 MAX_TRADE_ID_CACHE = 2048
 MAX_OBSERVATION_REPLAY_CACHE = 2048
+# The schema retains the strict 2048-item ceiling for restart compatibility,
+# while the live hot path keeps a smaller recent window. Older replay and trade
+# identities are resolved through the durable indexes, which remain fail-closed.
+LIVE_OBSERVATION_REPLAY_CACHE = 128
 MAX_GAP_REASON_CODES = 64
 MAX_SERIALIZED_CACHE_ITEMS = max(MAX_TRADE_ID_CACHE, MAX_OBSERVATION_REPLAY_CACHE)
 
@@ -298,11 +303,11 @@ class PublicStreamObservationV1:
                    value["source_health_ref"],
                    value["source_health_epoch_id"], value["reason_code"])
 
-    @property
+    @cached_property
     def content_hash(self) -> str:
         return sha256_json({"artifact_type": "PublicStreamObservationV1", "observation": self.to_dict()})
 
-    @property
+    @cached_property
     def idempotency_ref(self) -> str:
         """Identity of a receipt for replay checks, excluding later persistence time."""
         return sha256_json({
@@ -382,6 +387,11 @@ class PublicStreamContinuityStateV1:
     SCHEMA_VERSION: ClassVar[int] = 1
 
     def __post_init__(self) -> None:
+        # Own immutable copies before caching this state's exact identity. Wire
+        # decoders already supply tuples; direct callers may supply arrays.
+        object.__setattr__(self, "trade_identity_cache", tuple(tuple(row) for row in self.trade_identity_cache))
+        object.__setattr__(self, "observation_replay_cache", tuple(self.observation_replay_cache))
+        object.__setattr__(self, "gap_reason_codes", tuple(self.gap_reason_codes))
         _validate_source_identity(self.instrument, self.source_id, self.channel,
                                   self.metadata_ref, self.epoch_id)
         if type(self.recovery_epoch) is not int or self.recovery_epoch < 0:
@@ -462,7 +472,7 @@ class PublicStreamContinuityStateV1:
             tuple(value["gap_reason_codes"]), value["gap_count"], value["transport_disconnected"],
         )
 
-    @property
+    @cached_property
     def content_hash(self) -> str:
         return sha256_json({"artifact_type": "PublicStreamContinuityStateV1", "state": self.to_dict()})
 
@@ -515,6 +525,7 @@ class PublicStreamContinuityTrackerV1:
             ):
                 raise ValueError("restored tracker state identity does not match requested source revision/epoch")
             self._state = state
+        self._trade_identity_lookup = dict(self._state.trade_identity_cache)
 
     @property
     def state(self) -> PublicStreamContinuityStateV1:
@@ -684,7 +695,7 @@ class PublicStreamContinuityTrackerV1:
         payload_hash = observation.trade_payload_hash
         if trade_id is None or payload_hash is None:
             raise ValueError("trade observation requires exact venue identity and payload hash")
-        cached = dict(state.trade_identity_cache).get(trade_id)
+        cached = self._trade_identity_lookup.get(trade_id)
         known = cached if cached is not None else durable_prior_payload_hash
         receipt_out_of_order = bool(
             observation.receipt_at_ns is not None
@@ -722,8 +733,10 @@ class PublicStreamContinuityTrackerV1:
         cache.append((trade_id, payload_hash))
         cache_complete: bool = state.trade_identity_cache_complete
         if len(cache) > MAX_TRADE_ID_CACHE:
-            cache.pop(0)
+            evicted_id, _ = cache.pop(0)
+            self._trade_identity_lookup.pop(evicted_id, None)
             cache_complete = False
+        self._trade_identity_lookup[trade_id] = payload_hash
         self._state = replace(
             state,
             last_available_at_ns=observation.available_at_ns,
@@ -768,7 +781,7 @@ class PublicStreamContinuityTrackerV1:
     def _remember_observation(self, event_hash: str) -> None:
         cache = (*self._state.observation_replay_cache, event_hash)
         self._state = replace(self._state,
-                              observation_replay_cache=cache[-MAX_OBSERVATION_REPLAY_CACHE:])
+                              observation_replay_cache=cache[-LIVE_OBSERVATION_REPLAY_CACHE:])
 
     def _add_gap(self, reason: str) -> None:
         state = self._state

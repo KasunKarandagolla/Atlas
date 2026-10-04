@@ -567,6 +567,7 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
     from .runtime.ops_supervisor import OpsSupervisorV2
     from .runtime.production import create_bybit_public_ws_port, create_production_port
     from .runtime.public_context import PublicContextMaintenanceV1
+    from .runtime.read_only_report_worker import ReadOnlyReportWorkerV1
     from .runtime.research_model_shadow import StatisticalResearchShadowV1
     from .runtime.research_prediction_outcomes import ResearchPredictionOutcomeMaintenanceV1
 
@@ -593,17 +594,22 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
     target_registered = False
     public_context: PublicContextMaintenanceV1 | None = None
     history_maintenance = ActiveHistoryMaintenanceV1(run / "ops-observations")
+    report_worker = ReadOnlyReportWorkerV1(lambda: export_run(run))
+    final_report_available = True
 
     def post_cycle(repo: Any, at_ns: int) -> Any:
         nonlocal target_registered
         if public_context is not None:
             public_context.run_cycle(repo, information_cutoff_ns=at_ns)
+            supervisor.service_public_stream()
         if not smoke:
             history_maintenance.run_cycle(repo, cutoff_ns=at_ns)
+            supervisor.service_public_stream()
         if not target_registered:
             prediction_maintenance.register_target(repo, available_at_ns=manifest["started_at_ns"])
             target_registered = True
         prediction_maintenance.run_cycle(repo, evidence_cutoff_ns=at_ns)
+        supervisor.service_public_stream()
         from .runtime.outcome_maturity import run_outcome_maturity_cycle
         return run_outcome_maturity_cycle(repo, evidence_cutoff_ns=at_ns,
             production_clock_ns=time.time_ns, maintenance_budget_ns=200_000_000)
@@ -660,8 +666,11 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
                 if smoke:
                     state.update(status="TESTED", reason="OFFLINE_COMPOSITION_FIXTURE_ONLY")
                     break
-                if time.monotonic() - last_report >= config.report_interval_seconds:
-                    export_run(run)
+                completed_report = report_worker.poll()
+                if completed_report is not None:
+                    state["report_status"] = completed_report.status
+                    state["report_error_type"] = completed_report.error_type
+                if time.monotonic() - last_report >= config.report_interval_seconds and report_worker.start():
                     last_report = time.monotonic()
                 if supervisor.repository is not None and time.monotonic() - last_telemetry >= 60:
                     from .memory.repository import ArtifactIndexEntryV2
@@ -678,12 +687,18 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
                         ref, "ResearchRunTelemetryV1", ref, at_ns, at_ns, {"telemetry": telemetry}))
                     supervisor.repository.checkpoint()
                     last_telemetry = time.monotonic()
-                time.sleep(1)
+                # Service forward evidence during the existing idle allowance.
+                # This remains the supervisor's sole writer thread.
+                idle_until = time.monotonic() + 1.0
+                while time.monotonic() < idle_until and not stop_requested():
+                    supervisor.service_public_stream()
+                    time.sleep(min(0.02, max(0.0, idle_until - time.monotonic())))
         except Exception as exc:
             # Persist only a closed error class, never exception/provider text.
             state.update(status="TEST GATE", reason="RUNTIME_COMPONENT_FAILED", error_type=type(exc).__name__)
             result_code = 2
         finally:
+            final_report_available = report_worker.close(timeout_s=0.1)
             if public_context is not None:
                 public_context.close()
             if critic is not None:
@@ -696,7 +711,11 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
             _publish(run / "status.json", state)
             _publish(run / "epochs" / (epoch_id + "-stop.json"), state, immutable=True)
     try:
-        export_run(run)
+        if final_report_available:
+            export_run(run)
+        else:
+            _publish(run / "report-failure.json", {"status": "TEST GATE",
+                "reason": "READ_ONLY_REPORT_STILL_RUNNING_AT_SHUTDOWN", "run_id": manifest["run_id"]})
     except Exception as exc:
         _publish(run / "report-failure.json", {"status": "TEST GATE", "reason": "REPORT_UNAVAILABLE",
                                                "error_type": type(exc).__name__,

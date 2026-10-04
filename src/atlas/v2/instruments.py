@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
+from functools import cached_property
 from typing import Any, ClassVar
 
 from atlas.domain.money import canonical_decimal_str, ensure_non_negative_decimal, ensure_positive_decimal
@@ -92,7 +93,7 @@ class InstrumentKeyV2:
     def to_canonical_json(self) -> str:
         return canonical_json(self.to_dict())
 
-    @property
+    @cached_property
     def content_hash(self) -> str:
         return sha256_json({"contract_type": "InstrumentKeyV2", "key": self.to_dict()})
 

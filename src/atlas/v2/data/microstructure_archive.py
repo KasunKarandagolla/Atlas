@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -59,7 +60,7 @@ class L2RawFrameV2:
         if self.source_health_ref is not None:
             sha256_ref(self.source_health_ref, field="source_health_ref")
 
-    @property
+    @cached_property
     def record_id(self) -> str:
         ident = {"instrument": self.instrument.to_dict(), "source_id": self.source_id,
                  "channel": self.channel, "frame_type": self.frame_type,
