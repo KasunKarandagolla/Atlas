@@ -1,7 +1,8 @@
-# S37 engineering and intelligence design — review draft V1
+# S37 engineering and intelligence design V1
 
-Status: `DRAFT_FOR_PRINCIPAL_REVIEW`. This document describes implemented seams
-and their intended research value. It is not an acceptance verdict, an amendment
+Status: `TESTED` at code/offline-validation level after principal integration
+review and complete final-37 validation. This document describes implemented seams
+and their intended research value. It is not an independent acceptance verdict, an amendment
 to frozen authority, a validation result, or authorization for a live campaign.
 The principal closure ledger and handoff own those decisions and their evidence.
 

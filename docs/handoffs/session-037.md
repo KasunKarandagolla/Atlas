@@ -1,6 +1,6 @@
 # Session 037 — final engineering and intelligence closure
 
-**DEVELOPMENT READY FOR LIVE TEST — code/offline-validation level, submitted for independent coordinating review.** Final ready-ledger Windows bundle identity is recorded below after verification. This is not independent acceptance or live authorization.
+**DEVELOPMENT READY FOR LIVE TEST — code/offline-validation level, submitted for independent coordinating review.** Final ready-ledger Windows bundle identity is recorded below. This is not independent acceptance or live authorization.
 
 ## A — Authority and context
 
@@ -24,7 +24,7 @@ Missing: ground-level implementation architecture, Astra context/optimized revie
 
 Accepted start: `impl/session-036-final-development-closure-windows-tune-ready @ b3e9f0f2b19bdb6c1f4e0f7a49d7b383b6cbd9b7`. GitHub inventory and accepted ancestry were verified before creating `impl/session-037-final-engineering-intelligence-closure`; the unrelated owner S35 checkout is preserved.
 
-Implementation checkpoints: `15f98fc112119e8bc69d36d98b588030bc5069f8`, `d79fab8b7b15c15bf2cfe1b984f55f93f083efd3`, and final corrected code `05b6946f75ed3dd82690053c91e7b5f05b0dcc19`. Each was pushed and exactly refetched; S36 is an ancestor. The ready-ledger documentation/package checkpoint and final remote evidence are recorded below after verification. The final handoff commit identifies itself through Git history, avoiding a self-referential SHA in its own contents. No merge or force-push.
+Implementation checkpoints: `15f98fc112119e8bc69d36d98b588030bc5069f8`, `d79fab8b7b15c15bf2cfe1b984f55f93f083efd3`, and final corrected code `05b6946f75ed3dd82690053c91e7b5f05b0dcc19`. Each was pushed and exactly refetched; S36 is an ancestor. Ready-ledger documentation/package checkpoint: `39f2b9af38f9fa2ea0931dfe006bca59874a9e1a`, also pushed/refetched exactly. The final handoff evidence commit changes only unbundled documentation and identifies itself through Git history, avoiding a self-referential SHA in its own contents. Its exact remote identity is in the final report. No merge or force-push.
 
 The implementation diff covers 69 files, 11,086 insertions and 748 deletions: additive V2 chronology, prerequisites, exact-action economics/outcomes, bounded active work, compact tuning and their tests/design contracts. Final handoff, ledger and owner instructions are separate documentation changes. V1 source, frozen serialization/strategy/RiskPolicy/model contracts, configuration, build workflow/scripts and dependency locks retain accepted identities.
 
@@ -74,7 +74,9 @@ Pressure exposes backlog/oldest age, cursor, readiness, overflow and quarantine.
 
 Bundled Python/Qt/native dependencies, pinned 47-dependency wheel lock, PyInstaller/Inno per-user installer, first-run location/profile, start/stop/resume/export, safe separate evidence, source/package identity and optional DPAPI storage remain integrated. Public operation needs no secret or developer tooling. [Owner run guide](../v2/SESSION037_WINDOWS_RESEARCH_RUN_GUIDE.md).
 
-[Native run 37173090860](https://github.com/KasunKarandagolla/Atlas/actions/runs/37173090860) passed on exact code `05b6946`; the downloaded installer and manifests were independently verified. Installer SHA256: `e0d21ccd71bb1a43608ba0183ed627f3f151d69e54c08ea1cb4c6bbe675facc2`. Native dependency closure covers 278 PE files; offline product, DPAPI/authenticated owner-bound named pipes, install/reinstall/uninstall and external evidence preservation passed. The final documentation commit requires an exact new bundle to carry its closure ledger.
+[Final native run 37185513334](https://github.com/KasunKarandagolla/Atlas/actions/runs/37185513334) passed on exact ready-ledger checkpoint `39f2b9af38f9fa2ea0931dfe006bca59874a9e1a`. The downloaded installer and manifests were independently verified against Git source/resource bytes, locks and manifest identities. Installer: `ATLAS-2.0.37.0-39f2b9af38f9-win11-x64-setup.exe`; SHA256: `9d6f6858205ff939516bd1a47068288d33a1f66238593578fa94c52f5d759076`. Payload-tree SHA256: `689d49e3b281419aa86e50e1c8c886a296a339153df2fdfa1f14adc3aa4d105d`. Artifact ID `11296069402`; reported archive digest `sha256:4a37c5fbce47736821e9f8a66d304a081dc728dbd9ff9cb800e9cf71af72cb95`.
+
+The bundled diagnostics report `DEVELOPMENT READY FOR LIVE TEST`, `development_complete=true` and `status=TESTED`. Native dependency closure covers 278 PE files and 1,115 payload files; offline product, DPAPI/authenticated owner-bound named pipes, install/reinstall/uninstall and external evidence preservation passed. The final evidence commit changes only unbundled handoff/validation/design documentation; all executable and bundled-resource bytes remain exact package-checkpoint bytes. Prior corrected-code run `37173090860` is retained separately as historical evidence.
 
 Native Windows Server 2025 CI is separate from a clean owner Windows 11 laptop. Owner hardware, cross-version upgrade, signed delivery and real source/provider/endurance qualification remain unverified. The diagnostic installer is unsigned. Native build evidence does not qualify profitability or capital.
 
@@ -92,6 +94,6 @@ The host-reboot attempt and resource-contended parallel attempts are not passes.
 
 ## K — Classification
 
-**DEVELOPMENT READY FOR LIVE TEST.** No known ordinary software/architecture blocker remains. All 42 explicit readiness gates have code/offline evidence in the machine-readable closure ledger. Remaining limitations are exclusively the allowed environment/source, intelligence tuning, pipeline observation, prospective economics, capital qualification, final UI/UX, frozen deferral or versioned-amendment categories. Final package and remote evidence are appended below; stop for independent coordinating review. No merge or live campaign is authorized.
+**DEVELOPMENT READY FOR LIVE TEST.** No known ordinary software/architecture blocker remains. All 42 explicit readiness gates have code/offline evidence in the machine-readable closure ledger. Remaining limitations are exclusively the allowed environment/source, intelligence tuning, pipeline observation, prospective economics, capital qualification, final UI/UX, frozen deferral or versioned-amendment categories. Final package evidence is in H and machine-readable validation; the exact final documentation remote SHA is reported after push/refetch. Stop for independent coordinating review. No merge or live campaign is authorized.
 
 ATLAS is submitted for independent coordinating review as development-ready for the fresh-Windows live research phase at the code/offline-validation level. This means ordinary engineering and architecture blockers are closed; it does not claim live-source qualification, pipeline endurance, tuned intelligence, profitability, final UI/UX, or capital readiness. Capital and assisted execution remain disabled, economics remain NOT ESTIMABLE pending governed prospective evidence, and no merge or live campaign is authorized by this handoff.

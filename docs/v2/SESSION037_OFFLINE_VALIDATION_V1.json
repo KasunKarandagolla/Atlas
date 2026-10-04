@@ -66,12 +66,12 @@
   },
   "windows_native": {
     "status": "TESTED",
-    "run_id": 37173090860,
-    "url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37173090860",
-    "head_sha": "05b6946f75ed3dd82690053c91e7b5f05b0dcc19",
-    "installer": "ATLAS-2.0.37.0-05b6946f75ed-win11-x64-setup.exe",
-    "installer_sha256": "e0d21ccd71bb1a43608ba0183ed627f3f151d69e54c08ea1cb4c6bbe675facc2",
-    "payload_tree_sha256": "9861c765a3cfa60415ede9bd67e9ad9d26b5e33a8d21aee235417681758e3880",
+    "run_id": 37185513334,
+    "url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37185513334",
+    "head_sha": "39f2b9af38f9fa2ea0931dfe006bca59874a9e1a",
+    "installer": "ATLAS-2.0.37.0-39f2b9af38f9-win11-x64-setup.exe",
+    "installer_sha256": "9d6f6858205ff939516bd1a47068288d33a1f66238593578fa94c52f5d759076",
+    "payload_tree_sha256": "689d49e3b281419aa86e50e1c8c886a296a339153df2fdfa1f14adc3aa4d105d",
     "dependency_locks": {
       "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
       "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
@@ -86,25 +86,25 @@
     "owner_windows11_hardware": "UNVERIFIED",
     "live_runtime": "TEST GATE",
     "bundled_development_gate": {
-      "development_complete": false,
-      "status": "UNVERIFIED",
-      "verdict": "DEVELOPMENT NOT READY"
+      "development_complete": true,
+      "status": "TESTED",
+      "verdict": "DEVELOPMENT READY FOR LIVE TEST"
     },
     "evidence_file_sha256": {
-      "dist/windows-release-manifest.json": "e68e5c2c04ddb833479ad90439b9dc80bac0d97ec827ce3e6d43e057a41c7b60",
-      "dist/windows-installer-smoke.json": "13cc3e11016232fe6663f0910287020a78f26551fc842e75b3b3aa327d1a1d6b",
+      "dist/windows-release-manifest.json": "4a0d0b32b9640bb04304135fe8516a8b3238b5455d14a6c02b1161adb771f0f0",
+      "dist/windows-installer-smoke.json": "5a14b659aae52bdd4ef7fb05269b8eba1c5647d7f9b0e1b4114833f2e9c7afc8",
       "dist/windows-native-dependencies.json": "7b1609611ddd9915948c588651bc1a0fa3d6adcb397d2917016b139a570adc8f",
-      "dist/windows-native-smoke.json": "53b825f295698d7ba937119533ecc57859e4437ba81d5fb36fccaad813804db9",
-      "dist/atlas-product/build-manifest.json": "bb0bc3c9e5a3a5d1efabb97e301b8f0d29345fe1a816fc60fb6820fd20591d0a"
+      "dist/windows-native-smoke.json": "d3930a9147e2d490e434420cc02f6e06cb6620c451a72f3996f9e1811cf619ec",
+      "dist/atlas-product/build-manifest.json": "5c4d9f1619f380f6e4bb0eb857473cba2248126cc918ba47c0b75d1935be20a9"
     },
-    "artifact_id": 11292795265,
-    "api_artifact_digest": "sha256:0ea92c4413938838b756837f8acde0d5f3c6647c19498702234bd8e6befd4a5b",
-    "artifact_size_bytes": 105849074,
+    "artifact_id": 11296069402,
+    "api_artifact_digest": "sha256:4a37c5fbce47736821e9f8a66d304a081dc728dbd9ff9cb800e9cf71af72cb95",
+    "artifact_size_bytes": 105848740,
     "api_digest_scope": "Reported GitHub archive digest; unpacked installer and JSON manifests independently checksummed",
     "new_source_build_required": false,
-    "final_bundled_ledger_build_required": true,
+    "final_bundled_ledger_build_required": false,
     "installer_version": "2.0.37.0",
-    "evidence_scope": "Native Windows Server 2025 offline exact-source build/product/install/reinstall/uninstall; actual fresh owner Windows 11 and live runtime unqualified"
+    "evidence_scope": "Native Windows Server 2025 exact ready-ledger/source build/product/install/reinstall/uninstall. Owner Windows 11 and live runtime remain unqualified."
   },
   "authority_lock_verification": {
     "sources": [
@@ -282,5 +282,49 @@
     "skipped": 0,
     "junit_sha256": "413dcf82d671f20b775d9c598f8c5bf1627a5b4fc5ac820074994c306443d87d",
     "source_scope": "Unchanged V1/frozen contract and golden identity tests"
-  }
+  },
+  "previous_native_windows": {
+    "status": "TESTED",
+    "run_id": 37173090860,
+    "url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37173090860",
+    "head_sha": "05b6946f75ed3dd82690053c91e7b5f05b0dcc19",
+    "installer": "ATLAS-2.0.37.0-05b6946f75ed-win11-x64-setup.exe",
+    "installer_sha256": "e0d21ccd71bb1a43608ba0183ed627f3f151d69e54c08ea1cb4c6bbe675facc2",
+    "payload_tree_sha256": "9861c765a3cfa60415ede9bd67e9ad9d26b5e33a8d21aee235417681758e3880",
+    "dependency_locks": {
+      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
+    },
+    "payload_files": 1115,
+    "pe_files": 278,
+    "native_product": "TESTED",
+    "installer_lifecycle": "TESTED",
+    "dpapi_and_named_pipe": "TESTED",
+    "signed_release": false,
+    "owner_windows11_hardware": "UNVERIFIED",
+    "live_runtime": "TEST GATE",
+    "bundled_development_gate": {
+      "development_complete": false,
+      "status": "UNVERIFIED",
+      "verdict": "DEVELOPMENT NOT READY"
+    },
+    "evidence_file_sha256": {
+      "dist/windows-release-manifest.json": "e68e5c2c04ddb833479ad90439b9dc80bac0d97ec827ce3e6d43e057a41c7b60",
+      "dist/windows-installer-smoke.json": "13cc3e11016232fe6663f0910287020a78f26551fc842e75b3b3aa327d1a1d6b",
+      "dist/windows-native-dependencies.json": "7b1609611ddd9915948c588651bc1a0fa3d6adcb397d2917016b139a570adc8f",
+      "dist/windows-native-smoke.json": "53b825f295698d7ba937119533ecc57859e4437ba81d5fb36fccaad813804db9",
+      "dist/atlas-product/build-manifest.json": "bb0bc3c9e5a3a5d1efabb97e301b8f0d29345fe1a816fc60fb6820fd20591d0a"
+    },
+    "artifact_id": 11292795265,
+    "api_artifact_digest": "sha256:0ea92c4413938838b756837f8acde0d5f3c6647c19498702234bd8e6befd4a5b",
+    "artifact_size_bytes": 105849074,
+    "api_digest_scope": "Reported GitHub archive digest; unpacked installer and JSON manifests independently checksummed",
+    "new_source_build_required": false,
+    "final_bundled_ledger_build_required": true,
+    "installer_version": "2.0.37.0",
+    "evidence_scope": "Native Windows Server 2025 offline exact-source build/product/install/reinstall/uninstall; actual fresh owner Windows 11 and live runtime unqualified"
+  },
+  "documentation_package_checkpoint": "39f2b9af38f9fa2ea0931dfe006bca59874a9e1a",
+  "final_documentation_scope": "The handoff evidence commit follows this package checkpoint; only README/handoff/validation/design documentation may differ. All bundled resources, executable sources, tests, build scripts, configuration and locks remain exact package-checkpoint bytes. The final documentation commit identity is provided by Git history and the final remote report."
 }
