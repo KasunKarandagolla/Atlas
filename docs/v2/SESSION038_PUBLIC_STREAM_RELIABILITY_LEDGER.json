@@ -2,7 +2,6 @@
   "schema_version": 1,
   "session": "S38_PUBLIC_STREAM_RELIABILITY",
   "status": "TEST GATE",
-  "classification": "DEVELOPMENT NOT READY",
   "start": {
     "branch": "impl/session-037-final-engineering-intelligence-closure",
     "sha": "a51a302e09bda84449ab3867d28df545d39445f2",
@@ -10,30 +9,46 @@
   },
   "implementation": {
     "branch": "fix/session-038-public-stream-reliability",
-    "sha": "56153a61ba5125af1355e866505f96387c843fe7",
-    "ordinary_blockers_closed": ["PUBLIC_STREAM_SERVICE_STARVATION", "PUBLIC_STREAM_RAW_UNBOUND_RETENTION", "PUBLIC_STREAM_STALE_EPOCH_ERROR_POISONING"],
-    "ordinary_blockers_remaining": ["WINDOWS_NATIVE_PACKAGE_PENDING", "OWNER_CORRECTED_LIVE_RETEST_PENDING"]
+    "sha": "934487a460ecca7f70543b5810ed88dd76e0ce0b",
+    "ordinary_blockers_closed": [
+      "PUBLIC_STREAM_SERVICE_STARVATION",
+      "PUBLIC_STREAM_RAW_UNBOUND_RETENTION",
+      "PUBLIC_STREAM_STALE_EPOCH_ERROR_POISONING"
+    ],
+    "ordinary_blockers_remaining": [
+      "S38_SUSTAINED_CAPACITY_REGRESSION_PENDING",
+      "S38_COMPLETE_OFFLINE_VALIDATION_PENDING",
+      "S38_EXACT_CORRECTED_NATIVE_PACKAGE_PENDING"
+    ],
+    "engineering_validation_complete": false
   },
   "live_evidence": {
     "run_id": "8b83143aec6549f5b504b0f5e7e703a9",
     "status": "TEST GATE",
-    "failed_run_retained": true,
+    "failed_run_retained": "Owner run remains failed; no run records were rewritten or deleted by S38.",
     "queue_overflow_items": 296,
     "no_recent_frame_receipt_items": 289,
     "incomplete_snapshot_items": 405,
     "sequence_gap_conflict_items": 20,
     "reported_acquisition_observations": 74,
     "reported_acquisition_mean_seconds": 4.95,
-    "reported_acquisition_max_seconds": 6.453
+    "reported_acquisition_max_seconds": 6.453,
+    "evidence_origin": "Owner-provided report summary; raw exported run evidence was not located in this workspace.",
+    "raw_export_independently_inspected": false
   },
   "fixes": {
-    "rest_service": "one bounded immutable acquisition worker; writer services stream every <=20ms while waiting; one retained completion; timeout remains explicit",
-    "stream_service": "same single writer drains bounded FIFO batches at safe cycle/event/maintenance boundaries; no second repository writer",
+    "rest_service": "one immutable acquisition worker; <=20ms poll waits plus measured bounded writer-service cost, one pending completion, no backdating or deadline extension",
+    "stream_service": "same writer, 32-frame FIFO drains amortized into at most 256 frames per persistence batch; at most four batches with a 50ms allowance checked between batches; 512-frame handoff unchanged; at most 200ms sub-batch accumulation, bypassed on pressure/fault",
     "raw_retention": "exact drained transport bytes archived in bounded PublicStreamTransportBatchV1 parquet batches before interpretation",
     "write_cost": "one batch atomic composition plus immutable identity memoization and removal of redundant valid-frame state transition",
     "recovery": "historical producer error is applied only when it belongs to the active epoch; failed writer batch requires restart",
     "reports": "read-only report worker has one bounded slot and cannot block writer or queue reruns",
-    "telemetry": "service calls, frames, maximum service gap/duration and transport batch identity are exposed in source health transport evidence"
+    "telemetry": "service calls, frames, maximum service gap/duration and transport batch identity are exposed in source health transport evidence",
+    "rest_connection": "one reusable verified public HTTPS connection where server permits; exact public GET allowlist, no credentials/proxies/redirects/implicit retry, bounded body, unchanged 13-request/five-second acquisition budgets",
+    "history_service": "eight-entry exact-wire verified-head LRU; strict serviced restart decoding; unchanged histories are not rewritten; history preparation/locator validation services stream outside watch/seal atomicity; native archive reads service between batches",
+    "continuity": "full 2048-entry bounded replay cache retained; validated immutable cache reuse and deferred exact decision hashing; completed durable trade-ID lookup explicitly distinguishes a new ID from unavailable history after cache eviction",
+    "failure_service": "terminal interpretation fault preserves raw bytes, closes stream, requires restart, and does not repeat the same failure on every idle poll",
+    "windows_broker": "already-closed handle toleration preserves connection cleanup and slot release"
   },
   "authority": {
     "capital_enabled": false,
@@ -45,13 +60,35 @@
     "provider_model_versions_changed": false
   },
   "validation": {
-    "focused_stream_acquisition_reports_archive": "TESTED",
-    "contract_and_integration_tests": "TESTED",
-    "ruff": "TESTED",
-    "mypy_changed_files": "TESTED",
-    "compileall": "TESTED",
-    "windows_native_package": "UNVERIFIED",
-    "owner_windows_live_source": "TEST GATE"
+    "status": "TEST GATE",
+    "detail_ref": "docs/v2/SESSION038_OFFLINE_VALIDATION_V1.json",
+    "zero_provider_calls": true
   },
-  "remaining_categories": ["PIPELINE_RELIABILITY_OBSERVATION_ONLY", "LIVE_SOURCE_CAPABILITY_ONLY", "BLOCKED BY ENVIRONMENT"]
+  "remaining_categories": [
+    "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
+    "LIVE_SOURCE_CAPABILITY_ONLY",
+    "BLOCKED BY ENVIRONMENT"
+  ],
+  "native_package": {
+    "status": "TEST GATE",
+    "installer_version_intended": "2.0.38.3",
+    "previous_run": "37204018826",
+    "previous_source_sha": "9cde88638ed70a4533d921a46507549292681886",
+    "previous_package_superseded": true,
+    "qualification": "complete offline regression -> native sustained synthetic stream -> native build/install/reinstall/uninstall; no live-source qualification"
+  },
+  "remaining_live_gates": [
+    {
+      "status": "TEST GATE",
+      "gate": "Fresh corrected owner Windows public-source run and 48h+ continuous endurance"
+    },
+    {
+      "status": "NOT ESTIMABLE",
+      "gate": "Bybit exact public-trade completeness and dependent S3 inference remain unsupported"
+    },
+    {
+      "status": "UNVERIFIED",
+      "gate": "Owner-hardware network/frame-size/cadence/resource behavior; CI cannot prove it"
+    }
+  ]
 }

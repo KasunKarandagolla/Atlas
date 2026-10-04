@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "session": "S38",
+  "status": "TEST GATE",
+  "implementation_sha": "934487a460ecca7f70543b5810ed88dd76e0ce0b",
+  "local_tests": [
+    {
+      "artifact": "s38-seams-pre-native.xml",
+      "sha256": "3964093ff895df7386f3a97108dfce2306775dcbe66d47a42f8be619f4906f25",
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "1",
+      "tests": "101",
+      "time": "169.845",
+      "timestamp": "2026-10-04T19:07:50.307814+05:30",
+      "hostname": "Kasun"
+    },
+    {
+      "artifact": "s38-latest-seams-final.xml",
+      "sha256": "6e9c7f92f9113ff9da889f83aaf53e51cf0e30be84518911aeeb5278866a9d2f",
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "1",
+      "tests": "6",
+      "time": "46.664",
+      "timestamp": "2026-10-04T19:12:44.411292+05:30",
+      "hostname": "Kasun"
+    },
+    {
+      "artifact": "s38-golden.xml",
+      "sha256": "0830af50677921886651df5862ddb99533a0a5aab828d666ca43706defe4df4d",
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "3",
+      "time": "12.511",
+      "timestamp": "2026-10-04T19:10:34.919318+05:30",
+      "hostname": "Kasun"
+    },
+    {
+      "artifact": "s38-http-acquisition.xml",
+      "sha256": "ae8d0f93ae19b243e19f7894ebfe1d317772de38a8b4f56c13e34497f1338847",
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "52",
+      "time": "149.893",
+      "timestamp": "2026-10-04T19:17:35.668351+05:30",
+      "hostname": "Kasun"
+    },
+    {
+      "artifact": "s38-http-final.xml",
+      "sha256": "1f08bb6e71fcf127e98aa7d0f2d507274fbe73ff90de016da6b810f934845ace",
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "18",
+      "time": "4.468",
+      "timestamp": "2026-10-04T19:19:24.174323+05:30",
+      "hostname": "Kasun"
+    }
+  ],
+  "ruff": "TESTED",
+  "mypy_v2_and_added_tests": "TESTED; 141 source files, plus five HTTP/acquisition files",
+  "compileall": "TESTED; src/scripts/tests before final HTTP addition; native comprehensive rerun pending",
+  "dependencies": "TESTED; pip check, existing runtime locks unchanged",
+  "secret_scan": "TESTED; no recognized credential/private-key findings in 30 changed task files; final scan pending",
+  "local_wall_probes": {
+    "status": "TEST GATE",
+    "host": "Intel Celeron N3060; 2 cores; 4GB RAM, below frozen 4-core/8GB target; other owner workloads active",
+    "latest_failed_probe": {
+      "artifact": "s38-wall-polling.xml",
+      "offered_frames": 1344,
+      "elapsed_seconds": 13.41490243300359,
+      "high_water_items": 512,
+      "frames_rejected": 1
+    },
+    "earlier_failed_attempts_retained": true,
+    "short_probe_is_not_sustained_qualification": true
+  },
+  "native_sustained_probe": {
+    "status": "TEST GATE",
+    "workload": "120 seconds at 160 frames/s: 120 L2 (one changed bid and ask per frame), 40 one-record trades; BTC/ETH; repeated five-second fake REST; actual SQLite/Parquet; explicit overload regression; no provider calls",
+    "source_health": "strict metadata/current-receipt/zero-gap checks; book warmup retained; unsupported trade completeness remains false"
+  },
+  "authority_sources": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "ATLAS_FINAL_DEVELOPMENT_SESSION_CONTEXT.md": "c01e4a2cf4428f3b50718fd168096f7aaa14360804fb157767e8f21d40cc8b79",
+    "ATLAS_PROJECT_INSTRUCTIONS_CURRENT_2026-10-04.md": "7efda1f99fab7f4adf615ae3fe29ad06955a9be6bc34e3715370b1789b23a45a",
+    "ATLAS_CHATGPT_PROJECT_CURRENT_STATE_2026-10-04.md": "a3f5eb5e76dfcb4273cdc523727b1ca846b5ea0170badd96fd7cc8438e64a341",
+    "ATLAS_72_Hour_Consultation.pdf": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e"
+  },
+  "remote_complete_validation": "TEST GATE"
+}
