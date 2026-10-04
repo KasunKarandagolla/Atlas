@@ -58,7 +58,12 @@ readable =''')
         program += f'''
 proc_root_readable = {{name: os.path.exists("/proc/1/root" + path) or _read("/proc/1/root" + path)
                       for name, path in paths.items()}}
-home_names = os.listdir({str(Path.home())!r})
+try:
+    home_names = os.listdir({str(Path.home())!r})
+except (FileNotFoundError, PermissionError):
+    # Runtime prefixes outside home need no parent mount there. An absent or
+    # inaccessible home is also denial; exact secret-path probes remain above.
+    home_names = []
 proc_pids = [int(name) for name in os.listdir("/proc") if name.isdigit()]
 try:
     parent_env = open("/proc/{parent_pid}/environ", "rb").read().decode(errors="ignore")
