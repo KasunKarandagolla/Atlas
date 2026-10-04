@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "artifact_id": "SESSION037_OFFLINE_VALIDATION_V1",
+  "status": "TESTED",
+  "implementation_sha": "05b6946f75ed3dd82690053c91e7b5f05b0dcc19",
+  "source_manifest_sha256": "d54e72139cf35a8a4a7de664feee360680c4c3fb50a8f5eaed69eb9ff1799507",
+  "source_file_count": 445,
+  "environment": {
+    "python": "3.12.13",
+    "platform": "Linux development host; native Windows Server CI is separate from owner Windows 11 qualification"
+  },
+  "comprehensive_v2": {
+    "status": "TESTED",
+    "expected_node_count": 1147,
+    "groups": [
+      {
+        "suite": "v2-final-37",
+        "status": "TESTED",
+        "execution": "One pytest process with all 111 V2 files, unchanged timeouts and disk-backed fixtures",
+        "passed": 1145,
+        "skipped": 2,
+        "failures": 0,
+        "errors": 0
+      }
+    ],
+    "collection_manifest_sha256": "80797a8185114f5c5d6a7cd9bfa274ebb707d011a050b2b4f29498cea67b28ae",
+    "passed": 1145,
+    "skipped": 2,
+    "failures": 0,
+    "errors": 0,
+    "source_manifest": "s37-final-source-manifest-32.json",
+    "sequential_collection_complete": true,
+    "duration_seconds": 6115.473,
+    "junit_sha256": "abb8d1f5194b71115b356fb134a4b14a27769958b445f9b6868874806910a112",
+    "journal_sha256": "d9be23ed37df8231256d8996d9a178cf51159e827a49984e7c05ee5e042db9f5",
+    "source_manifest_verified_after_completion": true,
+    "skipped_scope": "Two optional SDK imports absent in root environment; both exact accepted SDK contracts separately passed with local MockTransport, no provider calls."
+  },
+  "non_v2": {
+    "status": "TESTED",
+    "passed": 485,
+    "skipped": 3,
+    "failures": 0,
+    "errors": 0,
+    "junit_sha256": "ac718e27b8060ed0062491d546e5e48ebab549cdadaa49b393146ba7f1524fae",
+    "journal_sha256": "422230c066ff9f7900c2e2c2cdf27d90c75cb4187435d9cf4f6fb5e4085b7c80",
+    "source_scope": "Non-V2 source/tests unchanged by S37 V2 corrections",
+    "skipped_scope": [
+      "Explicit opt-in authenticated Bybit testnet",
+      "Explicit opt-in authenticated Binance testnet",
+      "Explicit opt-in public testnet connectivity"
+    ]
+  },
+  "static": {
+    "ruff": "TESTED",
+    "mypy": "TESTED: no issues in 234 source files on final corrected source",
+    "compileall": "TESTED: src and tests; six unchanged Windows scripts covered by prior compile validation",
+    "pip_check": "TESTED: no broken requirements",
+    "mypy_log_sha256": "a7ac735f0f48f6985a2fb2e362ce96d3c620b8e3bac00beb2ccb88d815b2bc83"
+  },
+  "windows_portable": {
+    "status": "TESTED",
+    "locked_dependencies": 47,
+    "native_execution": false,
+    "log_sha256": "5ed6833a506cacadbc6931fc354855dd7155e7574322fd12cbd05e1eca2264f6"
+  },
+  "windows_native": {
+    "status": "TESTED",
+    "run_id": 37173090860,
+    "url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37173090860",
+    "head_sha": "05b6946f75ed3dd82690053c91e7b5f05b0dcc19",
+    "installer": "ATLAS-2.0.37.0-05b6946f75ed-win11-x64-setup.exe",
+    "installer_sha256": "e0d21ccd71bb1a43608ba0183ed627f3f151d69e54c08ea1cb4c6bbe675facc2",
+    "payload_tree_sha256": "9861c765a3cfa60415ede9bd67e9ad9d26b5e33a8d21aee235417681758e3880",
+    "dependency_locks": {
+      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
+    },
+    "payload_files": 1115,
+    "pe_files": 278,
+    "native_product": "TESTED",
+    "installer_lifecycle": "TESTED",
+    "dpapi_and_named_pipe": "TESTED",
+    "signed_release": false,
+    "owner_windows11_hardware": "UNVERIFIED",
+    "live_runtime": "TEST GATE",
+    "bundled_development_gate": {
+      "development_complete": false,
+      "status": "UNVERIFIED",
+      "verdict": "DEVELOPMENT NOT READY"
+    },
+    "evidence_file_sha256": {
+      "dist/windows-release-manifest.json": "e68e5c2c04ddb833479ad90439b9dc80bac0d97ec827ce3e6d43e057a41c7b60",
+      "dist/windows-installer-smoke.json": "13cc3e11016232fe6663f0910287020a78f26551fc842e75b3b3aa327d1a1d6b",
+      "dist/windows-native-dependencies.json": "7b1609611ddd9915948c588651bc1a0fa3d6adcb397d2917016b139a570adc8f",
+      "dist/windows-native-smoke.json": "53b825f295698d7ba937119533ecc57859e4437ba81d5fb36fccaad813804db9",
+      "dist/atlas-product/build-manifest.json": "bb0bc3c9e5a3a5d1efabb97e301b8f0d29345fe1a816fc60fb6820fd20591d0a"
+    },
+    "artifact_id": 11292795265,
+    "api_artifact_digest": "sha256:0ea92c4413938838b756837f8acde0d5f3c6647c19498702234bd8e6befd4a5b",
+    "artifact_size_bytes": 105849074,
+    "api_digest_scope": "Reported GitHub archive digest; unpacked installer and JSON manifests independently checksummed",
+    "new_source_build_required": false,
+    "final_bundled_ledger_build_required": true,
+    "installer_version": "2.0.37.0",
+    "evidence_scope": "Native Windows Server 2025 offline exact-source build/product/install/reinstall/uninstall; actual fresh owner Windows 11 and live runtime unqualified"
+  },
+  "authority_lock_verification": {
+    "sources": [
+      {
+        "file": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+        "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+        "hash_verified": true,
+        "read_in_full_by_main": true,
+        "role": "GOVERNING_FREEZE"
+      },
+      {
+        "file": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+        "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+        "hash_verified": true,
+        "read_in_full_by_main": true,
+        "role": "GOVERNING_FREEZE"
+      },
+      {
+        "file": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+        "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+        "hash_verified": true,
+        "read_in_full_by_main": true,
+        "role": "GOVERNING_FREEZE"
+      },
+      {
+        "file": "ATLAS_FINAL_DEVELOPMENT_SESSION_CONTEXT.md",
+        "sha256": "c01e4a2cf4428f3b50718fd168096f7aaa14360804fb157767e8f21d40cc8b79",
+        "hash_verified": true,
+        "read_in_full_by_main": true,
+        "role": "SESSION_CONTEXT_NOT_AUTHORITY"
+      }
+    ],
+    "dependency_locks": {
+      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
+    }
+  },
+  "security": {
+    "status": "TESTED",
+    "files_scanned": 555,
+    "findings": [],
+    "matched_values_printed": false,
+    "scope": "All tracked and eligible untracked commit files; value-suppressing credential patterns plus principal source/authority/diff review.",
+    "scan_evidence_sha256": "129d97db728ca88282b3f7dd16ad08b5e500603bd1ca17a4922a4bb3a2b9dafb"
+  },
+  "local_evidence_directory": "/home/kasun/Music/atlas-session-037-validation",
+  "interrupted_attempts": {
+    "not_counted_as_comprehensive_pass": [
+      "v2-sealed-0",
+      "v2-sealed-1",
+      "v2-final-4-0",
+      "v2-final-4-1",
+      "v2-final-4-2",
+      "v2-final-8-0",
+      "v2-final-8-1",
+      "v2-final-8-2",
+      "v2-final-19-0",
+      "v2-final-19-1",
+      "v2-final-25-0",
+      "v2-final-25-1",
+      "v2-final-25-2",
+      "v2-final-32-0",
+      "v2-final-32-1",
+      "v2-final-32-2",
+      "v2-final-33-0",
+      "v2-final-33-1",
+      "v2-final-33-2"
+    ],
+    "reason": "Final-19 was interrupted for the reproduced installed-economic composition blocker; final-25 was interrupted when its new declaration reader parsed paths before its point/provenance population bounds. Each source correction requires a fixed comprehensive run.",
+    "completed_failed_runs": [
+      "v2-final-14-0",
+      "v2-final-14-1",
+      "v2-final-14-2"
+    ],
+    "completed_failed_run_reason": "Five Unix socket fixtures exceeded socket path limits; stale clock/retry/index fixtures and S8 type-guard ordering regression were identified and corrected. Final-14 results are not a comprehensive pass.",
+    "host_reboot_32": "Development host rebooted; no final-32 process survived and no session exit/JUnit completion exists. Final-33 uses identical sealed source and fresh disk-backed fixtures.",
+    "concurrency_33": "Interrupted after the Phase-2 snapshot exceeded its unchanged three-second IPC timeout under concurrent fixture/CPU work. Focused case reproduced READ_TIMEOUT under contention; the same persisted snapshot passed in isolation in 1.02 seconds. Sequential complete suite required; no timeout or product-source change. The full Phase-2 end-to-end test subsequently passed in the sequential comprehensive run, including IPC and matured outcome, with no source or timeout change."
+  },
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "economic_status": "NOT ESTIMABLE",
+  "real_provider_calls": 0,
+  "private_venue_calls": 0,
+  "orders": 0,
+  "live_campaign_started": false,
+  "optional_agent_sdk": {
+    "status": "TESTED",
+    "passed": 2,
+    "real_provider_calls": 0,
+    "test": "Both accepted provider/action-critic SDK conformance cases using local MockTransport",
+    "junit_sha256": "3a399410c3a394ac47595a1d67d09b41b1b52ba4689def96b268e51eb147c78f",
+    "environment": "S36 hash-locked isolated agent SDK environment; pytest loaded from development environment after SDK site-packages"
+  },
+  "economic_composition_correction": {
+    "status": "TESTED",
+    "source_commit": "05b6946f75ed3dd82690053c91e7b5f05b0dcc19",
+    "ordinary_blocker": "ENG-ECONOMIC-COMPOSITION",
+    "final_19_runs": "INTERRUPTED_NOT_A_PASS",
+    "required": "Satisfied: focused installed-path/recovery tests, comprehensive final-37 and exact corrected-code native Windows run 37173090860.",
+    "reader_bounds": "TESTED: 17 declaration/source, 12 late-feature installed and one production recovery case; all included in comprehensive final-37."
+  },
+  "focused_current_integration": {
+    "status": "TESTED",
+    "passed": 33,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suite": "econ-integration-24",
+    "junit_sha256": "5f2ae5c50f10cdfe5c871b24c7deaba3eebc5ee967d7ada4b57285aa6a73330b",
+    "scope": "Installed supported/unsupported selected-action, shared admission, evaluation integration and remediation; precedes additive declaration-reader bounds correction"
+  },
+  "development_regressions": [
+    {
+      "suite": "econ-focused-21",
+      "status": "FAILED",
+      "reason": "Supported flat portfolio path ID tuple/list comparison; corrected source passed econ-real-support-23 and all 33 econ-integration-24 cases."
+    },
+    {
+      "suite": "econ-supported-22",
+      "status": "FAILED",
+      "reason": "Same portfolio tuple/list comparison; corrected and independently rerun."
+    },
+    {
+      "suite": "econ-late-feature-28",
+      "status": "FAILED_THEN_INTERRUPTED_NOT_A_PASS",
+      "reason": "A separate calendar publication clock violated the existing shared evaluation/calendar publication contract. Corrected to atomic shared publication; 12-case installed suite and explicit recovery case passed."
+    },
+    {
+      "suite": "phase2-regression-34",
+      "status": "FAILED",
+      "reason": "READ_TIMEOUT while concurrent full suites occupied the development host; isolated real IPC succeeded with unchanged contract. Complete sequential validation remains required.",
+      "resolution": "Identical end-to-end case passed in complete sequential final-37 with unchanged product source and three-second IPC timeout."
+    }
+  ],
+  "focused_final_corrections": [
+    {
+      "suite": "econ-source-bounds-26",
+      "scope": "Raw declaration/path/provenance population refusal before parsing",
+      "status": "TESTED",
+      "passed": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "01f88a66b8e395a66c88fdac155b038dc4c23579e29bd9b4187624a230b1a7b6"
+    },
+    {
+      "suite": "econ-late-feature-29",
+      "scope": "Installed selected-action evaluation with actual later feature and evaluation clocks",
+      "status": "TESTED",
+      "passed": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "9885b8a9ca6fc9852a1f83091f0b2e23829bfcfb36fcbb24003a2a58eca67064"
+    },
+    {
+      "suite": "econ-late-feature-recovery-30",
+      "scope": "Actual installed production recovery preserves sealed late-feature evaluation/calendar",
+      "status": "TESTED",
+      "passed": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "e4b145892871080b7b68316a4103dc459a6af3efda48db6a3d0629d715cfa521"
+    }
+  ],
+  "source_manifest_file_sha256": "525093e97cf2cb9bc3e16f6f243ef00b610d98ce2e7916a44c8dba2b0dca4820",
+  "source_manifest_hash_method": "source_manifest_sha256 hashes canonical sorted compact JSON of the exact 445 relative-path-to-file-SHA256 map; source_manifest_file_sha256 hashes the complete saved manifest bytes.",
+  "contracts_golden": {
+    "status": "TESTED",
+    "passed": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "junit_sha256": "413dcf82d671f20b775d9c598f8c5bf1627a5b4fc5ac820074994c306443d87d",
+    "source_scope": "Unchanged V1/frozen contract and golden identity tests"
+  }
+}

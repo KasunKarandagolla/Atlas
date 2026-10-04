@@ -1,50 +1,494 @@
 {
   "schema_version": 1,
   "artifact_id": "ATLAS_FINAL_DEVELOPMENT_CLOSURE_V1",
-  "verdict": "DEVELOPMENT NOT READY",
-  "status": "UNVERIFIED",
-  "development_complete": false,
-  "audit_complete": false,
-  "record_kind": "Session 036 development closure audit",
-  "repository": {
-    "accepted_start_sha": "e13994752f165ad8b42f7f7c441076078d4388cc",
-    "branch": "impl/session-036-final-development-closure-windows-tune-ready",
-    "candidate_s35_remote_sha": "702325b44ad487e699c60e682ad06031f4ecdb86",
-    "preserved_s35_local_sha": "af78d7ade6f05668ab4080893ef340e84d61d1ca",
-    "implementation_sha": "e673b8a3166acd5cb66dd2d3599a916353fe74d9",
-    "runtime_changes": true,
-    "worktree": "/home/kasun/Music/atlas-session-036",
-    "runtime_implementation_sha": "bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254",
-    "build_fix_sha": "02741fc49a6728d81b299290cee2c57b4ee5880b"
+  "record_kind": "Session 037 principal engineering closure",
+  "verdict": "DEVELOPMENT READY FOR LIVE TEST",
+  "status": "TESTED",
+  "development_complete": true,
+  "audit_complete": true,
+  "independent_review": "PENDING_COORDINATING_REVIEW",
+  "previous_audit": {
+    "accepted_sha": "b3e9f0f2b19bdb6c1f4e0f7a49d7b383b6cbd9b7",
+    "file": "docs/v2/ATLAS_FINAL_DEVELOPMENT_CLOSURE_V1.json",
+    "historical_verdict": "DEVELOPMENT NOT READY"
   },
-  "execution_interruption": {
-    "reason": "Execution environment reset removed the temporary worktree and running test processes. Pushed implementation was recovered from GitHub; uncommitted closure drafts were reconstructed.",
-    "affected_evidence": "Corrected comprehensive V2 attempt at 09e9710 had no retained final log; no pass is inferred.",
-    "recovery": "Persistent worktree; native Windows final implementation CI passed. Local comprehensive suite restarted after another process reset, with durable per-node phase journals outside the repository to permit exact continuation."
+  "repository": {
+    "repository": "KasunKarandagolla/Atlas",
+    "accepted_start_branch": "impl/session-036-final-development-closure-windows-tune-ready",
+    "accepted_start_sha": "b3e9f0f2b19bdb6c1f4e0f7a49d7b383b6cbd9b7",
+    "branch": "impl/session-037-final-engineering-intelligence-closure",
+    "implementation_sha": "05b6946f75ed3dd82690053c91e7b5f05b0dcc19",
+    "worktree": "/home/kasun/Music/atlas-session-037",
+    "merge_performed": false,
+    "force_push_performed": false,
+    "final_remote_verification": "Implementation 05b6946f75ed3dd82690053c91e7b5f05b0dcc19 exactly pushed/refetched and accepted S36 ancestry verified; final documentation/package identities are recorded in session-037 handoff and final remote report to avoid a self-referential bundled ledger hash.",
+    "implementation_checkpoints": [
+      "15f98fc112119e8bc69d36d98b588030bc5069f8",
+      "d79fab8b7b15c15bf2cfe1b984f55f93f083efd3",
+      "05b6946f75ed3dd82690053c91e7b5f05b0dcc19"
+    ]
   },
   "authority": [
     {
       "file": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
       "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
       "hash_verified": true,
-      "read_in_full": true
+      "read_in_full_by_main": true,
+      "role": "GOVERNING_FREEZE"
     },
     {
       "file": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
       "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
       "hash_verified": true,
-      "read_in_full": true
+      "read_in_full_by_main": true,
+      "role": "GOVERNING_FREEZE"
     },
     {
       "file": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
       "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
       "hash_verified": true,
-      "read_in_full": true
+      "read_in_full_by_main": true,
+      "role": "GOVERNING_FREEZE"
+    },
+    {
+      "file": "ATLAS_FINAL_DEVELOPMENT_SESSION_CONTEXT.md",
+      "sha256": "c01e4a2cf4428f3b50718fd168096f7aaa14360804fb157767e8f21d40cc8b79",
+      "hash_verified": true,
+      "read_in_full_by_main": true,
+      "role": "SESSION_CONTEXT_NOT_AUTHORITY"
     }
   ],
-  "classification_rule": "Only genuinely post-development limitations receive an allowed classification. Unresolved ordinary engineering remains an explicit blocker and prevents readiness.",
+  "context_refresh": {
+    "main_read_all_freezes_in_full": true,
+    "context_reread_at_major_boundaries": true,
+    "latest_refresh": "MAIN personally reread the full root session context, all three governing freezes in full, and current handoff/closure ledger on 2026-10-04 after final-37 completion and before the final closure verdict. All exact authority/context hashes match.",
+    "before_final_verdict": true
+  },
+  "dependency_lock_sha256": {
+    "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+    "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
+  },
+  "ordinary_engineering_blockers": [],
+  "blocker_closure": [
+    {
+      "id": "ENG-06",
+      "capability": "Derived chronology",
+      "status": "TESTED",
+      "closure_verified": true,
+      "finding": "Actual stage clocks and validated immediate-input cutoff; original market prefix, deadline and identities sealed; restart reuses publications.",
+      "implementation_evidence": [
+        "src/atlas/v2/chronology.py",
+        "src/atlas/v2/features/pipeline.py",
+        "src/atlas/v2/strategies/s1_trend.py",
+        "src/atlas/v2/strategies/s2_breakout.py",
+        "src/atlas/v2/risk.py",
+        "src/atlas/v2/science/action.py",
+        "src/atlas/v2/runtime/production.py"
+      ],
+      "test_evidence": [
+        "tests/v2/test_session037_chronology.py",
+        "tests/v2/test_session037_public_composition.py"
+      ],
+      "remaining_required": "None at code/offline-validation level; independent coordinating review pending."
+    },
+    {
+      "id": "ENG-08",
+      "capability": "Research prerequisites",
+      "status": "TESTED",
+      "closure_verified": true,
+      "finding": "Typed supported/unsupported prerequisite inventory; exact event/product gate; bounded official context; no account, fee, capital, fill or calendar fabrication.",
+      "implementation_evidence": [
+        "src/atlas/v2/runtime/research_prerequisites.py",
+        "src/atlas/v2/runtime/public_context.py",
+        "src/atlas/v2/news/events.py",
+        "src/atlas/v2/runtime/production.py"
+      ],
+      "test_evidence": [
+        "tests/v2/test_session037_research_prerequisites.py",
+        "tests/v2/test_session037_event_scope.py",
+        "tests/v2/test_session037_public_prerequisite_binding.py"
+      ],
+      "remaining_required": "None at code/offline-validation level; independent coordinating review pending."
+    },
+    {
+      "id": "ENG-10",
+      "capability": "Exact action outcomes",
+      "status": "TESTED",
+      "closure_verified": true,
+      "finding": "Installed bounded action maturation produces exact sealed supported after-cost replay/payoff/lifecycle evidence; ambiguous execution/costs remain NOT ESTIMABLE.",
+      "implementation_evidence": [
+        "src/atlas/v2/runtime/action_outcome_producer.py",
+        "src/atlas/v2/runtime/outcome_maturity.py",
+        "src/atlas/v2/science/outcomes.py",
+        "src/atlas/v2/product.py"
+      ],
+      "test_evidence": [
+        "tests/v2/test_session037_action_outcome_producer.py",
+        "tests/v2/test_session037_lifecycle_interruption.py",
+        "tests/v2/test_session033_outcome_maturity.py"
+      ],
+      "remaining_required": "None at code/offline-validation level; independent coordinating review pending."
+    },
+    {
+      "id": "ENG-15",
+      "capability": "Bounded active work",
+      "status": "TESTED",
+      "closure_verified": true,
+      "finding": "Durable due-work/cursors, bounded exact-prefix indicator state, fixed population refusal, indexed receipt/generation/hierarchical stream seeks and visible pressure; terminal history is retired from active scheduling.",
+      "implementation_evidence": [
+        "src/atlas/v2/memory/repository.py",
+        "src/atlas/v2/memory/schema.py",
+        "src/atlas/v2/data/active_history.py",
+        "src/atlas/v2/runtime/active_history.py",
+        "src/atlas/v2/runtime/bar_repair.py",
+        "src/atlas/v2/science/active_training.py",
+        "src/atlas/v2/runtime/research_prediction_outcomes.py"
+      ],
+      "test_evidence": [
+        "tests/v2/test_session037_due_work.py",
+        "tests/v2/test_session037_history_runtime.py",
+        "tests/v2/test_session037_training_bounds.py",
+        "tests/v2/test_session037_receipt_query_bounds.py",
+        "tests/v2/test_session037_remaining_query_bounds.py"
+      ],
+      "remaining_required": "None at code/offline-validation level; independent coordinating review pending."
+    },
+    {
+      "id": "ENG-16",
+      "capability": "Complete tuning projections",
+      "status": "TESTED",
+      "closure_verified": true,
+      "finding": "Compact validated read-only Parquet reports: registered origin funnel/outcomes, regimes, feature values/missingness/stability, exact-action M0/M1 differences, registered methods/routes, measured chronology/stage intervals, lifecycle economics and pressure; unsupported expectations remain null.",
+      "implementation_evidence": [
+        "src/atlas/v2/science/tuning_export.py",
+        "docs/v2/LIVE_TUNING_SCHEMA_V1.md"
+      ],
+      "test_evidence": [
+        "tests/v2/test_session037_tuning_analysis.py",
+        "tests/v2/test_session036_tuning_export.py"
+      ],
+      "remaining_required": "None at code/offline-validation level; independent coordinating review pending."
+    },
+    {
+      "id": "ENG-ECONOMIC-COMPOSITION",
+      "capability": "Installed exact-action economic source binding",
+      "status": "TESTED",
+      "closure_verified": true,
+      "finding": "Principal review reproduced unreachable installed economics: exact-candidate wrappers required earlier market-cutoff publication and had no production publishers. Additive scoped cutoff-known source manifest and later receipt-bound exact-action resolution now connect real M0 and explicitly declared scenario/support/calibration/stress/portfolio evidence; supported/unsupported late-feature composition and restart passed comprehensive final-37.",
+      "implementation_evidence": [
+        "src/atlas/v2/runtime/economic_sources.py",
+        "src/atlas/v2/runtime/economic_binding.py",
+        "src/atlas/v2/runtime/production.py",
+        "src/atlas/v2/science/evaluation_service.py",
+        "src/atlas/v2/science/scenario_engine.py",
+        "src/atlas/v2/science/admission.py"
+      ],
+      "test_evidence": [
+        "tests/v2/test_session037_installed_economics.py",
+        "tests/v2/test_session037_economic_sources.py",
+        "tests/v2/test_session037_economic_binding.py"
+      ],
+      "remaining_required": "None at code/offline-validation level; independent coordinating review pending."
+    }
+  ],
+  "readiness_gates": [
+    {
+      "gate": 1,
+      "requirement": "GitHub accepted start and ancestry verified",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "Accepted GitHub branch inventory/ancestry verified before edits; implementation exactly refetched at 05b6946."
+    },
+    {
+      "gate": 2,
+      "requirement": "Governing freezes read and preserved",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "Authority/context hashes and complete principal rereads recorded in authority/context_refresh; frozen bytes preserved."
+    },
+    {
+      "gate": 3,
+      "requirement": "ENG-06 closed",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 4,
+      "requirement": "ENG-08 closed",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 5,
+      "requirement": "ENG-10 closed",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 6,
+      "requirement": "ENG-15 closed",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 7,
+      "requirement": "ENG-16 closed",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 8,
+      "requirement": "No new ordinary blocker",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "Principal connected-production review, named composition tests and complete final-37; no concept-only capability counted."
+    },
+    {
+      "gate": 9,
+      "requirement": "Required production modules connected",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "Principal connected-production review, named composition tests and complete final-37; no concept-only capability counted."
+    },
+    {
+      "gate": 10,
+      "requirement": "No concept-only capability counted",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "Principal connected-production review, named composition tests and complete final-37; no concept-only capability counted."
+    },
+    {
+      "gate": 11,
+      "requirement": "Derived chronology causal and validated",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 12,
+      "requirement": "Missing unsupported evidence explicit",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 13,
+      "requirement": "Exact decision action outcome identity",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 14,
+      "requirement": "Supported after-cost action outcomes produced",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 15,
+      "requirement": "Execution cost ambiguity remains NOT ESTIMABLE",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 16,
+      "requirement": "First-test intelligence selected and justified",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "SESSION037_ENGINEERING_DESIGN_V1.md; fixed accepted method/provider/config contracts, no silent fallback/adaptation."
+    },
+    {
+      "gate": 17,
+      "requirement": "Selected intelligence not knowingly a weak placeholder",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "SESSION037_ENGINEERING_DESIGN_V1.md; fixed accepted method/provider/config contracts, no silent fallback/adaptation."
+    },
+    {
+      "gate": 18,
+      "requirement": "Benchmark architectures not mandatory",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "SESSION037_ENGINEERING_DESIGN_V1.md; fixed accepted method/provider/config contracts, no silent fallback/adaptation."
+    },
+    {
+      "gate": 19,
+      "requirement": "Whole-system tuning diagnostics",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "S36 tuning exporter extended in production; action lifecycle/compact tuning/concurrent read-only tests passed final-37."
+    },
+    {
+      "gate": 20,
+      "requirement": "Implemented lifecycle research attributable",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "S36 tuning exporter extended in production; action lifecycle/compact tuning/concurrent read-only tests passed final-37."
+    },
+    {
+      "gate": 21,
+      "requirement": "Long-run active work bounded",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 22,
+      "requirement": "Backlog pressure observable",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 23,
+      "requirement": "Read-only analysis while writer continues",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "S36 tuning exporter extended in production; action lifecycle/compact tuning/concurrent read-only tests passed final-37."
+    },
+    {
+      "gate": 24,
+      "requirement": "Compact queryable raw-linked evidence",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "S36 tuning exporter extended in production; action lifecycle/compact tuning/concurrent read-only tests passed final-37."
+    },
+    {
+      "gate": 25,
+      "requirement": "Negative missing no-candidate cases retained",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "S36 tuning exporter extended in production; action lifecycle/compact tuning/concurrent read-only tests passed final-37."
+    },
+    {
+      "gate": 26,
+      "requirement": "Immutable method configuration identities",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "SESSION037_ENGINEERING_DESIGN_V1.md; fixed accepted method/provider/config contracts, no silent fallback/adaptation."
+    },
+    {
+      "gate": 27,
+      "requirement": "No hidden model provider switching",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "SESSION037_ENGINEERING_DESIGN_V1.md; fixed accepted method/provider/config contracts, no silent fallback/adaptation."
+    },
+    {
+      "gate": 28,
+      "requirement": "Adaptation explicit and versioned",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "SESSION037_ENGINEERING_DESIGN_V1.md; fixed accepted method/provider/config contracts, no silent fallback/adaptation."
+    },
+    {
+      "gate": 29,
+      "requirement": "Model agent capital authority ZERO",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "safety fields, final diff/unchanged V1 contracts and full non-V2 485 passed/3 opt-in skips; zero live effects."
+    },
+    {
+      "gate": 30,
+      "requirement": "Capital disabled",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "safety fields, final diff/unchanged V1 contracts and full non-V2 485 passed/3 opt-in skips; zero live effects."
+    },
+    {
+      "gate": 31,
+      "requirement": "Assisted execution disabled",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "safety fields, final diff/unchanged V1 contracts and full non-V2 485 passed/3 opt-in skips; zero live effects."
+    },
+    {
+      "gate": 32,
+      "requirement": "RiskPolicy unchanged",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "safety fields, final diff/unchanged V1 contracts and full non-V2 485 passed/3 opt-in skips; zero live effects."
+    },
+    {
+      "gate": 33,
+      "requirement": "No silent 10x capital floor",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "safety fields, final diff/unchanged V1 contracts and full non-V2 485 passed/3 opt-in skips; zero live effects."
+    },
+    {
+      "gate": 34,
+      "requirement": "S3 insufficiency fail-closed",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "safety fields, final diff/unchanged V1 contracts and full non-V2 485 passed/3 opt-in skips; zero live effects."
+    },
+    {
+      "gate": 35,
+      "requirement": "Windows product integrated",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "Native exact corrected-code run 37173090860 and independent downloaded payload verification; final ready-ledger bundle identity recorded outside this self-referential resource."
+    },
+    {
+      "gate": 36,
+      "requirement": "No secrets leak",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "Value-suppressing eligible-file credential scan plus principal diff/owner preservation review; validation security evidence."
+    },
+    {
+      "gate": 37,
+      "requirement": "One writer preserved",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "safety fields, final diff/unchanged V1 contracts and full non-V2 485 passed/3 opt-in skips; zero live effects."
+    },
+    {
+      "gate": 38,
+      "requirement": "Restart recovery coherent",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "blocker_closure production paths and named tests; complete final-37 1145 passed/2 separately covered SDK skips."
+    },
+    {
+      "gate": 39,
+      "requirement": "Final holdout untouched",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "safety fields, final diff/unchanged V1 contracts and full non-V2 485 passed/3 opt-in skips; zero live effects."
+    },
+    {
+      "gate": 40,
+      "requirement": "Final comprehensive validation passes",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "SESSION037_OFFLINE_VALIDATION_V1.json: full V2/non-V2/contracts/static/type/compile/dependencies/native package gates passed."
+    },
+    {
+      "gate": 41,
+      "requirement": "Final diff reviewed for contract authority changes",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "Principal reviewed all implementation diffs before integration/commit and final aggregate file/authority diff; git diff --check passed."
+    },
+    {
+      "gate": 42,
+      "requirement": "Remaining limitations genuinely post-development",
+      "passed": true,
+      "status": "TESTED",
+      "evidence": "external_gates are exclusively allowed post-development categories; ordinary_engineering_blockers is empty."
+    }
+  ],
   "allowed_post_development_categories": [
-    "CODE_COMPLETE",
     "LIVE_ENVIRONMENT_ONLY",
     "LIVE_SOURCE_CAPABILITY_ONLY",
     "INTELLIGENCE_TUNING_ONLY",
@@ -54,195 +498,6 @@
     "FINAL_UI_UX_DESIGN_ONLY",
     "DEFERRED_BY_FREEZE",
     "REQUIRES_VERSIONED_AMENDMENT"
-  ],
-  "capabilities": [
-    {
-      "capability": "Fresh Windows installer and bundled runtime",
-      "status": "TESTED",
-      "development_classification": "LIVE_ENVIRONMENT_ONLY",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "First-run configuration and protected secrets",
-      "status": "TESTED",
-      "development_classification": "LIVE_ENVIRONMENT_ONLY",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Installed process and research-run lifecycle",
-      "status": "IMPLEMENTED",
-      "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Exclusive ops writer",
-      "status": "TESTED",
-      "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Received M15 origin accounting",
-      "status": "TESTED",
-      "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Honest derived timing",
-      "status": "UNVERIFIED",
-      "development_classification": null,
-      "ordinary_engineering_blocker_ids": [
-        "ENG-06"
-      ]
-    },
-    {
-      "capability": "Meaningful negative and missing decision states",
-      "status": "IMPLEMENTED",
-      "development_classification": "PIPELINE_RELIABILITY_OBSERVATION_ONLY",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Research risk/economic input publishers",
-      "status": "UNVERIFIED",
-      "development_classification": null,
-      "ordinary_engineering_blocker_ids": [
-        "ENG-08"
-      ]
-    },
-    {
-      "capability": "Analogue production integration",
-      "status": "IMPLEMENTED",
-      "development_classification": "REQUIRES_VERSIONED_AMENDMENT",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Automatic outcome evidence production",
-      "status": "UNVERIFIED",
-      "development_classification": null,
-      "ordinary_engineering_blocker_ids": [
-        "ENG-10"
-      ]
-    },
-    {
-      "capability": "Capability-scoped source recovery",
-      "status": "IMPLEMENTED",
-      "development_classification": "LIVE_SOURCE_CAPABILITY_ONLY",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Provider-neutral S3 completeness and repair port",
-      "status": "IMPLEMENTED",
-      "development_classification": "LIVE_SOURCE_CAPABILITY_ONLY",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Windows intelligence and model isolation",
-      "status": "UNVERIFIED",
-      "development_classification": "DEFERRED_BY_FREEZE",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Typed production research model routing",
-      "status": "TESTED",
-      "development_classification": "INTELLIGENCE_TUNING_ONLY",
-      "ordinary_engineering_blocker_ids": []
-    },
-    {
-      "capability": "Bounded long-run resource behavior",
-      "status": "UNVERIFIED",
-      "development_classification": null,
-      "ordinary_engineering_blocker_ids": [
-        "ENG-15"
-      ]
-    },
-    {
-      "capability": "Compact automatic tuning exports and reports",
-      "status": "IMPLEMENTED",
-      "development_classification": null,
-      "ordinary_engineering_blocker_ids": [
-        "ENG-16"
-      ]
-    },
-    {
-      "capability": "Comprehensive validation gates",
-      "status": "TESTED",
-      "development_classification": "CODE_COMPLETE",
-      "ordinary_engineering_blocker_ids": []
-    }
-  ],
-  "ordinary_engineering_blockers": [
-    {
-      "id": "ENG-06",
-      "capability": "Honest derived timing",
-      "evidence": [
-        "src/atlas/v2/science/evaluation_service.py",
-        "src/atlas/v2/runtime/production.py"
-      ],
-      "finding": "M0, scenario and evaluation publication now sample the actual production clock. The full feature/candidate/sizing/action chronology still uses cutoff-time compatibility paths and is not closed end to end.",
-      "required": "Separate market cutoff from actual stage computation/publication times throughout composition and validators without changing frozen hashes.",
-      "code_references": [
-        "src/atlas/v2/runtime/production.py:2924",
-        "src/atlas/v2/science/m0.py:388",
-        "src/atlas/v2/science/m1.py:1001"
-      ]
-    },
-    {
-      "id": "ENG-08",
-      "capability": "Research risk/economic input publishers",
-      "evidence": [
-        "src/atlas/v2/runtime/production.py"
-      ],
-      "finding": "Fresh public composition lacks the complete versioned risk/account/fee/stress/venue-capability and event prerequisite publisher set.",
-      "required": "Add explicit zero-authority research assumptions and supported publishers; retain unsupported capital/execution evidence as NOT ESTIMABLE.",
-      "code_references": [
-        "src/atlas/v2/runtime/production.py:3629",
-        "src/atlas/v2/runtime/production.py:3766"
-      ]
-    },
-    {
-      "id": "ENG-10",
-      "capability": "Automatic outcome evidence production",
-      "evidence": [
-        "src/atlas/v2/runtime/research_prediction_outcomes.py",
-        "src/atlas/v2/science/outcome_resolution.py"
-      ],
-      "finding": "Diagnostic prediction outcomes are connected. The complete later-market action-bearing after-cost producer and expected-opportunity reconciliation are not complete.",
-      "required": "Add bounded exact-decision-linked outcome production where source support exists and preserve unresolved cost/execution ambiguity.",
-      "code_references": [
-        "src/atlas/v2/science/outcome_resolution.py:933",
-        "src/atlas/v2/runtime/research_prediction_outcomes.py"
-      ]
-    },
-    {
-      "id": "ENG-15",
-      "capability": "Bounded long-run resource behavior",
-      "evidence": [
-        "src/atlas/v2/data/history.py",
-        "src/atlas/v2/agent_intelligence/broker.py"
-      ],
-      "finding": "Broker signed-expiry replay/concurrency and physical archive allocation bounds are corrected. M0/M1 training and some indexed product/health/scanner/risk/history/recovery paths still materialize an unbounded population. Prediction maintenance still cycles historical terminal/horizon positions at one position per minute; completed raw rereads are removed, but bounded new/unresolved work queues are needed to avoid growing maturation latency.",
-      "required": "Bound retrieval and computation with explicit overflow evidence; retain causal archives and expose pressure/resource diagnostics.",
-      "code_references": [
-        "src/atlas/v2/science/m0.py:495",
-        "src/atlas/v2/science/m1.py:266",
-        "src/atlas/v2/science/m1.py:1035",
-        "src/atlas/v2/runtime/production.py:4071",
-        "src/atlas/v2/runtime/research_prediction_outcomes.py:449"
-      ]
-    },
-    {
-      "id": "ENG-16",
-      "capability": "Compact automatic tuning exports and reports",
-      "evidence": [
-        "src/atlas/v2/science/tuning_export.py",
-        "docs/v2/LIVE_TUNING_SCHEMA_V1.md"
-      ],
-      "finding": "Reports now reconcile recorded origins, terminal stages and exact outcome coverage and summarize diagnostic prediction errors/interval coverage. Complete expected-origin, regime, feature-stability, M0/M1 disagreement, stage-latency and registered-variant comparison projections remain incomplete.",
-      "required": "Complete remaining projections against the same decision calendar; do not infer absent origins, labels or independent samples.",
-      "code_references": [
-        "src/atlas/v2/science/tuning_export.py",
-        "docs/v2/LIVE_TUNING_SCHEMA_V1.md"
-      ]
-    }
   ],
   "external_gates": [
     {
@@ -312,6 +567,15 @@
       "capability": "S8 capital, cross-venue routing and other explicit frozen deferrals",
       "development_classification": "DEFERRED_BY_FREEZE",
       "status": "TEST GATE"
+    },
+    {
+      "capability": "Complete public calendar and executable account-specific evidence",
+      "development_classification": "LIVE_SOURCE_CAPABILITY_ONLY",
+      "status": "NOT ESTIMABLE",
+      "prerequisite_blockers": [
+        "RSS/news is not proof of complete CPI/payroll/FOMC calendar coverage",
+        "Public shadow cannot establish account-specific fees, private capital state or execution qualification; action economics and critic can abstain while market diagnostics continue"
+      ]
     }
   ],
   "safety": {
@@ -322,297 +586,22 @@
     "orders_submitted": 0,
     "authenticated_venue_calls": 0,
     "paid_provider_calls": 0,
-    "two_day_live_test_started": false
+    "two_day_live_test_started": false,
+    "risk_policy_changed": false,
+    "leverage_floor_added": false,
+    "real_provider_calls": 0,
+    "live_campaign_authorized": false
   },
+  "architecture_document": "docs/v2/SESSION037_ENGINEERING_DESIGN_V1.md",
+  "chronology_contract": "docs/v2/SESSION037_DERIVED_RESEARCH_CHRONOLOGY_CONTRACT_V1.md",
   "validation": {
-    "focused_runtime": "TESTED: follow-up chronology/broker/archive/analogue/export group 40; corrected production recovery/API cases 2; critic/runtime 51 with 1 skip; added critic pair cases 5; portable native harness/broker 36; earlier product/M15/missingness 19, repository/M15/windows broker 51, core 44, model/export/analogue 41, session020/031/034 20",
-    "comprehensive_v2": "TESTED: 907 passed, 2 optional SDK skips. All 909 expected node IDs exactly reconcile with durable phase journals and JUnit XML at runtime source bf64ea0. Later changes affect only build scripts/attributes and documentation; src and tests/v2 are unchanged.",
-    "non_v2": "TESTED: 485 passed, 3 skipped",
-    "contracts_golden": "TESTED: final source bf64ea0 contracts/golden 3 passed",
-    "ruff": "TESTED: entire repository",
-    "mypy": "TESTED: 224 source files under repository configuration",
-    "compileall": "TESTED on src",
-    "dependency_check": "TESTED: pip check and portable Windows pipeline invariants",
-    "windows_build": "TESTED: corrected native Windows Server 2025 CI run 37085899018 at e673b8a; downloaded installer checksum, exact source lock identities and bundled agent freeze manifest independently verified. Clean Windows 11 hardware, signed owner release and cross-version upgrade remain UNVERIFIED.",
-    "freeze_hashes": "Matched all three supplied authority identities",
-    "dependency_locks": "Matched accepted core and agent lock hashes",
-    "secret_scan": "TESTED: 74 changed/added files, zero high-confidence credential matches, no owner PDF/archive/environment/key files included; values suppressed.",
-    "documentation_checks": "TESTED: JSON parses and closure/handoff/build/schema documents reviewed",
-    "corrected_regression_attempt": {
-      "source_sha": "360c96a8ed10340df6387ef90968fd26224f358e",
-      "result": "547 passed, 1 skipped, 47 setup errors before intentional interruption",
-      "finding": "Critic assumed one analogue ref; production retains result plus retrieval receipt.",
-      "fix_sha": "09e9710d443e5aa16317c18e07e9a6a8c9df451d",
-      "validation": "51 passed, 1 skipped; 5 added pair-validation cases passed separately"
-    },
-    "windows_ci": {
-      "status": "TESTED",
-      "workflow_run_id": 37085899018,
-      "workflow_url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37085899018",
-      "source_sha": "e673b8a3166acd5cb66dd2d3599a916353fe74d9",
-      "platform": "GitHub Windows Server 2025",
-      "artifact_id": 11260498264,
-      "artifact_archive_digest": "sha256:1a5f6634dcdcdfef3cc61a1769139807a170cda85869ed13776a8c79e74144d0",
-      "archive_digest_scope": "GitHub artifact API reported digest; downloaded files independently verified below",
-      "installer": "ATLAS-2.0.36.0-e673b8a3166a-win11-x64-setup.exe",
-      "installer_sha256": "131fdbc1f4224d07f8f8403b3babbbaa9f5800d9c261fd66e55c5b390fdc6dfd",
-      "downloaded_installer_hash_verified": true,
-      "payload_tree_sha256": "803858f4b81fec804cd752064487a7d42d5a3dfa5f6083a533f46198bcab9a6a",
-      "dependency_locks": {
-        "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
-        "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
-        "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
-      },
-      "source_lock_binding": "TESTED",
-      "bundled_agent_freeze_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
-      "bundled_agent_freeze_manifest_verified": true,
-      "native_pe_files": 278,
-      "unbundled_compiler_runtimes": [],
-      "native_broker": {
-        "active_handlers_after_close": 0,
-        "current_user_dacl_verified": true,
-        "damaged_secret_rejected": true,
-        "max_handlers": 4,
-        "no_provider_calls": true,
-        "owner_process_death_observed": true,
-        "owner_secret_accessed": false,
-        "protected_secret_roundtrip": "TESTED",
-        "status": "TESTED",
-        "transport": "AF_PIPE",
-        "wrong_key_rejected": true
-      },
-      "first_run_configuration": "TESTED",
-      "child_path_contains_python_git": false,
-      "install_reinstall_uninstall_preservation": "TESTED",
-      "actual_fresh_windows11_laptop": "UNVERIFIED",
-      "cross_version_upgrade": "UNVERIFIED",
-      "signed_release": false,
-      "authenticode_signature": "UNVERIFIED",
-      "live_public_runtime": "TEST GATE",
-      "capital_enabled": false,
-      "assisted_enabled": false,
-      "artifact_files_sha256": {
-        "atlas-product/build-manifest.json": "9ba65476fc3ed92c664de06584991735e53777f0ce675c84538bbfc71985bb92",
-        "windows-installer-smoke.json": "1051762e923b3184aa22bdd26766f2ef9bae48bae15dc58200ccdd6ad5cc721f",
-        "windows-native-dependencies.json": "7b1609611ddd9915948c588651bc1a0fa3d6adcb397d2917016b139a570adc8f",
-        "windows-native-smoke.json": "f7b19a2122baece79a33c97a5a8337766fa24c3dfe1241fdb36dd040dada2223",
-        "windows-release-manifest.json": "cfc50fd797c17ca0e4b0aeb636d2f7d128e0b89bf2d5b9086e564053b3665e24"
-      }
-    },
-    "focused_product_followup": "TESTED: 76 product/prediction/shadow/broker cases plus installed critic context launch case; 48 focused Windows broker owner-binding cases included in the 76 group.",
-    "optional_provider_sdk": "TESTED: two optional proposer/critic MockTransport cases passed in separate exact agent-lock environment (26 hash-locked packages); no provider calls.",
-    "interrupted_pre_freeze_attempt": {
-      "source_sha": "e775946d3b57e32865da649ac64763383e4fdda7",
-      "result": "598 passed, 2 skipped before intentional interruption after 2088.97 seconds",
-      "reason": "Product/endpoint/owner-lifetime fixes landed while this process retained earlier imported source; replaced by frozen-source comprehensive suite."
-    },
-    "windows_ci_current": {
-      "status": "TESTED",
-      "workflow_run_id": 37085899018,
-      "workflow_url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37085899018",
-      "source_sha": "e673b8a3166acd5cb66dd2d3599a916353fe74d9",
-      "platform": "GitHub Windows Server 2025",
-      "artifact_id": 11260498264,
-      "artifact_archive_digest": "sha256:1a5f6634dcdcdfef3cc61a1769139807a170cda85869ed13776a8c79e74144d0",
-      "archive_digest_scope": "GitHub artifact API reported digest; downloaded files independently verified below",
-      "installer": "ATLAS-2.0.36.0-e673b8a3166a-win11-x64-setup.exe",
-      "installer_sha256": "131fdbc1f4224d07f8f8403b3babbbaa9f5800d9c261fd66e55c5b390fdc6dfd",
-      "downloaded_installer_hash_verified": true,
-      "payload_tree_sha256": "803858f4b81fec804cd752064487a7d42d5a3dfa5f6083a533f46198bcab9a6a",
-      "dependency_locks": {
-        "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
-        "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
-        "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
-      },
-      "source_lock_binding": "TESTED",
-      "bundled_agent_freeze_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
-      "bundled_agent_freeze_manifest_verified": true,
-      "native_pe_files": 278,
-      "unbundled_compiler_runtimes": [],
-      "native_broker": {
-        "active_handlers_after_close": 0,
-        "current_user_dacl_verified": true,
-        "damaged_secret_rejected": true,
-        "max_handlers": 4,
-        "no_provider_calls": true,
-        "owner_process_death_observed": true,
-        "owner_secret_accessed": false,
-        "protected_secret_roundtrip": "TESTED",
-        "status": "TESTED",
-        "transport": "AF_PIPE",
-        "wrong_key_rejected": true
-      },
-      "first_run_configuration": "TESTED",
-      "child_path_contains_python_git": false,
-      "install_reinstall_uninstall_preservation": "TESTED",
-      "actual_fresh_windows11_laptop": "UNVERIFIED",
-      "cross_version_upgrade": "UNVERIFIED",
-      "signed_release": false,
-      "authenticode_signature": "UNVERIFIED",
-      "live_public_runtime": "TEST GATE",
-      "capital_enabled": false,
-      "assisted_enabled": false,
-      "artifact_files_sha256": {
-        "atlas-product/build-manifest.json": "9ba65476fc3ed92c664de06584991735e53777f0ce675c84538bbfc71985bb92",
-        "windows-installer-smoke.json": "1051762e923b3184aa22bdd26766f2ef9bae48bae15dc58200ccdd6ad5cc721f",
-        "windows-native-dependencies.json": "7b1609611ddd9915948c588651bc1a0fa3d6adcb397d2917016b139a570adc8f",
-        "windows-native-smoke.json": "f7b19a2122baece79a33c97a5a8337766fa24c3dfe1241fdb36dd040dada2223",
-        "windows-release-manifest.json": "cfc50fd797c17ca0e4b0aeb636d2f7d128e0b89bf2d5b9086e564053b3665e24"
-      }
-    },
-    "final_collection": {
-      "source_sha": "bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254",
-      "test_cases": 909,
-      "grouping": "Three disjoint test-file groups, all tests/v2/test_*.py included exactly once; expected node IDs retained for coverage reconciliation."
-    },
-    "dependency_lock_sha256": {
-      "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
-      "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
-      "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
-    },
-    "windows_ci_history": [
-      {
-        "status": "TESTED",
-        "workflow_run_id": 37046927320,
-        "source_sha": "bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254",
-        "platform": "GitHub Windows Server 2025",
-        "signed_release": false,
-        "artifact_id": 11244518429,
-        "artifact_archive_digest": "sha256:5aa49a141f1fece7082a2e4a84667bae8b10301865a9218a1fbb24abefe1971a",
-        "owner_process_death_observed": true,
-        "installer": "ATLAS-2.0.36.0-bf64ea0f7cc7-win11-x64-setup.exe",
-        "installer_sha256": "98ef4d5a88e6448d7956216ad0be92032a57d3f9420f05094e45beb412d90a17",
-        "payload_tree_sha256": "a83e3e27c482e3bbe49a3f3483aafff8c583c7c129da6850a2762ab3aee057a8",
-        "downloaded_installer_hash_verified": true,
-        "native_pe_files": 278,
-        "source_lock_binding": "TEST GATE",
-        "source_lock_binding_defect": "Windows autocrlf changed three deployed lock byte hashes. Earlier native smoke passed but did not compare checkout bytes to Git blobs.",
-        "observed_deployed_locks": {
-          "requirements-agent-lock.txt": "a3ec3f038f2eae9d7ee7206d1440347bfb5c2bfd85beee1c9bb1f6e97c3f3dab",
-          "requirements-lock.txt": "69a5ed161831a94f39107774f8d04aef28a2bb25793c530169e7d3404120932f",
-          "requirements-windows-lock.txt": "c8a9b2f6a334fa4a7cc16a8f2f2d0286cec3f168ad0b6b0b6bb7c4e36fea63b9"
-        },
-        "expected_source_locks": {
-          "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
-          "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
-          "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
-        }
-      }
-    ],
-    "comprehensive_v2_result": {
-      "source_sha": "bf64ea0f7cc7bb95ea2998694f92a35fa4ef3254",
-      "status": "TESTED",
-      "expected_node_count": 909,
-      "completed_node_count": 909,
-      "passed": 907,
-      "skipped": 2,
-      "failures": 0,
-      "errors": 0,
-      "groups": [
-        {
-          "group": 0,
-          "passed": 349,
-          "skipped": 1,
-          "errors": 0,
-          "failures": 0,
-          "journal_sha256": "0761fbaffe4dc7c1c671457d7f4951133edb585024ea919e87fd1f489674b4b2",
-          "junit_sha256": "4ee4a5843a1f1d9b4b9ed1e2086579867ade5d0648b62ce9e5351f1d6560dcdc"
-        },
-        {
-          "group": 1,
-          "passed": 318,
-          "skipped": 1,
-          "errors": 0,
-          "failures": 0,
-          "journal_sha256": "41770408704868250ef7211a713af5a223ce03d5d3349f509fd69151000ac89c",
-          "junit_sha256": "2cb5012d59193522eee77c427edb4ecb902afd008501e7f1c4a26c288816d534"
-        },
-        {
-          "group": 2,
-          "passed": 240,
-          "skipped": 0,
-          "errors": 0,
-          "failures": 0,
-          "journal_sha256": "264b4987dc26bc6bb2c076d5b11cf3f7eb84ee6c11ae765dd7ed54de93a7b34a",
-          "junit_sha256": "454be1b23d8dc47a7965761d02b0cb9b6a9d539f1a658aea0f2dca433ae183cd"
-        }
-      ],
-      "slowest_offline_fixtures": [
-        {
-          "nodeid": "tests/v2/test_session027_production.py::test_default_production_composes_public_to_risk_action_and_economics_after_restart",
-          "fixture_seconds": 1035.513
-        },
-        {
-          "nodeid": "tests/v2/test_session027_production.py::test_default_production_native_m1_s3_stays_closed_without_trade_completeness",
-          "fixture_seconds": 325.95
-        },
-        {
-          "nodeid": "tests/v2/test_session031_s3_persisted_lineage.py::test_one_second_bbo_and_current_source_health_gates_fail_closed",
-          "fixture_seconds": 191.387
-        },
-        {
-          "nodeid": "tests/v2/test_session031_s3_persisted_lineage.py::test_made_up_vwap_reference_does_not_validate_a_correct_count",
-          "fixture_seconds": 182.366
-        },
-        {
-          "nodeid": "tests/v2/test_session021_data_s3.py::test_s3_production_setup_consumes_causal_seven_day_prefix_and_fails_residual_tampering",
-          "fixture_seconds": 155.052
-        }
-      ],
-      "duration_scope": "Offline fixtures in this local environment; does not qualify live Windows latency."
-    },
-    "security_result": {
-      "source_sha": "e673b8a3166acd5cb66dd2d3599a916353fe74d9",
-      "scope": "Accepted S34 to final Session036 implementation/build and uncommitted final documentation",
-      "status": "TESTED",
-      "check": "CHANGED_TRACKED_CREDENTIAL_PATTERN_SCAN",
-      "files_checked": 74,
-      "high_confidence_matches": 0,
-      "matched_values_printed": false,
-      "supplied_freeze_hashes_match": true,
-      "authority_sha256": {
-        "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
-        "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
-        "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
-      },
-      "dependency_locks": {
-        "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
-        "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
-        "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
-      },
-      "v1_golden_sha256": "be2a54d2bf9a3a168fe850877d51ef241d8ae8cdad837b872270cc3a30166251",
-      "owner_archive_pdf_environment_key_files_committed": false,
-      "frozen_v1_risk_recovery_persistence_scanner_unchanged": true
-    },
-    "offline_validation_artifact": "docs/v2/SESSION036_OFFLINE_VALIDATION_V1.json"
+    "artifact": "docs/v2/SESSION037_OFFLINE_VALIDATION_V1.json",
+    "frozen_source_manifest_sha256": "d54e72139cf35a8a4a7de664feee360680c4c3fb50a8f5eaed69eb9ff1799507",
+    "comprehensive_v2": "TESTED: final-37 complete sequential 1,147 unique cases: 1,145 passed, two optional-SDK imports skipped and separately mock-tested, zero failures/errors. Exact 445-file source manifest verified unchanged after completion.",
+    "non_v2": "TESTED: 485 passed, 3 skipped; corresponding source unchanged",
+    "native_windows": "TESTED: run 37173090860 built exact corrected code 05b6946; installer/source/locks/resources/native evidence independently verified. Final ready-ledger bundle and remote identities are recorded in unbundled validation/handoff evidence.",
+    "status": "TESTED"
   },
-  "context_sources_read": [
-    {
-      "file": "ATLAS_72_Hour_Consultation.pdf",
-      "authority": "CONSULTATION ONLY"
-    },
-    {
-      "file": "ATLAS_REVISED_ARCHITECTURE_AND_ADVERSARIAL_REVIEW.md",
-      "authority": "CONSULTATION ONLY"
-    },
-    {
-      "file": "ATLAS_V2_INTELLIGENCE_ADVERSARIAL_REVIEW_AND_ADDENDUM.md",
-      "authority": "CONSULTATION ONLY"
-    }
-  ],
-  "repository_sources_read": [
-    "docs/handoffs/session-009.md",
-    "docs/handoffs/session-025.md",
-    "docs/handoffs/session-027.md",
-    "docs/handoffs/session-030.md",
-    "docs/handoffs/session-031.md",
-    "docs/handoffs/session-032.md",
-    "docs/handoffs/session-033.md",
-    "docs/handoffs/session-034.md",
-    "remote S35 docs/handoffs/session-035.md",
-    "docs/v2/ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md",
-    "docs/v2/ATLAS_AGENT_ACTION_CRITIC_DEEPSEEK_V41_SHADOW_AMENDMENT_V1.md"
-  ],
   "expected_sources_unavailable": [
     "ground-level implementation architecture",
     "ATLAS ASTRA context/optimized review",
@@ -620,14 +609,36 @@
     "V2 architecture review",
     "V2 implementation specification"
   ],
-  "followup_fixes": [
-    "Canonical diagnostic endpoint prices, record identities, payload hashes and finality bind exact indexed bars; frozen tuple/list source references compare correctly.",
-    "Completed prediction identities are checked before archive reconstruction; residual sweep latency remains explicitly included in ENG-15.",
-    "DPAPI broker context v2 binds exact controller PID and Windows creation FILETIME; retained process handle closes broker on controller death and rejects PID reuse.",
-    "Installed critic generates the canonical pipe endpoint accepted by the transport.",
-    "Run inventory scans at most 4096 manifests and retains 128 items; newly created and explicitly selected runs stay selected.",
-    "Read-only exports accept the original sealed build/model identity after upgrade; resume still requires the exact original build.",
-    "Heartbeat missingness, staleness and clock regression are explicit TEST GATE; report failures persist fixed reason and exception type without exception text.",
-    "Native Windows lock/resource line-ending drift corrected with explicit attributes and fail-closed raw checkout-vs-Git-blob dependency lock verification; no frozen lock contents changed."
+  "owner_consultation_sources": [
+    {
+      "file": "ATLAS_72_Hour_Consultation.pdf",
+      "sha256": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e",
+      "role": "CONSULTATION_NOT_AUTHORITY",
+      "read_in_full_by_main": true
+    },
+    {
+      "file": "ATLAS_REVISED_ARCHITECTURE_AND_ADVERSARIAL_REVIEW.md",
+      "sha256": "df5bac1e99e881b57f6db4cf55412a5e3caeb3ee6b2303606393a6220cfdc85c",
+      "role": "OWNER_ARCHITECTURE_SUBORDINATE_TO_FREEZES",
+      "read_in_full_by_main": true
+    },
+    {
+      "file": "ATLAS_V2_INTELLIGENCE_ADVERSARIAL_REVIEW_AND_ADDENDUM.md",
+      "sha256": "28c3d65f41bd4718533ee5e85a1db7358d649647a4c5e0f37f291cf26779246b",
+      "role": "OWNER_INTELLIGENCE_ADDENDUM_SUBORDINATE_TO_FREEZES",
+      "read_in_full_by_main": true
+    }
+  ],
+  "accepted_amendments": [
+    {
+      "file": "docs/v2/ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md",
+      "sha256": "a082f02b50786cf3af0f32ce7f825f9c94c0ff7888a6f3a5c78a69b4c0d1c60d",
+      "read_in_full_by_main": true
+    },
+    {
+      "file": "docs/v2/ATLAS_AGENT_ACTION_CRITIC_DEEPSEEK_V41_SHADOW_AMENDMENT_V1.md",
+      "sha256": "75a2273be0b9dd3cc3304684e008a0bbb07fd6db31c09a2f5caf3e6117dedd5e",
+      "read_in_full_by_main": true
+    }
   ]
 }

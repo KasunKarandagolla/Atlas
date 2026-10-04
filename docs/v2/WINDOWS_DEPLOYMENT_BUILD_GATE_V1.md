@@ -1,5 +1,7 @@
 # Windows deployment/build gate V1
 
+This document preserves S36 native evidence. Current S37 source-bound validation is in [SESSION037_OFFLINE_VALIDATION_V1.json](SESSION037_OFFLINE_VALIDATION_V1.json); owner instructions are in the [Windows research run guide](SESSION037_WINDOWS_RESEARCH_RUN_GUIDE.md).
+
 Status: **IMPLEMENTED / TESTED (CI)**. The self-contained Windows build and installer pipeline is implemented in `packaging/windows/`, `atlas-product.spec`, the pinned Windows lock, and `scripts/windows_*.py`.
 Native GitHub Windows Server 2025 execution: **TESTED** by workflow run `37085899018` against implementation SHA `e673b8a3166acd5cb66dd2d3599a916353fe74d9`. The run passed the PyInstaller build, payload/resource manifest, packaged offline report smoke, authenticated named-pipe/current-user ACL fixture, disposable DPAPI roundtrip/damaged-ciphertext rejection, retained controller process-instance/owner-death fixture, Inno installer, install, reinstall/upgrade preservation and uninstall preservation checks.
 Actual clean owner Windows 11 execution remains **BLOCKED BY ENVIRONMENT** in this Linux workspace.
@@ -41,6 +43,6 @@ Independent downloaded-artifact review of historical run `37046927320` (`bf64ea0
 - Windows lock: `984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5`.
 - Bundled agent authority manifest: `d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d`.
 
-Source-byte validation runs only in the build environment; the installed laptop requires no Git or dependency tools. Native CI installed-product smoke removes Python/Git from the child PATH, but does not certify a clean owner laptop or the complete live pipeline. Five ordinary software blockers remain in `ATLAS_FINAL_DEVELOPMENT_CLOSURE_V1.json`; successful packaging does not promote development readiness.
+Source-byte validation runs only in the build environment; the installed laptop requires no Git or dependency tools. Native CI installed-product smoke removes Python/Git from the child PATH, but does not certify a clean owner laptop or the complete live pipeline. At the accepted S36 checkpoint, five ordinary software blockers remained. The current closure state is recorded in `ATLAS_FINAL_DEVELOPMENT_CLOSURE_V1.json`; historical successful packaging alone does not promote development readiness.
 
 Machine-readable package/checksum/test evidence: `SESSION036_OFFLINE_VALIDATION_V1.json`. The artifact API archive digest is recorded as reported by GitHub; the downloaded installer and JSON manifests are independently checksummed.

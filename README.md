@@ -1,6 +1,6 @@
 # ATLAS V2 — public research and shadow desktop
 
-ATLAS V2 is a causal crypto-futures research system with a read-only desktop for persisted market, scanner, watch, and evaluation evidence. This Session-025 engineering candidate is version `2.0.0.dev25`, classified `SHADOW_RELEASED`. It is an engineering and research release. It makes no claim of trading profitability, authenticated exchange qualification, or readiness for live capital.
+ATLAS V2 is a causal crypto-futures research system with a read-only desktop for persisted market, scanner, watch, and evaluation evidence. The current engineering checkpoint is Session 037; its [closure ledger](docs/v2/ATLAS_FINAL_DEVELOPMENT_CLOSURE_V1.json) records the exact development verdict and remaining gates. The package version remains `2.0.0.dev25` for accepted identity continuity; the Windows installer carries its own version and exact source SHA. It makes no claim of trading profitability, authenticated exchange qualification, or readiness for live capital.
 
 Capital ships disabled: `capital_enabled = false` and `assisted_enabled = false`. Public market data and the desktop do not require exchange private credentials. Never provide withdrawal permission to an ATLAS key.
 
@@ -16,8 +16,8 @@ Capital ships disabled: `capital_enabled = false` and `assisted_enabled = false`
 | S7 | Public event safety, alerts, and directional shadow evidence |
 | S8 | Two-leg basket research; outside the single-action TradePlan path |
 | M0 | Chronological Huber/ridge action-value baseline; current economics not estimable |
-| M1 | Offline LightGBM challenger; no model voting or capital authority |
-| Analogue support | Causal support/OOD evidence; not an independent vote |
+| M1 | Bounded installed LightGBM research challenger; no model voting or capital authority |
+| Analogue support | Frozen compatibility gate; unsupported relative compatibility remains not estimable pending amendment |
 | Discovery Lab | Bounded offline research; cannot change risk or promote itself |
 | Bybit public data | Research/public-data target; no authenticated account qualification |
 | Binance USD-M public data | Research/public-data target; protection remains a capital test gate |
@@ -37,10 +37,10 @@ The minimum before any positive economic claim is at least eight weeks of prospe
 The repository keeps V1 and V2 authority separate.
 
 - `atlas-crypto-live` is the only credential-bearing crypto writer. It owns the Nautilus runtime boundary, immutable plan approval, revalidation, reservations, durable commands, protection, reconciliation, and recovery. This engineering release does not enable its assisted path.
-- `atlas-ops` is the intended single writer for public collection, scanner/watch state, research artifacts, and the separate `ops.sqlite` store. The repository includes its collector/scanner/coordinator APIs, but this candidate has no general scheduled `atlas-ops` daemon command. `OpsRepository` uses one writer; desktop projections use a read-only SQLite connection. Public collectors have no exchange credentials or mutation routes.
-- `atlas-worker` describes the optional disposable role for research/inference. This candidate has no general worker daemon command; M1 remains offline research code. Any deployment-specific worker must receive no trading credentials, have no live-control database write path, and be unable to approve trades, change risk, or promote its output.
+- `atlas-ops` is the built-in single writer for public collection, scanner/watch state, research artifacts, and the separate `ops.sqlite` store. The installed product starts the bounded supervisor and public composition. `OpsRepository` uses one writer; desktop projections use a read-only SQLite connection. Public collectors have no exchange credentials or mutation routes.
+- `atlas-worker` describes the optional disposable role for research/inference. This candidate has no general worker daemon command; the installed public composition evaluates the bounded M1 research challenger with zero capital authority. Any deployment-specific worker must receive no trading credentials, have no live-control database write path, and be unable to approve trades, change risk, or promote its output.
 - `atlas-v2-projection` is a separate, read-only process. It opens an existing `ops.sqlite` read-only, accepts authenticated loopback connections only, and exposes bounded projection methods.
-- `atlas-desktop` is a separate PySide6 observer. It reads the projection service and never starts/stops the engine, writes `ops.sqlite`, changes risk, or submits orders.
+- `atlas-desktop` is a separate PySide6 observer of the read-only projection service. The installed `atlas-product` shell provides first-run setup and start/stop/resume/export controls through the bounded lifecycle; it does not write research rows, change risk or submit orders.
 
 The human approval model remains:
 
@@ -64,7 +64,7 @@ S1–S8 are versioned hypotheses, not a collection of independent votes.
 - **S7** collects event evidence, applies a conservative event safety gate, and stores directional reaction research. Source coverage is not considered verified by an empty event list.
 - **S8** stores an explicit two-leg hourly pairs basket forecast and replay contract. It is not a normal one-plan order or capital path.
 
-M0 is the chronological Huber/ridge action-value baseline. M1 is the bounded LightGBM offline challenger. Analogues provide compatible historical support and OOD diagnostics. Discovery proposals and failures remain in their finite preregistered family. No automatic promotion occurs; current promotion state is `INTEGRATED`, not `DECISION_ELIGIBLE`.
+M0 is the chronological Huber/ridge action-value baseline. M1 is the bounded installed LightGBM research challenger. Analogue retrieval preserves the frozen compatibility checks; unsupported relative compatibility remains `NOT ESTIMABLE` pending the [versioned amendment review](docs/v2/SESSION036_ANALOGUE_AMENDMENT_PROPOSAL_V1.md). Discovery proposals and failures remain in their finite preregistered family. No automatic promotion occurs; current promotion state is `INTEGRATED`, not `DECISION_ELIGIBLE`.
 
 ## Supported and research venues
 
@@ -84,7 +84,7 @@ uv pip sync --python .venv/bin/python requirements-lock.txt
 uv pip install --python .venv/bin/python --no-deps -e '.[desktop,offline-research]'
 ```
 
-The checked Linux target is a PyInstaller one-folder bundle with separate desktop and projection-service executables. A source install can launch them with `atlas-desktop` and `atlas-v2-projection`. Windows instructions are in the [release notes](docs/v2/V2_RELEASE_NOTES.md); Windows packaging was not exercised in this environment.
+The checked Linux target is a PyInstaller one-folder bundle with separate desktop and projection-service executables. A source install can launch them with `atlas-desktop` and `atlas-v2-projection`. The self-contained Windows installer needs no developer tooling. See the [Windows research run guide](docs/v2/SESSION037_WINDOWS_RESEARCH_RUN_GUIDE.md) and [native build evidence](docs/v2/SESSION037_OFFLINE_VALIDATION_V1.json). Native Windows Server CI and actual owner Windows 11 qualification are separate scopes.
 
 ### Public-only connection check
 
@@ -127,11 +127,11 @@ atlas-desktop --host 127.0.0.1 --port PORT --token-file /path/to/private/atlas-i
 
 The Linux bundle includes `atlas-v2-projection` and `atlas-desktop` as separate processes. A missing projection service produces an explicit reconnecting/unavailable state. Desktop diagnostics show desktop/service version, IPC protocol version, release classification, and evidence freshness. The health method also reports process uptime and the current persisted source, lag, queue, model-worker, capability, recovery, capital, economics, and soak states. Metrics not supplied by a runtime are explicitly unavailable rather than inferred.
 
-`atlas-ops` remains the sole writer and should be started before its projection service. The package provides collector/scanner/coordinator APIs and the public qualification/soak utilities; it does not provide a general scheduled `atlas-ops` daemon command in this candidate. A deployment-specific ops host must drive those APIs and persist evidence before the desktop has live research rows to display. An empty ops database is useful for checking the observer and will correctly show no current scanner evidence. No polling, alert delivery, or continuous scanner status is implied by installing the desktop alone.
+`atlas-ops` remains the sole research writer and starts before its projection service. The installed product drives public collection, scanner/watch coordination, bounded maintenance and outcome maturation. The separate observer can also read an existing ops store; an empty store correctly displays unavailable scanner evidence. Use the installed product lifecycle to create and operate a continuous run.
 
 ## Configuration and evidence
 
-Public/shadow research uses public endpoints and does not need exchange private credentials. Desktop configuration consists of the local ops database path, optional public archive path, loopback host/port, and a private IPC token file. No `atlas-worker` configuration is shipped because there is no worker command in this candidate. Credential-bearing live configuration is isolated to `atlas-crypto-live` and remains disabled for this release.
+Public/shadow research uses public endpoints and does not need exchange private credentials. The installed product records immutable run configuration and source identity below the selected research data folder. Its default public Bybit profile requires no secret. The separate observer uses the local ops database path, optional public archive path, loopback host/port and a private IPC token file. No `atlas-worker` configuration is shipped because there is no worker command in this candidate. Credential-bearing live configuration is isolated to `atlas-crypto-live` and remains disabled for this release.
 
 `.env.example` contains names/placeholders only. Never commit `.env`, tokens, passwords, API keys, private account identifiers, or sensitive logs. Prefer OS-protected secret storage for any future authenticated testnet process; use least privilege and disable withdrawals.
 
