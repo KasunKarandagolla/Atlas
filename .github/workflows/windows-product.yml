@@ -42,6 +42,14 @@ jobs:
           python -m pip install --disable-pip-version-check --no-deps --only-binary=:all: --require-hashes -r requirements-lock.txt
           mkdir -p validation
           dpkg-query -W bubblewrap libegl1 libgl1 libopengl0 libxkbcommon0 > validation/test-host-packages.txt
+      - name: Enable namespace isolation on the disposable test host
+        run: |
+          # Ubuntu 24.04's host AppArmor restriction prevents bwrap from creating
+          # its private network namespace. This changes only the ephemeral CI
+          # host; ATLAS's --unshare-all sandbox and denial tests remain intact.
+          sysctl kernel.apparmor_restrict_unprivileged_userns > validation/test-host-namespace-policy.txt
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 >> validation/test-host-namespace-policy.txt
+          bwrap --unshare-all --die-with-parent --ro-bind / / -- /bin/true
       - name: Validate complete offline regression and static gates
         run: |
           mkdir -p validation
