@@ -1,0 +1,3473 @@
+{
+  "schema_version": 1,
+  "session": "S39",
+  "status": "TESTED",
+  "implementation_sha": "1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+  "package_checkpoint_sha": "1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+  "authority_sources": [
+    {
+      "name": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+      "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "location": "/home/kasun/Music/atlas/ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+      "read": true,
+      "authority": "FREEZE"
+    },
+    {
+      "name": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "location": "/home/kasun/Music/atlas/ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "read": true,
+      "authority": "FREEZE"
+    },
+    {
+      "name": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "location": "/home/kasun/Music/atlas/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "read": true,
+      "authority": "FREEZE"
+    },
+    {
+      "name": "ATLAS_FINAL_DEVELOPMENT_SESSION_CONTEXT.md",
+      "sha256": "c01e4a2cf4428f3b50718fd168096f7aaa14360804fb157767e8f21d40cc8b79",
+      "location": "/home/kasun/Music/atlas/ATLAS_FINAL_DEVELOPMENT_SESSION_CONTEXT.md",
+      "read": true,
+      "authority": "OWNER CONTEXT"
+    },
+    {
+      "name": "ATLAS_PROJECT_INSTRUCTIONS_CURRENT_2026-10-04.md",
+      "sha256": "7efda1f99fab7f4adf615ae3fe29ad06955a9be6bc34e3715370b1789b23a45a",
+      "location": "/home/kasun/Music/atlas/ATLAS_PROJECT_INSTRUCTIONS_CURRENT_2026-10-04.md",
+      "read": true,
+      "authority": "OWNER CONTEXT"
+    },
+    {
+      "name": "ATLAS_72_Hour_Consultation.pdf",
+      "sha256": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e",
+      "location": "/home/kasun/Music/atlas/ATLAS_72_Hour_Consultation.pdf",
+      "read": true,
+      "authority": "CONSULTATION ONLY"
+    },
+    {
+      "name": "ATLAS_CHATGPT_PROJECT_CURRENT_STATE_2026-10-04.md",
+      "sha256": "a3f5eb5e76dfcb4273cdc523727b1ca846b5ea0170badd96fd7cc8438e64a341",
+      "location": "/home/kasun/Downloads/ATLAS_CHATGPT_PROJECT_CURRENT_STATE_2026-10-04.md",
+      "read": true,
+      "authority": "OWNER CONTEXT"
+    },
+    {
+      "name": "ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md",
+      "sha256": "a082f02b50786cf3af0f32ce7f825f9c94c0ff7888a6f3a5c78a69b4c0d1c60d",
+      "location": "/home/kasun/Music/atlas-session-039/docs/v2/ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md",
+      "read": true,
+      "authority": "ACCEPTED AMENDMENT"
+    },
+    {
+      "name": "ATLAS_AGENT_ACTION_CRITIC_DEEPSEEK_V41_SHADOW_AMENDMENT_V1.md",
+      "sha256": "75a2273be0b9dd3cc3304684e008a0bbb07fd6db31c09a2f5caf3e6117dedd5e",
+      "location": "/home/kasun/Music/atlas-session-039/docs/v2/ATLAS_AGENT_ACTION_CRITIC_DEEPSEEK_V41_SHADOW_AMENDMENT_V1.md",
+      "read": true,
+      "authority": "ACCEPTED AMENDMENT"
+    }
+  ],
+  "context_refresh": "Main personally reread the root anchor after major implementations/context boundaries and all three freezes in full before final review; hashes match.",
+  "missing_sources": [
+    "Owner raw SQLite/report export for 80e0d758bf4c41f78e8dbb3f92796354",
+    "ATLAS_GROUND_LEVEL_IMPLEMENTATION_ARCHITECTURE.md",
+    "ATLAS_ASTRA_CONTEXT_OPTIMIZED_REVIEW.md",
+    "ATLAS_FINALIZED_LEVERAGED_RETAIL_PROPOSAL.md",
+    "ATLAS_V2_ARCHITECTURE_REVIEW.md",
+    "ATLAS_V2_IMPLEMENTATION_SPECIFICATION.md"
+  ],
+  "runtime_locks_unchanged": {
+    "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5",
+    "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+    "requirements-stream-test-lock.txt": "1b9bec8a6e1c19748a962a45f4f91984bb0bf26bdd3e08d4c20bb26d89b82ba7"
+  },
+  "comprehensive_offline": {
+    "artifact": "offline-regression.xml",
+    "sha256": "3643c3caea655a8113c26731b7f32cbe292379a4cac664a407a23dfee0650ffe",
+    "tests": 1702,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 7,
+    "seconds": 302.193,
+    "passed": 1695,
+    "skip_reasons": [
+      {
+        "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+        "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+      },
+      {
+        "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+        "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+      },
+      {
+        "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+        "reason": "opt-in public testnet check; no credentials, network not required"
+      },
+      {
+        "case": "tests.v2.test_s38_sustained_public_stream.test_native_full_commit_storage_paths",
+        "reason": "native Windows storage-path comparison"
+      },
+      {
+        "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+        "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+      },
+      {
+        "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+        "reason": "could not import 'openai': No module named 'openai'"
+      },
+      {
+        "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+        "reason": "could not import 'httpx2': No module named 'httpx2'"
+      }
+    ],
+    "v2": {
+      "tests": 1214,
+      "passed": 1210,
+      "skipped": 4
+    },
+    "non_v2": {
+      "tests": 488,
+      "passed": 485,
+      "skipped": 3
+    }
+  },
+  "native_changed_seam": {
+    "artifact": "windows-stream-regression.xml",
+    "sha256": "b4852b21c64f0e2f3643e284126a130caebbf44b094f1c9adc1275b20e55b7e4",
+    "tests": 70,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 374.292,
+    "passed": 70,
+    "skip_reasons": [],
+    "v2": {
+      "tests": 70,
+      "passed": 70,
+      "skipped": 0
+    },
+    "non_v2": {
+      "tests": 0,
+      "passed": 0,
+      "skipped": 0
+    }
+  },
+  "native_stream_host": {
+    "memory_bytes": 17174360064,
+    "source_sha": "1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+    "provider_calls": 0,
+    "cpu": {
+      "Name": "AMD EPYC 7763 64-Core Processor                ",
+      "NumberOfCores": 2,
+      "NumberOfLogicalProcessors": 4
+    }
+  },
+  "native_sustained_probe": {
+    "acquisition": {
+      "active_workers": 0,
+      "closed": false,
+      "completion_ready": false,
+      "consumed_count": 38,
+      "pending": false,
+      "started_count": 38,
+      "wait_timeout_count": 7
+    },
+    "checkpoint_samples": [
+      {
+        "busy": 0,
+        "copied_frames": 487,
+        "elapsed_s": 60.51599999999999,
+        "wal_frames": 487
+      },
+      {
+        "busy": 0,
+        "copied_frames": 805,
+        "elapsed_s": 121.87500000000003,
+        "wal_frames": 805
+      },
+      {
+        "busy": 0,
+        "copied_frames": 724,
+        "elapsed_s": 184.547,
+        "wal_frames": 724
+      }
+    ],
+    "elapsed_s": 240.407,
+    "frames": 38400,
+    "high_water_items": 77,
+    "history_rows_restored": 1200,
+    "max_producer_lateness_s": 0.18449999999995725,
+    "max_service_duration_ns": 453000000,
+    "max_service_gap_ns": 523356600,
+    "read_only_snapshot_failures": [],
+    "read_only_snapshot_finished": true,
+    "read_only_snapshot_started": true,
+    "rejected": 0,
+    "sqlite_runtime_version": "3.49.1",
+    "storage_path": "D:\\a\\_temp\\atlas-stream-regression\\test_actual_wall_mixed_stream_0",
+    "storage_samples": [
+      {
+        "book_frames": [
+          0,
+          0
+        ],
+        "book_levels": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "elapsed_s": 0,
+        "raw_archive_bytes": 0,
+        "resource": {
+          "cpu_seconds": 5.21875,
+          "disk_free_bytes": 156612993024,
+          "handles": 272,
+          "rss_bytes": 108322816,
+          "threads": 1
+        },
+        "sqlite_bytes": 4096,
+        "wal_autocheckpoint_pages": 1000,
+        "wal_bytes": 1977632
+      },
+      {
+        "book_frames": [
+          1806,
+          1805
+        ],
+        "book_levels": [
+          [
+            50,
+            50
+          ],
+          [
+            50,
+            50
+          ]
+        ],
+        "elapsed_s": 30.296999999999997,
+        "raw_archive_bytes": 2986382,
+        "resource": {
+          "cpu_seconds": 25.15625,
+          "disk_free_bytes": 156601122816,
+          "handles": 271,
+          "rss_bytes": 145235968,
+          "threads": 2
+        },
+        "sqlite_bytes": 6258688,
+        "wal_autocheckpoint_pages": 1000,
+        "wal_bytes": 4647392
+      },
+      {
+        "book_frames": [
+          1801,
+          1801
+        ],
+        "book_levels": [
+          [
+            50,
+            50
+          ],
+          [
+            50,
+            50
+          ]
+        ],
+        "elapsed_s": 60.51599999999999,
+        "raw_archive_bytes": 5999911,
+        "resource": {
+          "cpu_seconds": 45.09375,
+          "disk_free_bytes": 156592115712,
+          "handles": 271,
+          "rss_bytes": 149614592,
+          "threads": 2
+        },
+        "sqlite_bytes": 12058624,
+        "wal_autocheckpoint_pages": 1000,
+        "wal_bytes": 4795712
+      },
+      {
+        "book_frames": [
+          1813,
+          1813
+        ],
+        "book_levels": [
+          [
+            50,
+            50
+          ],
+          [
+            50,
+            50
+          ]
+        ],
+        "elapsed_s": 90.64099999999999,
+        "raw_archive_bytes": 9014583,
+        "resource": {
+          "cpu_seconds": 65.953125,
+          "disk_free_bytes": 156583522304,
+          "handles": 275,
+          "rss_bytes": 153739264,
+          "threads": 3
+        },
+        "sqlite_bytes": 17571840,
+        "wal_autocheckpoint_pages": 1000,
+        "wal_bytes": 4890472
+      },
+      {
+        "book_frames": [
+          1813,
+          1813
+        ],
+        "book_levels": [
+          [
+            50,
+            50
+          ],
+          [
+            50,
+            50
+          ]
+        ],
+        "elapsed_s": 121.87500000000003,
+        "raw_archive_bytes": 12128742,
+        "resource": {
+          "cpu_seconds": 88.34375,
+          "disk_free_bytes": 156544241664,
+          "handles": 270,
+          "rss_bytes": 153288704,
+          "threads": 2
+        },
+        "sqlite_bytes": 23588864,
+        "wal_autocheckpoint_pages": 1000,
+        "wal_bytes": 34954112
+      },
+      {
+        "book_frames": [
+          1801,
+          1801
+        ],
+        "book_levels": [
+          [
+            50,
+            50
+          ],
+          [
+            50,
+            50
+          ]
+        ],
+        "elapsed_s": 152.06300000000002,
+        "raw_archive_bytes": 15143161,
+        "resource": {
+          "cpu_seconds": 109.953125,
+          "disk_free_bytes": 156535521280,
+          "handles": 268,
+          "rss_bytes": 152518656,
+          "threads": 2
+        },
+        "sqlite_bytes": 29294592,
+        "wal_autocheckpoint_pages": 1000,
+        "wal_bytes": 34954112
+      },
+      {
+        "book_frames": [
+          1803,
+          1804
+        ],
+        "book_levels": [
+          [
+            50,
+            50
+          ],
+          [
+            50,
+            50
+          ]
+        ],
+        "elapsed_s": 184.547,
+        "raw_archive_bytes": 18335365,
+        "resource": {
+          "cpu_seconds": 134.390625,
+          "disk_free_bytes": 156526161920,
+          "handles": 266,
+          "rss_bytes": 154451968,
+          "threads": 2
+        },
+        "sqlite_bytes": 35463168,
+        "wal_autocheckpoint_pages": 1000,
+        "wal_bytes": 34954112
+      },
+      {
+        "book_frames": [
+          1813,
+          1813
+        ],
+        "book_levels": [
+          [
+            50,
+            50
+          ],
+          [
+            50,
+            50
+          ]
+        ],
+        "elapsed_s": 210.09400000000002,
+        "raw_archive_bytes": 20895072,
+        "resource": {
+          "cpu_seconds": 152.71875,
+          "disk_free_bytes": 156518764544,
+          "handles": 266,
+          "rss_bytes": 149270528,
+          "threads": 2
+        },
+        "sqlite_bytes": 40300544,
+        "wal_autocheckpoint_pages": 1000,
+        "wal_bytes": 34954112
+      },
+      {
+        "book_frames": [
+          1793,
+          1793
+        ],
+        "book_levels": [
+          [
+            50,
+            50
+          ],
+          [
+            50,
+            50
+          ]
+        ],
+        "elapsed_s": 240.407,
+        "raw_archive_bytes": 23910247,
+        "resource": {
+          "cpu_seconds": 174.59375,
+          "disk_free_bytes": 156509933568,
+          "handles": 264,
+          "rss_bytes": 139210752,
+          "threads": 1
+        },
+        "sqlite_bytes": 46116864,
+        "wal_autocheckpoint_pages": 1000,
+        "wal_bytes": 34954112
+      }
+    ],
+    "native_service_stage_timings": {
+      "archive_extent": [
+        {
+          "duration_ns": 312000000,
+          "finished_at_ns": 1791192362915084300,
+          "queue_items": 54
+        },
+        {
+          "duration_ns": 31000000,
+          "finished_at_ns": 1791192521144272500,
+          "queue_items": 13
+        },
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192354060193300,
+          "queue_items": 12
+        }
+      ],
+      "gc_generation_0": [
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192359389522500,
+          "queue_items": null
+        },
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192371310839700,
+          "queue_items": null
+        },
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192377716537000,
+          "queue_items": null
+        }
+      ],
+      "gc_generation_1": [
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192364809748200,
+          "queue_items": null
+        },
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192373482234700,
+          "queue_items": null
+        },
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192383295048500,
+          "queue_items": null
+        }
+      ],
+      "gc_generation_2": [
+        {
+          "duration_ns": 187000000,
+          "finished_at_ns": 1791192589127836500,
+          "queue_items": null
+        },
+        {
+          "duration_ns": 172000000,
+          "finished_at_ns": 1791192523330103400,
+          "queue_items": null
+        },
+        {
+          "duration_ns": 172000000,
+          "finished_at_ns": 1791192560315057200,
+          "queue_items": null
+        }
+      ],
+      "raw_fsync": [
+        {
+          "duration_ns": 312000000,
+          "finished_at_ns": 1791192362915084300,
+          "queue_items": 54
+        },
+        {
+          "duration_ns": 31000000,
+          "finished_at_ns": 1791192521144272500,
+          "queue_items": 13
+        },
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192358607199000,
+          "queue_items": 4
+        }
+      ],
+      "sqlite_outer_commit": [
+        {
+          "duration_ns": 94000000,
+          "finished_at_ns": 1791192454378556900,
+          "queue_items": 17
+        },
+        {
+          "duration_ns": 79000000,
+          "finished_at_ns": 1791192523485298700,
+          "queue_items": 66
+        },
+        {
+          "duration_ns": 79000000,
+          "finished_at_ns": 1791192558109448000,
+          "queue_items": 30
+        }
+      ],
+      "sqlite_passive_checkpoint": [
+        {
+          "duration_ns": 47000000,
+          "finished_at_ns": 1791192475457461400,
+          "queue_items": 32
+        },
+        {
+          "duration_ns": 47000000,
+          "finished_at_ns": 1791192538133426500,
+          "queue_items": 35
+        },
+        {
+          "duration_ns": 31000000,
+          "finished_at_ns": 1791192414096673900,
+          "queue_items": 39
+        }
+      ],
+      "sqlite_savepoint_exit": [
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192363012916900,
+          "queue_items": 69
+        },
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192373888811800,
+          "queue_items": 4
+        },
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192414170213700,
+          "queue_items": 16
+        }
+      ],
+      "transport_archive": [
+        {
+          "duration_ns": 312000000,
+          "finished_at_ns": 1791192362915084300,
+          "queue_items": 54
+        },
+        {
+          "duration_ns": 31000000,
+          "finished_at_ns": 1791192510843131800,
+          "queue_items": 29
+        },
+        {
+          "duration_ns": 16000000,
+          "finished_at_ns": 1791192354595022500,
+          "queue_items": 1
+        }
+      ],
+      "typed_batch_and_reports": [
+        {
+          "duration_ns": 297000000,
+          "finished_at_ns": 1791192589240257300,
+          "queue_items": 54
+        },
+        {
+          "duration_ns": 296000000,
+          "finished_at_ns": 1791192523414655600,
+          "queue_items": 56
+        },
+        {
+          "duration_ns": 296000000,
+          "finished_at_ns": 1791192542032260600,
+          "queue_items": 52
+        }
+      ]
+    }
+  },
+  "accelerated_storage": [
+    {
+      "frames": 20480,
+      "frames_rejected": 0,
+      "queue_high_water_items": 128,
+      "samples": [
+        {
+          "archive_segments": 1,
+          "artifact_types": {
+            "L2FrameArchiveCheckpointV3": {
+              "count": 160,
+              "max_metadata_bytes": 996,
+              "metadata_bytes": 156436
+            },
+            "OpsRecoveryEpochV1": {
+              "count": 1,
+              "max_metadata_bytes": 151,
+              "metadata_bytes": 151
+            },
+            "OpsSupervisorCycleReceiptV1": {
+              "count": 1,
+              "max_metadata_bytes": 323,
+              "metadata_bytes": 323
+            },
+            "OutcomeMaturityCycleReportV1": {
+              "count": 1,
+              "max_metadata_bytes": 1365,
+              "metadata_bytes": 1365
+            },
+            "ProductContractV2": {
+              "count": 2,
+              "max_metadata_bytes": 772,
+              "metadata_bytes": 1544
+            },
+            "PublicArchiveExtentV1": {
+              "count": 280,
+              "max_metadata_bytes": 477,
+              "metadata_bytes": 131843
+            },
+            "PublicBookLineageCheckpointV1": {
+              "count": 42,
+              "max_metadata_bytes": 1594,
+              "metadata_bytes": 65246
+            },
+            "PublicStreamContinuityCheckpointV2": {
+              "count": 88,
+              "max_metadata_bytes": 1503,
+              "metadata_bytes": 129694
+            },
+            "PublicStreamContinuityReportV1": {
+              "count": 84,
+              "max_metadata_bytes": 3395,
+              "metadata_bytes": 274188
+            },
+            "PublicStreamIndexFeedV1": {
+              "count": 2,
+              "max_metadata_bytes": 427,
+              "metadata_bytes": 854
+            },
+            "PublicStreamSourceHealthV1": {
+              "count": 84,
+              "max_metadata_bytes": 1740,
+              "metadata_bytes": 145510
+            },
+            "PublicStreamTransportBatchV2": {
+              "count": 40,
+              "max_metadata_bytes": 378,
+              "metadata_bytes": 15120
+            },
+            "SubscriptionPlanV2": {
+              "count": 1,
+              "max_metadata_bytes": 819,
+              "metadata_bytes": 819
+            }
+          },
+          "book_frames": [
+            1825,
+            1825
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "book_seen": [
+            1919,
+            1919
+          ],
+          "compact_locator_counts": {
+            "1": 5120,
+            "2": 1280,
+            "3": 160
+          },
+          "decoded_cache_arrow_bytes": 215222,
+          "decoded_cache_chunks": 8,
+          "frames": 5120,
+          "process_resource": {
+            "cpu_seconds": 210.3125,
+            "disk_free_bytes": 156465995776,
+            "handles": 260,
+            "rss_bytes": 168226816,
+            "threads": 1
+          },
+          "raw_archive_bytes": 1614994,
+          "replay_cache_items": [
+            1920,
+            640,
+            1920,
+            640
+          ],
+          "sqlite_bytes": 3854336,
+          "trade_cache_items": [
+            0,
+            640,
+            0,
+            640
+          ],
+          "virtual_elapsed_ns": 32000000000,
+          "wal_bytes": 5022312,
+          "wal_checkpoint": [
+            0,
+            257,
+            257
+          ]
+        },
+        {
+          "archive_segments": 1,
+          "artifact_types": {
+            "L2FrameArchiveCheckpointV3": {
+              "count": 320,
+              "max_metadata_bytes": 996,
+              "metadata_bytes": 312916
+            },
+            "OpsRecoveryEpochV1": {
+              "count": 1,
+              "max_metadata_bytes": 151,
+              "metadata_bytes": 151
+            },
+            "OpsSupervisorCycleReceiptV1": {
+              "count": 1,
+              "max_metadata_bytes": 323,
+              "metadata_bytes": 323
+            },
+            "OutcomeMaturityCycleReportV1": {
+              "count": 1,
+              "max_metadata_bytes": 1365,
+              "metadata_bytes": 1365
+            },
+            "ProductContractV2": {
+              "count": 2,
+              "max_metadata_bytes": 772,
+              "metadata_bytes": 1544
+            },
+            "PublicArchiveExtentV1": {
+              "count": 560,
+              "max_metadata_bytes": 477,
+              "metadata_bytes": 263883
+            },
+            "PublicBookLineageCheckpointV1": {
+              "count": 82,
+              "max_metadata_bytes": 1594,
+              "metadata_bytes": 129006
+            },
+            "PublicStreamContinuityCheckpointV2": {
+              "count": 168,
+              "max_metadata_bytes": 1504,
+              "metadata_bytes": 248672
+            },
+            "PublicStreamContinuityReportV1": {
+              "count": 164,
+              "max_metadata_bytes": 3395,
+              "metadata_bytes": 542006
+            },
+            "PublicStreamIndexFeedV1": {
+              "count": 2,
+              "max_metadata_bytes": 427,
+              "metadata_bytes": 854
+            },
+            "PublicStreamSourceHealthV1": {
+              "count": 164,
+              "max_metadata_bytes": 1740,
+              "metadata_bytes": 284670
+            },
+            "PublicStreamTransportBatchV2": {
+              "count": 80,
+              "max_metadata_bytes": 378,
+              "metadata_bytes": 30240
+            },
+            "SubscriptionPlanV2": {
+              "count": 1,
+              "max_metadata_bytes": 819,
+              "metadata_bytes": 819
+            }
+          },
+          "book_frames": [
+            1825,
+            1825
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "book_seen": [
+            3839,
+            3839
+          ],
+          "compact_locator_counts": {
+            "1": 10240,
+            "2": 2560,
+            "3": 320
+          },
+          "decoded_cache_arrow_bytes": 215452,
+          "decoded_cache_chunks": 8,
+          "frames": 10240,
+          "process_resource": {
+            "cpu_seconds": 220.71875,
+            "disk_free_bytes": 156460699648,
+            "handles": 260,
+            "rss_bytes": 169238528,
+            "threads": 1
+          },
+          "raw_archive_bytes": 3228735,
+          "replay_cache_items": [
+            2048,
+            1280,
+            2048,
+            1280
+          ],
+          "sqlite_bytes": 7143424,
+          "trade_cache_items": [
+            0,
+            1280,
+            0,
+            1280
+          ],
+          "virtual_elapsed_ns": 64000000000,
+          "wal_bytes": 5393112,
+          "wal_checkpoint": [
+            0,
+            325,
+            325
+          ]
+        },
+        {
+          "archive_segments": 1,
+          "artifact_types": {
+            "L2FrameArchiveCheckpointV3": {
+              "count": 480,
+              "max_metadata_bytes": 996,
+              "metadata_bytes": 469396
+            },
+            "OpsRecoveryEpochV1": {
+              "count": 1,
+              "max_metadata_bytes": 151,
+              "metadata_bytes": 151
+            },
+            "OpsSupervisorCycleReceiptV1": {
+              "count": 1,
+              "max_metadata_bytes": 323,
+              "metadata_bytes": 323
+            },
+            "OutcomeMaturityCycleReportV1": {
+              "count": 1,
+              "max_metadata_bytes": 1365,
+              "metadata_bytes": 1365
+            },
+            "ProductContractV2": {
+              "count": 2,
+              "max_metadata_bytes": 772,
+              "metadata_bytes": 1544
+            },
+            "PublicArchiveExtentV1": {
+              "count": 840,
+              "max_metadata_bytes": 477,
+              "metadata_bytes": 395923
+            },
+            "PublicBookLineageCheckpointV1": {
+              "count": 122,
+              "max_metadata_bytes": 1594,
+              "metadata_bytes": 192766
+            },
+            "PublicStreamContinuityCheckpointV2": {
+              "count": 248,
+              "max_metadata_bytes": 1504,
+              "metadata_bytes": 367672
+            },
+            "PublicStreamContinuityReportV1": {
+              "count": 244,
+              "max_metadata_bytes": 3395,
+              "metadata_bytes": 809846
+            },
+            "PublicStreamIndexFeedV1": {
+              "count": 2,
+              "max_metadata_bytes": 427,
+              "metadata_bytes": 854
+            },
+            "PublicStreamSourceHealthV1": {
+              "count": 244,
+              "max_metadata_bytes": 1742,
+              "metadata_bytes": 423950
+            },
+            "PublicStreamTransportBatchV2": {
+              "count": 120,
+              "max_metadata_bytes": 378,
+              "metadata_bytes": 45360
+            },
+            "SubscriptionPlanV2": {
+              "count": 1,
+              "max_metadata_bytes": 819,
+              "metadata_bytes": 819
+            }
+          },
+          "book_frames": [
+            1825,
+            1825
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "book_seen": [
+            4096,
+            4096
+          ],
+          "compact_locator_counts": {
+            "1": 15360,
+            "2": 3840,
+            "3": 480
+          },
+          "decoded_cache_arrow_bytes": 215462,
+          "decoded_cache_chunks": 8,
+          "frames": 15360,
+          "process_resource": {
+            "cpu_seconds": 231.25,
+            "disk_free_bytes": 156455727104,
+            "handles": 260,
+            "rss_bytes": 169766912,
+            "threads": 1
+          },
+          "raw_archive_bytes": 4842160,
+          "replay_cache_items": [
+            2048,
+            1920,
+            2048,
+            1920
+          ],
+          "sqlite_bytes": 10436608,
+          "trade_cache_items": [
+            0,
+            1920,
+            0,
+            1920
+          ],
+          "virtual_elapsed_ns": 96000000000,
+          "wal_bytes": 5459032,
+          "wal_checkpoint": [
+            0,
+            1066,
+            1066
+          ]
+        },
+        {
+          "archive_segments": 1,
+          "artifact_types": {
+            "L2FrameArchiveCheckpointV3": {
+              "count": 640,
+              "max_metadata_bytes": 996,
+              "metadata_bytes": 625876
+            },
+            "OpsRecoveryEpochV1": {
+              "count": 1,
+              "max_metadata_bytes": 151,
+              "metadata_bytes": 151
+            },
+            "OpsSupervisorCycleReceiptV1": {
+              "count": 1,
+              "max_metadata_bytes": 323,
+              "metadata_bytes": 323
+            },
+            "OutcomeMaturityCycleReportV1": {
+              "count": 1,
+              "max_metadata_bytes": 1365,
+              "metadata_bytes": 1365
+            },
+            "ProductContractV2": {
+              "count": 2,
+              "max_metadata_bytes": 772,
+              "metadata_bytes": 1544
+            },
+            "PublicArchiveExtentV1": {
+              "count": 1120,
+              "max_metadata_bytes": 477,
+              "metadata_bytes": 527963
+            },
+            "PublicBookLineageCheckpointV1": {
+              "count": 162,
+              "max_metadata_bytes": 1594,
+              "metadata_bytes": 256526
+            },
+            "PublicStreamContinuityCheckpointV2": {
+              "count": 328,
+              "max_metadata_bytes": 1504,
+              "metadata_bytes": 486672
+            },
+            "PublicStreamContinuityReportV1": {
+              "count": 324,
+              "max_metadata_bytes": 3395,
+              "metadata_bytes": 1077686
+            },
+            "PublicStreamIndexFeedV1": {
+              "count": 2,
+              "max_metadata_bytes": 427,
+              "metadata_bytes": 854
+            },
+            "PublicStreamSourceHealthV1": {
+              "count": 324,
+              "max_metadata_bytes": 1742,
+              "metadata_bytes": 563270
+            },
+            "PublicStreamTransportBatchV2": {
+              "count": 160,
+              "max_metadata_bytes": 378,
+              "metadata_bytes": 60480
+            },
+            "SubscriptionPlanV2": {
+              "count": 1,
+              "max_metadata_bytes": 819,
+              "metadata_bytes": 819
+            }
+          },
+          "book_frames": [
+            1825,
+            1825
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "book_seen": [
+            4096,
+            4096
+          ],
+          "compact_locator_counts": {
+            "1": 20480,
+            "2": 5120,
+            "3": 640
+          },
+          "decoded_cache_arrow_bytes": 215462,
+          "decoded_cache_chunks": 8,
+          "frames": 20480,
+          "process_resource": {
+            "cpu_seconds": 242.375,
+            "disk_free_bytes": 156450885632,
+            "handles": 260,
+            "rss_bytes": 169857024,
+            "threads": 1
+          },
+          "raw_archive_bytes": 6454907,
+          "replay_cache_items": [
+            2048,
+            2048,
+            2048,
+            2048
+          ],
+          "sqlite_bytes": 13668352,
+          "trade_cache_items": [
+            0,
+            2048,
+            0,
+            2048
+          ],
+          "virtual_elapsed_ns": 128000000000,
+          "wal_bytes": 5459032,
+          "wal_checkpoint": [
+            0,
+            363,
+            363
+          ]
+        }
+      ],
+      "scope": "ACCELERATED_OFFLINE_STORAGE_SEMANTICS",
+      "validation_failures": {},
+      "virtual_elapsed_ns": 128000000000
+    },
+    {
+      "frames": 24576,
+      "frames_rejected": 0,
+      "queue_high_water_items": 128,
+      "samples": [
+        {
+          "archive_segments": 1,
+          "artifact_types": {
+            "L2FrameArchiveCheckpointV3": {
+              "count": 192,
+              "max_metadata_bytes": 996,
+              "metadata_bytes": 187732
+            },
+            "OpsRecoveryEpochV1": {
+              "count": 1,
+              "max_metadata_bytes": 151,
+              "metadata_bytes": 151
+            },
+            "OpsSupervisorCycleReceiptV1": {
+              "count": 1,
+              "max_metadata_bytes": 323,
+              "metadata_bytes": 323
+            },
+            "OutcomeMaturityCycleReportV1": {
+              "count": 1,
+              "max_metadata_bytes": 1365,
+              "metadata_bytes": 1365
+            },
+            "ProductContractV2": {
+              "count": 2,
+              "max_metadata_bytes": 772,
+              "metadata_bytes": 1544
+            },
+            "PublicArchiveExtentV1": {
+              "count": 336,
+              "max_metadata_bytes": 477,
+              "metadata_bytes": 158246
+            },
+            "PublicBookLineageCheckpointV1": {
+              "count": 98,
+              "max_metadata_bytes": 1393,
+              "metadata_bytes": 135720
+            },
+            "PublicStreamContinuityCheckpointV2": {
+              "count": 200,
+              "max_metadata_bytes": 1503,
+              "metadata_bytes": 296232
+            },
+            "PublicStreamContinuityReportV1": {
+              "count": 196,
+              "max_metadata_bytes": 3395,
+              "metadata_bytes": 652270
+            },
+            "PublicStreamIndexFeedV1": {
+              "count": 2,
+              "max_metadata_bytes": 427,
+              "metadata_bytes": 854
+            },
+            "PublicStreamSourceHealthV1": {
+              "count": 196,
+              "max_metadata_bytes": 1741,
+              "metadata_bytes": 340490
+            },
+            "PublicStreamTransportBatchV2": {
+              "count": 48,
+              "max_metadata_bytes": 378,
+              "metadata_bytes": 18144
+            },
+            "SubscriptionPlanV2": {
+              "count": 1,
+              "max_metadata_bytes": 819,
+              "metadata_bytes": 819
+            }
+          },
+          "book_frames": [
+            481,
+            481
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "book_seen": [
+            2303,
+            2303
+          ],
+          "compact_locator_counts": {
+            "1": 6144,
+            "2": 1536,
+            "3": 192
+          },
+          "decoded_cache_arrow_bytes": 215222,
+          "decoded_cache_chunks": 8,
+          "frames": 6144,
+          "process_resource": {
+            "cpu_seconds": 256.71875,
+            "disk_free_bytes": 156442816512,
+            "handles": 266,
+            "rss_bytes": 185724928,
+            "threads": 1
+          },
+          "raw_archive_bytes": 1898679,
+          "replay_cache_items": [
+            2048,
+            768,
+            2048,
+            768
+          ],
+          "sqlite_bytes": 5836800,
+          "trade_cache_items": [
+            0,
+            768,
+            0,
+            768
+          ],
+          "virtual_elapsed_ns": 153600000000,
+          "wal_bytes": 5302472,
+          "wal_checkpoint": [
+            0,
+            308,
+            308
+          ]
+        },
+        {
+          "archive_segments": 1,
+          "artifact_types": {
+            "L2FrameArchiveCheckpointV3": {
+              "count": 384,
+              "max_metadata_bytes": 996,
+              "metadata_bytes": 375508
+            },
+            "OpsRecoveryEpochV1": {
+              "count": 1,
+              "max_metadata_bytes": 151,
+              "metadata_bytes": 151
+            },
+            "OpsSupervisorCycleReceiptV1": {
+              "count": 1,
+              "max_metadata_bytes": 323,
+              "metadata_bytes": 323
+            },
+            "OutcomeMaturityCycleReportV1": {
+              "count": 1,
+              "max_metadata_bytes": 1365,
+              "metadata_bytes": 1365
+            },
+            "ProductContractV2": {
+              "count": 2,
+              "max_metadata_bytes": 772,
+              "metadata_bytes": 1544
+            },
+            "PublicArchiveExtentV1": {
+              "count": 672,
+              "max_metadata_bytes": 477,
+              "metadata_bytes": 316694
+            },
+            "PublicBookLineageCheckpointV1": {
+              "count": 194,
+              "max_metadata_bytes": 1393,
+              "metadata_bytes": 269448
+            },
+            "PublicStreamContinuityCheckpointV2": {
+              "count": 392,
+              "max_metadata_bytes": 1504,
+              "metadata_bytes": 581804
+            },
+            "PublicStreamContinuityReportV1": {
+              "count": 388,
+              "max_metadata_bytes": 3395,
+              "metadata_bytes": 1295058
+            },
+            "PublicStreamIndexFeedV1": {
+              "count": 2,
+              "max_metadata_bytes": 427,
+              "metadata_bytes": 854
+            },
+            "PublicStreamSourceHealthV1": {
+              "count": 388,
+              "max_metadata_bytes": 1742,
+              "metadata_bytes": 674734
+            },
+            "PublicStreamTransportBatchV2": {
+              "count": 96,
+              "max_metadata_bytes": 378,
+              "metadata_bytes": 36288
+            },
+            "SubscriptionPlanV2": {
+              "count": 1,
+              "max_metadata_bytes": 819,
+              "metadata_bytes": 819
+            }
+          },
+          "book_frames": [
+            481,
+            481
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "book_seen": [
+            4096,
+            4096
+          ],
+          "compact_locator_counts": {
+            "1": 12288,
+            "2": 3072,
+            "3": 384
+          },
+          "decoded_cache_arrow_bytes": 215462,
+          "decoded_cache_chunks": 8,
+          "frames": 12288,
+          "process_resource": {
+            "cpu_seconds": 269.421875,
+            "disk_free_bytes": 156435533824,
+            "handles": 266,
+            "rss_bytes": 186327040,
+            "threads": 1
+          },
+          "raw_archive_bytes": 3796849,
+          "replay_cache_items": [
+            2048,
+            1536,
+            2048,
+            1536
+          ],
+          "sqlite_bytes": 11091968,
+          "trade_cache_items": [
+            0,
+            1536,
+            0,
+            1536
+          ],
+          "virtual_elapsed_ns": 307200000000,
+          "wal_bytes": 5397232,
+          "wal_checkpoint": [
+            0,
+            793,
+            793
+          ]
+        },
+        {
+          "archive_segments": 1,
+          "artifact_types": {
+            "L2FrameArchiveCheckpointV3": {
+              "count": 576,
+              "max_metadata_bytes": 996,
+              "metadata_bytes": 563284
+            },
+            "OpsRecoveryEpochV1": {
+              "count": 1,
+              "max_metadata_bytes": 151,
+              "metadata_bytes": 151
+            },
+            "OpsSupervisorCycleReceiptV1": {
+              "count": 1,
+              "max_metadata_bytes": 323,
+              "metadata_bytes": 323
+            },
+            "OutcomeMaturityCycleReportV1": {
+              "count": 1,
+              "max_metadata_bytes": 1365,
+              "metadata_bytes": 1365
+            },
+            "ProductContractV2": {
+              "count": 2,
+              "max_metadata_bytes": 772,
+              "metadata_bytes": 1544
+            },
+            "PublicArchiveExtentV1": {
+              "count": 1008,
+              "max_metadata_bytes": 477,
+              "metadata_bytes": 475142
+            },
+            "PublicBookLineageCheckpointV1": {
+              "count": 290,
+              "max_metadata_bytes": 1393,
+              "metadata_bytes": 403176
+            },
+            "PublicStreamContinuityCheckpointV2": {
+              "count": 584,
+              "max_metadata_bytes": 1504,
+              "metadata_bytes": 867404
+            },
+            "PublicStreamContinuityReportV1": {
+              "count": 580,
+              "max_metadata_bytes": 3395,
+              "metadata_bytes": 1937874
+            },
+            "PublicStreamIndexFeedV1": {
+              "count": 2,
+              "max_metadata_bytes": 427,
+              "metadata_bytes": 854
+            },
+            "PublicStreamSourceHealthV1": {
+              "count": 580,
+              "max_metadata_bytes": 1743,
+              "metadata_bytes": 1009282
+            },
+            "PublicStreamTransportBatchV2": {
+              "count": 144,
+              "max_metadata_bytes": 378,
+              "metadata_bytes": 54432
+            },
+            "SubscriptionPlanV2": {
+              "count": 1,
+              "max_metadata_bytes": 819,
+              "metadata_bytes": 819
+            }
+          },
+          "book_frames": [
+            481,
+            481
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "book_seen": [
+            4096,
+            4096
+          ],
+          "compact_locator_counts": {
+            "1": 18432,
+            "2": 4608,
+            "3": 576
+          },
+          "decoded_cache_arrow_bytes": 215462,
+          "decoded_cache_chunks": 8,
+          "frames": 18432,
+          "process_resource": {
+            "cpu_seconds": 282.671875,
+            "disk_free_bytes": 156428320768,
+            "handles": 266,
+            "rss_bytes": 185638912,
+            "threads": 1
+          },
+          "raw_archive_bytes": 5694234,
+          "replay_cache_items": [
+            2048,
+            2048,
+            2048,
+            2048
+          ],
+          "sqlite_bytes": 16404480,
+          "trade_cache_items": [
+            0,
+            2048,
+            0,
+            2048
+          ],
+          "virtual_elapsed_ns": 460800000000,
+          "wal_bytes": 5397232,
+          "wal_checkpoint": [
+            0,
+            1217,
+            1217
+          ]
+        },
+        {
+          "archive_segments": 1,
+          "artifact_types": {
+            "L2FrameArchiveCheckpointV3": {
+              "count": 768,
+              "max_metadata_bytes": 996,
+              "metadata_bytes": 751060
+            },
+            "OpsRecoveryEpochV1": {
+              "count": 1,
+              "max_metadata_bytes": 151,
+              "metadata_bytes": 151
+            },
+            "OpsSupervisorCycleReceiptV1": {
+              "count": 1,
+              "max_metadata_bytes": 323,
+              "metadata_bytes": 323
+            },
+            "OutcomeMaturityCycleReportV1": {
+              "count": 1,
+              "max_metadata_bytes": 1365,
+              "metadata_bytes": 1365
+            },
+            "ProductContractV2": {
+              "count": 2,
+              "max_metadata_bytes": 772,
+              "metadata_bytes": 1544
+            },
+            "PublicArchiveExtentV1": {
+              "count": 1344,
+              "max_metadata_bytes": 477,
+              "metadata_bytes": 633590
+            },
+            "PublicBookLineageCheckpointV1": {
+              "count": 386,
+              "max_metadata_bytes": 1393,
+              "metadata_bytes": 536904
+            },
+            "PublicStreamContinuityCheckpointV2": {
+              "count": 776,
+              "max_metadata_bytes": 1504,
+              "metadata_bytes": 1153004
+            },
+            "PublicStreamContinuityReportV1": {
+              "count": 772,
+              "max_metadata_bytes": 3395,
+              "metadata_bytes": 2580690
+            },
+            "PublicStreamIndexFeedV1": {
+              "count": 2,
+              "max_metadata_bytes": 427,
+              "metadata_bytes": 854
+            },
+            "PublicStreamSourceHealthV1": {
+              "count": 772,
+              "max_metadata_bytes": 1743,
+              "metadata_bytes": 1343842
+            },
+            "PublicStreamTransportBatchV2": {
+              "count": 192,
+              "max_metadata_bytes": 378,
+              "metadata_bytes": 72576
+            },
+            "SubscriptionPlanV2": {
+              "count": 1,
+              "max_metadata_bytes": 819,
+              "metadata_bytes": 819
+            }
+          },
+          "book_frames": [
+            481,
+            481
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "book_seen": [
+            4096,
+            4096
+          ],
+          "compact_locator_counts": {
+            "1": 24576,
+            "2": 6144,
+            "3": 768
+          },
+          "decoded_cache_arrow_bytes": 215462,
+          "decoded_cache_chunks": 8,
+          "frames": 24576,
+          "process_resource": {
+            "cpu_seconds": 296.015625,
+            "disk_free_bytes": 156420997120,
+            "handles": 266,
+            "rss_bytes": 184700928,
+            "threads": 1
+          },
+          "raw_archive_bytes": 7591796,
+          "replay_cache_items": [
+            2048,
+            2048,
+            2048,
+            2048
+          ],
+          "sqlite_bytes": 21700608,
+          "trade_cache_items": [
+            0,
+            2048,
+            0,
+            2048
+          ],
+          "virtual_elapsed_ns": 614400000000,
+          "wal_bytes": 5520832,
+          "wal_checkpoint": [
+            0,
+            1332,
+            1332
+          ]
+        }
+      ],
+      "scope": "ACCELERATED_OFFLINE_STORAGE_SEMANTICS",
+      "validation_failures": {},
+      "virtual_elapsed_ns": 614400000000
+    }
+  ],
+  "capacity_projection_48h": {
+    "sqlite_bytes": 33156074819,
+    "raw_archive_bytes": 17188079042,
+    "combined_bytes": 50344153861,
+    "status": "TEST GATE",
+    "basis": "Last native steady sampling interval; conditional synthetic 160 fps, 50 levels, one bid/ask delta and one trade record per frame",
+    "exclusions": [
+      "initial database",
+      "WAL",
+      "other history/outcomes/reports",
+      "backups",
+      "existing free-space reserve",
+      "real source workload variation"
+    ],
+    "owner_reported_free_bytes": 23152967680,
+    "owner_reported_space_suffices_for_this_projection": false
+  },
+  "windows_package": {
+    "actual_windows11_hardware": "UNVERIFIED",
+    "authenticode_signature": "UNVERIFIED",
+    "capital_enabled": false,
+    "installer": "ATLAS-2.0.39.0-1afe8de40190-win11-x64-setup.exe",
+    "installer_sha256": "c1456cca20808636e30eb52022a4378fe32095dbca0d092d5ef9cd57acaa4fc7",
+    "installer_version": "2.0.39.0",
+    "live_public_runtime": "TEST GATE",
+    "native_offline_smoke": "TESTED",
+    "payload_tree_sha256": "4f36312cd19f789e978cc459c3375c8e40401b5b00ec587a0d2a92e912a61bd1",
+    "runtime_lock_sha256": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5",
+    "schema_version": 1,
+    "signed_release": false,
+    "source_sha": "1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+    "version": "2.0.0.dev25",
+    "status": "TESTED",
+    "workflow_run": 37289134391,
+    "workflow_url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37289134391",
+    "artifact_name": "atlas-windows-1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+    "artifact_id": 11336218499,
+    "artifact_sha256": "sha256:91020df36d6f3e16b1305ca7880da389a80296f73900de8f4b066e4ab8c8f52c",
+    "payload_files": 1115,
+    "payload_identity_recomputed": true,
+    "installer_hash_independently_verified": true,
+    "pe_dependency_closure": {
+      "check": "NATIVE_DLL_DEPENDENCY_CLOSURE",
+      "pe_files": 278,
+      "status": "TESTED",
+      "unbundled_compiler_runtimes": [],
+      "windows_system_apis_permitted": true
+    },
+    "installer_lifecycle": {
+      "status": "TESTED",
+      "install": "TESTED",
+      "same_version_reinstall": "TESTED",
+      "uninstall": "TESTED",
+      "obsolete_dependency_removed": true,
+      "external_evidence_preserved": true,
+      "cross_version_upgrade": "UNVERIFIED"
+    }
+  },
+  "local_focused_intermediate": [
+    {
+      "artifact": "s39-golden.xml",
+      "sha256": "e74ecaabdade82113ca6cfbfd548ac4a9dbdf8bf48f4313d716c1a4eca57f93b",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 11.017,
+      "passed": 3,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 3,
+        "passed": 3,
+        "skipped": 0
+      },
+      "scope": "Local focused/intermediate; exact final full source qualification is CI above"
+    },
+    {
+      "artifact": "s39-final-chronology-restart.xml",
+      "sha256": "09982707b745ee1996fd35f7758a90927dc5a3b029cf19b9f98798eb2e308c2c",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 20.225,
+      "passed": 3,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 3,
+        "passed": 3,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      },
+      "scope": "Local focused/intermediate; exact final full source qualification is CI above"
+    },
+    {
+      "artifact": "s39-recovery-capacity-corrected.xml",
+      "sha256": "27cc41d794afb04bbeb182fa78e9166041a131dd4b2308552a19789dc50a2d6b",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 20.268,
+      "passed": 2,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 2,
+        "passed": 2,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      },
+      "scope": "Local focused/intermediate; exact final full source qualification is CI above"
+    },
+    {
+      "artifact": "s39-product-active-bound.xml",
+      "sha256": "e449ab0900b6314e7a5ba08c00fce2b062a9b60faf35a8e4c459445f3adebcaf",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 61.32,
+      "passed": 9,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 9,
+        "passed": 9,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      },
+      "scope": "Local focused/intermediate; exact final full source qualification is CI above"
+    },
+    {
+      "artifact": "s39-storage-final.xml",
+      "sha256": "117b4968f23feee5bb06f1640b2e7285e115686c0e55811386528b889ab2f9c1",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 1460.279,
+      "passed": 3,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 3,
+        "passed": 3,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      },
+      "scope": "Local focused/intermediate; exact final full source qualification is CI above"
+    },
+    {
+      "artifact": "s39-continuity-projection.xml",
+      "sha256": "1617b2052d0c59bdac79b0dc8e48bd648c9764e1163782bce7b90f0411f0a8ff",
+      "tests": 26,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 160.614,
+      "passed": 26,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 26,
+        "passed": 26,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      },
+      "scope": "Local focused/intermediate; exact final full source qualification is CI above"
+    },
+    {
+      "artifact": "s39-transport-commit.xml",
+      "sha256": "37906e8a759a985733bd8007cfe6930b9bc126fcfe67041cac66d9370103ffca",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 6.976,
+      "passed": 1,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 1,
+        "passed": 1,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      },
+      "scope": "Local focused/intermediate; exact final full source qualification is CI above"
+    },
+    {
+      "artifact": "s39-transport-commit-seams.xml",
+      "sha256": "e33626e1512b8b51d13799af8642a5bfd65b2be41d009db0d2b3703299010fc2",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 21.019,
+      "passed": 5,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 5,
+        "passed": 5,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      },
+      "scope": "Local focused/intermediate; exact final full source qualification is CI above"
+    }
+  ],
+  "prior_candidate": {
+    "sha": "5e45f16668c9d198fb1f6909050aed840f01beeb",
+    "run": 37252601998,
+    "status": "TESTED",
+    "superseded_for_owner_retest": true,
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "978051f22a27caf962e07fde026272a7776e74d8077b79242ba5596dbe521eb6",
+      "tests": 1698,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 381.613,
+      "passed": 1692,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1210,
+        "passed": 1207,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "09c9f1b8831d65b97a3b1f6a2cafeb12d3bd2fb5e4bb648ba77600d8c4ce6ef8",
+      "tests": 66,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 389.806,
+      "passed": 66,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 66,
+        "passed": 66,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "continuity_local_profile": {
+    "before_full_feature_calls": 10,
+    "before_profiled_seconds": 19.426,
+    "before_replenishment_seconds": 18.736,
+    "after_projection": {
+      "profile_calls": 10,
+      "retained_frames": 1801,
+      "bid_levels": 50,
+      "sequence_state": "VALID",
+      "bbo": [
+        "100",
+        "101"
+      ],
+      "profile_seconds": 0.05942322700000001,
+      "scope": "Instrumented local Celeron profile; not native throughput qualification"
+    },
+    "limitation": "Instrumented local Celeron profile; not native capacity qualification"
+  },
+  "failed_capacity_candidate": {
+    "sha": "9275caf70e77e6fc786fccceaccc8ddea8f918ab",
+    "run": 37253618658,
+    "status": "TEST GATE",
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 14,
+        "pending": false,
+        "started_count": 14,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 94.67199999999997,
+      "frames": 14551,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.10949999999996862,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 3.859375,
+            "disk_free_bytes": 31165022208,
+            "handles": 268,
+            "rss_bytes": 106602496,
+            "threads": 1
+          },
+          "sqlite_bytes": 4096,
+          "wal_bytes": 1977632
+        },
+        {
+          "book_frames": [
+            1784,
+            1784
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 30.327999999999975,
+          "raw_archive_bytes": 2796255,
+          "resource": {
+            "cpu_seconds": 17.859375,
+            "disk_free_bytes": 31157047296,
+            "handles": 269,
+            "rss_bytes": 144752640,
+            "threads": 2
+          },
+          "sqlite_bytes": 5873664,
+          "wal_bytes": 4725672
+        },
+        {
+          "book_frames": [
+            1809,
+            1809
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 61.577999999999975,
+          "raw_archive_bytes": 4900059,
+          "resource": {
+            "cpu_seconds": 34.0625,
+            "disk_free_bytes": 31150931968,
+            "handles": 269,
+            "rss_bytes": 152215552,
+            "threads": 2
+          },
+          "sqlite_bytes": 9629696,
+          "wal_bytes": 4816312
+        },
+        {
+          "book_frames": [
+            1459,
+            1460
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 94.67199999999997,
+          "raw_archive_bytes": 6684347,
+          "resource": {
+            "cpu_seconds": 48.3125,
+            "disk_free_bytes": 31142879232,
+            "handles": 267,
+            "rss_bytes": 156626944,
+            "threads": 1
+          },
+          "sqlite_bytes": 13324288,
+          "wal_bytes": 5545552
+        }
+      ]
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "7e1c93f61d83d97f180e028815d7b8adb0235b0bfe2aeb66dd3ff85a9ef79f40",
+      "tests": 1699,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 388.146,
+      "passed": 1693,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1211,
+        "passed": 1208,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "ac68e469ce93acab54b34dfb9b36a5d88bb0e1701ad507b0e65cd1297b26fd6d",
+      "tests": 67,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 364.695,
+      "passed": 66,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 67,
+        "passed": 66,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "failed_projection_capacity_candidate": {
+    "sha": "81ba98bf3e84ce2bf5f88ef1f8c7afc142678e9a",
+    "run": 37255901566,
+    "status": "TEST GATE",
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 32,
+        "pending": false,
+        "started_count": 32,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 234.094,
+      "frames": 35135,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.21524999999996908,
+      "max_service_duration_ns": 13032000000,
+      "max_service_gap_ns": 13073163800,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 4.984375,
+            "disk_free_bytes": 34258567168,
+            "handles": 270,
+            "rss_bytes": 106971136,
+            "threads": 1
+          },
+          "sqlite_bytes": 4096,
+          "wal_bytes": 1977632
+        },
+        {
+          "book_frames": [
+            1801,
+            1801
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 32.031000000000006,
+          "raw_archive_bytes": 2840920,
+          "resource": {
+            "cpu_seconds": 24.375,
+            "disk_free_bytes": 34245308416,
+            "handles": 269,
+            "rss_bytes": 145481728,
+            "threads": 2
+          },
+          "sqlite_bytes": 5914624,
+          "wal_bytes": 4667992
+        },
+        {
+          "book_frames": [
+            1814,
+            1815
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 63.781000000000006,
+          "raw_archive_bytes": 5298783,
+          "resource": {
+            "cpu_seconds": 41.1875,
+            "disk_free_bytes": 34238337024,
+            "handles": 269,
+            "rss_bytes": 151711744,
+            "threads": 2
+          },
+          "sqlite_bytes": 10424320,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1846,
+            1845
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 90.04699999999997,
+          "raw_archive_bytes": 7175053,
+          "resource": {
+            "cpu_seconds": 54.09375,
+            "disk_free_bytes": 34232209408,
+            "handles": 269,
+            "rss_bytes": 155512832,
+            "threads": 2
+          },
+          "sqlite_bytes": 13848576,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1819,
+            1818
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 120.04699999999997,
+          "raw_archive_bytes": 9165992,
+          "resource": {
+            "cpu_seconds": 67.96875,
+            "disk_free_bytes": 34243952640,
+            "handles": 265,
+            "rss_bytes": 156639232,
+            "threads": 2
+          },
+          "sqlite_bytes": 17584128,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1817,
+            1817
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 153.35899999999998,
+          "raw_archive_bytes": 11317805,
+          "resource": {
+            "cpu_seconds": 83.328125,
+            "disk_free_bytes": 34229399552,
+            "handles": 263,
+            "rss_bytes": 156807168,
+            "threads": 2
+          },
+          "sqlite_bytes": 21364736,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1809,
+            1808
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 180.015,
+          "raw_archive_bytes": 12945902,
+          "resource": {
+            "cpu_seconds": 95.6875,
+            "disk_free_bytes": 34224173056,
+            "handles": 260,
+            "rss_bytes": 157982720,
+            "threads": 2
+          },
+          "sqlite_bytes": 24444928,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1830,
+            1830
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 211.35899999999998,
+          "raw_archive_bytes": 14858610,
+          "resource": {
+            "cpu_seconds": 109.953125,
+            "disk_free_bytes": 34218692608,
+            "handles": 260,
+            "rss_bytes": 140947456,
+            "threads": 2
+          },
+          "sqlite_bytes": 28004352,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            999,
+            999
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 234.094,
+          "raw_archive_bytes": 15291529,
+          "resource": {
+            "cpu_seconds": 113.203125,
+            "disk_free_bytes": 34216869888,
+            "handles": 258,
+            "rss_bytes": 142405632,
+            "threads": 1
+          },
+          "sqlite_bytes": 28901376,
+          "wal_bytes": 5627952
+        }
+      ]
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "71a1db8627894749c5d864dc58711aba0051ce75c2b6f14f76a5c6a3235eb4af",
+      "tests": 1700,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 344.103,
+      "passed": 1694,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1212,
+        "passed": 1209,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "6f186625dcda4688ff4ee1c2a44eff14a830ee1f4a8ebcdf3cf889d87f9a8b44",
+      "tests": 68,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 527.619,
+      "passed": 67,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 68,
+        "passed": 67,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "cancelled_diagnostic": {
+    "sha": "f19839bccf9a7df4df5f90f8de68c41e7afee0aa",
+    "run": 37278728191,
+    "status": "TEST GATE",
+    "workflow_conclusion": "cancelled",
+    "qualified_installer_produced": false,
+    "reason": "GC timing callback acquired non-reentrant handoff lock; test-only probe corrected with lock-free scalar callback and explicit collection under held lock",
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "4e8d1dde10c47dd7e1c2b6996b58886c7a4756c6d6c039f694f147a622b28477",
+      "tests": 1700,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 333.73,
+      "passed": 1694,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1212,
+        "passed": 1209,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    }
+  },
+  "failed_sqlite_capacity_candidate": {
+    "sha": "b85322072b78332ec255c38c21513803c29d4387",
+    "run": 37280821172,
+    "status": "TEST GATE",
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 10,
+        "pending": false,
+        "started_count": 10,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 70.39099999999996,
+      "frames": 10617,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.15074999999995953,
+      "max_service_duration_ns": 4265000000,
+      "max_service_gap_ns": 4290545200,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 4.078125,
+            "disk_free_bytes": 31068147712,
+            "handles": 270,
+            "rss_bytes": 106582016,
+            "threads": 1
+          },
+          "sqlite_bytes": 4096,
+          "wal_bytes": 1977632
+        },
+        {
+          "book_frames": [
+            1807,
+            1807
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 33.077999999999975,
+          "raw_archive_bytes": 2768718,
+          "resource": {
+            "cpu_seconds": 18.734375,
+            "disk_free_bytes": 31054860288,
+            "handles": 269,
+            "rss_bytes": 147120128,
+            "threads": 2
+          },
+          "sqlite_bytes": 5685248,
+          "wal_bytes": 4816312
+        },
+        {
+          "book_frames": [
+            1847,
+            1848
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 60.06299999999999,
+          "raw_archive_bytes": 4481902,
+          "resource": {
+            "cpu_seconds": 27.921875,
+            "disk_free_bytes": 31049543680,
+            "handles": 269,
+            "rss_bytes": 152211456,
+            "threads": 2
+          },
+          "sqlite_bytes": 8855552,
+          "wal_bytes": 4816312
+        },
+        {
+          "book_frames": [
+            1526,
+            1527
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 70.39099999999996,
+          "raw_archive_bytes": 4858950,
+          "resource": {
+            "cpu_seconds": 29.75,
+            "disk_free_bytes": 31038607360,
+            "handles": 267,
+            "rss_bytes": 153227264,
+            "threads": 1
+          },
+          "sqlite_bytes": 9728000,
+          "wal_bytes": 5310712
+        }
+      ],
+      "native_service_stage_timings": {
+        "archive_extent": [
+          {
+            "duration_ns": 219000000,
+            "finished_at_ns": 1791187548500863800,
+            "queue_items": 38
+          },
+          {
+            "duration_ns": 203000000,
+            "finished_at_ns": 1791187553621277400,
+            "queue_items": 56
+          },
+          {
+            "duration_ns": 141000000,
+            "finished_at_ns": 1791187540991468700,
+            "queue_items": 71
+          }
+        ],
+        "gc_generation_0": [
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187519252759700,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187532737287800,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187535486976600,
+            "queue_items": null
+          }
+        ],
+        "gc_generation_1": [
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187519612206000,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187524175065400,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187567112989200,
+            "queue_items": null
+          }
+        ],
+        "gc_generation_2": [
+          {
+            "duration_ns": 156000000,
+            "finished_at_ns": 1791187561337565100,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 141000000,
+            "finished_at_ns": 1791187542912887700,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 141000000,
+            "finished_at_ns": 1791187552554218400,
+            "queue_items": null
+          }
+        ],
+        "raw_fsync": [
+          {
+            "duration_ns": 203000000,
+            "finished_at_ns": 1791187548481033800,
+            "queue_items": 35
+          },
+          {
+            "duration_ns": 203000000,
+            "finished_at_ns": 1791187553621277400,
+            "queue_items": 56
+          },
+          {
+            "duration_ns": 141000000,
+            "finished_at_ns": 1791187540990462100,
+            "queue_items": 71
+          }
+        ],
+        "sqlite_transaction_exit": [
+          {
+            "duration_ns": 3953000000,
+            "finished_at_ns": 1791187575941616300,
+            "queue_items": 512
+          },
+          {
+            "duration_ns": 1968000000,
+            "finished_at_ns": 1791187578894354800,
+            "queue_items": 0
+          },
+          {
+            "duration_ns": 1047000000,
+            "finished_at_ns": 1791187563745944800,
+            "queue_items": 198
+          }
+        ],
+        "transport_archive": [
+          {
+            "duration_ns": 235000000,
+            "finished_at_ns": 1791187548505649200,
+            "queue_items": 40
+          },
+          {
+            "duration_ns": 156000000,
+            "finished_at_ns": 1791187515780575600,
+            "queue_items": 45
+          },
+          {
+            "duration_ns": 125000000,
+            "finished_at_ns": 1791187518497726500,
+            "queue_items": 31
+          }
+        ],
+        "typed_batch_and_reports": [
+          {
+            "duration_ns": 469000000,
+            "finished_at_ns": 1791187561614803800,
+            "queue_items": 81
+          },
+          {
+            "duration_ns": 407000000,
+            "finished_at_ns": 1791187552805525900,
+            "queue_items": 72
+          },
+          {
+            "duration_ns": 406000000,
+            "finished_at_ns": 1791187543143487300,
+            "queue_items": 71
+          }
+        ]
+      }
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "e083afe26eca140882e0ed9243c9a0b7bcab8fec6e19a60b1ea62e06b538c27d",
+      "tests": 1700,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 218.133,
+      "passed": 1694,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1212,
+        "passed": 1209,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "5910907b46d795cb188fa4ae698e90d2b28606e5c10a23c17e6a84744b5131c6",
+      "tests": 68,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 357.789,
+      "passed": 67,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 68,
+        "passed": 67,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "failed_wal_cadence_experiment": {
+    "sha": "5340cf759d28892d8994aadc101bf1764c94d697",
+    "run": 37282877976,
+    "status": "TEST GATE",
+    "correction_retained": false,
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 3,
+        "pending": false,
+        "started_count": 3,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 49.18700000000001,
+      "frames": 6726,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.10274999999995771,
+      "max_service_duration_ns": 2656000000,
+      "max_service_gap_ns": 2656885900,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 3.59375,
+            "disk_free_bytes": 31126003712,
+            "handles": 270,
+            "rss_bytes": 107487232,
+            "threads": 1
+          },
+          "sqlite_bytes": 700416,
+          "wal_autocheckpoint_pages": 64,
+          "wal_bytes": 1652152
+        },
+        {
+          "book_frames": [
+            1233,
+            1232
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 49.18700000000001,
+          "raw_archive_bytes": 2258377,
+          "resource": {
+            "cpu_seconds": 13.5,
+            "disk_free_bytes": 31122255872,
+            "handles": 267,
+            "rss_bytes": 150224896,
+            "threads": 1
+          },
+          "sqlite_bytes": 5312512,
+          "wal_autocheckpoint_pages": 64,
+          "wal_bytes": 1808712
+        }
+      ]
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "36c57b45e46644db101424e97b769d866d3185d13964b855116c4a631fb0f510",
+      "tests": 1702,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 307.302,
+      "passed": 1696,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1214,
+        "passed": 1211,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "d57be966931235f677b229053b6c44dc5e199a743124bfa8d3a8af721a0a2100",
+      "tests": 70,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 614.458,
+      "passed": 69,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 70,
+        "passed": 69,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "stream_batch_outer_commits": 2,
+  "failed_transport_capacity_candidate": {
+    "sha": "9ef3b40097891e01b4c32d3540b600ba9ad359b7",
+    "run": 37286636050,
+    "status": "TEST GATE",
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 11,
+        "pending": false,
+        "started_count": 11,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 81.79699999999997,
+      "frames": 11086,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.1279999999999859,
+      "max_service_duration_ns": 12750000000,
+      "max_service_gap_ns": 12764621600,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 3.53125,
+            "disk_free_bytes": 31135838208,
+            "handles": 270,
+            "rss_bytes": 106938368,
+            "threads": 1
+          },
+          "sqlite_bytes": 4096,
+          "wal_autocheckpoint_pages": 1000,
+          "wal_bytes": 1977632
+        },
+        {
+          "book_frames": [
+            1804,
+            1805
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 33.03199999999998,
+          "raw_archive_bytes": 2762249,
+          "resource": {
+            "cpu_seconds": 17.46875,
+            "disk_free_bytes": 31159296000,
+            "handles": 269,
+            "rss_bytes": 147492864,
+            "threads": 2
+          },
+          "sqlite_bytes": 5758976,
+          "wal_autocheckpoint_pages": 1000,
+          "wal_bytes": 4861632
+        },
+        {
+          "book_frames": [
+            1820,
+            1820
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 63.79699999999997,
+          "raw_archive_bytes": 5119411,
+          "resource": {
+            "cpu_seconds": 29.25,
+            "disk_free_bytes": 31164825600,
+            "handles": 269,
+            "rss_bytes": 152846336,
+            "threads": 2
+          },
+          "sqlite_bytes": 9900032,
+          "wal_autocheckpoint_pages": 1000,
+          "wal_bytes": 5030552
+        },
+        {
+          "book_frames": [
+            1009,
+            1008
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 81.79699999999997,
+          "raw_archive_bytes": 5421556,
+          "resource": {
+            "cpu_seconds": 30.71875,
+            "disk_free_bytes": 31163654144,
+            "handles": 267,
+            "rss_bytes": 152350720,
+            "threads": 1
+          },
+          "sqlite_bytes": 10768384,
+          "wal_autocheckpoint_pages": 1000,
+          "wal_bytes": 5030552
+        }
+      ]
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "c3bbc9dc2285ac7b674dc947d4afa462424526dcce15362d55fe80d280126862",
+      "tests": 1701,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 338.775,
+      "passed": 1695,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1213,
+        "passed": 1210,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "05b93f202e0a041426bb150c4d013d42310769cf4c67a3f48bad07f3c7765b3b",
+      "tests": 69,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 506.843,
+      "passed": 68,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 69,
+        "passed": 68,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "native_storage_path_comparison": {
+    "native_storage_path_comparison": [
+      {
+        "commits": 128,
+        "maximum_commit_ns": 63000000,
+        "p95_commit_ns": 16000000,
+        "path": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\atlas-native-wal-emp662v4\\probe.sqlite",
+        "scope": "SYSTEM_TEMP",
+        "sqlite_bytes": 8413184,
+        "total_commit_ns": 969000000,
+        "wal_bytes": 4206552
+      },
+      {
+        "commits": 128,
+        "maximum_commit_ns": 16000000,
+        "p95_commit_ns": 15000000,
+        "path": "D:\\a\\_temp\\atlas-stream-regression\\test_native_full_commit_storag0\\probe.sqlite",
+        "scope": "DECLARED_DATA_PATH",
+        "sqlite_bytes": 8413184,
+        "total_commit_ns": 141000000,
+        "wal_bytes": 4206552
+      }
+    ],
+    "sqlite_runtime_version": "3.49.1"
+  },
+  "failed_prechange_reproduction": {
+    "status": "TEST GATE",
+    "workload": "160 virtual fps, accelerated five-report/s, one-level book; not like-for-like final workload",
+    "samples": [
+      {
+        "seconds": 15.0,
+        "frames": 2400,
+        "continuity_metadata_max": 4470,
+        "oversized_reports": 0,
+        "retained_book_frames": 1800,
+        "retained_book_seen": 1798,
+        "retained_state_events": 1800,
+        "sqlite_bytes": 19468288,
+        "wal_bytes": 4750392,
+        "archive_bytes": 5006916,
+        "rss_bytes": 358985728,
+        "queue_high_water": 32,
+        "rejected": 0,
+        "elapsed": 46.09786927400273
+      },
+      {
+        "seconds": 30.0,
+        "frames": 4800,
+        "continuity_metadata_max": 4471,
+        "oversized_reports": 0,
+        "retained_book_frames": 3600,
+        "retained_book_seen": 3598,
+        "retained_state_events": 3600,
+        "sqlite_bytes": 54898688,
+        "wal_bytes": 5100592,
+        "archive_bytes": 10016731,
+        "rss_bytes": 358985728,
+        "queue_high_water": 32,
+        "rejected": 0,
+        "elapsed": 97.42300641700422
+      },
+      {
+        "seconds": 45.0,
+        "frames": 7200,
+        "continuity_metadata_max": 200408,
+        "oversized_reports": 150,
+        "retained_book_frames": 5400,
+        "retained_book_seen": 5398,
+        "retained_state_events": 5400,
+        "sqlite_bytes": 127971328,
+        "wal_bytes": 5446672,
+        "archive_bytes": 15026575,
+        "rss_bytes": 358985728,
+        "queue_high_water": 32,
+        "rejected": 0,
+        "elapsed": 198.49140043400257
+      },
+      {
+        "seconds": 60.0,
+        "frames": 9600,
+        "continuity_metadata_max": 265733,
+        "oversized_reports": 300,
+        "retained_book_frames": 7200,
+        "retained_book_seen": 7198,
+        "retained_state_events": 7200,
+        "sqlite_bytes": 216616960,
+        "wal_bytes": 6126472,
+        "archive_bytes": 20036578,
+        "rss_bytes": 374304768,
+        "queue_high_water": 32,
+        "rejected": 0,
+        "elapsed": 316.8306466520007
+      },
+      {
+        "seconds": 75.0,
+        "frames": 12000,
+        "continuity_metadata_max": 331059,
+        "oversized_reports": 450,
+        "retained_book_frames": 9000,
+        "retained_book_seen": 8998,
+        "retained_state_events": 9000,
+        "sqlite_bytes": 324386816,
+        "wal_bytes": 6155312,
+        "archive_bytes": 25048269,
+        "rss_bytes": 584937472,
+        "queue_high_water": 32,
+        "rejected": 0,
+        "elapsed": 473.72221113100386
+      },
+      {
+        "seconds": 90.0,
+        "frames": 14400,
+        "continuity_metadata_max": 396384,
+        "oversized_reports": 600,
+        "retained_book_frames": 10800,
+        "retained_book_seen": 10798,
+        "retained_state_events": 10800,
+        "sqlite_bytes": 445448192,
+        "wal_bytes": 6155312,
+        "archive_bytes": 30060150,
+        "rss_bytes": 846987264,
+        "queue_high_water": 32,
+        "rejected": 0,
+        "elapsed": 698.3772570650035
+      }
+    ]
+  },
+  "failed_intermediate_attempts_retained": true,
+  "failed_attempt_location": "/home/kasun/Music/atlas-session-039-validation",
+  "static_checks": {
+    "ruff": "TESTED; src/scripts/tests on exact CI SHA",
+    "mypy": "TESTED; 237 source files, 6 Windows-platform packaging scripts",
+    "compileall": "TESTED; src/scripts/tests",
+    "pip_check": "TESTED",
+    "golden_contracts": "TESTED; part of full suite plus local 3-case run",
+    "freeze_hashes": "TESTED",
+    "secret_scan": "TESTED; 23 final task files, values suppressed, zero recognized findings; includes final docs"
+  },
+  "authority": {
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "model_authority": "ZERO",
+    "critic_authority": "ZERO",
+    "risk_policy_changed": false,
+    "leverage_policy_changed": false,
+    "provider_model_changed": false,
+    "holdout_accessed": false,
+    "provider_calls": 0,
+    "private_venue_calls": 0,
+    "orders": 0,
+    "economics": "NOT ESTIMABLE"
+  },
+  "owner_live_gate": "TEST GATE",
+  "owner_desktop_copy": "BLOCKED BY ENVIRONMENT",
+  "independent_review": "TEST GATE",
+  "native_capacity_qualification_scope": {
+    "status": "TESTED",
+    "supported_fixture": "160 frames/s, two 50-level books, one bid/ask update and one trade record per frame, 240 seconds, slow REST/history/read-only snapshot/minute passive maintenance",
+    "tested_path": "D:\\a\\_temp\\atlas-stream-regression\\test_actual_wall_mixed_stream_0",
+    "system_temp_sustained_capacity": "TEST GATE",
+    "earlier_outer_commit_stall_cause": "UNVERIFIED",
+    "path_comparison_reproduced_prior_11_second_stall": false,
+    "owner_volume_qualified": false,
+    "note": "The C/D microbenchmark did not reproduce the earlier 11.796-second stall or establish its OS/SQLite cause. Final source capacity is qualified only for the recorded workload and declared D: data path. The failed C: sustained result remains failed evidence; no claim that changing a drive letter fixes the cause."
+  },
+  "production_code_checkpoint_sha": "9ef3b40097891e01b4c32d3540b600ba9ad359b7",
+  "desktop_copy_result": {
+    "status": "TESTED",
+    "environment": "Linux current-user Desktop only",
+    "owner_windows_desktop": "BLOCKED BY ENVIRONMENT",
+    "installer_path": "/home/kasun/Desktop/ATLAS-2.0.39.0-1afe8de40190-win11-x64-setup.exe",
+    "installer_sha256": "c1456cca20808636e30eb52022a4378fe32095dbca0d092d5ef9cd57acaa4fc7",
+    "zip_path": "/home/kasun/Desktop/ATLAS-S39-1afe8de40190-Windows-installation.zip",
+    "zip_sha256": "2fab16fd395d1e157ffcbed77b2eab64a0f9f7fb92c9560c7939ae7a40920955",
+    "embedded_installer_hash_verified": true,
+    "unrelated_files_overwritten": false
+  },
+  "additional_source_reviews": [
+    {
+      "name": "ATLAS_REVISED_ARCHITECTURE_AND_ADVERSARIAL_REVIEW.md",
+      "sha256": "df5bac1e99e881b57f6db4cf55412a5e3caeb3ee6b2303606393a6220cfdc85c",
+      "location": "/home/kasun/Downloads/ATLAS_REVISED_ARCHITECTURE_AND_ADVERSARIAL_REVIEW.md",
+      "read_sections": "J live data, K storage/performance/recovery, O failure/recovery/security",
+      "authority": "SOURCE REVIEW; governing freezes and accepted amendments control conflicts"
+    },
+    {
+      "name": "ATLAS_V2_INTELLIGENCE_ADVERSARIAL_REVIEW_AND_ADDENDUM.md",
+      "sha256": "28c3d65f41bd4718533ee5e85a1db7358d649647a4c5e0f37f291cf26779246b",
+      "location": "/home/kasun/Downloads/ATLAS_V2_INTELLIGENCE_ADVERSARIAL_REVIEW_AND_ADDENDUM.md",
+      "read_sections": "Scope, decision chronology, S4/S5 data failure behavior, sections 9-10 evidence retention and auditability",
+      "authority": "SOURCE REVIEW; governing freezes and accepted amendments control conflicts"
+    }
+  ],
+  "final_review_checks": {
+    "status": "TESTED",
+    "package_checkpoint_sha": "1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+    "files_scanned": 23,
+    "values_suppressed": true,
+    "findings": [],
+    "authority_sources_verified": 11,
+    "unchanged_locks": 4,
+    "v1_or_unrelated_changed_files": 0,
+    "json_documents_valid": true,
+    "final_diff_check": "TESTED"
+  }
+}

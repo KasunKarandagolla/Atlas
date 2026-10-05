@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "session": "S39_LONG_RUN_PUBLIC_EVIDENCE_RELIABILITY",
-  "status": "IMPLEMENTED",
+  "status": "TESTED",
   "start": {
     "branch": "fix/session-038-public-stream-reliability",
     "sha": "efd75ca4e0cb432c79e0a090b363ca09b87e9099",
@@ -15,26 +15,153 @@
     "raw_export_independently_inspected": false,
     "validation_failures": 493,
     "reason": "INDEXED_EVIDENCE_FAILED_VALIDATION",
-    "failed_run_retained": true
+    "owner_run_not_modified": true,
+    "owner_retention_independently_verified": false
   },
   "correction": {
-    "status": "IMPLEMENTED",
+    "status": "TESTED",
     "design": "SESSION039_PUBLIC_EVIDENCE_STORAGE_ADR_V1.md",
     "defects": [
       "Repeated growing book ancestry",
       "Repeated continuity lookup caches in persisted state",
       "High-frequency generic index/schema duplication",
       "Elapsed-history startup/current-window scans",
-      "Cold book allocation on trade channels"
+      "Cold book allocation on trade channels",
+      "Continuous product metadata registry lacked the restart active bound",
+      "Continuity publication unnecessarily computed full S4 flow analytics",
+      "Redundant FULL transport-descriptor and batch commits before typed interpretation"
     ]
   },
   "validation": {
-    "status": "TEST GATE",
-    "focused_causal_publication_restart": "TESTED; 3 passed, 0 failed",
-    "focused_replay_recovery_capacity": "TESTED; 2 passed, 0 failed",
-    "accelerated_storage": "TEST GATE; one 20480-frame case completed with zero validation failures; longer case pending",
-    "comprehensive_offline": "TEST GATE",
-    "native_windows_package": "TEST GATE"
+    "status": "TESTED",
+    "record": "SESSION039_OFFLINE_VALIDATION_V1.json",
+    "comprehensive_offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "3643c3caea655a8113c26731b7f32cbe292379a4cac664a407a23dfee0650ffe",
+      "tests": 1702,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 7,
+      "seconds": 302.193,
+      "passed": 1695,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_native_full_commit_storage_paths",
+          "reason": "native Windows storage-path comparison"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1214,
+        "passed": 1210,
+        "skipped": 4
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native_changed_seam": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "b4852b21c64f0e2f3643e284126a130caebbf44b094f1c9adc1275b20e55b7e4",
+      "tests": 70,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 374.292,
+      "passed": 70,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 70,
+        "passed": 70,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    },
+    "native_windows_package": {
+      "actual_windows11_hardware": "UNVERIFIED",
+      "authenticode_signature": "UNVERIFIED",
+      "capital_enabled": false,
+      "installer": "ATLAS-2.0.39.0-1afe8de40190-win11-x64-setup.exe",
+      "installer_sha256": "c1456cca20808636e30eb52022a4378fe32095dbca0d092d5ef9cd57acaa4fc7",
+      "installer_version": "2.0.39.0",
+      "live_public_runtime": "TEST GATE",
+      "native_offline_smoke": "TESTED",
+      "payload_tree_sha256": "4f36312cd19f789e978cc459c3375c8e40401b5b00ec587a0d2a92e912a61bd1",
+      "runtime_lock_sha256": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5",
+      "schema_version": 1,
+      "signed_release": false,
+      "source_sha": "1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+      "version": "2.0.0.dev25",
+      "status": "TESTED",
+      "workflow_run": 37289134391,
+      "workflow_url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37289134391",
+      "artifact_name": "atlas-windows-1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+      "artifact_id": 11336218499,
+      "artifact_sha256": "sha256:91020df36d6f3e16b1305ca7880da389a80296f73900de8f4b066e4ab8c8f52c",
+      "payload_files": 1115,
+      "payload_identity_recomputed": true,
+      "installer_hash_independently_verified": true,
+      "pe_dependency_closure": {
+        "check": "NATIVE_DLL_DEPENDENCY_CLOSURE",
+        "pe_files": 278,
+        "status": "TESTED",
+        "unbundled_compiler_runtimes": [],
+        "windows_system_apis_permitted": true
+      },
+      "installer_lifecycle": {
+        "status": "TESTED",
+        "install": "TESTED",
+        "same_version_reinstall": "TESTED",
+        "uninstall": "TESTED",
+        "obsolete_dependency_removed": true,
+        "external_evidence_preserved": true,
+        "cross_version_upgrade": "UNVERIFIED"
+      }
+    },
+    "accelerated_storage": {
+      "status": "TESTED",
+      "frames": [
+        20480,
+        24576
+      ],
+      "virtual_seconds": [
+        128.0,
+        614.4
+      ],
+      "validation_failures": [
+        {},
+        {}
+      ]
+    }
   },
   "authority": {
     "capital_enabled": false,
@@ -51,5 +178,1401 @@
   },
   "independent_review": "TEST GATE",
   "owner_retest": "UNVERIFIED",
-  "desktop_copy": "BLOCKED BY ENVIRONMENT; this Linux host is not the owner Windows Desktop"
+  "desktop_copy": "BLOCKED BY ENVIRONMENT; this Linux host is not the owner Windows Desktop",
+  "implementation_sha": "1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+  "package_checkpoint_sha": "1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+  "failed_capacity_candidate": {
+    "sha": "9275caf70e77e6fc786fccceaccc8ddea8f918ab",
+    "run": 37253618658,
+    "status": "TEST GATE",
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 14,
+        "pending": false,
+        "started_count": 14,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 94.67199999999997,
+      "frames": 14551,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.10949999999996862,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 3.859375,
+            "disk_free_bytes": 31165022208,
+            "handles": 268,
+            "rss_bytes": 106602496,
+            "threads": 1
+          },
+          "sqlite_bytes": 4096,
+          "wal_bytes": 1977632
+        },
+        {
+          "book_frames": [
+            1784,
+            1784
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 30.327999999999975,
+          "raw_archive_bytes": 2796255,
+          "resource": {
+            "cpu_seconds": 17.859375,
+            "disk_free_bytes": 31157047296,
+            "handles": 269,
+            "rss_bytes": 144752640,
+            "threads": 2
+          },
+          "sqlite_bytes": 5873664,
+          "wal_bytes": 4725672
+        },
+        {
+          "book_frames": [
+            1809,
+            1809
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 61.577999999999975,
+          "raw_archive_bytes": 4900059,
+          "resource": {
+            "cpu_seconds": 34.0625,
+            "disk_free_bytes": 31150931968,
+            "handles": 269,
+            "rss_bytes": 152215552,
+            "threads": 2
+          },
+          "sqlite_bytes": 9629696,
+          "wal_bytes": 4816312
+        },
+        {
+          "book_frames": [
+            1459,
+            1460
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 94.67199999999997,
+          "raw_archive_bytes": 6684347,
+          "resource": {
+            "cpu_seconds": 48.3125,
+            "disk_free_bytes": 31142879232,
+            "handles": 267,
+            "rss_bytes": 156626944,
+            "threads": 1
+          },
+          "sqlite_bytes": 13324288,
+          "wal_bytes": 5545552
+        }
+      ]
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "7e1c93f61d83d97f180e028815d7b8adb0235b0bfe2aeb66dd3ff85a9ef79f40",
+      "tests": 1699,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 388.146,
+      "passed": 1693,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1211,
+        "passed": 1208,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "ac68e469ce93acab54b34dfb9b36a5d88bb0e1701ad507b0e65cd1297b26fd6d",
+      "tests": 67,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 364.695,
+      "passed": 66,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 67,
+        "passed": 66,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "failed_projection_capacity_candidate": {
+    "sha": "81ba98bf3e84ce2bf5f88ef1f8c7afc142678e9a",
+    "run": 37255901566,
+    "status": "TEST GATE",
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 32,
+        "pending": false,
+        "started_count": 32,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 234.094,
+      "frames": 35135,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.21524999999996908,
+      "max_service_duration_ns": 13032000000,
+      "max_service_gap_ns": 13073163800,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 4.984375,
+            "disk_free_bytes": 34258567168,
+            "handles": 270,
+            "rss_bytes": 106971136,
+            "threads": 1
+          },
+          "sqlite_bytes": 4096,
+          "wal_bytes": 1977632
+        },
+        {
+          "book_frames": [
+            1801,
+            1801
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 32.031000000000006,
+          "raw_archive_bytes": 2840920,
+          "resource": {
+            "cpu_seconds": 24.375,
+            "disk_free_bytes": 34245308416,
+            "handles": 269,
+            "rss_bytes": 145481728,
+            "threads": 2
+          },
+          "sqlite_bytes": 5914624,
+          "wal_bytes": 4667992
+        },
+        {
+          "book_frames": [
+            1814,
+            1815
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 63.781000000000006,
+          "raw_archive_bytes": 5298783,
+          "resource": {
+            "cpu_seconds": 41.1875,
+            "disk_free_bytes": 34238337024,
+            "handles": 269,
+            "rss_bytes": 151711744,
+            "threads": 2
+          },
+          "sqlite_bytes": 10424320,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1846,
+            1845
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 90.04699999999997,
+          "raw_archive_bytes": 7175053,
+          "resource": {
+            "cpu_seconds": 54.09375,
+            "disk_free_bytes": 34232209408,
+            "handles": 269,
+            "rss_bytes": 155512832,
+            "threads": 2
+          },
+          "sqlite_bytes": 13848576,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1819,
+            1818
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 120.04699999999997,
+          "raw_archive_bytes": 9165992,
+          "resource": {
+            "cpu_seconds": 67.96875,
+            "disk_free_bytes": 34243952640,
+            "handles": 265,
+            "rss_bytes": 156639232,
+            "threads": 2
+          },
+          "sqlite_bytes": 17584128,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1817,
+            1817
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 153.35899999999998,
+          "raw_archive_bytes": 11317805,
+          "resource": {
+            "cpu_seconds": 83.328125,
+            "disk_free_bytes": 34229399552,
+            "handles": 263,
+            "rss_bytes": 156807168,
+            "threads": 2
+          },
+          "sqlite_bytes": 21364736,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1809,
+            1808
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 180.015,
+          "raw_archive_bytes": 12945902,
+          "resource": {
+            "cpu_seconds": 95.6875,
+            "disk_free_bytes": 34224173056,
+            "handles": 260,
+            "rss_bytes": 157982720,
+            "threads": 2
+          },
+          "sqlite_bytes": 24444928,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            1830,
+            1830
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 211.35899999999998,
+          "raw_archive_bytes": 14858610,
+          "resource": {
+            "cpu_seconds": 109.953125,
+            "disk_free_bytes": 34218692608,
+            "handles": 260,
+            "rss_bytes": 140947456,
+            "threads": 2
+          },
+          "sqlite_bytes": 28004352,
+          "wal_bytes": 4906952
+        },
+        {
+          "book_frames": [
+            999,
+            999
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 234.094,
+          "raw_archive_bytes": 15291529,
+          "resource": {
+            "cpu_seconds": 113.203125,
+            "disk_free_bytes": 34216869888,
+            "handles": 258,
+            "rss_bytes": 142405632,
+            "threads": 1
+          },
+          "sqlite_bytes": 28901376,
+          "wal_bytes": 5627952
+        }
+      ]
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "71a1db8627894749c5d864dc58711aba0051ce75c2b6f14f76a5c6a3235eb4af",
+      "tests": 1700,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 344.103,
+      "passed": 1694,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1212,
+        "passed": 1209,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "6f186625dcda4688ff4ee1c2a44eff14a830ee1f4a8ebcdf3cf889d87f9a8b44",
+      "tests": 68,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 527.619,
+      "passed": 67,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 68,
+        "passed": 67,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "cancelled_diagnostic": {
+    "sha": "f19839bccf9a7df4df5f90f8de68c41e7afee0aa",
+    "run": 37278728191,
+    "status": "TEST GATE",
+    "workflow_conclusion": "cancelled",
+    "qualified_installer_produced": false,
+    "reason": "GC timing callback acquired non-reentrant handoff lock; test-only probe corrected with lock-free scalar callback and explicit collection under held lock",
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "4e8d1dde10c47dd7e1c2b6996b58886c7a4756c6d6c039f694f147a622b28477",
+      "tests": 1700,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 333.73,
+      "passed": 1694,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1212,
+        "passed": 1209,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    }
+  },
+  "failed_sqlite_capacity_candidate": {
+    "sha": "b85322072b78332ec255c38c21513803c29d4387",
+    "run": 37280821172,
+    "status": "TEST GATE",
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 10,
+        "pending": false,
+        "started_count": 10,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 70.39099999999996,
+      "frames": 10617,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.15074999999995953,
+      "max_service_duration_ns": 4265000000,
+      "max_service_gap_ns": 4290545200,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 4.078125,
+            "disk_free_bytes": 31068147712,
+            "handles": 270,
+            "rss_bytes": 106582016,
+            "threads": 1
+          },
+          "sqlite_bytes": 4096,
+          "wal_bytes": 1977632
+        },
+        {
+          "book_frames": [
+            1807,
+            1807
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 33.077999999999975,
+          "raw_archive_bytes": 2768718,
+          "resource": {
+            "cpu_seconds": 18.734375,
+            "disk_free_bytes": 31054860288,
+            "handles": 269,
+            "rss_bytes": 147120128,
+            "threads": 2
+          },
+          "sqlite_bytes": 5685248,
+          "wal_bytes": 4816312
+        },
+        {
+          "book_frames": [
+            1847,
+            1848
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 60.06299999999999,
+          "raw_archive_bytes": 4481902,
+          "resource": {
+            "cpu_seconds": 27.921875,
+            "disk_free_bytes": 31049543680,
+            "handles": 269,
+            "rss_bytes": 152211456,
+            "threads": 2
+          },
+          "sqlite_bytes": 8855552,
+          "wal_bytes": 4816312
+        },
+        {
+          "book_frames": [
+            1526,
+            1527
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 70.39099999999996,
+          "raw_archive_bytes": 4858950,
+          "resource": {
+            "cpu_seconds": 29.75,
+            "disk_free_bytes": 31038607360,
+            "handles": 267,
+            "rss_bytes": 153227264,
+            "threads": 1
+          },
+          "sqlite_bytes": 9728000,
+          "wal_bytes": 5310712
+        }
+      ],
+      "native_service_stage_timings": {
+        "archive_extent": [
+          {
+            "duration_ns": 219000000,
+            "finished_at_ns": 1791187548500863800,
+            "queue_items": 38
+          },
+          {
+            "duration_ns": 203000000,
+            "finished_at_ns": 1791187553621277400,
+            "queue_items": 56
+          },
+          {
+            "duration_ns": 141000000,
+            "finished_at_ns": 1791187540991468700,
+            "queue_items": 71
+          }
+        ],
+        "gc_generation_0": [
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187519252759700,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187532737287800,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187535486976600,
+            "queue_items": null
+          }
+        ],
+        "gc_generation_1": [
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187519612206000,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187524175065400,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 16000000,
+            "finished_at_ns": 1791187567112989200,
+            "queue_items": null
+          }
+        ],
+        "gc_generation_2": [
+          {
+            "duration_ns": 156000000,
+            "finished_at_ns": 1791187561337565100,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 141000000,
+            "finished_at_ns": 1791187542912887700,
+            "queue_items": null
+          },
+          {
+            "duration_ns": 141000000,
+            "finished_at_ns": 1791187552554218400,
+            "queue_items": null
+          }
+        ],
+        "raw_fsync": [
+          {
+            "duration_ns": 203000000,
+            "finished_at_ns": 1791187548481033800,
+            "queue_items": 35
+          },
+          {
+            "duration_ns": 203000000,
+            "finished_at_ns": 1791187553621277400,
+            "queue_items": 56
+          },
+          {
+            "duration_ns": 141000000,
+            "finished_at_ns": 1791187540990462100,
+            "queue_items": 71
+          }
+        ],
+        "sqlite_transaction_exit": [
+          {
+            "duration_ns": 3953000000,
+            "finished_at_ns": 1791187575941616300,
+            "queue_items": 512
+          },
+          {
+            "duration_ns": 1968000000,
+            "finished_at_ns": 1791187578894354800,
+            "queue_items": 0
+          },
+          {
+            "duration_ns": 1047000000,
+            "finished_at_ns": 1791187563745944800,
+            "queue_items": 198
+          }
+        ],
+        "transport_archive": [
+          {
+            "duration_ns": 235000000,
+            "finished_at_ns": 1791187548505649200,
+            "queue_items": 40
+          },
+          {
+            "duration_ns": 156000000,
+            "finished_at_ns": 1791187515780575600,
+            "queue_items": 45
+          },
+          {
+            "duration_ns": 125000000,
+            "finished_at_ns": 1791187518497726500,
+            "queue_items": 31
+          }
+        ],
+        "typed_batch_and_reports": [
+          {
+            "duration_ns": 469000000,
+            "finished_at_ns": 1791187561614803800,
+            "queue_items": 81
+          },
+          {
+            "duration_ns": 407000000,
+            "finished_at_ns": 1791187552805525900,
+            "queue_items": 72
+          },
+          {
+            "duration_ns": 406000000,
+            "finished_at_ns": 1791187543143487300,
+            "queue_items": 71
+          }
+        ]
+      }
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "e083afe26eca140882e0ed9243c9a0b7bcab8fec6e19a60b1ea62e06b538c27d",
+      "tests": 1700,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 218.133,
+      "passed": 1694,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1212,
+        "passed": 1209,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "5910907b46d795cb188fa4ae698e90d2b28606e5c10a23c17e6a84744b5131c6",
+      "tests": 68,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 357.789,
+      "passed": 67,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 68,
+        "passed": 67,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "failed_wal_cadence_experiment": {
+    "sha": "5340cf759d28892d8994aadc101bf1764c94d697",
+    "run": 37282877976,
+    "status": "TEST GATE",
+    "correction_retained": false,
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 3,
+        "pending": false,
+        "started_count": 3,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 49.18700000000001,
+      "frames": 6726,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.10274999999995771,
+      "max_service_duration_ns": 2656000000,
+      "max_service_gap_ns": 2656885900,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 3.59375,
+            "disk_free_bytes": 31126003712,
+            "handles": 270,
+            "rss_bytes": 107487232,
+            "threads": 1
+          },
+          "sqlite_bytes": 700416,
+          "wal_autocheckpoint_pages": 64,
+          "wal_bytes": 1652152
+        },
+        {
+          "book_frames": [
+            1233,
+            1232
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 49.18700000000001,
+          "raw_archive_bytes": 2258377,
+          "resource": {
+            "cpu_seconds": 13.5,
+            "disk_free_bytes": 31122255872,
+            "handles": 267,
+            "rss_bytes": 150224896,
+            "threads": 1
+          },
+          "sqlite_bytes": 5312512,
+          "wal_autocheckpoint_pages": 64,
+          "wal_bytes": 1808712
+        }
+      ]
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "36c57b45e46644db101424e97b769d866d3185d13964b855116c4a631fb0f510",
+      "tests": 1702,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 307.302,
+      "passed": 1696,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1214,
+        "passed": 1211,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "d57be966931235f677b229053b6c44dc5e199a743124bfa8d3a8af721a0a2100",
+      "tests": 70,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 614.458,
+      "passed": 69,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 70,
+        "passed": 69,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "failed_transport_capacity_candidate": {
+    "sha": "9ef3b40097891e01b4c32d3540b600ba9ad359b7",
+    "run": 37286636050,
+    "status": "TEST GATE",
+    "qualified_installer_produced": false,
+    "sustained_probe": {
+      "acquisition": {
+        "active_workers": 0,
+        "closed": false,
+        "completion_ready": false,
+        "consumed_count": 11,
+        "pending": false,
+        "started_count": 11,
+        "wait_timeout_count": 0
+      },
+      "elapsed_s": 81.79699999999997,
+      "frames": 11086,
+      "high_water_items": 512,
+      "history_rows_restored": 1200,
+      "max_producer_lateness_s": 0.1279999999999859,
+      "max_service_duration_ns": 12750000000,
+      "max_service_gap_ns": 12764621600,
+      "rejected": 1,
+      "storage_samples": [
+        {
+          "book_frames": [
+            0,
+            0
+          ],
+          "book_levels": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "elapsed_s": 0,
+          "raw_archive_bytes": 0,
+          "resource": {
+            "cpu_seconds": 3.53125,
+            "disk_free_bytes": 31135838208,
+            "handles": 270,
+            "rss_bytes": 106938368,
+            "threads": 1
+          },
+          "sqlite_bytes": 4096,
+          "wal_autocheckpoint_pages": 1000,
+          "wal_bytes": 1977632
+        },
+        {
+          "book_frames": [
+            1804,
+            1805
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 33.03199999999998,
+          "raw_archive_bytes": 2762249,
+          "resource": {
+            "cpu_seconds": 17.46875,
+            "disk_free_bytes": 31159296000,
+            "handles": 269,
+            "rss_bytes": 147492864,
+            "threads": 2
+          },
+          "sqlite_bytes": 5758976,
+          "wal_autocheckpoint_pages": 1000,
+          "wal_bytes": 4861632
+        },
+        {
+          "book_frames": [
+            1820,
+            1820
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 63.79699999999997,
+          "raw_archive_bytes": 5119411,
+          "resource": {
+            "cpu_seconds": 29.25,
+            "disk_free_bytes": 31164825600,
+            "handles": 269,
+            "rss_bytes": 152846336,
+            "threads": 2
+          },
+          "sqlite_bytes": 9900032,
+          "wal_autocheckpoint_pages": 1000,
+          "wal_bytes": 5030552
+        },
+        {
+          "book_frames": [
+            1009,
+            1008
+          ],
+          "book_levels": [
+            [
+              50,
+              50
+            ],
+            [
+              50,
+              50
+            ]
+          ],
+          "elapsed_s": 81.79699999999997,
+          "raw_archive_bytes": 5421556,
+          "resource": {
+            "cpu_seconds": 30.71875,
+            "disk_free_bytes": 31163654144,
+            "handles": 267,
+            "rss_bytes": 152350720,
+            "threads": 1
+          },
+          "sqlite_bytes": 10768384,
+          "wal_autocheckpoint_pages": 1000,
+          "wal_bytes": 5030552
+        }
+      ]
+    },
+    "offline": {
+      "artifact": "offline-regression.xml",
+      "sha256": "c3bbc9dc2285ac7b674dc947d4afa462424526dcce15362d55fe80d280126862",
+      "tests": 1701,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "seconds": 338.775,
+      "passed": 1695,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "v2": {
+        "tests": 1213,
+        "passed": 1210,
+        "skipped": 3
+      },
+      "non_v2": {
+        "tests": 488,
+        "passed": 485,
+        "skipped": 3
+      }
+    },
+    "native": {
+      "artifact": "windows-stream-regression.xml",
+      "sha256": "05b93f202e0a041426bb150c4d013d42310769cf4c67a3f48bad07f3c7765b3b",
+      "tests": 69,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 506.843,
+      "passed": 68,
+      "skip_reasons": [],
+      "v2": {
+        "tests": 69,
+        "passed": 68,
+        "skipped": 0
+      },
+      "non_v2": {
+        "tests": 0,
+        "passed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "native_storage_path_comparison": {
+    "native_storage_path_comparison": [
+      {
+        "commits": 128,
+        "maximum_commit_ns": 63000000,
+        "p95_commit_ns": 16000000,
+        "path": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\atlas-native-wal-emp662v4\\probe.sqlite",
+        "scope": "SYSTEM_TEMP",
+        "sqlite_bytes": 8413184,
+        "total_commit_ns": 969000000,
+        "wal_bytes": 4206552
+      },
+      {
+        "commits": 128,
+        "maximum_commit_ns": 16000000,
+        "p95_commit_ns": 15000000,
+        "path": "D:\\a\\_temp\\atlas-stream-regression\\test_native_full_commit_storag0\\probe.sqlite",
+        "scope": "DECLARED_DATA_PATH",
+        "sqlite_bytes": 8413184,
+        "total_commit_ns": 141000000,
+        "wal_bytes": 4206552
+      }
+    ],
+    "sqlite_runtime_version": "3.49.1"
+  },
+  "cancelled_superseded_maintenance_probe": {
+    "sha": "f9a59e87b8c10bee34b5b5df8f6bc7b34cbd7818",
+    "run": 37287511716,
+    "status": "TEST GATE",
+    "workflow_conclusion": "cancelled",
+    "reason": "Superseded during offline validation by storage-path instrumentation; no pass claimed"
+  },
+  "capacity_projection_48h": {
+    "sqlite_bytes": 33156074819,
+    "raw_archive_bytes": 17188079042,
+    "combined_bytes": 50344153861,
+    "status": "TEST GATE",
+    "basis": "Last native steady sampling interval; conditional synthetic 160 fps, 50 levels, one bid/ask delta and one trade record per frame",
+    "exclusions": [
+      "initial database",
+      "WAL",
+      "other history/outcomes/reports",
+      "backups",
+      "existing free-space reserve",
+      "real source workload variation"
+    ],
+    "owner_reported_free_bytes": 23152967680,
+    "owner_reported_space_suffices_for_this_projection": false
+  },
+  "known_remaining_ordinary_blockers_in_remediation_scope": [],
+  "remaining_gates": [
+    {
+      "status": "TEST GATE",
+      "gate": "Independent coordinating review before installation/merge"
+    },
+    {
+      "status": "TEST GATE",
+      "gate": "Fresh owner Windows 11 NEW-run source qualification and 48h+ endurance"
+    },
+    {
+      "status": "TEST GATE",
+      "gate": "Measured actual disk/resource headroom; reported 23GB cannot establish 48h headroom including initial/WAL/other evidence/backup/reserve"
+    },
+    {
+      "status": "UNVERIFIED",
+      "gate": "Owner cross-version upgrade and authentic source sequence/traffic behavior"
+    },
+    {
+      "status": "NOT ESTIMABLE",
+      "gate": "Unsupported public S3 exact trade completeness and economics"
+    },
+    {
+      "status": "BLOCKED BY ENVIRONMENT",
+      "gate": "Owner Windows Desktop copy"
+    },
+    {
+      "status": "TEST GATE",
+      "gate": "Sustained capacity on the native runner system TEMP path remains failed/unqualified; final passing scope is the explicitly recorded D: data path"
+    },
+    {
+      "status": "UNVERIFIED",
+      "gate": "Exact OS/SQLite cause of the retained 11.796-second commit stall; C/D microbenchmark did not reproduce it"
+    }
+  ],
+  "native_capacity_qualification_scope": {
+    "status": "TESTED",
+    "supported_fixture": "160 frames/s, two 50-level books, one bid/ask update and one trade record per frame, 240 seconds, slow REST/history/read-only snapshot/minute passive maintenance",
+    "tested_path": "D:\\a\\_temp\\atlas-stream-regression\\test_actual_wall_mixed_stream_0",
+    "system_temp_sustained_capacity": "TEST GATE",
+    "earlier_outer_commit_stall_cause": "UNVERIFIED",
+    "path_comparison_reproduced_prior_11_second_stall": false,
+    "owner_volume_qualified": false,
+    "note": "The C/D microbenchmark did not reproduce the earlier 11.796-second stall or establish its OS/SQLite cause. Final source capacity is qualified only for the recorded workload and declared D: data path. The failed C: sustained result remains failed evidence; no claim that changing a drive letter fixes the cause."
+  },
+  "production_code_checkpoint_sha": "9ef3b40097891e01b4c32d3540b600ba9ad359b7",
+  "desktop_copy_result": {
+    "status": "TESTED",
+    "environment": "Linux current-user Desktop only",
+    "owner_windows_desktop": "BLOCKED BY ENVIRONMENT",
+    "installer_path": "/home/kasun/Desktop/ATLAS-2.0.39.0-1afe8de40190-win11-x64-setup.exe",
+    "installer_sha256": "c1456cca20808636e30eb52022a4378fe32095dbca0d092d5ef9cd57acaa4fc7",
+    "zip_path": "/home/kasun/Desktop/ATLAS-S39-1afe8de40190-Windows-installation.zip",
+    "zip_sha256": "2fab16fd395d1e157ffcbed77b2eab64a0f9f7fb92c9560c7939ae7a40920955",
+    "embedded_installer_hash_verified": true,
+    "unrelated_files_overwritten": false
+  }
 }
