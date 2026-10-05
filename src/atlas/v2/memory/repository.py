@@ -32,6 +32,13 @@ _ACTIVE_STATES = (
     WatchStateV2.CONFIRMED.value,
 )
 
+# Maintenance cadence for the high-rate public evidence connection. SQLite's
+# default 1000-page automatic checkpoint runs in the committing writer and can
+# starve a bounded stream queue. Smaller passive checkpoints distribute that
+# work; FULL commit durability, reader snapshots and sole-writer ownership stay
+# unchanged. This is a per-connection setting, reapplied during stream recovery.
+PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1 = 64
+
 if TYPE_CHECKING:
     from ..instruments import InstrumentKeyV2
 
@@ -563,6 +570,25 @@ class OpsRepository:
             if row is None or len(row) != 3:
                 raise RuntimeError("SQLite returned an invalid WAL checkpoint result")
             return int(row[0]), int(row[1]), int(row[2])
+
+    def configure_public_stream_checkpointing(self) -> None:
+        """Use small automatic passive checkpoints on the sole stream writer.
+
+        Readers can still pin WAL pages; this cadence does not promise a WAL
+        size limit or change evidence retention. Existing telemetry records
+        actual WAL growth and explicit passive checkpoint progress.
+        """
+        if self.read_only:
+            raise RuntimeError("read-only atlas-ops repository cannot configure WAL checkpointing")
+        with self._lock:
+            if self._connection.in_transaction:
+                raise RuntimeError("cannot configure WAL checkpointing inside an active transaction")
+            self._connection.execute(f"PRAGMA wal_autocheckpoint={PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1}")
+            if self._connection.execute("PRAGMA wal_autocheckpoint").fetchone()[0] != (
+                    PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1):
+                raise RuntimeError("public stream SQLite checkpoint cadence is unavailable")
+            if self._connection.execute("PRAGMA synchronous").fetchone()[0] != 2:
+                raise RuntimeError("public stream requires SQLite synchronous=FULL")
 
     def __enter__(self) -> OpsRepository:
         return self

@@ -1536,6 +1536,8 @@ class ProductionOpsCyclePortV1:
         """Restore collector cursors, active watches and subscriptions first."""
         if repository.read_only:
             raise ValueError("production ops composition requires the supervisor-owned writable repository")
+        if self.public_stream_source is not None:
+            repository.configure_public_stream_checkpointing()
         bootstrap_products = getattr(self.public_source, "bootstrap_products", None)
         if callable(bootstrap_products):
             # The public acquisition object returns immutable metadata only. This

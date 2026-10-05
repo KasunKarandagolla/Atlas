@@ -324,12 +324,19 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
         supervisor.run_once()
         repository = supervisor.repository
         assert repository is not None
+        from atlas.v2.memory.repository import PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1
+
+        assert repository._connection.execute("PRAGMA wal_autocheckpoint").fetchone()[0] == (
+            PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1)
+        assert repository._connection.execute("PRAGMA synchronous").fetchone()[0] == 2
         from atlas.v2.product import resource_sample
 
         def sample_storage(elapsed_s: float) -> None:
             storage_samples.append({"elapsed_s": elapsed_s,
                 "sqlite_bytes": Path(repository.path).stat().st_size,
                 "wal_bytes": Path(str(repository.path) + "-wal").stat().st_size,
+                "wal_autocheckpoint_pages": repository._connection.execute(
+                    "PRAGMA wal_autocheckpoint").fetchone()[0],
                 "raw_archive_bytes": sum(path.stat().st_size for path in tmp_path.rglob("*")
                     if path.suffix in (".arrow", ".parquet")),
                 "book_frames": [len(book._frames) for book in port._stream_books.values() if book is not None],
@@ -351,7 +358,8 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
                 try:
                     return original_exit(*args, **kwargs)
                 finally:
-                    record_stage("sqlite_transaction_exit", started_ns)
+                    record_stage("sqlite_outer_commit" if transaction.savepoint is None
+                        else "sqlite_savepoint_exit", started_ns)
 
             transaction_type.__exit__ = observed_exit
             return transaction
