@@ -273,11 +273,11 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
     # changing the writer, workload, queue or evidence qualification.
     stage_timings: dict[str, list[dict[str, Any]]] = {}
 
-    def record_stage(name: str, started_ns: int) -> None:
+    def record_stage(name: str, started_ns: int, *, include_queue: bool = True) -> None:
         duration = time.monotonic_ns() - started_ns
         rows = stage_timings.setdefault(name, [])
         rows.append({"duration_ns": duration, "finished_at_ns": time.time_ns(),
-                     "queue_items": stream.handoff.snapshot().queue_items})
+                     "queue_items": stream.handoff.snapshot().queue_items if include_queue else None})
         rows.sort(key=lambda row: row["duration_ns"], reverse=True)
         del rows[3:]
 
@@ -307,7 +307,9 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
         if phase == "start":
             gc_started[generation] = time.monotonic_ns()
         elif generation in gc_started:
-            record_stage(f"gc_generation_{generation}", gc_started.pop(generation))
+            # GC may run during allocation inside the non-reentrant handoff
+            # lock. A GC callback must never acquire that (or another) lock.
+            record_stage(f"gc_generation_{generation}", gc_started.pop(generation), include_queue=False)
 
     # Restore a genuinely serialized history while arrivals continue. This is
     # the formerly synchronous strict decoding seam, not a simulated delay.
@@ -380,6 +382,10 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
         producer.start()
         started = time.monotonic()
         gc.callbacks.append(observe_gc)
+        # Exercise the callback in precisely the lock context where a
+        # diagnostic snapshot would deadlock; it must only record scalars.
+        with stream.handoff._lock:
+            gc.collect(0)
         try:
             helper.acquire(now_ns=time.time_ns(), service=lambda: port.service_public_stream(repository))
             next_rest = time.monotonic() + 1
