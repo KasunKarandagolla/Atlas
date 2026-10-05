@@ -8,67 +8,58 @@ IDENTITIES = tuple((symbol, prefix + symbol) for symbol in ("BTCUSDT", "ETHUSDT"
                    for prefix in ("orderbook.50.", "publicTrade."))
 
 
-def test_stream_checkpoint_cadence_preserves_full_commits_readers_and_recovery(tmp_path):
+def test_stream_batch_commits_transport_once_before_interpretation(tmp_path, monkeypatch):
     import pytest
 
-    from atlas.v2.memory.repository import PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1
-    from atlas.v2.memory.writer_lock import OpsWriterAlreadyActive
+    from atlas.v2.runtime import production
+    from atlas.v2.runtime.ops_supervisor import OpsSupervisorV2
 
+    from .test_s38_sustained_public_stream import (
+        FixturePublicSource,
+        MixedWorkload,
+        QueueStream,
+        transport_rows,
+    )
+    from .test_session032_public_stream_integration import NOW_NS
+
+    clock = [NOW_NS]
+    stream = QueueStream(lambda: clock[0])
+    port = production.create_bybit_public_ws_port(public_source=FixturePublicSource(),
+        public_stream_source=stream, clock_ns=lambda: clock[0])
     path = tmp_path / "ops.sqlite"
-    entry = _entry(KINDS[1], 1, IDENTITIES[0])
-    with OpsRepository(path) as writer, OpsRepository(path, read_only=True) as reader:
-        with pytest.raises(RuntimeError, match="read-only"):
-            reader.configure_public_stream_checkpointing()
-        with writer.atomic_composition(), pytest.raises(RuntimeError, match="active transaction"):
-            writer.configure_public_stream_checkpointing()
-        writer.configure_public_stream_checkpointing()
-        assert writer._connection.execute("PRAGMA synchronous").fetchone()[0] == 2
-        assert writer._connection.execute("PRAGMA wal_autocheckpoint").fetchone()[0] == (
-            PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1)
-        with pytest.raises(OpsWriterAlreadyActive):
-            OpsRepository(path)
-        with reader.read_snapshot():
-            assert reader.get_artifact(entry.artifact_ref) is None
-            writer.register_artifact(entry)
-            for number in range(2, 90):
-                writer.register_artifact(_entry(KINDS[1], number, IDENTITIES[0]))
-            _, frames, copied = writer.checkpoint()
-            assert frames > copied
-            assert reader.get_artifact(entry.artifact_ref) is None
-        _, frames, copied = writer.checkpoint()
-        assert frames == copied
-        assert reader.get_artifact(entry.artifact_ref) == entry
-    # The cadence is connection-local; production recovery must reapply it.
-    with OpsRepository(path) as writer:
-        writer.configure_public_stream_checkpointing()
-        assert writer._connection.execute("PRAGMA wal_autocheckpoint").fetchone()[0] == (
-            PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1)
-        assert writer.get_artifact(entry.artifact_ref) == entry
+    with OpsSupervisorV2(path, port, clock_ns=lambda: clock[0]) as supervisor:
+        supervisor.run_once()
+        repository = supervisor.repository
+        workload = MixedWorkload()
+        frames = tuple(workload.frame(clock[0] + number + 1) for number in range(32))
+        for frame in frames:
+            assert stream.handoff.offer(frame)
+        clock[0] += 200_000_000
+        statements = []
+        repository._connection.set_trace_callback(statements.append)
+        port._collect_public_stream_evidence(repository, now_ns=clock[0])
+        repository._connection.set_trace_callback(None)
+        assert sum(sql == "COMMIT" for sql in statements) == 2
+        assert [row["raw_payload_bytes"] for row in transport_rows(repository, tmp_path)] == (
+            [frame.raw_payload_bytes for frame in frames])
+        # A failed typed interpretation must not roll back committed transport.
+        more = tuple(workload.frame(clock[0] + number + 1) for number in range(32))
+        for frame in more:
+            assert stream.handoff.offer(frame)
+        clock[0] += 200_000_000
 
+        def fail_interpretation(*args, **kwargs):
+            with OpsRepository(path, read_only=True) as reader:
+                assert len(transport_rows(reader, tmp_path)) == 64
+            raise ValueError("OFFLINE_TYPED_FAILURE")
 
-def test_smaller_stream_checkpoints_reduce_wal_bursts_without_changing_evidence(tmp_path):
-    from pathlib import Path
-
-    observed = []
-    expected = tuple(ArtifactIndexEntryV2(sha256_json(["wal", number]), "WalFixture",
-        sha256_json(["wal", number]), number, number, {"payload": "a" * 3000})
-        for number in range(400))
-    for stream_cadence in (False, True):
-        path = tmp_path / ("stream.sqlite" if stream_cadence else "default.sqlite")
-        with OpsRepository(path) as writer:
-            if stream_cadence:
-                writer.configure_public_stream_checkpointing()
-            writer._connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-            peak = 0
-            for entry in expected:
-                writer.register_artifact(entry)
-                peak = max(peak, Path(str(path) + "-wal").stat().st_size)
-            assert writer.artifact_entries("WalFixture") == expected
-            assert writer._connection.execute("PRAGMA synchronous").fetchone()[0] == 2
-            observed.append(peak)
-    assert observed[0] >= 4_000_000
-    assert observed[1] < observed[0] / 4
-    print({"default_peak_wal_bytes": observed[0], "stream_peak_wal_bytes": observed[1]})
+        monkeypatch.setattr(port, "_persist_public_stream_batch", fail_interpretation)
+        with pytest.raises(ValueError, match="OFFLINE_TYPED_FAILURE"):
+            port._collect_public_stream_evidence(repository, now_ns=clock[0])
+        assert port._stream_ingestion_failed
+    with OpsRepository(path, read_only=True) as reader:
+        assert [row["raw_payload_bytes"] for row in transport_rows(reader, tmp_path)] == (
+            [frame.raw_payload_bytes for frame in (*frames, *more)])
 
 
 def test_hourly_product_refresh_has_the_same_active_bound_as_restart(tmp_path):

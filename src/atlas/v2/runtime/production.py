@@ -1536,8 +1536,6 @@ class ProductionOpsCyclePortV1:
         """Restore collector cursors, active watches and subscriptions first."""
         if repository.read_only:
             raise ValueError("production ops composition requires the supervisor-owned writable repository")
-        if self.public_stream_source is not None:
-            repository.configure_public_stream_checkpointing()
         bootstrap_products = getattr(self.public_source, "bootstrap_products", None)
         if callable(bootstrap_products):
             # The public acquisition object returns immutable metadata only. This
@@ -2131,8 +2129,13 @@ class ProductionOpsCyclePortV1:
             frames = tuple(incoming)
             # Commit exact transport bytes before interpretation. Unbound and
             # failed interpretation remain reconstructable after restart.
-            self._stream_transport_ref = archive_transport_batch(
-                repository, frames, clock_ns=self.clock_ns, floor_ns=now_ns, compact=True)
+            # Extent descriptor and batch binding are one durable publication.
+            # Committing each separately adds a FULL WAL sync without making
+            # the transport more reproducible. Keep this commit before typed
+            # interpretation, so a failed typed batch retains exact raw FIFO.
+            with repository.atomic_composition():
+                self._stream_transport_ref = archive_transport_batch(
+                    repository, frames, clock_ns=self.clock_ns, floor_ns=now_ns, compact=True)
             # One bounded batch shares a commit; individual immutable writes
             # retain their existing savepoint validation. A failed batch cannot
             # reuse mutated in-memory continuity state after rollback.

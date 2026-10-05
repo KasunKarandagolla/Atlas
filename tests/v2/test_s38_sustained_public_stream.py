@@ -324,10 +324,6 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
         supervisor.run_once()
         repository = supervisor.repository
         assert repository is not None
-        from atlas.v2.memory.repository import PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1
-
-        assert repository._connection.execute("PRAGMA wal_autocheckpoint").fetchone()[0] == (
-            PUBLIC_STREAM_WAL_CHECKPOINT_PAGES_V1)
         assert repository._connection.execute("PRAGMA synchronous").fetchone()[0] == 2
         from atlas.v2.product import resource_sample
 
