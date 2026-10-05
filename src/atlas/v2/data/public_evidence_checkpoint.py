@@ -106,7 +106,7 @@ def persist_book_checkpoint(repository: OpsRepository, book: SequenceValidBookV2
     if len(archive_refs) > MAX_CHUNKS_PER_CHECKPOINT or len(transport_refs) > MAX_CHUNKS_PER_CHECKPOINT:
         raise ValueError("book lineage publication backlog exceeded its bound")
     started = max(as_of_ns, clock_ns() if clock_ns else as_of_ns)
-    feature = book.feature(cutoff_ns=as_of_ns)
+    feature = book.continuity_view(cutoff_ns=as_of_ns)
     state_hash = sha256_json(book.evidence_state())
     finished = max(started, clock_ns() if clock_ns else started)
     body = {"version": "PUBLIC_BOOK_LINEAGE_CHECKPOINT_V1", "authority": "ZERO",

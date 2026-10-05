@@ -18,6 +18,57 @@ from .test_s38_sustained_public_stream import NOW_NS, MixedWorkload, QueueStream
 from .test_session039_long_run_public_evidence import RestartPublicSource
 
 
+def test_continuity_projection_matches_full_s4_qualification_without_flow_work(monkeypatch):
+    from atlas.v2.data import microstructure
+
+    from .test_s38_sustained_public_stream import _S32
+
+    key = _S32["_contract"]("BTCUSDT").key
+    book = SequenceValidBookV2(instrument=key, source_id="BYBIT_PUBLIC_WS",
+                              channel="orderbook.50.BTCUSDT", sequence_semantics="BYBIT_U")
+
+    def compare(cut):
+        feature = book.feature(cutoff_ns=cut)
+        view = book.continuity_view(cutoff_ns=cut)
+        assert (view.sequence_state, view.bbo, view.data_age_ns, view.missing_reason, view.input_refs) == (
+            feature.sequence_state, feature.bbo, feature.data_age_ns, feature.missing_reason, feature.input_refs)
+
+    compare(NOW_NS)  # cold
+    workload = MixedWorkload()
+    for i in range(6400):
+        at = NOW_NS + i * 6_250_000
+        frame = workload.frame(at)
+        if frame.channel != book.channel:
+            continue
+        event = parse_bybit_orderbook_frame(frame, instrument=key, declared_depth=50,
+            source_health="HEALTHY_CURRENT", source_health_ref="a" * 64, processed_at_ns=at)
+        if isinstance(event, L2SnapshotV2):
+            book.apply_snapshot(event)
+        else:
+            book.apply_delta(event)
+        book.compact_live_state(as_of_ns=at)
+        if i == 0:
+            compare(at)  # warming
+    cut = NOW_NS + 6400 * 6_250_000
+    assert len(book._frames) > 1800 and len(book.bids) == 50
+    compare(cut)  # mature, current
+
+    def forbid_metrics(*args, **kwargs):
+        raise AssertionError("continuity must not compute S4 flow metrics")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(microstructure, "_replenishment_proxy", forbid_metrics)
+        patch.setattr(book, "_windows", forbid_metrics)
+        patch.setattr(book, "_ofi_windows", forbid_metrics)
+        assert book.continuity_view(cutoff_ns=cut).bbo is not None
+    compare(NOW_NS)  # old cutoff requires retained raw replay
+    compare(cut + 2_000_000_000)  # stale
+    book.disconnect(cut + 3_000_000_000)
+    compare(cut + 3_000_000_000)
+    book.reconnect(cut + 4_000_000_000)
+    compare(cut + 4_000_000_000)
+
+
 def replay_checkpoint(repository, ref):
     """Audit retained raw prefixes; intentionally separate from the live writer.
 

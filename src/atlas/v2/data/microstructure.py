@@ -351,6 +351,17 @@ class SequenceStateV2:
     reason: str | None = None
 
 
+@dataclass(frozen=True)
+class BookContinuityViewV1:
+    """Book qualification/BBO projection; never an S4 analytical artifact."""
+
+    sequence_state: BookStateV2
+    bbo: tuple[str, str] | None
+    data_age_ns: int | None
+    missing_reason: str | None
+    input_refs: tuple[str, ...]
+
+
 class SequenceValidBookV2:
     """Deterministic L2 state machine with explicit snapshot recovery and warmup."""
 
@@ -684,6 +695,39 @@ class SequenceValidBookV2:
             tuple(BookLevelV2(p, q) for p, q in sorted(self.asks.items())[:self._declared_depth]),
         )
 
+    def _cutoff_book_state(self, cutoff: int) -> tuple[
+        BookStateV2, int, str, str | None, str | None, list[BookFrameStateV2], set[str],
+    ]:
+        """Shared causal qualification for full S4 and the continuity projection."""
+        state_rows = [row for row in self._state_events if row[0] <= cutoff]
+        asof_state, asof_epoch, asof_health, asof_reason, valid_since, asof_health_ref = (
+            (state_rows[-1][1], state_rows[-1][2], state_rows[-1][3], state_rows[-1][4], state_rows[-1][5], state_rows[-1][6])
+            if state_rows else (BookStateV2.COLD, 0, "UNKNOWN", "NO_SNAPSHOT", None, None)
+        )
+        eligible = [frame for frame, epoch in zip(self._frames, self._frame_epochs, strict=True)
+                    if frame[0] <= cutoff and epoch == asof_epoch]
+        if self._live_retained_from_ns is not None and cutoff < self._live_retained_from_ns:
+            asof_state, asof_reason = BookStateV2.INVALID, "NOT_ESTIMABLE_REQUIRES_IMMUTABLE_BOOK_REPLAY"
+            eligible = []
+        health_refs = {row[6] for row in state_rows if row[2] == asof_epoch and row[6] is not None}
+        if asof_state == BookStateV2.WARMING and valid_since is not None and cutoff - valid_since >= self.warmup_ns:
+            if eligible and cutoff - eligible[-1][0] <= self.stale_ns and asof_health == "HEALTHY_CURRENT":
+                asof_state = BookStateV2.VALID
+        if eligible and cutoff - eligible[-1][0] > self.stale_ns:
+            asof_state, asof_reason = BookStateV2.INVALID, "NOT_ESTIMABLE_STALE_BOOK"
+        return asof_state, asof_epoch, asof_health, asof_reason, asof_health_ref, eligible, health_refs
+
+    def continuity_view(self, *, cutoff_ns: int) -> BookContinuityViewV1:
+        cutoff = timestamp(cutoff_ns, field="cutoff_ns")
+        state, _, _, reason, _, eligible, health_refs = self._cutoff_book_state(cutoff)
+        refs = tuple(sorted({frame[2] for frame in eligible} | health_refs))
+        bbo = eligible[-1][3] if state == BookStateV2.VALID and eligible else None
+        missing = (None if bbo is not None else
+                   (reason or f"NOT_ESTIMABLE_BOOK_STATE_{state.value}") if state != BookStateV2.VALID else
+                   "NOT_ESTIMABLE_NO_CUTOFF_KNOWN_BOOK")
+        return BookContinuityViewV1(state, (str(bbo.bid_price), str(bbo.ask_price)) if bbo else None,
+            max(0, cutoff - eligible[-1][1]) if eligible else None, missing, refs)
+
     def feature(self, *, cutoff_ns: int, availability_view: AvailabilityViewV2 = AvailabilityViewV2.ACTUAL_RECEIPT,
                 trades: tuple[AggressiveTradeV2, ...] = (), depth_bands_bps: tuple[Decimal, ...] = (Decimal("5"),),
                 trade_coverage: FeedCoverageEvidenceV2 | None = None) -> S4FeatureArtifactV2:
@@ -730,23 +774,8 @@ class SequenceValidBookV2:
                 missing_reason="NOT_ESTIMABLE_RECONSTRUCTED_S4_AVAILABILITY_UNSUPPORTED",
                 data_age_ns=None, alignment_uncertainty_ns=None,
             )
-        state_rows = [row for row in self._state_events if row[0] <= cutoff]
-        asof_state, asof_epoch, asof_health, asof_reason, valid_since, asof_health_ref = (
-            (state_rows[-1][1], state_rows[-1][2], state_rows[-1][3], state_rows[-1][4], state_rows[-1][5], state_rows[-1][6])
-            if state_rows else (BookStateV2.COLD, 0, "UNKNOWN", "NO_SNAPSHOT", None, None)
-        )
-        eligible = [frame for frame, epoch in zip(self._frames, self._frame_epochs, strict=True)
-                    if frame[0] <= cutoff and epoch == asof_epoch]
-        if self._live_retained_from_ns is not None and cutoff < self._live_retained_from_ns:
-            asof_state, asof_reason = BookStateV2.INVALID, "NOT_ESTIMABLE_REQUIRES_IMMUTABLE_BOOK_REPLAY"
-            eligible = []
-        health_refs = {row[6] for row in state_rows if row[2] == asof_epoch and row[6] is not None}
+        asof_state, asof_epoch, asof_health, asof_reason, asof_health_ref, eligible, health_refs = self._cutoff_book_state(cutoff)
         refs = tuple(sorted({frame[2] for frame in eligible} | health_refs))
-        if asof_state == BookStateV2.WARMING and valid_since is not None and cutoff - valid_since >= self.warmup_ns:
-            if eligible and cutoff - eligible[-1][0] <= self.stale_ns and asof_health == "HEALTHY_CURRENT":
-                asof_state = BookStateV2.VALID
-        if eligible and cutoff - eligible[-1][0] > self.stale_ns:
-            asof_state, asof_reason = BookStateV2.INVALID, "NOT_ESTIMABLE_STALE_BOOK"
         if asof_state != BookStateV2.VALID:
             return S4FeatureArtifactV2(
                 cutoff_ns=cutoff, availability_view=view, instrument=self.instrument,

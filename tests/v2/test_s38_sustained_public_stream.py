@@ -346,6 +346,8 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
             elapsed = time.monotonic() - started
             sample_storage(elapsed)
             print(json.dumps({"frames": len(expected), "elapsed_s": elapsed,
+                   "max_service_duration_ns": port._stream_max_service_duration_ns,
+                   "max_service_gap_ns": port._stream_max_service_gap_ns,
                    "high_water_items": status.high_water_items, "rejected": status.frames_rejected,
                    "max_producer_lateness_s": max(producer_lateness, default=0),
                    "acquisition": helper.status(), "history_rows_restored": 1200 if history_restored else 0,

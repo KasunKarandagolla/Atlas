@@ -1072,7 +1072,8 @@ def build_public_stream_continuity_report(
         elif not metadata_current:
             bbo_reason = "METADATA_STALE_OR_INELIGIBLE"
         else:
-            feature = book.feature(cutoff_ns=cutoff)
+            feature = (book.continuity_view(cutoff_ns=cutoff) if book_lineage_ref is not None
+                       else book.feature(cutoff_ns=cutoff))
             book_sequence_valid = feature.sequence_state == BookStateV2.VALID and feature.bbo is not None
             if book_sequence_valid and feature.bbo is not None and feature.data_age_ns is not None:
                 latest_bbo = LatestValidBboEvidenceV1(

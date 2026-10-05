@@ -101,7 +101,7 @@ jobs:
       - name: Qualify offline sustained public stream with real persistence
         env:
           ATLAS_S38_REALTIME_STREAM: '1'
-          ATLAS_S38_REALTIME_SECONDS: '120'
+          ATLAS_S38_REALTIME_SECONDS: '240'
         run: |
           $testTools = "$env:RUNNER_TEMP\atlas-stream-test-tools"
           & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pip install --disable-pip-version-check --no-deps --only-binary=:all: --require-hashes --target $testTools -r requirements-stream-test-lock.txt
