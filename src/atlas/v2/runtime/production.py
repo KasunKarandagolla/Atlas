@@ -1968,6 +1968,21 @@ class ProductionOpsCyclePortV1:
             if product.available_at_ns > max(self.clock_ns(), recovery.collector.clock_ns()):
                 # The future contract remains unavailable to this controller cutoff.
                 continue
+            # Recovery already applies this active-evidence budget. Apply the
+            # same bound to hourly refreshes so per-frame registry lookups cannot
+            # grow indefinitely during a continuous run. Retained contracts in
+            # SQLite are never evicted or rewritten.
+            contracts = recovery.collector.registry.contracts()
+            if (len(contracts) >= 4096
+                    and all(item.content_hash != product.content_hash for item in contracts)):
+                error = ActiveEvidenceOverflowV1({
+                    "version": "OpsActiveWorkPressureV1", "artifact_type": "ProductContractV2",
+                    "evidence_cutoff_ns": product.available_at_ns, "limit": 4096,
+                    "has_more": True, "invalid_entry_count": 0,
+                    "reason": "ACTIVE_EVIDENCE_POPULATION_OVERFLOW", "authority": "ZERO",
+                })
+                error.publish(repository)
+                raise error
             try:
                 recovery.collector.registry.register(product)
                 repository.register_artifact(ArtifactIndexEntryV2(

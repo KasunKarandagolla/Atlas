@@ -8,6 +8,43 @@ IDENTITIES = tuple((symbol, prefix + symbol) for symbol in ("BTCUSDT", "ETHUSDT"
                    for prefix in ("orderbook.50.", "publicTrade."))
 
 
+def test_hourly_product_refresh_has_the_same_active_bound_as_restart(tmp_path):
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    import pytest
+
+    from atlas.v2.instruments import InstrumentRegistryV2
+    from atlas.v2.runtime import production
+
+    from .test_session032_public_stream_integration import BASE_NS, _contract
+
+    first = _contract("BTCUSDT")
+    registry = InstrumentRegistryV2()
+    for offset in range(4096):
+        registry.register(replace(first, effective_at_ns=BASE_NS + offset))
+    source = SimpleNamespace(current_products=(first,))
+    port = production.ProductionOpsCyclePortV1(public_source=source)
+    port.clock_ns = lambda: BASE_NS + 8192
+    port._collector_recovery = SimpleNamespace(collector=SimpleNamespace(
+        registry=registry, clock_ns=port.clock_ns))
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        # An exact repeated receipt at capacity remains idempotent.
+        port._register_refreshed_stream_products(repository, None)
+        assert len(registry.contracts()) == 4096
+        next_product = replace(first, effective_at_ns=BASE_NS + 4096)
+        source.current_products = (next_product,)
+        for _ in range(2):
+            with pytest.raises(production.ActiveEvidenceOverflowV1):
+                port._register_refreshed_stream_products(repository, None)
+        assert len(registry.contracts()) == 4096
+        assert repository.get_artifact(next_product.content_hash) is None
+        pressure = repository.artifact_entries("OpsActiveWorkPressureV1")
+        assert len(pressure) == 1
+        assert pressure[0].metadata["pressure"]["limit"] == 4096
+        assert pressure[0].metadata["pressure"]["authority"] == "ZERO"
+
+
 def _entry(kind, number, identity, *, source="BYBIT_PUBLIC_WS", created=None):
     symbol, channel = identity
     state = {"instrument": {"native_symbol": symbol}, "channel": channel, "source_id": source}
