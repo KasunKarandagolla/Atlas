@@ -8,6 +8,7 @@ that its declared workload is sustainable on the tested host.
 
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 import os
@@ -267,6 +268,47 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
     producer_lateness: list[float] = []
     storage_samples: list[dict[str, Any]] = []
     writer_threads: set[int] = set()
+    # Keep only the three slowest calls per stage. These probes distinguish
+    # CPU/book work, durable filesystem writes and SQLite commits without
+    # changing the writer, workload, queue or evidence qualification.
+    stage_timings: dict[str, list[dict[str, Any]]] = {}
+
+    def record_stage(name: str, started_ns: int) -> None:
+        duration = time.monotonic_ns() - started_ns
+        rows = stage_timings.setdefault(name, [])
+        rows.append({"duration_ns": duration, "finished_at_ns": time.time_ns(),
+                     "queue_items": stream.handoff.snapshot().queue_items})
+        rows.sort(key=lambda row: row["duration_ns"], reverse=True)
+        del rows[3:]
+
+    def wrap_stage(owner: Any, attribute: str, name: str) -> None:
+        original = getattr(owner, attribute)
+
+        def observed(*args: Any, **kwargs: Any) -> Any:
+            started_ns = time.monotonic_ns()
+            try:
+                return original(*args, **kwargs)
+            finally:
+                record_stage(name, started_ns)
+
+        monkeypatch.setattr(owner, attribute, observed)
+
+    from atlas.v2.data import public_transport_archive
+    from atlas.v2.data.public_archive_extents import PublicArchiveExtentWriterV1
+
+    wrap_stage(os, "fsync", "raw_fsync")
+    wrap_stage(PublicArchiveExtentWriterV1, "write", "archive_extent")
+    wrap_stage(public_transport_archive, "archive_transport_batch", "transport_archive")
+    wrap_stage(port, "_persist_public_stream_batch", "typed_batch_and_reports")
+    gc_started: dict[int, int] = {}
+
+    def observe_gc(phase: str, info: dict[str, Any]) -> None:
+        generation = info["generation"]
+        if phase == "start":
+            gc_started[generation] = time.monotonic_ns()
+        elif generation in gc_started:
+            record_stage(f"gc_generation_{generation}", gc_started.pop(generation))
+
     # Restore a genuinely serialized history while arrivals continue. This is
     # the formerly synchronous strict decoding seam, not a simulated delay.
     history = None
@@ -295,6 +337,24 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
 
         sample_storage(0)
         original_register = repository.register_artifact
+        original_transaction = repository._transaction
+
+        def observed_transaction() -> Any:
+            transaction = original_transaction()
+            transaction_type = type(transaction)
+            original_exit = transaction_type.__exit__
+
+            def observed_exit(*args: Any, **kwargs: Any) -> Any:
+                started_ns = time.monotonic_ns()
+                try:
+                    return original_exit(*args, **kwargs)
+                finally:
+                    record_stage("sqlite_transaction_exit", started_ns)
+
+            transaction_type.__exit__ = observed_exit
+            return transaction
+
+        monkeypatch.setattr(repository, "_transaction", observed_transaction)
 
         def observed_register(*args: Any, **kwargs: Any) -> Any:
             writer_threads.add(threading.get_ident())
@@ -319,6 +379,7 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
         offered_started_ns = time.time_ns()
         producer.start()
         started = time.monotonic()
+        gc.callbacks.append(observe_gc)
         try:
             helper.acquire(now_ns=time.time_ns(), service=lambda: port.service_public_stream(repository))
             next_rest = time.monotonic() + 1
@@ -352,6 +413,7 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
                    "max_producer_lateness_s": max(producer_lateness, default=0),
                    "acquisition": helper.status(), "history_rows_restored": 1200 if history_restored else 0,
                    "storage_samples": storage_samples}, sort_keys=True))
+            print(json.dumps({"native_service_stage_timings": stage_timings}, sort_keys=True))
             assert not status.overflowed, "actual writer throughput did not sustain the declared 160 fps"
             assert len(expected) == status.frames_drained == frame_count
             assert status.queue_items == 0 and status.frames_rejected == 0
@@ -369,6 +431,7 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
             assert current_reports and all(report["source_current"] and report["transport_received"]
                                            for report in current_reports)
         finally:
+            gc.callbacks.remove(observe_gc)
             stop.set()
             producer.join(timeout=1)
             helper.close(timeout_s=0.1)
