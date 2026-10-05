@@ -43,6 +43,13 @@ from ..data.microstructure import (
     SequenceValidBookV2,
 )
 from ..data.microstructure_archive import L2FrameArchiveV2, L2RawFrameV2
+from ..data.public_archive_extents import write_extent
+from ..data.public_evidence_checkpoint import (
+    MAX_CHUNKS_PER_CHECKPOINT,
+    persist_book_checkpoint,
+    persist_continuity_checkpoint,
+    validate_continuity_checkpoint,
+)
 from ..data.public_http import PublicDataError
 from ..data.public_microstructure_ws import (
     CapturedPublicFrameV2,
@@ -1456,6 +1463,12 @@ class ProductionOpsCyclePortV1:
         self._stream_service_frames = 0
         self._stream_service_calls = 0
         self._stream_transport_ref: str | None = None
+        self._stream_checkpoint_refs: dict[tuple[str, str, str], str] = {}
+        self._stream_book_checkpoint_refs: dict[tuple[str, str, str], str] = {}
+        self._stream_pending_book_archives: dict[tuple[str, str, str], list[str]] = {}
+        self._stream_pending_book_transports: dict[tuple[str, str, str], list[str]] = {}
+        self._stream_pending_book_controls: dict[tuple[str, str, str], list[str]] = {}
+        self._stream_pending_book_health: dict[tuple[str, str, str], list[str]] = {}
         self._stream_epoch_first_receipt: dict[tuple[str, str, str], tuple[int | None, int]] = {}
         self._recovery_calls = 0
         self._collection_calls = 0
@@ -1554,7 +1567,8 @@ class ProductionOpsCyclePortV1:
                 if product.content_hash != entry.artifact_ref:
                     raise ValueError("stored product identity differs from its typed production artifact")
                 registry.register(product)
-        archive = ParquetObservationArchiveV2(Path(repository.path).parent / "ops-observations")
+        archive = ParquetObservationArchiveV2(Path(repository.path).parent / "ops-observations",
+            compact_stream_repository=repository, clock_ns=lambda: self.clock_ns())
         collector = PublicCollectorV2(
             repository=repository,
             registry=registry,
@@ -1752,22 +1766,17 @@ class ProductionOpsCyclePortV1:
     def _read_latest_stream_states(
         repository: OpsRepository, *, as_of_ns: int,
     ) -> dict[tuple[str, str], PublicStreamContinuityStateV1]:
-        entries = repository.artifact_entries_by_types(
-            ("PublicStreamContinuityStateV1",), limit=10_000, available_before_ns=as_of_ns,
-        )
+        entries = repository.latest_stream_continuity_entries(as_of_ns=as_of_ns)
         latest: dict[
             tuple[str, str],
             tuple[int, int, int, int, int, int, str, PublicStreamContinuityStateV1],
         ] = {}
         for entry in entries:
-            body = entry.metadata.get("state")
-            if not isinstance(body, Mapping):
-                continue
             try:
-                state = PublicStreamContinuityStateV1.from_dict(json_value(body))
-            except (ArithmeticError, KeyError, TypeError, ValueError):
-                continue
-            if entry.artifact_ref != state.content_hash or entry.content_hash != state.content_hash:
+                state = validate_continuity_checkpoint(repository, entry)
+            except (ArithmeticError, KeyError, TypeError, ValueError) as exc:
+                if entry.artifact_type == "PublicStreamContinuityCheckpointV2":
+                    raise ValueError("latest compact continuity checkpoint failed validation") from exc
                 continue
             identity = (state.instrument.native_symbol, state.channel)
             old = latest.get(identity)
@@ -1807,6 +1816,12 @@ class ProductionOpsCyclePortV1:
             ref, "PublicStreamContinuityEventV1", ref,
             observation.available_at_ns, observation.available_at_ns, body,
         ))
+        if observation.channel.startswith("orderbook."):
+            key = self._stream_feed_key(observation.instrument, observation.source_id, observation.channel)
+            controls = self._stream_pending_book_controls.setdefault(key, [])
+            controls.append(ref)
+            if len(controls) > 256:
+                raise ValueError("book control lineage population exceeded its bound")
 
     def _apply_stream_observation(
         self,
@@ -1835,8 +1850,12 @@ class ProductionOpsCyclePortV1:
             raise ValueError("S32 public stream source must be Bybit public linear")
         recovery = cast(ProductionCollectorRecoveryV1, self._collector_recovery)
         self._stream_run_epoch = recovery.recovery_epoch_ref
-        self._stream_archive = L2FrameArchiveV2(Path(repository.path).parent / "ops-l2-frames", repository)
+        self._stream_archive = L2FrameArchiveV2(Path(repository.path).parent / "ops-l2-frames", repository,
+            compact_live=True, clock_ns=lambda: self.clock_ns())
         prior_states = self._read_latest_stream_states(repository, as_of_ns=now_ns)
+        prior_refs = {validate_continuity_checkpoint(repository, entry).content_hash: entry.artifact_ref
+                      for entry in repository.latest_stream_continuity_entries(as_of_ns=now_ns)
+                      if entry.artifact_type == "PublicStreamContinuityCheckpointV2"}
         products = {
             symbol: product
             for symbol in ("BTCUSDT", "ETHUSDT")
@@ -1896,14 +1915,17 @@ class ProductionOpsCyclePortV1:
                         epoch_id=f"{self._stream_run_epoch}:pending",
                         prior_recovery_ref=prior.current_recovery_ref if prior is not None else None,
                     )
-                    self._stream_books[key] = SequenceValidBookV2(
+                    self._stream_books[key] = (SequenceValidBookV2(
                         instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
                         channel=channel, sequence_semantics="BYBIT_U",
-                    )
+                    ) if channel.startswith("orderbook.") else None)
                     self._stream_first_connection_allowed.add(key)
                 self._stream_trackers[key] = tracker
                 self._stream_connection_epochs[key] = None
-                self._persist_stream_state(repository, tracker.to_state(), available_at_ns=now_ns)
+                self._stream_checkpoint_refs[key] = persist_continuity_checkpoint(
+                    repository, tracker.to_state(), available_at_ns=now_ns,
+                    prior_ref=prior_refs.get(prior.content_hash) if prior is not None else None, transport_ref=None,
+                    clock_ns=self.clock_ns)
 
     @staticmethod
     def _persist_stream_state(
@@ -1987,11 +2009,12 @@ class ProductionOpsCyclePortV1:
                     epoch_id=epoch_id, observed_at_ns=available_at_ns,
                 )
                 self._apply_stream_observation(repository, tracker, observation)
-                book = SequenceValidBookV2(
+                book = (SequenceValidBookV2(
                     instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
                     channel=channel, sequence_semantics="BYBIT_U",
-                )
-                book.reconnect(available_at_ns)
+                ) if channel.startswith("orderbook.") else None)
+                if book is not None:
+                    book.reconnect(available_at_ns)
                 self._stream_books[key] = book
                 self._stream_trackers.pop(previous_key, None)
                 self._stream_epoch_first_receipt.pop(previous_key, None)
@@ -1999,6 +2022,12 @@ class ProductionOpsCyclePortV1:
                 self._stream_connection_epochs.pop(previous_key, None)
                 self._stream_disconnect_seen.discard(previous_key)
                 self._stream_first_connection_allowed.discard(previous_key)
+                self._stream_checkpoint_refs.pop(previous_key, None)
+                self._stream_book_checkpoint_refs.pop(previous_key, None)
+                self._stream_pending_book_archives.pop(previous_key, None)
+                self._stream_pending_book_transports.pop(previous_key, None)
+                self._stream_pending_book_health.pop(previous_key, None)
+                self._stream_pending_book_controls.pop(previous_key, None)
             else:
                 tracker = PublicStreamContinuityTrackerV1(
                     instrument=product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
@@ -2086,7 +2115,7 @@ class ProductionOpsCyclePortV1:
             # Commit exact transport bytes before interpretation. Unbound and
             # failed interpretation remain reconstructable after restart.
             self._stream_transport_ref = archive_transport_batch(
-                repository, frames, clock_ns=self.clock_ns, floor_ns=now_ns)
+                repository, frames, clock_ns=self.clock_ns, floor_ns=now_ns, compact=True)
             # One bounded batch shares a commit; individual immutable writes
             # retain their existing savepoint validation. A failed batch cannot
             # reuse mutated in-memory continuity state after rollback.
@@ -2139,7 +2168,7 @@ class ProductionOpsCyclePortV1:
         )
         registry = collector.registry
         raw_archive_groups: dict[tuple[str, str, str], list[L2RawFrameV2]] = {}
-        batch_health: dict[tuple[str, str, str, int | None], tuple[PublicSourceHealthV2, str]] = {}
+        batch_health: dict[tuple[str, str, str, int | None], tuple[PublicSourceHealthV2, str, ArtifactIndexEntryV2]] = {}
         for original_frame in frames:
             topic_identity = self._stream_topic_identity(original_frame.channel)
             if (original_frame.venue.value != "BYBIT" or original_frame.source_id != BYBIT_PUBLIC_WS_SOURCE_ID_V1
@@ -2188,7 +2217,7 @@ class ProductionOpsCyclePortV1:
                     attempt_count=attempt_count, available_at_ns=ingested_at_ns,
                 )
                 batch_health[health_key] = cached_health
-            health, health_epoch_id = cached_health
+            health, health_epoch_id, _ = cached_health
             event: L2SnapshotV2 | L2DeltaV2 | L2SequenceFaultV2 | None = None
             parsed_trades: tuple[Any, ...] = ()
             trade_rows: list[Mapping[str, Any]] = []
@@ -2339,7 +2368,43 @@ class ProductionOpsCyclePortV1:
                 )
             raw_archive_groups.setdefault(feed_key, []).append(raw_frame)
 
-        self._write_stream_frame_archives(repository, raw_archive_groups)
+        if batch_health:
+            import pyarrow as pa
+
+            health_entries = tuple(value[2] for value in batch_health.values())
+            health_rows = [{"artifact_ref": entry.artifact_ref, "content_hash": entry.content_hash,
+                            "created_at_ns": entry.created_at_ns, "available_at_ns": entry.available_at_ns,
+                            "metadata_json": canonical_json(entry.metadata)} for entry in health_entries]
+            health_chunk = sha256_json(health_rows)
+            write_extent(repository, pa.Table.from_pylist(health_rows), namespace="ops-stream-metadata",
+                         chunk_id=health_chunk, clock_ns=self.clock_ns, floor_ns=ingested_at_ns)
+            repository.register_public_archive_entries(health_entries, archive_chunk_id=health_chunk)
+        archive_refs = self._write_stream_frame_archives(repository, raw_archive_groups)
+        for key in raw_archive_groups:
+            if key[2].startswith("orderbook.") and self._stream_books.get(key) is not None and self._stream_transport_ref is not None:
+                pending_transports = self._stream_pending_book_transports.setdefault(key, [])
+                pending_transports.append(self._stream_transport_ref)
+                if len(pending_transports) >= MAX_CHUNKS_PER_CHECKPOINT:
+                    publish_report = True
+                tracker = self._stream_trackers[key]
+                health_refs = self._stream_pending_book_health.setdefault(key, [])
+                for health_key, (frame_health, _, _) in batch_health.items():
+                    if health_key[:3] == (tracker.state.instrument.content_hash, tracker.state.metadata_ref,
+                                          tracker.state.channel) and frame_health.content_hash not in health_refs:
+                        health_refs.append(frame_health.content_hash)
+                if len(health_refs) > 128:
+                    raise ValueError(f"book lineage health population exceeded its bound: {len(health_refs)}")
+                if len(health_refs) >= 64:
+                    publish_report = True
+        for key, ref in archive_refs.items():
+            if key[2].startswith("orderbook.") and self._stream_books.get(key) is not None:
+                pending = self._stream_pending_book_archives.setdefault(key, [])
+                pending.append(ref)
+                if len(pending) >= MAX_CHUNKS_PER_CHECKPOINT:
+                    publish_report = True
+        for book in self._stream_books.values():
+            if book is not None:
+                book.compact_live_state(as_of_ns=ingested_at_ns)
         collector.flush_archive()
         # Transport can change while a batch is being archived. Reports must
         # observe that change rather than publish the pre-work status as current.
@@ -2415,6 +2480,8 @@ class ProductionOpsCyclePortV1:
         changed_recovery = any(prior_recoveries.get(key) != (
             tracker.state.current_recovery_ref, tracker.state.gap_count)
             for key, tracker in self._stream_trackers.items())
+        if any(len(refs) >= 128 for refs in self._stream_pending_book_controls.values()):
+            publish_report = True
         if not publish_report and not changed_recovery and not overflowed and not disconnect_changed:
             return
 
@@ -2490,6 +2557,22 @@ class ProductionOpsCyclePortV1:
                 report_as_of, report_as_of, {"health": health.to_dict(), "transport": health_body},
             ))
             book = self._stream_books.get(key)
+            book_ref = None
+            if book is not None and channel.startswith("orderbook."):
+                book_ref = persist_book_checkpoint(
+                    repository, book, epoch_id=tracker.state.epoch_id,
+                    metadata_ref=tracker.state.metadata_ref, as_of_ns=report_as_of,
+                    prior_ref=self._stream_book_checkpoint_refs.get(key),
+                    archive_refs=tuple(self._stream_pending_book_archives.get(key, ())),
+                    transport_refs=tuple(self._stream_pending_book_transports.get(key, ())),
+                    frame_health_refs=tuple(self._stream_pending_book_health.get(key, ())),
+                    control_refs=tuple(self._stream_pending_book_controls.get(key, ())), clock_ns=self.clock_ns)
+                self._stream_book_checkpoint_refs[key] = book_ref
+                self._stream_pending_book_archives[key] = []
+                self._stream_pending_book_transports[key] = []
+                self._stream_pending_book_health[key] = []
+                self._stream_pending_book_controls[key] = []
+            report_started = max(report_as_of, sample(self.clock_ns, floor_ns=report_as_of))
             report = build_public_stream_continuity_report(
                 tracker, as_of_ns=report_as_of, source_health=health,
                 source_health_epoch_id=status_epoch if active_epoch_matches else None,
@@ -2497,16 +2580,23 @@ class ProductionOpsCyclePortV1:
                 max_metadata_age_ns=PUBLIC_STREAM_METADATA_MAX_AGE_NS_V1,
                 book=book if channel.startswith("orderbook.") else None,
                 book_metadata_ref=tracker.state.metadata_ref if book is not None else None,
+                book_lineage_ref=book_ref,
             )
             state_snapshot = tracker.to_state()
-            state_ref = state_snapshot.content_hash
-            self._persist_stream_state(repository, state_snapshot, available_at_ns=report_as_of)
+            state_ref = persist_continuity_checkpoint(
+                repository, state_snapshot, available_at_ns=report_as_of,
+                prior_ref=self._stream_checkpoint_refs.get(key), transport_ref=self._stream_transport_ref,
+                clock_ns=self.clock_ns)
+            self._stream_checkpoint_refs[key] = state_ref
+            report_finished = sample(self.clock_ns, floor_ns=report_started)
             repository.register_artifact(ArtifactIndexEntryV2(
                 report.content_hash, "PublicStreamContinuityReportV1", report.content_hash,
-                report_as_of, report_as_of,
+                report_started, report_finished,
                 {"report": report.to_dict(), "state_ref": state_ref,
                  "source_health_ref": health.content_hash,
-                 "transport": health_body},
+                 "storage_version": "PUBLIC_CONTINUITY_REPORT_INDEX_V2",
+                 "transport_ref": health.content_hash, "computation_started_ns": report_started,
+                 "computation_finished_ns": report_finished},
             ))
         for symbol in self._stream_products:
             product = self._stream_products[symbol]
@@ -2525,7 +2615,7 @@ class ProductionOpsCyclePortV1:
         handoff: Any,
         attempt_count: int,
         available_at_ns: int,
-    ) -> tuple[PublicSourceHealthV2, str]:
+    ) -> tuple[PublicSourceHealthV2, str, ArtifactIndexEntryV2]:
         frame_epoch_id = self._connection_epoch_id(frame.connection_epoch or attempt_count or None)
         active = bool(
             getattr(handoff, "connected", False)
@@ -2550,11 +2640,11 @@ class ProductionOpsCyclePortV1:
             BYBIT_PUBLIC_WS_SOURCE_ID_V1, frame.received_at_ns, available_at_ns,
             health_state, sha256_json(body), details,
         )
-        repository.register_artifact(ArtifactIndexEntryV2(
+        entry = ArtifactIndexEntryV2(
             health.content_hash, "PublicStreamSourceHealthV1", health.content_hash,
             available_at_ns, available_at_ns, {"health": health.to_dict(), "transport": body},
-        ))
-        return health, frame_epoch_id
+        )
+        return health, frame_epoch_id, entry
 
     def _persist_unbound_stream_frame(
         self, repository: OpsRepository, frame: CapturedPublicFrameV2, available_at_ns: int, *, reason: str,
@@ -2594,9 +2684,10 @@ class ProductionOpsCyclePortV1:
         self,
         repository: OpsRepository,
         groups: Mapping[tuple[str, str, str], list[L2RawFrameV2]],
-    ) -> None:
+    ) -> dict[tuple[str, str, str], str]:
+        checkpoints: dict[tuple[str, str, str], str] = {}
         if self._stream_archive is None:
-            return
+            return checkpoints
         for _feed_key, incoming_frames in groups.items():
             unique: dict[str, L2RawFrameV2] = {}
             index_refs = {frame.record_id: sha256_json({"artifact_type": "PublicStreamFrameIndexV1",
@@ -2647,6 +2738,7 @@ class ProductionOpsCyclePortV1:
             if not unique:
                 continue
             chunk_id, _path = self._stream_archive.write_chunk(tuple(unique.values()))
+            checkpoints[_feed_key] = self._stream_archive.checkpoint_ref(chunk_id)
             entries = []
             for frame in unique.values():
                 index_ref = sha256_json({"artifact_type": "PublicStreamFrameIndexV1",
@@ -2671,6 +2763,7 @@ class ProductionOpsCyclePortV1:
                     frame.available_at_ns, frame.available_at_ns, index_body,
                 ))
             repository.register_artifacts(entries)
+        return checkpoints
 
     @staticmethod
     def _public_source_states_as_of(
@@ -5218,7 +5311,8 @@ def _latest_stream_continuity_report_ref(
                 or report.get("channel") != channel
                 or report.get("contract_revision") != product.key.contract_revision
                 or report.get("metadata_ref") != product.metadata_ref
-                or report.get("as_of_ns") != entry.available_at_ns
+                or (report.get("as_of_ns") != entry.available_at_ns
+                    and entry.metadata.get("storage_version") != "PUBLIC_CONTINUITY_REPORT_INDEX_V2")
                 or type(report.get("as_of_ns")) is not int or report["as_of_ns"] > cutoff_ns):
             continue
         try:
@@ -5288,7 +5382,7 @@ def _indexed_s3_forward_trade_evidence(
         return evidence, None
     evidence = reconstruct_s3_stream_trade_evidence(
         repository, archive_root, product=product, cutoff_ns=cutoff_ns,
-        continuity_report_ref=report_ref,
+        continuity_report_ref=report_ref, limit=512,
     )
     health: PublicSourceHealthV2 | None = None
     if evidence.source_health_ref is not None:

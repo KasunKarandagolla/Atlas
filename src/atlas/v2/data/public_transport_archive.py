@@ -11,7 +11,7 @@ from .public_microstructure_ws import CapturedPublicFrameV2
 
 
 def archive_transport_batch(repository: OpsRepository, frames: tuple[CapturedPublicFrameV2, ...],
-                            *, clock_ns: Callable[[], int], floor_ns: int) -> str | None:
+                            *, clock_ns: Callable[[], int], floor_ns: int, compact: bool = False) -> str | None:
     if not frames:
         return None
     if len(frames) > 256:
@@ -29,6 +29,23 @@ def archive_transport_batch(repository: OpsRepository, frames: tuple[CapturedPub
     path = root / (chunk_id + ".parquet")
     rows = [{**header, "raw_payload_bytes": frame.raw_payload_bytes}
             for header, frame in zip(headers, frames, strict=True)]
+    if compact:
+        from .public_archive_extents import write_extent
+
+        extent, _ = write_extent(repository, pa.Table.from_pylist(rows), namespace="ops-public-transport",
+                                 chunk_id=chunk_id, clock_ns=clock_ns, floor_ns=floor_ns)
+        descriptor = repository.get_artifact(extent)
+        assert descriptor is not None
+        available = max(descriptor.available_at_ns, clock_ns(), floor_ns)
+        body = {"version": "PublicStreamTransportBatchV2", "chunk_id": chunk_id,
+                "archive_extent_ref": extent, "frame_count": len(frames),
+                "first_received_at_ns": frames[0].received_at_ns,
+                "last_received_at_ns": frames[-1].received_at_ns,
+                "available_at_ns": available, "authority": "ZERO"}
+        ref = sha256_json(body)
+        repository.register_artifact(ArtifactIndexEntryV2(
+            ref, "PublicStreamTransportBatchV2", ref, available, available, {"batch": body}))
+        return ref
     if path.exists():
         if pq.read_table(path).to_pylist() != rows:
             raise ValueError("immutable public transport archive conflict")

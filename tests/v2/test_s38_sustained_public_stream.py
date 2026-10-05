@@ -15,6 +15,7 @@ import runpy
 import threading
 import time
 from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -25,6 +26,7 @@ import pytest
 from atlas.v2.data.active_history import advance
 from atlas.v2.data.bars import BarIntervalV2
 from atlas.v2.data.bybit_source import BybitPublicSnapshotV1
+from atlas.v2.data.public_archive_extents import read_extent
 from atlas.v2.data.public_microstructure_ws import (
     BoundedPublicFrameHandoffV2,
     CapturedPublicFrameV2,
@@ -111,20 +113,26 @@ class MixedWorkload:
             }, received_at_ns=received_at_ns)
         self.book_counts[symbol] += 1
         sequence = self.book_counts[symbol]
+        bids = [[str(Decimal("100") - Decimal(i) / 100), "2"] for i in range(50)] if sequence == 1 else [["100", "2"]]
+        asks = [[str(Decimal("101") + Decimal(i) / 100), "3"] for i in range(50)] if sequence == 1 else [["101", "3"]]
         return _frame(f"orderbook.50.{symbol}", {
             "topic": f"orderbook.50.{symbol}",
             "type": "snapshot" if sequence == 1 else "delta",
             "ts": event_ms, "cts": event_ms,
             "data": {"s": symbol, "u": sequence, "seq": sequence,
-                     "b": [["100", "2"]], "a": [["101", "3"]]},
+                     "b": bids, "a": asks},
         }, received_at_ns=received_at_ns)
 
 
 def transport_rows(repository: Any, root: Any) -> list[dict[str, Any]]:
-    entries = repository.artifact_entries("PublicStreamTransportBatchV1")
-    entries = sorted(entries, key=lambda entry: entry.metadata["batch"]["frames"][0]["received_at_ns"])
-    return [row for entry in entries for row in pq.read_table(
-        root / "ops-public-transport" / entry.metadata["batch"]["archive_path_name"],
+    entries = (*repository.artifact_entries("PublicStreamTransportBatchV1"),
+               *repository.artifact_entries("PublicStreamTransportBatchV2"))
+    entries = sorted(entries, key=lambda entry: entry.metadata["batch"].get("first_received_at_ns")
+        if entry.artifact_type == "PublicStreamTransportBatchV2" else entry.metadata["batch"]["frames"][0]["received_at_ns"])
+    return [row for entry in entries for row in (
+        read_extent(repository, entry.metadata["batch"]["archive_extent_ref"])
+        if entry.artifact_type == "PublicStreamTransportBatchV2" else pq.read_table(
+            root / "ops-public-transport" / entry.metadata["batch"]["archive_path_name"])
     ).to_pylist()]
 
 
@@ -257,6 +265,7 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
     stop = threading.Event()
     helper = ServicedPublicAcquisitionV1(SlowREST(), clock_ns=time.time_ns)
     producer_lateness: list[float] = []
+    storage_samples: list[dict[str, Any]] = []
     writer_threads: set[int] = set()
     # Restore a genuinely serialized history while arrivals continue. This is
     # the formerly synchronous strict decoding seam, not a simulated delay.
@@ -271,6 +280,20 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
         supervisor.run_once()
         repository = supervisor.repository
         assert repository is not None
+        from atlas.v2.product import resource_sample
+
+        def sample_storage(elapsed_s: float) -> None:
+            storage_samples.append({"elapsed_s": elapsed_s,
+                "sqlite_bytes": Path(repository.path).stat().st_size,
+                "wal_bytes": Path(str(repository.path) + "-wal").stat().st_size,
+                "raw_archive_bytes": sum(path.stat().st_size for path in tmp_path.rglob("*")
+                    if path.suffix in (".arrow", ".parquet")),
+                "book_frames": [len(book._frames) for book in port._stream_books.values() if book is not None],
+                "book_levels": [[len(book.bids), len(book.asks)]
+                    for book in port._stream_books.values() if book is not None],
+                "resource": resource_sample(tmp_path)})
+
+        sample_storage(0)
         original_register = repository.register_artifact
 
         def observed_register(*args: Any, **kwargs: Any) -> Any:
@@ -300,6 +323,8 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
             helper.acquire(now_ns=time.time_ns(), service=lambda: port.service_public_stream(repository))
             next_rest = time.monotonic() + 1
             while producer.is_alive() and not stream.handoff.snapshot().overflowed:
+                if time.monotonic() - started >= len(storage_samples) * 30:
+                    sample_storage(time.monotonic() - started)
                 if not history_restored and time.monotonic() - started >= min(10, seconds / 2):
                     restored = active_history._decode_head(repository, history_head, key=KEY,
                         interval=BarIntervalV2.M15, service=lambda: port.service_public_stream(repository))
@@ -319,10 +344,12 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
                 time.sleep(0.02)
             status = stream.handoff.snapshot()
             elapsed = time.monotonic() - started
-            print({"frames": len(expected), "elapsed_s": elapsed,
+            sample_storage(elapsed)
+            print(json.dumps({"frames": len(expected), "elapsed_s": elapsed,
                    "high_water_items": status.high_water_items, "rejected": status.frames_rejected,
                    "max_producer_lateness_s": max(producer_lateness, default=0),
-                   "acquisition": helper.status(), "history_rows_restored": 1200 if history_restored else 0})
+                   "acquisition": helper.status(), "history_rows_restored": 1200 if history_restored else 0,
+                   "storage_samples": storage_samples}, sort_keys=True))
             assert not status.overflowed, "actual writer throughput did not sustain the declared 160 fps"
             assert len(expected) == status.frames_drained == frame_count
             assert status.queue_items == 0 and status.frames_rejected == 0

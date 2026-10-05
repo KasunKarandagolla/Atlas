@@ -306,8 +306,11 @@ class HistoricalImporterV2:
 class ParquetObservationArchiveV2:
     """Immutable Parquet chunks for public/research observations, outside ops.sqlite."""
 
-    def __init__(self, root: str | Path) -> None:
+    def __init__(self, root: str | Path, *, compact_stream_repository: OpsRepository | None = None,
+                 clock_ns: Callable[[], int] | None = None) -> None:
         self.root = Path(root)
+        self.compact_stream_repository = compact_stream_repository
+        self.clock_ns = clock_ns
 
     def write_batch(self, batch: HistoricalImportBatchV2) -> Path:
         return self.write_observation_chunk(batch.chunk_id, batch.observations)
@@ -354,6 +357,14 @@ class ParquetObservationArchiveV2:
                 }
             )
         table = pa.Table.from_pylist(rows)
+        if self.compact_stream_repository is not None and all(
+                item.observation.source_id == "BYBIT_PUBLIC_WS" for item in observations):
+            from .public_archive_extents import write_extent
+
+            floor = max(item.observation.available_at_ns for item in observations)
+            _, path = write_extent(self.compact_stream_repository, table, namespace="ops-observations",
+                chunk_id=chunk_id, clock_ns=self.clock_ns or (lambda: floor), floor_ns=floor)
+            return path
         temporary = target.with_suffix(".parquet.tmp")
         pq.write_table(table, temporary, compression="zstd")
         if target.exists():

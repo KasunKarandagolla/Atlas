@@ -5,9 +5,8 @@ import json
 from decimal import Decimal
 from types import SimpleNamespace
 
-import pyarrow.parquet as pq
-
 from atlas.v2._serialization import sha256_json
+from atlas.v2.data.public_archive_extents import read_public_chunk
 from atlas.v2.data.public_microstructure_ws import (
     CapturedPublicFrameV2,
     bybit_btc_eth_linear_topics,
@@ -189,7 +188,7 @@ def test_opt_in_stream_archives_two_symbols_under_supervisor_writer_and_stays_un
         archive_root = tmp_path / "ops-observations"
         raw_rows = []
         for entry in stream_trade_indexes:
-            rows = pq.read_table(archive_root / f"{entry.metadata['archive_chunk_id']}.parquet").to_pylist()
+            rows = read_public_chunk(repository, archive_root, entry.metadata["archive_chunk_id"]).to_pylist()
             raw_rows.extend(rows)
         for row in raw_rows:
             assert row["source_id"] == production.BYBIT_PUBLIC_WS_SOURCE_ID_V1

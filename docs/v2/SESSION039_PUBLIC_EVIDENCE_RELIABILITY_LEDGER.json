@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "session": "S39_LONG_RUN_PUBLIC_EVIDENCE_RELIABILITY",
+  "status": "IMPLEMENTED",
+  "start": {
+    "branch": "fix/session-038-public-stream-reliability",
+    "sha": "efd75ca4e0cb432c79e0a090b363ca09b87e9099",
+    "ancestry_verified": true
+  },
+  "branch": "fix/session-039-long-run-evidence-reliability",
+  "live_evidence": {
+    "run_id": "80e0d758bf4c41f78e8dbb3f92796354",
+    "status": "TEST GATE",
+    "origin": "Owner report summary; raw owner database/export absent",
+    "raw_export_independently_inspected": false,
+    "validation_failures": 493,
+    "reason": "INDEXED_EVIDENCE_FAILED_VALIDATION",
+    "failed_run_retained": true
+  },
+  "correction": {
+    "status": "IMPLEMENTED",
+    "design": "SESSION039_PUBLIC_EVIDENCE_STORAGE_ADR_V1.md",
+    "defects": [
+      "Repeated growing book ancestry",
+      "Repeated continuity lookup caches in persisted state",
+      "High-frequency generic index/schema duplication",
+      "Elapsed-history startup/current-window scans",
+      "Cold book allocation on trade channels"
+    ]
+  },
+  "validation": {
+    "status": "TEST GATE",
+    "focused_causal_publication_restart": "TESTED; 3 passed, 0 failed",
+    "focused_replay_recovery_capacity": "TESTED; 2 passed, 0 failed",
+    "accelerated_storage": "TEST GATE; one 20480-frame case completed with zero validation failures; longer case pending",
+    "comprehensive_offline": "TEST GATE",
+    "native_windows_package": "TEST GATE"
+  },
+  "authority": {
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "model_authority": "ZERO",
+    "critic_authority": "ZERO",
+    "risk_policy_changed": false,
+    "leverage_policy_changed": false,
+    "holdout_accessed": false,
+    "economics": "NOT ESTIMABLE",
+    "provider_calls": 0,
+    "private_venue_calls": 0,
+    "orders": 0
+  },
+  "independent_review": "TEST GATE",
+  "owner_retest": "UNVERIFIED",
+  "desktop_copy": "BLOCKED BY ENVIRONMENT; this Linux host is not the owner Windows Desktop"
+}

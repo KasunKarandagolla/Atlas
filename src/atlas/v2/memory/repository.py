@@ -11,6 +11,7 @@ import re
 import sqlite3
 import threading
 import time
+from collections import OrderedDict
 from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -385,6 +386,32 @@ _ARCHIVE_QUERY_INDEXES = (
     "CREATE INDEX IF NOT EXISTS l2_archive_restart_lookup ON artifact_index ("
     + ",".join(_archive_json_expression(name) for name in ("instrument_hash", "source_id", "channel"))
     + ",available_at_ns DESC,artifact_ref DESC) WHERE artifact_type='L2FrameArchiveCheckpointV2'",
+    "CREATE INDEX IF NOT EXISTS public_stream_trade_event_window ON artifact_index ("
+    + ",".join(_archive_json_expression(name) for name in (
+        "instrument_key_json", "instrument_revision", "source_id", "event_type"))
+    + "," + _archive_json_expression("event_at_ns")
+    + " DESC,available_at_ns DESC,artifact_ref DESC) WHERE artifact_type='PublicStreamTradeObservationIndexV1'",
+    "CREATE INDEX IF NOT EXISTS public_stream_generic_source_lookup ON artifact_index ("
+    + ",".join(_archive_json_expression(name) for name in (
+        "instrument_revision", "source_id"))
+    + ",available_at_ns DESC,artifact_ref DESC) WHERE artifact_type='PublicObservationIndexV2'",
+    "CREATE INDEX IF NOT EXISTS public_stream_invalidation_window ON artifact_index ("
+    + ",".join(_archive_json_expression(f"observation.{name}") for name in (
+        "instrument", "source_id", "channel"))
+    + ",available_at_ns,artifact_ref) WHERE artifact_type='PublicStreamContinuityEventV1'",
+) + tuple(
+    f"CREATE INDEX IF NOT EXISTS public_stream_continuity_head_{version}_progress ON artifact_index ("
+    + ",".join(_archive_json_expression(f"{path}.{name}") for name in (
+        "instrument.native_symbol", "channel", "source_id"))
+    + ",available_at_ns DESC," + ",".join(
+        f"COALESCE({_archive_json_expression(f'{path}.{name}')},0) DESC"
+        for name in ("last_available_at_ns", "recovery_epoch", "observed_trade_count",
+                     "last_transport_receipt_at_ns", "gap_count"))
+    + f",artifact_ref DESC) WHERE artifact_type='{kind}'"
+    for version, kind, path in (
+        ("v1", "PublicStreamContinuityStateV1", "state"),
+        ("v2", "PublicStreamContinuityCheckpointV2", "checkpoint.state"),
+    )
 ) + _RECEIPT_QUERY_INDEXES
 
 _LATEST_METADATA_INDEXES = tuple(
@@ -422,6 +449,10 @@ class OpsRepository:
         self.read_only = read_only
         self._lock = threading.RLock()
         self._savepoint_counter = 0
+        self._public_extent_writer: Any = None
+        self._public_index_cache: OrderedDict[Any, Any] = OrderedDict()
+        self._public_index_decode_depth = 0
+        self._public_locator_enabled = False
         self._writer_lease = None if read_only or raw_path == ":memory:" else OpsWriterLock(raw_path)
         if self._writer_lease is not None:
             self._writer_lease.acquire()
@@ -464,6 +495,13 @@ class OpsRepository:
             raise RuntimeError("atlas-ops SQLite synchronous=FULL is unavailable")
         try:
             validate_read_only(self._connection) if read_only else initialize(self._connection)
+            from ..data.compact_public_index import LOCATOR_DDL, LOCATOR_TABLE
+
+            if not read_only:
+                for statement in LOCATOR_DDL:
+                    self._connection.execute(statement)
+            self._public_locator_enabled = self._connection.execute(
+                "SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?", (LOCATOR_TABLE,)).fetchone() is not None
             if not read_only:
                 # These are rebuildable access indexes over accepted artifact
                 # rows, not new evidence tables or a new schema authority.
@@ -1020,6 +1058,41 @@ class OpsRepository:
         batch = tuple(entries)
         if any(not isinstance(entry, ArtifactIndexEntryV2) for entry in batch):
             raise ValueError("artifact batch must contain ArtifactIndexEntryV2 entries")
+        from ..data.public_archive_extents import extent_ref
+
+        compact = tuple(entry for entry in batch
+            if entry.artifact_type in ("PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1")
+            and isinstance(entry.metadata.get("archive_chunk_id"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", str(entry.metadata["archive_chunk_id"])) is not None
+            and self.get_artifact(extent_ref("ops-l2-frames" if entry.artifact_type == "PublicStreamFrameIndexV1"
+                else "ops-observations", str(entry.metadata["archive_chunk_id"]))) is not None)
+        if compact:
+            selected = {entry.artifact_ref for entry in compact}
+            with self.atomic_composition():
+                self.register_public_archive_entries(compact)
+                self.register_artifacts(tuple(entry for entry in batch if entry.artifact_ref not in selected))
+            return batch
+        original_batch = batch
+        if self._public_locator_enabled and batch:
+            known = self.get_artifact_metadata_by_refs(tuple(entry.artifact_ref for entry in batch))
+            aliases = set()
+            for entry in batch:
+                # A compact locator must never be shadowed by a generic row
+                # with the same ref and different immutable domain content.
+                prior = known.get(entry.artifact_ref)
+                if prior is not None and prior["artifact_type"] in (
+                        "PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1",
+                        "PublicStreamSourceHealthV1"):
+                    exact = self.get_artifact(entry.artifact_ref)
+                    if exact != entry:
+                        raise ValueError("artifact identity conflicts with immutable public evidence")
+                    with self._lock:
+                        alias = self._connection.execute(
+                            "SELECT 1 FROM public_stream_archive_locator_v1 WHERE artifact_ref=?",
+                            (bytes.fromhex(entry.artifact_ref),)).fetchone()
+                    if alias is not None:
+                        aliases.add(entry.artifact_ref)
+            batch = tuple(entry for entry in batch if entry.artifact_ref not in aliases)
         encoded: dict[str, tuple[ArtifactIndexEntryV2, str]] = {}
         for entry in batch:
             metadata_json = canonical_json(entry.metadata)
@@ -1121,7 +1194,7 @@ class OpsRepository:
                             "AND ? BETWEEN available_from_ns AND available_through_ns "
                             "AND (?,?)<=(cursor_available_ns,cursor_ref)",
                             (key_json,event_type,entry.available_at_ns,entry.available_at_ns,entry.artifact_ref))
-        return batch
+        return original_batch
 
     def active_history_head(self, key: InstrumentKeyV2, interval: str) -> dict[str, Any] | None:
         """Read one bounded rebuildable indicator checkpoint in the single-writer store."""
@@ -1500,6 +1573,27 @@ class OpsRepository:
             "oldest_pending_age_ns": max(0, as_of_ns - int(oldest[0])) if oldest else None,
             "oldest_due_age_ns": max(0, as_of_ns - int(ready[0][0])) if ready else None}
 
+    def register_public_archive_entries(self, entries: Sequence[ArtifactIndexEntryV2],
+                                        *, archive_chunk_id: str | None = None) -> None:
+        """Materialize compact access locators over already durable public Arrow evidence."""
+        from ..data.compact_public_index import encode_entries
+
+        with self._transaction() as connection:
+            encoded = encode_entries(self, entries, archive_chunk_id=archive_chunk_id)
+            for row in encoded:
+                legacy = connection.execute("SELECT * FROM artifact_index WHERE artifact_ref=?", (row[0].hex(),)).fetchone()
+                if legacy is not None:
+                    requested = next(entry for entry in entries if entry.artifact_ref == row[0].hex())
+                    if ArtifactIndexEntryV2._from_storage_row(legacy) != requested:
+                        raise ValueError("compact public locator conflicts with legacy artifact")
+                    continue
+                prior = connection.execute("SELECT * FROM public_stream_archive_locator_v1 WHERE artifact_ref=?", (row[0],)).fetchone()
+                if prior is not None:
+                    if tuple(prior) != row:
+                        raise ValueError("compact public locator identity conflicts")
+                    continue
+                connection.execute("INSERT INTO public_stream_archive_locator_v1 VALUES(?,?,?,?,?,?,?,?,?,?,?)", row)
+
     def get_artifact(self, artifact_ref: str) -> ArtifactIndexEntryV2 | None:
         sha256_ref(artifact_ref, field="artifact_ref")
         with self._lock:
@@ -1507,7 +1601,15 @@ class OpsRepository:
                 "SELECT * FROM artifact_index WHERE artifact_ref=?", (artifact_ref,)
             ).fetchone()
         if row is None:
-            return None
+            if not self._public_locator_enabled:
+                return None
+            with self._lock:
+                compact = self._connection.execute(
+                    "SELECT * FROM public_stream_archive_locator_v1 WHERE artifact_ref=?",
+                    (bytes.fromhex(artifact_ref),)).fetchone()
+            if compact is None:
+                return None
+            return self._decode_public_locator(compact)
         return ArtifactIndexEntryV2(
             row["artifact_ref"],
             row["artifact_type"],
@@ -1516,6 +1618,18 @@ class OpsRepository:
             row["available_at_ns"],
             json.loads(row["metadata_json"]),
         )
+
+    def _decode_public_locator(self, row: sqlite3.Row) -> ArtifactIndexEntryV2:
+        from ..data.compact_public_index import decode_row
+
+        with self._lock:
+            if self._public_index_decode_depth >= 2:
+                raise ValueError("compact public locator dependency recursion exceeded its bound")
+            self._public_index_decode_depth += 1
+            try:
+                return decode_row(self, row)
+            finally:
+                self._public_index_decode_depth -= 1
 
     def get_artifact_metadata_by_refs(self, artifact_refs: Sequence[str]) -> dict[str, Mapping[str, Any]]:
         """Read exact artifact index columns by ref without rebuilding full domain entries."""
@@ -1545,6 +1659,21 @@ class OpsRepository:
                         "available_at_ns": row["available_at_ns"],
                         "metadata": json.loads(row["metadata_json"]),
                     }
+        if self._public_locator_enabled:
+            missing = tuple(ref for ref in refs if ref not in entries)
+            with self._lock:
+                for offset in range(0, len(missing), 500):
+                    batch = missing[offset:offset + 500]
+                    if not batch:
+                        continue
+                    rows = self._connection.execute(
+                        "SELECT * FROM public_stream_archive_locator_v1 WHERE artifact_ref IN ("
+                        + ",".join("?" for _ in batch) + ")", tuple(bytes.fromhex(ref) for ref in batch)).fetchall()
+                    for row in rows:
+                        entry = self._decode_public_locator(row)
+                        entries[entry.artifact_ref] = {"artifact_type": entry.artifact_type,
+                            "content_hash": entry.content_hash, "available_at_ns": entry.available_at_ns,
+                            "metadata": entry.metadata}
         return entries
 
     def artifact_entries(self, artifact_type: str) -> tuple[ArtifactIndexEntryV2, ...]:
@@ -1555,10 +1684,18 @@ class OpsRepository:
                 "SELECT * FROM artifact_index WHERE artifact_type=? ORDER BY created_at_ns,artifact_ref",
                 (artifact_type,),
             ).fetchall()
-        return tuple(
+        result = tuple(
             ArtifactIndexEntryV2._from_storage_row(row)
             for row in rows
         )
+        from ..data.compact_public_index import KINDS
+
+        if self._public_locator_enabled and artifact_type in KINDS:
+            with self._lock:
+                compact = self._connection.execute("SELECT * FROM public_stream_archive_locator_v1 WHERE kind=? "
+                    "ORDER BY created_at_ns,artifact_ref", (KINDS[artifact_type],)).fetchall()
+            result = (*result, *(self._decode_public_locator(row) for row in compact))
+        return result
 
     def latest_artifact_entries(
         self, artifact_type: str, *, as_of_ns: int, limit: int,
@@ -1751,6 +1888,135 @@ class OpsRepository:
                 instrument_key.contract_revision, event_type, close, cutoff, limit + 1)).fetchall()
         if len(rows) > limit:
             raise ValueError("exact bar source revision lookup exceeded its explicit bound")
+        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+
+    def public_stream_trade_entries(
+        self, instrument_key: InstrumentKeyV2, *, source_id: str,
+        event_from_ns: int, cutoff_ns: int, limit: int = 512,
+    ) -> tuple[ArtifactIndexEntryV2, ...]:
+        """Seek exact current-window trade locators, exposing overflow as an extra row.
+
+        Callers must reject ``len(result)>limit``; the returned suffix is not a
+        sampled trade population and cannot certify completeness or UTC VWAP.
+        Raw archive files are opened only after this bounded source selection.
+        """
+        from ..instruments import InstrumentKeyV2
+
+        if not isinstance(instrument_key, InstrumentKeyV2):
+            raise ValueError("stream trade lookup requires a complete instrument key")
+        nonblank(source_id, field="source_id")
+        floor = timestamp(event_from_ns, field="event_from_ns")
+        cutoff = timestamp(cutoff_ns, field="cutoff_ns")
+        if floor > cutoff or type(limit) is not int or not 1 <= limit <= 100_000:
+            raise ValueError("stream trade window or population limit is invalid")
+        fields = tuple(_archive_json_expression(name) for name in (
+            "instrument_key_json", "instrument_revision", "source_id", "event_type"))
+        event_time = _archive_json_expression("event_at_ns")
+        query = ("SELECT * FROM artifact_index INDEXED BY public_stream_trade_event_window "
+            "WHERE artifact_type='PublicStreamTradeObservationIndexV1' AND "
+            + " AND ".join(field + "=?" for field in fields)
+            + " AND " + event_time + ">=? AND " + event_time + "<=? AND available_at_ns<=?"
+            + " ORDER BY " + event_time + " DESC,available_at_ns DESC,artifact_ref DESC LIMIT ?")
+        with self._lock:
+            rows = self._connection.execute(query, (instrument_key.to_canonical_json(),
+                instrument_key.contract_revision, source_id, "TRADE", floor, cutoff, cutoff, limit + 1)).fetchall()
+        result = tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        if self._public_locator_enabled:
+            from ..data.compact_public_index import feed_ref
+
+            identity = bytes.fromhex(feed_ref(instrument_key.to_canonical_json(), source_id))
+            with self._lock:
+                compact = self._connection.execute(
+                    "SELECT * FROM public_stream_archive_locator_v1 INDEXED BY public_stream_archive_trade_window_v1 "
+                    "WHERE kind=2 AND feed_ref=? AND event_at_ns>=? AND event_at_ns<=? AND available_at_ns<=? "
+                    "ORDER BY event_at_ns DESC,available_at_ns DESC,artifact_ref DESC LIMIT ?",
+                    (identity, floor, cutoff, cutoff, limit + 1)).fetchall()
+            result = (*result, *(self._decode_public_locator(row) for row in compact))
+        return tuple(sorted(result, key=lambda entry: (entry.metadata.get("event_at_ns", 0),
+            entry.available_at_ns, entry.artifact_ref), reverse=True)[:limit + 1])
+
+    def generic_public_stream_observation_exists(
+        self, instrument_key: InstrumentKeyV2, *, source_id: str, cutoff_ns: int,
+    ) -> bool:
+        """Detect wrong generic indexing for this WS source/revision in one seek."""
+        from ..instruments import InstrumentKeyV2
+
+        if not isinstance(instrument_key, InstrumentKeyV2):
+            raise ValueError("stream generic-index check requires a complete instrument key")
+        nonblank(source_id, field="source_id")
+        cutoff = timestamp(cutoff_ns, field="cutoff_ns")
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT 1 FROM artifact_index INDEXED BY public_stream_generic_source_lookup "
+                "WHERE artifact_type='PublicObservationIndexV2' AND "
+                + _archive_json_expression("instrument_revision") + "=? AND "
+                + _archive_json_expression("source_id") + "=? AND available_at_ns<=? "
+                "ORDER BY available_at_ns DESC,artifact_ref DESC LIMIT 1",
+                (instrument_key.contract_revision, source_id, cutoff)).fetchone()
+        return row is not None
+
+    def public_stream_continuity_invalidations(
+        self, instrument_key: InstrumentKeyV2, *, source_id: str, channel: str,
+        after_ns: int, through_ns: int,
+    ) -> tuple[ArtifactIndexEntryV2, ...]:
+        """Read at most one exact source gap/recovery in the consumer's interval."""
+        from ..instruments import InstrumentKeyV2
+
+        if not isinstance(instrument_key, InstrumentKeyV2):
+            raise ValueError("stream invalidation lookup requires a complete instrument key")
+        nonblank(source_id, field="source_id")
+        nonblank(channel, field="channel")
+        after = timestamp(after_ns, field="after_ns")
+        through = timestamp(through_ns, field="through_ns")
+        if after > through:
+            raise ValueError("stream invalidation interval is reversed")
+        fields = tuple(_archive_json_expression(f"observation.{name}") for name in (
+            "instrument", "source_id", "channel"))
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM artifact_index INDEXED BY public_stream_invalidation_window "
+                "WHERE artifact_type='PublicStreamContinuityEventV1' AND "
+                + " AND ".join(field + "=?" for field in fields)
+                + " AND available_at_ns>? AND available_at_ns<=? ORDER BY available_at_ns,artifact_ref LIMIT 1",
+                (instrument_key.to_canonical_json(), source_id, channel, after, through)).fetchall()
+        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+
+    def latest_stream_continuity_entries(self, *, as_of_ns: int) -> tuple[ArtifactIndexEntryV2, ...]:
+        """Seek at most eight public continuity heads without decoding their history.
+
+        The installed public composition owns exactly the BTC/ETH Bybit book
+        and trade channels. Keep one compact checkpoint and one legacy state
+        per channel so callers can validate the exact bodies and migrate a
+        previously recorded run without loading thousands of full caches.
+        A malformed selected body remains an error; this lookup does not turn
+        an invalid latest checkpoint into permission to reuse older evidence.
+        """
+        cutoff = timestamp(as_of_ns, field="as_of_ns")
+        rows: list[sqlite3.Row] = []
+        with self._lock:
+            for version, kind, path in (
+                ("v1", "PublicStreamContinuityStateV1", "state"),
+                ("v2", "PublicStreamContinuityCheckpointV2", "checkpoint.state"),
+            ):
+                fields = tuple(_archive_json_expression(f"{path}.{name}") for name in (
+                    "instrument.native_symbol", "channel", "source_id"))
+                progress = tuple(f"COALESCE({_archive_json_expression(f'{path}.{name}')},0) DESC"
+                    for name in ("last_available_at_ns", "recovery_epoch", "observed_trade_count",
+                                 "last_transport_receipt_at_ns", "gap_count"))
+                query = (
+                    f"SELECT * FROM artifact_index INDEXED BY public_stream_continuity_head_{version}_progress "
+                    f"WHERE artifact_type='{kind}' AND "
+                    + " AND ".join(field + "=?" for field in fields)
+                    + " AND available_at_ns<=? ORDER BY available_at_ns DESC,"
+                    + ",".join(progress) + ",artifact_ref DESC LIMIT 1"
+                )
+                for symbol in ("BTCUSDT", "ETHUSDT"):
+                    for prefix in ("orderbook.50.", "publicTrade."):
+                        row = self._connection.execute(query, (
+                            symbol, prefix + symbol, "BYBIT_PUBLIC_WS", cutoff,
+                        )).fetchone()
+                        if row is not None:
+                            rows.append(row)
         return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
 
     def l2_archive_restart_checkpoints(self, *, limit: int = 1_024) -> tuple[ArtifactIndexEntryV2, ...]:

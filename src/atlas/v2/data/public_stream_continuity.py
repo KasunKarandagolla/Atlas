@@ -992,6 +992,7 @@ def build_public_stream_continuity_report(
     max_metadata_age_ns: int,
     book: SequenceValidBookV2 | None = None,
     book_metadata_ref: str | None = None,
+    book_lineage_ref: str | None = None,
 ) -> PublicStreamContinuityReportV1:
     """Produce an as-of capability report from one bounded tracker snapshot.
 
@@ -1076,7 +1077,8 @@ def build_public_stream_continuity_report(
             if book_sequence_valid and feature.bbo is not None and feature.data_age_ns is not None:
                 latest_bbo = LatestValidBboEvidenceV1(
                     feature.bbo[0], feature.bbo[1], cutoff - feature.data_age_ns,
-                    feature.data_age_ns, feature.input_refs,
+                    feature.data_age_ns, ((book_lineage_ref, source_health.content_hash)
+                        if book_lineage_ref is not None and source_health is not None else feature.input_refs),
                 )
             else:
                 bbo_reason = feature.missing_reason or f"BOOK_SEQUENCE_{feature.sequence_state.value}"

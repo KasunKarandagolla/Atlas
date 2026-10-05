@@ -7,6 +7,7 @@ individual frames never create capital-control SQLite rows.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -92,9 +93,16 @@ class L2RestartCursorV2:
 
 
 class L2FrameArchiveV2:
-    def __init__(self, root: str | Path, repository: OpsRepository) -> None:
+    def __init__(self, root: str | Path, repository: OpsRepository, *, compact_live: bool = False,
+                 clock_ns: Callable[[], int] | None = None) -> None:
         self.root = Path(root)
         self.repository = repository
+        self.compact_live = compact_live
+        self.clock_ns = clock_ns
+
+    def checkpoint_ref(self, chunk_id: str) -> str:
+        kind = "L2FrameArchiveCheckpointV3" if self.compact_live else "L2FrameArchiveCheckpointV2"
+        return sha256_json({"artifact_type": kind, "chunk_id": chunk_id})
 
     def write_chunk(self, frames: tuple[L2RawFrameV2, ...]) -> tuple[str, Path]:
         import pyarrow as pa
@@ -121,6 +129,27 @@ class L2FrameArchiveV2:
         rows = [{**frame.metadata_dict(), "instrument_json": canonical_json(frame.instrument.to_dict()),
                  "raw_payload_bytes": frame.raw_payload_bytes} for frame in ordered]
         candidate = pa.Table.from_pylist(rows)
+        if self.compact_live:
+            from .public_archive_extents import write_extent
+
+            extent, extent_path = write_extent(self.repository, candidate, namespace="ops-l2-frames",
+                chunk_id=chunk_id, clock_ns=self.clock_ns or (lambda: ordered[-1].available_at_ns),
+                floor_ns=ordered[-1].available_at_ns)
+            last = ordered[-1]
+            descriptor = self.repository.get_artifact(extent)
+            assert descriptor is not None
+            checkpoint_ref = self.checkpoint_ref(chunk_id)
+            self.repository.register_artifact(ArtifactIndexEntryV2(
+                checkpoint_ref, "L2FrameArchiveCheckpointV3", chunk_id,
+                descriptor.available_at_ns, descriptor.available_at_ns,
+                {"schema_version": 3, "chunk_id": chunk_id, "archive_extent_ref": extent,
+                 "instrument": last.instrument.to_dict(), "instrument_hash": last.instrument.content_hash,
+                 "source_id": last.source_id, "channel": last.channel,
+                 "high_water_update_id": last.last_update_id, "last_record_id": last.record_id,
+                 "last_payload_hash": last.raw_payload_hash, "sequence_semantics": last.sequence_semantics,
+                 "state_after_restart": "SNAPSHOT_RECOVERY", "source_health_after_restart": "INCOMPLETE_SNAPSHOT",
+                 "frame_count": len(ordered)}))
+            return chunk_id, extent_path
         temporary = path.with_suffix(".parquet.tmp")
         pq.write_table(candidate, temporary, compression="zstd")
         if path.exists():
@@ -201,11 +230,10 @@ class L2FrameArchiveV2:
         ) for key, entry in sorted(latest.items()) for md in (entry.metadata,))
 
     def read_chunk(self, chunk_id: str) -> tuple[dict[str, Any], ...]:
-        import pyarrow.parquet as pq
+        from .public_archive_extents import read_public_chunk
 
         sha256_ref(chunk_id, field="chunk_id")
-        path = self.root / f"{chunk_id}.parquet"
-        table = pq.read_table(path)
+        table = read_public_chunk(self.repository, self.root, chunk_id)
         rows = table.to_pylist()
         for row in rows:
             raw = row["raw_payload_bytes"]

@@ -27,6 +27,9 @@ S4_ABSORPTION_VERSION = "S4_ABSORPTION_SHADOW_V1"
 S4_EXECUTION_CONTEXT_VERSION = "S4_EXECUTION_QUALITY_CONTEXT_V1"
 DEFAULT_BOOK_WARMUP_NS = 30_000_000_000
 DEFAULT_BOOK_STALE_NS = 1_000_000_000
+LIVE_BOOK_WINDOW_NS = 30_000_000_000
+LIVE_BOOK_MAX_FRAMES = 4096
+LIVE_BOOK_MAX_LEVELS = 4096
 S4_FEATURE_POLICY_SPEC = {
     "book_sequence_required": True, "gap_action": "NOT_ESTIMABLE_UNTIL_FRESH_SNAPSHOT_BRIDGE_AND_WARMUP",
     "windows_seconds": [1, 5, 30], "window_left_boundary_baseline": True,
@@ -394,6 +397,45 @@ class SequenceValidBookV2:
         self._reason: str | None = None
         self._declared_depth = 0
         self._state_events: list[tuple[int, BookStateV2, int, str, str | None, int | None, str | None]] = []
+        self._live_retained_from_ns: int | None = None
+
+    def evidence_state(self) -> dict[str, Any]:
+        """Exact terminal state digest preimage; caches are not book facts."""
+        return {"instrument": self.instrument.to_dict(), "source_id": self.source_id,
+                "channel": self.channel, "sequence_semantics": self.sequence_semantics,
+                "epoch": self.epoch, "state": self.state.value, "reason": self._reason,
+                "last_update_id": self.last_update_id, "last_received_at_ns": self.last_received_at_ns,
+                "valid_since_ns": self.valid_since_ns, "state_changed_at_ns": self.state_changed_at_ns,
+                "source_health": self._source_health, "source_health_ref": self._source_health_ref,
+                "declared_depth": self._declared_depth, "warmup_ns": self.warmup_ns,
+                "stale_ns": self.stale_ns, "binance_sync_phase": self._binance_sync_phase.value,
+                "bids": [[str(p), str(q)] for p, q in sorted(self.bids.items(), reverse=True)],
+                "asks": [[str(p), str(q)] for p, q in sorted(self.asks.items())]}
+
+    def compact_live_state(self, *, as_of_ns: int) -> None:
+        """Bound operational windows after immutable raw archive publication.
+
+        Preserve the left-boundary baseline for all declared 1/5/30s features.
+        Older cutoffs require raw replay; excess traffic fails closed rather
+        than silently yielding truncated feature windows.
+        """
+        floor = timestamp(as_of_ns, field="live book cutoff") - LIVE_BOOK_WINDOW_NS
+        prefix = [i for i, row in enumerate(self._frames) if row[0] <= floor]
+        start = prefix[-1] if prefix else 0
+        self._frames = self._frames[start:]
+        self._frame_epochs = self._frame_epochs[start:]
+        events = [i for i, row in enumerate(self._state_events) if row[0] <= floor]
+        self._state_events = self._state_events[events[-1] if events else 0:]
+        self._live_retained_from_ns = max(self._live_retained_from_ns or 0, max(0, floor))
+        if len(self._frames) > LIVE_BOOK_MAX_FRAMES or len(self.bids) > LIVE_BOOK_MAX_LEVELS or len(self.asks) > LIVE_BOOK_MAX_LEVELS:
+            self._invalidate(BookStateV2.INVALID, "LIVE_BOOK_CAPACITY_REQUIRES_SNAPSHOT_RECOVERY", as_of_ns)
+            self._frames.clear()
+            self._frame_epochs.clear()
+            self.bids.clear()
+            self.asks.clear()
+        self._state_events = self._state_events[-(LIVE_BOOK_MAX_FRAMES + 1):]
+        if len(self._seen) > LIVE_BOOK_MAX_FRAMES:
+            self._seen = dict(tuple(self._seen.items())[-LIVE_BOOK_MAX_FRAMES:])
 
     @property
     def sequence_state(self) -> SequenceStateV2:
@@ -695,6 +737,9 @@ class SequenceValidBookV2:
         )
         eligible = [frame for frame, epoch in zip(self._frames, self._frame_epochs, strict=True)
                     if frame[0] <= cutoff and epoch == asof_epoch]
+        if self._live_retained_from_ns is not None and cutoff < self._live_retained_from_ns:
+            asof_state, asof_reason = BookStateV2.INVALID, "NOT_ESTIMABLE_REQUIRES_IMMUTABLE_BOOK_REPLAY"
+            eligible = []
         health_refs = {row[6] for row in state_rows if row[2] == asof_epoch and row[6] is not None}
         refs = tuple(sorted({frame[2] for frame in eligible} | health_refs))
         if asof_state == BookStateV2.WARMING and valid_since is not None and cutoff - valid_since >= self.warmup_ns:

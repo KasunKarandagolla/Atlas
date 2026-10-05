@@ -31,6 +31,12 @@ from atlas.v2.agent_intelligence.shadow_measurement import (
     index_action_critic_shadow_observation,
 )
 from atlas.v2.data.health import PublicSourceHealthV2
+from atlas.v2.data.public_evidence_checkpoint import (
+    BOOK_CHECKPOINT_TYPE,
+    CONTINUITY_CHECKPOINT_TYPE,
+    validate_book_checkpoint,
+    validate_continuity_checkpoint,
+)
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.models.baseline import BaselineInputsV2
 from atlas.v2.models.protocol import ForecastArtifactV2
@@ -67,6 +73,7 @@ _TYPES = (
     "OpsActiveWorkPressureV1", "ActiveTrainingWorkPressureV1",
     "PublicBarGapRepairPageV1",
     "PublicContextCycleReportV1", "NewsEventV2",
+    CONTINUITY_CHECKPOINT_TYPE, BOOK_CHECKPOINT_TYPE,
     "EconomicSourceManifestV1", "OpsEconomicEvidenceResolutionV1",
 )
 _METRIC_NAMES = frozenset({
@@ -263,6 +270,48 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
         "fees": None, "funding_cashflow": None, "frozen_sizing_margin": None, "net_margin_roi": None,
     }
     body = json_value(entry.metadata)
+    if entry.artifact_type == CONTINUITY_CHECKPOINT_TYPE:
+        validate_continuity_checkpoint(repository, entry)
+    elif entry.artifact_type == BOOK_CHECKPOINT_TYPE:
+        validate_book_checkpoint(repository, entry, as_of_ns=entry.available_at_ns)
+    elif entry.artifact_type == "PublicStreamContinuityReportV1":
+        report = body["report"]
+        if "storage_version" in body:
+            from ..data.public_evidence_checkpoint import resolve_report_transport
+
+            transport = resolve_report_transport(repository, body, available_at_ns=entry.available_at_ns)
+            if entry.created_at_ns != body["computation_started_ns"]:
+                raise ValueError("compact report computation start differs from indexed chronology")
+            body = {"report": report, "state_ref": body["state_ref"],
+                    "source_health_ref": body["source_health_ref"], "transport": transport}
+        if (sha256_json({"artifact_type": entry.artifact_type, "report": report}) != entry.content_hash
+                or entry.artifact_ref != entry.content_hash or report["as_of_ns"] > entry.available_at_ns
+                or (report["as_of_ns"] != entry.available_at_ns
+                    and entry.metadata.get("storage_version") != "PUBLIC_CONTINUITY_REPORT_INDEX_V2")):
+            raise ValueError("continuity report content or chronology mismatch")
+        state_entry = repository.get_artifact(body["state_ref"])
+        if state_entry is None or state_entry.available_at_ns > entry.available_at_ns:
+            raise ValueError("continuity report state missing or future")
+        state = validate_continuity_checkpoint(repository, state_entry)
+        if (state.instrument.to_dict() != report["instrument"] or state.channel != report["channel"]
+                or state.epoch_id != report["epoch_id"] or state.current_recovery_ref != report["current_recovery_ref"]
+                or state.gap_count != report["gap_count"]):
+            raise ValueError("continuity report state identity mismatch")
+        bbo = report["latest_valid_bbo"]
+        if bbo is not None and state_entry.artifact_type == CONTINUITY_CHECKPOINT_TYPE:
+            refs = bbo["input_refs"]
+            if not isinstance(refs, list) or len(refs) != 2 or report["source_health_ref"] not in refs:
+                raise ValueError("compact continuity BBO lineage missing")
+            anchors = [repository.get_artifact(ref) for ref in refs if ref != report["source_health_ref"]]
+            if len(anchors) != 1 or anchors[0] is None:
+                raise ValueError("compact continuity book checkpoint missing")
+            checkpoint = validate_book_checkpoint(repository, anchors[0], as_of_ns=entry.available_at_ns)
+            if (checkpoint["bbo"] != [bbo["bid_price"], bbo["ask_price"]]
+                    or checkpoint["received_at_ns"] != bbo["received_at_ns"]
+                    or checkpoint["instrument"] != report["instrument"] or checkpoint["channel"] != report["channel"]
+                    or checkpoint["epoch_id"] != report["epoch_id"] or checkpoint["metadata_ref"] != report["metadata_ref"]
+                    or bbo["data_age_ns"] != report["as_of_ns"] - bbo["received_at_ns"]):
+                raise ValueError("compact continuity BBO differs from exact book checkpoint")
     if entry.artifact_type.startswith("ResearchModel"):
         body = _model_projection(repository, entry, row)
     if entry.artifact_type == "DerivedComputationChronologyV1":

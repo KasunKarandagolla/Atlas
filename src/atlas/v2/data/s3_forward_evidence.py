@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
@@ -33,6 +34,13 @@ from ..strategies.s3_mean_reversion import (
 from .bars import BarIntervalV2, CausalBarV2
 from .health import PublicSourceHealthV2, PublicSourceStateV2
 from .microstructure import AvailabilityViewV2, BookStateV2, SequenceValidBookV2
+from .public_archive_extents import read_public_chunk
+from .public_evidence_checkpoint import (
+    BOOK_CHECKPOINT_TYPE,
+    CONTINUITY_CHECKPOINT_TYPE,
+    validate_book_checkpoint,
+    validate_continuity_checkpoint,
+)
 from .public_stream_continuity import PublicStreamContinuityStateV1
 from .raw import AvailabilityClassV2, RawObservationV2
 
@@ -47,6 +55,8 @@ PUBLIC_STREAM_STALE_NS_V1 = 30_000_000_000
 MAX_ARCHIVE_FILES = 20_000
 MAX_ARCHIVE_ROWS = 2_000_000
 MAX_RECONSTRUCTED_TRADES = 100_000
+MAX_ACTIVE_TRADE_ARCHIVE_FILES = 64
+MAX_ACTIVE_TRADE_ARCHIVE_ROWS = 16_384
 MAX_REPORTED_GAP_OPENS = 1_000
 
 
@@ -167,9 +177,16 @@ def _valid_report_context(
         timestamp(report_as_of, field="continuity_report.as_of_ns")
         sha256_ref(report_health_ref, field="continuity_report.source_health_ref")
         sha256_ref(state_ref, field="continuity_report.state_ref")
+        if "storage_version" in report_entry.metadata:
+            from .public_evidence_checkpoint import resolve_report_transport
+
+            resolve_report_transport(repository, report_entry.metadata, available_at_ns=report_entry.available_at_ns)
     except (ArithmeticError, KeyError, TypeError, ValueError):
         return None
-    if (report_body_hash != report_ref or report_entry.available_at_ns != report_as_of
+    if (report_body_hash != report_ref or report_entry.available_at_ns > cutoff_ns
+            or report_as_of > report_entry.available_at_ns
+            or (report_entry.available_at_ns != report_as_of
+                and report_entry.metadata.get("storage_version") != "PUBLIC_CONTINUITY_REPORT_INDEX_V2")
             or report_entry.metadata.get("source_health_ref") != report_health_ref
             or report_as_of > cutoff_ns or report_body.get("schema_version") != 1
             or report_instrument != product.key or report_body.get("contract_revision") != product.key.contract_revision
@@ -205,17 +222,14 @@ def _valid_report_context(
         return None
 
     state_entry = repository.get_artifact(state_ref)
-    if (state_entry is None or state_entry.artifact_type != CONTINUITY_STATE_TYPE_V1
+    if (state_entry is None or state_entry.artifact_type not in (CONTINUITY_STATE_TYPE_V1, CONTINUITY_CHECKPOINT_TYPE)
             or state_entry.content_hash != state_ref or state_entry.available_at_ns > cutoff_ns):
         return None
-    state_body = state_entry.metadata.get("state")
-    if not isinstance(state_body, Mapping):
-        return None
     try:
-        state = PublicStreamContinuityStateV1.from_dict(dict(state_body))
+        state = validate_continuity_checkpoint(repository, state_entry)
     except (ArithmeticError, KeyError, TypeError, ValueError):
         return None
-    if (state.content_hash != state_ref or state.instrument != product.key
+    if (state.instrument != product.key
             or state.source_id != BYBIT_PUBLIC_WS_SOURCE_ID_V1 or state.channel != channel
             or state.metadata_ref != product.metadata_ref
             or state.epoch_id != report_body.get("epoch_id")
@@ -410,12 +424,40 @@ def _reconstruct_s3_stream_trade_evidence_at_cutoff(
             ("PARQUET_READER_UNAVAILABLE",),
         )
 
-    paths = sorted(path for path in root.glob("*.parquet") if path.is_file() and not path.is_symlink())
-    if len(paths) > MAX_ARCHIVE_FILES:
+    report_entry = repository.get_artifact(continuity_report_ref)
+    state_entry = repository.get_artifact(str(report_entry.metadata["state_ref"])) if report_entry is not None else None
+    legacy_reconstruction = state_entry is not None and state_entry.artifact_type == CONTINUITY_STATE_TYPE_V1
+    day_start = cutoff_ns - cutoff_ns % 86_400_000_000_000
+    entries = repository.public_stream_trade_entries(product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+        event_from_ns=day_start, cutoff_ns=cutoff_ns, limit=limit)
+    if len(entries) > limit:
         return S3ForwardTradeEvidenceV1(
             product.key, cutoff_ns, (), (), continuity_report_ref, health.content_hash,
-            state.recovery_epoch, 0, False, "NOT_ESTIMABLE", ("S3_TRADE_ARCHIVE_FILE_BOUND_EXCEEDED",),
+            state.recovery_epoch, len(entries), False, "NOT_ESTIMABLE", ("S3_TRADE_ACTIVE_INDEX_BOUND_EXCEEDED",),
         )
+    if repository.generic_public_stream_observation_exists(product.key, source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
+                                                          cutoff_ns=cutoff_ns):
+        return S3ForwardTradeEvidenceV1(product.key, cutoff_ns, (), (), continuity_report_ref,
+            health.content_hash, state.recovery_epoch, 0, False, "NOT_ESTIMABLE", ("S3_WS_TRADE_INDEX_TYPE_INVALID",))
+    chunk_ids = {entry.metadata.get("archive_chunk_id") for entry in entries}
+    try:
+        for chunk_id in chunk_ids:
+            if not isinstance(chunk_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", chunk_id):
+                raise ValueError("trade archive chunk missing")
+    except (TypeError, ValueError):
+        return S3ForwardTradeEvidenceV1(product.key, cutoff_ns, (), (), continuity_report_ref,
+            health.content_hash, state.recovery_epoch, 0, False, "NOT_ESTIMABLE", ("S3_TRADE_ARCHIVE_OR_INDEX_INVALID",))
+    if len(chunk_ids) > MAX_ACTIVE_TRADE_ARCHIVE_FILES:
+        return S3ForwardTradeEvidenceV1(product.key, cutoff_ns, (), (), continuity_report_ref,
+            health.content_hash, state.recovery_epoch, 0, False, "NOT_ESTIMABLE", ("S3_TRADE_ARCHIVE_FILE_BOUND_EXCEEDED",))
+    paths = [root / (chunk_id + ".parquet") for chunk_id in sorted(str(value) for value in chunk_ids)]
+    # Preserve the accepted legacy offline archive audit. The installed writer
+    # produces V2 compact state and uses only the bounded indexed path above.
+    if legacy_reconstruction:
+        paths = sorted(path for path in root.glob("*.parquet") if path.is_file() and not path.is_symlink())
+        if len(paths) > MAX_ARCHIVE_FILES:
+            return S3ForwardTradeEvidenceV1(product.key, cutoff_ns, (), (), continuity_report_ref,
+                health.content_hash, state.recovery_epoch, 0, False, "NOT_ESTIMABLE", ("S3_TRADE_ARCHIVE_FILE_BOUND_EXCEEDED",))
     required_columns = {
         "record_id", "instrument_revision", "source_id", "event_type", "event_at_ns",
         "published_at_ns", "received_at_ns", "ingested_at_ns", "available_at_ns",
@@ -427,13 +469,22 @@ def _reconstruct_s3_stream_trade_evidence_at_cutoff(
     archive_error = False
     for path in paths:
         try:
-            parquet = pq.ParquetFile(path)
-            if not required_columns.issubset(set(parquet.schema.names)):
-                continue
-            for batch in parquet.iter_batches(columns=sorted(required_columns), batch_size=512):
+            if legacy_reconstruction:
+                if path.is_symlink() or not path.is_file():
+                    raise ValueError("trade archive absent or symbolic")
+                parquet = pq.ParquetFile(path)
+                if not required_columns.issubset(set(parquet.schema.names)):
+                    continue
+                batches = parquet.iter_batches(columns=sorted(required_columns), batch_size=512)
+            else:
+                table = read_public_chunk(repository, root, path.stem)
+                if not required_columns.issubset(set(table.schema.names)):
+                    raise ValueError("trade archive column contract invalid")
+                batches = iter(table.select(sorted(required_columns)).to_batches(max_chunksize=512))
+            for batch in batches:
                 for row in batch.to_pylist():
                     examined += 1
-                    if examined > MAX_ARCHIVE_ROWS:
+                    if examined > (MAX_ARCHIVE_ROWS if legacy_reconstruction else MAX_ACTIVE_TRADE_ARCHIVE_ROWS):
                         return S3ForwardTradeEvidenceV1(
                             product.key, cutoff_ns, (), (), continuity_report_ref, health.content_hash,
                             state.recovery_epoch, 0, False, "NOT_ESTIMABLE",
@@ -479,17 +530,6 @@ def _reconstruct_s3_stream_trade_evidence_at_cutoff(
         except (OSError, ValueError, TypeError, KeyError):
             archive_error = True
 
-    entries = repository.artifact_entries(TRADE_INDEX_TYPE_V1)
-    generic_ws_entries = tuple(
-        entry for entry in repository.artifact_entries(GENERIC_OBSERVATION_INDEX_TYPE_V2)
-        if entry.metadata.get("source_id") == BYBIT_PUBLIC_WS_SOURCE_ID_V1
-        and entry.metadata.get("instrument_revision") == product.key.contract_revision
-    )
-    if generic_ws_entries:
-        return S3ForwardTradeEvidenceV1(
-            product.key, cutoff_ns, (), (), continuity_report_ref, health.content_hash,
-            state.recovery_epoch, 0, False, "NOT_ESTIMABLE", ("S3_WS_TRADE_INDEX_TYPE_INVALID",),
-        )
 
     index_by_record: dict[str, Any] = {}
     invalid_index = False
@@ -917,7 +957,7 @@ def _sequence_valid_s3_quote_at_cutoff(
             else:
                 valid_support_refs = _valid_book_support_refs(
                     repository, product=product, refs=report_refs, health_ref=health.content_hash,
-                    channel=book.channel, epoch_id=state.epoch_id, as_of_ns=int(report["as_of_ns"]),
+                    channel=book.channel, epoch_id=state.epoch_id, as_of_ns=cutoff_ns,
                     latest_bbo_received_at_ns=report_received,
                 )
                 if valid_support_refs is None:
@@ -1041,8 +1081,9 @@ def _quote_from_valid_continuity_report_at_cutoff(
         reason = "BOOK_BBO_OLDER_THAN_S3_MAX_AGE"
     support_refs = _valid_book_support_refs(
         repository, product=product, refs=input_refs, health_ref=health.content_hash,
-        channel=channel, epoch_id=state.epoch_id, as_of_ns=report_as_of,
+        channel=channel, epoch_id=state.epoch_id, as_of_ns=cutoff_ns,
         latest_bbo_received_at_ns=received,
+        expected_bbo=(str(bid), str(ask)),
     )
     if reason is None and support_refs is None:
         reason = "BOOK_BBO_SUPPORTING_REFS_UNAVAILABLE_OR_MISMATCHED"
@@ -1114,7 +1155,8 @@ def _continuity_invalidation_between(
     repository: OpsRepository, key: InstrumentKeyV2, *, channel: str,
     after_ns: int, through_ns: int,
 ) -> str | None:
-    for entry in repository.artifact_entries("PublicStreamContinuityEventV1"):
+    for entry in repository.public_stream_continuity_invalidations(key,
+            source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1, channel=channel, after_ns=after_ns, through_ns=through_ns):
         if not after_ns < entry.available_at_ns <= through_ns:
             continue
         observation = entry.metadata.get("observation")
@@ -1140,7 +1182,28 @@ def _valid_book_support_refs(
     epoch_id: str,
     as_of_ns: int,
     latest_bbo_received_at_ns: int | None = None,
+    expected_bbo: tuple[str, str] | None = None,
 ) -> tuple[str, ...] | None:
+    anchors = [entry for ref in refs if (entry := repository.get_artifact(ref)) is not None
+               and entry.artifact_type == BOOK_CHECKPOINT_TYPE]
+    if anchors:
+        if len(anchors) != 1 or set(refs) != {anchors[0].artifact_ref, health_ref}:
+            return None
+        health_anchor = repository.get_artifact(health_ref)
+        if health_anchor is None:
+            return None
+        try:
+            checkpoint_body = validate_book_checkpoint(repository, anchors[0], as_of_ns=as_of_ns)
+            if (checkpoint_body["instrument"] != product.key.to_dict() or checkpoint_body["source_id"] != BYBIT_PUBLIC_WS_SOURCE_ID_V1
+                    or checkpoint_body["channel"] != channel or checkpoint_body["metadata_ref"] != product.metadata_ref
+                    or checkpoint_body["epoch_id"] != epoch_id
+                    or checkpoint_body["as_of_ns"] != health_anchor.available_at_ns
+                    or checkpoint_body["sequence_state"] != "VALID" or checkpoint_body["received_at_ns"] != latest_bbo_received_at_ns
+                    or (expected_bbo is not None and checkpoint_body["bbo"] != list(expected_bbo))):
+                return None
+        except (ArithmeticError, KeyError, TypeError, ValueError):
+            return None
+        return tuple(sorted(refs))
     if health_ref not in refs:
         return None
     frame_entries = repository.artifact_entries("PublicStreamFrameIndexV1")
