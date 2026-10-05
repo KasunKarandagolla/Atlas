@@ -13,6 +13,9 @@ import hashlib
 import json
 import os
 import runpy
+import sqlite3
+import sys
+import tempfile
 import threading
 import time
 from dataclasses import replace
@@ -248,6 +251,46 @@ def test_deliberate_overload_remains_visible_and_fails_closed(tmp_path) -> None:
 
 @pytest.mark.skipif(os.environ.get("ATLAS_S38_REALTIME_STREAM") != "1",
                     reason="explicit actual-wall capacity probe, separate from deterministic regression")
+@pytest.mark.skipif(sys.platform != "win32", reason="native Windows storage-path comparison")
+def test_native_full_commit_storage_paths(tmp_path) -> None:
+    """Measure the runner's system TEMP and declared research-data volume.
+
+    No relative-speed assertion: this records environment facts, rather than
+    promoting a volume merely from its drive letter. The actual stream gate
+    still requires the unchanged supported workload to pass on its named path.
+    """
+    from atlas.v2.memory.repository import ArtifactIndexEntryV2
+
+    observations = []
+    with tempfile.TemporaryDirectory(prefix="atlas-native-wal-") as system_temp:
+        for label, root in (("SYSTEM_TEMP", Path(system_temp)), ("DECLARED_DATA_PATH", tmp_path)):
+            path = root / "probe.sqlite"
+            durations = []
+            with OpsRepository(path) as writer:
+                for ordinal in range(128):
+                    ref = hashlib.sha256(f"storage-probe-{ordinal}".encode()).hexdigest()
+                    entry = ArtifactIndexEntryV2(ref, "OfflineStorageProbe", ref, ordinal, ordinal,
+                        {"fixture": "x" * 65536})
+                    start = time.monotonic_ns()
+                    writer.register_artifact(entry)
+                    durations.append(time.monotonic_ns() - start)
+                assert len(writer.artifact_entries("OfflineStorageProbe")) == 128
+                assert writer._connection.execute("PRAGMA synchronous").fetchone()[0] == 2
+                assert writer._connection.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+                ordered = sorted(durations)
+                observations.append({"scope": label, "path": str(path), "commits": len(durations),
+                    "total_commit_ns": sum(durations), "maximum_commit_ns": max(durations),
+                    "p95_commit_ns": ordered[(len(ordered) * 95 + 99) // 100 - 1],
+                    "sqlite_bytes": path.stat().st_size,
+                    "wal_bytes": Path(str(path) + "-wal").stat().st_size})
+            with OpsRepository(path, read_only=True) as reader:
+                assert len(reader.artifact_entries("OfflineStorageProbe")) == 128
+    print(json.dumps({"native_storage_path_comparison": observations,
+        "sqlite_runtime_version": sqlite3.sqlite_version}, sort_keys=True))
+
+
+@pytest.mark.skipif(os.environ.get("ATLAS_S38_REALTIME_STREAM") != "1",
+                    reason="explicit actual-wall capacity probe, separate from deterministic regression")
 def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypatch) -> None:
     """Declared-rate real producer; hardware timing is measured, never simulated."""
     seconds = int(os.environ.get("ATLAS_S38_REALTIME_SECONDS", "15"))
@@ -450,6 +493,7 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
             elapsed = time.monotonic() - started
             sample_storage(elapsed)
             print(json.dumps({"frames": len(expected), "elapsed_s": elapsed,
+                   "storage_path": str(tmp_path), "sqlite_runtime_version": sqlite3.sqlite_version,
                    "max_service_duration_ns": port._stream_max_service_duration_ns,
                    "max_service_gap_ns": port._stream_max_service_gap_ns,
                    "high_water_items": status.high_water_items, "rejected": status.frames_rejected,
