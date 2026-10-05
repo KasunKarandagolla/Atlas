@@ -34,6 +34,7 @@ from atlas.v2.data.public_microstructure_ws import (
     bybit_btc_eth_linear_topics,
 )
 from atlas.v2.instruments import VenueV2
+from atlas.v2.memory.repository import OpsRepository
 from atlas.v2.runtime import active_history, production
 from atlas.v2.runtime.ops_supervisor import OpsCycleBatchV1, OpsSupervisorV2
 from atlas.v2.runtime.serviced_acquisition import ServicedPublicAcquisitionV1
@@ -268,6 +269,11 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
     producer_lateness: list[float] = []
     storage_samples: list[dict[str, Any]] = []
     writer_threads: set[int] = set()
+    checkpoint_samples: list[dict[str, Any]] = []
+    reader_started = threading.Event()
+    reader_finished = threading.Event()
+    reader_failures: list[str] = []
+    reader_thread: threading.Thread | None = None
     # Keep only the three slowest calls per stage. These probes distinguish
     # CPU/book work, durable filesystem writes and SQLite commits without
     # changing the writer, workload, queue or evidence qualification.
@@ -385,6 +391,7 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
         offered_started_ns = time.time_ns()
         producer.start()
         started = time.monotonic()
+        next_checkpoint = started + 60
         gc.callbacks.append(observe_gc)
         # Exercise the callback in precisely the lock context where a
         # diagnostic snapshot would deadlock; it must only record scalars.
@@ -394,6 +401,32 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
             helper.acquire(now_ns=time.time_ns(), service=lambda: port.service_public_stream(repository))
             next_rest = time.monotonic() + 1
             while producer.is_alive() and not stream.handoff.snapshot().overflowed:
+                if time.monotonic() >= next_checkpoint:
+                    checkpoint_started = time.monotonic_ns()
+                    busy, wal_frames, copied_frames = repository.checkpoint()
+                    record_stage("sqlite_passive_checkpoint", checkpoint_started)
+                    checkpoint_samples.append({"elapsed_s": time.monotonic() - started,
+                        "busy": busy, "wal_frames": wal_frames, "copied_frames": copied_frames})
+                    next_checkpoint = time.monotonic() + 60
+                if seconds >= 120 and reader_thread is None and time.monotonic() - started >= 90:
+                    # A bounded read-only report snapshot can pin WAL pages
+                    # while the writer continues. Hold it for the exporter's
+                    # default ten-second budget, with no second writer.
+                    def hold_report_snapshot() -> None:
+                        try:
+                            with OpsRepository(repository.path, read_only=True) as reader, reader.read_snapshot():
+                                assert reader._connection.execute(
+                                    "SELECT count(*) FROM source_health").fetchone() is not None
+                                reader_started.set()
+                                stop.wait(10)
+                        except Exception as exc:
+                            reader_failures.append(type(exc).__name__)
+                        finally:
+                            reader_finished.set()
+
+                    reader_thread = threading.Thread(target=hold_report_snapshot,
+                        name="s39-read-only-report-snapshot", daemon=True)
+                    reader_thread.start()
                 if time.monotonic() - started >= len(storage_samples) * 30:
                     sample_storage(time.monotonic() - started)
                 if not history_restored and time.monotonic() - started >= min(10, seconds / 2):
@@ -422,6 +455,10 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
                    "high_water_items": status.high_water_items, "rejected": status.frames_rejected,
                    "max_producer_lateness_s": max(producer_lateness, default=0),
                    "acquisition": helper.status(), "history_rows_restored": 1200 if history_restored else 0,
+                   "checkpoint_samples": checkpoint_samples,
+                   "read_only_snapshot_started": reader_started.is_set(),
+                   "read_only_snapshot_finished": reader_finished.is_set(),
+                   "read_only_snapshot_failures": reader_failures,
                    "storage_samples": storage_samples}, sort_keys=True))
             print(json.dumps({"native_service_stage_timings": stage_timings}, sort_keys=True))
             assert not status.overflowed, "actual writer throughput did not sustain the declared 160 fps"
@@ -430,6 +467,9 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
             assert max(producer_lateness, default=0) < 1.0, "host did not deliver the declared workload on time"
             assert writer_threads == {threading.get_ident()}
             assert history_restored
+            if seconds >= 120:
+                assert len(checkpoint_samples) >= 1
+                assert reader_started.is_set() and reader_finished.is_set() and not reader_failures
             rows = transport_rows(repository, tmp_path)
             assert [row["raw_payload_bytes"] for row in rows] == [frame.raw_payload_bytes for frame in expected]
             assert_current_reports(repository, book_warm=seconds >= 32)
@@ -443,6 +483,8 @@ def test_actual_wall_mixed_stream_with_five_second_rest_wait(tmp_path, monkeypat
         finally:
             gc.callbacks.remove(observe_gc)
             stop.set()
+            if reader_thread is not None:
+                reader_thread.join(timeout=2)
             producer.join(timeout=1)
             helper.close(timeout_s=0.1)
 
