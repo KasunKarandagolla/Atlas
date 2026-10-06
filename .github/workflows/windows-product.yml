@@ -30,7 +30,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-product-${{ github.ref }}
+  group: windows-product-${{ github.ref }}-${{ inputs.qualification_scope || 'complete' }}
   cancel-in-progress: false
 
 jobs:
