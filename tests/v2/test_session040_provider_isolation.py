@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import threading
 import time
@@ -186,8 +187,11 @@ def test_provider_terminal_matrix_preserves_exact_action_and_sole_writer(
         ledger.close()
 
 
+@pytest.mark.parametrize("stream_seconds", [1, pytest.param(35, marks=pytest.mark.skipif(
+    os.environ.get("ATLAS_S40_PROVIDER_SOAK") != "1",
+    reason="Explicit native actual-wall provider timeout/stream isolation gate"))])
 def test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_progress(
-        frozen_case, tmp_path: Path):
+        frozen_case, tmp_path: Path, stream_seconds: int):
     source_path, receipt, receipt_ref, sealed, profile, schedule = frozen_case
     path = tmp_path / "ops.sqlite"
     shutil.copy2(source_path, path)
@@ -228,7 +232,7 @@ def test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_pr
                 try:
                     workload = MixedWorkload()
                     started = time.monotonic()
-                    for ordinal in range(160):
+                    for ordinal in range(160 * stream_seconds):
                         time.sleep(max(0, started + ordinal / 160 - time.monotonic()))
                         frame = workload.frame(time.time_ns())
                         expected.append(frame)
@@ -237,6 +241,7 @@ def test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_pr
                     errors.append(type(exc).__name__)
 
             producer = threading.Thread(target=produce, name="s40-provider-public-producer")
+            live_started = time.monotonic()
             producer.start()
             assert report.start()
             heartbeat_refs = []
@@ -249,7 +254,8 @@ def test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_pr
                 heartbeat_refs.append(ref)
                 time.sleep(.01)
             producer.join(timeout=3)
-            _wait(lambda: capture.status().capture["captured_frames"] == 160)
+            assert not errors, (errors, capture.status())
+            _wait(lambda: capture.status().capture["captured_frames"] == 160 * stream_seconds)
             while capture.status().pending_frames:
                 port._collect_public_stream_evidence(repository, now_ns=time.time_ns())
             _wait(lambda: report._completion is not None, seconds=12)
@@ -257,7 +263,18 @@ def test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_pr
             assert completed is not None and completed.error_type is None
             assert completed.result["validation_failures"] == {}
             assert completed.completed_at_ns - completed.started_at_ns < 10_000_000_000
-            assert not release.is_set() and dispatcher.active_count == 1
+            assert not release.is_set()
+            if stream_seconds == 1:
+                assert dispatcher.active_count == 1
+            else:
+                # This fixture really blocks for the fake provider's existing
+                # 30-second timeout, then proves another five seconds of core
+                # arrivals remain serviceable. The provider request clock is
+                # deliberately frozen; no deadline or real provider behavior
+                # is reconfigured to obtain this isolation result.
+                assert time.monotonic() - live_started >= stream_seconds - .1
+                assert io.calls == 1 and dispatcher.active_count == 1
+                assert dispatcher._completion_queue.qsize() == 1
             assert not errors and heartbeat_refs and all(repository.get_artifact(ref) for ref in heartbeat_refs)
             status = capture.status()
             assert status.handoff.frames_rejected == 0 and not status.handoff.overflowed
@@ -267,7 +284,11 @@ def test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_pr
             assert repository.get_artifact(receipt.action_ref) == before
             release.set()
             _wait(lambda: dispatcher._completion_queue.qsize() == 1)
-            assert controller.finalize(work, dispatcher.drain_completed(max_items=1)[0]).status == "COMPLETE"
+            outcome = controller.finalize(work, dispatcher.drain_completed(max_items=1)[0])
+            assert outcome.status == ("COMPLETE" if stream_seconds == 1 else "UNAVAILABLE")
+            if stream_seconds != 1:
+                assert outcome.reason_code == "PROVIDER_TIMEOUT"
+            assert dispatcher.active_count == 0
             port.finish_public_capture(repository)
     finally:
         release.set()
