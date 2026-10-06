@@ -130,6 +130,13 @@ jobs:
           $probeExit = $LASTEXITCODE
           Copy-Item "$probeRoot\resilience-result.json" dist/windows-s40-native-resilience.json
           if ($probeExit -ne 0) { throw 'Thirty-minute native resilience gate failed; no installer' }
+      - name: Qualify representative 48-hour compact report geometry
+        run: |
+          $scaleRoot = "$env:RUNNER_TEMP\atlas-s40-scaled-report"
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" docs/v2/benchmarks/session040_scaled_report_geometry_v1.py --root $scaleRoot 2>&1 | Tee-Object dist/windows-s40-scaled-report.txt
+          $scaleExit = $LASTEXITCODE
+          if (Test-Path "$scaleRoot\scaled-export-result.json") { Copy-Item "$scaleRoot\scaled-export-result.json" dist/windows-s40-scaled-report.json }
+          if ($scaleExit -ne 0) { throw 'Scaled strict report geometry failed; no installer' }
       - name: Build, validate payload and exercise offline product
         env:
           ATLAS_SIGNING_PFX_BASE64: ${{ inputs.signed_release && secrets.ATLAS_SIGNING_PFX_BASE64 || '' }}
