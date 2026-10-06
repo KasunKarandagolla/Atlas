@@ -28,18 +28,25 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--resume-synthetic-population", action="store_true")
+    parser.add_argument("--projection-rows-per-second", type=int, default=16)
     args = parser.parse_args()
     if not args.resume_synthetic_population:
         args.root.mkdir(parents=True, exist_ok=False)
     else:
         assert args.root.is_dir() and (args.root / "interrupted-population-attempt.json").is_file()
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    count = 4 * 48 * 60 * 60
+    assert 1 <= args.projection_rows_per_second <= 32
+    # The owner profile has four BTC/ETH book/trade channels. A one-second
+    # health + continuity publication contributes eight compact rows/s;
+    # default sixteen provides 2x ordinary-rate geometry headroom. This does
+    # not count every raw frame as a compact analytical row.
+    count = args.projection_rows_per_second * 48 * 60 * 60
     database = args.root / "ops.sqlite"
     result = {"schema_version": 1, "status": "TEST GATE", "implementation_sha": sha,
         "scope": "SYNTHETIC_PROJECTION_GEOMETRY_ONLY", "projection_rows": count,
         "raw_padding_rows": 200_000, "represented_seconds": 48 * 60 * 60,
-        "declared_projection_rows_per_second": 4,
+        "declared_projection_rows_per_second": args.projection_rows_per_second,
+        "scale_basis": "4 channels * 2 compact reports/s * 2x geometry margin",
         "capital_enabled": False, "assisted_enabled": False, "authority": "ZERO",
         "source_or_48h_endurance_qualification": "TEST GATE", "measurements": []}
     body = {"status": "SYNTHETIC_S40_SCALE_FIXTURE", "rss_bytes": 123456,
