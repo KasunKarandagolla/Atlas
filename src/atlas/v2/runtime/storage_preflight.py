@@ -22,6 +22,11 @@ from pathlib import Path
 from typing import Any
 
 from .._serialization import FrozenMap, json_value, sha256_json, sha256_ref
+from ..data.capture_receipts import (
+    CaptureReceiptBindingV1,
+    CaptureReceiptJournalV1,
+    read_last_capture_receipt,
+)
 from ..data.public_archive_extents import PublicArchiveSegmentWriterV1, read_extent
 from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
 from ..memory.writer_lock import OpsWriterAlreadyActive
@@ -252,7 +257,7 @@ def qualify_storage_path(
             metrics.bytes_processed[name] = metrics.bytes_processed.get(name, 0) + bytes_processed
             check_deadline()
             if (name in {"FILESYSTEM_WRITE_FLUSH_READ_RENAME_DELETE", "ARCHIVE_WRITE_FSYNC",
-                         "SQLITE_TRANSACTION_COMMIT", "SQLITE_PASSIVE_CHECKPOINT"}
+                         "CAPTURE_RECEIPT_FSYNC", "SQLITE_TRANSACTION_COMMIT", "SQLITE_PASSIVE_CHECKPOINT"}
                     and elapsed > selected_limits.maximum_operation_ns):
                 raise _ProbeRejected(f"{name}_EXCEEDS_QUEUE_HEADROOM")
 
@@ -310,6 +315,10 @@ def qualify_storage_path(
             if sync != 2:
                 raise _ProbeRejected("SQLITE_FULL_DURABILITY_UNAVAILABLE")
             archive = PublicArchiveSegmentWriterV1(probe / "ops-public-extents")
+            receipt_root = probe / "ops-public-capture"
+            receipt_binding = CaptureReceiptBindingV1("temporary-preflight", identity_sha256, "0" * 64)
+            journal = CaptureReceiptJournalV1(receipt_root, binding=receipt_binding)
+            last_receipt: dict[str, Any] | None = None
             sample_refs: list[str] = []
             extent_refs: list[str] = []
             replay_hashes: dict[str, str] = {}
@@ -341,6 +350,11 @@ def qualify_storage_path(
                 entry = measured("ARCHIVE_WRITE_FSYNC", partial(archive.seal,
                     table, namespace="ops-public-transport", chunk_id=chunk,
                     clock_ns=selected_hooks.wall_ns, floor_ns=at), bytes_processed=table.nbytes)
+                last_receipt = {"version": "STORAGE_PREFLIGHT_CAPTURE_RECEIPT_V1", "authority": "ZERO",
+                    "temporary_only": True, "extent_ref": entry.artifact_ref,
+                    "content_hash": entry.content_hash, "metadata": json_value(entry.metadata),
+                    "frame_count": selected_limits.batch_frames}
+                measured("CAPTURE_RECEIPT_FSYNC", partial(journal.append, last_receipt))
                 entries = []
                 for row in rows:
                     body = {"status": "TESTED", "rss_bytes": 0, "wal_bytes": 0, "cpu_percent": 0.0,
@@ -368,6 +382,12 @@ def qualify_storage_path(
                 check_deadline()
             facts.update(generated_frame_count=total_batches * selected_limits.batch_frames,
                          generated_archive_extents=len(extent_refs), generated_index_rows=len(sample_refs) + len(extent_refs))
+            tail = measured("CAPTURE_RECEIPT_REOPEN", lambda: read_last_capture_receipt(receipt_root,
+                expected_run_id=receipt_binding.run_id, expected_configuration_hash=identity_sha256))
+            if tail is None or json_value(tail.receipt) != last_receipt:
+                raise _ProbeRejected("CAPTURE_RECEIPT_REOPEN_MISMATCH")
+            facts.update(capture_receipt_bytes=journal.bytes_written,
+                         capture_receipt_reopen_exact=True, capture_receipts_written=total_batches)
             measured("SQLITE_SECOND_WRITER_REJECTION", partial(_assert_second_writer_rejected, path))
             facts["sole_writer_lease_enforced"] = True
             with OpsRepository(path, read_only=True) as concurrent_reader, concurrent_reader.read_snapshot():
@@ -404,7 +424,7 @@ def qualify_storage_path(
         facts["export_smoke"] = measured("STRICT_READONLY_EXPORT", lambda: selected_hooks.export(
             path, probe / "reports", identity_sha256))
         for label in ("FILESYSTEM_WRITE_FLUSH_READ_RENAME_DELETE", "ARCHIVE_WRITE_FSYNC",
-                      "SQLITE_TRANSACTION_COMMIT", "SQLITE_PASSIVE_CHECKPOINT"):
+                      "CAPTURE_RECEIPT_FSYNC", "SQLITE_TRANSACTION_COMMIT", "SQLITE_PASSIVE_CHECKPOINT"):
             if max(metrics.durations[label]) > selected_limits.maximum_operation_ns:
                 reasons.append(f"{label}_EXCEEDS_QUEUE_HEADROOM")
         for label in ("SUSTAINED_BATCH_SERVICE", "BURST_BATCH_SERVICE"):

@@ -11,6 +11,7 @@ on:
         type: choice
         options:
           - complete
+          - offline
           - owner_scale_export
         default: complete
       engineering_only:
@@ -84,7 +85,7 @@ jobs:
           retention-days: 30
           path: validation/
   build:
-    if: ${{ inputs.qualification_scope != 'owner_scale_export' }}
+    if: ${{ inputs.qualification_scope != 'owner_scale_export' && inputs.qualification_scope != 'offline' }}
     needs: offline
     runs-on: windows-2025
     timeout-minutes: 90
@@ -229,6 +230,8 @@ jobs:
       - name: Validate complete cold commissioning-sized strict export
         run: |
           New-Item -ItemType Directory -Force validation | Out-Null
+          & "$env:RUNNER_TEMP\atlas-owner-scale-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_session040_storage_preflight.py tests/v2/test_session040_owner_runtime.py --basetemp "$env:RUNNER_TEMP\atlas-preflight-receipt-regression" --junitxml=validation/windows-preflight-receipt-regression.xml 2>&1 | Tee-Object validation/windows-preflight-receipt-regression.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Native receipt-aware preflight gate failed' }
           $root = "$env:RUNNER_TEMP\atlas-s40-owner-scale-export"
           & "$env:RUNNER_TEMP\atlas-owner-scale-env\Scripts\python.exe" docs/v2/benchmarks/session040_owner_scale_export_v1.py --root $root 2>&1 | Tee-Object validation/owner-scale-export.txt
           $probeExit = $LASTEXITCODE

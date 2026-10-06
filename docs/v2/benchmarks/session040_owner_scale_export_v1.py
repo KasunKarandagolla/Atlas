@@ -16,6 +16,7 @@ from pathlib import Path
 from atlas.v2.memory.repository import OpsRepository
 from atlas.v2.runtime.ops_supervisor import OpsSupervisorV2
 from atlas.v2.runtime.production import create_bybit_public_ws_port
+from atlas.v2.runtime.storage_preflight import qualify_storage_path
 from atlas.v2.science.tuning_export import _TYPES, TuningRunIdentityV1, export_tuning_snapshot
 from tests.v2.test_s38_sustained_public_stream import NOW_NS, MixedWorkload, QueueStream
 from tests.v2.test_session039_long_run_public_evidence import RestartPublicSource
@@ -53,6 +54,9 @@ def main() -> None:
             durations.append(time.monotonic() - at)
 
     try:
+        qualification = qualify_storage_path(args.root, identity_sha256='a' * 64)
+        result['selected_path_preflight'] = qualification.as_dict()
+        assert qualification.allowed, 'Native selected path did not pass actual receipt-aware preflight'
         with OpsSupervisorV2(database, port, clock_ns=lambda: clock[0]) as supervisor:
             supervisor.run_once()
             repository = supervisor.repository
@@ -83,6 +87,7 @@ def main() -> None:
             identity = TuningRunIdentityV1('s40-owner-scale-synthetic', 'a' * 64, sha, NOW_NS)
             OpsRepository.read_snapshot = timed_snapshot
             before_changes = repository._connection.total_changes
+            sealed_cold = None
             for name in ('cold-full', 'fresh-full', 'repeat-incremental'):
                 output = args.root / ('cold' if name != 'fresh-full' else 'fresh')
                 durations.clear()
@@ -101,9 +106,13 @@ def main() -> None:
                 assert sum(durations) < 5, 'Owner-scale strict snapshot lacks 2x budget margin'
                 assert elapsed < 8, 'Owner-scale whole export lacks fixed-budget margin'
                 if name == 'repeat-incremental':
-                    assert exported['rows_written'] == 0
+                    # A no-change request at the same exact cutoff returns its
+                    # prior immutable manifest, including that page's row count.
+                    assert exported == sealed_cold
                 else:
                     assert exported['rows_written'] >= 4760
+                    if name == 'cold-full':
+                        sealed_cold = exported
             assert repository._connection.total_changes == before_changes
             assert repository._connection.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
             assert not source.handoff.snapshot().overflowed and source.handoff.snapshot().frames_rejected == 0

@@ -47,6 +47,9 @@ def test_real_temp_store_replays_reopens_exports_and_does_not_touch_existing_run
     assert result.facts["pinned_reader_checkpoint"][1] > result.facts["pinned_reader_checkpoint"][2]
     assert result.facts["wal_checkpoint"][1] == result.facts["wal_checkpoint"][2]
     assert result.facts["raw_archive_bytes"] > 0
+    assert result.facts["capture_receipt_bytes"] > 0
+    assert result.facts["capture_receipt_reopen_exact"] is True
+    assert result.facts["capture_receipts_written"] == 4
     assert result.facts["real_run_database_opened"] is False
     assert result.facts["probe_removed"] is True
     assert len(result.facts["export_smoke"]["validation_failures"]) == 0
@@ -95,6 +98,8 @@ def test_low_disk_blocks_before_probe_or_dependency_work(tmp_path):
     ("RUNTIME_DEPENDENCIES", ImportError),
     ("STRICT_READONLY_EXPORT", RuntimeError),
     ("SQLITE_READONLY_REOPEN", OSError),
+    ("CAPTURE_RECEIPT_FSYNC", OSError),
+    ("CAPTURE_RECEIPT_REOPEN", OSError),
 ])
 def test_predictable_failures_reject_with_exact_safe_reason_and_clean_up(tmp_path, phase, exception):
     def inject(name):
@@ -129,7 +134,7 @@ class _Clock:
         return self.value
 
 
-@pytest.mark.parametrize("phase", ["ARCHIVE_WRITE_FSYNC", "SQLITE_TRANSACTION_COMMIT"])
+@pytest.mark.parametrize("phase", ["ARCHIVE_WRITE_FSYNC", "CAPTURE_RECEIPT_FSYNC", "SQLITE_TRANSACTION_COMMIT"])
 def test_measured_persistence_stall_exceeding_queue_headroom_rejects(tmp_path, phase):
     clock = _Clock()
 
