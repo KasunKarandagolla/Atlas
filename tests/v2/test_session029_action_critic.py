@@ -536,6 +536,10 @@ def test_proposal_and_critic_capabilities_are_disjoint(frozen_case):
             now_ns=CUTOFF + 200)
 
 
+@pytest.mark.skipif(
+    not hasattr(socket, "AF_UNIX"),
+    reason="POSIX domain socket fixture; native authenticated AF_PIPE is covered by the mandatory Windows broker smoke",
+)
 def test_action_broker_local_socket_direct_operation_has_one_provider_call(frozen_case, tmp_path: Path):
     _path, _receipt, _receipt_ref, sealed, profile, schedule = frozen_case
     fake = _FakeCritic(_valid_output(sealed.packet))

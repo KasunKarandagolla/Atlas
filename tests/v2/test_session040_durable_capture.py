@@ -40,6 +40,7 @@ def test_capture_continues_during_blocked_sole_sqlite_commit(tmp_path, monkeypat
         original_register = repo.register_artifacts
         writer_threads = set()
         armed = [True]
+        injected_stall_ns = []
 
         def register(entries):
             writer_threads.add(threading.get_ident())
@@ -54,7 +55,9 @@ def test_capture_continues_during_blocked_sole_sqlite_commit(tmp_path, monkeypat
             def commit(self):
                 if armed[0]:
                     armed[0] = False
+                    started = time.perf_counter_ns()
                     time.sleep(stall)
+                    injected_stall_ns.append(time.perf_counter_ns() - started)
                 return original_connection.commit()
 
         monkeypatch.setattr(repo, "_connection", StalledConnection())
@@ -89,13 +92,20 @@ def test_capture_continues_during_blocked_sole_sqlite_commit(tmp_path, monkeypat
         assert status.capture["captured_frames"] == count
         assert writer_threads == {threading.get_ident()}
         assert repo._connection.execute("PRAGMA synchronous").fetchone()[0] == 2
-        assert repo.persistence_metrics()["max_commit_duration_ns"] >= stall * 1e9
+        assert len(injected_stall_ns) == 1
+        assert injected_stall_ns[0] >= stall * 1e9
+        # Python 3.12 on Windows may quantize monotonic_ns to the system tick.
+        # Verify the actual fault with the high-resolution performance clock,
+        # then allow only the measured monotonic clock's endpoint resolution.
+        quantization_ns = 2 * time.get_clock_info("monotonic").resolution * 1e9
+        assert repo.persistence_metrics()["max_commit_duration_ns"] >= injected_stall_ns[0] - quantization_ns
         rows = transport_rows(repo, tmp_path)
         assert [row["raw_payload_bytes"] for row in rows] == [f.raw_payload_bytes for f in expected]
         assert [row["received_at_ns"] for row in rows] == [f.received_at_ns for f in expected]
         assert list((tmp_path / "ops-public-capture").glob("capture-*.bin"))
         print({"stall_seconds": stall, "frames": count, "queue_high_water": status.handoff.high_water_items,
-               "capture_high_water_batches": status.capture["high_water_batches"], "rejected": 0})
+               "capture_high_water_batches": status.capture["high_water_batches"], "rejected": 0,
+               "injected_stall_ns": injected_stall_ns[0], "monotonic_resolution_ns": quantization_ns / 2})
 
 
 def test_capture_failure_preserves_raw_receipts_and_is_terminal(tmp_path, monkeypatch):
