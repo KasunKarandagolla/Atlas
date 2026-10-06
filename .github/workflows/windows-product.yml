@@ -6,6 +6,10 @@ on:
       - impl/session-036-final-development-closure-windows-tune-ready
   workflow_dispatch:
     inputs:
+      engineering_only:
+        description: Run every engineering/native gate without creating a distributable
+        type: boolean
+        default: true
       signed_release:
         description: Produce owner release using protected Authenticode certificate
         type: boolean
@@ -94,6 +98,7 @@ jobs:
           & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Installed dependency graph invalid' }
       - name: Install pinned Inno Setup compiler on build host
+        if: ${{ !inputs.engineering_only }}
         run: |
           $installer = "$env:RUNNER_TEMP\innosetup-6.5.4.exe"
           Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-6_5_4/innosetup-6.5.4.exe' -OutFile $installer
@@ -112,6 +117,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Hash-locked regression tools installation failed' }
           New-Item -ItemType Directory -Force dist | Out-Null
           $env:PYTHONPATH = "$testTools;$pwd\src;$pwd"
+          "PYTHONPATH=$env:PYTHONPATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           @{cpu = (Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors); memory_bytes = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory; source_sha = '${{ github.sha }}'; provider_calls = 0} | ConvertTo-Json -Depth 4 | Set-Content dist/windows-stream-host.json
           # Name the local evidence volume explicitly. The sustained module
           # also measures FULL commits on system TEMP for transparent comparison.
@@ -123,6 +129,14 @@ jobs:
         run: |
           & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_session028_provider_amendment.py tests/v2/test_session029_action_critic.py tests/v2/test_session030_action_critic_runtime.py tests/v2/test_session040_capture_receipts.py tests/v2/test_session040_durable_capture.py tests/v2/test_session040_live_health.py tests/v2/test_session040_storage_preflight.py tests/v2/test_session040_export_snapshot_cache.py tests/v2/test_session040_owner_runtime.py tests/v2/test_session040_provider_isolation.py tests/v2/test_session040_action_query_bounds.py tests/v2/test_session040_native_resilience.py --basetemp "$env:RUNNER_TEMP\atlas-s40-fault-regression" --junitxml=dist/windows-s40-fault-regression.xml 2>&1 | Tee-Object dist/windows-s40-fault-regression.txt
           if ($LASTEXITCODE -ne 0) { throw 'S40 owner-critical-path fault gate failed; no installer' }
+      - name: Qualify native source desktop, protected secrets and broker boundaries
+        run: |
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_session020_desktop_ipc.py tests/v2/test_session036_product.py tests/v2/test_session036_windows_broker.py tests/v2/test_session036_writer_broker_bounds.py tests/v2/test_session037_product_refresh.py --basetemp "$env:RUNNER_TEMP\atlas-s40-product-regression" --junitxml=dist/windows-s40-product-regression.xml 2>&1 | Tee-Object dist/windows-s40-product-regression.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Native source product qualification failed' }
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" src/atlas_product_entry.py --desktop-smoke --data-root "$env:RUNNER_TEMP\atlas-s40-desktop-smoke"
+          if ($LASTEXITCODE -ne 0) { throw 'Native source desktop launch smoke failed' }
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" src/atlas_product_entry.py --broker-smoke
+          if ($LASTEXITCODE -ne 0) { throw 'Native named-pipe broker smoke failed' }
       - name: Qualify sustained S40 native workload before package build
         run: |
           $probeRoot = "$env:RUNNER_TEMP\atlas-s40-native-resilience"
@@ -138,6 +152,7 @@ jobs:
           if (Test-Path "$scaleRoot\scaled-export-result.json") { Copy-Item "$scaleRoot\scaled-export-result.json" dist/windows-s40-scaled-report.json }
           if ($scaleExit -ne 0) { throw 'Scaled strict report geometry failed; no installer' }
       - name: Build, validate payload and exercise offline product
+        if: ${{ !inputs.engineering_only }}
         env:
           ATLAS_SIGNING_PFX_BASE64: ${{ inputs.signed_release && secrets.ATLAS_SIGNING_PFX_BASE64 || '' }}
           ATLAS_SIGNING_PASSWORD: ${{ inputs.signed_release && secrets.ATLAS_SIGNING_PASSWORD || '' }}
@@ -149,6 +164,7 @@ jobs:
           & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" @arguments
           if ($LASTEXITCODE -ne 0) { throw 'Native product build failed' }
       - name: Validate installer, reinstall and uninstall preservation
+        if: ${{ !inputs.engineering_only }}
         run: |
           $manifest = Get-Content dist/windows-release-manifest.json | ConvertFrom-Json
           & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" scripts/windows_install_smoke.py --installer "dist/$($manifest.installer)" --output dist/windows-installer-smoke.json
