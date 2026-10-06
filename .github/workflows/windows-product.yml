@@ -151,6 +151,13 @@ jobs:
           $scaleExit = $LASTEXITCODE
           if (Test-Path "$scaleRoot\scaled-export-result.json") { Copy-Item "$scaleRoot\scaled-export-result.json" dist/windows-s40-scaled-report.json }
           if ($scaleExit -ne 0) { throw 'Scaled strict report geometry failed; no installer' }
+      - name: Qualify complete cold owner-scale strict export
+        run: |
+          $ownerScaleRoot = "$env:RUNNER_TEMP\atlas-s40-owner-scale-export"
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" docs/v2/benchmarks/session040_owner_scale_export_v1.py --root $ownerScaleRoot 2>&1 | Tee-Object dist/windows-s40-owner-scale-export.txt
+          $probeExit = $LASTEXITCODE
+          if (Test-Path "$ownerScaleRoot\owner-scale-export-result.json") { Copy-Item "$ownerScaleRoot\owner-scale-export-result.json" dist/windows-s40-owner-scale-export.json }
+          if ($probeExit -ne 0) { throw 'Owner-scale cold strict export margin gate failed' }
       - name: Build, validate payload and exercise offline product
         if: ${{ !inputs.engineering_only }}
         env:
