@@ -368,16 +368,27 @@ def test_broker_binds_live_controller_before_accessing_secret(tmp_path, build, m
     assert calls == ["bind", "close"]
 
 
-def test_configured_broker_loss_stops_run_without_fallback(tmp_path, build, monkeypatch):
+def test_configured_broker_loss_preserves_public_run_without_provider_fallback(tmp_path, build, monkeypatch):
     run = product.create_run(tmp_path, product.ResearchRunConfigV1(provider_profile="deepseek-v41-action-critic-v1"))
     closed = []
-    critic = SimpleNamespace(process=SimpleNamespace(poll=lambda: 2), shadow=lambda *args: None,
-                             close=lambda: closed.append(True))
-    monkeypatch.setattr(product, "_start_installed_critic", lambda *args: critic)
-    assert product.run_component(run, smoke=True) == 2
+    class Shadow:
+        def __call__(self, *args):
+            raise AssertionError("a lost broker must not receive another action")
+
+        def abandon_pending(self, repository):
+            closed.append("abandoned")
+
+        def close(self):
+            closed.append("closed")
+
+    critic = SimpleNamespace(process=SimpleNamespace(poll=lambda: 2), shadow=Shadow())
+    monkeypatch.setattr(product, "_start_installed_critic", lambda *args, **kwargs: critic)
+    assert product.run_component(run, smoke=True) == 0
     status = json.loads((run / "status.json").read_text())
-    assert status["reason"] == "CONFIGURED_PROVIDER_BROKER_LOST"
-    assert status["provider_health"] == "TEST GATE" and closed == [True]
+    assert status["reason"] == "OFFLINE_COMPOSITION_FIXTURE_ONLY"
+    assert status["provider_reason"] == "CONFIGURED_PROVIDER_BROKER_LOST"
+    assert status["provider_health"] == "TEST GATE" and closed == ["abandoned", "closed"]
+    assert status["capital_enabled"] is False and status["assisted_enabled"] is False
 
 
 def test_installed_critic_generates_transport_valid_owner_bound_context(tmp_path, build, monkeypatch):

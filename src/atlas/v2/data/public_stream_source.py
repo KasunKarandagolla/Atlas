@@ -121,19 +121,33 @@ class PublicStreamSourceV2:
             error = self._last_error_code
         return PublicStreamSourceStatusV2(state, attempts, reconnects, error, self._handoff.snapshot())
 
+    def request_close(self) -> None:
+        """Request a research capture stop without waiting on the producer.
+
+        Used by the bounded owner watchdog when finite queue headroom is being
+        consumed. The explicit close boundary and any late rejection remain
+        observable; no reconnect or continuity qualification is manufactured.
+        """
+        self._close_requested.set()
+        with self._lock:
+            loop, task = self._loop, self._task
+        self._handoff.close(self._clock_ns())
+        if loop is not None and task is not None and not task.done():
+            try:
+                loop.call_soon_threadsafe(task.cancel)
+            except RuntimeError:
+                if not loop.is_closed():
+                    raise
+
     def close(self, *, timeout_seconds: float = 5.0) -> None:
         """Cancel the sole producer, close its bounded handoff, and join for a bounded time."""
         if not math.isfinite(timeout_seconds) or not 0 <= timeout_seconds <= 30.0:
             raise ValueError("close timeout must be finite and no greater than thirty seconds")
-        self._close_requested.set()
+        self.request_close()
         with self._lock:
             thread = self._thread
-            loop = self._loop
-            task = self._task
             if thread is None:
                 self._state = "CLOSED"
-        if loop is not None and task is not None and not task.done():
-            loop.call_soon_threadsafe(task.cancel)
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout=timeout_seconds)
             if thread.is_alive():

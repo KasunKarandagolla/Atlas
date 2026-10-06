@@ -130,8 +130,8 @@ class MixedWorkload:
 
 
 def transport_rows(repository: Any, root: Any) -> list[dict[str, Any]]:
-    entries = (*repository.artifact_entries("PublicStreamTransportBatchV1"),
-               *repository.artifact_entries("PublicStreamTransportBatchV2"))
+    entries = [*repository.artifact_entries("PublicStreamTransportBatchV1"),
+               *repository.artifact_entries("PublicStreamTransportBatchV2")]
     entries = sorted(entries, key=lambda entry: entry.metadata["batch"].get("first_received_at_ns")
         if entry.artifact_type == "PublicStreamTransportBatchV2" else entry.metadata["batch"]["frames"][0]["received_at_ns"])
     return [row for entry in entries for row in (

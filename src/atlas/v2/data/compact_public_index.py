@@ -51,7 +51,8 @@ def _rows(repository: OpsRepository, kind: int, chunk_id: str) -> tuple[dict[str
     body = descriptor.metadata["extent"]
     path = Path(repository.path).parent / "ops-public-extents" / str(body["segment_name"])
     stat = path.stat()
-    cache_key = (ref, descriptor.content_hash, stat.st_size, stat.st_mtime_ns)
+    cache_key = (ref, descriptor.content_hash, stat.st_dev, stat.st_ino,
+                 stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
     cache: OrderedDict[Any, Any] = repository._public_index_cache
     cached = cache.get(cache_key)
     if cached is not None:

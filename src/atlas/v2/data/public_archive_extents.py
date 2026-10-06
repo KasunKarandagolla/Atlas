@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import time
 import uuid
 import zlib
 from collections.abc import Callable
@@ -34,38 +35,41 @@ def extent_ref(namespace: str, chunk_id: str) -> str:
     return sha256_json({"version": EXTENT_TYPE, "namespace": namespace, "chunk_id": chunk_id})
 
 
-class PublicArchiveExtentWriterV1:
-    def __init__(self, repository: OpsRepository) -> None:
-        if repository.read_only:
-            raise ValueError("read-only repository cannot own an archive writer")
-        self.repository = repository
-        self.root = Path(repository.path).parent / "ops-public-extents"
+class PublicArchiveSegmentWriterV1:
+    """Seal independent extents without a database connection or index authority.
+
+    Each instance exclusively owns its UUID segments. The ops controller alone
+    publishes descriptors into SQLite after the immutable bytes are durable.
+    """
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
         self.path: Path | None = None
         self.offset = 0
+        self.bytes_written = 0
+        self.metrics: dict[str, Any] = {"active_phase": "IDLE"}
 
-    def write(self, table: Any, *, namespace: str, chunk_id: str,
-              clock_ns: Callable[[], int], floor_ns: int) -> tuple[str, Path]:
+    def seal(self, table: Any, *, namespace: str, chunk_id: str,
+             clock_ns: Callable[[], int], floor_ns: int) -> ArtifactIndexEntryV2:
         import pyarrow as pa
 
         ref = extent_ref(namespace, chunk_id)
-        existing = self.repository.get_artifact(ref)
-        if existing is not None:
-            old = read_extent(self.repository, ref)
-            if not old.equals(table):
-                raise ValueError("immutable public archive extent conflict")
-            return ref, self.root / str(existing.metadata["extent"]["segment_name"])
         if not 1 <= table.num_rows <= MAX_EXTENT_ROWS or table.nbytes > MAX_DECODED_EXTENT_BYTES:
             raise ValueError("public archive extent row bound exceeded")
+        started = time.monotonic_ns()
+        self.metrics = {"active_phase": "ARROW_ENCODE", "phase_started_monotonic_ns": started}
         output = pa.BufferOutputStream()
         with pa.ipc.new_stream(output, table.schema, options=pa.ipc.IpcWriteOptions(compression="zstd")) as writer:
             writer.write_table(table)
         ipc_payload = output.getvalue().to_pybytes()
+        encoded_at = time.monotonic_ns()
         if len(ipc_payload) > MAX_EXTENT_BYTES:
             raise ValueError("public archive IPC byte bound exceeded")
         # Arrow's buffer compression leaves repeated schemas uncompressed.
         # Compress the complete independent IPC stream as well; no history or
         # dictionary from a previous extent is required to decode it.
         payload = zlib.compress(ipc_payload, level=1)
+        compressed_at = time.monotonic_ns()
         if len(payload) > MAX_EXTENT_BYTES:
             raise ValueError("public archive extent byte bound exceeded")
         self.root.mkdir(parents=True, exist_ok=True)
@@ -78,24 +82,56 @@ class PublicArchiveExtentWriterV1:
                 raise ValueError("public archive segment prefix changed")
             mode = "ab"
         offset = self.offset
+        writing_at = time.monotonic_ns()
+        self.metrics = {**self.metrics, "active_phase": "ARCHIVE_WRITE", "phase_started_monotonic_ns": writing_at}
         with self.path.open(mode) as handle:
             if handle.write(payload) != len(payload):
                 raise OSError("public archive extent write incomplete")
             handle.flush()
+            fsync_at = time.monotonic_ns()
+            self.metrics = {**self.metrics, "active_phase": "ARCHIVE_FSYNC", "phase_started_monotonic_ns": fsync_at}
             os.fsync(handle.fileno())
+        finished = time.monotonic_ns()
+        self.bytes_written += len(payload)
+        self.metrics = {"active_phase": "IDLE", "arrow_encode_ns": encoded_at - started,
+            "compression_ns": compressed_at - encoded_at, "write_ns": fsync_at - writing_at,
+            "fsync_ns": finished - fsync_at, "total_ns": finished - started,
+            "observed_at_ns": clock_ns(), "bytes_written": self.bytes_written}
         self.offset += len(payload)
         if self.path.stat().st_size != self.offset:
             raise OSError("public archive extent size mismatch")
-        available = max(floor_ns, clock_ns())
+        from ..chronology import sample
+
+        available = sample(clock_ns, floor_ns=floor_ns)
         body = {"version": EXTENT_TYPE, "namespace": namespace, "chunk_id": chunk_id,
                 "segment_name": self.path.name, "offset": offset, "length": len(payload),
                 "sha256": hashlib.sha256(payload).hexdigest(), "row_count": table.num_rows,
                 "decoded_bytes": table.nbytes, "encoding": "ARROW_IPC_ZSTD_ZLIB_V1",
                 "ipc_bytes": len(ipc_payload),
                 "available_at_ns": available, "authority": "ZERO"}
-        self.repository.register_artifact(ArtifactIndexEntryV2(ref, EXTENT_TYPE, sha256_json(body),
-                                    available, available, {"extent": body}))
-        return ref, self.path
+        return ArtifactIndexEntryV2(ref, EXTENT_TYPE, sha256_json(body),
+                                    available, available, {"extent": body})
+
+
+class PublicArchiveExtentWriterV1(PublicArchiveSegmentWriterV1):
+    def __init__(self, repository: OpsRepository) -> None:
+        if repository.read_only:
+            raise ValueError("read-only repository cannot own an archive writer")
+        self.repository = repository
+        super().__init__(Path(repository.path).parent / "ops-public-extents")
+
+    def write(self, table: Any, *, namespace: str, chunk_id: str,
+              clock_ns: Callable[[], int], floor_ns: int) -> tuple[str, Path]:
+        ref = extent_ref(namespace, chunk_id)
+        existing = self.repository.get_artifact(ref)
+        if existing is not None:
+            if not read_extent(self.repository, ref).equals(table):
+                raise ValueError("immutable public archive extent conflict")
+            return ref, self.root / str(existing.metadata["extent"]["segment_name"])
+        entry = self.seal(table, namespace=namespace, chunk_id=chunk_id,
+                          clock_ns=clock_ns, floor_ns=floor_ns)
+        self.repository.register_artifact(entry)
+        return ref, self.root / str(entry.metadata["extent"]["segment_name"])
 
 
 def write_extent(repository: OpsRepository, table: Any, *, namespace: str, chunk_id: str,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import platform
@@ -25,10 +26,13 @@ def fresh_machine_environment() -> dict[str, str]:
     return environment
 
 
-def json_command(executable: Path, arguments: list[str], *, environment: dict[str, str]) -> dict:
+def json_command(executable: Path, arguments: list[str], *, environment: dict[str, str],
+                 allowed_returncodes: tuple[int, ...] = (0,)) -> dict:
     try:
         result = subprocess.run([str(executable), *arguments], env=environment, cwd=executable.parent,
-                                text=True, capture_output=True, timeout=120, check=True)
+                                text=True, capture_output=True, timeout=120, check=False)
+        if result.returncode not in allowed_returncodes:
+            raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
     except subprocess.CalledProcessError as error:
         stdout = (error.stdout or "")[-4000:]
         stderr = (error.stderr or "")[-4000:]
@@ -89,11 +93,36 @@ def smoke(payload: Path, *, expected_sha: str | None = None, data_root: Path | N
         if (state.get("status") != "TESTED" or state.get("reason") != "OFFLINE_COMPOSITION_FIXTURE_ONLY"
                 or type(state.get("stopped_at_ns")) is not int or state["stopped_at_ns"] <= 0):
             raise ValueError("Offline production fixture did not publish a clean stopped state")
+        desktop = json_command(payload / "atlas-product.exe",
+            ["--desktop-smoke", "--data-root", str(evidence_root)], environment=environment)
+        if (desktop.get("status") != "TESTED" or desktop.get("window_visible") is not True
+                or desktop.get("preflight_control_present") is not True
+                or desktop.get("health_indicator_present") is not True
+                or desktop.get("live_run_started") is not False):
+            raise ValueError("Installed desktop startup/owner-guidance check failed")
+        # Exercise the real installed preflight without synthetic capacity or
+        # latency overrides. A disposable CI volume may correctly refuse a
+        # campaign: that result is retained, never relabeled a host pass.
+        preflight = json_command(payload / "atlas-product.exe",
+            ["--component", "preflight", "--run-root", str(run_root)],
+            environment=environment, allowed_returncodes=(0, 2))
+        preflight_body = {key: value for key, value in preflight.items() if key != "content_hash"}
+        preflight_hash = hashlib.sha256(json.dumps(preflight_body, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+        if (preflight.get("status") not in {"TESTED", "TEST GATE"}
+                or preflight.get("content_hash") != preflight_hash
+                or preflight.get("identity_sha256") != run_manifest["content_hash"]
+                or preflight.get("probe_mode") != "HOST_PATH" or preflight.get("authority") != "ZERO"
+                or preflight.get("capital_enabled") is not False or preflight.get("assisted_enabled") is not False
+                or preflight.get("allowed") is not (preflight["status"] == "TESTED")
+                or preflight["status"] == "TEST GATE" and not preflight.get("reasons")):
+            raise ValueError("Installed preflight binding/refusal semantics failed")
     if inventory(payload) != before:
         raise ValueError("Runtime modified its installation payload")
     return {"schema_version": 1, "status": "TESTED", "check": "NATIVE_WINDOWS_OFFLINE_PRODUCT",
             "source_sha": manifest["source_sha"], "diagnostics": diagnostics, "offline_fixture": result,
             "native_broker_transport": broker,
+            "desktop_startup": desktop, "selected_native_path_preflight": preflight,
             "first_run_configuration": "TESTED",
             "child_path_contains_python_git": False, "provider_credentials_passed": False,
             "capital_enabled": False, "assisted_enabled": False,

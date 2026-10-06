@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlas"
-version = "2.0.0.dev25"
+version = "2.0.40.0"
 description = "ATLAS V2 causal crypto research and read-only public shadow desktop; capital disabled"
 readme = "README.md"
 requires-python = ">=3.12"

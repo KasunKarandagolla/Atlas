@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from dataclasses import replace
 from pathlib import Path
 
@@ -197,15 +198,30 @@ def test_sustained_archived_stream_keeps_compact_lineage_and_linear_operational_
                 assert old.missing_reason == "NOT_ESTIMABLE_REQUIRES_IMMUTABLE_BOOK_REPLAY"
 
         before_changes = repository._connection.total_changes
-        exported = export_tuning_snapshot(repository.path, tmp_path / "reports", identity,
-                                          cutoff_ns=clock[0], max_snapshot_seconds=30)
-        assert exported["validation_failures"].get("PublicStreamContinuityReportV1", 0) == 0
+        pages = []
+        through = 0
+        for _ in range(64):
+            started = time.monotonic()
+            # S40 seals an exact validated prefix rather than holding a long
+            # reader open. Consume every page at the unchanged product budget.
+            exported = export_tuning_snapshot(repository.path, tmp_path / "reports", identity,
+                                              cutoff_ns=clock[0])
+            assert exported["after_rowid"] == through
+            through = exported["through_rowid"]
+            pages.append({"seconds": time.monotonic() - started, "rows": exported["rows_written"],
+                          "through_rowid": through, "budget_yielded": exported["budget_yielded"]})
+            assert exported["snapshot_budget_seconds"] == 10
+            assert not exported["validation_failures"]
+            assert not exported["blocked_future_evidence"]
+            if not exported["has_more"]:
+                break
         assert not exported["has_more"]
         assert repository._connection.total_changes == before_changes
         metrics = {"scope": "ACCELERATED_OFFLINE_STORAGE_SEMANTICS", "frames": frame_count,
                    "virtual_elapsed_ns": frame_count * interval,
                    "queue_high_water_items": status.high_water_items, "frames_rejected": status.frames_rejected,
-                   "samples": samples, "validation_failures": exported["validation_failures"]}
+                   "samples": samples, "export_pages": pages,
+                   "validation_failures": exported["validation_failures"]}
         (tmp_path / "s39-storage-metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
         print(json.dumps(metrics, sort_keys=True))
 

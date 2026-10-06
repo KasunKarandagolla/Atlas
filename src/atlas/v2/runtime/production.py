@@ -1460,9 +1460,11 @@ class ProductionOpsCyclePortV1:
         self._stream_last_report_at_ns: int | None = None
         self._stream_max_service_gap_ns = 0
         self._stream_max_service_duration_ns = 0
+        self._stream_last_service_duration_ns = 0
         self._stream_service_frames = 0
         self._stream_service_calls = 0
         self._stream_transport_ref: str | None = None
+        self._owner_stream_reports: dict[str, Any] = {}
         self._stream_checkpoint_refs: dict[tuple[str, str, str], str] = {}
         self._stream_book_checkpoint_refs: dict[tuple[str, str, str], str] = {}
         self._stream_pending_book_archives: dict[tuple[str, str, str], list[str]] = {}
@@ -1486,6 +1488,34 @@ class ProductionOpsCyclePortV1:
             if callable(close):
                 close()
 
+    def finish_public_capture(self, repository: OpsRepository) -> None:
+        """Seal and adopt the bounded final raw backlog before closing SQLite.
+
+        This is an owner stop boundary, not a claim of current source health or
+        restart continuity. A failed ingestion retains unadopted raw receipts.
+        """
+        if self.public_stream_source is None or not callable(
+                getattr(self.public_stream_source, "drain_sealed_transport", None)):
+            return
+        from ..data.durable_public_capture import MAX_PENDING_CAPTURE_BATCHES
+
+        capture = cast(Any, self.public_stream_source)
+        capture.close()
+        if self._stream_ingestion_failed:
+            return
+        deadline = time.monotonic() + 5.0
+        for _ in range(MAX_PENDING_CAPTURE_BATCHES):
+            if not capture.status().pending_frames:
+                break
+            if time.monotonic() >= deadline:
+                raise RuntimeError("PUBLIC_CAPTURE_FINAL_BACKLOG_DEADLINE_EXCEEDED")
+            self._collect_public_stream_evidence(repository, now_ns=sample(self.clock_ns, floor_ns=0))
+        if capture.status().pending_frames:
+            raise RuntimeError("PUBLIC_CAPTURE_FINAL_BACKLOG_EXCEEDED")
+        mark_clean = getattr(capture, "mark_controller_capture_clean", None)
+        if callable(mark_clean):
+            mark_clean(repository)
+
     def service_public_stream(self, repository: OpsRepository) -> None:
         """Service at most four FIFO batches, checking a 50ms allowance between them.
 
@@ -1503,7 +1533,7 @@ class ProductionOpsCyclePortV1:
         for _ in range(4):
             status = self.public_stream_source.status()
             now = sample(self.clock_ns, floor_ns=0)
-            queued = getattr(status.handoff, "queue_items", 0)
+            queued = getattr(status, "pending_frames", getattr(status.handoff, "queue_items", 0))
             if (0 < queued < PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1
                     and self._stream_last_service_at_ns is not None
                     and now - self._stream_last_service_at_ns < 200_000_000
@@ -1601,6 +1631,12 @@ class ProductionOpsCyclePortV1:
         )
         if self.public_stream_source is not None:
             self._restore_public_stream_state(repository, collector, now_ns=now_ns)
+            configure_capture = getattr(self.public_stream_source, "configure_capture", None)
+            if callable(configure_capture):
+                configure_capture(Path(repository.path).parent, capture_epoch=self._stream_run_epoch)
+                recover_capture = getattr(self.public_stream_source, "recover_controller_capture", None)
+                if callable(recover_capture):
+                    recover_capture(repository)
             start_stream = getattr(self.public_stream_source, "start", None)
             if not callable(start_stream):
                 raise ValueError("opt-in public stream source must expose its bounded start lifecycle")
@@ -2113,12 +2149,14 @@ class ProductionOpsCyclePortV1:
         try:
             # Amortize archive/checkpoint cost when there is real backlog. Each
             # handoff drain retains its old 32-frame bound and FIFO ordering.
-            queued = getattr(self.public_stream_source.status().handoff, "queue_items", 0)
+            stream_status = self.public_stream_source.status()
+            queued = getattr(stream_status, "pending_frames", getattr(stream_status.handoff, "queue_items", 0))
+            sealed_drain = getattr(self.public_stream_source, "drain_sealed_transport", None)
             drain_count = (min(PUBLIC_STREAM_MAX_FRAMES_PER_SERVICE_V1 // PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1,
                 (queued + PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 - 1) // PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1)
                 if type(queued) is int and queued >= 64 else 1)
             incoming: list[CapturedPublicFrameV2] = []
-            for _ in range(drain_count):
+            for _ in range(0 if callable(sealed_drain) else drain_count):
                 batch = tuple(self.public_stream_source.drain(max_items=PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1))
                 if len(batch) > PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 or any(
                         not isinstance(frame, CapturedPublicFrameV2) for frame in batch):
@@ -2134,8 +2172,14 @@ class ProductionOpsCyclePortV1:
             # the transport more reproducible. Keep this commit before typed
             # interpretation, so a failed typed batch retains exact raw FIFO.
             with repository.atomic_composition():
-                self._stream_transport_ref = archive_transport_batch(
-                    repository, frames, clock_ns=self.clock_ns, floor_ns=now_ns, compact=True)
+                if callable(sealed_drain):
+                    sealed = sealed_drain()
+                    if sealed is not None:
+                        frames = sealed.adopt(repository)
+                        self._stream_transport_ref = sealed.batch.artifact_ref
+                else:
+                    self._stream_transport_ref = archive_transport_batch(
+                        repository, frames, clock_ns=self.clock_ns, floor_ns=now_ns, compact=True)
             # One bounded batch shares a commit; individual immutable writes
             # retain their existing savepoint validation. A failed batch cannot
             # reuse mutated in-memory continuity state after rollback.
@@ -2148,8 +2192,9 @@ class ProductionOpsCyclePortV1:
                 self.public_stream_source.close()
             raise
         finally:
+            self._stream_last_service_duration_ns = time.monotonic_ns() - started
             self._stream_max_service_duration_ns = max(
-                self._stream_max_service_duration_ns, time.monotonic_ns() - started)
+                self._stream_max_service_duration_ns, self._stream_last_service_duration_ns)
         at = sample(self.clock_ns, floor_ns=now_ns)
         if self._stream_last_service_at_ns is not None:
             self._stream_max_service_gap_ns = max(
@@ -2557,6 +2602,7 @@ class ProductionOpsCyclePortV1:
                 "high_water_items": getattr(handoff, "high_water_items", 0),
                 "high_water_bytes": getattr(handoff, "high_water_bytes", 0),
                 "overflowed": overflowed,
+                "closed_rejections": getattr(handoff, "closed_rejections", 0),
                 "backpressure_observed": bool(getattr(handoff, "backpressure", False)),
                 "producer_state": str(getattr(status, "state", "UNKNOWN")),
                 "last_error_code": last_error,
@@ -2567,6 +2613,7 @@ class ProductionOpsCyclePortV1:
                 "max_service_gap_ns": self._stream_max_service_gap_ns,
                 "max_service_duration_ns": self._stream_max_service_duration_ns,
                 "transport_batch_ref": self._stream_transport_ref,
+                **({"capture": status.capture} if hasattr(status, "capture") else {}),
             }
             health = PublicSourceHealthV2(
                 BYBIT_PUBLIC_WS_SOURCE_ID_V1, health_observed, report_as_of, state,
@@ -2602,6 +2649,9 @@ class ProductionOpsCyclePortV1:
                 book_metadata_ref=tracker.state.metadata_ref if book is not None else None,
                 book_lineage_ref=book_ref,
             )
+            # Bounded immutable heads for the DB-free operator watchdog. This
+            # does not replace the durable continuity evidence above/below.
+            self._owner_stream_reports = {**self._owner_stream_reports, channel: report}
             state_snapshot = tracker.to_state()
             state_ref = persist_continuity_checkpoint(
                 repository, state_snapshot, available_at_ns=report_as_of,
@@ -5499,11 +5549,13 @@ def create_bybit_public_ws_port(
     """
     from ..data.bybit_source import BybitPublicCycleSourceV1
 
-    source = public_stream_source or PublicStreamSourceV2(
-        venue=VenueV2.BYBIT,
-        topics=bybit_btc_eth_linear_topics(),
-        source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1,
-    )
+    source = public_stream_source
+    if source is None:
+        from ..data.durable_public_capture import DurablePublicCaptureV1
+
+        source = DurablePublicCaptureV1(PublicStreamSourceV2(
+            venue=VenueV2.BYBIT, topics=bybit_btc_eth_linear_topics(),
+            source_id=BYBIT_PUBLIC_WS_SOURCE_ID_V1), clock_ns=clock_ns)
     port = ProductionOpsCyclePortV1(
         public_source=public_source or BybitPublicCycleSourceV1(),
         public_stream_source=source,

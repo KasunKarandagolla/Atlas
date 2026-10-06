@@ -202,6 +202,82 @@ _ACTION_ASSESSMENT_DDL = (
             "agent_action_assessment_acceptances", "agent_action_assessment_observation_projections")),
 )
 
+# These are disposable query indexes, not agent evidence or a second queue /
+# persistence authority. Immutable request/dispatch/outcome/projection records
+# remain authoritative; only the existing controller transaction maintains the
+# two current pending-ID populations. Versioned names preserve the evidence
+# ledger's schema and provider contracts.
+_ACTION_ASSESSMENT_ACTIVE_QUERY_DDL = (
+    """CREATE TABLE agent_action_assessment_pending_dispatch_index_v1(
+        request_id TEXT PRIMARY KEY REFERENCES agent_action_assessment_requests(request_id),
+        created_at_ns INTEGER NOT NULL)""",
+    """CREATE TABLE agent_action_assessment_pending_projection_index_v1(
+        request_id TEXT PRIMARY KEY REFERENCES agent_action_assessment_requests(request_id),
+        received_at_ns INTEGER NOT NULL)""",
+    "CREATE INDEX agent_action_assessment_pending_dispatch_order_v1 "
+        "ON agent_action_assessment_pending_dispatch_index_v1(created_at_ns,request_id)",
+    "CREATE INDEX agent_action_assessment_pending_projection_order_v1 "
+        "ON agent_action_assessment_pending_projection_index_v1(received_at_ns,request_id)",
+    "CREATE INDEX agent_action_assessment_reservations_day_v1 "
+        "ON agent_action_assessment_reservations(utc_day)",
+    """CREATE TRIGGER agent_action_assessment_dispatch_index_insert_v1
+        AFTER INSERT ON agent_action_assessment_dispatches BEGIN
+        INSERT INTO agent_action_assessment_pending_dispatch_index_v1
+        SELECT NEW.request_id,NEW.created_at_ns WHERE NOT EXISTS(
+            SELECT 1 FROM agent_action_assessment_outcomes WHERE request_id=NEW.request_id);
+        END""",
+    """CREATE TRIGGER agent_action_assessment_outcome_index_insert_v1
+        AFTER INSERT ON agent_action_assessment_outcomes BEGIN
+        DELETE FROM agent_action_assessment_pending_dispatch_index_v1 WHERE request_id=NEW.request_id;
+        INSERT INTO agent_action_assessment_pending_projection_index_v1
+        SELECT NEW.request_id,NEW.received_at_ns WHERE NOT EXISTS(
+            SELECT 1 FROM agent_action_assessment_observation_projections WHERE request_id=NEW.request_id);
+        END""",
+    """CREATE TRIGGER agent_action_assessment_projection_index_insert_v1
+        AFTER INSERT ON agent_action_assessment_observation_projections BEGIN
+        DELETE FROM agent_action_assessment_pending_projection_index_v1 WHERE request_id=NEW.request_id;
+        END""",
+)
+
+
+def _initialize_action_assessment_active_indexes(connection: sqlite3.Connection) -> None:
+    """Atomically bootstrap legacy query indexes once; never sweep on a tick."""
+    # Keep this list explicit: the table DDL intentionally has no whitespace
+    # before ``(``, so token splitting would include the column-list suffix in
+    # the object name and falsely report a partial migration on every reopen.
+    expected = {
+        "agent_action_assessment_pending_dispatch_index_v1",
+        "agent_action_assessment_pending_projection_index_v1",
+        "agent_action_assessment_pending_dispatch_order_v1",
+        "agent_action_assessment_pending_projection_order_v1",
+        "agent_action_assessment_reservations_day_v1",
+        "agent_action_assessment_dispatch_index_insert_v1",
+        "agent_action_assessment_outcome_index_insert_v1",
+        "agent_action_assessment_projection_index_insert_v1",
+    }
+    present = {row[0] for row in connection.execute(
+        "SELECT name FROM sqlite_master WHERE name LIKE 'agent_action_assessment_%_v1'")}
+    found = present & expected
+    if found:
+        if found != expected:
+            raise RuntimeError("action-assessment active query indexes are incomplete")
+        return
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        for statement in _ACTION_ASSESSMENT_ACTIVE_QUERY_DDL:
+            connection.execute(statement)
+        connection.execute("INSERT INTO agent_action_assessment_pending_dispatch_index_v1 "
+            "SELECT d.request_id,d.created_at_ns FROM agent_action_assessment_dispatches d "
+            "WHERE NOT EXISTS(SELECT 1 FROM agent_action_assessment_outcomes o WHERE o.request_id=d.request_id)")
+        connection.execute("INSERT INTO agent_action_assessment_pending_projection_index_v1 "
+            "SELECT o.request_id,o.received_at_ns FROM agent_action_assessment_outcomes o "
+            "WHERE NOT EXISTS(SELECT 1 FROM agent_action_assessment_observation_projections p "
+            "WHERE p.request_id=o.request_id)")
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+
 
 def initialize_agent_extension(connection: sqlite3.Connection) -> None:
     """Create the namespaced extension without touching existing ops schema/version rows."""
@@ -308,6 +384,7 @@ def initialize_action_assessment_extension(connection: sqlite3.Connection) -> No
                                  (ACTION_ASSESSMENT_SCHEMA_NAMESPACE,)).fetchone()
         if row is None or row[0] != ACTION_ASSESSMENT_SCHEMA_VERSION or not required.issubset(tables):
             raise RuntimeError("action-assessment ledger schema is incomplete or unsupported")
+        _initialize_action_assessment_active_indexes(connection)
         return
     connection.execute("BEGIN IMMEDIATE")
     try:
@@ -319,6 +396,7 @@ def initialize_action_assessment_extension(connection: sqlite3.Connection) -> No
     except BaseException:
         connection.rollback()
         raise
+    _initialize_action_assessment_active_indexes(connection)
 
 
 def _safe_json(value: Any) -> str:
@@ -939,9 +1017,13 @@ class ActionAssessmentRepository:
         if self._connection.execute("PRAGMA journal_mode").fetchone()[0].lower() != "wal":
             self._connection.close()
             raise RuntimeError("action-assessment persistence requires existing ops WAL mode")
-        validate_read_only(self._connection)
-        initialize_agent_extension(self._connection)
-        initialize_action_assessment_extension(self._connection)
+        try:
+            validate_read_only(self._connection)
+            initialize_agent_extension(self._connection)
+            initialize_action_assessment_extension(self._connection)
+        except BaseException:
+            self._connection.close()
+            raise
 
     def close(self) -> None:
         self.assert_writer_thread()
@@ -1153,9 +1235,13 @@ class ActionAssessmentRepository:
     def authorized_requests_without_terminal_result(self) -> tuple[str, ...]:
         self.assert_writer_thread()
         with self._lock:
-            rows = self._connection.execute("SELECT d.request_id FROM agent_action_assessment_dispatches d "
-                "LEFT JOIN agent_action_assessment_outcomes o ON o.request_id=d.request_id "
-                "WHERE o.request_id IS NULL ORDER BY d.created_at_ns,d.request_id").fetchall()
+            rows = self._connection.execute("SELECT d.request_id "
+                "FROM agent_action_assessment_pending_dispatch_index_v1 q "
+                "INDEXED BY agent_action_assessment_pending_dispatch_order_v1 "
+                "CROSS JOIN agent_action_assessment_dispatches d ON d.request_id=q.request_id "
+                "ORDER BY q.created_at_ns,q.request_id LIMIT 65").fetchall()
+        if len(rows) > 64:
+            raise RuntimeError("ACTION_ASSESSMENT_ACTIVE_RECOVERY_POPULATION_EXCEEDED")
         return tuple(str(row["request_id"]) for row in rows)
 
     def unprojected_terminal_records(self, *, limit: int = 2) -> tuple[Mapping[str, Any], ...]:
@@ -1165,12 +1251,14 @@ class ActionAssessmentRepository:
         with self._lock:
             rows = self._connection.execute("SELECT r.request_id,r.request_hash,r.request_json,p.packet_ref,"
                 "p.packet_hash,p.packet_json,o.status,o.result_json,o.failure_code,o.received_at_ns,o.eligible,"
-                "d.authorization_json,d.authorization_hash FROM agent_action_assessment_requests r "
+                "d.authorization_json,d.authorization_hash "
+                "FROM agent_action_assessment_pending_projection_index_v1 q "
+                "INDEXED BY agent_action_assessment_pending_projection_order_v1 "
+                "CROSS JOIN agent_action_assessment_outcomes o ON o.request_id=q.request_id "
+                "JOIN agent_action_assessment_requests r ON r.request_id=q.request_id "
                 "JOIN agent_action_assessment_packets p ON p.packet_ref=r.packet_ref "
-                "JOIN agent_action_assessment_outcomes o ON o.request_id=r.request_id "
                 "LEFT JOIN agent_action_assessment_dispatches d ON d.request_id=r.request_id "
-                "LEFT JOIN agent_action_assessment_observation_projections x ON x.request_id=r.request_id "
-                "WHERE x.request_id IS NULL ORDER BY o.received_at_ns,r.request_id LIMIT ?", (limit,)).fetchall()
+                "ORDER BY q.received_at_ns,q.request_id LIMIT ?", (limit,)).fetchall()
         return tuple(dict(row) for row in rows)
 
     def mark_observation_projected(self, request_id: str, observation_ref: str, *, now_ns: int) -> None:

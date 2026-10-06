@@ -60,7 +60,7 @@ def product_version(root: Path) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--iscc", type=Path, required=True)
-    parser.add_argument("--installer-version", default="2.0.36.0")
+    parser.add_argument("--installer-version", default="2.0.40.0")
     parser.add_argument("--signed-release", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]

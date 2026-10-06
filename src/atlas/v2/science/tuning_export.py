@@ -8,6 +8,7 @@ honestly late receipts cannot disappear behind a decision-time watermark.
 from __future__ import annotations
 
 import hashlib
+import heapq
 import json
 import math
 import os
@@ -16,16 +17,24 @@ import sqlite3
 import threading
 import time
 import uuid
-from collections import Counter
+from collections import Counter, OrderedDict
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from decimal import Decimal, localcontext
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from atlas.domain.money import canonical_decimal_str
-from atlas.v2._serialization import canonical_json, decimal_value, json_value, sha256_json, sha256_ref, timestamp
+from atlas.v2._serialization import (
+    FrozenMap,
+    canonical_json,
+    decimal_value,
+    json_value,
+    sha256_json,
+    sha256_ref,
+    timestamp,
+)
 from atlas.v2.agent_intelligence.shadow_measurement import (
     ActionCriticShadowObservationV1,
     index_action_critic_shadow_observation,
@@ -52,6 +61,7 @@ from atlas.v2.science.s3_calendar import S3DecisionCalendarMissingnessV1
 
 VERSION = "ATLAS_TUNING_EXPORT_V1"
 MAX_ANALYSIS_PARTITIONS = 128
+MAX_SOURCE_ROWS_PER_SNAPSHOT = 8192
 _SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$")
 _SAFE_CODE = re.compile(r"^[A-Z][A-Z0-9_ /.-]{0,127}$")
 _TYPES = (
@@ -101,6 +111,16 @@ _METRIC_NAMES = frozenset({
     "backlog", "cursor_available_at_ns", "quarantined_count", "retired_count",
     "due_count_lower_bound", "due_page_overflow", "oldest_due_age_ns",
     "scenario_count", "max_manifest_rows", "observed_row_count",
+    "qualification_failed", "queue_high_water", "queue_capacity", "queue_headroom_seconds",
+    "arrival_frames_per_second", "drain_frames_per_second", "queue_growth_frames_per_second",
+    "service_gap_seconds", "service_duration_seconds", "persistence_seconds",
+    "capture_pending_batches", "capture_max_pending_batches", "current_footprint_bytes",
+    "growth_bytes_per_second", "disk_reserve_bytes", "estimated_disk_reserve_bytes",
+    "wal_growth_bytes_per_second", "wal_uncheckpointed_frames", "export_failure_count",
+    "evidence_validation_failures", "transaction_count", "begin_duration_ns", "row_and_archive_duration_ns",
+    "commit_duration_ns", "max_commit_duration_ns", "checkpoint_duration_ns",
+    "checkpoint_busy", "wal_frames", "checkpointed_frames",
+    "closed_rejections", "queue_high_water_bytes", "queue_capacity_bytes",
 })
 _IDENTITY_NAMES = frozenset({
     "event_id", "decision_event_id", "decision_ref", "decision_calendar_ref", "candidate_ref",
@@ -134,14 +154,210 @@ class TuningExportBudgetExceeded(RuntimeError):
     """No manifest/checkpoint is advanced when snapshot work exceeds its budget."""
 
 
+class _ProjectionCursor:
+    """Merge bounded insertion-index heads without scanning raw history.
+
+    SQLite's (artifact_type) index includes rowid as its ordered suffix. One
+    exact-type seek therefore needs no remaining-population sort. Only rowids
+    are held in the heap; bounded metadata is read for the next selected row.
+    """
+
+    def __init__(self, connection: sqlite3.Connection, *, after: int, through: int, limit: int) -> None:
+        self.connection, self.through, self.limit = connection, through, limit
+        self.heap: list[tuple[int, str]] = []
+        self.fetched = 0
+        for artifact_type in _TYPES:
+            self._seek(artifact_type, after)
+
+    def _seek(self, artifact_type: str, after: int) -> None:
+        result = self.connection.execute(
+            "SELECT rowid FROM artifact_index INDEXED BY artifact_type_insertion_lookup "
+            "WHERE artifact_type=? AND rowid>? AND rowid<=? ORDER BY rowid LIMIT 1",
+            (artifact_type, after, self.through),
+        ).fetchone()
+        if result is not None:
+            heapq.heappush(self.heap, (result[0], artifact_type))
+
+    @property
+    def has_more(self) -> bool:
+        return bool(self.heap)
+
+    def fetchmany(self, size: int) -> list[sqlite3.Row]:
+        rows: list[sqlite3.Row] = []
+        while self.heap and len(rows) < size and self.fetched < self.limit:
+            rowid, artifact_type = heapq.heappop(self.heap)
+            row = self.connection.execute(
+                "SELECT rowid AS source_rowid,artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,"
+                "CASE WHEN length(metadata_json)<=CASE WHEN artifact_type='ResearchModelRequestV1' "
+                "THEN 1114112 ELSE 131072 END THEN metadata_json ELSE '{}' END AS metadata_json,"
+                "length(metadata_json)>CASE WHEN artifact_type='ResearchModelRequestV1' THEN 1114112 "
+                "ELSE 131072 END AS metadata_overflow FROM artifact_index NOT INDEXED WHERE rowid=?", (rowid,),
+            ).fetchone()
+            if row is None or row["artifact_type"] != artifact_type:
+                raise ValueError("projection insertion index differs from its exact snapshot row")
+            rows.append(row)
+            self.fetched += 1
+            self._seek(artifact_type, rowid)
+        return rows
+
+    def close(self) -> None:
+        self.heap.clear()
+
+
 class _ValidationReader(OpsRepository):
     """Reuse existing full index validators while prohibiting every database write."""
+
+    MAX_INDEX_CACHE_ENTRIES = 2048
+    MAX_INDEX_CACHE_BYTES = 8 * 1024 * 1024
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._snapshot_cache_active = False
+        self._index_cache: OrderedDict[str, tuple[ArtifactIndexEntryV2, int, Any]] = OrderedDict()
+        self._index_cache_bytes = 0
+        self.index_cache_hits = 0
+        self._validation_cache: OrderedDict[Any, Any] = OrderedDict()
+        self._validation_cache_bytes = 0
+        self.validation_cache_hits = 0
+        super().__init__(*args, **kwargs)
+
+    @contextmanager
+    def read_snapshot(self) -> Iterator[Any]:
+        with super().read_snapshot():
+            self._snapshot_cache_active = True
+            try:
+                yield self
+            finally:
+                self._snapshot_cache_active = False
+                self._index_cache.clear()
+                self._index_cache_bytes = 0
+                self._validation_cache.clear()
+                self._validation_cache_bytes = 0
+
+    def validate_public_checkpoint(self, entry: ArtifactIndexEntryV2, *, book: bool,
+                                   as_of_ns: int | None = None) -> Any:
+        if as_of_ns is not None and entry.available_at_ns > as_of_ns:
+            raise ValueError("public checkpoint is unavailable at requested cutoff")
+        key = (book, entry.artifact_ref)
+        cached = self._validation_cache.get(key) if self._snapshot_cache_active else None
+        if cached is not None:
+            original, result, dependencies, _size = cached
+            # Reuse only the same immutable root AND the same exact validated
+            # dependencies. Raw locator reads still hash their compressed bytes
+            # every time. No metadata, parent, chronology or raw check is waived.
+            if original == entry and all(self.get_artifact(ref) == value for ref, value in dependencies):
+                self._validation_cache.move_to_end(key)
+                self.validation_cache_hits += 1
+                return json_value(result) if book else result
+        result = (validate_book_checkpoint(self, entry, as_of_ns=entry.available_at_ns) if book
+                  else validate_continuity_checkpoint(self, entry))
+        if not self._snapshot_cache_active:
+            return result
+        body = json_value(entry.metadata["checkpoint"]) if entry.artifact_type in (
+            BOOK_CHECKPOINT_TYPE, CONTINUITY_CHECKPOINT_TYPE) else {}
+        refs = ([*body["archive_checkpoint_refs"], *body["transport_batch_refs"],
+                 *body["frame_health_refs"], *body["control_event_refs"], body["prior_checkpoint_ref"]]
+                if book else [body.get("prior_checkpoint_ref"), body.get("transport_batch_ref")])
+        dependencies = tuple((ref, self.get_artifact(ref)) for ref in dict.fromkeys(refs) if ref is not None)
+        size = len(canonical_json(entry.metadata).encode()) + 512
+        for ref, value in dependencies:
+            if value is not None:
+                indexed = self._index_cache.get(ref)
+                size += indexed[1] if indexed is not None else len(canonical_json(value.metadata).encode()) + 512
+        old = self._validation_cache.pop(key, None)
+        if old is not None:
+            self._validation_cache_bytes -= old[3]
+        if size <= self.MAX_INDEX_CACHE_BYTES:
+            self._validation_cache[key] = (entry, FrozenMap.from_json(cast(Mapping[str, Any], result)) if book else result,
+                                            dependencies, size)
+            self._validation_cache_bytes += size
+        while len(self._validation_cache) > 128 or self._validation_cache_bytes > self.MAX_INDEX_CACHE_BYTES:
+            _, old = self._validation_cache.popitem(last=False)
+            self._validation_cache_bytes -= old[3]
+        return result
+
+    def _cache_entry(self, entry: ArtifactIndexEntryV2, proof: Any = None) -> None:
+        if not self._snapshot_cache_active:
+            return
+        size = len(canonical_json(entry.metadata).encode()) + 512
+        if size > self.MAX_INDEX_CACHE_BYTES:
+            return
+        old = self._index_cache.pop(entry.artifact_ref, None)
+        if old is not None:
+            self._index_cache_bytes -= old[1]
+        self._index_cache[entry.artifact_ref] = (entry, size, proof)
+        self._index_cache_bytes += size
+        while (len(self._index_cache) > self.MAX_INDEX_CACHE_ENTRIES
+               or self._index_cache_bytes > self.MAX_INDEX_CACHE_BYTES):
+            _, discarded = self._index_cache.popitem(last=False)
+            self._index_cache_bytes -= discarded[1]
+
+    def get_artifact(self, artifact_ref: str) -> ArtifactIndexEntryV2 | None:
+        sha256_ref(artifact_ref, field="artifact_ref")
+        cached = self._index_cache.get(artifact_ref) if self._snapshot_cache_active else None
+        if cached is not None:
+            entry, size, proof = cached
+            # Generic index rows are immutable in this exact SQLite snapshot.
+            # Raw locator bodies additionally require exact compressed-extent
+            # hashing on every reuse. Appending another immutable extent must
+            # not force repeat decoding of the already verified prefix.
+            if proof is None or _raw_cache_proof_valid(proof):
+                self._index_cache.move_to_end(artifact_ref)
+                self.index_cache_hits += 1
+                return entry
+            del self._index_cache[artifact_ref]
+            self._index_cache_bytes -= size
+        loaded = super().get_artifact(artifact_ref)
+        if loaded is not None and artifact_ref not in self._index_cache:
+            # Compact locators are cached by _decode_public_locator with their
+            # raw-file proof. They must never be promoted to generic SQL-only
+            # cache entries when the raw file has changed.
+            from atlas.v2.data.compact_public_index import KINDS
+
+            if loaded.artifact_type not in KINDS or self._connection.execute(
+                    "SELECT 1 FROM artifact_index WHERE artifact_ref=?", (artifact_ref,)).fetchone() is not None:
+                self._cache_entry(loaded)
+        return loaded
+
+    def _decode_public_locator(self, row: Any) -> ArtifactIndexEntryV2:
+        from atlas.v2.data.compact_public_index import NAMESPACES
+        from atlas.v2.data.public_archive_extents import extent_ref
+
+        entry = super()._decode_public_locator(row)
+        descriptor = self.get_artifact(extent_ref(NAMESPACES[row["kind"]], bytes(row["chunk_id"]).hex()))
+        if descriptor is None:
+            raise ValueError("raw index cache descriptor disappeared")
+        path = Path(self.path).parent / "ops-public-extents" / str(descriptor.metadata["extent"]["segment_name"])
+        extent = descriptor.metadata["extent"]
+        self._cache_entry(entry, (path, _raw_file_identity(path), extent["offset"],
+                                  extent["length"], extent["sha256"]))
+        return entry
 
     def register_artifact(self, entry: ArtifactIndexEntryV2) -> ArtifactIndexEntryV2:
         prior = self.get_artifact(entry.artifact_ref)
         if prior != entry:
             raise ValueError("analysis validator requires the exact already-persisted artifact")
         return prior
+
+
+def _raw_file_identity(path: Path) -> tuple[int, int, int, int, int]:
+    if path.is_symlink():
+        raise ValueError("raw index cache cannot trust a symlink")
+    stat = path.stat()
+    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
+
+
+def _raw_cache_proof_valid(proof: Any) -> bool:
+    path, _identity, offset, length, digest = proof
+    _raw_file_identity(path)
+    # NTFS/Python creation-time semantics cannot prove unchanged bytes merely
+    # from ctime. Recheck the bounded compressed extent hash on every reuse;
+    # avoid only repeat decoding/JSON/freezing, never raw integrity checks.
+    with path.open("rb") as handle:
+        handle.seek(offset)
+        payload = handle.read(length)
+    if len(payload) != length or hashlib.sha256(payload).hexdigest() != digest:
+        raise ValueError("public archive extent bytes missing or changed")
+    return True
 
 
 @contextmanager
@@ -218,7 +434,8 @@ def _compact_values(body: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, 
                 refs.update(item for item in value if isinstance(item, str) and re.fullmatch(r"[0-9a-f]{64}", item))
             if key in {"reason_code", "terminal_reason_code", "reason", "status", "state", "terminal_status",
                        "missing_or_blocking_reason", "source_health_state", "source_health", "failure_code", "maintenance_budget_status",
-                       "critic_terminal_status", "selection_state", "admission_state", "source_stage", "decision"}:
+                       "critic_terminal_status", "selection_state", "admission_state", "source_stage", "decision",
+                       "first_cause", "colour", "action"}:
                 if isinstance(value, str) and _SAFE_CODE.fullmatch(value):
                     reasons.add(value)
             if key in {"reason_codes", "reasons", "missing_reasons"} and isinstance(value, list):
@@ -271,9 +488,12 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
     }
     body = json_value(entry.metadata)
     if entry.artifact_type == CONTINUITY_CHECKPOINT_TYPE:
-        validate_continuity_checkpoint(repository, entry)
+        (repository.validate_public_checkpoint(entry, book=False) if isinstance(repository, _ValidationReader)
+         else validate_continuity_checkpoint(repository, entry))
     elif entry.artifact_type == BOOK_CHECKPOINT_TYPE:
-        validate_book_checkpoint(repository, entry, as_of_ns=entry.available_at_ns)
+        (repository.validate_public_checkpoint(entry, book=True, as_of_ns=entry.available_at_ns)
+         if isinstance(repository, _ValidationReader)
+         else validate_book_checkpoint(repository, entry, as_of_ns=entry.available_at_ns))
     elif entry.artifact_type == "PublicStreamContinuityReportV1":
         report = body["report"]
         if "storage_version" in body:
@@ -292,7 +512,8 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
         state_entry = repository.get_artifact(body["state_ref"])
         if state_entry is None or state_entry.available_at_ns > entry.available_at_ns:
             raise ValueError("continuity report state missing or future")
-        state = validate_continuity_checkpoint(repository, state_entry)
+        state = (repository.validate_public_checkpoint(state_entry, book=False)
+                 if isinstance(repository, _ValidationReader) else validate_continuity_checkpoint(repository, state_entry))
         if (state.instrument.to_dict() != report["instrument"] or state.channel != report["channel"]
                 or state.epoch_id != report["epoch_id"] or state.current_recovery_ref != report["current_recovery_ref"]
                 or state.gap_count != report["gap_count"]):
@@ -305,7 +526,9 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
             anchors = [repository.get_artifact(ref) for ref in refs if ref != report["source_health_ref"]]
             if len(anchors) != 1 or anchors[0] is None:
                 raise ValueError("compact continuity book checkpoint missing")
-            checkpoint = validate_book_checkpoint(repository, anchors[0], as_of_ns=entry.available_at_ns)
+            checkpoint = (repository.validate_public_checkpoint(anchors[0], book=True, as_of_ns=entry.available_at_ns)
+                          if isinstance(repository, _ValidationReader)
+                          else validate_book_checkpoint(repository, anchors[0], as_of_ns=entry.available_at_ns))
             if (checkpoint["bbo"] != [bbo["bid_price"], bbo["ask_price"]]
                     or checkpoint["received_at_ns"] != bbo["received_at_ns"]
                     or checkpoint["instrument"] != report["instrument"] or checkpoint["channel"] != report["channel"]
@@ -479,6 +702,24 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
                 or telemetry.get("available_at_ns") != entry.available_at_ns
                 or entry.created_at_ns != entry.available_at_ns):
             raise ValueError("resource telemetry identity or availability mismatch")
+        owner = telemetry.get("owner_live_health")
+        if owner is not None:
+            from atlas.v2.runtime.live_health import LiveHealthFactsV1, LiveHealthPolicyV1
+
+            facts = LiveHealthFactsV1.from_dict(owner["facts"])
+            policy = dict(owner["policy"])
+            if policy.pop("schema_version") != 1:
+                raise ValueError("unsupported owner health policy")
+            bound_policy = LiveHealthPolicyV1(**policy)
+            assessment = owner["assessment"]
+            if (owner.get("version") != "OWNER_LIVE_HEALTH_PROJECTION_V1" or owner.get("authority") != "ZERO"
+                    or facts.run_id != telemetry["run_id"] or facts.config_hash != telemetry["config_hash"]
+                    or facts.observed_at_ns > entry.available_at_ns
+                    or assessment["facts_ref"] != facts.content_hash
+                    or assessment["policy_hash"] != bound_policy.content_hash
+                    or assessment["run_id"] != facts.run_id or assessment["config_hash"] != facts.config_hash
+                    or assessment["assessed_at_ns"] > entry.available_at_ns or assessment.get("authority") != "ZERO"):
+                raise ValueError("owner health facts or assessment binding invalid")
     metrics, identities, reasons, refs = _compact_values(body)
     for key, value in identities.items():
         target = "event_id" if key == "decision_event_id" else "decision_ref" if key == "decision_calendar_ref" else key
@@ -1603,7 +1844,10 @@ def export_tuning_snapshot(
         after = previous["through_rowid"] if previous is not None else 0
         counts: Counter[str] = Counter(previous["counts"] if previous is not None else {})
         failures: Counter[str] = Counter(previous["validation_failures"] if previous is not None else {})
-        metric_summaries = dict(previous["metric_summaries"] if previous is not None else {})
+        # Numeric summary bodies are updated below. A shallow copy mutates the
+        # already sealed predecessor and produces a nonexistent parent hash on
+        # the third export containing the same metric.
+        metric_summaries = json_value(previous["metric_summaries"]) if previous is not None else {}
         temporary = partitions / f".{uuid.uuid4().hex}.parquet.tmp"
         writer = pq.ParquetWriter(temporary, _schema(), compression="zstd")
         started = time.monotonic()
@@ -1611,6 +1855,7 @@ def export_tuning_snapshot(
         through = after
         has_more = False
         blocked_future = False
+        budget_yielded = False
         previous_digest = previous["source_record_digest"] if previous is not None else "0" * 64
         digest = hashlib.sha256(bytes.fromhex(previous_digest))
         try:
@@ -1620,15 +1865,39 @@ def export_tuning_snapshot(
                     lambda: int(time.monotonic() - started > max_snapshot_seconds), 10_000,
                 )
                 marks = ",".join("?" for _ in _TYPES)
-                cursor = connection.execute(
-                    "SELECT rowid AS source_rowid,artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,"
-                    "CASE WHEN length(metadata_json)<=CASE WHEN artifact_type='ResearchModelRequestV1' "
-                    "THEN 1114112 ELSE 131072 END THEN metadata_json ELSE '{}' END AS metadata_json,"
-                    "length(metadata_json)>CASE WHEN artifact_type='ResearchModelRequestV1' THEN 1114112 "
-                    "ELSE 131072 END AS metadata_overflow FROM artifact_index WHERE rowid>? "
-                    f"AND artifact_type IN ({marks}) ORDER BY rowid LIMIT ?",
-                    (after, *_TYPES, max_rows + 1),
-                )
+                insertion_index = connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='index' AND name='artifact_type_insertion_lookup'",
+                ).fetchone() is not None
+                cursor: Any
+                if insertion_index:
+                    # A bounded merge of exact-type seeks skips the dense raw
+                    # feed entirely. An IN query on this index would instead
+                    # sort all remaining types before LIMIT. Raw records remain
+                    # retained and are strictly resolved as exact dependencies.
+                    tail = connection.execute("SELECT max(rowid) FROM artifact_index").fetchone()[0]
+                    scan_through = tail if tail is not None else after
+                    cursor = _ProjectionCursor(connection, after=after, through=scan_through,
+                        limit=min(max_rows + 1, MAX_SOURCE_ROWS_PER_SNAPSHOT))
+                    window_scope = "INDEXED_RELEVANT_TYPES_IN_INSERTION_ORDER"
+                else:
+                    # Legacy stores are read-only: never create an index from
+                    # the exporter. Their explicitly bounded compatibility
+                    # scan may need more pages when raw records are dense.
+                    window = connection.execute(
+                        "SELECT max(rowid) FROM (SELECT rowid FROM artifact_index NOT INDEXED "
+                        "WHERE rowid>? ORDER BY rowid LIMIT ?)", (after, MAX_SOURCE_ROWS_PER_SNAPSHOT),
+                    ).fetchone()
+                    scan_through = window[0] if window is not None and window[0] is not None else after
+                    cursor = connection.execute(
+                        "SELECT rowid AS source_rowid,artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,"
+                        "CASE WHEN length(metadata_json)<=CASE WHEN artifact_type='ResearchModelRequestV1' "
+                        "THEN 1114112 ELSE 131072 END THEN metadata_json ELSE '{}' END AS metadata_json,"
+                        "length(metadata_json)>CASE WHEN artifact_type='ResearchModelRequestV1' THEN 1114112 "
+                        "ELSE 131072 END AS metadata_overflow FROM artifact_index NOT INDEXED WHERE rowid>? AND rowid<=? "
+                        f"AND artifact_type IN ({marks}) ORDER BY rowid LIMIT ?",
+                        (after, scan_through, *_TYPES, max_rows + 1),
+                    )
+                    window_scope = "LEGACY_BOUNDED_SOURCE_ROW_WINDOW"
                 stop = False
                 while not stop:
                     raw_rows = cursor.fetchmany(batch_size)
@@ -1642,8 +1911,18 @@ def export_tuning_snapshot(
                         if raw["available_at_ns"] > cutoff_ns:
                             blocked_future, stop = True, True
                             break
-                        if time.monotonic() - started > max_snapshot_seconds:
+                        elapsed = time.monotonic() - started
+                        if elapsed > max_snapshot_seconds:
                             raise TuningExportBudgetExceeded("read snapshot exceeded its fixed time budget")
+                        # Finish a validated prefix rather than repeatedly
+                        # discarding it when a slow host cannot fit the entire
+                        # backlog in one snapshot. Half the unchanged budget
+                        # is reserved for the current bounded row, sealing and
+                        # read-only reconciliation. The next page resumes at
+                        # the exact rowid; no row is omitted or accepted early.
+                        if rows_written and elapsed >= max_snapshot_seconds / 2:
+                            has_more, budget_yielded, stop = True, True, True
+                            break
                         through = raw["source_rowid"]
                         try:
                             if raw["metadata_overflow"]:
@@ -1697,6 +1976,16 @@ def export_tuning_snapshot(
                         digest.update(canonical_json(row).encode())
                     if batch:
                         writer.write_table(pa.Table.from_pylist(batch, schema=_schema()))
+                if not stop:
+                    # Rows outside the declared projection types are retained
+                    # raw evidence, not omitted members of this dataset.
+                    if isinstance(cursor, _ProjectionCursor) and cursor.has_more:
+                        has_more = True
+                    else:
+                        through = scan_through
+                        has_more = connection.execute(
+                            "SELECT 1 FROM artifact_index NOT INDEXED WHERE rowid>? LIMIT 1", (through,),
+                        ).fetchone() is not None
                 cursor.close()
                 connection.set_progress_handler(None, 0)
             writer.close()
@@ -1722,6 +2011,10 @@ def export_tuning_snapshot(
                 "version": VERSION, "run_identity": identity.to_dict(), "cutoff_ns": cutoff_ns,
                 "after_rowid": after, "through_rowid": through, "rows_written": rows_written,
                 "has_more": has_more, "blocked_future_evidence": blocked_future,
+                "budget_yielded": budget_yielded,
+                "snapshot_budget_seconds": max_snapshot_seconds,
+                "source_window_row_limit": MAX_SOURCE_ROWS_PER_SNAPSHOT,
+                "source_window_scope": window_scope,
                 "previous_manifest_sha256": sha256_json(previous) if previous is not None else None,
                 "source_record_digest": digest.hexdigest(), "partition_sha256": file_hash,
                 "partition": f"partitions/{file_hash}.parquet", "counts": dict(sorted(counts.items())),

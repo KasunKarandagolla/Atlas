@@ -566,9 +566,14 @@ class OpsSupervisorV2:
         if self._closed:
             return
         try:
-            close_port = getattr(self.port, "close", None)
-            if callable(close_port):
-                close_port()
+            try:
+                finish_capture = getattr(self.port, "finish_public_capture", None)
+                if self.repository is not None and callable(finish_capture):
+                    finish_capture(self.repository)
+            finally:
+                close_port = getattr(self.port, "close", None)
+                if callable(close_port):
+                    close_port()
         finally:
             if self.repository is not None:
                 self.repository.close()

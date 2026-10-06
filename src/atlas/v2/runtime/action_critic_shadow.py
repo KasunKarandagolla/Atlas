@@ -646,6 +646,20 @@ class ActionAssessmentShadowCoordinator:
         if threading.get_ident() != self._writer_thread_id:
             raise RuntimeError("critic prepare/finalize belongs to the atlas-ops controller thread")
 
+    def abandon_pending(self, *, repository: OpsRepository, reason_code: str = "BROKER_UNAVAILABLE") -> None:
+        """Seal bounded authorized work before a failed broker is detached.
+
+        Existing request/action identities and terminal semantics are retained;
+        a late provider completion cannot resurrect abandoned shadow work.
+        """
+        self._assert_writer_thread()
+        if len(self._works) > 2:
+            raise RuntimeError("critic work population exceeded the dispatcher bound")
+        for request_id, work in tuple(self._works.items()):
+            self.controller.abandon_authorized_work(work, reason_code)
+            self._works.pop(request_id)
+        self._project_observations(repository, limit=2)
+
     def close(self) -> None:
         self._closed = True
         if self.dispatcher is not None:

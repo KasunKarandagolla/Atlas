@@ -3,7 +3,7 @@
   "fixture_kind": "OFFLINE_FIRST_RUN",
   "configuration": {
     "profile": "PUBLIC_BYBIT_BASELINE_V1",
-    "report_interval_seconds": 21600,
+    "report_interval_seconds": 60,
     "minimum_free_disk_bytes": 1073741824,
     "provider_profile": "DISABLED"
   },

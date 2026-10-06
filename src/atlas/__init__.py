@@ -1,3 +1,3 @@
 """ATLAS package root."""
 
-__version__ = "2.0.0.dev25"
+__version__ = "2.0.40.0"

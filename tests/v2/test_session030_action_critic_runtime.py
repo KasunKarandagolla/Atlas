@@ -465,6 +465,14 @@ def test_action_critic_ledger_v1_migrates_additively_to_observation_projection_v
     ledger.persist_packet_request(sealed.packet, sealed.request, now_ns=sealed.packet.sealed_cutoff_t_ns)
     ledger.close()
     with sqlite3.connect(db) as connection:
+        # Model the actual legacy schema, before S40's derived query indexes.
+        # Leaving their projection trigger behind while dropping its table
+        # represents a damaged S40 store, which correctly fails closed.
+        for name in ("dispatch", "outcome", "projection"):
+            connection.execute(f"DROP TRIGGER agent_action_assessment_{name}_index_insert_v1")
+        connection.execute("DROP TABLE agent_action_assessment_pending_dispatch_index_v1")
+        connection.execute("DROP TABLE agent_action_assessment_pending_projection_index_v1")
+        connection.execute("DROP INDEX agent_action_assessment_reservations_day_v1")
         connection.execute("DROP TABLE agent_action_assessment_observation_projections")
         connection.execute("DROP TABLE agent_action_assessment_meta")
         connection.execute("CREATE TABLE agent_action_assessment_meta(namespace TEXT PRIMARY KEY, "

@@ -453,6 +453,8 @@ class OpsRepository:
         self._public_index_cache: OrderedDict[Any, Any] = OrderedDict()
         self._public_index_decode_depth = 0
         self._public_locator_enabled = False
+        self._persistence_metrics: dict[str, Any] = {"version": "OPS_PERSISTENCE_TIMING_V1",
+            "transaction_count": 0, "active_phase": "IDLE", "authority": "ZERO"}
         self._writer_lease = None if read_only or raw_path == ":memory:" else OpsWriterLock(raw_path)
         if self._writer_lease is not None:
             self._writer_lease.acquire()
@@ -559,10 +561,35 @@ class OpsRepository:
         with self._lock:
             if self._connection.in_transaction:
                 raise RuntimeError("cannot checkpoint WAL inside an active transaction")
-            row = self._connection.execute("PRAGMA wal_checkpoint(PASSIVE)").fetchone()
+            started = time.monotonic_ns()
+            self._persistence_phase("PASSIVE_CHECKPOINT", started)
+            try:
+                row = self._connection.execute("PRAGMA wal_checkpoint(PASSIVE)").fetchone()
+            finally:
+                self._persistence_metrics = {**self._persistence_metrics, "active_phase": "IDLE",
+                    "checkpoint_duration_ns": time.monotonic_ns() - started,
+                    "checkpoint_observed_at_ns": time.time_ns()}
             if row is None or len(row) != 3:
                 raise RuntimeError("SQLite returned an invalid WAL checkpoint result")
+            prior = self._persistence_metrics
+            progressed = (int(row[2]) >= int(row[1]) or int(row[2]) > prior.get("checkpointed_frames", 0)
+                          or int(row[1]) < prior.get("wal_frames", 0))
+            self._persistence_metrics = {**prior,
+                "checkpoint_progress_at_ns": time.time_ns() if progressed else prior.get("checkpoint_progress_at_ns"),
+                "checkpoint_busy": int(row[0]), "wal_frames": int(row[1]), "checkpointed_frames": int(row[2])}
             return int(row[0]), int(row[1]), int(row[2])
+
+    def persistence_metrics(self) -> dict[str, Any]:
+        """Bounded diagnostics readable without a DB call or the writer lock.
+
+        The sole writer replaces this scalar record atomically. A watchdog can
+        therefore observe a pending commit while that writer is blocked.
+        """
+        return dict(self._persistence_metrics)
+
+    def _persistence_phase(self, phase: str, started: int) -> None:
+        self._persistence_metrics = {**self._persistence_metrics, "active_phase": phase,
+            "phase_started_monotonic_ns": started, "phase_observed_at_ns": time.time_ns()}
 
     def __enter__(self) -> OpsRepository:
         return self
@@ -578,6 +605,8 @@ class OpsRepository:
             def __init__(self, repository: OpsRepository) -> None:
                 self.repository = repository
                 self.savepoint: str | None = None
+                self.begin_duration_ns = 0
+                self.body_started_ns = 0
 
             def __enter__(self) -> sqlite3.Connection:
                 self.repository._lock.acquire()
@@ -587,27 +616,66 @@ class OpsRepository:
                         self.savepoint = f"atlas_composition_{self.repository._savepoint_counter}"
                         self.repository._connection.execute(f"SAVEPOINT {self.savepoint}")
                     else:
+                        started = time.monotonic_ns()
+                        self.repository._persistence_phase("SQLITE_BEGIN", started)
                         self.repository._connection.execute("BEGIN IMMEDIATE")
+                        self.begin_duration_ns = time.monotonic_ns() - started
+                        self.body_started_ns = time.monotonic_ns()
+                        self.repository._persistence_phase("ROW_AND_ARCHIVE_WORK", self.body_started_ns)
                 except BaseException:
+                    prior = self.repository._persistence_metrics
+                    if self.savepoint is None and prior["active_phase"] == "SQLITE_BEGIN":
+                        self.repository._persistence_metrics = {**prior, "active_phase": "IDLE",
+                            "begin_duration_ns": time.monotonic_ns() - prior["phase_started_monotonic_ns"],
+                            "begin_failed": True, "transaction_failed": True,
+                            "transaction_observed_at_ns": time.time_ns()}
                     self.repository._lock.release()
                     raise
                 return self.repository._connection
 
             def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+                body_duration = time.monotonic_ns() - self.body_started_ns
+                commit_started = time.monotonic_ns()
+                commit_duration = rollback_duration = 0
+                commit_failed = False
                 try:
                     if self.savepoint is not None:
                         if exc_type:
                             self.repository._connection.execute(f"ROLLBACK TO SAVEPOINT {self.savepoint}")
                         self.repository._connection.execute(f"RELEASE SAVEPOINT {self.savepoint}")
                     elif exc_type:
-                        self.repository._connection.rollback()
+                        self.repository._persistence_phase("SQLITE_ROLLBACK", commit_started)
+                        try:
+                            self.repository._connection.rollback()
+                        finally:
+                            rollback_duration = time.monotonic_ns() - commit_started
                     else:
+                        self.repository._persistence_phase("SQLITE_COMMIT", commit_started)
                         try:
                             self.repository._connection.commit()
                         except BaseException:
-                            self.repository._connection.rollback()
+                            commit_failed = True
+                            commit_duration = time.monotonic_ns() - commit_started
+                            rollback_started = time.monotonic_ns()
+                            self.repository._persistence_phase("SQLITE_ROLLBACK", rollback_started)
+                            try:
+                                self.repository._connection.rollback()
+                            finally:
+                                rollback_duration = time.monotonic_ns() - rollback_started
                             raise
+                        else:
+                            commit_duration = time.monotonic_ns() - commit_started
                 finally:
+                    if self.savepoint is None:
+                        prior = self.repository._persistence_metrics
+                        self.repository._persistence_metrics = {**prior, "active_phase": "IDLE",
+                            "transaction_count": prior["transaction_count"] + 1,
+                            "begin_failed": False,
+                            "begin_duration_ns": self.begin_duration_ns, "row_and_archive_duration_ns": body_duration,
+                            "commit_duration_ns": commit_duration, "rollback_duration_ns": rollback_duration,
+                            "transaction_failed": bool(exc_type) or commit_failed,
+                            "max_commit_duration_ns": max(prior.get("max_commit_duration_ns", 0), commit_duration),
+                            "transaction_observed_at_ns": time.time_ns()}
                     self.repository._lock.release()
 
         return Transaction(self)

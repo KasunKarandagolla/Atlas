@@ -13,7 +13,7 @@ on:
       installer_version:
         description: Four-component version for Windows installer
         type: string
-        default: 2.0.36.0
+        default: 2.0.40.0
 
 permissions:
   contents: read
@@ -56,7 +56,11 @@ jobs:
           python -m pytest tests --junitxml=validation/offline-regression.xml
           ruff check src scripts tests
           mypy src/atlas
-          mypy --platform win32 scripts
+          # The resilience harness imports the shared runtime/test fixtures;
+          # type-check that graph with the source configuration. Product build
+          # scripts receive the separate native Windows-platform check.
+          mypy scripts/session040_native_resilience.py
+          mypy --platform win32 scripts/windows_*.py
           python -m compileall -q src scripts tests
           python -m pip check
       - name: Retain offline validation evidence
@@ -107,18 +111,29 @@ jobs:
           & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pip install --disable-pip-version-check --no-deps --only-binary=:all: --require-hashes --target $testTools -r requirements-stream-test-lock.txt
           if ($LASTEXITCODE -ne 0) { throw 'Hash-locked regression tools installation failed' }
           New-Item -ItemType Directory -Force dist | Out-Null
-          $env:PYTHONPATH = "$testTools;$pwd\src"
+          $env:PYTHONPATH = "$testTools;$pwd\src;$pwd"
           @{cpu = (Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors); memory_bytes = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory; source_sha = '${{ github.sha }}'; provider_calls = 0} | ConvertTo-Json -Depth 4 | Set-Content dist/windows-stream-host.json
           # Name the local evidence volume explicitly. The sustained module
           # also measures FULL commits on system TEMP for transparent comparison.
           & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_s38_sustained_public_stream.py tests/v2/test_session038_history_service.py tests/v2/test_session038_stream_identity_cache.py tests/v2/test_session038_serviced_acquisition.py tests/v2/test_session038_transport_archive.py tests/v2/test_session038_report_worker.py tests/v2/test_session038_public_http_session.py tests/v2/test_session032_public_stream_integration.py tests/v2/test_session039_public_archive_extents.py tests/v2/test_session039_book_lineage_replay.py tests/v2/test_session039_stream_checkpoint_lookup.py tests/v2/test_session039_long_run_public_evidence.py --basetemp "$env:RUNNER_TEMP\atlas-stream-regression" --junitxml=dist/windows-stream-regression.xml 2>&1 | Tee-Object dist/windows-stream-regression.txt
           if ($LASTEXITCODE -ne 0) { throw 'Offline stream regression failed; no package qualification' }
+      - name: Qualify S40 owner preflight, health, capture, export and provider faults
+        run: |
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_session040_capture_receipts.py tests/v2/test_session040_durable_capture.py tests/v2/test_session040_live_health.py tests/v2/test_session040_storage_preflight.py tests/v2/test_session040_export_snapshot_cache.py tests/v2/test_session040_owner_runtime.py tests/v2/test_session040_provider_isolation.py tests/v2/test_session040_action_query_bounds.py tests/v2/test_session040_native_resilience.py --basetemp "$env:RUNNER_TEMP\atlas-s40-fault-regression" --junitxml=dist/windows-s40-fault-regression.xml 2>&1 | Tee-Object dist/windows-s40-fault-regression.txt
+          if ($LASTEXITCODE -ne 0) { throw 'S40 owner-critical-path fault gate failed; no installer' }
+      - name: Qualify sustained S40 native workload before package build
+        run: |
+          $probeRoot = "$env:RUNNER_TEMP\atlas-s40-native-resilience"
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" scripts/session040_native_resilience.py --root $probeRoot --native-gate --seconds 1800 --rate 160 --burst-rate 320 2>&1 | Tee-Object dist/windows-s40-native-resilience.txt
+          $probeExit = $LASTEXITCODE
+          Copy-Item "$probeRoot\resilience-result.json" dist/windows-s40-native-resilience.json
+          if ($probeExit -ne 0) { throw 'Thirty-minute native resilience gate failed; no installer' }
       - name: Build, validate payload and exercise offline product
         env:
           ATLAS_SIGNING_PFX_BASE64: ${{ inputs.signed_release && secrets.ATLAS_SIGNING_PFX_BASE64 || '' }}
           ATLAS_SIGNING_PASSWORD: ${{ inputs.signed_release && secrets.ATLAS_SIGNING_PASSWORD || '' }}
           SIGNED_RELEASE: ${{ inputs.signed_release || false }}
-          INSTALLER_VERSION: ${{ inputs.installer_version || '2.0.36.0' }}
+          INSTALLER_VERSION: ${{ inputs.installer_version || '2.0.40.0' }}
         run: |
           $arguments = @('scripts/windows_build.py', '--iscc', "$env:RUNNER_TEMP\inno-6.5.4\ISCC.exe", '--installer-version', $env:INSTALLER_VERSION)
           if ($env:SIGNED_RELEASE -eq 'true') { $arguments += '--signed-release' }
@@ -141,5 +156,8 @@ jobs:
             dist/windows-*.json
             dist/windows-stream-regression.xml
             dist/windows-stream-regression.txt
+            dist/windows-s40-*.xml
+            dist/windows-s40-*.txt
+            ${{ runner.temp }}/atlas-s40-native-resilience/
             dist/atlas-product/build-manifest.json
             build/atlas-product/warn-atlas-product.txt

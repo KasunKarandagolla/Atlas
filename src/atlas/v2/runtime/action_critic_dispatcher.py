@@ -227,16 +227,21 @@ def _failure_result(reason: str) -> ProviderResultV1:
 def _sanitize_result(value: Any) -> ProviderResultV1:
     if not isinstance(value, ProviderResultV1):
         return _failure_result("BROKER_PROTOCOL_ERROR")
+    if type(value.refusal) is not bool or type(value.truncated) is not bool:
+        return _failure_result("BROKER_PROTOCOL_ERROR")
     if (not isinstance(value.raw_output, str) or len(value.raw_output.encode("utf-8")) > 100_000
             or type(value.input_tokens) is not int or type(value.output_tokens) is not int
             or value.input_tokens < 0 or value.output_tokens < 0):
         return _failure_result("OUTPUT_SIZE_LIMIT")
     model_id = value.returned_model_id if isinstance(value.returned_model_id, str) else None
-    if model_id is not None:
-        model_id = "".join(char for char in model_id if 32 <= ord(char) < 127)[:128] or None
+    if (value.returned_model_id is not None and (model_id is None or not model_id
+            or len(model_id) > 128 or any(not 32 <= ord(char) < 127 for char in model_id))):
+        return _failure_result("RETURNED_MODEL_ID_DRIFT")
     request_id = value.provider_request_id if isinstance(value.provider_request_id, str) else None
     if request_id is not None:
         request_id = "".join(char for char in request_id if 32 <= ord(char) < 127)[:160] or None
-    failure = value.failure_code if isinstance(value.failure_code, str) and value.failure_code in _SAFE_FAILURES else None
+    failure = value.failure_code
+    if failure is not None and (not isinstance(failure, str) or failure not in _SAFE_FAILURES):
+        return _failure_result("BROKER_PROTOCOL_ERROR")
     return ProviderResultV1(value.raw_output, model_id, None, bool(value.refusal), bool(value.truncated),
         value.input_tokens, value.output_tokens, request_id, failure, False)

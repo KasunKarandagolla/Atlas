@@ -102,7 +102,7 @@ def build_identity() -> dict[str, Any]:
 @dataclass(frozen=True)
 class ResearchRunConfigV1:
     profile: str = RUN_PROFILE
-    report_interval_seconds: int = 21_600
+    report_interval_seconds: int = 60
     minimum_free_disk_bytes: int = 1_073_741_824
     provider_profile: str = "DISABLED"
 
@@ -295,20 +295,107 @@ class WindowsSecretStore:
         return key
 
 
-def export_run(run: Path) -> Any:
+def export_run(run: Path, *, maximum_snapshots: int = 8) -> Any:
     from .science.tuning_export import TuningRunIdentityV1, export_tuning_snapshot
 
+    if type(maximum_snapshots) is not int or not 1 <= maximum_snapshots <= 8:
+        raise ValueError("report snapshot count exceeds its bounded envelope")
     manifest = load_run(run, require_current_build=False)
     identity = TuningRunIdentityV1(manifest["run_id"], manifest["config_hash"],
                                   manifest["source_sha"], manifest["started_at_ns"])
     cutoff = time.time_ns()
+    request_id = uuid.uuid4().hex
+    status = {"version": "OWNER_REPORT_OPERATION_V1", "run_id": manifest["run_id"],
+              "config_hash": manifest["config_hash"], "request_id": request_id,
+              "started_at_ns": cutoff, "state": "RUNNING", "authority": "ZERO"}
+    _publish(run / "report-status.json", status)
     # A fixed cutoff across bounded pages prevents report draining from
     # following an ever-growing live stream. Remaining work stays explicit.
-    for _ in range(8):
-        result = export_tuning_snapshot(run / "ops.sqlite", run / "reports", identity, cutoff_ns=cutoff)
-        if not result["has_more"] or result["blocked_future_evidence"]:
-            return result
-    return result
+    try:
+        for _ in range(maximum_snapshots):
+            result = export_tuning_snapshot(run / "ops.sqlite", run / "reports", identity, cutoff_ns=cutoff)
+            if not result["has_more"] or result["blocked_future_evidence"]:
+                break
+        status.update(state="SUCCEEDED", completed_at_ns=time.time_ns(),
+                      manifest_ref=sha256_json(result), has_more=result["has_more"],
+                      validation_failures=sum(result["validation_failures"].values()))
+        return result
+    except Exception as error:
+        status.update(state="FAILED", completed_at_ns=time.time_ns(), error_type=type(error).__name__)
+        raise
+    finally:
+        _publish(run / "report-operations" / (request_id + ".json"), status, immutable=True)
+        _publish(run / "report-status.json", status)
+
+
+def preflight_run(run: Path) -> dict[str, Any]:
+    """Bound the storage probe in a separate process before opening the writer.
+
+    A hung filesystem call cannot be interrupted safely in a Python thread.
+    This child owns only temporary probe data and never the actual run store.
+    """
+    manifest = load_run(run)
+    attempt_id = uuid.uuid4().hex
+    destination = run / "preflight-results" / (attempt_id + ".json")
+    environment = {key: value for key, value in os.environ.items()
+                   if not any(word in key.upper() for word in ("KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL"))}
+    environment["QT_QPA_PLATFORM"] = "offscreen"
+    if not getattr(sys, "frozen", False):
+        environment["PYTHONPATH"] = str(resource_file("src"))
+    from .memory.writer_lock import OpsWriterLock
+
+    lease = OpsWriterLock(run / "ops.sqlite")
+    lease.acquire()
+    try:
+        try:
+            completed = subprocess.run([*_component_command("preflight", run)], cwd=run,
+                env=environment, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, timeout=45, check=False)
+            if len(completed.stdout) > MAX_CONFIG_BYTES:
+                raise ValueError("preflight worker result exceeded its bound")
+            result = json.loads(completed.stdout)
+            body = {key: value for key, value in result.items() if key != "content_hash"}
+            from .runtime.storage_preflight import PREFLIGHT_CONTRACT_V1, StoragePreflightLimitsV1
+
+            expected_fields = {"schema_version", "version", "selected_path", "identity_sha256", "started_at_ns",
+                "completed_at_ns", "elapsed_ns", "status", "allowed", "reasons", "limits", "measurements",
+                "facts", "probe_mode", "authority", "capital_enabled", "assisted_enabled",
+                "live_source_qualification", "endurance_qualification", "content_hash"}
+            if (set(result) != expected_fields or type(result["schema_version"]) is not int
+                    or result["schema_version"] != 1 or result["version"] != PREFLIGHT_CONTRACT_V1
+                    or type(result["allowed"]) is not bool or result["capital_enabled"] is not False
+                    or result["assisted_enabled"] is not False
+                    or result["live_source_qualification"] != "TEST GATE"
+                    or result["endurance_qualification"] != "TEST GATE"
+                    or result["status"] not in {"TESTED", "TEST GATE"}
+                    or result["limits"] != StoragePreflightLimitsV1().as_dict()
+                    or not isinstance(result["facts"], dict) or not isinstance(result["measurements"], list)
+                    or not isinstance(result["reasons"], list)
+                    or any(not isinstance(reason, str) or not reason or len(reason) > 256
+                           for reason in result["reasons"])
+                    or result["allowed"] != (result["status"] == "TESTED" and not result["reasons"])
+                    or any(type(result[field]) is not int or result[field] < 0
+                           for field in ("started_at_ns", "completed_at_ns", "elapsed_ns"))
+                    or result["completed_at_ns"] < result["started_at_ns"]
+                    or completed.returncode not in {0, 2}):
+                raise ValueError("preflight worker schema or disabled-authority mismatch")
+            if (sha256_json(body) != result["content_hash"] or result["identity_sha256"] != manifest["content_hash"]
+                    or result["selected_path"] != str(run.resolve()) or result["probe_mode"] != "HOST_PATH"
+                    or result["authority"] != "ZERO" or result["allowed"] != (completed.returncode == 0)):
+                raise ValueError("preflight worker binding or result mismatch")
+        except Exception as error:
+            reason = ("PREFLIGHT_HOST_WORKER_DEADLINE_EXCEEDED" if isinstance(error, subprocess.TimeoutExpired)
+                      else "PREFLIGHT_HOST_WORKER_FAILED_" + type(error).__name__)
+            body = {"version": "OWNER_PREFLIGHT_PROCESS_FAILURE_V1", "run_id": manifest["run_id"],
+                    "identity_sha256": manifest["content_hash"], "selected_path": str(run.resolve()),
+                    "status": "TEST GATE", "allowed": False, "reasons": [reason],
+                    "observed_at_ns": time.time_ns(), "authority": "ZERO"}
+            result = {**body, "content_hash": sha256_json(body)}
+        _publish(destination, result, immutable=True)
+        _publish(run / "preflight.json", result)
+        return result
+    finally:
+        lease.close()
 
 
 def runtime_dependency_smoke() -> dict[str, str]:
@@ -339,7 +426,11 @@ def _component_command(component: str, run: Path) -> list[str]:
 
 
 def launch_run(run: Path) -> subprocess.Popen[bytes]:
-    load_run(run)
+    manifest = load_run(run)
+    from .runtime.live_health import QualificationLatchV1
+
+    if QualificationLatchV1(run, run_id=manifest["run_id"], config_hash=manifest["config_hash"]).read() is not None:
+        raise RuntimeError("RUN_QUALIFICATION_FAILED_CREATE_NEW_RUN")
     # No API key or capability is carried on a command line or inherited from
     # ambient developer environments by this public-only process.
     environment = {k: v for k, v in os.environ.items()
@@ -519,7 +610,7 @@ def _stop_child(process: subprocess.Popen[bytes]) -> None:
             process.wait(timeout=5)
 
 
-def _start_installed_critic(run: Path, epoch_id: str) -> _InstalledCriticRuntime:
+def _start_installed_critic(run: Path, epoch_id: str, *, service: Callable[[], None] = lambda: None) -> _InstalledCriticRuntime:
     from .agent_intelligence.windows_broker import WindowsActionCriticClientPort, current_owner_identity
     from .runtime.action_critic_shadow import create_action_assessment_shadow
 
@@ -544,6 +635,7 @@ def _start_installed_critic(run: Path, epoch_id: str) -> _InstalledCriticRuntime
         deadline = time.monotonic() + 15
         status_path = run / "epochs" / (epoch_id + "-broker-status.json")
         while not status_path.is_file():
+            service()
             if process.poll() is not None or time.monotonic() >= deadline:
                 raise RuntimeError("configured critic broker did not become ready")
             time.sleep(0.05)
@@ -573,7 +665,28 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
 
     manifest = load_run(run)
     config = ResearchRunConfigV1(**manifest["configuration"])
+    # Startup inventory precedes network capture; live monitoring never walks
+    # an elapsed-runtime-growing evidence tree. Failure to inventory is visible.
+    inventory_started = time.monotonic()
+    baseline_footprint = 0
+    baseline_database = baseline_wal = 0
+    inventory_complete = True
+    for index, path in enumerate(run.rglob("*")):
+        if index >= 32_768 or time.monotonic() - inventory_started > 2:
+            inventory_complete = False
+            break
+        if path.is_file() and not path.is_symlink():
+            size = path.stat().st_size
+            baseline_footprint += size
+            if path.name == "ops.sqlite":
+                baseline_database = size
+            elif path.name == "ops.sqlite-wal":
+                baseline_wal = size
     port = create_production_port() if smoke else create_bybit_public_ws_port()
+    if not smoke and port.public_stream_source is not None:
+        qualified = preflight_run(run)
+        if not qualified["allowed"]:
+            raise RuntimeError("OWNER_STORAGE_PREFLIGHT_REJECTED")
     port.minimum_m15_origin_close_at_ns = manifest["started_at_ns"]
     from .runtime.production import IndexedPublicCycleSourceV1
 
@@ -594,8 +707,75 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
     target_registered = False
     public_context: PublicContextMaintenanceV1 | None = None
     history_maintenance = ActiveHistoryMaintenanceV1(run / "ops-observations")
-    report_worker = ReadOnlyReportWorkerV1(lambda: export_run(run))
+    # One incremental snapshot per periodic job keeps the reader lifetime and
+    # clean-stop join independent of the total campaign backlog. Manual/final
+    # export can drain up to eight snapshots with a fixed cutoff.
+    report_worker = ReadOnlyReportWorkerV1(lambda: export_run(run, maximum_snapshots=1))
     final_report_available = True
+    health_monitor: Any = None
+
+    def progress_snapshot() -> dict[str, Any]:
+        reports = tuple(port._owner_stream_reports.values())
+        at = time.time_ns()
+        current = bool(reports) and all(report.source_current and
+            at - report.as_of_ns <= 3_000_000_000 for report in reports)
+        return {"observed_at_ns": port._stream_last_service_at_ns or state.get("observed_at_ns", started),
+                "stream_source_state": "HEALTHY_CURRENT" if current else "INCOMPLETE_SNAPSHOT",
+                "stream_recovery_required": not reports or any(
+                    not report.book_sequence_valid for report in reports if report.channel.startswith("orderbook.")),
+                "stream_unresolved_gap": any(report.gap_count for report in reports),
+                "stream_service_duration_seconds": port._stream_last_service_duration_ns / 1e9,
+                "stream_service_gap_seconds": (max(0, at - port._stream_last_service_at_ns) / 1e9
+                    if port._stream_last_service_at_ns is not None else None),
+                "stream_ingestion_failed": port._stream_ingestion_failed}
+
+    def monitored_resources() -> dict[str, Any]:
+        values = resource_sample(run)
+        values["db_bytes"] = (run / "ops.sqlite").stat().st_size
+        wal = run / "ops.sqlite-wal"
+        values["wal_bytes"] = wal.stat().st_size if wal.exists() else 0
+        source = port.public_stream_source
+        capture = getattr(source.status(), "capture", {}) if source is not None else {}
+        archive = supervisor.repository._public_extent_writer if supervisor.repository is not None else None
+        values["current_footprint_bytes"] = (max(0, baseline_footprint - baseline_database - baseline_wal)
+            + values["db_bytes"] + values["wal_bytes"] + capture.get("archive_bytes_written", 0)
+            + capture.get("receipt_bytes_written", 0) + getattr(archive, "bytes_written", 0)
+            if inventory_complete else None)
+        values["footprint_scope"] = "STARTUP_INVENTORY_PLUS_CURRENT_DB_WAL_ARCHIVE_AND_RECEIPT_COUNTERS"
+        values["resource_pressure"] = not inventory_complete
+        # A short measured growth estimate supplements this declared reserve;
+        # it never claims that future rates are guaranteed.
+        from .runtime.storage_preflight import StoragePreflightLimitsV1
+
+        values["disk_reserve_bytes"] = max(config.minimum_free_disk_bytes,
+                                         StoragePreflightLimitsV1().minimum_free_bytes)
+        return values
+
+    def monitored_report() -> dict[str, Any]:
+        path = run / "report-status.json"
+        if not path.exists():
+            return {"state": "IDLE"}
+        body = _read_json(path)
+        if body.get("run_id") != manifest["run_id"] or body.get("config_hash") != manifest["config_hash"]:
+            raise ValueError("report status belongs to another run")
+        return body
+
+    def publish_runtime_telemetry(repo: Any, *, final: bool = False) -> None:
+        from .memory.repository import ArtifactIndexEntryV2
+
+        at_ns = time.time_ns()
+        telemetry = {"schema_version": 1, "run_id": manifest["run_id"],
+                     "config_hash": manifest["config_hash"], "epoch_id": epoch_id,
+                     "available_at_ns": at_ns, "source_health": state.get("source_health", "UNVERIFIED"),
+                     "cycle_ref": state.get("last_cycle_ref"), **resource_sample(run),
+                     "db_bytes": (run / "ops.sqlite").stat().st_size,
+                     "wal_bytes": (run / "ops.sqlite-wal").stat().st_size
+                         if (run / "ops.sqlite-wal").exists() else 0,
+                     "owner_live_health": health_monitor.latest if health_monitor is not None else None,
+                     "persistence": repo.persistence_metrics(), "final_observation": final, "authority": "ZERO"}
+        ref = sha256_json(telemetry)
+        repo.register_artifact(ArtifactIndexEntryV2(
+            ref, "ResearchRunTelemetryV1", ref, at_ns, at_ns, {"telemetry": telemetry}))
 
     def post_cycle(repo: Any, at_ns: int) -> Any:
         nonlocal target_registered
@@ -621,6 +801,14 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
         last_telemetry = float("-inf")
         critic: _InstalledCriticRuntime | None = None
         try:
+            if port.public_stream_source is not None and supervisor.repository is not None:
+                from .runtime.owner_health_monitor import OwnerHealthMonitorV1
+
+                health_monitor = OwnerHealthMonitorV1(run, run_id=manifest["run_id"], config_hash=manifest["config_hash"],
+                    source=port.public_stream_source, progress=progress_snapshot,
+                    persistence=supervisor.repository.persistence_metrics, resources=monitored_resources,
+                    report=monitored_report, publish=_publish)
+                health_monitor.start()
             if not smoke:
                 public_context = PublicContextMaintenanceV1()
             statistical = StatisticalResearchShadowV1(run_id=manifest["run_id"],
@@ -633,16 +821,30 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
                     available_at_ns=manifest["started_at_ns"])
                 target_registered = True
             if config.provider_profile != "DISABLED":
-                critic = _start_installed_critic(run, epoch_id)
-                supervisor.post_receipt_shadow = _ResearchShadows(statistical, critic.shadow)
-                state["provider_health"] = "IMPLEMENTED"
+                try:
+                    critic = _start_installed_critic(run, epoch_id, service=supervisor.service_public_stream)
+                    supervisor.post_receipt_shadow = _ResearchShadows(statistical, critic.shadow)
+                    state["provider_health"] = "IMPLEMENTED"
+                except Exception as error:
+                    state.update(provider_health="TEST GATE", provider_reason="CONFIGURED_PROVIDER_STARTUP_FAILED",
+                                 provider_error_type=type(error).__name__)
             while True:
                 if stop_requested():
                     state.update(status="IMPLEMENTED", reason="PROCESS_STOP_REQUESTED")
                     break
                 if critic is not None and critic.process.poll() is not None:
-                    state.update(status="TEST GATE", reason="CONFIGURED_PROVIDER_BROKER_LOST",
-                                 provider_health="TEST GATE")
+                    state.update(provider_reason="CONFIGURED_PROVIDER_BROKER_LOST", provider_health="TEST GATE")
+                    # Keep collecting public evidence; configured critic
+                    # failures remain explicit terminal side-branch evidence.
+                    # No alternate provider/model is selected.
+                    supervisor.post_receipt_shadow = _ResearchShadows(statistical)
+                    if supervisor.repository is not None:
+                        critic.shadow.abandon_pending(repository=supervisor.repository)
+                    critic.shadow.close()
+                    critic = None
+                if health_monitor is not None and health_monitor.latest is not None and (
+                        health_monitor.latest["assessment"]["qualification_failed"]):
+                    state.update(status="TEST GATE", reason="RUN_QUALIFICATION_FAILED_STOP_AND_EXPORT")
                     result_code = 2
                     break
                 if shutil.disk_usage(run).free < config.minimum_free_disk_bytes:
@@ -673,19 +875,9 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
                 if time.monotonic() - last_report >= config.report_interval_seconds and report_worker.start():
                     last_report = time.monotonic()
                 if supervisor.repository is not None and time.monotonic() - last_telemetry >= 60:
-                    from .memory.repository import ArtifactIndexEntryV2
-
-                    at_ns = time.time_ns()
-                    telemetry = {"schema_version": 1, "run_id": manifest["run_id"],
-                                 "config_hash": manifest["config_hash"], "epoch_id": epoch_id,
-                                 "available_at_ns": at_ns, "source_health": result.cycle.source_health_state,
-                                 "cycle_ref": result.cycle.content_hash, **resource_sample(run),
-                                 "db_bytes": state["db_bytes"], "wal_bytes": state["wal_bytes"],
-                                 "authority": "ZERO"}
-                    ref = sha256_json(telemetry)
-                    supervisor.repository.register_artifact(ArtifactIndexEntryV2(
-                        ref, "ResearchRunTelemetryV1", ref, at_ns, at_ns, {"telemetry": telemetry}))
-                    supervisor.repository.checkpoint()
+                    publish_runtime_telemetry(supervisor.repository)
+                    checkpoint = supervisor.repository.checkpoint()
+                    state["wal_checkpoint"] = list(checkpoint)
                     last_telemetry = time.monotonic()
                 # Service forward evidence during the existing idle allowance.
                 # This remains the supervisor's sole writer thread.
@@ -698,14 +890,42 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
             state.update(status="TEST GATE", reason="RUNTIME_COMPONENT_FAILED", error_type=type(exc).__name__)
             result_code = 2
         finally:
-            final_report_available = report_worker.close(timeout_s=0.1)
+            if supervisor.repository is not None:
+                try:
+                    port.finish_public_capture(supervisor.repository)
+                except Exception as error:
+                    port._stream_ingestion_failed = True
+                    state.update(status="TEST GATE", reason="PUBLIC_CAPTURE_SHUTDOWN_FAILED", error_type=type(error).__name__)
+                    result_code = 2
+            if health_monitor is not None:
+                try:
+                    health_monitor.close()
+                except Exception as error:
+                    state.update(status="TEST GATE", reason="OWNER_HEALTH_MONITOR_SHUTDOWN_FAILED",
+                                 error_type=type(error).__name__)
+                    result_code = 2
+            final_report_available = report_worker.close(timeout_s=10.0)
             if public_context is not None:
                 public_context.close()
             if critic is not None:
                 try:
-                    critic.close()
+                    try:
+                        if supervisor.repository is not None:
+                            critic.shadow.abandon_pending(repository=supervisor.repository)
+                    finally:
+                        critic.close()
                 except Exception as exc:
                     state.update(status="TEST GATE", reason="PROVIDER_SHUTDOWN_FAILED", error_type=type(exc).__name__)
+                    result_code = 2
+            if supervisor.repository is not None:
+                try:
+                    # A terminal capture fault may occur between minute-scale
+                    # samples. Preserve the final typed watchdog/latch binding
+                    # in the tuning store after capture stops, on the sole writer.
+                    publish_runtime_telemetry(supervisor.repository, final=True)
+                except Exception as exc:
+                    state.update(status="TEST GATE", reason="FINAL_RUNTIME_TELEMETRY_FAILED",
+                                 error_type=type(exc).__name__)
                     result_code = 2
             state.update(stopped_at_ns=time.time_ns(), observed_at_ns=time.time_ns())
             _publish(run / "status.json", state)
@@ -766,7 +986,7 @@ def _runtime_status_text(state: dict[str, Any], *, now_ns: int) -> str:
             runtime_status, reason = "TEST GATE", "RUNTIME_HEARTBEAT_STALE"
     activity = "Stopped" if stopped else "Heartbeat unavailable" if age is None else f"Heartbeat age {age}s"
     return (f"Run {state['run_id']}\nRuntime: {runtime_status} / {activity}\n"
-            f"Data: {state.get('source_health', 'UNVERIFIED')}\n"
+            f"Current public HTTP/context: {state.get('source_health', 'UNVERIFIED')}\n"
             f"Provider: {state.get('provider_health', 'DISABLED')}\n"
             f"Decisions in last cycle: {state.get('decision_count', 'UNVERIFIED')}\n"
             f"Disk free: {state.get('disk_free_bytes', 'UNVERIFIED')} bytes; "
@@ -774,7 +994,50 @@ def _runtime_status_text(state: dict[str, Any], *, now_ns: int) -> str:
             f"Reason: {reason}\nCapital disabled.")
 
 
-def desktop() -> int:
+def owner_live_indicator(run: Path, *, now_ns: int) -> dict[str, Any]:
+    """Read-only desktop assessment; current HTTP health cannot clear a latch."""
+    from .runtime.live_health import (
+        LiveHealthFactsV1,
+        LiveHealthPolicyV1,
+        QualificationLatchError,
+        QualificationLatchV1,
+        assess_live_health,
+    )
+
+    identity = load_run(run, require_current_build=False)
+    from .data.health import PublicSourceStateV2
+
+    # The durable run failure outranks a missing, stale or damaged UI snapshot.
+    # Desktop assessment has no latch publication or SQLite write authority.
+    fallback = LiveHealthFactsV1(identity["run_id"], identity["config_hash"], now_ns, None, None,
+        "CREATED", False, PublicSourceStateV2.INCOMPLETE_SNAPSHOT, True, 0, 512, 0)
+    try:
+        latch = QualificationLatchV1(run, run_id=identity["run_id"], config_hash=identity["config_hash"]).read()
+    except QualificationLatchError as error:
+        return assess_live_health(fallback, latch_error=str(error), at_ns=now_ns).to_dict()
+    if latch is not None:
+        return assess_live_health(latch.facts, latch=latch, at_ns=now_ns).to_dict()
+    try:
+        projection = _read_json(run / "live-health.json", maximum_bytes=65_536)
+    except (OSError, ValueError):
+        assessment = assess_live_health(fallback, at_ns=now_ns).to_dict()
+        preflight = run / "preflight.json"
+        if preflight.exists():
+            result = _read_json(preflight)
+            if result.get("allowed") is False and result.get("identity_sha256") == identity["content_hash"]:
+                assessment["guidance"] = "Run preflight failed: " + ", ".join(result.get("reasons", [])[:3])
+        return assessment
+    facts = LiveHealthFactsV1.from_dict(projection["facts"])
+    if facts.run_id != identity["run_id"] or facts.config_hash != identity["config_hash"]:
+        raise ValueError("operator health projection belongs to another immutable run")
+    policy_body = dict(projection["policy"])
+    if policy_body.pop("schema_version") != 1:
+        raise ValueError("operator health policy version unsupported")
+    policy = LiveHealthPolicyV1(**policy_body)
+    return assess_live_health(facts, policy=policy, at_ns=now_ns).to_dict()
+
+
+def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     from concurrent.futures import ThreadPoolExecutor
 
     from PySide6.QtCore import QTimer
@@ -795,7 +1058,7 @@ def desktop() -> int:
     window = QWidget()
     window.setWindowTitle("ATLAS — Public research")
     layout = QVBoxLayout(window)
-    root_edit = QLineEdit(str(default_data_root()))
+    root_edit = QLineEdit(str(data_root if data_root is not None else default_data_root()))
     layout.addWidget(QLabel("Research data location"))
     layout.addWidget(root_edit)
     browse = QPushButton("Choose folder")
@@ -811,8 +1074,12 @@ def desktop() -> int:
     status_label = QLabel("Capital disabled. Public collection requires no API key.")
     status_label.setWordWrap(True)
     layout.addWidget(status_label)
+    health_label = QLabel("ATTENTION — live-test health evidence is unavailable.")
+    health_label.setWordWrap(True)
+    health_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #ad6500;")
+    layout.addWidget(health_label)
     layout.addWidget(QLabel(development_gate()["verdict"]))
-    buttons = {name: QPushButton(name) for name in ("Create run", "Start / resume", "Stop", "Export report")}
+    buttons = {name: QPushButton(name) for name in ("Create run", "Storage preflight", "Start / resume", "Stop", "Export report")}
     for button in buttons.values():
         layout.addWidget(button)
     secret_button = QPushButton("Store optional DeepSeek key securely")
@@ -820,6 +1087,7 @@ def desktop() -> int:
     layout.addWidget(QLabel("Provider use requires an explicitly selected run configuration and protected key. Live provider conformance remains a TEST GATE."))
     reports = ThreadPoolExecutor(max_workers=1, thread_name_prefix="atlas-report")
     pending_report: Any = None
+    pending_preflight: Any = None
 
     def refresh_runs(preferred_run: Path | None = None) -> None:
         try:
@@ -834,13 +1102,17 @@ def desktop() -> int:
         return Path(value)
 
     def action(name: str) -> None:
-        nonlocal pending_report
+        nonlocal pending_report, pending_preflight
         try:
             if name == "Create run":
                 created = create_run(Path(root_edit.text()), ResearchRunConfigV1(provider_profile=provider.currentData()))
                 refresh_runs(created)
             elif name == "Start / resume":
                 launch_run(selected())
+            elif name == "Storage preflight":
+                if pending_preflight is None:
+                    pending_preflight = reports.submit(preflight_run, selected())
+                    buttons[name].setEnabled(False)
             elif name == "Stop":
                 request_stop(selected())
             elif name == "Export report":
@@ -868,7 +1140,16 @@ def desktop() -> int:
                 QMessageBox.warning(window, "ATLAS", "Secret storage failed: " + type(exc).__name__)
 
     def refresh_status() -> None:
-        nonlocal pending_report
+        nonlocal pending_report, pending_preflight
+        if pending_preflight is not None and pending_preflight.done():
+            try:
+                result = pending_preflight.result()
+                detail = "Storage preflight allows startup; live qualification remains a TEST GATE." if result["allowed"] else "; ".join(result["reasons"])
+                QMessageBox.information(window, "ATLAS preflight", result["status"] + ": " + detail)
+            except Exception as error:
+                QMessageBox.warning(window, "ATLAS preflight", "TEST GATE: " + type(error).__name__)
+            pending_preflight = None
+            buttons["Storage preflight"].setEnabled(True)
         if pending_report is not None and pending_report.done():
             try:
                 report = pending_report.result()
@@ -885,6 +1166,14 @@ def desktop() -> int:
             status_label.setText(_runtime_status_text(status, now_ns=time.time_ns()))
         except (OSError, ValueError, TypeError, KeyError):
             status_label.setText("No runtime status. Create/start a public run. Capital disabled.")
+        try:
+            guidance = owner_live_indicator(selected(), now_ns=time.time_ns())
+            health_label.setText(guidance["action"] + " — " + guidance["guidance"])
+            colour = {"GREEN": "#167326", "AMBER": "#ad6500", "RED": "#ba1515"}[guidance["colour"]]
+            health_label.setStyleSheet("font-weight: bold; font-size: 16px; color: " + colour + ";")
+        except (OSError, ValueError, TypeError, KeyError):
+            health_label.setText("ATTENTION — live-test health evidence is unavailable. Inspect preflight/startup status.")
+            health_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #ad6500;")
 
     for name, button in buttons.items():
         button.clicked.connect(lambda checked=False, name=name: action(name))
@@ -897,8 +1186,26 @@ def desktop() -> int:
     timer.start(2000)
     window.resize(600, 500)
     window.show()
+    smoke_result: dict[str, Any] = {}
+    if smoke:
+        def finish_desktop_smoke() -> None:
+            refresh_status()
+            smoke_result.update(status="TESTED", check="DESKTOP_STARTUP_AND_OWNER_GUIDANCE",
+                window_visible=window.isVisible(), preflight_control_present="Storage preflight" in buttons,
+                health_indicator_present=bool(health_label.text()), live_run_started=False,
+                capital_enabled=False, assisted_enabled=False)
+            window.close()
+            app.quit()
+
+        QTimer.singleShot(250, finish_desktop_smoke)
     try:
-        return app.exec()
+        result = app.exec()
+        if smoke:
+            if not smoke_result or not all(smoke_result[key] for key in (
+                    "window_visible", "preflight_control_present", "health_indicator_present")):
+                raise ValueError("desktop startup/owner-guidance smoke did not complete")
+            print(json.dumps(smoke_result))
+        return result
     finally:
         reports.shutdown(wait=False, cancel_futures=True)
 
@@ -909,12 +1216,26 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--broker-smoke", action="store_true")
+    parser.add_argument("--desktop-smoke", action="store_true")
     parser.add_argument("--data-root", type=Path)
     parser.add_argument("--run-root", type=Path)
     parser.add_argument("--launch-id")
     parser.add_argument("--broker-context", type=Path)
-    parser.add_argument("--component", choices=("ops", "desktop", "critic-broker"))
+    parser.add_argument("--component", choices=("ops", "desktop", "critic-broker", "preflight"))
     args = parser.parse_args()
+    if args.desktop_smoke:
+        if args.data_root is None:
+            parser.error("desktop smoke requires temporary --data-root")
+        return desktop(smoke=True, data_root=args.data_root)
+    if args.component == "preflight":
+        if args.run_root is None:
+            parser.error("preflight requires --run-root")
+        from .runtime.storage_preflight import qualify_storage_path
+
+        manifest = load_run(args.run_root)
+        qualification = qualify_storage_path(args.run_root, identity_sha256=manifest["content_hash"])
+        print(json.dumps(qualification.as_dict()))
+        return 0 if qualification.allowed else 2
     if args.broker_smoke:
         from .agent_intelligence.windows_broker import native_windows_critic_broker_smoke_v1
 
