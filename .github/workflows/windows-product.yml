@@ -121,7 +121,7 @@ jobs:
         env:
           ATLAS_S40_PROVIDER_SOAK: '1'
         run: |
-          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_session040_capture_receipts.py tests/v2/test_session040_durable_capture.py tests/v2/test_session040_live_health.py tests/v2/test_session040_storage_preflight.py tests/v2/test_session040_export_snapshot_cache.py tests/v2/test_session040_owner_runtime.py tests/v2/test_session040_provider_isolation.py tests/v2/test_session040_action_query_bounds.py tests/v2/test_session040_native_resilience.py --basetemp "$env:RUNNER_TEMP\atlas-s40-fault-regression" --junitxml=dist/windows-s40-fault-regression.xml 2>&1 | Tee-Object dist/windows-s40-fault-regression.txt
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_session028_provider_amendment.py tests/v2/test_session029_action_critic.py tests/v2/test_session030_action_critic_runtime.py tests/v2/test_session040_capture_receipts.py tests/v2/test_session040_durable_capture.py tests/v2/test_session040_live_health.py tests/v2/test_session040_storage_preflight.py tests/v2/test_session040_export_snapshot_cache.py tests/v2/test_session040_owner_runtime.py tests/v2/test_session040_provider_isolation.py tests/v2/test_session040_action_query_bounds.py tests/v2/test_session040_native_resilience.py --basetemp "$env:RUNNER_TEMP\atlas-s40-fault-regression" --junitxml=dist/windows-s40-fault-regression.xml 2>&1 | Tee-Object dist/windows-s40-fault-regression.txt
           if ($LASTEXITCODE -ne 0) { throw 'S40 owner-critical-path fault gate failed; no installer' }
       - name: Qualify sustained S40 native workload before package build
         run: |
