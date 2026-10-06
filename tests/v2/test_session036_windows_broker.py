@@ -221,8 +221,14 @@ def test_invalid_or_unrelated_operations_have_no_dispatch(mutation: str) -> None
     assert response["ok"] is False and broker.calls == []
 
 
-@pytest.mark.parametrize("raw", [b"", b"[]", b'{"x":1,"x":2}', b'{"x":NaN}', b"not-json",
-                                 b"x" * (pipe.MAX_BROKER_FRAME_BYTES + 1)])
+@pytest.mark.parametrize("raw", [
+    pytest.param(b"", id="empty"),
+    pytest.param(b"[]", id="non_object"),
+    pytest.param(b'{"x":1,"x":2}', id="duplicate_key"),
+    pytest.param(b'{"x":NaN}', id="non_finite_number"),
+    pytest.param(b"not-json", id="malformed_json"),
+    pytest.param(b"x" * (pipe.MAX_BROKER_FRAME_BYTES + 1), id="oversized_frame"),
+])
 def test_bad_json_and_frame_bounds_fail_without_provider(raw: bytes) -> None:
     broker = Broker()
     assert json.loads(pipe._response(broker, raw))["ok"] is False

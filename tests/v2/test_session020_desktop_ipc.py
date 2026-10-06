@@ -6,7 +6,6 @@ import hashlib
 import json
 import os
 import secrets
-import select
 import socket
 import struct
 import subprocess
@@ -199,10 +198,11 @@ os._exit(37)
     process = subprocess.Popen([sys.executable, "-c", child_code], env=environment,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
-        ready, _, _ = select.select([process.stdout], [], [], 30)
-        assert ready, "desktop did not reach its view-ready marker"
-        assert process.stdout is not None and process.stdout.readline().strip() == b"READ_ONLY_VIEWS_READY"
-        assert process.wait(timeout=10) == 37
+        stdout, stderr = process.communicate(timeout=30)
+        assert b"READ_ONLY_VIEWS_READY" in stdout, (
+            "desktop did not reach its view-ready marker: " + stderr.decode("utf-8", "replace")[-1000:]
+        )
+        assert process.returncode == 37
         assert service.is_alive
         client = ProjectionClient(host, port, token)
         snapshot = client.request("snapshot")
