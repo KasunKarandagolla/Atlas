@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "session": "S41",
+  "workstreams": ["F", "G"],
+  "checkpoint": {
+    "branch_base": "55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393",
+    "head": "55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393",
+    "tracked_diff_from_base": "NONE",
+    "scope": "Read-only product, desktop, preflight, live-health, venue-wiring and export audit; no code/tests/live calls performed."
+  },
+  "governing_contracts": [
+    {
+      "source": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "locations": [
+        {"lines": "183-195", "requirement": "Desktop is a UI, not the engine; UI crash/restart cannot control protection or execution truth."},
+        {"lines": "234-250", "requirement": "Frozen capital ownership and authority boundaries; research/model workers do not receive credentials or control orders/risk."},
+        {"lines": "2468-2491", "requirement": "One atlas-ops writer for ops.sqlite; no shared writable network SQLite."},
+        {"lines": "2540-2585", "requirement": "Desktop-first implementation and operator-visible venue/product/status fields."},
+        {"lines": "3458-3479", "requirement": "Never commit credentials; use OS protection if desktop stores credentials; sanitize logs; model workers receive no account secrets."},
+        {"lines": "3483-3509", "requirement": "Expose process/source/queue/disk/capability/recovery health and distinguish research failure, degraded data, capital blocked, protection critical."}
+      ]
+    },
+    {
+      "source": "docs/v2/SESSION040_OWNER_RUNTIME_RESILIENCE_HANDOFF.md",
+      "locations": [
+        {"lines": "11", "requirement": "Capital and assisted execution false; model/critic authority ZERO; economics NOT ESTIMABLE; final holdout untouched."},
+        {"lines": "19-25", "requirement": "Bounded capture and single writer; finite tested envelope; lifetime RED latch outranks later HTTP recovery; fixed preflight and live-health thresholds."},
+        {"lines": "29-31", "requirement": "Owner platform/live-source/endurance and packaging gates remain open; only accepted S40 code is a subsequent base."},
+        {"lines": "121-133", "requirement": "Preserve S39 evidence, limits, and TEST GATE/NOT ESTIMABLE statuses; no queue/storage-validation weakening."}
+      ]
+    },
+    {
+      "source": "docs/v2/SESSION040_PREFLIGHT_AND_LIVE_HEALTH_CONTRACT_V1.md",
+      "locations": [
+        {"lines": "7-17", "requirement": "Zero-authority preflight; probes temporary data only, holds the existing writer lease, binds selected path/run identity, and blocks startup on failure."},
+        {"lines": "19-37", "requirement": "Strict local-path/WAL/FULL/space/latency/replay/export checks and fixed measured envelope; pass is not source/endurance qualification."},
+        {"lines": "39-45", "requirement": "One ops.sqlite writer; existing bounded raw handoff/backlog and terminal stop behavior remain fixed."},
+        {"lines": "47-70", "requirement": "Live warning versus irreversible failure semantics; HTTP recovery cannot make failed run qualify; run needs a new identity."},
+        {"lines": "91-95", "requirement": "S40 evidence is Windows Server 2025 engineering evidence, not owner Windows 11/48-hour qualification."}
+      ]
+    },
+    {
+      "source": "docs/v2/SESSION040_OWNER_RUNTIME_FMEA_V1.md",
+      "locations": [
+        {"lines": "13-20", "requirement": "Immutable config/run identity, exact-build resume, preflight refusal, and capacity response."},
+        {"lines": "21-30", "requirement": "Capture/persistence stalls, sole-writer enforcement, source recovery, and local loss responses."},
+        {"lines": "40-56", "requirement": "Host/projection stall, broad HTTP recovery, damaged latch, export/resource pressure, clean stop, provider isolation, and installer limits."},
+        {"lines": "58-97", "requirement": "Explicit limits and measured scope of S40 tests; synthetic scale is not whole-campaign or owner endurance evidence."}
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "FG-01",
+      "severity": "BLOCKING_PRODUCT_WIRING",
+      "finding": "The current product config does not let the owner declare the requested immutable run dimensions. ResearchRunConfigV1 contains only one fixed profile, report cadence, a minimum disk reserve, and a provider profile. It does not bind data root, venue, execution venue, environment/demo-test, account scope, capability profile/reference, or credential reference. The UI's root field controls run storage, while venue selection is hard-coded in the label/runtime. Current run manifest binds config/build/provider/model identities and explicitly disables capital, assisted execution, and holdout access.",
+      "evidence": [
+        {"file": "src/atlas/v2/product.py", "lines": "32-34,102-124", "detail": "Single PUBLIC_BYBIT_BASELINE_V1 profile; four config fields; provider enum only DISABLED or fixed DeepSeek profile."},
+        {"file": "src/atlas/v2/product.py", "lines": "127-153", "detail": "Data root is supplied outside config; immutable manifest records config hash, provider/model config, and disabled authority flags."},
+        {"file": "src/atlas/v2/product.py", "lines": "160-190", "detail": "Strict run manifest/config hash and exact-build resume checks are reusable and must remain."},
+        {"file": "src/atlas/v2/product.py", "lines": "1061-1109", "detail": "UI permits data-folder choice and provider profile, but identifies the run as public Bybit baseline and only creates ResearchRunConfigV1(provider_profile=...)."}
+      ],
+      "impact": "Owner cannot configure selected BYBIT or BINANCE execution identity, demo/test context, account/capability metadata, or a credential reference before the run becomes immutable. This is missing product wiring, not evidence that Binance public/data adapters are generally absent. No requested field should grant capital authority in this workstream."
+    },
+    {
+      "id": "FG-02",
+      "severity": "BLOCKING_VENUE_SCOPE",
+      "finding": "The installed live research composition is concretely Bybit-specific, not a config-driven venue dispatch. The selected source uses Bybit REST plus exactly four BTC/ETH linear public WS topics; recovery and metadata registration reject non-Bybit, non-mainnet, non-linear, and non-BTC/ETH products. There is no Binance WS capture factory selected from config. Existing Binance trade translation branches in production.py do not amount to an installed Binance run path. Public collection is read-only; no authenticated venue/account/execution client is created by run_component.",
+      "evidence": [
+        {"file": "src/atlas/v2/product.py", "lines": "657-690", "detail": "Non-smoke run always constructs create_bybit_public_ws_port(); run config is loaded but does not select venue/environment."},
+        {"file": "src/atlas/v2/runtime/production.py", "lines": "1876-1886", "detail": "Restore requires exact four Bybit topics and BYBIT venue."},
+        {"file": "src/atlas/v2/runtime/production.py", "lines": "1988-2002", "detail": "Refreshed stream contracts are restricted to BYBIT MAINNET LINEAR_PERPETUAL BTCUSDT/ETHUSDT."},
+        {"file": "src/atlas/v2/runtime/production.py", "lines": "5532-5563", "detail": "Only explicit Bybit public REST and bounded WS factories shown for installed streamed path."},
+        {"file": "src/atlas/v2/runtime/production.py", "lines": "1288-1306", "detail": "A Binance AGG_TRADE translation branch exists, but does not select/install a Binance public runtime."}
+      ],
+      "impact": "Venue/environment must be selected before immutable run creation and resolved through a registry to an explicitly supported source factory. Unsupported venue/product/environment combinations must fail before capture, not fall back to Bybit or silently substitute mainnet. No private venue calls or orders are authorized by this finding."
+    },
+    {
+      "id": "FG-03",
+      "severity": "PARTIAL_SECRET_SUPPORT",
+      "finding": "Credential protection exists only for an optional fixed DeepSeek critic key on Windows DPAPI. The key is not placed in run.json or inherited by the public process; only the broker retrieves it, and provider profile selection is immutable. There is no owner venue credential reference/profile in config, no demo/test account binding, and no native venue credential integration. Current credential store is rooted at default_data_root rather than the UI-selected root, and API key entry stores the plaintext input in a Python string until scope exit. The audit found no reason to expose secrets; logs/errors are type-only at the UI boundary.",
+      "evidence": [
+        {"file": "src/atlas/v2/product.py", "lines": "235-295", "detail": "Windows-only DPAPI key store with fixed DeepSeek profile/name; no insecure fallback."},
+        {"file": "src/atlas/v2/product.py", "lines": "428-447,627-633", "detail": "Public ops process filters ambient secret-named env values; broker receives protected context, not CLI credential."},
+        {"file": "src/atlas/v2/product.py", "lines": "531-560", "detail": "Only fixed DeepSeek critic broker reads a key; key retrieval is tied to default_data_root()."},
+        {"file": "src/atlas/v2/product.py", "lines": "1131-1140", "detail": "UI stores optional key under default_data_root()/secrets irrespective of selected root; no secret value is rendered in success/error text."},
+        {"file": "tests/v2/test_session036_product.py", "lines": "208-234,282-295,343-371", "detail": "Existing secret omission, protected storage, secret-free provider config, broker ownership, and no-fallback tests."}
+      ],
+      "impact": "A future `credential_ref` must be an opaque OS-store identifier only. The immutable config/manifest/report can include the identifier and non-secret capability/account-scope hashes, never key material, authenticated payloads, or account identifiers. Until a venue client and lifecycle are independently authorized, demo/test/account/capability declarations are identity metadata only and must not enable orders or private account access."
+    },
+    {
+      "id": "FG-04",
+      "severity": "CONTRACT_PRESERVED",
+      "finding": "S40 live health already separates transient operational health from irreversible run qualification. The immutable latch is controller-only, bound to run/config identity, first-cause preserving and fail-closed on corrupt/missing/incomplete state. Desktop reads latch first; broad HTTP health or a recovered transient warning cannot clear it. A GREEN/TESTED current assessment means only no current operational reasons; live source/endurance qualification remains TEST GATE and economics remain NOT ESTIMABLE. No central contract change is needed for configurable run metadata.",
+      "evidence": [
+        {"file": "src/atlas/v2/runtime/live_health.py", "lines": "244-261,298-403", "detail": "Irreversible loss conditions and durable single-controller first-failure latch."},
+        {"file": "src/atlas/v2/runtime/live_health.py", "lines": "459-568", "detail": "Latch outranks later recovery; transient warnings are AMBER; terminal failures RED; no current warning is not an endurance claim."},
+        {"file": "src/atlas/v2/product.py", "lines": "997-1037", "detail": "Read-only desktop reads immutable latch before projection and reassesses at current time."},
+        {"file": "tests/v2/test_session040_live_health.py", "lines": "101-166,205-277", "detail": "Recovery, restart, new identity, read-only UI, corruption, and first-cause preservation coverage."},
+        {"file": "tests/v2/test_session040_owner_runtime.py", "lines": "226-275", "detail": "RED latch outranks broad HTTP/missing UI projection; failed run cannot relaunch, clean new identity can."}
+      ],
+      "required_invariant": "Configuration belongs in the existing immutable run/config identity. Do not make health status or reconnect logic rewrite, clear, or promote that identity; preserve capital_enabled=false, assisted_enabled=false, model/critic authority ZERO, and economics NOT ESTIMABLE."
+    },
+    {
+      "id": "FG-05",
+      "severity": "CAPACITY_SCOPE_GAP",
+      "finding": "S40's storage preflight is deliberately bounded to a registered 160 fps sustained / 320 fps burst envelope, 512-frame/16 MiB handoff and fixed byte/time limits. It rejects hosts that fail those measurements; it does not derive capacity from selected venue, topic count, product universe, event size distribution, or configured run scope. The live health policy is also fixed at 160/320. S40's tested owner-shaped profile is four channels with a 2x row projection. Wider symbol universes, deeper books, other venues, demo/test environments, or larger channel counts therefore cannot claim the current capacity evidence by configuration alone.",
+      "evidence": [
+        {"file": "src/atlas/v2/runtime/storage_preflight.py", "lines": "39-95", "detail": "Fixed queue=512, sustained=160, burst=320, batch=64, payload=4096, fixed 30-second budget and S39 storage projection."},
+        {"file": "src/atlas/v2/runtime/live_health.py", "lines": "52-97", "detail": "Fixed live-health arrival/burst values and queue-capacity policy."},
+        {"file": "docs/v2/SESSION040_OWNER_RUNTIME_RESILIENCE_HANDOFF.md", "lines": "19-25", "detail": "307,201-frame 30-minute soak; supported only for declared workload and measured path; 48h estimate is not guarantee."},
+        {"file": "docs/v2/SESSION040_OWNER_RUNTIME_FMEA_V1.md", "lines": "80-97", "detail": "16 compact rows/s geometry is four owner stream channels plus 2x; synthetic 48-hour-shaped pages are not full campaign or market evidence."}
+      ],
+      "impact": "Do not weaken S40 queue/storage checks or raise limits to make a larger configuration pass. Minimal API should select only registered scope profiles whose source channel/rate/book bounds map to measured preflight profiles; unsupported/broader scopes are rejected or marked TEST GATE pending separately measured and reviewed limits. Dynamic derivation may compute a stricter requirement from declared channels/rates, never silently widen frozen maxima."
+    },
+    {
+      "id": "FG-06",
+      "severity": "REUSABLE_BOUNDS",
+      "finding": "Preflight/report interfaces are reusable without central-contract changes: preflight accepts a run path, binds the immutable manifest content hash and selected path, holds the ops writer lease, runs in a credential-filtered child with a 45-second outer deadline, writes immutable attempt plus latest projection, and never opens the real run database for its probe. Export is read-only, bounded to at most eight snapshots at a fixed cutoff, binds report status/identity, and preserves has_more/future evidence/validation counts. One controller remains the sole ops.sqlite writer.",
+      "evidence": [
+        {"file": "src/atlas/v2/product.py", "lines": "298-329", "detail": "Bounded read-only export and stable fixed-cutoff paging."},
+        {"file": "src/atlas/v2/product.py", "lines": "331-399", "detail": "Identity/path-bound preflight child, credential-filtered environment, exclusive writer lease, exact schema/limit validation and immutable attempt record."},
+        {"file": "src/atlas/v2/product.py", "lines": "797-815", "detail": "OpsSupervisorV2 and one read-only report worker composition."},
+        {"file": "tests/v2/test_session040_owner_runtime.py", "lines": "73-225", "detail": "Preflight child isolation, bad-result rejection, deadline and active-writer protection."},
+        {"file": "tests/v2/test_session040_storage_preflight.py", "lines": "29-234", "detail": "WAL/FULL, capacity, latency, bounded export, path, clock, cleanup and strict-validation refusal cases."},
+        {"file": "tests/v2/test_session040_owner_runtime.py", "lines": "442-485", "detail": "Report failure and service delay visibility/recovery without conflating them with integrity latch."}
+      ]
+    }
+  ],
+  "current_support_matrix": {
+    "configurable_data_root_before_run": "PARTIAL: UI/CLI choose it, but it is not included in ResearchRunConfigV1/config_hash; selected UI root is not the fixed secret-store root.",
+    "public_bybit_mainnet_linear_btc_eth": "IMPLEMENTED: installed streamed runtime and S40 preflight/health envelope target this explicit scope.",
+    "public_binance_runtime_selected_by_run_config": "NOT WIRED: some Binance event translation exists, but current installed run selects Bybit; do not claim Binance capture support.",
+    "demo_test_environment_selection": "NOT WIRED: current refresh guard only accepts Bybit MAINNET; no environment field in run config.",
+    "account_and_capability_metadata": "NOT WIRED IN PRODUCT RUN CONFIG: typed venue/product/capability models exist elsewhere for V2 boundaries, but current public-only product has no selected account/capability binding.",
+    "venue_credential_reference": "NOT WIRED: only optional fixed DeepSeek secret profile has Windows DPAPI storage; no venue credential profile/reference.",
+    "intelligence_profile": "PARTIAL: new-run UI selects DISABLED or one registered DeepSeek action-critic profile; statistical model configuration is generated/frozen from build, not owner-selected.",
+    "preflight_health_export": "IMPLEMENTED_WITH_FIXED_SCOPE: identity/path-bound strict storage preflight, immutable health latch, read-only bounded report export, sole ops writer.",
+    "capital_or_assisted_execution": "EXPLICITLY_DISABLED: current manifests and status carry false; this audit does not propose enabling either.",
+    "economics": "NOT ESTIMABLE: public diagnostics/configuration do not establish account-specific execution economics."
+  },
+  "proposed_minimal_configuration_api": {
+    "version": "ResearchRunConfigV2 (product-local; additive and explicit migration/legacy V1 reader required)",
+    "fields": {
+      "data_root": "Canonical local path or registered local data-root ID, included in immutable run identity; reject install-tree/shared-network paths under current storage contract.",
+      "public_venue": "Registered enum BYBIT | BINANCE; selects a source adapter only when that venue/scope is implemented and qualified.",
+      "execution_venue": "Registered enum BYBIT | BINANCE as declared owner intent/identity metadata. Must equal the explicitly supported capability venue; does not instantiate an order client or enable execution.",
+      "environment": "Registered enum MAINNET | DEMO | TESTNET (only supported values may pass validation); no silent fallback between environments.",
+      "product_scope": "Registered product enum plus bounded explicit symbols/topic set and scope_profile_id; reject unknown symbols, unbounded universe, venue/environment/product mismatch, and capacity profile mismatch.",
+      "account_scope_ref": "Opaque, non-secret owner alias or salted/hash reference; never raw account ID. Null for public-only baseline.",
+      "capability_profile_ref": "Immutable registered profile/version plus content hash describing supported venue/product/environment and capability observations. Informational/non-capital in S41; not an auth or order permit.",
+      "credential_ref": "Nullable opaque OS credential-store identifier and credential-profile enum; never key bytes, token, env value or plaintext in config/log/report. S41 defaults null and public capture must work with null.",
+      "intelligence_profile": "Registered DISABLED or fixed critic profile reference; unknown profiles rejected, no dynamic endpoint/model fallback.",
+      "report_interval_seconds, minimum_free_disk_bytes": "Retain existing validated bounded values and exact existing constraints."
+    },
+    "immutability_and_authority": [
+      "Validate the entire selection against a versioned local registry before creating run directory; freeze normalized config and hashes in run.json before preflight/start.",
+      "Bind data-root identity, public adapter/profile, declared execution venue/environment, product scope, account/capability references and intelligence profile to config_hash and every preflight/run/export identity.",
+      "Keep capital_enabled=false, assisted_enabled=false, model/critic authority ZERO, and economics NOT ESTIMABLE as explicit immutable fields; a selected execution venue is declarative configuration only.",
+      "Use no broad default/fallback: unsupported Binance/demo/testnet/account/capability/profile combinations must reject before network or secret lookup.",
+      "Retain one atlas-ops SQLite writer, the independent bounded capture handoff, current queue/storage validation and report snapshot bounds. Scope-specific qualification is required before adding any channel/symbol or increasing rates/payload limits.",
+      "Secret store references must resolve only inside the authenticated isolated broker/client boundary; UI confirmation and reports show profile/ref labels, never secret values. UI-selected root and credential-store root must be intentionally reconciled rather than silently diverging."
+    ]
+  },
+  "proposed_acceptance_tests": [
+    {"id": "config_roundtrip_and_hash", "assertion": "Create a run from each registered config; normalized public venue/environment/symbols/data-root ID/account/capability/credential ref/intelligence profile roundtrip exactly and are covered by config_hash/run content hash; post-create mutation or mismatched run path is rejected."},
+    {"id": "config_prevalidation_no_side_effects", "assertion": "Unsupported venue, product, symbol, environment, capability, credential profile, provider, and mismatched venue/environment combinations fail before run directory publication, preflight worker launch, network construction, or secret access."},
+    {"id": "no_venue_fallback", "assertion": "A configured Binance/demo/test scope either resolves to its exact registered adapter/profile or fails closed; monkeypatched Bybit factory is never invoked as fallback."},
+    {"id": "public_without_credentials", "assertion": "Public collection starts with credential_ref=null and performs zero venue-auth/account/order calls; missing optional provider secret produces explicit provider-unavailable status without fallback or public-core failure."},
+    {"id": "secret_non_disclosure_and_root_binding", "assertion": "Secret bytes absent from run/config/preflight/launch/report/diagnostic/log/exception output; only opaque reference/hash is persisted; credential lookup uses the declared store binding and only authorized isolated broker code can resolve it."},
+    {"id": "authority_remains_zero", "assertion": "All config combinations retain capital_enabled=false, assisted_enabled=false, model/critic authority ZERO, no writer besides atlas-ops, and economics NOT ESTIMABLE; selected execution_venue/capability never creates an order client."},
+    {"id": "scope_bound_preflight", "assertion": "Each accepted scope resolves to explicit registered workload limits; current baseline preserves 160/320 fps, 512-item/16 MiB handoff and existing exact validation. Broader/unknown scope cannot pass using baseline limits; preflight remains bound to immutable config/path and rejects altered worker output."},
+    {"id": "run_health_latch_precedence", "assertion": "Transient health can recover without permanent failure; irreversible loss latches first cause; broad HTTP/source recovery, restart, config edit, changed capability ref or export cannot clear it; only a new run identity starts clean."},
+    {"id": "bounded_export_configuration_binding", "assertion": "Read-only export remains fixed-cutoff/at-most-eight snapshot bounded; report and manifest identify exact config hash/scope and preserve has_more/validation failures without opening a second writer."},
+    {"id": "desktop_owner_configuration", "assertion": "Before Create run, owner can choose only registered supported data root, public/execution venue, environment, product/symbol scope, account/capability reference, credential reference, and intelligence profile; UI does not render secret values and visibly distinguishes operational health, qualification failure, TEST GATE, capital-disabled, and NOT ESTIMABLE."}
+  ],
+  "existing_tests_to_extend": [
+    "tests/v2/test_session036_product.py::test_manifest_freezes_config_build_and_disabled_authority",
+    "tests/v2/test_session036_product.py::test_public_profile_rejects_undeclared_provider_and_unbounded_limits",
+    "tests/v2/test_session036_product.py::test_secret_cipher_is_separate_from_run_and_no_insecure_fallback",
+    "tests/v2/test_session036_product.py::test_declared_provider_configuration_is_sealed_and_secret_free",
+    "tests/v2/test_session036_product.py::test_configured_broker_loss_preserves_public_run_without_provider_fallback",
+    "tests/v2/test_session040_owner_runtime.py::test_preflight_child_is_isolated_identity_bound_and_holds_exclusive_probe_lease",
+    "tests/v2/test_session040_owner_runtime.py::test_red_latch_outranks_missing_or_corrupt_ui_projection_and_broad_http_health",
+    "tests/v2/test_session040_owner_runtime.py::test_failed_run_cannot_be_relaunched_but_new_identity_starts_fresh",
+    "tests/v2/test_session040_live_health.py::test_irreversible_failure_latches_red_despite_http_recovery_and_restart",
+    "tests/v2/test_session040_storage_preflight.py::test_average_service_incapability_rejects_before_owner_live_run",
+    "tests/v2/test_session040_provider_isolation.py::test_installed_optional_broker_failure_keeps_public_runtime_running"
+  ],
+  "execution_record": {
+    "tests_run": false,
+    "live_calls": false,
+    "source_or_contract_edits": false,
+    "only_file_written": "docs/v2/SESSION041_WORKSTREAM_FG_AUDIT.json",
+    "preserved_statuses": {"capital": false, "assisted_execution": false, "model_critic_authority": "ZERO", "economics": "NOT ESTIMABLE"}
+  }
+}

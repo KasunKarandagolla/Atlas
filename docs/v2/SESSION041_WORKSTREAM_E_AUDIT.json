@@ -1,0 +1,109 @@
+{
+  "artifact_type": "AtlasSession041WorkstreamEAuditV1",
+  "schema_version": 1,
+  "session": 41,
+  "workstream": "E",
+  "base_sha": "55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393",
+  "status": "AUDIT_COMPLETE_IMPLEMENTATION_IN_PROGRESS",
+  "authority": "Root coordinator retains production and shared-contract ownership; this report records code presence separately from production wiring and external gates.",
+  "findings": [
+    {
+      "id": "E-PROD-01",
+      "topic": "S1-S3 candidate production boundary",
+      "implementation": "S1/S2 are called by the ordinary M15 composer; S3 has its own versioned research policy and native M1 diagnostics. Production inputs reject candidate policy hashes outside exact S1-S3 and reject pre-sized candidates.",
+      "production_wiring": "S1/S2 flow through multisleeve CandidateSet, selector, hard-risk sizing, frozen action and economic admission. Native M1 S3 intentionally emits a diagnostic-only NOT_ESTIMABLE CandidateSet because trade completeness is unproven; S3 setup is evaluated with empty residuals and no VWAP, so it cannot create candidates in this path.",
+      "evidence": [
+        {"path": "src/atlas/v2/runtime/production.py", "lines": "205-207, 275-298", "claim": "The production policy map is exactly S1/S2/S3 and candidate contract enforces it."},
+        {"path": "src/atlas/v2/runtime/production.py", "lines": "2657-2730", "claim": "Native M1 path supplies no decision-affecting inputs and writes diagnostic-only terminal stages."},
+        {"path": "src/atlas/v2/runtime/production.py", "lines": "4148-4168, 4260-4278", "claim": "M15 generation invokes S1/S2; M1 path uses S3 diagnostic readiness and empty setup inputs."},
+        {"path": "src/atlas/v2/runtime/production.py", "lines": "2903-2913, 2932-2979", "claim": "Only selected candidate passes risk sizing and frozen action; evaluation is separately gated by complete causal economic inputs."}
+      ],
+      "existing_tests": ["tests/v2/test_session027_production.py", "tests/v2/test_session034_production_remediation.py", "tests/v2/test_session034_causal_timing.py", "tests/v2/test_session036_trade_completeness.py", "tests/v2/test_session034_s3_forward_evidence.py"],
+      "missing_engineering": "Ordinary event composition does not run S4-S8 research surfaces and cannot place their outputs in CandidateSet. Root-owned registration must preserve complete candidates, frozen selector and risk-only sizing. S3 remains gated on complete source trade evidence.",
+      "external_gates": ["Bybit complete trade-history/continuity evidence is unproven; S3 remains NOT_ESTIMABLE by design."]
+    },
+    {
+      "id": "E-S4-S8-01",
+      "topic": "S4-S8 standalone modules versus production composition",
+      "implementation": "S4 microstructure feature/context types, S5 separately versioned continuation/reversal, S6 cross-sectional research coordinator, S7 deterministic event gates/alerts/directional shadow, and S8 research basket simulation exist with focused tests. S8 explicitly rejects conversion into a single-action plan.",
+      "production_wiring": "`production.py`, `public_context.py`, `product.py` and `research_model_shadow.py` contain no calls to the S4/S5/S6/S7 directional/S8 evaluation APIs. Production can consume typed S7 calendar/abnormality/incident prerequisites as deterministic gates; this is not directional S7 evaluation. PublicContext fetches one configured source per cadence and explicitly labels authentication/calendar coverage UNKNOWN.",
+      "evidence": [
+        {"path": "src/atlas/v2/strategies/s5_crowding.py", "lines": "20-34, 110-115, 267-371", "claim": "Continuation and reversal have separate versioned identities and research APIs."},
+        {"path": "src/atlas/v2/strategies/s6_cross_section.py", "lines": "334-340", "claim": "S6 is a standalone coordinator, not wired by production composer."},
+        {"path": "src/atlas/v2/news/events.py", "lines": "492-510, 993-1060, 1252-1260", "claim": "Typed news collection, deterministic gate builder and directional shadow APIs exist."},
+        {"path": "src/atlas/v2/strategies/s8_pairs.py", "lines": "127-140, 348-366", "claim": "S8 emits a ResearchBasketForecast and rejects CandidateAction/normal-plan conversion."},
+        {"path": "src/atlas/v2/runtime/public_context.py", "lines": "92-120, 198-226", "claim": "Bounded round-robin collection; accepted report keeps authentication and calendar coverage unknown."},
+        {"path": "src/atlas/v2/runtime/production.py", "lines": "4745-4791", "claim": "Production reads typed schedule/coverage/abnormality/incident facts for prerequisite gates, not S7 directional reaction."}
+      ],
+      "existing_tests": ["tests/v2/test_session022_s4_microstructure.py", "tests/v2/test_session022_s5_context.py", "tests/v2/test_session021_s6.py", "tests/v2/test_session021_s7.py", "tests/v2/test_session023_discovery_s8.py", "tests/v2/test_session023_integration.py", "tests/v2/test_session037_public_context.py"],
+      "missing_engineering": "Add a typed orchestration seam that emits per-sleeve causal status/evidence while keeping S4 execution context and standalone shadow distinct, S5 continuation/reversal distinct, S6 shadow-only, S7 safety gates distinct from authenticated directional event shadow, and S8 basket-only. Root-owned production integration is still required.",
+      "external_gates": ["Configured source authentication, verified calendar coverage, asset mapping and timely public S4/S5 data are not established by module/test presence."]
+    },
+    {
+      "id": "E-FEATURE-MATH-01",
+      "topic": "Feature and math coverage",
+      "implementation": "Causal feature snapshot computes technical indicators, candle geometry, confirmed swing/structure/SR/Fibonacci/morphology and partial regime axes. Math primitives include robust slope, forward Kalman update, realized/EWMA variance, HAR, cutoff-filtered empirical residuals and common-path identities.",
+      "production_wiring": "Feature snapshots are built for the triggered key and passed to S1/S2; several frozen math axes and context families remain unbound or placeholders. Snapshot explicitly records anchored VWAP/volume profile and liquidity/crowding/event/OOD axes as missing. Model Arena statistical surface is separate.",
+      "evidence": [
+        {"path": "src/atlas/v2/features/pipeline.py", "lines": "29-70, 76-112", "claim": "Exact causal bar checks and feature computations; unavailable trades are explicit."},
+        {"path": "src/atlas/v2/features/pipeline.py", "lines": "113-154", "claim": "Structure/morphology and trend/volatility state; external axes explicitly unbound."},
+        {"path": "src/atlas/v2/math/core.py", "lines": "19-120, 121-164", "claim": "Online math primitives and cutoff-scoped residual/common-path helpers."}
+      ],
+      "existing_tests": ["tests/v2/test_session014_core.py", "tests/v2/test_session037_feature_prefix.py", "tests/v2/test_session037_strategy_prefix.py", "tests/v2/test_session023_analogue.py"],
+      "missing_engineering": "Map each authorized math family to a named causal input/artifact and feature-family ablation; wire external flow/derivative/event axes only with exact evidence and missingness. No indicator voting.",
+      "external_gates": []
+    },
+    {
+      "id": "E-MODEL-01",
+      "topic": "M0/M1, analogue, scenarios, uncertainty and ES",
+      "implementation": "M0 fit, pretrade scenario generation, outcome/calibration/support/OOD uncertainty, deterministic stress, portfolio completeness and ES are implemented in the Phase-2 evaluator. M1 LightGBM is a separate diagnostic. Analogue estimator has a causal typed API. Production analogue path currently writes NOT_ESTIMABLE unconditionally; production M1 is post-receipt shadow only.",
+      "production_wiring": "For selected exact action only, Phase-2 runs when full cutoff-bound model/calibration/execution and portfolio/support evidence resolve; otherwise evaluation is NOT_ESTIMABLE. No candidate selection or risk sizing depends on M0/M1/analogue or model output.",
+      "evidence": [
+        {"path": "src/atlas/v2/science/evaluation_service.py", "lines": "94-150, 190-220", "claim": "Caller-owned Phase-2 evaluation verifies selected sized action and begins M0 plus pretrade scenarios."},
+        {"path": "src/atlas/v2/runtime/production.py", "lines": "2926-2979", "claim": "Production runs evaluator only with complete economic inputs, else persists NOT_ESTIMABLE."},
+        {"path": "src/atlas/v2/runtime/production.py", "lines": "2981-3017, 4744-4790", "claim": "M1 is a diagnostic; analogue is currently hard-coded NOT_ESTIMABLE."},
+        {"path": "src/atlas/v2/science/analogue.py", "lines": "649-842", "claim": "Existing exact compatibility, causal query, matured observations and estimator interfaces are reusable."}
+      ],
+      "existing_tests": ["tests/v2/test_session019_evaluation_integration.py", "tests/v2/test_session019_scenarios.py", "tests/v2/test_session019_m0.py", "tests/v2/test_session023_m1.py", "tests/v2/test_session023_analogue.py", "tests/v2/test_session036_analogue_diagnostic.py", "tests/v2/test_session020_phase2_e2e.py"],
+      "missing_engineering": "Use exact matured compatible outcome refs to call analogue estimator and bind result to the same frozen action; preserve current terminal missingness when no support. Broader production auto-resolution of economic source templates is independently incomplete/conditional.",
+      "external_gates": ["Economic value remains NOT ESTIMABLE; final holdout remains unassigned/untouched."]
+    },
+    {
+      "id": "E-MODELARENA-01",
+      "topic": "Model Arena adapters and Discovery/critic amendments",
+      "implementation": "TiRex-2, Kronos-mini and Chronos-2 adapters/protocol/runtime are tested contract surfaces. Discovery lab and provider-neutral agent contracts exist. Session-029 action critic can be installed as an optional post-receipt shadow; it is not deterministic pipeline authority. Normal product post-receipt research shadow uses statistical route only. No S7 EventExtractionProvider runtime is wired.",
+      "production_wiring": "The S41 product runner composes StatisticalResearchShadow after receipts; optional critic is installed only when provider profile is enabled. No forecast adapter/model Arena route is part of the normal production action-evaluation route, and no production Discovery proposal or event-extraction task is scheduled.",
+      "evidence": [
+        {"path": "src/atlas/v2/models/adapters/tirex2.py", "lines": "1-20", "claim": "TiRex adapter contract exists."},
+        {"path": "src/atlas/v2/models/adapters/kronos_mini.py", "lines": "1-20", "claim": "Kronos-mini adapter contract exists."},
+        {"path": "src/atlas/v2/models/adapters/chronos2.py", "lines": "1-20", "claim": "Chronos-2 adapter contract exists."},
+        {"path": "src/atlas/v2/product.py", "lines": "812-830", "claim": "Normal product composes statistical shadow and only optionally starts critic."},
+        {"path": "src/atlas/v2/runtime/research_model_shadow.py", "lines": "37-45, 77-80", "claim": "Receipt shadow runs a StatisticalResearchProvider route."},
+        {"path": "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md", "lines": "1-18, 23-32", "claim": "Discovery proposal first; critic post-numerical evaluation; event extraction separate; all zero authority."},
+        {"path": "docs/v2/ATLAS_AGENT_ACTION_CRITIC_DEEPSEEK_V41_SHADOW_AMENDMENT_V1.md", "lines": "1-17", "claim": "Critic is one-call, tool-free, zero authority; live provider and prospective gates remain."},
+        {"path": "docs/v2/ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md", "lines": "1-15, 52-64", "claim": "Provider/model amendment applies only to research proposer; alias-only and no fallback."}
+      ],
+      "existing_tests": ["tests/v2/test_model_runtime.py", "tests/v2/test_model_protocol.py", "tests/v2/test_session014_chronos.py", "tests/v2/test_session036_research_model_routing.py", "tests/v2/test_session036_research_model_shadow.py", "tests/v2/test_session029_action_critic.py", "tests/v2/test_session030_action_critic_runtime.py", "tests/v2/test_session028_provider_amendment.py"],
+      "missing_engineering": "Model Arena request/forecast routing into normal research evaluation, deterministic statistical fallback policy, and Discovery/event-extraction scheduling remain unconnected. Critic already has the opt-in post-receipt seam; alias-only profile cannot qualify decision influence.",
+      "external_gates": ["Direct DeepSeek critic contract and prospective shadow are TEST GATE; model alias is not a fixed revision; no provider call was made for this audit."]
+    }
+  ],
+  "reusable_production_interfaces": [
+    {"interface": "ProductionEventInputsV1", "path": "src/atlas/v2/runtime/production.py", "lines": "275-322", "use": "Current root-owned production boundary for universe, unsized candidates and explicit evidence refs."},
+    {"interface": "feature_snapshot", "path": "src/atlas/v2/features/pipeline.py", "lines": "29-160", "use": "Causal core snapshot for exact joined bar history."},
+    {"interface": "publish_research_prerequisites", "path": "src/atlas/v2/runtime/research_prerequisites.py", "lines": "160-235", "use": "Typed S7 safety prerequisites and event-gate projections."},
+    {"interface": "estimate_causal_analogue / persist_analogue", "path": "src/atlas/v2/science/analogue.py", "lines": "748-860", "use": "Matured-outcome-only analogue support bound to exact action/candidate/set."},
+    {"interface": "run_phase2_economic_evaluation", "path": "src/atlas/v2/science/evaluation_service.py", "lines": "94-220", "use": "Existing exact selected action economic evaluation."},
+    {"interface": "StatisticalResearchShadowV1", "path": "src/atlas/v2/runtime/research_model_shadow.py", "lines": "37-209", "use": "Post-receipt, zero-authority statistical Model Arena-like research route."}
+  ],
+  "minimal_integration_and_acceptance": [
+    "Add an orchestration sidecar that composes exact-cutoff S4/S5/S6/S7/S8 research records without placing their outputs into current CandidateSet until root-owned policy registry/selector/acceptance wiring is explicitly changed.",
+    "Require typed NOT_ESTIMABLE artifacts with explicit reason and source refs for missing data; preserve S5 continuation/reversal identities and S7 gate versus directional-shadow separation.",
+    "For S6 require at least 20 eligible same-venue instruments and cutoff-visible BTC beta inputs; otherwise persist NOT_ESTIMABLE.",
+    "For S8 persist only ResearchBasketForecast/Simulation artifacts; test that no conversion into candidate/action/sizing/plan is possible.",
+    "Integrate analogue only after a valid frozen action, using cutoff-visible compatible matured outcomes; test no future outcome visibility, empty-support NOT_ESTIMABLE and exact action lineage.",
+    "Test every surface for cutoff chronology, missingness, source ref completeness, zero authority, and no selector/risk/action mutation; root-owned production tests must verify integration is disabled or zero-effect by default."
+  ],
+  "audit_limits": ["Read-only code and existing test inventory review; no tests run, no live/public/provider calls, no holdout access, no capital or assisted operations."],
+  "authority_state": {"candidate_authority": "ZERO for new surfaces", "risk_sizing_owner": "Existing deterministic risk API only", "action_modification": "FORBIDDEN", "capital_enabled": false, "assisted_enabled": false}
+}

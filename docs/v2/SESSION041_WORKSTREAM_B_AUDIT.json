@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "session": 41,
+  "workstream": "B_PUBLIC_UNIVERSE_AND_VENUE_ACQUISITION",
+  "audit_status": "READ_ONLY_AUDIT_COMPLETE",
+  "start_sha": "55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393",
+  "scope": "Audit amended V2 freeze §§6.2–6.4, 7, 8, 17 and relevant SESSION041 requirement matrix clauses. No source edits, network calls, authentication, capital/assisted authority, or final holdout access.",
+  "frozen_constraints": [
+    "Keep V1 BTC/ETH frozen benchmark unchanged.",
+    "V2 public observation covers dynamically observed active USDT linear perpetuals across both Bybit and Binance; eligibility is explicit and point-in-time.",
+    "Bybit and Binance public observation may operate simultaneously.",
+    "Capital and assisted authority remain false; no automatic capital eligibility.",
+    "Do not claim external/live feed availability or completeness based on offline fixtures."
+  ],
+  "findings": [
+    {
+      "id": "B1",
+      "gap": "Production public acquisition is a fixed Bybit BTCUSDT/ETHUSDT campaign. Metadata bootstrap requests one Bybit instrument-info page (limit 1000), then filters to those two symbols; snapshot acquisition iterates the same two products. The stream topic factory, stream identity resolver, bootstrap validation, product refresh validation, and stream projection are also symbol-fixed and Bybit-specific.",
+      "locations": [
+        "src/atlas/v2/data/bybit_source.py:26-33, 163-205, 275-290",
+        "src/atlas/v2/data/public_microstructure_ws.py:101-106",
+        "src/atlas/v2/runtime/production.py:1569-1586, 1772-1779, 1988-2002, 5532-5568"
+      ],
+      "classification": "Ordinary implementation gap: no dynamic all-active-product public acquisition or multi-venue production composition exists. Fixed BTC/ETH limits are part of existing S31/S32 campaign scope and must stay unchanged for the V1 benchmark."
+    },
+    {
+      "id": "B2",
+      "gap": "Binance has typed credential-free REST transport, exchangeInfo translation, and endpoint readers, but no Binance cycle source, product metadata acquisition/persistence path, public source production factory, or Binance WebSocket acquisition integration was found. Its existing depth bridge is a typed snapshot/frame boundary, not a connected transport/source.",
+      "locations": [
+        "src/atlas/v2/data/binance.py:47-112, 294-339",
+        "src/atlas/v2/data/public_http.py:43-64",
+        "src/atlas/v2/runtime/production.py:5532-5568"
+      ],
+      "classification": "Ordinary implementation gap. AUTH02 §7.3 lists permitted Binance public targets; this audit does not infer actual feed qualification, semantics, or completeness from endpoint support."
+    },
+    {
+      "id": "B3",
+      "gap": "A point-in-time dynamic universe builder exists, but it consumes caller-supplied observations and is not connected to venue discovery, public collection, or the production supervisor. It cannot itself establish that the observed contract population is complete or current.",
+      "locations": [
+        "src/atlas/v2/data/universe.py:59-70, 129-171, 172-283",
+        "src/atlas/v2/instruments.py:136-213"
+      ],
+      "classification": "Reusable model/runtime seam; acquisition-to-universe composition is missing."
+    },
+    {
+      "id": "B4",
+      "gap": "Metadata freshness is represented by Bybit's one-hour in-memory cache; a refresh is attempted after expiry, but a broad contract inventory, paged metadata cursor, durable source revision lineage, explicit stale-age eligibility limit, and multi-venue metadata merge are not implemented. The collector does preserve product revisions and has a 4,096 active registry/product-evidence bound, but that is not dynamic universe population orchestration.",
+      "locations": [
+        "src/atlas/v2/data/bybit_source.py:33, 163-230",
+        "src/atlas/v2/runtime/production.py:1988-2029",
+        "src/atlas/v2/data/collector.py:19-20, 131-158"
+      ],
+      "classification": "Ordinary implementation gap. Existing product revision and capacity mechanisms are reusable; do not silently evict retained evidence."
+    },
+    {
+      "id": "B5",
+      "gap": "Compute tiers are deterministic for a supplied population: scanner ordering is descending turnover with canonical instrument identity tie-break; top_tier_2 defaults to 20 and top_tier_3 to 5, with open positions/watches included in tier 3. These are engineering defaults only. The V2 tier/universe seam does not implement or persist deterministic known-probability exploration outside its shortlist; a separate legacy scanner exploration facility exists and is not wired into this V2 universe/subscription path. The builder has no input/population cap; the subscription planner materializes every provided key.",
+      "locations": [
+        "src/atlas/v2/data/universe.py:145-166, 230-261, 286-323",
+        "src/atlas/v2/data/subscriptions.py:118-150"
+      ],
+      "classification": "Partial implementation plus ordinary gaps against AUTH02 §§8.2–8.3. Existing 4,096 product registry ceiling does not bound all caller inputs, universe rows, or subscription-plan rows."
+    },
+    {
+      "id": "B6",
+      "gap": "Eligibility currently uses trading status, required-bars boolean, health, observed days, turnover, spread, and caller-supplied policy history days. It records data/scanner eligibility and policy-level history eligibility, and hard-sets deep-analysis/capital eligibility false. It does not derive observed-days/history from persisted causal records, evaluate freshness by feed age, or produce explicit eligibility reasons per strategy beyond a generic history/data reason. S6's minimum of 20 strategy-eligible instruments/NOT_ESTIMABLE is not enforced in this builder.",
+      "locations": [
+        "src/atlas/v2/data/universe.py:46-56, 182-228",
+        "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md:615-642, 1585-1605"
+      ],
+      "classification": "Partial eligibility contract implementation; history measurement and S6 cross-sectional population gate are missing at this seam."
+    }
+  ],
+  "reusable_seams": [
+    {
+      "interface": "InstrumentKeyV2 / ProductContractV2 and translate_instrument_info / translate_exchange_info",
+      "locations": ["src/atlas/v2/instruments.py:136-213", "src/atlas/v2/data/bybit.py", "src/atlas/v2/data/binance.py:47-112"],
+      "use": "Preserve venue, environment, product, native symbol, asset identity, contract revision, timestamps, filters, and metadata ref as canonical inputs."
+    },
+    {
+      "interface": "PublicCollectorV2 / raw store / source health / archive-first observation indexing",
+      "locations": ["src/atlas/v2/data/collector.py:67-98, 191-229"],
+      "use": "Reuse for bounded credential-free source acquisition, raw payload hash, receipt chronology, health, durable indexing, and revision evidence. Current source adapters return immutable bounded snapshots before the supervisor-owned writer persists them."
+    },
+    {
+      "interface": "DynamicUniverseRuntimeV2.build_snapshot",
+      "locations": ["src/atlas/v2/data/universe.py:129-283"],
+      "use": "Build causal UniverseContractV2 and deterministic tiers from already acquired/validated point-in-time observations; keep capital_eligible false."
+    },
+    {
+      "interface": "SubscriptionPlanV2 / restore_subscription_plan and existing legacy scanner exploration",
+      "locations": ["src/atlas/v2/data/subscriptions.py:68-93, 118-170", "src/atlas/scanner/exploration.py", "tests/scanner/test_scanner_exploration.py"],
+      "use": "Translate tier maps, restored watches, and open positions to deterministic channel plans; add explicit population/topic bounds before dynamic broad use. The legacy scanner has deterministic known-probability selection, but it is a separate seam and must not be assumed to satisfy V2 point-in-time universe exploration/persistence."
+    },
+    {
+      "interface": "ProductionOpsCyclePortV1 source and stream seams",
+      "locations": ["src/atlas/v2/runtime/production.py:1565-1595, 1667-1681, 1988-2029, 5532-5568"],
+      "use": "Supervisor-owned persistence/revision registration and opt-in source lifecycle exist, but current validation and routing assumptions require a venue-aware generalization with strict per-venue identifiers."
+    }
+  ],
+  "minimal_interface_recommendation": {
+    "shape": "Introduce a venue-neutral bounded public metadata/acquisition source contract that yields immutable per-venue snapshots: venue/source identity, metadata receipt/availability, page/cursor completeness, ProductContractV2 revisions, bounded market observations, explicit failure/stale state, and request/record budgets. Compose separate Bybit and Binance source instances concurrently through the existing supervisor-owned persistence path; merge only validated point-in-time products keyed by the full InstrumentKeyV2. Feed the persisted causal observations into DynamicUniverseRuntimeV2 and then a bounded SubscriptionPlanV2. Keep the current fixed BTC/ETH campaign factories and fixture contracts intact.",
+    "requirements": [
+      "Page/continue or explicitly fail incomplete metadata enumeration; do not treat one page as the full venue inventory.",
+      "Attach source, venue, revision, receipt, availability, completeness, and staleness evidence; reject unavailable/future or stale metadata at a decision cutoff.",
+      "Bound each venue's page requests, records, active contracts, tier population, topic fanout, and retained active caches; publish explicit pressure/failure instead of truncation.",
+      "Make tier ordering and exploration deterministic; persist the exact selection policy, tier inputs, and known inclusion probability for any sampled exploration.",
+      "Compute strategy eligibility from causal history and explicit required inputs; enforce S6 minimum cross-sectional breadth as NOT_ESTIMABLE below 20 eligible instruments.",
+      "Allow Bybit and Binance observations simultaneously while retaining source-specific health and never joining solely by symbol text.",
+      "Keep data/scanner/deep-analysis eligibility distinct from capital eligibility; capital remains false."
+    ]
+  },
+  "focused_acceptance_tests": [
+    "Fake paged Bybit and Binance metadata sources enumerate all declared active USDT linear perpetuals, bind each revision to actual receipt/availability, and fail closed for missing/duplicate pages, cursor loops, stale metadata, malformed rows, or request-budget exhaustion.",
+    "Mixed-venue fixture with same native symbol yields distinct full instrument keys and independently tracked source health; both venue sources can contribute in one decision slot.",
+    "Cutoff tests exclude future metadata and stale/unhealthy source observations; status, listing, delisting, tick/lot, multiplier, or revision changes only affect snapshots after their causal availability.",
+    "Universe fixture verifies scanner defaults (30 observed days, required bars, $10m turnover, 10 bps spread), policy-specific history, all eligibility fields/reasons, and capital false; verify fewer than 20 S6-eligible instruments yields NOT_ESTIMABLE.",
+    "Tier repeatability test permutes identical observation input and confirms same tiers/plans, turnover tie-break by canonical full key, top-20/top-5 defaults, and watch/open-position inclusion.",
+    "Exploration test confirms deterministic sample and exact known inclusion probabilities are persisted, is reproducible from the policy hash/seed, and cannot set capital eligibility.",
+    "Population/topic/cache boundary tests exercise exactly-at-limit and limit+1 behavior; overflow yields durable/visible fail-closed evidence, not a partial universe or silent subscription truncation.",
+    "Production composition fixture runs both fake venue sources through supervisor-owned persistence, creates one merged point-in-time universe and bounded channel plan, and confirms no network/auth/capital/assisted path is invoked."
+  ],
+  "non_claims": [
+    "No live venue calls or external qualification were performed.",
+    "No claim that public data is complete, fresh, or semantically qualified for either venue.",
+    "No claim that Binance WS/depth/liquidation acquisition is currently connected; existing typed bridges/readers alone do not establish this.",
+    "No changes to frozen V1, capital authority, assisted authority, thresholds, or frozen contracts are authorized by this audit."
+  ]
+}
