@@ -1,0 +1,296 @@
+{
+  "assisted_enabled": false,
+  "branch": "fix/session-040-owner-runtime-resilience-preflight-health",
+  "capital_enabled": false,
+  "core_runtime_implementation_sha": "6cfd27c05380485c3b11709fdccabe042085f169",
+  "current_workflow_id": 37489007213,
+  "desktop_copy": {
+    "disposition": "INTENTIONALLY_DEFERRED_BY_OWNER",
+    "performed": false,
+    "status": "UNVERIFIED"
+  },
+  "economics": "NOT ESTIMABLE",
+  "engineering_checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+  "final_holdout_accessed": false,
+  "implementation_sha": "11d33430677433777af83881157acdee19ce6149",
+  "model_authority": "ZERO",
+  "native_execution": "TESTED",
+  "native_execution_results": {
+    "archive_bytes_final": 179259606,
+    "capture_batches_capacity": 64,
+    "capture_batches_high_water": 25,
+    "clean_reopen": "TESTED",
+    "commit_stalls": {
+      "0.1": {
+        "count": 6,
+        "max_actual_seconds": 0.10999999999989996
+      },
+      "0.5": {
+        "count": 6,
+        "max_actual_seconds": 0.5
+      },
+      "1": {
+        "count": 6,
+        "max_actual_seconds": 1.0149999999998727
+      },
+      "3": {
+        "count": 6,
+        "max_actual_seconds": 3.0
+      },
+      "5": {
+        "count": 6,
+        "max_actual_seconds": 5.0
+      }
+    },
+    "continuity_gaps": 0,
+    "frames": 307201,
+    "frames_rejected": 0,
+    "handles_peak": 298,
+    "long_reader_exercises": 30,
+    "max_capture_duration_seconds": 0.672,
+    "max_controller_service_gap_seconds": 5.2179565,
+    "max_controller_service_seconds": 5.078,
+    "max_producer_lateness_seconds": 0.8558750149827574,
+    "native_result_sha256": "98630886ecdb52eb6340fb13ce1a3c9f47997bda0075e8fb4b8dc5f960883e23",
+    "passive_checkpoint_samples": 63,
+    "platform": "Windows-2025Server-10.0.26100-SP0",
+    "python": "3.12.10",
+    "queue_capacity": 512,
+    "queue_high_water": 197,
+    "raw_capture_fifo_sha256": "4b7c13de06733c26127d174c911a41091e99604ba24728b2649dbed2e7d80997",
+    "raw_replay_fifo_sha256": "4b7c13de06733c26127d174c911a41091e99604ba24728b2649dbed2e7d80997",
+    "reader_errors": [],
+    "receipt_journal_bytes_final": 11633024,
+    "reports": {
+      "count": 61,
+      "max_seconds": 2.155999999999949,
+      "validation_failures": 0,
+      "with_backlog": 0
+    },
+    "reports_bytes_final": 4258328,
+    "requested_soak_seconds": 1800.0,
+    "rss_final_bytes": 119533568,
+    "rss_peak_bytes": 148078592,
+    "source_artifact_id": 11427443057,
+    "source_artifact_sha256": "c79996cf4b86415208038311215883c2db105d36378e613209124a26da62bb40",
+    "sqlite": "3.49.1",
+    "sqlite_bytes_final": 357355520,
+    "status": "TESTED",
+    "threads_peak": 7,
+    "wal_bytes_final": 39893992,
+    "wal_bytes_peak": 39893992,
+    "wall_clock_seconds": 1813.4209999999998
+  },
+  "owner_live_endurance": "TEST GATE",
+  "owner_scale_strict_export": {
+    "artifact_id": 11427443057,
+    "artifact_zip_sha256": "c79996cf4b86415208038311215883c2db105d36378e613209124a26da62bb40",
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "exports": [
+      {
+        "budget_yielded": false,
+        "has_more": false,
+        "name": "cold-full",
+        "rows": 4777,
+        "seconds": 2.8910000000000764,
+        "snapshot_seconds": 2.6410000000000764,
+        "validation_failures": {}
+      },
+      {
+        "budget_yielded": false,
+        "has_more": false,
+        "name": "fresh-full",
+        "rows": 4777,
+        "seconds": 3.030999999999949,
+        "snapshot_seconds": 2.7649999999998727,
+        "validation_failures": {}
+      },
+      {
+        "budget_yielded": false,
+        "has_more": false,
+        "name": "repeat-incremental",
+        "rows": 4777,
+        "seconds": 0.0,
+        "snapshot_seconds": 0.0,
+        "validation_failures": {}
+      }
+    ],
+    "fixture_population_seconds": 71.875,
+    "frames": 60800,
+    "native_preflight": {
+      "allowed": true,
+      "elapsed_seconds": 6.656,
+      "filesystem_type": "NTFS",
+      "free_disk_bytes": 231339700224,
+      "minimum_free_bytes": 62930192327,
+      "receipt_reopen_exact": true,
+      "sole_writer_lease_enforced": true,
+      "sqlite_integrity": "ok",
+      "synchronous": 2,
+      "wal": "wal"
+    },
+    "native_preflight_tests": {
+      "failures": 0,
+      "junit_sha256": "4dd39d8ed998e2ed4abbc833a98a2c34b03e07b04ec3e4b19682ad2385ddc4b6",
+      "passed": 75,
+      "seconds": 28.667,
+      "skipped": 0
+    },
+    "owner_database_inspected": false,
+    "raw_archive_bytes": 18782998,
+    "relevant_rows": 4767,
+    "result_sha256": "f879232bd2f4bc7913b2e44be802f788e7f975d077452ca197418d755dbeff56",
+    "scope": "SYNTHETIC_OWNER_DIMENSIONS_WITH_EXACT_PRODUCTION_RAW_BOOK_VALIDATION",
+    "snapshot_budget_seconds": 10,
+    "sqlite_rows": 12390,
+    "status": "TESTED",
+    "workflow_id": 37489007213
+  },
+  "owner_windows11_endurance": "TEST GATE",
+  "package": null,
+  "packaging": {
+    "disposition": "INTENTIONALLY_DEFERRED_BY_OWNER",
+    "engineering_gates_unchanged": true,
+    "installation_zip": null,
+    "installer": null,
+    "package_checkpoint_sha": null,
+    "payload_tree_sha256": null,
+    "reason": "No package or Desktop copy was authorized in Session 040.",
+    "status": "UNVERIFIED"
+  },
+  "qualification_workflows": {
+    "complete_engineering_only": {
+      "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+      "conclusion": "success",
+      "offline_job_id": 112356465500,
+      "status": "TESTED",
+      "url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37489007213",
+      "windows_job_id": 112359130787,
+      "workflow_id": 37489007213
+    },
+    "packaging": {
+      "disposition": "INTENTIONALLY_DEFERRED_BY_OWNER",
+      "status": "UNVERIFIED"
+    }
+  },
+  "required_gate": {
+    "actual_continuity_gaps": 0,
+    "actual_frame_rejections": 0,
+    "actual_frames": 307201,
+    "actual_queue_high_water": 197,
+    "burst_frames_per_second": 320,
+    "concurrent_work": [
+      "4.9s fake REST",
+      "bounded active history",
+      "strict read-only reports",
+      "10s pinned reader",
+      "passive WAL checkpoint"
+    ],
+    "controller_commit_stalls_seconds": [
+      0.1,
+      0.5,
+      1,
+      3,
+      5
+    ],
+    "native_actual_wall_seconds": 1813.421,
+    "native_provider_blocked_seconds": 35,
+    "normal_frames_per_second": 160,
+    "platform": "Windows Server 2025 hosted runner, Python 3.12.10, SQLite 3.49.1; not owner Windows 11",
+    "seconds": 1800,
+    "source": "scripts/session040_native_resilience.py",
+    "source_sha256": "bbba9709017c715064b79c99ba8ce46be948d5dfe691c1ff2a483f8c5a98cc05",
+    "status": "TESTED"
+  },
+  "retained_fault_attempt": {
+    "35_second_provider_stream_report_isolation": {
+      "seconds": 35.672,
+      "status": "TESTED"
+    },
+    "correction": "3efc924133bd0c2da90f9a39e4eb3c3a9cce6fa0: explicit POSIX fixture skip with mandatory Windows named pipe replacement; real high-resolution stall and derived monotonic endpoint resolution bound",
+    "failed": 2,
+    "junit_sha256": "210f79de0b6391d7ca3f4eccc8e7b1f488e909ec40012bd9da279be0fa82a206",
+    "passed": 291,
+    "seconds": 133.223,
+    "skipped": 0,
+    "status": "TEST GATE",
+    "tests": 293,
+    "workflow": 37480871509
+  },
+  "retained_s38_s39_native_gate": {
+    "actual_wall_stream_seconds": 240.422,
+    "checkpoint_sha": "4a858955a0803c9d65baed6c90bbd10f336cbcb7",
+    "errors": 0,
+    "failures": 0,
+    "frames": 38400,
+    "frames_per_second": 160,
+    "frames_rejected": 0,
+    "junit_seconds": 380.921,
+    "junit_sha256": "a4077ea27045f6230b7446fd34cc0150cca4bf996644065cadba5228a09e2fb2",
+    "max_service_gap_seconds": 0.7323943,
+    "max_service_seconds": 0.688,
+    "passed": 70,
+    "provider_calls": 0,
+    "queue_capacity": 512,
+    "queue_high_water": 119,
+    "scope": "S38/S39 regression; does not close pending S40 fault/30min/scale gates",
+    "skipped": 0,
+    "status": "TESTED",
+    "tests": 70,
+    "workflow_id": 37473813677
+  },
+  "scaled_report": {
+    "artifact_id": 11427443057,
+    "artifact_zip_sha256": "c79996cf4b86415208038311215883c2db105d36378e613209124a26da62bb40",
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "incremental_pages": 8,
+    "limitations": [
+      "Compact typed projection/index/manifest geometry, not 691200 genuine continuity records",
+      "Complex exact raw/book dependency validation is covered by separate production/native fixtures",
+      "Eight genuine incremental pages with explicit backlog, not an instant whole-campaign export",
+      "No live provider/network, Windows11 host or 48-hour actual-wall qualification"
+    ],
+    "max_page_seconds": 0.32799999999997453,
+    "max_snapshot_seconds": 0.047000000000025466,
+    "pages_with_explicit_backlog": 8,
+    "population_seconds": 357.6410000000001,
+    "projection_rows": 2764800,
+    "raw_padding_rows": 200000,
+    "represented_seconds": 172800,
+    "result_sha256": "1bc2c10674d708616bddadf266a7d04bff024f8c98f1c48997a40e513d649f03",
+    "rows_per_page": 512,
+    "scope": "SYNTHETIC_PROJECTION_GEOMETRY_ONLY",
+    "sqlite_bytes": 2432884736,
+    "status": "TESTED",
+    "validation_failures": 0,
+    "workflow_id": 37489007213
+  },
+  "schema_version": 1,
+  "starting_sha": "c0a290ec89f66507d155f2975976ba49132cab18",
+  "status": "TESTED",
+  "supported_envelope_limits": {
+    "controller_commit_stalls_seconds": "TESTED 0.1, 0.5, 1, 3 and 5 seconds during native sustained workload; independent capture remained lossless within workload.",
+    "engineering_only": true,
+    "handoff_bytes": 16777216,
+    "local_linux_path": "preflight-rejected ext4 host; not counted as sustained throughput pass",
+    "native_platform": "TESTED: Windows-2025Server-10.0.26100-SP0 hosted runner; selected D: NTFS preflight; Python 3.12.10; SQLite 3.49.1. Owner Windows 11 remains untested.",
+    "native_wall_duration": "TESTED 1,813.421 seconds wall clock (30-minute workload requested).",
+    "owner_windows11_actual": false,
+    "packaging": "INTENTIONALLY_DEFERRED_BY_OWNER",
+    "provider_errors": "TESTED fake normal/slow/failure matrix plus 35-second blocked-provider isolation; no genuine provider request.",
+    "queue_capacity_frames": 512,
+    "raw_archive_storage_stalls_seconds": {
+      "0.1": "TESTED fault case; bounded path tolerates or explicitly stops before loss",
+      "0.5": "TESTED fault case; bounded path tolerates or explicitly stops before loss",
+      "1": "UNVERIFIED as raw-archive stall duration",
+      "3": "UNVERIFIED as raw-archive stall duration",
+      "5": "TESTED preventive stop with exact accepted FIFO retained; never claimed uninterrupted success"
+    },
+    "scaled_export": "TESTED synthetic 48-hour compact-index geometry in eight incremental 512-row pages with remaining backlog explicit.",
+    "sealed_pending_batches": 64,
+    "stream_rate": "TESTED synthetic 160 frames/s with a one-second 320 frames/s burst every 15 seconds; not claimed as a universal provider maximum.",
+    "strict_export_fixture": "TESTED 4,777 relevant rows under unchanged 10-second snapshot budget; full strict raw/book validation.",
+    "strict_export_snapshot_budget_seconds": 10,
+    "unknown_all_thread_kernel_stalls": "UNVERIFIED: finite buffers cannot guarantee arbitrary disturbance tolerance"
+  }
+}

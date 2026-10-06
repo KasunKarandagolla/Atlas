@@ -1,0 +1,779 @@
+{
+  "artifact_hashes": {
+    "offline": {
+      "artifact_id": 11425056164,
+      "bytes": 50177,
+      "sha256": "340f748b91c4f1ecf4c4dad411999248fbfb2dfadc11c801f83e076849e1e537"
+    },
+    "offline_junit_sha256": "f2b48c2d7217f635a32caa99c5282aa0a5fbb1517d6c04812a126efa8285aac7",
+    "windows_engineering_evidence": {
+      "artifact_id": 11427443057,
+      "bytes": 316855645,
+      "installer_or_installation_zip_entries": 0,
+      "sha256": "c79996cf4b86415208038311215883c2db105d36378e613209124a26da62bb40"
+    },
+    "windows_log_sha256": "37f9003089e4a851d85755a4f758e5ce4d31da66f6564d8918b4dab539b481c8"
+  },
+  "assisted_enabled": false,
+  "authority_sources_read_in_full": {
+    "ATLAS_72_Hour_Consultation.pdf": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e",
+    "ATLAS_AGENT_ACTION_CRITIC_DEEPSEEK_V41_SHADOW_AMENDMENT_V1.md": "75a2273be0b9dd3cc3304684e008a0bbb07fd6db31c09a2f5caf3e6117dedd5e",
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md": "a082f02b50786cf3af0f32ce7f825f9c94c0ff7888a6f3a5c78a69b4c0d1c60d",
+    "ATLAS_CHATGPT_PROJECT_CURRENT_STATE_2026-10-04.md": "a3f5eb5e76dfcb4273cdc523727b1ca846b5ea0170badd96fd7cc8438e64a341",
+    "ATLAS_FINAL_DEVELOPMENT_SESSION_CONTEXT.md": "c01e4a2cf4428f3b50718fd168096f7aaa14360804fb157767e8f21d40cc8b79",
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_PROJECT_INSTRUCTIONS_CURRENT_2026-10-04.md": "7efda1f99fab7f4adf615ae3fe29ad06955a9be6bc34e3715370b1789b23a45a",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+  },
+  "branch": "fix/session-040-owner-runtime-resilience-preflight-health",
+  "capital_enabled": false,
+  "core_runtime_implementation_sha": "6cfd27c05380485c3b11709fdccabe042085f169",
+  "current_workflow_id": 37489007213,
+  "dependency_locks": {
+    "requirements-agent-lock.txt": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+    "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "requirements-stream-test-lock.txt": "1b9bec8a6e1c19748a962a45f4f91984bb0bf26bdd3e08d4c20bb26d89b82ba7",
+    "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5"
+  },
+  "economics": "NOT ESTIMABLE",
+  "engineering_checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+  "exact_checkpoint_static": {
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "compileall": "python -m compileall -q src scripts tests: exit 0",
+    "dependency_check": "python -m pip check: No broken requirements found",
+    "mypy_native_harness": "Success: no issues found in 1 source file",
+    "mypy_source": "Success: no issues found in 242 source files",
+    "mypy_windows": "Success: no issues found in 6 source files",
+    "ruff": "ruff check src scripts tests: All checks passed",
+    "status": "TESTED",
+    "workflow_id": 37489007213,
+    "workflow_log_sha256": "7d99ed67ff91a2dce203fa763f4d5669666b46484bf29d6431e0892167dba2a9"
+  },
+  "final_authority_hash_check": {
+    "assisted_enabled": false,
+    "capital_enabled": false,
+    "final_holdout_accessed": false,
+    "freeze_hashes_unchanged": true,
+    "lock_hashes_unchanged": true,
+    "model_authority": "ZERO",
+    "provider_model_changed": false,
+    "risk_policy_changed": false,
+    "status": "TESTED"
+  },
+  "final_holdout_accessed": false,
+  "focused_provenance": "Focused worktree assertions plus exact-checkpoint complete CI gates as individually identified; final native/full workflow remains required.",
+  "focused_worktree_suites": [
+    {
+      "artifact": "capture-health-final.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 86,
+      "seconds": 28.003,
+      "sha256": "31c2b42c06dd8f9071d4e6bb7ace8853fe7ab90500dcd443eea82eb551e72b50",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 86
+    },
+    {
+      "artifact": "preflight-final.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 19,
+      "seconds": 95.082,
+      "sha256": "5abb094424e2421e9ecc2463b120afdbdd85d758a53f797b213efbfe2b95e448",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 19
+    },
+    {
+      "artifact": "owner-runtime-final-principal.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 53,
+      "seconds": 41.647,
+      "sha256": "1742fb77b4b4743c50c0981ee25125aef486c7fa4b00276ddf7c6459f6a5f78d",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 53
+    },
+    {
+      "artifact": "provider-isolation-active-index-final.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 24,
+      "seconds": 48.732,
+      "sha256": "3cf770d46bd042918a97fcac39aabd1d3d25069ba20e0ba5004c6efc35af721f",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 24
+    },
+    {
+      "artifact": "native-focused-final-principal.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 6,
+      "seconds": 66.024,
+      "sha256": "eab3de2c5d13bfd36196f913a4a196ba1aa48359c0126cd76808dd58f645ee52",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 6
+    },
+    {
+      "artifact": "export-final-principal.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 10,
+      "seconds": 136.656,
+      "sha256": "e0d46c00ce7b535990d1d0e0b7c226e52ed2dc5af42c0657cd3d4b50fb78f94d",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 10
+    },
+    {
+      "artifact": "s39-longrun-final-principal.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 3,
+      "seconds": 929.409,
+      "sha256": "8406bcefacb416f206068b849db8350bf4b701be55ea8640b7844058ec5ebc21",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 3
+    },
+    {
+      "artifact": "s38-stream-final-principal.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 4,
+      "seconds": 53.961,
+      "sha256": "fa1526ec756c55abc44f89c033bafd867dfdd954866f16aadbbf55569709cd2d",
+      "skip_reasons": [
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_native_full_commit_storage_paths",
+          "reason": "native Windows storage-path comparison"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        }
+      ],
+      "skipped": 2,
+      "tests": 6
+    },
+    {
+      "artifact": "action29-final.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 40,
+      "seconds": 92.684,
+      "sha256": "381a6592cb02619c9c2eba50ce3f0d20e1cbd46f35cea39b761e6ec1c1b31224",
+      "skip_reasons": [
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "skipped": 1,
+      "tests": 41
+    },
+    {
+      "artifact": "action30-integrated-final.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 19,
+      "seconds": 69.63,
+      "sha256": "93e986d4f72af70ca526d7c2dc9853aea71a12083760fdd808b5f2226b0ff03f",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 19
+    },
+    {
+      "artifact": "action-query-cap-final.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 1,
+      "seconds": 5.853,
+      "sha256": "7cfab2d6c421cbd4522ef0de42d818e248e84567a257a858e41211219fa243e4",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 1
+    },
+    {
+      "artifact": "product36-final.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 24,
+      "seconds": 61.942,
+      "sha256": "aabfec095419992c8afc2d1f51745cfed1d420b4d093deb4d10cbc938d92622a",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 24
+    },
+    {
+      "artifact": "desktop-ipc-current-version.xml",
+      "errors": 0,
+      "failures": 0,
+      "passed": 6,
+      "seconds": 47.464,
+      "sha256": "c1eaff1018a6527c91723b5a4c7b1e0ad3dd3330542ac4de90fbc72ab2403fe4",
+      "skips": [],
+      "tests": 6
+    },
+    {
+      "artifact": "preflight-receipts-final.xml",
+      "checkpoint": "11d33430677433777af83881157acdee19ce6149",
+      "errors": 0,
+      "failures": 0,
+      "passed": 75,
+      "seconds": 171.644,
+      "sha256": "3dfb36841eff6ed19f59548a54ffac2ab8983464bf320b93da51267c1c64c52d",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 75
+    },
+    {
+      "artifact": "native-test-corrections.xml",
+      "checkpoint": "3efc924133bd0c2da90f9a39e4eb3c3a9cce6fa0",
+      "errors": 0,
+      "failures": 0,
+      "passed": 53,
+      "seconds": 156.361,
+      "sha256": "197917d2c93b6d496f2fee01fe272d82efaf0ff0c92956bafebfad52f2714e51",
+      "skip_reasons": [
+        {
+          "case": "test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        }
+      ],
+      "skipped": 1,
+      "tests": 54
+    }
+  ],
+  "full_offline": {
+    "all_offline": {
+      "errors": 0,
+      "failures": 0,
+      "passed": 1913,
+      "skipped": 8,
+      "tests": 1921
+    },
+    "artifact_id": 11425056164,
+    "artifact_zip_sha256": "340f748b91c4f1ecf4c4dad411999248fbfb2dfadc11c801f83e076849e1e537",
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "junit_artifact": "atlas-offline-fdec6aa711b95dd5efad207cbf6aa8c94176cfb2/offline-regression.xml",
+    "junit_sha256": "f2b48c2d7217f635a32caa99c5282aa0a5fbb1517d6c04812a126efa8285aac7",
+    "non_v2_v1": {
+      "errors": 0,
+      "failures": 0,
+      "passed": 485,
+      "skipped": 3,
+      "tests": 488
+    },
+    "seconds": 263.016,
+    "skip_reasons": [
+      {
+        "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+        "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+      },
+      {
+        "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+        "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+      },
+      {
+        "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+        "reason": "opt-in public testnet check; no credentials, network not required"
+      },
+      {
+        "case": "tests.v2.test_s38_sustained_public_stream.test_native_full_commit_storage_paths",
+        "reason": "native Windows storage-path comparison"
+      },
+      {
+        "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+        "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+      },
+      {
+        "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+        "reason": "could not import 'openai': No module named 'openai'"
+      },
+      {
+        "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+        "reason": "could not import 'httpx2': No module named 'httpx2'"
+      },
+      {
+        "case": "tests.v2.test_session040_provider_isolation.test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_progress[35]",
+        "reason": "Explicit native actual-wall provider timeout/stream isolation gate"
+      }
+    ],
+    "status": "TESTED",
+    "v2": {
+      "errors": 0,
+      "failures": 0,
+      "passed": 1428,
+      "skipped": 5,
+      "tests": 1433
+    },
+    "workflow_id": 37489007213
+  },
+  "full_offline_prior_checkpoints": [
+    {
+      "all_offline": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 1910,
+        "skipped": 8,
+        "tests": 1918
+      },
+      "artifact_id": 11418158113,
+      "checkpoint_sha": "4a858955a0803c9d65baed6c90bbd10f336cbcb7",
+      "junit_artifact": "workflow-37473813677-offline/offline-regression.xml",
+      "junit_sha256": "57714d181a0b80aff468587d809fe7e6ca6bea840243019933c82f0ebcd3b013",
+      "non_v2_v1": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 485,
+        "skipped": 3,
+        "tests": 488
+      },
+      "seconds": 412.759,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_native_full_commit_storage_paths",
+          "reason": "native Windows storage-path comparison"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        },
+        {
+          "case": "tests.v2.test_session040_provider_isolation.test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_progress[35]",
+          "reason": "Explicit native actual-wall provider timeout/stream isolation gate"
+        }
+      ],
+      "status": "TESTED",
+      "v2": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 1425,
+        "skipped": 5,
+        "tests": 1430
+      },
+      "workflow_id": 37473813677
+    },
+    {
+      "all_offline": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 1913,
+        "skipped": 8,
+        "tests": 1921
+      },
+      "artifact_id": 11422547671,
+      "artifact_zip_sha256": "62aa6c5d5b68f392d6a8f2c2abc30e1172407f4f1572cd024be9725e8d355ece",
+      "checkpoint_sha": "11d33430677433777af83881157acdee19ce6149",
+      "junit_artifact": "workflow-37483241953-offline/offline-regression.xml",
+      "junit_sha256": "632820675c89bafdf5831e62bf5da00f368020d3c51be96a5f09072b9f281f31",
+      "non_v2_v1": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 485,
+        "skipped": 3,
+        "tests": 488
+      },
+      "seconds": 427.345,
+      "skip_reasons": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_native_full_commit_storage_paths",
+          "reason": "native Windows storage-path comparison"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        },
+        {
+          "case": "tests.v2.test_session040_provider_isolation.test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_progress[35]",
+          "reason": "Explicit native actual-wall provider timeout/stream isolation gate"
+        }
+      ],
+      "status": "TESTED",
+      "v2": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 1428,
+        "skipped": 5,
+        "tests": 1433
+      },
+      "workflow_id": 37483241953
+    }
+  ],
+  "implementation_sha": "11d33430677433777af83881157acdee19ce6149",
+  "model_authority": "ZERO",
+  "optional_format_check": {
+    "artifact": "ruff-final.log",
+    "reason": "Optional format check reports existing unformatted files; required Ruff lint gate passes. No bulk formatting.",
+    "sha256": "cfa68f0ace72947d41b5f207077cf59bb1cbaa41cf50030a888b5a46d9afd2f3",
+    "status": "TEST GATE"
+  },
+  "owner_live_endurance": "TEST GATE",
+  "packaging": {
+    "desktop_copy_performed": false,
+    "disposition": "INTENTIONALLY_DEFERRED_BY_OWNER",
+    "engineering_gates_unchanged": true,
+    "installation_zip": null,
+    "installer": null,
+    "package_checkpoint_sha": null,
+    "payload_tree_sha256": null,
+    "reason": "Owner release instruction: complete S40 engineering and push; no installer, installation ZIP, Desktop copy or final distributable in this session. Subsequent full-V2 completion uses the independently reviewed engineering base.",
+    "status": "UNVERIFIED"
+  },
+  "provider_genuine_smoke": "BLOCKED BY ENVIRONMENT",
+  "qualification_workflows": {
+    "final_complete_engineering_only": {
+      "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+      "conclusion": "success",
+      "installer_steps": "INTENTIONALLY_SKIPPED_BY_OWNER_RELEASE_INSTRUCTION",
+      "offline_job_id": 112356465500,
+      "status": "TESTED",
+      "url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37489007213",
+      "windows_job_id": 112359130787,
+      "workflow_id": 37489007213
+    },
+    "owner_scale_preflight_final": {
+      "artifact_id": 11427443057,
+      "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+      "status": "TESTED",
+      "workflow_id": 37489007213
+    },
+    "packaging": {
+      "disposition": "INTENTIONALLY_DEFERRED_BY_OWNER",
+      "status": "UNVERIFIED"
+    }
+  },
+  "retained_failed_attempts": [
+    {
+      "artifact": "owner-runtime.xml",
+      "errors": 0,
+      "failures": 4,
+      "passed": 24,
+      "seconds": 33.475,
+      "sha256": "293cbe92cb363d2ca120ee5a38747858acfc80882ae68bc7d15a371a4054de25",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 28
+    },
+    {
+      "artifact": "owner-runtime-v2.xml",
+      "errors": 0,
+      "failures": 3,
+      "passed": 28,
+      "seconds": 69.873,
+      "sha256": "bf33367ed1ab613515685079bc4b9b38453f69bc702252913b56a08048fea0d0",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 31
+    },
+    {
+      "artifact": "owner-runtime-latch-metadata-first.xml",
+      "errors": 0,
+      "failures": 1,
+      "passed": 0,
+      "seconds": 7.888,
+      "sha256": "9f854b0b6ecd8eb12453d57c4c6d1a2b2ffc8be59d18f0c5b2285003cd456451",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 1
+    },
+    {
+      "artifact": "owner-runtime-final.xml",
+      "errors": 0,
+      "failures": 1,
+      "passed": 52,
+      "seconds": 43.835,
+      "sha256": "6a3d2558b8c947446de86ef5f2120c632e7d86727031dde7072eac3b1743c8fa",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 53
+    },
+    {
+      "artifact": "provider-malformed-metadata-reproduction.xml",
+      "errors": 0,
+      "failures": 2,
+      "passed": 0,
+      "seconds": 12.082,
+      "sha256": "3956bab5bb85500ad72afffefdaadc01b58c75e6165fa17b57d5d581c0beb0e9",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 2
+    },
+    {
+      "artifact": "action30-final.xml",
+      "errors": 0,
+      "failures": 1,
+      "passed": 15,
+      "seconds": 115.768,
+      "sha256": "eaba1becb838cd52f9aa5a9c642f24d6838e43d78ab2120b8b53340000df4c2f",
+      "skip_reasons": [],
+      "skipped": 0,
+      "tests": 16
+    }
+  ],
+  "retained_failed_workflows": [
+    {
+      "artifact": "workflow-37442464612-offline/offline-regression.xml",
+      "checkpoint": "69da5b560c55c8f7469cb595551c59d69a1b5831",
+      "errors": 0,
+      "failure_reason": "Stale desktop version assertion corrected; subsequent complete offline checkpoints pass. Failed original result retained.",
+      "failures": 1,
+      "native_and_package": "TEST GATE",
+      "passed": 1909,
+      "seconds": 401.416,
+      "sha256": "8385c7c2e417b9e3be7f89640de3e80e35dd72682dbbd81ea9b1511bb53a8f84",
+      "skips": [
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.integration.test_phase4_testnet_qualification.test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]",
+          "reason": "TEST GATE: authenticated testnet qualification requires explicit opt-in"
+        },
+        {
+          "case": "tests.runtime.test_safe_runtime.test_public_testnet_connectivity_opt_in",
+          "reason": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_native_full_commit_storage_paths",
+          "reason": "native Windows storage-path comparison"
+        },
+        {
+          "case": "tests.v2.test_s38_sustained_public_stream.test_actual_wall_mixed_stream_with_five_second_rest_wait",
+          "reason": "explicit actual-wall capacity probe, separate from deterministic regression"
+        },
+        {
+          "case": "tests.v2.test_session028_provider_amendment.test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network",
+          "reason": "could not import 'openai': No module named 'openai'"
+        },
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "reason": "could not import 'httpx2': No module named 'httpx2'"
+        },
+        {
+          "case": "tests.v2.test_session040_provider_isolation.test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_progress[35]",
+          "reason": "Explicit native actual-wall provider timeout/stream isolation gate"
+        }
+      ],
+      "static_gates": "UNVERIFIED",
+      "status": "TEST GATE",
+      "tests": 1918,
+      "workflow_id": 37442464612
+    },
+    {
+      "checkpoint_sha": "3efc924133bd0c2da90f9a39e4eb3c3a9cce6fa0",
+      "classification": "TEST_HARNESS_DEFECTS",
+      "conclusion": "failure",
+      "failures": "Windows child stdout used select.select (unsupported); long malformed parameter id exceeded Windows environment-variable limit. Corrected with communicate(timeout=30) and concise explicit pytest IDs; exact full workflow rerun passed at fdec6aa.",
+      "preserved": true,
+      "workflow_id": 37484361500
+    }
+  ],
+  "schema_version": 1,
+  "secret_scan": {
+    "files": 48,
+    "findings": [],
+    "limitations": "Targeted high-confidence credential/private-key patterns; binary files excluded; values suppressed. Not represented as a full Gitleaks run. Exact diff also receives principal review.",
+    "path_list_sha256": "d06e537543aaacf32b4ad0a3f34698d57733394427e074dec0bda5af6aed3495",
+    "scanner": "PEM private key; GitHub token; AWS access-key ID; Slack token; long high-entropy credential assignment",
+    "scope": "41 tracked files changed from accepted S39 start plus seven new S40 closure artifacts",
+    "status": "TESTED",
+    "values_suppressed": true
+  },
+  "starting_sha": "c0a290ec89f66507d155f2975976ba49132cab18",
+  "static": [
+    {
+      "artifact": "workflow-37489007213-offline.log",
+      "check": "ruff",
+      "result": "ruff check src scripts tests: All checks passed",
+      "sha256": "7d99ed67ff91a2dce203fa763f4d5669666b46484bf29d6431e0892167dba2a9",
+      "status": "TESTED"
+    },
+    {
+      "artifact": "workflow-37489007213-offline.log",
+      "check": "mypy-source",
+      "result": "Success: no issues found in 242 source files",
+      "sha256": "7d99ed67ff91a2dce203fa763f4d5669666b46484bf29d6431e0892167dba2a9",
+      "status": "TESTED"
+    },
+    {
+      "artifact": "workflow-37489007213-offline.log",
+      "check": "mypy-native-harness",
+      "result": "Success: no issues found in 1 source file",
+      "sha256": "7d99ed67ff91a2dce203fa763f4d5669666b46484bf29d6431e0892167dba2a9",
+      "status": "TESTED"
+    },
+    {
+      "artifact": "workflow-37489007213-offline.log",
+      "check": "mypy-windows-platform",
+      "result": "Success: no issues found in 6 source files",
+      "sha256": "7d99ed67ff91a2dce203fa763f4d5669666b46484bf29d6431e0892167dba2a9",
+      "status": "TESTED"
+    },
+    {
+      "artifact": "workflow-37489007213-offline.log",
+      "check": "compileall",
+      "result": "python -m compileall -q src scripts tests: exit 0",
+      "sha256": "7d99ed67ff91a2dce203fa763f4d5669666b46484bf29d6431e0892167dba2a9",
+      "status": "TESTED"
+    },
+    {
+      "artifact": "workflow-37489007213-offline.log",
+      "check": "dependency-check",
+      "result": "python -m pip check: No broken requirements found",
+      "sha256": "7d99ed67ff91a2dce203fa763f4d5669666b46484bf29d6431e0892167dba2a9",
+      "status": "TESTED"
+    }
+  ],
+  "status": "TESTED",
+  "windows_native_suites": {
+    "actual_wall_soak": {
+      "archive_bytes_final": 179259606,
+      "capture_batches_capacity": 64,
+      "capture_batches_high_water": 25,
+      "clean_reopen": "TESTED",
+      "continuity_gaps": 0,
+      "frames": 307201,
+      "frames_rejected": 0,
+      "handles_peak": 298,
+      "long_reader_exercises": 30,
+      "max_capture_duration_seconds": 0.672,
+      "max_controller_service_gap_seconds": 5.2179565,
+      "max_controller_service_seconds": 5.078,
+      "max_producer_lateness_seconds": 0.8558750149827574,
+      "passive_checkpoint_samples": 63,
+      "queue_capacity": 512,
+      "queue_high_water": 197,
+      "raw_capture_fifo_sha256": "4b7c13de06733c26127d174c911a41091e99604ba24728b2649dbed2e7d80997",
+      "raw_replay_fifo_sha256": "4b7c13de06733c26127d174c911a41091e99604ba24728b2649dbed2e7d80997",
+      "reader_errors": [],
+      "receipt_journal_bytes_final": 11633024,
+      "reports_bytes_final": 4258328,
+      "requested_seconds": 1800.0,
+      "rss_peak_bytes": 148078592,
+      "sqlite_bytes_final": 357355520,
+      "status": "TESTED",
+      "threads_peak": 7,
+      "wal_bytes_final": 39893992,
+      "wal_bytes_peak": 39893992,
+      "wall_clock_seconds": 1813.4209999999998
+    },
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "desktop_product": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "96931c44bcd86d060a1bd36a9448fdd2e59f644d0f5b45e47140547e8e9ba920",
+      "passed": 86,
+      "seconds": 7.337,
+      "skipped": 2,
+      "skips": [
+        {
+          "case": "tests.v2.test_session036_windows_broker.test_native_smoke_cannot_claim_windows_test_on_linux",
+          "reason": "native transport is exercised by the Windows validation harness"
+        },
+        {
+          "case": "tests.v2.test_session036_writer_broker_bounds.test_broker_saturation_is_explicit_and_handlers_release_on_disconnect",
+          "reason": "Unix broker transport is not present on this platform"
+        }
+      ],
+      "tests": 88
+    },
+    "dpapi_af_pipe_smoke": {
+      "active_handlers_after_close": 0,
+      "current_user_dacl_verified": true,
+      "damaged_secret_rejected": true,
+      "owner_secret_accessed": false,
+      "protected_secret_roundtrip": "TESTED",
+      "provider_calls": 0,
+      "status": "TESTED",
+      "transport": "AF_PIPE",
+      "wrong_key_rejected": true
+    },
+    "native_source_smoke": {
+      "assisted_enabled": false,
+      "capital_enabled": false,
+      "health_indicator": true,
+      "live_run_started": false,
+      "preflight_control": true,
+      "status": "TESTED",
+      "visible_window": true
+    },
+    "platform": "Windows-2025Server-10.0.26100-SP0",
+    "python": "3.12.10",
+    "s38_s39_stream": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "2073e66e88f0416766222acb765f0a1fe285f5e5ea65f38ade0361344e2482d6",
+      "passed": 70,
+      "seconds": 318.455,
+      "skipped": 0,
+      "skips": [],
+      "tests": 70
+    },
+    "s40_fault_matrix": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "b89bba9a4adb5a22db823e0ea7c88b8b60ef4aec310717108ce77c3b60e5e8ca",
+      "passed": 295,
+      "seconds": 110.59,
+      "skipped": 1,
+      "skips": [
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_broker_local_socket_direct_operation_has_one_provider_call",
+          "reason": "POSIX domain socket fixture; native authenticated AF_PIPE is covered by the mandatory Windows broker smoke"
+        }
+      ],
+      "tests": 296
+    },
+    "sqlite": "3.49.1",
+    "status": "TESTED",
+    "workflow_id": 37489007213
+  }
+}

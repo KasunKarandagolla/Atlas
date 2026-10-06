@@ -1,0 +1,293 @@
+{
+  "assisted_enabled": false,
+  "authority_source_locations": {
+    "accepted_provider_and_critic_amendments": "accepted docs/v2; preserved",
+    "consultation": "owner root; proposal remains UNACCEPTED",
+    "context_and_project_instructions": "owner root; preserved and not committed",
+    "current_state": "owner Downloads; status only",
+    "frozen_agent": "owner root and accepted docs/v2",
+    "frozen_v1": "owner root; preserved exact bytes",
+    "frozen_v2": "owner-provided root file; absent from accepted S39 committed tree"
+  },
+  "authority_sources_read_in_full": {
+    "ATLAS_72_Hour_Consultation.pdf": "768ae28f4732efc0a77955bb32114f7bd15b59428db064402c23abab3c642b0e",
+    "ATLAS_AGENT_ACTION_CRITIC_DEEPSEEK_V41_SHADOW_AMENDMENT_V1.md": "75a2273be0b9dd3cc3304684e008a0bbb07fd6db31c09a2f5caf3e6117dedd5e",
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "ATLAS_AGENT_PROVIDER_MODEL_AMENDMENT_DEEPSEEK_V41_V1.md": "a082f02b50786cf3af0f32ce7f825f9c94c0ff7888a6f3a5c78a69b4c0d1c60d",
+    "ATLAS_CHATGPT_PROJECT_CURRENT_STATE_2026-10-04.md": "a3f5eb5e76dfcb4273cdc523727b1ca846b5ea0170badd96fd7cc8438e64a341",
+    "ATLAS_FINAL_DEVELOPMENT_SESSION_CONTEXT.md": "c01e4a2cf4428f3b50718fd168096f7aaa14360804fb157767e8f21d40cc8b79",
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_PROJECT_INSTRUCTIONS_CURRENT_2026-10-04.md": "7efda1f99fab7f4adf615ae3fe29ad06955a9be6bc34e3715370b1789b23a45a",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+  },
+  "branch": "fix/session-040-owner-runtime-resilience-preflight-health",
+  "capital_enabled": false,
+  "context_refresh": "MAIN reread context and all three freezes at context/integration boundaries; no silent amendment. Consultation alternative evidence-policy amendment UNACCEPTED.",
+  "core_runtime_implementation_sha": "6cfd27c05380485c3b11709fdccabe042085f169",
+  "current_workflow_id": 37489007213,
+  "documentation_bundle_algorithm": "SHA256 of sorted (relative filename, NUL, exact file bytes, NUL) for the six members listed; excludes ledger to avoid self-reference.",
+  "documentation_bundle_members": [
+    "SESSION040_MEASURED_REPRODUCTIONS_V1.json",
+    "SESSION040_OFFLINE_VALIDATION_V1.json",
+    "SESSION040_OWNER_RUNTIME_FMEA_V1.md",
+    "SESSION040_OWNER_RUNTIME_RESILIENCE_HANDOFF.md",
+    "SESSION040_PREFLIGHT_AND_LIVE_HEALTH_CONTRACT_V1.md",
+    "SESSION040_WINDOWS_NATIVE_RESILIENCE_V1.json"
+  ],
+  "documentation_bundle_sha256": "95aa9e822c7ddda957cbd4de2d75fe6ca632c59c960c0caf99f2f8badec46a6a",
+  "documentation_member_sha256": {
+    "SESSION040_MEASURED_REPRODUCTIONS_V1.json": "53800597ffa23e9a7231f32a31b0f44aa891acccd302f15951245098f7fd1cbf",
+    "SESSION040_OFFLINE_VALIDATION_V1.json": "4036fbe2f81bc09e0f7e9bae119ec70eee65ab9d4ae541d053b9aab4740e8e7a",
+    "SESSION040_OWNER_RUNTIME_FMEA_V1.md": "f9f53ce55ace5947cd2c9bfb40e391995673a19f0a17e3dba9253a771d1fd5e1",
+    "SESSION040_OWNER_RUNTIME_RESILIENCE_HANDOFF.md": "a471de25a33db9584c949d54785361b4be9f6035ffcf294adcbc8968160d1add",
+    "SESSION040_PREFLIGHT_AND_LIVE_HEALTH_CONTRACT_V1.md": "8a8442c8f1b2afe7a350e5daf6f593781d050b1320994f0a745d65bc945fe8bf",
+    "SESSION040_WINDOWS_NATIVE_RESILIENCE_V1.json": "f17092e1ad4d04f32627e6e9b95968edb236406e8dfa5941245fb0c9adb75683"
+  },
+  "documentation_sha": "95aa9e822c7ddda957cbd4de2d75fe6ca632c59c960c0caf99f2f8badec46a6a",
+  "documentation_sha_note": "Deterministic SHA256 of six S40 artifacts excluding this self-referential ledger, recorded in documentation_bundle_sha256.",
+  "economics": "NOT ESTIMABLE",
+  "engineering_checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+  "engineering_gate": "TESTED",
+  "exact_checkpoint_static_gate": "TESTED",
+  "final_holdout_accessed": false,
+  "final_remote_sha": null,
+  "final_remote_sha_note": "Exact post-documentation push tip is returned by final git fetch and final handoff; tested code checkpoint is recorded separately to avoid self-referential manifest hash.",
+  "final_secret_scan": {
+    "changed_paths": 48,
+    "findings": 0,
+    "path_list_sha256": "d06e537543aaacf32b4ad0a3f34698d57733394427e074dec0bda5af6aed3495",
+    "scanner": "Targeted high-confidence PEM/token/credential-assignment patterns; not Gitleaks.",
+    "scope": "41 S40 changed tracked paths since accepted S39 plus seven new closure artifacts",
+    "status": "TESTED",
+    "values_suppressed": true
+  },
+  "full_offline_gate": "TESTED",
+  "implementation": "IMPLEMENTED",
+  "implementation_sha": "11d33430677433777af83881157acdee19ce6149",
+  "installer": null,
+  "model_authority": "ZERO",
+  "native_engineering_workflow_conclusion": "success",
+  "native_windows_final": {
+    "capture_batches_high_water": 25,
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "continuity_gaps": 0,
+    "frames": 307201,
+    "frames_rejected": 0,
+    "installer_status": "INTENTIONALLY_DEFERRED_BY_OWNER",
+    "max_capture_duration_seconds": 0.672,
+    "max_controller_service_seconds": 5.078,
+    "platform": "Windows-2025Server-10.0.26100-SP0",
+    "queue_high_water": 197,
+    "reader_errors": [],
+    "scaled_report_geometry_status": "TESTED",
+    "status": "TESTED",
+    "strict_export_owner_scale_status": "TESTED",
+    "wal_peak_bytes": 39893992,
+    "wall_clock_seconds": 1813.4209999999998,
+    "workflow_id": 37489007213
+  },
+  "native_workflow_artifact_id": 11427443057,
+  "native_workflow_artifact_sha256": "c79996cf4b86415208038311215883c2db105d36378e613209124a26da62bb40",
+  "native_workflow_id": 37489007213,
+  "no_force_push": true,
+  "no_merge": true,
+  "offline_workflow_artifact_id": 11425056164,
+  "offline_workflow_artifact_sha256": "340f748b91c4f1ecf4c4dad411999248fbfb2dfadc11c801f83e076849e1e537",
+  "one_ops_sqlite_writer": true,
+  "owner_evidence": {
+    "exact_database_available": false,
+    "exact_windows_call_and_export_hotspot": "UNVERIFIED",
+    "failed_run_rewritten": false,
+    "owner_summary_reviewed": true,
+    "run_id": "249acb36304c40e7bec88618cda6d9f3",
+    "source_sha": "1afe8de40190f1cfd297a8d744be2d842d8c0b1a",
+    "status": "TEST GATE"
+  },
+  "owner_live_endurance": "TEST GATE",
+  "package_build": "INTENTIONALLY_DEFERRED_BY_OWNER",
+  "package_checkpoint_sha": null,
+  "packaging": {
+    "desktop_copy_performed": false,
+    "disposition": "INTENTIONALLY_DEFERRED_BY_OWNER",
+    "engineering_gates_unchanged": true,
+    "installation_zip": null,
+    "installer": null,
+    "package_checkpoint_sha": null,
+    "payload_tree_sha256": null,
+    "reason": "Owner release instruction: no installer, installation ZIP, Desktop copy or final distributable in S40. No package failure is recorded; all engineering gates were run independently of package creation.",
+    "status": "UNVERIFIED"
+  },
+  "production_byte_identity": "Core capture/health/export/provider source unchanged since 6cfd27c05380485c3b11709fdccabe042085f169. Final 11d33430677433777af83881157acdee19ce6149 changes selected-path preflight to include capture receipts; native changed-seam plus full offline rerun required and recorded.",
+  "provider_model_changed": false,
+  "qualification_workflows": {
+    "full_engineering_only": {
+      "checkpoint": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+      "conclusion": "success",
+      "installer_validation": "INTENTIONALLY_SKIPPED_BY_OWNER",
+      "native_artifact_id": 11427443057,
+      "native_artifact_sha256": "c79996cf4b86415208038311215883c2db105d36378e613209124a26da62bb40",
+      "offline_artifact_id": 11425056164,
+      "offline_artifact_sha256": "340f748b91c4f1ecf4c4dad411999248fbfb2dfadc11c801f83e076849e1e537",
+      "offline_job_id": 112356465500,
+      "offline_status": "TESTED",
+      "package_build": "INTENTIONALLY_SKIPPED_BY_OWNER",
+      "run": 37489007213,
+      "url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37489007213",
+      "windows_job_id": 112359130787,
+      "windows_status": "TESTED"
+    },
+    "previous_owner_scale_preflight": {
+      "checkpoint": "11d33430677433777af83881157acdee19ce6149",
+      "run": 37483234207,
+      "status": "TESTED",
+      "superseded_for_final_checkpoint_by": 37489007213
+    }
+  },
+  "records": [
+    "SESSION040_MEASURED_REPRODUCTIONS_V1.json",
+    "SESSION040_OFFLINE_VALIDATION_V1.json",
+    "SESSION040_OWNER_RUNTIME_FMEA_V1.md",
+    "SESSION040_OWNER_RUNTIME_RESILIENCE_HANDOFF.md",
+    "SESSION040_OWNER_RUNTIME_RESILIENCE_LEDGER.json",
+    "SESSION040_PREFLIGHT_AND_LIVE_HEALTH_CONTRACT_V1.md",
+    "SESSION040_WINDOWS_NATIVE_RESILIENCE_V1.json"
+  ],
+  "remaining_gates": [
+    {
+      "gate": "Independent coordinating review of the pushed S40 engineering checkpoint",
+      "status": "TEST GATE"
+    },
+    {
+      "gate": "Subsequent full-V2 completion using accepted S40 checkpoint as base",
+      "scope": "planned subsequent engineering session, outside Session 040",
+      "status": "TEST GATE"
+    },
+    {
+      "gate": "Actual owner Windows 11 selected-path qualification and new-run commissioning after a separately authorized release",
+      "status": "TEST GATE"
+    },
+    {
+      "economics": "NOT ESTIMABLE",
+      "gate": "Genuine public-source endurance and prospective economics",
+      "status": "TEST GATE"
+    },
+    {
+      "gate": "Exact owner S39 DB/syscall/export hotspot; source DB not accessible",
+      "status": "UNVERIFIED"
+    },
+    {
+      "disposition": "INTENTIONALLY_DEFERRED_BY_OWNER",
+      "gate": "Installer/payload/install/reinstall/uninstall and Desktop copy",
+      "status": "UNVERIFIED"
+    }
+  ],
+  "retained_native_only_linux_attempt": {
+    "errors": "0",
+    "failures": "1",
+    "reason": "Native-only 35s workload attempted on preflight-rejected Linux host; incomplete expected capture. No throughput pass or provider-specific root cause inferred.",
+    "sha256": "678f44ca7ed578b662e29bf0a856e135b5cb46a19938c508ae3fb28a8f631019",
+    "skipped": "0",
+    "status": "TEST GATE",
+    "tests": "2",
+    "time": "161.844"
+  },
+  "retained_workflows": [
+    {
+      "head_sha": "6cfd27c05380485c3b11709fdccabe042085f169",
+      "reason": "Principal identified missing 30-second provider/native stream isolation coverage and stopped before any installer could be built.",
+      "run": 37440977395,
+      "status": "TEST GATE",
+      "workflow_conclusion": "cancelled"
+    },
+    {
+      "head_sha": "69da5b560c55c8f7469cb595551c59d69a1b5831",
+      "reason": "Full suite 1909 passed, 1 stale version assertion failed, 8 explicit skips; native/package skipped",
+      "run": 37442464612,
+      "status": "TEST GATE",
+      "workflow_conclusion": "failure"
+    },
+    {
+      "head_sha": "a00be375193d03acde5ca4e8ee167be9b760d3c3",
+      "reason": "Principal added pinned provider wire/runtime tests before native package",
+      "run": 37472844280,
+      "status": "TEST GATE",
+      "workflow_conclusion": "cancelled"
+    },
+    {
+      "head_sha": "11ea124731a6b42d5dff535ea94f8cb506f29550",
+      "reason": "Principal added explicit native scaled-report geometry package gate",
+      "run": 37473041097,
+      "status": "TEST GATE",
+      "workflow_conclusion": "cancelled"
+    },
+    {
+      "head_sha": "34b6bf28d8b6178222745ab1ad745906ca9e2491",
+      "reason": "Principal derived scale envelope from actual four-channel once-per-second report cadence rather than assuming four rows/s",
+      "run": 37473360198,
+      "status": "TEST GATE",
+      "workflow_conclusion": "cancelled"
+    },
+    {
+      "head_sha": "4a858955a0803c9d65baed6c90bbd10f336cbcb7",
+      "reason": "Offline 1910 passed/8 explicit skips and Windows S38/S39 70 passed; next fault invocation could not import pytest because test-tool PYTHONPATH was step-local. Native S40/soak/scale/package steps did not execute. No installer created.",
+      "run": 37473813677,
+      "status": "TEST GATE",
+      "workflow_conclusion": "failure"
+    },
+    {
+      "head_sha": "f5720168538f871ecdebc3b53f45436758629635",
+      "reason": "Windows S38/S39 70 passed; fault matrix 291 passed/2 failed: POSIX-only AF_UNIX fixture and monotonic endpoint quantization assertion. Native 35-second provider/stream/heartbeat/report isolation passed. Failures retained; explicit Windows skip and high-resolution measured injection fix at 3efc924. Sustained/scale/desktop gates did not execute.",
+      "run": 37480871509,
+      "status": "TEST GATE",
+      "workflow_conclusion": "failure"
+    },
+    {
+      "head_sha": "37213966fe00ef31eb7c2d74711bcf414dc6aaaf",
+      "reason": "Queued supplementary workflow cancelled before execution to correct independent qualification-scope concurrency.",
+      "run": 37481600023,
+      "status": "TEST GATE",
+      "workflow_conclusion": "cancelled"
+    },
+    {
+      "head_sha": "8d5e63bab0a25150feb5d332f22dc01056e65a43",
+      "reason": "Cold/fresh strict full export passed timings and validation; repeated identical request correctly reused 4777-row sealed manifest, but benchmark wrongly expected rows_written=0. Assertion corrected at 11d3343. No production export validation was weakened.",
+      "run": 37481774375,
+      "status": "TEST GATE",
+      "workflow_conclusion": "failure"
+    },
+    {
+      "head_sha": "3efc924133bd0c2da90f9a39e4eb3c3a9cce6fa0",
+      "reason": "Two Windows test-harness defects, retained: select.select on child stdout and oversized malformed pytest parameter ID in process environment. Fixed in test-only change at fdec6aa; full exact workflow 37489007213 passed.",
+      "run": 37484361500,
+      "status": "TEST GATE",
+      "workflow_conclusion": "failure"
+    },
+    {
+      "head_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+      "reason": "Complete offline/native engineering-only qualification; installer/payload/install lifecycle steps intentionally skipped by owner instruction.",
+      "run": 37489007213,
+      "status": "TESTED",
+      "workflow_conclusion": "success"
+    }
+  ],
+  "review_acceptance": "UNVERIFIED",
+  "risk_policy_changed": false,
+  "schema_version": 1,
+  "starting_sha": "c0a290ec89f66507d155f2975976ba49132cab18",
+  "status": "TESTED",
+  "tested_remote_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+  "unavailable_source_evidence": [
+    {
+      "effect": "Exact owner syscall/export hotspot UNVERIFIED; supplied coordinating evidence and faithful fixtures used",
+      "source": "complete owner run 249acb36304c40e7bec88618cda6d9f3 ops.sqlite/trace",
+      "status": "BLOCKED BY ENVIRONMENT"
+    },
+    {
+      "effect": "Absent referenced historical proposal; no contents invented and not necessary for bounded S40 defects",
+      "source": "ATLAS_FINALIZED_LEVERAGED_RETAIL_PROPOSAL.md",
+      "status": "UNVERIFIED"
+    }
+  ],
+  "workflow_run": 37489007213,
+  "workflow_run_url": "https://github.com/KasunKarandagolla/Atlas/actions/runs/37489007213"
+}

@@ -1,0 +1,783 @@
+{
+  "actual_linux_host_preflight": {
+    "allowed": false,
+    "assisted_enabled": false,
+    "authority": "ZERO",
+    "capital_enabled": false,
+    "completed_at_ns": 1791224126568612855,
+    "content_hash": "9d2a2dd385f6d0ddf88e22d751f5dbca732ce66f961e8fef33ff3e4e9d7316f2",
+    "elapsed_ns": 15367280468,
+    "endurance_qualification": "TEST GATE",
+    "facts": {
+      "dependencies": {
+        "duckdb": "1.5.5",
+        "pyarrow": "25.0.1",
+        "sqlite": "3.50.4",
+        "websockets": "17.0.1"
+      },
+      "filesystem_type": "ext4",
+      "free_disk_bytes": 99734970368,
+      "probe_removed": true,
+      "real_run_database_opened": false,
+      "sqlite_journal_mode": "wal",
+      "sqlite_synchronous": 2,
+      "temporary_probe_only": true
+    },
+    "identity_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "limits": {
+      "batch_frames": 64,
+      "burst_batches": 8,
+      "burst_frames_per_second": 320,
+      "maximum_mean_service_ns": 200000000,
+      "maximum_operation_ns": 800000000,
+      "measured_48h_projection_bytes": 50344153861,
+      "minimum_free_bytes": 62930192327,
+      "payload_bytes_per_frame": 4096,
+      "projection_class": "MEASURED_S39_SHORT_RUN_ESTIMATE_NOT_GUARANTEED",
+      "projection_source": "SESSION039_PUBLIC_EVIDENCE_RELIABILITY_LEDGER.json:capacity_projection_48h",
+      "queue_capacity_frames": 512,
+      "reserve_scope": "DB_WAL_ARCHIVES_REPORTS_FUTURE_EVIDENCE_AND_SAFETY_MARGIN",
+      "safety_margin": 2,
+      "storage_reserve_denominator": 4,
+      "storage_reserve_numerator": 5,
+      "sustained_batches": 16,
+      "sustained_frames_per_second": 160,
+      "total_budget_seconds": 30
+    },
+    "live_source_qualification": "TEST GATE",
+    "measurements": [
+      {
+        "bytes_processed": 0,
+        "count": 23,
+        "maximum_ns": 90723179,
+        "mean_ns": 28764550,
+        "minimum_ns": 6407266,
+        "operation": "ARCHIVE_REPLAY",
+        "p95_ns": 61034736
+      },
+      {
+        "bytes_processed": 6322176,
+        "count": 24,
+        "maximum_ns": 117258451,
+        "mean_ns": 47556737,
+        "minimum_ns": 19333674,
+        "operation": "ARCHIVE_WRITE_FSYNC",
+        "p95_ns": 106865466
+      },
+      {
+        "bytes_processed": 0,
+        "count": 7,
+        "maximum_ns": 936588334,
+        "mean_ns": 354307431,
+        "minimum_ns": 148309074,
+        "operation": "BURST_BATCH_SERVICE",
+        "p95_ns": 936588334
+      },
+      {
+        "bytes_processed": 0,
+        "count": 1,
+        "maximum_ns": 80863,
+        "mean_ns": 80863,
+        "minimum_ns": 80863,
+        "operation": "DISK_HEADROOM",
+        "p95_ns": 80863
+      },
+      {
+        "bytes_processed": 0,
+        "count": 1,
+        "maximum_ns": 26292456,
+        "mean_ns": 26292456,
+        "minimum_ns": 26292456,
+        "operation": "FILESYSTEM_LOCALITY",
+        "p95_ns": 26292456
+      },
+      {
+        "bytes_processed": 4096,
+        "count": 1,
+        "maximum_ns": 22251775,
+        "mean_ns": 22251775,
+        "minimum_ns": 22251775,
+        "operation": "FILESYSTEM_WRITE_FLUSH_READ_RENAME_DELETE",
+        "p95_ns": 22251775
+      },
+      {
+        "bytes_processed": 0,
+        "count": 1,
+        "maximum_ns": 146163,
+        "mean_ns": 146163,
+        "minimum_ns": 146163,
+        "operation": "PATH_CREATE",
+        "p95_ns": 146163
+      },
+      {
+        "bytes_processed": 0,
+        "count": 1,
+        "maximum_ns": 446702,
+        "mean_ns": 446702,
+        "minimum_ns": 446702,
+        "operation": "PROBE_CREATE",
+        "p95_ns": 446702
+      },
+      {
+        "bytes_processed": 0,
+        "count": 1,
+        "maximum_ns": 1732721026,
+        "mean_ns": 1732721026,
+        "minimum_ns": 1732721026,
+        "operation": "RUNTIME_DEPENDENCIES",
+        "p95_ns": 1732721026
+      },
+      {
+        "bytes_processed": 0,
+        "count": 1,
+        "maximum_ns": 2588218041,
+        "mean_ns": 2588218041,
+        "minimum_ns": 2588218041,
+        "operation": "SQLITE_CREATE",
+        "p95_ns": 2588218041
+      },
+      {
+        "bytes_processed": 0,
+        "count": 1,
+        "maximum_ns": 59025,
+        "mean_ns": 59025,
+        "minimum_ns": 59025,
+        "operation": "SQLITE_FULL_MODE",
+        "p95_ns": 59025
+      },
+      {
+        "bytes_processed": 0,
+        "count": 1,
+        "maximum_ns": 5162,
+        "mean_ns": 5162,
+        "minimum_ns": 5162,
+        "operation": "SQLITE_INSPECTION",
+        "p95_ns": 5162
+      },
+      {
+        "bytes_processed": 6291456,
+        "count": 24,
+        "maximum_ns": 953027076,
+        "mean_ns": 265884531,
+        "minimum_ns": 89015322,
+        "operation": "SQLITE_TRANSACTION_COMMIT",
+        "p95_ns": 693199913
+      },
+      {
+        "bytes_processed": 0,
+        "count": 1,
+        "maximum_ns": 143325,
+        "mean_ns": 143325,
+        "minimum_ns": 143325,
+        "operation": "SQLITE_WAL_MODE",
+        "p95_ns": 143325
+      },
+      {
+        "bytes_processed": 0,
+        "count": 16,
+        "maximum_ns": 901294969,
+        "mean_ns": 379697496,
+        "minimum_ns": 171119939,
+        "operation": "SUSTAINED_BATCH_SERVICE",
+        "p95_ns": 901294969
+      }
+    ],
+    "probe_mode": "HOST_PATH",
+    "reasons": [
+      "SQLITE_TRANSACTION_COMMIT_EXCEEDS_QUEUE_HEADROOM"
+    ],
+    "schema_version": 1,
+    "selected_path": "/home/kasun/Music/atlas-session-040-validation",
+    "started_at_ns": 1791224111201332912,
+    "status": "TEST GATE",
+    "version": "StoragePreflightResultV1"
+  },
+  "adaptive_validated_prefix_attempt": {
+    "artifact": "adaptive-export-fixed-chain.log",
+    "result": "20 bounded successful validated-prefix pages, no invalid rows; 4500 rows projected in 195.58 seconds on the limited Linux host, remaining backlog explicit. Not a completed whole commissioning export inside ten seconds. Total page duration includes work outside fixed read snapshot. Native margin gate pending.",
+    "sha256": "29356e48c7ef66ae74a1dc0a4102d202714db68d5516ffa53709becd5cf660fb",
+    "status": "TEST GATE"
+  },
+  "assisted_enabled": false,
+  "branch": "fix/session-040-owner-runtime-resilience-preflight-health",
+  "capital_enabled": false,
+  "economics": "NOT ESTIMABLE",
+  "extended_provider_local_failure": {
+    "captured_and_adopted_frames": 4470,
+    "checkpoint": "69da5b560c55c8f7469cb595551c59d69a1b5831",
+    "frames_rejected": 0,
+    "high_water_batches": 64,
+    "host_preflight_allowed": false,
+    "interpretation": "Bounded sealed raw backlog exhausted while sole controller lagged; explicit terminal failure. Not a raw queue overflow or a provider-specific root-cause claim. Native supported-host gate remains required.",
+    "junit": {
+      "artifact": "provider-soak-extended-local.xml",
+      "errors": 0,
+      "failures": 1,
+      "passed": 1,
+      "seconds": 161.844,
+      "sha256": "678f44ca7ed578b662e29bf0a856e135b5cb46a19938c508ae3fb28a8f631019",
+      "skips": [],
+      "tests": 2
+    },
+    "maximum_capture_duration_ns": 457505633,
+    "pending_batch_capacity": 64,
+    "queue_capacity": 512,
+    "queue_high_water_items": 76,
+    "raw_archive_bytes": 350709,
+    "reason": "CAPTURE_WRITER_BACKLOG_EXHAUSTED",
+    "receipt_journal_bytes": 110405,
+    "status": "TEST GATE"
+  },
+  "final_holdout_accessed": false,
+  "final_owner_preflight": {
+    "checkpoint_after_release": [
+      0,
+      1001,
+      1001
+    ],
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "free_disk_bytes": 231339700224,
+    "minimum_free_bytes": 62930192327,
+    "pinned_reader_checkpoint_before_release": [
+      0,
+      1001,
+      994
+    ],
+    "preflight_seconds": 6.656,
+    "probe_data_removed": true,
+    "real_run_database_opened": false,
+    "receipt_reopen_exact": true,
+    "second_writer_rejected": true,
+    "selected_path_filesystem": "NTFS",
+    "sqlite_integrity": "ok",
+    "sqlite_journal_mode": "wal",
+    "sqlite_synchronous": 2,
+    "status": "TESTED",
+    "strict_report_failures": {},
+    "workflow_id": 37489007213
+  },
+  "final_owner_scale_export": {
+    "artifact_id": 11427443057,
+    "artifact_sha256": "c79996cf4b86415208038311215883c2db105d36378e613209124a26da62bb40",
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "cold_seconds": 2.8910000000000764,
+    "cold_snapshot_seconds": 2.6410000000000764,
+    "fresh_seconds": 3.030999999999949,
+    "fresh_snapshot_seconds": 2.7649999999998727,
+    "has_more": [
+      false,
+      false,
+      false
+    ],
+    "owner_database_inspected": false,
+    "relevant_rows": 4767,
+    "repeat_seconds": 0.0,
+    "result_sha256": "f879232bd2f4bc7913b2e44be802f788e7f975d077452ca197418d755dbeff56",
+    "status": "TESTED",
+    "total_sqlite_rows": 12390,
+    "validation_failures": [
+      {},
+      {},
+      {}
+    ],
+    "workflow_id": 37489007213
+  },
+  "final_scaled_report": {
+    "artifact_id": 11427443057,
+    "artifact_sha256": "c79996cf4b86415208038311215883c2db105d36378e613209124a26da62bb40",
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "explicit_more_pages": 8,
+    "incremental_pages": 8,
+    "irrelevant_padding_rows": 200000,
+    "limitations": [
+      "Compact typed projection/index/manifest geometry, not 691200 genuine continuity records",
+      "Complex exact raw/book dependency validation is covered by separate production/native fixtures",
+      "Eight genuine incremental pages with explicit backlog, not an instant whole-campaign export",
+      "No live provider/network, Windows11 host or 48-hour actual-wall qualification"
+    ],
+    "max_page_seconds": 0.32799999999997453,
+    "max_snapshot_seconds": 0.047000000000025466,
+    "projection_rows": 2764800,
+    "represents_seconds": 172800,
+    "result_sha256": "1bc2c10674d708616bddadf266a7d04bff024f8c98f1c48997a40e513d649f03",
+    "scope": "SYNTHETIC_PROJECTION_GEOMETRY_ONLY",
+    "status": "TESTED",
+    "validation_failures": 0,
+    "workflow_id": 37489007213
+  },
+  "final_windows_junit": {
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "desktop_product": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "96931c44bcd86d060a1bd36a9448fdd2e59f644d0f5b45e47140547e8e9ba920",
+      "passed": 86,
+      "seconds": 7.337,
+      "skipped": 2,
+      "skips": [
+        {
+          "case": "tests.v2.test_session036_windows_broker.test_native_smoke_cannot_claim_windows_test_on_linux",
+          "reason": "native transport is exercised by the Windows validation harness"
+        },
+        {
+          "case": "tests.v2.test_session036_writer_broker_bounds.test_broker_saturation_is_explicit_and_handlers_release_on_disconnect",
+          "reason": "Unix broker transport is not present on this platform"
+        }
+      ],
+      "tests": 88
+    },
+    "s38_s39_stream": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "2073e66e88f0416766222acb765f0a1fe285f5e5ea65f38ade0361344e2482d6",
+      "passed": 70,
+      "seconds": 318.455,
+      "skipped": 0,
+      "skips": [],
+      "tests": 70
+    },
+    "s40_faults": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "b89bba9a4adb5a22db823e0ea7c88b8b60ef4aec310717108ce77c3b60e5e8ca",
+      "passed": 295,
+      "seconds": 110.59,
+      "skipped": 1,
+      "skips": [
+        {
+          "case": "tests.v2.test_session029_action_critic.test_action_broker_local_socket_direct_operation_has_one_provider_call",
+          "reason": "POSIX domain socket fixture; native authenticated AF_PIPE is covered by the mandatory Windows broker smoke"
+        }
+      ],
+      "tests": 296
+    },
+    "status": "TESTED",
+    "workflow_id": 37489007213
+  },
+  "final_windows_native_soak": {
+    "archive_bytes_final": 179259606,
+    "artifact_id": 11427443057,
+    "artifact_zip_sha256": "c79996cf4b86415208038311215883c2db105d36378e613209124a26da62bb40",
+    "capture_batches_high_water": 25,
+    "checkpoint_observations": 63,
+    "checkpoint_sha": "fdec6aa711b95dd5efad207cbf6aa8c94176cfb2",
+    "clean_reopen": "TESTED",
+    "continuity_gaps": 0,
+    "exports": {
+      "backlog_exports": 0,
+      "count": 61,
+      "max_seconds": 2.155999999999949,
+      "validation_failures": 0
+    },
+    "frames": 307201,
+    "frames_rejected": 0,
+    "handles_peak": 298,
+    "long_readers": 30,
+    "max_capture_seconds": 0.672,
+    "max_controller_service_gap_seconds": 5.2179565,
+    "max_controller_service_seconds": 5.078,
+    "max_sampled_capture_pending_batches": 14,
+    "max_sampled_queue_items": 64,
+    "platform": "Windows-2025Server-10.0.26100-SP0",
+    "python": "3.12.10",
+    "queue_high_water": 197,
+    "raw_fifo_sha256": "4b7c13de06733c26127d174c911a41091e99604ba24728b2649dbed2e7d80997",
+    "raw_replay_sha256": "4b7c13de06733c26127d174c911a41091e99604ba24728b2649dbed2e7d80997",
+    "reader_errors": [],
+    "receipt_bytes_final": 11633024,
+    "reports_bytes_final": 4258328,
+    "requested_seconds": 1800.0,
+    "resource_growth_rates_bytes_per_second": {
+      "archive_bytes_per_second": 99578.32491846681,
+      "cpu_seconds_delta": 759.515625,
+      "handles_delta": -1,
+      "peak_rss_bytes_delta": null,
+      "receipt_journal_bytes_per_second": 6462.119768668477,
+      "reports_bytes_per_second": 2365.492029439164,
+      "rss_bytes_delta": 29122560,
+      "sqlite_bytes_per_second": 198507.946118931,
+      "threads_delta": 0,
+      "wal_bytes_per_second": 21062.456289263282
+    },
+    "result_sha256": "98630886ecdb52eb6340fb13ce1a3c9f47997bda0075e8fb4b8dc5f960883e23",
+    "rss_peak_bytes": 148078592,
+    "sqlite": "3.49.1",
+    "sqlite_bytes_final": 357355520,
+    "status": "TESTED",
+    "threads_peak": 7,
+    "wal_bytes_final": 39893992,
+    "wal_bytes_peak": 39893992,
+    "wall_clock_seconds": 1813.4209999999998,
+    "workflow_id": 37489007213
+  },
+  "fixture_artifact_counts": {
+    "L2FrameArchiveCheckpointV3": 1920,
+    "OpsRecoveryEpochV1": 1,
+    "OpsSupervisorCycleReceiptV1": 1,
+    "OutcomeMaturityCycleReportV1": 1,
+    "ProductContractV2": 2,
+    "PublicArchiveExtentV1": 3360,
+    "PublicBookLineageCheckpointV1": 962,
+    "PublicStreamContinuityCheckpointV2": 1928,
+    "PublicStreamContinuityReportV1": 1924,
+    "PublicStreamIndexFeedV1": 2,
+    "PublicStreamSourceHealthV1": 1924,
+    "PublicStreamTransportBatchV2": 480,
+    "SubscriptionPlanV2": 1
+  },
+  "implementation_sha": "6cfd27c05380485c3b11709fdccabe042085f169",
+  "interrupted_local_scale": {
+    "reason": "First population process ended without result; resumed partial synthetic population was stopped by principal to run the properly derived native scale gate. No local scaling pass.",
+    "result": {
+      "assisted_enabled": false,
+      "authority": "ZERO",
+      "capital_enabled": false,
+      "declared_projection_rows_per_second": 4,
+      "implementation_sha": "34b6bf28d8b6178222745ab1ad745906ca9e2491",
+      "measurements": [],
+      "projection_rows": 691200,
+      "raw_padding_rows": 200000,
+      "represented_seconds": 172800,
+      "resumed_synthetic_rows": 329728,
+      "schema_version": 1,
+      "scope": "SYNTHETIC_PROJECTION_GEOMETRY_ONLY",
+      "source_or_48h_endurance_qualification": "TEST GATE",
+      "status": "TEST GATE"
+    },
+    "sha256": "62f4b525b29ca3fc344b294e91070f026fead91f62fdc47fa4ebaa5cb02db5ba",
+    "status": "TEST GATE"
+  },
+  "model_authority": "ZERO",
+  "old_composition_commit_stall": {
+    "frames_received": 544,
+    "frames_rejected": 1,
+    "high_water": 512,
+    "injected_operation": "SQLite outer transaction commit",
+    "injected_stall_seconds": 5,
+    "measured_commit_seconds": [
+      5.02996749600004
+    ],
+    "overflowed": true,
+    "queue_capacity": 512,
+    "rate_fps": 160,
+    "source_sha": "c0a290ec89f66507d155f2975976ba49132cab18",
+    "status": "TEST GATE"
+  },
+  "owner_db_access": "BLOCKED BY ENVIRONMENT",
+  "owner_live_endurance": "TEST GATE",
+  "profiles": [
+    {
+      "artifact": "exact-s39-composition-fixture-v2/active-read-profile.prof",
+      "cumulative_hotspots": [
+        {
+          "calls": 1,
+          "cumulative_seconds": 10.255717867000001,
+          "function": "tuning_export.py:1552:export_tuning_snapshot",
+          "own_seconds": 0.19053715200000002,
+          "primitive_calls": 1
+        },
+        {
+          "calls": 268,
+          "cumulative_seconds": 5.580535732,
+          "function": "tuning_export.py:244:_validated_row",
+          "own_seconds": 0.101655144,
+          "primitive_calls": 268
+        },
+        {
+          "calls": 1013,
+          "cumulative_seconds": 3.2098945810000004,
+          "function": "~:0:<method 'execute' of 'sqlite3.Connection' objects>",
+          "own_seconds": 3.209544274,
+          "primitive_calls": 1013
+        },
+        {
+          "calls": 953,
+          "cumulative_seconds": 2.66733599,
+          "function": "repository.py:1597:get_artifact",
+          "own_seconds": 0.073778788,
+          "primitive_calls": 820
+        },
+        {
+          "calls": 53,
+          "cumulative_seconds": 2.0097336930000003,
+          "function": "public_evidence_checkpoint.py:131:validate_book_checkpoint",
+          "own_seconds": 0.015813099,
+          "primitive_calls": 53
+        },
+        {
+          "calls": 212,
+          "cumulative_seconds": 1.7813661680000001,
+          "function": "public_evidence_checkpoint.py:75:validate_continuity_checkpoint",
+          "own_seconds": 0.039547244,
+          "primitive_calls": 212
+        },
+        {
+          "calls": 51,
+          "cumulative_seconds": 1.417079529,
+          "function": "repository.py:1622:_decode_public_locator",
+          "own_seconds": 0.002315574,
+          "primitive_calls": 51
+        },
+        {
+          "calls": 51,
+          "cumulative_seconds": 1.414272439,
+          "function": "compact_public_index.py:147:decode_row",
+          "own_seconds": 0.020516128,
+          "primitive_calls": 51
+        },
+        {
+          "calls": 2094,
+          "cumulative_seconds": 1.3440447660000001,
+          "function": "_serialization.py:151:canonical_json",
+          "own_seconds": 0.027819126000000003,
+          "primitive_calls": 2094
+        },
+        {
+          "calls": 121222,
+          "cumulative_seconds": 1.310766026,
+          "function": "_serialization.py:123:json_value",
+          "own_seconds": 0.624250323,
+          "primitive_calls": 3998
+        },
+        {
+          "calls": 102,
+          "cumulative_seconds": 1.233107902,
+          "function": "compact_public_index.py:46:_rows",
+          "own_seconds": 0.031488946000000004,
+          "primitive_calls": 102
+        },
+        {
+          "calls": 51,
+          "cumulative_seconds": 1.0696500180000001,
+          "function": "compact_public_index.py:69:_metadata",
+          "own_seconds": 0.00249567,
+          "primitive_calls": 51
+        }
+      ],
+      "sha256": "94620a69f55be747913d7d049802f92edac79a1d9e4eb9f8116b72650b46f55e",
+      "status": "TESTED",
+      "total_calls": 893570,
+      "total_seconds": 10.226391995000002
+    },
+    {
+      "artifact": "exact-s39-composition-fixture-v2/s40-index-cache.prof",
+      "cumulative_hotspots": [
+        {
+          "calls": 1,
+          "cumulative_seconds": 10.109688890000001,
+          "function": "tuning_export.py:1651:export_tuning_snapshot",
+          "own_seconds": 0.20413106900000003,
+          "primitive_calls": 1
+        },
+        {
+          "calls": 643,
+          "cumulative_seconds": 7.107159774,
+          "function": "tuning_export.py:343:_validated_row",
+          "own_seconds": 0.08427955100000001,
+          "primitive_calls": 643
+        },
+        {
+          "calls": 6569,
+          "cumulative_seconds": 2.513009652,
+          "function": "_serialization.py:151:canonical_json",
+          "own_seconds": 0.064380295,
+          "primitive_calls": 6569
+        },
+        {
+          "calls": 2706,
+          "cumulative_seconds": 2.4971499870000002,
+          "function": "tuning_export.py:177:get_artifact",
+          "own_seconds": 0.103835752,
+          "primitive_calls": 2265
+        },
+        {
+          "calls": 343312,
+          "cumulative_seconds": 2.370596529,
+          "function": "_serialization.py:123:json_value",
+          "own_seconds": 1.078989677,
+          "primitive_calls": 11597
+        },
+        {
+          "calls": 177,
+          "cumulative_seconds": 2.241062062,
+          "function": "public_evidence_checkpoint.py:131:validate_book_checkpoint",
+          "own_seconds": 0.038479785,
+          "primitive_calls": 177
+        },
+        {
+          "calls": 1017,
+          "cumulative_seconds": 1.960103348,
+          "function": "repository.py:1597:get_artifact",
+          "own_seconds": 0.062838356,
+          "primitive_calls": 954
+        },
+        {
+          "calls": 512,
+          "cumulative_seconds": 1.929228084,
+          "function": "public_evidence_checkpoint.py:75:validate_continuity_checkpoint",
+          "own_seconds": 0.025929711,
+          "primitive_calls": 512
+        },
+        {
+          "calls": 4265,
+          "cumulative_seconds": 1.7543075730000002,
+          "function": "_serialization.py:155:sha256_json",
+          "own_seconds": 0.036192010000000004,
+          "primitive_calls": 4265
+        },
+        {
+          "calls": 1020,
+          "cumulative_seconds": 1.6354107320000002,
+          "function": "public_evidence_checkpoint.py:45:decode_continuity_checkpoint",
+          "own_seconds": 0.052272037,
+          "primitive_calls": 1020
+        },
+        {
+          "calls": 678288,
+          "cumulative_seconds": 1.12095162,
+          "function": "~:0:<built-in method builtins.isinstance>",
+          "own_seconds": 0.756091936,
+          "primitive_calls": 678288
+        },
+        {
+          "calls": 1406,
+          "cumulative_seconds": 1.097006009,
+          "function": "~:0:<method 'execute' of 'sqlite3.Connection' objects>",
+          "own_seconds": 1.096599067,
+          "primitive_calls": 1406
+        }
+      ],
+      "sha256": "0eba484aef8a089a2fbd7469f7f111210f46b6ef1e89292a959b65be00afc4d6",
+      "status": "TESTED",
+      "total_calls": 2119689,
+      "total_seconds": 10.034311030000001
+    },
+    {
+      "artifact": "exact-s39-composition-fixture-v2/s40-validation-cache.prof",
+      "error_type": "TypeError",
+      "reason": "Empty retained profiler artifact; no timing claim from this profile.",
+      "sha256": "fa433c89e61178902327da13af7dc0b09aede94a362de11626c21700a658c353",
+      "status": "TEST GATE"
+    },
+    {
+      "artifact": "exact-s39-composition-fixture-v2/small-cache.prof",
+      "cumulative_hotspots": [
+        {
+          "calls": 256,
+          "cumulative_seconds": 3.6814046190000003,
+          "function": "tuning_export.py:398:_validated_row",
+          "own_seconds": 0.031894397000000005,
+          "primitive_calls": 256
+        },
+        {
+          "calls": 120,
+          "cumulative_seconds": 1.828601758,
+          "function": "<frozen importlib._bootstrap>:1349:_find_and_load",
+          "own_seconds": 0.015425765000000001,
+          "primitive_calls": 5
+        },
+        {
+          "calls": 120,
+          "cumulative_seconds": 1.8271051340000002,
+          "function": "<frozen importlib._bootstrap>:1304:_find_and_load_unlocked",
+          "own_seconds": 0.002457753,
+          "primitive_calls": 5
+        },
+        {
+          "calls": 116,
+          "cumulative_seconds": 1.8226054420000002,
+          "function": "<frozen importlib._bootstrap>:911:_load_unlocked",
+          "own_seconds": 0.001951716,
+          "primitive_calls": 4
+        },
+        {
+          "calls": 102,
+          "cumulative_seconds": 1.8220117640000002,
+          "function": "<frozen importlib._bootstrap_external>:993:exec_module",
+          "own_seconds": 0.0013441330000000002,
+          "primitive_calls": 4
+        },
+        {
+          "calls": 288,
+          "cumulative_seconds": 1.807347792,
+          "function": "<frozen importlib._bootstrap>:480:_call_with_frames_removed",
+          "own_seconds": 0.0014374750000000001,
+          "primitive_calls": 9
+        },
+        {
+          "calls": 102,
+          "cumulative_seconds": 1.8072624300000002,
+          "function": "~:0:<built-in method builtins.exec>",
+          "own_seconds": 0.002008244,
+          "primitive_calls": 4
+        },
+        {
+          "calls": 253,
+          "cumulative_seconds": 1.749599844,
+          "function": "tuning_export.py:174:validate_public_checkpoint",
+          "own_seconds": 0.012239653000000001,
+          "primitive_calls": 253
+        },
+        {
+          "calls": 2288,
+          "cumulative_seconds": 1.4370559170000001,
+          "function": "_serialization.py:151:canonical_json",
+          "own_seconds": 0.036019386,
+          "primitive_calls": 2288
+        },
+        {
+          "calls": 1,
+          "cumulative_seconds": 1.327284098,
+          "function": "__init__.py:1:<module>",
+          "own_seconds": 0.00038292800000000004,
+          "primitive_calls": 1
+        },
+        {
+          "calls": 1336,
+          "cumulative_seconds": 1.229794655,
+          "function": "tuning_export.py:232:get_artifact",
+          "own_seconds": 0.028594666,
+          "primitive_calls": 1168
+        },
+        {
+          "calls": 10,
+          "cumulative_seconds": 1.0462658310000001,
+          "function": "<frozen importlib._bootstrap_external>:1299:exec_module",
+          "own_seconds": 0.000158073,
+          "primitive_calls": 8
+        }
+      ],
+      "sha256": "d884bf299c86339f0d2e80e8ac2b7ec778d26627138f4ecf1d11f15f728702d7",
+      "status": "TESTED",
+      "total_calls": 847445,
+      "total_seconds": 6.833012591000005
+    }
+  ],
+  "retained_short_wall_attempt": {
+    "artifact": "native-short-attempt-001/resilience-result.json",
+    "reason": "Wrong fixture cleanup bound corrected afterwards; retained failure is not a native pass or concurrent 5s stall proof.",
+    "sha256": "6968fcfbcc12ce100e0e02a5e3c901e8ee32cb4f15749e5a9a58643dca54b47c",
+    "status": "TEST GATE"
+  },
+  "schema_version": 1,
+  "scope": "Synthetic failure mechanisms and profiles; exact owner syscall/export hotspot UNVERIFIED",
+  "starting_sha": "c0a290ec89f66507d155f2975976ba49132cab18",
+  "status": "TESTED",
+  "strict_export_failed_candidates": {
+    "active-read-profile.json": {
+      "elapsed_seconds": 10.410396244999902,
+      "error_type": "TuningExportBudgetExceeded",
+      "status": "TEST GATE"
+    },
+    "s40-index-cache.json": {
+      "elapsed_seconds": 10.134138725999946,
+      "error_type": "TuningExportBudgetExceeded",
+      "status": "TEST GATE"
+    },
+    "s40-validation-cache.json": {
+      "elapsed_seconds": 10.34886116000007,
+      "error_type": "TuningExportBudgetExceeded",
+      "status": "TEST GATE"
+    }
+  }
+}
