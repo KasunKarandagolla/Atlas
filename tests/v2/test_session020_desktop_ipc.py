@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from atlas import __version__ as ATLAS_VERSION
 from atlas.desktop.models import current_freshness, scanner_display
 from atlas.v2._serialization import sha256_json
 from atlas.v2.desktop.ipc import (
@@ -131,7 +132,7 @@ def test_protocol_rejects_bad_large_unknown_and_future_requests(tmp_path):
         health = client.request("health")
         diagnostics = health["diagnostics"]
         assert diagnostics["process"] == "atlas-v2-projection"
-        assert diagnostics["version"] == "2.0.0.dev25"
+        assert diagnostics["version"] == ATLAS_VERSION
         assert diagnostics["ipc_protocol_version"] == 2
         assert diagnostics["release_classification"] == "SHADOW_RELEASED"
         assert diagnostics["economics_status"] == "NOT ESTIMABLE"
