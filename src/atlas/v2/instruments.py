@@ -35,6 +35,7 @@ class VenueV2(StrEnum):
 class EnvironmentV2(StrEnum):
     MAINNET = "MAINNET"
     TESTNET = "TESTNET"
+    DEMO = "DEMO"
 
 
 class ProductTypeV2(StrEnum):
@@ -288,6 +289,7 @@ class InstrumentRegistryV2:
     def __init__(self) -> None:
         self._contracts: dict[tuple[InstrumentKeyV2, int], ProductContractV2] = {}
         self._by_hash: dict[str, ProductContractV2] = {}
+        self._keys: set[InstrumentKeyV2] = set()
 
     def register(self, contract: ProductContractV2) -> ProductContractV2:
         if not isinstance(contract, ProductContractV2):
@@ -300,7 +302,12 @@ class InstrumentRegistryV2:
             return current
         self._contracts[identity] = contract
         self._by_hash[contract.content_hash] = contract
+        self._keys.add(contract.key)
         return contract
+
+    def contains_key(self, key: InstrumentKeyV2) -> bool:
+        """Constant-time exact identity membership for bounded broad adoption."""
+        return key in self._keys
 
     def get_by_ref(self, product_ref: str) -> ProductContractV2:
         sha256_ref(product_ref, field="product_ref")

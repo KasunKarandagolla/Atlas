@@ -13,6 +13,11 @@ from ..memory.repository import ArtifactIndexEntryV2, OpsRepository, RestartSnap
 from .universe import ComputeTierV2, SubscriptionChannelV2, subscription_channels_for_tier
 
 _SUBSCRIPTION_SCHEMA_VERSION = 1
+MAX_ACTIVE_SUBSCRIPTION_SPECS_V2 = 4096
+MAX_SUBSCRIPTION_SPECS_PER_VENUE_V2 = 2048
+MAX_ACTIVE_WATCH_SUBSCRIPTIONS_V2 = 512
+MAX_TIER3_SUBSCRIPTIONS_V2 = 8
+MAX_SUBSCRIPTION_TOPICS_V2 = 32768
 
 _WATCH_EVENT_CHANNELS = {
     "BAR_CLOSE_1M": SubscriptionChannelV2.KLINE_1M,
@@ -122,11 +127,26 @@ def build_subscription_plan(
     open_positions: Iterable[InstrumentKeyV2] = (),
     created_at_ns: int,
 ) -> SubscriptionPlanV2:
+    if len(tiers) > MAX_ACTIVE_SUBSCRIPTION_SPECS_V2:
+        raise ValueError("ACTIVE_SUBSCRIPTION_POPULATION_OVERFLOW")
     watch_by_key: dict[InstrumentKeyV2, list[OpportunityWatchV2]] = {}
     for watch in active_watches:
         watch_by_key.setdefault(watch.key, []).append(watch)
+    if sum(map(len, watch_by_key.values())) > MAX_ACTIVE_WATCH_SUBSCRIPTIONS_V2:
+        raise ValueError("ACTIVE_WATCH_SUBSCRIPTION_OVERFLOW")
     positions = set(open_positions)
     keys = set(tiers) | set(watch_by_key) | positions
+    if len(keys) > MAX_ACTIVE_SUBSCRIPTION_SPECS_V2:
+        raise ValueError("ACTIVE_SUBSCRIPTION_POPULATION_OVERFLOW")
+    per_venue: dict[object, int] = {}
+    for key in keys:
+        per_venue[key.venue] = per_venue.get(key.venue, 0) + 1
+    if any(count > MAX_SUBSCRIPTION_SPECS_PER_VENUE_V2 for count in per_venue.values()):
+        raise ValueError("PER_VENUE_SUBSCRIPTION_POPULATION_OVERFLOW")
+    tier3 = {key for key in keys if key in positions or key in watch_by_key
+             or ComputeTierV2(tiers.get(key, ComputeTierV2.TIER_0)) == ComputeTierV2.TIER_3}
+    if len(tier3) > MAX_TIER3_SUBSCRIPTIONS_V2:
+        raise ValueError("TIER3_SUBSCRIPTION_POPULATION_OVERFLOW")
     specs: list[SubscriptionSpecV2] = []
     for key in sorted(keys, key=lambda item: item.to_canonical_json()):
         tier = ComputeTierV2.TIER_3 if key in positions or key in watch_by_key else ComputeTierV2(tiers.get(key, ComputeTierV2.TIER_0))
@@ -147,6 +167,8 @@ def build_subscription_plan(
                 tuple(watch.watch_id for watch in watches),
             )
         )
+    if sum(len(spec.channels) for spec in specs) > MAX_SUBSCRIPTION_TOPICS_V2:
+        raise ValueError("SUBSCRIPTION_TOPIC_POPULATION_OVERFLOW")
     return SubscriptionPlanV2.build(created_at_ns, specs)
 
 

@@ -20,6 +20,10 @@ from ..instruments import (
 )
 from .health import PublicSourceStateV2
 
+MAX_UNIVERSE_OBSERVATIONS_V2 = 4096
+MAX_UNIVERSE_PER_VENUE_V2 = 2048
+MAX_UNIVERSE_TIER3_V2 = 8
+
 
 class ComputeTierV2(IntEnum):
     TIER_0 = 0
@@ -69,6 +73,8 @@ class UniverseObservationV2:
     source_health_available_at_ns: int | None = None
     open_position: bool = False
     active_watch: bool = False
+    product_metadata_received_at_ns: int | None = None
+    observed_policy_history_days: Mapping[str, int] | None = None
 
     def __post_init__(self) -> None:
         if type(self.observed_days) is not int or self.observed_days < 0:
@@ -84,6 +90,8 @@ class UniverseObservationV2:
         ):
             raise ValueError("bar presence, open position and active watch must be explicit booleans")
         timestamp(self.received_at_ns, field="received_at_ns")
+        if self.product_metadata_received_at_ns is not None:
+            timestamp(self.product_metadata_received_at_ns, field="product_metadata_received_at_ns")
         health_available = (
             self.received_at_ns if self.source_health_available_at_ns is None else self.source_health_available_at_ns
         )
@@ -95,11 +103,16 @@ class UniverseObservationV2:
         if any(not policy or type(days) is not int or days < 0 for policy, days in self.strategy_history_days.items()):
             raise ValueError("strategy history requirements must use non-empty policy IDs and nonnegative days")
         object.__setattr__(self, "strategy_history_days", MappingProxyType(dict(self.strategy_history_days)))
+        if self.observed_policy_history_days is not None:
+            if any(not policy or type(days) is not int or days < 0
+                   for policy, days in self.observed_policy_history_days.items()):
+                raise ValueError("observed policy history must use non-empty policy IDs and nonnegative days")
+            object.__setattr__(self, "observed_policy_history_days",
+                               MappingProxyType(dict(self.observed_policy_history_days)))
 
     @property
     def content_hash(self) -> str:
-        return sha256_json(
-            {
+        body = {
                 "artifact_type": "UniverseObservationV2",
                 "product_ref": self.product.content_hash,
                 "observed_days": self.observed_days,
@@ -113,17 +126,30 @@ class UniverseObservationV2:
                 "open_position": self.open_position,
                 "active_watch": self.active_watch,
             }
-        )
+        if self.product_metadata_received_at_ns is not None:
+            body["product_metadata_received_at_ns"] = self.product_metadata_received_at_ns
+        if self.observed_policy_history_days is not None:
+            body["observed_policy_history_days"] = dict(self.observed_policy_history_days)
+        return sha256_json(body)
 
 
 @dataclass(frozen=True)
 class UniverseRuntimeResultV2:
     universe: UniverseContractV2
     tiers: Mapping[InstrumentKeyV2, ComputeTierV2]
+    exploration: tuple[UniverseExplorationEntryV2, ...] = ()
 
     def __post_init__(self) -> None:
         frozen = {key: ComputeTierV2(value) for key, value in self.tiers.items()}
         object.__setattr__(self, "tiers", MappingProxyType(frozen))
+        object.__setattr__(self, "exploration", tuple(self.exploration))
+
+
+@dataclass(frozen=True)
+class UniverseExplorationEntryV2:
+    key: InstrumentKeyV2
+    inclusion_probability: Decimal
+    sample_rank: str
 
 
 class DynamicUniverseRuntimeV2:
@@ -135,12 +161,24 @@ class DynamicUniverseRuntimeV2:
         min_observed_days: int = 30,
         min_turnover_usd: Decimal = Decimal("10000000"),
         max_spread_bps: Decimal = Decimal("10"),
+        max_product_age_ns: int | None = None,
+        max_active_observations: int = MAX_UNIVERSE_OBSERVATIONS_V2,
+        max_observations_per_venue: int = MAX_UNIVERSE_PER_VENUE_V2,
     ) -> None:
         if min_observed_days < 0 or min_turnover_usd < 0 or max_spread_bps < 0:
             raise ValueError("universe screening thresholds must be nonnegative")
+        if max_product_age_ns is not None and max_product_age_ns <= 0:
+            raise ValueError("product metadata maximum age must be positive")
+        if not 0 < max_active_observations <= MAX_UNIVERSE_OBSERVATIONS_V2:
+            raise ValueError("active universe bound exceeds the fixed maximum")
+        if not 0 < max_observations_per_venue <= MAX_UNIVERSE_PER_VENUE_V2:
+            raise ValueError("per-venue universe bound exceeds the fixed maximum")
         self.min_observed_days = min_observed_days
         self.min_turnover_usd = min_turnover_usd
         self.max_spread_bps = max_spread_bps
+        self.max_product_age_ns = max_product_age_ns
+        self.max_active_observations = max_active_observations
+        self.max_observations_per_venue = max_observations_per_venue
 
     def build_snapshot(
         self,
@@ -154,6 +192,7 @@ class DynamicUniverseRuntimeV2:
         top_tier_3: int = 5,
         input_refs: Sequence[str] = (),
         publication_at_ns: int | None = None,
+        exploration_count: int = 0,
     ) -> UniverseRuntimeResultV2:
         timestamp(decision_slot_ns, field="decision_slot_ns")
         timestamp(information_cutoff_ns, field="information_cutoff_ns")
@@ -164,12 +203,27 @@ class DynamicUniverseRuntimeV2:
             raise ValueError("universe derived publication chronology invalid")
         if top_tier_2 < 0 or top_tier_3 < 0:
             raise ValueError("compute tier sizes must be nonnegative")
+        if type(exploration_count) is not int or exploration_count < 0:
+            raise ValueError("exploration_count must be a nonnegative integer")
+        if len(observations) > self.max_active_observations:
+            raise ValueError("ACTIVE_UNIVERSE_POPULATION_OVERFLOW")
+        venue_counts: dict[object, int] = {}
+        seen_keys: set[InstrumentKeyV2] = set()
+        for item in observations:
+            key = item.product.key
+            if key in seen_keys:
+                raise ValueError("universe observations must contain each full instrument identity once")
+            seen_keys.add(key)
+            venue_counts[key.venue] = venue_counts.get(key.venue, 0) + 1
+        if any(value > self.max_observations_per_venue for value in venue_counts.values()):
+            raise ValueError("PER_VENUE_UNIVERSE_POPULATION_OVERFLOW")
         causal_refs = tuple(input_refs)
         if causal_refs != tuple(sorted(set(causal_refs))):
             raise ValueError("universe input refs must be sorted and unique")
         for ref in causal_refs:
             sha256_ref(ref, field="universe input ref")
         entries: list[UniverseEntryV2] = []
+        entry_by_key: dict[InstrumentKeyV2, UniverseEntryV2] = {}
         tier0: list[UniverseObservationV2] = []
         scanner: list[UniverseObservationV2] = []
         for item in observations:
@@ -180,6 +234,14 @@ class DynamicUniverseRuntimeV2:
                 continue
             tier0.append(item)
             eligibility_reasons: list[str] = []
+            metadata_received = item.product_metadata_received_at_ns
+            if metadata_received is None:
+                metadata_received = product.available_at_ns
+            if self.max_product_age_ns is not None and (
+                metadata_received > information_cutoff_ns
+                or information_cutoff_ns - metadata_received > self.max_product_age_ns
+            ):
+                eligibility_reasons.append("PRODUCT_METADATA_STALE")
             if product.trading_status != TradingStatusV2.TRADING:
                 eligibility_reasons.append(f"PRODUCT_{product.trading_status.value}")
             if not item.required_bars_present:
@@ -206,16 +268,19 @@ class DynamicUniverseRuntimeV2:
             strategies = {
                 policy_id: StrategyEligibilityV2(
                     EligibilityStatusV2.ELIGIBLE
-                    if item.observed_days >= required_days and data_eligible
+                    if (item.observed_policy_history_days.get(policy_id, 0)
+                        if item.observed_policy_history_days is not None else item.observed_days) >= required_days
+                    and data_eligible
                     else EligibilityStatusV2.NOT_ESTIMABLE,
                     None
-                    if item.observed_days >= required_days and data_eligible
+                    if (item.observed_policy_history_days.get(policy_id, 0)
+                        if item.observed_policy_history_days is not None else item.observed_days) >= required_days
+                    and data_eligible
                     else "POLICY_HISTORY_OR_DATA_REQUIREMENT_NOT_MET",
                 )
                 for policy_id, required_days in item.strategy_history_days.items()
             }
-            entries.append(
-                UniverseEntryV2(
+            entry = UniverseEntryV2(
                     product.key,
                     product.content_hash,
                     True,
@@ -226,7 +291,8 @@ class DynamicUniverseRuntimeV2:
                     FrozenMap(strategies),
                     tuple(sorted(set(scanner_reasons + ["CAPITAL_ELIGIBILITY_NOT_QUALIFIED"]))),
                 )
-            )
+            entries.append(entry)
+            entry_by_key[entry.key] = entry
         scanner.sort(
             key=lambda item: (
                 -item.trailing_24h_quote_turnover_usd,
@@ -234,19 +300,51 @@ class DynamicUniverseRuntimeV2:
             )
         )
         tier2_keys = {item.product.key for item in scanner[:top_tier_2]}
+        exploration_population = scanner[top_tier_2:]
+        exploration_count = min(exploration_count, len(exploration_population))
+        exploration_ranked = sorted(
+            exploration_population,
+            key=lambda item: sha256_json({
+                "decision_slot_ns": decision_slot_ns,
+                "selection_policy_hash": selection_policy_hash,
+                "key": item.product.key.to_dict(),
+            }),
+        )
+        exploration_probability = (
+            Decimal(exploration_count) / Decimal(len(exploration_population))
+            if exploration_population and exploration_count else Decimal("0")
+        )
+        exploration = tuple(
+            UniverseExplorationEntryV2(
+                item.product.key,
+                exploration_probability,
+                sha256_json({
+                    "decision_slot_ns": decision_slot_ns,
+                    "selection_policy_hash": selection_policy_hash,
+                    "key": item.product.key.to_dict(),
+                }),
+            )
+            for item in exploration_ranked[:exploration_count]
+        )
         tier3_primary = scanner[:top_tier_3]
         tier3_keys = {item.product.key for item in tier3_primary}
         tier3_keys.update(item.product.key for item in tier0 if item.open_position or item.active_watch)
         # Explicitly opted-in S3 history requirements receive 1M observations.
         # With the default S1/S2-only map this adds no subscriptions or tier changes.
         s3_policy = "S3_VWAP_STAT_MEAN_REVERSION"
-        tier3_keys.update(
-            item.product.key for item in tier0
-            if item.strategy_history_days.get(s3_policy, 0) >= 7
-            and any(entry.key == item.product.key and entry.strategy_eligibility.get(s3_policy) is not None
-                    and entry.strategy_eligibility[s3_policy].status == EligibilityStatusV2.ELIGIBLE
-                    for entry in entries)
+        s3_candidates = sorted(
+            (item for item in tier0
+             if item.strategy_history_days.get(s3_policy, 0) >= 7
+             and (entry := entry_by_key[item.product.key]).strategy_eligibility.get(s3_policy) is not None
+             and entry.strategy_eligibility[s3_policy].status == EligibilityStatusV2.ELIGIBLE
+             and item.product.key not in tier3_keys),
+            key=lambda item: (-item.trailing_24h_quote_turnover_usd, item.product.key.to_canonical_json()),
         )
+        s3_capacity = max(0, MAX_UNIVERSE_TIER3_V2 - len(tier3_keys))
+        tier3_keys.update(item.product.key for item in s3_candidates[:s3_capacity])
+        if len(tier3_keys) > MAX_UNIVERSE_TIER3_V2:
+            raise ValueError("TIER3_UNIVERSE_POPULATION_OVERFLOW")
+        scanner_keys = {item.product.key for item in scanner}
         tiers: dict[InstrumentKeyV2, ComputeTierV2] = {}
         for item in tier0:
             key = item.product.key
@@ -256,7 +354,7 @@ class DynamicUniverseRuntimeV2:
                 else ComputeTierV2.TIER_2
                 if key in tier2_keys
                 else ComputeTierV2.TIER_1
-                if any(entry.key == key and entry.scanner_eligible for entry in entries)
+                if key in scanner_keys
                 else ComputeTierV2.TIER_0
             )
         artifact_refs = tuple(
@@ -280,7 +378,7 @@ class DynamicUniverseRuntimeV2:
             selection_policy_hash,
             tuple(sorted(entries, key=lambda entry: entry.key.to_canonical_json())),
         )
-        return UniverseRuntimeResultV2(universe, tiers)
+        return UniverseRuntimeResultV2(universe, tiers, exploration)
 
 
 def subscription_channels_for_tier(tier: ComputeTierV2) -> tuple[SubscriptionChannelV2, ...]:
