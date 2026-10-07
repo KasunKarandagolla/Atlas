@@ -1,0 +1,140 @@
+{
+  "artifact": "SESSION041_EXECUTION_FINAL_REVIEW",
+  "version": 1,
+  "review_kind": "INDEPENDENT_OFFLINE_EXECUTION_SAFETY_REVIEW",
+  "workspace": "/tmp/atlas-session-041",
+  "base_sha": "657ea9eff18bb9bebea86828b8503bacdefa3bc5",
+  "status": "CENTRAL_REMEDIATION_PENDING",
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "authenticated_external_calls": 0,
+  "production_mutations_by_reviewer": 0,
+  "reviewed_files": [
+    "src/atlas/runtime/binance_demo.py",
+    "src/atlas/runtime/binance_native.py",
+    "src/atlas/runtime/binance_reconciliation.py",
+    "src/atlas/runtime/bybit_demo.py",
+    "src/atlas/runtime/bybit_native.py",
+    "src/atlas/runtime/selected_demo.py",
+    "src/atlas/runtime/writer_lock.py",
+    "src/atlas/persistence/sqlite.py",
+    "src/atlas/v2/product.py"
+  ],
+  "freeze_invariants": [
+    {
+      "invariant": "Required fill-time protection cannot weaken",
+      "result": "PRESERVED",
+      "evidence": "Both persisted dispatchers reject SUBMIT_ENTRY before send-started; fixed venue-specific opening gates remain UNQUALIFIED. Offline order compilation and conditional/full-stop readback do not promote either gate."
+    },
+    {
+      "invariant": "One selected credential writer",
+      "result": "PRESERVED_WITH_LOCAL_SCOPE",
+      "evidence": "Product chooses one default-data-root/control/selected-demo-writer.lock across venue, account, credential reference and selected data root. Credential retrieval follows lease acquisition; epoch and journal checks fence effects. Native task and reconciliation worker must finish before lease release."
+    },
+    {
+      "invariant": "Unknown sends, lost acknowledgements and duplicate IDs never authorize resend or reservation release",
+      "result": "PRESERVED",
+      "evidence": "Send-started persists UNKNOWN before an effect; attempted sends reject subsequent dispatch. Native statuses/fills and bounded history append evidence only. Current flat observation carries can_release_reservation=false."
+    },
+    {
+      "invariant": "Exact venue, environment, account and instrument evidence",
+      "result": "REMEDIATION_REQUIRED",
+      "evidence": "Native configs and REST bases bind DEMO versus TESTNET, product hashes and account scope. Three adversarial evidence association gaps were reported for central remediation below."
+    },
+    {
+      "invariant": "Authenticated read port remains GET-only and does not expose credentials",
+      "result": "PRESERVED_AT_APPLICATION_BOUNDARY",
+      "evidence": "Readers allowlist paths, use GET, bound payload/time, disable ambient proxy handlers and redirects, and reject credential echoes with fixed error codes. Credential repr is protected; demo child stdout/stderr are discarded; selected status contains no credential bytes."
+    },
+    {
+      "invariant": "Capital and assisted execution remain false",
+      "result": "PRESERVED",
+      "evidence": "Run manifest validation requires both flags false. Selected qualification and product active/stopped status retain both false. Public startup does not launch authenticated demo OMS."
+    }
+  ],
+  "findings": [
+    {
+      "id": "S41-EXEC-001",
+      "severity": "HIGH",
+      "title": "Bybit current account qualification omitted receipt identity and endpoint checks",
+      "file": "src/atlas/runtime/bybit_demo.py",
+      "boundary": "capture_bybit_account_snapshot",
+      "impact": "Foreign fresh account info/wallet receipts could be relabeled under the selected reader identity and qualify a reduction profile.",
+      "status": "CENTRALLY_FIXED_ADVERSARIAL_CHECK_PASSED",
+      "regression": "test_bybit_current_profile_rejects_receipts_from_foreign_scope"
+    },
+    {
+      "id": "S41-EXEC-002",
+      "severity": "HIGH",
+      "title": "Binance native fill association omitted durable account and product scope checks",
+      "file": "src/atlas/runtime/binance_native.py",
+      "boundary": "BinanceNativeNode.drain_events_to_journal",
+      "impact": "Matching symbol/client IDs could associate current native fill/status evidence to an intent whose durable command identity or instrument reference belongs to a foreign scope.",
+      "status": "CENTRALLY_FIXED_ADVERSARIAL_CHECK_PASSED",
+      "regression": "test_binance_native_fill_rejects_foreign_durable_account_or_product"
+    },
+    {
+      "id": "S41-EXEC-003",
+      "severity": "HIGH",
+      "title": "Binance REST fill association omitted durable account identity checks",
+      "file": "src/atlas/runtime/binance_reconciliation.py",
+      "boundary": "record_binance_trades",
+      "impact": "The trade helper accepted a selected account identity while its associated durable command identity belonged to another account; matching client and symbol alone permitted an evidence write.",
+      "status": "CENTRALLY_FIXED_PENDING_FINAL_CHECK",
+      "regression": "test_binance_rest_fill_rejects_foreign_durable_account",
+      "additional_regressions": [
+        "test_binance_rest_batch_validates_all_accounts_before_first_write",
+        "test_binance_rest_order_status_rejects_foreign_durable_account_before_write"
+      ]
+    }
+  ],
+  "validation": {
+    "python": "/home/kasun/Music/atlas/.venv/bin/python",
+    "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/runtime/test_session041*.py --junitxml=/tmp/s41-execution-final-review.xml",
+    "junit": "/tmp/s41-execution-final-review.xml",
+    "initial_full_run": {
+      "collected": 139,
+      "passed": 137,
+      "failed": 2
+    },
+    "initial_full_run_failures": "Existing Binance native intent fixtures omitted full scope fields required by the central fix; root notified to update fixtures.",
+    "independent_run": {
+      "collected": 17,
+      "passed": 16,
+      "failed": 1
+    },
+    "independent_run_failure": "Foreign durable account accepted by Binance REST fill association. Root notified for central fix.",
+    "final_focused_run": "PENDING",
+    "log": "/tmp/s41-execution-final-review.log",
+    "central_remediation_full_run": {
+      "tests": "140",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "145.160"
+    }
+  },
+  "qualification_limits": [
+    "No credential was retrieved from a real store, and no authenticated external venue call or node connection was performed.",
+    "Synthetic fixtures and source review do not qualify fill-time protection equivalence or live/capital operation.",
+    "The selected writer lease fences one local installation/user location; cross-host credential use requires separate venue/credential fencing.",
+    "Bybit profile qualification explicitly reports UNVERIFIED_ACCOUNT_IDENTITY: its fingerprint binds declared scope and credential, not a stable broker UID.",
+    "Credential redaction checks cover application-owned boundaries; third-party SDK internals, Windows DPAPI/ACL behavior and native authenticated connection logs were not exercised.",
+    "This artifact binds reviewed file bytes and test evidence hashes; it does not certify a final integrated commit SHA."
+  ],
+  "reviewer_owned_files": [
+    "docs/v2/SESSION041_EXECUTION_FINAL_REVIEW.json",
+    "tests/runtime/test_session041_execution_final_review.py"
+  ],
+  "source_sha256_before_final_focused_run": {
+    "src/atlas/runtime/binance_demo.py": "4fa18e7f99ae09e77921ceaffdb36f71c8fbabe7af3f19918eefde219d3410ce",
+    "src/atlas/runtime/binance_native.py": "0c0834b19635e91ac0f65a9ff41c50e21442ba517cd1b58e6f9f689761b4ffec",
+    "src/atlas/runtime/binance_reconciliation.py": "52fc70eeda014215e023b3c87c28e04516bf503406d2c852ed77b52cae79d203",
+    "src/atlas/runtime/bybit_demo.py": "2b876355d437b20a1a4d628bcab3ecf2b36566904e6049ee33e1677ea03858f6",
+    "src/atlas/runtime/bybit_native.py": "6976f9be06235239cafc4a8bf0e61cf112f92be4fbad03b4f1663f51986a48a7",
+    "src/atlas/runtime/selected_demo.py": "aa71146f3a9bdfbea8f87ca6eba10090d049b93815e19d93116572f51311e698",
+    "src/atlas/runtime/writer_lock.py": "d489e54f8a0d3c79c50480c66c27434d8a7ddb90eaa951c79dbd4715f4298a06",
+    "src/atlas/persistence/sqlite.py": "3f59992950b03fff67d5a0ea63ef5bdb6efb6617c38d5a352c9781252ffbdb97",
+    "src/atlas/v2/product.py": "25180faa40b4dd67ceb2b8df49c4b5985f1cddc240f18c6c3dc2f775f830c058"
+  }
+}
