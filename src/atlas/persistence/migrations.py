@@ -446,6 +446,16 @@ def bootstrap(conn: sqlite3.Connection) -> int:
                 _copy_v4_query_evidence(conn)
             _add_v5_columns(conn)
         _bootstrap_v2_extensions(conn)
+        conn.execute("CREATE INDEX IF NOT EXISTS execution_evidence_client_time_idx "
+                     "ON execution_evidence(client_order_id,trade_time_ns,execution_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS execution_evidence_intent_time_idx "
+                     "ON execution_evidence(intent_id,trade_time_ns,execution_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS order_status_intent_id_idx "
+                     "ON order_status_observations(intent_id,observation_id DESC)")
+        conn.execute("CREATE INDEX IF NOT EXISTS commands_unresolved_page_idx ON commands(command_id) "
+                     "WHERE outcome NOT IN ('DEFINITE_REJECT','RECONCILED')")
+        conn.execute("CREATE INDEX IF NOT EXISTS capability_qualification_latest_idx "
+                     "ON capability_qualification_log(capability_name,qualified_at_ns DESC,qualification_id DESC)")
         conn.execute(
             "INSERT INTO schema_metadata(key, value) VALUES('schema_version', ?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",

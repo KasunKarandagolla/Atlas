@@ -380,8 +380,7 @@ def test_economic_event_composite_key(tmp_path):
     j.append_economic_event(_ev("acct-A", "tx-1"))
     j.append_economic_event(_ev("acct-B", "tx-1"))  # different account allowed
     assert j.count("economic_events") == 2
-    with pytest.raises(PersistenceError):
-        j.append_economic_event(_ev("acct-A", "tx-1"))  # duplicate composite rejected
+    j.append_economic_event(_ev("acct-A", "tx-1"))  # exact replay is idempotent
     j.close()
 
 

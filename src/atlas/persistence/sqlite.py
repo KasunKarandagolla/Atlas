@@ -8,6 +8,7 @@ competing OMS; it stores ATLAS intent, risk, approvals and recovery evidence.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import threading
 from collections.abc import Iterator
@@ -470,14 +471,15 @@ class SQLiteJournal:
                 raise
 
     def _wrap(self, name: str, fn):
-        if self._closed:
-            raise PersistenceError(f"{name}: journal closed")
-        try:
-            return fn()
-        except PersistenceError:
-            raise
-        except sqlite3.Error as exc:
-            raise PersistenceError(f"{name} failed: {exc}") from exc
+        with self._transaction_lock:
+            if self._closed:
+                raise PersistenceError(f"{name}: journal closed")
+            try:
+                return fn()
+            except PersistenceError:
+                raise
+            except sqlite3.Error as exc:
+                raise PersistenceError(f"{name} failed: {exc}") from exc
 
     # ---- Plans / approvals / intents / reservations ----
     def create_trade_plan(self, plan: Any) -> None:
@@ -761,6 +763,21 @@ class SQLiteJournal:
 
         return self._wrap("load_intent", op)
 
+    def load_intent_by_client_order_id(self, client_order_id: str) -> Intent | None:
+        """Resolve a native receipt using the frozen local opening identity."""
+        if not isinstance(client_order_id, str) or re.fullmatch(r"[0-9a-f]{32}", client_order_id) is None:
+            raise PersistenceError("invalid frozen client order identity")
+
+        def op():
+            rows = self._conn.execute(
+                "SELECT * FROM intents WHERE client_order_id=? LIMIT 2", (client_order_id,)
+            ).fetchall()
+            if len(rows) > 1:
+                raise PersistenceError("ambiguous frozen client order identity")
+            return self._intent_from_row(rows[0]) if rows else None
+
+        return self._wrap("load_intent_by_client_order_id", op)
+
     def load_unresolved_intents(self) -> list[Intent]:
         terminal = LifecycleState.CLOSED.value
         return self._wrap(
@@ -772,6 +789,11 @@ class SQLiteJournal:
                 ).fetchall()
             ],
         )
+
+    def has_unresolved_intents(self) -> bool:
+        return self._wrap("has_unresolved_intents", lambda: self._conn.execute(
+            "SELECT 1 FROM intents WHERE lifecycle<>? LIMIT 1", (LifecycleState.CLOSED.value,)
+        ).fetchone() is not None)
 
     def update_intent_state(
         self,
@@ -1031,8 +1053,27 @@ class SQLiteJournal:
     def list_commands_for_intent(self, intent_id: str) -> list[Command]:
         return self.load_commands_for_intent(intent_id)
 
-    def load_unresolved_commands(self) -> list[Command]:
+    def load_unresolved_commands(
+        self, *, limit: int | None = None, after_command_id: str | None = None
+    ) -> list[Command]:
+        if limit is not None and (type(limit) is not int or not 1 <= limit <= 32):
+            raise PersistenceError("unresolved command page exceeds its bound")
+        if after_command_id is not None and (
+            limit is None or not isinstance(after_command_id, str) or not 1 <= len(after_command_id) <= 128
+        ):
+            raise PersistenceError("invalid unresolved command cursor")
         terminal = (CommandOutcome.DEFINITE_REJECT.value, CommandOutcome.RECONCILED.value)
+        if limit is not None:
+            query = "SELECT * FROM commands WHERE outcome NOT IN ('DEFINITE_REJECT','RECONCILED')"
+            params: list[Any] = []
+            if after_command_id is not None:
+                query += " AND command_id>?"
+                params.append(after_command_id)
+            query += " ORDER BY command_id LIMIT ?"
+            params.append(limit)
+            return self._wrap("load_unresolved_commands", lambda: [
+                self._command_from_row(row) for row in self._conn.execute(query, params).fetchall()
+            ])
         return self._wrap(
             "load_unresolved_commands",
             lambda: [
@@ -1079,19 +1120,53 @@ class SQLiteJournal:
 
     def _append_economic(self, e: EconomicEvent):
         with self._tx() as c:
-            c.execute(
-                "INSERT INTO economic_events VALUES(?,?,?,?,?,?,?,?)",
-                (
-                    e.account,
-                    e.venue_transaction_id,
-                    e.currency,
-                    canonical_decimal_str(e.amount),
-                    e.effective_time_ns,
-                    e.received_at_ns,
-                    e.event_type,
-                    e.revision,
-                ),
+            values = (
+                e.account,
+                e.venue_transaction_id,
+                e.currency,
+                canonical_decimal_str(e.amount),
+                e.effective_time_ns,
+                e.received_at_ns,
+                e.event_type,
+                e.revision,
             )
+            existing = c.execute(
+                "SELECT * FROM economic_events WHERE account=? AND venue_transaction_id=?",
+                (e.account, e.venue_transaction_id),
+            ).fetchone()
+            if existing:
+                prior = tuple(existing[key] for key in (
+                    "account", "venue_transaction_id", "currency", "amount", "effective_time_ns",
+                    "received_at_ns", "event_type", "revision",
+                ))
+                if prior != values:
+                    raise PersistenceError("conflicting economic event for transaction identity")
+                return False
+            c.execute("INSERT INTO economic_events VALUES(?,?,?,?,?,?,?,?)", values)
+            return True
+
+    def load_economic_event(self, account: str, venue_transaction_id: str) -> EconomicEvent | None:
+        """Load one immutable economic row by its durable natural key."""
+
+        def op():
+            row = self._conn.execute(
+                "SELECT * FROM economic_events WHERE account=? AND venue_transaction_id=?",
+                (account, venue_transaction_id),
+            ).fetchone()
+            if row is None:
+                return None
+            return EconomicEvent(
+                row["account"],
+                row["venue_transaction_id"],
+                row["currency"],
+                Decimal(row["amount"]),
+                row["effective_time_ns"],
+                row["received_at_ns"],
+                row["event_type"],
+                row["revision"],
+            )
+
+        return self._wrap("load_economic_event", op)
 
     def append_execution_evidence(self, fill: Any) -> bool:
         def op():
@@ -1143,15 +1218,23 @@ class SQLiteJournal:
 
         return self._wrap("append_execution_evidence", op)
 
-    def load_execution_evidence(self, *, intent_id: str | None = None) -> list[Any]:
+    def load_execution_evidence(
+        self, *, intent_id: str | None = None, client_order_id: str | None = None
+    ) -> list[Any]:
         from atlas.runtime.fill_dedup import FillRecord
 
         def op():
             q = "SELECT * FROM execution_evidence"
-            params = ()
+            filters: list[str] = []
+            values: list[str] = []
             if intent_id is not None:
-                q += " WHERE intent_id=?"
-                params = (intent_id,)
+                filters.append("intent_id=?")
+                values.append(intent_id)
+            if client_order_id is not None:
+                filters.append("client_order_id=?")
+                values.append(client_order_id)
+            if filters:
+                q += " WHERE " + " AND ".join(filters)
             q += " ORDER BY trade_time_ns,execution_id"
             return [
                 FillRecord(
@@ -1170,7 +1253,7 @@ class SQLiteJournal:
                     r["source"],
                     r["raw_hash"],
                 )
-                for r in self._conn.execute(q, params).fetchall()
+                for r in self._conn.execute(q, tuple(values)).fetchall()
             ]
 
         return self._wrap("load_execution_evidence", op)
@@ -1197,16 +1280,21 @@ class SQLiteJournal:
 
         self._wrap("append_order_status_observation", op)
 
-    def load_order_status_observations(self, *, intent_id: str | None = None) -> list[Any]:
+    def load_order_status_observations(self, *, intent_id: str | None = None, limit: int | None = None) -> list[Any]:
         from atlas.runtime.fill_dedup import OrderStatusRecord
+
+        if limit is not None and (type(limit) is not int or not 1 <= limit <= 256 or intent_id is None):
+            raise ValueError("bounded order status lookup requires an intent and limit 1..256")
 
         def op():
             q = "SELECT * FROM order_status_observations"
-            params = ()
+            params: tuple[Any, ...] = ()
             if intent_id is not None:
                 q += " WHERE intent_id=?"
                 params = (intent_id,)
-            q += " ORDER BY observation_id"
+            q += " ORDER BY observation_id" if limit is None else " ORDER BY observation_id DESC LIMIT ?"
+            if limit is not None:
+                params += (limit,)
             return [
                 OrderStatusRecord(
                     r["order_id"],
@@ -2202,6 +2290,26 @@ class SQLiteJournal:
 
         return self._wrap("load_latest_capability_evidence", op)
 
+    def load_latest_capability_qualification(self, capability_name: str) -> Any | None:
+        from atlas.runtime.capability_ledger import EvidenceState, QualificationRecord
+
+        if not isinstance(capability_name, str) or not 1 <= len(capability_name) <= 128:
+            raise PersistenceError("invalid capability qualification name")
+
+        def op():
+            row = self._conn.execute(
+                "SELECT * FROM capability_qualification_log WHERE capability_name=? "
+                "ORDER BY qualified_at_ns DESC,qualification_id DESC LIMIT 1", (capability_name,)
+            ).fetchone()
+            if row is None:
+                return None
+            return QualificationRecord(row["qualification_id"], row["capability_name"],
+                EvidenceState(row["previous_state"]), EvidenceState(row["new_state"]), row["test_run_id"],
+                tuple(json.loads(row["evidence_refs_json"])), row["qualified_by"], row["qualified_at_ns"],
+                row["target_profile_hash"])
+
+        return self._wrap("load_latest_capability_qualification", op)
+
     def release_reservation_from_flat_certificate(self, certificate: Any) -> Reservation:
         self.append_flat_certificate(certificate)
         if not getattr(certificate, "can_release_reservation", False):
@@ -2221,10 +2329,11 @@ class SQLiteJournal:
         return int(self._wrap("count", lambda: self._conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]))
 
     def close(self) -> None:
-        if self._closed:
-            return
-        try:
-            self._conn.close()
-            self._closed = True
-        except sqlite3.Error as exc:
-            raise PersistenceError(f"close failed: {exc}") from exc
+        with self._transaction_lock:
+            if self._closed:
+                return
+            try:
+                self._conn.close()
+                self._closed = True
+            except sqlite3.Error as exc:
+                raise PersistenceError(f"close failed: {exc}") from exc
