@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="57" time="111.975" timestamp="2026-10-07T10:25:11.046151+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_production_breadth" name="test_full_inventory_is_distinct_bounded_and_restart_reproduces_workset" time="45.609" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_new_mark_receipt_cannot_refresh_old_quote_fields" time="2.805" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_suspension_is_current_and_old_state_is_still_replayable" time="2.924" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_pending_read_services_writer_and_keeps_one_original_completion" time="0.099" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_runtime_recovery_preserves_nonbenchmark_dual_venue_inventory" time="2.919" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_population_overflow_is_an_explicit_gate" time="3.741" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_is_actual_and_preserves_its_source_cutoff" time="2.704"><failure message="ValueError: artifact_ref already indexes different immutable content">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-170/test_workset_publication_is_ac0')
+
+    def test_workset_publication_is_actual_and_preserves_its_source_cutoff(tmp_path):
+        p = product(5)
+        clock = [NOW]
+    
+        def advancing_clock():
+            clock[0] += 100
+            return clock[0]
+    
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            publish(repo, [p])
+&gt;           body = publish_broad_workset(repo, products=(p,), snapshot=snapshot((p,), at=NOW),
+                available_at_ns=NOW, acquisition_ref="a" * 64, source_state={}, clock_ns=advancing_clock)
+
+tests/v2/test_session041_production_breadth.py:216: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/broad_universe.py:223: in publish_broad_workset
+    repository.register_artifacts(tuple(replace(entry, created_at_ns=observations_published_ns,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f0c8ac62870&gt;
+entries = (ArtifactIndexEntryV2(artifact_ref='e98e327c72fe099bf7916f6d5e4eccd6f5b37a488d5230d66a1be7c58d37df6b', artifact_type='...fda87de9fb7d27d62fdcf710'), ('source_ref', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')))),))),)
+
+    def register_artifacts(self, entries: Sequence[ArtifactIndexEntryV2]) -&gt; tuple[ArtifactIndexEntryV2, ...]:
+        """Atomically register a deterministic batch of immutable artifact rows."""
+        batch = tuple(entries)
+        if any(not isinstance(entry, ArtifactIndexEntryV2) for entry in batch):
+            raise ValueError("artifact batch must contain ArtifactIndexEntryV2 entries")
+        from ..data.public_archive_extents import extent_ref
+    
+        compact = tuple(entry for entry in batch
+            if entry.artifact_type in ("PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1")
+            and isinstance(entry.metadata.get("archive_chunk_id"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", str(entry.metadata["archive_chunk_id"])) is not None
+            and self.get_artifact(extent_ref("ops-l2-frames" if entry.artifact_type == "PublicStreamFrameIndexV1"
+                else "ops-observations", str(entry.metadata["archive_chunk_id"]))) is not None)
+        if compact:
+            selected = {entry.artifact_ref for entry in compact}
+            with self.atomic_composition():
+                self.register_public_archive_entries(compact)
+                self.register_artifacts(tuple(entry for entry in batch if entry.artifact_ref not in selected))
+            return batch
+        original_batch = batch
+        if self._public_locator_enabled and batch:
+            known = self.get_artifact_metadata_by_refs(tuple(entry.artifact_ref for entry in batch))
+            aliases = set()
+            for entry in batch:
+                # A compact locator must never be shadowed by a generic row
+                # with the same ref and different immutable domain content.
+                prior = known.get(entry.artifact_ref)
+                if prior is not None and prior["artifact_type"] in (
+                        "PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1",
+                        "PublicStreamSourceHealthV1"):
+                    exact = self.get_artifact(entry.artifact_ref)
+                    if exact != entry:
+                        raise ValueError("artifact identity conflicts with immutable public evidence")
+                    with self._lock:
+                        alias = self._connection.execute(
+                            "SELECT 1 FROM public_stream_archive_locator_v1 WHERE artifact_ref=?",
+                            (bytes.fromhex(entry.artifact_ref),)).fetchone()
+                    if alias is not None:
+                        aliases.add(entry.artifact_ref)
+            batch = tuple(entry for entry in batch if entry.artifact_ref not in aliases)
+        encoded: dict[str, tuple[ArtifactIndexEntryV2, str]] = {}
+        for entry in batch:
+            metadata_json = canonical_json(entry.metadata)
+            previous = encoded.get(entry.artifact_ref)
+            if previous is not None:
+                prior_entry, prior_json = previous
+                if (
+                    prior_entry.artifact_type,
+                    prior_entry.content_hash,
+                    prior_entry.created_at_ns,
+                    prior_entry.available_at_ns,
+                    prior_json,
+                ) != (
+                    entry.artifact_type,
+                    entry.content_hash,
+                    entry.created_at_ns,
+                    entry.available_at_ns,
+                    metadata_json,
+                ):
+                    raise ValueError("artifact batch repeats an identity with different immutable content")
+            else:
+                encoded[entry.artifact_ref] = (entry, metadata_json)
+        with self._transaction() as connection:
+            existing: dict[str, sqlite3.Row] = {}
+            refs = tuple(encoded)
+            for offset in range(0, len(refs), 500):
+                ref_batch = refs[offset : offset + 500]
+                if not ref_batch:
+                    continue
+                marks = ",".join("?" for _ in ref_batch)
+                rows = connection.execute(
+                    f"SELECT artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json "
+                    f"FROM artifact_index WHERE artifact_ref IN ({marks})",
+                    ref_batch,
+                ).fetchall()
+                existing.update((row["artifact_ref"], row) for row in rows)
+            for entry, metadata_json in encoded.values():
+                row = existing.get(entry.artifact_ref)
+                if row is not None:
+                    stored_tuple = (
+                        row["artifact_type"],
+                        row["content_hash"],
+                        row["created_at_ns"],
+                        row["available_at_ns"],
+                        row["metadata_json"],
+                    )
+                    requested_tuple = (
+                        entry.artifact_type,
+                        entry.content_hash,
+                        entry.created_at_ns,
+                        entry.available_at_ns,
+                        metadata_json,
+                    )
+                    if stored_tuple != requested_tuple:
+&gt;                       raise ValueError("artifact_ref already indexes different immutable content")
+E                       ValueError: artifact_ref already indexes different immutable content
+
+src/atlas/v2/memory/repository.py:1220: ValueError</failure></testcase><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_rejects_regressing_clock" time="2.648" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_broad_source_paginates_and_keeps_both_venues_and_nontrading_products" time="0.009" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_broad_source_cursor_loop_fails_closed_without_partial_products" time="0.006" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_broad_source_snapshot_is_bounded_and_exposes_complete_manifest" time="0.064" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_stale_metadata_is_marked_incomplete_and_never_hidden" time="0.026" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_future_metadata_receipt_is_rejected_at_actual_completion" time="0.008" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_refresh_missing_previously_active_contract_fails_closed_and_retains_last_population" time="0.009" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_repeated_bulk_snapshot_preserves_distinct_actual_receipts" time="0.024" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_enrichment_budget_deferral_does_not_invalidate_complete_cheap_venue_snapshot" time="0.020" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_cheap_endpoint_failure_is_scoped_to_its_venue" time="0.043" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_cheap_refresh_cadence_returns_no_new_observation_claims_between_due_cycles" time="0.023" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_bulk_missing_active_symbol_cannot_claim_complete_market" time="0.013" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_cadence_reuse_preserves_prior_failure_and_metadata_cache_failure" time="0.018" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_metadata_refresh_and_market_acquisition_share_request_budget" time="0.005" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_bootstrap_partial_venue_failure_cannot_leave_successful_partial_cache" time="0.008" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_depth_snapshot_has_independent_http_transport_owner" time="0.002" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_post_request_timeout_does_not_certify_a_late_market_response" time="0.013" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_binance_turnover_is_actual_bulk_observation_with_exact_payload" time="0.014" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_history_backfill_keeps_refreshing_current_native_pages_after_restore" time="0.039" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_metadata_receipts_after_request_start_are_adopted_at_actual_completion" time="0.015" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_metadata_clock_regression_invalidates_the_cache" time="0.002" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_market_receipt_after_actual_completion_cannot_become_healthy" time="0.006" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_failed_market_read_does_not_fabricate_a_current_source_receipt" time="0.025" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BYBIT-trades]" time="0.041" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BYBIT-funding]" time="0.017" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BYBIT-oi]" time="0.037" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BINANCE-funding]" time="0.016" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BINANCE-oi]" time="0.024" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_stream_plan_is_venue_aware_and_aggregate_queue_keeps_global_caps" time="0.009" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_binance_depth_frame_preserves_pu_update_range_without_claiming_book" time="0.014" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_stream_plan_fails_closed_on_deep_fanout_and_missing_product_revision" time="0.021" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_runtime_binance_snapshot_worker_bridges_buffered_actual_diff" time="2.530" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_runtime_persists_typed_trade_identity_and_receipt_continuity" time="3.760" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[0.1]" time="3.148" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[0.5]" time="3.282" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[1.0]" time="3.899" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[3.0]" time="6.069" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[5.0]" time="7.552" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_invalidated_snapshot_cannot_seed_a_book_after_worker_completion[epoch]" time="2.657" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_invalidated_snapshot_cannot_seed_a_book_after_worker_completion[overflow]" time="2.590" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_invalidated_snapshot_cannot_seed_a_book_after_worker_completion[deadline]" time="2.565" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_progress_reads_actual_lane_health_and_does_not_retain_stale_current_claim" time="0.007" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_actual_connection_epoch_change_invalidates_even_apparently_contiguous_book" time="3.054" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_broad_profile_rejects_stale_metadata_but_default_profile_remains_compatible" time="0.004" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_fresh_metadata_receipt_does_not_require_fabricating_a_contract_revision" time="0.007" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_known_probability_exploration_is_stable_outside_primary_shortlist" time="0.017" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_broad_universe_population_bounds_fail_closed_per_venue_and_globally" time="0.005" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_broad_subscription_plan_has_bounded_tier3_fanout" time="0.017" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_s3_native_cadence_promotion_stays_within_global_tier3_cap" time="0.022" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_policy_eligibility_uses_observed_per_policy_history_when_supplied" time="0.004" /></testsuite></testsuites>

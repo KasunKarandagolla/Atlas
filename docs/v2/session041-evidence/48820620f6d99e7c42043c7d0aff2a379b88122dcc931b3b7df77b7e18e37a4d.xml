@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="15.166" timestamp="2026-10-07T10:30:19.074391+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_is_actual_and_preserves_its_source_cutoff" time="7.625"><failure message="assert FrozenMap(_it...eWorksetV2'))) == {'version': '...a7e8c22', ...}&#10;  &#10;  Omitting 10 identical items, use -vv to show&#10;  Differing items:&#10;  {'active_product_refs': ('8dd20365e55df87156689af2a02195185b2b45ccfda87de9fb7d27d62fdcf710',)} != {'active_product_refs': ['8dd20365e55df87156689af2a02195185b2b45ccfda87de9fb7d27d62fdcf710']}&#10;  {'tiers': FrozenMap(_items=(('{&quot;base_asset_id&quot;:&quot;ALT5&quot;,&quot;contract_revision&quot;:&quot;7b02aa1af8da8f91903cb29df7bc02c2366c160acb1...product&quot;:&quot;LINEAR_PERPETUAL&quot;,&quot;quote_asset&quot;:&quot;USDT&quot;,&quot;schema_version&quot;:1,&quot;settlement_asset&quot;:&quot;USDT&quot;,&quot;venue&quot;:&quot;BYBIT&quot;}', 0),))} != {'tiers': {'{&quot;base_asset_id&quot;:&quot;ALT5&quot;,&quot;contract_revision&quot;:&quot;7b02aa1af8da8f91903cb29d...&#10;  &#10;  ...Full output truncated (6 lines hidden), use '-vv' to show">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-175/test_workset_publication_is_ac0')
+
+    def test_workset_publication_is_actual_and_preserves_its_source_cutoff(tmp_path):
+        p = product(5)
+        clock = [NOW]
+    
+        def advancing_clock():
+            clock[0] += 100
+            return clock[0]
+    
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            publish(repo, [p])
+            body = publish_broad_workset(repo, products=(p,), snapshot=snapshot((p,), at=NOW),
+                available_at_ns=NOW, acquisition_ref="a" * 64, source_state={}, clock_ns=advancing_clock)
+            assert body["source_cutoff_ns"] == NOW
+            assert body["available_at_ns"] == NOW + 300
+            assert latest_workset(repo, cutoff_ns=NOW)["available_at_ns"] == NOW
+            actual = latest_workset(repo, cutoff_ns=clock[0])
+&gt;           assert actual == body
+E           assert FrozenMap(_it...eWorksetV2'))) == {'version': '...a7e8c22', ...}
+E             
+E             Omitting 10 identical items, use -vv to show
+E             Differing items:
+E             {'active_product_refs': ('8dd20365e55df87156689af2a02195185b2b45ccfda87de9fb7d27d62fdcf710',)} != {'active_product_refs': ['8dd20365e55df87156689af2a02195185b2b45ccfda87de9fb7d27d62fdcf710']}
+E             {'tiers': FrozenMap(_items=(('{"base_asset_id":"ALT5","contract_revision":"7b02aa1af8da8f91903cb29df7bc02c2366c160acb1...product":"LINEAR_PERPETUAL","quote_asset":"USDT","schema_version":1,"settlement_asset":"USDT","venue":"BYBIT"}', 0),))} != {'tiers': {'{"base_asset_id":"ALT5","contract_revision":"7b02aa1af8da8f91903cb29d...
+E             
+E             ...Full output truncated (6 lines hidden), use '-vv' to show
+
+tests/v2/test_session041_production_breadth.py:222: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_rejects_regressing_clock" time="4.913" /></testsuite></testsuites>

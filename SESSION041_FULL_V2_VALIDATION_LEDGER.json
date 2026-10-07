@@ -1,0 +1,853 @@
+{
+  "assisted_enabled": false,
+  "capital_enabled": false,
+  "economic_status": "NOT ESTIMABLE",
+  "engineering_closure_passed": false,
+  "evidence": [
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.v2.test_session041_production_breadth",
+          "kind": "failure",
+          "message": "ValueError: unsupported canonical JSON type mappingproxy",
+          "name": "test_adoption_waits_for_durable_archive_before_proving_current_source_health"
+        },
+        {
+          "class": "tests.v2.test_session041_production_breadth",
+          "kind": "failure",
+          "message": "ValueError: unsupported canonical JSON type mappingproxy",
+          "name": "test_future_market_event_is_rejected_without_rescuing_publication_time"
+        }
+      ],
+      "passed": 0,
+      "path": "/tmp/atlas-s41-adoption.xml",
+      "retained_path": "docs/v2/session041-evidence/6d53ed0ae9c72d8db57caacf9559819d39cc3c4da76f368e3e5d5e5b3b4aa951.xml",
+      "sha256": "6d53ed0ae9c72d8db57caacf9559819d39cc3c4da76f368e3e5d5e5b3b4aa951",
+      "totals": {
+        "errors": 0,
+        "failures": 2,
+        "skipped": 0,
+        "tests": 2
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.v2.test_session041_production_breadth",
+          "kind": "failure",
+          "message": "ValueError: unsupported canonical JSON type mappingproxy",
+          "name": "test_adoption_waits_for_durable_archive_before_proving_current_source_health"
+        },
+        {
+          "class": "tests.v2.test_session041_production_breadth",
+          "kind": "failure",
+          "message": "ValueError: unsupported canonical JSON type mappingproxy",
+          "name": "test_future_market_event_is_rejected_without_rescuing_publication_time"
+        }
+      ],
+      "passed": 0,
+      "path": "/tmp/atlas-s41-adoption2.xml",
+      "retained_path": "docs/v2/session041-evidence/f23826f54affc4dfbb39f80ce4da8a3b19103ae432235fec7de468f0ddc03459.xml",
+      "sha256": "f23826f54affc4dfbb39f80ce4da8a3b19103ae432235fec7de468f0ddc03459",
+      "totals": {
+        "errors": 0,
+        "failures": 2,
+        "skipped": 0,
+        "tests": 2
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 2,
+      "path": "/tmp/atlas-s41-adoption3.xml",
+      "retained_path": "docs/v2/session041-evidence/199af807831f69397ff5119c184e2651a80b58f8129e2cc33ae9ed27528a97e9.xml",
+      "sha256": "199af807831f69397ff5119c184e2651a80b58f8129e2cc33ae9ed27528a97e9",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 2
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 26,
+      "path": "/tmp/atlas-s41-binance-recovery.xml",
+      "retained_path": "docs/v2/session041-evidence/7668662d4ba46c7fef3584274684614fea4c072a3044067480850eaac5d6c62d.xml",
+      "sha256": "7668662d4ba46c7fef3584274684614fea4c072a3044067480850eaac5d6c62d",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 26
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.v2.test_session041_production_breadth",
+          "kind": "failure",
+          "message": "ValueError: artifact_ref already indexes different immutable content",
+          "name": "test_workset_publication_is_actual_and_preserves_its_source_cutoff"
+        }
+      ],
+      "passed": 56,
+      "path": "/tmp/atlas-s41-broad.xml",
+      "retained_path": "docs/v2/session041-evidence/694af8d7cc976eab0efbc20f1bea90d7c3a50e3ad9d52682bdc354080312c2ef.xml",
+      "sha256": "694af8d7cc976eab0efbc20f1bea90d7c3a50e3ad9d52682bdc354080312c2ef",
+      "totals": {
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "tests": 57
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.runtime.test_session041_bybit_native",
+          "kind": "failure",
+          "message": "AttributeError: 'nautilus_trader.model.LimitOrder' object has no attribute 'order_side'. Did you mean: 'order_type'?",
+          "name": "test_native_cancel_only_exact_cached_order_and_keeps_partial_fill_unknown"
+        }
+      ],
+      "passed": 22,
+      "path": "/tmp/atlas-s41-bybit-native.xml",
+      "retained_path": "docs/v2/session041-evidence/fa108c4f0479eaebed59ce44f99f4c1ebf7de5d9d20653633a83f4e704e73f53.xml",
+      "sha256": "fa108c4f0479eaebed59ce44f99f4c1ebf7de5d9d20653633a83f4e704e73f53",
+      "totals": {
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "tests": 23
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 23,
+      "path": "/tmp/atlas-s41-bybit-native2.xml",
+      "retained_path": "docs/v2/session041-evidence/75472756ee4ecace9c3f73ca863a57cb803bde2a118faa0ea45147331ab323fa.xml",
+      "sha256": "75472756ee4ecace9c3f73ca863a57cb803bde2a118faa0ea45147331ab323fa",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 23
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 36,
+      "path": "/tmp/atlas-s41-cohort-source.xml",
+      "retained_path": "docs/v2/session041-evidence/2abb528c51ab839d5f5836957b50bdd4678130980fbe75f5ecb2c63a6bb173c1.xml",
+      "sha256": "2abb528c51ab839d5f5836957b50bdd4678130980fbe75f5ecb2c63a6bb173c1",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 36
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.v2.test_session041_demo_product",
+          "kind": "failure",
+          "message": "ValueError: account_scope_ref must be an opaque registered reference",
+          "name": "test_explicit_demo_host_stops_and_joins_before_releasing_account_lease"
+        },
+        {
+          "class": "tests.v2.test_session041_demo_product",
+          "kind": "failure",
+          "message": "ValueError: account_scope_ref must be an opaque registered reference",
+          "name": "test_demo_launcher_does_not_pass_ambient_secrets_or_switch_venues"
+        }
+      ],
+      "passed": 1,
+      "path": "/tmp/atlas-s41-demo-product.xml",
+      "retained_path": "docs/v2/session041-evidence/632e0bb507f00ea2ebfdb9cada631af9da7511b15acd604b822cd3542d425256.xml",
+      "sha256": "632e0bb507f00ea2ebfdb9cada631af9da7511b15acd604b822cd3542d425256",
+      "totals": {
+        "errors": 0,
+        "failures": 2,
+        "skipped": 0,
+        "tests": 3
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.runtime.test_session041_binance_native",
+          "kind": "failure",
+          "message": "AssertionError: assert (True and 'BINANCE_NATI..._STOP_TIMEOUT' == 'BINANCE_NATI..._STOP_TIMEOUT'\n +  where True = <atlas.runtime.binance_native.BinanceNativeNode object at 0x7f7748df3cb0>.stopped\n  \n  - BINANCE_NATIVE_BinanceNativeNode_STOP_TIMEOUT\n  ?                ------- ^^^^^^^^^\n  + BINANCE_NATIVE_NODE_STOP_TIMEOUT\n  ?                 ^^^)",
+          "name": "test_stop_timeout_preserves_active_native_future_for_writer_lease_owner"
+        },
+        {
+          "class": "tests.runtime.test_session041_bybit_native",
+          "kind": "failure",
+          "message": "AssertionError: assert (True and 'BYBIT_NATIVE..._STOP_TIMEOUT' == 'BYBIT_NATIVE..._STOP_TIMEOUT'\n +  where True = <atlas.runtime.bybit_native.BybitNativeNode object at 0x7f7743cbc620>.stopped\n  \n  - BYBIT_NATIVE_BybitNativeNode_STOP_TIMEOUT\n  ?              ----- ^^^^^^^^^\n  + BYBIT_NATIVE_NODE_STOP_TIMEOUT\n  ?               ^^^)",
+          "name": "test_stop_timeout_preserves_active_native_future_for_writer_lease_owner"
+        }
+      ],
+      "passed": 124,
+      "path": "/tmp/atlas-s41-execution-integrated.xml",
+      "retained_path": "docs/v2/session041-evidence/185d5be96bf4723a5e6118cbb9ba14629efd332345a9458d4d71d3fd0c2f078e.xml",
+      "sha256": "185d5be96bf4723a5e6118cbb9ba14629efd332345a9458d4d71d3fd0c2f078e",
+      "totals": {
+        "errors": 0,
+        "failures": 2,
+        "skipped": 0,
+        "tests": 126
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.runtime.test_session041_binance_demo",
+          "kind": "failure",
+          "message": "ValueError: DEMO_FULL_POSITION_STOP_QUANTITY_MISMATCH",
+          "name": "test_real_order_factory_uses_same_identity_reduce_only_mark_stop[REPAIR_STOP]"
+        }
+      ],
+      "passed": 101,
+      "path": "/tmp/atlas-s41-execution-review-baseline.xml",
+      "retained_path": "docs/v2/session041-evidence/207963e7122cf847a5613d07a8553be391be4600fafd9eafcf3be63fa4eba043.xml",
+      "sha256": "207963e7122cf847a5613d07a8553be391be4600fafd9eafcf3be63fa4eba043",
+      "totals": {
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "tests": 102
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 29,
+      "path": "/tmp/atlas-s41-export-chronology-selection.xml",
+      "retained_path": "docs/v2/session041-evidence/a38f168d191aa43a63513bcfb01ec07bc3b7bd8c916a0349dcd8881600e76654.xml",
+      "sha256": "a38f168d191aa43a63513bcfb01ec07bc3b7bd8c916a0349dcd8881600e76654",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 29
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 26,
+      "path": "/tmp/atlas-s41-export-scope.xml",
+      "retained_path": "docs/v2/session041-evidence/d49ed3519bdd03d1ff0d53c21cf3e58f451ddc509dff7c83ddd539eee5696cb2.xml",
+      "sha256": "d49ed3519bdd03d1ff0d53c21cf3e58f451ddc509dff7c83ddd539eee5696cb2",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 26
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.runtime.test_session041_binance_reconciliation",
+          "kind": "failure",
+          "message": "AssertionError: assert None is not None\n +  where None = BinanceRecoveryCycleV1(reconciliation_run_id='aa281bada23e43ed8422b72368cc47ff', query_ids=('00de8ce30a32421281641fdcf...lat_observation=None, reasons=('BINANCE_RECOVERY_PROFILE_INCOMPLETE', 'BINANCE_RECOVERY_SOURCE_RETENTION_UNQUALIFIED')).flat_observation",
+          "name": "test_unqualified_recovery_retains_history_gate_and_zero_authority_flat_sidecar"
+        },
+        {
+          "class": "tests.runtime.test_session041_binance_reconciliation",
+          "kind": "failure",
+          "message": "AssertionError: assert (False)\n +  where False = BinanceRecoveryCycleV1(reconciliation_run_id='8539cb32c4ac4f4f93975b102b2e6a20', query_ids=('72f42ea397f84c83ae8e1ab06...24cf08fd2cdfec'), complete_for_recovery=False, flat_observation=None, reasons=('BINANCE_RECOVERY_PROFILE_INCOMPLETE',)).complete_for_recovery",
+          "name": "test_simulated_qualified_recovery_captures_complete_flat_inputs_without_capital"
+        },
+        {
+          "class": "tests.runtime.test_session041_binance_reconciliation",
+          "kind": "failure",
+          "message": "AssertionError: assert (False)\n +  where False = BinanceRecoveryCycleV1(reconciliation_run_id='714c03998326414c91bdce94bf9ad51a', query_ids=('0d6e0c738be14b7a96ced213a...a038d95ff9ddbc'), complete_for_recovery=False, flat_observation=None, reasons=('BINANCE_RECOVERY_PROFILE_INCOMPLETE',)).complete_for_recovery",
+          "name": "test_complete_inputs_preserve_partial_fill_cancel_race_unknown_command_and_reservation"
+        },
+        {
+          "class": "tests.runtime.test_session041_binance_reconciliation",
+          "kind": "failure",
+          "message": "AssertionError: assert (False)\n +  where False = BinanceRecoveryCycleV1(reconciliation_run_id='1598a572f3f84aa88121e85a5435a816', query_ids=('6ce6112fd7ce499a8b2e12017...3e7b4e9588c1f0'), complete_for_recovery=False, flat_observation=None, reasons=('BINANCE_RECOVERY_PROFILE_INCOMPLETE',)).complete_for_recovery",
+          "name": "test_orphan_conditional_on_other_symbol_blocks_current_flat_sidecar"
+        }
+      ],
+      "passed": 132,
+      "path": "/tmp/atlas-s41-focused-integrated.xml",
+      "retained_path": "docs/v2/session041-evidence/4afdcfbe216b00999087cc51bbdc41bc0c66611cef398647efee689fbbc54418.xml",
+      "sha256": "4afdcfbe216b00999087cc51bbdc41bc0c66611cef398647efee689fbbc54418",
+      "totals": {
+        "errors": 0,
+        "failures": 4,
+        "skipped": 0,
+        "tests": 136
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 35,
+      "path": "/tmp/atlas-s41-native-selection.xml",
+      "retained_path": "docs/v2/session041-evidence/a5e3d27e1c4c237a0a17017bb4e10816d7f0d0e789bde935035b87c465776695.xml",
+      "sha256": "a5e3d27e1c4c237a0a17017bb4e10816d7f0d0e789bde935035b87c465776695",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 35
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.runtime.test_safe_runtime",
+          "kind": "skipped",
+          "message": "opt-in public testnet check; no credentials, network not required",
+          "name": "test_public_testnet_connectivity_opt_in"
+        }
+      ],
+      "passed": 94,
+      "path": "/tmp/atlas-s41-persistence-safety.xml",
+      "retained_path": "docs/v2/session041-evidence/c50e29ac50a6a191ae4b172ed3537da9513f3cdc21befeef25ac9c6670f6f53c.xml",
+      "sha256": "c50e29ac50a6a191ae4b172ed3537da9513f3cdc21befeef25ac9c6670f6f53c",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 1,
+        "tests": 95
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 0,
+      "path": "/tmp/atlas-s41-persistence.xml",
+      "retained_path": "docs/v2/session041-evidence/0d99cc53cd9be4b4f18c4e91681bb6a5462129640636d5aa61fafb38775cb16a.xml",
+      "sha256": "0d99cc53cd9be4b4f18c4e91681bb6a5462129640636d5aa61fafb38775cb16a",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 0
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.v2.test_session041_production_breadth",
+          "kind": "failure",
+          "message": "ValueError: BROAD_OBSERVATION_IDENTITY_CONFLICT",
+          "name": "test_workset_publication_is_actual_and_preserves_its_source_cutoff"
+        }
+      ],
+      "passed": 7,
+      "path": "/tmp/atlas-s41-production-breadth.xml",
+      "retained_path": "docs/v2/session041-evidence/99b45dc43831a9ad48f36968b7f4daaf6d4360d24f1cfcac2bcb88b7e64bf5ca.xml",
+      "sha256": "99b45dc43831a9ad48f36968b7f4daaf6d4360d24f1cfcac2bcb88b7e64bf5ca",
+      "totals": {
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "tests": 8
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 0,
+      "path": "/tmp/atlas-s41-publication-history.xml",
+      "retained_path": "docs/v2/session041-evidence/1c4580c43d869f39331581ec325a5244f300e0caed92019d2543ecc3f3471e68.xml",
+      "sha256": "1c4580c43d869f39331581ec325a5244f300e0caed92019d2543ecc3f3471e68",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 0
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 37,
+      "path": "/tmp/atlas-s41-publication-history2.xml",
+      "retained_path": "docs/v2/session041-evidence/afc334f813d37510df267101e9629f8a4e8acf0e74ec010f222428ef3a85cdd3.xml",
+      "sha256": "afc334f813d37510df267101e9629f8a4e8acf0e74ec010f222428ef3a85cdd3",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 37
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.v2.test_session041_production_breadth",
+          "kind": "failure",
+          "message": "ValueError: universe was unavailable at its decision slot",
+          "name": "test_workset_publication_is_actual_and_preserves_its_source_cutoff"
+        }
+      ],
+      "passed": 1,
+      "path": "/tmp/atlas-s41-publication.xml",
+      "retained_path": "docs/v2/session041-evidence/428729c3c29e1a23ca6b382a1cc072b229fbb06b591718a686669d123caeca06.xml",
+      "sha256": "428729c3c29e1a23ca6b382a1cc072b229fbb06b591718a686669d123caeca06",
+      "totals": {
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "tests": 2
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.v2.test_session041_production_breadth",
+          "kind": "failure",
+          "message": "assert FrozenMap(_it...eWorksetV2'))) == {'version': '...a7e8c22', ...}\n  \n  Omitting 10 identical items, use -vv to show\n  Differing items:\n  {'active_product_refs': ('8dd20365e55df87156689af2a02195185b2b45ccfda87de9fb7d27d62fdcf710',)} != {'active_product_refs': ['8dd20365e55df87156689af2a02195185b2b45ccfda87de9fb7d27d62fdcf710']}\n  {'tiers': FrozenMap(_items=(('{\"base_asset_id\":\"ALT5\",\"contract_revision\":\"7b02aa1af8da8f91903cb29df7bc02c2366c160acb1...product\":\"LINEAR_PERPETUAL\",\"quote_asset\":\"USDT\",\"schema_version\":1,\"settlement_asset\":\"USDT\",\"venue\":\"BYBIT\"}', 0),))} != {'tiers': {'{\"base_asset_id\":\"ALT5\",\"contract_revision\":\"7b02aa1af8da8f91903cb29d...\n  \n  ...Full output truncated (6 lines hidden), use '-vv' to show",
+          "name": "test_workset_publication_is_actual_and_preserves_its_source_cutoff"
+        }
+      ],
+      "passed": 1,
+      "path": "/tmp/atlas-s41-publication2.xml",
+      "retained_path": "docs/v2/session041-evidence/48820620f6d99e7c42043c7d0aff2a379b88122dcc931b3b7df77b7e18e37a4d.xml",
+      "sha256": "48820620f6d99e7c42043c7d0aff2a379b88122dcc931b3b7df77b7e18e37a4d",
+      "totals": {
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "tests": 2
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.v2.test_session041_strategy_surface",
+          "kind": "failure",
+          "message": "ValueError: S5 persisted episode stage identity is malformed",
+          "name": "test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency"
+        }
+      ],
+      "passed": 2,
+      "path": "/tmp/atlas-s41-s5-cohort.xml",
+      "retained_path": "docs/v2/session041-evidence/7e4116a4c4bcd6b1a1e5f5a45beecce35080116aa639ad31a9ce27f0c470c8a7.xml",
+      "sha256": "7e4116a4c4bcd6b1a1e5f5a45beecce35080116aa639ad31a9ce27f0c470c8a7",
+      "totals": {
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "tests": 3
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 34,
+      "path": "/tmp/atlas-s41-selected-demo.xml",
+      "retained_path": "docs/v2/session041-evidence/2369e422fd6992608477d794a870316ba10ba918a87869da5dff470e5960f9b3.xml",
+      "sha256": "2369e422fd6992608477d794a870316ba10ba918a87869da5dff470e5960f9b3",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 34
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.runtime.test_session041_selected_demo",
+          "kind": "failure",
+          "message": "AssertionError: assert 'TEST GATE' == 'TESTED'\n  \n  - TESTED\n  + TEST GATE",
+          "name": "test_constructor_does_not_read_credentials_or_connect_and_open_binds_exact_run"
+        }
+      ],
+      "passed": 71,
+      "path": "/tmp/atlas-s41-selected-persistence.xml",
+      "retained_path": "docs/v2/session041-evidence/fd2e13c73d0c098ef878f4f116f8f31193367ad3dcb2649fc84e1f4f9b2d2b19.xml",
+      "sha256": "fd2e13c73d0c098ef878f4f116f8f31193367ad3dcb2649fc84e1f4f9b2d2b19",
+      "totals": {
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "tests": 72
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 40,
+      "path": "/tmp/atlas-s41-selection-publication.xml",
+      "retained_path": "docs/v2/session041-evidence/075c19b3f0b954bc1fc1b861b0192585f744aff4b328653f74cb1293ac1b0ba6.xml",
+      "sha256": "075c19b3f0b954bc1fc1b861b0192585f744aff4b328653f74cb1293ac1b0ba6",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 40
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.v2.test_session041_strategy_surface",
+          "kind": "failure",
+          "message": "ValueError: artifact_ref already indexes different immutable content",
+          "name": "test_loader_binds_btc_proxy_to_prepared_same_venue_cohort"
+        },
+        {
+          "class": "tests.v2.test_session041_strategy_surface",
+          "kind": "failure",
+          "message": "AssertionError: assert 'NOT_ESTIMABLE' == 'DELEVERAGING_EVIDENCE'\n  \n  - DELEVERAGING_EVIDENCE\n  + NOT_ESTIMABLE",
+          "name": "test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency"
+        },
+        {
+          "class": "tests.v2.test_session041_strategy_surface",
+          "kind": "failure",
+          "message": "AssertionError: assert {'EXHAUSTION'...4_FLOW_STATE'} <= {'S4_ABSORPTI...4_FLOW_STATE'}\n  \n  Extra items in the left set:\n  'FLOW_REVERSAL'\n  'RECLAIM'\n  'EXHAUSTION'",
+          "name": "test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason"
+        }
+      ],
+      "passed": 38,
+      "path": "/tmp/atlas-s41-strategy-current.xml",
+      "retained_path": "docs/v2/session041-evidence/40892a24836af9337646be3d021a468759fc1ce39befff31a6e3c7a2df6cba23.xml",
+      "sha256": "40892a24836af9337646be3d021a468759fc1ce39befff31a6e3c7a2df6cba23",
+      "totals": {
+        "errors": 0,
+        "failures": 3,
+        "skipped": 0,
+        "tests": 41
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "",
+          "kind": "error",
+          "message": "collection failure",
+          "name": "tests.runtime.test_session041_bybit_native"
+        }
+      ],
+      "passed": 0,
+      "path": "/tmp/atlas-s41-v1-all.xml",
+      "retained_path": "docs/v2/session041-evidence/606f7fa5fcc9116397347ccaff57e90f7f625f4a0d5efde4155030df53721ef6.xml",
+      "sha256": "606f7fa5fcc9116397347ccaff57e90f7f625f4a0d5efde4155030df53721ef6",
+      "totals": {
+        "errors": 1,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 1
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.integration.test_phase4_testnet_qualification",
+          "kind": "skipped",
+          "message": "TEST GATE: authenticated testnet qualification requires explicit opt-in",
+          "name": "test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]"
+        },
+        {
+          "class": "tests.integration.test_phase4_testnet_qualification",
+          "kind": "skipped",
+          "message": "TEST GATE: authenticated testnet qualification requires explicit opt-in",
+          "name": "test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]"
+        },
+        {
+          "class": "tests.runtime.test_safe_runtime",
+          "kind": "skipped",
+          "message": "opt-in public testnet check; no credentials, network not required",
+          "name": "test_public_testnet_connectivity_opt_in"
+        }
+      ],
+      "passed": 628,
+      "path": "/tmp/s41-central/v1.xml",
+      "retained_path": "docs/v2/session041-evidence/418bf3dcd8782151e9831a6583b7fc50d3223c34422134143c596b1ec08201db.xml",
+      "sha256": "418bf3dcd8782151e9831a6583b7fc50d3223c34422134143c596b1ec08201db",
+      "source_receipt": {
+        "completed": true,
+        "exit_code": 0,
+        "path": "/tmp/s41-central/v1.json",
+        "retained_path": "docs/v2/session041-evidence/ee55c87518ec8645a2da6816070271c888113f040642cec9db442b83c9ef9445.json",
+        "sha256": "ee55c87518ec8645a2da6816070271c888113f040642cec9db442b83c9ef9445",
+        "source_after": "77a6c7ffb60a2844aa22f1fd5af06891e09300ee74219ed9077cdfb87d8acd4b",
+        "source_before": "77a6c7ffb60a2844aa22f1fd5af06891e09300ee74219ed9077cdfb87d8acd4b",
+        "source_stable": true
+      },
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 3,
+        "tests": 631
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 72,
+      "path": "/tmp/s41-compression-final.xml",
+      "retained_path": "docs/v2/session041-evidence/7e0f0b9d35a2e952b308a451fc20f58a54ed942e89e5851cfc4af21152760251.xml",
+      "sha256": "7e0f0b9d35a2e952b308a451fc20f58a54ed942e89e5851cfc4af21152760251",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 72
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 1,
+      "path": "/tmp/s41-durable-publication-final.xml",
+      "retained_path": "docs/v2/session041-evidence/b3a0681b5735d7dc360184a710152aed7c6ac9e204aa9609764c21f1d22e2a87.xml",
+      "sha256": "b3a0681b5735d7dc360184a710152aed7c6ac9e204aa9609764c21f1d22e2a87",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 1
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 140,
+      "path": "/tmp/s41-execution-final-review.xml",
+      "retained_path": "docs/v2/session041-evidence/c1a0a37cac99722d3938d39aa7502a0e533d305d21ee5bcd53f49509eb8e75d5.xml",
+      "sha256": "c1a0a37cac99722d3938d39aa7502a0e533d305d21ee5bcd53f49509eb8e75d5",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 140
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 143,
+      "path": "/tmp/s41-execution-final-review2.xml",
+      "retained_path": "docs/v2/session041-evidence/588fdc9435d201992a525901e606b5052630cabf545bde7897ecea63c64d0b30.xml",
+      "sha256": "588fdc9435d201992a525901e606b5052630cabf545bde7897ecea63c64d0b30",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 143
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 22,
+      "path": "/tmp/s41-export-final.xml",
+      "retained_path": "docs/v2/session041-evidence/001469f1103ff76c970e10ade9403d12e3aceeff2b44980faec024dd303b28a5.xml",
+      "sha256": "001469f1103ff76c970e10ade9403d12e3aceeff2b44980faec024dd303b28a5",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 22
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 3,
+      "path": "/tmp/s41-export-wrapper-final.xml",
+      "retained_path": "docs/v2/session041-evidence/ca255e25418268d5b89f54375966ae0f215db0ed2540ef0e3746b99f86430b62.xml",
+      "sha256": "ca255e25418268d5b89f54375966ae0f215db0ed2540ef0e3746b99f86430b62",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 3
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 37,
+      "path": "/tmp/s41-owner-product-final.xml",
+      "retained_path": "docs/v2/session041-evidence/884ad57a8bf500cac45fd06bb27b6ea4e25445c0470e908171c88d9decfecd57.xml",
+      "sha256": "884ad57a8bf500cac45fd06bb27b6ea4e25445c0470e908171c88d9decfecd57",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 37
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 10,
+      "path": "/tmp/s41-ownerpairs-final.xml",
+      "retained_path": "docs/v2/session041-evidence/0508acfc55d148368efba71b2685215dc614df7076dcb879f94ea77a9f63706f.xml",
+      "sha256": "0508acfc55d148368efba71b2685215dc614df7076dcb879f94ea77a9f63706f",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 10
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 2,
+      "path": "/tmp/s41-scale-review-final.xml",
+      "retained_path": "docs/v2/session041-evidence/f1bd930eb38a1bebc4be856998db4217f976d86b2f40b06545553d5dc41a4da8.xml",
+      "sha256": "f1bd930eb38a1bebc4be856998db4217f976d86b2f40b06545553d5dc41a4da8",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 2
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 44,
+      "path": "/tmp/s41-strategy-calendar-final.xml",
+      "retained_path": "docs/v2/session041-evidence/282198bebb353feb2cc515459095d7a23c05f40116c82ce0d943fc9660400757.xml",
+      "sha256": "282198bebb353feb2cc515459095d7a23c05f40116c82ce0d943fc9660400757",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 44
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [
+        {
+          "class": "tests.integration.test_phase4_testnet_qualification",
+          "kind": "skipped",
+          "message": "TEST GATE: authenticated testnet qualification requires explicit opt-in",
+          "name": "test_authenticated_testnet_qualification_is_explicit_opt_in[BYBIT-credential_names0]"
+        },
+        {
+          "class": "tests.integration.test_phase4_testnet_qualification",
+          "kind": "skipped",
+          "message": "TEST GATE: authenticated testnet qualification requires explicit opt-in",
+          "name": "test_authenticated_testnet_qualification_is_explicit_opt_in[BINANCE-credential_names1]"
+        },
+        {
+          "class": "tests.runtime.test_fault_injection",
+          "kind": "failure",
+          "message": "AssertionError: [('funding_fee_dedup', {'first_event_appended': True, 'duplicate_deduplicated': False, 'economic_event_count_once': True}, ())]\nassert False\n +  where False = all(<generator object test_all_offline_fault_scenarios_drive_real_mechanics.<locals>.<genexpr> at 0x7fe49e160700>)",
+          "name": "test_all_offline_fault_scenarios_drive_real_mechanics"
+        }
+      ],
+      "passed": 100,
+      "path": "/tmp/s41-v1-diagnostic.xml",
+      "retained_path": "docs/v2/session041-evidence/dcb480fcb7c8ce860dc56dfb25e910df95ac372989367edc9eb38fbf8b649ee8.xml",
+      "sha256": "dcb480fcb7c8ce860dc56dfb25e910df95ac372989367edc9eb38fbf8b649ee8",
+      "totals": {
+        "errors": 0,
+        "failures": 1,
+        "skipped": 2,
+        "tests": 103
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 41,
+      "path": "/tmp/s41-v1-economic-contract.xml",
+      "retained_path": "docs/v2/session041-evidence/fa59393117e0a8cc7fcdabd6384d853eaa7bb80fc195d68d0faf3752383be83d.xml",
+      "sha256": "fa59393117e0a8cc7fcdabd6384d853eaa7bb80fc195d68d0faf3752383be83d",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 41
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 9,
+      "path": "/tmp/session041-calendar.xml",
+      "retained_path": "docs/v2/session041-evidence/0aaf825b639ea450e4f30748c3b7ecf6fc1014af7a5636ec9713e4357ce0c506.xml",
+      "sha256": "0aaf825b639ea450e4f30748c3b7ecf6fc1014af7a5636ec9713e4357ce0c506",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 9
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 38,
+      "path": "/tmp/s41-compression-review.xml",
+      "retained_path": "docs/v2/session041-evidence/04bed21e08135e5a2e4c8458bfb46b59fbdbbf0c142967f6fede4c7f44460dac.xml",
+      "sha256": "04bed21e08135e5a2e4c8458bfb46b59fbdbbf0c142967f6fede4c7f44460dac",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 38
+      }
+    },
+    {
+      "checkpoint_attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "exceptions": [],
+      "passed": 35,
+      "path": "/tmp/s41-math.xml",
+      "retained_path": "docs/v2/session041-evidence/2f1e653c3c2e01218a879f87ff1105481ebd0489cdbbcef4d73c034b928a25b2.xml",
+      "sha256": "2f1e653c3c2e01218a879f87ff1105481ebd0489cdbbcef4d73c034b928a25b2",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 35
+      }
+    }
+  ],
+  "final_code_sha": null,
+  "final_tested_sha": null,
+  "head_at_inventory": "c903e4c0f68af0912803e648c51d69587c179d9c",
+  "native_windows_qualified": false,
+  "notes": [
+    "Skipped tests are never counted as passed.",
+    "Failed attempts are retained; later focused passes do not qualify a full suite.",
+    "Interrupted invocations without completed JUnit XML are not listed as passes.",
+    "Development source receipts and review hashes do not qualify an untested final SHA.",
+    "No Linux result substitutes for native Windows qualification."
+  ],
+  "package_created": false,
+  "schema_version": 1,
+  "session": 41,
+  "status": "UNVERIFIED"
+}

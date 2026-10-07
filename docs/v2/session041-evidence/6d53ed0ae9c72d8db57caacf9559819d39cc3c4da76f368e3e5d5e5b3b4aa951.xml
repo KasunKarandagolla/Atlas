@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="29.194" timestamp="2026-10-07T12:35:34.526911+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_production_breadth" name="test_adoption_waits_for_durable_archive_before_proving_current_source_health" time="9.921"><failure message="ValueError: unsupported canonical JSON type mappingproxy">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-190/test_adoption_waits_for_durabl0')
+
+    def test_adoption_waits_for_durable_archive_before_proving_current_source_health(tmp_path):
+        from atlas.v2.runtime.production import ProductionOpsCyclePortV1
+    
+        p = product(2)
+        runtime = FakeBroadRuntime()
+        port = BroadProductionOpsCyclePortV2(public_source=InventorySource((p,)),
+                                           broad_runtime=runtime, clock_ns=lambda: NOW)
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            port.recover(repo, now_ns=NOW)
+            acquired = replace(snapshot((p,), (quote(p, NOW),)), source_snapshot={
+                "metadata": {"BYBIT": {"market_status": "BULK_MARKET_COMPLETE"},
+                             "BINANCE": {"market_status": "BULK_MARKET_COMPLETE"}}})
+&gt;           assert not ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo, acquired, now_ns=NOW)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_production_breadth.py:259: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/production.py:3249: in _persist_broad_public_snapshot
+    "source_snapshot": json_value(snapshot.source_snapshot), "ingestion_complete": accepted,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = mappingproxy({'metadata': mappingproxy({'BYBIT': mappingproxy({'market_status': 'BULK_MARKET_COMPLETE'}), 'BINANCE': mappingproxy({'market_status': 'BULK_MARKET_COMPLETE'})})})
+
+    def json_value(value: Any) -&gt; Any:
+        # Most high-rate evidence consists of already canonical scalar fields.
+        # Exact types keep Enum subclasses on the existing conversion path.
+        if value is None or type(value) in (str, bool, int):
+            return value
+        if isinstance(value, Enum):
+            return value.value
+        if isinstance(value, Decimal):
+            return canonical_decimal_str(value)
+        if isinstance(value, FrozenMap):
+            return value.to_dict()
+        if isinstance(value, tuple):
+            return [json_value(item) for item in value]
+        if isinstance(value, list):
+            return [json_value(item) for item in value]
+        if isinstance(value, dict):
+            if not all(isinstance(key, str) for key in value):
+                raise ValueError("JSON object keys must be strings")
+            return {key: json_value(item) for key, item in value.items()}
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError("NaN/Infinity is not authoritative JSON")
+        if value is None or isinstance(value, (str, bool, int, float)):
+            return value
+        if hasattr(value, "to_dict"):
+            return json_value(value.to_dict())
+&gt;       raise ValueError(f"unsupported canonical JSON type {type(value).__name__}")
+E       ValueError: unsupported canonical JSON type mappingproxy
+
+src/atlas/v2/_serialization.py:148: ValueError</failure></testcase><testcase classname="tests.v2.test_session041_production_breadth" name="test_future_market_event_is_rejected_without_rescuing_publication_time" time="7.796"><failure message="ValueError: unsupported canonical JSON type mappingproxy">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-190/test_future_market_event_is_re0')
+
+    def test_future_market_event_is_rejected_without_rescuing_publication_time(tmp_path):
+        from atlas.v2.runtime.production import ProductionOpsCyclePortV1
+    
+        p = product(3)
+        runtime = FakeBroadRuntime()
+        port = BroadProductionOpsCyclePortV2(public_source=InventorySource((p,)),
+                                           broad_runtime=runtime, clock_ns=lambda: NOW)
+        original = quote(p, NOW)
+        raw = RawObservationV2.build(instrument_revision=p.key.contract_revision, source_id="BYBIT_PUBLIC_V2",
+            event_type="TICKER_24H", event_at_ns=NOW + 100, received_at_ns=NOW,
+            ingested_at_ns=NOW, available_at_ns=NOW, payload=original.raw_payload, translation_version="FUTURE_FIXTURE")
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            port.recover(repo, now_ns=NOW)
+            acquired = snapshot((p,), (replace(original, observation=raw),))
+&gt;           assert not ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo, acquired, now_ns=NOW)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_production_breadth.py:283: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/production.py:3249: in _persist_broad_public_snapshot
+    "source_snapshot": json_value(snapshot.source_snapshot), "ingestion_complete": accepted,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = mappingproxy({'metadata': mappingproxy({'BYBIT': mappingproxy({'received_at_ns': 1800000000000000000}), 'BINANCE': map...product":"LINEAR_PERPETUAL","quote_asset":"USDT","schema_version":1,"settlement_asset":"USDT","venue":"BYBIT"}',)})})})
+
+    def json_value(value: Any) -&gt; Any:
+        # Most high-rate evidence consists of already canonical scalar fields.
+        # Exact types keep Enum subclasses on the existing conversion path.
+        if value is None or type(value) in (str, bool, int):
+            return value
+        if isinstance(value, Enum):
+            return value.value
+        if isinstance(value, Decimal):
+            return canonical_decimal_str(value)
+        if isinstance(value, FrozenMap):
+            return value.to_dict()
+        if isinstance(value, tuple):
+            return [json_value(item) for item in value]
+        if isinstance(value, list):
+            return [json_value(item) for item in value]
+        if isinstance(value, dict):
+            if not all(isinstance(key, str) for key in value):
+                raise ValueError("JSON object keys must be strings")
+            return {key: json_value(item) for key, item in value.items()}
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError("NaN/Infinity is not authoritative JSON")
+        if value is None or isinstance(value, (str, bool, int, float)):
+            return value
+        if hasattr(value, "to_dict"):
+            return json_value(value.to_dict())
+&gt;       raise ValueError(f"unsupported canonical JSON type {type(value).__name__}")
+E       ValueError: unsupported canonical JSON type mappingproxy
+
+src/atlas/v2/_serialization.py:148: ValueError</failure></testcase></testsuite></testsuites>

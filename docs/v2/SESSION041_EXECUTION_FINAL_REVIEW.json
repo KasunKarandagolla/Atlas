@@ -1,10 +1,10 @@
 {
   "artifact": "SESSION041_EXECUTION_FINAL_REVIEW",
-  "version": 1,
+  "version": 2,
   "review_kind": "INDEPENDENT_OFFLINE_EXECUTION_SAFETY_REVIEW",
   "workspace": "/tmp/atlas-session-041",
   "base_sha": "657ea9eff18bb9bebea86828b8503bacdefa3bc5",
-  "status": "CENTRAL_REMEDIATION_PENDING",
+  "status": "OFFLINE_REVIEW_PASSED",
   "capital_enabled": false,
   "assisted_enabled": false,
   "authenticated_external_calls": 0,
@@ -38,8 +38,8 @@
     },
     {
       "invariant": "Exact venue, environment, account and instrument evidence",
-      "result": "REMEDIATION_REQUIRED",
-      "evidence": "Native configs and REST bases bind DEMO versus TESTNET, product hashes and account scope. Three adversarial evidence association gaps were reported for central remediation below."
+      "result": "PRESERVED_AFTER_CENTRAL_REMEDIATION",
+      "evidence": "Bybit current profile receipts require the selected identity and exact endpoints. Binance native fill/status persistence requires a matching durable account identity, product reference and symbol. Binance REST trades and order statuses require the selected durable account identity before evidence writes; all trades in a batch validate before its first write. Independent adversarial cases passed in the fresh runtime suite."
     },
     {
       "invariant": "Authenticated read port remains GET-only and does not expose credentials",
@@ -61,7 +61,12 @@
       "boundary": "capture_bybit_account_snapshot",
       "impact": "Foreign fresh account info/wallet receipts could be relabeled under the selected reader identity and qualify a reduction profile.",
       "status": "CENTRALLY_FIXED_ADVERSARIAL_CHECK_PASSED",
-      "regression": "test_bybit_current_profile_rejects_receipts_from_foreign_scope"
+      "regression": "test_bybit_current_profile_rejects_receipts_from_foreign_scope",
+      "passing_junit_cases": [
+        "test_bybit_current_profile_rejects_receipts_from_foreign_scope[identity]",
+        "test_bybit_current_profile_rejects_receipts_from_foreign_scope[endpoint]"
+      ],
+      "source_sha256": "2b876355d437b20a1a4d628bcab3ecf2b36566904e6049ee33e1677ea03858f6"
     },
     {
       "id": "S41-EXEC-002",
@@ -71,7 +76,12 @@
       "boundary": "BinanceNativeNode.drain_events_to_journal",
       "impact": "Matching symbol/client IDs could associate current native fill/status evidence to an intent whose durable command identity or instrument reference belongs to a foreign scope.",
       "status": "CENTRALLY_FIXED_ADVERSARIAL_CHECK_PASSED",
-      "regression": "test_binance_native_fill_rejects_foreign_durable_account_or_product"
+      "regression": "test_binance_native_fill_rejects_foreign_durable_account_or_product",
+      "passing_junit_cases": [
+        "test_binance_native_fill_rejects_foreign_durable_account_or_product[identity_hash]",
+        "test_binance_native_fill_rejects_foreign_durable_account_or_product[instrument_ref]"
+      ],
+      "source_sha256": "0c0834b19635e91ac0f65a9ff41c50e21442ba517cd1b58e6f9f689761b4ffec"
     },
     {
       "id": "S41-EXEC-003",
@@ -80,39 +90,58 @@
       "file": "src/atlas/runtime/binance_reconciliation.py",
       "boundary": "record_binance_trades",
       "impact": "The trade helper accepted a selected account identity while its associated durable command identity belonged to another account; matching client and symbol alone permitted an evidence write.",
-      "status": "CENTRALLY_FIXED_PENDING_FINAL_CHECK",
+      "status": "CENTRALLY_FIXED_ADVERSARIAL_CHECK_PASSED",
       "regression": "test_binance_rest_fill_rejects_foreign_durable_account",
       "additional_regressions": [
         "test_binance_rest_batch_validates_all_accounts_before_first_write",
         "test_binance_rest_order_status_rejects_foreign_durable_account_before_write"
-      ]
+      ],
+      "passing_junit_cases": [
+        "test_binance_rest_fill_rejects_foreign_durable_account",
+        "test_binance_rest_batch_validates_all_accounts_before_first_write[False]",
+        "test_binance_rest_batch_validates_all_accounts_before_first_write[True]",
+        "test_binance_rest_order_status_rejects_foreign_durable_account_before_write"
+      ],
+      "source_sha256": "52fc70eeda014215e023b3c87c28e04516bf503406d2c852ed77b52cae79d203"
     }
   ],
   "validation": {
     "python": "/home/kasun/Music/atlas/.venv/bin/python",
-    "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/runtime/test_session041*.py --junitxml=/tmp/s41-execution-final-review.xml",
-    "junit": "/tmp/s41-execution-final-review.xml",
-    "initial_full_run": {
-      "collected": 139,
-      "passed": 137,
-      "failed": 2
+    "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/runtime/test_session041*.py --junitxml=/tmp/s41-execution-final-review2.xml",
+    "exit_code": 0,
+    "junit": "/tmp/s41-execution-final-review2.xml",
+    "log": "/tmp/s41-execution-final-review2.log",
+    "final_full_run": {
+      "tests": 143,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 143,
+      "duration_seconds": 38.948,
+      "suite_timestamp": "2026-10-07T16:04:23.004504+05:30"
     },
-    "initial_full_run_failures": "Existing Binance native intent fixtures omitted full scope fields required by the central fix; root notified to update fixtures.",
-    "independent_run": {
-      "collected": 17,
-      "passed": 16,
-      "failed": 1
+    "independent_review_cases": {
+      "tests": 20,
+      "passed": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "scope": "Included in the same fresh full runtime run."
     },
-    "independent_run_failure": "Foreign durable account accepted by Binance REST fill association. Root notified for central fix.",
-    "final_focused_run": "PENDING",
-    "log": "/tmp/s41-execution-final-review.log",
-    "central_remediation_full_run": {
-      "tests": "140",
-      "failures": "0",
-      "errors": "0",
-      "skipped": "0",
-      "time": "145.160"
-    }
+    "reviewed_source_unchanged_during_run": true,
+    "runtime_test_files_unchanged_during_run": true,
+    "junit_sha256": "588fdc9435d201992a525901e606b5052630cabf545bde7897ecea63c64d0b30",
+    "log_sha256": "91dcb8076ccd39d3b7c026c953d5a5e2a9df3a2cebbe5c2c4aab69bb5eb45838",
+    "runtime_test_sha256": {
+      "tests/runtime/test_session041_binance_demo.py": "0326eff1afa37b5070a9dba9ab1e357865f6ffedc870b14d7a904dba40e08297",
+      "tests/runtime/test_session041_binance_native.py": "c03077bfa1b4231a52f1663d9dac16700e7b99731dbe6418d303078f6c5beb34",
+      "tests/runtime/test_session041_binance_reconciliation.py": "9b4793912d9128558d4a3cd69535ca20cd38ab924700408f601e324cca78fa2c",
+      "tests/runtime/test_session041_bybit_demo.py": "0ab9a38e34e82740f14b35a744b8354cc9642ac0d14cb902c103da08e3d11d7e",
+      "tests/runtime/test_session041_bybit_native.py": "fde7983d8a2f3fbfee892a1eaa0605aa28bf07084d3255b4122ace045db0fe35",
+      "tests/runtime/test_session041_execution_final_review.py": "16da87dbc110351e3d4f96a0d2877921e9c25210bee59cff860f49d65a2274cc",
+      "tests/runtime/test_session041_selected_demo.py": "09ea0f1afbb7e5428f5b1b0470fccd80ade6b0a24671af3f1cf35717c65f1c6d"
+    },
+    "independent_review_test_sha256": "16da87dbc110351e3d4f96a0d2877921e9c25210bee59cff860f49d65a2274cc"
   },
   "qualification_limits": [
     "No credential was retrieved from a real store, and no authenticated external venue call or node connection was performed.",
@@ -126,7 +155,19 @@
     "docs/v2/SESSION041_EXECUTION_FINAL_REVIEW.json",
     "tests/runtime/test_session041_execution_final_review.py"
   ],
-  "source_sha256_before_final_focused_run": {
+  "reviewed_at_utc": "2026-10-07T10:35:41.079704+00:00",
+  "reviewed_head": "657ea9eff18bb9bebea86828b8503bacdefa3bc5",
+  "open_findings": 0,
+  "execution_authority": {
+    "binance_opening_gate": "TEST GATE: BINANCE_FILL_TIME_PROTECTION_EQUIVALENCE_UNQUALIFIED",
+    "bybit_opening_gate": "TEST GATE: BYBIT_FULL_MARK_PRICE_FILL_TIME_READBACK_UNQUALIFIED",
+    "opening_enabled": false,
+    "fill_time_protection_qualified": false,
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "qualification": "Source inspection and synthetic offline fixtures only; no live or capital authority is granted."
+  },
+  "source_sha256": {
     "src/atlas/runtime/binance_demo.py": "4fa18e7f99ae09e77921ceaffdb36f71c8fbabe7af3f19918eefde219d3410ce",
     "src/atlas/runtime/binance_native.py": "0c0834b19635e91ac0f65a9ff41c50e21442ba517cd1b58e6f9f689761b4ffec",
     "src/atlas/runtime/binance_reconciliation.py": "52fc70eeda014215e023b3c87c28e04516bf503406d2c852ed77b52cae79d203",

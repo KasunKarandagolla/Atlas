@@ -1,6 +1,2 @@
-# Preserve exact Git blob bytes for authority and bundled resources on every OS.
-* -text
-# Lock byte identities are frozen and must survive native Windows checkout.
-requirements-lock.txt text eol=lf
-requirements-agent-lock.txt text eol=lf
-requirements-windows-lock.txt text eol=lf
+# Preserve the exact bytes and hashes of captured validation evidence.
+docs/v2/session041-evidence/*.xml -text whitespace=-blank-at-eol,-blank-at-eof

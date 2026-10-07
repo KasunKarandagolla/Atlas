@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="11.056" timestamp="2026-10-07T10:29:46.833987+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_is_actual_and_preserves_its_source_cutoff" time="2.850"><failure message="ValueError: universe was unavailable at its decision slot">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-173/test_workset_publication_is_ac0')
+
+    def test_workset_publication_is_actual_and_preserves_its_source_cutoff(tmp_path):
+        p = product(5)
+        clock = [NOW]
+    
+        def advancing_clock():
+            clock[0] += 100
+            return clock[0]
+    
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            publish(repo, [p])
+&gt;           body = publish_broad_workset(repo, products=(p,), snapshot=snapshot((p,), at=NOW),
+                available_at_ns=NOW, acquisition_ref="a" * 64, source_state={}, clock_ns=advancing_clock)
+
+tests/v2/test_session041_production_breadth.py:216: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/broad_universe.py:253: in publish_broad_workset
+    universe = replace(built.universe, entries=tuple(replace(entry,
+/home/kasun/Downloads/workshop/gate5-openhands/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/dataclasses.py:1588: in replace
+    return obj.__class__(**changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;string&gt;:8: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = UniverseContractV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='universe-1800000000000000000-931475e3041e2...NG_DEFAULT', 'TURNOVER_BELOW_ENGINEERING_DEFAULT', 'TURNOVER_UNAVAILABLE'), cheap_feature_ref=None, warmup_ref=None),))
+
+    def __post_init__(self) -&gt; None:
+        nonblank(self.universe_version, field="universe_version")
+        timestamp(self.decision_slot_ns, field="decision_slot_ns")
+        if self.envelope.available_at_ns &gt; self.decision_slot_ns:
+&gt;           raise ValueError("universe was unavailable at its decision slot")
+E           ValueError: universe was unavailable at its decision slot
+
+src/atlas/v2/instruments.py:508: ValueError</failure></testcase><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_rejects_regressing_clock" time="3.043" /></testsuite></testsuites>

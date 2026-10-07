@@ -1,0 +1,491 @@
+{
+  "artifact_type": "AtlasSession041ScaleReviewV1",
+  "session": 41,
+  "reviewed_at": "2026-10-07",
+  "review_status": "BOUNDED_SYNTHETIC_REVIEW_COMPLETE_ENGINEERING_CAPACITY_OPEN",
+  "tests_run": true,
+  "live_or_external_calls": false,
+  "credentials_read": false,
+  "owner_long_campaign_run": false,
+  "production_files_changed_by_this_review": false,
+  "final_sha": null,
+  "authority": "ZERO",
+  "capital_enabled": false,
+  "capacity_qualification": "UNQUALIFIED",
+  "scope": "Independent resource review of S41 public broad polling, immutable universe/workset publication, and its unchanged S40 storage envelope; no reinterpretation of frozen authority.",
+  "static_counts": {
+    "population": 4096,
+    "per_venue_population": 2048,
+    "cadence_seconds": 10,
+    "bulk_records_per_cycle": 8192,
+    "derived_universe_observations_per_cycle": 4096,
+    "bulk_archive_chunks_per_cycle": 16,
+    "full_universe_rows_per_cycle": 1,
+    "full_workset_rows_per_cycle": 1,
+    "cycles_in_48_hours_if_every_due_cycle_completes": 17280,
+    "bulk_index_rows_in_48_hours": 141557760,
+    "derived_observation_rows_in_48_hours": 70778880,
+    "bulk_parquet_files_in_48_hours": 276480,
+    "notes": [
+      "Binance code makes three bulk market endpoints: bookTicker, premiumIndex, 24hr. The prior review statement of four Binance bulk endpoints overcounts this path.",
+      "Counts exclude rotating enrichment, stream evidence, scheduler state, metadata refreshes, decisions, reporting, health, and rejections. Every actual fresh bulk receipt creates a new event identity even if market values repeat."
+    ]
+  },
+  "preservation_requirements": [
+    "Keep every scheduled decision and explicit no-candidate/not-estimable/rejection result through the actual stop boundary.",
+    "Keep each exact source receipt and its source chronology; identical values with a new receipt are distinct observations.",
+    "Keep raw/index publication chronology, cutoff-visible immutable state and exact acquisition lineage.",
+    "Keep all adoption rejection reasons, record identities, immutable hashes and stopped-run qualification latch.",
+    "Keep every full CandidateSet member, including rejected, ineligible and unselected entries, and the unchanged complete decision/calendar denominator.",
+    "Every public repository getter, batch lookup, typed page, identity page, actual/replay source query, restart reader and export returns the same complete immutable domain metadata, ordering, cutoff behavior, overflow and invalid-row behavior."
+  ],
+  "concrete_patch_proposal": {
+    "smallest_safe_protection": "A durable preventive evidence budget is interim resource protection. Full V2 scale closure additionally requires lossless metadata storage and representative sustained validation of the supported population/cadence/duration. Budget exhaustion cannot be relabeled engineering success.",
+    "locations": [
+      "src/atlas/v2/runtime/production.py:5775",
+      "src/atlas/v2/runtime/production.py:5978",
+      "src/atlas/v2/runtime/live_health.py:297",
+      "src/atlas/v2/product.py:960"
+    ],
+    "profile_fields": [
+      "population_bound",
+      "cadence_ns",
+      "maximum_run_duration_ns",
+      "maximum_due_acquisitions",
+      "maximum_total_evidence_bytes",
+      "storage_profile_ref"
+    ],
+    "enforcement": [
+      "Validate the requested population, cadence and duration against an explicit measured profile before starting public streams/acquisition.",
+      "Persist the accepted budget and cumulative acquisitions/evidence footprint; restore it on restart without resetting consumed budget.",
+      "Reserve bounded capacity for an in-flight completed snapshot, rejection receipts, clean capture drain and final decision/report evidence; stop before entering an unreserved acquisition.",
+      "Persist exact budget exhaustion facts and retain the existing irreversible preventive-stop latch; keep prior artifacts immutable.",
+      "Keep the unchanged S40 thresholds as a floor. Do not promote this short fixture into a 48-hour storage profile or source qualification."
+    ],
+    "limitation": "An explicit finite diagnostic budget protects storage; it does not qualify 4096-contract continuous polling or meet a 48-hour endurance requirement. A supported continuous envelope still needs representative sustained measurements including streams, enriched histories, reports and WAL readers.",
+    "lossless_amplification_followup": "Implement the reviewed compressed metadata design alongside a finite reserve profile. Completion requires exact query/export/restart equivalence and sustained resource measurements; a resource-budget stop by itself leaves continuous scale closure open.",
+    "compression_measurement_limit": "The review measures zlib compression of exact canonical metadata to show possible redundancy reduction. It does not implement archive locators or qualify a compact storage design.",
+    "lossless_storage_design": {
+      "status": "DESIGN_ONLY_REQUIRES_ROOT_CONTRACT_REVIEW_AND_IMPLEMENTATION",
+      "minimal_architecture": "Keep one artifact inventory in artifact_index. Add a bulk_metadata_chunk_v1 table containing bounded compressed blocks of exact canonical metadata bytes and a bulk_metadata_locator_v1 table mapping each original artifact_ref to its block/row, metadata digest and uncompressed byte length. For eligible artifact rows retain original rowid, artifact_ref, artifact_type, content_hash, created_at_ns and available_at_ns; replace bulky metadata_json only with a deterministic projection containing every field used by existing indexed SQL predicates and order keys. Central repository hydration must return the exact original complete ArtifactIndexEntryV2 metadata, never this projection.",
+      "initial_eligible_types": [
+        "PublicObservationIndexV2",
+        "UniverseObservationV2",
+        "UniverseContractV2",
+        "BroadUniverseWorksetV2",
+        "BroadPublicAcquisitionReceiptV2"
+      ],
+      "bounded_encoding": "Use at most 512 metadata records per compressed block and an explicit uncompressed byte cap chosen from measured bodies. Preserve record order, exact canonical bytes, nulls and all source/publication/domain fields; hash the exact decompressed canonical bytes. Bound decoded-cache bytes and chunks. Compression of equal payload values never merges distinct source receipts or index timestamps.",
+      "raw_and_source_identity": "Existing Parquet raw_payload_bytes and observation_json remain authoritative and unchanged. Raw record_id, sequence, received/ingested/raw/index publication availability, event time, revision, instrument key, payload/content hashes, archive locator, rejected record positions/reasons and source acquisition refs remain exact. Keep exact per-record locators even when compressing records together.",
+      "candidate_calendar_scope": "CandidateSetV2, decision/calendar rows, model outputs, execution receipts and their denominators stay in the existing immutable path for the initial implementation. No selection, filtering, deduplication or deletion can be introduced by storage compression; a future extension must hydrate every member and every calendar outcome exactly.",
+      "query_projection_contract": "Derive projection fields mechanically from all registered identity expressions and archive/source predicates used for each eligible type. Verify projection equals the same fields extracted from decompressed complete metadata on encode and decode. Retaining the single inventory preserves existing SQL indexes, rowid export cursors, creation/availability ordering and cutoff filtering; it avoids an error-prone second-inventory merge. Inventory keys or query predicates must not be renamed or weakened.",
+      "repository_hydration": "Introduce a repository-owned exact row decoder, replacing every use of ArtifactIndexEntryV2._from_storage_row and inline json.loads(metadata_json) for eligible artifacts. get_artifact_metadata_by_refs must hydrate complete metadata as well. Legacy rows without a locator remain readable. Register/re-register compare hydrated complete bytes and all original identity/timestamp columns, atomically reject conflicts, and never publish a projection whose compressed payload is absent.",
+      "durability_restart_export": "Store compressed bytes, locators and artifact inventory rows in one FULL synchronous SQLite transaction so no domain row becomes visible before its payload is durable. Reopening and read-only snapshots must detect the new schema without writes and resolve exact locators. Export raw SQL must use hydrated complete metadata and preserve original source_rowid, uncompressed metadata limits, overflow detection, exact restart cursor and reader budgets. Never treat a missing/corrupt block as permission to fall back to older evidence.",
+      "line_references": {
+        "current_stream_only_locator": "src/atlas/v2/data/compact_public_index.py:23",
+        "stream_kinds_and_namespaces": "src/atlas/v2/data/compact_public_index.py:35",
+        "generic_row_decoder": "src/atlas/v2/memory/repository.py:105",
+        "query_identity_registry": "src/atlas/v2/memory/repository.py:236",
+        "archive_expression_and_index_definitions": "src/atlas/v2/memory/repository.py:306",
+        "immutable_batch_registration": "src/atlas/v2/memory/repository.py:1133",
+        "direct_ref_lookup": "src/atlas/v2/memory/repository.py:1674",
+        "exact_batch_metadata_lookup": "src/atlas/v2/memory/repository.py:1711",
+        "typed_inventory": "src/atlas/v2/memory/repository.py:1756",
+        "latest_cutoff_and_identity_lookup": "src/atlas/v2/memory/repository.py:1777",
+        "exact_actual_replay_source_history": "src/atlas/v2/memory/repository.py:1860",
+        "paged_typed_inventory": "src/atlas/v2/memory/repository.py:2237",
+        "paged_metadata_identity": "src/atlas/v2/memory/repository.py:2589",
+        "raw_exact_archive_fields": "src/atlas/v2/data/history.py:318",
+        "raw_index_reconstruction": "src/atlas/v2/data/history.py:436",
+        "raw_index_publication_metadata": "src/atlas/v2/data/collector.py:437",
+        "polling_adoption": "src/atlas/v2/runtime/production.py:3131",
+        "broad_runtime_adoption": "src/atlas/v2/runtime/production.py:5978",
+        "universe_observation_registration": "src/atlas/v2/runtime/broad_universe.py:222",
+        "full_universe_registration": "src/atlas/v2/runtime/broad_universe.py:259",
+        "full_workset_registration": "src/atlas/v2/runtime/broad_universe.py:298",
+        "export_insert_cursor_reader": "src/atlas/v2/science/tuning_export.py:196",
+        "export_full_snapshot_reader": "src/atlas/v2/science/tuning_export.py:1912",
+        "export_domain_decode": "src/atlas/v2/science/tuning_export.py:1949"
+      },
+      "implementation_acceptance": [
+        "Same exact original refs/hashes/full metadata and raw bytes for every stored row after reopen; identical market values with new receipt timestamps remain separate.",
+        "Legacy, newly compressed and mixed rows produce identical latest, type-page, metadata-page, source actual/replay and export results including tied timestamps, unavailable rows, revision histories, overflow and malformed-row behavior.",
+        "Full CandidateSet membership and all calendar outcomes retain complete denominators, identities and cutoff-visible chronology.",
+        "Injected missing/corrupt compressed blocks and transaction interruption fail closed without admitting partial evidence or selecting older state.",
+        "Measure storage amplification, write volume and cycle latency with streams, enrichment, metadata revisions, decisions, reports, concurrent readers/WAL and restart at the supported breadth and duration.",
+        "Preserve S40 FULL/WAL, reserve floor, bounded buffers, irreversible preventive-stop qualification latch and exact export budgets."
+      ],
+      "measurement_limit": "zlib metadata roundtrips quantify compression opportunity only. No compressed metadata table, query hydration adapter, migration or sustained workload has been implemented by this review.",
+      "index_amplification_followup": {
+        "finding": "The representative final SQLite file is 9,781,248 bytes while artifact_index pages total 3,911,680 bytes. Several source indexes duplicate complete instrument_key_json strings in every high-frequency polling row. Moving metadata into compressed blocks alone leaves these index entries and cannot establish a maximum-breadth continuous envelope.",
+        "architecture": "Keep the same artifact inventory and original rowid. Add an immutable catalog mapping an exact full canonical InstrumentKey/source/revision identity to a compact stable identity key; verify canonical-body hash and collision/conflict equality. Rewrite each source-key query lane/index to use compact identity keys resolved from the exact caller key, while domain hydration still returns the full original canonical metadata. Polling and bar origins retain every per-record ref and actual/replay chronology.",
+        "required_semantics": "Audit every indexed public/archive/origin/source predicate, ordering expression and forced INDEXED BY before changing physical keys. Preserve full-key versus revision-only matching, event/class lanes, actual/replay filtering, all revisions, source differences, tie ordering, cutoffs, overflow and invalid-row accounting. No query may silently skip compressed rows, omit receipts or use a sampled head.",
+        "line_references": [
+          "src/atlas/v2/memory/repository.py:313",
+          "src/atlas/v2/memory/repository.py:356",
+          "src/atlas/v2/memory/repository.py:386",
+          "src/atlas/v2/memory/repository.py:1860"
+        ],
+        "status": "DESIGN_ONLY_REQUIRES_ROOT_CONTRACT_REVIEW_AND_EQUIVALENCE_PROOF"
+      }
+    }
+  },
+  "measurement": {
+    "archive_file_count": 2,
+    "cadence_seconds": 10,
+    "cycles": 2,
+    "db_baseline_bytes": 1122304,
+    "db_final_file_bytes": 9781248,
+    "dbstat_bytes": {
+      "active_history_head": 4096,
+      "artifact_actual_binding_action_lookup": 4096,
+      "artifact_diagnostic_decision_lookup": 4096,
+      "artifact_index": 3911680,
+      "artifact_latest_available": 233472,
+      "artifact_outcome_decision_lookup": 4096,
+      "artifact_outcome_status_decision_lookup": 4096,
+      "artifact_policy_payoff_action_lookup": 4096,
+      "artifact_type_created_order": 241664,
+      "artifact_type_insertion_lookup": 65536,
+      "collector_cursor_head": 4096,
+      "created_metadata_0c4dc2455c12ac73": 4096,
+      "created_metadata_0f0be79161999164": 4096,
+      "created_metadata_1549bc062104eb07": 4096,
+      "created_metadata_1bb934dff9ef8092": 4096,
+      "created_metadata_1d00cf05da12b61e": 4096,
+      "created_metadata_246f0f2b9081f6bb": 4096,
+      "created_metadata_2564d1b4a8934829": 4096,
+      "created_metadata_347f33fac8185a74": 4096,
+      "created_metadata_36f4de70a9f22fef": 4096,
+      "created_metadata_3a6fc8d98b19ed66": 4096,
+      "created_metadata_3fb01026416c6c08": 4096,
+      "created_metadata_434ddc4e3d1c5ff2": 4096,
+      "created_metadata_7b1605ed90551f48": 4096,
+      "created_metadata_7c611fbc5161ff1d": 4096,
+      "created_metadata_7d68744e60744acd": 4096,
+      "created_metadata_7ef2faa3910523e8": 4096,
+      "created_metadata_807813458acf15d7": 4096,
+      "created_metadata_9e82b7881cd03945": 4096,
+      "created_metadata_9f77396d8f579ccf": 4096,
+      "created_metadata_a3ff9c41bdb5ec8a": 4096,
+      "created_metadata_a7531cffb7ebf7ea": 4096,
+      "created_metadata_b7980f033398d7df": 4096,
+      "created_metadata_c07d4df4f0410f1b": 4096,
+      "created_metadata_c2c48640226a3618": 53248,
+      "created_metadata_c2e3cfc81a10edfb": 4096,
+      "created_metadata_c90b45207c9eaff1": 4096,
+      "created_metadata_cec26df71bd835ea": 4096,
+      "created_metadata_d569cf88682020de": 4096,
+      "created_metadata_d6e04acdcf18e596": 4096,
+      "created_metadata_d757c7207420d349": 4096,
+      "created_metadata_dd8a31cfe1f8a092": 4096,
+      "created_metadata_e14c46dafc9ad155": 4096,
+      "created_metadata_fd1750a1f4c92152": 4096,
+      "decision_event_trigger_record_lookup": 4096,
+      "due_work": 4096,
+      "due_work_discovery": 4096,
+      "due_work_oldest": 4096,
+      "due_work_pressure": 4096,
+      "due_work_quarantine_pressure": 4096,
+      "due_work_ready": 4096,
+      "l2_archive_restart_lookup": 4096,
+      "latest_metadata_0c4dc2455c12ac73": 4096,
+      "latest_metadata_0f0be79161999164": 4096,
+      "latest_metadata_1549bc062104eb07": 4096,
+      "latest_metadata_1bb934dff9ef8092": 4096,
+      "latest_metadata_1d00cf05da12b61e": 4096,
+      "latest_metadata_246f0f2b9081f6bb": 4096,
+      "latest_metadata_2564d1b4a8934829": 4096,
+      "latest_metadata_347f33fac8185a74": 4096,
+      "latest_metadata_36f4de70a9f22fef": 4096,
+      "latest_metadata_3a6fc8d98b19ed66": 4096,
+      "latest_metadata_3fb01026416c6c08": 4096,
+      "latest_metadata_434ddc4e3d1c5ff2": 4096,
+      "latest_metadata_7b1605ed90551f48": 4096,
+      "latest_metadata_7c611fbc5161ff1d": 4096,
+      "latest_metadata_7d68744e60744acd": 4096,
+      "latest_metadata_7ef2faa3910523e8": 4096,
+      "latest_metadata_807813458acf15d7": 4096,
+      "latest_metadata_9e82b7881cd03945": 4096,
+      "latest_metadata_9f77396d8f579ccf": 4096,
+      "latest_metadata_a3ff9c41bdb5ec8a": 4096,
+      "latest_metadata_a7531cffb7ebf7ea": 4096,
+      "latest_metadata_b7980f033398d7df": 4096,
+      "latest_metadata_c07d4df4f0410f1b": 4096,
+      "latest_metadata_c2c48640226a3618": 49152,
+      "latest_metadata_c2e3cfc81a10edfb": 4096,
+      "latest_metadata_c90b45207c9eaff1": 4096,
+      "latest_metadata_cec26df71bd835ea": 4096,
+      "latest_metadata_d569cf88682020de": 4096,
+      "latest_metadata_d6e04acdcf18e596": 4096,
+      "latest_metadata_d757c7207420d349": 4096,
+      "latest_metadata_dd8a31cfe1f8a092": 4096,
+      "latest_metadata_e14c46dafc9ad155": 4096,
+      "latest_metadata_fd1750a1f4c92152": 4096,
+      "m15_accounting_origin_lookup": 4096,
+      "m15_checkpoint_exact_generation": 4096,
+      "m15_checkpoint_key_generation_lookup": 4096,
+      "model_registry": 4096,
+      "native_m1_checkpoint_exact_generation": 4096,
+      "native_m1_checkpoint_key_generation_lookup": 4096,
+      "native_m1_event_id_lookup": 4096,
+      "native_m1_event_origin_lookup": 4096,
+      "native_m1_gate_origin_lookup": 4096,
+      "native_origin_window": 4096,
+      "native_origin_window_head": 4096,
+      "ops_decision_event_available_order": 4096,
+      "ops_outbox": 4096,
+      "ops_receipt_event_id_lookup": 4096,
+      "outbox_pending_order": 4096,
+      "public_archive_history_lookup": 577536,
+      "public_archive_receipt_lookup": 188416,
+      "public_bar_repair_head": 4096,
+      "public_exact_receipt_key_actual_lookup": 712704,
+      "public_exact_receipt_key_replay_lookup": 708608,
+      "public_exact_receipt_revision_actual_lookup": 303104,
+      "public_exact_receipt_revision_replay_lookup": 299008,
+      "public_native_m1_source_window_lookup": 491520,
+      "public_observation_source_id_lookup": 36864,
+      "public_origin_discovery_lookup": 454656,
+      "public_origin_window_lookup": 491520,
+      "public_reconciliation_source_id_lookup": 4096,
+      "public_stream_archive_locator_v1": 4096,
+      "public_stream_archive_trade_window_v1": 4096,
+      "public_stream_continuity_head_v1_progress": 4096,
+      "public_stream_continuity_head_v2_progress": 4096,
+      "public_stream_generic_source_lookup": 208896,
+      "public_stream_invalidation_window": 4096,
+      "public_stream_trade_event_window": 4096,
+      "research_prediction_checkpoint_run_lookup": 4096,
+      "research_prediction_outcome_identity_lookup": 4096,
+      "s3_residual_context_window": 4096,
+      "s3_vwap_context_window": 4096,
+      "scheduled_event_time_v1": 4096,
+      "schema_meta": 4096,
+      "source_health": 4096,
+      "source_health_available_lookup": 4096,
+      "source_health_gap_lookup": 4096,
+      "source_health_state_lookup": 4096,
+      "sqlite_autoindex_active_history_head_1": 4096,
+      "sqlite_autoindex_artifact_index_1": 151552,
+      "sqlite_autoindex_collector_cursor_head_1": 4096,
+      "sqlite_autoindex_due_work_1": 4096,
+      "sqlite_autoindex_due_work_discovery_1": 4096,
+      "sqlite_autoindex_due_work_pressure_1": 4096,
+      "sqlite_autoindex_due_work_quarantine_pressure_1": 4096,
+      "sqlite_autoindex_model_registry_1": 4096,
+      "sqlite_autoindex_native_origin_window_1": 4096,
+      "sqlite_autoindex_native_origin_window_head_1": 4096,
+      "sqlite_autoindex_ops_outbox_1": 4096,
+      "sqlite_autoindex_ops_outbox_2": 4096,
+      "sqlite_autoindex_public_bar_repair_head_1": 4096,
+      "sqlite_autoindex_schema_meta_1": 4096,
+      "sqlite_autoindex_source_health_1": 4096,
+      "sqlite_autoindex_watch_1": 4096,
+      "sqlite_autoindex_watch_transition_1": 4096,
+      "sqlite_schema": 57344,
+      "watch": 4096,
+      "watch_active_order": 4096,
+      "watch_created_order": 4096,
+      "watch_transition": 4096,
+      "watch_transition_time_order": 4096
+    },
+    "excluded": [
+      "network",
+      "streams",
+      "enrichment",
+      "scheduler state",
+      "reports",
+      "decision work"
+    ],
+    "integrity": {
+      "all_artifact_domain_metadata_verified_after_restart": 1804,
+      "compression_roundtrip": "EXACT_CANONICAL_BYTES",
+      "cutoff_worksets_verified_after_restart": 2,
+      "exact_index_metadata_verified_after_restart": 1024,
+      "exact_raw_rows_verified": 1024,
+      "source_receipt_refs_verified": 1024
+    },
+    "population": 256,
+    "process_storage_write_bytes_total": 23396352,
+    "samples": [
+      {
+        "adoption_seconds": 13.447933279006975,
+        "archive_cumulative_bytes": 108222,
+        "cycle": 1,
+        "db_growth_bytes": 4296704,
+        "db_logical_bytes": 5419008,
+        "metadata_by_type_cumulative": {
+          "BroadPublicAcquisitionReceiptV2": {
+            "bytes": 35094,
+            "rows": 1
+          },
+          "BroadUniverseWorksetV2": {
+            "bytes": 556854,
+            "rows": 1
+          },
+          "OpsPublicSourceReconciliationV1": {
+            "bytes": 34785,
+            "rows": 2
+          },
+          "ProductContractV2": {
+            "bytes": 200264,
+            "rows": 256
+          },
+          "PublicObservationIndexV2": {
+            "bytes": 578960,
+            "rows": 512
+          },
+          "PublicSourceHealthV2": {
+            "bytes": 613,
+            "rows": 2
+          },
+          "UniverseContractV2": {
+            "bytes": 316802,
+            "rows": 1
+          },
+          "UniverseObservationV2": {
+            "bytes": 124672,
+            "rows": 256
+          }
+        },
+        "process_storage_write_bytes_cycle": 9228288,
+        "raw_payload_bytes": 121800,
+        "record_count": 512,
+        "wal_sample_bytes": 5421952,
+        "workset_publication_seconds": 8.826277233019937,
+        "zlib_metadata_bytes_by_type_cycle": {
+          "BroadPublicAcquisitionReceiptV2": 20865,
+          "BroadUniverseWorksetV2": 61591,
+          "OpsPublicSourceReconciliationV1": 20571,
+          "PublicObservationIndexV2": 69608,
+          "PublicSourceHealthV2": 291,
+          "UniverseContractV2": 49526,
+          "UniverseObservationV2": 24887
+        }
+      },
+      {
+        "adoption_seconds": 17.80469309000182,
+        "archive_cumulative_bytes": 216343,
+        "cycle": 2,
+        "db_growth_bytes": 4362240,
+        "db_logical_bytes": 9781248,
+        "metadata_by_type_cumulative": {
+          "BroadPublicAcquisitionReceiptV2": {
+            "bytes": 70188,
+            "rows": 2
+          },
+          "BroadUniverseWorksetV2": {
+            "bytes": 1113770,
+            "rows": 2
+          },
+          "OpsPublicSourceReconciliationV1": {
+            "bytes": 69570,
+            "rows": 4
+          },
+          "ProductContractV2": {
+            "bytes": 200264,
+            "rows": 256
+          },
+          "PublicObservationIndexV2": {
+            "bytes": 1157920,
+            "rows": 1024
+          },
+          "PublicSourceHealthV2": {
+            "bytes": 613,
+            "rows": 2
+          },
+          "UniverseContractV2": {
+            "bytes": 633671,
+            "rows": 2
+          },
+          "UniverseObservationV2": {
+            "bytes": 249344,
+            "rows": 512
+          }
+        },
+        "process_storage_write_bytes_cycle": 14168064,
+        "raw_payload_bytes": 121800,
+        "record_count": 512,
+        "wal_sample_bytes": 7177072,
+        "workset_publication_seconds": 13.090980431996286,
+        "zlib_metadata_bytes_by_type_cycle": {
+          "BroadPublicAcquisitionReceiptV2": 20845,
+          "BroadUniverseWorksetV2": 60791,
+          "OpsPublicSourceReconciliationV1": 20548,
+          "PublicObservationIndexV2": 69409,
+          "UniverseContractV2": 49560,
+          "UniverseObservationV2": 24634
+        }
+      }
+    ],
+    "source_shape": "one Bybit ticker and three Binance bulk market rows per symbol",
+    "interpretation": {
+      "measured_scope": "128 contracts per venue, 256 total; two completed synthetic fresh-receipt cycles on the real collector/SQLite/Parquet/workset path.",
+      "symbolic_cadence_only": "Raw receipt timestamps differ by ten seconds. The benchmark does not sleep, run the production scheduler or establish a ten-second service rate.",
+      "observed_operation_seconds": [
+        22.27421051202691,
+        30.895673521998106
+      ],
+      "host_limit": "Linux shared workspace with concurrent agent work; times do not qualify owner hardware, live acquisition or maximum breadth.",
+      "steady_db_growth_to_raw_payload_ratio": 35.81477832512315,
+      "metadata_compression_is_not_db_compression": "zlib figures compress exact metadata arrays by artifact type for opportunity measurement. They omit query projections, locator/catalog/index pages, SQLite/WAL overhead, durability, caches and decoder cost.",
+      "maximum_breadth_test": "NOT_RUN: initial interrupted maximum two-cycle attempt provided no final integrity proof; no maximum-breadth capacity result is claimed.",
+      "conditional_linear_projection": {
+        "assumption": "Multiply the representative second-cycle DB growth by the population ratio and all due ten-second cycles for 48 hours; no assertion of measured maximum-population behavior.",
+        "representative_population_48h_db_growth_bytes": 75379507200,
+        "maximum_population_48h_db_growth_bytes": 1206072115200,
+        "excluded": [
+          "network",
+          "streams",
+          "enrichment",
+          "scheduler state",
+          "reports",
+          "decision work"
+        ],
+        "qualification": "ARITHMETIC_ONLY_NOT_CAPACITY_PROOF"
+      },
+      "process_io_scope": "Linux /proc/self/io write_bytes deltas from after initial product registration through the acquisition/publication measurement window, before final checkpoint/reopen; includes process writes and excludes network, unrelated processes and final checkpoint cost."
+    }
+  },
+  "focused_test_results": [
+    {
+      "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session041_scale_review.py -s --junitxml=/tmp/s41-scale-review-final.xml",
+      "result": "PASS",
+      "tests": 2,
+      "failures": 0,
+      "duration_seconds": 134.426,
+      "xml_path": "/tmp/s41-scale-review-final.xml",
+      "xml_sha256": "f1bd930eb38a1bebc4be856998db4217f976d86b2f40b06545553d5dc41a4da8",
+      "log_path": "/tmp/s41-scale-review-final.log",
+      "log_sha256": "0246927a077409304ffa286b0099f8cc5f075171b9314d63f85d048968f20a98"
+    },
+    {
+      "command": "/home/kasun/Music/atlas/.venv/bin/python -m ruff check tests/v2/test_session041_scale_review.py",
+      "result": "PASS",
+      "scope": "owned test only; safe import and dict-construction fixes applied"
+    }
+  ],
+  "closure": {
+    "review_closes_requirement_matrix": false,
+    "status": "LOSSLESS_STORAGE_IMPLEMENTATION_AND_CONTINUOUS_CAPACITY_OPEN",
+    "qualification_authority": "ZERO",
+    "budget_stop_alone_is_full_v2_engineering_closure": false
+  },
+  "unchanged_s40_floor": {
+    "initial_reserve_bytes": 62930192327,
+    "source": "docs/v2/SESSION040_PREFLIGHT_AND_LIVE_HEALTH_CONTRACT_V1.md:35",
+    "interpretation": "Existing two-symbol stream estimate plus reserve remains a floor, not evidence of adequate maximum-breadth polling storage."
+  },
+  "source_proof_sha256": {
+    "src/atlas/v2/memory/repository.py": "a4a7be50096e53f8643ed5d2c364a37e1bfbfd0d635b1e03007bab89901f03ec",
+    "src/atlas/v2/data/compact_public_index.py": "729006428959e0c1d49eb6f4cc7f01f0e847a2cda98b62d6d6e4a83e2cf3a876",
+    "src/atlas/v2/data/collector.py": "6dedac7f10e5534363983732fd22757da9286b43044ca21d722921ff88ac8742",
+    "src/atlas/v2/data/history.py": "94017caf4e2244c5124c7ccca367d3a90730fe0b3bd8d3d44845aa019f1b51e8",
+    "src/atlas/v2/runtime/production.py": "a0a3edd381bcdf3f9e36db098ec34d2c238f16b5a472af8ba0a652f636f3dcd5",
+    "src/atlas/v2/runtime/broad_universe.py": "de31fe5f5960236948edf711412ed95271dd13894f21eebfc2cc2a040f31d21b",
+    "src/atlas/v2/science/tuning_export.py": "68f7958e90b20373e0e8bae28ac9839bb28d0f0350c8a84ed862f0e9b3642ea1",
+    "tests/v2/test_session041_scale_review.py": "6945031ea15e63b367f14971b36b8a84538b5a16c7dad009359e94ac8758d54e"
+  },
+  "source_proof_scope": "On-disk SHA256 snapshots at review assembly; not a final integrated Git SHA and not an endurance or live-source qualification."
+}

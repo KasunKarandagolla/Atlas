@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="3" time="33.306" timestamp="2026-10-07T12:40:23.055947+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_strategy_surface" name="test_loader_binds_btc_proxy_to_prepared_same_venue_cohort" time="8.909" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency" time="6.999"><failure message="ValueError: S5 persisted episode stage identity is malformed">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-200/test_s5_actual_delivery_preser0')
+
+    def test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency(tmp_path):
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            fixture = _s5_fixture(repository)
+            first = _prepare_fixture_s5(repository, fixture, CUTOFF + 20)
+            assert first.information_cutoff_ns == CUTOFF
+            assert first.delivered_at_ns == CUTOFF + 20
+            assert first.continuation.state == "DELEVERAGING_EVIDENCE"
+            assert first.continuation.break_evidence.available_at_ns == CUTOFF + 20
+            assert first.continuation.confirmation is None
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+&gt;           second = _prepare_fixture_s5(repository, fixture, CUTOFF + 30)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_strategy_surface.py:528: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_strategy_surface.py:512: in _prepare_fixture_s5
+    return _prepare_s5_diagnostics(repository, keys={S5_KEY}, cutoff_ns=CUTOFF,
+src/atlas/v2/runtime/full_strategy_surface.py:735: in _prepare_s5_diagnostics
+    vulnerability = _s5_structural_stage(repository, key=key, break_at_ns=broken.close_at_ns,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+repository = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f9a9e5cc9b0&gt;
+key = InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;, environment=&lt;EnvironmentV2.MAINNET: 'MAINNET'&gt;, product=&lt;ProductTypeV2...='USDT', settlement_asset='USDT', contract_revision='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+break_at_ns = 1798200000000000, stage = 'VULNERABILITY'
+event_at_ns = 1798200000000000, state = 'OBSERVED_CONTEXT'
+refs = ('451ad3a9a321ed14428ae83cee5f2f1bddf7a371fdb091e1919976d17accd2c9', '56c4c3e61acb36f8fc051ef85cf14f7a343d1e33625df2d6...6abf74a388c75ca7c296b960f7626e354b048409b368', 'e5e8e32697ea8ca0387660b5f304753cb320ec59915a6f88cbef4608f0eff10c', ...)
+cutoff_ns = 1800000000000000
+clock_ns = &lt;function _prepare_fixture_s5.&lt;locals&gt;.&lt;lambda&gt; at 0x7f9a9402d800&gt;
+
+    def _s5_structural_stage(repository: OpsRepository, *, key: InstrumentKeyV2,
+                             break_at_ns: int, stage: str, event_at_ns: int,
+                             state: str, refs: Sequence[str], cutoff_ns: int,
+                             clock_ns: Callable[[], int]) -&gt; StageEvidenceV2:
+        # One append-only stage identity per episode. Restart preserves the first
+        # actual delivery rather than reconstructing evidence availability from bars.
+        ref = sha256_json({"policy": S5_STRUCTURAL_POLICY, "key": key.to_dict(),
+            "break_at_ns": break_at_ns, "stage": stage, "event_at_ns": event_at_ns})
+        existing = repository.get_artifact(ref)
+        if existing is not None:
+            body = existing.metadata.get("stage")
+            if (existing.artifact_type != "S5StructuralStageEvidenceV1" or not isinstance(body, Mapping)
+                    or body.get("stage") != stage or body.get("event_at_ns") != event_at_ns
+                    or body.get("state") != state or existing.metadata.get("policy") != S5_STRUCTURAL_POLICY
+                    or existing.metadata.get("key") != key.to_dict()):
+&gt;               raise ValueError("S5 persisted episode stage identity is malformed")
+E               ValueError: S5 persisted episode stage identity is malformed
+
+src/atlas/v2/runtime/full_strategy_surface.py:639: ValueError</failure></testcase><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason" time="9.226" /></testsuite></testsuites>

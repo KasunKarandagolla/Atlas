@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="27.152" timestamp="2026-10-07T10:20:29.205084+05:30" hostname="Kasun"><testcase classname="" name="tests.runtime.test_session041_bybit_native" time="0.000"><error message="collection failure">tests/runtime/test_session041_bybit_native.py:351: in &lt;module&gt;
+    def _real_port(journal, *, size="2", side="Buy", received=T0):
+                                                              ^^
+E   NameError: name 'T0' is not defined</error></testcase></testsuite></testsuites>

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="41" time="263.403" timestamp="2026-10-07T12:33:36.794414+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_strategy_surface" name="test_full_surface_emits_explicit_not_estimable_roles_and_zero_authority" time="14.080" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s4_requires_indexed_feature_and_preserves_actual_feature_publication" time="9.987" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_universe_must_be_visible_at_information_cutoff" time="7.923" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_global_population_bound_counts_nested_prepared_histories" time="9.105" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s7_calendar_or_empty_context_never_generates_directional_rows" time="8.341" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_derived_surface_waits_for_actual_universe_publication" time="11.389" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s8_uses_only_exact_owner_registered_pair_definitions" time="4.211" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication" time="8.516" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_native_public_locator_validates_raw_hash_and_exact_archive" time="2.784" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_actual_loader_preserves_native_history_and_services_compose" time="5.010" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_loader_reuses_exact_production_causal_bar_index" time="5.413" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_loader_binds_btc_proxy_to_prepared_same_venue_cohort" time="4.032"><failure message="ValueError: artifact_ref already indexes different immutable content">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-188/test_loader_binds_btc_proxy_to0')
+
+    def test_loader_binds_btc_proxy_to_prepared_same_venue_cohort(tmp_path):
+        from atlas.v2.strategies.s6_cross_section import LiquidityFundingEvidenceV2
+    
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            base = research_case(repository).universe
+            binance_key = replace(KEY, venue=VenueV2.BINANCE)
+            entries = (base.entries[0], replace(base.entries[0], key=binance_key))
+            universe = replace(base, envelope=replace(base.envelope, content_hash=""),
+                entries=tuple(sorted(entries, key=lambda entry: entry.key.to_canonical_json())))
+            rows = tuple((key, *_bar(key, interval, CUTOFF)) for key, interval in (
+                (KEY, BarIntervalV2.H1), (KEY, BarIntervalV2.H4), (binance_key, BarIntervalV2.H1)))
+&gt;           refs = _archive_sources(repository, rows)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_strategy_surface.py:309: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_strategy_surface.py:59: in _archive_sources
+    repository.register_artifact(ArtifactIndexEntryV2(ref, "PublicObservationIndexV2", raw.content_hash,
+src/atlas/v2/memory/repository.py:1124: in register_artifact
+    return self.register_artifacts((entry,))[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7efe93c12660&gt;
+entries = (ArtifactIndexEntryV2(artifact_ref='0ee0107d3b99770c7849580112270fece06ba1995ad927a3e55e9a5db9ada218', artifact_type='...one), ('revision_of', None), ('source_id', 'BYBIT_PUBLIC_V2'), ('translation_version', 'SESSION041_EXACT_FIXTURE')))),)
+
+    def register_artifacts(self, entries: Sequence[ArtifactIndexEntryV2]) -&gt; tuple[ArtifactIndexEntryV2, ...]:
+        """Atomically register a deterministic batch of immutable artifact rows."""
+        batch = tuple(entries)
+        if any(not isinstance(entry, ArtifactIndexEntryV2) for entry in batch):
+            raise ValueError("artifact batch must contain ArtifactIndexEntryV2 entries")
+        from ..data.public_archive_extents import extent_ref
+    
+        compact = tuple(entry for entry in batch
+            if entry.artifact_type in ("PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1")
+            and isinstance(entry.metadata.get("archive_chunk_id"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", str(entry.metadata["archive_chunk_id"])) is not None
+            and self.get_artifact(extent_ref("ops-l2-frames" if entry.artifact_type == "PublicStreamFrameIndexV1"
+                else "ops-observations", str(entry.metadata["archive_chunk_id"]))) is not None)
+        if compact:
+            selected = {entry.artifact_ref for entry in compact}
+            with self.atomic_composition():
+                self.register_public_archive_entries(compact)
+                self.register_artifacts(tuple(entry for entry in batch if entry.artifact_ref not in selected))
+            return batch
+        original_batch = batch
+        if self._public_locator_enabled and batch:
+            known = self.get_artifact_metadata_by_refs(tuple(entry.artifact_ref for entry in batch))
+            aliases = set()
+            for entry in batch:
+                # A compact locator must never be shadowed by a generic row
+                # with the same ref and different immutable domain content.
+                prior = known.get(entry.artifact_ref)
+                if prior is not None and prior["artifact_type"] in (
+                        "PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1",
+                        "PublicStreamSourceHealthV1"):
+                    exact = self.get_artifact(entry.artifact_ref)
+                    if exact != entry:
+                        raise ValueError("artifact identity conflicts with immutable public evidence")
+                    with self._lock:
+                        alias = self._connection.execute(
+                            "SELECT 1 FROM public_stream_archive_locator_v1 WHERE artifact_ref=?",
+                            (bytes.fromhex(entry.artifact_ref),)).fetchone()
+                    if alias is not None:
+                        aliases.add(entry.artifact_ref)
+            batch = tuple(entry for entry in batch if entry.artifact_ref not in aliases)
+        encoded: dict[str, tuple[ArtifactIndexEntryV2, str]] = {}
+        for entry in batch:
+            metadata_json = canonical_json(entry.metadata)
+            previous = encoded.get(entry.artifact_ref)
+            if previous is not None:
+                prior_entry, prior_json = previous
+                if (
+                    prior_entry.artifact_type,
+                    prior_entry.content_hash,
+                    prior_entry.created_at_ns,
+                    prior_entry.available_at_ns,
+                    prior_json,
+                ) != (
+                    entry.artifact_type,
+                    entry.content_hash,
+                    entry.created_at_ns,
+                    entry.available_at_ns,
+                    metadata_json,
+                ):
+                    raise ValueError("artifact batch repeats an identity with different immutable content")
+            else:
+                encoded[entry.artifact_ref] = (entry, metadata_json)
+        with self._transaction() as connection:
+            existing: dict[str, sqlite3.Row] = {}
+            refs = tuple(encoded)
+            for offset in range(0, len(refs), 500):
+                ref_batch = refs[offset : offset + 500]
+                if not ref_batch:
+                    continue
+                marks = ",".join("?" for _ in ref_batch)
+                rows = connection.execute(
+                    f"SELECT artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json "
+                    f"FROM artifact_index WHERE artifact_ref IN ({marks})",
+                    ref_batch,
+                ).fetchall()
+                existing.update((row["artifact_ref"], row) for row in rows)
+            for entry, metadata_json in encoded.values():
+                row = existing.get(entry.artifact_ref)
+                if row is not None:
+                    stored_tuple = (
+                        row["artifact_type"],
+                        row["content_hash"],
+                        row["created_at_ns"],
+                        row["available_at_ns"],
+                        row["metadata_json"],
+                    )
+                    requested_tuple = (
+                        entry.artifact_type,
+                        entry.content_hash,
+                        entry.created_at_ns,
+                        entry.available_at_ns,
+                        metadata_json,
+                    )
+                    if stored_tuple != requested_tuple:
+&gt;                       raise ValueError("artifact_ref already indexes different immutable content")
+E                       ValueError: artifact_ref already indexes different immutable content
+
+src/atlas/v2/memory/repository.py:1220: ValueError</failure></testcase><testcase classname="tests.v2.test_session041_strategy_surface" name="test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later" time="10.794" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs" time="7.140" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_critic_packet_retains_exact_analogue_retrieval_receipt_and_replay" time="13.341" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_critic_market_lineage_keeps_t0_and_original_deadline[timely_derived]" time="0.518" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_critic_market_lineage_keeps_t0_and_original_deadline[future_raw]" time="0.257" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_critic_market_lineage_keeps_t0_and_original_deadline[after_original_deadline]" time="0.433" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency" time="7.786"><failure message="AssertionError: assert 'NOT_ESTIMABLE' == 'DELEVERAGING_EVIDENCE'&#10;  &#10;  - DELEVERAGING_EVIDENCE&#10;  + NOT_ESTIMABLE">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-188/test_s5_actual_delivery_preser0')
+
+    def test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency(tmp_path):
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            fixture = _s5_fixture(repository)
+            first = _prepare_fixture_s5(repository, fixture, CUTOFF + 20)
+            assert first.information_cutoff_ns == CUTOFF
+            assert first.delivered_at_ns == CUTOFF + 20
+&gt;           assert first.continuation.state == "DELEVERAGING_EVIDENCE"
+E           AssertionError: assert 'NOT_ESTIMABLE' == 'DELEVERAGING_EVIDENCE'
+E             
+E             - DELEVERAGING_EVIDENCE
+E             + NOT_ESTIMABLE
+
+tests/v2/test_session041_strategy_surface.py:522: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s5_funding_alone_and_unqualified_flow_cannot_confirm" time="10.311" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason" time="8.975"><failure message="AssertionError: assert {'EXHAUSTION'...4_FLOW_STATE'} &lt;= {'S4_ABSORPTI...4_FLOW_STATE'}&#10;  &#10;  Extra items in the left set:&#10;  'FLOW_REVERSAL'&#10;  'RECLAIM'&#10;  'EXHAUSTION'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-188/test_s5_reversal_retains_all_s0')
+
+    def test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason(tmp_path):
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            result = _prepare_fixture_s5(repository, _s5_fixture(repository, continuation=False), CUTOFF + 20)
+            assert result.reversal.state == "NOT_ESTIMABLE_LIQUIDATION_BASELINE_UNAVAILABLE"
+            assert result.reversal.missing_reason == "VENUE_SPECIFIC_PRIOR_LIQUIDATION_BASELINE_REQUIRED"
+            stages = {stage.stage: stage for stage in result.reversal.stage_evidence}
+&gt;           assert {"S4_FLOW_STATE", "S4_ABSORPTION", "EXHAUSTION", "RECLAIM", "FLOW_REVERSAL"} &lt;= set(stages)
+E           AssertionError: assert {'EXHAUSTION'...4_FLOW_STATE'} &lt;= {'S4_ABSORPTI...4_FLOW_STATE'}
+E             
+E             Extra items in the left set:
+E             'FLOW_REVERSAL'
+E             'RECLAIM'
+E             'EXHAUSTION'
+
+tests/v2/test_session041_strategy_surface.py:558: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s4_baseline_requires_three_qualified_prior_exact_samples" time="10.593" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s4_baseline_rejects_index_body_that_differs_from_typed_fit" time="7.195" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_prepared_s5_composes_with_actual_context_publication_and_receipt" time="8.637" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_prepared_s5_rejects_future_raw_source_despite_late_delivery" time="6.169" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_prior_prefix_research_receipt_keeps_own_cutoff_and_rejects_future_raw" time="4.673" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s6_reuses_exact_immutable_first_publication" time="2.576" /><testcase classname="tests.v2.test_session037_chronology" name="test_delayed_feature_selection_sizing_action_keep_original_m0_cutoff" time="4.195" /><testcase classname="tests.v2.test_session037_chronology" name="test_restart_reuses_exact_sizing_and_action_publications" time="4.654" /><testcase classname="tests.v2.test_session037_chronology" name="test_hash_valid_receipt_cannot_backdate_input_cutoff_or_widen_market_prefix[change0]" time="3.402" /><testcase classname="tests.v2.test_session037_chronology" name="test_hash_valid_receipt_cannot_backdate_input_cutoff_or_widen_market_prefix[change1]" time="3.941" /><testcase classname="tests.v2.test_session037_chronology" name="test_hash_valid_receipt_cannot_backdate_input_cutoff_or_widen_market_prefix[change2]" time="6.837" /><testcase classname="tests.v2.test_session037_chronology" name="test_actual_feature_publication_uses_clock_and_rejects_future_bar" time="4.244" /><testcase classname="tests.v2.test_session037_chronology" name="test_raw_after_cutoff_cannot_receive_or_be_laundered_through_receipt" time="3.962" /><testcase classname="tests.v2.test_session037_chronology" name="test_corrupt_derived_receipt_prevents_m0_consumption" time="4.004" /><testcase classname="tests.v2.test_session037_chronology" name="test_late_sizing_is_auditable_but_not_consumer_eligible" time="3.501" /><testcase classname="tests.v2.test_session037_chronology" name="test_action_cannot_publish_after_original_deadline" time="6.917" /><testcase classname="tests.v2.test_session037_chronology" name="test_no_candidate_composition_roundtrip_preserves_raw_event_identity" time="4.514" /><testcase classname="tests.v2.test_session037_chronology" name="test_delayed_candidate_set_indexes_exact_cutoff_calendar_and_rejects_bad_receipt" time="3.548" /><testcase classname="tests.v2.test_session037_chronology" name="test_production_hard_risk_calendar_waits_for_exact_action_publication" time="3.890" /><testcase classname="tests.v2.test_session037_chronology" name="test_default_port_expires_watch_on_restart_without_reopening_terminal_state" time="2.839" /></testsuite></testsuites>

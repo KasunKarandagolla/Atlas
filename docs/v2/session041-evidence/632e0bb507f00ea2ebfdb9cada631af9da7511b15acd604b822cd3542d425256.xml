@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="3" time="2.219" timestamp="2026-10-07T10:34:38.307034+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_demo_product" name="test_explicit_demo_host_stops_and_joins_before_releasing_account_lease" time="0.024"><failure message="ValueError: account_scope_ref must be an opaque registered reference">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-183/test_explicit_demo_host_stops_0')
+build = None
+
+    def test_explicit_demo_host_stops_and_joins_before_releasing_account_lease(tmp_path, build):
+&gt;       run = native_run(tmp_path)
+              ^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_demo_product.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_demo_product.py:21: in native_run
+    return product.create_run(tmp_path, product.ResearchRunConfigV2(
+&lt;string&gt;:19: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ResearchRunConfigV2(schema_version=2, data_root='/tmp/pytest-of-kasun/pytest-183/test_explicit_demo_host_stops_0', pub...strument_symbol='SOLUSDT', report_interval_seconds=60, minimum_free_disk_bytes=1073741824, provider_profile='DISABLED')
+
+    def __post_init__(self) -&gt; None:
+        if type(self.schema_version) is not int or self.schema_version != 2:
+            raise ValueError("unsupported run configuration version")
+        if not isinstance(self.data_root, str) or not self.data_root:
+            raise ValueError("V2 run configuration requires its selected data root")
+        selected_root = Path(self.data_root).expanduser().resolve()
+        if str(selected_root) != self.data_root:
+            raise ValueError("V2 data root must be canonical before run creation")
+        if isinstance(self.public_venues, list):
+            object.__setattr__(self, "public_venues", tuple(self.public_venues))
+        if (not isinstance(self.public_venues, tuple) or not self.public_venues
+                or len(self.public_venues) &gt; 2
+                or any(not isinstance(venue, str) or venue not in {"BYBIT", "BINANCE"}
+                       for venue in self.public_venues)
+                or len(set(self.public_venues)) != len(self.public_venues)):
+            raise ValueError("public venues must be a unique registered venue tuple")
+        if (not isinstance(self.selected_execution_venue, str)
+                or self.selected_execution_venue not in {"BYBIT", "BINANCE"}):
+            raise ValueError("unsupported selected execution venue")
+        if (not isinstance(self.execution_environment, str)
+                or self.execution_environment not in {"DEMO", "TESTNET"}):
+            raise ValueError("execution environment must be DEMO or TESTNET")
+        if (self.product_scope != "LINEAR_PERPETUAL" or self.scope != "BOUNDED_UNIVERSE_V2"
+                or not isinstance(self.product_scope, str) or not isinstance(self.scope, str)):
+            raise ValueError("unsupported product or bounded universe scope")
+        if not isinstance(self.resource_profile_id, str) or self.resource_profile_id != "bounded-v2":
+            raise ValueError("unsupported bounded resource profile")
+        if (type(self.report_interval_seconds) is not int
+                or not 60 &lt;= self.report_interval_seconds &lt;= 86_400):
+            raise ValueError("report interval must be between one minute and one day")
+        if type(self.minimum_free_disk_bytes) is not int or self.minimum_free_disk_bytes &lt; 268_435_456:
+            raise ValueError("research run requires a declared disk reserve")
+        if (not isinstance(self.provider_profile, str)
+                or self.provider_profile not in {"DISABLED", "deepseek-v41-action-critic-v1"}):
+            raise ValueError("unregistered provider dispatch profile")
+        for field_name in ("account_scope_ref", "capability_profile_ref", "credential_ref"):
+            value = getattr(self, field_name)
+            if value is not None and (not isinstance(value, str) or _OPAQUE_REFERENCE_RE.fullmatch(value) is None):
+&gt;               raise ValueError(f"{field_name} must be an opaque registered reference")
+E               ValueError: account_scope_ref must be an opaque registered reference
+
+src/atlas/v2/product.py:196: ValueError</failure></testcase><testcase classname="tests.v2.test_session041_demo_product" name="test_demo_host_requires_explicit_immutable_profile_before_construction" time="0.517" /><testcase classname="tests.v2.test_session041_demo_product" name="test_demo_launcher_does_not_pass_ambient_secrets_or_switch_venues" time="0.013"><failure message="ValueError: account_scope_ref must be an opaque registered reference">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-183/test_demo_launcher_does_not_pa0')
+build = None
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7fb9c358e090&gt;
+
+    def test_demo_launcher_does_not_pass_ambient_secrets_or_switch_venues(tmp_path, build, monkeypatch):
+&gt;       run = native_run(tmp_path)
+              ^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_demo_product.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_demo_product.py:21: in native_run
+    return product.create_run(tmp_path, product.ResearchRunConfigV2(
+&lt;string&gt;:19: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ResearchRunConfigV2(schema_version=2, data_root='/tmp/pytest-of-kasun/pytest-183/test_demo_launcher_does_not_pa0', pub...strument_symbol='SOLUSDT', report_interval_seconds=60, minimum_free_disk_bytes=1073741824, provider_profile='DISABLED')
+
+    def __post_init__(self) -&gt; None:
+        if type(self.schema_version) is not int or self.schema_version != 2:
+            raise ValueError("unsupported run configuration version")
+        if not isinstance(self.data_root, str) or not self.data_root:
+            raise ValueError("V2 run configuration requires its selected data root")
+        selected_root = Path(self.data_root).expanduser().resolve()
+        if str(selected_root) != self.data_root:
+            raise ValueError("V2 data root must be canonical before run creation")
+        if isinstance(self.public_venues, list):
+            object.__setattr__(self, "public_venues", tuple(self.public_venues))
+        if (not isinstance(self.public_venues, tuple) or not self.public_venues
+                or len(self.public_venues) &gt; 2
+                or any(not isinstance(venue, str) or venue not in {"BYBIT", "BINANCE"}
+                       for venue in self.public_venues)
+                or len(set(self.public_venues)) != len(self.public_venues)):
+            raise ValueError("public venues must be a unique registered venue tuple")
+        if (not isinstance(self.selected_execution_venue, str)
+                or self.selected_execution_venue not in {"BYBIT", "BINANCE"}):
+            raise ValueError("unsupported selected execution venue")
+        if (not isinstance(self.execution_environment, str)
+                or self.execution_environment not in {"DEMO", "TESTNET"}):
+            raise ValueError("execution environment must be DEMO or TESTNET")
+        if (self.product_scope != "LINEAR_PERPETUAL" or self.scope != "BOUNDED_UNIVERSE_V2"
+                or not isinstance(self.product_scope, str) or not isinstance(self.scope, str)):
+            raise ValueError("unsupported product or bounded universe scope")
+        if not isinstance(self.resource_profile_id, str) or self.resource_profile_id != "bounded-v2":
+            raise ValueError("unsupported bounded resource profile")
+        if (type(self.report_interval_seconds) is not int
+                or not 60 &lt;= self.report_interval_seconds &lt;= 86_400):
+            raise ValueError("report interval must be between one minute and one day")
+        if type(self.minimum_free_disk_bytes) is not int or self.minimum_free_disk_bytes &lt; 268_435_456:
+            raise ValueError("research run requires a declared disk reserve")
+        if (not isinstance(self.provider_profile, str)
+                or self.provider_profile not in {"DISABLED", "deepseek-v41-action-critic-v1"}):
+            raise ValueError("unregistered provider dispatch profile")
+        for field_name in ("account_scope_ref", "capability_profile_ref", "credential_ref"):
+            value = getattr(self, field_name)
+            if value is not None and (not isinstance(value, str) or _OPAQUE_REFERENCE_RE.fullmatch(value) is None):
+&gt;               raise ValueError(f"{field_name} must be an opaque registered reference")
+E               ValueError: account_scope_ref must be an opaque registered reference
+
+src/atlas/v2/product.py:196: ValueError</failure></testcase></testsuite></testsuites>
