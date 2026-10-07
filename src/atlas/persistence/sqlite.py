@@ -1141,7 +1141,7 @@ class SQLiteJournal:
                 ))
                 if prior != values:
                     raise PersistenceError("conflicting economic event for transaction identity")
-                return False
+                raise PersistenceError("duplicate economic event for transaction identity")
             c.execute("INSERT INTO economic_events VALUES(?,?,?,?,?,?,?,?)", values)
             return True
 
