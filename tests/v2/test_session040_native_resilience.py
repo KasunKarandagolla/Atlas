@@ -204,6 +204,17 @@ def test_reconnect_with_snapshot_preserves_transport_epoch_without_fabricating_g
     with OpsSupervisorV2(tmp_path / "ops.sqlite", port) as supervisor:
         supervisor.run_once()
         assert supervisor.repository is not None
+        captured_total = 0
+
+        def drain_epoch() -> None:
+            # The asynchronous raw writer may seal one 32-frame epoch into
+            # several immutable batches. Wait for all offered frames to be
+            # sealed, then adopt every descriptor; pending_frames is a total,
+            # not a guarantee that those frames occupy one descriptor.
+            wait_for(lambda: capture.status().capture["captured_frames"] >= captured_total)
+            while capture.status().pending_frames:
+                port._collect_public_stream_evidence(supervisor.repository, now_ns=time.time_ns())
+
         for epoch in (1, 2):
             if epoch == 2:
                 source.handoff.observe_disconnected(time.time_ns())
@@ -215,8 +226,8 @@ def test_reconnect_with_snapshot_preserves_transport_epoch_without_fabricating_g
                 frame = replace(workload.frame(time.time_ns()), connection_epoch=epoch)
                 assert source.handoff.offer(frame)
                 raw_digest_update(expected, frame)
-            wait_for(lambda: capture.status().pending_frames == 32)
-            port._collect_public_stream_evidence(supervisor.repository, now_ns=time.time_ns())
+            captured_total += 32
+            drain_epoch()
         assert replay_raw_digest(supervisor.repository) == (64, expected.hexdigest())
         reports = supervisor.repository.artifact_entries("PublicStreamContinuityReportV1")
         assert any(entry.metadata["report"]["gap_count"] > 0 for entry in reports)

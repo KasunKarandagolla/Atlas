@@ -319,8 +319,32 @@ class BybitNativeNode:
             payload = json.loads(command.payload)
             if payload.get("client_order_id") == client_order_id:
                 scopes.add((payload.get("symbol"), payload.get("instrument_ref"), payload.get("identity_hash")))
-        if scopes != {(self._product.key.native_symbol, self._product.content_hash, self.identity.content_hash)}:
+        if (len(scopes) != 1
+                or next(iter(scopes))[0] != self._product.key.native_symbol
+                or next(iter(scopes))[2] != self.identity.content_hash):
             raise ValueError("Bybit native event scope does not match durable intent")
+        instrument_ref = next(iter(scopes))[1]
+        if instrument_ref == self._product.content_hash:
+            return
+        for evidence in self.journal.load_reconciliation_query_evidence():
+            facts = evidence.facts
+            raw_contract = facts.get("product_contract_snapshot")
+            if (evidence.account != self.identity.account_scope_ref
+                    or facts.get("venue_identity_hash") != self.identity.content_hash
+                    or facts.get("metadata_endpoint") != "/v5/market/instruments-info"
+                    or facts.get("product_contract_hash") != instrument_ref
+                    or not isinstance(raw_contract, dict)):
+                continue
+            try:
+                from atlas.v2.instruments import ProductContractV2
+
+                prior = ProductContractV2.from_dict(raw_contract)
+            except (TypeError, ValueError):
+                continue
+            if (prior.content_hash == instrument_ref
+                    and prior.key.content_hash == self._product.key.content_hash):
+                return
+        raise ValueError("Bybit durable product revision is not bound to current signed metadata")
 
     def request_reconciliation(self) -> None:
         """Start at most one read worker; never queue timer ticks behind a slow read."""
@@ -333,12 +357,16 @@ class BybitNativeNode:
             if monotonic_ns - self._last_reconciliation_request_ns < RECONCILIATION_INTERVAL_NS:
                 return
             self._last_reconciliation_request_ns = monotonic_ns
+            self.reconciliation_ready = False
 
             def reconcile() -> None:
                 try:
                     self.assert_writer()
-                    self.reconcile_once()
+                    result = self.reconcile_once()
                     self.assert_writer()
+                    if result is False:
+                        self.last_failure_code = "BYBIT_RECONCILIATION_INCOMPLETE"
+                        return
                     self.reconciliation_ready = True
                 except Exception:
                     self.stopped = True

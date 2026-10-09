@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="22" skipped="0" tests="60" time="59.316" timestamp="2026-10-08T12:24:03.920077+05:30" hostname="Kasun"><testcase classname="tests.runtime.test_session041_binance_native" name="test_actual_pinned_live_node_builds_without_starting_or_reading_account" time="0.283"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4113f20&gt;
+
+    def test_actual_pinned_live_node_builds_without_starting_or_reading_account(journal):
+&gt;       runtime, _identity, snapshots = _node(journal)
+                                        ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:69: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_close_all_repair_resolves_only_the_exact_open_native_position" time="0.007"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">def test_close_all_repair_resolves_only_the_exact_open_native_position():
+&gt;       from nautilus_trader.model import AccountId, InstrumentId, PositionId
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+tests/runtime/test_session041_binance_native.py:77: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_close_all_repair_configures_only_binance_full_position_risk_eligibility" time="0.241"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d470e5a0&gt;
+
+    def test_close_all_repair_configures_only_binance_full_position_risk_eligibility(journal):
+        captured = {}
+    
+        class BuiltNode:
+            def add_strategy(self, _strategy):
+                return None
+    
+            def handle(self):
+                return SimpleNamespace()
+    
+        class Builder:
+            def with_risk_engine_config(self, config):
+                captured["risk_config"] = config
+                return self
+    
+            def add_exec_client(self, *_args):
+                return self
+    
+            def with_reconciliation(self, _enabled):
+                return self
+    
+            def build(self):
+                return BuiltNode()
+    
+&gt;       runtime, _, _ = _node(journal, node_builder_factory=lambda *_args: Builder())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:134: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_journal_command_queue_is_deduplicated_and_opening_refused" time="0.230"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4130620&gt;
+
+    def test_journal_command_queue_is_deduplicated_and_opening_refused(journal):
+&gt;       runtime, identity, _ = _node(journal)
+                               ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:141: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_event_overflow_latches_stop_without_leaking_raw_event_text" time="0.195"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d470e750&gt;
+
+    def test_event_overflow_latches_stop_without_leaking_raw_event_text(journal):
+&gt;       runtime, _identity, _ = _node(journal)
+                                ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:171: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_command_dispatch_checks_fence_before_unknown_and_immediately_before_effect" time="0.260"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4131c70&gt;
+
+    def test_command_dispatch_checks_fence_before_unknown_and_immediately_before_effect(journal):
+        make_plan(journal, plan_id="plan")
+        now = 1_800_000_000_000_000_000
+        intent = Intent(
+            "native-intent", 0, "plan", "v1", "b" * 32, 1, LifecycleState.SUBMITTING,
+            ProtectionStatus.UNCONFIRMED, ReconciliationHealth.STALE, now,
+        )
+        journal.create_intent_with_reservation(
+            intent,
+            Reservation("native-res", intent.intent_id, Decimal("1"), Decimal("0"), Decimal("0"),
+                        Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0")),
+        )
+        command = make_command(
+            command_id="native-exit", intent_id=intent.intent_id, command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id, "symbol": "SOLUSDT"},
+            expected_state_version=0, created_at_ns=now,
+        )
+        journal.persist_command(command)
+        fence_calls = []
+    
+        class Port:
+            def dispatch(self, command, *, now_ns):
+                fence_calls.append(("effect", journal.load_command(command.command_id).outcome.value, now_ns))
+    
+&gt;       runtime, _identity, _ = _node(journal)
+                                ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:209: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_actual_sdk_fill_capture_persists_partial_and_cancel_race_before_publication" time="0.145"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4131c40&gt;
+
+    def test_actual_sdk_fill_capture_persists_partial_and_cancel_race_before_publication(journal):
+&gt;       from nautilus_trader import model
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+tests/runtime/test_session041_binance_native.py:255: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_native_conflicting_execution_and_unknown_association_latch_stop" time="0.202"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d41477a0&gt;
+
+    def test_native_conflicting_execution_and_unknown_association_latch_stop(journal):
+&gt;       runtime, _, _ = _node(journal)
+                        ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:291: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_missing_native_intent_records_unknown_receipt_without_fill" time="0.291"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d41462a0&gt;
+
+    def test_missing_native_intent_records_unknown_receipt_without_fill(journal):
+&gt;       runtime, _, _ = _node(journal)
+                        ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:303: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_slow_reconciliation_never_blocks_native_timer_or_queues_workers" time="0.223"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4147920&gt;
+
+    def test_slow_reconciliation_never_blocks_native_timer_or_queues_workers(journal):
+&gt;       runtime, _, _ = _node(journal)
+                        ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:313: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_incomplete_reconciliation_never_opens_native_command_gate" time="0.211"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4144080&gt;
+
+    def test_incomplete_reconciliation_never_opens_native_command_gate(journal):
+&gt;       runtime, _, _ = _node(journal)
+                        ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:341: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_native_timer_dispatches_at_most_eight_commands" time="0.279"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4147a10&gt;
+
+    def test_native_timer_dispatches_at_most_eight_commands(journal):
+&gt;       runtime, identity, _ = _node(journal)
+                               ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_hosted_lifecycle_accepts_future_and_stops_through_captured_handle" time="0.018" /><testcase classname="tests.runtime.test_session041_binance_native" name="test_overflow_between_fences_preserves_unknown_and_blocks_effect" time="0.256"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4146c00&gt;
+
+    def test_overflow_between_fences_preserves_unknown_and_blocks_effect(journal):
+&gt;       runtime, _, _ = _node(journal)
+                        ^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_native.py:409: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/runtime/test_session041_binance_native.py:52: in _node
+    runtime = BinanceNativeNode(
+src/atlas/runtime/binance_native.py:292: in __init__
+    strategy_type = _native_strategy_type()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _native_strategy_type() -&gt; type:
+&gt;       from nautilus_trader.trading import Strategy
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_native.py:144: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_native" name="test_stop_timeout_preserves_active_native_future_for_writer_lease_owner" time="0.016" /><testcase classname="tests.runtime.test_session041_binance_native" name="test_stop_timeout_keeps_live_reconciliation_worker_visible" time="0.032" /><testcase classname="tests.runtime.test_session041_binance_native" name="test_cancelling_run_does_not_cancel_native_future_and_requests_handle_stop" time="0.004" /><testcase classname="tests.runtime.test_session041_binance_native" name="test_unstarted_disposal_is_idempotent_and_consumed_wrapper_refused" time="0.002" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_constructor_does_not_read_credentials_or_connect_and_open_binds_exact_run" time="0.269" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_common_writer_lease_blocks_second_venue_and_data_root" time="0.284" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_restart_changed_account_remains_ineligible_and_preserves_first_binding" time="0.407" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_stale_writer_fails_before_native_effect" time="0.390" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_native_profile_builds_exact_observed_demo_product_without_running" time="0.335" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_config_hash_changes_for_qualification_profile_and_symbol" time="0.005" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_protected_getter_exact_binding_and_sanitized_tamper" time="0.005" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_protected_getter_rejects_symlinks_and_excess_size" time="0.024" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_selected_bybit_uses_its_exact_profile_and_native_metadata_without_fallback" time="0.461" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_recovery_capture_rejects_live_native_host_before_signed_read" time="0.262" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_account_snapshot_binds_modes_identity_age_and_unverified_scope" time="0.015" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_account_snapshot_rejects_stale_or_cross_mode_position" time="0.011" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_native_decoder_normalizes_regular_and_algo_ids_and_rejects_wrong_prefix" time="0.006"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">def test_native_decoder_normalizes_regular_and_algo_ids_and_rejects_wrong_prefix():
+        client_id = "00000000000000000000000000000001"
+&gt;       wire = external_client_order_id(client_id)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_reconciliation.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:67: in external_client_order_id
+    if number or local_client_order_id(wire) != local:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'x-aHRE4BCj-u0000000000000000000001'
+
+    def local_client_order_id(value: str) -&gt; str:
+        """Use the pinned adapter decoder, including its legacy-ID semantics."""
+&gt;       from nautilus_trader.adapters.binance import decode_binance_futures_client_order_id
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_demo.py:43: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_trade_rows_are_deduplicated_by_exchange_execution_id" time="0.275" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_cancel_observation_preserves_cumulative_fill_quantity" time="0.211"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-405/test_cancel_observation_preser0')
+
+    def test_cancel_observation_preserves_cumulative_fill_quantity(tmp_path):
+        journal = SQLiteJournal(tmp_path / "binance.sqlite")
+        client_id = "00000000000000000000000000000001"
+        _persist_trade_intent(journal, client_id)
+        status = record_binance_order_status(
+            journal,
+&gt;           {"symbol": "BTCUSDT", "orderId": 101, "clientOrderId": external_client_order_id(client_id), "status": "CANCELED",
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+             "executedQty": "0.3", "cumQuote": "15000", "avgPrice": "50000"},
+            received_at_ns=1_800_000_000_000_000_000,
+            intent_id="intent-1",
+            identity=BinanceDemoIdentity("scope-a", "cred-a"),
+        )
+
+tests/runtime/test_session041_binance_reconciliation.py:150: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:67: in external_client_order_id
+    if number or local_client_order_id(wire) != local:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'x-aHRE4BCj-u0000000000000000000001'
+
+    def local_client_order_id(value: str) -&gt; str:
+        """Use the pinned adapter decoder, including its legacy-ID semantics."""
+&gt;       from nautilus_trader.adapters.binance import decode_binance_futures_client_order_id
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_demo.py:43: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_income_rows_preserve_cost_funding_currency_and_source_hash" time="0.004" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_conflicting_duplicate_trade_and_income_rows_fail_closed" time="0.261" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_income_persistence_is_idempotent_and_conflicts_are_audited" time="0.237" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_trade_identity_and_numeric_fields_reject_coercion[id-None]" time="0.200" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_trade_identity_and_numeric_fields_reject_coercion[id-True]" time="0.255" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_trade_identity_and_numeric_fields_reject_coercion[orderId-value2]" time="0.412" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_trade_identity_and_numeric_fields_reject_coercion[qty-True]" time="0.223" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_trade_identity_and_numeric_fields_reject_coercion[buyer-1]" time="1.358" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_trade_identity_and_numeric_fields_reject_coercion[commissionAsset-None]" time="4.516" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_regular_cancel_missing_cumulative_quantity_is_not_zero_fill_proof" time="6.296"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4183e90&gt;
+
+    def test_regular_cancel_missing_cumulative_quantity_is_not_zero_fill_proof(journal):
+        client_id = "00000000000000000000000000000001"
+        _persist_trade_intent(journal, client_id)
+        with pytest.raises(ValueError, match="cumulative quantity missing"):
+            record_binance_order_status(journal, {"symbol": "BTCUSDT", "orderId": 101,
+&gt;               "clientOrderId": external_client_order_id(client_id), "status": "CANCELED"},
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                received_at_ns=1_800_000_000_000_000_000, intent_id="intent-1",
+                identity=BinanceDemoIdentity("scope-a", "cred-a"))
+
+tests/runtime/test_session041_binance_reconciliation.py:240: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:67: in external_client_order_id
+    if number or local_client_order_id(wire) != local:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'x-aHRE4BCj-u0000000000000000000001'
+
+    def local_client_order_id(value: str) -&gt; str:
+        """Use the pinned adapter decoder, including its legacy-ID semantics."""
+&gt;       from nautilus_trader.adapters.binance import decode_binance_futures_client_order_id
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_demo.py:43: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_documented_symbol_config_and_balance_alias_are_fresh_independent_evidence" time="0.003" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_invented_position_flags_do_not_replace_real_symbol_config" time="0.007" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_scoped_signed_history_persists_fill_status_income_without_resolving_unknown" time="6.948"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4183a70&gt;
+
+    def test_scoped_signed_history_persists_fill_status_income_without_resolving_unknown(journal):
+        now = 1_800_000_000_000_000_000
+        identity = BinanceDemoIdentity("scope-a", "cred-a")
+        client_id = "00000000000000000000000000000001"
+        _persist_trade_intent(journal, client_id)
+        journal.mark_send_started("cmd-1", now)
+        reader = HistoryReader(identity, [
+&gt;           {"symbol": "BTCUSDT", "orderId": 101, "clientOrderId": external_client_order_id(client_id),
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+             "status": "CANCELED", "executedQty": "0.2", "avgPrice": "50000", "cumQuote": "10000"},
+            {"symbol": "BTCUSDT", "algoId": 202, "clientAlgoId": external_client_order_id(client_id),
+             "algoStatus": "NEW", "orderType": "STOP_MARKET"},
+            [{"id": 77, "orderId": 101, "symbol": "BTCUSDT", "side": "BUY", "qty": "0.2",
+              "price": "50000", "commission": "0.1", "commissionAsset": "USDT", "time": now // 1_000_000}],
+            [{"symbol": "BTCUSDT", "tranId": 55, "incomeType": "FUNDING_FEE", "asset": "USDT",
+              "income": "-0.1", "time": now // 1_000_000}],
+        ], now)
+
+tests/runtime/test_session041_binance_reconciliation.py:298: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:67: in external_client_order_id
+    if number or local_client_order_id(wire) != local:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'x-aHRE4BCj-u0000000000000000000001'
+
+    def local_client_order_id(value: str) -&gt; str:
+        """Use the pinned adapter decoder, including its legacy-ID semantics."""
+&gt;       from nautilus_trader.adapters.binance import decode_binance_futures_client_order_id
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_demo.py:43: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_missing_lookup_and_budget_refusal_are_persisted_incomplete_without_negative_proof" time="3.662"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d41835f0&gt;
+
+    def test_missing_lookup_and_budget_refusal_are_persisted_incomplete_without_negative_proof(journal):
+        from atlas.runtime.binance_demo import DemoReadError
+    
+        now = 1_800_000_000_000_000_000
+        identity = BinanceDemoIdentity("scope-a", "cred-a")
+        _persist_trade_intent(journal)
+        journal.mark_send_started("cmd-1", now)
+    
+        class RefusingReader:
+            def clock_ns(self):
+                return now
+    
+            def __init__(self):
+                self.identity = identity
+    
+            def read_with_receipt(self, *_args):
+                raise DemoReadError("signature=must-never-appear")
+    
+&gt;       result = reconcile_binance_execution_history(RefusingReader(), journal, max_intents=1)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_binance_reconciliation.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_reconciliation.py:585: in reconcile_binance_execution_history
+    {"symbol": symbol, "origClientOrderId": external_client_order_id(client_id)}),
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/runtime/binance_demo.py:67: in external_client_order_id
+    if number or local_client_order_id(wire) != local:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'x-aHRE4BCj-u0000000000000000000001'
+
+    def local_client_order_id(value: str) -&gt; str:
+        """Use the pinned adapter decoder, including its legacy-ID semantics."""
+&gt;       from nautilus_trader.adapters.binance import decode_binance_futures_client_order_id
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_demo.py:43: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_bounded_history_pass_does_not_query_unsent_commands_and_rotates_cursor" time="5.823" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_unqualified_recovery_retains_history_gate_and_zero_authority_flat_sidecar" time="1.423" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_simulated_qualified_recovery_captures_complete_flat_inputs_without_capital" time="1.190" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_offline_or_wrong_environment_capability_cannot_complete_actual_recovery[TESTED_OFFLINE-None]" time="0.872" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_offline_or_wrong_environment_capability_cannot_complete_actual_recovery[PASSED_TESTNET-TESTNET]" time="1.241" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_complete_inputs_preserve_partial_fill_cancel_race_unknown_command_and_reservation" time="0.475"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4144740&gt;
+
+    def test_complete_inputs_preserve_partial_fill_cancel_race_unknown_command_and_reservation(journal):
+        now = 1_800_000_000_000_000_000
+        identity = BinanceDemoIdentity("scope-a", "cred-a")
+        client_id = "00000000000000000000000000000001"
+        _persist_trade_intent(journal, client_id)
+        journal.mark_send_started("cmd-1", now)
+        _simulated_source_qualification(journal, identity, now)
+&gt;       order = {"symbol": "BTCUSDT", "orderId": 101, "clientOrderId": external_client_order_id(client_id),
+                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 "status": "CANCELED", "executedQty": "0.2", "avgPrice": "50000", "cumQuote": "10000"}
+
+tests/runtime/test_session041_binance_reconciliation.py:495: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:67: in external_client_order_id
+    if number or local_client_order_id(wire) != local:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'x-aHRE4BCj-u0000000000000000000001'
+
+    def local_client_order_id(value: str) -&gt; str:
+        """Use the pinned adapter decoder, including its legacy-ID semantics."""
+&gt;       from nautilus_trader.adapters.binance import decode_binance_futures_client_order_id
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_demo.py:43: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_orphan_conditional_on_other_symbol_blocks_current_flat_sidecar" time="0.945" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_recovery_binds_repair_stop_readback_to_current_position_and_command[50000-True]" time="0.745"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4147440&gt;
+trigger = '50000', verified = True
+
+    @pytest.mark.parametrize("trigger,verified", [("50000", True), ("49000", False)])
+    def test_recovery_binds_repair_stop_readback_to_current_position_and_command(journal, trigger, verified):
+        now = 1_800_000_000_000_000_000
+        identity = BinanceDemoIdentity("scope-a", "cred-a")
+        client_id = _persist_repair_stop(journal, identity, now)
+        _simulated_source_qualification(journal, identity, now)
+&gt;       row = {"symbol": "BTCUSDT", "algoId": 909, "clientAlgoId": external_client_order_id(client_id),
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "algoStatus": "NEW", "orderType": "STOP_MARKET", "workingType": "MARK_PRICE",
+               "positionSide": "BOTH", "side": "SELL", "closePosition": True,
+               "triggerPrice": trigger}
+
+tests/runtime/test_session041_binance_reconciliation.py:527: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:67: in external_client_order_id
+    if number or local_client_order_id(wire) != local:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'x-aHRE4BCj-u0000000000000000000002'
+
+    def local_client_order_id(value: str) -&gt; str:
+        """Use the pinned adapter decoder, including its legacy-ID semantics."""
+&gt;       from nautilus_trader.adapters.binance import decode_binance_futures_client_order_id
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_demo.py:43: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_recovery_binds_repair_stop_readback_to_current_position_and_command[49000-False]" time="0.429"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d4145ca0&gt;
+trigger = '49000', verified = False
+
+    @pytest.mark.parametrize("trigger,verified", [("50000", True), ("49000", False)])
+    def test_recovery_binds_repair_stop_readback_to_current_position_and_command(journal, trigger, verified):
+        now = 1_800_000_000_000_000_000
+        identity = BinanceDemoIdentity("scope-a", "cred-a")
+        client_id = _persist_repair_stop(journal, identity, now)
+        _simulated_source_qualification(journal, identity, now)
+&gt;       row = {"symbol": "BTCUSDT", "algoId": 909, "clientAlgoId": external_client_order_id(client_id),
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "algoStatus": "NEW", "orderType": "STOP_MARKET", "workingType": "MARK_PRICE",
+               "positionSide": "BOTH", "side": "SELL", "closePosition": True,
+               "triggerPrice": trigger}
+
+tests/runtime/test_session041_binance_reconciliation.py:527: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:67: in external_client_order_id
+    if number or local_client_order_id(wire) != local:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'x-aHRE4BCj-u0000000000000000000002'
+
+    def local_client_order_id(value: str) -&gt; str:
+        """Use the pinned adapter decoder, including its legacy-ID semantics."""
+&gt;       from nautilus_trader.adapters.binance import decode_binance_futures_client_order_id
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_demo.py:43: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_recovery_does_not_verify_stop_against_stale_position_receipt" time="0.699"><failure message="ModuleNotFoundError: No module named 'nautilus_trader'">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7fe3d41823c0&gt;
+
+    def test_recovery_does_not_verify_stop_against_stale_position_receipt(journal):
+        now = 1_800_000_000_000_000_000
+        identity = BinanceDemoIdentity("scope-a", "cred-a")
+        client_id = _persist_repair_stop(journal, identity, now)
+        _simulated_source_qualification(journal, identity, now)
+&gt;       row = {"symbol": "BTCUSDT", "algoId": 909, "clientAlgoId": external_client_order_id(client_id),
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "algoStatus": "NEW", "orderType": "STOP_MARKET", "workingType": "MARK_PRICE",
+               "positionSide": "BOTH", "side": "SELL", "closePosition": True, "triggerPrice": "50000"}
+
+tests/runtime/test_session041_binance_reconciliation.py:549: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:67: in external_client_order_id
+    if number or local_client_order_id(wire) != local:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'x-aHRE4BCj-u0000000000000000000002'
+
+    def local_client_order_id(value: str) -&gt; str:
+        """Use the pinned adapter decoder, including its legacy-ID semantics."""
+&gt;       from nautilus_trader.adapters.binance import decode_binance_futures_client_order_id
+E       ModuleNotFoundError: No module named 'nautilus_trader'
+
+src/atlas/runtime/binance_demo.py:43: ModuleNotFoundError</failure></testcase><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_real_signed_reader_paces_recovery_and_keeps_every_current_receipt_fresh" time="1.525" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_slow_final_current_read_blocks_completion_and_flat_sidecar" time="0.975" /><testcase classname="tests.runtime.test_session041_binance_reconciliation" name="test_quiescence_revocation_during_budget_wait_refuses_all_later_reads" time="0.208" /></testsuite></testsuites>

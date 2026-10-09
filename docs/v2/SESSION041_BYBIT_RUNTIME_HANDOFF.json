@@ -1,0 +1,82 @@
+{
+  "artifact": "SESSION041_BYBIT_RUNTIME_HANDOFF",
+  "status": "READ_ONLY_ADAPTER_IMPLEMENTED_EXTERNAL_DEMO_PROOF_PENDING",
+  "scope": "New Bybit demo read qualification slice only. Nautilus remains the sole ordinary order authority. No REST order submission, production route, or assisted authority is introduced.",
+  "files": [
+    "src/atlas/runtime/bybit_demo.py",
+    "tests/runtime/test_session041_bybit_demo.py",
+    "docs/v2/SESSION041_BYBIT_RUNTIME_HANDOFF.json"
+  ],
+  "identity_profile": {
+    "environments": ["DEMO", "TESTNET"],
+    "venue": "BYBIT",
+    "product_types": ["LINEAR"],
+    "position_mode": "ONE_WAY",
+    "margin_mode": "ISOLATED",
+    "native_retry_count": 0,
+    "account_scope": "opaque reference only"
+  },
+  "public_interfaces": {
+    "credential": "DemoCredential from atlas.runtime.binance_demo; repr protected",
+    "identity": "BybitDemoIdentity(account_scope_ref, credential_ref, environment='DEMO')",
+    "native_config": "build_bybit_demo_config(identity, credential) constructs the pinned Nautilus rc5 BybitExecutionClientConfig; no connection is started",
+    "reader": "BybitDemoReader(identity=..., credential=..., clock_ns=..., opener=...)",
+    "receipt": "BybitDemoReadReceipt exposes endpoint, receive time and raw/canonical hashes; canonical payload is repr-hidden",
+    "snapshot": "capture_bybit_account_snapshot(reader, expected_account_fingerprint=None) returns identity_hash, captured_at_ns, eligible, reasons, account_fingerprint, status, and hidden source receipts",
+    "protection": "verify_bybit_protection(position, symbol, expected_signed_qty, stop_price, now_ns, received_at_ns) checks exact Full/MarkPrice/positionIdx=0 readback"
+  },
+  "read_constraints": {
+    "hosts": {
+      "DEMO": "https://api-demo.bybit.com",
+      "TESTNET": "https://api-testnet.bybit.com"
+    },
+    "method": "GET only",
+    "timeout_seconds": 2,
+    "response_bytes": 2097152,
+    "page_rows": 100,
+    "total_rows_per_endpoint": 1000,
+    "max_pages": 10,
+    "redirects": "refused",
+    "safe_receipts": "SHA-256 payload hashes, endpoint allowlist and opaque identity hash"
+  },
+  "qualifying_reads": [
+    "/v5/account/info",
+    "/v5/account/wallet-balance",
+    "/v5/position/list",
+    "/v5/order/realtime",
+    "/v5/order/history",
+    "/v5/execution/list",
+    "/v5/position/closed-pnl",
+    "/v5/account/transaction-log"
+  ],
+  "qualification_checks": [
+    "unifiedMarginStatus == 3",
+    "marginMode == ISOLATED_MARGIN",
+    "observed position rows carry positionIdx == 0",
+    "optional expected account fingerprint matches the SHA-256 binding of the opaque account scope reference and API key hash; V5 Get Account Info does not return an account UID",
+    "complete read set remains within the 2-second evidence freshness bound"
+  ],
+  "important_limit": "The reader is a bounded evidence adapter, not a live recovery engine. Its account snapshot does not prove order-history completeness across an unbounded account history; venue retention windows and a bounded caller-selected time window must be integrated by the runtime before reconciliation can treat it as complete.",
+  "ordinary_order_effects": "No ordinary REST order effect exists in this module. Parent runtime must dispatch all orders through the pinned Nautilus execution client and preserve durable UNKNOWN/lost-ack semantics.",
+  "ordinary_remaining": [
+    "Root selected-demo factory integration and native Bybit node lifecycle wiring",
+    "Durable journal reconciliation mapping for Bybit order, fill, fee, funding and account receipts",
+    "ProtectionPort ensure_full_stop/economic-event adapter wiring to a durable intent/effect boundary",
+    "Independent runtime review and full offline end-to-end unknown/lost-ack gate"
+  ],
+  "external_proof_remaining": [
+    "Demo credential presence and permission review without exposing key material",
+    "Live DEMO account info, wallet, positions, order history, fills, closed PnL and funding read receipts",
+    "Observed exact Bybit unified-account status and isolated margin profile for the target account",
+    "Native Nautilus rc5 Bybit demo connection, event delivery and order-state reconciliation",
+    "Fill-time protection equivalence and exact Full MarkPrice stop readback against a demo position",
+    "External demo evidence must not be fabricated by offline fixtures"
+  ],
+  "primary_sources": [
+    "https://bybit-exchange.github.io/docs/v5/demo",
+    "https://bybit-exchange.github.io/docs/v5/account/account-info",
+    "https://bybit-exchange.github.io/docs/v5/position",
+    "https://bybit-exchange.github.io/docs/v5/position/trading-stop",
+    "https://bybit-exchange.github.io/docs/v5/order/open-order"
+  ]
+}

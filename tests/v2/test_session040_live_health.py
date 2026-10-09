@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import threading
 from dataclasses import replace
 
@@ -20,6 +21,8 @@ from atlas.v2.runtime.live_health import (
     QualificationLatchError,
     QualificationLatchV1,
     assess_live_health,
+    database_exception_is_integrity_failure_v1,
+    terminal_database_integrity_failure_v1,
 )
 
 NOW = 1_800_000_000 * NS
@@ -293,6 +296,23 @@ def test_unknown_and_future_clock_observations_cannot_display_green():
     assert not future.qualification_failed  # Conflicting UI clock does not rewrite evidence.
     stale_snapshot = assess_live_health(healthy(), at_ns=NOW + 20 * NS)
     assert stale_snapshot.colour == "AMBER" and "RUNTIME_HEARTBEAT_STALE" in stale_snapshot.reasons
+
+
+def test_observed_clock_conflict_latches_but_transient_database_errors_do_not(tmp_path):
+    controller = LiveHealthControllerV1(tmp_path, run_id=RUN, config_hash=CONFIG)
+    result = controller.observe(healthy(runtime_heartbeat_at_ns=NOW + 1))
+    assert result.colour == "RED" and result.qualification_failed
+    assert result.reasons[0] == "HEALTH_OBSERVATION_CLOCK_CONFLICT"
+    assert terminal_database_integrity_failure_v1(("IntegrityError",))
+    assert terminal_database_integrity_failure_v1(("DatabaseError",))
+    assert not terminal_database_integrity_failure_v1(("OperationalError",))
+    assert not terminal_database_integrity_failure_v1(("TimeoutError",))
+    corrupt = sqlite3.OperationalError("closed diagnostic text")
+    corrupt.sqlite_errorcode = sqlite3.SQLITE_CORRUPT
+    busy = sqlite3.OperationalError("closed diagnostic text")
+    busy.sqlite_errorcode = sqlite3.SQLITE_BUSY
+    assert database_exception_is_integrity_failure_v1(corrupt)
+    assert not database_exception_is_integrity_failure_v1(busy)
 
 
 def test_disk_estimate_is_measured_reserve_not_an_endurance_claim():

@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="5" time="39.898" timestamp="2026-10-08T20:22:58.114792+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_broad_production_port_integrates_acquisition_stream_workset_and_restart" time="8.476" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_broad_runtime_capture_progresses_during_sqlite_commit_stall" time="4.464" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls[0.1]" time="4.453"><failure message="AssertionError: {'post_service_gap_ns': 303719301, 'read_stall_overlap_ns': 103377170, 'actual_service_durations_ns': [421017584, 1048911120, 523880485], 'actual_service_count': 3, ...}&#10;assert 303719301 &lt;= 303377172">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-564/test_reconciliation_services_r0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f444af52570&gt;
+read_stall_seconds = 0.1
+
+    @pytest.mark.parametrize("read_stall_seconds", [0.1, 0.5, 1.0])
+    def test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls(
+        tmp_path, monkeypatch, read_stall_seconds: float,
+    ):
+        products = (_product("BTCUSDT", VenueV2.BYBIT), _product("BTCUSDT", VenueV2.BINANCE))
+        port, runtime, _source = _port(products, NOW)
+        service_starts: list[int] = []
+        service_durations: list[int] = []
+        read_stalls: list[tuple[int, int]] = []
+        producer_errors: list[BaseException] = []
+        actual_service_starts: list[int] = []
+        actual_service_ends: list[int] = []
+        adoption_durations_ns: list[int] = []
+        interpretation_durations_ns: list[int] = []
+        archive_write_durations_ns: list[int] = []
+        extent_write_phase_metrics: list[dict[str, int | str]] = []
+        allow_burst = (threading.Event(), threading.Event())
+        burst_frames = 2
+        frame_ordinal = 0
+        path = tmp_path / f"paged-reconciliation-{int(read_stall_seconds * 1000)}.sqlite"
+    
+        def offer_burst(handoffs, count: int) -&gt; None:
+            nonlocal frame_ordinal
+            for _ in range(count):
+                frame_ordinal += 1
+                received = NOW - 1_000_000_000 + frame_ordinal
+                if frame_ordinal % 2:
+                    event_ms = received // 1_000_000
+                    body = {"topic": "publicTrade.BTCUSDT", "type": "snapshot", "ts": event_ms,
+                        "data": [{"T": event_ms, "s": "BTCUSDT", "S": "Buy", "v": "0.01",
+                            "p": "100.01", "i": f"s41-paged-{frame_ordinal}"}]}
+                    venue, source_id, channel, lane_name = (VenueV2.BYBIT,
+                        "BYBIT_PUBLIC_WS_BROAD_V2", "publicTrade.BTCUSDT", "BYBIT")
+                else:
+                    body = {"stream": "btcusdt@aggTrade", "data": {
+                        "e": "aggTrade", "E": received // 1_000_000, "s": "BTCUSDT",
+                        "a": frame_ordinal, "p": "100.01", "q": "0.01", "f": frame_ordinal,
+                        "l": frame_ordinal, "T": received // 1_000_000, "m": False}}
+                    venue, source_id, channel, lane_name = (VenueV2.BINANCE,
+                        "BINANCE_MARKET_PUBLIC_WS_BROAD_V2", "btcusdt@aggTrade", "BINANCE_MARKET")
+                payload = json.dumps(body, separators=(",", ":")).encode()
+                frame = CapturedPublicFrameV2(venue, source_id, channel, payload,
+                    hashlib.sha256(payload).hexdigest(), received, received, 1)
+                assert handoffs[lane_name].offer(frame)
+    
+        with OpsRepository(path) as repository:
+            port.recover(repository, now_ns=NOW)
+            assert runtime.source is not None and runtime.capture is not None
+            handoffs = {name: lane._handoff for name, lane in runtime.source._lanes.items()}
+            capture = runtime.capture
+            original_runtime_service = runtime.service
+            original_adopt = SealedPublicTransportV1.adopt
+            original_interpret = runtime._interpret_frames
+            original_archive_write = L2FrameArchiveV2.write_chunks
+    
+            def measured_adopt(sealed, repository):
+                started = time.perf_counter_ns()
+                try:
+                    return original_adopt(sealed, repository)
+                finally:
+                    adoption_durations_ns.append(time.perf_counter_ns() - started)
+    
+            def measured_interpret(repository, frames, *, now_ns):
+                started = time.perf_counter_ns()
+                try:
+                    return original_interpret(repository, frames, now_ns=now_ns)
+                finally:
+                    interpretation_durations_ns.append(time.perf_counter_ns() - started)
+    
+            def measured_archive_write(archive, frames):
+                started = time.perf_counter_ns()
+                try:
+                    original_import = builtins.__import__
+    
+                    def reject_parquet_import(name, *args, **kwargs):
+                        if name == "pyarrow.parquet":
+                            raise AssertionError("compact live archive must not import legacy Parquet writer")
+                        return original_import(name, *args, **kwargs)
+    
+                    with monkeypatch.context() as import_guard:
+                        import_guard.setattr(builtins, "__import__", reject_parquet_import)
+                        return original_archive_write(archive, frames)
+                finally:
+                    archive_write_durations_ns.append(time.perf_counter_ns() - started)
+                    writer = archive.repository._public_extent_writer
+                    if writer is not None:
+                        extent_write_phase_metrics.append(dict(writer.metrics))
+    
+            monkeypatch.setattr(SealedPublicTransportV1, "adopt", measured_adopt)
+            monkeypatch.setattr(runtime, "_interpret_frames", measured_interpret)
+            monkeypatch.setattr(L2FrameArchiveV2, "write_chunks", measured_archive_write)
+    
+            def measured_runtime_service(repository, *, now_ns):
+                actual_service_starts.append(time.perf_counter_ns())
+                try:
+                    return original_runtime_service(repository, now_ns=now_ns)
+                finally:
+                    actual_service_ends.append(time.perf_counter_ns())
+    
+            monkeypatch.setattr(runtime, "service", measured_runtime_service)
+            offer_burst(handoffs, burst_frames)
+            before = capture.status().capture["pending_batches"]
+            deadline = time.monotonic() + 5
+            while capture.status().capture["pending_batches"] &lt;= before and time.monotonic() &lt; deadline:
+                time.sleep(0.01)
+            assert capture.status().capture["pending_batches"] &gt; before
+    
+            # 257 immutable refs force three collector pages. Delays are injected
+            # only for those exact page reads; stream service runs on the real
+            # supervisor path between them, on the same sole repository writer.
+            refs = []
+            entries = []
+            for index in range(257):
+                record_id = f"s41-reconnect-observation-{index}"
+                ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": record_id})
+                refs.append(ref)
+                entries.append(ArtifactIndexEntryV2(ref, "PublicObservationIndexV2",
+                    sha256_json({"observation": record_id}), NOW + 1, NOW + 1,
+                    {"record_id": record_id, "source_id": "BYBIT_PUBLIC_V2"}))
+            repository.register_artifacts(tuple(entries))
+            ordered_refs = tuple(sorted(refs))
+            pages = {ordered_refs[offset:offset + 128] for offset in range(0, len(ordered_refs), 128)}
+            original_lookup = repository.get_artifact_metadata_by_refs
+    
+            def stalled_lookup(artifact_refs):
+                requested = tuple(artifact_refs)
+                if requested in pages:
+                    started = time.perf_counter_ns()
+                    time.sleep(read_stall_seconds)
+                    read_stalls.append((started, time.perf_counter_ns()))
+                return original_lookup(artifact_refs)
+    
+            monkeypatch.setattr(repository, "get_artifact_metadata_by_refs", stalled_lookup)
+            collector_state = port._collector_recovery
+            assert collector_state is not None
+            collector = collector_state.collector
+    
+            def producer() -&gt; None:
+                try:
+                    for event in allow_burst:
+                        if not event.wait(30):
+                            raise AssertionError("next broad stream burst was not released by page service")
+                        offer_burst(handoffs, burst_frames)
+                except BaseException as exc:
+                    producer_errors.append(exc)
+    
+            producer_thread = threading.Thread(target=producer, name="s41-reconcile-stream-producer")
+            producer_thread.start()
+    
+            def service() -&gt; None:
+                assert not repository._connection.in_transaction
+                expected_captured = burst_frames * (len(service_starts) + 1)
+                deadline = time.monotonic() + 10
+                while (capture.status().capture["captured_frames"] &lt; expected_captured
+                       and time.monotonic() &lt; deadline):
+                    time.sleep(0.005)
+                assert capture.status().capture["captured_frames"] &gt;= expected_captured
+                started = time.perf_counter_ns()
+                port.service_public_stream(repository)
+                service_durations.append(time.perf_counter_ns() - started)
+                service_starts.append(started)
+                if len(service_starts) &lt;= len(allow_burst):
+                    allow_burst[len(service_starts) - 1].set()
+    
+            health = collector.reconcile_after_reconnect(
+                "BYBIT_PUBLIC_V2", at_ns=NOW + 10_000_000_000,
+                complete_snapshot=True, missed_interval_repaired=True,
+                snapshot_refs=ordered_refs,
+                recovery_epoch_ref=collector.required_recovery_epoch_ref,
+                service_callback=service,
+            )
+            producer_thread.join(timeout=5)
+            assert not producer_thread.is_alive() and not producer_errors
+            assert health.state.value == "HEALTHY_CURRENT"
+            assert len(service_starts) == len(read_stalls) == 3
+            assert len(service_durations) == 3
+            assert sum(lane.snapshot().frames_rejected for lane in handoffs.values()) == 0
+            assert {name: lane.snapshot().frames_drained for name, lane in handoffs.items()} == {
+                "BYBIT": burst_frames * 3 // 2, "BINANCE_MARKET": burst_frames * 3 // 2,
+            }
+            assert capture.status().capture["high_water_batches"] &lt; capture.status().capture["max_pending_batches"]
+    
+            # Measure actual BroadPublicRuntime entries, not merely callbacks. Once
+            # the prior service ends, the next service is bounded by any injected
+            # page stall, the 200ms capture/service budget, and clock resolution.
+            assert len(actual_service_starts) &gt;= 2
+            assert len(actual_service_ends) == len(actual_service_starts)
+            service_gaps_ns = []
+            service_gap_limits_ns = []
+            clock_allowance_ns = int(2 * time.get_clock_info("perf_counter").resolution * 1_000_000_000)
+            for index in range(1, len(actual_service_starts)):
+                left, right = actual_service_ends[index - 1], actual_service_starts[index]
+                overlap_ns = sum(max(0, min(right, end) - max(left, start))
+                    for start, end in read_stalls if end &gt; left and start &lt; right)
+                gap_ns = right - left
+                allowed_ns = overlap_ns + 200_000_000 + clock_allowance_ns
+                service_gaps_ns.append(gap_ns)
+                service_gap_limits_ns.append(allowed_ns)
+&gt;               assert gap_ns &lt;= allowed_ns, {
+                    "post_service_gap_ns": gap_ns,
+                    "read_stall_overlap_ns": overlap_ns,
+                    "actual_service_durations_ns": [end - start for start, end in zip(
+                        actual_service_starts, actual_service_ends, strict=True)],
+                    "actual_service_count": len(actual_service_starts),
+                    "runtime_reported_max_gap_ns": runtime._max_service_gap_ns,
+                }
+E               AssertionError: {'post_service_gap_ns': 303719301, 'read_stall_overlap_ns': 103377170, 'actual_service_durations_ns': [421017584, 1048911120, 523880485], 'actual_service_count': 3, ...}
+E               assert 303719301 &lt;= 303377172
+
+tests/v2/test_session041_public_runtime_integration.py:538: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls[0.5]" time="5.065" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls[1.0]" time="7.258" /></testsuite></testsuites>

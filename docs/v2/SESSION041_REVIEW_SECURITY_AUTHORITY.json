@@ -1,0 +1,236 @@
+{
+  "artifact_type": "AtlasSession041SecurityAuthorityReviewV1",
+  "session": 41,
+  "review_status": "STATIC_REVIEW_ONLY",
+  "reviewed_at": "2026-10-07",
+  "reviewed_head": "d247d91e796f44a207f3c6379d3b4c3b395d337d",
+  "worktree_dirty": true,
+  "tests_run": false,
+  "live_or_external_calls": false,
+  "secrets_or_holdout_data_read": false,
+  "capital_or_assisted_actions": false,
+  "authority": {
+    "scope": "Review current S41 code for signed venue readers, selected DPAPI/native configuration, error/repr/report leakage, provider/Discovery authority, holdout and capital boundaries, and V1 regression surface.",
+    "limitations": [
+      "This is source inspection only. It does not establish behavior of the pinned third-party venue adapters, runtime host qualification, or live exchange/provider security.",
+      "No tests were run. XML/JUnit and historical checkpoint results were not used as proof of the source findings below.",
+      "The S41 worktree has no final integration SHA; reviewed HEAD is dirty and the cited files may differ in the final integrated tree."
+    ]
+  },
+  "findings": [
+    {
+      "id": "SEC-01",
+      "severity": "MEDIUM",
+      "status": "CURRENT_CODE_FINDING",
+      "title": "Signed venue reads inherit ambient proxy configuration",
+      "evidence": [
+        {
+          "file": "src/atlas/runtime/bybit_demo.py",
+          "lines": "136-142",
+          "observation": "The production default opener is `urllib.request.build_opener(_NoRedirect)`; it does not install an empty ProxyHandler or otherwise disable proxy discovery."
+        },
+        {
+          "file": "src/atlas/runtime/binance_demo.py",
+          "lines": "174-183",
+          "observation": "The Binance reader uses the same opener pattern while retaining the selected credential and signing requests."
+        },
+        {
+          "file": "src/atlas/v2/product.py",
+          "lines": "314-326",
+          "observation": "The selected demo child filters credential-named environment variables but passes other environment variables, including HTTPS_PROXY/ALL_PROXY, through to the reader process."
+        }
+      ],
+      "impact": "Python's default urllib opener includes ProxyHandler, which consults ambient proxy configuration. HTTPS certificate validation prevents an ordinary CONNECT proxy from reading request headers, but a configured TLS-inspecting proxy trusted by the host can observe the API key header and signed request. The code does not make that proxy trust decision explicit.",
+      "recommended_resolution": "Disable ambient proxies for these signed venue readers with an explicit empty ProxyHandler, or add a reviewed owner-configured trusted proxy policy. Keep venue hosts fixed and preserve normal TLS verification.",
+      "evidence_limit": "No credentials were used and no request was sent; this is a source-level exposure path, not an observed credential leak."
+    },
+    {
+      "id": "SEC-02",
+      "severity": "NO_FINDING_OBSERVED",
+      "status": "CURRENT_CODE_REVIEWED",
+      "title": "Demo reader error and receipt boundaries redact credentials and server text",
+      "evidence": [
+        {
+          "file": "src/atlas/runtime/bybit_demo.py",
+          "lines": "100-102, 179-201",
+          "observation": "The reader uses generic fixed error codes, rejects redirects/unexpected endpoint identity, discards exception text, and rejects receipts containing the API key or secret."
+        },
+        {
+          "file": "src/atlas/runtime/binance_demo.py",
+          "lines": "96-108, 136-138, 288-310",
+          "observation": "DemoCredential suppresses values in repr; response failures use fixed codes and exception details are discarded; credentials are checked against canonical response content."
+        },
+        {
+          "file": "src/atlas/runtime/selected_demo.py",
+          "lines": "217-229",
+          "observation": "Persisted/displayed selected-demo status contains config/venue/environment/profile, a profile status and reason codes, and explicit false capital/assisted flags; it does not serialize credential values."
+        },
+        {
+          "file": "src/atlas/v2/product.py",
+          "lines": "1487-1507, 1523-1535, 1540-1564, 1718-1727",
+          "observation": "GUI and component errors report exception type only; child stdout/stderr are discarded. The credential entry UI uses password mode, emits a fixed success/failure message, and clears local variables in finally blocks."
+        }
+      ],
+      "caveats": [
+        "Python strings cannot be reliably zeroized; clearing local names is best-effort lifetime reduction, not memory erasure.",
+        "The native Nautilus config is constructed with credentials at `src/atlas/runtime/bybit_demo.py:68-96` and `src/atlas/runtime/binance_demo.py:110-133`; this review found no application serialization/logging of those config objects, but did not audit the pinned third-party SDK's internal logging or object repr."
+      ]
+    },
+    {
+      "id": "SEC-03",
+      "severity": "NO_FINDING_OBSERVED",
+      "status": "CURRENT_CODE_REVIEWED",
+      "title": "Selected secrets use current-user DPAPI and are separated from public runtime",
+      "evidence": [
+        {
+          "file": "src/atlas/v2/product.py",
+          "lines": "451-482, 500-575",
+          "observation": "The secret store uses Windows DPAPI with UI disabled, has no plaintext/non-Windows fallback, binds demo credentials to opaque reference/venue/environment, bounds ciphertext/plaintext, and converts malformed bindings to generic errors."
+        },
+        {
+          "file": "src/atlas/v2/product.py",
+          "lines": "314-327, 708-732",
+          "observation": "The selected demo and public ops children inherit a filtered environment and send stdout/stderr to DEVNULL. The public launch does not carry credential-named environment values."
+        },
+        {
+          "file": "src/atlas/v2/product.py",
+          "lines": "811-841, 906-929",
+          "observation": "Only the critic broker retrieves the provider key; it is started as a separate owner-checked process with a DPAPI-protected context and filtered environment."
+        }
+      ],
+      "caveats": [
+        "The GUI accepts keys as Python strings before DPAPI protection; those strings are cleared by reassignment but cannot be guaranteed erased from process memory.",
+        "This code review does not establish Windows ACLs, OS account isolation, or credential behavior inside Nautilus."
+      ]
+    },
+    {
+      "id": "AUTH-01",
+      "severity": "NO_FINDING_OBSERVED",
+      "status": "CURRENT_CODE_REVIEWED",
+      "title": "Discovery read scope, provider dispatch, and final holdout checks are bounded in the host",
+      "evidence": [
+        {
+          "file": "src/atlas/v2/agent_intelligence/evidence.py",
+          "lines": "72-167, 189-205, 214-281",
+          "observation": "Requests must bind an untouched preregistered Discovery family, exact allowed refs/cutoffs and remaining budgets. Read access filters artifact types, future evidence, prohibited holdout/outcome material, and attempt metadata linked to the final holdout."
+        },
+        {
+          "file": "src/atlas/v2/agent_intelligence/worker.py",
+          "lines": "32-45, 65-103, 105-145, 148-189",
+          "observation": "The one-shot worker clears its environment, unshares namespaces, receives only bounded request/evidence bytes and a broker socket, and emits a fixed generic failure message. It has no network namespace access or mounted run database."
+        },
+        {
+          "file": "src/atlas/v2/agent_intelligence/provider.py",
+          "lines": "72-99, 142-180, 236-312, 476-556",
+          "observation": "Provider endpoints/models are fixed, no hosted tools are configured, provider HTTP clients disable ambient environment trust, prompts are bounded, and raw SDK failure text is normalized. `build_user_prompt` omits inaccessible holdout identities."
+        },
+        {
+          "file": "src/atlas/v2/agent_intelligence/broker.py",
+          "lines": "80-118, 294-320, 322-350, 550-614",
+          "observation": "HMAC capabilities bind durable authorizations, fixed provider/model/endpoints and call/token ceilings; critic capabilities bind one call and zero dynamic tools. Broker failures become fixed codes."
+        },
+        {
+          "file": "src/atlas/v2/agent_intelligence/contracts.py",
+          "lines": "962-1005, 1241-1299",
+          "observation": "The critic profile fixes DeepSeek task identity, endpoint, call/token limits and dynamic_tools=0. Event extraction has typed bounded request/output contracts."
+        },
+        {
+          "file": "src/atlas/v2/runtime/action_critic_shadow.py",
+          "lines": "100-110, 427-450",
+          "observation": "Critic receipts are rejected unless source receipts declare disabled agent mode and capital/assisted false; recorded results remain shadow evidence."
+        }
+      ],
+      "holdout_disclosure_note": "The internal ResearchProposalRequest carries inaccessible holdout identity hashes through the worker/broker contract for host-side authorization and validation (`contracts.py:392,464-475`); the external proposer prompt is manually constructed and does not include those identities (`provider.py:72-99`). No holdout labels, scores, returns, or outcome artifacts were found in the readable evidence surface.",
+      "authority_note": "No path was found by which Discovery or action-critic output changes selection, risk, admission, an order, protection, recovery, or capital authority. This is code inspection, not a proof of end-to-end runtime isolation."
+    },
+    {
+      "id": "AUTH-02",
+      "severity": "NO_FINDING_OBSERVED",
+      "status": "CURRENT_CODE_REVIEWED",
+      "title": "Selected native demo OMS keeps opening authority closed and reports capital disabled",
+      "evidence": [
+        {
+          "file": "src/atlas/runtime/selected_demo.py",
+          "lines": "94-159, 181-194, 217-229, 257-273",
+          "observation": "Credential retrieval occurs only after explicit run config and writer lease; venue/environment/account scope are bound; account receipts carry false capital/assisted flags; status exposes no credentials. Close refuses live native/reconciliation workers and clears its own credential/reader references."
+        },
+        {
+          "file": "src/atlas/runtime/binance_demo.py",
+          "lines": "41-51, 72-108, 253-310, 348-350, 458-465, 518-559, 562-588",
+          "observation": "Signed Binance reads are allowlisted/bounded; credential repr is protected; opening has a fixed TEST GATE; native dispatch handles cancellation/reduce-only exits/flatten/stop repair only and persists uncertainty without replay."
+        },
+        {
+          "file": "src/atlas/runtime/bybit_demo.py",
+          "lines": "1-6, 68-96, 125-201, 363-405",
+          "observation": "Bybit config binds DEMO/TESTNET; reader is GET-only and endpoint allowlisted; opening remains a fixed TEST GATE; protection readback requires exact current Full MarkPrice stop evidence."
+        },
+        {
+          "file": "src/atlas/runtime/binance_native.py",
+          "lines": "213-282, 394-465, 474-559",
+          "observation": "Native node binds exact venue/account/product, captures a closed event type set, persists typed receipts with generic failure codes, and has bounded queues."
+        },
+        {
+          "file": "src/atlas/runtime/bybit_native.py",
+          "lines": "1-5, 210-280, 400-560",
+          "observation": "Native Bybit host is bounded and delegates OMS effects through the pinned adapter; receipts are typed/identity-bound and failures use fixed codes."
+        },
+        {
+          "file": "src/atlas/v2/product.py",
+          "lines": "94-96, 346-406, 256-327, 1628-1630",
+          "observation": "Run manifests require capital_enabled=false, assisted_enabled=false, holdout_access=false; demo OMS is an explicit separate child; desktop smoke starts no live run and carries false authority flags."
+        }
+      ],
+      "qualification_boundary": "The opened demo/test code is not evidence of supported live account operation or capital enablement. Exchange protection equivalence remains a TEST GATE."
+    },
+    {
+      "id": "V1-REG-01",
+      "severity": "REGRESSION_REVIEW_REQUIRED",
+      "status": "SOURCE_DIFF_SCOPE_IDENTIFIED",
+      "title": "S41 modifies shared V1 journal and writer-lock code",
+      "evidence": [
+        {
+          "file": "src/atlas/persistence/sqlite.py",
+          "lines": "471-483, 763-804, 1053-1079, 1120-1173, 1218-1253, 2285-2305, 2324-2347",
+          "observation": "Changes add locking around journal wrappers/close; indexed bounded unresolved reads and client-order lookups; exact-idempotent economic-event writes; optional client-order filtering for execution evidence; capability qualification lookup."
+        },
+        {
+          "file": "src/atlas/persistence/migrations.py",
+          "lines": "446-458",
+          "observation": "Bootstrap adds four indexes with IF NOT EXISTS without changing the schema version."
+        },
+        {
+          "file": "src/atlas/runtime/writer_lock.py",
+          "lines": "25-101",
+          "observation": "The POSIX flock path is retained; a Windows byte-range lease sidecar is added and held for ownership lifetime."
+        },
+        {
+          "file": "tests/persistence/test_session001_repairs.py",
+          "lines": "373-386",
+          "observation": "The V1 economic-event duplicate test expectation changed from rejecting a duplicate to accepting exact replay."
+        }
+      ],
+      "review_note": "No direct safety-invariant regression was established by static inspection. These are shared V1 persistence/concurrency paths and require the coordinator's explicit V1 regression gate; this review did not run it.",
+      "required_review": [
+        "Confirm exact duplicate economic receipts are byte/field-identical and conflicts still fail.",
+        "Exercise POSIX and Windows writer exclusion, cleanup, stale ownership, and restart behavior.",
+        "Run existing V1 journal, recovery, protection, no-reversal, and phase 0-6 regression suites against the final integrated SHA."
+      ]
+    }
+  ],
+  "historical_audit_handling": {
+    "B_E_FG_session041_audits_are_baseline_only": true,
+    "baseline_date": "2026-10-06",
+    "baseline_sha": "55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393",
+    "baseline_artifacts": [
+      "docs/v2/SESSION041_WORKSTREAM_B_AUDIT.json",
+      "docs/v2/SESSION041_WORKSTREAM_E_AUDIT.json",
+      "docs/v2/SESSION041_WORKSTREAM_FG_AUDIT.json"
+    ],
+    "usage_rule": "These read-only audits describe code at the stated baseline SHA and are not current gap assertions. Revalidate each finding against the current source tree before using it in closure accounting."
+  },
+  "closure": {
+    "security_review_closes_requirement_matrix": false,
+    "final_sha": null,
+    "status": "UNVERIFIED"
+  }
+}

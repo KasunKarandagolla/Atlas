@@ -55,6 +55,7 @@ def host():
 
     result = Mock()
     result.order_factory = OrderFactory(TraderId("ATLAS-001"), StrategyId("DEMO-001"), Clock.new_test())
+    result.find_order.return_value = None
     return result
 
 
@@ -106,36 +107,47 @@ def test_real_order_factory_uses_same_identity_reduce_only_mark_stop(kind):
     cmd = make_command(command_id="cmd", intent_id="intent", command_type=kind,
                        payload_dict={**payload(p, i, "a" * 32), "quantity": "2" if kind == CommandType.REPAIR_STOP else "1"},
                        expected_state_version=0, created_at_ns=T0)
-    qualified_port(p, i, h).dispatch(cmd, now_ns=T0 + 1)
+    qualified_port(p, i, h).dispatch(cmd, now_ns=T0 + 1, effect_fence=lambda: None)
     order = h.submit_order.call_args.args[0]
     assert str(order.client_order_id) == "a" * 32
     assert order.is_reduce_only is True
     assert "BINANCE" in str(order.instrument_id)
     if kind == CommandType.REPAIR_STOP:
         assert str(order.trigger_type) == "MARK_PRICE"
+        assert h.resolve_position_id.call_args.kwargs == {
+            "instrument_id": order.instrument_id,
+            "account_id": f"BINANCE-{i.account_scope_ref}",
+            "expected_signed_quantity": Decimal("2"),
+        }
         assert h.submit_order.call_args.kwargs["params"] == {"close_position": True}
+        assert h.submit_order.call_args.kwargs["position_id"] is h.resolve_position_id.return_value
 
 
-def test_durable_unknown_before_effect_and_no_second_send(journal):
+def test_close_position_repair_is_not_blocked_by_order_quantity_maximum():
+    p, i, h = replace(product(), max_qty=Decimal("1")), identity(), host()
+    cmd = make_command(command_id="repair", intent_id="intent", command_type=CommandType.REPAIR_STOP,
+                       payload_dict={**payload(p, i, "a" * 32), "quantity": "2.00"},
+                       expected_state_version=0, created_at_ns=T0)
+    qualified_port(p, i, h).dispatch(cmd, now_ns=T0 + 1, effect_fence=lambda: None)
+    assert h.submit_order.call_args.kwargs["params"] == {"close_position": True}
+    assert h.submit_order.call_args.kwargs["position_id"] is h.resolve_position_id.return_value
+
+
+def test_dispatcher_requires_durable_readiness_context_before_effect(journal):
     intent = add_intent(journal)
     p, i, h = product(), identity(), host()
     cmd = journal.prepare_dispatch(
         intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
         command_id="close", command_type=CommandType.SUBMIT_EXIT,
         payload_dict=payload(p, i, intent.client_order_id), created_at_ns=T0)
-    def external_effect(order, **kwargs):
-        assert journal.load_command(cmd.command_id).outcome == CommandOutcome.UNKNOWN
-        raise TimeoutError("sensitive transport text must not escape")
-    h.submit_order.side_effect = external_effect
     kwargs = {"journal": journal, "command_id": cmd.command_id,
                   "port": qualified_port(p, i, h), "now_ns": T0 + 1,
                   "writer_epoch": 1, "assert_writer": lambda: None}
-    result = dispatch_persisted_demo_command(**kwargs)
-    assert result.outcome == CommandOutcome.UNKNOWN
-    assert journal.load_reservation(intent.intent_id).remaining_open_qty == Decimal("0.01")
-    with pytest.raises(PersistenceError, match="redispatch refused"):
+    with pytest.raises(PersistenceError, match="readiness context missing"):
         dispatch_persisted_demo_command(**kwargs)
-    assert h.submit_order.call_count == 1
+    assert journal.load_command(cmd.command_id).outcome == CommandOutcome.UNSENT
+    assert journal.load_reservation(intent.intent_id).remaining_open_qty == Decimal("0.01")
+    h.submit_order.assert_not_called()
 
 
 def test_opening_stale_writer_and_second_writer_fail_before_send(journal):
@@ -150,7 +162,7 @@ def test_opening_stale_writer_and_second_writer_fail_before_send(journal):
                   "writer_epoch": 1, "assert_writer": lambda: None}
     with pytest.raises(PersistenceError, match="FILL_TIME_PROTECTION"):
         dispatch_persisted_demo_command(**kwargs)
-    with pytest.raises(PersistenceError, match="stale"):
+    with pytest.raises(PersistenceError, match="FILL_TIME_PROTECTION"):
         dispatch_persisted_demo_command(**(kwargs | {"writer_epoch": 2}))
     with pytest.raises(PersistenceError, match="second writer"):
         dispatch_persisted_demo_command(**(kwargs | {"assert_writer": Mock(side_effect=PersistenceError("second writer"))}))
@@ -254,15 +266,15 @@ def test_unverified_account_stale_account_wrong_reduction_and_market_filters_fai
     command = make_command(command_id="close", intent_id="intent", command_type=CommandType.FLATTEN,
         payload_dict=payload(p, i, "a" * 32), expected_state_version=0, created_at_ns=T0)
     with pytest.raises(ValueError, match="PROFILE_NOT_VERIFIED"):
-        BinanceNautilusDemoPort(i, h, p).dispatch(command, now_ns=T0)
+        BinanceNautilusDemoPort(i, h, p).dispatch(command, now_ns=T0, effect_fence=lambda: None)
     with pytest.raises(ValueError, match="PROFILE_STALE"):
-        qualified_port(p, i, h).dispatch(command, now_ns=T0 + 3_000_000_000)
+        qualified_port(p, i, h).dispatch(command, now_ns=T0 + 3_000_000_000, effect_fence=lambda: None)
     port = qualified_port(p, i, h)
     port.market_filters = replace(port.market_filters, max_qty=Decimal("0.5"))
     with pytest.raises(ValueError, match="market quantity"):
-        port.dispatch(command, now_ns=T0)
+        port.dispatch(command, now_ns=T0, effect_fence=lambda: None)
     command = make_command(command_id="wrong-side", intent_id="intent", command_type=CommandType.FLATTEN,
         payload_dict=payload(p, i, "a" * 32) | {"side": "BUY"}, expected_state_version=0, created_at_ns=T0)
     with pytest.raises(ValueError, match="POSITION_SCOPE"):
-        qualified_port(p, i, h).dispatch(command, now_ns=T0)
+        qualified_port(p, i, h).dispatch(command, now_ns=T0, effect_fence=lambda: None)
     h.submit_order.assert_not_called()

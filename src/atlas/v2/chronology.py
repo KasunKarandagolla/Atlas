@@ -22,9 +22,32 @@ DERIVED_TYPES = frozenset({"UniverseObservationV2", "UniverseContractV2", "Featu
     "CandidateActionV2", "CandidateSetV2", "ScannerSelectionSourceV1", "ScannerRankEvidenceV1",
     "S1SetupEvidenceV1", "S2SetupEvidenceV1", "S2TriggerEvidenceV1", "SizingDecisionV2", "ActionArtifactV2",
     "EventSafetyGateV2", "ResearchPrerequisiteInventoryV1", "ActiveCausalHistoryStateV1",
+    "BroadPreparedHistoryStateV1",
     "OpsEconomicEvidenceResolutionV1", "JointExecutionDataV2", "ScenarioSupportUnitV2",
+    "S7DerivedM5BarV1", "S7DerivedPreEventBetaV1", "S7DerivedMarketReturn5MV1",
+    "S7DerivedReactionSpreadV1", "EventReactionArtifactV2",
+    "NativeStrategyHistoryBarV1",
+    "S4FeatureArtifactV2", "S4AbsorptionHypothesisV2", "S4ExpectedResponseBaselineV2", "S5StructuralStageEvidenceV1",
+    "S5PreparedDiagnosticsV1", "S5CrowdingContextV2", "OpenInterestObservationV2",
+    "OIChangeEvidenceV2", "FundingObservationV2", "S5ContinuationResearchRoleV1",
+    "S5ReversalResearchRoleV1",
+    "S4ExecutionContextResearchRoleV1", "S4StandaloneShadowResearchRoleV1",
+    "S4ResearchRoleV1", "S5ResearchRoleV1", "S6ResearchRoleV1",
+    "S7_DIRECTIONAL_SHADOWResearchRoleV1", "MODEL_ARENA_OPTIONALResearchRoleV1",
+    "S8_RESEARCH_BASKETResearchRoleV1",
+    "S6LiquidityFundingEvidenceV2", "S6ActionTriggerEligibilityV1", "ResearchBasketForecastV2",
+    "S8ResidualDiagnosticsV1", "S8BasketOutcomeEvidenceV1", "S8BasketOutcomeV1",
+    "TradeLocationInputReceiptV1",
     "PretradeExecutionScenarioV2", "DecisionTimePortfolioCompletenessV2"})
 MAX_DEPENDENCIES = 200_000  # Fixed archive context, never a history-sized walk.
+PRIOR_PREFIX_TYPES = frozenset({
+    "BroadPreparedHistoryStateV1",
+    "NativeStrategyHistoryBarV1", "S4FeatureArtifactV2", "S4ExpectedResponseBaselineV2",
+    "S4AbsorptionHypothesisV2", "S5StructuralStageEvidenceV1", "S5PreparedDiagnosticsV1",
+    "S5CrowdingContextV2", "OpenInterestObservationV2", "OIChangeEvidenceV2", "FundingObservationV2",
+    "S7DerivedM5BarV1", "S7DerivedPreEventBetaV1", "S7DerivedMarketReturn5MV1",
+    "S7DerivedReactionSpreadV1", "S6LiquidityFundingEvidenceV2",
+})
 
 
 def sample(clock_ns: Callable[[], int], *, floor_ns: int) -> int:
@@ -114,9 +137,10 @@ def record_computation(repo: OpsRepository, *, artifact_ref: str, information_cu
         raise ValueError("derived computation dependencies exceed their bound")
     cache: dict[str, ArtifactIndexEntryV2 | None] = {}
     budget = [0]
+    validated: set[tuple[str, int, int, int]] = set()
     if any(not causal_artifact(repo, ref, cutoff_ns=information_cutoff_ns,
                                consumer_at_ns=started_ns, deadline_ns=deadline_ns,
-                               _cache=cache, _budget=budget) for ref in refs):
+                               _cache=cache, _budget=budget, _validated=validated) for ref in refs):
         raise ValueError("derived computation has unavailable or noncausal dependency")
     # The market prefix stays sealed, while a downstream computation can consume
     # a later published transformation of that same prefix. Its own information
@@ -145,10 +169,17 @@ def record_computation(repo: OpsRepository, *, artifact_ref: str, information_cu
 def causal_artifact(repo: OpsRepository, ref: str, *, cutoff_ns: int,
                     consumer_at_ns: int, deadline_ns: int, _seen: set[str] | None = None,
                     _cache: dict[str, ArtifactIndexEntryV2 | None] | None = None,
-                    _budget: list[int] | None = None) -> bool:
+                    _budget: list[int] | None = None,
+                    _validated: set[tuple[str, int, int, int]] | None = None) -> bool:
     """Check raw availability at cutoff or a sealed later computation over that prefix."""
     cache = {} if _cache is None else _cache
     budget = [0] if _budget is None else _budget
+    # This cache lives only within one exact validation call/row snapshot. The
+    # same shared dependency can otherwise be recursively checked exponentially
+    # often despite the row-read cache. Time bounds are part of its identity;
+    # only successful proofs are reused, after checking the current cycle path.
+    validated = set() if _validated is None else _validated
+    validation_key = (ref, cutoff_ns, consumer_at_ns, deadline_ns)
 
     def read(artifact_ref: str) -> ArtifactIndexEntryV2 | None:
         if artifact_ref not in cache:
@@ -169,6 +200,8 @@ def causal_artifact(repo: OpsRepository, ref: str, *, cutoff_ns: int,
         seen = set() if _seen is None else _seen
         if ref in seen or len(seen) >= MAX_DEPENDENCIES:
             return False
+        if validation_key in validated:
+            return True
         seen.add(ref)
         receipt = read(chronology_ref(ref))
         body = receipt.metadata.get("chronology") if receipt is not None else None
@@ -178,8 +211,9 @@ def causal_artifact(repo: OpsRepository, ref: str, *, cutoff_ns: int,
                 or body.get("version") != VERSION or body.get("artifact_ref") != ref
                 or body.get("artifact_content_hash") != entry.content_hash
                 or body.get("artifact_type") != entry.artifact_type
-                or timestamp(body["market_information_cutoff_ns"], field="market_information_cutoff_ns") != cutoff_ns
-                or body.get("market_information_cutoff_ns") != cutoff_ns
+                or timestamp(body["market_information_cutoff_ns"], field="market_information_cutoff_ns") > cutoff_ns
+                or (entry.artifact_type not in PRIOR_PREFIX_TYPES
+                    and body.get("market_information_cutoff_ns") != cutoff_ns)
                 or body.get("available_at_ns") != entry.available_at_ns
                 or body.get("authority") != "ZERO"
                 or receipt.available_at_ns != entry.available_at_ns
@@ -190,17 +224,19 @@ def causal_artifact(repo: OpsRepository, ref: str, *, cutoff_ns: int,
             return False
         input_cutoff, start, finish, available = (timestamp(body[name], field=name) for name in (
             "information_cutoff_ns", "computation_started_ns", "computation_finished_ns", "available_at_ns"))
-        if not cutoff_ns <= input_cutoff <= start <= finish <= available <= min(
+        sealed_cutoff = body["market_information_cutoff_ns"]
+        if not sealed_cutoff <= input_cutoff <= start <= finish <= available <= min(
                 consumer_at_ns, deadline_ns, body["consumer_deadline_ns"]):
             return False
         deps = body.get("input_refs")
         if not isinstance(deps, (tuple, list)) or len(deps) > MAX_DEPENDENCIES:
             return False
         deps = tuple(sorted(set(deps) | set(_declared_inputs(entry))))
-        result = all(causal_artifact(repo, dep, cutoff_ns=cutoff_ns, consumer_at_ns=start,
-                                    deadline_ns=deadline_ns, _seen=seen, _cache=cache, _budget=budget) for dep in deps)
+        result = all(causal_artifact(repo, dep, cutoff_ns=sealed_cutoff, consumer_at_ns=start,
+                                    deadline_ns=deadline_ns, _seen=seen, _cache=cache, _budget=budget,
+                                    _validated=validated) for dep in deps)
         if result:
-            actual_input_cutoff = cutoff_ns
+            actual_input_cutoff = sealed_cutoff
             for dep in deps:
                 dependency = read(dep)
                 if dependency is None:
@@ -208,6 +244,10 @@ def causal_artifact(repo: OpsRepository, ref: str, *, cutoff_ns: int,
                 actual_input_cutoff = max(actual_input_cutoff, dependency.available_at_ns)
             result = input_cutoff == actual_input_cutoff
         seen.remove(ref)
+        if result:
+            if len(validated) >= MAX_DEPENDENCIES:
+                return False
+            validated.add(validation_key)
         return result
     except (TypeError, ValueError, KeyError, RecursionError):
         return False

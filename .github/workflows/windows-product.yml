@@ -139,6 +139,10 @@ jobs:
         run: |
           & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_session028_provider_amendment.py tests/v2/test_session029_action_critic.py tests/v2/test_session030_action_critic_runtime.py tests/v2/test_session040_capture_receipts.py tests/v2/test_session040_durable_capture.py tests/v2/test_session040_live_health.py tests/v2/test_session040_storage_preflight.py tests/v2/test_session040_export_snapshot_cache.py tests/v2/test_session040_owner_runtime.py tests/v2/test_session040_provider_isolation.py tests/v2/test_session040_action_query_bounds.py tests/v2/test_session040_native_resilience.py --basetemp "$env:RUNNER_TEMP\atlas-s40-fault-regression" --junitxml=dist/windows-s40-fault-regression.xml 2>&1 | Tee-Object dist/windows-s40-fault-regression.txt
           if ($LASTEXITCODE -ne 0) { throw 'S40 owner-critical-path fault gate failed; no installer' }
+      - name: Qualify native S41 dual venue and broad universe regression
+        run: |
+          & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/runtime tests/v2 -k session041 --basetemp "$env:RUNNER_TEMP\atlas-s41-regression" --junitxml=dist/windows-s41-regression.xml 2>&1 | Tee-Object dist/windows-s41-regression.txt
+          if ($LASTEXITCODE -ne 0) { throw 'S41 native regression failed; no installer' }
       - name: Qualify native source desktop, protected secrets and broker boundaries
         run: |
           & "$env:RUNNER_TEMP\atlas-build-env\Scripts\python.exe" -m pytest -q -s tests/v2/test_session020_desktop_ipc.py tests/v2/test_session036_product.py tests/v2/test_session036_windows_broker.py tests/v2/test_session036_writer_broker_bounds.py tests/v2/test_session037_product_refresh.py --basetemp "$env:RUNNER_TEMP\atlas-s40-product-regression" --junitxml=dist/windows-s40-product-regression.xml 2>&1 | Tee-Object dist/windows-s40-product-regression.txt
@@ -200,6 +204,8 @@ jobs:
             dist/windows-stream-regression.txt
             dist/windows-s40-*.xml
             dist/windows-s40-*.txt
+            dist/windows-s41-*.xml
+            dist/windows-s41-*.txt
             ${{ runner.temp }}/atlas-s40-native-resilience/
             dist/atlas-product/build-manifest.json
             build/atlas-product/warn-atlas-product.txt

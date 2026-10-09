@@ -1,0 +1,44 @@
+{
+  "version": "SESSION041_COMPACT_PUBLIC_TEST_CONTRACT_V1",
+  "status": "CONTRACT_TESTS_ADDED_IMPLEMENTATION_NOT_YET_PRESENT",
+  "scope": "Focused tests for lossless compact storage of PublicObservationIndexV2 rows.",
+  "fixture": {
+    "path": "PublicCollectorV2 -> ParquetObservationArchiveV2 -> OpsRepository",
+    "shape": "Fixed synthetic BTCUSDT and ETHUSDT observations, two BTC contract revisions, TRADE and AGG_TRADE events, actual and reconstructed availability, deterministic clocks and archive chunks.",
+    "scale_reference": "tests/v2/test_session041_scale_review.py"
+  },
+  "required_invariants": [
+    {
+      "id": "round_trip_domain_identity",
+      "description": "Newly archived PublicObservationIndexV2 rows may use compact storage while get_artifact, get_artifact_metadata_by_refs, artifact_entries, and artifact_entries_by_types expose the exact original artifact type, ref, content hash, created/available times, and decoded metadata. Metadata includes exact source fields, archive chunk identity, and publication chronology."
+    },
+    {
+      "id": "restart_round_trip",
+      "description": "After closing and reopening OpsRepository read-only, compact rows have the same exact domain values and metadata as before restart."
+    },
+    {
+      "id": "legacy_plain_compatibility",
+      "description": "Pre-existing plain artifact_index JSON rows remain readable alongside compact rows through point, batch, and typed repository reads."
+    },
+    {
+      "id": "corruption_fails_closed",
+      "description": "Corrupt compact metadata identity/checksum is surfaced as an error by point, batch, and typed reads; it is not silently skipped, replaced by defaults, or treated as a missing artifact."
+    },
+    {
+      "id": "query_semantics",
+      "description": "public_archive_history_entries preserves exact revision, optional full-key scope, event types, actual availability cutoff, reconstructed replay cutoff, and deterministic receipt ordering including identity ties."
+    }
+  ],
+  "implementation_state": {
+    "observed_at": "2026-10-07",
+    "status": "NOT_YET_PRESENT_FOR_PublicObservationIndexV2",
+    "evidence": "The checked-in compact locator path handles PublicStreamFrameIndexV1, PublicStreamTradeObservationIndexV1, and PublicStreamSourceHealthV1; PublicObservationIndexV2 remains selected from artifact_index metadata JSON in the repository query implementation. The new tests therefore define expected behavior and may fail until the compact public observation implementation is added."
+  },
+  "tests": [
+    "tests/v2/test_session041_compact_public_observations.py::test_compact_archive_index_round_trips_all_repository_reads_and_restart",
+    "tests/v2/test_session041_compact_public_observations.py::test_legacy_plain_observation_rows_remain_readable_with_compact_rows",
+    "tests/v2/test_session041_compact_public_observations.py::test_compact_observation_corruption_fails_closed",
+    "tests/v2/test_session041_compact_public_observations.py::test_compact_history_queries_preserve_identity_cutoff_replay_and_ties"
+  ],
+  "change_boundary": "Tests and this contract document only; production sources and existing tests were not modified by this task."
+}

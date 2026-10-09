@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="7" time="4.823" timestamp="2026-10-08T20:05:28.792491+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_appended_records_keep_exact_prefix_and_read_only_reconstruction" time="0.684" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_batch_shares_one_durable_segment_sync" time="0.359"><failure message="ValueError: unsupported canonical JSON type bytes">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-552/test_extent_batch_shares_one_d0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f7e65ef77d0&gt;
+
+    def test_extent_batch_shares_one_durable_segment_sync(tmp_path, monkeypatch):
+        import atlas.v2.data.public_archive_extents as archive_extents
+    
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            rows = (
+                pa.Table.from_pylist([{"raw": b"bybit", "ordinal": 1}]),
+                pa.Table.from_pylist([{"raw": b"binance", "ordinal": 2}]),
+            )
+&gt;           chunks = tuple((table, "ops-public-transport", sha256_json([table.to_pylist()]),
+                            lambda: 100, 100) for table in rows)
+
+tests/v2/test_session039_public_archive_extents.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session039_public_archive_extents.py:55: in &lt;genexpr&gt;
+    chunks = tuple((table, "ops-public-transport", sha256_json([table.to_pylist()]),
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/_serialization.py:169: in sha256_json
+    return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
+                          ^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/_serialization.py:165: in canonical_json
+    return json.dumps(json_value(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+                      ^^^^^^^^^^^^^^^^^
+src/atlas/v2/_serialization.py:150: in json_value
+    return [json_value(item) for item in value]
+            ^^^^^^^^^^^^^^^^
+src/atlas/v2/_serialization.py:150: in json_value
+    return [json_value(item) for item in value]
+            ^^^^^^^^^^^^^^^^
+src/atlas/v2/_serialization.py:154: in json_value
+    return {key: json_value(item) for key, item in value.items()}
+                 ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = b'bybit'
+
+    def json_value(value: Any) -&gt; Any:
+        # Most high-rate evidence consists of already canonical scalar fields.
+        # Exact types keep Enum subclasses on the existing conversion path.
+        if value is None or type(value) in (str, bool, int):
+            return value
+        if isinstance(value, Enum):
+            return value.value
+        if isinstance(value, Decimal):
+            return canonical_decimal_str(value)
+        if isinstance(value, FrozenMap):
+            return value.to_dict()
+        if isinstance(value, tuple):
+            return [json_value(item) for item in value]
+        if isinstance(value, list):
+            return [json_value(item) for item in value]
+        if isinstance(value, Mapping):
+            if not all(isinstance(key, str) for key in value):
+                raise ValueError("JSON object keys must be strings")
+            return {key: json_value(item) for key, item in value.items()}
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError("NaN/Infinity is not authoritative JSON")
+        if value is None or isinstance(value, (str, bool, int, float)):
+            return value
+        if hasattr(value, "to_dict"):
+            return json_value(value.to_dict())
+&gt;       raise ValueError(f"unsupported canonical JSON type {type(value).__name__}")
+E       ValueError: unsupported canonical JSON type bytes
+
+src/atlas/v2/_serialization.py:161: ValueError</failure></testcase><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_damage_is_not_treated_as_valid_evidence[changed]" time="0.359" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_damage_is_not_treated_as_valid_evidence[truncated]" time="0.309" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_damage_is_not_treated_as_valid_evidence[symlink]" time="0.489" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_failed_sql_transaction_leaves_raw_orphan_without_fabricating_checkpoint" time="0.521" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_row_bound_does_not_create_an_archive_or_index" time="0.331" /></testsuite></testsuites>

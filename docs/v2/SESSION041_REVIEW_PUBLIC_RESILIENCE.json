@@ -1,0 +1,155 @@
+{
+  "artifact_type": "AtlasSession041PublicResilienceReviewV1",
+  "session": 41,
+  "review_status": "STATIC_REVIEW_WITH_FOCUSED_TESTS",
+  "reviewed_at": "2026-10-07",
+  "reviewed_head": "657ea9eff18bb9bebea86828b8503bacdefa3bc5",
+  "worktree_dirty": true,
+  "tests_run": true,
+  "live_or_external_calls": false,
+  "secrets_or_holdout_data_read": false,
+  "capital_or_assisted_actions": false,
+  "authority": {
+    "scope": "Review the current S41 broad public source/runtime/universe and its S40 storage, health, WAL, reporting, restart, raw durability, pressure-stop, and irreversible qualification-latch boundaries. Check chronology, full-universe versus bounded history completeness, deterministic dual-venue selection, source capability limits, and report work during ingestion.",
+    "limitations": [
+      "The 4096-product fixture was not rerun; the existing test asserts two distinct venues and 4096 unique contracts, but this review does not treat that fixture as production endpoint or capacity qualification.",
+      "No live public source, authenticated source capability, exchange account, capital action, or assisted action was exercised.",
+      "The review was performed against a dirty worktree before final integration; the reviewed HEAD does not identify the complete working tree."
+    ]
+  },
+  "focused_test_results": [
+    {
+      "command": "PYTHONPATH=src:. /home/kasun/Music/atlas/.venv/bin/pytest -q tests/v2/test_session036_m15_production_accounting.py tests/v2/test_session037_history_runtime.py",
+      "result": "PASS; pytest reached 100% with no failures.",
+      "scope_limit": "These suites exercise existing M15 accounting and history behavior. They do not constitute a full S41 production restart, live-source, WAL endurance, or 4096-product capacity run."
+    }
+  ],
+  "findings": [
+    {
+      "id": "PUB-RES-01",
+      "severity": "HIGH",
+      "status": "CURRENT_CODE_REVIEWED",
+      "title": "The 4096-contract polling path has no run-lifetime evidence growth bound",
+      "evidence": [
+        {
+          "file": "src/atlas/v2/data/broad_public_source.py",
+          "lines": "35-45, 447-455",
+          "observation": "The source accepts up to 4096 contracts and makes a fresh bulk market acquisition on a 10-second cadence. Snapshot records are bounded per cycle, but the cadence does not impose a bound on cumulative persisted evidence."
+        },
+        {
+          "file": "src/atlas/v2/runtime/broad_universe.py",
+          "lines": "169-223, 238-260, 284-299",
+          "observation": "Each acquisition creates a new UniverseObservationV2 index for every observed product, then a new full UniverseContractV2 and workset. At the allowed 4096 population this is at least 4096 new observation indexes plus a full-universe/workset publication per due cycle, before counting fresh bulk quote observations. Prior evidence remains indexed."
+        },
+        {
+          "file": "src/atlas/v2/data/broad_public_source.py",
+          "lines": "557-636",
+          "observation": "Every due cycle materializes fresh per-symbol bulk market rows for the complete active population; Binance uses ticker, book ticker, premium index, and 24-hour ticker endpoints, while Bybit uses its bulk ticker endpoint."
+        },
+        {
+          "file": "src/atlas/v2/memory/repository.py",
+          "lines": "685-760",
+          "observation": "Artifact registration is immutable/idempotent; this path does not expire, compact, or replace prior broad observations, universes, or worksets."
+        },
+        {
+          "file": "docs/v2/SESSION041_PRODUCT_CONFIGURATION_CONTRACT_V2.md",
+          "lines": "30-32",
+          "observation": "The product contract explicitly says the bounded universe does not qualify broad-market capacity and retains the existing storage thresholds. This limitation is accurately disclosed, but no product-side broad-run lifetime cap or sustained 4096-contract measurement was found."
+        },
+        {
+          "file": "tests/v2/test_session041_production_breadth.py",
+          "lines": "73-90",
+          "observation": "The existing 4096-product test proves initial publication/restart shape only. It does not exercise repeated due cycles, cumulative SQLite/Parquet growth, report throughput, disk-full pressure, or endurance."
+        }
+      ],
+      "impact": "At the maximum declared population, the 10-second due cycle can append thousands of per-product market and universe observations plus a new 4096-entry universe and workset. These immutable records accumulate for the run lifetime. The bounded per-cycle item count does not bound lifetime storage or prove that the unchanged S40 reserve supports this S41 workload.",
+      "recommended_resolution": "Measure repeated maximum-population cycles against the existing S40 WAL/disk/report limits and either bound the run workload/cadence, deduplicate or compact rebuildable derived observations, or define a supported population-duration envelope before treating the 4096-contract path as operationally qualified.",
+      "evidence_limit": "This is a source-level growth-path finding, not an observed disk exhaustion. No broad 4096 endurance run was performed."
+    },
+    {
+      "id": "PUB-RES-02",
+      "severity": "MEDIUM",
+      "status": "CURRENT_CODE_FINDING",
+      "title": "The export byte ceiling can reject a valid maximum-size broad workset",
+      "evidence": [
+        {
+          "file": "src/atlas/v2/runtime/broad_universe.py",
+          "lines": "23-27, 102-115, 139-145",
+          "observation": "The workset permits 4096 product keys and retains up to 32 disjoint coverage segments for each of four intervals per key."
+        },
+        {
+          "file": "src/atlas/v2/science/broad_export.py",
+          "lines": "30-32, 314-320, 377-380",
+          "observation": "Broad metadata export rejects an evidence payload over 8 MiB, while the typed workset validator accepts every coverage range count up to 32. At the declared maxima, coverage alone can exceed the export byte ceiling."
+        }
+      ],
+      "impact": "A legal long-running workset with enough accumulated gaps can make report export fail even though each key, interval, and coverage list respects its registered bound.",
+      "recommended_resolution": "Add an aggregate serialized-size bound at workset publication or export the full workset through bounded pages while preserving the exact full evidence reference."
+    },
+    {
+      "id": "PUB-RES-03",
+      "severity": "NO_FINDING_OBSERVED",
+      "status": "CURRENT_CODE_REVIEWED",
+      "title": "Broad inventory, bounded active histories, and raw publication chronology remain separately represented",
+      "evidence": [
+        {
+          "file": "src/atlas/v2/runtime/broad_universe.py",
+          "lines": "134-145, 238-260, 268-299",
+          "observation": "The persisted broad universe is built from the complete bounded product tuple; cheap per-product quote/coverage state is keyed by full canonical identity. The separate workset caps active recursive histories at 24 and retains the full product refs and universe ref."
+        },
+        {
+          "file": "tests/v2/test_session041_production_breadth.py",
+          "lines": "73-90",
+          "observation": "The existing integration fixture asserts 4096 unique Bybit/Binance products survive full-universe publication and restart, while active history work remains at most 24 and capital/scanner eligibility is false. This is fixture evidence only."
+        },
+        {
+          "file": "src/atlas/v2/data/collector.py",
+          "lines": "437-490",
+          "observation": "When the broad collector's after-archive publication profile is enabled, raw observation availability remains separate from the index's `publication_ns`; the index is created only after the archive write. The index metadata binds both timestamps."
+        },
+        {
+          "file": "src/atlas/v2/data/raw.py",
+          "lines": "14-21",
+          "observation": "`indexed_availability_matches` accepts the later timestamp only for the explicit `PUBLIC_INDEX_AFTER_ARCHIVE_V1` profile, validates both bound timestamps, and requires raw availability no later than index publication."
+        },
+        {
+          "file": "src/atlas/v2/data/history.py",
+          "lines": "519-539, 680-700",
+          "observation": "Archive reconstruction validates the two-timestamp profile and selects only index-visible rows, so the archive's earlier raw availability does not make an uncommitted index visible to a cutoff."
+        },
+        {
+          "file": "src/atlas/v2/science/m15_origin_accounting.py",
+          "lines": "188-195",
+          "observation": "M15 origin validation applies the same explicit raw-versus-index availability rule and rejects an index not published by the accounting cutoff."
+        },
+        {
+          "file": "src/atlas/v2/runtime/production.py",
+          "lines": "3124-3255, 5860-5920, 5953-6045",
+          "observation": "The broad writer validates source chronology, disables per-record in-memory/source-health accumulation for the snapshot, flushes and confirms pending index refs before reconciling source health, restores bounded persisted scheduler state on restart, and runs recursive active history only over the saved workset."
+        },
+        {
+          "file": "src/atlas/v2/runtime/broad_public_runtime.py",
+          "lines": "186-230, 232-253, 261-321",
+          "observation": "Transport batches are adopted durably before interpretation; work per service call is bounded; terminal capture/interpreter failures require restart; current source health is a live diagnostic and unresolved sequence gaps remain visible."
+        },
+        {
+          "file": "src/atlas/v2/runtime/live_health.py",
+          "lines": "275-294, 459-568, 571-612",
+          "observation": "Queue loss, rejected frames, preventive capture stop, terminal capture/producer failure, integrity/clock failure, and unclean stop are irreversible failure causes. Current source recovery does not clear an existing latch."
+        },
+        {
+          "file": "src/atlas/v2/runtime/read_only_report_worker.py",
+          "lines": "1-6, 26-46, 66-87",
+          "observation": "The report worker has one bounded slot, runs asynchronously, refuses accumulation while active/completed, and never receives the live writer repository."
+        }
+      ],
+      "source_capability_boundary": "Missing or unqualified source capability, live endpoint behavior, and economic completeness remain NOT ESTIMABLE / TEST GATE; current health or a structurally complete metadata snapshot does not establish source qualification.",
+      "qualification_boundary": "Storage preflight is a bounded temporary-path diagnostic, not 48-hour endurance proof. The S40 live-health GREEN state is operational guidance, not broad-source or economics qualification. Capital and assisted execution remain disabled; authority remains ZERO."
+    }
+  ],
+  "closure": {
+      "review_closes_requirement_matrix": false,
+    "final_sha": null,
+    "status": "UNVERIFIED"
+  }
+}

@@ -351,8 +351,13 @@ def persist_s8_basket(repo: Any, pair: S8PairDefinitionV2, forecast: ResearchBas
 
     if forecast.pair_definition_ref != pair.content_hash or available_at_ns < forecast.information_cutoff_ns:
         raise ValueError("S8 persistence must bind its economic pair and causal decision")
-    repo.register_artifact(ArtifactIndexEntryV2(pair.content_hash, "S8PairDefinitionV2", pair.content_hash,
-        forecast.information_cutoff_ns, forecast.information_cutoff_ns, {"pair": pair.to_dict()}))
+    pair_entry = repo.get_artifact(pair.content_hash)
+    if pair_entry is None:
+        repo.register_artifact(ArtifactIndexEntryV2(pair.content_hash, "S8PairDefinitionV2", pair.content_hash,
+            forecast.information_cutoff_ns, forecast.information_cutoff_ns, {"pair": pair.to_dict()}))
+    elif (pair_entry.artifact_type != "S8PairDefinitionV2" or pair_entry.content_hash != pair.content_hash
+            or pair_entry.metadata.get("pair") != pair.to_dict()):
+        raise ValueError("S8 registered pair identity conflicts with its exact definition")
     repo.register_artifact(ArtifactIndexEntryV2(forecast.content_hash, "ResearchBasketForecastV2", forecast.content_hash,
         forecast.information_cutoff_ns, available_at_ns, {"basket": forecast.to_dict()}))
     return forecast.content_hash

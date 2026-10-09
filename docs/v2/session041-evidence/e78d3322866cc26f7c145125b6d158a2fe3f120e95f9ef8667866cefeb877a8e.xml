@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="7" skipped="0" tests="18" time="24.420" timestamp="2026-10-07T22:44:55.487530+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_block_cache_epochs" name="test_same_epoch_reuses_verified_block_without_reloading_blob" time="3.166"><failure message="sqlite3.OperationalError: near &quot;FROM&quot;: syntax error">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-275/test_same_epoch_reuses_verifie0')
+
+    def test_same_epoch_reuses_verified_block_without_reloading_blob(tmp_path):
+        entry = _entry()
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            repository.register_artifact(entry)
+            queries = []
+            repository._connection.set_trace_callback(queries.append)
+            for _ in range(4):
+&gt;               assert repository.get_artifact(entry.artifact_ref) == entry
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_block_cache_epochs.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/memory/repository.py:1846: in get_artifact
+    return self.artifact_entry_from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1870: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7fbef20617b0&gt;
+artifact_ref = '6afe06dde1815761d20463c59c8c706189cc78aebb16e6acd1c9e9706f347312'
+projection_json = '{"archive_chunk_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","availability_class":"ACTUAL_S...8da8c9a962d642211a5247e41f749b8294b5a53a78d9e0bd9","replay_available_at_ns":null,"source_id":"BINANCE_USDM_PUBLIC_V2"}'
+cache = OrderedDict()
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+&gt;       locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.revision,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+E       sqlite3.OperationalError: near "FROM": syntax error
+
+src/atlas/v2/data/compact_observation_index.py:163: OperationalError</failure></testcase><testcase classname="tests.v2.test_session041_block_cache_epochs" name="test_cached_block_corruption_is_detected_after_either_writer[False]" time="3.831"><failure message="sqlite3.OperationalError: near &quot;FROM&quot;: syntax error">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-275/test_cached_block_corruption_i0')
+other_connection = False
+
+    @pytest.mark.parametrize("other_connection", [False, True])
+    def test_cached_block_corruption_is_detected_after_either_writer(tmp_path, other_connection):
+        entry = _entry()
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            repository.register_artifact(entry)
+&gt;           assert repository.get_artifact(entry.artifact_ref) == entry
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_block_cache_epochs.py:33: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/memory/repository.py:1846: in get_artifact
+    return self.artifact_entry_from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1870: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7fbef2062020&gt;
+artifact_ref = '6afe06dde1815761d20463c59c8c706189cc78aebb16e6acd1c9e9706f347312'
+projection_json = '{"archive_chunk_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","availability_class":"ACTUAL_S...8da8c9a962d642211a5247e41f749b8294b5a53a78d9e0bd9","replay_available_at_ns":null,"source_id":"BINANCE_USDM_PUBLIC_V2"}'
+cache = OrderedDict()
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+&gt;       locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.revision,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+E       sqlite3.OperationalError: near "FROM": syntax error
+
+src/atlas/v2/data/compact_observation_index.py:163: OperationalError</failure></testcase><testcase classname="tests.v2.test_session041_block_cache_epochs" name="test_cached_block_corruption_is_detected_after_either_writer[True]" time="2.915"><failure message="sqlite3.OperationalError: near &quot;FROM&quot;: syntax error">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-275/test_cached_block_corruption_i1')
+other_connection = True
+
+    @pytest.mark.parametrize("other_connection", [False, True])
+    def test_cached_block_corruption_is_detected_after_either_writer(tmp_path, other_connection):
+        entry = _entry()
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            repository.register_artifact(entry)
+&gt;           assert repository.get_artifact(entry.artifact_ref) == entry
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_block_cache_epochs.py:33: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/memory/repository.py:1846: in get_artifact
+    return self.artifact_entry_from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1870: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7fbef2062d40&gt;
+artifact_ref = '6afe06dde1815761d20463c59c8c706189cc78aebb16e6acd1c9e9706f347312'
+projection_json = '{"archive_chunk_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","availability_class":"ACTUAL_S...8da8c9a962d642211a5247e41f749b8294b5a53a78d9e0bd9","replay_available_at_ns":null,"source_id":"BINANCE_USDM_PUBLIC_V2"}'
+cache = OrderedDict()
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+&gt;       locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.revision,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+E       sqlite3.OperationalError: near "FROM": syntax error
+
+src/atlas/v2/data/compact_observation_index.py:163: OperationalError</failure></testcase><testcase classname="tests.v2.test_session041_block_migration" name="test_legacy_full_json_read_only_queries_work_before_writable_migration" time="2.643" /><testcase classname="tests.v2.test_session041_block_migration" name="test_failed_writable_migration_rolls_back_indexes_and_releases_writer_lease" time="0.525" /><testcase classname="tests.v2.test_session041_block_migration" name="test_repeated_writable_reopen_keeps_v2_indexes_and_schema_version_stable" time="0.362" /><testcase classname="tests.v2.test_session041_block_migration" name="test_failed_block_locator_artifact_publication_rolls_back_all_rows" time="0.309" /><testcase classname="tests.v2.test_session041_block_migration" name="test_compact_metadata_corruption_fails_closed[missing_locator]" time="0.415" /><testcase classname="tests.v2.test_session041_block_migration" name="test_compact_metadata_corruption_fails_closed[invalid_ordinal]" time="0.375" /><testcase classname="tests.v2.test_session041_block_migration" name="test_compact_metadata_corruption_fails_closed[invalid_hash]" time="0.326" /><testcase classname="tests.v2.test_session041_block_migration" name="test_compact_metadata_corruption_fails_closed[missing_identity]" time="0.349" /><testcase classname="tests.v2.test_session041_block_migration" name="test_compact_metadata_corruption_fails_closed[invalid_identity_hash]" time="0.359" /><testcase classname="tests.v2.test_session041_block_migration" name="test_compact_metadata_corruption_fails_closed[oversized_blob]" time="0.757" /><testcase classname="tests.v2.test_session041_block_migration" name="test_collector_prefetch_rejects_missing_identity" time="0.262" /><testcase classname="tests.v2.test_session041_compact_public_observations" name="test_compact_archive_index_round_trips_all_repository_reads_and_restart" time="0.874"><failure message="sqlite3.OperationalError: near &quot;FROM&quot;: syntax error">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-275/test_compact_archive_index_rou0')
+
+    def test_compact_archive_index_round_trips_all_repository_reads_and_restart(tmp_path):
+        product = _product("BTCUSDT")
+        specs = [
+            (product, "TRADE", NOW + 1, NOW + 100, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+            (product, "AGG_TRADE", NOW + 2, NOW + 100, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+            (product, "TRADE", NOW + 3, NOW + 200, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+            (product, "TRADE", NOW + 4, NOW + 300, NOW + 50,
+                AvailabilityClassV2.RECONSTRUCTED_MARKET),
+        ]
+&gt;       repository, expected_entries, _ = _archive_fixture(tmp_path, specs)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_compact_public_observations.py:109: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_compact_public_observations.py:83: in _archive_fixture
+    entry = repository.get_artifact(ref)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1846: in get_artifact
+    return self.artifact_entry_from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1870: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7fbef20636a0&gt;
+artifact_ref = 'f26a56adbed3b256e3e9c3ab88872d497f327f2f47cdedcd5515169587481988'
+projection_json = '{"archive_chunk_id":"60cedbb91dd2318c5607e7556fcaf918d7b516cfdd0501719312217f3c44dac0","availability_class":"ACTUAL_S...e166727837177fe87127f5d0e5f56f64fb38bc8e7ed112af4","replay_available_at_ns":null,"source_id":"BINANCE_USDM_PUBLIC_V2"}'
+cache = OrderedDict()
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+&gt;       locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.revision,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+E       sqlite3.OperationalError: near "FROM": syntax error
+
+src/atlas/v2/data/compact_observation_index.py:163: OperationalError</failure></testcase><testcase classname="tests.v2.test_session041_compact_public_observations" name="test_legacy_plain_observation_rows_remain_readable_with_compact_rows" time="0.402"><failure message="sqlite3.OperationalError: near &quot;FROM&quot;: syntax error">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-275/test_legacy_plain_observation_0')
+
+    def test_legacy_plain_observation_rows_remain_readable_with_compact_rows(tmp_path):
+        product = _product("ETHUSDT")
+&gt;       repository, compact_entries, _ = _archive_fixture(tmp_path, [
+            (product, "TRADE", NOW + 1, NOW + 100, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+        ])
+
+tests/v2/test_session041_compact_public_observations.py:165: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_compact_public_observations.py:83: in _archive_fixture
+    entry = repository.get_artifact(ref)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1846: in get_artifact
+    return self.artifact_entry_from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1870: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7fbef1acec50&gt;
+artifact_ref = 'a89edef52f75aa6f905bd8a7b5ed386a4a1d2be5f37dce7aa9688699d8f495b4'
+projection_json = '{"archive_chunk_id":"7911b654cbbef7bd857bb328664b36ca08d060d386e3382ad7830da8c2d13a0d","availability_class":"ACTUAL_S...116f85451d90dfab5fa40fb5e1377cf78da73813460424f7c","replay_available_at_ns":null,"source_id":"BINANCE_USDM_PUBLIC_V2"}'
+cache = OrderedDict()
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+&gt;       locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.revision,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+E       sqlite3.OperationalError: near "FROM": syntax error
+
+src/atlas/v2/data/compact_observation_index.py:163: OperationalError</failure></testcase><testcase classname="tests.v2.test_session041_compact_public_observations" name="test_compact_observation_corruption_fails_closed" time="0.317"><failure message="sqlite3.OperationalError: near &quot;FROM&quot;: syntax error">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-275/test_compact_observation_corru0')
+
+    def test_compact_observation_corruption_fails_closed(tmp_path):
+        product = _product("SOLUSDT")
+&gt;       repository, entries, _ = _archive_fixture(tmp_path, [
+            (product, "TRADE", NOW + 1, NOW + 100, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+        ])
+
+tests/v2/test_session041_compact_public_observations.py:203: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_compact_public_observations.py:83: in _archive_fixture
+    entry = repository.get_artifact(ref)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1846: in get_artifact
+    return self.artifact_entry_from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1870: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7fbef2062980&gt;
+artifact_ref = 'ee21d738ea0d54cad27352ada18d60e9ad9232b8ad995b509f6dd6309d551114'
+projection_json = '{"archive_chunk_id":"46012b15ddb6fcfb5458badb88cd7ba89c765474e461686662c28f3e72608d7e","availability_class":"ACTUAL_S...57dbf9e5ca80fde9df44b7528e945136a429fe15b4c9dedbb","replay_available_at_ns":null,"source_id":"BINANCE_USDM_PUBLIC_V2"}'
+cache = OrderedDict()
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+&gt;       locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.revision,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+E       sqlite3.OperationalError: near "FROM": syntax error
+
+src/atlas/v2/data/compact_observation_index.py:163: OperationalError</failure></testcase><testcase classname="tests.v2.test_session041_compact_public_observations" name="test_compact_history_queries_preserve_identity_cutoff_replay_and_ties" time="0.279"><failure message="sqlite3.OperationalError: near &quot;FROM&quot;: syntax error">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-275/test_compact_history_queries_p0')
+
+    def test_compact_history_queries_preserve_identity_cutoff_replay_and_ties(tmp_path):
+        btc = _product("BTCUSDT")
+        btc_other_revision = _product("BTCUSDT", revision_salt="r1")
+        eth = _product("ETHUSDT")
+        specs = [
+            (btc, "TRADE", NOW + 20, NOW + 100, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+            (btc, "AGG_TRADE", NOW + 21, NOW + 100, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+            (btc, "TRADE", NOW + 22, NOW + 101, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+            (btc, "TRADE", NOW + 23, NOW + 102, NOW + 50,
+                AvailabilityClassV2.RECONSTRUCTED_MARKET),
+            (btc, "TRADE", NOW + 24, NOW + 103, NOW + 150,
+                AvailabilityClassV2.RECONSTRUCTED_MARKET),
+            (btc_other_revision, "TRADE", NOW + 25, NOW + 100, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+            (eth, "TRADE", NOW + 26, NOW + 100, None, AvailabilityClassV2.ACTUAL_SYSTEM),
+        ]
+&gt;       repository, entries, observations = _archive_fixture(tmp_path, specs)
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_compact_public_observations.py:244: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_compact_public_observations.py:83: in _archive_fixture
+    entry = repository.get_artifact(ref)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1846: in get_artifact
+    return self.artifact_entry_from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1870: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7fbef1b4c9a0&gt;
+artifact_ref = 'f26a56adbed3b256e3e9c3ab88872d497f327f2f47cdedcd5515169587481988'
+projection_json = '{"archive_chunk_id":"1bee899d9017ac0d1cf6d11298814289acc608ff82620546a1d3a62dac048ef9","availability_class":"ACTUAL_S...e166727837177fe87127f5d0e5f56f64fb38bc8e7ed112af4","replay_available_at_ns":null,"source_id":"BINANCE_USDM_PUBLIC_V2"}'
+cache = OrderedDict()
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+&gt;       locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.revision,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+E       sqlite3.OperationalError: near "FROM": syntax error
+
+src/atlas/v2/data/compact_observation_index.py:163: OperationalError</failure></testcase></testsuite></testsuites>

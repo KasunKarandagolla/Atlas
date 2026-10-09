@@ -56,14 +56,23 @@ def _regime(repo: OpsRepository, candidate_ref: str, cutoff_ns: int) -> str:
     candidate = CandidateActionV2.from_dict(json_value(raw))
     if candidate.content_hash != candidate_ref:
         raise AnalogueNotEstimableError("NOT_ESTIMABLE_ORIGINAL_REGIME_CANDIDATE_UNAVAILABLE")
+    from ..chronology import causal_artifact
+
+    consumer_at_ns = candidate_entry.available_at_ns
+    if (candidate.decision_at_ns != cutoff_ns or consumer_at_ns > candidate.deadline_ns
+            or not causal_artifact(repo, candidate_ref, cutoff_ns=cutoff_ns,
+                consumer_at_ns=consumer_at_ns, deadline_ns=candidate.deadline_ns)):
+        raise AnalogueNotEstimableError("NOT_ESTIMABLE_ORIGINAL_REGIME_CANDIDATE_UNAVAILABLE")
     feature_entry = repo.get_artifact(candidate.snapshot_hash)
     raw_feature = feature_entry.metadata.get("feature") if feature_entry else None
     if (feature_entry is None or feature_entry.artifact_type != "FeatureArtifactV2"
             or feature_entry.content_hash != candidate.snapshot_hash
-            or feature_entry.available_at_ns > cutoff_ns or not isinstance(raw_feature, Mapping)):
+            or feature_entry.available_at_ns > consumer_at_ns or not isinstance(raw_feature, Mapping)
+            or not causal_artifact(repo, candidate.snapshot_hash, cutoff_ns=cutoff_ns,
+                consumer_at_ns=consumer_at_ns, deadline_ns=candidate.deadline_ns)):
         raise AnalogueNotEstimableError("NOT_ESTIMABLE_ORIGINAL_REGIME_FEATURE_UNAVAILABLE")
     feature = FeatureArtifactV2.from_dict(json_value(raw_feature))
-    if (feature.content_hash != candidate.snapshot_hash or feature.envelope.available_at_ns > cutoff_ns
+    if (feature.content_hash != candidate.snapshot_hash or feature.envelope.available_at_ns > consumer_at_ns
             or feature.key != candidate.key or feature.information_cutoff_ns > cutoff_ns):
         raise AnalogueNotEstimableError("NOT_ESTIMABLE_ORIGINAL_REGIME_FEATURE_UNAVAILABLE")
     fields = {name: value.to_dict() for name, value in feature.values.items() if name.startswith("regime.")}
@@ -101,9 +110,8 @@ def run_analogue_diagnostic_v1(
     try:
         if available_at_ns > candidate.deadline_ns:
             raise AnalogueNotEstimableError("NOT_ESTIMABLE_DECISION_DEADLINE_EXPIRED")
-        if action.available_at_ns > cutoff_ns:
-            raise AnalogueNotEstimableError("NOT_ESTIMABLE_ACTION_ARTIFACT_AVAILABLE_AFTER_MARKET_CUTOFF")
-        compatibility = build_analogue_compatibility(repo, action_ref=action.content_hash)
+        compatibility = build_analogue_compatibility(repo, action_ref=action.content_hash,
+            consumer_at_ns=available_at_ns)
         query = build_analogue_query(repo, action_ref=action.content_hash, candidate_ref=candidate.content_hash,
             candidate_set_ref=candidate_set.content_hash, cutoff_ns=cutoff_ns, compatibility=compatibility,
             feature_names=_FEATURE_NAMES, regime_id=_regime(repo, candidate.content_hash, cutoff_ns))

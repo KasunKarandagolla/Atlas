@@ -30,9 +30,10 @@ from atlas.v2.selection import (
 from atlas.v2.strategies.s1_trend import S1_POLICY
 from atlas.v2.strategies.s2_breakout import S2_POLICY
 from atlas.v2.strategies.s3_mean_reversion import S3_POLICY
+from atlas.v2.strategies.s6_cross_section import S6_ACTION_POLICY
 
 MULTI_SLEEVE_SELECTION_ID = "MULTI_SLEEVE_RESEARCH_SELECTION_V1"
-MULTI_SLEEVE_SELECTION_VERSION = "1.0.0-research"
+MULTI_SLEEVE_SELECTION_VERSION = "1.1.0-research"
 MULTI_SLEEVE_ORDERING = BASELINE_ORDERING
 MULTI_SLEEVE_SELECTION_BODY = {
     "selection_policy_id": MULTI_SLEEVE_SELECTION_ID,
@@ -49,8 +50,9 @@ EXACT_ACTION_POLICY_IDS = frozenset({
     "S1_MTF_TREND_PULLBACK",
     "S2_COMPRESSION_BREAKOUT",
     "S3_VWAP_STAT_MEAN_REVERSION",
+    "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH",
 })
-EXACT_ACTION_POLICIES = {p.policy_id: p for p in (S1_POLICY, S2_POLICY, S3_POLICY)}
+EXACT_ACTION_POLICIES = {p.policy_id: p for p in (S1_POLICY, S2_POLICY, S3_POLICY, S6_ACTION_POLICY)}
 
 
 def research_selection_universe(universe: UniverseContractV2) -> UniverseContractV2:
@@ -68,7 +70,7 @@ SLEEVE_AVAILABILITY = (
     ("S3", "ELIGIBLE", "COMPLETE exact stop, horizon and management contract exists"),
     ("S4", "EXCLUDED", "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"),
     ("S5", "EXCLUDED", "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"),
-    ("S6", "EXCLUDED", "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"),
+    ("S6", "ELIGIBLE", "Versioned shadow-only exact action policy; rank policy remains unchanged"),
     ("S7", "EXCLUDED", "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"),
     ("S8", "EXCLUDED", "RESEARCH_BASKET_ONLY_NO_SINGLE_ACTION_CONTRACT"),
 )

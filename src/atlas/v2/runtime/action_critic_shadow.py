@@ -29,6 +29,7 @@ from atlas.v2.agent_intelligence.shadow_measurement import (
     index_action_critic_shadow_observation,
     index_packet_and_request,
 )
+from atlas.v2.chronology import causal_artifact, chronology_ref
 from atlas.v2.contracts import CandidateActionV2, CandidateSetV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.runtime.action_critic_dispatcher import (
@@ -211,6 +212,8 @@ def build_sealed_action_assessment(*, repository: OpsRepository, receipt: OpsSup
                 or (m1_body.get("kind") not in (None, "M1"))):
             raise ActionAssessmentPacketUnavailable("M1_ACTION_BINDING_MISMATCH")
         analogue_refs = _receipt_stage(receipt, PipelineStageV1.ANALOGUE_DIAGNOSTIC).artifact_refs
+        retrieval_entry = None
+        retrieval = None
         if len(analogue_refs) == 1:
             analogue_ref = analogue_refs[0]
         elif len(analogue_refs) == 2 and len(set(analogue_refs)) == 2:
@@ -304,12 +307,34 @@ def build_sealed_action_assessment(*, repository: OpsRepository, receipt: OpsSup
         post_selection_types = {"CandidateActionV2", "ActionArtifactV2", "SizingDecisionV2",
                                 "EvaluationArtifactV2", "DecisionCalendarV2"}
         market_ref_entries = {ref: _entry(repository, ref) for ref in receipt.event.causal_input_refs}
-        market_refs = tuple(sorted(ref for ref, entry in market_ref_entries.items()
-                                   if entry.artifact_type not in post_selection_types))
-        for ref in market_refs:
-            entry = market_ref_entries[ref]
-            if entry.available_at_ns > receipt.event.information_cutoff_ns:
+        derived_market_entries: dict[str, ArtifactIndexEntryV2] = {}
+        pending = [ref for ref, entry in market_ref_entries.items()
+                   if entry.artifact_type not in post_selection_types]
+        market_source_refs: set[str] = set()
+        seen: set[str] = set()
+        while pending:
+            ref = pending.pop()
+            if ref in seen:
+                continue
+            seen.add(ref)
+            if len(seen) > 256:
+                raise ActionAssessmentPacketUnavailable("MARKET_LINEAGE_EXCEEDS_PACKET_BOUND")
+            entry = market_ref_entries.setdefault(ref, _entry(repository, ref))
+            if entry.available_at_ns <= receipt.event.information_cutoff_ns:
+                market_source_refs.add(ref)
+                continue
+            if not causal_artifact(repository, ref, cutoff_ns=receipt.event.information_cutoff_ns,
+                    consumer_at_ns=receipt_entry.available_at_ns,
+                    deadline_ns=min(receipt.event.deadline_ns, candidate.deadline_ns, evaluation.action_expiry_ns)):
                 raise ActionAssessmentPacketUnavailable("FUTURE_MARKET_EVIDENCE")
+            computation_entry = _entry(repository, chronology_ref(ref), "DerivedComputationChronologyV1")
+            computation_body = computation_entry.metadata.get("chronology")
+            if not isinstance(computation_body, Mapping):
+                raise ActionAssessmentPacketUnavailable("FUTURE_MARKET_EVIDENCE")
+            derived_market_entries[ref] = entry
+            derived_market_entries[computation_entry.artifact_ref] = computation_entry
+            pending.extend(computation_body["input_refs"])
+        market_refs = tuple(sorted(market_source_refs))
 
         summaries: dict[str, Any] = {}
         candidate_summary_body = {name: getattr(candidate, name).value if hasattr(getattr(candidate, name), "value")
@@ -344,6 +369,10 @@ def build_sealed_action_assessment(*, repository: OpsRepository, receipt: OpsSup
             analogue_ref: analogue_body,
             es_entry.artifact_ref: es_body,
         }
+        if retrieval_entry is not None and retrieval is not None:
+            artifact_map[retrieval_entry.artifact_ref] = retrieval_entry
+            artifact_bodies[retrieval_entry.artifact_ref] = retrieval
+        artifact_map.update(derived_market_entries)
         for _field, (item, body) in resolved.items():
             artifact_map[item.artifact_ref] = item
             artifact_bodies[item.artifact_ref] = body
@@ -392,6 +421,16 @@ def build_sealed_action_assessment(*, repository: OpsRepository, receipt: OpsSup
             "query_candidate_set_ref", "information_cutoff_ns", "weighted_estimate", "support_status",
             "ood_status", "compatible_population_count", "independent_support_count", "reasons", "status", "reason")
             if name in analogue_body))
+        if retrieval_entry is not None and retrieval is not None:
+            summaries[retrieval_entry.artifact_ref] = _summary(retrieval_entry, retrieval, (
+                "version", "result_ref", "action_ref", "action_hash", "candidate_ref", "candidate_set_ref",
+                "information_cutoff_ns", "available_at_ns", "compatible_population_count", "reason", "authority"))
+        for ref, entry in derived_market_entries.items():
+            summaries[ref] = _summary(entry, {
+                "market_information_cutoff_ns": receipt.event.information_cutoff_ns,
+                "original_deadline_ns": receipt.event.deadline_ns, "selector_influence": "ZERO",
+                "chronology_ref": chronology_ref(ref) if entry.artifact_type != "DerivedComputationChronologyV1" else ref,
+            }, ("market_information_cutoff_ns", "original_deadline_ns", "selector_influence", "chronology_ref"))
         for _field, (item, body) in resolved.items():
             fields = tuple(name for name in (
                 "version", "action_hash", "action_artifact_ref", "information_cutoff_ns", "status",

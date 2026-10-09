@@ -14,7 +14,7 @@ from typing import Any
 from .._serialization import sha256_json, sha256_ref, strict_fields, timestamp
 from ..data.bars import BarIntervalV2, CausalBarV2
 from ..data.health import PublicSourceHealthV2
-from ..data.raw import AvailabilityClassV2
+from ..data.raw import AvailabilityClassV2, indexed_availability_matches
 from ..instruments import InstrumentKeyV2, ProductContractV2
 from ..memory.repository import ArtifactIndexEntryV2
 
@@ -188,7 +188,8 @@ def plan_m15_origin_accounting(
         ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": bar.raw.record_id})
         entry = indexes.get(ref)
         if (entry is None or entry.artifact_type != "PublicObservationIndexV2"
-                or entry.content_hash != bar.raw.content_hash or entry.available_at_ns != bar.raw.available_at_ns
+                or entry.content_hash != bar.raw.content_hash or entry.available_at_ns > now_ns
+                or not indexed_availability_matches(bar.raw.available_at_ns, entry.available_at_ns, entry.metadata)
                 or entry.metadata.get("instrument_key_json") != key.to_canonical_json()
                 or entry.metadata.get("bar_content_hash") != bar.content_hash
                 or entry.metadata.get("source_id") != bar.raw.source_id):

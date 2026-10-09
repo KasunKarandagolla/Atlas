@@ -533,10 +533,12 @@ class _DeferredContinuityDecision:
     reason_code: str | None
     state: PublicStreamContinuityStateV1
 
-    def seal(self) -> PublicStreamContinuityDecisionV1:
+    def seal(self, *, state_ref: str | None = None) -> PublicStreamContinuityDecisionV1:
         ref = self.observation if isinstance(self.observation, str) else self.observation.content_hash
+        resolved_state_ref = self.state.content_hash if state_ref is None else sha256_ref(
+            state_ref, field="state_ref")
         return PublicStreamContinuityDecisionV1(ref, self.classification,
-                                               self.reason_code, self.state.content_hash)
+                                               self.reason_code, resolved_state_ref)
 
     def to_dict(self) -> dict[str, Any]:
         return self.seal().to_dict()
@@ -602,13 +604,16 @@ class PublicStreamContinuityTrackerV1:
 
     def apply(self, observation: PublicStreamObservationV1, *,
               durable_prior_payload_hash: str | None = None,
-              durable_lookup_complete: bool = False) -> PublicStreamContinuityDecisionV1:
+              durable_lookup_complete: bool = False,
+              durable_identity_conflicted: bool = False) -> PublicStreamContinuityDecisionV1:
         return self.apply_deferred(observation, durable_prior_payload_hash=durable_prior_payload_hash,
-                                   durable_lookup_complete=durable_lookup_complete).seal()
+                                   durable_lookup_complete=durable_lookup_complete,
+                                   durable_identity_conflicted=durable_identity_conflicted).seal()
 
     def apply_deferred(self, observation: PublicStreamObservationV1, *,
                        durable_prior_payload_hash: str | None = None,
-                       durable_lookup_complete: bool = False) -> _DeferredContinuityDecision:
+                       durable_lookup_complete: bool = False,
+                       durable_identity_conflicted: bool = False) -> _DeferredContinuityDecision:
         state = self._state
         if (observation.instrument, observation.source_id, observation.channel, observation.metadata_ref) != (
             state.instrument, state.source_id, state.channel, state.metadata_ref
@@ -618,6 +623,8 @@ class PublicStreamContinuityTrackerV1:
             sha256_ref(durable_prior_payload_hash, field="durable_prior_payload_hash")
         if type(durable_lookup_complete) is not bool:
             raise ValueError("durable lookup completion must be explicit boolean")
+        if type(durable_identity_conflicted) is not bool:
+            raise ValueError("durable trade identity conflict must be explicit boolean")
         event_hash = observation.idempotency_ref
         if event_hash in state.observation_replay_cache:
             return _DeferredContinuityDecision(
@@ -647,7 +654,8 @@ class PublicStreamContinuityTrackerV1:
         self._remember_observation(event_hash)
         state = self._state
         if observation.kind in _TRADE_KINDS:
-            decision = self._apply_trade(observation, durable_prior_payload_hash, durable_lookup_complete)
+            decision = self._apply_trade(observation, durable_prior_payload_hash, durable_lookup_complete,
+                                         durable_identity_conflicted)
             return decision
         if observation.kind in _GAP_KINDS:
             self._add_gap(observation.reason_code or _default_reason(observation.kind))
@@ -740,13 +748,19 @@ class PublicStreamContinuityTrackerV1:
 
     def _apply_trade(self, observation: PublicStreamObservationV1,
                      durable_prior_payload_hash: str | None,
-                     durable_lookup_complete: bool) -> _DeferredContinuityDecision:
+                     durable_lookup_complete: bool,
+                     durable_identity_conflicted: bool = False) -> _DeferredContinuityDecision:
         state = self._state
         trade_id = observation.trade_id
         payload_hash = observation.trade_payload_hash
         if trade_id is None or payload_hash is None:
             raise ValueError("trade observation requires exact venue identity and payload hash")
         cached = self._trade_identity_lookup.get(trade_id)
+        if durable_identity_conflicted:
+            self._add_gap("CONFLICTING_TRADE_ID_PAYLOAD")
+            self._set_trade_receipts(observation)
+            return self._decision(observation, PublicStreamClassificationV1.CONFLICTING_TRADE_ID,
+                                  "TRADE_ID_HAS_PRIOR_CONFLICTING_DURABLE_PAYLOAD")
         known = cached if cached is not None else durable_prior_payload_hash
         receipt_out_of_order = bool(
             observation.receipt_at_ns is not None
@@ -832,6 +846,11 @@ class PublicStreamContinuityTrackerV1:
         cache = _ValidatedReplayCache(self._state.observation_replay_cache).append_ref(event_hash)
         self._state = replace(self._state,
                               observation_replay_cache=cache)
+
+    def has_cached_trade_identity(self, trade_id: str) -> bool:
+        """Report whether the bounded in-memory identity cache contains this ID."""
+        nonblank(trade_id, field="trade_id")
+        return trade_id in self._trade_identity_lookup
 
     def _add_gap(self, reason: str) -> None:
         state = self._state

@@ -1,0 +1,24 @@
+{
+  "session": "041",
+  "component": "S8 owner pair configuration adapter",
+  "status": "implemented",
+  "module": "src/atlas/v2/runtime/owner_pairs.py",
+  "api": "read_owner_pair_configuration(path)",
+  "configuration": {
+    "version": "S8_OWNER_PAIR_CONFIGURATION_V1",
+    "owner_id": "non-empty string identifying the pair owner",
+    "pairs": "1 to 64 exact S8PairDefinitionV2.to_dict() objects",
+    "max_bytes": 131072,
+    "encoding": "strict UTF-8 JSON"
+  },
+  "identity": "OwnerPairConfigurationV1.content_hash is SHA-256 over canonical JSON for its version, owner_id, and parsed pair definitions. Whitespace and JSON object-key ordering do not change identity; source changes to economic definitions or instrument keys do.",
+  "validation": [
+    "Reject symlinks, non-regular files, oversized files, invalid UTF-8, duplicate JSON keys, floating-point numbers, unknown fields, unsupported versions, duplicate pair IDs, empty or excessive pair lists, invalid instrument keys, same-key legs, unsupported pair semantics, and cross-venue/product/environment/settlement pairs.",
+    "No executable Python/module paths or code are accepted or evaluated.",
+    "No instrument or economic pair is inferred or generated. Pair definitions must be supplied explicitly by the owner using existing S8 pair schema and exact instrument keys.",
+    "The adapter grants research configuration authority only. Capital authority remains zero; it creates no trade plan, order, credential, network action, or holdout access."
+  ],
+  "integration_contract": "At run startup, the selected configuration must be copied into run/owner-pairs.json before the writer starts. The run should retain this immutable snapshot and its content_hash; replay must bind to that same snapshot/hash. Register the validated pair tuple with the existing register_s8_pair_catalog(repository, owner_id=..., pairs=..., available_at_ns=...) API so existing catalog availability and S8 input loading rules remain authoritative.",
+  "ui_contract": "The UI can select or import an owner-supplied JSON configuration and show owner_id, pair IDs, and configuration hash. It must not synthesize missing pair choices or represent the configuration as a strategy/trade plan.",
+  "tests": "tests/v2/test_session041_ownerpairs.py"
+}

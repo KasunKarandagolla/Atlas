@@ -34,6 +34,16 @@ from ..memory.writer_lock import OpsWriterAlreadyActive
 PREFLIGHT_CONTRACT_V1 = "StoragePreflightResultV1"
 S39_MEASURED_48H_PROJECTION_BYTES = 50_344_153_861
 
+# The offline S41 max-breadth probe is still being measured. Until its
+# batched-readback rerun completes, broad V2 runs must not inherit the S39
+# projection as a capacity pass. The constant is deliberately None so a
+# missing measurement is a visible fail-closed result rather than a guess.
+S41_MAX_BREADTH_BYTES_PER_CYCLE_V2: int | None = None
+S41_BROAD_REFRESH_CADENCE_SECONDS_V2 = 10
+S41_BROAD_RETENTION_HOURS_V2 = 48
+S41_MAX_PRODUCTS_PER_VENUE_V2 = 2048
+S41_MAX_ACTIVE_PRODUCTS_V2 = 4096
+
 
 @dataclass(frozen=True)
 class StoragePreflightLimitsV1:
@@ -137,6 +147,121 @@ class StoragePreflightResultV1:
                 "authority": "ZERO", "capital_enabled": False, "assisted_enabled": False,
                 "live_source_qualification": "TEST GATE", "endurance_qualification": "TEST GATE"}
         return {**body, "content_hash": sha256_json(body)}
+
+
+@dataclass(frozen=True)
+class BroadStorageCapacityAssessmentV2:
+    """Conservative S41 broad-workload disk estimate, separate from S40 V1.
+
+    This projection only addresses predictable local disk headroom. It does
+    not qualify source, queue, report, or endurance behaviour. `bytes_per_cycle`
+    is populated only from the bounded maximum-breadth persistence probe.
+    """
+
+    identity_sha256: str
+    selected_path: str
+    observed_at_ns: int
+    enabled_venues: tuple[str, ...]
+    selected_max_products: int
+    supported_max_products: int
+    refresh_cadence_seconds: int
+    retention_hours: int
+    projected_cycles: int
+    measured_max_cycle_bytes: int | None
+    measurement_class: str
+    dynamic_metadata_overhead_numerator: int
+    dynamic_metadata_overhead_denominator: int
+    safety_reserve_numerator: int
+    safety_reserve_denominator: int
+    owner_free_disk_reserve_bytes: int
+    observed_free_bytes: int | None
+    projected_workload_bytes: int | None
+    required_free_bytes: int | None
+    status: str
+    allowed: bool
+    capacity_qualified: bool
+    reasons: tuple[str, ...]
+    authority: str = "ZERO"
+    capital_enabled: bool = False
+    assisted_enabled: bool = False
+
+    def as_dict(self) -> dict[str, Any]:
+        body = {**asdict(self), "enabled_venues": list(self.enabled_venues),
+                "reasons": list(self.reasons),
+                "projection_class": "CONSERVATIVE_OFFLINE_ENVELOPE_NOT_ENDURANCE_QUALIFICATION",
+                "projection_scope": "IMMUTABLE_BULK_METADATA_AND_OBSERVATION_INDEX_PLUS_ARCHIVE_GROWTH",
+                "exclusions": ["public streams and capture queues", "history/enrichment scheduling",
+                    "decision/report concurrency", "future venue metadata revisions beyond overhead reserve",
+                    "filesystem-specific allocation and compression variance"],
+                "live_source_qualification": "TEST GATE", "endurance_qualification": "TEST GATE"}
+        return {**body, "content_hash": sha256_json(body)}
+
+
+def assess_broad_storage_capacity_v2(
+    *, identity_sha256: str, selected_path: str, observed_at_ns: int,
+    enabled_venues: tuple[str, ...],
+    observed_free_bytes: int | None, owner_free_disk_reserve_bytes: int,
+    measured_max_cycle_bytes: int | None = None,
+) -> BroadStorageCapacityAssessmentV2:
+    """Estimate 48h headroom from the maximum-breadth persistence probe.
+
+    A missing measurement, unsupported venue set, or invalid disk observation
+    is TEST GATE. The model scales linearly up to the V2 per-venue cap, reserves
+    50% for dynamic metadata/encoding variation, then adds a 25% capacity
+    reserve and the owner's independent free-space floor.
+    """
+    sha256_ref(identity_sha256, field="broad capacity identity")
+    if not isinstance(selected_path, str) or not selected_path:
+        raise ValueError("broad capacity selected path is required")
+    if type(observed_at_ns) is not int or observed_at_ns < 0:
+        raise ValueError("broad capacity observation time must be a nonnegative integer")
+    if (not isinstance(enabled_venues, tuple) or not enabled_venues
+            or len(enabled_venues) > 2 or len(set(enabled_venues)) != len(enabled_venues)
+            or any(venue not in {"BYBIT", "BINANCE"} for venue in enabled_venues)):
+        raise ValueError("broad capacity venue selection is invalid")
+    if type(owner_free_disk_reserve_bytes) is not int or owner_free_disk_reserve_bytes < 0:
+        raise ValueError("owner free disk reserve must be a nonnegative integer")
+    if observed_free_bytes is not None and (type(observed_free_bytes) is not int or observed_free_bytes < 0):
+        raise ValueError("observed free disk bytes must be a nonnegative integer")
+    if measured_max_cycle_bytes is not None and (
+            type(measured_max_cycle_bytes) is not int or measured_max_cycle_bytes <= 0):
+        raise ValueError("measured max-cycle bytes must be a positive integer")
+
+    population = len(enabled_venues) * S41_MAX_PRODUCTS_PER_VENUE_V2
+    cycles = S41_BROAD_RETENTION_HOURS_V2 * 60 * 60 // S41_BROAD_REFRESH_CADENCE_SECONDS_V2
+    reasons: list[str] = []
+    projected: int | None = None
+    required: int | None = None
+    if measured_max_cycle_bytes is None:
+        reasons.append("BROAD_WORKLOAD_CAPACITY_MEASUREMENT_UNAVAILABLE")
+    else:
+        scaled_cycle = (measured_max_cycle_bytes * population + S41_MAX_ACTIVE_PRODUCTS_V2 - 1) \
+            // S41_MAX_ACTIVE_PRODUCTS_V2
+        metadata_adjusted = (scaled_cycle * 3 + 1) // 2
+        projected = metadata_adjusted * cycles
+        reserved = (projected * 5 + 3) // 4
+        required = reserved + owner_free_disk_reserve_bytes
+    if observed_free_bytes is None:
+        reasons.append("BROAD_WORKLOAD_FREE_SPACE_UNAVAILABLE")
+    elif required is not None and observed_free_bytes < required:
+        reasons.append("BROAD_WORKLOAD_DISK_HEADROOM_INSUFFICIENT")
+    allowed = measured_max_cycle_bytes is not None and observed_free_bytes is not None and not reasons
+    return BroadStorageCapacityAssessmentV2(
+        identity_sha256=identity_sha256, selected_path=selected_path,
+        observed_at_ns=observed_at_ns, enabled_venues=enabled_venues,
+        selected_max_products=population, supported_max_products=S41_MAX_ACTIVE_PRODUCTS_V2,
+        refresh_cadence_seconds=S41_BROAD_REFRESH_CADENCE_SECONDS_V2,
+        retention_hours=S41_BROAD_RETENTION_HOURS_V2, projected_cycles=cycles,
+        measured_max_cycle_bytes=measured_max_cycle_bytes,
+        measurement_class=("UNAVAILABLE_FAIL_CLOSED" if measured_max_cycle_bytes is None else
+                           "THREE_CYCLE_SYNTHETIC_MAX_BREADTH_OFFLINE_UPPER_SAMPLE"),
+        dynamic_metadata_overhead_numerator=3, dynamic_metadata_overhead_denominator=2,
+        safety_reserve_numerator=5, safety_reserve_denominator=4,
+        owner_free_disk_reserve_bytes=owner_free_disk_reserve_bytes,
+        observed_free_bytes=observed_free_bytes, projected_workload_bytes=projected,
+        required_free_bytes=required,
+        status="TESTED" if allowed else "TEST GATE", allowed=allowed,
+        capacity_qualified=False, reasons=tuple(reasons))
 
 
 def _noop_phase(_operation: str) -> None:

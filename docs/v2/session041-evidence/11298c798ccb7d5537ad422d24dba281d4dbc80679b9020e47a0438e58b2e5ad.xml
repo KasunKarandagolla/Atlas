@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="3" time="33.620" timestamp="2026-10-08T19:36:37.424001+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls[0.1]" time="10.617"><failure message="assert 0 &gt; 0">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-532/test_reconciliation_services_r0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f96e628a1e0&gt;
+read_stall_seconds = 0.1
+
+    @pytest.mark.parametrize("read_stall_seconds", [0.1, 0.5, 1.0])
+    def test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls(
+        tmp_path, monkeypatch, read_stall_seconds: float,
+    ):
+        products = (_product("BTCUSDT", VenueV2.BYBIT), _product("BTCUSDT", VenueV2.BINANCE))
+        port, runtime, _source = _port(products, NOW)
+        service_starts: list[int] = []
+        service_durations: list[int] = []
+        read_stalls: list[tuple[int, int]] = []
+        producer_errors: list[BaseException] = []
+        allow_burst = (threading.Event(), threading.Event())
+        frame_ordinal = 0
+        path = tmp_path / f"paged-reconciliation-{int(read_stall_seconds * 1000)}.sqlite"
+    
+        def offer_burst(handoffs, count: int) -&gt; None:
+            nonlocal frame_ordinal
+            for _ in range(count):
+                frame_ordinal += 1
+                received = NOW + frame_ordinal
+                if frame_ordinal % 2:
+                    body = {"topic": "publicTrade.BTCUSDT", "type": "snapshot", "ts": received,
+                        "data": [{"T": received, "s": "BTCUSDT", "S": "Buy", "v": "0.01",
+                            "p": "100.01", "i": f"s41-paged-{frame_ordinal}"}]}
+                    venue, source_id, channel, lane_name = (VenueV2.BYBIT,
+                        "BYBIT_PUBLIC_WS_BROAD_V2", "publicTrade.BTCUSDT", "BYBIT")
+                else:
+                    body = {"e": "aggTrade", "E": received // 1_000_000, "s": "BTCUSDT",
+                        "a": frame_ordinal, "p": "100.01", "q": "0.01", "f": frame_ordinal,
+                        "l": frame_ordinal, "T": received // 1_000_000, "m": False}
+                    venue, source_id, channel, lane_name = (VenueV2.BINANCE,
+                        "BINANCE_PUBLIC_WS_BROAD_V2", "btcusdt@aggTrade", "BINANCE_MARKET")
+                payload = json.dumps(body, separators=(",", ":")).encode()
+                frame = CapturedPublicFrameV2(venue, source_id, channel, payload,
+                    hashlib.sha256(payload).hexdigest(), received, received, 1)
+                assert handoffs[lane_name].offer(frame)
+    
+        with OpsRepository(path) as repository:
+            port.recover(repository, now_ns=NOW)
+            assert runtime.source is not None and runtime.capture is not None
+            handoffs = {name: lane._handoff for name, lane in runtime.source._lanes.items()}
+            capture = runtime.capture
+            offer_burst(handoffs, 64)
+            before = capture.status().capture["pending_batches"]
+            deadline = time.monotonic() + 5
+            while capture.status().capture["pending_batches"] &lt;= before and time.monotonic() &lt; deadline:
+                time.sleep(0.01)
+&gt;           assert capture.status().capture["pending_batches"] &gt; before
+E           assert 0 &gt; 0
+
+tests/v2/test_session041_public_runtime_integration.py:383: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls[0.5]" time="6.528"><failure message="assert 0 &gt; 0">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-532/test_reconciliation_services_r1')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f96d7545f70&gt;
+read_stall_seconds = 0.5
+
+    @pytest.mark.parametrize("read_stall_seconds", [0.1, 0.5, 1.0])
+    def test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls(
+        tmp_path, monkeypatch, read_stall_seconds: float,
+    ):
+        products = (_product("BTCUSDT", VenueV2.BYBIT), _product("BTCUSDT", VenueV2.BINANCE))
+        port, runtime, _source = _port(products, NOW)
+        service_starts: list[int] = []
+        service_durations: list[int] = []
+        read_stalls: list[tuple[int, int]] = []
+        producer_errors: list[BaseException] = []
+        allow_burst = (threading.Event(), threading.Event())
+        frame_ordinal = 0
+        path = tmp_path / f"paged-reconciliation-{int(read_stall_seconds * 1000)}.sqlite"
+    
+        def offer_burst(handoffs, count: int) -&gt; None:
+            nonlocal frame_ordinal
+            for _ in range(count):
+                frame_ordinal += 1
+                received = NOW + frame_ordinal
+                if frame_ordinal % 2:
+                    body = {"topic": "publicTrade.BTCUSDT", "type": "snapshot", "ts": received,
+                        "data": [{"T": received, "s": "BTCUSDT", "S": "Buy", "v": "0.01",
+                            "p": "100.01", "i": f"s41-paged-{frame_ordinal}"}]}
+                    venue, source_id, channel, lane_name = (VenueV2.BYBIT,
+                        "BYBIT_PUBLIC_WS_BROAD_V2", "publicTrade.BTCUSDT", "BYBIT")
+                else:
+                    body = {"e": "aggTrade", "E": received // 1_000_000, "s": "BTCUSDT",
+                        "a": frame_ordinal, "p": "100.01", "q": "0.01", "f": frame_ordinal,
+                        "l": frame_ordinal, "T": received // 1_000_000, "m": False}
+                    venue, source_id, channel, lane_name = (VenueV2.BINANCE,
+                        "BINANCE_PUBLIC_WS_BROAD_V2", "btcusdt@aggTrade", "BINANCE_MARKET")
+                payload = json.dumps(body, separators=(",", ":")).encode()
+                frame = CapturedPublicFrameV2(venue, source_id, channel, payload,
+                    hashlib.sha256(payload).hexdigest(), received, received, 1)
+                assert handoffs[lane_name].offer(frame)
+    
+        with OpsRepository(path) as repository:
+            port.recover(repository, now_ns=NOW)
+            assert runtime.source is not None and runtime.capture is not None
+            handoffs = {name: lane._handoff for name, lane in runtime.source._lanes.items()}
+            capture = runtime.capture
+            offer_burst(handoffs, 64)
+            before = capture.status().capture["pending_batches"]
+            deadline = time.monotonic() + 5
+            while capture.status().capture["pending_batches"] &lt;= before and time.monotonic() &lt; deadline:
+                time.sleep(0.01)
+&gt;           assert capture.status().capture["pending_batches"] &gt; before
+E           assert 0 &gt; 0
+
+tests/v2/test_session041_public_runtime_integration.py:383: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls[1.0]" time="6.005"><failure message="assert 0 &gt; 0">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-532/test_reconciliation_services_r2')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f96d75802c0&gt;
+read_stall_seconds = 1.0
+
+    @pytest.mark.parametrize("read_stall_seconds", [0.1, 0.5, 1.0])
+    def test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls(
+        tmp_path, monkeypatch, read_stall_seconds: float,
+    ):
+        products = (_product("BTCUSDT", VenueV2.BYBIT), _product("BTCUSDT", VenueV2.BINANCE))
+        port, runtime, _source = _port(products, NOW)
+        service_starts: list[int] = []
+        service_durations: list[int] = []
+        read_stalls: list[tuple[int, int]] = []
+        producer_errors: list[BaseException] = []
+        allow_burst = (threading.Event(), threading.Event())
+        frame_ordinal = 0
+        path = tmp_path / f"paged-reconciliation-{int(read_stall_seconds * 1000)}.sqlite"
+    
+        def offer_burst(handoffs, count: int) -&gt; None:
+            nonlocal frame_ordinal
+            for _ in range(count):
+                frame_ordinal += 1
+                received = NOW + frame_ordinal
+                if frame_ordinal % 2:
+                    body = {"topic": "publicTrade.BTCUSDT", "type": "snapshot", "ts": received,
+                        "data": [{"T": received, "s": "BTCUSDT", "S": "Buy", "v": "0.01",
+                            "p": "100.01", "i": f"s41-paged-{frame_ordinal}"}]}
+                    venue, source_id, channel, lane_name = (VenueV2.BYBIT,
+                        "BYBIT_PUBLIC_WS_BROAD_V2", "publicTrade.BTCUSDT", "BYBIT")
+                else:
+                    body = {"e": "aggTrade", "E": received // 1_000_000, "s": "BTCUSDT",
+                        "a": frame_ordinal, "p": "100.01", "q": "0.01", "f": frame_ordinal,
+                        "l": frame_ordinal, "T": received // 1_000_000, "m": False}
+                    venue, source_id, channel, lane_name = (VenueV2.BINANCE,
+                        "BINANCE_PUBLIC_WS_BROAD_V2", "btcusdt@aggTrade", "BINANCE_MARKET")
+                payload = json.dumps(body, separators=(",", ":")).encode()
+                frame = CapturedPublicFrameV2(venue, source_id, channel, payload,
+                    hashlib.sha256(payload).hexdigest(), received, received, 1)
+                assert handoffs[lane_name].offer(frame)
+    
+        with OpsRepository(path) as repository:
+            port.recover(repository, now_ns=NOW)
+            assert runtime.source is not None and runtime.capture is not None
+            handoffs = {name: lane._handoff for name, lane in runtime.source._lanes.items()}
+            capture = runtime.capture
+            offer_burst(handoffs, 64)
+            before = capture.status().capture["pending_batches"]
+            deadline = time.monotonic() + 5
+            while capture.status().capture["pending_batches"] &lt;= before and time.monotonic() &lt; deadline:
+                time.sleep(0.01)
+&gt;           assert capture.status().capture["pending_batches"] &gt; before
+E           assert 0 &gt; 0
+
+tests/v2/test_session041_public_runtime_integration.py:383: AssertionError</failure></testcase></testsuite></testsuites>

@@ -30,6 +30,48 @@ from .test_session016_candidate_selection import evidence, index
 from .test_session017_risk import CUTOFF, risk_case, source
 
 
+def test_shared_dependency_dag_has_linear_proof_work_and_no_cross_call_cache(tmp_path, monkeypatch):
+    from atlas.v2 import chronology
+    from atlas.v2._serialization import canonical_json
+
+    with OpsRepository(tmp_path / "shared-dag.sqlite") as repo:
+        raw = sha256_json({"raw": "shared-dag-fixture"})
+        repo.register_artifact(ArtifactIndexEntryV2(raw, "RawFixtureV1", raw, 1, 1, {}))
+        prior = (raw,)
+        nodes = []
+        for level in range(8):
+            current = []
+            for branch in range(2):
+                body = {"level": level, "branch": branch, "input_refs": list(prior)}
+                ref = sha256_json(body)
+                at = 3 + 2 * level
+                repo.register_artifact(ArtifactIndexEntryV2(ref, "NativeStrategyHistoryBarV1", ref, at, at, body))
+                record_computation(repo, artifact_ref=ref, information_cutoff_ns=1, started_ns=at,
+                    finished_ns=at, available_ns=at, input_refs=prior, deadline_ns=1000)
+                current.append(ref)
+                nodes.append(ref)
+            prior = tuple(current)
+        visits = []
+        original = chronology._declared_inputs
+
+        def counted(entry):
+            visits.append(entry.artifact_ref)
+            return original(entry)
+
+        monkeypatch.setattr(chronology, "_declared_inputs", counted)
+        assert causal_artifact(repo, prior[0], cutoff_ns=1, consumer_at_ns=1000, deadline_ns=1000)
+        assert len(visits) == 15  # One top node and the seven shared pairs below.
+        assert len(set(visits)) == len(visits)
+        assert not causal_artifact(repo, prior[0], cutoff_ns=1, consumer_at_ns=16, deadline_ns=1000)
+        assert not causal_artifact(repo, prior[0], cutoff_ns=1, consumer_at_ns=1000, deadline_ns=16)
+        receipt_ref = chronology_ref(nodes[0])
+        entry = repo.get_artifact(receipt_ref)
+        body = {**entry.metadata["chronology"], "market_information_cutoff_ns": 2}
+        repo._connection.execute("UPDATE artifact_index SET metadata_json=?,content_hash=? WHERE artifact_ref=?",
+            (canonical_json({"chronology": body}), sha256_json(body), receipt_ref))
+        assert not causal_artifact(repo, prior[0], cutoff_ns=1, consumer_at_ns=1000, deadline_ns=1000)
+
+
 class Clock:
     def __init__(self, at=CUTOFF):
         self.at = at

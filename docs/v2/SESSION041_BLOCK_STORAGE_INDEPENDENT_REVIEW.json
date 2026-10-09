@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "session": "SESSION041",
+  "component": "compact_public_observation_metadata_blocks_and_broad_prefetch",
+  "review_status": "REVIEW_FINDING_RESOLVED_WITH_REGRESSION",
+  "authority": "ZERO",
+  "production_files_changed_by_review": false,
+  "scope": [
+    "src/atlas/v2/data/compact_observation_index.py",
+    "src/atlas/v2/memory/repository.py",
+    "src/atlas/v2/data/collector.py",
+    "src/atlas/v2/runtime/production.py",
+    "src/atlas/v2/science/tuning_export.py"
+  ],
+  "findings": [
+    {
+      "id": "NONATOMIC_PUBLIC_INDEX_MIGRATION_ORDER",
+      "severity": "P2",
+      "summary": "Writable initialization can leave read-only exact public queries without the index selected by the repository.",
+      "evidence": [
+        {
+          "file": "src/atlas/v2/memory/repository.py",
+          "lines": "549-562",
+          "detail": "Writable startup creates the compact metadata tables, then drops the legacy public query indexes."
+        },
+        {
+          "file": "src/atlas/v2/memory/repository.py",
+          "lines": "569-576",
+          "detail": "The replacement archive and receipt indexes are created only afterward; the DDL is issued statement by statement without a surrounding migration transaction."
+        },
+        {
+          "file": "src/atlas/v2/memory/repository.py",
+          "lines": "337-338, 2041-2047, 2077-2089",
+          "detail": "Read-only repository mode selects the v2 index whenever all compact tables exist; legacy mode explicitly requires the old index names."
+        }
+      ],
+      "impact": "The original reviewed version had a process-interruption window that could make public reads fail. The current worktree wraps compact tables, index replacement, and scheduled-event index creation in one BEGIN IMMEDIATE/COMMIT migration transaction; closing the connection on an exception rolls back the DDL, so readers retain the pre-migration state until all v2 indexes are ready.",
+      "reproduction": {
+        "method": "Seeded a legacy full-JSON database, dropped public_exact_receipt_key_actual_lookup to model the migration interval, opened OpsRepository read-only, then called public_archive_history_entries for one exact TRADE receipt.",
+        "observed": "OperationalError: no such index: public_exact_receipt_key_actual_lookup"
+      },
+      "recommendation": "Create replacement indexes before dropping legacy indexes, and make the table/index migration atomic where practical. Ensure a partially migrated read-only opener can select an actually present index or report a clear migration-required error.",
+      "status": "RESOLVED_IN_CURRENT_WORKTREE",
+      "disposition": {
+        "resolution": "Root wrapped migration DDL and index replacement in one SQLite transaction and commits only after all replacement indexes are created.",
+        "evidence": "src/atlas/v2/memory/repository.py:550-584",
+        "regression_test": "tests/v2/test_session041_block_migration.py::test_failed_writable_migration_rolls_back_indexes_and_releases_writer_lease",
+        "assertions": "Injected invalid SQL during v2 index creation; confirmed all compact tables were rolled back, legacy receipt/history indexes remained, read-only exact receipt query still succeeded, and the next writable migration completed (also exercising writer lease release)."
+      }
+    }
+  ],
+  "reviewed_invariants": {
+    "compact_scope": "The current eligibility gate requires instrument_key_json, record_id, source_id, and raw_payload_hash before compacting (compact_observation_index.py:46-80). Rows outside that shape retain full JSON storage.",
+    "block_bounds_and_integrity": "Encoding caps row count and canonical uncompressed bytes and stores a content digest (compact_observation_index.py:19-24, 83-125). Decode caps the compressed-column size before conversion, caps decompression to declared size plus one, checks EOF/no trailing stream, verifies digest, canonical representation, row count, record identity, key projection, locator ordinal, and identity catalog (154-251).",
+    "cache": "Cached decoded entries are frozen and the LRU key includes block ref, declared size/count, and compressed-byte digest; selected row projection and identity catalog are still rechecked on each hydration (compact_observation_index.py:144-151, 181-188, 230-250). The 8 MiB cache budget is measured in canonical uncompressed bytes, not actual Python heap bytes; object overhead can make resident memory higher than that nominal figure.",
+    "publication_transaction": "New compact block, missing locators, identity catalog rows, and artifact_index rows are written in register_artifacts' SQLite transaction (repository.py:1265-1321, 1323-1353; transaction begins IMMEDIATE at 665-699). Duplicate artifact refs are compared against exact existing immutable domain metadata (repository.py:1244-1264, 1323-1341). The focused injected-failure test covers rollback across these tables.",
+    "archive_cross_store_boundary": "Collector writes the immutable Parquet chunk before publishing index rows (collector.py:465-518). SQLite transaction atomicity does not make the file-plus-database pair atomic; interruption in that interval can leave an unindexed archive chunk for retry/reconciliation. No partial compact database publication was found.",
+    "legacy_query_and_hydration": "Legacy full-JSON reads use the old expression/index path when compact metadata tables are absent; v2 expressions compute identity refs for old full-key JSON as well as compact projections. Point, by-ref, typed, receipt/history, and rowid-based export hydration converge on artifact_entry_from_storage_row/decode_metadata (repository.py:305-342, 1821-1865, 1984-2097; tuning_export.py:1945-1959).",
+    "broad_prefetch": "Broad adoption reads exact ref batches of up to 32 and supplies explicit None entries (production.py:3153-3171); collector rejects an uncovered ref (collector.py:235-244). The pending+window > 512 flush threshold is safe with collector's pre-lookup flush at count >=512: an exact-fit 512 window reaches pending counts 480 through 511 before the final append, so no mid-window flush occurs. Stream service runs before the next window fetch, and the corrected-bar revision ref missing from the prefetched window is fetched explicitly (production.py:3155-3171, 3207-3211). No stale prefetched absence was found across the explicit flush boundary.",
+    "chronology_and_duplicate_identity": "Public query cutoffs remain based on indexed available_at_ns for actual receipt and replay_available_at_ns for reconstructed evidence; exact instrument ref, revision, event type, class, and record ordering remain represented in projections/index expressions (repository.py:345-356, 1984-2097). Broad corrected-bar rows derive a new deterministic record identity and check that exact ref before ingesting (production.py:3193-3214)."
+  },
+  "validation": {
+    "interpreter": "/home/kasun/Music/atlas/.venv/bin/python",
+    "focused_review_test": "tests/v2/test_session041_block_migration.py: 11 passed; junit at /tmp/session041-block-migration.xml; log at /tmp/session041-block-migration.log",
+    "read_only_migration_reproduction": "Temporary synthetic database only; reproduced the missing-index OperationalError described above. No workspace database was changed by this reproduction.",
+    "extra_test_suite_run": false
+  },
+  "source_proof_kind": "SHA256_OF_REVIEWED_WORKTREE_FILES_NOT_FINAL_COMMIT_SHA",
+  "sha256": {
+    "src/atlas/v2/data/compact_observation_index.py": "aa6999b080318cc827884473c1ea291b9dc099841eeb64bdcb152a671500f034",
+    "src/atlas/v2/memory/repository.py": "3696835d6083ad7e430b97aa27c13ad2d8e7c48d37868738c71d71fbcb375232",
+    "src/atlas/v2/data/collector.py": "a716ed9132617415a0b9d54195713ea2d67450edd9ced84b1c19e802d6b5129c",
+    "src/atlas/v2/runtime/production.py": "0e5ebffffee25f39ab6c836568a05aafdfd3f54db1c76abef4d849adb59070f3",
+    "src/atlas/v2/science/tuning_export.py": "ab6319cbb2661a7423e710064cd9442f37bdf23530e34e8f904173fe0c33da90",
+    "src/atlas/v2/_serialization.py": "863cbb2e6597dc04799c917f5e028b66f3a582e51fdb6cb5988ff93134a6ed23",
+    "tests/v2/test_session041_block_migration.py": "56dad2e34fe98960435f698d8529fe1520d424a0860581e4ee22160c3315b7a3"
+  },
+  "actions": {
+    "credentials_read": false,
+    "live_external_calls": false,
+    "commit_created": false,
+    "production_sources_modified": false
+  }
+}

@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -22,6 +23,8 @@ from typing import Any
 
 from atlas.runtime.binance_demo import DemoCredential
 from atlas.runtime.nautilus_boundary import PINNED_VERSION, verify_installation
+from atlas.v2._serialization import sha256_json
+from atlas.v2.instruments import ProductContractV2, ProductTypeV2, VenueV2
 
 DEMO_REST = "https://api-demo.bybit.com"
 TESTNET_REST = "https://api-testnet.bybit.com"
@@ -38,6 +41,9 @@ MAX_READ_AGE_NS = 2_000_000_000
 RECV_WINDOW_MS = 5000
 _REF = re.compile(r"[A-Za-z0-9_.-]{1,96}\Z")
 _SYMBOL = re.compile(r"[A-Z0-9]{2,32}\Z")
+_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+_BYBIT_ORDER_STATUSES = frozenset({"Created", "New", "Rejected", "PartiallyFilled",
+    "PartiallyFilledCanceled", "Filled", "Cancelled", "Untriggered", "Triggered", "Deactivated"})
 
 
 @dataclass(frozen=True)
@@ -354,6 +360,505 @@ def capture_bybit_historical_diagnostics(reader: BybitDemoReader, *, native_symb
             params["type"] = "SETTLEMENT"
         receipts.extend(reader.read_pages(path, params))
     return BybitHistoricalDiagnostics(reader.identity.content_hash, start_ms, end_ms, tuple(receipts))
+
+
+@dataclass(frozen=True)
+class BybitCommandReconciliationPass:
+    """Durable bounded evidence pass; it never changes a command outcome."""
+
+    ready: bool
+    observed_commands: tuple[str, ...]
+    query_ids: tuple[str, ...]
+    reasons: tuple[str, ...]
+    next_command_id: str | None = None
+    has_more_commands: bool = False
+
+
+def persist_bybit_product_contract_snapshot(journal: Any, *, identity: BybitDemoIdentity,
+                                           snapshot: BybitDemoSnapshot, product: ProductContractV2,
+                                           instrument_metadata_receipt: BybitDemoReadReceipt,
+                                           assert_writer: Callable[[], None]) -> str:
+    """Bind a durable command product hash to its signed instrument revision."""
+    from atlas.runtime.reconciliation_evidence import (
+        Completeness,
+        QueryScope,
+        QueryStatus,
+        QueryType,
+        make_query_evidence,
+    )
+
+    if (snapshot.identity_hash != identity.content_hash or not snapshot.eligible
+            or not snapshot.profile_qualified or snapshot.native_symbol != product.key.native_symbol
+            or product.key.venue is not VenueV2.BYBIT
+            or product.key.environment.value != identity.environment
+            or product.key.product is not ProductTypeV2.LINEAR_PERPETUAL
+            or instrument_metadata_receipt.identity_hash != identity.content_hash
+            or instrument_metadata_receipt.endpoint != "/v5/market/instruments-info"):
+        raise ValueError("Bybit product contract snapshot scope invalid")
+    metadata_rows = instrument_metadata_receipt.payload.get("result", {}).get("list")
+    matched = [row for row in metadata_rows if isinstance(row, Mapping)
+               and row.get("symbol") == product.key.native_symbol] if isinstance(metadata_rows, list) else []
+    if (len(matched) != 1 or sha256_json(dict(matched[0])) != product.key.contract_revision
+            or product.key.contract_revision != product.metadata_ref):
+        raise ValueError("Bybit signed metadata does not bind product contract snapshot")
+    assert_writer()
+    receipt_ns = max((receipt.received_at_ns for receipt in snapshot.positions), default=snapshot.captured_at_ns)
+    evidence = make_query_evidence(
+        query_id=uuid.uuid4().hex, query_type=QueryType.POSITIONS, scope=QueryScope.INSTRUMENT,
+        account=identity.account_scope_ref, instrument=f"{product.key.native_symbol}-LINEAR.BYBIT",
+        requested_interval_start_ns=receipt_ns, requested_interval_end_ns=receipt_ns,
+        pagination_cursors=(), pages_observed=len(snapshot.positions),
+        total_records_returned=sum(len(_result(receipt).get("list", [])) for receipt in snapshot.positions),
+        completeness=Completeness.COMPLETE,
+        status=QueryStatus.SUCCESS, source_time_ns=None, receipt_time_ns=receipt_ns,
+        request_ids=(), retention_segments=((receipt_ns, receipt_ns),),
+        facts={"venue_identity_hash": identity.content_hash, "environment": identity.environment,
+            "endpoints": [receipt.endpoint for receipt in snapshot.positions],
+            "receipt_hashes": [receipt.raw_payload_hash for receipt in snapshot.positions],
+            "metadata_endpoint": instrument_metadata_receipt.endpoint,
+            "metadata_receipt_hash": instrument_metadata_receipt.raw_payload_hash,
+            "product_contract_snapshot": product.to_dict(),
+            "product_contract_hash": product.content_hash,
+            "instrument_key_hash": product.key.content_hash},
+        error_message=None,
+    )
+    journal.append_reconciliation_query_evidence(evidence)
+    assert_writer()
+    return evidence.query_id
+
+
+def reconcile_bybit_commands(reader: BybitDemoReader, journal: Any, *, native_symbol: str,
+                             snapshot: BybitDemoSnapshot, product: ProductContractV2,
+                             instrument_metadata_receipt: BybitDemoReadReceipt,
+                             assert_writer: Callable[[], None], max_commands: int = 1,
+                             after_command_id: str | None = None
+                             ) -> BybitCommandReconciliationPass:
+    """Persist selected-account and exact command evidence before readiness.
+
+    A missing orderLinkId match is never treated as proof that an UNKNOWN send
+    had no effect. The command stays UNKNOWN and the pass remains not ready.
+    This is selected-instrument evidence, not a full-account recovery
+    certificate; it grants no new execution authority.
+    """
+    from atlas.domain.enums import CommandOutcome, CommandType
+    from atlas.domain.execution import Observation, validate_client_order_id
+    from atlas.persistence.sqlite import PersistenceError
+    from atlas.runtime.fill_dedup import FillRecord, OrderStatusRecord
+    from atlas.runtime.reconciliation_evidence import (
+        Completeness,
+        QueryScope,
+        QueryStatus,
+        QueryType,
+        make_query_evidence,
+    )
+
+    if (type(max_commands) is not int or not 1 <= max_commands <= 32
+            or not isinstance(native_symbol, str) or not _SYMBOL.fullmatch(native_symbol)
+            or snapshot.identity_hash != reader.identity.content_hash
+            or not snapshot.eligible or not snapshot.profile_qualified
+            or snapshot.native_symbol != native_symbol
+            or product.key.venue is not VenueV2.BYBIT
+            or product.key.environment.value != reader.identity.environment
+            or product.key.product is not ProductTypeV2.LINEAR_PERPETUAL
+            or product.key.native_symbol != native_symbol
+            or instrument_metadata_receipt.identity_hash != reader.identity.content_hash
+            or instrument_metadata_receipt.endpoint != "/v5/market/instruments-info"):
+        raise PersistenceError("Bybit recovery prerequisites are not qualified")
+    metadata_rows = instrument_metadata_receipt.payload.get("result", {}).get("list")
+    matched_metadata = [row for row in metadata_rows if isinstance(row, Mapping)
+                        and row.get("symbol") == native_symbol] if isinstance(metadata_rows, list) else []
+    if (len(matched_metadata) != 1
+            or sha256_json(dict(matched_metadata[0])) != product.key.contract_revision
+            or product.key.contract_revision != product.metadata_ref):
+        raise PersistenceError("Bybit signed metadata does not bind selected product contract")
+
+    query_ids: list[str] = []
+    reasons: list[str] = []
+    instrument = f"{native_symbol}-LINEAR.BYBIT"
+
+    def record_query(query_type: Any, *, scope: Any, receipts: tuple[BybitDemoReadReceipt, ...],
+                     records: int, account: str, instrument_ref: str | None,
+                     request_ids: tuple[str, ...] = (), start_ns: int | None = None,
+                     end_ns: int | None = None, facts: Mapping[str, Any] | None = None,
+                     failed: bool = False) -> None:
+        assert_writer()
+        receipt_ns = max((r.received_at_ns for r in receipts), default=reader.clock_ns())
+        endpoint_hashes = [r.raw_payload_hash for r in receipts]
+        evidence = make_query_evidence(
+            query_id=hashlib.sha256(uuid.uuid4().bytes).hexdigest()[:32],
+            query_type=query_type, scope=scope, account=account, instrument=instrument_ref,
+            requested_interval_start_ns=start_ns, requested_interval_end_ns=end_ns,
+            pagination_cursors=(), pages_observed=len(receipts), total_records_returned=records,
+            completeness=Completeness.UNKNOWN if failed else Completeness.COMPLETE,
+            status=QueryStatus.FAILED if failed else QueryStatus.SUCCESS,
+            source_time_ns=None, receipt_time_ns=receipt_ns, request_ids=request_ids,
+            retention_segments=(), facts={"venue_identity_hash": reader.identity.content_hash,
+                "environment": reader.identity.environment, "receipt_hashes": endpoint_hashes,
+                "endpoints": sorted({r.endpoint for r in receipts}),
+                "receipt_times_ns": [r.received_at_ns for r in receipts],
+                **dict(facts or {})},
+            error_message="BYBIT_RECONCILIATION_SOURCE_INCOMPLETE" if failed else None,
+        )
+        journal.append_reconciliation_query_evidence(evidence)
+        query_ids.append(evidence.query_id)
+
+    def validate_receipts(path: str, receipts: tuple[BybitDemoReadReceipt, ...]) -> list[Mapping[str, Any]]:
+        rows: list[Mapping[str, Any]] = []
+        if not receipts:
+            raise ValueError("empty Bybit receipt sequence")
+        for receipt in receipts:
+            assert_writer()
+            if (receipt.identity_hash != reader.identity.content_hash or receipt.endpoint != path
+                    or type(receipt.received_at_ns) is not int
+                    or not 0 < receipt.received_at_ns <= reader.clock_ns()):
+                raise ValueError("Bybit recovery receipt scope or chronology mismatch")
+            result = receipt.payload.get("result")
+            page_rows = result.get("list") if isinstance(result, dict) else None
+            if not isinstance(page_rows, list):
+                raise ValueError("Bybit recovery list response invalid")
+            rows.extend(page_rows)
+        return rows
+
+    # Persist current selected-account profile chronology before asking the
+    # native runtime to dispatch any queued command.
+    try:
+        expected_profile_paths = {"/v5/account/info", "/v5/account/wallet-balance", "/v5/position/list"}
+        profile_receipts = tuple(snapshot.receipts)
+        if not profile_receipts or any(r.identity_hash != reader.identity.content_hash
+                                       or r.endpoint not in expected_profile_paths for r in profile_receipts):
+            raise ValueError("Bybit current profile receipt scope mismatch")
+        wallet = tuple(r for r in profile_receipts if r.endpoint == "/v5/account/wallet-balance")
+        positions = tuple(r for r in profile_receipts if r.endpoint == "/v5/position/list")
+        if len(wallet) != 1 or not positions:
+            raise ValueError("Bybit current profile source set incomplete")
+        for receipt in profile_receipts:
+            assert_writer()
+            source = "BYBIT_RECOVERY_PROFILE_" + receipt.endpoint.rsplit("/", 1)[-1].upper()
+            journal.append_observation(Observation(
+                uuid.uuid4().hex, source, reader.identity.content_hash,
+                None, receipt.received_at_ns, receipt.raw_payload_hash, None, None,
+                "EXACT_AUTHENTICATED_READ_RECEIPT"))
+        wallet_rows = validate_receipts("/v5/account/wallet-balance", wallet)
+        position_rows = validate_receipts("/v5/position/list", positions)
+        record_query(QueryType.WALLET_BALANCE, scope=QueryScope.ACCOUNT, receipts=wallet,
+                     records=len(wallet_rows), account=reader.identity.account_scope_ref,
+                     instrument_ref=None, facts={"account_profile_qualified": True})
+        record_query(QueryType.POSITIONS, scope=QueryScope.INSTRUMENT, receipts=positions,
+                     records=len(position_rows), account=reader.identity.account_scope_ref,
+                     instrument_ref=instrument, facts={"selected_symbol": native_symbol,
+                         "product_contract_snapshot": product.to_dict(),
+                         "product_contract_hash": product.content_hash,
+                         "instrument_key_hash": product.key.content_hash,
+                         "metadata_endpoint": instrument_metadata_receipt.endpoint,
+                         "metadata_receipt_hash": instrument_metadata_receipt.raw_payload_hash})
+    except Exception:
+        reasons.append("BYBIT_CURRENT_PROFILE_EVIDENCE_INCOMPLETE")
+
+    # Current open orders are a separate exact selected-symbol observation.
+    try:
+        open_receipts = reader.read_pages("/v5/order/realtime", {"category": "linear", "symbol": native_symbol})
+        open_rows = validate_receipts("/v5/order/realtime", open_receipts)
+        if any(not isinstance(row, Mapping) or row.get("symbol") != native_symbol for row in open_rows):
+            raise ValueError("Bybit open-order scope mismatch")
+        record_query(QueryType.OPEN_ORDERS, scope=QueryScope.INSTRUMENT, receipts=open_receipts,
+                     records=len(open_rows), account=reader.identity.account_scope_ref,
+                     instrument_ref=instrument, facts={"all_pages_observed": True})
+    except Exception:
+        open_rows = []
+        reasons.append("BYBIT_OPEN_ORDERS_INCOMPLETE")
+        record_query(QueryType.OPEN_ORDERS, scope=QueryScope.INSTRUMENT, receipts=(), records=0,
+                     account=reader.identity.account_scope_ref, instrument_ref=instrument, failed=True)
+
+    commands = journal.load_unresolved_commands(limit=max_commands, after_command_id=after_command_id)
+    if not commands and after_command_id is not None:
+        commands = journal.load_unresolved_commands(limit=max_commands)
+    overflow = bool(commands and journal.load_unresolved_commands(limit=1,
+        after_command_id=commands[-1].command_id))
+    next_command_id = (None if not commands else commands[-1].command_id)
+    # Older commands may refer to a point-in-time ProductContractV2 whose
+    # observation timestamps differ from today's read. Recover the stored
+    # immutable snapshot and compare its stable InstrumentKey/revision to the
+    # current signed metadata translation.
+    saved_contract_keys: dict[str, str] = {}
+    for evidence in journal.load_reconciliation_query_evidence():
+        facts = evidence.facts
+        raw_contract = facts.get("product_contract_snapshot")
+        ref = facts.get("product_contract_hash")
+        if (evidence.query_type is not QueryType.POSITIONS
+                or evidence.account != reader.identity.account_scope_ref
+                or facts.get("venue_identity_hash") != reader.identity.content_hash
+                or facts.get("metadata_endpoint") != "/v5/market/instruments-info"
+                or not isinstance(raw_contract, Mapping) or not isinstance(ref, str)):
+            continue
+        try:
+            prior_product = ProductContractV2.from_dict(dict(raw_contract))
+            if (prior_product.content_hash == ref and facts.get("instrument_key_hash") == prior_product.key.content_hash
+                    and prior_product.key.venue is VenueV2.BYBIT
+                    and prior_product.key.environment.value == reader.identity.environment
+                    and prior_product.key.product is ProductTypeV2.LINEAR_PERPETUAL
+                    and prior_product.key.native_symbol == native_symbol):
+                saved_contract_keys[ref] = prior_product.key.content_hash
+        except (TypeError, ValueError):
+            continue
+
+    # Every live selected-symbol order must be attributable to exactly one
+    # durable order-producing command. A qualified account profile alone does
+    # not account for manual or stale-writer orders.
+    open_orders_by_client_id: dict[str, set[str]] = {}
+    for row in open_rows:
+        try:
+            if not isinstance(row, Mapping):
+                raise ValueError("Bybit open order row is not an object")
+            client_id = validate_client_order_id(row.get("orderLinkId"))
+            order_id = row.get("orderId")
+            if not isinstance(order_id, str) or not order_id:
+                raise ValueError("Bybit open order identity is incomplete")
+            open_orders_by_client_id.setdefault(client_id, set()).add(order_id)
+            intent = journal.load_intent_by_client_order_id(client_id)
+            if intent is None or intent.client_order_id != client_id:
+                raise ValueError("Bybit open order has no durable intent")
+            candidates = []
+            for owner_command in journal.load_commands_for_intent(intent.intent_id):
+                owner_payload = json.loads(owner_command.payload)
+                if (owner_payload.get("client_order_id") == client_id
+                        and owner_command.command_type in {
+                            CommandType.SUBMIT_ENTRY, CommandType.SUBMIT_EXIT, CommandType.FLATTEN,
+                        }):
+                    candidates.append((owner_command, owner_payload))
+            if len(candidates) != 1:
+                raise ValueError("Bybit open order durable owner is ambiguous")
+            owner_command, owner_payload = candidates[0]
+            if (owner_command.send_started_at_ns is None
+                    or owner_command.outcome in {CommandOutcome.DEFINITE_REJECT, CommandOutcome.RECONCILED}
+                    or owner_payload.get("identity_hash") != reader.identity.content_hash
+                    or owner_payload.get("symbol") != native_symbol
+                    or saved_contract_keys.get(owner_payload.get("instrument_ref")) != product.key.content_hash):
+                raise ValueError("Bybit open order durable owner scope is unresolved")
+        except Exception:
+            reasons.append("BYBIT_OPEN_ORDER_OWNER_UNRESOLVED")
+    if any(len(order_ids) != 1 for order_ids in open_orders_by_client_id.values()):
+        reasons.append("BYBIT_OPEN_ORDER_CLIENT_ID_AMBIGUOUS")
+
+    observed: list[str] = []
+    prior_fills: dict[str, Any] = {}
+    for command in commands:
+        if command.send_started_at_ns is None or command.outcome in {
+                CommandOutcome.DEFINITE_REJECT, CommandOutcome.RECONCILED}:
+            continue
+        assert_writer()
+        intent = journal.load_intent(command.intent_id)
+        payload = json.loads(command.payload)
+        client_id = validate_client_order_id(payload.get("client_order_id"))
+        instrument_ref = payload.get("instrument_ref")
+        if (client_id != intent.client_order_id or payload.get("symbol") != native_symbol
+                or payload.get("identity_hash") != reader.identity.content_hash
+                or not isinstance(instrument_ref, str) or not _SHA256.fullmatch(instrument_ref)):
+            reasons.append("BYBIT_DURABLE_COMMAND_SCOPE_UNRESOLVED")
+            continue
+        if saved_contract_keys.get(instrument_ref) != product.key.content_hash:
+            reasons.append("BYBIT_DURABLE_INSTRUMENT_REVISION_UNRESOLVED")
+            continue
+        sibling_scopes = set()
+        for sibling in journal.load_commands_for_intent(intent.intent_id):
+            sibling_payload = json.loads(sibling.payload)
+            if sibling_payload.get("client_order_id") == client_id:
+                sibling_scopes.add((sibling_payload.get("symbol"), sibling_payload.get("instrument_ref"),
+                                    sibling_payload.get("identity_hash")))
+        if sibling_scopes != {(native_symbol, instrument_ref, reader.identity.content_hash)}:
+            reasons.append("BYBIT_DURABLE_COMMAND_SCOPE_AMBIGUOUS")
+            continue
+        for prior_fill in journal.load_execution_evidence(client_order_id=client_id):
+            prior_fills[prior_fill.execution_id] = prior_fill
+
+        matched_orders: dict[str, Mapping[str, Any]] = {}
+        order_receipt_times: dict[str, int] = {}
+        command_query_failed = False
+        command_order_ambiguous = False
+        for path, query_type in (("/v5/order/realtime", QueryType.OPEN_ORDERS),
+                                 ("/v5/order/history", QueryType.ORDER_HISTORY)):
+            receipts: tuple[BybitDemoReadReceipt, ...] = ()
+            try:
+                receipts = reader.read_pages(path, {"category": "linear", "symbol": native_symbol,
+                                                     "orderLinkId": client_id})
+                rows = validate_receipts(path, receipts)
+                scoped = []
+                for row in rows:
+                    if not isinstance(row, Mapping) or row.get("symbol") != native_symbol:
+                        raise ValueError("Bybit order row symbol mismatch")
+                    if row.get("orderLinkId") != client_id:
+                        raise ValueError("Bybit order row link identity mismatch")
+                    order_id = row.get("orderId")
+                    status = row.get("orderStatus")
+                    if not isinstance(order_id, str) or not order_id or status not in _BYBIT_ORDER_STATUSES:
+                        raise ValueError("Bybit order state unresolved")
+                    created_ms = row.get("createdTime")
+                    updated_ms = row.get("updatedTime")
+                    if (type(created_ms) not in {int, str} or not str(created_ms).isdigit()
+                            or type(updated_ms) not in {int, str} or not str(updated_ms).isdigit()):
+                        raise ValueError("Bybit order chronology unavailable")
+                    created_ns = int(str(created_ms)) * 1_000_000
+                    updated_ns = int(str(updated_ms)) * 1_000_000
+                    if (created_ns < command.send_started_at_ns - MAX_READ_AGE_NS
+                            or updated_ns < created_ns
+                            or updated_ns > max(r.received_at_ns for r in receipts)):
+                        raise ValueError("Bybit order chronology outside authenticated receipt")
+                    prior_order = matched_orders.get(order_id)
+                    if prior_order is not None:
+                        # Realtime and history can race. Do not let one source
+                        # silently overwrite a conflicting economic order state.
+                        state_fields = (
+                            "symbol", "orderLinkId", "orderStatus", "side", "qty", "reduceOnly",
+                            "positionIdx", "cumExecQty", "cumExecFee", "cumExecValue", "avgPrice",
+                        )
+                        if any(prior_order.get(name) != row.get(name) for name in state_fields):
+                            command_order_ambiguous = True
+                        else:
+                            prior_updated = int(str(prior_order["updatedTime"]))
+                            current_updated = int(str(row["updatedTime"]))
+                            if current_updated > prior_updated:
+                                matched_orders[order_id] = row
+                    else:
+                        matched_orders[order_id] = row
+                    order_receipt_times[order_id] = max(order_receipt_times.get(order_id, 0),
+                                                        max(r.received_at_ns for r in receipts))
+                    scoped.append(row)
+                record_query(query_type, scope=QueryScope.INSTRUMENT, receipts=receipts,
+                    records=len(scoped), account=reader.identity.account_scope_ref,
+                    instrument_ref=instrument, request_ids=(client_id,),
+                    start_ns=command.created_at_ns, end_ns=max(command.created_at_ns, reader.clock_ns()),
+                    facts={"client_order_id": client_id, "exact_order_link_id": True,
+                           "order_ids": sorted(matched_orders)})
+            except Exception:
+                command_query_failed = True
+                reasons.append("BYBIT_COMMAND_ORDER_HISTORY_INCOMPLETE")
+                record_query(query_type, scope=QueryScope.INSTRUMENT, receipts=receipts, records=0,
+                    account=reader.identity.account_scope_ref, instrument_ref=instrument,
+                    request_ids=(client_id,), start_ns=command.created_at_ns,
+                    end_ns=max(command.created_at_ns, reader.clock_ns()), failed=True,
+                    facts={"client_order_id": client_id})
+
+        if len(matched_orders) > 1:
+            command_order_ambiguous = True
+        if command_order_ambiguous:
+            reasons.append("BYBIT_COMMAND_ORDER_ID_AMBIGUOUS")
+            continue
+
+        if not matched_orders:
+            # Bybit can return an empty exact lookup for both active and retained
+            # history. Absence cannot prove the send had no effect.
+            reasons.append("BYBIT_UNKNOWN_COMMAND_HAS_NO_PROVEN_ORDER_STATE")
+            continue
+
+        order_execs: dict[str, list[Mapping[str, Any]]] = {order_id: [] for order_id in matched_orders}
+        execution_receipt_times: dict[str, int] = {}
+        for order_id, order in matched_orders.items():
+            try:
+                receipts = reader.read_pages("/v5/execution/list", {"category": "linear",
+                    "symbol": native_symbol, "orderId": order_id})
+                rows = validate_receipts("/v5/execution/list", receipts)
+                execution_receipt_times[order_id] = max(r.received_at_ns for r in receipts)
+                for row in rows:
+                    if (not isinstance(row, Mapping) or row.get("symbol") != native_symbol
+                            or row.get("orderId") != order_id or row.get("orderLinkId") != client_id):
+                        raise ValueError("Bybit execution association mismatch")
+                    order_execs[order_id].append(row)
+                record_query(QueryType.EXECUTION_HISTORY, scope=QueryScope.INSTRUMENT,
+                    receipts=receipts, records=len(rows), account=reader.identity.account_scope_ref,
+                    instrument_ref=instrument, request_ids=(order_id, client_id),
+                    start_ns=command.created_at_ns, end_ns=max(command.created_at_ns, reader.clock_ns()),
+                    facts={"client_order_id": client_id, "order_id": order_id,
+                           "all_pages_observed": True})
+            except Exception:
+                command_query_failed = True
+                reasons.append("BYBIT_COMMAND_EXECUTION_HISTORY_INCOMPLETE")
+                record_query(QueryType.EXECUTION_HISTORY, scope=QueryScope.INSTRUMENT, receipts=(), records=0,
+                    account=reader.identity.account_scope_ref, instrument_ref=instrument,
+                    request_ids=(order_id, client_id), start_ns=command.created_at_ns,
+                    end_ns=max(command.created_at_ns, reader.clock_ns()), failed=True,
+                    facts={"client_order_id": client_id, "order_id": order_id})
+                continue
+
+            for row in order_execs[order_id]:
+                try:
+                    exec_id = row.get("execId")
+                    side = row.get("side")
+                    qty = Decimal(str(row.get("execQty")))
+                    price = Decimal(str(row.get("execPrice")))
+                    fee = Decimal(str(row.get("execFee", "0")))
+                    fee_currency = row.get("feeCurrency")
+                    exec_time_ms = row.get("execTime")
+                    if (not isinstance(exec_id, str) or not exec_id or side not in {"Buy", "Sell"}
+                            or not qty.is_finite() or qty <= 0 or not price.is_finite() or price <= 0
+                            or not fee.is_finite() or fee < 0 or not isinstance(fee_currency, str)
+                            or not fee_currency or type(exec_time_ms) not in {int, str}
+                            or not str(exec_time_ms).isdigit()):
+                        raise ValueError("Bybit execution row incomplete")
+                    trade_time_ns = int(str(exec_time_ms)) * 1_000_000
+                    received_at_ns = execution_receipt_times[order_id]
+                    if (command.created_at_ns > trade_time_ns or trade_time_ns > received_at_ns
+                            or trade_time_ns > execution_receipt_times[order_id]):
+                        raise ValueError("Bybit execution chronology outside command bounds")
+                    raw_hash = hashlib.sha256(json.dumps(row, sort_keys=True, separators=(",", ":"),
+                                               allow_nan=False).encode()).hexdigest()
+                    fill = FillRecord(f"BYBIT:{reader.identity.content_hash}:{native_symbol}:{exec_id}",
+                        order_id, client_id, intent.intent_id, instrument, side, qty, price, fee,
+                        fee_currency, trade_time_ns, received_at_ns,
+                        "BYBIT_RECONCILED_EXECUTION", raw_hash)
+                    prior = prior_fills.get(fill.execution_id)
+                    if prior is None:
+                        journal.append_execution_evidence(fill)
+                        prior_fills[fill.execution_id] = fill
+                    elif (prior.order_id, prior.client_order_id, prior.intent_id, prior.instrument,
+                          prior.side, prior.qty, prior.price, prior.fee, prior.fee_currency,
+                          prior.trade_time_ns) != (fill.order_id, fill.client_order_id, fill.intent_id,
+                          fill.instrument, fill.side, fill.qty, fill.price, fill.fee,
+                          fill.fee_currency, fill.trade_time_ns):
+                        raise ValueError("conflicting Bybit durable execution identity")
+                except Exception:
+                    command_query_failed = True
+                    reasons.append("BYBIT_EXECUTION_ROW_UNRESOLVED")
+
+            for order_id, order in matched_orders.items():
+                try:
+                    def amount(row: Mapping[str, Any], name: str) -> Decimal:
+                        value = Decimal(str(row.get(name, "0") or "0"))
+                        if not value.is_finite() or value < 0:
+                            raise ValueError("Bybit cumulative order values invalid")
+                        return value
+                    raw_hash = hashlib.sha256(json.dumps(order, sort_keys=True, separators=(",", ":"),
+                                               allow_nan=False).encode()).hexdigest()
+                    average = amount(order, "avgPrice")
+                    journal.append_order_status_observation(OrderStatusRecord(
+                        order_id, client_id, intent.intent_id, str(order["orderStatus"]),
+                        amount(order, "cumExecQty"), amount(order, "cumExecFee"), amount(order, "cumExecValue"),
+                        average if average > 0 else None, order_receipt_times[order_id],
+                        "BYBIT_RECONCILED_ORDER_HISTORY", raw_hash))
+                except Exception:
+                    command_query_failed = True
+                    reasons.append("BYBIT_ORDER_STATUS_UNRESOLVED")
+
+        # A positive cumulative quantity without execution rows is unresolved;
+        # the result is never inferred from order status alone.
+        for order_id, order in matched_orders.items():
+            try:
+                cumulative = Decimal(str(order.get("cumExecQty", "0") or "0"))
+                executed = sum((Decimal(str(row["execQty"])) for row in order_execs[order_id]), Decimal("0"))
+                if not cumulative.is_finite() or cumulative != executed:
+                    command_query_failed = True
+                    reasons.append("BYBIT_EXECUTION_HISTORY_DOES_NOT_COVER_ORDER_CUMULATIVE")
+            except Exception:
+                command_query_failed = True
+                reasons.append("BYBIT_ORDER_CUMULATIVE_UNRESOLVED")
+        if not command_query_failed:
+            observed.append(command.command_id)
+
+    assert_writer()
+    # A one-command page can be locally complete while later commands remain.
+    # The owner aggregates page success and exposes readiness only at end of
+    # cycle; this helper never promotes command outcomes.
+    ready = not reasons and not overflow
+    return BybitCommandReconciliationPass(ready, tuple(observed), tuple(query_ids),
+                                         tuple(sorted(set(reasons))), next_command_id, overflow)
 
 
 @dataclass(frozen=True)

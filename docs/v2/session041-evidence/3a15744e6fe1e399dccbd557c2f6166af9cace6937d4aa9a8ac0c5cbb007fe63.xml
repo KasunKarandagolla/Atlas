@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="2.987" timestamp="2026-10-07T22:01:40.332139+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_frozen_map_bounds" name="test_full_universe_lookup_has_logarithmic_comparison_bound" time="0.346" /><testcase classname="tests.v2.test_session041_frozen_map_bounds" name="test_lookup_and_refreezing_preserve_canonical_wire_and_ownership" time="0.005"><failure message="AttributeError: 'tuple' object has no attribute 'append'">def test_lookup_and_refreezing_preserve_canonical_wire_and_ownership():
+        source = {"z": [1, {"a": "δ"}], "a": {"child": [True, None]}}
+        frozen = FrozenMap(source)
+        assert canonical_json(frozen) == canonical_json(source)
+&gt;       assert FrozenMap(frozen) == FrozenMap.from_json(frozen) == frozen
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_frozen_map_bounds.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = &lt;class 'atlas.v2._serialization.FrozenMap'&gt;
+values = FrozenMap(_items=(('a', FrozenMap(_items=(('child', (True, None)),))), ('z', (1, FrozenMap(_items=(('a', 'δ'),))))))
+
+    @classmethod
+    def from_json(cls, values: Mapping[str, Any]) -&gt; FrozenMap:
+        """Fuse canonical conversion and freezing without an intermediate tree.
+    
+        This is exactly FrozenMap(json_value(values)), including decimal/enum
+        conversion, strict object keys and ownership of caller arrays.
+        """
+        if not isinstance(values, (dict, FrozenMap)):
+            values = json_value(values)
+        result = object.__new__(cls)
+        items = []
+        items = values._items if isinstance(values, FrozenMap) else values.items()
+        for key, value in items:
+            if not isinstance(key, str) or not key:
+                raise ValueError("object keys must be non-empty strings")
+&gt;           items.append((key, _freeze_canonical_json(value)))
+            ^^^^^^^^^^^^
+E           AttributeError: 'tuple' object has no attribute 'append'
+
+src/atlas/v2/_serialization.py:85: AttributeError</failure></testcase></testsuite></testsuites>

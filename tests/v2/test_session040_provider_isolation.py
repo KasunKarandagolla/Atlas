@@ -405,7 +405,7 @@ def test_installed_optional_broker_failure_keeps_public_runtime_running(
 
     monkeypatch.setattr(port, "collect", collect_and_record)
     monkeypatch.setattr(production, "create_bybit_public_ws_port", lambda: port)
-    monkeypatch.setattr(public_context, "PublicContextMaintenanceV1", lambda: SimpleNamespace(
+    monkeypatch.setattr(public_context, "PublicContextMaintenanceV1", lambda **_kwargs: SimpleNamespace(
         run_cycle=lambda *_args, **_kwargs: None, close=lambda: None))
 
     class FakeTime:
@@ -460,7 +460,7 @@ def test_clean_owner_stop_seals_pending_critic_before_closing_and_rejects_late_r
                                         False, False, 100, 20), release=release)
     created = {}
     monkeypatch.setattr(production, "create_bybit_public_ws_port", production.create_production_port)
-    monkeypatch.setattr(public_context, "PublicContextMaintenanceV1", lambda: SimpleNamespace(
+    monkeypatch.setattr(public_context, "PublicContextMaintenanceV1", lambda **_kwargs: SimpleNamespace(
         run_cycle=lambda *_args, **_kwargs: stopped.set(), close=lambda: None))
 
     def start(_run, epoch, *, service):
@@ -516,7 +516,7 @@ def test_clean_owner_stop_closes_critic_even_when_pending_abandonment_fails(tmp_
     stopped = threading.Event()
     events = []
     monkeypatch.setattr(production, "create_bybit_public_ws_port", production.create_production_port)
-    monkeypatch.setattr(public_context, "PublicContextMaintenanceV1", lambda: SimpleNamespace(
+    monkeypatch.setattr(public_context, "PublicContextMaintenanceV1", lambda **_kwargs: SimpleNamespace(
         run_cycle=lambda *_args, **_kwargs: stopped.set(), close=lambda: events.append("context-closed")))
 
     def failed_abandon(**_kwargs):

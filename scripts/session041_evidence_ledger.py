@@ -37,7 +37,7 @@ def main() -> None:
             retained.write_bytes(raw)
         item["retained_path"] = str(retained.relative_to(ROOT))
         receipt = path.with_suffix(".json")
-        if receipt.exists() and path.parent.name == "s41-central":
+        if receipt.exists() and path.parent.name.startswith("s41-central"):
             metadata = json.loads(receipt.read_text())
             item["source_receipt"] = {"path": str(receipt), "sha256": hashlib.sha256(receipt.read_bytes()).hexdigest(),
                 "completed": metadata.get("completed"), "exit_code": metadata.get("exit_code"),
@@ -51,12 +51,29 @@ def main() -> None:
         evidence.append(item)
     indexed = {item["sha256"]: item for item in previous.get("evidence", [])}
     indexed.update({item["sha256"]: item for item in evidence})
+    capacity_evidence = []
+    for path in sorted({*Path("/tmp").glob("atlas-s41-capacity*.json"),
+            *Path("/tmp").glob("s41-bulk-capacity*.json"),
+            *Path("/tmp").glob("s41-chronology-shared-dag*.json")}):
+        raw = path.read_bytes()
+        body = json.loads(raw)
+        digest = hashlib.sha256(raw).hexdigest()
+        retained = archive / (digest + ".json")
+        if not retained.exists():
+            retained.write_bytes(raw)
+        capacity_evidence.append({"path": str(path), "sha256": digest,
+            "retained_path": str(retained.relative_to(ROOT)),
+            "status": body.get("status", "UNVERIFIED"), "completed": body.get("completed"),
+            "exit_code": body.get("exit_code"), "source_stable": body.get("source_stable"),
+            "scope": body.get("scope", "BOUNDED_HELPER_WITHOUT_FINAL_SHA_ATTRIBUTION"),
+            "engineering_capacity_qualified": False})
     ledger = {"schema_version": 1, "session": 41, "status": "UNVERIFIED",
         "engineering_closure_passed": False,
         "head_at_inventory": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "final_code_sha": None, "final_tested_sha": None, "native_windows_qualified": False,
         "package_created": False, "capital_enabled": False, "assisted_enabled": False,
         "economic_status": "NOT ESTIMABLE", "evidence": list(indexed.values()),
+        "bounded_capacity_and_algorithm_evidence": capacity_evidence,
         "notes": ["Skipped tests are never counted as passed.",
             "Failed attempts are retained; later focused passes do not qualify a full suite.",
             "Interrupted invocations without completed JUnit XML are not listed as passes.",

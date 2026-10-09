@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="14" time="195.879" timestamp="2026-10-08T08:01:10.908618+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_builds_exact_unsized_zero_authority_shadow_candidate[LONG]" time="114.739"><failure message="ValueError: multi-sleeve policy specification missing">s6_cases = {&lt;V2Side.LONG: 'LONG'&gt;: (&lt;atlas.v2.memory.repository.OpsRepository object at 0x7f9b18a4f8f0&gt;, &lt;atlas.v2.strategies.s6_...574594'), low=Decimal('96.29132026574594'), close=Decimal('97.29132026574594'), volume=Decimal('1'), final=True), ...)}
+side = &lt;V2Side.LONG: 'LONG'&gt;
+
+    @pytest.mark.parametrize("side", [V2Side.LONG, V2Side.SHORT])
+    def test_s6_builds_exact_unsized_zero_authority_shadow_candidate(s6_cases, side):
+        case = s6_cases[side]
+        result = _build(case)
+        candidate = result.candidate
+        assert (result.status, result.reason) == ("CANDIDATE", "S6_SHADOW_TRIGGER")
+        assert candidate is not None and candidate.quantity is None and candidate.account_scope is None
+        assert result.trigger_ref is not None
+        assert result.trigger_ref in candidate.envelope.input_refs
+        assert candidate.policy_hash == S6_ACTION_POLICY.policy_hash
+        assert candidate.decision_at_ns == case[11]
+        assert candidate.deadline_ns == case[11] + 5 * NS
+        assert candidate.horizon_end_ns == case[11] + 4 * 60 * 60 * NS
+        if side == V2Side.LONG:
+            assert candidate.entry_reference == case[7].ask
+            assert candidate.entry_collar == case[7].ask * Decimal("1.0005")
+            assert candidate.stop_price &lt; candidate.entry_reference
+        else:
+            assert candidate.entry_reference == case[7].bid
+            assert candidate.entry_collar == case[7].bid * Decimal("0.9995")
+            assert candidate.stop_price &gt; candidate.entry_reference
+        indexed = case[0].get_artifact(candidate.content_hash)
+        assert indexed is not None and indexed.metadata["selector_influence"] == "ZERO"
+        assert indexed.metadata["capital_authority"] == "ZERO"
+        assert indexed.metadata["quantity"] is None
+        trigger_artifact = case[0].get_artifact(result.trigger_ref)
+        assert trigger_artifact is not None
+        assert trigger_artifact.artifact_type == "S6ActionTriggerEligibilityV1"
+        assert trigger_artifact.metadata["trigger"]["action_policy_hash"] == S6_ACTION_POLICY.policy_hash
+        if side == V2Side.LONG:
+            repository = case[0]
+            base_universe = case[12]
+            selection_universe = replace(base_universe,
+                envelope=replace(base_universe.envelope, content_hash="", artifact_id="session041-s6-selection-universe",
+                    producer_version="SESSION041_S6_SELECTION_FIXTURE_V1"),
+                decision_slot_ns=candidate.decision_at_ns)
+            universe = research_selection_universe(selection_universe)
+            repository.register_artifact(ArtifactIndexEntryV2(universe.content_hash, "UniverseContractV2",
+                universe.content_hash, universe.envelope.created_at_ns, universe.envelope.available_at_ns,
+                {"universe": universe.to_dict()}))
+            event_id = "session041-s6-selector-acceptance"
+            scanner_input = {"candidate_id": candidate.candidate_id, "scanner_rank": 1,
+                "available_at_ns": case[10], "source": "S6_ACTION_ACCEPTANCE_FIXTURE"}
+            scanner_input_ref = sha256_json(scanner_input)
+            repository.register_artifact(ArtifactIndexEntryV2(scanner_input_ref, "ScannerInputFixtureV1",
+                scanner_input_ref, case[10], case[10], scanner_input))
+            source = ScannerSelectionSourceV1(candidate.candidate_id, candidate.key, 1,
+                "SCANNER_V1", "1.0", universe.content_hash, event_id, case[10], (scanner_input_ref,))
+            source_ref = register_scanner_source(repository, source)
+            rank = ScannerRankEvidenceV1(candidate.candidate_id, 1, "SCANNER_V1", "1.0",
+                universe.content_hash, event_id, case[10], source_ref)
+            rank_ref = register_scanner_rank(repository, rank)
+&gt;           selected = assemble_multisleeve_research_candidate_set(repository,
+                universe=universe, decision_event_id=event_id, cutoff_ns=candidate.decision_at_ns,
+                candidates=(candidate,), policies=EXACT_ACTION_POLICIES,
+                scanner_evidence_refs={candidate.candidate_id: (rank_ref,)}, clock_ns=lambda: case[10])
+
+tests/v2/test_session041_s6_action_contract.py:250: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+repo = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f9b18a4f8f0&gt;
+universe = UniverseContractV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='d7daa99402d55ea94ee35fae2e3f2e7b2741ea033c...us=&lt;EligibilityStatusV2.ELIGIBLE: 'ELIGIBLE'&gt;, reason=None)),)), reasons=(), cheap_feature_ref=None, warmup_ref=None)))
+decision_event_id = 'session041-s6-selector-acceptance'
+cutoff_ns = 1800000900000000000
+candidates = (CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='27570e8fe531d28fb2c6f6077069e20109523e7a87...cost_model_ref='41fc010147ffb44268d538a648273ac80e98f47fed40c0761e718b121721659d', quantity=None, account_scope=None),)
+policies = {'S1_MTF_TREND_PULLBACK': PolicySpecV2(policy_id='S1_MTF_TREND_PULLBACK', version='1.0.0-shadow', policy_hash='c559659...5000000000), ('watch', 'existing_single_subsequent_15M_bar_expiry'))), model_requirements=(), fallback_policy_id=None)}
+scanner_evidence_refs = {'27570e8fe531d28fb2c6f6077069e20109523e7a87155a0cbdd16ab0541e82b0': ('29efdaf714fd36f8617fed4434ea4c5632a6a037ce7145e8d2d696eadc6f36d3',)}
+generation_missing_reasons = ()
+clock_ns = &lt;function test_s6_builds_exact_unsized_zero_authority_shadow_candidate.&lt;locals&gt;.&lt;lambda&gt; at 0x7f9b19925c60&gt;
+deadline_ns = None
+
+    def assemble_multisleeve_research_candidate_set(repo: OpsRepository, *, universe: UniverseContractV2,
+            decision_event_id: str, cutoff_ns: int, candidates: Sequence[CandidateActionV2],
+            policies: Mapping[str, PolicySpecV2], scanner_evidence_refs: Mapping[str, Sequence[str]],
+            generation_missing_reasons: Sequence[str] = (), clock_ns: Callable[[], int] | None = None,
+            deadline_ns: int | None = None) -&gt; CandidateSetV2:
+        """Build the separately versioned research set using selection-stage data only.
+    
+        M0/M1/analogue values are intentionally absent from this function's inputs.
+        """
+        from atlas.v2.chronology import causal_artifact, record_computation, sample
+        if any(not isinstance(item, CandidateActionV2) for item in candidates):
+            raise TypeError("only complete single-action CandidateActionV2 competitors may enter the research set")
+        started = sample(clock_ns, floor_ns=max(cutoff_ns, universe.envelope.available_at_ns,
+            *(item.envelope.available_at_ns for item in candidates))) if clock_ns else cutoff_ns
+        deadline = deadline_ns if deadline_ns is not None else min((item.deadline_ns for item in candidates), default=cutoff_ns + 5_000_000_000)
+        if not decision_event_id or type(cutoff_ns) is not int or cutoff_ns &lt; 0:
+            raise ValueError("multi-sleeve decision identity/cutoff is required")
+        missing_reasons = tuple(sorted(set(generation_missing_reasons)))
+        if len(missing_reasons) &gt; 32 or any(not isinstance(reason, str) or not 1 &lt;= len(reason) &lt;= 192
+                                           for reason in missing_reasons):
+            raise ValueError("candidate generation missingness must be bounded explicit reasons")
+        if universe.selection_policy_hash != MULTI_SLEEVE_SELECTION_HASH:
+            raise ValueError("multi-sleeve selection requires its separately versioned research universe")
+        if ((clock_ns is not None and not causal_artifact(repo, universe.content_hash, cutoff_ns=cutoff_ns,
+                               consumer_at_ns=started, deadline_ns=deadline))
+                or universe.envelope.available_at_ns &gt; started or cutoff_ns &gt; universe.decision_slot_ns):
+            raise ValueError("multi-sleeve universe is not causal at the selection cutoff")
+        candidate_ids = [item.candidate_id for item in candidates]
+        if len(candidate_ids) != len(set(candidate_ids)):
+            raise ValueError("duplicate multi-sleeve candidate ID")
+        if set(scanner_evidence_refs) - set(candidate_ids):
+            raise ValueError("multi-sleeve scanner evidence references an absent candidate")
+        ordered = tuple(sorted(candidates, key=lambda item: item.candidate_id))
+        for candidate in ordered:
+            policy = policies.get(candidate.policy_hash)
+            if policy is None:
+&gt;               raise ValueError("multi-sleeve policy specification missing")
+E               ValueError: multi-sleeve policy specification missing
+
+src/atlas/v2/science/research_selection.py:208: ValueError</failure></testcase><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_builds_exact_unsized_zero_authority_shadow_candidate[SHORT]" time="0.655" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_action_policy_is_additive_to_unchanged_rank_policy" time="0.036" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_stop_window_uses_latest_completed_hour_at_non_hour_cutoff" time="15.208" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_accepts_receipt_lag_at_hypothesis_and_trigger_cutoffs" time="22.312" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_accepts_post_cutoff_feature_and_gate_with_valid_chronology_receipts" time="38.668" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_expiry_sweep_terminally_closes_watches_across_repeated_cycles" time="0.827" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_missing_stale_misbound_or_infeasible_action_inputs_fail_closed[stale_quote-S6_EXECUTABLE_BBO_STALE_OR_MISBOUND]" time="0.231" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_missing_stale_misbound_or_infeasible_action_inputs_fail_closed[misbound_quote-S6_EXECUTABLE_BBO_STALE_OR_MISBOUND]" time="0.228" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_missing_stale_misbound_or_infeasible_action_inputs_fail_closed[future_feature-S6_FEATURE_OR_TRIGGER_NOT_EXACT_CAUSAL]" time="0.350" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_missing_stale_misbound_or_infeasible_action_inputs_fail_closed[misbound_hypothesis-S6_HYPOTHESIS_MISSING_MISBOUND_OR_FUTURE]" time="0.009" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_missing_stale_misbound_or_infeasible_action_inputs_fail_closed[stale_gate-S6_EVENT_GATE_UNKNOWN_STALE_OR_FUTURE]" time="0.426" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_missing_stale_misbound_or_infeasible_action_inputs_fail_closed[late_candidate-S6_CANDIDATE_DEADLINE_EXPIRED]" time="0.282" /><testcase classname="tests.v2.test_session041_s6_action_contract" name="test_s6_missing_stale_misbound_or_infeasible_action_inputs_fail_closed[infeasible_stop-S6_STOP_DISTANCE_OUTSIDE_0.5_TO_3_ATR]" time="0.314" /></testsuite></testsuites>

@@ -1,0 +1,54 @@
+{
+  "assisted_enabled": false,
+  "capital_enabled": false,
+  "closure_gate_passed": false,
+  "economic_status": "NOT ESTIMABLE",
+  "external_live_only_proof_required": [
+    "Current actual Bybit and Binance metadata populations, listing/filter transitions and source health"
+  ],
+  "final_code_sha": null,
+  "final_tested_sha": null,
+  "focused_evidence": [
+    {
+      "attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "path": "/tmp/s41-broad-servicing-current.xml",
+      "sha256": "ea48fcda44a75bdf92dc61399da2eabd4eba013054f5276734fd506f07f6e144"
+    },
+    {
+      "attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "path": "/tmp/s41-durable-broad-runtime-v2.xml",
+      "scope": "dual-venue queue/reconciliation fairness exercise only; not real venue universe inventory or full-market load",
+      "sha256": "3f1c34dd19f6379131c8370fcf68a223c3fa14c9359624c823b1acff429e00c9",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 5,
+        "skipped": 0,
+        "tests": 5
+      }
+    }
+  ],
+  "head_at_inventory": "a01f343f7c6be005e6d92450997bd1bbd0344800",
+  "implemented_boundaries": {
+    "active_history_keys": 24,
+    "capital_eligibility_automatic": false,
+    "manual_candidate_allowlist": false,
+    "per_venue_products": 2048,
+    "total_products": 4096
+  },
+  "interrupted_capacity_evidence": {
+    "attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+    "path": "/tmp/s41-bulk-capacity-4096-current.json",
+    "sha256": "ee1360d72d3ee73ed0ebba5aa7cccd81d7bbb5a4c4e26d2f02f1a460d914d06f"
+  },
+  "package_created": false,
+  "remaining_engineering_validation": [
+    "Full source-stable integrated suite",
+    "Mixed broad inventory, both public streams, acquisition/enrichment, report/WAL/restart workload"
+  ],
+  "schema_version": 1,
+  "scope": "Dynamic public inventory and deterministic bounded worksets; final closure remains open",
+  "session": 41,
+  "status": "UNVERIFIED",
+  "worktree_dirty": true
+}

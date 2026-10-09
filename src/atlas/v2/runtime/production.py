@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -23,11 +24,11 @@ from atlas.domain.risk import RiskPolicy
 
 from .._serialization import canonical_json, json_value, sha256_json, sha256_ref, timestamp
 from ..chronology import causal_artifact, record_computation, sample
-from ..contracts import CandidateActionV2, CandidateSetV2, PolicySpecV2
+from ..contracts import CandidateActionV2, CandidateSetV2, PolicySpecV2, V2Side
 from ..data.bars import BarIntervalV2, CausalBarStoreV2
 from ..data.binance import translate_agg_trades
 from ..data.bybit import translate_recent_trades
-from ..data.collector import PublicCollectorV2
+from ..data.collector import MAX_RECONCILIATION_REFS_PER_PAGE_V1, PublicCollectorV2
 from ..data.health import PublicSourceHealthV2, PublicSourceStateV2
 from ..data.history import (
     ParquetObservationArchiveV2,
@@ -77,8 +78,10 @@ from ..data.s3_forward_evidence import (
 )
 from ..data.subscriptions import SubscriptionPlanV2
 from ..data.universe import ComputeTierV2, DynamicUniverseRuntimeV2, UniverseObservationV2
+from ..features.candles import DAY_NS, CausalTradeAnchor, TradeLocationConfig
 from ..features.joins import asof_join
 from ..features.pipeline import feature_snapshot
+from ..features.structure import confirmed_swings
 from ..instruments import InstrumentKeyV2, InstrumentRegistryV2, ProductContractV2, UniverseContractV2, VenueV2
 from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
 from ..risk import (
@@ -162,6 +165,13 @@ from ..strategies.s3_mean_reversion import (
     residual_observation,
     utc_day_trade_vwap,
 )
+from ..strategies.s6_cross_section import (
+    S6_ACTION_POLICY,
+    S6_POLICY,
+    S6HypothesisV2,
+    S6ShadowCoordinator,
+    build_s6_candidate_action,
+)
 from .active_history import ActiveHistoryPageV1, maintain_history
 from .analogue_diagnostic import run_analogue_diagnostic_v1
 from .ops_supervisor import (
@@ -192,6 +202,7 @@ from .s3_native_cadence import (
     s3_m1_origin_metadata,
     s3_m1_origin_ref,
 )
+from .trade_location_inputs import load_trade_location_inputs, persist_trade_location_input_receipt
 
 OPS_PRODUCTION_ADAPTER_ID = "ATLAS_V2_PRODUCTION_OPS_COMPOSITION_V1"
 OPS_RUNTIME_DECISION_ARTIFACT_TYPE = "OpsRuntimeDecisionEvidenceV1"
@@ -201,9 +212,13 @@ PUBLIC_STREAM_STALE_NS_V1 = 30_000_000_000
 PUBLIC_STREAM_METADATA_MAX_AGE_NS_V1 = 3_600_000_000_000
 PUBLIC_STREAM_MAX_FRAMES_PER_CYCLE_V1 = 32
 PUBLIC_STREAM_MAX_FRAMES_PER_SERVICE_V1 = 256
+BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1 = 64
+BROAD_PUBLIC_PRODUCT_REGISTRATION_PAGE_ROWS_V1 = 64
+BROAD_PUBLIC_ADOPTION_RECONCILIATION_PAGE_ROWS_V1 = 32
+BROAD_PUBLIC_ADOPTION_STREAM_SERVICE_INTERVAL_NS_V1 = 250_000_000
 PUBLIC_STREAM_MAX_TRADES_PER_FRAME_V1 = 256
 _POLICIES: Mapping[str, PolicySpecV2] = MappingProxyType(
-    {policy.policy_hash: policy for policy in (S1_POLICY, S2_POLICY, S3_POLICY)}
+    {policy.policy_hash: policy for policy in (S1_POLICY, S2_POLICY, S3_POLICY, S6_ACTION_POLICY)}
 )
 
 
@@ -290,7 +305,7 @@ class ProductionEventInputsV1:
     def __post_init__(self) -> None:
         candidates = tuple(self.candidates)
         if any(not isinstance(item, CandidateActionV2) or item.policy_hash not in _POLICIES for item in candidates):
-            raise ValueError("production event inputs may contain only exact S1-S3 CandidateActionV2 outputs")
+            raise ValueError("production event inputs may contain only declared exact S1-S3/S6 shadow CandidateActionV2 outputs")
         if any(item.quantity is not None for item in candidates):
             raise ValueError("production sleeve outputs must remain unsized until the existing hard-risk API")
         ids = {item.candidate_id for item in candidates}
@@ -338,12 +353,18 @@ class ProductionPublicCycleSourceV1(Protocol):
     ) -> OpsCycleBatchV1: ...
 
 
+def _source_id_for_product(product: ProductContractV2) -> str:
+    return {VenueV2.BYBIT: "BYBIT_PUBLIC_V2", VenueV2.BINANCE: "BINANCE_USDM_PUBLIC_V2"}[product.key.venue]
+
+
 class IndexedPublicCycleSourceV1:
     """Build deterministic decision handoffs from reconciled archived final bars."""
 
     def __init__(self, *, clock_ns: Callable[[], int] = time.time_ns,
-                 minimum_m15_origin_close_at_ns: int = 0) -> None:
+                 minimum_m15_origin_close_at_ns: int = 0,
+                 scope_public_sources: bool = False) -> None:
         self.clock_ns = clock_ns
+        self.scope_public_sources = scope_public_sources
         self.stream_service: Callable[[OpsRepository], None] | None = None
         self.minimum_m15_origin_close_at_ns = timestamp(minimum_m15_origin_close_at_ns,
             field="minimum_m15_origin_close_at_ns")
@@ -507,13 +528,18 @@ class IndexedPublicCycleSourceV1:
                     or any(not item.data_eligible for item in history
                            if item.observed_at_ns == latest_observed)):
                 healthy = False
-        if not healthy:
+        def source_current(source_id: str) -> bool:
+            state = health_states.get(source_id)
+            return state is not None and state.data_eligible
+
+        if not healthy and not self.scope_public_sources:
             # Durable events remain queued until this recovery epoch has exact
             # source-health reconciliation evidence for every required source.
             events.clear()
             refs.clear()
             seen_event_ids.clear()
-        events_allowed = allow_events and healthy
+        events_allowed = allow_events and (healthy or (
+            self.scope_public_sources and any(source_current(source) for source in source_ids)))
         m15_events = self._account_m15_origins(repository, collector, now_ns=now_ns, allow_events=events_allowed)
         if events_allowed:
             for event in m15_events:
@@ -527,6 +553,8 @@ class IndexedPublicCycleSourceV1:
             # new accounting checkpoint existed. The old path is bounded to
             # the newest causal bar and shares the same immutable event writer.
             for product in collector.registry.contracts():
+                if self.scope_public_sources and not source_current(_source_id_for_product(product)):
+                    continue
                 bars = reconstruct_causal_bars_from_archive(
                     repository, archive_root, key=product.key, interval=BarIntervalV2.M15,
                     information_cutoff_ns=now_ns, availability_class=AvailabilityClassV2.ACTUAL_SYSTEM,
@@ -623,7 +651,9 @@ class IndexedPublicCycleSourceV1:
                     _persist_late_s3_m1_origin_gate(
                         repository, product, bar, observed_at_ns=now_ns,
                     )
-                elif plan.action == S3M1OriginAccountingAction.CREATE_TIMELY_EVENT and not events_allowed:
+                elif (plan.action == S3M1OriginAccountingAction.CREATE_TIMELY_EVENT
+                      and (not events_allowed or (self.scope_public_sources
+                           and not source_current(_source_id_for_product(product))))):
                     _persist_late_s3_m1_origin_gate(
                         repository, product, bar, observed_at_ns=now_ns,
                         reason_code="NATIVE_M1_SOURCE_HEALTH_NOT_CURRENT",
@@ -729,11 +759,15 @@ class IndexedPublicCycleSourceV1:
             ))
         states = tuple(state_rows)
         reconciled = healthy
-        if not reconciled:
+        if not reconciled and not self.scope_public_sources:
             # Keep durable decision handoffs queued while the collector is
             # replaying a reconnect gap. A restart must not turn an unfinished
             # event into a permanent source-health terminal receipt.
             events = []
+        if self.scope_public_sources:
+            # Retain the full current component state in the batch. The scoped
+            # supervisor gate validates historical and current dependencies.
+            events = [event for event in events if source_current(event.source_id)]
         return OpsCycleBatchV1(tuple(events), states, source_ids_tuple, tuple(sorted(set(refs))), reconciled, now_ns)
 
 
@@ -1197,14 +1231,21 @@ def _persist_public_event(
 
 
 def _index_causal_bar(repository: OpsRepository, bar: Any, source_ref: str) -> str:
-    repository.register_artifact(_causal_bar_entry(bar, source_ref))
+    repository.register_artifact(_causal_bar_entry(bar, source_ref, repository=repository))
     return bar.content_hash
 
 
-def _causal_bar_entry(bar: Any, source_ref: str) -> ArtifactIndexEntryV2:
+def _causal_bar_entry(bar: Any, source_ref: str, *, repository: OpsRepository | None = None) -> ArtifactIndexEntryV2:
+    # This aliases the exact bar body already present in the immutable raw
+    # archive. Its first public availability includes index publication.
+    available = bar.raw.available_at_ns
+    if repository is not None:
+        source = repository.get_artifact(source_ref)
+        if source is not None:
+            available = max(available, source.available_at_ns)
     return ArtifactIndexEntryV2(
-        bar.content_hash, "CausalBarV2", bar.content_hash, bar.raw.available_at_ns,
-        bar.raw.available_at_ns, {"bar": bar.to_dict(), "source_observation_ref": source_ref},
+        bar.content_hash, "CausalBarV2", bar.content_hash, available,
+        available, {"bar": bar.to_dict(), "source_observation_ref": source_ref},
     )
 
 
@@ -1579,7 +1620,13 @@ class ProductionOpsCyclePortV1:
                 # as an incomplete snapshot during collection.
                 products = ()
             for product in products:
-                if (product.key.venue.value != "BYBIT"
+                broad_venues = getattr(self.public_source, "enabled_venues", None)
+                if broad_venues is not None:
+                    if (product.key.venue not in broad_venues
+                            or product.key.environment.value != "MAINNET"
+                            or product.key.product.value != "LINEAR_PERPETUAL"):
+                        raise ValueError("broad bootstrap returned an out-of-scope product")
+                elif (product.key.venue.value != "BYBIT"
                         or product.key.environment.value != "MAINNET"
                         or product.key.product.value != "LINEAR_PERPETUAL"
                         or product.key.native_symbol not in {"BTCUSDT", "ETHUSDT"}):
@@ -1996,9 +2043,14 @@ class ProductionOpsCyclePortV1:
         for product in products:
             if not isinstance(product, ProductContractV2):
                 continue
-            if (product.key.venue.value != "BYBIT" or product.key.environment.value != "MAINNET"
-                    or product.key.product.value != "LINEAR_PERPETUAL"
-                    or product.key.native_symbol not in {"BTCUSDT", "ETHUSDT"}):
+            broad_venues = getattr(self.public_source, "enabled_venues", None)
+            in_scope = (product.key.venue in broad_venues
+                and product.key.environment.value == "MAINNET"
+                and product.key.product.value == "LINEAR_PERPETUAL") if broad_venues is not None else (
+                product.key.venue.value == "BYBIT" and product.key.environment.value == "MAINNET"
+                and product.key.product.value == "LINEAR_PERPETUAL"
+                and product.key.native_symbol in {"BTCUSDT", "ETHUSDT"})
+            if not in_scope:
                 self._stream_metadata_errors.add("OUT_OF_SCOPE_POINT_IN_TIME_METADATA")
                 continue
             if product.available_at_ns > max(self.clock_ns(), recovery.collector.clock_ns()):
@@ -2924,6 +2976,8 @@ class ProductionOpsCyclePortV1:
 
     def _persist_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -> bool:
         """Controller-owned persistence and source-health reconciliation for bounded intake records."""
+        if getattr(self.public_source, "enabled_venues", None) is not None:
+            return self._persist_broad_public_snapshot(repository, snapshot, now_ns=now_ns)
         from ..data.bybit import SOURCE_ID
         from ..data.bybit_source import CAMPAIGN_INTERVALS
 
@@ -3088,6 +3142,198 @@ class ProductionOpsCyclePortV1:
             reconciliation_at_ns, reconciliation_at_ns, {"recovery_evidence": recovery_evidence},
         ))
         return source_snapshot_reconciled
+
+    def _persist_broad_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -> bool:
+        """Adopt both venues on the sole writer without inventing history completeness."""
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        publication = sample(self.clock_ns, floor_ns=now_ns)
+        if max(snapshot.observed_at_ns, snapshot.latest_received_at_ns) > publication:
+            raise ValueError("BROAD_PUBLIC_SNAPSHOT_FUTURE_RECEIPT")
+        prior_clock = collector.clock_ns
+        rejected_indexes: list[int] = []
+        refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
+        pending_refs: dict[str, str] = {}
+        manifest = snapshot.source_snapshot.get("metadata", {})
+        accepted_by_source = {source: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
+            and venue.value not in snapshot.source_snapshot.get("metadata_stale", ())
+            for venue in cast(Any, self.public_source).enabled_venues for source in (
+                "BYBIT_PUBLIC_V2" if venue == VenueV2.BYBIT else "BINANCE_USDM_PUBLIC_V2",)}
+        accepted = all(accepted_by_source.values())
+        def adoption_clock() -> int:
+            nonlocal publication
+            publication = sample(self.clock_ns, floor_ns=publication)
+            return publication
+
+        collector.clock_ns = adoption_clock
+        prefetched_indexes: dict[str, Mapping[str, Any] | None] = {}
+        prefetched_generation = collector.archive_flush_generation
+        last_stream_service_started_ns = 0
+        try:
+            for index, item in enumerate(snapshot.records):
+                # Bound the time spent on REST universe adoption between stream
+                # service turns. A fixed row count lets slow repositories leave
+                # the capture handoff unattended for several seconds.
+                service_started_ns = time.monotonic_ns()
+                if (index == 0 or service_started_ns - last_stream_service_started_ns
+                        >= BROAD_PUBLIC_ADOPTION_STREAM_SERVICE_INTERVAL_NS_V1):
+                    last_stream_service_started_ns = service_started_ns
+                    self.service_public_stream(repository)
+                if index % BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1 == 0:
+                    # Seal a small archive page before reading exact identities.
+                    # Its references are prefetched only after that publication,
+                    # so no in-page flush can turn a recorded absence into a
+                    # durable duplicate. Service immediately after the
+                    # indivisible Parquet/index write.
+                    if collector.pending_archive_count:
+                        collector.flush_archive()
+                        self.service_public_stream(repository)
+                    chunk_size = min(BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1,
+                        len(snapshot.records) - index)
+                    refs = tuple({sha256_json({"artifact_type": "PublicObservationIndexV2",
+                        "record_id": record.observation.record_id})
+                        for record in snapshot.records[index:index + chunk_size]})
+                    found = repository.get_artifact_metadata_by_refs(refs)
+                    prefetched_indexes = {ref: found.get(ref) for ref in refs}
+                    prefetched_generation = collector.archive_flush_generation
+                elif prefetched_generation != collector.archive_flush_generation:
+                    # A serviced stream may have published exact indexes since
+                    # the last lookup page. Refresh only the remaining portion
+                    # of this bounded archive page before using absence proofs.
+                    page_start = index - index % BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1
+                    page_end = min(page_start + BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1,
+                        len(snapshot.records))
+                    refs = tuple({sha256_json({"artifact_type": "PublicObservationIndexV2",
+                        "record_id": record.observation.record_id})
+                        for record in snapshot.records[index:page_end]})
+                    found = repository.get_artifact_metadata_by_refs(refs)
+                    prefetched_indexes = {ref: found.get(ref) for ref in refs}
+                    prefetched_generation = collector.archive_flush_generation
+                adoption_clock()
+                source_raw = item.observation
+                if max(source_raw.received_at_ns, source_raw.ingested_at_ns,
+                       source_raw.available_at_ns, source_raw.event_at_ns or 0,
+                       source_raw.published_at_ns or 0) > publication:
+                    accepted = False
+                    accepted_by_source[source_raw.source_id] = False
+                    rejected_indexes.append(index)
+                    body = {"version": "BROAD_PUBLIC_ADOPTION_REJECTION_V1",
+                        "record_id": source_raw.record_id, "observation_hash": source_raw.content_hash,
+                        "source_id": source_raw.source_id, "observed_at_ns": publication,
+                        "reason": "FUTURE_SOURCE_CHRONOLOGY", "authority": "ZERO"}
+                    rejection_ref = sha256_json(body)
+                    repository.register_artifact(ArtifactIndexEntryV2(rejection_ref,
+                        "BroadPublicAdoptionRejectionV1", rejection_ref, publication, publication,
+                        {"rejection": body}))
+                    continue
+                original_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                           "record_id": item.observation.record_id})
+                prior = prefetched_indexes.get(original_ref)
+                prior_metadata = prior.get("metadata") if prior is not None else None
+                if item.bar is not None and prior_metadata is not None:
+                    if prior_metadata.get("raw_payload_hash") != source_raw.raw_payload_hash:
+                        # A corrected venue-final bar appends a causal revision.
+                        # Its actual new receipt is retained, never backdated.
+                        source_raw = RawObservationV2.build(
+                            instrument_revision=source_raw.instrument_revision,
+                            source_id=source_raw.source_id, event_type=source_raw.event_type,
+                            event_at_ns=source_raw.event_at_ns, published_at_ns=source_raw.published_at_ns,
+                            received_at_ns=source_raw.received_at_ns, ingested_at_ns=source_raw.ingested_at_ns,
+                            available_at_ns=source_raw.available_at_ns, payload=item.raw_payload,
+                            translation_version=source_raw.translation_version,
+                            sequence=source_raw.sequence, revision_of=source_raw.record_id,
+                            quality_flags=source_raw.quality_flags,
+                            availability_class=source_raw.availability_class)
+                    observed_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                              "record_id": source_raw.record_id})
+                    if observed_ref not in prefetched_indexes:
+                        found = repository.get_artifact_metadata_by_refs((observed_ref,))
+                        prefetched_indexes[observed_ref] = found.get(observed_ref)
+                    known = prefetched_indexes[observed_ref]
+                    known_metadata = known.get("metadata") if known is not None else None
+                    if known_metadata is not None and known_metadata.get("raw_payload_hash") == source_raw.raw_payload_hash:
+                        body = {"version": "BROAD_PUBLIC_DUPLICATE_RECEIPT_V2", "original_ref": observed_ref,
+                            "raw_payload_hash": source_raw.raw_payload_hash,
+                            "received_at_ns": source_raw.received_at_ns, "available_at_ns": publication,
+                            "source_id": source_raw.source_id, "authority": "ZERO"}
+                        duplicate_ref = sha256_json(body)
+                        if repository.get_artifact(duplicate_ref) is None:
+                            repository.register_artifact(ArtifactIndexEntryV2(duplicate_ref,
+                                "BroadPublicDuplicateReceiptV2", duplicate_ref, publication, publication,
+                                {"receipt": body}))
+                        refs_by_source.setdefault(source_raw.source_id, set()).add(observed_ref)
+                        continue
+                raw = replace(source_raw, ingested_at_ns=max(source_raw.ingested_at_ns, publication),
+                    available_at_ns=max(source_raw.available_at_ns, publication))
+                bar = replace(item.bar, raw=raw) if item.bar is not None else None
+                try:
+                    result = collector.ingest(raw, raw_payload=item.raw_payload,
+                        instrument_key=item.instrument_key, bar=bar, retain_in_memory=False,
+                        update_source_health=False,
+                        persisted_public_index_rows_by_ref=prefetched_indexes,
+                        persisted_public_index_generation=prefetched_generation)
+                    if result.persistent_conflict or result.append.status.value == "CONFLICT_QUARANTINED":
+                        accepted = False
+                        accepted_by_source[raw.source_id] = False
+                        rejected_indexes.append(index)
+                    ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": raw.record_id})
+                    if not result.persistent_conflict and result.append.status.value != "CONFLICT_QUARANTINED":
+                        pending_refs[ref] = raw.source_id
+                except (ValueError, RuntimeError):
+                    accepted = False
+                    accepted_by_source[raw.source_id] = False
+                    rejected_indexes.append(index)
+            collector.flush_archive()
+            adoption_clock()
+            pending_items = tuple(pending_refs.items())
+            reconciliation_page_rows = min(
+                MAX_RECONCILIATION_REFS_PER_PAGE_V1,
+                BROAD_PUBLIC_ADOPTION_RECONCILIATION_PAGE_ROWS_V1,
+            )
+            for offset in range(0, len(pending_items), reconciliation_page_rows):
+                # Full-universe exact-reference hydration can take seconds. Keep
+                # the sole-writer stream lane moving between smaller bounded pages.
+                self.service_public_stream(repository)
+                page = pending_items[offset:offset + reconciliation_page_rows]
+                persisted = repository.get_artifact_metadata_by_refs(tuple(ref for ref, _ in page))
+                for ref, source_id in page:
+                    entry = persisted.get(ref)
+                    if (entry is not None and entry.get("artifact_type") == "PublicObservationIndexV2"
+                            and entry["available_at_ns"] <= publication
+                            and isinstance(entry.get("metadata"), Mapping)
+                            and entry["metadata"].get("source_id") == source_id):
+                        refs_by_source.setdefault(source_id, set()).add(ref)
+                    else:
+                        accepted = False
+                        accepted_by_source[source_id] = False
+        finally:
+            collector.clock_ns = prior_clock
+        # Current bulk observations prove only their declared scope. A prior
+        # unhealthy interval is not erased by a metadata/ticker refresh.
+        health_ready = accepted
+        for source_id, snapshot_refs in sorted(refs_by_source.items()):
+            prior_gap = collector.health.had_unhealthy_after_healthy(source_id)
+            ready = accepted_by_source.get(source_id, False) and bool(snapshot_refs) and not prior_gap
+            if ready:
+                collector.reconcile_after_reconnect(source_id, at_ns=publication,
+                    complete_snapshot=True, missed_interval_repaired=True,
+                    snapshot_refs=tuple(sorted(snapshot_refs)), recovery_epoch_ref=collector.required_recovery_epoch_ref,
+                    service_callback=lambda: self.service_public_stream(repository))
+            else:
+                collector.mark_incomplete_snapshot(source_id, at_ns=publication,
+                    details="BROAD_PUBLIC_HISTORY_REPAIR_REQUIRED" if prior_gap else "BROAD_PUBLIC_SNAPSHOT_INCOMPLETE")
+            health_ready = health_ready and ready
+        body = {"version": "BROAD_PUBLIC_ACQUISITION_RECEIPT_V2", "available_at_ns": publication,
+            "source_snapshot": json_value(snapshot.source_snapshot), "ingestion_complete": accepted,
+            "source_health_current": health_ready, "source_observation_refs": {
+                source: sorted(refs) for source, refs in sorted(refs_by_source.items())},
+            "source_ingestion_complete": accepted_by_source,
+            "rejected_record_indexes": rejected_indexes,
+            "exact_trade_history_status": "NOT ESTIMABLE", "capital_enabled": False,
+            "authority": "ZERO"}
+        ref = sha256_json(body)
+        repository.register_artifact(ArtifactIndexEntryV2(ref, "BroadPublicAcquisitionReceiptV2", ref,
+            publication, publication, {"receipt": body}))
+        return health_ready
 
     @staticmethod
     def _public_snapshot_overlap_is_repaired(
@@ -3598,6 +3844,39 @@ def _bounded_active_watches(repository: OpsRepository) -> tuple[Any, ...]:
     return watches
 
 
+def _s6_hypothesis_for_watch(repository: OpsRepository, watch: Any, *, cutoff_ns: int) -> S6HypothesisV2 | None:
+    """Decode only an exact, already-available S6 hypothesis bound to this watch."""
+    entry = repository.get_artifact(watch.thesis_hash)
+    body = entry.metadata.get("hypothesis") if entry is not None else None
+    if (entry is None or entry.artifact_type != "S6HypothesisV2"
+            or entry.artifact_ref != watch.thesis_hash or entry.content_hash != watch.thesis_hash
+            or entry.available_at_ns > cutoff_ns or not isinstance(body, Mapping)):
+        return None
+    try:
+        score, beta = body["score"], body["beta_btc"]
+        cutoff = body["cutoff_ns"]
+        if (isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score)
+                or isinstance(beta, bool) or not isinstance(beta, (int, float)) or not math.isfinite(beta)
+                or type(cutoff) is not int):
+            return None
+        hypothesis = S6HypothesisV2(
+            hypothesis_id=str(body["hypothesis_id"]),
+            key=InstrumentKeyV2.from_dict(json_value(body["key"])),
+            policy_hash=str(body["policy_hash"]), state_ref=str(body["state_ref"]),
+            side=V2Side(str(body["side"])), cutoff_ns=cutoff,
+            score=float(score), beta_btc=float(beta), reason=str(body["reason"]),
+            watch_id=str(body["watch_id"]),
+            replay_view=str(body.get("replay_view", "ACTUAL_SYSTEM")),
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+    if (hypothesis.hypothesis_id != watch.thesis_hash or hypothesis.watch_id != watch.watch_id
+            or hypothesis.key != watch.key or hypothesis.policy_hash != S6_POLICY.policy_hash
+            or canonical_json(hypothesis.to_dict()) != canonical_json(body)):
+        return None
+    return hypothesis
+
+
 def _latest_public_health(repository: OpsRepository, source_id: str, *, cutoff_ns: int) -> ArtifactIndexEntryV2 | None:
     page = repository.latest_artifact_entries("PublicSourceHealthV2", as_of_ns=cutoff_ns,
         metadata_path=("health", "source_id"), identity_value=source_id, limit=2)
@@ -3674,9 +3953,11 @@ class IndexedProductionEventInputsV1:
     """Compose causal public inputs or resolve the exact artifacts already bound by an event."""
 
     def __init__(self, *, clock_ns: Callable[[], int] = time.time_ns,
-                 stream_service: Callable[[OpsRepository], None] | None = None) -> None:
+                 stream_service: Callable[[OpsRepository], None] | None = None,
+                 prepared_observer: Callable[..., None] | None = None) -> None:
         self.clock_ns = clock_ns
         self.stream_service = stream_service
+        self.prepared_observer = prepared_observer
 
     def resolve(self, repository: OpsRepository, event: OpsDecisionEventV1) -> ProductionEventInputsV1 | None:
         if event.event_type == S3_M1_EVENT_TYPE:
@@ -3731,16 +4012,27 @@ class IndexedProductionEventInputsV1:
                     if sealed is not None:
                         return sealed
                     stream_service = self.stream_service
+                    service = partial(stream_service, repository) if stream_service is not None else None
+                    prepared_products = _causal_products(
+                        repository, cutoff_ns=event.information_cutoff_ns, service=service,
+                    )
+                    from .broad_universe import full_universe
+
+                    prepared_broad_universe = full_universe(
+                        repository, cutoff_ns=event.information_cutoff_ns, service=service,
+                    )
                     prepared_histories = _prepare_public_histories(repository, event,
-                        clock_ns=self.clock_ns, service=partial(stream_service, repository)
-                        if stream_service is not None else None)
+                        clock_ns=self.clock_ns, service=service, products=prepared_products)
                     with repository.atomic_composition():
                         sealed = _load_public_composition(repository, event)
                         if sealed is not None:
                             return sealed
                         inputs = _compose_public_event_inputs(repository, event, trigger_body, clock_ns=self.clock_ns,
-                                                              prepared_histories=prepared_histories)
+                            prepared_histories=prepared_histories, prepared_products=prepared_products,
+                            prepared_broad_universe=prepared_broad_universe)
                         _seal_public_composition(repository, event, inputs, clock_ns=self.clock_ns)
+                        if self.prepared_observer is not None and inputs.universe is not None:
+                            self.prepared_observer(event, inputs.universe, prepared_histories, repository)
                         return inputs
                 except ActiveEvidenceOverflowV1 as error:
                     # Pressure is durable even when the composition rolls back.
@@ -4715,8 +5007,14 @@ def _indexed_public_prerequisite_evidence(repository: OpsRepository, product: Pr
     return supplied
 
 
-def _causal_products(repository: OpsRepository, *, cutoff_ns: int) -> tuple[ProductContractV2, ...]:
+def _causal_products(repository: OpsRepository, *, cutoff_ns: int,
+                     service: Callable[[], None] | None = None) -> tuple[ProductContractV2, ...]:
     """One latest effective, cutoff-visible product receipt per exact full key."""
+    from .broad_universe import active_products
+
+    broad = active_products(repository, cutoff_ns=cutoff_ns, service=service)
+    if broad is not None:
+        return broad
     selected: dict[str, ProductContractV2] = {}
     for entry in _bounded_evidence(repository, "ProductContractV2", cutoff_ns=cutoff_ns):
         product = ProductContractV2.from_dict(json_value(entry.metadata["product"]))
@@ -4772,6 +5070,11 @@ def _indexed_event_prerequisites(repository: OpsRepository, *, cutoff_ns: int) -
                 result[name] = None
                 continue
             entries = entries[:1]
+        elif kind == "ScheduledEventV2":
+            page = repository.scheduled_event_window(cutoff_ns=cutoff_ns)
+            if page.has_more or page.invalid_entry_count:
+                raise ValueError("scheduled event window exceeds its validated bound")
+            entries = page.entries
         else:
             entries = _bounded_evidence(repository, kind, cutoff_ns=cutoff_ns, limit=64)
         values: list[Any] = []
@@ -4812,7 +5115,8 @@ def _publish_public_prerequisites(repository: OpsRepository, event: OpsDecisionE
 
 
 def _prepare_public_histories(repository: OpsRepository, event: OpsDecisionEventV1, *,
-                              clock_ns: Callable[[], int], service: Callable[[], None] | None
+                              clock_ns: Callable[[], int], service: Callable[[], None] | None,
+                              products: tuple[ProductContractV2, ...],
                               ) -> dict[str, dict[BarIntervalV2, ActiveHistoryPageV1]]:
     """Prepare immutable cutoff-bound histories before watch/seal atomicity.
 
@@ -4821,7 +5125,7 @@ def _prepare_public_histories(repository: OpsRepository, event: OpsDecisionEvent
     keep their own atomic head publication on failure of later composition.
     """
     pages: dict[str, dict[BarIntervalV2, ActiveHistoryPageV1]] = {}
-    for product in _causal_products(repository, cutoff_ns=event.information_cutoff_ns):
+    for product in products:
         frames = {}
         for interval in (BarIntervalV2.M15, BarIntervalV2.H1, BarIntervalV2.H4, BarIntervalV2.M1):
             frames[interval] = maintain_history(repository, Path(repository.path).parent / "ops-observations",
@@ -4831,7 +5135,7 @@ def _prepare_public_histories(repository: OpsRepository, event: OpsDecisionEvent
             # transaction owning watch changes. No market cutoff is advanced.
             bars = frames[interval].bars
             for offset in range(0, len(bars), 64):
-                entries = tuple(_causal_bar_entry(item.bar, item.observation_index_ref)
+                entries = tuple(_causal_bar_entry(item.bar, item.observation_index_ref, repository=repository)
                                 for item in bars[offset:offset + 64])
                 existing = repository.get_artifact_metadata_by_refs(tuple(entry.artifact_ref for entry in entries))
                 missing = []
@@ -4861,7 +5165,9 @@ def _compose_public_event_inputs(
     event: OpsDecisionEventV1,
     trigger_body: Mapping[str, Any],
     *, clock_ns: Callable[[], int] = time.time_ns,
-    prepared_histories: dict[str, dict[BarIntervalV2, ActiveHistoryPageV1]] | None = None,
+    prepared_histories: dict[str, dict[BarIntervalV2, ActiveHistoryPageV1]],
+    prepared_products: tuple[ProductContractV2, ...],
+    prepared_broad_universe: UniverseContractV2 | None,
 ) -> ProductionEventInputsV1:
     """Run each sleeve only on its frozen native cadence and archived inputs."""
     if (trigger_body.get("version") != "OPS_PUBLIC_FINAL_BAR_TRIGGER_V1"
@@ -4881,13 +5187,12 @@ def _compose_public_event_inputs(
         return _empty_event_inputs(repository, event, clock_ns=clock_ns)
 
     archive_root = Path(repository.path).parent / "ops-observations"
-    products = _causal_products(repository, cutoff_ns=event.information_cutoff_ns)
+    products = prepared_products
 
     histories: dict[str, dict[BarIntervalV2, tuple[Any, ...]]] = {}
     history_pages: dict[str, dict[BarIntervalV2, ActiveHistoryPageV1]] = {}
     history_missing_reasons: set[str] = set()
     store = CausalBarStoreV2()
-    causal_bar_entries: dict[str, ArtifactIndexEntryV2] = {}
     source_refs: set[str] = {event.trigger_ref, trigger_product.content_hash}
     latest_health: dict[str, PublicSourceHealthV2] = {}
     for source_id in repository.source_health_sources():
@@ -4903,14 +5208,14 @@ def _compose_public_event_inputs(
         frames: dict[BarIntervalV2, tuple[Any, ...]] = {}
         pages: dict[BarIntervalV2, ActiveHistoryPageV1] = {}
         for interval in (BarIntervalV2.M15, BarIntervalV2.H1, BarIntervalV2.H4, BarIntervalV2.M1):
-            page = (prepared_histories[product.key.to_canonical_json()][interval]
-                    if prepared_histories is not None else maintain_history(
-                repository, archive_root, key=product.key, interval=interval,
-                cutoff_ns=event.information_cutoff_ns, clock_ns=clock_ns,
-                deadline_ns=event.deadline_ns,
-            ))
+            page = prepared_histories[product.key.to_canonical_json()][interval]
             pages[interval] = page
-            if not page.ready:
+            # Only histories required by this native decision can block its
+            # candidate generation. M1 belongs to S3; missing M1 data must not
+            # suppress an otherwise complete S1/S2 M15 decision. Other products
+            # retain their own universe eligibility and history diagnostics.
+            if (not page.ready and product.key == trigger_product.key
+                    and (native_m1 or interval != BarIntervalV2.M1)):
                 history_missing_reasons.add("HISTORY:" + interval.value + ":" + page.reason_code)
             if page.ready and page.state is not None:
                 source_refs.add(page.state.content_hash)
@@ -4918,31 +5223,10 @@ def _compose_public_event_inputs(
             bars = tuple(item.bar for item in indexed_bars)
             frames[interval] = bars
             for item in indexed_bars:
-                if prepared_histories is None:
-                    causal_bar_entries[item.bar.content_hash] = _causal_bar_entry(
-                        item.bar, item.observation_index_ref,
-                    )
                 store.append(item.bar)
                 source_refs.update((item.observation_index_ref, item.bar.content_hash))
         histories[product.key.to_canonical_json()] = frames
         history_pages[product.key.to_canonical_json()] = pages
-    if causal_bar_entries:
-        existing_bars = repository.get_artifact_metadata_by_refs(tuple(causal_bar_entries))
-        missing_bar_entries: list[ArtifactIndexEntryV2] = []
-        for ref, entry in sorted(causal_bar_entries.items()):
-            existing = existing_bars.get(ref)
-            if existing is None:
-                missing_bar_entries.append(entry)
-                continue
-            metadata = existing.get("metadata")
-            if (existing.get("artifact_type") != "CausalBarV2"
-                    or existing.get("content_hash") != ref
-                    or existing.get("available_at_ns") != entry.available_at_ns
-                    or not isinstance(metadata, Mapping)
-                    or canonical_json(metadata.get("bar")) != canonical_json(entry.metadata.get("bar"))):
-                raise ValueError("causal bar ref already indexes conflicting immutable evidence")
-        if missing_bar_entries:
-            repository.register_artifacts(tuple(missing_bar_entries))
 
     primary_frames = histories.get(trigger_product.key.to_canonical_json(), {})
     primary_trigger_bars = primary_frames.get(trigger_interval, ())
@@ -5022,6 +5306,8 @@ def _compose_public_event_inputs(
                       prefix_counts[BarIntervalV2.M15] // 96)
         s2_days = prefix_counts[BarIntervalV2.M15] // 96
         s3_days = prefix_counts[BarIntervalV2.M1] // 1440
+        s6_days = min(prefix_counts[BarIntervalV2.H1] // 24,
+                      prefix_counts[BarIntervalV2.H4] // 6)
         # Keep the M15 universe snapshot at the same S3 watch boundary as its
         # frozen cadence, so native M1 watch timing cannot change S1/S2 inputs.
         m15_decision_close = (
@@ -5048,10 +5334,13 @@ def _compose_public_event_inputs(
             observation = UniverseObservationV2(
                 product, observed_days, bool(m15 and h1 and h4), turnover, spread,
                 source_health.state, event.information_cutoff_ns,
-                {S1_POLICY.policy_id: s1_days, S2_POLICY.policy_id: s2_days,
-                 S3_POLICY.policy_id: s3_days}, source_health.available_at_ns,
+                {S1_POLICY.policy_id: 30, S2_POLICY.policy_id: 30,
+                 S3_POLICY.policy_id: 7, S6_POLICY.policy_id: 30}, source_health.available_at_ns,
                 open_position=False,
                 active_watch=active_watch,
+                observed_policy_history_days={S1_POLICY.policy_id: s1_days,
+                    S2_POLICY.policy_id: s2_days, S3_POLICY.policy_id: s3_days,
+                    S6_POLICY.policy_id: s6_days},
             )
             observations_for_universe.append(observation)
             observation_finished = sample(clock_ns, floor_ns=composition_started)
@@ -5089,6 +5378,16 @@ def _compose_public_event_inputs(
         publication_at_ns=universe_started, selection_policy_hash=SELECTION_POLICY_HASH,
         input_refs=tuple(sorted(source_refs)),
     )
+    broad_universe = prepared_broad_universe
+    if broad_universe is not None:
+        entries = {item.key.to_canonical_json(): item for item in broad_universe.entries}
+        entries.update({item.key.to_canonical_json(): item for item in built.universe.entries})
+        refs = tuple(sorted({*built.universe.envelope.input_refs, broad_universe.content_hash,
+                             *(entry.product_ref for entry in entries.values())}))
+        built = replace(built, universe=replace(built.universe,
+            entries=tuple(entries[key] for key in sorted(entries)),
+            envelope=replace(built.universe.envelope, content_hash="", input_refs=refs)))
+        source_refs.add(broad_universe.content_hash)
     universe_available = sample(clock_ns, floor_ns=universe_started)
     built = replace(built, universe=replace(built.universe, envelope=replace(built.universe.envelope,
         content_hash="", created_at_ns=universe_available, available_at_ns=universe_available)))
@@ -5146,10 +5445,29 @@ def _compose_public_event_inputs(
                 h1=join.h1[-_FEATURE_CONTEXT_BARS_V1["H1"]:],
                 h4=join.h4[-_FEATURE_CONTEXT_BARS_V1["H4"]:],
             )
+            # Freeze a deterministic causal location configuration from the
+            # exact as-of product and latest confirmed M15 swing. A swing's
+            # pivot event is anchored only once its confirmation bar is known.
+            trade_location_config = _trade_location_config_v1(
+                trigger_product, feature_join.m15, cutoff_ns=event.information_cutoff_ns,
+            )
+            trade_location_inputs = load_trade_location_inputs(
+                repository, Path(repository.path).parent / "ops-observations",
+                key=trigger_product.key, cutoff_ns=event.information_cutoff_ns,
+                configuration=trade_location_config,
+            )
             feature_started = sample(clock_ns, floor_ns=research_available)
+            trade_location_receipt = persist_trade_location_input_receipt(
+                repository, trade_location_inputs,
+                created_at_ns=feature_started, available_at_ns=feature_started,
+            )
             feature = feature_snapshot(feature_join, clock_ns=clock_ns,
                 exact_histories={frame: page.state for frame,page in history_pages[trigger_key_json].items()
-                                 if page.ready and page.state is not None})
+                                 if page.ready and page.state is not None},
+                trades=trade_location_inputs.estimator_trades,
+                trade_location=trade_location_inputs.configuration,
+                trade_location_input_refs=(trade_location_receipt.content_hash,))
+            source_refs.add(trade_location_receipt.content_hash)
             repository.register_artifact(ArtifactIndexEntryV2(
                 feature.content_hash, "FeatureArtifactV2", feature.content_hash,
                 feature.envelope.created_at_ns, feature.envelope.available_at_ns,
@@ -5193,6 +5511,113 @@ def _compose_public_event_inputs(
                     generation_missing_reasons.add("S2:" + s2.reason)
                 if s2.candidate is not None:
                     candidates[s2.candidate.candidate_id] = s2.candidate
+
+                # The S6 rank/research coordinator runs in the bounded sidecar.
+                # At the next M15 event, materialize only a hypothesis whose
+                # single subsequent bar is this exact trigger and whose watch
+                # is still live. The action policy is a separate shadow-only
+                # version; legacy S6 rank/trigger evidence remains untouched.
+                s6_waiting = [watch for watch in waiting if watch.policy_hash == S6_POLICY.policy_hash]
+                if s6_waiting:
+                    m15_bars = tuple(frames.get(BarIntervalV2.M15, ()))
+                    prior_15m = next((bar for bar in reversed(m15_bars)
+                        if bar.close_at_ns == trigger_bar.close_at_ns - BarIntervalV2.M15.duration_ns
+                        and bar.raw.available_at_ns <= event.information_cutoff_ns), None)
+                    s6 = S6ShadowCoordinator(repository)
+                    for watch in s6_waiting:
+                        hypothesis = _s6_hypothesis_for_watch(
+                            repository, watch, cutoff_ns=event.information_cutoff_ns,
+                        )
+                        if hypothesis is None:
+                            generation_missing_reasons.add("S6:HYPOTHESIS_MISSING_MISBOUND_OR_FUTURE")
+                            continue
+                        if prior_15m is None:
+                            generation_missing_reasons.add("S6:IMMEDIATELY_PRIOR_M15_EVIDENCE_UNAVAILABLE")
+                            continue
+                        s6.confirm_trigger(
+                            hypothesis_id=hypothesis.hypothesis_id,
+                            previous_15m=prior_15m,
+                            trigger_15m=trigger_bar,
+                            cutoff_ns=event.information_cutoff_ns,
+                        )
+                        transitioned = repository.get_watch(watch.watch_id)
+                        if transitioned is None or transitioned.state.value != "CONFIRMED":
+                            continue
+                        if quote is None or mark is None or gate is None:
+                            generation_missing_reasons.add("S6:ACTION_BBO_MARK_OR_EVENT_GATE_UNAVAILABLE")
+                            continue
+                        completed_h1 = tuple(bar for bar in frames.get(BarIntervalV2.H1, ())
+                            if bar.close_at_ns <= hypothesis.cutoff_ns - hypothesis.cutoff_ns % BarIntervalV2.H1.duration_ns)
+                        stop_window_h1 = completed_h1[-3:]
+                        cost_body = {
+                            "version": "S6_SHADOW_COST_NOT_ESTIMABLE_V1",
+                            "policy_hash": S6_ACTION_POLICY.policy_hash,
+                            "status": "NOT_ESTIMABLE",
+                            "reason": "NO_S6_SPECIFIC_QUALIFIED_ACTION_COST_CONTRACT",
+                            "economic_authority": "ZERO", "capital_authority": "ZERO",
+                        }
+                        cost_ref = sha256_json(cost_body)
+                        repository.register_artifact(ArtifactIndexEntryV2(
+                            cost_ref, "S6ShadowCostNotEstimableV1", cost_ref, 0, 0,
+                            {"cost": cost_body},
+                        ))
+                        action_now = sample(clock_ns, floor_ns=max(
+                            event.information_cutoff_ns, feature.envelope.available_at_ns,
+                        ))
+                        s6_action_result = build_s6_candidate_action(
+                            repository,
+                            hypothesis=hypothesis,
+                            hypothesis_ref=hypothesis.hypothesis_id,
+                            decision_cutoff_ns=event.information_cutoff_ns,
+                            stop_window_h1=stop_window_h1,
+                            previous_15m=prior_15m,
+                            trigger_15m=trigger_bar,
+                            feature=feature,
+                            quote=quote,
+                            mark_index=mark,
+                            event_gate=gate,
+                            cost_model_ref=cost_ref,
+                            now_ns=action_now,
+                        )
+                        if s6_action_result.candidate is not None:
+                            # S6 actions may be computed after the sealed
+                            # market cutoff as source receipts arrive. Bind the
+                            # trigger eligibility and candidate to that exact
+                            # cutoff before selector admission; the selector
+                            # can then distinguish late derived publication
+                            # from information first observed after cutoff.
+                            trigger_ref = s6_action_result.trigger_ref
+                            if trigger_ref is None:
+                                raise ValueError("S6 candidate is missing its exact trigger eligibility artifact")
+                            trigger_entry = repository.get_artifact(trigger_ref)
+                            if (trigger_entry is None or trigger_entry.artifact_type != "S6ActionTriggerEligibilityV1"
+                                    or trigger_entry.available_at_ns > s6_action_result.candidate.deadline_ns):
+                                raise ValueError("S6 trigger eligibility was not durably published by its deadline")
+                            trigger_metadata = trigger_entry.metadata
+                            trigger_inputs = trigger_metadata.get("input_refs")
+                            if not isinstance(trigger_inputs, (tuple, list)):
+                                raise ValueError("S6 trigger eligibility is missing its sealed input references")
+                            trigger_published_at = trigger_entry.available_at_ns
+                            record_computation(repository, artifact_ref=trigger_ref,
+                                information_cutoff_ns=event.information_cutoff_ns,
+                                started_ns=trigger_published_at, finished_ns=trigger_published_at,
+                                available_ns=trigger_published_at, input_refs=tuple(trigger_inputs),
+                                deadline_ns=s6_action_result.candidate.deadline_ns)
+                            candidate_entry = repository.get_artifact(s6_action_result.candidate.content_hash)
+                            if (candidate_entry is None or candidate_entry.artifact_type != "CandidateActionV2"
+                                    or candidate_entry.available_at_ns > s6_action_result.candidate.deadline_ns):
+                                raise ValueError("S6 candidate action was not durably published by its deadline")
+                            candidate_published_at = candidate_entry.available_at_ns
+                            record_computation(repository, artifact_ref=s6_action_result.candidate.content_hash,
+                                information_cutoff_ns=event.information_cutoff_ns,
+                                started_ns=candidate_published_at, finished_ns=candidate_published_at,
+                                available_ns=candidate_published_at,
+                                input_refs=s6_action_result.candidate.envelope.input_refs,
+                                deadline_ns=s6_action_result.candidate.deadline_ns)
+                            candidates[s6_action_result.candidate.candidate_id] = s6_action_result.candidate
+                            source_refs.update((trigger_ref, s6_action_result.candidate.content_hash))
+                        elif s6_action_result.status == "NOT_ESTIMABLE":
+                            generation_missing_reasons.add("S6:" + s6_action_result.reason)
 
             if native_m1:
                 trade_evidence, stream_trade_health = _indexed_s3_forward_trade_evidence(
@@ -5360,6 +5785,24 @@ def _compose_public_event_inputs(
         scanner_refs, {}, {}, tuple(sorted(feature_refs)), tuple(sorted(source_refs)),
         tuple(sorted(generation_missing_reasons)),
     )
+
+
+def _trade_location_config_v1(
+    product: ProductContractV2,
+    m15_bars: Sequence[Any],
+    *,
+    cutoff_ns: int,
+) -> TradeLocationConfig:
+    """Freeze research location inputs from cutoff-known product and M15 bars."""
+    day_start_ns = cutoff_ns // DAY_NS * DAY_NS
+    confirmed = tuple(swing for swing in confirmed_swings(tuple(m15_bars))
+                      if swing.confirmed_at_ns <= cutoff_ns)
+    latest = max(confirmed, key=lambda swing: (swing.confirmed_at_ns, swing.pivot_at_ns,
+                                                swing.kind, swing.pivot_ref), default=None)
+    anchor = (CausalTradeAnchor(product.key, latest.pivot_at_ns,
+                                latest.confirmed_at_ns, latest.confirmation_ref)
+              if latest is not None else None)
+    return TradeLocationConfig(anchor=anchor, profile_window_start_ns=day_start_ns, product=product)
 
 
 def _latest_stream_continuity_report_ref(
@@ -5566,6 +6009,414 @@ def create_bybit_public_ws_port(
 
         port._serviced_acquisition = ServicedPublicAcquisitionV1(port.public_source, clock_ns=clock_ns)
     return port
+
+
+class BroadProductionOpsCyclePortV2(ProductionOpsCyclePortV1):
+    """Full metadata intake with finite research work and the S40 capture lane."""
+
+    public_source: Any
+    _serviced_acquisition: Any
+
+    def __init__(self, *, public_source: Any, clock_ns: Callable[[], int] = time.time_ns,
+                 broad_runtime: Any | None = None) -> None:
+        super().__init__(public_source=public_source, clock_ns=clock_ns)
+        from ..data.universe import ComputeTierV2
+        from .broad_public_runtime import BroadPublicRuntimeV2
+        from .broad_serviced_acquisition import BroadServicedPublicAcquisitionV2
+
+        self._broad_tier_1 = ComputeTierV2.TIER_1
+        self._broad_lane = broad_runtime or BroadPublicRuntimeV2(clock_ns=clock_ns,
+            snapshot_reader=getattr(public_source, "acquire_depth_snapshot", None))
+        self.public_stream_source = self._broad_lane
+        self._serviced_acquisition = BroadServicedPublicAcquisitionV2(public_source, clock_ns=clock_ns)
+        from .research_basket_outcomes import S8ResearchBasketOutcomeProducerV1
+
+        self._s8_outcome_producer = S8ResearchBasketOutcomeProducerV1(clock_ns=clock_ns)
+        self.inputs_provider = IndexedProductionEventInputsV1(clock_ns=clock_ns,
+            stream_service=self.service_public_stream, prepared_observer=self._observe_prepared_research)
+
+    def _observe_prepared_research(self, event: OpsDecisionEventV1, universe: UniverseContractV2,
+                                   histories: Mapping[str, Any], repository: OpsRepository) -> None:
+        from .broad_research_queue import _defer_if_occupied, enqueue_prepared_history_snapshot
+        from .full_strategy_surface import persist_cutoff_book_features
+
+        slot_identity = {"version": "BroadResearchSlotIdentityV1",
+            "information_cutoff_ns": event.information_cutoff_ns,
+            "public_sources": tuple(sorted(self.public_source.required_source_ids))}
+        slot_ref = sha256_json(slot_identity)
+        prior = repository.get_artifact(slot_ref)
+        observed = sample(self.clock_ns, floor_ns=event.available_at_ns)
+        if prior is not None:
+            slot = prior.metadata.get("slot")
+            if (prior.artifact_type != "BroadResearchSlotIdentityV1" or not isinstance(slot, Mapping)
+                    or sha256_json(slot) != prior.content_hash
+                    or any(slot.get(key) != value for key, value in slot_identity.items())):
+                raise ValueError("BROAD_RESEARCH_SLOT_IDENTITY_CONFLICT")
+            if slot.get("event_ref") == event.content_hash:
+                return
+            body = {"version": "BROAD_RESEARCH_DEFERRED_V1", "event_id": event.event_id,
+                "event_ref": event.content_hash, "cutoff_ns": event.information_cutoff_ns,
+                "universe_ref": universe.content_hash, "slot_ref": slot_ref,
+                "reason": "RESEARCH_SLOT_ALREADY_ACCOUNTED", "authority": "ZERO",
+                "capital_enabled": False, "assisted_enabled": False}
+            ref = sha256_json(body)
+            if repository.get_artifact(ref) is None:
+                repository.register_artifact(ArtifactIndexEntryV2(ref, "BroadResearchDeferredV1", ref,
+                    observed, observed, {"deferred": body}))
+            return
+        if _defer_if_occupied(repository, event=event, universe_ref=universe.content_hash,
+                observed_at_ns=observed) is not None:
+            return
+        books = {key: book for key, book in getattr(self._broad_lane, "sequence_books", {}).items()
+                 if key.to_canonical_json() in histories}
+        features = persist_cutoff_book_features(repository, universe=universe,
+            cutoff_ns=event.information_cutoff_ns, sequence_books=books, clock_ns=self.clock_ns)
+        observed = sample(self.clock_ns, floor_ns=observed)
+        queued = enqueue_prepared_history_snapshot(repository, event=event,
+            universe_ref=universe.content_hash, composition_refs=(_public_composition_ref(event),),
+            prepared_histories=histories, observed_at_ns=observed,
+            s4_feature_refs={key.to_canonical_json(): feature.content_hash for key, feature in features.items()})
+        if queued.snapshot_ref is not None:
+            slot = {**slot_identity, "event_ref": event.content_hash, "event_id": event.event_id,
+                "snapshot_ref": queued.snapshot_ref, "universe_ref": universe.content_hash,
+                "authority": "ZERO", "capital_enabled": False, "assisted_enabled": False}
+            repository.register_artifact(ArtifactIndexEntryV2(slot_ref, "BroadResearchSlotIdentityV1",
+                sha256_json(slot), observed, observed, {"slot": slot}))
+
+    def run_research_maintenance(self, repository: OpsRepository, *, cutoff_ns: int) -> str | None:
+        """Run the zero-authority broad research surface after the core cycle.
+
+        One durable prepared M15 slot is consumed once. Its source cutoff and
+        exact history/book features survive process loss.
+        Due S8 outcomes are drained one bounded item per post-cycle maintenance
+        turn, so outcome maturation remains live even when no new surface is
+        waiting and cannot monopolize the controller writer.
+        """
+        self._s8_outcome_producer.run_cycle(repository, evidence_cutoff_ns=cutoff_ns, max_items=1)
+        from .broad_research_queue import (
+            LANE_BROAD_RESEARCH_V1,
+            complete_prepared_history_snapshot,
+            load_due_prepared_history_snapshot,
+        )
+        from .full_strategy_surface import compose_full_strategy_surface, load_full_strategy_inputs
+
+        now = sample(self.clock_ns, floor_ns=cutoff_ns)
+        pending = repository.due_work_items(LANE_BROAD_RESEARCH_V1, as_of_ns=now, limit=1)
+        if not pending:
+            return None
+        try:
+            prepared, = load_due_prepared_history_snapshot(repository, as_of_ns=now)
+            universe_entry = _required_artifact(repository, prepared.universe_ref)
+            universe = UniverseContractV2.from_dict(json_value(universe_entry.metadata["universe"]))
+            loaded = load_full_strategy_inputs(repository, universe, prepared.information_cutoff_ns,
+                prepared.histories, self.clock_ns,
+                prepared_s4_features={InstrumentKeyV2.from_dict(json.loads(key)): feature
+                    for key, feature in prepared.s4_features.items()},
+                service_callback=lambda: self.service_public_stream(repository))
+            # Input preparation can yield to capture. Publish role artifacts,
+            # watches, forecasts, completion and retirement as one operation;
+            # a crash cannot expose a partial research surface.
+            with repository.atomic_composition():
+                result = compose_full_strategy_surface(repository, universe=universe,
+                    cutoff_ns=prepared.information_cutoff_ns, **loaded.compose_kwargs(),
+                    clock_ns=self.clock_ns)
+                complete_prepared_history_snapshot(repository, snapshot_ref=prepared.snapshot_ref,
+                    completed_at_ns=sample(self.clock_ns, floor_ns=result.published_at_ns),
+                    result_ref=result.content_hash)
+        except (ValueError, TypeError, KeyError, ArithmeticError) as error:
+            failed_at = sample(self.clock_ns, floor_ns=now)
+            failure = {"version": "BroadResearchFailureV1", "snapshot_ref": pending[0].source_ref,
+                "failed_at_ns": failed_at, "failure_type": type(error).__name__,
+                "reason": "EXACT_RESEARCH_INPUT_OR_CONTRACT_INVALID", "status": "NOT_ESTIMABLE",
+                "authority": "ZERO", "capital_enabled": False, "assisted_enabled": False}
+            failure_ref = sha256_json(failure)
+            with repository.atomic_composition():
+                repository.register_artifact(ArtifactIndexEntryV2(failure_ref, "BroadResearchFailureV1",
+                    failure_ref, failed_at, failed_at, {"failure": failure}))
+                repository.quarantine_due_work(LANE_BROAD_RESEARCH_V1, pending[0].work_id,
+                    reason_code="EXACT_RESEARCH_INPUT_OR_CONTRACT_INVALID")
+            return failure_ref
+        return result.content_hash
+
+    def event_source_health_state(self, repository: OpsRepository, event: OpsDecisionEventV1,
+                                  *, now_ns: int) -> str:
+        """Gate the exact event dependencies without erasing overall ill health.
+
+        Each dependency needs healthy evidence at its original cutoff and now.
+        Later reconnection cannot fabricate historical availability. This hook
+        only exists on the zero-capital broad research port.
+        """
+        if len(event.causal_input_refs) > 16384:
+            raise ValueError("BROAD_EVENT_DEPENDENCY_OVERFLOW")
+        sources = {event.source_id}
+        entries = repository.get_artifact_metadata_by_refs(event.causal_input_refs)
+        for ref in event.causal_input_refs:
+            entry = entries.get(ref)
+            if entry is None or entry["available_at_ns"] > event.information_cutoff_ns:
+                return "INCOMPLETE_SNAPSHOT"
+            metadata = entry["metadata"]
+            for body in (metadata, metadata.get("raw"), metadata.get("observation")):
+                if isinstance(body, Mapping) and isinstance(body.get("source_id"), str):
+                    sources.add(body["source_id"])
+        health_refs = []
+        state = "HEALTHY_CURRENT"
+        for source_id in sorted(sources):
+            historical = repository.latest_source_health_at(source_id, as_of_ns=event.information_cutoff_ns)
+            current = repository.latest_source_health_at(source_id, as_of_ns=now_ns)
+            for health in (historical, current):
+                if health is None:
+                    state = "UNKNOWN"
+                else:
+                    health_refs.append(health.details_ref or sha256_json(health.to_dict()))
+                    if health.status != "HEALTHY_CURRENT" and state == "HEALTHY_CURRENT":
+                        state = health.status
+        body = {"version": "OPS_DECISION_SOURCE_SCOPE_V2", "event_id": event.event_id,
+                "event_ref": event.content_hash, "information_cutoff_ns": event.information_cutoff_ns,
+                "observed_at_ns": now_ns, "required_source_ids": sorted(sources),
+                "health_refs": sorted(set(health_refs)), "state": state,
+                "authority": "ZERO", "capital_enabled": False}
+        ref = sha256_json(body)
+        repository.register_artifact(ArtifactIndexEntryV2(ref, "OpsDecisionSourceScopeV2", ref,
+            now_ns, now_ns, {"source_scope": body}))
+        return state
+
+    def recover(self, repository: OpsRepository, *, now_ns: int) -> OpsRecoverySnapshotV1:
+        from .broad_universe import latest_workset
+
+        if repository.read_only:
+            raise ValueError("broad recovery requires the sole ops writer")
+        scheduler = repository.latest_artifact_entries("BroadPublicSchedulerStateV2", as_of_ns=now_ns, limit=1)
+        if scheduler.invalid_entry_count:
+            raise ValueError("BROAD_SCHEDULER_INVALID")
+        if scheduler.entries:
+            entry = scheduler.entries[0]
+            state = entry.metadata.get("scheduler")
+            if not isinstance(state, Mapping) or sha256_json(state) != entry.content_hash:
+                raise ValueError("BROAD_SCHEDULER_IDENTITY_FAILED")
+            self.public_source.restore_state(json_value(state))
+        try:
+            products = self.public_source.bootstrap_products(now_ns=now_ns)
+        except (PublicDataError, KeyError, TypeError, ValueError, ArithmeticError, TimeoutError):
+            products = ()
+        stream_service = partial(self.service_public_stream, repository)
+        if not products:
+            previous = latest_workset(repository, cutoff_ns=now_ns, service=stream_service)
+            if previous:
+                restored_products = []
+                for index, ref in enumerate(previous["product_refs"]):
+                    if index % 8 == 0:
+                        self.service_public_stream(repository)
+                    restored_products.append(ProductContractV2.from_dict(json_value(
+                        _required_artifact(repository, ref).metadata["product"])))
+                products = tuple(restored_products)
+        now_ns = sample(self.clock_ns, floor_ns=now_ns)
+        registry = InstrumentRegistryV2()
+        entries = []
+        for product in products:
+            if product.key.venue not in self.public_source.enabled_venues or product.key.environment.value != "MAINNET":
+                raise ValueError("BROAD_PRODUCT_SCOPE_FAILED")
+            if max(product.observed_at_ns, product.available_at_ns) > now_ns:
+                raise ValueError("BROAD_PRODUCT_FUTURE_RECEIPT")
+            registry.register(product)
+            entries.append(ArtifactIndexEntryV2(product.content_hash, "ProductContractV2",
+                product.content_hash, product.observed_at_ns, product.available_at_ns, {"product": product.to_dict()}))
+        repository.register_artifacts(tuple(entries))
+        previous_workset = latest_workset(repository, cutoff_ns=now_ns, service=stream_service)
+        if previous_workset is not None:
+            from .broad_universe import full_universe
+
+            # Hydrate the immutable broad universe before starting/restarting
+            # stream capture. Subsequent decision-time reads can use the
+            # repository's one-generation typed cache without delaying queue
+            # service under live stream pressure.
+            full_universe(repository, cutoff_ns=now_ns, service=stream_service)
+            setter = getattr(self.public_source, "set_enrichment_keys", None)
+            if callable(setter):
+                setter(tuple(ProductContractV2.from_dict(json_value(
+                    _required_artifact(repository, ref).metadata["product"])).key
+                    for ref in previous_workset["active_product_refs"]))
+        epoch = _new_recovery_epoch(repository, started_at_ns=now_ns)
+        collector = PublicCollectorV2(repository=repository, registry=registry, clock_ns=self.clock_ns,
+            archive=ParquetObservationArchiveV2(Path(repository.path).parent / "ops-observations",
+                compact_stream_repository=repository, clock_ns=self.clock_ns), required_recovery_epoch_ref=epoch)
+        collector.publish_indexes_after_archive = True
+        tiers = {product.key: self._broad_tier_1 for product in products}
+        watches = _bounded_active_watches(repository)
+        expiry_ids = {watch.watch_id: (
+            sha256_json({"version": "BROAD_RESTART_WATCH_EXPIRY_V2", "id": watch.watch_id, "state": watch.state_version}),
+            sha256_json({"version": "BROAD_RESTART_WATCH_EXPIRY_OUTBOX_V2", "id": watch.watch_id, "state": watch.state_version}))
+            for watch in watches if watch.expires_at_ns <= now_ns}
+        restart = collector.restore_subscriptions(tiers, now_ns=now_ns, expiry_ids=expiry_ids)
+        source_ids = self.public_source.required_source_ids
+        states = tuple(OpsSourceStateV1(source, "UNKNOWN", now_ns, now_ns) for source in source_ids)
+        self._collector_recovery = ProductionCollectorRecoveryV1(collector, restart.subscriptions, source_ids,
+            bool(scheduler.entries), epoch)
+        self._stream_run_epoch = epoch
+        if products:
+            self._start_broad_lane(repository, products, now_ns=max(now_ns, self.clock_ns()))
+        self._recovery_calls += 1
+        return OpsRecoverySnapshotV1(source_ids, states,
+            tuple(w.watch_id for w in restart.watches.active_watches), restart.subscriptions.plan_id,
+            not scheduler.entries, now_ns)
+
+    @staticmethod
+    def _broad_stream_seed_keys(
+        products: tuple[ProductContractV2, ...], *, now_ns: int,
+    ) -> tuple[InstrumentKeyV2, ...]:
+        active = tuple(sorted((product for product in products
+            if product.trading_status.value == "TRADING"
+            and product.available_at_ns <= now_ns and product.effective_at_ns <= now_ns),
+            key=lambda product: product.key.to_canonical_json()))
+        benchmarks = tuple(product.key for product in active
+            if product.key.native_symbol in {"BTCUSDT", "ETHUSDT"})
+        if benchmarks:
+            return benchmarks
+        # A venue may omit benchmark instruments. Keep a deterministic finite
+        # public stream seed so alt-only inventories remain observable while
+        # they accumulate the history needed for scanner tiers.
+        return tuple(product.key for product in active[:2])
+
+    def _start_broad_lane(self, repository: OpsRepository, products: tuple[ProductContractV2, ...], *, now_ns: int) -> None:
+        if getattr(self._broad_lane, "capture", None) is not None:
+            return
+        benchmarks = self._broad_stream_seed_keys(products, now_ns=now_ns)
+        if benchmarks:
+            self._broad_lane.recover(repository, run_root=Path(repository.path).parent, products=products,
+                tiers={}, now_ns=now_ns, benchmark_keys=benchmarks)
+
+    def _register_refreshed_stream_products(self, repository: OpsRepository, snapshot: Any) -> None:
+        # Replace bounded active metadata; all old revisions remain immutable in
+        # SQLite. Runtime history must not grow with hourly metadata receipts.
+        recovery = cast(ProductionCollectorRecoveryV1, self._collector_recovery)
+        registry = InstrumentRegistryV2()
+        entries: list[ArtifactIndexEntryV2] = []
+        for index, product in enumerate(self.public_source.current_products):
+            registry.register(product)
+            entries.append(ArtifactIndexEntryV2(product.content_hash, "ProductContractV2",
+                product.content_hash, product.observed_at_ns, product.available_at_ns, {"product": product.to_dict()}))
+            if (index + 1) % BROAD_PUBLIC_PRODUCT_REGISTRATION_PAGE_ROWS_V1 == 0:
+                repository.register_artifacts(tuple(entries))
+                entries.clear()
+                self.service_public_stream(repository)
+        if entries:
+            repository.register_artifacts(tuple(entries))
+            self.service_public_stream(repository)
+        recovery.collector.registry = registry
+        self._start_broad_lane(repository, tuple(registry.contracts()), now_ns=max(snapshot.observed_at_ns, self.clock_ns()))
+
+    def _persist_broad_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -> bool:
+        from .broad_universe import publish_broad_workset
+
+        ready = super()._persist_broad_public_snapshot(repository, snapshot, now_ns=now_ns)
+        entry = repository.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
+            as_of_ns=max(snapshot.observed_at_ns, self.clock_ns()), limit=1).entries[0]
+        at_ns = entry.available_at_ns
+        source_states: dict[str, str] = {}
+        for source in self.public_source.required_source_ids:
+            health = repository.latest_source_health_at(source, as_of_ns=at_ns)
+            source_states[source] = health.status if health is not None else "UNKNOWN"
+        rejected = frozenset(entry.metadata["receipt"].get("rejected_record_indexes", ()))
+        eligible_snapshot = replace(snapshot, records=tuple(item for index, item in enumerate(snapshot.records)
+                                                            if index not in rejected))
+        workset = publish_broad_workset(repository, products=self.public_source.current_products, snapshot=eligible_snapshot,
+            available_at_ns=at_ns, acquisition_ref=entry.artifact_ref, source_state=source_states,
+            clock_ns=self.clock_ns,
+            service=lambda: self.service_public_stream(repository),
+            active_watch_keys=tuple(w.key for w in _bounded_active_watches(repository)))
+        at_ns = workset["available_at_ns"]
+        setter = getattr(self.public_source, "set_enrichment_keys", None)
+        if callable(setter):
+            selected_refs = set(workset["active_product_refs"])
+            setter(tuple(product.key for product in self.public_source.current_products
+                         if product.content_hash in selected_refs))
+        from ..data.universe import ComputeTierV2
+
+        if getattr(self._broad_lane, "capture", None) is not None:
+            current_stream_products = {product.key for product in self.public_source.current_products
+                if product.trading_status.value == "TRADING" and product.available_at_ns <= at_ns
+                and product.effective_at_ns <= at_ns}
+            stream_tiers = {InstrumentKeyV2.from_dict(json.loads(key)): ComputeTierV2(tier)
+                for key, tier in workset["tiers"].items()
+                if InstrumentKeyV2.from_dict(json.loads(key)) in current_stream_products}
+            stream_watches = tuple(w.key for w in _bounded_active_watches(repository)
+                if w.key in current_stream_products)
+            self._broad_lane.reconfigure(repository, products=self.public_source.current_products,
+                tiers=stream_tiers, now_ns=at_ns,
+                benchmark_keys=self._broad_stream_seed_keys(
+                    self.public_source.current_products, now_ns=at_ns),
+                active_watch_keys=stream_watches)
+        state = self.public_source.export_state()
+        ref = sha256_json(state)
+        if repository.get_artifact(ref) is None:
+            repository.register_artifact(ArtifactIndexEntryV2(ref, "BroadPublicSchedulerStateV2", ref,
+                at_ns, at_ns, {"scheduler": state}))
+        return ready
+
+    def service_public_stream(self, repository: OpsRepository) -> None:
+        started = time.monotonic_ns()
+        try:
+            self._broad_lane.service(repository, now_ns=sample(self.clock_ns, floor_ns=0))
+            self._stream_last_service_at_ns = sample(self.clock_ns, floor_ns=0)
+        except Exception:
+            self._stream_ingestion_failed = True
+            raise
+        finally:
+            self._stream_last_service_duration_ns = time.monotonic_ns() - started
+
+    def _collect_public_stream_evidence(self, repository: OpsRepository, *, now_ns: int, **kwargs: Any) -> None:
+        self.service_public_stream(repository)
+
+    def finish_public_capture(self, repository: OpsRepository) -> None:
+        self._broad_lane.finish(repository)
+
+    def collect(self, repository: OpsRepository, *, now_ns: int, recovery: OpsRecoverySnapshotV1) -> OpsCycleBatchV1:
+        self.service_public_stream(repository)
+        snapshot = self._serviced_acquisition.acquire(now_ns=now_ns,
+            service=lambda: self.service_public_stream(repository))
+        if (not snapshot.source_snapshot.get("pending", False)
+                and snapshot.source_snapshot.get("acquisition_due", True)):
+            self._register_refreshed_stream_products(repository, snapshot)
+            self._persist_broad_public_snapshot(repository, snapshot, now_ns=now_ns)
+        elif snapshot.source_snapshot.get("pending", False):
+            # The worker still owns acquisition state. Never read its mutable
+            # scheduler/products or consume a fabricated empty completion.
+            body = {"version": "BROAD_PUBLIC_ACQUISITION_WAIT_V2", "observed_at_ns": self.clock_ns(),
+                    "reason": snapshot.failure_reason, "status": self._serviced_acquisition.status(),
+                    "authority": "ZERO"}
+            ref = sha256_json(body)
+            repository.register_artifact(ArtifactIndexEntryV2(ref, "BroadPublicAcquisitionWaitV2", ref,
+                body["observed_at_ns"], body["observed_at_ns"], {"wait": body}))
+        # Recursive active histories operate only on the declared workset.
+        from .broad_universe import active_products
+
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        original = collector.registry
+        active_registry = InstrumentRegistryV2()
+        stream_service = partial(self.service_public_stream, repository)
+        for product in active_products(repository, cutoff_ns=now_ns, service=stream_service) or ():
+            active_registry.register(product)
+        collector.registry = active_registry
+        try:
+            indexed = IndexedPublicCycleSourceV1(clock_ns=self.clock_ns,
+                minimum_m15_origin_close_at_ns=self.minimum_m15_origin_close_at_ns,
+                scope_public_sources=True)
+            indexed.stream_service = self.service_public_stream
+            batch = indexed.collect(repository, collector, now_ns=now_ns, recovery=recovery)
+        finally:
+            collector.registry = original
+        self._collection_calls += 1
+        return batch
+
+
+def create_broad_public_port(*, enabled_venues: tuple[VenueV2, ...], public_source: Any = None,
+                             clock_ns: Callable[[], int] = time.time_ns,
+                             broad_runtime: Any | None = None) -> BroadProductionOpsCyclePortV2:
+    from ..data.broad_public_source import BroadPublicCycleSourceV2
+
+    source = public_source or BroadPublicCycleSourceV2(enabled_venues=enabled_venues, clock_ns=clock_ns)
+    if tuple(sorted(source.enabled_venues, key=lambda item: item.value)) != tuple(sorted(enabled_venues, key=lambda item: item.value)):
+        raise ValueError("broad source venue configuration mismatch")
+    return BroadProductionOpsCyclePortV2(public_source=source, clock_ns=clock_ns, broad_runtime=broad_runtime)
 
 
 def _l2_raw_frame_from_archive_row(row: Mapping[str, Any]) -> L2RawFrameV2:

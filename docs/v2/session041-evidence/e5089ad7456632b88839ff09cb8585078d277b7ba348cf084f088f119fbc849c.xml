@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="34.317" timestamp="2026-10-08T07:16:17.818927+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_broad_runtime_capture_progresses_during_sqlite_commit_stall" time="31.539"><failure message="assert ([0] and 0 &gt; 0)">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-363/test_broad_runtime_capture_pro0')
+
+    def test_broad_runtime_capture_progresses_during_sqlite_commit_stall(tmp_path):
+        offered_count = 160
+        products = (
+            _product("BTCUSDT", VenueV2.BYBIT),
+            _product("ETHUSDT", VenueV2.BINANCE),
+            *tuple(_product(f"X{index:03d}USDT", VenueV2.BYBIT) for index in range(62)),
+        )
+        port, runtime, source = _port(products, NOW)
+        interpreted: list[CapturedPublicFrameV2] = []
+        runtime.interpret_frames = lambda _repo, _plan, frames, _now: interpreted.extend(frames)
+        path = tmp_path / "broad-stall.sqlite"
+    
+        with OpsRepository(path) as repository:
+            port.recover(repository, now_ns=NOW)
+            snapshot = source.acquire_snapshot(now_ns=NOW)
+            port._register_refreshed_stream_products(repository, snapshot)
+            assert runtime.source is not None
+            bybit_lane = runtime.source._lanes["BYBIT"]
+            handoff = bybit_lane._handoff
+            producer_started = threading.Event()
+            producer_done = threading.Event()
+            producer_errors: list[BaseException] = []
+            offered_frames: list[CapturedPublicFrameV2] = []
+            stall_started = threading.Event()
+            stall_duration: list[float] = []
+            captured_during_stall: list[int] = []
+            trace_lock = threading.Lock()
+            stalled = False
+    
+            def producer() -&gt; None:
+                try:
+                    producer_started.set()
+                    if not stall_started.wait(2.0):
+                        raise AssertionError("SQLite commit stall was not reached")
+                    for index in range(offered_count):
+                        at_ns = NOW - 1_000_000_000 + index + 1
+                        raw = json.dumps({"topic": "publicTrade.BTCUSDT", "type": "snapshot",
+                            "ts": at_ns, "data": [{"T": at_ns, "s": "BTCUSDT", "S": "Buy",
+                                "v": "0.01", "p": "100", "i": f"trade-{index}"}]},
+                            separators=(",", ":")).encode()
+                        item = CapturedPublicFrameV2(
+                            VenueV2.BYBIT,
+                            "BYBIT_PUBLIC_WS_BROAD_V2",
+                            "publicTrade.BTCUSDT",
+                            raw,
+                            hashlib.sha256(raw).hexdigest(),
+                            at_ns,
+                            at_ns,
+                            1,
+                        )
+                        if not handoff.offer(item):
+                            raise AssertionError("broad Bybit handoff rejected a frame")
+                        offered_frames.append(item)
+                except BaseException as exc:
+                    producer_errors.append(exc)
+                finally:
+                    producer_done.set()
+    
+            def delay_first_commit(statement: str) -&gt; None:
+                nonlocal stalled
+                normalized = statement.strip().upper()
+                if normalized == "COMMIT":
+                    with trace_lock:
+                        should_stall = not stalled
+                        stalled = True
+                        if should_stall:
+                            stall_started.set()
+                            before = time.monotonic()
+                            assert runtime.capture is not None
+                            captured = 0
+                            deadline = before + 3.0
+                            while time.monotonic() &lt; deadline:
+                                captured = int(runtime.capture.status().capture["captured_frames"])
+                                if captured and time.monotonic() - before &gt;= 0.5:
+                                    break
+                                time.sleep(0.01)
+                            captured_during_stall.append(captured)
+                            stall_duration.append(time.monotonic() - before)
+    
+            repository._connection.set_trace_callback(delay_first_commit)
+            producer_thread = threading.Thread(target=producer, name="s41-broad-stall-producer")
+            producer_thread.start()
+            assert producer_started.wait(1.0)
+            try:
+                port._persist_broad_public_snapshot(repository, snapshot, now_ns=NOW)
+                producer_thread.join(timeout=2.0)
+                assert producer_done.is_set()
+                assert not producer_errors
+                assert stall_started.is_set() and stall_duration and stall_duration[0] &gt;= 0.45
+&gt;               assert captured_during_stall and captured_during_stall[0] &gt; 0
+E               assert ([0] and 0 &gt; 0)
+
+tests/v2/test_session041_public_runtime_integration.py:276: AssertionError</failure></testcase></testsuite></testsuites>

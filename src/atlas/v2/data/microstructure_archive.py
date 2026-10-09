@@ -105,75 +105,105 @@ class L2FrameArchiveV2:
         return sha256_json({"artifact_type": kind, "chunk_id": chunk_id})
 
     def write_chunk(self, frames: tuple[L2RawFrameV2, ...]) -> tuple[str, Path]:
+        return self.write_chunks((frames,))[0]
+
+    def write_chunks(
+        self,
+        frame_groups: tuple[tuple[L2RawFrameV2, ...], ...],
+    ) -> tuple[tuple[str, Path], ...]:
         import pyarrow as pa
+
+        if not frame_groups:
+            return ()
+        if len(frame_groups) > 256:
+            raise ValueError("archive chunk batch item bound exceeded")
+        prepared: list[tuple[str, tuple[L2RawFrameV2, ...], Any, Path]] = []
+        for frames in frame_groups:
+            if not frames or any(not isinstance(frame, L2RawFrameV2) for frame in frames):
+                raise ValueError("archive chunk requires nonempty typed raw frames")
+            ordered = tuple(sorted(frames, key=lambda f: (f.available_at_ns, f.source_id, f.channel,
+                                                           f.last_update_id if f.last_update_id is not None else -1,
+                                                           f.raw_payload_hash)))
+            keys = {(f.instrument.content_hash, f.source_id, f.channel) for f in ordered}
+            if len(keys) != 1:
+                raise ValueError("one Parquet chunk must contain one instrument/source/channel stream")
+            identities: dict[str, str] = {}
+            for frame in ordered:
+                old = identities.get(frame.record_id)
+                if old is not None and old != frame.raw_payload_hash:
+                    raise ValueError("conflicting duplicate raw frame identity")
+                identities[frame.record_id] = frame.raw_payload_hash
+            chunk_id = sha256_json({"archive_type": "L2RawFrameChunkV2",
+                                    "frames": [f.metadata_dict() for f in ordered]})
+            rows = [{**frame.metadata_dict(), "instrument_json": canonical_json(frame.instrument.to_dict()),
+                     "raw_payload_bytes": frame.raw_payload_bytes} for frame in ordered]
+            candidate = pa.Table.from_pylist(rows)
+            prepared.append((chunk_id, ordered, candidate, self.root / f"{chunk_id}.parquet"))
+        prepared.sort(key=lambda item: item[0])
+        if self.compact_live:
+            from .public_archive_extents import write_extents
+
+            specs = tuple((candidate, "ops-l2-frames", chunk_id,
+                           self.clock_ns or (lambda available_at_ns=ordered[-1].available_at_ns: available_at_ns),
+                           ordered[-1].available_at_ns)
+                          for chunk_id, ordered, candidate, _path in prepared)
+            extent_results = write_extents(self.repository, specs)
+            extent_metadata = self.repository.get_artifact_metadata_by_refs(
+                tuple(extent for extent, _path in extent_results))
+            checkpoints = []
+            outputs = []
+            for (chunk_id, ordered, _candidate, _path), (extent, extent_path) in zip(
+                    prepared, extent_results, strict=True):
+                last = ordered[-1]
+                descriptor = extent_metadata.get(extent)
+                if descriptor is None:
+                    raise RuntimeError("durable public archive extent descriptor missing after batch index")
+                checkpoint_ref = self.checkpoint_ref(chunk_id)
+                checkpoints.append(ArtifactIndexEntryV2(
+                    checkpoint_ref, "L2FrameArchiveCheckpointV3", chunk_id,
+                    int(descriptor["available_at_ns"]), int(descriptor["available_at_ns"]),
+                    {"schema_version": 3, "chunk_id": chunk_id, "archive_extent_ref": extent,
+                     "instrument": last.instrument.to_dict(), "instrument_hash": last.instrument.content_hash,
+                     "source_id": last.source_id, "channel": last.channel,
+                     "high_water_update_id": last.last_update_id, "last_record_id": last.record_id,
+                     "last_payload_hash": last.raw_payload_hash, "sequence_semantics": last.sequence_semantics,
+                     "state_after_restart": "SNAPSHOT_RECOVERY", "source_health_after_restart": "INCOMPLETE_SNAPSHOT",
+                     "frame_count": len(ordered)}))
+                outputs.append((chunk_id, extent_path))
+            self.repository.register_artifacts(tuple(checkpoints))
+            return tuple(outputs)
+        self.root.mkdir(parents=True, exist_ok=True)
         import pyarrow.parquet as pq
 
-        if not frames or any(not isinstance(frame, L2RawFrameV2) for frame in frames):
-            raise ValueError("archive chunk requires nonempty typed raw frames")
-        ordered = tuple(sorted(frames, key=lambda f: (f.available_at_ns, f.source_id, f.channel,
-                                                       f.last_update_id if f.last_update_id is not None else -1,
-                                                       f.raw_payload_hash)))
-        keys = {(f.instrument.content_hash, f.source_id, f.channel) for f in ordered}
-        if len(keys) != 1:
-            raise ValueError("one Parquet chunk must contain one instrument/source/channel stream")
-        identities: dict[str, str] = {}
-        for frame in ordered:
-            old = identities.get(frame.record_id)
-            if old is not None and old != frame.raw_payload_hash:
-                raise ValueError("conflicting duplicate raw frame identity")
-            identities[frame.record_id] = frame.raw_payload_hash
-        chunk_id = sha256_json({"archive_type": "L2RawFrameChunkV2",
-                                "frames": [f.metadata_dict() for f in ordered]})
-        self.root.mkdir(parents=True, exist_ok=True)
-        path = self.root / f"{chunk_id}.parquet"
-        rows = [{**frame.metadata_dict(), "instrument_json": canonical_json(frame.instrument.to_dict()),
-                 "raw_payload_bytes": frame.raw_payload_bytes} for frame in ordered]
-        candidate = pa.Table.from_pylist(rows)
-        if self.compact_live:
-            from .public_archive_extents import write_extent
-
-            extent, extent_path = write_extent(self.repository, candidate, namespace="ops-l2-frames",
-                chunk_id=chunk_id, clock_ns=self.clock_ns or (lambda: ordered[-1].available_at_ns),
-                floor_ns=ordered[-1].available_at_ns)
+        checkpoints = []
+        outputs = []
+        for chunk_id, ordered, candidate, path in prepared:
+            temporary = path.with_suffix(".parquet.tmp")
+            pq.write_table(candidate, temporary, compression="zstd")
+            if path.exists():
+                prior = pq.read_table(path)
+                if prior.to_pylist() != pq.read_table(temporary).to_pylist():
+                    temporary.unlink(missing_ok=True)
+                    raise ValueError("immutable L2 chunk identity conflicts with archived bytes")
+                temporary.unlink(missing_ok=True)
+            else:
+                temporary.replace(path)
             last = ordered[-1]
-            descriptor = self.repository.get_artifact(extent)
-            assert descriptor is not None
-            checkpoint_ref = self.checkpoint_ref(chunk_id)
-            self.repository.register_artifact(ArtifactIndexEntryV2(
-                checkpoint_ref, "L2FrameArchiveCheckpointV3", chunk_id,
-                descriptor.available_at_ns, descriptor.available_at_ns,
-                {"schema_version": 3, "chunk_id": chunk_id, "archive_extent_ref": extent,
+            checkpoint_ref = sha256_json({"artifact_type": "L2FrameArchiveCheckpointV2", "chunk_id": chunk_id})
+            checkpoints.append(ArtifactIndexEntryV2(
+                checkpoint_ref, "L2FrameArchiveCheckpointV2", chunk_id,
+                last.available_at_ns, last.available_at_ns,
+                {"schema_version": 1, "chunk_id": chunk_id, "archive_path_name": path.name,
                  "instrument": last.instrument.to_dict(), "instrument_hash": last.instrument.content_hash,
                  "source_id": last.source_id, "channel": last.channel,
                  "high_water_update_id": last.last_update_id, "last_record_id": last.record_id,
                  "last_payload_hash": last.raw_payload_hash, "sequence_semantics": last.sequence_semantics,
                  "state_after_restart": "SNAPSHOT_RECOVERY", "source_health_after_restart": "INCOMPLETE_SNAPSHOT",
-                 "frame_count": len(ordered)}))
-            return chunk_id, extent_path
-        temporary = path.with_suffix(".parquet.tmp")
-        pq.write_table(candidate, temporary, compression="zstd")
-        if path.exists():
-            prior = pq.read_table(path)
-            if prior.to_pylist() != pq.read_table(temporary).to_pylist():
-                temporary.unlink(missing_ok=True)
-                raise ValueError("immutable L2 chunk identity conflicts with archived bytes")
-            temporary.unlink(missing_ok=True)
-        else:
-            temporary.replace(path)
-        last = ordered[-1]
-        checkpoint_ref = sha256_json({"artifact_type": "L2FrameArchiveCheckpointV2", "chunk_id": chunk_id})
-        self.repository.register_artifact(ArtifactIndexEntryV2(
-            checkpoint_ref, "L2FrameArchiveCheckpointV2", chunk_id,
-            last.available_at_ns, last.available_at_ns,
-            {"schema_version": 1, "chunk_id": chunk_id, "archive_path_name": path.name,
-             "instrument": last.instrument.to_dict(), "instrument_hash": last.instrument.content_hash,
-             "source_id": last.source_id, "channel": last.channel,
-             "high_water_update_id": last.last_update_id, "last_record_id": last.record_id,
-             "last_payload_hash": last.raw_payload_hash, "sequence_semantics": last.sequence_semantics,
-             "state_after_restart": "SNAPSHOT_RECOVERY", "source_health_after_restart": "INCOMPLETE_SNAPSHOT",
-             "frame_count": len(ordered), "frame_refs": [f.record_id for f in ordered]},
-        ))
-        return chunk_id, path
+                 "frame_count": len(ordered), "frame_refs": [f.record_id for f in ordered]},
+            ))
+            outputs.append((chunk_id, path))
+        self.repository.register_artifacts(tuple(checkpoints))
+        return tuple(outputs)
 
     def write_conflict_quarantine(self, existing: L2RawFrameV2, incoming: L2RawFrameV2) -> tuple[str, Path]:
         """Retain both exact payloads for one conflicting sequence identity."""

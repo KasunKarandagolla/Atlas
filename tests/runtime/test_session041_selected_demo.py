@@ -11,8 +11,9 @@ import pytest
 
 from atlas.persistence.sqlite import PersistenceError
 from atlas.runtime.binance_demo import BinanceDemoReadReceipt, DemoCredential
-from atlas.runtime.selected_demo import SelectedDemoQualification
+from atlas.runtime.selected_demo import SelectedDemoQualification, _publish_immutable_json
 from atlas.runtime.writer_lock import WriterAlreadyActive
+from atlas.v2._serialization import sha256_json
 from atlas.v2.product import ResearchRunConfigV2, WindowsSecretStore
 
 T0 = 1_800_000_000_000_000_000
@@ -29,6 +30,7 @@ def configuration(root, **changes):
 
 class Reader:
     alias = "fixture-alias"
+    tick_size = "0.01"
 
     def __init__(self, *, identity, credential, clock_ns):
         self.identity = identity
@@ -45,7 +47,7 @@ class Reader:
             "/fapi/v3/balance": [{"asset": "USDT", "accountAlias": self.alias}],
             "/fapi/v1/exchangeInfo": {"symbols": [{"symbol": "SOLUSDT", "baseAsset": "SOL",
                 "quoteAsset": "USDT", "marginAsset": "USDT", "contractType": "PERPETUAL", "status": "TRADING",
-                "filters": [{"filterType": "PRICE_FILTER", "tickSize": "0.01"},
+                "filters": [{"filterType": "PRICE_FILTER", "tickSize": self.tick_size},
                     {"filterType": "LOT_SIZE", "minQty": "0.01", "maxQty": "100", "stepSize": "0.01"},
                     {"filterType": "MARKET_LOT_SIZE", "minQty": "0.01", "maxQty": "100", "stepSize": "0.01"}]}]},
         }
@@ -54,13 +56,13 @@ class Reader:
         return BinanceDemoReadReceipt(self.identity.content_hash, path, self.clock_ns(), digest, digest, body)
 
 
-def host(root, lease_root, **changes):
-    run = root / "run"
-    run.mkdir(exist_ok=True)
+def host(root, lease_root, *, clock_ns=lambda: T0, **changes):
+    run = root / "runs" / "run"
+    run.mkdir(parents=True, exist_ok=True)
     store = Mock()
     store.get_demo_exchange_credentials.return_value = DemoCredential("fixture-key", "fixture-material")
     return SelectedDemoQualification(run=run, configuration=configuration(root, **changes),
-        secret_store=store, lease_root=lease_root, clock_ns=lambda: T0, reader_factory=Reader)
+        secret_store=store, lease_root=lease_root, clock_ns=clock_ns, reader_factory=Reader)
 
 
 def test_constructor_does_not_read_credentials_or_connect_and_open_binds_exact_run(tmp_path):
@@ -125,7 +127,8 @@ def test_stale_writer_fails_before_native_effect(tmp_path):
 def test_native_profile_builds_exact_observed_demo_product_without_running(tmp_path):
     runtime = host(tmp_path, tmp_path / "lease", execution_profile="DEMO_NATIVE_OMS_QUALIFICATION",
                    execution_instrument_symbol="SOLUSDT")
-    native = SimpleNamespace(node=Mock(), _run_task=None)
+    native = SimpleNamespace(node=Mock(), _run_task=None,
+                             risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1")
     runtime.node_factory = Mock(return_value=native)
     try:
         result = runtime.open()
@@ -136,9 +139,146 @@ def test_native_profile_builds_exact_observed_demo_product_without_running(tmp_p
         assert values["writer_epoch"] == runtime.ownership.writer_epoch
         assert "BINANCE_FILL_TIME_PROTECTION" in result["opening_gate"]
         assert runtime.journal.load_unresolved_intents() == []
+        shell = runtime.create_binance_risk_reduction_shell()
+        assert shell.nautilus_port is native
+        assert shell.assisted_enabled is False
+        assert shell.writer_epoch == runtime.ownership.writer_epoch
     finally:
         runtime.close()
-    native.node.dispose.assert_called_once()
+        native.node.dispose.assert_called_once()
+
+
+def test_binance_product_binding_preserves_original_contract_hash_on_restart(tmp_path):
+    profile = {"execution_profile": "DEMO_NATIVE_OMS_QUALIFICATION", "execution_instrument_symbol": "SOLUSDT"}
+    first = host(tmp_path, tmp_path / "lease", **profile)
+    first.node_factory = Mock(return_value=SimpleNamespace(node=Mock(), _run_task=None,
+        risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1"))
+    try:
+        first.open()
+        original = first.product
+        assert original is not None
+        binding_path = first.run / "binance-product-binding.json"
+        binding = json.loads(binding_path.read_text(encoding="utf-8"))
+        assert binding["product_contract_hash"] == original.content_hash
+        assert binding["metadata_row_hash"] == original.key.contract_revision
+        receipt = first.journal.get_observation_by_id(binding["metadata_observation_id"])
+        assert receipt["raw_hash"] == binding["metadata_receipt_hash"]
+        assert receipt["receive_time_ns"] == binding["metadata_received_at_ns"]
+        initial_binding = binding_path.read_bytes()
+        with pytest.raises(PersistenceError, match="could not be durably published"):
+            _publish_immutable_json(binding_path, b"replacement")
+        assert binding_path.read_bytes() == initial_binding
+    finally:
+        first.close()
+
+    later = host(tmp_path, tmp_path / "lease", clock_ns=lambda: T0 + 9_000_000_000, **profile)
+    later.node_factory = Mock(return_value=SimpleNamespace(node=Mock(), _run_task=None,
+        risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1"))
+    try:
+        later.open()
+        assert later.product is not None and original is not None
+        assert later.product.content_hash == original.content_hash
+        assert binding_path.read_bytes() == initial_binding
+        assert later._instrument_metadata_receipt.received_at_ns == T0 + 9_000_000_000
+        assert later.market_filters.observed_at_ns == T0 + 9_000_000_000
+        assert later.product.available_at_ns == original.available_at_ns
+    finally:
+        later.close()
+
+
+def test_binance_product_binding_fails_closed_when_exchange_info_changes(tmp_path):
+    profile = {"execution_profile": "DEMO_NATIVE_OMS_QUALIFICATION", "execution_instrument_symbol": "SOLUSDT"}
+    first = host(tmp_path, tmp_path / "lease", **profile)
+    first.node_factory = Mock(return_value=SimpleNamespace(node=Mock(), _run_task=None,
+        risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1"))
+    try:
+        first.open()
+    finally:
+        first.close()
+
+    old_tick = Reader.tick_size
+    Reader.tick_size = "0.05"
+    changed = host(tmp_path, tmp_path / "lease", clock_ns=lambda: T0 + 1_000_000_000, **profile)
+    changed.node_factory = Mock(return_value=SimpleNamespace(node=Mock(), _run_task=None,
+        risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1"))
+    try:
+        with pytest.raises(PersistenceError, match="does not match current metadata"):
+            changed.open()
+        changed.node_factory.assert_not_called()
+    finally:
+        Reader.tick_size = old_tick
+        changed.close()
+
+
+def test_binance_product_binding_detects_tampered_contract_snapshot(tmp_path):
+    profile = {"execution_profile": "DEMO_NATIVE_OMS_QUALIFICATION", "execution_instrument_symbol": "SOLUSDT"}
+    first = host(tmp_path, tmp_path / "lease", **profile)
+    first.node_factory = Mock(return_value=SimpleNamespace(node=Mock(), _run_task=None,
+        risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1"))
+    try:
+        first.open()
+        path = first.run / "binance-product-binding.json"
+    finally:
+        first.close()
+    binding = json.loads(path.read_text(encoding="utf-8"))
+    binding["product_contract"]["tick_size"] = "0.05"
+    path.write_text(json.dumps(binding), encoding="utf-8")
+
+    reopened = host(tmp_path, tmp_path / "lease", **profile)
+    try:
+        with pytest.raises(PersistenceError, match="binding does not match current metadata"):
+            reopened.open()
+    finally:
+        reopened.close()
+
+
+def test_binance_product_binding_checks_historical_receipt_against_durable_journal(tmp_path):
+    profile = {"execution_profile": "DEMO_NATIVE_OMS_QUALIFICATION", "execution_instrument_symbol": "SOLUSDT"}
+    first = host(tmp_path, tmp_path / "lease", **profile)
+    first.node_factory = Mock(return_value=SimpleNamespace(node=Mock(), _run_task=None,
+        risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1"))
+    try:
+        first.open()
+        path = first.run / "binance-product-binding.json"
+    finally:
+        first.close()
+    binding = json.loads(path.read_text(encoding="utf-8"))
+    binding["metadata_receipt_hash"] = "0" * 64
+    unsigned = {key: value for key, value in binding.items() if key != "content_hash"}
+    binding["content_hash"] = sha256_json(unsigned)
+    path.write_text(json.dumps(binding), encoding="utf-8")
+
+    reopened = host(tmp_path, tmp_path / "lease", **profile)
+    try:
+        with pytest.raises(PersistenceError, match="does not match current metadata"):
+            reopened.open()
+    finally:
+        reopened.close()
+
+
+def test_binance_product_binding_rejects_symlink(tmp_path):
+    profile = {"execution_profile": "DEMO_NATIVE_OMS_QUALIFICATION", "execution_instrument_symbol": "SOLUSDT"}
+    first = host(tmp_path, tmp_path / "lease", **profile)
+    first.node_factory = Mock(return_value=SimpleNamespace(node=Mock(), _run_task=None,
+        risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1"))
+    try:
+        first.open()
+        path = first.run / "binance-product-binding.json"
+    finally:
+        first.close()
+    target = first.run / "saved-product-binding.json"
+    path.rename(target)
+    path.symlink_to(target.name)
+
+    reopened = host(tmp_path, tmp_path / "lease", **profile)
+    factory = Mock()
+    reopened.node_factory = factory
+    try:
+        with pytest.raises(PersistenceError, match="product contract binding is invalid"):
+            reopened.open()
+        factory.assert_not_called()
+    finally:
+        reopened.close()
 
 
 def test_config_hash_changes_for_qualification_profile_and_symbol(tmp_path):

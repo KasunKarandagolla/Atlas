@@ -1,0 +1,11 @@
+# S41 security and authority review — UNVERIFIED
+
+The owner-designated project-root V2 freeze is used as governing authority for this session. Its SHA-256 is `e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78`. It first appears in available Git history at `d247d91`; no pre-S41 accepted comparison copy was found in the S40 ancestry or checked-out worktrees. No conflicting copy or material difference was found, but exact identity to a prior accepted copy is **UNVERIFIED**. The current-state document is status-only and was NOT_FOUND / NOT_READ after searches of the repository root, fetched Git refs/worktrees, and available home paths; no claims from it were used. Its absence does not alter normative authority. The consultation remains non-authoritative and its alternative economic-evidence policy remains **UNACCEPTED**.
+
+All 2,592 source-clause records remain `UNVERIFIED`. Their implementation and test mappings, A–E gap classification, and attributable resolutions are not complete. Ordinary missing work includes tool-free S7 event extraction, full-breadth storage/capacity admission, real-queue service fairness, Binance native command-readiness dispatch, clause-level mapping, and integrated validation.
+
+Fresh read-only reviews covered authority/matrix, Binance execution/recovery, and broad capacity/resilience. The Binance review found no high or critical execution logic defect and confirmed conservative UNKNOWN/duplicate-ID/protection behavior in the inspected paths. Its focused tests reported a Nautilus `PyLiveNode`/`PyStrategy` cross-thread teardown warning. The capacity review identified the missing full-workload evidence and a latest-page decode-order issue; the root added block-ordered decoding and a regression test, with current-source attributable central evidence still pending. These reviews do not qualify the final integrated SHA.
+
+No credentials, protected holdout, authenticated call, or capital action was accessed in this continuation. Final secret/dependency/freeze scans, remaining independent reviews, source-stable full-suite validation, and native Windows qualification remain open.
+
+Capital and assisted execution remain disabled. The critic has ZERO authority and Discovery remains quarantined. No freeze or safety invariant is relaxed to obtain closure.

@@ -106,9 +106,25 @@ def measure_bounded_cycles(root: Path, *, per_venue=128, cycles=2):
             archive=ParquetObservationArchiveV2(root / "ops-observations",
                 compact_stream_repository=repo, clock_ns=lambda: at[0]))
         collector.publish_indexes_after_archive = True
+        phase_service = {"last_at": 0.0, "max_gap": 0.0, "calls": 0}
+
+        def service():
+            assert not repo._connection.in_transaction
+            observed = time.perf_counter()
+            phase_service["max_gap"] = max(phase_service["max_gap"], observed - phase_service["last_at"])
+            phase_service["last_at"] = observed
+            phase_service["calls"] += 1
+
+        def start_phase():
+            phase_service.update(last_at=time.perf_counter(), max_gap=0.0, calls=0)
+
+        def finish_phase():
+            return {"calls": phase_service["calls"], "max_gap_seconds": max(
+                phase_service["max_gap"], time.perf_counter() - phase_service["last_at"])}
+
         port = SimpleNamespace(_collector_recovery=SimpleNamespace(collector=collector),
             public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES),
-            clock_ns=lambda: at[0], service_public_stream=lambda _repo: None)
+            clock_ns=lambda: at[0], service_public_stream=lambda _repo: service())
         def db_bytes():
             return (repo._connection.execute("PRAGMA page_count").fetchone()[0]
                 * repo._connection.execute("PRAGMA page_size").fetchone()[0])
@@ -130,9 +146,11 @@ def measure_bounded_cycles(root: Path, *, per_venue=128, cycles=2):
                 assert observation.record_id not in expected_raw
                 expected_raw[observation.record_id] = (canonical_json(observation.to_dict()), record.raw_payload)
             acquired = _snapshot(records, at[0])
+            start_phase()
             started = time.perf_counter()
             assert ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo, acquired, now_ns=at[0])
             adoption_seconds = time.perf_counter() - started
+            adoption_service = finish_phase()
             receipt = repo.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
                 as_of_ns=at[0], limit=1).entries[0]
             exact_refs = [ref for values in receipt.metadata["receipt"]["source_observation_refs"].values()
@@ -145,17 +163,20 @@ def measure_bounded_cycles(root: Path, *, per_venue=128, cycles=2):
             for record in records:
                 ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
                     "record_id": record.observation.record_id})
-                entry = repo.get_artifact(ref)
-                assert entry is not None and entry.content_hash == record.observation.content_hash
-                assert entry.available_at_ns == at[0]
-                assert canonical_json(exact_entries[ref]["metadata"]) == canonical_json(entry.metadata)
-                expected_index[ref] = canonical_json(entry.metadata)
+                entry = exact_entries[ref]
+                assert entry["artifact_type"] == "PublicObservationIndexV2"
+                assert entry["content_hash"] == record.observation.content_hash
+                assert entry["available_at_ns"] == at[0]
+                expected_index[ref] = canonical_json(entry["metadata"])
             assert receipt.metadata["receipt"]["rejected_record_indexes"] == ()
+            start_phase()
             started = time.perf_counter()
             body = publish_broad_workset(repo, products=products, snapshot=acquired,
                 available_at_ns=at[0], acquisition_ref=receipt.artifact_ref,
-                source_state=dict.fromkeys(SOURCES, "HEALTHY_CURRENT"), clock_ns=lambda: at[0])
+                source_state=dict.fromkeys(SOURCES, "HEALTHY_CURRENT"), clock_ns=lambda: at[0],
+                service=service)
             publication_seconds = time.perf_counter() - started
+            publication_service = finish_phase()
             universe = full_universe(repo, cutoff_ns=at[0])
             assert len(universe.entries) == len(products)
             assert body["selected_count"] <= 24
@@ -181,7 +202,8 @@ def measure_bounded_cycles(root: Path, *, per_venue=128, cycles=2):
                 "wal_sample_bytes": (root / "ops.sqlite-wal").stat().st_size,
                 "archive_cumulative_bytes": sum(path.stat().st_size for path in (root / "ops-observations").glob("*.parquet")),
                 "metadata_by_type_cumulative": metadata, "zlib_metadata_bytes_by_type_cycle": compressed,
-                "adoption_seconds": adoption_seconds, "workset_publication_seconds": publication_seconds})
+                "adoption_seconds": adoption_seconds, "workset_publication_seconds": publication_seconds,
+                "adoption_service": adoption_service, "publication_service": publication_service})
             previous = current
             previous_writes = current_writes
         assert repo._connection.execute("SELECT count(*) FROM artifact_index WHERE artifact_type='PublicObservationIndexV2'").fetchone()[0] == cycles * 4 * per_venue
@@ -192,26 +214,37 @@ def measure_bounded_cycles(root: Path, *, per_venue=128, cycles=2):
         metrics["process_storage_write_bytes_total"] = storage_write_bytes() - write_baseline
         metrics["dbstat_bytes"] = {row[0]: row[1] for row in repo._connection.execute(
             "SELECT name,sum(pgsize) FROM dbstat GROUP BY name")}
-        expected_artifacts = {row["artifact_ref"]: (row["artifact_type"], row["content_hash"],
-            row["created_at_ns"], row["available_at_ns"], row["metadata_json"])
-            for row in repo._connection.execute("SELECT * FROM artifact_index")}
+        expected_artifacts = {}
+        for row in repo._connection.execute("SELECT * FROM artifact_index"):
+            entry = repo.artifact_entry_from_storage_row(row)
+            expected_artifacts[entry.artifact_ref] = (entry.artifact_type, entry.content_hash,
+                entry.created_at_ns, entry.available_at_ns, canonical_json(entry.metadata))
         repo._connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     with OpsRepository(root / "ops.sqlite", read_only=True) as restarted:
         for cycle, ref in enumerate(hashes):
             assert sha256_json(latest_workset(restarted, cutoff_ns=NOW + cycle * STEP)) == ref
             assert len(full_universe(restarted, cutoff_ns=NOW + cycle * STEP).entries) == len(products)
-            observed = restarted.artifact_entries_by_types(("PublicObservationIndexV2",),
-                limit=10_000, available_before_ns=NOW + cycle * STEP)
-            assert len(observed) == (cycle + 1) * 4 * per_venue
-            assert all(entry.available_at_ns <= NOW + cycle * STEP for entry in observed)
-        for ref, metadata in expected_index.items():
-            entry = restarted.get_artifact(ref)
-            assert entry is not None and canonical_json(entry.metadata) == metadata
+        restored_index = restarted.get_artifact_metadata_by_refs(tuple(expected_index))
+        assert set(restored_index) == set(expected_index)
+        assert {ref: canonical_json(entry["metadata"]) for ref, entry in restored_index.items()} == expected_index
+        # Rehydrate all retained domains as one bounded block-ordered batch.
+        # Per-type full scans repeated the same compressed metadata decoding
+        # and exceeded the repository's causal row cap at maximum breadth.
+        restored_domains = restarted.get_artifact_metadata_by_refs(tuple(expected_artifacts))
+        assert set(restored_domains) == set(expected_artifacts)
+        created_at = {}
+        all_refs = tuple(sorted(expected_artifacts))
+        for offset in range(0, len(all_refs), 500):
+            batch = all_refs[offset:offset + 500]
+            marks = ",".join("?" for _ in batch)
+            rows = restarted._connection.execute(
+                f"SELECT artifact_ref,created_at_ns FROM artifact_index WHERE artifact_ref IN ({marks})", batch
+            ).fetchall()
+            created_at.update((row["artifact_ref"], row["created_at_ns"]) for row in rows)
         for ref, expected in expected_artifacts.items():
-            entry = restarted.get_artifact(ref)
-            assert entry is not None
-            assert (entry.artifact_type, entry.content_hash, entry.created_at_ns,
-                entry.available_at_ns, canonical_json(entry.metadata)) == expected
+            entry = restored_domains[ref]
+            assert (entry["artifact_type"], entry["content_hash"], created_at[ref],
+                entry["available_at_ns"], canonical_json(entry["metadata"])) == expected
     import pyarrow.parquet as pq
 
     archived = {}

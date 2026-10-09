@@ -21,6 +21,8 @@ class ServicedPublicAcquisitionV1:
     are returned unchanged even when their consumption occurs in a later cycle.
     """
 
+    expected_result_type: type[Any] = BybitPublicSnapshotV1
+
     def __init__(
         self,
         source: Any,
@@ -44,7 +46,7 @@ class ServicedPublicAcquisitionV1:
         self._lock = threading.Lock()
         self._completed = threading.Event()
         self._worker: threading.Thread | None = None
-        self._result: BybitPublicSnapshotV1 | None = None
+        self._result: Any = None
         self._closed = False
         self._source_closed = False
         self._started_count = 0
@@ -53,7 +55,7 @@ class ServicedPublicAcquisitionV1:
 
     def _empty_snapshot(
         self, *, now_ns: int, started_at: float, failure_kind: str, reason: str,
-    ) -> BybitPublicSnapshotV1:
+    ) -> Any:
         return BybitPublicSnapshotV1(
             records=(), complete=False, failure_kind=failure_kind, failure_reason=reason,
             latest_received_at_ns=0, observed_at_ns=max(now_ns, self.clock_ns()),
@@ -67,7 +69,7 @@ class ServicedPublicAcquisitionV1:
             if callable(begin):
                 begin(now_ns=now_ns)
             result = self.source.acquire_snapshot(now_ns=now_ns)
-            if not isinstance(result, BybitPublicSnapshotV1):
+            if not isinstance(result, self.expected_result_type):
                 result = self._empty_snapshot(
                     now_ns=now_ns, started_at=started_at, failure_kind="MALFORMED",
                     reason="BYBIT_PUBLIC_ACQUISITION_WORKER_INVALID_RESULT",
@@ -95,7 +97,7 @@ class ServicedPublicAcquisitionV1:
         if callable(close):
             close()
 
-    def acquire(self, *, now_ns: int, service: Callable[[], None]) -> BybitPublicSnapshotV1:
+    def acquire(self, *, now_ns: int, service: Callable[[], None]) -> Any:
         """Wait a bounded time, servicing FIFO stream evidence between polls.
 
         The callback's own work must be bounded by its caller. Callback failures

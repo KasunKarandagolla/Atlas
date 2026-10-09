@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 
 import pytest
@@ -111,6 +112,24 @@ def test_s3_native_cadence_promotion_stays_within_global_tier3_cap():
         top_tier_2=2, top_tier_3=2,
     )
     assert sum(tier == ComputeTierV2.TIER_3 for tier in result.tiers.values()) == 8
+
+
+@pytest.mark.parametrize("watch_count", [4, 8])
+def test_active_watches_reserve_tier3_slots_before_ranked_scanner_population(watch_count):
+    items = tuple(replace(_observation(index), active_watch=index >= 12 - watch_count)
+                  for index in range(12))
+    watched = {item.product.key for item in items if item.active_watch}
+    result = DynamicUniverseRuntimeV2().build_snapshot(
+        items, decision_slot_ns=CUTOFF, information_cutoff_ns=CUTOFF,
+        created_at_ns=CUTOFF, selection_policy_hash="d" * 64, top_tier_3=5,
+    )
+    tier3 = {key for key, tier in result.tiers.items() if tier == ComputeTierV2.TIER_3}
+    ranked = sorted((item for item in items if item.product.key not in watched),
+        key=lambda item: (-item.trailing_24h_quote_turnover_usd, item.product.key.to_canonical_json()))
+
+    assert len(tier3) == 8
+    assert watched.issubset(tier3)
+    assert {item.product.key for item in ranked[:8 - watch_count]}.issubset(tier3)
 
 
 def test_policy_eligibility_uses_observed_per_policy_history_when_supplied():

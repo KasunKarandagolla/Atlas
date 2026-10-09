@@ -1,23 +1,32 @@
-"""Causal market-wide S6 relative-strength research policy.
-
-The module ranks only the point-in-time eligible universe. It persists ranked
-hypotheses and trigger evidence separately and never manufactures an action
-without the still-unfrozen S6 stop contract.
-"""
+"""Causal market-wide S6 relative-strength research policy and action shadow."""
 
 from __future__ import annotations
 
+import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
 from statistics import mean, stdev
 
-from atlas.v2._serialization import FrozenMap, artifact_wire, seal_envelope, sha256_json, timestamp
+from atlas.v2._serialization import (
+    FrozenMap,
+    artifact_wire,
+    canonical_json,
+    seal_envelope,
+    sha256_json,
+    sha256_ref,
+    timestamp,
+)
+from atlas.v2.chronology import causal_artifact, chronology_ref
 from atlas.v2.contracts import (
     ArtifactEnvelope,
+    CandidateActionV2,
     EligibilityStatusV2,
+    FeatureArtifactV2,
     OpportunityWatchV2,
+    PolicySpecV2,
+    ReplayViewV2,
     V2Side,
     WatchStateV2,
 )
@@ -27,6 +36,8 @@ from atlas.v2.data.raw import AvailabilityClassV2
 from atlas.v2.features.technical import ema
 from atlas.v2.instruments import InstrumentKeyV2, UniverseContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
+from atlas.v2.news.events import _source_evidence_available
+from atlas.v2.strategies.s1_trend import EventGate, EventState, ExecutableQuote, MarkIndexEvidence
 
 POLICY_ID = "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH"
 POLICY_VERSION = "1.0.0-shadow-research"
@@ -39,6 +50,15 @@ TRAILING_RETURNS = 30 * 24
 MIN_BREADTH = 20
 MIN_DECILE_COUNT = 1
 MAX_EVIDENCE_AGE_NS = 60_000_000_000
+S6_ACTION_POLICY_VERSION = "2.0.0-shadow-single-action"
+S6_ACTION_PRODUCER_VERSION = "S6_SINGLE_ACTION_SHADOW_V1"
+S6_CANDIDATE_DEADLINE_NS = 5_000_000_000
+S6_MAX_BBO_AGE_NS = 5_000_000_000
+S6_MAX_MARK_INDEX_AGE_NS = 5_000_000_000
+S6_STOP_BUFFER_ATR = Decimal("0.25")
+S6_MIN_STOP_DISTANCE_ATR = Decimal("0.5")
+S6_MAX_STOP_DISTANCE_ATR = Decimal("3")
+S6_ENTRY_COLLAR_BPS = Decimal("5")
 
 
 @dataclass(frozen=True)
@@ -85,6 +105,7 @@ def policy_spec() -> S6ResearchPolicyV2:
             "instrument_join": "full_InstrumentKeyV2",
             "availability": "cutoff_known_actual_or_reconstructed_view_explicit",
             "minimum_strategy_eligible_breadth": MIN_BREADTH,
+            "venue_scope": "BTC_proxy_venue_only_full_instrument_identity",
             "beta": "sample_covariance(asset,BTC)/sample_variance(BTC)",
             "residual_return": "asset_hourly_log_return-beta*BTC_hourly_log_return",
             "residual_volatility": "sample_standard_deviation_of_trailing_matched_residual_returns",
@@ -108,6 +129,110 @@ def policy_spec() -> S6ResearchPolicyV2:
 S6_POLICY = policy_spec()
 
 
+def action_policy_spec() -> PolicySpecV2:
+    """Add an immutable shadow action contract without changing S6 rank identity."""
+    return PolicySpecV2.build(
+        policy_id=POLICY_ID,
+        version=S6_ACTION_POLICY_VERSION,
+        strategy_family="CROSS_SECTIONAL_RELATIVE_STRENGTH_SINGLE_ACTION",
+        capital_status="SHADOW_ONLY",
+        decision_event="CONFIRMED_15M_CLOSE",
+        required_features=tuple(sorted((
+            "S6_AVAILABLE_POINT_IN_TIME_RANK_STATE",
+            "S6_TOP_BOTTOM_DECILE_AND_OWN_4H_TREND_ALIGNMENT",
+            "three_prior_completed_1H_bars",
+            "causal_m15_atr14",
+            "subsequent_confirmed_15M_trigger_bar",
+            "executable_bbo",
+            "mark_index",
+            "clear_deterministic_event_gate",
+            "current_source_health",
+        ))),
+        optional_features=(),
+        timeframe_rules=FrozenMap({
+            "ranking": "existing_S6_720_completed_H1_return_state_and_own_50_H4_context",
+            "stop_window": "three_latest_completed_H1_bars_strictly_before_trigger_M15",
+            "trigger": "subsequent_confirmed_15M_close_breaks_previous_15M_high_or_low",
+            "instrument_identity": "exact_full_InstrumentKeyV2_and_contract_revision",
+            "availability": "explicit_actual_or_reconstructed_view_no_backdating",
+        }),
+        setup_parameters=FrozenMap({
+            "source_rank_policy_hash": S6_POLICY.policy_hash,
+            "stop_window_h1_bars": 3,
+            "stop_window_excludes_trigger_interval": True,
+            "atr_feature_id": "m15.atr14",
+            "atr_algorithm": "TECHNICAL_V1_WILDER_SEEDED_FIRST_14_TR_MEAN",
+        }),
+        direction_rule=FrozenMap({
+            "long": "top_decile_and_own_4H_UP_then_subsequent_15M_close_breaks_previous_high",
+            "short": "bottom_decile_and_own_4H_DOWN_then_subsequent_15M_close_breaks_previous_low",
+            "ranking_and_direction": "existing_S6_research_policy_unchanged",
+        }),
+        entry_rule=FrozenMap({
+            "order_type": "LIMIT", "time_in_force": "IOC", "shadow_only": True,
+            "long_reference": "fresh_executable_BBO_ask", "short_reference": "fresh_executable_BBO_bid",
+            "no_same_epoch_reprice": True, "candidate_deadline_offset_ns": S6_CANDIDATE_DEADLINE_NS,
+            "bbo_max_age_ns": S6_MAX_BBO_AGE_NS,
+            "mark_index_max_age_ns": S6_MAX_MARK_INDEX_AGE_NS,
+            "confirmed_bar_max_lag_ns": S6_MAX_BBO_AGE_NS,
+        }),
+        collar_rule=FrozenMap({
+            "adverse_bps": int(S6_ENTRY_COLLAR_BPS),
+            "long_reference": "ask", "short_reference": "bid",
+            "formula": "long=ask*(1+5/10000);short=bid*(1-5/10000)",
+        }),
+        stop_rule=FrozenMap({
+            "long": "minimum_low_of_three_prior_completed_H1_bars_minus_0.25_ATR14_M15",
+            "short": "maximum_high_of_three_prior_completed_H1_bars_plus_0.25_ATR14_M15",
+            "atr_feature_id": "m15.atr14",
+            "minimum_distance_atr": str(S6_MIN_STOP_DISTANCE_ATR),
+            "maximum_distance_atr": str(S6_MAX_STOP_DISTANCE_ATR),
+            "rounding": "none_in_candidate;venue_tick_rounding_belongs_to_product_risk_contract",
+        }),
+        trigger_basis="CONFIRMED_CLOSE",
+        management_rule=FrozenMap({
+            "fixed_stop": True, "discretionary_trailing": False, "partial_tp": False,
+            "pyramiding": False, "averaging": False, "same_epoch_repricing": False,
+            "stop_widening": False,
+        }),
+        time_exit_rule=FrozenMap({"after_ns": FOUR_HOURS_NS, "type": "TIME_EXIT"}),
+        max_hold_ns=FOUR_HOURS_NS,
+        expiry_rule=FrozenMap({
+            "watch": "existing_single_subsequent_15M_bar_expiry",
+            "candidate_deadline_offset_ns": S6_CANDIDATE_DEADLINE_NS,
+        }),
+        model_requirements=(),
+    )
+
+
+S6_ACTION_POLICY = action_policy_spec()
+
+
+@dataclass(frozen=True)
+class S6ActionBuildResultV1:
+    """Fail-closed result of trying to materialize a single-action shadow candidate."""
+
+    status: str
+    reason: str
+    candidate: CandidateActionV2 | None = None
+    trigger_ref: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.status not in {"CANDIDATE", "NO_CANDIDATE", "NOT_ESTIMABLE"}:
+            raise ValueError("invalid S6 action build status")
+        if not self.reason:
+            raise ValueError("S6 action build result requires a reason")
+        if (self.status == "CANDIDATE") != (self.candidate is not None):
+            raise ValueError("S6 candidate result/status mismatch")
+
+
+def _same_btc_proxy_cohort(key: InstrumentKeyV2, btc_proxy: InstrumentKeyV2) -> bool:
+    """Require comparable venue, environment and product for cross-sectional beta."""
+    return (key.venue, key.environment, key.product) == (
+        btc_proxy.venue, btc_proxy.environment, btc_proxy.product,
+    )
+
+
 @dataclass(frozen=True)
 class LiquidityFundingEvidenceV2:
     key: InstrumentKeyV2
@@ -119,6 +244,7 @@ class LiquidityFundingEvidenceV2:
     liquidity_ref: str
     funding_ref: str
     source_health: PublicSourceHealthV2
+    turnover_ref: str | None = None
 
     def __post_init__(self) -> None:
         timestamp(self.observed_at_ns, field="S6_evidence.observed_at_ns")
@@ -134,17 +260,22 @@ class LiquidityFundingEvidenceV2:
             object.__setattr__(self, name, value)
         if any(len(ref) != 64 for ref in (self.liquidity_ref, self.funding_ref)):
             raise ValueError("S6 evidence requires content-addressed input refs")
+        if self.turnover_ref is not None:
+            sha256_ref(self.turnover_ref, field="S6_evidence.turnover_ref")
 
     @property
     def content_hash(self) -> str:
         return sha256_json(self.to_dict())
 
     def to_dict(self) -> dict[str, object]:
-        return {"schema_version": 1, "key": self.key.to_dict(), "observed_at_ns": self.observed_at_ns,
+        body: dict[str, object] = {"schema_version": 1, "key": self.key.to_dict(), "observed_at_ns": self.observed_at_ns,
                 "available_at_ns": self.available_at_ns, "spread_bps": str(self.spread_bps),
                 "quote_turnover_24h": str(self.quote_turnover_24h), "funding_rate": str(self.funding_rate),
                 "liquidity_ref": self.liquidity_ref, "funding_ref": self.funding_ref,
                 "source_health": self.source_health.to_dict()}
+        if self.turnover_ref is not None:
+            body["turnover_ref"] = self.turnover_ref
+        return body
 
     @property
     def source_health_ref(self) -> str:
@@ -252,16 +383,377 @@ class S6DecisionV2:
     hypotheses: tuple[S6HypothesisV2, ...]
 
 
+def _s6_action_bar_available(bar: CausalBarV2, *, key: InstrumentKeyV2,
+                             view: ReplayViewV2, cutoff_ns: int) -> bool:
+    if (not bar.final or bar.instrument_revision != key.contract_revision
+            or bar.raw.instrument_revision != key.contract_revision
+            or bar.raw.availability_class != AvailabilityClassV2(view.value)
+            or bar.close_at_ns > cutoff_ns):
+        return False
+    available = bar.raw.available_at_ns if view == ReplayViewV2.ACTUAL_SYSTEM else bar.raw.replay_available_at_ns
+    return available is not None and available <= cutoff_ns
+
+
+def _indexed_exact(repository: OpsRepository, ref: str, *, artifact_type: str,
+                   available_by_ns: int) -> ArtifactIndexEntryV2 | None:
+    try:
+        entry = repository.get_artifact(ref)
+    except ValueError:
+        return None
+    if (entry is None or entry.artifact_type != artifact_type or entry.artifact_ref != ref
+            or entry.content_hash != ref or entry.available_at_ns > available_by_ns):
+        return None
+    return entry
+
+
+def _expire_due_s6_watches(repository: OpsRepository, *, cutoff_ns: int) -> None:
+    """Terminally expire due S6 trigger watches during every S6 cadence."""
+    for watch in repository.list_active_watches(limit=4096):
+        if (watch.strategy_id != POLICY_ID or watch.policy_hash != S6_POLICY.policy_hash
+                or cutoff_ns < watch.expires_at_ns):
+            continue
+        event_id = sha256_json({
+            "watch_id": watch.watch_id,
+            "event": "S6_SINGLE_SUBSEQUENT_M15_EXPIRED_V1",
+            "expires_at_ns": watch.expires_at_ns,
+        })
+        repository.transition_watch(
+            watch.watch_id,
+            expected_state_version=watch.state_version,
+            event_id=event_id,
+            event_at_ns=watch.expires_at_ns,
+            transition_at_ns=cutoff_ns,
+            target_state=WatchStateV2.EXPIRED,
+            outbox_id=sha256_json({"watch_id": watch.watch_id, "outbox": event_id}),
+        )
+
+
+def build_s6_candidate_action(
+    repository: OpsRepository,
+    *,
+    hypothesis: S6HypothesisV2,
+    hypothesis_ref: str,
+    stop_window_h1: Sequence[CausalBarV2],
+    previous_15m: CausalBarV2,
+    trigger_15m: CausalBarV2,
+    feature: FeatureArtifactV2,
+    quote: ExecutableQuote,
+    mark_index: MarkIndexEvidence,
+    event_gate: EventGate,
+    cost_model_ref: str,
+    decision_cutoff_ns: int,
+    now_ns: int,
+) -> S6ActionBuildResultV1:
+    """Build and persist one exact, unsized S6 shadow action or a named failure.
+
+    ``S6ResearchPolicyV2`` and its previously emitted rank/hypothesis artifacts
+    remain unchanged. This additive action profile consumes one previously
+    recorded hypothesis and only creates a candidate after the exact S6 trigger,
+    causal feature, quote, mark/index and event-gate evidence are verified.
+    """
+    timestamp(now_ns, field="S6_action.now_ns")
+    timestamp(decision_cutoff_ns, field="S6_action.decision_cutoff_ns")
+
+    def fail(status: str, reason: str) -> S6ActionBuildResultV1:
+        return S6ActionBuildResultV1(status, reason)
+
+    if repository.read_only:
+        return fail("NOT_ESTIMABLE", "S6_ACTION_REPOSITORY_READ_ONLY")
+    try:
+        sha256_ref(hypothesis_ref, field="S6_action.hypothesis_ref")
+        sha256_ref(cost_model_ref, field="S6_action.cost_model_ref")
+    except ValueError:
+        return fail("NOT_ESTIMABLE", "S6_ACTION_IDENTITY_INVALID")
+
+    hypothesis_entry = _indexed_exact(repository, hypothesis_ref,
+        artifact_type="S6HypothesisV2", available_by_ns=now_ns)
+    if (hypothesis_entry is None
+            or canonical_json(hypothesis_entry.metadata.get("hypothesis")) != canonical_json(hypothesis.to_dict())
+            or hypothesis_ref != hypothesis.hypothesis_id):
+        return fail("NOT_ESTIMABLE", "S6_HYPOTHESIS_MISSING_MISBOUND_OR_FUTURE")
+    if hypothesis.policy_hash != S6_POLICY.policy_hash:
+        return fail("NOT_ESTIMABLE", "S6_RANK_POLICY_IDENTITY_MISMATCH")
+
+    # The fixed code policy is a declared candidate input. Persist its exact
+    # immutable specification at the same time-independent identity used by
+    # other installed PolicySpecV2 contracts so a post-cutoff candidate can
+    # receive a complete causal publication receipt.
+    _index(repository, S6_ACTION_POLICY.policy_hash, "PolicySpecV2", 0,
+        {"policy": S6_ACTION_POLICY.to_dict()})
+
+    state_entry = _indexed_exact(repository, hypothesis.state_ref,
+        artifact_type="S6CrossSectionStateV2", available_by_ns=now_ns)
+    state_body = state_entry.metadata.get("state") if state_entry is not None else None
+    if not isinstance(state_body, Mapping):
+        return fail("NOT_ESTIMABLE", "S6_RANK_STATE_MISSING_OR_MISBOUND")
+    state_envelope = state_body.get("envelope")
+    rows = state_body.get("rows")
+    if (not isinstance(state_envelope, Mapping) or state_envelope.get("content_hash") != hypothesis.state_ref
+            or state_body.get("policy_hash") != S6_POLICY.policy_hash
+            or state_body.get("status") != "AVAILABLE"
+            or state_body.get("cutoff_ns") != hypothesis.cutoff_ns
+            or state_body.get("universe_ref") is None
+            or state_body.get("replay_view") != hypothesis.replay_view
+            or type(state_body.get("eligible_breadth")) is not int
+            or state_body["eligible_breadth"] < MIN_BREADTH
+            or not isinstance(rows, (list, tuple))):
+        return fail("NOT_ESTIMABLE", "S6_RANK_STATE_NOT_ELIGIBLE_OR_CONTRADICTORY")
+    matching_rows = [row for row in rows if isinstance(row, Mapping)
+                     and canonical_json(row.get("key")) == hypothesis.key.to_canonical_json()]
+    if len(matching_rows) != 1:
+        return fail("NOT_ESTIMABLE", "S6_RANK_ROW_MISSING_OR_AMBIGUOUS")
+    rank_row = matching_rows[0]
+    expected_decile = "TOP" if hypothesis.side == V2Side.LONG else "BOTTOM"
+    expected_trend = "UP" if hypothesis.side == V2Side.LONG else "DOWN"
+    if (rank_row.get("eligibility") != "ELIGIBLE" or rank_row.get("decile") != expected_decile
+            or rank_row.get("own_4h_trend") != expected_trend or rank_row.get("rank") is None
+            or rank_row.get("score") != hypothesis.score or rank_row.get("beta_btc") != hypothesis.beta_btc
+            or not isinstance(rank_row.get("hourly_refs"), (tuple, list))):
+        return fail("NOT_ESTIMABLE", "S6_RANK_ROW_DOES_NOT_AUTHORIZE_HYPOTHESIS")
+    rank_hourly_refs = set(rank_row["hourly_refs"])
+    universe_ref = str(state_body["universe_ref"])
+    universe_entry = _indexed_exact(repository, universe_ref,
+        artifact_type="UniverseContractV2", available_by_ns=now_ns)
+    if universe_entry is None or not isinstance(universe_entry.metadata.get("universe"), Mapping):
+        return fail("NOT_ESTIMABLE", "S6_POINT_IN_TIME_UNIVERSE_MISSING_OR_FUTURE")
+    try:
+        universe = UniverseContractV2.from_dict(json.loads(canonical_json(universe_entry.metadata["universe"])))
+    except (TypeError, ValueError, KeyError):
+        return fail("NOT_ESTIMABLE", "S6_POINT_IN_TIME_UNIVERSE_INVALID")
+    eligible_rows = [entry for entry in universe.entries if entry.key == hypothesis.key]
+    if (universe.content_hash != universe_ref or universe.envelope.available_at_ns > hypothesis.cutoff_ns
+            or hypothesis.cutoff_ns > universe.decision_slot_ns or len(eligible_rows) != 1
+            or not eligible_rows[0].data_eligible or not eligible_rows[0].scanner_eligible
+            or eligible_rows[0].capital_eligible
+            or eligible_rows[0].strategy_eligibility.get(POLICY_ID) is None
+            or eligible_rows[0].strategy_eligibility[POLICY_ID].status != EligibilityStatusV2.ELIGIBLE):
+        return fail("NOT_ESTIMABLE", "S6_UNIVERSE_ELIGIBILITY_OR_CHRONOLOGY_INVALID")
+
+    if len(stop_window_h1) != 3:
+        return fail("NOT_ESTIMABLE", "S6_STOP_WINDOW_REQUIRES_THREE_H1_BARS")
+    h1 = tuple(stop_window_h1)
+    if (tuple(sorted(h1, key=lambda bar: bar.close_at_ns)) != h1
+            or any(bar.interval != BarIntervalV2.H1 or not _s6_action_bar_available(
+                bar, key=hypothesis.key, view=ReplayViewV2(hypothesis.replay_view),
+                cutoff_ns=hypothesis.cutoff_ns) for bar in h1)
+            or any(right.close_at_ns - left.close_at_ns != HOUR_NS
+                   for left, right in zip(h1, h1[1:], strict=False))
+            or h1[-1].close_at_ns != hypothesis.cutoff_ns - hypothesis.cutoff_ns % HOUR_NS
+            or any(bar.content_hash not in rank_hourly_refs for bar in h1)):
+        return fail("NOT_ESTIMABLE", "S6_STOP_WINDOW_NOT_EXACT_PRIOR_CAUSAL_H1")
+
+    view = ReplayViewV2(hypothesis.replay_view)
+    trigger_available_at_ns = (trigger_15m.raw.available_at_ns if view == ReplayViewV2.ACTUAL_SYSTEM
+                               else trigger_15m.raw.replay_available_at_ns)
+    if (feature.key != hypothesis.key or feature.replay_view != view
+            or feature.information_cutoff_ns != decision_cutoff_ns
+            or feature.confirmed_at_ns > now_ns
+            or feature.envelope.available_at_ns > now_ns
+            or previous_15m.interval != BarIntervalV2.M15 or trigger_15m.interval != BarIntervalV2.M15
+            or not _s6_action_bar_available(previous_15m, key=hypothesis.key,
+                view=view, cutoff_ns=hypothesis.cutoff_ns)
+            or not trigger_15m.final or trigger_15m.instrument_revision != hypothesis.key.contract_revision
+            or trigger_15m.raw.instrument_revision != hypothesis.key.contract_revision
+            or trigger_15m.raw.availability_class != AvailabilityClassV2(view.value)
+            or trigger_15m.close_at_ns - previous_15m.close_at_ns != FIFTEEN_MINUTE_NS
+            or previous_15m.close_at_ns > hypothesis.cutoff_ns
+            or hypothesis.cutoff_ns - previous_15m.close_at_ns > S6_MAX_BBO_AGE_NS
+            or trigger_15m.close_at_ns <= hypothesis.cutoff_ns
+            or not trigger_15m.close_at_ns <= decision_cutoff_ns <= trigger_15m.close_at_ns + S6_MAX_BBO_AGE_NS
+            or trigger_available_at_ns is None or trigger_available_at_ns > decision_cutoff_ns
+            or previous_15m.content_hash not in feature.envelope.input_refs
+            or trigger_15m.content_hash not in feature.envelope.input_refs
+            or any(bar.content_hash not in feature.envelope.input_refs for bar in h1)):
+        return fail("NOT_ESTIMABLE", "S6_FEATURE_OR_TRIGGER_NOT_EXACT_CAUSAL")
+    feature_entry = _indexed_exact(repository, feature.content_hash,
+        artifact_type="FeatureArtifactV2", available_by_ns=now_ns)
+    if (feature_entry is None
+            or canonical_json(feature_entry.metadata.get("feature")) != canonical_json(feature.to_dict())):
+        return fail("NOT_ESTIMABLE", "S6_FEATURE_ARTIFACT_MISSING_OR_MISBOUND")
+    if (feature_entry.available_at_ns > decision_cutoff_ns
+            and not causal_artifact(repository, feature.content_hash, cutoff_ns=decision_cutoff_ns,
+                consumer_at_ns=now_ns, deadline_ns=decision_cutoff_ns + S6_CANDIDATE_DEADLINE_NS)):
+        return fail("NOT_ESTIMABLE", "S6_FEATURE_CHRONOLOGY_RECEIPT_MISSING_OR_INVALID")
+    atr_value = feature.values.get("m15.atr14")
+    if (atr_value is None or atr_value.value is None or atr_value.unit != "price"):
+        return fail("NOT_ESTIMABLE", "S6_ATR14_M15_MISSING_OR_INVALID")
+    try:
+        atr = Decimal(str(atr_value.value))
+    except (ArithmeticError, TypeError, ValueError):
+        return fail("NOT_ESTIMABLE", "S6_ATR14_M15_MISSING_OR_INVALID")
+    if not atr.is_finite() or atr <= 0:
+        return fail("NOT_ESTIMABLE", "S6_ATR14_M15_MISSING_OR_INVALID")
+
+    if quote.key != hypothesis.key or not quote.valid_at(decision_cutoff_ns, S6_MAX_BBO_AGE_NS):
+        return fail("NOT_ESTIMABLE", "S6_EXECUTABLE_BBO_STALE_OR_MISBOUND")
+    if mark_index.key != hypothesis.key or not mark_index.valid_at(decision_cutoff_ns, S6_MAX_MARK_INDEX_AGE_NS):
+        return fail("NOT_ESTIMABLE", "S6_MARK_INDEX_STALE_OR_MISBOUND")
+    if (event_gate.state == EventState.UNKNOWN or event_gate.available_at_ns > now_ns
+            or event_gate.available_at_ns > decision_cutoff_ns + S6_CANDIDATE_DEADLINE_NS
+            or (event_gate.available_at_ns <= decision_cutoff_ns
+                and not event_gate.valid_at(decision_cutoff_ns))):
+        return fail("NOT_ESTIMABLE", "S6_EVENT_GATE_UNKNOWN_STALE_OR_FUTURE")
+    if (event_gate.available_at_ns > decision_cutoff_ns
+            and not causal_artifact(repository, event_gate.evidence_ref, cutoff_ns=decision_cutoff_ns,
+                consumer_at_ns=now_ns, deadline_ns=decision_cutoff_ns + S6_CANDIDATE_DEADLINE_NS)):
+        return fail("NOT_ESTIMABLE", "S6_EVENT_GATE_CHRONOLOGY_RECEIPT_MISSING_OR_INVALID")
+    if event_gate.state == EventState.BLOCKED:
+        return fail("NO_CANDIDATE", "S6_EVENT_GATE_BLOCKED")
+    if event_gate.state != EventState.CLEAR:
+        return fail("NOT_ESTIMABLE", "S6_EVENT_GATE_NOT_CLEAR")
+    trigger_event_at_ns = trigger_15m.raw.event_at_ns
+    if trigger_event_at_ns is None or trigger_event_at_ns > decision_cutoff_ns:
+        return fail("NOT_ESTIMABLE", "S6_TRIGGER_BAR_LAG_EXCEEDS_POLICY")
+    if now_ns > decision_cutoff_ns + S6_CANDIDATE_DEADLINE_NS:
+        return fail("NOT_ESTIMABLE", "S6_CANDIDATE_DEADLINE_EXPIRED")
+    crossed = (trigger_15m.close > previous_15m.high if hypothesis.side == V2Side.LONG
+               else trigger_15m.close < previous_15m.low)
+    if not crossed:
+        return fail("NO_CANDIDATE", "S6_TRIGGER_RULE_NOT_MET")
+
+    reference = quote.ask if hypothesis.side == V2Side.LONG else quote.bid
+    collar_fraction = S6_ENTRY_COLLAR_BPS / Decimal("10000")
+    collar = reference * (Decimal(1) + collar_fraction if hypothesis.side == V2Side.LONG
+                          else Decimal(1) - collar_fraction)
+    if hypothesis.side == V2Side.LONG:
+        stop = min(bar.low for bar in h1) - S6_STOP_BUFFER_ATR * atr
+        distance = reference - stop
+    else:
+        stop = max(bar.high for bar in h1) + S6_STOP_BUFFER_ATR * atr
+        distance = stop - reference
+    if stop <= 0 or distance <= 0:
+        return fail("NO_CANDIDATE", "S6_STOP_NOT_ON_ADVERSE_SIDE")
+    distance_atr = distance / atr
+    if not S6_MIN_STOP_DISTANCE_ATR <= distance_atr <= S6_MAX_STOP_DISTANCE_ATR:
+        return fail("NO_CANDIDATE", "S6_STOP_DISTANCE_OUTSIDE_0.5_TO_3_ATR")
+    if now_ns < trigger_15m.close_at_ns:
+        return fail("NOT_ESTIMABLE", "S6_TRIGGER_NOT_YET_AVAILABLE")
+
+    for ref, kind in ((quote.evidence_ref, "ExecutableQuoteV2"),
+                      (mark_index.evidence_ref, "MarkIndexEvidenceV2"),
+                      (event_gate.evidence_ref, "EventSafetyGateV2")):
+        evidence_entry = _indexed_exact(repository, ref, artifact_type=kind, available_by_ns=now_ns)
+        if (evidence_entry is None or evidence_entry.available_at_ns > now_ns
+                or (kind != "EventSafetyGateV2" and evidence_entry.available_at_ns > decision_cutoff_ns)):
+            return fail("NOT_ESTIMABLE", f"S6_REQUIRED_EVIDENCE_NOT_INDEXED:{kind}")
+        if kind == "EventSafetyGateV2":
+            body = evidence_entry.metadata.get("gate")
+            if (not isinstance(body, Mapping) or body.get("cutoff_ns") != decision_cutoff_ns
+                    or body.get("state") != EventState.CLEAR.value or body.get("blocked") is not False
+                    or body.get("gate_version") != event_gate.version):
+                return fail("NOT_ESTIMABLE", "S6_EVENT_GATE_ARTIFACT_CONTRADICTORY")
+
+    health_entry = _indexed_exact(repository, feature.source_health_ref,
+        artifact_type="PublicSourceHealthV2", available_by_ns=decision_cutoff_ns)
+    if health_entry is None:
+        return fail("NOT_ESTIMABLE", "S6_FEATURE_SOURCE_HEALTH_MISSING_OR_FUTURE")
+    health_body = health_entry.metadata.get("health")
+    try:
+        health = PublicSourceHealthV2.from_dict(dict(health_body)) if isinstance(health_body, Mapping) else None
+    except (TypeError, ValueError):
+        health = None
+    if (health is None or health.content_hash != feature.source_health_ref
+            or not health.data_eligible or health.observed_at_ns > decision_cutoff_ns
+            or decision_cutoff_ns - health.observed_at_ns > MAX_EVIDENCE_AGE_NS):
+        return fail("NOT_ESTIMABLE", "S6_CURRENT_SOURCE_HEALTH_NOT_QUALIFIED")
+
+    deadline_ns = decision_cutoff_ns + S6_CANDIDATE_DEADLINE_NS
+    horizon_end_ns = decision_cutoff_ns + FOUR_HOURS_NS
+    if now_ns < decision_cutoff_ns or now_ns > deadline_ns or deadline_ns >= horizon_end_ns:
+        return fail("NOT_ESTIMABLE", "S6_CANDIDATE_DEADLINE_OR_HORIZON_INVALID")
+    watch = repository.get_watch(hypothesis.watch_id)
+    if (watch is None or watch.key != hypothesis.key or watch.strategy_id != POLICY_ID
+            or watch.policy_hash != S6_POLICY.policy_hash or watch.thesis_hash != hypothesis_ref
+            or watch.state != WatchStateV2.CONFIRMED):
+        return fail("NOT_ESTIMABLE", "S6_WATCH_NOT_CONFIRMED_OR_MISBOUND")
+    trigger_body = {
+        "schema_version": 1,
+        "action_policy_hash": S6_ACTION_POLICY.policy_hash,
+        "rank_policy_hash": S6_POLICY.policy_hash,
+        "hypothesis_ref": hypothesis_ref,
+        "key": hypothesis.key.to_dict(),
+        "side": hypothesis.side.value,
+        "trigger_close_at_ns": trigger_15m.close_at_ns,
+        "decision_cutoff_ns": decision_cutoff_ns,
+        "previous_15m_ref": previous_15m.content_hash,
+        "trigger_15m_ref": trigger_15m.content_hash,
+        "status": "ELIGIBLE",
+        "reason": "S6_CONFIRMED_CLOSE_TRIGGER",
+        "selector_influence": "ZERO",
+    }
+    trigger_ref = sha256_json(trigger_body)
+    trigger_refs = tuple(sorted({hypothesis_ref, previous_15m.content_hash,
+                                 trigger_15m.content_hash, S6_ACTION_POLICY.policy_hash}))
+    _index(repository, trigger_ref, "S6ActionTriggerEligibilityV1", now_ns,
+        {"trigger": trigger_body, "input_refs": trigger_refs})
+    refs = tuple(sorted({
+        S6_ACTION_POLICY.policy_hash, S6_POLICY.policy_hash, hypothesis_ref,
+        hypothesis.state_ref, universe_ref, feature.content_hash, feature.source_health_ref,
+        previous_15m.content_hash, trigger_15m.content_hash, quote.evidence_ref,
+        mark_index.evidence_ref, event_gate.evidence_ref, trigger_ref, cost_model_ref,
+        *(bar.content_hash for bar in h1), *rank_hourly_refs,
+    }))
+    candidate_id = sha256_json({
+        "version": "S6_ACTION_CANDIDATE_ID_V1",
+        "action_policy_hash": S6_ACTION_POLICY.policy_hash,
+        "rank_policy_hash": S6_POLICY.policy_hash,
+        "hypothesis_ref": hypothesis_ref,
+        "state_ref": hypothesis.state_ref,
+        "trigger_ref": trigger_15m.content_hash,
+        "key": hypothesis.key.to_dict(), "side": hypothesis.side.value,
+        "entry_reference": str(reference), "entry_collar": str(collar), "stop_price": str(stop),
+        "input_refs": list(refs),
+    })
+    candidate = CandidateActionV2(
+        ArtifactEnvelope(1, candidate_id, now_ns, now_ns, S6_ACTION_PRODUCER_VERSION, refs),
+        candidate_id, hypothesis.key, S6_ACTION_POLICY.policy_hash, feature.content_hash,
+        hypothesis.side, decision_cutoff_ns, deadline_ns, horizon_end_ns,
+        reference, collar, stop, watch.state_version,
+        cost_model_ref, quantity=None,
+    )
+    body = {
+        "candidate": candidate.to_dict(), "hypothesis_ref": hypothesis_ref,
+        "state_ref": hypothesis.state_ref, "rank_policy_hash": S6_POLICY.policy_hash,
+        "action_policy_hash": S6_ACTION_POLICY.policy_hash,
+        "stop_window_h1_refs": [bar.content_hash for bar in h1],
+        "atr_feature_id": "m15.atr14", "atr_value": str(atr),
+        "previous_15m_ref": previous_15m.content_hash, "trigger_15m_ref": trigger_15m.content_hash,
+        "bbo_ref": quote.evidence_ref, "mark_index_ref": mark_index.evidence_ref,
+        "event_gate_ref": event_gate.evidence_ref,
+        "action_trigger_ref": trigger_ref,
+        "cost_model_ref": cost_model_ref,
+        "entry_policy": "IOC_LIMIT_NO_SAME_EPOCH_REPRICE", "selector_influence": "ZERO",
+        "capital_authority": "ZERO", "quantity": None,
+    }
+    existing = repository.get_artifact(candidate.content_hash)
+    if existing is not None:
+        if (existing.artifact_type != CandidateActionV2.ARTIFACT_TYPE
+                or existing.content_hash != candidate.content_hash
+                or canonical_json(existing.metadata) != canonical_json(body)):
+            return fail("NOT_ESTIMABLE", "S6_CANDIDATE_IDENTITY_CONFLICT")
+    else:
+        repository.register_artifact(ArtifactIndexEntryV2(candidate.content_hash,
+            CandidateActionV2.ARTIFACT_TYPE, candidate.content_hash, now_ns, now_ns, body))
+    return S6ActionBuildResultV1("CANDIDATE", "S6_SHADOW_TRIGGER", candidate, trigger_ref)
+
+
 def _index(repository: OpsRepository, ref: str, kind: str, at_ns: int, metadata: Mapping[str, object]) -> None:
+    existing = repository.get_artifact(ref)
+    if existing is not None:
+        if (existing.artifact_type != kind or existing.content_hash != ref
+                or existing.available_at_ns > at_ns
+                or canonical_json(existing.metadata) != canonical_json(metadata)):
+            raise ValueError("S6 immutable artifact conflicts with its exact first publication")
+        return
     repository.register_artifact(ArtifactIndexEntryV2(ref, kind, ref, at_ns, at_ns, metadata))
 
 
 def _indexed_evidence_available(repository: OpsRepository, ref: str, cutoff_ns: int) -> bool:
-    try:
-        entry = repository.get_artifact(ref)
-    except ValueError:
+    if not _source_evidence_available(repository, ref, cutoff_ns):
         return False
-    return bool(entry is not None and entry.content_hash == ref and entry.available_at_ns <= cutoff_ns)
+    entry = repository.get_artifact(ref)
+    return bool(entry is not None and (entry.artifact_type != "PublicObservationIndexV2"
+        or cutoff_ns - entry.available_at_ns <= MAX_EVIDENCE_AGE_NS))
 
 
 def _bar_available(bar: CausalBarV2, cutoff_ns: int, replay_view: str) -> bool:
@@ -344,14 +836,28 @@ class S6ShadowCoordinator:
         four_hour_bars: Mapping[InstrumentKeyV2, Sequence[CausalBarV2]],
         evidence: Mapping[InstrumentKeyV2, LiquidityFundingEvidenceV2],
         replay_view: str = "ACTUAL_SYSTEM",
+        published_at_ns: int | None = None,
     ) -> S6DecisionV2:
         timestamp(cutoff_ns, field="S6.cutoff_ns")
+        _expire_due_s6_watches(self.repository, cutoff_ns=cutoff_ns)
+        publication = cutoff_ns if published_at_ns is None else timestamp(
+            published_at_ns, field="S6.published_at_ns")
+        if publication < cutoff_ns:
+            raise ValueError("S6 publication cannot precede its information cutoff")
         if replay_view not in ("ACTUAL_SYSTEM", "RECONSTRUCTED_MARKET"):
             raise ValueError("S6 availability view must be explicit")
         refs: set[str] = {universe.content_hash}
         universe_ok = universe.envelope.available_at_ns <= cutoff_ns <= universe.decision_slot_ns
+        original_universe_receipt_ref = None
+        if universe.envelope.available_at_ns > cutoff_ns:
+            original_universe_receipt_ref = chronology_ref(universe.content_hash)
+            universe_ok = (universe.envelope.available_at_ns <= publication
+                and causal_artifact(self.repository, universe.content_hash, cutoff_ns=cutoff_ns,
+                    consumer_at_ns=universe.envelope.available_at_ns,
+                    deadline_ns=universe.decision_slot_ns))
         eligible = tuple(entry for entry in universe.entries
                          if entry.data_eligible and not entry.capital_eligible
+                         and _same_btc_proxy_cohort(entry.key, btc_proxy)
                          and POLICY_ID in entry.strategy_eligibility
                          and entry.strategy_eligibility[POLICY_ID].status == EligibilityStatusV2.ELIGIBLE)
         eligible_keys = {item.key for item in eligible}
@@ -389,9 +895,11 @@ class S6ShadowCoordinator:
                     and item_evidence.available_at_ns <= cutoff_ns):
                 refs_for_key.extend((item_evidence.liquidity_ref, item_evidence.funding_ref,
                                      item_evidence.source_health_ref, item_evidence.content_hash))
+                if item_evidence.turnover_ref is not None:
+                    refs_for_key.append(item_evidence.turnover_ref)
                 refs.update(refs_for_key)
                 _index(self.repository, item_evidence.content_hash, "S6LiquidityFundingEvidenceV2",
-                       item_evidence.available_at_ns, {"evidence": item_evidence.to_dict()})
+                       publication, {"evidence": item_evidence.to_dict()})
                 _index(self.repository, item_evidence.source_health_ref, "PublicSourceHealthV2",
                        item_evidence.source_health.available_at_ns,
                        {"health": item_evidence.source_health.to_dict()})
@@ -408,6 +916,8 @@ class S6ShadowCoordinator:
                     or cutoff_ns - item_evidence.available_at_ns > MAX_EVIDENCE_AGE_NS
                     or not _indexed_evidence_available(self.repository, item_evidence.liquidity_ref, cutoff_ns)
                     or not _indexed_evidence_available(self.repository, item_evidence.funding_ref, cutoff_ns)
+                    or (item_evidence.turnover_ref is not None
+                        and not _indexed_evidence_available(self.repository, item_evidence.turnover_ref, cutoff_ns))
                     or item_evidence.source_health.state != PublicSourceStateV2.HEALTHY_CURRENT
                     or item_evidence.source_health.available_at_ns > cutoff_ns
                     or item_evidence.source_health.observed_at_ns > cutoff_ns
@@ -495,14 +1005,17 @@ class S6ShadowCoordinator:
                                 "status": "NOT_ESTIMABLE" if reason else "AVAILABLE", "reason": reason,
                                 "rows": [row.to_dict() for row in rows], "replay_view": replay_view})
         state = S6CrossSectionStateV2(
-            ArtifactEnvelope(1, state_id, cutoff_ns, cutoff_ns, PRODUCER_VERSION, tuple(sorted(refs))),
+            ArtifactEnvelope(1, state_id, cutoff_ns, publication, PRODUCER_VERSION, tuple(sorted(refs))),
             self.policy.policy_hash, cutoff_ns, universe.content_hash, btc_proxy,
             "NOT_ESTIMABLE" if reason else "AVAILABLE", reason, tuple(rows), eligible_breadth, decile_size,
             replay_view,
         )
-        _index(self.repository, self.policy.policy_hash, "S6ResearchPolicyV2", cutoff_ns,
+        _index(self.repository, self.policy.policy_hash, "S6ResearchPolicyV2", publication,
                {"policy": self.policy.to_dict()})
-        _index(self.repository, state.content_hash, state.ARTIFACT_TYPE, cutoff_ns, {"state": state.to_dict()})
+        _index(self.repository, state.content_hash, state.ARTIFACT_TYPE, publication,
+            {"state": state.to_dict(), "original_universe_receipt_ref": original_universe_receipt_ref,
+             "original_decision_deadline_ns": universe.decision_slot_ns,
+             "research_published_at_ns": publication, "selector_influence": "ZERO"})
         hypotheses: list[S6HypothesisV2] = []
         if state.status == "AVAILABLE":
             for row in rows:
@@ -523,7 +1036,7 @@ class S6ShadowCoordinator:
                 if prior is None:
                     watch = OpportunityWatchV2(
                         watch_id, row.key, POLICY_ID, POLICY_VERSION, self.policy.policy_hash,
-                        WatchStateV2.DETECTED, 0, cutoff_ns, cutoff_ns, hypothesis_id,
+                        WatchStateV2.DETECTED, 0, publication, publication, hypothesis_id,
                         tuple(sorted({hypothesis_id, state.content_hash, *row.hourly_refs,
                                       *(ref for ref in (row.evidence_ref,) if ref)})),
                         "BAR_CLOSE_15M", cutoff_ns + BarIntervalV2.M15.duration_ns + 1, cutoff_ns,
@@ -532,11 +1045,11 @@ class S6ShadowCoordinator:
                     self.repository.transition_watch(
                         watch_id, expected_state_version=0,
                         event_id=sha256_json({"watch": watch_id, "event": "WAIT_15M"}),
-                        event_at_ns=cutoff_ns, transition_at_ns=cutoff_ns,
+                        event_at_ns=cutoff_ns, transition_at_ns=publication,
                         target_state=WatchStateV2.WAITING_FOR_EVENT,
                         outbox_id=sha256_json({"watch": watch_id, "outbox": "WAIT_15M"}),
                     )
-                _index(self.repository, hypothesis_id, "S6HypothesisV2", cutoff_ns,
+                _index(self.repository, hypothesis_id, "S6HypothesisV2", publication,
                        {"hypothesis": hypothesis.to_dict(), "selector_influence": "ZERO"})
                 hypotheses.append(hypothesis)
         return S6DecisionV2("NOT_ESTIMABLE" if state.status == "NOT_ESTIMABLE" else "AVAILABLE",
@@ -546,6 +1059,7 @@ class S6ShadowCoordinator:
                         trigger_15m: CausalBarV2, cutoff_ns: int) -> tuple[str, str]:
         """Persist S1-style close confirmation, then stop at the absent action contract."""
         timestamp(cutoff_ns, field="S6.trigger_cutoff_ns")
+        _expire_due_s6_watches(self.repository, cutoff_ns=cutoff_ns)
         entry = self.repository.get_artifact(hypothesis_id)
         if entry is None or entry.artifact_type != "S6HypothesisV2" or entry.available_at_ns > cutoff_ns:
             return "NOT_ESTIMABLE", "HYPOTHESIS_UNAVAILABLE_AT_TRIGGER"

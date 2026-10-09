@@ -18,6 +18,7 @@ from .public_microstructure_ws import (
     DEFAULT_PUBLIC_FRAME_QUEUE_BYTES,
     DEFAULT_PUBLIC_FRAME_QUEUE_ITEMS,
     CapturedPublicFrameV2,
+    SharedPublicFrameBudgetV1,
     parse_binance_aggtrade,
     parse_binance_depth_frame,
     parse_binance_rest_snapshot,
@@ -33,6 +34,10 @@ MAX_BROAD_STREAM_TOPICS_V2 = 32
 MAX_BROAD_STREAM_QUEUE_ITEMS_V2 = DEFAULT_PUBLIC_FRAME_QUEUE_ITEMS
 MAX_BROAD_STREAM_QUEUE_BYTES_V2 = DEFAULT_PUBLIC_FRAME_QUEUE_BYTES
 MAX_BROAD_STREAM_DRAIN_ITEMS_V2 = DEFAULT_PUBLIC_FRAME_DRAIN_ITEMS
+# Broad ingestion interprets each sealed unit on the sole repository writer.
+# Smaller extents cap per-call interpretation work; the 64-entry pending-batch
+# budget still provides bounded burst capacity across the enabled venues.
+MAX_BROAD_CAPTURE_BATCH_FRAMES_V2 = 16
 
 
 @dataclass(frozen=True)
@@ -178,19 +183,26 @@ class BroadPublicStreamSourceV2:
         lane_names = tuple(sorted(plan.lane_topics))
         if set(factories) - set(lane_names):
             raise ValueError("stream factory provided for an absent plan lane")
-        base_items, rem_items = divmod(MAX_BROAD_STREAM_QUEUE_ITEMS_V2, len(lane_names))
-        base_bytes, rem_bytes = divmod(MAX_BROAD_STREAM_QUEUE_BYTES_V2, len(lane_names))
+        self._queue_budget = SharedPublicFrameBudgetV1(
+            max_items=MAX_BROAD_STREAM_QUEUE_ITEMS_V2,
+            max_bytes=MAX_BROAD_STREAM_QUEUE_BYTES_V2,
+            reserve_items_per_lane=min(32, MAX_BROAD_STREAM_QUEUE_ITEMS_V2 // len(lane_names)),
+            reserve_bytes_per_lane=min(1_000_000, MAX_BROAD_STREAM_QUEUE_BYTES_V2 // len(lane_names)),
+        )
         self._lanes: dict[str, PublicStreamSourceV2] = {}
-        for index, name in enumerate(lane_names):
+        for name in lane_names:
             topics = plan.lane_topics[name]
             venue = VenueV2.BYBIT if name == "BYBIT" else VenueV2.BINANCE
-            items = base_items + (1 if index < rem_items else 0)
-            byte_cap = base_bytes + (1 if index < rem_bytes else 0)
             kwargs: dict[str, Any] = {
                 "venue": venue, "topics": topics,
                 "source_id": f"{name}_PUBLIC_WS_BROAD_V2",
-                "max_queue_items": items, "max_queue_bytes": byte_cap,
+                # Local queue ceilings equal the global ceilings; the shared
+                # budget enforces the aggregate and protects every other lane's
+                # reserve, allowing active lanes to borrow idle capacity.
+                "max_queue_items": MAX_BROAD_STREAM_QUEUE_ITEMS_V2,
+                "max_queue_bytes": MAX_BROAD_STREAM_QUEUE_BYTES_V2,
                 "max_drain_items": MAX_BROAD_STREAM_DRAIN_ITEMS_V2,
+                "shared_budget": self._queue_budget, "budget_lane": name,
             }
             if name in factories:
                 kwargs["stream_factory"] = factories[name]
@@ -222,14 +234,30 @@ class BroadPublicStreamSourceV2:
         self._drain_rotation = (self._drain_rotation + 1) % len(names)
         rows: list[CapturedPublicFrameV2] = []
         remaining = limit
-        for index, name in enumerate(order):
-            if remaining <= 0:
+        current_order = order
+        # Allocate work among lanes that currently have data, then repeat to
+        # redistribute any quota left unused by a quiet or concurrently drained
+        # lane. This keeps the global drain bound while making a single busy lane
+        # able to use the full capture batch.
+        while remaining > 0:
+            active = [name for name in current_order
+                      if self._lanes[name].status().handoff.queue_items > 0]
+            if not active:
                 break
-            lanes_left = len(order) - index
-            quota = max(1, remaining // lanes_left)
-            batch = self._lanes[name].drain(max_items=min(quota, remaining))
-            rows.extend(batch)
-            remaining -= len(batch)
+            quota = max(1, remaining // len(active))
+            drained = 0
+            for name in active:
+                if remaining <= 0:
+                    break
+                batch = self._lanes[name].drain(max_items=min(quota, remaining))
+                rows.extend(batch)
+                drained += len(batch)
+                remaining -= len(batch)
+            if drained == 0:
+                break
+            # Rotate the first lane serviced if another bounded pass is needed.
+            first = current_order[0]
+            current_order = current_order[1:] + (first,)
         return tuple(sorted(rows, key=lambda frame: (frame.received_at_ns, frame.venue.value, frame.channel)))
 
     def request_close(self) -> None:
@@ -251,17 +279,20 @@ class BroadPublicStreamSourceV2:
         handoffs = [item.handoff for item in lane_status.values()]
         queued_items = sum(item.queue_items for item in handoffs)
         queued_bytes = sum(item.queue_bytes for item in handoffs)
+        budget_items, budget_bytes, budget_high_items, budget_high_bytes, _ = self._queue_budget.snapshot()
+        if queued_items != budget_items or queued_bytes != budget_bytes:
+            raise RuntimeError("broad public handoff accounting differs from its shared budget")
         state = "FAILED" if any(item.state == "FAILED" for item in lane_status.values()) else (
             "CLOSED" if all(item.state == "CLOSED" for item in lane_status.values()) else
             "RUNNING" if all(item.state == "RUNNING" for item in lane_status.values()) else
             "DEGRADED" if any(item.state == "RUNNING" for item in lane_status.values()) else "CREATED")
         handoff = SimpleNamespace(
             venue="BROAD", topics=self.topics, queue_items=queued_items, queue_bytes=queued_bytes,
-            max_queue_items=sum(item.max_queue_items for item in handoffs),
-            max_queue_bytes=sum(item.max_queue_bytes for item in handoffs),
+            max_queue_items=MAX_BROAD_STREAM_QUEUE_ITEMS_V2,
+            max_queue_bytes=MAX_BROAD_STREAM_QUEUE_BYTES_V2,
             max_drain_items=MAX_BROAD_STREAM_DRAIN_ITEMS_V2,
-            high_water_items=sum(item.high_water_items for item in handoffs),
-            high_water_bytes=sum(item.high_water_bytes for item in handoffs),
+            high_water_items=budget_high_items,
+            high_water_bytes=budget_high_bytes,
             frames_received=sum(item.frames_received for item in handoffs),
             frames_drained=sum(item.frames_drained for item in handoffs),
             controls_received=sum(item.controls_received for item in handoffs),
@@ -297,16 +328,16 @@ class BroadDurablePublicCaptureV2:
         self.source = source
         self.venue = "BROAD"
         self.topics = source.topics
-        self._capture = DurablePublicCaptureV1(source, **({"clock_ns": clock_ns} if clock_ns else {}))
+        options: dict[str, Any] = {"capture_batch_frames": MAX_BROAD_CAPTURE_BATCH_FRAMES_V2}
+        if clock_ns is not None:
+            options["clock_ns"] = clock_ns
+        self._capture = DurablePublicCaptureV1(source, **options)
 
     def configure_capture(self, run_root: Path, *, capture_epoch: str = "0" * 64) -> None:
-        child = run_root / "broad-public"
-        child.mkdir(parents=True, exist_ok=True)
-        identity = run_root / "run.json"
-        if identity.exists():
-            import shutil
-            shutil.copyfile(identity, child / "run.json")
-        self._capture.configure_capture(child, capture_epoch=capture_epoch)
+        # Extents share the run-level ``ops-public-extents`` namespace used by
+        # SealedPublicTransportV1.adopt/read_extent. A nested capture root here
+        # would make raw bytes durable but unreadable by the sole writer.
+        self._capture.configure_capture(run_root, capture_epoch=capture_epoch)
 
     def recover_controller_capture(self, repository: OpsRepository) -> None:
         self._capture.recover_controller_capture(repository)

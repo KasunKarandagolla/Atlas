@@ -78,11 +78,16 @@ class DurablePublicCaptureV1:
     exposes terminal failure. Nothing is silently sampled or discarded.
     """
 
-    def __init__(self, source: Any, *, clock_ns: Callable[[], int] = time.time_ns) -> None:
+    def __init__(self, source: Any, *, clock_ns: Callable[[], int] = time.time_ns,
+                 capture_batch_frames: int = 64) -> None:
+        if (type(capture_batch_frames) is not int or not 1 <= capture_batch_frames
+                <= MAX_CAPTURE_BATCH_FRAMES):
+            raise ValueError("capture batch frame bound is outside the sealed descriptor contract")
         self.source = source
         self.venue = source.venue
         self.topics = source.topics
         self.clock_ns = clock_ns
+        self.capture_batch_frames = capture_batch_frames
         self._root: Path | None = None
         self._pending: deque[SealedPublicTransportV1] = deque()
         self._lock = threading.Lock()
@@ -239,6 +244,10 @@ class DurablePublicCaptureV1:
             backlog = sum(batch.frame_count for batch in self._pending)
             capture = {"version": "DURABLE_PUBLIC_CAPTURE_V1", "pending_batches": len(self._pending),
                 "max_pending_batches": MAX_PENDING_CAPTURE_BATCHES, "pending_frames": backlog,
+                "batch_frame_limit": self.capture_batch_frames,
+                "pressure_reserve_batches": self._pressure_reserve_batches(status.handoff),
+                "pressure_stop_threshold_batches": (MAX_PENDING_CAPTURE_BATCHES
+                    - self._pressure_reserve_batches(status.handoff)),
                 "high_water_batches": self._high_water_batches, "captured_frames": self._captured_frames,
                 "delivered_frames": self._delivered_frames, "last_capture_at_ns": self._last_capture_ns,
                 "max_capture_duration_ns": self._max_capture_duration_ns,
@@ -253,6 +262,22 @@ class DurablePublicCaptureV1:
             attempt_count=status.attempt_count, reconnect_count=status.reconnect_count,
             last_error_code=error or status.last_error_code, handoff=status.handoff,
             pending_frames=backlog, capture=capture)
+
+    @staticmethod
+    def _pressure_reserve_batches(handoff: Any) -> int:
+        """Bound descriptors needed to seal accepted frames after arrivals stop.
+
+        The reserve covers the full bounded handoff plus one source drain that
+        may already be in flight when an external watchdog requests the stop.
+        Pressure sealing packs up to 256 frames into each retained descriptor.
+        """
+        maximum_queued = getattr(handoff, "max_queue_items", None)
+        maximum_drain = getattr(handoff, "max_drain_items", None)
+        if (type(maximum_queued) is not int or maximum_queued < 0
+                or type(maximum_drain) is not int or maximum_drain < 1):
+            raise RuntimeError("CAPTURE_PRESSURE_CAPACITY_UNAVAILABLE")
+        maximum_unsealed = maximum_queued + maximum_drain
+        return max(1, (maximum_unsealed + MAX_CAPTURE_BATCH_FRAMES - 1) // MAX_CAPTURE_BATCH_FRAMES)
 
     def drain_sealed_transport(self) -> SealedPublicTransportV1 | None:
         with self._lock:
@@ -338,6 +363,21 @@ class DurablePublicCaptureV1:
             while True:
                 status = self.source.status()
                 queued = status.handoff.queue_items
+                with self._lock:
+                    pending_batches = len(self._pending)
+                    pressure_stopped = self._error == "PREVENTIVE_CAPTURE_PRESSURE_STOP"
+                if not pressure_stopped:
+                    reserve = self._pressure_reserve_batches(status.handoff)
+                    threshold = MAX_PENDING_CAPTURE_BATCHES - reserve
+                    if pending_batches >= threshold:
+                        self.request_pressure_stop()
+                        pressure_stopped = True
+                        # A producer may have queued accepted frames between
+                        # the first status snapshot and close taking effect.
+                        # Observe the closed handoff again before deciding the
+                        # terminal queue is empty.
+                        status = self.source.status()
+                        queued = status.handoff.queue_items
                 if not queued:
                     if self._stop.is_set():
                         if self._error == "PREVENTIVE_CAPTURE_PRESSURE_STOP" and self._journal is not None:
@@ -347,7 +387,8 @@ class DurablePublicCaptureV1:
                         return
                     self._stop.wait(0.01)
                     continue
-                if queued < 64 and not self._stop.is_set() and time.monotonic() - last < CAPTURE_ACCUMULATION_SECONDS:
+                if (queued < self.capture_batch_frames and not self._stop.is_set()
+                        and time.monotonic() - last < CAPTURE_ACCUMULATION_SECONDS):
                     self._stop.wait(0.01)
                     continue
                 with self._lock:
@@ -355,7 +396,10 @@ class DurablePublicCaptureV1:
                         raise RuntimeError("CAPTURE_WRITER_BACKLOG_EXHAUSTED")
                 started = time.monotonic_ns()
                 self._capture_started_monotonic_ns = started
-                frames = self.source.drain(max_items=min(64, queued))
+                if pressure_stopped:
+                    frames = self._drain_pressure_bundle()
+                else:
+                    frames = self.source.drain(max_items=min(self.capture_batch_frames, queued))
                 if not frames:
                     self._capture_started_monotonic_ns = None
                     continue
@@ -385,3 +429,23 @@ class DurablePublicCaptureV1:
             except (OSError, RuntimeError, ValueError):
                 pass
             self.source.close()
+
+    def _drain_pressure_bundle(self) -> tuple[CapturedPublicFrameV2, ...]:
+        """Seal remaining accepted frames in descriptor-sized bounded bundles."""
+        frames: list[CapturedPublicFrameV2] = []
+        for _ in range(MAX_CAPTURE_BATCH_FRAMES):
+            status = self.source.status()
+            queued = status.handoff.queue_items
+            if queued <= 0 or len(frames) >= MAX_CAPTURE_BATCH_FRAMES:
+                break
+            drain_bound = getattr(status.handoff, "max_drain_items", None)
+            if type(drain_bound) is not int or drain_bound < 1:
+                raise RuntimeError("CAPTURE_PRESSURE_DRAIN_BOUND_UNAVAILABLE")
+            limit = min(drain_bound, queued, MAX_CAPTURE_BATCH_FRAMES - len(frames))
+            batch = self.source.drain(max_items=limit)
+            if len(batch) > limit:
+                raise RuntimeError("CAPTURE_PRESSURE_DRAIN_EXCEEDED_BOUND")
+            if not batch:
+                break
+            frames.extend(batch)
+        return tuple(frames)

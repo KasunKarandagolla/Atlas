@@ -177,6 +177,7 @@ class OwnerHealthMonitorV1:
                     capture_pressure_stop=capture.get("terminal_error") == "PREVENTIVE_CAPTURE_PRESSURE_STOP",
                     evidence_integrity_failure=bool(progress.get("evidence_integrity_failure")),
                     clock_integrity_failure=bool(progress.get("clock_integrity_failure")),
+                    database_integrity_failed=bool(progress.get("database_integrity_failed")),
                     arrival_frames_per_second=arrival, drain_frames_per_second=drain,
                     queue_growth_frames_per_second=growth, persistence_seconds=max(
                         pending_seconds or 0, recent_commit or 0, capture.get("active_capture_duration_ns", 0) / 1e9),
@@ -199,7 +200,9 @@ class OwnerHealthMonitorV1:
                     handle_count=resources.get("handles"))
                 result = controller.observe(facts)
                 body = {"version": "OWNER_LIVE_HEALTH_PROJECTION_V1", "facts": facts.to_dict(),
-                        "assessment": result.to_dict(), "policy": controller.policy.to_dict(), "authority": "ZERO"}
+                        "assessment": result.to_dict(), "policy": controller.policy.to_dict(),
+                        "source_states": _bounded_source_states(progress.get("stream_source_states")),
+                        "authority": "ZERO"}
                 self.latest = body
                 previous = {"at": now, "received": received, "captured": captured, "queue": queue,
                             "footprint": footprint}
@@ -214,3 +217,14 @@ class OwnerHealthMonitorV1:
             if self._stop.is_set():
                 break  # Publish/latch the final capture facts before exit.
             self._stop.wait(.1)
+
+
+def _bounded_source_states(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, str] = {}
+    for name, state in sorted(value.items(), key=lambda item: str(item[0]))[:16]:
+        if (isinstance(name, str) and 0 < len(name) <= 64 and name.isascii()
+                and isinstance(state, str) and 0 < len(state) <= 48 and state.isascii()):
+            result[name] = state
+    return result

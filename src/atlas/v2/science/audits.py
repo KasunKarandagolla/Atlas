@@ -599,8 +599,13 @@ def declare_feature_family_ablation(*, audit_id: str, family_id: str, baseline_p
 
 
 def persist_research_artifact(repo: OpsRepository, artifact_type: str, body: Mapping[str, Any], *,
-        available_at_ns: int, key: str = "research_artifact") -> str:
+        available_at_ns: int, key: str = "research_artifact",
+        experiment_ref: str | None = None) -> str:
     ref = sha256_json(body)
+    metadata: dict[str, Any] = {key: body}
+    if experiment_ref is not None:
+        sha256_ref(experiment_ref, field="experiment_ref")
+        metadata["experiment_ref"] = experiment_ref
     repo.register_artifact(ArtifactIndexEntryV2(ref, artifact_type, ref, available_at_ns,
-        available_at_ns, {key: body}))
+        available_at_ns, metadata))
     return ref

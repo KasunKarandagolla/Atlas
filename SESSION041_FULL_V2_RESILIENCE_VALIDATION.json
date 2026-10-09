@@ -1,0 +1,161 @@
+{
+  "assisted_enabled": false,
+  "capital_enabled": false,
+  "closure_gate_passed": false,
+  "confirmed_ordinary_findings": [
+    "Public archive segment creation previously lacked parent-directory durability before SQLite descriptor publication; the writer now stages, fsyncs, publishes with POSIX directory fsync (or Windows write-through rename), and publishes descriptors afterward. Singleton, batch, rollover, injected publication failure, and retry tests pass.",
+    "Batch archive state now advances immediately after durable bytes are appended and before chronology sampling; a raising clock callback no longer leaves the same writer permanently offset-stale.",
+    "The dual-public queue reconciliation integration now passes 100ms/500ms/1s injected lookup stalls with 3 measured service intervals per case. Measured maximum post-service gaps were 124ms, 519ms, and 1.023s against stall-inclusive bounds of 301ms, 701ms, and 1.201s. This is a small two-instrument integration, not broad-universe capacity qualification.",
+    "Bulk reference order had repeated compressed-block decoding beyond cache capacity; grouped lookup and ordered hydration remain separately focused and do not establish full mixed-workload scale.",
+    "Shared chronology DAG repeated dependencies exponentially; per-call proof caching has focused evidence but does not qualify the final integrated SHA."
+  ],
+  "economic_status": "NOT ESTIMABLE",
+  "final_broad_workload_qualified": false,
+  "final_code_sha": null,
+  "final_tested_sha": null,
+  "focused_evidence": [
+    {
+      "attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "path": "/tmp/s41-bounded-proof-current.xml",
+      "sha256": "f31baafa83ad833381cb630eb0f0d5492db6b7c0043d5fa08478e59c89fd7b77"
+    },
+    {
+      "attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "path": "/tmp/s41-broad-servicing-current.xml",
+      "sha256": "ea48fcda44a75bdf92dc61399da2eabd4eba013054f5276734fd506f07f6e144"
+    },
+    {
+      "attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "path": "/tmp/s41-durable-extents-v5.xml",
+      "scope": "public archive singleton and batch durability, rollover, failed sync, plus same-writer retry after single and batch chronology failures",
+      "sha256": "81058b0ae58fea5ebea90826a84caa0c5aec8e02c8bfd3b7d0e861368c0cb0c0",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 12,
+        "skipped": 0,
+        "tests": 12
+      }
+    },
+    {
+      "attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+      "path": "/tmp/s41-durable-broad-runtime-v2.xml",
+      "scope": "integrated dual-venue queue, real reconciliation paging and 100ms/500ms/1s read-stall service-gap measurement",
+      "sha256": "3f1c34dd19f6379131c8370fcf68a223c3fa14c9359624c823b1acff429e00c9",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 5,
+        "skipped": 0,
+        "tests": 5
+      }
+    },
+    {
+      "attribution": "CURRENT_DIRTY_DEVELOPMENT_TREE; no final commit SHA",
+      "path": "/tmp/s41-final-current-archive-runtime-resilience.xml",
+      "scope": "Archive extents + real Bybit/Binance queue paging + S40 native resilience + preventive capture pressure reserve",
+      "sha256": "9c353b0b2ff1f36874f9670f05f63a7f94b45a4ac70953c42bcdb70b631ad760",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "passed": 24,
+        "skipped": 0,
+        "tests": 24
+      }
+    }
+  ],
+  "head_at_inventory": "a01f343f7c6be005e6d92450997bd1bbd0344800",
+  "interrupted_maximum_breadth_probe": {
+    "attribution": "DEVELOPMENT_TREE; FINAL_SHA_NOT_QUALIFIED",
+    "path": "/tmp/s41-bulk-capacity-4096-current.json",
+    "sha256": "ee1360d72d3ee73ed0ebba5aa7cccd81d7bbb5a4c4e26d2f02f1a460d914d06f"
+  },
+  "latest_integrated_focus": {
+    "attribution": "CURRENT_DIRTY_DEVELOPMENT_TREE; no final commit SHA",
+    "final_broad_workload_qualified": false,
+    "limitation": "Two-instrument queue/fault integration and bounded S40 resilience tests; excludes 4096-instrument concurrent streams/enrichment/report/WAL/restart mixed workload.",
+    "path": "/tmp/s41-final-current-archive-runtime-resilience.xml",
+    "scope": "Archive extents + real Bybit/Binance queue paging + S40 native resilience + preventive capture pressure reserve",
+    "sha256": "9c353b0b2ff1f36874f9670f05f63a7f94b45a4ac70953c42bcdb70b631ad760",
+    "totals": {
+      "errors": 0,
+      "failures": 0,
+      "passed": 24,
+      "skipped": 0,
+      "tests": 24
+    }
+  },
+  "mixed_capacity_gate": {
+    "status": "UNVERIFIED",
+    "engineering_gap_class": "A_MISSING_CAPACITY_IMPLEMENTATION_OR_DESIGN",
+    "trial_result": "FAIL",
+    "scope": "Synthetic 1,024-contract mixed broad workload with a single active Bybit frame producer, idle Binance stream lane, and concurrent read-only report export.",
+    "qualification_limits": [
+      "The test is synthetic and does not establish venue-network behavior or endurance.",
+      "The active frame producer is Bybit; the Binance stream lane is idle.",
+      "Frozen queue, capture, and service limits were not increased."
+    ],
+    "frozen_limits": {
+      "handoff_items": 512,
+      "handoff_bytes": 16000000,
+      "maximum_service_gap_ns": 1500000000,
+      "maximum_capture_pending_batches": 64,
+      "maximum_frames_per_capture_descriptor": 256
+    },
+    "candidates": [
+      {
+        "capture_batch_frames": 16,
+        "evidence": "docs/v2/session041-evidence/7bde94433bf3f5bea6482cd82075d32ddbc786f6fb04b1a02c53822491f719d8.xml",
+        "sha256": "7bde94433bf3f5bea6482cd82075d32ddbc786f6fb04b1a02c53822491f719d8",
+        "result": "FAIL: preventive capture pressure stop before workload completion",
+        "frames_captured": 1419,
+        "frames_delivered": 209,
+        "frames_pending_at_stop": 1210,
+        "pending_batches_at_stop": 62,
+        "max_service_call_ns": 880883963,
+        "handoff_overflow": false
+      },
+      {
+        "capture_batch_frames": 16,
+        "evidence": "docs/v2/session041-evidence/7a9970f8b745a06112abcb5cac08f2ea66a2ffbd152260867ee6ede364686b3e.xml",
+        "sha256": "7a9970f8b745a06112abcb5cac08f2ea66a2ffbd152260867ee6ede364686b3e",
+        "result": "FAIL: shared handoff rejected a frame while the idle venue lane reservation remained protected",
+        "frames_captured_before_stop": 801,
+        "handoff_items_at_rejection": 480,
+        "handoff_limit_items": 512,
+        "handoff_rejected": 1
+      },
+      {
+        "capture_batch_frames": 32,
+        "evidence": "docs/v2/session041-evidence/c4c9ac0bc3287d073f9f118619457102f2faf3a07366389b1f6146f6a2319cff.xml",
+        "sha256": "c4c9ac0bc3287d073f9f118619457102f2faf3a07366389b1f6146f6a2319cff",
+        "result": "FAIL: frame retention and report completion succeeded, but service cadence exceeded frozen maximum",
+        "frames_captured_and_offered": 1791,
+        "frames_rejected": 0,
+        "max_service_gap_ns": 2398925378,
+        "service_gap_limit_ns": 1500000000,
+        "max_service_call_ns": 2310176764,
+        "report_worker_status": "IMPLEMENTED",
+        "report_validation_failures": {},
+        "stopped_export_has_more": false
+      }
+    ],
+    "resolution": "No tested batch size satisfies both sustained broad ingestion and the frozen service-gap limit. The 16-frame setting remains in source because the 32-frame candidate violates the service SLO; closure is paused for architecture/capacity review. Do not increase buffers, relax validation/SLOs, or package based on these results.",
+    "ordinary_engineering_complete": false,
+    "package_created": false
+  },
+  "native_windows_status": "BLOCKED BY ENVIRONMENT",
+  "package_created": false,
+  "remaining_work": [
+    "Resolve mixed broad ingestion/report capacity: current 16-frame capture batches stop at preventive pending-capture pressure; 32-frame batches retain all frames but exceed the frozen 1.5-second service-gap limit. Architecture review is required.",
+    "Maximum-breadth repeated acquisition after fixes with streams and enrichment active",
+    "Combined real streams, acquisition, report/export, WAL/read contention, restart, and resource envelope",
+    "Full-workload storage admission and preflight capacity accounting",
+    "Final source-stable tests and fresh independent reviews",
+    "Native Windows package validation remains blocked by environment"
+  ],
+  "schema_version": 1,
+  "session": 41,
+  "status": "UNVERIFIED",
+  "worktree_dirty": true
+}

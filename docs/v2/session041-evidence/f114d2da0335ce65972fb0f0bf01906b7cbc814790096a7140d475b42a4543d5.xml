@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="78.725" timestamp="2026-10-09T00:27:31.077298+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_mixed_broad_capacity" name="test_mixed_1024_contract_public_workload_under_bounded_stalls" time="75.030"><properties><property name="session041_mixed_capacity" value="{&quot;archive_stall_capture_frames_before_after&quot;: [160, 170], &quot;archive_stall_seconds&quot;: 1.0004767890204675, &quot;bounded_burst_target_fps&quot;: 320, &quot;capacity_qualified&quot;: false, &quot;capital_enabled&quot;: false, &quot;capture_high_water_batches&quot;: 6, &quot;capture_max_pending_batches&quot;: 64, &quot;commit_stall_seconds&quot;: 0.5013269300106913, &quot;contracts&quot;: 1024, &quot;contracts_per_venue&quot;: 512, &quot;durable_watch_keys&quot;: 8, &quot;frames_captured_during_commit_stall&quot;: 1, &quot;global_paced_base_target_fps&quot;: 160, &quot;handoff_high_water_items&quot;: 79, &quot;handoff_max_queue_items&quot;: 512, &quot;qualification_limits&quot;: [&quot;Synthetic source rows and deterministic local stream frames; no venue network&quot;, &quot;Eight synthetic durable DETECTED watches seed the bounded deep cohort; this is not live prevalence&quot;, &quot;Benchmark runtime plan and workset selection do not represent live eligibility prevalence&quot;, &quot;One bounded acquisition and 160 frames are not endurance or full broad qualification&quot;], &quot;read_only_snapshot_universe_rows&quot;: 1024, &quot;report_read_only_artifact_count_unchanged&quot;: true, &quot;report_worker_export_seconds&quot;: 8.282945625, &quot;report_worker_status&quot;: &quot;IMPLEMENTED&quot;, &quot;runtime_deep_keys_from_durable_watch_or_tier3&quot;: 8, &quot;runtime_max_service_gap_ns&quot;: 17060539439, &quot;runtime_plan_keys&quot;: 10, &quot;runtime_tier3_keys_from_workset&quot;: 8, &quot;scope&quot;: &quot;BOUNDED_SYNTHETIC_MIXED_PROBE_ONLY&quot;, &quot;stream_frame_venues&quot;: {&quot;BINANCE&quot;: 0, &quot;BYBIT&quot;: 170}, &quot;stream_frames&quot;: 170, &quot;wal_bytes_after_first_publication&quot;: 5487872, &quot;wal_bytes_after_mixed_ingestion&quot;: 5928712, &quot;wal_bytes_at_stop&quot;: 5928712, &quot;workset_history_keys&quot;: 22}" /></properties><failure message="ValueError: stream factory provided for an absent plan lane">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-581/test_mixed_1024_contract_publi0')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x7f6efce6dd00&gt;
+
+    def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, record_property):
+        products = _contracts()
+        clock = [NOW]
+        path = tmp_path / "mixed-ops.sqlite"
+        runtime = BroadPublicRuntimeV2(clock_ns=lambda: clock[0],
+            stream_factories={"BYBIT": _idle_stream(), "BINANCE_MARKET": _idle_stream()})
+        source = _DeterministicBybitSource(products, NOW)
+        port = BroadProductionOpsCyclePortV2(public_source=source, broad_runtime=runtime,
+            clock_ns=lambda: clock[0])
+        interpreted: list[CapturedPublicFrameV2] = []
+        original_interpreter = runtime._interpret_frames
+    
+        def observe_interpreter(repository, frames, *, now_ns):
+            interpreted.extend(frames)
+            return original_interpreter(repository, frames, now_ns=now_ns)
+    
+        runtime._interpret_frames = observe_interpreter
+        identity = TuningRunIdentityV1("s41-mixed-broad-capacity", "a" * 64, "b" * 40, 0)
+        report_dir = tmp_path / "reports"
+        offered: list[CapturedPublicFrameV2] = []
+        commit_observation: dict[str, float | int] = {}
+        archive_stall_seconds: list[float] = []
+        reader_snapshots: list[tuple[int, int]] = []
+        report_release = threading.Event()
+        def export_during_stall():
+            if not report_release.wait(60.0):
+                raise TimeoutError("report export did not reach the injected commit stall")
+            return export_tuning_snapshot(path, report_dir, identity, cutoff_ns=NOW + 20_000_000_000)
+    
+        exporter = ReadOnlyReportWorkerV1(export_during_stall)
+        export_completion = []
+    
+        try:
+            with OpsRepository(path) as repository:
+                # Persist representative active watch state through the repository's
+                # domain API. The production recovery/workset code discovers these
+                # rows; the stream plan receives no direct active-key override.
+                cohort_venue = sorted((VenueV2.BYBIT, VenueV2.BINANCE), key=lambda venue: venue.value)[
+                    (NOW // DAY_NS) % 2]
+                cohort_candidates = sorted((item for item in products if item.key.venue == cohort_venue),
+                    key=lambda item: (item.key.native_symbol != "BTCUSDT",
+                        item.key.native_symbol not in {"BTCUSDT", "ETHUSDT"},
+                        item.key.to_canonical_json()))[:20]
+                watch_keys = tuple(item.key for item in cohort_candidates[:8])
+                for index, key in enumerate(watch_keys):
+                    watch_id = sha256_json({"session": "041-mixed-watch", "key": key.to_dict()})
+                    repository.create_watch(OpportunityWatchV2(
+                        watch_id, key, "SYNTHETIC_CAPACITY_PROBE", "V1",
+                        sha256_json({"policy": index}), WatchStateV2.DETECTED, 0,
+                        NOW, NOW, sha256_json({"thesis": index}), (), "TRADE",
+                        NOW + 60_000_000_000, NOW))
+                recovery = port.recover(repository, now_ns=NOW)
+                assert recovery.required_source_ids == ("BINANCE_PUBLIC_V2", "BYBIT_PUBLIC_V2")
+                snapshot = source.acquire_snapshot(now_ns=NOW)
+                port._register_refreshed_stream_products(repository, snapshot)
+                # The fixture is synthetically shaped and may be marked incomplete
+                # by the public health gate; persistence and receipt identity below
+                # remain the measured behavior.
+                port._persist_broad_public_snapshot(repository, snapshot, now_ns=NOW)
+    
+                universe = full_universe(repository, cutoff_ns=NOW)
+                body = latest_workset(repository, cutoff_ns=NOW)
+                selected = active_products(repository, cutoff_ns=NOW)
+                assert universe is not None and body is not None and selected is not None
+                assert len(universe.entries) == 1024
+                assert len({item.key for item in universe.entries}) == 1024
+                assert {item.key.venue for item in universe.entries} == {VenueV2.BYBIT, VenueV2.BINANCE}
+                assert len(selected) &lt;= 24 and len(selected) &gt; 0
+                wal_after_first_publication = _wal_size(path)
+                assert body["selected_count"] == len(selected)
+                assert not any(entry.capital_eligible or entry.scanner_eligible for entry in universe.entries)
+                # Stream subscriptions follow the collector's actual workset tiers,
+                # repository watch state, and runtime benchmarks.
+                actual_tiers = {InstrumentKeyV2.from_dict(json.loads(key)): int(value)
+                                for key, value in body["tiers"].items()}
+                tier3_keys = {key for key, tier in actual_tiers.items() if tier &gt;= 3}
+                deep_keys = {item.key for item in runtime.plan.identities
+                             if item.channel.startswith("orderbook.50.") or "@depth" in item.channel}
+                assert runtime.plan is not None
+                assert len(deep_keys) == 8 and set(watch_keys).issubset(deep_keys)
+                assert tier3_keys.issubset(set(runtime.plan.keys))
+                assert len(runtime.plan.keys) &lt;= 24
+    
+                # Open a separate read-only snapshot while the live database is in WAL mode.
+                with OpsRepository(path, read_only=True) as reader:
+                    reader_snapshots.append((len(full_universe(reader, cutoff_ns=NOW).entries),
+                        reader._connection.execute("PRAGMA data_version").fetchone()[0]))
+    
+                assert runtime.source is not None and runtime.capture is not None
+                bybit_lane = runtime.source._lanes["BYBIT"]
+                handoff = bybit_lane._handoff
+                stream_key = next(identity.key for identity in runtime.plan.identities
+                                  if identity.venue == VenueV2.BYBIT
+                                  and identity.channel.startswith("publicTrade."))
+    
+                # A real read-only report worker runs alongside ingestion; its output
+                # is polled while capture continues, then the exact same export is
+                # checked after the ingestion cutoff.
+                # The read-only worker is gated until the active commit stall, so
+                # its SQLite snapshot opens while the writer is committing.
+                assert exporter.start()
+                before_artifacts = repository._connection.execute(
+                    "SELECT count(*) FROM artifact_index").fetchone()[0]
+    
+                original_connection = repository._connection
+                stalled = False
+                stream_go = threading.Event()
+                producer_done = threading.Event()
+                producer_error: list[BaseException] = []
+                captured_during_commit: list[int] = []
+    
+                def producer() -&gt; None:
+                    try:
+                        assert stream_go.wait(2.0)
+                        started = time.monotonic()
+                        for index in range(160):
+                            frame = _frame(index, stream_key)
+                            if not handoff.offer(frame):
+                                raise AssertionError("bounded public handoff rejected a frame")
+                            offered.append(frame)
+                            target = started + (index + 1) / 160
+                            if index == 7:
+                                target = started + index / 320
+                            time.sleep(max(0.0, target - time.monotonic()))
+                    except BaseException as exc:
+                        producer_error.append(exc)
+                    finally:
+                        producer_done.set()
+    
+                class CommitStall:
+                    def __getattr__(self, name):
+                        return getattr(original_connection, name)
+    
+                    def commit(self):
+                        nonlocal stalled
+                        if not stalled:
+                            stalled = True
+                            stream_go.set()
+                            report_release.set()
+                            before = time.monotonic()
+                            assert runtime.capture is not None
+                            while time.monotonic() - before &lt; 0.5:
+                                captured = int(runtime.capture.status().capture["captured_frames"])
+                                if captured:
+                                    captured_during_commit.append(captured)
+                                time.sleep(0.01)
+                            commit_observation["stall_seconds"] = time.monotonic() - before
+                            commit_observation["captured_during_stall"] = max(captured_during_commit, default=0)
+                        return original_connection.commit()
+    
+                producer_thread = threading.Thread(target=producer, name="s41-mixed-producer")
+                producer_thread.start()
+                repository._connection = CommitStall()
+                try:
+                    marker = {"mixed_stall_marker": NOW}
+                    marker_ref = sha256_json(marker)
+                    repository.register_artifact(ArtifactIndexEntryV2(marker_ref,
+                        "Session041MixedStallMarkerV1", marker_ref, NOW, NOW, marker))
+                finally:
+                    repository._connection = original_connection
+                marker_count = repository._connection.execute("SELECT count(*) FROM artifact_index").fetchone()[0]
+                completion = None
+                report_deadline = time.monotonic() + 60.0
+                while completion is None and time.monotonic() &lt; report_deadline:
+                    completion = exporter.poll()
+                    if completion is None:
+                        time.sleep(0.01)
+                assert completion is not None and completion.status == "IMPLEMENTED"
+                export_completion.append(completion)
+                assert repository._connection.execute("SELECT count(*) FROM artifact_index").fetchone()[0] == marker_count
+                # Continue the same real collector, metadata and workset path after
+                # the commit/export overlap while stream capture is still active.
+                assert runtime._archive is not None
+                original_write_chunks = runtime._archive.write_chunks
+                archive_started = threading.Event()
+                during_archive: list[tuple[int, int]] = []
+    
+                def stalled_archive_write(chunks):
+                    before = time.monotonic()
+                    assert runtime.capture is not None
+                    frames_before = int(runtime.capture.status().capture["captured_frames"])
+                    archive_started.set()
+                    time.sleep(1.0)
+                    archive_stall_seconds.append(time.monotonic() - before)
+                    frames_after = int(runtime.capture.status().capture["captured_frames"])
+                    during_archive.append((frames_before, frames_after))
+                    return original_write_chunks(chunks)
+    
+                burst_errors: list[BaseException] = []
+    
+                def archive_stall_burst() -&gt; None:
+                    try:
+                        assert archive_started.wait(10.0)
+                        for index in range(160, 170):
+                            frame = _frame(index, stream_key)
+                            if not handoff.offer(frame):
+                                raise AssertionError("bounded archive-stall burst was rejected")
+                            offered.append(frame)
+                            time.sleep(1 / 320)
+                    except BaseException as exc:
+                        burst_errors.append(exc)
+    
+                burst_thread = threading.Thread(target=archive_stall_burst, name="s41-mixed-archive-burst")
+                burst_thread.start()
+                runtime._archive.write_chunks = stalled_archive_write
+                clock[0] = NOW + 10_000_000_000
+                source.at_ns = clock[0]
+                mixed_snapshot = source.acquire_snapshot(now_ns=clock[0])
+                port._register_refreshed_stream_products(repository, mixed_snapshot)
+                try:
+                    port._persist_broad_public_snapshot(repository, mixed_snapshot, now_ns=clock[0])
+                finally:
+                    runtime._archive.write_chunks = original_write_chunks
+                burst_thread.join(timeout=2.0)
+                assert not burst_thread.is_alive() and not burst_errors
+                assert archive_started.is_set()
+                assert archive_stall_seconds and archive_stall_seconds[0] &gt;= 1.0
+                assert during_archive and during_archive[0][1] &gt; during_archive[0][0]
+                wal_after_mixed_ingestion = _wal_size(path)
+                assert wal_after_first_publication &gt; 0 and wal_after_mixed_ingestion &gt; 0
+                producer_thread.join(timeout=3.0)
+                assert producer_done.is_set() and not producer_error
+                assert commit_observation["stall_seconds"] &gt;= 0.5
+                assert commit_observation["captured_during_stall"] &gt; 0
+                body = latest_workset(repository, cutoff_ns=clock[0])
+                selected = active_products(repository, cutoff_ns=clock[0])
+                assert body is not None and selected is not None
+    
+                # Boundedly drain all queued batches and close the durable capture.
+                for _ in range(40):
+                    port.service_public_stream(repository)
+                    if runtime.capture.status().capture["pending_frames"] == 0:
+                        break
+                    time.sleep(0.01)
+                port.finish_public_capture(repository)
+                final = runtime.status()
+                assert final.capture["pending_frames"] == 0
+                assert final.capture["pending_batches"] == 0
+                assert final.handoff.frames_received == 170
+                assert final.handoff.frames_drained == 170
+                assert final.handoff.frames_rejected == 0
+                assert not final.handoff.overflowed
+                assert final.handoff.high_water_items &lt;= final.handoff.max_queue_items
+                assert final.handoff.high_water_bytes &lt;= final.handoff.max_queue_bytes
+                assert len(interpreted) == len(offered) == 170
+                assert [_frame_identity(item) for item in interpreted] == [
+                    _frame_identity(item) for item in offered]
+                assert final.capture["terminal_error"] is None
+    
+                receipt = repository.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
+                    as_of_ns=NOW + 20_000_000_000, limit=1).entries[0]
+                receipt_refs = {ref for refs in receipt.metadata["receipt"]["source_observation_refs"].values()
+                                for ref in refs}
+                assert len(receipt_refs) == 1024
+                assert not receipt.metadata["receipt"]["rejected_record_indexes"]
+                expected_refs = {sha256_json({"artifact_type": "PublicObservationIndexV2",
+                    "record_id": record.observation.record_id}) for record in mixed_snapshot.records}
+                assert receipt_refs == expected_refs
+                assert repository._connection.execute("SELECT count(*) FROM artifact_index").fetchone()[0] &gt;= before_artifacts
+    
+                after_artifacts = repository._connection.execute(
+                    "SELECT count(*) FROM artifact_index").fetchone()[0]
+                assert after_artifacts &gt;= marker_count
+                manifest = completion.result
+                assert isinstance(manifest, dict) and manifest["validation_failures"] == {}
+                assert exporter.close(timeout_s=30.0)
+    
+                # Final stopped export sees the completed receipt and stays read-only.
+                final_before = repository._connection.execute("SELECT count(*) FROM artifact_index").fetchone()[0]
+                stopped_manifest = export_tuning_snapshot(path, report_dir, identity,
+                    cutoff_ns=NOW + 20_000_000_000)
+                final_after = repository._connection.execute("SELECT count(*) FROM artifact_index").fetchone()[0]
+                assert final_before == final_after
+                assert stopped_manifest["validation_failures"] == {}
+                rows = pq.read_table(report_dir / identity.run_id / stopped_manifest["partition"]).to_pylist()
+                exported_workset = next(row for row in rows if row["artifact_type"] == "BroadUniverseWorksetV2")
+                exported_body = json.loads(exported_workset["evidence_payload_json"])
+                assert set(exported_body["active_product_refs"]) == {product.content_hash for product in selected}
+    
+                report_export_seconds = (completion.completed_at_ns - completion.started_at_ns) / 1_000_000_000
+                wal_bytes = _wal_size(path)
+                metrics = {
+                    "scope": "BOUNDED_SYNTHETIC_MIXED_PROBE_ONLY",
+                    "capacity_qualified": False,
+                    "contracts": 1024,
+                    "contracts_per_venue": 512,
+                    "workset_history_keys": len(selected),
+                    "runtime_plan_keys": len(runtime.plan.keys),
+                    "runtime_deep_keys_from_durable_watch_or_tier3": len(deep_keys),
+                    "runtime_tier3_keys_from_workset": len(tier3_keys),
+                    "durable_watch_keys": len(watch_keys),
+                    "stream_frames": len(offered),
+                    "stream_frame_venues": {"BYBIT": len(offered), "BINANCE": 0},
+                    "global_paced_base_target_fps": 160,
+                    "bounded_burst_target_fps": 320,
+                    "commit_stall_seconds": commit_observation["stall_seconds"],
+                    "frames_captured_during_commit_stall": commit_observation["captured_during_stall"],
+                    "archive_stall_seconds": archive_stall_seconds[0],
+                    "archive_stall_capture_frames_before_after": list(during_archive[0]),
+                    "handoff_high_water_items": final.handoff.high_water_items,
+                    "handoff_max_queue_items": final.handoff.max_queue_items,
+                    "capture_high_water_batches": final.capture["high_water_batches"],
+                    "capture_max_pending_batches": final.capture["max_pending_batches"],
+                    "runtime_max_service_gap_ns": final.max_service_gap_ns,
+                    "read_only_snapshot_universe_rows": reader_snapshots[0][0],
+                    "wal_bytes_at_stop": wal_bytes,
+                    "report_worker_status": export_completion[0].status,
+                    "report_worker_export_seconds": report_export_seconds,
+                    "report_read_only_artifact_count_unchanged": True,
+                    "wal_bytes_after_first_publication": wal_after_first_publication,
+                    "wal_bytes_after_mixed_ingestion": wal_after_mixed_ingestion,
+                    "capital_enabled": False,
+                    "qualification_limits": [
+                        "Synthetic source rows and deterministic local stream frames; no venue network",
+                        "Eight synthetic durable DETECTED watches seed the bounded deep cohort; this is not live prevalence",
+                        "Benchmark runtime plan and workset selection do not represent live eligibility prevalence",
+                        "One bounded acquisition and 160 frames are not endurance or full broad qualification",
+                    ],
+                }
+                record_property("session041_mixed_capacity", json.dumps(metrics, sort_keys=True))
+                print("SESSION041_MIXED_BROAD_CAPACITY=" + json.dumps(metrics, sort_keys=True))
+                assert metrics["capacity_qualified"] is False
+                assert metrics["capital_enabled"] is False
+    
+            restarted_runtime = BroadPublicRuntimeV2(
+                clock_ns=lambda: NOW + 30_000_000_000,
+                stream_factories={"BYBIT": _idle_stream(), "BINANCE_MARKET": _idle_stream()})
+            try:
+                with OpsRepository(path) as restarted:
+&gt;                   restarted_runtime.recover(restarted, run_root=tmp_path, products=products,
+                        tiers={}, now_ns=NOW + 30_000_000_000,
+                        benchmark_keys=(products[0].key, products[1].key))
+
+tests/v2/test_session041_mixed_broad_capacity.py:397: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/broad_public_runtime.py:126: in recover
+    self.source = BroadPublicStreamSourceV2(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;atlas.v2.data.broad_stream_source.BroadPublicStreamSourceV2 object at 0x7f6ef4102a80&gt;
+plan = BroadPublicStreamPlanV2(created_at_ns=1800000030000000000, plan_id='cbaff5a5115531f89316cfbe0766def5a7207510dc2be6b615...74ef6f02d50d7a2ee8a47de2eae943dd838d54b07a2ac078', 'b6ad02ec05e9d70dea66a55f9e8fe1e616611cf59c17ff7b7d3870558d8ce687'))
+stream_factories = {'BYBIT': &lt;function _idle_stream.&lt;locals&gt;.frames at 0x7f6efcceff60&gt;, 'BINANCE_MARKET': &lt;function _idle_stream.&lt;locals&gt;.frames at 0x7f6ef5216480&gt;}
+clock_ns = &lt;function test_mixed_1024_contract_public_workload_under_bounded_stalls.&lt;locals&gt;.&lt;lambda&gt; at 0x7f6f0f4cea20&gt;
+
+    def __init__(self, plan: BroadPublicStreamPlanV2, *, stream_factories: Mapping[str, Callable] | None = None,
+                 clock_ns: Callable[[], int] | None = None) -&gt; None:
+        self.plan = plan
+        self.topics = tuple(sorted(topic for topics in plan.lane_topics.values() for topic in topics))
+        self.venue = "BROAD"
+        self._clock_ns = clock_ns
+        factories = dict(stream_factories or {})
+        lane_names = tuple(sorted(plan.lane_topics))
+        if set(factories) - set(lane_names):
+&gt;           raise ValueError("stream factory provided for an absent plan lane")
+E           ValueError: stream factory provided for an absent plan lane
+
+src/atlas/v2/data/broad_stream_source.py:180: ValueError</failure></testcase></testsuite></testsuites>

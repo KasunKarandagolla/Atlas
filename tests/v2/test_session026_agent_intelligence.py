@@ -46,9 +46,16 @@ from atlas.v2.agent_intelligence.provider import (
 )
 from atlas.v2.agent_intelligence.validation import validate_proposal_output
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
-from atlas.v2.science.discovery import DISCOVERY_LAB_HASH, DiscoveryHoldoutStateV2, holdout_spent_at
+from atlas.v2.science.audits import declare_feature_family_ablation
+from atlas.v2.science.discovery import (
+    DISCOVERY_LAB_HASH,
+    DiscoveryHoldoutStateV2,
+    holdout_spent_at,
+    register_discovery_attempt,
+)
 
 from .test_session016_candidate_selection import CUTOFF
+from .test_session023_discovery_s8 import attempt as make_discovery_attempt
 from .test_session023_discovery_s8 import experiment as make_experiment
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -338,7 +345,103 @@ def test_manifest_ref_forgery_future_evidence_and_holdout_are_denied(env: _Fixtu
     holdout_auth = _Fixture._evidence("get_registered_artifact", env.experiment.final_holdout_ref)
     with pytest.raises(ValueError, match="outside its server-authorized"):
         env.evidence.authorize_request_manifest(replace(request,
-            evidence_manifest=(request.evidence_manifest[0], holdout_auth)))
+        evidence_manifest=(request.evidence_manifest[0], holdout_auth)))
+
+
+def test_agent_attempt_summary_never_exposes_untrusted_discovery_result(env: _Fixture) -> None:
+    attempt = replace(make_discovery_attempt(env.experiment, identity="holdout-smuggling",
+        start=CUTOFF + 10), result={"operator_note": "final holdout return was 123"})
+    attempt_ref = register_discovery_attempt(env.ops, env.experiment.content_hash, attempt,
+        available_at_ns=CUTOFF + 12)
+    request = env.request(attempt_history_refs=(attempt_ref,), remaining_attempt_budget=3,
+        remaining_parameter_search_budget=3)
+    authorization = _Fixture._evidence("get_registered_artifact", attempt_ref)
+    request = replace(request, evidence_manifest=(*request.evidence_manifest, authorization))
+
+    env.evidence.authorize_request_manifest(request)
+    response = env.evidence.read(request, authorization, now_ns=env.now_ns)
+
+    assert response["status"] == ReadStatusV1.PRESENT.value
+    encoded = json.dumps(response, sort_keys=True)
+    assert "final holdout return was 123" not in encoded
+    safe_attempt = response["rows"][0]["metadata"]["attempt"]
+    assert safe_attempt["view_version"] == "DISCOVERY_AGENT_ATTEMPT_SUMMARY_V1"
+    assert safe_attempt["operation"] == "M1_LIGHTGBM_FIXED_GRID"
+    assert safe_attempt["state"] == "COMPLETED"
+    assert "result" not in safe_attempt
+
+
+def test_failed_variant_summary_keeps_safe_reason_and_redacts_untrusted_text(env: _Fixture) -> None:
+    safe = make_discovery_attempt(env.experiment, identity="failed-known-code", start=CUTOFF + 10,
+        failure="INSUFFICIENT_CHRONOLOGY")
+    unsafe = make_discovery_attempt(env.experiment, identity="failed-untrusted", start=CUTOFF + 20,
+        failure="final holdout return was 123")
+    safe_ref = register_discovery_attempt(env.ops, env.experiment.content_hash, safe, available_at_ns=CUTOFF + 12)
+    unsafe_ref = register_discovery_attempt(env.ops, env.experiment.content_hash, unsafe, available_at_ns=CUTOFF + 22)
+    request = env.request(attempt_history_refs=tuple(sorted((safe_ref, unsafe_ref))),
+        remaining_attempt_budget=2, remaining_parameter_search_budget=2)
+    authorization = request.evidence_manifest[1]
+
+    response = env.evidence.read(request, authorization, now_ns=env.now_ns)
+
+    assert response["status"] == ReadStatusV1.PRESENT.value
+    rows = [row["metadata"]["attempt"] for row in response["rows"]]
+    assert len(rows) == 2
+    assert {row["failure_code"] for row in rows} == {"INSUFFICIENT_CHRONOLOGY", "UNCLASSIFIED_FAILURE"}
+    assert all(row["state"] == "FAILED" and row["operation"] == "M1_LIGHTGBM_FIXED_GRID" for row in rows)
+    assert "final holdout return was 123" not in json.dumps(response, sort_keys=True)
+
+
+def test_agent_ablation_summary_projects_closed_schema_only(env: _Fixture) -> None:
+    ref_names = ("baseline_policy_ref", "scanner_ref", "candidate_generation_ref", "selection_ref",
+        "sizing_ref", "execution_assumptions_ref", "costs_ref", "no_fill_partial_fill_ref",
+        "latency_ref", "gate_ref", "multiplicity_family_ref")
+    refs = {name: (env.experiment.baseline_policy_ref if name == "baseline_policy_ref" else sha256_json(name))
+            for name in ref_names}
+    audit = declare_feature_family_ablation(audit_id="final holdout return was 123",
+        family_id="final holdout return was 123", **refs).to_dict()
+    audit["chronology"] = "180D_TRAIN_30D_VALIDATION_30D_OUTER_MONTHLY_ADVANCE_FINAL_UNTOUCHED_HOLDOUT"
+    audit["purge_embargo"] = "PURGE_OVERLAPPING_LABELS_AND_EMBARGO_AT_LEAST_MAX_POLICY_HOLDING_HORIZON"
+    audit_ref = sha256_json(audit)
+    env.ops.register_artifact(ArtifactIndexEntryV2(audit_ref, "FeatureFamilyAblationAuditV2", audit_ref,
+        CUTOFF + 10, CUTOFF + 10, {"experiment_ref": env.experiment.content_hash, "ablation": audit}))
+    invariant = {"version": "WHOLE_POLICY_ABLATION_INVARIANT_V1", "component": "scanner_ref",
+        "requirement": "IDENTICAL_TO_BASELINE", "experiment_ref": env.experiment.content_hash}
+    invariant_ref = sha256_json(invariant)
+    env.ops.register_artifact(ArtifactIndexEntryV2(invariant_ref, "WholePolicyAblationInvariantV2",
+        invariant_ref, CUTOFF + 11, CUTOFF + 11,
+        {"experiment_ref": env.experiment.content_hash, "invariant": invariant}))
+
+    request = env.request()
+    authorization = _Fixture._evidence("inspect_authorized_ablation_results", request.experiment_ref)
+    request = replace(request, evidence_manifest=(*request.evidence_manifest, authorization))
+    env.evidence.authorize_request_manifest(request)
+    response = env.evidence.read(request, authorization, now_ns=env.now_ns)
+
+    assert response["status"] == ReadStatusV1.PRESENT.value
+    encoded = json.dumps(response, sort_keys=True)
+    assert "final holdout return was 123" not in encoded
+    assert len(response["rows"]) == 2
+    assert all("view_version" in row["metadata"].get("ablation", row["metadata"].get("invariant", {}))
+               for row in response["rows"])
+
+
+def test_agent_ablation_reader_rejects_untyped_fields_that_could_smuggle_holdout(env: _Fixture) -> None:
+    invariant = {"version": "WHOLE_POLICY_ABLATION_INVARIANT_V1", "component": "scanner_ref",
+        "requirement": "IDENTICAL_TO_BASELINE", "experiment_ref": env.experiment.content_hash,
+        "operator_note": "final holdout return was 123"}
+    invariant_ref = sha256_json(invariant)
+    env.ops.register_artifact(ArtifactIndexEntryV2(invariant_ref, "WholePolicyAblationInvariantV2",
+        invariant_ref, CUTOFF + 10, CUTOFF + 10,
+        {"experiment_ref": env.experiment.content_hash, "invariant": invariant}))
+    request = env.request()
+    authorization = _Fixture._evidence("inspect_authorized_ablation_results", request.experiment_ref)
+    request = replace(request, evidence_manifest=(*request.evidence_manifest, authorization))
+
+    response = env.evidence.read(request, authorization, now_ns=env.now_ns)
+
+    assert response["status"] == ReadStatusV1.UNAVAILABLE.value
+    assert "final holdout return was 123" not in json.dumps(response, sort_keys=True)
 
 
 def test_holdout_spend_and_overstated_discovery_budgets_block_agent_request(env: _Fixture) -> None:

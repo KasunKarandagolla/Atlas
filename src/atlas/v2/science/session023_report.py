@@ -33,15 +33,30 @@ from atlas.v2.science.discovery import (
 )
 from atlas.v2.science.m0 import M0_MODEL_VERSION
 from atlas.v2.science.m1 import M1_PARAMETER_GRID, M1_POLICY_BODY, M1_POLICY_HASH
-from atlas.v2.science.research_selection import MULTI_SLEEVE_SELECTION_BODY, MULTI_SLEEVE_SELECTION_HASH
 from atlas.v2.strategies.s8_pairs import S8_PROFILE_BODY, S8_PROFILE_HASH
+
+# Session 023 is an immutable historical preregistration. Keep its selector
+# identity pinned to the exact 1.0.0 policy that existed then; later additive
+# selector versions are separate experiments and cannot rewrite this record.
+SESSION023_SELECTION_BODY_V1 = {
+    "selection_policy_id": "MULTI_SLEEVE_RESEARCH_SELECTION_V1",
+    "version": "1.0.0-research",
+    "capital_status": "SHADOW_ONLY",
+    "ordering": ["scanner_rank_ascending", "policy_id_ascending",
+        "canonical_InstrumentKeyV2_ascending", "candidate_id_ascending"],
+    "scanner_evidence_max_age_ns": 5_000_000_000,
+    "candidate_eligibility": "COMPLETE_IMMUTABLE_SINGLE_ACTION_CONTRACT_ONLY",
+    "outcome_models_in_selection": False,
+    "all_exact_action_competitors_retained": True,
+}
+SESSION023_SELECTION_HASH_V1 = sha256_json(SESSION023_SELECTION_BODY_V1)
 
 
 def build_session023_research_report(repo: OpsRepository, *, preregistered_at_ns: int) -> dict[str, Any]:
     """Retain the entire bounded family and missing-evidence results, never tune it."""
     at = preregistered_at_ns
     policy_bodies = {"M1": M1_POLICY_BODY, "analogue": ANALOGUE_POLICY_BODY,
-        "selector": MULTI_SLEEVE_SELECTION_BODY, "S8": S8_PROFILE_BODY}
+        "selector": SESSION023_SELECTION_BODY_V1, "S8": S8_PROFILE_BODY}
     for name, body in policy_bodies.items():
         persist_research_artifact(repo, "OfflineResearchPolicyV2", body, available_at_ns=at, key=name)
     baseline_body = {"version": "SESSION023_M0_REQUIRED_BASELINE_V1", "model_version": M0_MODEL_VERSION,
@@ -58,7 +73,7 @@ def build_session023_research_report(repo: OpsRepository, *, preregistered_at_ns
     specifications = [(f"M1_CONFIG_{index + 1}", "M1_LIGHTGBM_FIXED_GRID", {"model_policy_hash": M1_POLICY_HASH,
         "parameters": dict(parameters)}) for index, parameters in enumerate(M1_PARAMETER_GRID)]
     specifications += [("ANALOGUE", "CAUSAL_ANALOGUE_FIXED_RETRIEVAL", {"policy_hash": ANALOGUE_POLICY_HASH}),
-        ("MULTI_SLEEVE", "MULTI_SLEEVE_RESEARCH_SELECTION", {"policy_hash": MULTI_SLEEVE_SELECTION_HASH}),
+        ("MULTI_SLEEVE", "MULTI_SLEEVE_RESEARCH_SELECTION", {"policy_hash": SESSION023_SELECTION_HASH_V1}),
         ("S8_BASKET", "S8_HOURLY_PAIRS_RESEARCH", {"policy_hash": S8_PROFILE_HASH})]
     specifications += [(f"ABLATION_{name.upper()}", "WHOLE_POLICY_FEATURE_ABLATION", {"feature_families": [name]})
         for name in ABLATION_FAMILIES]
@@ -91,7 +106,8 @@ def build_session023_research_report(repo: OpsRepository, *, preregistered_at_ns
     invariant_refs = {name: persist_research_artifact(repo, "WholePolicyAblationInvariantV2",
         {"version": "WHOLE_POLICY_ABLATION_INVARIANT_V1", "component": name,
         "requirement": "IDENTICAL_TO_BASELINE", "experiment_ref": experiment.content_hash},
-        available_at_ns=at + len(specifications) + 2, key="invariant") for name in (
+        available_at_ns=at + len(specifications) + 2, key="invariant",
+        experiment_ref=experiment.content_hash) for name in (
             "scanner_ref", "candidate_generation_ref", "selection_ref", "sizing_ref", "execution_assumptions_ref",
             "costs_ref", "no_fill_partial_fill_ref", "latency_ref", "gate_ref")}
     ablation = declare_feature_family_ablation(audit_id="SESSION023_ABLATION_DESIGN_V1", family_id=experiment.family_id,
@@ -102,7 +118,8 @@ def build_session023_research_report(repo: OpsRepository, *, preregistered_at_ns
         no_fill_partial_fill_ref=invariant_refs["no_fill_partial_fill_ref"], latency_ref=invariant_refs["latency_ref"],
         gate_ref=invariant_refs["gate_ref"])
     persist_research_artifact(repo, "FeatureFamilyAblationAuditV2", ablation.to_dict(),
-        available_at_ns=at + len(specifications) + 2, key="ablation")
+        available_at_ns=at + len(specifications) + 2, key="ablation",
+        experiment_ref=experiment.content_hash)
     return {"version": "SESSION023_RESEARCH_DESIGN_REPORT_V1", "experiment": experiment.to_dict(),
         "experiment_hash": experiment.content_hash, "policies": policy_bodies,
         "attempts": list(discovery_attempt_ledger(repo, experiment.content_hash)),

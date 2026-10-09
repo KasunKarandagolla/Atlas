@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import IntEnum, StrEnum
@@ -193,6 +193,7 @@ class DynamicUniverseRuntimeV2:
         input_refs: Sequence[str] = (),
         publication_at_ns: int | None = None,
         exploration_count: int = 0,
+        service: Callable[[], None] | None = None,
     ) -> UniverseRuntimeResultV2:
         timestamp(decision_slot_ns, field="decision_slot_ns")
         timestamp(information_cutoff_ns, field="information_cutoff_ns")
@@ -209,7 +210,9 @@ class DynamicUniverseRuntimeV2:
             raise ValueError("ACTIVE_UNIVERSE_POPULATION_OVERFLOW")
         venue_counts: dict[object, int] = {}
         seen_keys: set[InstrumentKeyV2] = set()
-        for item in observations:
+        for index, item in enumerate(observations):
+            if service is not None and index % 32 == 0:
+                service()
             key = item.product.key
             if key in seen_keys:
                 raise ValueError("universe observations must contain each full instrument identity once")
@@ -226,7 +229,9 @@ class DynamicUniverseRuntimeV2:
         entry_by_key: dict[InstrumentKeyV2, UniverseEntryV2] = {}
         tier0: list[UniverseObservationV2] = []
         scanner: list[UniverseObservationV2] = []
-        for item in observations:
+        for index, item in enumerate(observations):
+            if service is not None and index % 32 == 0:
+                service()
             product = item.product
             if product.available_at_ns > information_cutoff_ns or product.effective_at_ns > decision_slot_ns:
                 continue
@@ -326,9 +331,20 @@ class DynamicUniverseRuntimeV2:
             )
             for item in exploration_ranked[:exploration_count]
         )
-        tier3_primary = scanner[:top_tier_3]
-        tier3_keys = {item.product.key for item in tier3_primary}
-        tier3_keys.update(item.product.key for item in tier0 if item.open_position or item.active_watch)
+        tier3_mandatory_keys = {
+            item.product.key for item in tier0 if item.open_position or item.active_watch
+        }
+        if len(tier3_mandatory_keys) > MAX_UNIVERSE_TIER3_V2:
+            raise ValueError("TIER3_UNIVERSE_POPULATION_OVERFLOW")
+        # Reserve deep-analysis capacity for active watches and positions first.
+        # Scanner-ranked opportunities fill only the remaining slots, preserving
+        # the global TIER_3 bound when mandatory work overlaps poorly with rank.
+        primary_capacity = max(0, MAX_UNIVERSE_TIER3_V2 - len(tier3_mandatory_keys))
+        ranked_primary_keys = [
+            item.product.key for item in scanner[:top_tier_3]
+            if item.product.key not in tier3_mandatory_keys
+        ]
+        tier3_keys = set(tier3_mandatory_keys) | set(ranked_primary_keys[:primary_capacity])
         # Explicitly opted-in S3 history requirements receive 1M observations.
         # With the default S1/S2-only map this adds no subscriptions or tier changes.
         s3_policy = "S3_VWAP_STAT_MEAN_REVERSION"
@@ -346,7 +362,9 @@ class DynamicUniverseRuntimeV2:
             raise ValueError("TIER3_UNIVERSE_POPULATION_OVERFLOW")
         scanner_keys = {item.product.key for item in scanner}
         tiers: dict[InstrumentKeyV2, ComputeTierV2] = {}
-        for item in tier0:
+        for index, item in enumerate(tier0):
+            if service is not None and index % 32 == 0:
+                service()
             key = item.product.key
             tiers[key] = (
                 ComputeTierV2.TIER_3
@@ -357,12 +375,12 @@ class DynamicUniverseRuntimeV2:
                 if key in scanner_keys
                 else ComputeTierV2.TIER_0
             )
-        artifact_refs = tuple(
-            sorted(
-                {reference for item in tier0 for reference in (item.product.content_hash, item.content_hash)}
-                | set(causal_refs)
-            )
-        )
+        references = set(causal_refs)
+        for index, item in enumerate(tier0):
+            if service is not None and index % 32 == 0:
+                service()
+            references.update((item.product.content_hash, item.content_hash))
+        artifact_refs = tuple(sorted(references))
         envelope = ArtifactEnvelope(
             1,
             f"universe-{decision_slot_ns}-{sha256_json(artifact_refs)[:16]}",

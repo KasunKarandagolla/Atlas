@@ -946,7 +946,108 @@ def _source_evidence_available(repository: OpsRepository, ref: str, cutoff_ns: i
         entry = repository.get_artifact(ref)
     except ValueError:
         return False
-    return bool(entry is not None and entry.content_hash == ref and entry.available_at_ns <= cutoff_ns)
+    if entry is None or entry.artifact_ref != ref or entry.available_at_ns > cutoff_ns:
+        return False
+    if entry.artifact_type != "PublicObservationIndexV2":
+        return entry.content_hash == ref
+    # Native public indexes identify a raw record; their content hash belongs
+    # to that raw observation, not to the locator. Verify both identities and
+    # the archived bytes instead of accepting arbitrary unequal hashes.
+    from pathlib import Path
+
+    from atlas.v2.data.history import _open_bounded_archive_chunk_v2
+    from atlas.v2.data.raw import RawObservationV2
+
+    metadata = entry.metadata
+    record_id, chunk_id = metadata.get("record_id"), metadata.get("archive_chunk_id")
+    if (not isinstance(record_id, str) or not isinstance(chunk_id, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", chunk_id)
+            or sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": record_id}) != ref):
+        return False
+    path = Path(repository.path).parent / "ops-observations" / f"{chunk_id}.parquet"
+    try:
+        if path.is_symlink() or not path.is_file():
+            return False
+        stat = path.stat()
+        cache_key = (str(path), stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+        cache = getattr(repository, "_s7_exact_public_chunk_cache", {})
+        rows = cache.get(cache_key)
+        if rows is None:
+            rows = {}
+            parquet = _open_bounded_archive_chunk_v2(path)
+            try:
+                if parquet.metadata.num_rows > 10_000:
+                    return False
+                for batch in parquet.iter_batches(batch_size=128, columns=[
+                        "record_id", "observation_json", "raw_payload_bytes", "archive_record_kind"]):
+                    for row in batch.to_pylist():
+                        if row.get("archive_record_kind") != "PUBLIC_OBSERVATION":
+                            continue
+                        raw_bytes = row.get("raw_payload_bytes")
+                        raw_json = row.get("observation_json")
+                        if not isinstance(raw_bytes, bytes) or not isinstance(raw_json, str):
+                            continue
+                        raw = RawObservationV2.from_dict(json.loads(raw_json))
+                        if (raw.record_id != row.get("record_id")
+                                or hashlib.sha256(raw_bytes).hexdigest() != raw.raw_payload_hash
+                                or raw.record_id in rows):
+                            return False
+                        rows[raw.record_id] = raw
+            finally:
+                parquet.close()
+            if sum(len(value) for value in cache.values()) + len(rows) > 10_000:
+                cache.clear()
+            cache[cache_key] = rows
+            repository._s7_exact_public_chunk_cache = cache  # type: ignore[attr-defined]
+        observation = rows.get(record_id)
+        if observation is None:
+            return False
+        key_json = metadata.get("instrument_key_json")
+        if not isinstance(key_json, str):
+            return False
+        key = InstrumentKeyV2.from_dict(json.loads(key_json))
+        return bool(observation.content_hash == entry.content_hash
+            and observation.instrument_revision == key.contract_revision
+            and observation.received_at_ns == entry.created_at_ns
+            and (observation.available_at_ns == entry.available_at_ns if metadata.get("publication_profile") is None else
+                metadata.get("publication_profile") == "PUBLIC_INDEX_AFTER_ARCHIVE_V1"
+                and metadata.get("raw_available_at_ns") == observation.available_at_ns
+                and metadata.get("index_published_at_ns") == entry.available_at_ns
+                and observation.available_at_ns <= entry.available_at_ns)
+            and observation.availability_class == AvailabilityClassV2.ACTUAL_SYSTEM
+            and all(metadata.get(name) == getattr(observation, name) for name in (
+                "source_id", "event_type", "instrument_revision", "event_at_ns", "published_at_ns",
+                "raw_payload_hash", "translation_version", "revision_of", "availability_class",
+                "replay_available_at_ns"))
+            and tuple(metadata.get("quality_flags", ())) == observation.quality_flags)
+    except (OSError, ValueError, TypeError, KeyError):
+        return False
+
+
+def _research_derived_evidence_available(repository: OpsRepository, ref: str, *,
+                                         information_cutoff_ns: int,
+                                         published_at_ns: int) -> bool:
+    """Accept late research calculations only when every raw input is cutoff visible."""
+    try:
+        entry = repository.get_artifact(ref)
+    except ValueError:
+        return False
+    if (entry is None or entry.artifact_type not in {
+            "S7DerivedPreEventBetaV1", "S7DerivedMarketReturn5MV1", "S7DerivedReactionSpreadV1"}
+            or entry.content_hash != ref or entry.available_at_ns > published_at_ns):
+        return False
+    body = entry.metadata.get("evidence")
+    if (not isinstance(body, Mapping)
+            or body.get("available_at_ns") != entry.available_at_ns
+            or sha256_json({"artifact_type": entry.artifact_type, "evidence": body}) != ref
+            or body.get("market_information_cutoff_ns", information_cutoff_ns + 1) > information_cutoff_ns):
+        return False
+    refs = body.get("input_refs")
+    if not isinstance(refs, (list, tuple)) or not refs or len(refs) > 512:
+        return False
+    return all(_source_evidence_available(repository, source_ref, information_cutoff_ns)
+               for source_ref in refs if isinstance(source_ref, str)) and all(
+                   isinstance(source_ref, str) for source_ref in refs)
 
 
 def _news_event_available(repository: OpsRepository, event: NewsEventV2, cutoff_ns: int) -> bool:
@@ -1261,8 +1362,13 @@ class S7DirectionalShadowV2:
                  btc_return_5m: MarketReturn5MV2 | None, spread: ReactionSpreadEvidenceV2 | None,
                  source_health: PublicSourceHealthV2 | None,
                  bar_source_health: PublicSourceHealthV2 | None, cutoff_ns: int,
-                 resolution: EventResolutionV2 | None = None) -> EventReactionArtifactV2:
+                 resolution: EventResolutionV2 | None = None,
+                 published_at_ns: int | None = None) -> EventReactionArtifactV2:
         timestamp(cutoff_ns, field="reaction.cutoff_ns")
+        publication = cutoff_ns if published_at_ns is None else timestamp(
+            published_at_ns, field="reaction.published_at_ns")
+        if publication < cutoff_ns:
+            raise ValueError("event reaction publication cannot precede its information cutoff")
         refs = [event.event_id]
         refs.extend(bar.content_hash for bar in (first_bar, second_bar) if bar is not None)
         if spread is not None:
@@ -1328,14 +1434,24 @@ class S7DirectionalShadowV2:
         elif (beta_to_btc is None or btc_return_5m is None or beta_to_btc.key != key
               or beta_to_btc.availability_class != AvailabilityClassV2.ACTUAL_SYSTEM
               or beta_to_btc.estimated_through_ns > event.received_at_ns
-              or beta_to_btc.available_at_ns > event.available_at_ns
-              or not _source_evidence_available(self.repository, beta_to_btc.evidence_ref, cutoff_ns)
+              or (beta_to_btc.available_at_ns > event.available_at_ns
+                  and not _research_derived_evidence_available(self.repository, beta_to_btc.evidence_ref,
+                      information_cutoff_ns=event.received_at_ns, published_at_ns=publication))
+              or (not _source_evidence_available(self.repository, beta_to_btc.evidence_ref, cutoff_ns)
+                  and not _research_derived_evidence_available(self.repository, beta_to_btc.evidence_ref,
+                      information_cutoff_ns=event.received_at_ns, published_at_ns=publication))
               or btc_return_5m.key != beta_to_btc.btc_proxy
               or btc_return_5m.availability_class != AvailabilityClassV2.ACTUAL_SYSTEM
               or btc_return_5m.close_at_ns != first_bar.close_at_ns
-              or btc_return_5m.available_at_ns > first_bar.close_at_ns
-              or btc_return_5m.available_at_ns > cutoff_ns
-              or not _source_evidence_available(self.repository, btc_return_5m.evidence_ref, cutoff_ns)):
+              or (btc_return_5m.available_at_ns > first_bar.close_at_ns
+                  and not _research_derived_evidence_available(self.repository, btc_return_5m.evidence_ref,
+                      information_cutoff_ns=cutoff_ns, published_at_ns=publication))
+              or (btc_return_5m.available_at_ns > cutoff_ns
+                  and not _research_derived_evidence_available(self.repository, btc_return_5m.evidence_ref,
+                      information_cutoff_ns=cutoff_ns, published_at_ns=publication))
+              or (not _source_evidence_available(self.repository, btc_return_5m.evidence_ref, cutoff_ns)
+                  and not _research_derived_evidence_available(self.repository, btc_return_5m.evidence_ref,
+                      information_cutoff_ns=cutoff_ns, published_at_ns=publication))):
             reason = "PRE_EVENT_BETA_OR_BTC_PROXY_UNAVAILABLE"
         else:
             asset_first_return = math.log(float(first_bar.close) / float(first_bar.open))
@@ -1354,10 +1470,15 @@ class S7DirectionalShadowV2:
                     or second_bar.close_at_ns - first_bar.close_at_ns != REACTION_BAR_NS \
                     or second_bar.close_at_ns > cutoff_ns or second_bar.raw.available_at_ns > cutoff_ns:
                 reason = "SECOND_CLOSED_5M_BAR_UNAVAILABLE_OR_NONCONTIGUOUS"
-            elif spread is None or spread.key != key or spread.available_at_ns > cutoff_ns \
+            elif spread is None or spread.key != key \
+                    or (spread.available_at_ns > cutoff_ns and not _research_derived_evidence_available(
+                        self.repository, spread.evidence_ref, information_cutoff_ns=cutoff_ns,
+                        published_at_ns=publication)) \
                     or spread.availability_class != AvailabilityClassV2.ACTUAL_SYSTEM \
                     or spread.observed_at_ns > cutoff_ns \
-                    or not _source_evidence_available(self.repository, spread.evidence_ref, cutoff_ns) \
+                    or (not _source_evidence_available(self.repository, spread.evidence_ref, cutoff_ns)
+                        and not _research_derived_evidence_available(self.repository, spread.evidence_ref,
+                            information_cutoff_ns=cutoff_ns, published_at_ns=publication)) \
                     or cutoff_ns - spread.observed_at_ns > REACTION_SPREAD_MAX_AGE_NS or not spread.acceptable:
                 reason = "SPREAD_ACCEPTABILITY_UNKNOWN_OR_UNACCEPTABLE"
             else:
@@ -1369,25 +1490,23 @@ class S7DirectionalShadowV2:
                 else:
                     status, reason = "TRIGGER_CONFIRMED", "SECOND_5M_CONTINUED_WITH_VOLUME_AND_ACCEPTABLE_SPREAD"
                     side = V2Side.LONG if abnormal > 0 else V2Side.SHORT
-        body = {"version": EVENT_REACTION_VERSION, "event_ref": event.event_id,
-                "key": key.to_dict(), "cutoff_ns": cutoff_ns, "status": status,
-                "reason": reason, "abnormal_5m_return": abnormal,
-                "abnormal_volume": volume_ratio,
-                "spread_evidence_ref": spread.evidence_ref if spread else None,
-                "first_bar_ref": first_bar.content_hash if first_bar else None,
-                "second_bar_ref": second_bar.content_hash if second_bar else None,
-                "side": side.value if side else None, "availability_view": "ACTUAL_SYSTEM",
-                "input_refs": sorted(set(refs))}
-        artifact_id = sha256_json(body)
+        artifact_id = sha256_json({"version": EVENT_REACTION_VERSION, "event_ref": event.event_id,
+            "key": key.to_dict(), "cutoff_ns": cutoff_ns, "status": status, "reason": reason,
+            "abnormal_5m_return": abnormal, "abnormal_volume": volume_ratio,
+            "spread_evidence_ref": spread.evidence_ref if spread else None,
+            "first_bar_ref": first_bar.content_hash if first_bar else None,
+            "second_bar_ref": second_bar.content_hash if second_bar else None,
+            "side": side.value if side else None, "availability_view": "ACTUAL_SYSTEM",
+            "input_refs": sorted(set(refs))})
         reaction = EventReactionArtifactV2(
-            ArtifactEnvelope(1, artifact_id, cutoff_ns, cutoff_ns, PRODUCER_VERSION, tuple(sorted(set(refs)))),
+            ArtifactEnvelope(1, artifact_id, cutoff_ns, publication, PRODUCER_VERSION, tuple(sorted(set(refs)))),
             event.event_id, key, cutoff_ns, status, reason, abnormal, volume_ratio,
             spread.evidence_ref if spread else None,
             first_bar.content_hash if first_bar else None, second_bar.content_hash if second_bar else None, side,
         )
         self.repository.register_artifact(ArtifactIndexEntryV2(
             reaction.content_hash, reaction.ARTIFACT_TYPE, reaction.content_hash,
-            cutoff_ns, cutoff_ns, {"reaction": reaction.to_dict(), "safety_gate_ref": None,
+            cutoff_ns, publication, {"reaction": reaction.to_dict(), "safety_gate_ref": None,
                                     "candidate_action": None, "selector_influence": "ZERO"},
         ))
         if status in ("HYPOTHESIS", "TRIGGER_CONFIRMED"):
@@ -1398,7 +1517,7 @@ class S7DirectionalShadowV2:
                 watch = OpportunityWatchV2(
                     watch_id, key, "S7_DIRECTIONAL_REACTION", EVENT_REACTION_VERSION,
                     sha256_json({"policy": EVENT_REACTION_VERSION}), WatchStateV2.DETECTED, 0,
-                    cutoff_ns, cutoff_ns, reaction.content_hash,
+                    publication, publication, reaction.content_hash,
                     tuple(sorted(set(refs + [reaction.content_hash]))), "BAR_CLOSE_5M",
                     cutoff_ns + REACTION_BAR_NS, cutoff_ns,
                 )
@@ -1406,7 +1525,7 @@ class S7DirectionalShadowV2:
                 self.repository.transition_watch(
                     watch_id, expected_state_version=0,
                     event_id=sha256_json({"watch": watch_id, "event": reaction.content_hash}),
-                    event_at_ns=cutoff_ns, transition_at_ns=cutoff_ns,
+                    event_at_ns=cutoff_ns, transition_at_ns=publication,
                     target_state=WatchStateV2.WAITING_FOR_EVENT,
                     outbox_id=sha256_json({"watch": watch_id, "outbox": reaction.content_hash}),
                 )
@@ -1417,7 +1536,7 @@ class S7DirectionalShadowV2:
                         watch_id, expected_state_version=current_watch.state_version,
                         event_id=sha256_json({"watch": watch_id, "reaction": reaction.content_hash,
                                               "state": "READY_FOR_RECHECK"}),
-                        event_at_ns=cutoff_ns, transition_at_ns=cutoff_ns,
+                        event_at_ns=cutoff_ns, transition_at_ns=publication,
                         target_state=WatchStateV2.READY_FOR_RECHECK,
                         outbox_id=sha256_json({"watch": watch_id, "trigger": reaction.content_hash,
                                                "outbox": "READY_FOR_RECHECK"}),
@@ -1426,7 +1545,7 @@ class S7DirectionalShadowV2:
                         watch_id, expected_state_version=ready.state_version,
                         event_id=sha256_json({"watch": watch_id, "reaction": reaction.content_hash,
                                               "state": "CONFIRMED"}),
-                        event_at_ns=cutoff_ns, transition_at_ns=cutoff_ns,
+                        event_at_ns=cutoff_ns, transition_at_ns=publication,
                         target_state=WatchStateV2.CONFIRMED,
                         outbox_id=sha256_json({"watch": watch_id, "trigger": reaction.content_hash,
                                                "outbox": "CONFIRMED"}),

@@ -355,14 +355,40 @@ def test_bounded_history_pass_does_not_query_unsent_commands_and_rotates_cursor(
             reconcile_binance_execution_history(reader, journal, max_intents=maximum)
 
 
-def _recovery_responses(*, regular_history=None, trades=None, open_algos=None):
+def _recovery_responses(*, regular_history=None, trades=None, open_algos=None, position_amount="0"):
+    positions = [] if position_amount == "0" else [{
+        "symbol": "BTCUSDT", "positionSide": "BOTH", "positionAmt": position_amount,
+        "marginType": "ISOLATED", "isolated": True,
+    }]
     return [regular_history or [], [], trades or [], [], [],
         {"totalWalletBalance": "100", "assets": [], "positions": []},
         {"canTrade": True, "dualSidePosition": False, "multiAssetsMargin": False},
-        [], [{"symbol": "BTCUSDT", "marginType": "ISOLATED"}],
+        positions, [{"symbol": "BTCUSDT", "marginType": "ISOLATED"}],
         [{"asset": "USDT", "accountAlias": "simulated-account-alias", "balance": "100"}],
         open_algos or [],
     ]
+
+
+def _persist_repair_stop(journal, identity, now):
+    client_id = "00000000000000000000000000000002"
+    make_plan(journal, plan_id="repair-plan")
+    intent = Intent("repair-intent", 1, "repair-plan", "v1", client_id, 1,
+                    LifecycleState.SUBMITTING, ProtectionStatus.UNCONFIRMED,
+                    ReconciliationHealth.STALE, now - 1)
+    reservation = Reservation("repair-reservation", intent.intent_id, Decimal("1"), Decimal("0"),
+                              Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"))
+    journal.create_intent_with_reservation(intent, reservation)
+    command = make_command(
+        command_id="repair-stop-command", intent_id=intent.intent_id,
+        command_type=CommandType.REPAIR_STOP,
+        payload_dict={"identity_hash": identity.content_hash, "instrument_ref": "a" * 64,
+                      "symbol": "BTCUSDT", "client_order_id": client_id, "side": "SELL",
+                      "quantity": "1", "price": None, "stop": "50000", "reduce_only": True},
+        expected_state_version=0, created_at_ns=now - 1,
+    )
+    journal.persist_command(command)
+    journal.mark_send_started(command.command_id, now)
+    return client_id
 
 
 def _simulated_source_qualification(journal, identity, now, *, state="PASSED_TESTNET", environment=None):
@@ -490,6 +516,57 @@ def test_orphan_conditional_on_other_symbol_blocks_current_flat_sidecar(journal)
                        if query.query_type.value == "conditional_orders")
     assert conditional.total_records_returned == 1
     assert conditional.facts["is_current_protection"] is False
+
+
+@pytest.mark.parametrize("trigger,verified", [("50000", True), ("49000", False)])
+def test_recovery_binds_repair_stop_readback_to_current_position_and_command(journal, trigger, verified):
+    now = 1_800_000_000_000_000_000
+    identity = BinanceDemoIdentity("scope-a", "cred-a")
+    client_id = _persist_repair_stop(journal, identity, now)
+    _simulated_source_qualification(journal, identity, now)
+    row = {"symbol": "BTCUSDT", "algoId": 909, "clientAlgoId": external_client_order_id(client_id),
+           "algoStatus": "NEW", "orderType": "STOP_MARKET", "workingType": "MARK_PRICE",
+           "positionSide": "BOTH", "side": "SELL", "closePosition": True,
+           "triggerPrice": trigger}
+    result = _capture_cycle(journal, HistoryReader(identity, _recovery_responses(
+        open_algos=[row], position_amount="1"), now), now)
+    trading_stop = next(query for query in journal.load_run_queries(result.reconciliation_run_id)
+                        if query.query_type.value == "trading_stop")
+    readback, = trading_stop.facts["protection_readbacks"]
+    assert readback["verified"] is verified
+    assert readback["command_id"] == "repair-stop-command"
+    assert readback.get("algo_order_id") == ("909" if verified else None)
+    assert journal.load_command("repair-stop-command").outcome.value == "UNKNOWN"
+    assert journal.count("reservations") == 1
+    assert ("BINANCE_REPAIR_STOP_READBACK_UNCONFIRMED" in result.reasons) is (not verified)
+
+
+def test_recovery_does_not_verify_stop_against_stale_position_receipt(journal):
+    now = 1_800_000_000_000_000_000
+    identity = BinanceDemoIdentity("scope-a", "cred-a")
+    client_id = _persist_repair_stop(journal, identity, now)
+    _simulated_source_qualification(journal, identity, now)
+    row = {"symbol": "BTCUSDT", "algoId": 909, "clientAlgoId": external_client_order_id(client_id),
+           "algoStatus": "NEW", "orderType": "STOP_MARKET", "workingType": "MARK_PRICE",
+           "positionSide": "BOTH", "side": "SELL", "closePosition": True, "triggerPrice": "50000"}
+
+    class DelayedAlgoReader(HistoryReader):
+        def __init__(self):
+            super().__init__(identity, _recovery_responses(open_algos=[row], position_amount="1"), now)
+            self.current = now
+            self.clock_ns = lambda: self.current
+
+        def read_with_receipt(self, path, params=None):
+            if path == "/fapi/v1/openAlgoOrders":
+                self.current += 3_000_000_000
+            return super().read_with_receipt(path, params)
+
+    result = _capture_cycle(journal, DelayedAlgoReader(), now)
+    trading_stop = next(query for query in journal.load_run_queries(result.reconciliation_run_id)
+                        if query.query_type.value == "trading_stop")
+    readback, = trading_stop.facts["protection_readbacks"]
+    assert not readback["verified"]
+    assert readback["reason"] == "REPAIR_POSITION_RECEIPT_STALE"
 
 
 def test_real_signed_reader_paces_recovery_and_keeps_every_current_receipt_fresh(journal):

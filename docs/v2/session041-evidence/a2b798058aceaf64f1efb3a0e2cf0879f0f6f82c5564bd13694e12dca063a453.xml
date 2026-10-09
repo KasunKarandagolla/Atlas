@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="5" time="123.851" timestamp="2026-10-07T23:03:55.016227+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_residual_diagnostics_are_bound_to_frozen_cutoff_and_zero_authority" time="7.115" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_residual_diagnostics_export_preserves_all_synchronized_lineage" time="107.128" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_due_outcome_without_after_cutoff_evidence_is_explicit_not_estimable" time="1.794" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_complete_observed_path_keeps_economic_result_not_estimable" time="1.716"><failure message="AssertionError: [{'work_id': 'cd24368040087b72402e50e03eee48c54c668c65544d6f50b31e1c80d63e1aa5', 'reason': 'S8 outcome evidence book source is unavailable'}]&#10;assert 0 == 1">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-291/test_complete_observed_path_ke0')
+
+    def test_complete_observed_path_keeps_economic_result_not_estimable(tmp_path):
+        from atlas.v2.science.broad_export import project_broad_evidence
+    
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            _, forecast, ref, a, b = _case(repo)
+            enqueue_s8_basket_outcome(repo, forecast, forecast_ref=ref,
+                published_at_ns=forecast.information_cutoff_ns)
+            cutoff = forecast.decision_at_ns + 4 * HOUR_NS
+            future_a, future_b = [a[-1]], [b[-1]]
+            for i in range(1, 5):
+                at = forecast.decision_at_ns + i * HOUR_NS
+                ra, ea = _artifact_row("PublicObservationIndexV2", ("future-a", i), at)
+                rb, eb = _artifact_row("PublicObservationIndexV2", ("future-b", i), at)
+                repo.register_artifact(ArtifactIndexEntryV2(ra, "PublicObservationIndexV2", ra, at, at,
+                    {**ea.metadata, "instrument_key_json": a[-1].instrument_key.to_canonical_json(),
+                     "event_at_ns": at, "bar_content_hash": sha256_json(("future-bar-a", i))}))
+                repo.register_artifact(ArtifactIndexEntryV2(rb, "PublicObservationIndexV2", rb, at, at,
+                    {**eb.metadata, "instrument_key_json": b[-1].instrument_key.to_canonical_json(),
+                     "event_at_ns": at, "bar_content_hash": sha256_json(("future-bar-b", i))}))
+                future_a.append(S8HourlyPriceV2(a[-1].instrument_key, at, at,
+                    a[-1].close * Decimal("1.001"), ra))
+                future_b.append(S8HourlyPriceV2(b[-1].instrument_key, at, at,
+                    b[-1].close * Decimal("1.0005"), rb))
+                quote_a = _typed_artifact(repo, "PublicObservationIndexV2", "observation",
+                    {"instrument_key_json": a[-1].instrument_key.to_canonical_json(),
+                     "event_at_ns": forecast.decision_at_ns + 1, "quote": "bid-ask-a"},
+                    forecast.decision_at_ns + 1)
+                quote_b = _typed_artifact(repo, "PublicObservationIndexV2", "observation",
+                    {"instrument_key_json": b[-1].instrument_key.to_canonical_json(),
+                     "event_at_ns": forecast.decision_at_ns + 2, "quote": "bid-ask-b"},
+                    forecast.decision_at_ns + 2)
+                book_a = _typed_artifact(repo, "S8BasketBookExecutionEvidenceV1", "book_execution",
+                    {"instrument_key": a[-1].instrument_key.to_dict(), "observed_at_ns": forecast.decision_at_ns + 1,
+                     "quote_source_refs": [quote_a], "simulated_fill_state": "FULL_FILL"},
+                    forecast.decision_at_ns + 1)
+                book_b = _typed_artifact(repo, "S8BasketBookExecutionEvidenceV1", "book_execution",
+                    {"instrument_key": b[-1].instrument_key.to_dict(), "observed_at_ns": forecast.decision_at_ns + 2,
+                     "quote_source_refs": [quote_b], "simulated_fill_state": "FULL_FILL"},
+                    forecast.decision_at_ns + 2)
+                fund_a = _typed_artifact(repo, "S8BasketFundingEvidenceV1", "funding",
+                    {"instrument_key": a[-1].instrument_key.to_dict(), "at_ns": cutoff,
+                     "available_at_ns": cutoff, "cashflow": "0"}, cutoff)
+                fund_b = _typed_artifact(repo, "S8BasketFundingEvidenceV1", "funding",
+                    {"instrument_key": b[-1].instrument_key.to_dict(), "at_ns": cutoff,
+                     "available_at_ns": cutoff, "cashflow": "0"}, cutoff)
+                fee_a = _typed_artifact(repo, "S8BasketFeeEvidenceV1", "fee",
+                    {"instrument_key": a[-1].instrument_key.to_dict(), "available_at_ns": forecast.decision_at_ns + 1,
+                     "fee_policy": {"paid": "0.01"}}, forecast.decision_at_ns + 1)
+                fee_b = _typed_artifact(repo, "S8BasketFeeEvidenceV1", "fee",
+                    {"instrument_key": b[-1].instrument_key.to_dict(), "available_at_ns": forecast.decision_at_ns + 2,
+                     "fee_policy": {"paid": "0.02"}}, forecast.decision_at_ns + 2)
+            evidence = S8BasketOutcomeEvidenceV1(ref, tuple(future_a), tuple(future_b), (book_a,), (book_b,),
+                fee_a, fee_b, Decimal("0.01"), Decimal("0.02"), (fund_a,), (fund_b,),
+                Decimal("0.00"), Decimal("0.00"), "FULL_FILL", "FULL_FILL", (1_000_000, 2_000_000),
+                "BOTH_LEGS_FILLED", cutoff)
+            producer = S8ResearchBasketOutcomeProducerV1(clock_ns=lambda: cutoff + 10)
+            result = producer.run_cycle(repo, evidence_cutoff_ns=cutoff,
+                evidence_loader=lambda *_: evidence)
+&gt;           assert result["outcomes_written"] == 1, result["diagnostics"]
+E           AssertionError: [{'work_id': 'cd24368040087b72402e50e03eee48c54c668c65544d6f50b31e1c80d63e1aa5', 'reason': 'S8 outcome evidence book source is unavailable'}]
+E           assert 0 == 1
+
+tests/v2/test_session041_basket_outcomes.py:227: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_matured_price_path_without_entry_threshold_is_durable_no_entry" time="2.306" /></testsuite></testsuites>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="10" time="8.419" timestamp="2026-10-08T20:17:58.851296+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_appended_records_keep_exact_prefix_and_read_only_reconstruction" time="1.443" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_batch_shares_one_durable_segment_sync" time="0.642" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_single_extent_publishes_durable_segment_name_before_index" time="0.480" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_batched_extent_rollover_seals_each_segment_before_index" time="0.558"><failure message="AssertionError: assert 1 &gt;= 2&#10; +  where 1 = len({'public-d334f135ef694c089372fa866f54634e.arrow'})">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-561/test_batched_extent_rollover_s0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f2a48165100&gt;
+
+    def test_batched_extent_rollover_seals_each_segment_before_index(tmp_path, monkeypatch):
+        import atlas.v2.data.public_archive_extents as archive_extents
+    
+        monkeypatch.setattr(archive_extents, "MAX_SEGMENT_BYTES", 2600)
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            tables = tuple(pa.Table.from_pylist([{"raw": bytes([index]) * 20, "ordinal": index}])
+                           for index in range(3))
+            chunks = tuple((table, "ops-public-transport", sha256_json({"rollover": index}),
+                            lambda: 100, 100) for index, table in enumerate(tables))
+            outputs = write_extents(repository, chunks)
+    
+            paths = tuple(path for _ref, path in outputs)
+&gt;           assert len({path.name for path in paths}) &gt;= 2
+E           AssertionError: assert 1 &gt;= 2
+E            +  where 1 = len({'public-d334f135ef694c089372fa866f54634e.arrow'})
+
+tests/v2/test_session039_public_archive_extents.py:127: AssertionError</failure></testcase><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_segment_directory_sync_failure_does_not_publish_descriptor" time="0.666" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_damage_is_not_treated_as_valid_evidence[changed]" time="0.475" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_damage_is_not_treated_as_valid_evidence[truncated]" time="0.532" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_damage_is_not_treated_as_valid_evidence[symlink]" time="0.572" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_failed_sql_transaction_leaves_raw_orphan_without_fabricating_checkpoint" time="0.711" /><testcase classname="tests.v2.test_session039_public_archive_extents" name="test_extent_row_bound_does_not_create_an_archive_or_index" time="0.344" /></testsuite></testsuites>

@@ -14,7 +14,7 @@ from pathlib import Path
 from atlas.v2._serialization import canonical_json, json_value, sha256_json
 from atlas.v2.data.bars import BarIntervalV2
 from atlas.v2.data.history import ArchiveScanBoundExceededV2, IndexedCausalBarV2, reconstruct_causal_bars_from_archive
-from atlas.v2.data.raw import AvailabilityClassV2
+from atlas.v2.data.raw import AvailabilityClassV2, indexed_availability_matches
 from atlas.v2.instruments import InstrumentKeyV2, ProductContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.models.baseline import BaselineInputsV2, CausalCloseV2
@@ -121,19 +121,23 @@ class StatisticalResearchShadowV1:
             latest_expected_close = receipt.event.information_cutoff_ns // 900_000_000_000 * 900_000_000_000
             if max(item.bar.close_at_ns for item in bars) != latest_expected_close:
                 raise _Unavailable("MODEL_LATEST_CAUSAL_M15_CLOSE_UNAVAILABLE")
+            closes: list[CausalCloseV2] = []
             for item in bars:
                 entry = repository.get_artifact(item.observation_index_ref)
                 if (entry is None or entry.artifact_type != "PublicObservationIndexV2"
                         or entry.content_hash != item.bar.raw.content_hash
-                        or entry.available_at_ns != item.bar.raw.available_at_ns
+                        or entry.available_at_ns > receipt.event.information_cutoff_ns
+                        or not indexed_availability_matches(item.bar.raw.available_at_ns, entry.available_at_ns, entry.metadata)
                         or item.bar.raw.availability_class != AvailabilityClassV2.ACTUAL_SYSTEM
                         or item.bar.interval != BarIntervalV2.M15 or not item.bar.final
                         or item.bar.instrument_revision != key.contract_revision
                         or entry.metadata.get("instrument_key_json") != key.to_canonical_json()
                         or entry.metadata.get("bar_content_hash") != item.bar.content_hash):
                     raise _Unavailable("MODEL_CAUSAL_SOURCE_IDENTITY_INVALID")
+                closes.append(CausalCloseV2(item.bar.close_at_ns,
+                    max(item.bar.raw.available_at_ns, entry.available_at_ns), item.bar.close))
             inputs = BaselineInputsV2(key, receipt.event.information_cutoff_ns,
-                tuple(CausalCloseV2(item.bar.close_at_ns, item.bar.raw.available_at_ns, item.bar.close) for item in bars))
+                tuple(closes))
             # The source facts were cutoff-visible. Their derived packet is
             # published now, and is never relabeled as available at that cutoff.
             published = self.clock_ns()

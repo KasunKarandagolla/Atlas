@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "session": "SESSION041",
+  "component": "broad_research_export",
+  "status": "FOCUSED_EXPORT_VALIDATED",
+  "owned_files": [
+    "src/atlas/v2/science/broad_export.py",
+    "tests/v2/test_session041_broad_export.py",
+    "docs/v2/SESSION041_EXPORT_REVIEW.json"
+  ],
+  "file_sha256": {
+    "src/atlas/v2/science/broad_export.py": "b969fcb74e8091b3300f35467fdb3807c13f8efd012a8f00ba851008beef4a17",
+    "tests/v2/test_session041_broad_export.py": "6244d09fac2d9781621b6807fffde9b1c6416821014ad4dc268aeb56011457f8"
+  },
+  "producer_contract_review": {
+    "full_strategy_surface": "Exact persisted composer body matches FullStrategySurfaceResultV1.to_dict and its SHA-256, including original universe receipt, original decision deadline, selector influence and capital authority. All six top-level roles bind type, cutoff, publication, status and missing reasons; research, capital and selector authority remain ZERO.",
+    "s4_feature": "Legacy feature-only, indexed feature/instrument/input_refs, and current authority wrappers preserve the exact S4FeatureArtifactV2 typed wrapper hash. Exact typed fields, instrument, dependencies, computation receipt and ZERO authority when declared are checked.",
+    "s4_baseline": "Exact artifact_type/baseline wrapper hash and actual computation receipt are required for legacy and current metadata.",
+    "s5_derived": "Actual structural stage, prepared diagnostics, absorption, funding, open interest and OI change producer identities bind declared raw/derived references recursively to their sealed cutoff. Prepared diagnostics body cutoff must equal receipt market cutoff; later causal transformations remain usable without admitting future raw inputs.",
+    "official_calendar": "All eight actual calendar archive/typed producer types export. Raw byte hashes are checked against bounded archived bytes, then raw bytes are omitted from the public payload. Event schedules, source identities, revisions, publication status, aggregate and source coverage intervals, parser completeness and first deduplicated receipts are checked. UNVERIFIED qualification is preserved.",
+    "decoded_size_bound": "Export limit applies to actual canonical decoded JSON bytes (33554432), including complete universe and workset payloads; compressed storage length cannot bypass it."
+  },
+  "validation": {
+    "interpreter": "/home/kasun/Music/atlas/.venv/bin/python",
+    "primary_command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session041_broad_export.py -q --junitxml=/tmp/s41-export-final.xml",
+    "final_wrapper_command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session041_broad_export.py -q -k s4_feature --junitxml=/tmp/s41-export-wrapper-final.xml",
+    "pytest_results": [
+      {
+        "xml_path": "/tmp/s41-export-final.xml",
+        "xml_sha256": "001469f1103ff76c970e10ade9403d12e3aceeff2b44980faec024dd303b28a5",
+        "tests": 22,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      },
+      {
+        "xml_path": "/tmp/s41-export-wrapper-final.xml",
+        "xml_sha256": "ca255e25418268d5b89f54375966ae0f215db0ed2540ef0e3746b99f86430b62",
+        "tests": 3,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      }
+    ],
+    "ruff_command": "/home/kasun/Music/atlas/.venv/bin/python -m ruff check src/atlas/v2/science/broad_export.py tests/v2/test_session041_broad_export.py",
+    "ruff_result": "PASS",
+    "mypy_command": "/home/kasun/Music/atlas/.venv/bin/python -m mypy src/atlas/v2/science/broad_export.py --follow-imports=silent",
+    "mypy_result": "PASS: no issues found in one source file",
+    "earlier_ordinary_failure": "Strict exporter rejected composer field mismatch; producer and exact exporter schema were aligned and the ordinary implementation failure was fixed. No ordinary failure was classified TESTGATE."
+  },
+  "actions": {
+    "dependency_installer_used": false,
+    "commit_created": false
+  }
+}

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="14" time="88.089" timestamp="2026-10-08T12:20:14.310522+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_publication_services_sole_writer_without_changing_selection" time="5.418" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_publication_service_failure_cannot_publish_complete_workset" time="0.507" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_full_inventory_is_distinct_bounded_and_restart_reproduces_workset" time="64.633" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_new_mark_receipt_cannot_refresh_old_quote_fields" time="0.503" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_suspension_is_current_and_old_state_is_still_replayable" time="0.513" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_pending_read_services_writer_and_keeps_one_original_completion" time="0.097" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_runtime_recovery_preserves_nonbenchmark_dual_venue_inventory" time="0.119"><failure message="ModuleNotFoundError: No module named 'numpy'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-403/test_runtime_recovery_preserve0')
+
+    def test_runtime_recovery_preserves_nonbenchmark_dual_venue_inventory(tmp_path):
+        products = [product(i, venue) for venue in VenueV2 for i in range(75)]
+        runtime = FakeBroadRuntime()
+&gt;       port = BroadProductionOpsCyclePortV2(public_source=InventorySource(products),
+            broad_runtime=runtime, clock_ns=lambda: NOW)
+
+tests/v2/test_session041_production_breadth.py:219: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/production.py:6007: in __init__
+    from .research_basket_outcomes import S8ResearchBasketOutcomeProducerV1
+src/atlas/v2/runtime/research_basket_outcomes.py:19: in &lt;module&gt;
+    from atlas.v2.math.relative_value import ScalarPoint, residual_half_life, stationarity_diagnostic
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """Bounded causal relative-value diagnostics; no strategy or capital authority.
+    
+    Values are caller-defined levels (for example log prices), never implicitly
+    transformed. Every fit uses an explicitly supplied, equally spaced prefix.
+    ADF/Engle-Granger/Johansen statistics have no calibrated inference here.
+    Reference equations: statsmodels' official stattools and VECM source, cited in
+    docs/v2/SESSION041_MATH_HANDOFF.json. No statsmodels dependency is imported.
+    """
+    
+    from __future__ import annotations
+    
+    import math
+    from collections.abc import Callable, Mapping, Sequence
+    from dataclasses import dataclass
+    from typing import Any
+    
+&gt;   import numpy as np
+E   ModuleNotFoundError: No module named 'numpy'
+
+src/atlas/v2/math/relative_value.py:17: ModuleNotFoundError</failure></testcase><testcase classname="tests.v2.test_session041_production_breadth" name="test_population_overflow_is_an_explicit_gate" time="1.406" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_is_actual_and_preserves_its_source_cutoff" time="0.456" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_rejects_regressing_clock" time="0.254" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_same_venue_research_cohort_has_twenty_keys_within_global_history_bound" time="1.099" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_adoption_waits_for_durable_archive_before_proving_current_source_health" time="0.008"><failure message="ModuleNotFoundError: No module named 'numpy'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-403/test_adoption_waits_for_durabl0')
+
+    def test_adoption_waits_for_durable_archive_before_proving_current_source_health(tmp_path):
+        from atlas.v2.runtime.production import ProductionOpsCyclePortV1
+    
+        p = product(2)
+        runtime = FakeBroadRuntime()
+&gt;       port = BroadProductionOpsCyclePortV2(public_source=InventorySource((p,)),
+                                           broad_runtime=runtime, clock_ns=lambda: NOW)
+
+tests/v2/test_session041_production_breadth.py:286: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/production.py:6007: in __init__
+    from .research_basket_outcomes import S8ResearchBasketOutcomeProducerV1
+src/atlas/v2/runtime/research_basket_outcomes.py:19: in &lt;module&gt;
+    from atlas.v2.math.relative_value import ScalarPoint, residual_half_life, stationarity_diagnostic
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """Bounded causal relative-value diagnostics; no strategy or capital authority.
+    
+    Values are caller-defined levels (for example log prices), never implicitly
+    transformed. Every fit uses an explicitly supplied, equally spaced prefix.
+    ADF/Engle-Granger/Johansen statistics have no calibrated inference here.
+    Reference equations: statsmodels' official stattools and VECM source, cited in
+    docs/v2/SESSION041_MATH_HANDOFF.json. No statsmodels dependency is imported.
+    """
+    
+    from __future__ import annotations
+    
+    import math
+    from collections.abc import Callable, Mapping, Sequence
+    from dataclasses import dataclass
+    from typing import Any
+    
+&gt;   import numpy as np
+E   ModuleNotFoundError: No module named 'numpy'
+
+src/atlas/v2/math/relative_value.py:17: ModuleNotFoundError</failure></testcase><testcase classname="tests.v2.test_session041_production_breadth" name="test_future_market_event_is_rejected_without_rescuing_publication_time" time="0.008"><failure message="ModuleNotFoundError: No module named 'numpy'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-403/test_future_market_event_is_re0')
+
+    def test_future_market_event_is_rejected_without_rescuing_publication_time(tmp_path):
+        from atlas.v2.runtime.production import ProductionOpsCyclePortV1
+    
+        p = product(3)
+        runtime = FakeBroadRuntime()
+&gt;       port = BroadProductionOpsCyclePortV2(public_source=InventorySource((p,)),
+                                           broad_runtime=runtime, clock_ns=lambda: NOW)
+
+tests/v2/test_session041_production_breadth.py:308: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/production.py:6007: in __init__
+    from .research_basket_outcomes import S8ResearchBasketOutcomeProducerV1
+src/atlas/v2/runtime/research_basket_outcomes.py:19: in &lt;module&gt;
+    from atlas.v2.math.relative_value import ScalarPoint, residual_half_life, stationarity_diagnostic
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """Bounded causal relative-value diagnostics; no strategy or capital authority.
+    
+    Values are caller-defined levels (for example log prices), never implicitly
+    transformed. Every fit uses an explicitly supplied, equally spaced prefix.
+    ADF/Engle-Granger/Johansen statistics have no calibrated inference here.
+    Reference equations: statsmodels' official stattools and VECM source, cited in
+    docs/v2/SESSION041_MATH_HANDOFF.json. No statsmodels dependency is imported.
+    """
+    
+    from __future__ import annotations
+    
+    import math
+    from collections.abc import Callable, Mapping, Sequence
+    from dataclasses import dataclass
+    from typing import Any
+    
+&gt;   import numpy as np
+E   ModuleNotFoundError: No module named 'numpy'
+
+src/atlas/v2/math/relative_value.py:17: ModuleNotFoundError</failure></testcase><testcase classname="tests.v2.test_session041_production_breadth" name="test_archive_completion_controls_public_index_visibility" time="0.008"><failure message="ModuleNotFoundError: No module named 'numpy'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-403/test_archive_completion_contro0')
+
+    def test_archive_completion_controls_public_index_visibility(tmp_path):
+        from atlas.v2.data.raw import indexed_availability_matches
+        from atlas.v2.runtime.production import ProductionOpsCyclePortV1
+    
+        p = product(8)
+        clock = [NOW]
+&gt;       port = BroadProductionOpsCyclePortV2(public_source=InventorySource((p,)),
+            broad_runtime=FakeBroadRuntime(), clock_ns=lambda: clock[0])
+
+tests/v2/test_session041_production_breadth.py:331: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/production.py:6007: in __init__
+    from .research_basket_outcomes import S8ResearchBasketOutcomeProducerV1
+src/atlas/v2/runtime/research_basket_outcomes.py:19: in &lt;module&gt;
+    from atlas.v2.math.relative_value import ScalarPoint, residual_half_life, stationarity_diagnostic
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """Bounded causal relative-value diagnostics; no strategy or capital authority.
+    
+    Values are caller-defined levels (for example log prices), never implicitly
+    transformed. Every fit uses an explicitly supplied, equally spaced prefix.
+    ADF/Engle-Granger/Johansen statistics have no calibrated inference here.
+    Reference equations: statsmodels' official stattools and VECM source, cited in
+    docs/v2/SESSION041_MATH_HANDOFF.json. No statsmodels dependency is imported.
+    """
+    
+    from __future__ import annotations
+    
+    import math
+    from collections.abc import Callable, Mapping, Sequence
+    from dataclasses import dataclass
+    from typing import Any
+    
+&gt;   import numpy as np
+E   ModuleNotFoundError: No module named 'numpy'
+
+src/atlas/v2/math/relative_value.py:17: ModuleNotFoundError</failure></testcase></testsuite></testsuites>

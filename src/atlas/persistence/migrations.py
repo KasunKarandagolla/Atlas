@@ -454,6 +454,12 @@ def bootstrap(conn: sqlite3.Connection) -> int:
                      "ON order_status_observations(intent_id,observation_id DESC)")
         conn.execute("CREATE INDEX IF NOT EXISTS commands_unresolved_page_idx ON commands(command_id) "
                      "WHERE outcome NOT IN ('DEFINITE_REJECT','RECONCILED')")
+        conn.execute("CREATE INDEX IF NOT EXISTS commands_demo_client_order_idx "
+                     "ON commands(json_extract(payload,'$.client_order_id')) WHERE json_valid(payload)")
+        conn.execute("CREATE INDEX IF NOT EXISTS commands_intent_page_idx "
+                     "ON commands(intent_id,created_at_ns,command_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS intents_unresolved_page_idx "
+                     "ON intents(created_at_ns,intent_id) WHERE lifecycle<>'CLOSED'")
         conn.execute("CREATE INDEX IF NOT EXISTS capability_qualification_latest_idx "
                      "ON capability_qualification_log(capability_name,qualified_at_ns DESC,qualification_id DESC)")
         conn.execute(

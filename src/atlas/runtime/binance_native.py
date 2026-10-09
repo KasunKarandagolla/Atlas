@@ -28,6 +28,10 @@ from atlas.runtime.binance_demo import (
     dispatch_persisted_demo_command,
     local_client_order_id,
 )
+from atlas.runtime.binance_readiness import (
+    BinanceCommandReadinessProofV1,
+    resolve_binance_order_intent,
+)
 from atlas.runtime.fill_dedup import FillRecord, OrderStatusRecord
 from atlas.v2.instruments import ProductContractV2
 
@@ -69,8 +73,39 @@ class _StrategyHost:
     def order_factory(self) -> Any:
         return self.strategy.order_factory
 
-    def submit_order(self, order: Any, *, params: dict[str, Any] | None = None) -> None:
-        self.strategy.submit_order(order, params=params)
+    def submit_order(self, order: Any, *, position_id: Any | None = None,
+                     params: dict[str, Any] | None = None) -> None:
+        self.strategy.submit_order(order, position_id=position_id, params=params)
+
+    def resolve_position_id(self, *, instrument_id: Any, account_id: str,
+                            expected_signed_quantity: Decimal) -> Any:
+        """Bind a close-all stop to the exact reconciled Nautilus position."""
+        from nautilus_trader.model import AccountId, PositionId
+
+        if not expected_signed_quantity.is_finite() or expected_signed_quantity == 0:
+            raise PersistenceError("BINANCE_NATIVE_POSITION_QUANTITY_UNRESOLVED")
+        cache = self.strategy.cache
+        positions = cache.positions_open(instrument_id=instrument_id, account_id=AccountId(account_id))
+        if len(positions) != 1:
+            raise PersistenceError("BINANCE_NATIVE_POSITION_ID_UNRESOLVED")
+        position = positions[0]
+        try:
+            actual_signed = Decimal(str(position.signed_qty))
+            position_id = position.id
+            valid = (
+                isinstance(position_id, PositionId)
+                and str(position.instrument_id) == str(instrument_id)
+                and str(position.account_id) == account_id
+                and actual_signed.is_finite()
+                and actual_signed == expected_signed_quantity
+                and cache.is_position_open(position_id)
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            valid = False
+            position_id = None
+        if not valid:
+            raise PersistenceError("BINANCE_NATIVE_POSITION_IDENTITY_OR_QUANTITY_MISMATCH")
+        return position_id
 
     def cancel_order(self, order: Any) -> None:
         self.strategy.cancel_order(order.client_order_id)
@@ -199,6 +234,11 @@ def _native_strategy_type() -> type:
                 except Exception:
                     break
                 try:
+                    with self.runtime.command_queue.mutex:
+                        next_id = self.runtime.command_queue.queue[0] if self.runtime.command_queue.queue else None
+                    if (self.runtime._readiness_proof is None
+                            or self.runtime._readiness_proof.command_id != next_id):
+                        break
                     command_id = self.runtime.command_queue.get_nowait()
                 except queue.Empty:
                     break
@@ -213,6 +253,8 @@ def _native_strategy_type() -> type:
 class BinanceNativeNode:
     """One-process Binance demo writer with bounded queues and no retry loop."""
 
+    risk_reduction_profile = "BINANCE_DEMO_REDUCE_ONLY_V1"
+
     def __init__(
         self,
         *,
@@ -222,7 +264,7 @@ class BinanceNativeNode:
         journal: SQLiteJournal,
         writer_epoch: int,
         assert_writer: Callable[[], None],
-        reconcile_once: Callable[[], None],
+        reconcile_once: Callable[[], BinanceCommandReadinessProofV1 | None],
         account_snapshot_getter: Callable[[], Any],
         market_filters: Any,
         port_factory: Callable[..., Any] | None = None,
@@ -250,12 +292,16 @@ class BinanceNativeNode:
         self._run_task: asyncio.Future[None] | None = None
         self._disposed_unstarted = False
         self._reconciliation_lock = threading.Lock()
+        self._readiness_lock = threading.RLock()
+        self._readiness_proof: BinanceCommandReadinessProofV1 | None = None
+        self._state_generation = 0
         self._reconciliation_worker: threading.Thread | None = None
         self._last_reconciliation_request_ns = 0
         self.reconciliation_ready = False
         self.stopped = False
         self.queue_overflow = False
         self.last_failure_code: str | None = None
+        self.readiness_reason: str | None = None
         self.strategy: Any | None = None
 
         strategy_type = _native_strategy_type()
@@ -274,6 +320,12 @@ class BinanceNativeNode:
             )
         else:
             builder = node_builder_factory("atlas-binance-demo", identity, native_config)
+        from nautilus_trader.adapters.binance import BINANCE_VENUE
+        from nautilus_trader.live import LiveRiskEngineConfig
+
+        builder = builder.with_risk_engine_config(
+            LiveRiskEngineConfig(full_position_exit_venues=[BINANCE_VENUE]),
+        )
         builder = builder.add_exec_client("BINANCE", self._factory(), native_config)
         builder = builder.with_reconciliation(True)
         self.node = builder.build()
@@ -322,13 +374,25 @@ class BinanceNativeNode:
             if monotonic_ns - self._last_reconciliation_request_ns < RECONCILIATION_INTERVAL_NS:
                 return
             self._last_reconciliation_request_ns = monotonic_ns
+            with self._readiness_lock:
+                self.reconciliation_ready = False
+                self._readiness_proof = None
 
             def reconcile() -> None:
                 try:
                     self.assert_writer()
-                    self.reconcile_once()
+                    proof = self.reconcile_once()
                     self.assert_writer()
-                    self.reconciliation_ready = True
+                    with self._readiness_lock:
+                        if (not isinstance(proof, BinanceCommandReadinessProofV1)
+                                or proof.native_generation != self._state_generation
+                                or not self.event_queue.empty() or self.stopped or self.queue_overflow):
+                            self.readiness_reason = "BINANCE_COMMAND_READINESS_UNAVAILABLE"
+                            return
+                        self._readiness_proof = proof
+                        self.readiness_reason = None
+                        self.last_failure_code = None
+                        self.reconciliation_ready = True
                 except Exception:
                     self.stopped = True
                     self.last_failure_code = "BINANCE_RECONCILIATION_UNAVAILABLE"
@@ -356,20 +420,108 @@ class BinanceNativeNode:
                 raise PersistenceError("Binance command queue overflow") from None
             self._queued_command_ids.add(command_id)
 
+    def build_reduction_payload(self, *, intent: Any, plan: Any, command_id: str,
+                                command_type: CommandType, side: str, quantity: Any,
+                                price: Any, stop: Any) -> dict[str, Any]:
+        """Compile an immutable plan-bound Binance reduction for the durable outbox."""
+        from decimal import Decimal
+
+        from atlas.domain.enums import Side
+        from atlas.domain.money import canonical_decimal_str
+        from atlas.runtime.binance_readiness import binance_command_client_order_id
+
+        if (command_type not in {CommandType.CANCEL_ENTRY, CommandType.SUBMIT_EXIT,
+                                 CommandType.FLATTEN, CommandType.REPAIR_STOP}
+                or intent.plan_id != plan.plan_id or intent.plan_version != plan.version
+                or plan.instrument != self._product.key.native_symbol
+                or plan.market.upper() != "BINANCE"):
+            raise PersistenceError("Binance reduction plan/product identity mismatch")
+        cancel = command_type == CommandType.CANCEL_ENTRY
+        expected_side = ("BUY" if plan.side is Side.LONG else "SELL") if cancel else (
+            "SELL" if plan.side is Side.LONG else "BUY")
+        qty = Decimal(str(quantity))
+        stop_value = Decimal(str(stop))
+        price_value = None if price is None else Decimal(str(price))
+        if (side != expected_side or not qty.is_finite() or qty <= 0
+                or not stop_value.is_finite() or stop_value != plan.stop
+                or (price_value is not None and (not price_value.is_finite() or price_value <= 0))):
+            raise PersistenceError("Binance reduction differs from approved plan action")
+        if command_type == CommandType.REPAIR_STOP and (
+                price_value is not None or plan.stop_trigger_basis != "MarkPrice"):
+            raise PersistenceError("Binance repair requires the approved MarkPrice stop")
+        client_order_id = intent.client_order_id if cancel else binance_command_client_order_id(
+            self.identity, intent_id=intent.intent_id, command_id=command_id,
+            writer_epoch=intent.writer_epoch)
+        return {
+            "identity_hash": self.identity.content_hash,
+            "instrument_ref": self._product.content_hash,
+            "symbol": self._product.key.native_symbol,
+            "client_order_id": client_order_id,
+            "side": side,
+            "quantity": canonical_decimal_str(qty),
+            "price": None if price_value is None else canonical_decimal_str(price_value),
+            "stop": canonical_decimal_str(stop_value),
+            "reduce_only": not cancel,
+        }
+
+    def enqueue_persisted_command(self, command_id: str) -> None:
+        """Queue a committed outbox row; dispatch remains proof-gated in the timer."""
+        self.enqueue_command(command_id)
+
+    def hydrate_unsent_command(self) -> str | None:
+        """Recover one committed reduction lost before its in-memory enqueue.
+
+        Queue membership is scheduling only. No readiness proof is restored, no
+        command identity is created, and the normal fresh readback fences still
+        precede send-started and the external effect.
+        """
+        from atlas.runtime.binance_readiness import _current_command
+
+        self.assert_writer()
+        with self.journal._transaction_lock:
+            commands = self.journal.load_unresolved_commands(limit=2)
+            if not commands:
+                return None
+            if len(commands) != 1:
+                self.readiness_reason = "BINANCE_UNSENT_RECOVERY_CONFLICT"
+                return None
+            command = commands[0]
+            if (command.command_type not in _ALLOWED_COMMANDS
+                    or command.outcome != CommandOutcome.UNSENT
+                    or command.send_started_at_ns is not None):
+                self.readiness_reason = "BINANCE_UNSENT_RECOVERY_RECONCILIATION_REQUIRED"
+                return None
+            try:
+                _current_command(self.journal, self.identity, self._product,
+                                 command.command_id, self.writer_epoch)
+                with self._queue_lock:
+                    if self._queued_command_ids - {command.command_id}:
+                        raise PersistenceError("Binance startup queue has conflicting commands")
+                self.assert_writer()
+                self.enqueue_command(command.command_id)
+            except (PersistenceError, ValueError, TypeError, KeyError, ArithmeticError):
+                self.readiness_reason = "BINANCE_UNSENT_RECOVERY_REFUSED"
+                raise
+        # A persisted proof from the prior process must never authorize this one.
+        self.invalidate_readiness()
+        return command.command_id
+
     def _dispatch(self, command_id: str, port: Any, now_ns: int) -> None:
         if self.stopped or self.queue_overflow:
             return
         try:
-            snapshot = self.account_snapshot_getter()
-            self._validate_snapshot(snapshot, now_ns)
-            result = dispatch_persisted_demo_command(
-                journal=self.journal,
-                command_id=command_id,
-                port=port,
-                now_ns=now_ns,
-                writer_epoch=self.writer_epoch,
-                assert_writer=self._assert_effect_writer,
-            )
+            with self._readiness_lock, self.journal._transaction_lock:
+                proof = self._readiness_proof
+                snapshot = self.account_snapshot_getter()
+                self._validate_snapshot(snapshot, now_ns)
+                result = dispatch_persisted_demo_command(
+                    journal=self.journal, command_id=command_id, port=port,
+                    now_ns=now_ns, writer_epoch=self.writer_epoch,
+                    assert_writer=self._assert_effect_writer, readiness_proof=proof,
+                    snapshot_getter=self.account_snapshot_getter,
+                    generation_getter=lambda: self._state_generation,
+                    clock_ns=self.strategy.clock.timestamp_ns,
+                )
             self._push_event(BinanceNativeEvent(
                 event_type="COMMAND_OUTCOME",
                 client_order_id=None,
@@ -381,9 +533,22 @@ class BinanceNativeNode:
                 received_at_ns=now_ns,
             ))
         except Exception:
-            self.last_failure_code = "BINANCE_NATIVE_COMMAND_UNRESOLVED"
+            self.readiness_reason = "BINANCE_NATIVE_COMMAND_UNRESOLVED"
             # The dispatcher writes UNKNOWN before effect and refuses replay.
             # Never publish exception text or retry the command automatically.
+        finally:
+            self.invalidate_readiness()
+
+    @property
+    def state_generation(self) -> int:
+        with self._readiness_lock:
+            return self._state_generation
+
+    def invalidate_readiness(self) -> None:
+        with self._readiness_lock:
+            self._state_generation += 1
+            self._readiness_proof = None
+            self.reconciliation_ready = False
 
     def _assert_effect_writer(self) -> None:
         if self.stopped or self.queue_overflow:
@@ -401,6 +566,7 @@ class BinanceNativeNode:
             "OrderFilled", "OrderUpdated", "OrderCancelRejected", "OrderModifyRejected",
         }:
             return
+        self.invalidate_readiness()
         if not isinstance(raw_event, getattr(model, event_type)) or type(received_at_ns) is not int or received_at_ns <= 0:
             self._capture_unresolved(event_type, received_at_ns, "BINANCE_NATIVE_EVENT_FIELDS_UNRESOLVED")
             return
@@ -490,7 +656,7 @@ class BinanceNativeNode:
             try:
                 self.assert_writer()
                 raw_hash = hashlib.sha256(json.dumps(asdict(event), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-                intent = (self.journal.load_intent_by_client_order_id(event.client_order_id)
+                intent = (resolve_binance_order_intent(self.journal, self.identity, event.client_order_id)
                           if event.client_order_id is not None else None)
                 unresolved = intent is None and event.event_type != "COMMAND_OUTCOME"
                 if intent is not None and event.order_id is not None and event.client_order_id is not None:
@@ -499,7 +665,7 @@ class BinanceNativeNode:
                     _validate_intent_symbol(self.journal, intent.intent_id, event.client_order_id,
                                             self._product.key.native_symbol)
                     scopes = set()
-                    for command in self.journal.load_commands_for_intent(intent.intent_id):
+                    for command in self.journal.load_commands_for_intent(intent.intent_id, limit=33):
                         payload = json.loads(command.payload)
                         if payload.get("client_order_id") == event.client_order_id:
                             scopes.add((payload.get("symbol"), payload.get("instrument_ref"), payload.get("identity_hash")))
@@ -587,6 +753,7 @@ class BinanceNativeNode:
                 raise PersistenceError("Binance native runtime cannot start")
             try:
                 self.assert_writer()
+                self.hydrate_unsent_command()
                 self._run_task = asyncio.ensure_future(self.node.run_async())
             except Exception:
                 self.stopped = True

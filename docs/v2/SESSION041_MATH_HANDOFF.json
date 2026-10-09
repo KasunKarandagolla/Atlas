@@ -1,0 +1,133 @@
+{
+  "api": {
+    "functions": [
+      "stationarity_diagnostic",
+      "residual_half_life",
+      "engle_granger",
+      "kalman_hedge_ratio",
+      "johansen_vecm"
+    ],
+    "input_types": {
+      "PairPoint": [
+        "at_ns",
+        "available_a_ns",
+        "available_b_ns",
+        "value_a",
+        "value_b",
+        "source_ref_a",
+        "source_ref_b"
+      ],
+      "ScalarPoint": [
+        "at_ns",
+        "available_at_ns",
+        "value",
+        "source_ref"
+      ]
+    },
+    "outputs": "DiagnosticResult.metrics is an immutable FrozenMap; to_dict includes provenance, actual publication, uncalibrated inference and ZERO capital authority.",
+    "publication_contract": "Caller supplies actual publication >= cutoff; the production adapter must stamp publication after computation and bind source publication evidence.",
+    "required_keywords": [
+      "cutoff_ns",
+      "published_at_ns"
+    ],
+    "value_semantics": "Caller-supplied levels, with no implicit log or price transformation."
+  },
+  "api_version": "CAUSAL_RELATIVE_VALUE_DIAGNOSTICS_V1",
+  "authority": {
+    "capital": "ZERO",
+    "orders": false,
+    "research_acceptance_or_holdout": false,
+    "s8_frozen_profile_changed": false,
+    "s8_profile_hash": "c118b1e3f6732cf8897efc4c08a2d21eef50cec63b78d5bb40787f9fa5b0f7fe",
+    "sizing_or_selector_changes": false
+  },
+  "bounds_and_causality": {
+    "availability": "Each leg actual availability must be >= observation timestamp and <= information cutoff; future rows are rejected, not silently filtered.",
+    "cadence": "Strictly increasing equally spaced synchronized observation timestamps.",
+    "identity": "Input identity binds method, version, cutoff, timestamps, availability, values, references and explicit parameters.",
+    "input_references": "Each supplied source reference must be a canonical lowercase SHA256 digest.",
+    "kalman": "Forward random-walk alpha/beta filter with fixed caller variance assumptions and Joseph covariance update; no backward smoothing.",
+    "maximum_lags": 8,
+    "maximum_points": 720,
+    "unsupported_or_missing": "NOT_ESTIMABLE with a reason and empty metrics; no guessed estimates."
+  },
+  "dependencies": {
+    "dependency_changes": false,
+    "interpreter": "/home/kasun/Music/atlas/.venv/bin/python",
+    "numpy": "2.5.3",
+    "python": "3.12.13",
+    "scipy": "1.18.1",
+    "statsmodels_imported": false
+  },
+  "inference_limits": {
+    "calibration": "No published calibration is bound to this API. No universal ADF cutoff, Student-t p value, ordinary ADF residual p value or Johansen critical table is fabricated.",
+    "cointegration_rank_inferred": false,
+    "critical_values": null,
+    "integration_order": "I1 assumptions explicitly unverified.",
+    "p_values": null,
+    "stationarity_assertion": false
+  },
+  "integration": "Root reports integration into zero-authority S8 sidecar with last 720 prior synchronized log-price observations and publication sampled after each calculation. Runtime integration validation belongs to the root workstream; this handoff claims focused API evidence only.",
+  "mathematics": {
+    "adf": "OLS of delta y_t on y_(t-1), optional constant and explicitly fixed lagged differences; rho/standard_error is reported.",
+    "engle_granger": "A-on-B OLS with intercept, followed by residual ADF without deterministic terms; Engle-Granger distribution is explicitly distinct from ordinary ADF.",
+    "half_life": "Intercept AR1 fit; -log(2)/log(phi) observation half-life, scaled by cadence. Phi must be strictly within (1e-10, 1-1e-10). OU interpretation remains a hypothesis.",
+    "johansen_vecm": "Partial out fixed lagged differences; solve (S10 S00^-1 S01) beta=lambda S11 beta, normalize beta_A=1, and fit alpha and gamma. Trace/max-eigen statistics are uncalibrated.",
+    "numeric_policy": "Reject design singular-value ratio <=1e-10, covariance eigenvalue ratio <=1e-10, zero residual variance, unidentifiable eigenvectors and degenerate canonical correlations.",
+    "rank_profile": "Two legs, caller-assumed rank one, no deterministic terms. Full rank covariance/error matrices and a distinct leading eigenvalue are required. Unsupported rank and deterministic profiles fail closed."
+  },
+  "owned_files": [
+    "src/atlas/v2/math/relative_value.py",
+    "tests/v2/test_session041_relative_value.py",
+    "docs/v2/SESSION041_MATH_HANDOFF.json"
+  ],
+  "primary_formula_references": [
+    {
+      "title": "statsmodels official ADF and Engle-Granger implementation",
+      "url": "https://www.statsmodels.org/stable/_modules/statsmodels/tsa/stattools/_stattools.html"
+    },
+    {
+      "title": "statsmodels official reduced-rank VECM equations and Johansen statistics",
+      "url": "https://www.statsmodels.org/stable/_modules/statsmodels/tsa/vector_ar/vecm.html"
+    },
+    {
+      "title": "Sarkka and Svensson, Bayesian Filtering and Smoothing, second edition (author-hosted)",
+      "url": "https://users.aalto.fi/~ssarkka/pub/bfs_book_2023_online.pdf"
+    }
+  ],
+  "remaining_scope": [
+    "No inferential calibration or strategy profile acceptance is established.",
+    "Both-leg costs and production sidecar evidence are outside these owned files.",
+    "This mathematical diagnostic handoff is not a claim that all V2 sections 10.4/10.5 requirements are closed."
+  ],
+  "scope": [
+    "V2 section 10.4 stationarity and residual AR1 half-life diagnostics",
+    "V2 section 10.5 Engle-Granger, two-leg rank-one Johansen/VECM and forward Kalman hedge diagnostics"
+  ],
+  "status": "IMPLEMENTED_FOCUSED_VALIDATED",
+  "validation": {
+    "checks": [
+      "Hand-computed intercept ADF and residual ADF",
+      "Hand-computed AR1 decay",
+      "Nonzero Kalman first update and immutable prefix trajectory",
+      "Independent scalar two-by-two generalized eigenproblem",
+      "Lagged VECM nuisance normal equations",
+      "Each-leg causality, publication, timestamp order, cadence, source refs",
+      "Singular designs and unsupported parameters",
+      "720-point bound",
+      "Frozen S8 profile hash"
+    ],
+    "errors": 0,
+    "failures": 0,
+    "initial_run": "32/34 passed. Unit-root rounding guard was tightened; an unidentifiable deterministic lagged-VECM fixture was replaced with independently varying deterministic frequencies. Final run includes an additional zero-phi boundary case and a nonzero Kalman hand update.",
+    "mypy": "Success: no issues found in 1 source file",
+    "ruff": "All checks passed!",
+    "source_sha256": "99b1af6a2439bfce30c619f8cd1c06bff271cee24b1334a6236587399be2d63a",
+    "test_command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session041_relative_value.py -q --junitxml=/tmp/s41-math.xml",
+    "tests": 35,
+    "tests_sha256": "84fc344ee1f02a039d099603e35edf96d7fde4f8e7dcc6b36a17ed0a7ccc2b74",
+    "xml": "/tmp/s41-math.xml",
+    "xml_sha256": "2f1e653c3c2e01218a879f87ff1105481ebd0489cdbbcef4d73c034b928a25b2"
+  },
+  "version": "SESSION041_BOUNDED_CAUSAL_MATH_HANDOFF_V1"
+}

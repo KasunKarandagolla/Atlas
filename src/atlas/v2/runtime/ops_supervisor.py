@@ -883,6 +883,14 @@ class OpsSupervisorV2:
                         started_at_ns,
                         timestamp(self.clock_ns(), field="event computation start"),
                     )
+                    event_source_health = source_health
+                    scoped_health = getattr(self.port, "event_source_health_state", None)
+                    if callable(scoped_health):
+                        from ..data.health import PublicSourceStateV2
+
+                        event_source_health = scoped_health(repository, event, now_ns=decision_started_at_ns)
+                        if event_source_health not in {"UNKNOWN", *(item.value for item in PublicSourceStateV2)}:
+                            raise ValueError("invalid scoped public source health")
                     event_inputs_available = all(
                         (entry := repository.get_artifact(ref)) is not None
                         and entry.available_at_ns <= event.information_cutoff_ns
@@ -902,12 +910,12 @@ class OpsSupervisorV2:
                             OpsTerminalStatusV1.EXPIRED,
                             "DECISION_DEADLINE_EXPIRED_BEFORE_RECOVERY_REPLAY",
                         )
-                    elif source_health != "HEALTHY_CURRENT":
+                    elif event_source_health != "HEALTHY_CURRENT":
                         result = self._terminal_without_pipeline(
                             event,
                             decision_started_at_ns,
                             OpsTerminalStatusV1.NOT_ESTIMABLE,
-                            f"SOURCE_HEALTH_{source_health}",
+                            f"SOURCE_HEALTH_{event_source_health}",
                         )
                     else:
                         completed = self._load_checkpoints(repository, event)
@@ -934,7 +942,7 @@ class OpsSupervisorV2:
                             repository,
                             event,
                             now_ns=decision_started_at_ns,
-                            source_health_state=source_health,
+                            source_health_state=event_source_health,
                             completed_stages=completed,
                             checkpoint=checkpoint,
                         )
@@ -953,7 +961,7 @@ class OpsSupervisorV2:
                         event,
                         result,
                         now_ns=receipt_at_ns,
-                        source_health_state=source_health,
+                        source_health_state=event_source_health,
                         source_states=source_states,
                     )
                     receipt_ref = self._persist_final_receipt(repository, receipt)

@@ -1,0 +1,229 @@
+{
+  "artifact_type": "AtlasSession041PublicEvidenceCapacityAuditV1",
+  "audit_scope": "Fresh forensic read-only audit of broad public source/collector/repository/exporter, existing scale review, and all application consumers of PublicObservationIndexV2 and PublicStreamFrameIndexV1. No production edits, tests, or commits by this audit.",
+  "audited_at": "2026-10-07",
+  "checkout": "/tmp/atlas-session-041",
+  "classification": {
+    "authority": "ZERO",
+    "basis": "There is an ordinary, actionable implementation gap in high-frequency metadata and JSON index amplification plus missing representative sustained capacity qualification. Existing review explicitly says lossless storage is design-only, maximum-breadth two-cycle measurement did not complete, continuous capacity is open, and a finite budget stop alone is not engineering closure. No frozen capital/authority requirement is modified by this classification.",
+    "capacity_qualification": "UNQUALIFIED",
+    "capital_enabled": false,
+    "classification": "OPEN_ORDINARY_ENGINEERING_CAPACITY_GAP",
+    "ordinary_engineering_gap_remains": true
+  },
+  "current_volumes": {
+    "48_hour_due_cycle_arithmetic_only": {
+      "bulk_parquet_files": 276480,
+      "cycles": 17280,
+      "derived_universe_observation_rows": 70778880,
+      "excludes": [
+        "rotating enrichment",
+        "stream evidence",
+        "scheduler state",
+        "metadata refreshes",
+        "decisions",
+        "reporting",
+        "health",
+        "rejections"
+      ],
+      "public_observation_index_rows": 141557760,
+      "qualification": "ARITHMETIC_ONLY_NOT_CAPACITY_PROOF"
+    },
+    "frozen_broad_source_bounds": {
+      "cadence_seconds": 10,
+      "contracts": 4096,
+      "contracts_per_venue": 2048,
+      "max_active_history_keys": 24,
+      "max_enrichment_keys": 2,
+      "max_records_per_snapshot": 16384,
+      "max_requests_per_snapshot": 32,
+      "source_file": "src/atlas/v2/data/broad_public_source.py"
+    },
+    "measured_synthetic_path": {
+      "archive_cumulative_bytes_after_cycle_2": 216343,
+      "archive_files": 2,
+      "cycle_1_adoption_seconds": 13.447933279006975,
+      "cycle_1_workset_publication_seconds": 8.826277233019937,
+      "cycle_2_adoption_seconds": 17.80469309000182,
+      "cycle_2_workset_publication_seconds": 13.090980431996286,
+      "cycles": 2,
+      "database_baseline_bytes": 1122304,
+      "database_final_file_bytes": 9781248,
+      "database_final_logical_bytes": 9781248,
+      "derived_universe_observations_cumulative": 512,
+      "index_rows_cumulative": 1024,
+      "integrity": {
+        "all_artifact_domain_metadata_verified_after_restart": 1804,
+        "cutoff_worksets_verified_after_restart": 2,
+        "exact_canonical_compression_roundtrip": true,
+        "exact_index_metadata_verified_after_restart": 1024,
+        "exact_raw_rows_verified_after_restart": 1024
+      },
+      "limits": [
+        "synthetic receipts",
+        "no scheduler sleep/service-rate proof",
+        "no network",
+        "no streams",
+        "no enrichment",
+        "no scheduler state",
+        "no reports",
+        "no decision work",
+        "not maximum breadth",
+        "not endurance",
+        "shared-workspace timings"
+      ],
+      "per_venue": 128,
+      "population": 256,
+      "public_observation_index_metadata_bytes_cumulative": 1157920,
+      "public_observation_index_rows_cumulative": 1024,
+      "receipt_cadence_seconds": 10,
+      "records_per_cycle": 512,
+      "repository_artifact_index_table_bytes_dbstat": 3911680,
+      "second_cycle_database_growth_bytes": 4362240,
+      "second_cycle_process_storage_write_bytes": 14168064,
+      "second_cycle_wal_sample_bytes": 7177072,
+      "steady_growth_bytes_per_raw_payload_byte": 35.81477832512315
+    },
+    "per_due_cycle_at_max_population": {
+      "basis": "Each Bybit product contributes one ticker observation; each Binance product contributes bookTicker, premiumIndex and 24hr. Every accepted receipt gets its own immutable PublicObservationIndexV2 identity. Each current product gets a derived UniverseObservationV2 per publication.",
+      "binance_bulk_market_receipts": 6144,
+      "bulk_archive_chunks": 16,
+      "bybit_bulk_market_receipts": 2048,
+      "derived_universe_observation_rows": 4096,
+      "full_universe_rows": 1,
+      "full_workset_rows": 1,
+      "public_observation_index_rows": 8192
+    },
+    "reported_48_hour_linear_growth_projection_bytes": {
+      "maximum_4096_contract_population": 1206072115200,
+      "qualification": "Conditional multiplication of measured second-cycle growth only; not a benchmark or storage/capacity proof.",
+      "representative_256_contract_population": 75379507200
+    }
+  },
+  "evidence_basis": {
+    "dirty_checkout_note": "The worktree contains other Session 41 modifications/untracked artifacts; this audit does not attribute them to the scale review or change them. The reviewed scale-critical source files match the review's recorded digests.",
+    "hash_note": "All eight saved source_proof_sha256 values (repository, compact public index, collector, history, production, broad universe, tuning exporter, scale test) match the current files in the target checkout.",
+    "known_dirty_checkout": true,
+    "scale_review": "docs/v2/SESSION041_SCALE_REVIEW.json",
+    "scale_test": "tests/v2/test_session041_scale_review.py",
+    "source_hashes_match_scale_review": true
+  },
+  "index_consumers": {
+    "PublicObservationIndexV2": [
+      {
+        "path": "src/atlas/v2/data/collector.py",
+        "role": "After Parquet archive durability, appends exact raw-observation index rows with receipt/index publication chronology, canonical instrument key, event/revision/availability data and archive chunk locator."
+      },
+      {
+        "path": "src/atlas/v2/memory/schema.py",
+        "role": "Defines observation-specific schema/index support."
+      },
+      {
+        "path": "src/atlas/v2/memory/repository.py",
+        "role": "Registers immutable rows; generic get/batch metadata/type/page/latest APIs; cutoff-visible public archive history; actual/replay queries; origin accounting pages; exact metadata identity lookup. Owns JSON-expression index definitions and invalid-row/overflow accounting."
+      },
+      {
+        "path": "src/atlas/v2/runtime/production.py",
+        "role": "Validates broad snapshot refs and chronology, persists exact acquisition receipt/rejections, adopts observations, and binds decision/source lineage; also verifies public observation references during production recovery/adoption."
+      },
+      {
+        "path": "src/atlas/v2/runtime/research_model_shadow.py",
+        "role": "Loads and validates exact indexed source evidence for shadow model inputs."
+      },
+      {
+        "path": "src/atlas/v2/runtime/research_prediction_outcomes.py",
+        "role": "Validates public source records used to settle prediction outcomes."
+      },
+      {
+        "path": "src/atlas/v2/runtime/full_strategy_surface.py",
+        "role": "Validates source evidence and complete broad receipt/source-reference membership for strategy-surface decisions."
+      },
+      {
+        "path": "src/atlas/v2/strategies/s6_cross_section.py",
+        "role": "Checks public source rows used in cross-sectional observations."
+      },
+      {
+        "path": "src/atlas/v2/news/events.py",
+        "role": "Resolves/validates public observation references for event evidence."
+      },
+      {
+        "path": "src/atlas/v2/desktop/projection.py",
+        "role": "Projects public evidence and resolves candidate/source references into desktop read models."
+      },
+      {
+        "path": "src/atlas/v2/science/m15_origin_accounting.py",
+        "role": "Binds native M15 bars to exact original observation refs for origin accounting."
+      },
+      {
+        "path": "src/atlas/v2/science/session031_preflight.py",
+        "role": "Counts, validates, and audits indexed public observations during preflight and source readiness checks."
+      },
+      {
+        "path": "src/atlas/v2/science/tuning_export.py",
+        "role": "Validates exact source refs and exports public evidence using repository and direct SQLite readers."
+      }
+    ],
+    "PublicStreamFrameIndexV1": [
+      {
+        "path": "src/atlas/v2/runtime/production.py",
+        "role": "Persists frame indexes after archive extents and validates existing frame identity while adopting batches."
+      },
+      {
+        "path": "src/atlas/v2/memory/repository.py",
+        "role": "Routes frame and stream-trade rows through compact public archive locator storage and hydrates exact domain metadata for getters/pages/restart; keeps archive locator queries and fail-closed missing/corrupt extent checks."
+      },
+      {
+        "path": "src/atlas/v2/data/compact_public_index.py",
+        "role": "Maps exact frame refs to archived row/chunk locators, reconstructs full metadata, validates content/raw hashes and chronology, and maintains a bounded decoded extent cache."
+      },
+      {
+        "path": "src/atlas/v2/data/history.py",
+        "role": "Provides durable public archive extents used by compact frame indexes and restart reconstruction."
+      }
+    ],
+    "important_adjacent_type": "PublicStreamTradeObservationIndexV1 shares compact locator behavior with frames; its exact feed identity, actual/replay chronology, event windows, raw bytes, and source distinctions must be preserved in any repository adapter work."
+  },
+  "query_and_compatibility_constraints": [
+    "Preserve the original artifact_ref/content_hash and complete canonical metadata for every row; distinct receipt times and record ids must remain distinct even for equal values.",
+    "Preserve created_at_ns versus available_at_ns and raw/index publication chronology, including cutoff visibility, restart reconstruction and tie ordering.",
+    "Preserve every indexed SQL predicate and ordering key: exact canonical instrument key versus revision-only lanes, event_type, availability_class, actual versus replay, event time, record id, source id, archive bounds and publication cutoff.",
+    "Preserve generic artifact getters, batch ref lookups, type inventory, latest and paged queries, metadata identity pages, public_archive_history_entries, origin accounting pages, and overflow/invalid-row behavior with identical ordering and domain entries.",
+    "Preserve exact acquisition receipts, all per-record source refs, rejection identity/reasons/positions, source health, full universe/workset membership, candidate/calendar denominators and immutable hashes.",
+    "Preserve export rowid cursors, source_rowid, restart continuation, raw SQL reader bounds, exact metadata limits, invalid-row accounting and full exporter hydration. A compressed design cannot silently omit rows or fall back to older evidence on corrupt/missing storage.",
+    "Preserve raw Parquet observation_json and raw_payload_bytes as authoritative exact evidence; compressed metadata must not merge receipts or mutate archive payloads.",
+    "Legacy rows and mixed legacy/new rows must remain readable; locator/block write and artifact publication must be atomic and restart-safe under FULL synchronous SQLite/WAL behavior."
+  ],
+  "root_cause": {
+    "derived_state_growth": "Broad-universe publication also appends per-product UniverseObservationV2 entries plus full UniverseContractV2 and BroadUniverseWorksetV2 snapshots each cycle. Snapshot metadata itself grows with complete universe membership and coverage state.",
+    "primary": "Fresh public market receipts are immutable evidence, so each due poll appends observations and index rows even when values are unchanged. The source identities include new receipt chronology; deduplicating equal payload values would erase distinct acquisitions.",
+    "storage_amplification": "Each PublicObservationIndexV2 row stores full JSON domain metadata, including repeated canonical instrument_key_json and archive/source identity fields. SQLite artifact_index has multiple partial JSON-expression indexes over those rows, and each index repeats some long instrument identity strings. The scale report measures the artifact_index table at 3,911,680 bytes within a 9,781,248-byte logical DB; metadata zlib figures are an opportunity estimate and do not account for indexes, WAL, locators, or decode cost.",
+    "why_bounded_work_does_not_close_it": "The 24-key active history workset bounds expensive recursive history/features, not complete immutable public evidence or the full 4096-product universe. Existing S40 reserve is a floor inherited from the two-symbol stream estimate, not a measured maximum-breadth budget."
+  },
+  "session": 41,
+  "smallest_safe_implementation_plan": [
+    {
+      "action": "Adopt and freeze the lossless storage contract already documented in SESSION041_SCALE_REVIEW: retain one artifact_index inventory and add bounded compressed canonical-metadata chunks plus exact per-ref locators for PublicObservationIndexV2, UniverseObservationV2, UniverseContractV2, BroadUniverseWorksetV2 and BroadPublicAcquisitionReceiptV2. Keep original refs, hashes, rowids and timestamps. Make repository-owned decode/hydration central and retain legacy-row compatibility.",
+      "step": 1
+    },
+    {
+      "action": "Mechanically enumerate indexed identity/archive/source predicates and retain deterministic query projections in artifact_index. Verify every projected field against decompressed metadata at write/read; update all SQL expressions, indexes and repository query lanes together without renaming/weakening semantics.",
+      "step": 2
+    },
+    {
+      "action": "Resolve repeated instrument_key_json index amplification with an immutable canonical instrument/source/revision identity catalog and compact key in source indexes. Retain collision/conflict checks and resolve exact caller identity before query; keep all receipt refs and actual/replay/event/cutoff semantics.",
+      "step": 3
+    },
+    {
+      "action": "Hydrate through every generic API, page, direct query, restart and exporter path; preserve source_rowid and export cursor semantics. Keep PublicStreamFrameIndexV1's existing archive locator path, and include PublicStreamTradeObservationIndexV1 compatibility in repository-level changes.",
+      "step": 4
+    },
+    {
+      "action": "Add and enforce a durable finite evidence reserve profile before admission of acquisition; persist accepted population/cadence/duration and cumulative footprint across restart, reserve room for completed snapshot, rejection evidence, clean drain and final report, and stop via the existing irreversible preventive latch before an unreserved cycle.",
+      "step": 5
+    },
+    {
+      "action": "Prove exact equivalence for legacy/new/mixed stores, invalid/corrupt blocks, interrupted transactions, ties, cutoffs, all query modes, export/restart and complete decision denominators; then run representative sustained workload including stream, enrichment, reporting, WAL readers, restart and maximum supported breadth/duration. Leave authority and capacity unqualified until measurements establish an explicit envelope.",
+      "step": 6
+    }
+  ]
+}

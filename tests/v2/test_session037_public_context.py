@@ -7,7 +7,8 @@ import threading
 
 import pytest
 
-from atlas.v2._serialization import sha256_json
+from atlas.v2._serialization import FrozenMap, sha256_json
+from atlas.v2.agent_intelligence.contracts import EventExtractionV1
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.news.events import (
     FetchedDocumentV2,
@@ -51,10 +52,43 @@ class _Transport:
         return FetchedDocumentV2(source.feed_url, source.feed_url, 200, self.body, self.clock(), {})
 
 
+class _ExtractionProvider:
+    def __init__(self, repository: OpsRepository, clock: _Clock, *, late: bool = False,
+                 invalid: bool = False, timeout: bool = False) -> None:
+        self.repository, self.clock, self.late = repository, clock, late
+        self.invalid, self.timeout = invalid, timeout
+        self.calls = 0
+
+    def extract(self, request, evidence):
+        self.calls += 1
+        assert self.repository.get_artifact(request.content_hash) is not None
+        dispatch_ref = sha256_json({"version": "EventExtractionDispatchV1",
+                                    "request_hash": request.content_hash})
+        assert self.repository.get_artifact(dispatch_ref) is not None
+        assert evidence[0]["rows"][0]["raw_ref"] == request.source_artifact_ref
+        if self.timeout:
+            raise TimeoutError("private fake timeout detail")
+        if self.late:
+            self.clock.at = request.deadline_ns
+        item = {"item_index": 0, "event_type": "SECURITY_INCIDENT", "severity": "HIGH",
+                "event_time_text": None, "asset_mentions": ["Bitcoin"],
+                "supporting_spans": ["Bitcoin security incident"],
+                "unknown_fields": ["EVENT_TIME"]}
+        if self.invalid:
+            item["supporting_spans"] = ["not in archived source"]
+        return EventExtractionV1(request.request_id, request.source_artifact_ref, (FrozenMap(item),))
+
+
 def _complete(maintenance: PublicContextMaintenanceV1) -> None:
     assert maintenance._thread is not None
     maintenance._thread.join(timeout=2)
     assert not maintenance._thread.is_alive()
+
+
+def _complete_extraction(maintenance: PublicContextMaintenanceV1) -> None:
+    if maintenance._extraction_thread is not None:
+        maintenance._extraction_thread.join(timeout=2)
+        assert not maintenance._extraction_thread.is_alive()
 
 
 def _pipeline(repository: OpsRepository, clock: _Clock, body: bytes = BODY,
@@ -256,6 +290,129 @@ def test_actual_item_completion_is_sampled_after_classification_and_mapping(tmp_
         clock.at = 160
         duplicate = _pipeline(repository, clock, publication_clock=lambda: pytest.fail("dedupe must preserve publication")).collect(SOURCE.source_id)
         assert duplicate.duplicate_count == 1 and duplicate.event_refs == result.event_refs
+
+
+def test_public_context_extraction_is_separate_sidecar_with_exact_refs(tmp_path) -> None:
+    clock = _Clock()
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        provider = _ExtractionProvider(repository, clock)
+        maintenance = PublicContextMaintenanceV1(clock_ns=clock, transport=_Transport(clock),
+            sources=(SOURCE,), event_extraction_provider=provider)
+        maintenance.run_cycle(repository, information_cutoff_ns=clock.at)
+        _complete(maintenance)
+        clock.at = 110
+        pending = maintenance.run_cycle(repository, information_cutoff_ns=100)
+        assert pending.extraction_status == "PENDING"
+        _complete_extraction(maintenance)
+        report = maintenance.run_cycle(repository, information_cutoff_ns=100)
+        assert report.extraction_status == "VALIDATED" and provider.calls == 1
+        assert report.extraction_request_ref and report.extraction_dispatch_ref
+        assert report.extraction_result_ref and report.extraction_validation_ref
+        event_before = repository.get_artifact(report.event_refs[0])
+        assert event_before is not None
+        gates_before = repository.latest_artifact_entries("EventSafetyGateV2", as_of_ns=clock.at, limit=4)
+        extraction = repository.get_artifact(report.extraction_result_ref)
+        assert extraction is not None and extraction.artifact_type == "EventExtractionArtifactV1"
+        assert extraction.metadata["authority"] == "ZERO"
+        assert repository.get_artifact(report.extraction_request_ref).metadata["request"]["source_artifact_ref"] == report.raw_ref
+        assert repository.get_artifact(report.event_refs[0]) == event_before
+        assert repository.latest_artifact_entries("EventSafetyGateV2", as_of_ns=clock.at, limit=4) == gates_before
+        maintenance.close()
+
+
+@pytest.mark.parametrize(("late", "invalid", "timeout", "expected"), [
+    (True, False, False, "LATE"),
+    (False, True, False, "UNAVAILABLE"),
+    (False, False, True, "UNAVAILABLE"),
+])
+def test_extraction_late_or_invalid_results_are_safe_and_reported(
+    tmp_path, late, invalid, timeout, expected,
+) -> None:
+    clock = _Clock()
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        provider = _ExtractionProvider(repository, clock, late=late, invalid=invalid, timeout=timeout)
+        maintenance = PublicContextMaintenanceV1(clock_ns=clock, transport=_Transport(clock),
+            sources=(SOURCE,), event_extraction_provider=provider)
+        maintenance.run_cycle(repository, information_cutoff_ns=clock.at)
+        _complete(maintenance)
+        clock.at = 110
+        pending = maintenance.run_cycle(repository, information_cutoff_ns=100)
+        assert pending.extraction_status == "PENDING"
+        _complete_extraction(maintenance)
+        report = maintenance.run_cycle(repository, information_cutoff_ns=100)
+        assert report.status == "COLLECTED" and report.extraction_status == expected
+        assert report.extraction_request_ref and report.extraction_dispatch_ref
+        assert report.extraction_validation_ref and provider.calls == 1
+        assert "private fake timeout detail" not in json.dumps(report.to_dict())
+        assert report.extraction_result_ref is None
+        event = repository.get_artifact(report.event_refs[0])
+        assert event is not None and event.artifact_type == "NewsEventV2"
+        assert repository.latest_artifact_entries("EventSafetyGateV2", as_of_ns=clock.at, limit=4).entries == ()
+        maintenance.close()
+
+        restarted = PublicContextMaintenanceV1(clock_ns=clock, transport=_Transport(clock),
+            sources=(SOURCE,), event_extraction_provider=provider)
+        restarted.run_cycle(repository, information_cutoff_ns=clock.at)
+        _complete(restarted)
+        replayed = restarted.run_cycle(repository, information_cutoff_ns=clock.at)
+        assert replayed.extraction_status == expected
+        assert replayed.extraction_request_ref == report.extraction_request_ref
+        assert replayed.extraction_dispatch_ref == report.extraction_dispatch_ref
+        assert replayed.extraction_validation_ref == report.extraction_validation_ref
+        assert provider.calls == 1
+        receipt_status = "LATE_RETROSPECTIVE" if late else ("INVALID" if invalid else "UNAVAILABLE")
+        assert repository.get_artifact(replayed.extraction_validation_ref).metadata["receipt"]["status"] == (
+            receipt_status
+        )
+        restarted.close()
+
+
+def test_extraction_restart_preserves_existing_terminal_outcome(tmp_path) -> None:
+    clock = _Clock()
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        provider = _ExtractionProvider(repository, clock)
+        first = PublicContextMaintenanceV1(clock_ns=clock, transport=_Transport(clock),
+            sources=(SOURCE,), event_extraction_provider=provider)
+        first.run_cycle(repository, information_cutoff_ns=100)
+        _complete(first)
+        clock.at = 110
+        first.run_cycle(repository, information_cutoff_ns=100)
+        _complete_extraction(first)
+        initial = first.run_cycle(repository, information_cutoff_ns=100)
+        assert initial.extraction_status == "VALIDATED"
+        first.close()
+        restarted = PublicContextMaintenanceV1(clock_ns=clock, transport=_Transport(clock),
+            sources=(SOURCE,), event_extraction_provider=provider)
+        clock.at += PUBLIC_CONTEXT_CADENCE_NS_V1
+        restarted.run_cycle(repository, information_cutoff_ns=clock.at)
+        _complete(restarted)
+        duplicate = restarted.run_cycle(repository, information_cutoff_ns=clock.at)
+        assert duplicate.extraction_status == "VALIDATED"
+        assert duplicate.extraction_request_ref == initial.extraction_request_ref
+        assert duplicate.extraction_dispatch_ref == initial.extraction_dispatch_ref
+        assert duplicate.extraction_validation_ref
+        receipt_entry = repository.get_artifact(duplicate.extraction_validation_ref)
+        assert receipt_entry is not None
+        assert receipt_entry.metadata["receipt"]["status"] == "VALIDATED"
+        assert receipt_entry.metadata["receipt"]["reason"] is None
+        replayed_again = restarted.run_cycle(repository, information_cutoff_ns=clock.at)
+        assert replayed_again.extraction_status == "VALIDATED"
+        assert replayed_again.extraction_validation_ref == initial.extraction_validation_ref
+        assert provider.calls == 1
+        restarted.close()
+
+
+def test_extraction_provider_is_disabled_by_default(tmp_path) -> None:
+    clock = _Clock()
+    maintenance = PublicContextMaintenanceV1(clock_ns=clock, transport=_Transport(clock), sources=(SOURCE,))
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        maintenance.run_cycle(repository, information_cutoff_ns=clock.at)
+        _complete(maintenance)
+        clock.at = 110
+        report = maintenance.run_cycle(repository, information_cutoff_ns=100)
+        assert report.extraction_status == "DISABLED"
+        assert report.extraction_request_ref is None and report.extraction_dispatch_ref is None
+    maintenance.close()
 
 
 def test_repeated_item_in_same_response_reuses_its_actual_publication(tmp_path) -> None:

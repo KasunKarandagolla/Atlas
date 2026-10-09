@@ -5,27 +5,42 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 
-from atlas.v2._serialization import FrozenMap, sha256_json
+from atlas.v2._serialization import FrozenMap, sha256_json, sha256_ref
 from atlas.v2.chronology import sample
 from atlas.v2.contracts import ArtifactEnvelope, FeatureArtifactV2, FeatureValueV2, ReplayViewV2
 from atlas.v2.data.active_history import ActiveCausalHistoryStateV1
 from atlas.v2.data.bars import BarIntervalV2
 
-from .candles import CausalTrade, candle_geometry, prior_utc_day_range, utc_day_vwap
+from .candles import (
+    CausalTrade,
+    TradeLocationConfig,
+    anchored_vwap,
+    candle_geometry,
+    fixed_tick_volume_profile,
+    prior_utc_day_range,
+    utc_day_vwap,
+)
 from .joins import JoinedBars
 from .structure import confirmed_legs, confirmed_swings, fibonacci, morphology, structure_events, support_resistance
 from .technical import technical_series
 
 FEATURE_SET_VERSION = "INTRADAY_CORE_V1"
 EXACT_PREFIX_FEATURE_SET_VERSION = "INTRADAY_CORE_EXACT_PREFIX_EMA_ATR_V1"
+TRADE_LOCATION_FEATURE_SET_VERSION = "INTRADAY_CORE_TRADE_LOCATION_V1"
+EXACT_PREFIX_TRADE_LOCATION_FEATURE_SET_VERSION = "INTRADAY_CORE_EXACT_PREFIX_EMA_ATR_TRADE_LOCATION_V1"
+MAX_TRADE_LOCATION_INPUT_REFS = 64
 
 
 def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
                      trades: Sequence[CausalTrade] = (),
                      replay_view: ReplayViewV2 = ReplayViewV2.ACTUAL_SYSTEM,
                      clock_ns: Callable[[], int] | None = None,
-                     exact_histories: Mapping[BarIntervalV2, ActiveCausalHistoryStateV1] | None = None) -> FeatureArtifactV2:
+                     exact_histories: Mapping[BarIntervalV2, ActiveCausalHistoryStateV1] | None = None,
+                     trade_location: TradeLocationConfig | None = None,
+                     trade_location_input_refs: Sequence[str] = ()) -> FeatureArtifactV2:
     started = sample(clock_ns, floor_ns=join.cutoff_ns) if clock_ns else join.cutoff_ns
+    if len(trade_location_input_refs) > MAX_TRADE_LOCATION_INPUT_REFS:
+        raise ValueError("trade-location input refs exceed the fixed bound")
     if join.source_health_ref is None:
         raise ValueError("feature snapshot requires causal source-health evidence")
     if source_health_ref is not None and source_health_ref != join.source_health_ref:
@@ -77,8 +92,47 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
     values["location.prior_day_low"] = FeatureValueV2(prior_low, "price", None if prior_low is not None else "PRIOR_DAY_UNAVAILABLE")
     vwap, trade_refs = utc_day_vwap(trades, key=join.key, cutoff_ns=join.cutoff_ns)
     values["location.utc_day_trade_vwap"] = FeatureValueV2(vwap, "price", None if vwap is not None else "CAUSAL_TRADES_UNAVAILABLE")
-    for name in ("anchored_vwap", "volume_profile"):
-        values[f"location.{name}"] = FeatureValueV2(None, "price", "CAUSAL_TRADE_OR_ANCHOR_INPUT_UNAVAILABLE")
+    location_refs: set[str] = set()
+    # The production caller persists the exact configuration inside its
+    # TradeLocationInputReceiptV1. Referencing the bare configuration hash here
+    # would name no indexed artifact, so chronology could not verify the
+    # dependency. The receipt below is the durable, point-in-time source for
+    # both configuration and observed trade evidence.
+    for reference in trade_location_input_refs:
+        location_refs.add(sha256_ref(reference, field="trade_location_input_ref"))
+    if trade_location is None or replay_view != ReplayViewV2.ACTUAL_SYSTEM:
+        anchored = None
+        profile = None
+        unavailable_reason = (
+            "TRADE_LOCATION_CONFIGURATION_UNAVAILABLE" if trade_location is None
+            else "REPLAY_TRADE_AVAILABILITY_UNAVAILABLE"
+        )
+    else:
+        unavailable_reason = None
+        anchored = anchored_vwap(trades, key=join.key, cutoff_ns=join.cutoff_ns, anchor=trade_location.anchor)
+        profile = fixed_tick_volume_profile(
+            trades, key=join.key, cutoff_ns=join.cutoff_ns,
+            window_start_ns=trade_location.profile_window_start_ns, product=trade_location.product,
+        )
+    values["location.anchored_vwap"] = FeatureValueV2(
+        anchored.value if anchored is not None and anchored.status == "AVAILABLE" else None,
+        "price",
+        None if anchored is not None and anchored.status == "AVAILABLE" else (
+            anchored.reason if anchored is not None else unavailable_reason
+        ),
+    )
+    values["location.volume_profile"] = FeatureValueV2(
+        profile.value if profile is not None and profile.status == "AVAILABLE" else None,
+        "price",
+        None if profile is not None and profile.status == "AVAILABLE" else (
+            profile.reason if profile is not None else unavailable_reason
+        ),
+    )
+    for diagnostic in (anchored, profile):
+        if diagnostic is not None:
+            location_refs.update(diagnostic.input_refs)
+            if diagnostic.input_identity is not None:
+                location_refs.add(diagnostic.input_identity)
     state_ref = None
     if join.m15:
         atr_series = tuple(row["atr14"] for row in technical_by_frame["m15"])
@@ -117,8 +171,13 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
         "1_observed", None if values["m15.realized_variance20"].value is not None else "VOLATILITY_HISTORY_MISSING")
     for axis in ("liquidity_state", "crowding_state", "event_state", "unknown_or_ood_state"):
         values[f"regime.{axis}"] = FeatureValueV2(None, "state", "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT")
-    version = EXACT_PREFIX_FEATURE_SET_VERSION if exact_histories is not None else FEATURE_SET_VERSION
-    refs = tuple(sorted({bar.content_hash for bar in all_bars} | {source_health_ref} | set(trade_refs) | history_refs))
+    if trade_location is None or replay_view != ReplayViewV2.ACTUAL_SYSTEM:
+        version = EXACT_PREFIX_FEATURE_SET_VERSION if exact_histories is not None else FEATURE_SET_VERSION
+    else:
+        version = (EXACT_PREFIX_TRADE_LOCATION_FEATURE_SET_VERSION if exact_histories is not None
+                   else TRADE_LOCATION_FEATURE_SET_VERSION)
+    refs = tuple(sorted({bar.content_hash for bar in all_bars} | {source_health_ref} | set(trade_refs)
+                        | history_refs | location_refs))
     artifact_id = sha256_json({"feature_set": version, "key": join.key.to_dict(), "cutoff": join.cutoff_ns,
                               "inputs": refs, "view": replay_view.value})
     finished = sample(clock_ns, floor_ns=started) if clock_ns else join.cutoff_ns

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="17" time="176.016" timestamp="2026-10-08T19:00:28.855189+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_stream_service_paging" name="test_reconnect_reconciliation_services_between_exact_ref_pages" time="2.643"><failure message="AttributeError: 'PublicSourceHealthV2' object has no attribute 'status'. Did you mean: 'state'?">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-519/test_reconnect_reconciliation_0')
+
+    def test_reconnect_reconciliation_services_between_exact_ref_pages(tmp_path) -&gt; None:
+        with OpsRepository(tmp_path / "ops.sqlite") as repository:
+            collector = PublicCollectorV2(repository=repository, registry=InstrumentRegistryV2(),
+                clock_ns=lambda: NOW)
+            refs = []
+            entries = []
+            for index in range(MAX_RECONCILIATION_REFS_PER_PAGE_V1 * 2 + 1):
+                record_id = f"reconciliation-record-{index}"
+                ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": record_id})
+                refs.append(ref)
+                entries.append(ArtifactIndexEntryV2(ref, "PublicObservationIndexV2",
+                    sha256_json({"observation": record_id}), NOW - 1, NOW - 1,
+                    {"record_id": record_id, "source_id": SOURCE}))
+            repository.register_artifacts(tuple(entries))
+            calls = []
+    
+            def service() -&gt; None:
+                assert not repository._connection.in_transaction
+                calls.append(len(calls) + 1)
+                ref = sha256_json({"service_checkpoint": calls[-1]})
+                repository.register_artifact(ArtifactIndexEntryV2(ref, "StreamServiceCheckpointV1",
+                    ref, NOW, NOW, {"call": calls[-1]}))
+    
+            health = collector.reconcile_after_reconnect(SOURCE, at_ns=NOW,
+                complete_snapshot=True, missed_interval_repaired=True,
+                snapshot_refs=tuple(sorted(refs)), service_callback=service)
+    
+&gt;           assert health.status.value == "HEALTHY_CURRENT"
+                   ^^^^^^^^^^^^^
+E           AttributeError: 'PublicSourceHealthV2' object has no attribute 'status'. Did you mean: 'state'?
+
+tests/v2/test_session041_stream_service_paging.py:42: AttributeError</failure></testcase><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_publication_services_sole_writer_without_changing_selection" time="6.540" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_publication_service_failure_cannot_publish_complete_workset" time="0.547" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_full_inventory_is_distinct_bounded_and_restart_reproduces_workset" time="76.145" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_new_mark_receipt_cannot_refresh_old_quote_fields" time="0.988" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_suspension_is_current_and_old_state_is_still_replayable" time="1.294" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_pending_read_services_writer_and_keeps_one_original_completion" time="0.100" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_runtime_recovery_preserves_nonbenchmark_dual_venue_inventory" time="9.939" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_population_overflow_is_an_explicit_gate" time="4.729" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_is_actual_and_preserves_its_source_cutoff" time="1.189" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_rejects_regressing_clock" time="0.645" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_same_venue_research_cohort_has_twenty_keys_within_global_history_bound" time="5.591" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_adoption_waits_for_durable_archive_before_proving_current_source_health" time="4.474" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_future_market_event_is_rejected_without_rescuing_publication_time" time="2.053" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_archive_completion_controls_public_index_visibility" time="1.756" /><testcase classname="tests.v2.test_session041_broad_adoption_windows" name="test_adoption_retains_all_rows_and_reconciles_identity_published_by_stream_service[False]" time="30.509" /><testcase classname="tests.v2.test_session041_broad_adoption_windows" name="test_adoption_retains_all_rows_and_reconciles_identity_published_by_stream_service[True]" time="22.318" /></testsuite></testsuites>

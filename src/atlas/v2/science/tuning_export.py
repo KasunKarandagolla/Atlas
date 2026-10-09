@@ -51,6 +51,7 @@ from atlas.v2.models.baseline import BaselineInputsV2
 from atlas.v2.models.protocol import ForecastArtifactV2
 from atlas.v2.models.worker_protocol import WorkerRequestV2
 from atlas.v2.runtime.s3_native_cadence import find_s3_m1_origin_late_gate, s3_m1_event_id
+from atlas.v2.science.broad_export import BROAD_EXPORT_TYPES, LARGE_TYPES, project_broad_evidence
 from atlas.v2.science.outcomes import (
     DecisionCalendarEntryV2,
     MaturedOutcomeV2,
@@ -85,7 +86,11 @@ _TYPES = (
     "PublicContextCycleReportV1", "NewsEventV2",
     CONTINUITY_CHECKPOINT_TYPE, BOOK_CHECKPOINT_TYPE,
     "EconomicSourceManifestV1", "OpsEconomicEvidenceResolutionV1",
+    *BROAD_EXPORT_TYPES,
 )
+_LARGE_METADATA_SQL = ",".join("'" + name + "'" for name in LARGE_TYPES)
+_METADATA_LIMIT_SQL = ("CASE WHEN artifact_type IN (" + _LARGE_METADATA_SQL + ") THEN 33554432 "
+                       "WHEN artifact_type='ResearchModelRequestV1' THEN 1114112 ELSE 131072 END")
 _METRIC_NAMES = frozenset({
     "latency_ns", "dispatch_to_result_latency_ns", "queue_items", "queue_bytes", "high_water_items",
     "high_water_bytes", "frames_rejected", "gap_count", "observed_trade_count", "recovery_epoch",
@@ -188,10 +193,10 @@ class _ProjectionCursor:
             rowid, artifact_type = heapq.heappop(self.heap)
             row = self.connection.execute(
                 "SELECT rowid AS source_rowid,artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,"
-                "CASE WHEN length(metadata_json)<=CASE WHEN artifact_type='ResearchModelRequestV1' "
-                "THEN 1114112 ELSE 131072 END THEN metadata_json ELSE '{}' END AS metadata_json,"
-                "length(metadata_json)>CASE WHEN artifact_type='ResearchModelRequestV1' THEN 1114112 "
-                "ELSE 131072 END AS metadata_overflow FROM artifact_index NOT INDEXED WHERE rowid=?", (rowid,),
+                "CASE WHEN length(metadata_json)<=" + _METADATA_LIMIT_SQL
+                + " THEN metadata_json ELSE '{}' END AS metadata_json,"
+                "length(metadata_json)>" + _METADATA_LIMIT_SQL
+                + " AS metadata_overflow FROM artifact_index NOT INDEXED WHERE rowid=?", (rowid,),
             ).fetchone()
             if row is None or row["artifact_type"] != artifact_type:
                 raise ValueError("projection insertion index differs from its exact snapshot row")
@@ -218,6 +223,7 @@ class _ValidationReader(OpsRepository):
         self._validation_cache: OrderedDict[Any, Any] = OrderedDict()
         self._validation_cache_bytes = 0
         self.validation_cache_hits = 0
+        self._broad_universe_cache: OrderedDict[Any, tuple[ArtifactIndexEntryV2, Any]] = OrderedDict()
         super().__init__(*args, **kwargs)
 
     @contextmanager
@@ -232,6 +238,7 @@ class _ValidationReader(OpsRepository):
                 self._index_cache_bytes = 0
                 self._validation_cache.clear()
                 self._validation_cache_bytes = 0
+                self._broad_universe_cache.clear()
 
     def validate_public_checkpoint(self, entry: ArtifactIndexEntryV2, *, book: bool,
                                    as_of_ns: int | None = None) -> Any:
@@ -485,8 +492,12 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
         "computation_duration_ns": None, "publication_latency_ns": None,
         "entry_at_ns": None, "exit_at_ns": None, "entry_to_exit_duration_ns": None,
         "fees": None, "funding_cashflow": None, "frozen_sizing_margin": None, "net_margin_roi": None,
+        "evidence_payload_json": None,
     }
     body = json_value(entry.metadata)
+    broad_evidence = entry.artifact_type in BROAD_EXPORT_TYPES
+    if broad_evidence:
+        row.update(project_broad_evidence(repository, entry))
     if entry.artifact_type == CONTINUITY_CHECKPOINT_TYPE:
         (repository.validate_public_checkpoint(entry, book=False) if isinstance(repository, _ValidationReader)
          else validate_continuity_checkpoint(repository, entry))
@@ -720,6 +731,15 @@ def _validated_row(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> di
                     or assessment["run_id"] != facts.run_id or assessment["config_hash"] != facts.config_hash
                     or assessment["assessed_at_ns"] > entry.available_at_ns or assessment.get("authority") != "ZERO"):
                 raise ValueError("owner health facts or assessment binding invalid")
+    if broad_evidence:
+        # The complete validated body is carried in the dedicated bounded
+        # evidence payload. Running the generic 256-node compact projection
+        # over a 4,096-instrument universe would incorrectly reject valid
+        # retained evidence as an oversized generic row.
+        row["metrics_json"] = "{}"
+        row["reason_codes"] = []
+        row["evidence_refs"] = []
+        return row
     metrics, identities, reasons, refs = _compact_values(body)
     for key, value in identities.items():
         target = "event_id" if key == "decision_event_id" else "decision_ref" if key == "decision_calendar_ref" else key
@@ -1518,6 +1538,7 @@ def _schema() -> Any:
         "computation_started_ns", "computation_finished_ns", "computation_duration_ns", "publication_latency_ns",
         "entry_at_ns", "exit_at_ns", "entry_to_exit_duration_ns", "fees", "funding_cashflow",
         "frozen_sizing_margin", "net_margin_roi",
+        "evidence_payload_json",
     )
     return pa.schema([(name, pa.int64() if name in integer_names else pa.list_(pa.string())
                        if name in list_names else pa.string()) for name in names])
@@ -1890,10 +1911,10 @@ def export_tuning_snapshot(
                     scan_through = window[0] if window is not None and window[0] is not None else after
                     cursor = connection.execute(
                         "SELECT rowid AS source_rowid,artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,"
-                        "CASE WHEN length(metadata_json)<=CASE WHEN artifact_type='ResearchModelRequestV1' "
-                        "THEN 1114112 ELSE 131072 END THEN metadata_json ELSE '{}' END AS metadata_json,"
-                        "length(metadata_json)>CASE WHEN artifact_type='ResearchModelRequestV1' THEN 1114112 "
-                        "ELSE 131072 END AS metadata_overflow FROM artifact_index NOT INDEXED WHERE rowid>? AND rowid<=? "
+                        "CASE WHEN length(metadata_json)<=" + _METADATA_LIMIT_SQL
+                        + " THEN metadata_json ELSE '{}' END AS metadata_json,"
+                        "length(metadata_json)>" + _METADATA_LIMIT_SQL
+                        + " AS metadata_overflow FROM artifact_index NOT INDEXED WHERE rowid>? AND rowid<=? "
                         f"AND artifact_type IN ({marks}) ORDER BY rowid LIMIT ?",
                         (after, scan_through, *_TYPES, max_rows + 1),
                     )
@@ -1927,7 +1948,7 @@ def export_tuning_snapshot(
                         try:
                             if raw["metadata_overflow"]:
                                 raise ValueError("compact export refuses oversized evidence metadata")
-                            entry = ArtifactIndexEntryV2._from_storage_row(raw)
+                            entry = repository.artifact_entry_from_storage_row(raw)
                             if entry.artifact_type == "ResearchRunTelemetryV1":
                                 telemetry = entry.metadata.get("telemetry", {})
                                 if telemetry.get("run_id") != identity.run_id or telemetry.get("config_hash") != identity.config_hash:

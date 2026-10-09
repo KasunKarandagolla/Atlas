@@ -16,6 +16,7 @@ from dataclasses import asdict, dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any, Protocol
 
+from atlas.domain.enums import CommandType
 from atlas.domain.execution import EconomicEvent, Observation, validate_client_order_id
 from atlas.domain.time import ensure_utc_ns
 from atlas.persistence.sqlite import PersistenceError, SQLiteJournal
@@ -26,6 +27,7 @@ from atlas.runtime.binance_demo import (
     BinanceDemoReadReceipt,
     external_client_order_id,
     local_client_order_id,
+    verify_binance_protection,
 )
 from atlas.runtime.capability_ledger import EvidenceState
 from atlas.runtime.fill_dedup import FillRecord, OrderStatusRecord
@@ -133,7 +135,9 @@ def _freeze(value: Any) -> Any:
 def _validate_intent_symbol(journal: SQLiteJournal, intent_id: str, client_id: str, symbol: str,
                             *, identity_hash: str | None = None) -> None:
     """Require the broker symbol to match a command durably bound to the intent."""
-    commands = journal.load_commands_for_intent(intent_id)
+    commands = journal.load_commands_for_intent(intent_id, limit=33)
+    if len(commands) > 32:
+        raise ValueError("Binance intent command association bound exhausted")
     symbols: set[str] = set()
     identities: set[str | None] = set()
     for command in commands:
@@ -187,7 +191,9 @@ def record_binance_order_status(
         raise ValueError("Binance order client identity missing")
     local_id = next(iter(local_ids))
     intent = journal.load_intent(intent_id)
-    if intent.client_order_id != local_id:
+    from atlas.runtime.binance_readiness import resolve_binance_order_intent
+    associated = resolve_binance_order_intent(journal, identity, local_id)
+    if associated is None or associated.intent_id != intent.intent_id:
         raise ValueError("Binance order does not match durable intent identity")
     symbol = _symbol(row.get("symbol"))
     _validate_intent_symbol(journal, intent_id, local_id, symbol, identity_hash=identity.content_hash)
@@ -387,7 +393,9 @@ def record_binance_trades(
         if not intent_id.strip():
             raise ValueError("trade intent association missing")
         intent = journal.load_intent(intent_id)
-        if intent.client_order_id != client_id:
+        from atlas.runtime.binance_readiness import resolve_binance_order_intent
+        associated = resolve_binance_order_intent(journal, identity, client_id)
+        if associated is None or associated.intent_id != intent.intent_id:
             raise ValueError("Binance trade does not match durable intent identity")
         _validate_intent_symbol(journal, intent_id, client_id, symbol, identity_hash=identity.content_hash)
         side_value = row.get("side")
@@ -565,7 +573,9 @@ def reconcile_binance_execution_history(
         symbol = _symbol(payload.get("symbol"))
         client_id = validate_client_order_id(payload.get("client_order_id"))
         intent = journal.load_intent(command.intent_id)
-        if intent.client_order_id != client_id:
+        from atlas.runtime.binance_readiness import resolve_binance_order_intent
+        associated = resolve_binance_order_intent(journal, reader.identity, client_id)
+        if associated is None or associated.intent_id != intent.intent_id:
             raise ValueError("Binance history durable command identity mismatch")
         start_ns = max(0, now_ns - history_window_ns, command.created_at_ns - 1_000_000_000)
         start_ms, end_ms = start_ns // 1_000_000, now_ns // 1_000_000
@@ -850,6 +860,7 @@ def capture_binance_recovery_cycle(
     commands = journal.load_unresolved_commands(limit=max_commands)
     overflow = bool(commands and journal.load_unresolved_commands(limit=1, after_command_id=commands[-1].command_id))
     scoped_intents: dict[str, str] = {}
+    repair_commands: list[tuple[Any, Mapping[str, Any]]] = []
     for command in commands:
         payload = json.loads(command.payload)
         if payload.get("identity_hash") != identity.content_hash or payload.get("symbol") != symbol:
@@ -857,10 +868,14 @@ def capture_binance_recovery_cycle(
             continue
         client_id = validate_client_order_id(payload.get("client_order_id"))
         intent = journal.load_intent(command.intent_id)
-        if intent.client_order_id != client_id or command.created_at_ns < history_start_ns:
+        from atlas.runtime.binance_readiness import resolve_binance_order_intent
+        associated = resolve_binance_order_intent(journal, identity, client_id)
+        if associated is None or associated.intent_id != intent.intent_id or command.created_at_ns < history_start_ns:
             reasons.append("BINANCE_RECOVERY_COMMAND_HISTORY_UNCOVERED")
         else:
             scoped_intents[client_id] = intent.intent_id
+        if associated is not None and associated.intent_id == intent.intent_id and command.command_type == CommandType.REPAIR_STOP:
+            repair_commands.append((command, payload))
     if overflow:
         reasons.append("BINANCE_RECOVERY_COMMAND_BOUND_EXHAUSTED")
 
@@ -943,7 +958,8 @@ def capture_binance_recovery_cycle(
                     history_complete = False
                     continue
                 local_id = next(iter(local_ids))
-                history_intent = journal.load_intent_by_client_order_id(local_id)
+                from atlas.runtime.binance_readiness import resolve_binance_order_intent
+                history_intent = resolve_binance_order_intent(journal, identity, local_id)
                 if history_intent is None:
                     history_complete = False
                     continue
@@ -960,7 +976,10 @@ def capture_binance_recovery_cycle(
     persist(QueryType.ORDER_HISTORY, receipts=order_history_receipts, records=history_records,
             completeness=Completeness.COMPLETE if history_complete and len(order_history_receipts) == 2 and not overflow else Completeness.INCOMPLETE_TRUNCATED,
             endpoints=("/fapi/v1/allOrders", "/fapi/v1/allAlgoOrders"),
-            facts={"unresolved_opening_command": any(command.outcome.value == "UNKNOWN" for command in commands)})
+            facts={"unresolved_opening_command": any(
+                command.command_type == CommandType.SUBMIT_ENTRY and command.outcome.value == "UNKNOWN"
+                for command in commands
+            )})
 
     for path, query_type in (("/fapi/v1/userTrades", QueryType.EXECUTION_HISTORY),
                              ("/fapi/v1/income", QueryType.TRANSACTION_LOG)):
@@ -994,9 +1013,11 @@ def capture_binance_recovery_cycle(
             persist(query_type, failure="BINANCE_RECOVERY_EXECUTION_OR_INCOME_INCOMPLETE")
 
     snapshot = None
+    selected_positions: list[Mapping[str, Any]] | None = None
+    selected_position_rows: list[BinanceObservedRow] | None = None
 
     def capture_profile() -> None:
-        nonlocal snapshot
+        nonlocal snapshot, selected_positions, selected_position_rows
         try:
             # Preserve the exact signed receipt sequence used by the profile snapshot.
             receipts: list[Any] = []
@@ -1016,6 +1037,7 @@ def capture_binance_recovery_cycle(
             snapshot = capture_account_snapshot(SnapshotReader(), expected_account_fingerprint=expected_account_fingerprint)
             positions = [row.as_dict() for row in snapshot.positions]
             selected_positions = [row for row in positions if row.get("symbol") == symbol]
+            selected_position_rows = [row for row in snapshot.positions if row.as_dict().get("symbol") == symbol]
             if any(row.get("positionSide") != "BOTH" for row in positions):
                 raise ValueError("Binance recovery position mode unresolved")
             selected_qty = sum((_decimal(row.get("positionAmt"), "recovery position quantity") for row in selected_positions), Decimal("0"))
@@ -1066,11 +1088,75 @@ def capture_binance_recovery_cycle(
     # never claims equivalence to an attached full-position stop on entry.
     conditional = open_rows.get(QueryType.CONDITIONAL_ORDERS)
     conditional_receipt = open_receipts.get(QueryType.CONDITIONAL_ORDERS)
+    protection_readbacks: list[dict[str, Any]] = []
+    for command, payload in repair_commands:
+        observed_at_ns = reader.clock_ns()
+        result: dict[str, Any] = {
+            "command_id": command.command_id,
+            "verified": False,
+            "reason": "REPAIR_PROTECTION_UNCONFIRMED",
+            "observed_at_ns": observed_at_ns,
+        }
+        try:
+            raw_client_id = payload.get("client_order_id")
+            if not isinstance(raw_client_id, str):
+                raise ValueError("repair client order identity is unavailable")
+            client_id = validate_client_order_id(raw_client_id)
+            if command.send_started_at_ns is None:
+                result["reason"] = "REPAIR_COMMAND_NOT_SENT"
+            elif (set(payload) != {"identity_hash", "instrument_ref", "symbol", "client_order_id",
+                                  "side", "quantity", "price", "stop", "reduce_only"}
+                  or payload.get("identity_hash") != identity.content_hash
+                  or payload.get("symbol") != symbol or payload.get("reduce_only") is not True
+                  or snapshot is None or not snapshot.eligible or selected_positions is None
+                  or len(selected_positions) != 1 or selected_position_rows is None
+                  or len(selected_position_rows) != 1 or conditional is None or conditional_receipt is None):
+                result["reason"] = "REPAIR_IDENTITY_POSITION_OR_OPEN_VIEW_UNRESOLVED"
+            else:
+                position = selected_positions[0]
+                signed_position = _decimal(position.get("positionAmt"), "repair readback position")
+                quantity = _decimal(payload.get("quantity"), "repair command quantity")
+                stop = _decimal(payload.get("stop"), "repair command stop")
+                expected_side = "SELL" if signed_position > 0 else "BUY"
+                if (position.get("positionSide") != "BOTH" or signed_position == 0
+                        or quantity != abs(signed_position) or payload.get("side") != expected_side
+                        or stop <= 0):
+                    result["reason"] = "REPAIR_COMMAND_DOES_NOT_MATCH_CURRENT_POSITION"
+                elif not 0 <= observed_at_ns - selected_position_rows[0].received_at_ns <= MAX_STATE_AGE_NS:
+                    result["reason"] = "REPAIR_POSITION_RECEIPT_STALE"
+                else:
+                    matches = []
+                    for row in conditional:
+                        try:
+                            local_id = local_client_order_id(str(row.get("clientAlgoId")))
+                        except ValueError:
+                            continue
+                        if row.get("symbol") == symbol and local_id == client_id:
+                            matches.append(row)
+                    if len(matches) != 1:
+                        result["reason"] = "REPAIR_CONDITIONAL_ID_ABSENT_OR_AMBIGUOUS"
+                    else:
+                        verified = verify_binance_protection(
+                            matches[0], symbol=symbol, client_order_id=client_id, stop=stop,
+                            signed_position=signed_position, now_ns=observed_at_ns,
+                            received_at_ns=conditional_receipt.received_at_ns,
+                        )
+                        result["verified"] = verified.verified
+                        result["reason"] = verified.reason
+                        result["algo_order_id"] = verified.algo_order_id
+                        result["signed_position"] = str(signed_position)
+                        result["stop"] = str(stop)
+        except (TypeError, ValueError, InvalidOperation):
+            result["reason"] = "REPAIR_READBACK_IDENTITY_OR_VALUE_INVALID"
+        protection_readbacks.append(result)
+        if not result["verified"]:
+            reasons.append("BINANCE_REPAIR_STOP_READBACK_UNCONFIRMED")
     persist(QueryType.TRADING_STOP, receipts=() if conditional_receipt is None else (conditional_receipt,),
             records=len(conditional or ()), current_view=True,
             completeness=Completeness.COMPLETE if conditional is not None else Completeness.UNKNOWN,
             facts={"native_stop_visible": bool(conditional), "protection_representation": "conditional_order",
-                   "opening_protection_qualified": False, "residual_conditional_orders": len(conditional or ())})
+                   "opening_protection_qualified": False, "residual_conditional_orders": len(conditional or ()),
+                   "protection_readbacks": protection_readbacks})
 
     ended_ns = reader.clock_ns()
     assert_writer()

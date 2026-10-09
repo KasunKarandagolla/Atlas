@@ -1,0 +1,178 @@
+{
+  "assisted_enabled": false,
+  "authenticated_external_calls": 0,
+  "behavior_accounting": [
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "authentication/environment/account identity",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "one-way isolated USD-M profile",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "product/filter validation",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "IOC/no-fill/partial fill",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "order/fill/cancel reconciliation",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "cancel/fill race",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "reduce-only",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "closePosition MARK_PRICE stop",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "protection readback/repair",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "UNKNOWN/lost ACK/duplicate ID",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "restart/history lookup",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "writer fencing",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    },
+    {
+      "authenticated_proof": "TEST GATE; no authenticated venue call was made.",
+      "behavior": "emergency flatten",
+      "current_state": "TESTED",
+      "offline_engineering_proof": "TESTED offline in the 115-case Binance execution/recovery suite with zero failures/skips; the selected-demo product-binding chronology/integrity edits were rerun in the 13-case selected-demo suite."
+    }
+  ],
+  "capital_enabled": false,
+  "closure_gate_passed": false,
+  "economic_status": "NOT ESTIMABLE",
+  "environment_scope": [
+    "DEMO",
+    "TESTNET"
+  ],
+  "final_code_sha": null,
+  "final_tested_sha": null,
+  "head_at_inventory": "a01f343f7c6be005e6d92450997bd1bbd0344800",
+  "implementation_navigation": [
+    "src/atlas/runtime/binance_demo.py",
+    "src/atlas/runtime/binance_native.py",
+    "src/atlas/runtime/binance_reconciliation.py"
+  ],
+  "independent_current_review": "UNVERIFIED: fresh independent review against a stable integrated final code SHA remains pending.",
+  "offline_evidence": [
+    {
+      "attribution": "DIRTY_DEVELOPMENT_TREE; not a final tested SHA",
+      "path": "/tmp/s41-binance-full-offline-current.xml",
+      "scope": "Binance demo, native OMS, readiness proof, UNSENT restart recovery, reconciliation, and selected-run recovery tests",
+      "sha256": "bcb0d08f6f668370a8fbd13d742c38d8e808eca9b31fe8c500676d2b86b9e18f",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 115
+      }
+    },
+    {
+      "attribution": "DIRTY_DEVELOPMENT_TREE; not a final tested SHA",
+      "path": "/tmp/s41-binance-product-binding-integrity.xml",
+      "scope": "Selected demo product-binding canonical receipt integrity rerun",
+      "sha256": "1c3ff2c6df515f28da1e88fe52f803c8b89cbd469454d47f4eb3bd1638765ad0",
+      "totals": {
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "tests": 13
+      }
+    }
+  ],
+  "package_created": false,
+  "product_restart_binding": {
+    "behavior": "The run preserves the original exact Binance product contract hash across restart while requiring the current exchangeInfo symbol row/revision to match; changed filters, chronology tampering, or receipt mismatch fail closed.",
+    "evidence": [
+      {
+        "attribution": "DIRTY_DEVELOPMENT_TREE; not a final tested SHA",
+        "path": "/tmp/s41-binance-product-stream-paging-final.xml",
+        "scope": "Binance product binding/restart and exact-ref service paging tests",
+        "sha256": "a883daa97fa18afb74382374eb25ad997d4cd0de2a99643fa1337472a0b76b54",
+        "totals": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 14
+        }
+      },
+      {
+        "attribution": "DIRTY_DEVELOPMENT_TREE; not a final tested SHA",
+        "path": "/tmp/s41-binance-product-binding-integrity.xml",
+        "scope": "Selected demo product-binding canonical receipt integrity rerun",
+        "sha256": "1c3ff2c6df515f28da1e88fe52f803c8b89cbd469454d47f4eb3bd1638765ad0",
+        "totals": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 13
+        }
+      }
+    ],
+    "status": "TESTED"
+  },
+  "production_capital_enablement": false,
+  "protection_profile": "One-way BOTH position; closePosition STOP_MARKET; MARK_PRICE; exact client identity, stop, side, status, quantity-bound current position and fresh receipts; uncertainty remains fail closed.",
+  "remaining_external_behaviors": [
+    "IOC/no-fill/partial fill",
+    "UNKNOWN/lost ACK/duplicate ID",
+    "authentication/environment/account identity",
+    "cancel/fill race",
+    "closePosition MARK_PRICE stop",
+    "emergency flatten",
+    "one-way isolated USD-M profile",
+    "order/fill/cancel reconciliation",
+    "product/filter validation",
+    "protection readback/repair",
+    "reduce-only",
+    "restart/history lookup",
+    "writer fencing"
+  ],
+  "schema_version": 1,
+  "session": 41,
+  "status": "TEST GATE",
+  "worktree_dirty": true
+}

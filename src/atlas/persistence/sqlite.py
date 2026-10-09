@@ -778,14 +778,18 @@ class SQLiteJournal:
 
         return self._wrap("load_intent_by_client_order_id", op)
 
-    def load_unresolved_intents(self) -> list[Intent]:
+    def load_unresolved_intents(self, *, limit: int | None = None) -> list[Intent]:
+        if limit is not None and (type(limit) is not int or not 1 <= limit <= 32):
+            raise PersistenceError("unresolved intent page exceeds its bound")
         terminal = LifecycleState.CLOSED.value
         return self._wrap(
             "load_unresolved_intents",
             lambda: [
                 self._intent_from_row(r)
                 for r in self._conn.execute(
-                    "SELECT * FROM intents WHERE lifecycle<>? ORDER BY created_at_ns", (terminal,)
+                    "SELECT * FROM intents WHERE lifecycle<>? ORDER BY created_at_ns"
+                    + (" LIMIT ?" if limit is not None else ""),
+                    (terminal, limit) if limit is not None else (terminal,),
                 ).fetchall()
             ],
         )
@@ -1039,16 +1043,36 @@ class SQLiteJournal:
 
         return self._wrap("load_command", op)
 
-    def load_commands_for_intent(self, intent_id: str) -> list[Command]:
+    def load_commands_for_intent(self, intent_id: str, *, limit: int | None = None) -> list[Command]:
+        if limit is not None and (type(limit) is not int or not 1 <= limit <= 33):
+            raise PersistenceError("intent command page exceeds its bound")
         return self._wrap(
             "load_commands_for_intent",
             lambda: [
                 self._command_from_row(r)
                 for r in self._conn.execute(
-                    "SELECT * FROM commands WHERE intent_id=? ORDER BY created_at_ns,command_id", (intent_id,)
+                    "SELECT * FROM commands WHERE intent_id=? ORDER BY created_at_ns,command_id"
+                    + (" LIMIT ?" if limit is not None else ""),
+                    (intent_id, limit) if limit is not None else (intent_id,),
                 ).fetchall()
             ],
         )
+
+    def load_command_by_client_order_id(self, client_order_id: str) -> Command | None:
+        """Resolve an additive demo order lifecycle through its durable command."""
+        if not isinstance(client_order_id, str) or re.fullmatch(r"[0-9a-f]{32}", client_order_id) is None:
+            raise PersistenceError("invalid command client order identity")
+
+        def op():
+            rows = self._conn.execute(
+                "SELECT * FROM commands WHERE json_valid(payload) "
+                "AND json_extract(payload,'$.client_order_id')=? LIMIT 2", (client_order_id,),
+            ).fetchall()
+            if len(rows) > 1:
+                raise PersistenceError("ambiguous command client order identity")
+            return self._command_from_row(rows[0]) if rows else None
+
+        return self._wrap("load_command_by_client_order_id", op)
 
     def list_commands_for_intent(self, intent_id: str) -> list[Command]:
         return self.load_commands_for_intent(intent_id)
@@ -1316,6 +1340,21 @@ class SQLiteJournal:
 
     def append_observation(self, obs: Any) -> None:
         self._wrap("append_observation", lambda: self._append_observation(obs))
+
+    def get_observation_by_id(self, observation_id: str) -> dict[str, Any] | None:
+        """Load one exact durable source receipt by its primary key."""
+        if not isinstance(observation_id, str) or not observation_id:
+            raise ValueError("observation id is required")
+
+        def op() -> dict[str, Any] | None:
+            row = self._conn.execute(
+                "SELECT observation_id,source,venue_identity,source_time_ns,receive_time_ns,raw_hash,"
+                "request_id,query_interval_ns,completeness FROM observations WHERE observation_id=?",
+                (observation_id,),
+            ).fetchone()
+            return dict(row) if row is not None else None
+
+        return self._wrap("get_observation_by_id", op)
 
     def _append_observation(self, obs: Any) -> None:
         with self._tx() as c:

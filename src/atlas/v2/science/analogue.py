@@ -646,7 +646,8 @@ def _cost_semantics(repo: OpsRepository, product: ProductContractV2, key: Instru
         "fee_ref": fee_ref, "funding_schedule_ref": funding_ref, "execution_assumptions_ref": execution_ref})
 
 
-def build_analogue_compatibility(repo: OpsRepository, *, action_ref: str) -> AnalogueCompatibilityV2:
+def build_analogue_compatibility(repo: OpsRepository, *, action_ref: str,
+        consumer_at_ns: int | None = None) -> AnalogueCompatibilityV2:
     """Derive the only repository-backed compatibility key from the frozen action and cutoff evidence."""
     action_entry, action_body = _indexed_body(repo, action_ref, "ActionArtifactV2", "action_artifact")
     identity = action_entry.metadata.get("action_identity")
@@ -662,14 +663,28 @@ def build_analogue_compatibility(repo: OpsRepository, *, action_ref: str) -> Ana
     if candidate_entry.content_hash != candidate_ref or candidate.content_hash != candidate_ref:
         raise AnalogueNotEstimableError("NOT_ESTIMABLE_INVALID_FROZEN_CANDIDATE")
     decision_at_ns = candidate.decision_at_ns
+    consumer_at_ns = action_entry.available_at_ns if consumer_at_ns is None else consumer_at_ns
+    if consumer_at_ns < action_entry.available_at_ns or consumer_at_ns > candidate.deadline_ns:
+        raise AnalogueNotEstimableError("NOT_ESTIMABLE_FROZEN_ACTION_OUTSIDE_CONSUMER_WINDOW")
+    from atlas.v2.chronology import causal_artifact
+
+    # Candidates, selection, sizing and the frozen action are computations over
+    # the decision-time market prefix. Their publication may therefore follow
+    # T0, but only a sealed, recursively causal receipt can establish that.
+    for derived_ref in (candidate_ref, str(action_body.get("candidate_set_ref")),
+            str(action_body.get("sizing_ref")), action_ref, candidate.snapshot_hash):
+        if not causal_artifact(repo, derived_ref, cutoff_ns=decision_at_ns,
+                consumer_at_ns=consumer_at_ns, deadline_ns=candidate.deadline_ns):
+            raise AnalogueNotEstimableError("NOT_ESTIMABLE_INVALID_FROZEN_ACTION_DERIVED_CHRONOLOGY")
     candidate_set_ref = action_body.get("candidate_set_ref")
     set_entry, set_body = _indexed_body(repo, str(candidate_set_ref), "CandidateSetV2", "candidate_set")
     candidate_set = CandidateSetV2.from_dict(json_value(set_body))
     if (set_entry.content_hash != candidate_set_ref or candidate_set.content_hash != candidate_set_ref
             or candidate_set.selected_candidate_id != candidate.candidate_id
-            or set_entry.available_at_ns > decision_at_ns
+            or candidate_set.envelope.available_at_ns > consumer_at_ns
             or candidate.content_hash not in candidate_set.envelope.input_refs
-            or action_entry.available_at_ns > decision_at_ns or candidate.envelope.available_at_ns > decision_at_ns
+            or action_entry.available_at_ns > consumer_at_ns
+            or candidate.envelope.available_at_ns > consumer_at_ns
             or action_body.get("action_hash") != sha256_json(identity)
             or identity.get("policy_hash") != candidate.policy_hash
             or identity.get("horizon_end_ns") != candidate.horizon_end_ns
@@ -693,14 +708,14 @@ def build_analogue_compatibility(repo: OpsRepository, *, action_ref: str) -> Ana
             or sizing_body.get("quantity") != str(identity.get("quantity"))
             or sizing_body.get("risk_policy_hash") != identity.get("risk_policy_hash")
             or sizing_body.get("risk_policy_v2_hash") != identity.get("risk_policy_v2_hash")
-            or sizing_entry.available_at_ns > decision_at_ns
+            or sizing_entry.available_at_ns > consumer_at_ns
             or not isinstance(action_inputs, (list, tuple))
             or not {candidate_ref, candidate_set_ref, sizing_ref, product_ref}.issubset(set(action_inputs))):
         raise AnalogueNotEstimableError("NOT_ESTIMABLE_FROZEN_ACTION_SIZING_MISMATCH")
     feature_entry, feature_body = _indexed_body(repo, candidate.snapshot_hash, "FeatureArtifactV2", "feature")
     feature = FeatureArtifactV2.from_dict(json_value(feature_body))
     if (feature_entry.content_hash != candidate.snapshot_hash or feature.content_hash != candidate.snapshot_hash
-            or feature_entry.available_at_ns > decision_at_ns or feature.envelope.available_at_ns > decision_at_ns
+            or feature_entry.available_at_ns > consumer_at_ns or feature.envelope.available_at_ns > consumer_at_ns
             or feature.information_cutoff_ns > decision_at_ns or feature.key != key
             or feature.replay_view.value not in {"ACTUAL_SYSTEM", "RECONSTRUCTED_MARKET"}):
         raise AnalogueNotEstimableError("NOT_ESTIMABLE_CAUSAL_FEATURE_ARTIFACT_MISMATCH")
@@ -721,9 +736,10 @@ def build_analogue_compatibility(repo: OpsRepository, *, action_ref: str) -> Ana
         participation_key, liquidity_ref, schema_hash, availability, costs_hash)
 
 
-def _causal_values(repo: OpsRepository, action_ref: str, feature_names: tuple[str, ...], cutoff_ns: int
+def _causal_values(repo: OpsRepository, action_ref: str, feature_names: tuple[str, ...], cutoff_ns: int,
+        consumer_at_ns: int | None = None
         ) -> tuple[tuple[float | None, ...], str]:
-    vector = action_features(repo, action_ref, cutoff_ns=cutoff_ns)
+    vector = action_features(repo, action_ref, cutoff_ns=cutoff_ns, consumer_at_ns=consumer_at_ns)
     indexed = dict(zip(vector.feature_order, vector.values, strict=True))
     if any(name not in indexed or name.startswith("missing:") for name in feature_names):
         raise ValueError("analogue features must be a declared subset of causal M0 action evidence")
@@ -733,12 +749,13 @@ def _causal_values(repo: OpsRepository, action_ref: str, feature_names: tuple[st
 
 
 def _validate_action_compatibility(repo: OpsRepository, action_ref: str, *, decision_at_ns: int,
-        compatibility: AnalogueCompatibilityV2, feature_names: tuple[str, ...], values: tuple[float | None, ...]) -> None:
+        compatibility: AnalogueCompatibilityV2, feature_names: tuple[str, ...], values: tuple[float | None, ...],
+        consumer_at_ns: int | None = None) -> None:
     entry = repo.get_artifact(action_ref)
     identity = entry.metadata.get("action_identity") if entry else None
     if not isinstance(identity, Mapping):
         raise ValueError("analogue exact action identity is unavailable")
-    derived = build_analogue_compatibility(repo, action_ref=action_ref)
+    derived = build_analogue_compatibility(repo, action_ref=action_ref, consumer_at_ns=consumer_at_ns)
     if (identity["horizon_end_ns"] <= decision_at_ns or derived != compatibility
         or not feature_names or tuple(sorted(set(feature_names))) != feature_names
         or len(values) != len(feature_names)):
@@ -747,7 +764,7 @@ def _validate_action_compatibility(repo: OpsRepository, action_ref: str, *, deci
 
 def build_analogue_query(repo: OpsRepository, *, action_ref: str, candidate_ref: str, candidate_set_ref: str,
         cutoff_ns: int, compatibility: AnalogueCompatibilityV2, feature_names: tuple[str, ...],
-        regime_id: str) -> AnalogueQueryV2:
+        regime_id: str, consumer_at_ns: int | None = None) -> AnalogueQueryV2:
     entry = repo.get_artifact(action_ref)
     body = entry.metadata.get("action_artifact") if entry else None
     identity = entry.metadata.get("action_identity") if entry else None
@@ -757,9 +774,14 @@ def build_analogue_query(repo: OpsRepository, *, action_ref: str, candidate_ref:
     candidate_raw = candidate_entry.metadata.get("candidate") if candidate_entry is not None else None
     if not isinstance(candidate_raw, Mapping) or CandidateActionV2.from_dict(json_value(candidate_raw)).decision_at_ns != cutoff_ns:
         raise ValueError("analogue query cutoff must equal the exact frozen action decision time")
-    values, _ = _causal_values(repo, action_ref, feature_names, cutoff_ns)
+    entry = repo.get_artifact(action_ref)
+    if entry is None:
+        raise ValueError("analogue query action is not indexed")
+    consumer_at_ns = entry.available_at_ns if consumer_at_ns is None else consumer_at_ns
+    values, _ = _causal_values(repo, action_ref, feature_names, cutoff_ns, consumer_at_ns)
     _validate_action_compatibility(repo, action_ref, decision_at_ns=cutoff_ns,
-        compatibility=compatibility, feature_names=feature_names, values=values)
+        compatibility=compatibility, feature_names=feature_names, values=values,
+        consumer_at_ns=consumer_at_ns)
     return AnalogueQueryV2(str(body["action_hash"]), action_ref, candidate_ref, candidate_set_ref,
         cutoff_ns, int(identity["horizon_end_ns"]), compatibility, feature_names, values,
         tuple(cutoff_ns if value is not None else None for value in values),
@@ -780,9 +802,14 @@ def observation_from_matured_outcome(repo: OpsRepository, *, outcome_ref: str, c
     assert outcome.action_artifact_ref and outcome.action_hash and outcome.candidate_ref
     assert outcome.net_payoff is not None
     # Compatibility and state features are always reconstructed at the action's original cutoff.
-    values, feature_ref = _causal_values(repo, outcome.action_artifact_ref, feature_names, outcome.decision_at_ns)
+    action_entry = repo.get_artifact(outcome.action_artifact_ref)
+    if action_entry is None:
+        raise ValueError("matured outcome source action is not indexed")
+    values, feature_ref = _causal_values(repo, outcome.action_artifact_ref, feature_names,
+        outcome.decision_at_ns, action_entry.available_at_ns)
     _validate_action_compatibility(repo, outcome.action_artifact_ref, decision_at_ns=outcome.decision_at_ns,
-        compatibility=compatibility, feature_names=feature_names, values=values)
+        compatibility=compatibility, feature_names=feature_names, values=values,
+        consumer_at_ns=action_entry.available_at_ns)
     if outcome.provenance.value != "ACTUAL":
         payoff_entry, payoff = _indexed_body(repo, str(outcome.execution_evidence_ref), "PolicyPayoffV2", "payoff")
         action_entry, action_body = _indexed_body(repo, outcome.action_artifact_ref, "ActionArtifactV2", "action_artifact")

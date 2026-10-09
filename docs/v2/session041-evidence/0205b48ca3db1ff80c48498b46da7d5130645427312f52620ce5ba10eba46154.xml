@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="27.790" timestamp="2026-10-09T00:24:17.948492+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_mixed_broad_capacity" name="test_mixed_1024_contract_public_workload_under_bounded_stalls" time="22.279"><failure message="ValueError: BROAD_COHORT_AND_WATCH_CAPACITY_EXCEEDED">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-579/test_mixed_1024_contract_publi0')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x7fe6b1de1a80&gt;
+
+    def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, record_property):
+        products = _contracts()
+        clock = [NOW]
+        path = tmp_path / "mixed-ops.sqlite"
+        runtime = BroadPublicRuntimeV2(clock_ns=lambda: clock[0],
+            stream_factories={"BYBIT": _idle_stream(), "BINANCE_MARKET": _idle_stream()})
+        source = _DeterministicBybitSource(products, NOW)
+        port = BroadProductionOpsCyclePortV2(public_source=source, broad_runtime=runtime,
+            clock_ns=lambda: clock[0])
+        interpreted: list[CapturedPublicFrameV2] = []
+        original_interpreter = runtime._interpret_frames
+    
+        def observe_interpreter(repository, frames, *, now_ns):
+            interpreted.extend(frames)
+            return original_interpreter(repository, frames, now_ns=now_ns)
+    
+        runtime._interpret_frames = observe_interpreter
+        identity = TuningRunIdentityV1("s41-mixed-broad-capacity", "a" * 64, "b" * 40, 0)
+        report_dir = tmp_path / "reports"
+        offered: list[CapturedPublicFrameV2] = []
+        commit_observation: dict[str, float | int] = {}
+        archive_stall_seconds: list[float] = []
+        reader_snapshots: list[tuple[int, int]] = []
+        report_release = threading.Event()
+        def export_during_stall():
+            if not report_release.wait(60.0):
+                raise TimeoutError("report export did not reach the injected commit stall")
+            return export_tuning_snapshot(path, report_dir, identity, cutoff_ns=NOW + 20_000_000_000)
+    
+        exporter = ReadOnlyReportWorkerV1(export_during_stall)
+        export_completion = []
+    
+        try:
+            with OpsRepository(path) as repository:
+                # Persist representative active watch state through the repository's
+                # domain API. The production recovery/workset code discovers these
+                # rows; the stream plan receives no direct active-key override.
+                watch_keys = tuple(item.key for item in (*products[2:6], *products[514:518]))
+                for index, key in enumerate(watch_keys):
+                    watch_id = sha256_json({"session": "041-mixed-watch", "key": key.to_dict()})
+                    repository.create_watch(OpportunityWatchV2(
+                        watch_id, key, "SYNTHETIC_CAPACITY_PROBE", "V1",
+                        sha256_json({"policy": index}), WatchStateV2.DETECTED, 0,
+                        NOW, NOW, sha256_json({"thesis": index}), (), "TRADE",
+                        NOW + 60_000_000_000, NOW))
+                recovery = port.recover(repository, now_ns=NOW)
+                assert recovery.required_source_ids == ("BINANCE_PUBLIC_V2", "BYBIT_PUBLIC_V2")
+                snapshot = source.acquire_snapshot(now_ns=NOW)
+                port._register_refreshed_stream_products(repository, snapshot)
+                # The fixture is synthetically shaped and may be marked incomplete
+                # by the public health gate; persistence and receipt identity below
+                # remain the measured behavior.
+&gt;               port._persist_broad_public_snapshot(repository, snapshot, now_ns=NOW)
+
+tests/v2/test_session041_mixed_broad_capacity.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/production.py:6280: in _persist_broad_public_snapshot
+    workset = publish_broad_workset(repository, products=self.public_source.current_products, snapshot=eligible_snapshot,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+repository = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fe6aa3750a0&gt;
+products = (ProductContractV2(key=InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;, environment=&lt;EnvironmentV2.MAINNET: 'MAINNET'&gt;,...isting_at_ns=None, delisting_at_ns=None, fee_schedule_ref=None, margin_tiers_ref=None, funding_schedule_ref=None), ...)
+snapshot = BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='a34b407b1dd4140e86131856d0e...': 1800000000000000000})}), 'source_snapshot_id': '777b5d15176b9d314e47b95ade0fa1ff38fa6d7402e45276f189e4e6fb5f4874'}))
+available_at_ns = 1800000000000000000
+acquisition_ref = '9398f21ef905bb92e080cba189e24c47811ba6cd6875a74d9786e912ec704389'
+source_state = {'BYBIT_PUBLIC_V2': 'HEALTHY_CURRENT', 'BINANCE_PUBLIC_V2': 'INCOMPLETE_SNAPSHOT'}
+active_watch_keys = (InstrumentKeyV2(venue=&lt;VenueV2.BINANCE: 'BINANCE'&gt;, environment=&lt;EnvironmentV2.MAINNET: 'MAINNET'&gt;, product=&lt;ProductT...', settlement_asset='USDT', contract_revision='9de2a1b7364fde00bd5919601f0055b0406f2779061258a3178c8e9987f65adc'), ...)
+clock_ns = &lt;function test_mixed_1024_contract_public_workload_under_bounded_stalls.&lt;locals&gt;.&lt;lambda&gt; at 0x7fe6b1de1da0&gt;
+service = &lt;function BroadProductionOpsCyclePortV2._persist_broad_public_snapshot.&lt;locals&gt;.&lt;lambda&gt; at 0x7fe6a9d132e0&gt;
+
+    def publish_broad_workset(repository: OpsRepository, *, products: tuple[ProductContractV2, ...],
+                             snapshot: Any, available_at_ns: int, acquisition_ref: str,
+                             source_state: Mapping[str, str],
+                             active_watch_keys: tuple[InstrumentKeyV2, ...] = (),
+                             clock_ns: Callable[[], int] | None = None,
+                             service: Callable[[], None] | None = None) -&gt; Mapping[str, Any]:
+        source_cutoff_ns = available_at_ns
+        publication_ns = source_cutoff_ns
+    
+        def service_chunk(index: int = 0) -&gt; None:
+            # Snapshot inputs and the market cutoff stay sealed while the sole
+            # writer services independent captured transport between bounded work.
+            if service is not None and index % 32 == 0:
+                service()
+    
+        def publication_clock() -&gt; int:
+            nonlocal publication_ns
+            observed_ns = source_cutoff_ns if clock_ns is None else clock_ns()
+            if type(observed_ns) is not int or observed_ns &lt; publication_ns:
+                raise ValueError("BROAD_WORKSET_PUBLICATION_CLOCK_REGRESSED")
+            publication_ns = observed_ns
+            return publication_ns
+    
+        if len(products) &gt; MAX_PRODUCTS or len({p.key for p in products}) != len(products):
+            raise ValueError("BROAD_PRODUCT_POPULATION_INVALID")
+        prior = latest_workset(repository, cutoff_ns=available_at_ns)
+        prior_coverage = prior.get("coverage", {}) if prior else {}
+        prior_quotes = prior.get("cheap_quotes", {}) if prior else {}
+        coverage: dict[str, dict[str, list[list[int]]]] = {}
+        quote_rows: dict[str, dict[str, Any]] = {}
+        by_key = {product.key.to_canonical_json(): product for product in products}
+        for index, key in enumerate(by_key):
+            service_chunk(index)
+            coverage[key] = {interval: [list(pair) for pair in segments]
+                             for interval, segments in prior_coverage.get(key, {}).items()}
+            quote_rows[key] = dict(prior_quotes.get(key, {}))
+        new_closes: dict[tuple[str, str], list[int]] = {}
+        for index, item in enumerate(snapshot.records):
+            service_chunk(index)
+            key = item.instrument_key.to_canonical_json()
+            if key not in by_key:
+                raise ValueError("BROAD_RECORD_UNKNOWN_PRODUCT")
+            if item.bar is not None:
+                new_closes.setdefault((key, item.bar.interval.value), []).append(item.bar.close_at_ns)
+            elif item.observation.event_type in {"TICKER_MARK_INDEX_FUNDING_OI", "BOOK_TICKER",
+                                                 "MARK_INDEX_CURRENT_FUNDING", "TICKER_24H"}:
+                row = json.loads(item.raw_payload)
+                if not isinstance(row, Mapping):
+                    raise ValueError("BROAD_QUOTE_PAYLOAD_INVALID")
+                receipts = dict(quote_rows[key].get("_field_receipts", {}))
+                for field, value in row.items():
+                    if not str(field).startswith("_"):
+                        quote_rows[key][field] = value
+                        receipts[field] = item.observation.received_at_ns
+                quote_rows[key]["_field_receipts"] = receipts
+        for index, ((key, interval), closes) in enumerate(new_closes.items()):
+            service_chunk(index)
+            coverage[key][interval] = _merge_coverage(coverage[key].get(interval, ()), closes, INTERVAL_NS[interval])
+        observations = []
+        observation_entries = []
+        missing_by_key = {}
+        for index, (key_json, product) in enumerate(sorted(by_key.items())):
+            service_chunk(index)
+            quote = quote_rows[key_json]
+            bid, ask = _decimal(quote, "bid1Price", "bidPrice", "b"), _decimal(quote, "ask1Price", "askPrice", "a")
+            turnover = _decimal(quote, "turnover24h", "quoteVolume")
+            spread = ((ask - bid) / ((ask + bid) / 2) * 10000
+                      if bid is not None and ask is not None and 0 &lt; bid &lt;= ask else None)
+            missing = []
+            if spread is None:
+                missing.append("CURRENT_BBO_UNAVAILABLE")
+            if turnover is None:
+                missing.append("TURNOVER_UNAVAILABLE")
+            for label, names in (("BID", ("bid1Price", "bidPrice", "b")),
+                                 ("ASK", ("ask1Price", "askPrice", "a")),
+                                 ("TURNOVER", ("turnover24h", "quoteVolume"))):
+                received = _field_receipt(quote, *names)
+                if received is None or not 0 &lt;= available_at_ns - received &lt;= 30_000_000_000:
+                    missing.append(f"CURRENT_{label}_STALE_OR_UNAVAILABLE")
+            ranges = coverage[key_json]
+            counts = {interval: _contiguous_count(ranges.get(interval, ()), step)
+                      for interval, step in INTERVAL_NS.items()}
+            s1_days = min(counts["M15"] // 96, counts["H1"] // 24, counts["H4"] // 6)
+            days_by_policy = {"S1_MTF_TREND_PULLBACK": s1_days,
+                "S2_COMPRESSION_BREAKOUT": counts["M15"] // 96,
+                "S3_VWAP_STAT_MEAN_REVERSION": counts["M1"] // 1440,
+                "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH": min(counts["H1"] // 24, counts["H4"] // 6)}
+            bars_present = all(ranges.get(interval) and 0 &lt;= available_at_ns - ranges[interval][-1][1]
+                               &lt;= step * 2 + 5_000_000_000 for interval, step in INTERVAL_NS.items())
+            source_id = "BYBIT_PUBLIC_V2" if product.key.venue.value == "BYBIT" else "BINANCE_USDM_PUBLIC_V2"
+            state = source_state.get(source_id, "INCOMPLETE_SNAPSHOT")
+            health = (PublicSourceStateV2(state) if state in PublicSourceStateV2._value2member_map_
+                      else PublicSourceStateV2.INCOMPLETE_SNAPSHOT)
+            if missing:
+                health = PublicSourceStateV2.INCOMPLETE_SNAPSHOT
+            metadata = snapshot.source_snapshot.get("metadata", {}).get(product.key.venue.value, {})
+            metadata_received = metadata.get("metadata_received_at_ns",
+                metadata.get("received_at_ns", product.observed_at_ns))
+            if type(metadata_received) is not int or metadata_received &gt; available_at_ns:
+                raise ValueError("BROAD_METADATA_RECEIPT_INVALID")
+            observation = UniverseObservationV2(product, s1_days, bars_present,
+                turnover if turnover is not None else Decimal(0), spread if spread is not None else Decimal("1000000000"),
+                health, available_at_ns, POLICY_DAYS, available_at_ns,
+                active_watch=product.key in active_watch_keys,
+                product_metadata_received_at_ns=metadata_received,
+                observed_policy_history_days=days_by_policy)
+            observations.append(observation)
+            missing_by_key[key_json] = missing
+            # These are derived cheap measurements with exact source acquisition
+            # lineage, not fabricated public receipts.
+            payload = {"product_ref": product.content_hash, "observation_hash": observation.content_hash,
+                       "source_ref": acquisition_ref, "available_at_ns": available_at_ns,
+                       "source_refs": sorted({product.content_hash, acquisition_ref}),
+                       "missing_reasons": missing, "coverage": ranges}
+            observation_ref = sha256_json(payload)
+            observation_entries.append(ArtifactIndexEntryV2(observation_ref, "UniverseObservationV2",
+                observation_ref, available_at_ns, available_at_ns, {"observation": payload}))
+        # The observation identity is the sealed market measurement. A later
+        # publication of the same immutable measurement must not rewrite its first
+        # index timestamps; the enclosing universe/workset carries the new actual
+        # publication receipt.
+        for offset in range(0, len(observation_entries), 32):
+            service_chunk()
+            chunk = observation_entries[offset:offset + 32]
+            existing_observations = repository.get_artifact_metadata_by_refs(
+                tuple(entry.artifact_ref for entry in chunk))
+            observation_batch = []
+            observations_published_ns = publication_clock()
+            for entry in chunk:
+                existing = existing_observations.get(entry.artifact_ref)
+                if existing is None:
+                    observation_batch.append(replace(entry, created_at_ns=observations_published_ns,
+                        available_at_ns=observations_published_ns))
+                elif (existing["content_hash"] != entry.content_hash
+                        or existing["metadata"] != entry.metadata):
+                    raise ValueError("BROAD_OBSERVATION_IDENTITY_CONFLICT")
+            repository.register_artifacts(tuple(observation_batch))
+        runtime = DynamicUniverseRuntimeV2(max_product_age_ns=3_600_000_000_000)
+        benchmarks = {p.key for p in products if p.key.native_symbol in {"BTCUSDT", "ETHUSDT"}
+                      and p.trading_status.value == "TRADING"}
+        current_trading_keys = {p.key for p in products if p.trading_status.value == "TRADING"}
+        mandatory = (set(active_watch_keys) | benchmarks) &amp; current_trading_keys
+        if len(mandatory) &gt; MAX_ACTIVE_HISTORY_KEYS - 4:
+            raise ValueError("BROAD_REQUIRED_ACTIVE_WORK_OVERFLOW")
+        prior_ref = sha256_json(prior) if prior else None
+        input_refs = tuple(sorted({acquisition_ref, *(entry.artifact_ref for entry in observation_entries),
+                                  *([prior_ref] if prior_ref else [])}))
+        built = runtime.build_snapshot(tuple(observations), decision_slot_ns=available_at_ns,
+            information_cutoff_ns=available_at_ns, created_at_ns=available_at_ns,
+            selection_policy_hash=SELECTION_POLICY_HASH, input_refs=input_refs, exploration_count=4,
+            top_tier_2=MAX_ACTIVE_HISTORY_KEYS - 4 - len(mandatory), service=service)
+        service_chunk()
+        universe_created_ns = publication_clock()
+        universe = replace(built.universe, entries=tuple(replace(entry,
+            reasons=tuple(sorted(set(entry.reasons) | set(missing_by_key[entry.key.to_canonical_json()]))))
+            for entry in built.universe.entries), decision_slot_ns=universe_created_ns,
+            envelope=replace(built.universe.envelope,
+            input_refs=tuple(sorted({*input_refs, *(p.content_hash for p in products)})),
+            created_at_ns=universe_created_ns, available_at_ns=universe_created_ns, content_hash=""))
+        repository.register_artifact(ArtifactIndexEntryV2(universe.content_hash, "UniverseContractV2",
+            universe.content_hash, universe_created_ns, universe_created_ns, {"universe": universe.to_dict()}))
+        service_chunk()
+        active = {key for key, tier in built.tiers.items() if tier &gt;= ComputeTierV2.TIER_2}
+        # Warm-up samples rotate causally even before the scanner has 30 days.
+        rotation = snapshot.source_snapshot.get("metadata", {}).get("enrichment", {}).get("scheduled_keys", ())
+        rotation_keys = {InstrumentKeyV2.from_dict(json.loads(key)) for key in rotation if isinstance(key, str)} &amp; current_trading_keys
+        # Keep a finite same-venue cohort large enough for S6's frozen beta
+        # population. All venues remain in Tier 0/1; cohort rotation changes only
+        # prepared history work, with exact selection retained in this receipt.
+        cohort_venues = sorted({key.venue for key in current_trading_keys}, key=lambda venue: venue.value)
+        cohort_venue = cohort_venues[(source_cutoff_ns // DAY_NS) % len(cohort_venues)] if cohort_venues else None
+        cohort_candidates = sorted((key for key in current_trading_keys if key.venue == cohort_venue),
+            key=lambda key: (key.native_symbol != "BTCUSDT", key not in benchmarks,
+                -(_decimal(quote_rows[key.to_canonical_json()], "turnover24h", "quoteVolume") or Decimal(0)),
+                key.to_canonical_json()))
+        cohort = cohort_candidates[:20]
+        required = set(mandatory) | set(cohort)
+        if len(required) &gt; MAX_ACTIVE_HISTORY_KEYS:
+&gt;           raise ValueError("BROAD_COHORT_AND_WATCH_CAPACITY_EXCEEDED")
+E           ValueError: BROAD_COHORT_AND_WATCH_CAPACITY_EXCEEDED
+
+src/atlas/v2/runtime/broad_universe.py:296: ValueError</failure></testcase></testsuite></testsuites>

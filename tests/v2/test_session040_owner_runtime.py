@@ -292,6 +292,33 @@ def test_failed_run_cannot_be_relaunched_but_new_identity_starts_fresh(tmp_path,
     assert (failed / LATCH_FILENAME).read_bytes() == original
 
 
+def test_owner_indicator_shows_per_source_health_pressure_and_run_validity(tmp_path, build):
+    run = _run(tmp_path)
+    identity = product.load_run(run)
+    facts = _facts(identity, queue_items=16, queue_high_water=32, queue_bytes=4096,
+                   queue_capacity_bytes=16_777_216, queue_high_water_bytes=4096, capture_pending_batches=3,
+                   capture_max_pending_batches=64, free_disk_bytes=80_000_000_000,
+                   disk_reserve_bytes=64_000_000_000, wal_bytes=2_000_000,
+                   report_state="SUCCEEDED", evidence_validation_failures=0)
+    policy = LiveHealthPolicyV1()
+    product._publish(run / "live-health.json", {
+        "version": "OWNER_LIVE_HEALTH_PROJECTION_V1", "facts": facts.to_dict(),
+        "assessment": assess_live_health(facts, policy=policy).to_dict(),
+        "policy": policy.to_dict(),
+        "source_states": {"BYBIT_DEPTH": "HEALTHY_CURRENT", "BINANCE_MARKET": "DISCONNECTED"},
+        "authority": "ZERO",
+    })
+    product._publish(run / "status.json", {"provider_health": "TEST GATE",
+        "provider_reason": "CONFIGURED_PROVIDER_BROKER_LOST"})
+    details = "\n".join(product.owner_live_indicator(run, now_ns=time.time_ns())["operator_details"])
+    assert "Process/watchdog: responding" in details
+    assert "Run validity: no permanent failure observed" in details
+    assert "BYBIT_DEPTH HEALTHY_CURRENT" in details and "BINANCE_MARKET DISCONNECTED" in details
+    assert "Queue/capture: 16/512 items, 4096/16777216 bytes, capture 3/64 batches" in details
+    assert "Storage: free 80000000000 bytes" in details and "WAL 2000000 bytes" in details
+    assert "Provider/critic: TEST GATE (CONFIGURED_PROVIDER_BROKER_LOST)" in details
+
+
 class _Source:
     """Measured-status fixture; pressure stop never invents frame rejection."""
 

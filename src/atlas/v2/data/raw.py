@@ -11,6 +11,19 @@ from typing import Any
 from .._serialization import canonical_json, nonblank, sha256_json, sha256_ref, strict_fields, string_tuple, timestamp
 
 
+def indexed_availability_matches(raw_available_ns: int, index_available_ns: object,
+                                 metadata: Mapping[str, Any]) -> bool:
+    """Separate validated raw availability from a later durable index publication."""
+    if type(index_available_ns) is not int:
+        return False
+    if metadata.get("publication_profile") is None:
+        return raw_available_ns == index_available_ns
+    return bool(metadata.get("publication_profile") == "PUBLIC_INDEX_AFTER_ARCHIVE_V1"
+        and metadata.get("raw_available_at_ns") == raw_available_ns
+        and metadata.get("index_published_at_ns") == index_available_ns
+        and raw_available_ns <= index_available_ns)
+
+
 class AvailabilityClassV2(StrEnum):
     ACTUAL_SYSTEM = "ACTUAL_SYSTEM"
     RECONSTRUCTED_MARKET = "RECONSTRUCTED_MARKET"

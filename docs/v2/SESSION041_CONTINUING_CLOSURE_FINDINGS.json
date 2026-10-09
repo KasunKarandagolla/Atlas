@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "session": 41,
+  "status": "UNVERIFIED",
+  "engineering_closure_passed": false,
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "economic_status": "NOT ESTIMABLE",
+  "focused_validation": [
+    {
+      "path": "/tmp/s41-broad-adoption-windows-venv.xml",
+      "totals": {
+        "tests": 13,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "attribution": "DEVELOPMENT_TREE_NOT_FINAL_SHA"
+    },
+    {
+      "path": "/tmp/s41-adoption-storage-analogue-current.xml",
+      "totals": {
+        "tests": 112,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "attribution": "DEVELOPMENT_TREE_NOT_FINAL_SHA"
+    },
+    {
+      "path": "/tmp/s41-sealed-research-book.xml",
+      "totals": {
+        "tests": 30,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "attribution": "DEVELOPMENT_TREE_NOT_FINAL_SHA"
+    }
+  ],
+  "corrected_engineering": [
+    "Analogue accepts genuinely sealed derived publications after the original market cutoff and before deadline; raw evidence remains cutoff-bound.",
+    "Broad adoption prefetch covers every record in its archive-sized window and invalidates absent lookups when an archive flush publishes identities.",
+    "Generic storage JSON loading uses fused immutable conversion while retaining exact canonical metadata.",
+    "Deferred research loader accepts only an indexed, causally sealed feature from the original cutoff and rejects replacing it with a restarted live book."
+  ],
+  "ordinary_work_still_open": [
+    "Integrated broad throughput, real stream queue fairness, complete-workload storage admission and hard reserve stop.",
+    "Durable S4-S8 queue integration and atomic surface publication/recovery.",
+    "Production exact-action M0/M1/analogue comparison integration and real persisted-model-path coverage.",
+    "Event abnormality producer and explicit authority decision for the unspecified volatility criterion.",
+    "Complete requirement-clause resolution, final integrated validation, independent review and source checkpoint."
+  ],
+  "native_windows": "FINAL_NATIVE_QUALIFICATION_NOT_ESTABLISHED",
+  "package_created": false
+}

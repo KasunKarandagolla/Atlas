@@ -466,7 +466,8 @@ class AssistedControlShell:
     def _risk_reduction_gate(self) -> tuple[str, ...]:
         reasons: list[str] = []
         if self.capability_contract is None:
-            reasons.append("typed capability contract not supplied")
+            if getattr(self.nautilus_port, "risk_reduction_profile", None) != "BINANCE_DEMO_REDUCE_ONLY_V1":
+                reasons.append("typed capability contract not supplied")
         else:
             if self.capability_hash != self.capability_contract.contract_hash():
                 reasons.append("capability hash does not bind contract")
@@ -477,7 +478,8 @@ class AssistedControlShell:
     def _protection_gate(self) -> tuple[str, ...]:
         reasons: list[str] = []
         if self.capability_contract is None:
-            reasons.append("typed capability contract not supplied")
+            if getattr(self.nautilus_port, "risk_reduction_profile", None) != "BINANCE_DEMO_REDUCE_ONLY_V1":
+                reasons.append("typed capability contract not supplied")
         else:
             if self.capability_hash != self.capability_contract.contract_hash():
                 reasons.append("capability hash does not bind contract")
@@ -498,14 +500,22 @@ class AssistedControlShell:
         if not reversal.allowed:
             return AssistedControlResult("RISK_REDUCTION_BLOCKED", reversal.violations)
         reservation = self.journal.load_reservation(intent.intent_id)
+        command_id = uuid.uuid4().hex
+        command_type = CommandType.FLATTEN if market else CommandType.SUBMIT_EXIT
+        payload = wire.to_bybit_params()
+        payload_builder = getattr(self.nautilus_port, "build_reduction_payload", None)
+        if callable(payload_builder):
+            payload = payload_builder(intent=intent, plan=plan, command_id=command_id,
+                                      command_type=command_type, side=wire.side.upper(), quantity=qty,
+                                      price=wire.price, stop=plan.stop)
         try:
             command = self.journal.prepare_dispatch(
                 intent_id=intent.intent_id,
                 expected_state_version=intent.state_version,
                 expected_reservation_version=reservation.version,
-                command_id=uuid.uuid4().hex,
-                command_type=CommandType.FLATTEN if market else CommandType.SUBMIT_EXIT,
-                payload_dict=wire.to_bybit_params(),
+                command_id=command_id,
+                command_type=command_type,
+                payload_dict=payload,
                 created_at_ns=now_ns,
                 next_lifecycle=LifecycleState.EXIT_PENDING,
             )
@@ -519,6 +529,18 @@ class AssistedControlShell:
             return AssistedControlResult("RISK_REDUCTION_DISPATCH_BLOCKED", ("Nautilus command port not supplied",),
                                          intent=intent, command=command, command_outcome=command.outcome,
                                          quantity=qty)
+        enqueue = getattr(self.nautilus_port, "enqueue_persisted_command", None)
+        if callable(enqueue):
+            try:
+                enqueue(command.command_id)
+            except Exception:  # noqa: BLE001 - preserve durable UNSENT command; never log port details
+                queued = self.journal.load_command(command.command_id)
+                return AssistedControlResult("RISK_REDUCTION_QUEUE_BLOCKED",
+                                             ("native command queue unavailable",), intent=intent,
+                                             command=queued, command_outcome=queued.outcome, quantity=qty)
+            queued = self.journal.load_command(command.command_id)
+            return AssistedControlResult("RISK_REDUCTION_QUEUED", (), intent=intent, command=queued,
+                                         command_outcome=queued.outcome, quantity=qty)
         dispatched = _dispatch_with_port(journal=self.journal, command_id=command.command_id,
                                          port=self.nautilus_port, now_ns=now_ns)
         return AssistedControlResult("RISK_REDUCTION_DISPATCHED", (), intent=intent, command=dispatched,
@@ -533,6 +555,62 @@ class AssistedControlShell:
         return self._prepare_exit(intent_id=intent_id, reconciled_signed_qty=reconciled_signed_qty,
                                   quantity=abs(reconciled_signed_qty), exit_price=None, now_ns=now_ns,
                                   market=True)
+
+    def cancel_entry(self, *, intent_id: str, now_ns: int) -> AssistedControlResult:
+        """Persist a venue-bound cancel only for a reconciled, still-working parent order."""
+        intent = self.journal.load_intent(intent_id)
+        if intent.lifecycle not in {LifecycleState.ENTRY_WORKING, LifecycleState.PARTIALLY_FILLED,
+                                    LifecycleState.CANCEL_PENDING}:
+            return AssistedControlResult("CANCEL_BLOCKED", ("owned working entry is not current",), intent=intent)
+        if self.nautilus_port is None:
+            return AssistedControlResult("CANCEL_BLOCKED", ("selected venue command port not supplied",), intent=intent)
+        payload_builder = getattr(self.nautilus_port, "build_reduction_payload", None)
+        enqueue = getattr(self.nautilus_port, "enqueue_persisted_command", None)
+        if not callable(payload_builder) or not callable(enqueue):
+            return AssistedControlResult("CANCEL_BLOCKED", ("selected venue lacks a durable cancel queue",),
+                                         intent=intent)
+        gate = self._risk_reduction_gate()
+        if gate:
+            return AssistedControlResult("CANCEL_BLOCKED", gate, intent=intent)
+        commands = self.journal.load_commands_for_intent(intent.intent_id, limit=33)
+        entries = [item for item in commands if item.command_type is CommandType.SUBMIT_ENTRY]
+        if len(entries) != 1 or entries[0].outcome is not CommandOutcome.RECONCILED:
+            return AssistedControlResult("CANCEL_BLOCKED", ("parent entry is not terminally reconciled",),
+                                         intent=intent)
+        entry_payload = json.loads(entries[0].payload)
+        if entry_payload.get("client_order_id") != intent.client_order_id:
+            return AssistedControlResult("CANCEL_BLOCKED", ("parent entry identity mismatch",), intent=intent)
+        statuses = self.journal.load_order_status_observations(intent_id=intent.intent_id, limit=256)
+        if not statuses or statuses[0].client_order_id != intent.client_order_id or statuses[0].status not in {
+                "NEW", "PARTIALLY_FILLED"}:
+            return AssistedControlResult("CANCEL_BLOCKED", ("latest parent status is not cancelable",), intent=intent)
+        plan = self.journal.load_trade_plan(intent.plan_id)
+        command_id = uuid.uuid4().hex
+        try:
+            payload = payload_builder(
+                intent=intent, plan=plan, command_id=command_id, command_type=CommandType.CANCEL_ENTRY,
+                side=entry_payload["side"], quantity=Decimal(entry_payload["quantity"]),
+                price=None if entry_payload["price"] is None else Decimal(entry_payload["price"]),
+                stop=Decimal(entry_payload["stop"]),
+            )
+            reservation = self.journal.load_reservation(intent.intent_id)
+            command = self.journal.prepare_dispatch(
+                intent_id=intent.intent_id, expected_state_version=intent.state_version,
+                expected_reservation_version=reservation.version, command_id=command_id,
+                command_type=CommandType.CANCEL_ENTRY, payload_dict=payload, created_at_ns=now_ns,
+                next_lifecycle=LifecycleState.CANCEL_PENDING,
+            )
+        except (PersistenceError, KeyError, ValueError, ArithmeticError) as exc:
+            return AssistedControlResult("CANCEL_BLOCKED", (str(exc),), intent=intent)
+        try:
+            enqueue(command.command_id)
+        except Exception:  # noqa: BLE001 - durable cancel remains UNSENT; never log port details
+            queued = self.journal.load_command(command.command_id)
+            return AssistedControlResult("CANCEL_QUEUE_BLOCKED", ("native command queue unavailable",),
+                                         intent=intent, command=queued, command_outcome=queued.outcome)
+        queued = self.journal.load_command(command.command_id)
+        return AssistedControlResult("CANCEL_QUEUED", (), intent=intent, command=queued,
+                                     command_outcome=queued.outcome)
 
     def protect(self, *, intent_id: str, reconciled_signed_qty: Decimal, expected_signed_qty: Decimal,
                 stop_price: Decimal, protection_port: BybitProtectionPort | None, now_ns: int,
@@ -553,14 +631,21 @@ class AssistedControlShell:
         if plan.side is Side.SHORT and stop <= (plan.reference_price or stop - 1):
             return AssistedControlResult("PROTECTION_BLOCKED", ("SHORT stop is not above reference",))
         reservation = self.journal.load_reservation(intent.intent_id)
+        command_id = uuid.uuid4().hex
         payload = {"position_epoch": intent.position_epoch, "expected_signed_qty": canonical_decimal_str(qty),
                    "stop_price": canonical_decimal_str(stop), "trigger_basis": "MarkPrice"}
+        payload_builder = getattr(self.nautilus_port, "build_reduction_payload", None)
+        if callable(payload_builder):
+            payload = payload_builder(intent=intent, plan=plan, command_id=command_id,
+                                      command_type=CommandType.REPAIR_STOP,
+                                      side="SELL" if reconciled > 0 else "BUY",
+                                      quantity=abs(reconciled), price=None, stop=stop)
         try:
             command = self.journal.prepare_dispatch(
                 intent_id=intent.intent_id,
                 expected_state_version=intent.state_version,
                 expected_reservation_version=reservation.version,
-                command_id=uuid.uuid4().hex,
+                command_id=command_id,
                 command_type=CommandType.REPAIR_STOP,
                 payload_dict=payload,
                 created_at_ns=now_ns,
@@ -573,6 +658,19 @@ class AssistedControlShell:
             return AssistedControlResult("PROTECTION_BLOCKED", gate, intent=intent, command=command,
                                          command_outcome=command.outcome, quantity=qty, entry_price=stop)
         if protection_port is None:
+            enqueue = getattr(self.nautilus_port, "enqueue_persisted_command", None)
+            if callable(enqueue):
+                try:
+                    enqueue(command.command_id)
+                except Exception:  # noqa: BLE001 - preserve durable UNSENT command; never log port details
+                    queued = self.journal.load_command(command.command_id)
+                    return AssistedControlResult("PROTECTION_QUEUE_BLOCKED",
+                                                 ("native command queue unavailable",), intent=intent,
+                                                 command=queued, command_outcome=queued.outcome, quantity=qty,
+                                                 entry_price=stop)
+                queued = self.journal.load_command(command.command_id)
+                return AssistedControlResult("PROTECTION_QUEUED", (), intent=intent, command=queued,
+                                             command_outcome=queued.outcome, quantity=qty, entry_price=stop)
             return AssistedControlResult("PROTECTION_BLOCKED", ("protection port not supplied",), intent=intent,
                                          command=command, command_outcome=command.outcome, quantity=qty,
                                          entry_price=stop)

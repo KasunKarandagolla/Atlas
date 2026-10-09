@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="10.053" timestamp="2026-10-09T00:23:27.179237+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_mixed_broad_capacity" name="test_mixed_1024_contract_public_workload_under_bounded_stalls" time="3.801"><failure message="ValueError: active watch requires unsupported subscription event 'PUBLIC_UPDATE'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-578/test_mixed_1024_contract_publi0')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x7fe086b61a80&gt;
+
+    def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, record_property):
+        products = _contracts()
+        clock = [NOW]
+        path = tmp_path / "mixed-ops.sqlite"
+        runtime = BroadPublicRuntimeV2(clock_ns=lambda: clock[0],
+            stream_factories={"BYBIT": _idle_stream(), "BINANCE_MARKET": _idle_stream()})
+        source = _DeterministicBybitSource(products, NOW)
+        port = BroadProductionOpsCyclePortV2(public_source=source, broad_runtime=runtime,
+            clock_ns=lambda: clock[0])
+        interpreted: list[CapturedPublicFrameV2] = []
+        original_interpreter = runtime._interpret_frames
+    
+        def observe_interpreter(repository, frames, *, now_ns):
+            interpreted.extend(frames)
+            return original_interpreter(repository, frames, now_ns=now_ns)
+    
+        runtime._interpret_frames = observe_interpreter
+        identity = TuningRunIdentityV1("s41-mixed-broad-capacity", "a" * 64, "b" * 40, 0)
+        report_dir = tmp_path / "reports"
+        offered: list[CapturedPublicFrameV2] = []
+        commit_observation: dict[str, float | int] = {}
+        archive_stall_seconds: list[float] = []
+        reader_snapshots: list[tuple[int, int]] = []
+        report_release = threading.Event()
+        def export_during_stall():
+            if not report_release.wait(60.0):
+                raise TimeoutError("report export did not reach the injected commit stall")
+            return export_tuning_snapshot(path, report_dir, identity, cutoff_ns=NOW + 20_000_000_000)
+    
+        exporter = ReadOnlyReportWorkerV1(export_during_stall)
+        export_completion = []
+    
+        try:
+            with OpsRepository(path) as repository:
+                # Persist representative active watch state through the repository's
+                # domain API. The production recovery/workset code discovers these
+                # rows; the stream plan receives no direct active-key override.
+                watch_keys = tuple(item.key for item in (*products[2:6], *products[514:518]))
+                for index, key in enumerate(watch_keys):
+                    watch_id = sha256_json({"session": "041-mixed-watch", "key": key.to_dict()})
+                    repository.create_watch(OpportunityWatchV2(
+                        watch_id, key, "SYNTHETIC_CAPACITY_PROBE", "V1",
+                        sha256_json({"policy": index}), WatchStateV2.DETECTED, 0,
+                        NOW, NOW, sha256_json({"thesis": index}), (), "PUBLIC_UPDATE",
+                        NOW + 60_000_000_000, NOW))
+&gt;               recovery = port.recover(repository, now_ns=NOW)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_mixed_broad_capacity.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/production.py:6225: in recover
+    restart = collector.restore_subscriptions(tiers, now_ns=now_ns, expiry_ids=expiry_ids)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/data/collector.py:658: in restore_subscriptions
+    snapshot, plan = restore_subscription_plan(
+src/atlas/v2/data/subscriptions.py:184: in restore_subscription_plan
+    plan = build_subscription_plan(tiers, active_watches=snapshot.active_watches, open_positions=open_positions, created_at_ns=now_ns)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tiers = {InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;, environment=&lt;EnvironmentV2.MAINNET: 'MAINNET'&gt;, product=&lt;ProductTypeV... contract_revision='9de2a1b7364fde00bd5919601f0055b0406f2779061258a3178c8e9987f65adc'): &lt;ComputeTierV2.TIER_1: 1&gt;, ...}
+active_watches = (OpportunityWatchV2(watch_id='05a3a11b4e384b39bbfea99033b48042072ec691a791855f668df9ecf7a2f040', key=InstrumentKeyV2(v...00000000000000, wake_at_ns=None, invalidators=(), last_event_id=None, parent_watch_id=None, handoff_receipt=None), ...)
+open_positions = (), created_at_ns = 1800000000000000000
+
+    def build_subscription_plan(
+        tiers: Mapping[InstrumentKeyV2, ComputeTierV2],
+        *,
+        active_watches: Iterable[OpportunityWatchV2] = (),
+        open_positions: Iterable[InstrumentKeyV2] = (),
+        created_at_ns: int,
+    ) -&gt; SubscriptionPlanV2:
+        if len(tiers) &gt; MAX_ACTIVE_SUBSCRIPTION_SPECS_V2:
+            raise ValueError("ACTIVE_SUBSCRIPTION_POPULATION_OVERFLOW")
+        watch_by_key: dict[InstrumentKeyV2, list[OpportunityWatchV2]] = {}
+        for watch in active_watches:
+            watch_by_key.setdefault(watch.key, []).append(watch)
+        if sum(map(len, watch_by_key.values())) &gt; MAX_ACTIVE_WATCH_SUBSCRIPTIONS_V2:
+            raise ValueError("ACTIVE_WATCH_SUBSCRIPTION_OVERFLOW")
+        positions = set(open_positions)
+        keys = set(tiers) | set(watch_by_key) | positions
+        if len(keys) &gt; MAX_ACTIVE_SUBSCRIPTION_SPECS_V2:
+            raise ValueError("ACTIVE_SUBSCRIPTION_POPULATION_OVERFLOW")
+        per_venue: dict[object, int] = {}
+        for key in keys:
+            per_venue[key.venue] = per_venue.get(key.venue, 0) + 1
+        if any(count &gt; MAX_SUBSCRIPTION_SPECS_PER_VENUE_V2 for count in per_venue.values()):
+            raise ValueError("PER_VENUE_SUBSCRIPTION_POPULATION_OVERFLOW")
+        tier3 = {key for key in keys if key in positions or key in watch_by_key
+                 or ComputeTierV2(tiers.get(key, ComputeTierV2.TIER_0)) == ComputeTierV2.TIER_3}
+        if len(tier3) &gt; MAX_TIER3_SUBSCRIPTIONS_V2:
+            raise ValueError("TIER3_SUBSCRIPTION_POPULATION_OVERFLOW")
+        specs: list[SubscriptionSpecV2] = []
+        for key in sorted(keys, key=lambda item: item.to_canonical_json()):
+            tier = ComputeTierV2.TIER_3 if key in positions or key in watch_by_key else ComputeTierV2(tiers.get(key, ComputeTierV2.TIER_0))
+            channels = set(subscription_channels_for_tier(tier))
+            watches = sorted(watch_by_key.get(key, ()), key=lambda item: item.watch_id)
+            for watch in watches:
+                required = _WATCH_EVENT_CHANNELS.get(watch.required_next_event)
+                if required is None:
+&gt;                   raise ValueError(f"active watch requires unsupported subscription event {watch.required_next_event!r}")
+E                   ValueError: active watch requires unsupported subscription event 'PUBLIC_UPDATE'
+
+src/atlas/v2/data/subscriptions.py:158: ValueError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="22" time="223.285" timestamp="2026-10-07T21:48:08.625132+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_production_breadth" name="test_full_inventory_is_distinct_bounded_and_restart_reproduces_workset" time="82.635" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_new_mark_receipt_cannot_refresh_old_quote_fields" time="3.038" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_suspension_is_current_and_old_state_is_still_replayable" time="3.084" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_pending_read_services_writer_and_keeps_one_original_completion" time="0.097" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_runtime_recovery_preserves_nonbenchmark_dual_venue_inventory" time="3.634" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_population_overflow_is_an_explicit_gate" time="6.129" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_is_actual_and_preserves_its_source_cutoff" time="5.475" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_rejects_regressing_clock" time="5.309" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_same_venue_research_cohort_has_twenty_keys_within_global_history_bound" time="6.445" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_adoption_waits_for_durable_archive_before_proving_current_source_health" time="7.118" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_future_market_event_is_rejected_without_rescuing_publication_time" time="5.766" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_archive_completion_controls_public_index_visibility" time="7.415" /><testcase classname="tests.v2.test_session041_compact_public_observations" name="test_compact_archive_index_round_trips_all_repository_reads_and_restart" time="5.910" /><testcase classname="tests.v2.test_session041_compact_public_observations" name="test_legacy_plain_observation_rows_remain_readable_with_compact_rows" time="5.663" /><testcase classname="tests.v2.test_session041_compact_public_observations" name="test_compact_observation_corruption_fails_closed" time="6.113" /><testcase classname="tests.v2.test_session041_compact_public_observations" name="test_compact_history_queries_preserve_identity_cutoff_replay_and_ties" time="5.750" /><testcase classname="tests.v2.test_session037_receipt_query_bounds" name="test_receipt_seek_does_not_scan_unrelated_retained_observations[{&quot;instrument&quot;:&quot;BTCUSDT&quot;}]" time="6.124"><failure message="ValueError: compact public metadata record identity mismatch">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-255/test_receipt_seek_does_not_sca0')
+exact_key = '{"instrument":"BTCUSDT"}'
+
+    @pytest.mark.parametrize("exact_key", [KEY, None])
+    def test_receipt_seek_does_not_scan_unrelated_retained_observations(tmp_path, exact_key):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            wanted = tuple(_entry(i, kind="TRADE" if i % 2 else "AGG_TRADE") for i in range(10))
+            repo.register_artifacts(wanted)
+    
+            def measure():
+                steps = 0
+                queries = []
+    
+                def progress():
+                    nonlocal steps
+                    steps += 1
+                    return int(steps &gt; 2000)
+    
+                repo._connection.set_progress_handler(progress, 1)
+                repo._connection.set_trace_callback(queries.append)
+                try:
+                    rows = _query(repo, key=exact_key)
+                finally:
+                    repo._connection.set_progress_handler(None, 0)
+                    repo._connection.set_trace_callback(None)
+                return rows, steps, queries
+    
+&gt;           expected, baseline, _ = measure()
+                                    ^^^^^^^^^
+
+tests/v2/test_session037_receipt_query_bounds.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session037_receipt_query_bounds.py:53: in measure
+    rows = _query(repo, key=exact_key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/v2/test_session037_receipt_query_bounds.py:30: in _query
+    return repo.public_archive_history_entries(instrument_revision=REVISION,
+src/atlas/v2/memory/repository.py:2054: in public_archive_history_entries
+    return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2054: in &lt;genexpr&gt;
+    return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1821: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7f94c0b235b0&gt;
+artifact_ref = 'ffecfe374573c21ae5f020c7744ab3de2e90a421752f81142968bd2fc79662e5'
+projection_json = '{"availability_class":"ACTUAL_SYSTEM","event_at_ns":1,"event_type":"TRADE","instrument_key_ref":"683f5ea2af6fb3e046de...aaaaaaa","record_id":"ffecfe374573c21ae5f020c7744ab3de2e90a421752f81142968bd2fc79662e5","replay_available_at_ns":null}'
+cache = OrderedDict({(b'lHk\xf0\x14\xc5\xa5\x11\x94w\x89\x1d\xb6\xa3$i}\xb9\xb9\r\x13\xe5\x08K\xf9K`\xfd\x07Z\xec\xa6', 4298, ...ord_id': 'ffecfe374573c21ae5f020c7744ab3de2e90a421752f81142968bd2fc79662e5', 'replay_available_at_ns': None}}), 4298)})
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+        locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            f"CASE WHEN length(b.compressed_metadata) BETWEEN 1 AND {MAX_COMPRESSED_BYTES} "
+            "THEN b.compressed_metadata END AS compressed_metadata "
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+        if locator is None:
+            raise ValueError("compact public observation metadata locator is missing")
+        block_ref = bytes(locator["block_ref"])
+        size, count, codec = locator["uncompressed_bytes"], locator["entry_count"], locator["codec"]
+        if (type(size) is not int or not 1 &lt;= size &lt;= MAX_BLOCK_BYTES
+                or type(count) is not int or not 1 &lt;= count &lt;= MAX_BLOCK_ROWS or codec != "zlib-v1"
+                or type(locator["compressed_bytes"]) is not int
+                or not 1 &lt;= locator["compressed_bytes"] &lt;= MAX_COMPRESSED_BYTES):
+            raise ValueError("compact public metadata block bounds or codec are invalid")
+        compressed = bytes(locator["compressed_metadata"])
+        compressed_hash = hashlib.sha256(compressed).digest()
+        cache_key = (block_ref, size, count, compressed_hash)
+        entries: tuple[Mapping[str, Any], ...] | None = None
+        if cache is not None:
+            cached = cache.get(cache_key)
+            if cached is not None:
+                entries = cached[0]
+                cache.move_to_end(cache_key)
+        if entries is None:
+            decoder = zlib.decompressobj()
+            try:
+                raw = decoder.decompress(compressed, size + 1)
+            except zlib.error as error:
+                raise ValueError("compact public metadata block has an invalid zlib stream") from error
+            if len(raw) != size or not decoder.eof or decoder.unconsumed_tail or decoder.unused_data:
+                raise ValueError("compact public metadata block has an invalid zlib stream")
+            if not hmac.compare_digest(hashlib.sha256(raw).digest(), block_ref):
+                raise ValueError("compact public metadata block hash mismatch")
+            body = json.loads(raw.decode("utf-8"))
+            if (not isinstance(body, Mapping) or set(body) != {"version", "entries"}
+                    or body["version"] != _BLOCK_VERSION or not isinstance(body["entries"], list)
+                    or len(body["entries"]) != count or canonical_json(body).encode("utf-8") != raw):
+                raise ValueError("compact public metadata block is not canonical or complete")
+            decoded: list[Mapping[str, Any]] = []
+            for item in body["entries"]:
+                if (not isinstance(item, Mapping) or set(item) != {"artifact_ref", "metadata"}
+                        or not isinstance(item["artifact_ref"], str) or not isinstance(item["metadata"], Mapping)):
+                    raise ValueError("compact public metadata block entry is malformed")
+                decoded.append(item)
+            entries = tuple(decoded)
+            if cache is not None and size &lt;= MAX_CACHE_BYTES:
+                cache[cache_key] = (entries, size)
+                cache.move_to_end(cache_key)
+                while (len(cache) &gt; MAX_CACHE_BLOCKS
+                       or sum(int(value[1]) for value in cache.values()) &gt; MAX_CACHE_BYTES):
+                    cache.popitem(last=False)
+        ordinal = locator["ordinal"]
+        if type(ordinal) is not int or not 0 &lt;= ordinal &lt; len(entries):
+            raise ValueError("compact public metadata locator ordinal is invalid")
+        item = entries[ordinal]
+        if item["artifact_ref"] != artifact_ref:
+            raise ValueError("compact public metadata locator points to another artifact")
+        metadata = item["metadata"]
+        key_json = metadata.get("instrument_key_json")
+        key_ref = projection.get("instrument_key_ref")
+        if not isinstance(key_json, str) or key_ref != instrument_identity_ref(key_json):
+            raise ValueError("compact public metadata instrument identity mismatch")
+        if artifact_ref != sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                        "record_id": metadata.get("record_id")}):
+&gt;           raise ValueError("compact public metadata record identity mismatch")
+E           ValueError: compact public metadata record identity mismatch
+
+src/atlas/v2/data/compact_observation_index.py:219: ValueError</failure></testcase><testcase classname="tests.v2.test_session037_receipt_query_bounds" name="test_receipt_seek_does_not_scan_unrelated_retained_observations[None]" time="9.768"><failure message="ValueError: compact public metadata record identity mismatch">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-255/test_receipt_seek_does_not_sca1')
+exact_key = None
+
+    @pytest.mark.parametrize("exact_key", [KEY, None])
+    def test_receipt_seek_does_not_scan_unrelated_retained_observations(tmp_path, exact_key):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            wanted = tuple(_entry(i, kind="TRADE" if i % 2 else "AGG_TRADE") for i in range(10))
+            repo.register_artifacts(wanted)
+    
+            def measure():
+                steps = 0
+                queries = []
+    
+                def progress():
+                    nonlocal steps
+                    steps += 1
+                    return int(steps &gt; 2000)
+    
+                repo._connection.set_progress_handler(progress, 1)
+                repo._connection.set_trace_callback(queries.append)
+                try:
+                    rows = _query(repo, key=exact_key)
+                finally:
+                    repo._connection.set_progress_handler(None, 0)
+                    repo._connection.set_trace_callback(None)
+                return rows, steps, queries
+    
+&gt;           expected, baseline, _ = measure()
+                                    ^^^^^^^^^
+
+tests/v2/test_session037_receipt_query_bounds.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session037_receipt_query_bounds.py:53: in measure
+    rows = _query(repo, key=exact_key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/v2/test_session037_receipt_query_bounds.py:30: in _query
+    return repo.public_archive_history_entries(instrument_revision=REVISION,
+src/atlas/v2/memory/repository.py:2054: in public_archive_history_entries
+    return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2054: in &lt;genexpr&gt;
+    return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1821: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7f94c0b232e0&gt;
+artifact_ref = 'ffecfe374573c21ae5f020c7744ab3de2e90a421752f81142968bd2fc79662e5'
+projection_json = '{"availability_class":"ACTUAL_SYSTEM","event_at_ns":1,"event_type":"TRADE","instrument_key_ref":"683f5ea2af6fb3e046de...aaaaaaa","record_id":"ffecfe374573c21ae5f020c7744ab3de2e90a421752f81142968bd2fc79662e5","replay_available_at_ns":null}'
+cache = OrderedDict({(b'lHk\xf0\x14\xc5\xa5\x11\x94w\x89\x1d\xb6\xa3$i}\xb9\xb9\r\x13\xe5\x08K\xf9K`\xfd\x07Z\xec\xa6', 4298, ...ord_id': 'ffecfe374573c21ae5f020c7744ab3de2e90a421752f81142968bd2fc79662e5', 'replay_available_at_ns': None}}), 4298)})
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+        locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            f"CASE WHEN length(b.compressed_metadata) BETWEEN 1 AND {MAX_COMPRESSED_BYTES} "
+            "THEN b.compressed_metadata END AS compressed_metadata "
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+        if locator is None:
+            raise ValueError("compact public observation metadata locator is missing")
+        block_ref = bytes(locator["block_ref"])
+        size, count, codec = locator["uncompressed_bytes"], locator["entry_count"], locator["codec"]
+        if (type(size) is not int or not 1 &lt;= size &lt;= MAX_BLOCK_BYTES
+                or type(count) is not int or not 1 &lt;= count &lt;= MAX_BLOCK_ROWS or codec != "zlib-v1"
+                or type(locator["compressed_bytes"]) is not int
+                or not 1 &lt;= locator["compressed_bytes"] &lt;= MAX_COMPRESSED_BYTES):
+            raise ValueError("compact public metadata block bounds or codec are invalid")
+        compressed = bytes(locator["compressed_metadata"])
+        compressed_hash = hashlib.sha256(compressed).digest()
+        cache_key = (block_ref, size, count, compressed_hash)
+        entries: tuple[Mapping[str, Any], ...] | None = None
+        if cache is not None:
+            cached = cache.get(cache_key)
+            if cached is not None:
+                entries = cached[0]
+                cache.move_to_end(cache_key)
+        if entries is None:
+            decoder = zlib.decompressobj()
+            try:
+                raw = decoder.decompress(compressed, size + 1)
+            except zlib.error as error:
+                raise ValueError("compact public metadata block has an invalid zlib stream") from error
+            if len(raw) != size or not decoder.eof or decoder.unconsumed_tail or decoder.unused_data:
+                raise ValueError("compact public metadata block has an invalid zlib stream")
+            if not hmac.compare_digest(hashlib.sha256(raw).digest(), block_ref):
+                raise ValueError("compact public metadata block hash mismatch")
+            body = json.loads(raw.decode("utf-8"))
+            if (not isinstance(body, Mapping) or set(body) != {"version", "entries"}
+                    or body["version"] != _BLOCK_VERSION or not isinstance(body["entries"], list)
+                    or len(body["entries"]) != count or canonical_json(body).encode("utf-8") != raw):
+                raise ValueError("compact public metadata block is not canonical or complete")
+            decoded: list[Mapping[str, Any]] = []
+            for item in body["entries"]:
+                if (not isinstance(item, Mapping) or set(item) != {"artifact_ref", "metadata"}
+                        or not isinstance(item["artifact_ref"], str) or not isinstance(item["metadata"], Mapping)):
+                    raise ValueError("compact public metadata block entry is malformed")
+                decoded.append(item)
+            entries = tuple(decoded)
+            if cache is not None and size &lt;= MAX_CACHE_BYTES:
+                cache[cache_key] = (entries, size)
+                cache.move_to_end(cache_key)
+                while (len(cache) &gt; MAX_CACHE_BLOCKS
+                       or sum(int(value[1]) for value in cache.values()) &gt; MAX_CACHE_BYTES):
+                    cache.popitem(last=False)
+        ordinal = locator["ordinal"]
+        if type(ordinal) is not int or not 0 &lt;= ordinal &lt; len(entries):
+            raise ValueError("compact public metadata locator ordinal is invalid")
+        item = entries[ordinal]
+        if item["artifact_ref"] != artifact_ref:
+            raise ValueError("compact public metadata locator points to another artifact")
+        metadata = item["metadata"]
+        key_json = metadata.get("instrument_key_json")
+        key_ref = projection.get("instrument_key_ref")
+        if not isinstance(key_json, str) or key_ref != instrument_identity_ref(key_json):
+            raise ValueError("compact public metadata instrument identity mismatch")
+        if artifact_ref != sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                        "record_id": metadata.get("record_id")}):
+&gt;           raise ValueError("compact public metadata record identity mismatch")
+E           ValueError: compact public metadata record identity mismatch
+
+src/atlas/v2/data/compact_observation_index.py:219: ValueError</failure></testcase><testcase classname="tests.v2.test_session037_receipt_query_bounds" name="test_receipt_merge_preserves_global_receipt_order_full_identity_and_cutoff" time="7.457"><failure message="ValueError: compact public metadata record identity mismatch">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-255/test_receipt_merge_preserves_g0')
+
+    def test_receipt_merge_preserves_global_receipt_order_full_identity_and_cutoff(tmp_path):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            wanted = tuple(_entry(i, kind="TRADE" if i % 2 else "AGG_TRADE", available=10 + i)
+                           for i in range(10))
+            rejected = (_entry(100, key='{"instrument":"ETHUSDT"}', available=95),
+                        _entry(101, revision="b" * 64, available=96),
+                        _entry(102, available=101),
+                        _entry(103, source_class="RECONSTRUCTED_MARKET", available=97))
+            repo.register_artifacts((*wanted, *rejected))
+&gt;           assert _query(repo) == tuple(reversed(wanted[-5:]))
+                   ^^^^^^^^^^^^
+
+tests/v2/test_session037_receipt_query_bounds.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session037_receipt_query_bounds.py:30: in _query
+    return repo.public_archive_history_entries(instrument_revision=REVISION,
+src/atlas/v2/memory/repository.py:2054: in public_archive_history_entries
+    return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2054: in &lt;genexpr&gt;
+    return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1821: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7f94c0fcb970&gt;
+artifact_ref = '8fba6d8d064a84a4b88eac0917c02eff0ad835b9eee1b8f2ddba47ca89222817'
+projection_json = '{"availability_class":"ACTUAL_SYSTEM","event_at_ns":9,"event_type":"TRADE","instrument_key_ref":"683f5ea2af6fb3e046de...aaaaaaa","record_id":"8fba6d8d064a84a4b88eac0917c02eff0ad835b9eee1b8f2ddba47ca89222817","replay_available_at_ns":null}'
+cache = OrderedDict({(b'\xad\xfb\xb8\'\x863]G\x8f\x83\x13\xecH\xf2\x809~s\x90\xb9f\xb9\x02\x15\x08cu\xef"\xc4T\xcc', 6001, 14,...ord_id': 'ee26ba959bfc5022604c1dad1ec2bd1f2f275414d34761874e1e0c24ebfb5dae', 'replay_available_at_ns': None}}), 6001)})
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+        locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            f"CASE WHEN length(b.compressed_metadata) BETWEEN 1 AND {MAX_COMPRESSED_BYTES} "
+            "THEN b.compressed_metadata END AS compressed_metadata "
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+        if locator is None:
+            raise ValueError("compact public observation metadata locator is missing")
+        block_ref = bytes(locator["block_ref"])
+        size, count, codec = locator["uncompressed_bytes"], locator["entry_count"], locator["codec"]
+        if (type(size) is not int or not 1 &lt;= size &lt;= MAX_BLOCK_BYTES
+                or type(count) is not int or not 1 &lt;= count &lt;= MAX_BLOCK_ROWS or codec != "zlib-v1"
+                or type(locator["compressed_bytes"]) is not int
+                or not 1 &lt;= locator["compressed_bytes"] &lt;= MAX_COMPRESSED_BYTES):
+            raise ValueError("compact public metadata block bounds or codec are invalid")
+        compressed = bytes(locator["compressed_metadata"])
+        compressed_hash = hashlib.sha256(compressed).digest()
+        cache_key = (block_ref, size, count, compressed_hash)
+        entries: tuple[Mapping[str, Any], ...] | None = None
+        if cache is not None:
+            cached = cache.get(cache_key)
+            if cached is not None:
+                entries = cached[0]
+                cache.move_to_end(cache_key)
+        if entries is None:
+            decoder = zlib.decompressobj()
+            try:
+                raw = decoder.decompress(compressed, size + 1)
+            except zlib.error as error:
+                raise ValueError("compact public metadata block has an invalid zlib stream") from error
+            if len(raw) != size or not decoder.eof or decoder.unconsumed_tail or decoder.unused_data:
+                raise ValueError("compact public metadata block has an invalid zlib stream")
+            if not hmac.compare_digest(hashlib.sha256(raw).digest(), block_ref):
+                raise ValueError("compact public metadata block hash mismatch")
+            body = json.loads(raw.decode("utf-8"))
+            if (not isinstance(body, Mapping) or set(body) != {"version", "entries"}
+                    or body["version"] != _BLOCK_VERSION or not isinstance(body["entries"], list)
+                    or len(body["entries"]) != count or canonical_json(body).encode("utf-8") != raw):
+                raise ValueError("compact public metadata block is not canonical or complete")
+            decoded: list[Mapping[str, Any]] = []
+            for item in body["entries"]:
+                if (not isinstance(item, Mapping) or set(item) != {"artifact_ref", "metadata"}
+                        or not isinstance(item["artifact_ref"], str) or not isinstance(item["metadata"], Mapping)):
+                    raise ValueError("compact public metadata block entry is malformed")
+                decoded.append(item)
+            entries = tuple(decoded)
+            if cache is not None and size &lt;= MAX_CACHE_BYTES:
+                cache[cache_key] = (entries, size)
+                cache.move_to_end(cache_key)
+                while (len(cache) &gt; MAX_CACHE_BLOCKS
+                       or sum(int(value[1]) for value in cache.values()) &gt; MAX_CACHE_BYTES):
+                    cache.popitem(last=False)
+        ordinal = locator["ordinal"]
+        if type(ordinal) is not int or not 0 &lt;= ordinal &lt; len(entries):
+            raise ValueError("compact public metadata locator ordinal is invalid")
+        item = entries[ordinal]
+        if item["artifact_ref"] != artifact_ref:
+            raise ValueError("compact public metadata locator points to another artifact")
+        metadata = item["metadata"]
+        key_json = metadata.get("instrument_key_json")
+        key_ref = projection.get("instrument_key_ref")
+        if not isinstance(key_json, str) or key_ref != instrument_identity_ref(key_json):
+            raise ValueError("compact public metadata instrument identity mismatch")
+        if artifact_ref != sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                        "record_id": metadata.get("record_id")}):
+&gt;           raise ValueError("compact public metadata record identity mismatch")
+E           ValueError: compact public metadata record identity mismatch
+
+src/atlas/v2/data/compact_observation_index.py:219: ValueError</failure></testcase><testcase classname="tests.v2.test_session037_receipt_query_bounds" name="test_reconstructed_receipts_keep_actual_order_with_replay_eligibility" time="10.326"><failure message="ValueError: compact public metadata record identity mismatch">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-255/test_reconstructed_receipts_ke0')
+
+    def test_reconstructed_receipts_keep_actual_order_with_replay_eligibility(tmp_path):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            wanted = (_entry(1, source_class="RECONSTRUCTED_MARKET", available=500, replay=20),
+                      _entry(2, kind="AGG_TRADE", source_class="RECONSTRUCTED_MARKET", available=400, replay=30),
+                      _entry(3, source_class="RECONSTRUCTED_MARKET", available=600, replay=101))
+            repo.register_artifacts(wanted)
+&gt;           assert _query(repo, source_class="RECONSTRUCTED_MARKET") == wanted[:2]
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session037_receipt_query_bounds.py:95: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session037_receipt_query_bounds.py:30: in _query
+    return repo.public_archive_history_entries(instrument_revision=REVISION,
+src/atlas/v2/memory/repository.py:2054: in public_archive_history_entries
+    return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2054: in &lt;genexpr&gt;
+    return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:1821: in artifact_entry_from_storage_row
+    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+connection = &lt;sqlite3.Connection object at 0x7f94c0fc98a0&gt;
+artifact_ref = 'b4e8ee4e9eb52b4973cbf0e5ef4e38cdaba40c28b83bcebc0c888150d2f40e47'
+projection_json = '{"availability_class":"RECONSTRUCTED_MARKET","event_at_ns":1,"event_type":"TRADE","instrument_key_ref":"683f5ea2af6fb...aaaaaaaaa","record_id":"b4e8ee4e9eb52b4973cbf0e5ef4e38cdaba40c28b83bcebc0c888150d2f40e47","replay_available_at_ns":20}'
+cache = OrderedDict({(b'6\xe4\xc386\x15Xa\xd3\xf6D\xa6\x13\x9c\x11\xce\x92A\x9d\xa3U\xf8\x95\x0brr\x84\xb9\x04\x12\x91\xa0', 1...cord_id': 'e419bf673b2e34853ee8bb536d1771dec90b084ea93376fa3d0fa73d06300456', 'replay_available_at_ns': 101}}), 1344)})
+
+    def decode_metadata(connection: Any, *, artifact_ref: str, projection_json: str,
+                         cache: OrderedDict[Any, Any] | None = None) -&gt; Mapping[str, Any] | None:
+        """Resolve and verify one public metadata row, retaining legacy plain rows."""
+        projection = json.loads(projection_json)
+        if not isinstance(projection, Mapping) or "instrument_key_ref" not in projection:
+            return None
+        if "instrument_key_json" in projection:
+            raise ValueError("compact public observation projection contains full domain fields")
+        locator = connection.execute(
+            "SELECT l.block_ref,l.ordinal,b.entry_count,b.uncompressed_bytes,b.codec,"
+            "length(b.compressed_metadata) AS compressed_bytes,"
+            f"CASE WHEN length(b.compressed_metadata) BETWEEN 1 AND {MAX_COMPRESSED_BYTES} "
+            "THEN b.compressed_metadata END AS compressed_metadata "
+            "FROM public_observation_metadata_locator_v1 l "
+            "JOIN public_observation_metadata_block_v1 b USING(block_ref) WHERE l.artifact_ref=?",
+            (bytes.fromhex(artifact_ref),),
+        ).fetchone()
+        if locator is None:
+            raise ValueError("compact public observation metadata locator is missing")
+        block_ref = bytes(locator["block_ref"])
+        size, count, codec = locator["uncompressed_bytes"], locator["entry_count"], locator["codec"]
+        if (type(size) is not int or not 1 &lt;= size &lt;= MAX_BLOCK_BYTES
+                or type(count) is not int or not 1 &lt;= count &lt;= MAX_BLOCK_ROWS or codec != "zlib-v1"
+                or type(locator["compressed_bytes"]) is not int
+                or not 1 &lt;= locator["compressed_bytes"] &lt;= MAX_COMPRESSED_BYTES):
+            raise ValueError("compact public metadata block bounds or codec are invalid")
+        compressed = bytes(locator["compressed_metadata"])
+        compressed_hash = hashlib.sha256(compressed).digest()
+        cache_key = (block_ref, size, count, compressed_hash)
+        entries: tuple[Mapping[str, Any], ...] | None = None
+        if cache is not None:
+            cached = cache.get(cache_key)
+            if cached is not None:
+                entries = cached[0]
+                cache.move_to_end(cache_key)
+        if entries is None:
+            decoder = zlib.decompressobj()
+            try:
+                raw = decoder.decompress(compressed, size + 1)
+            except zlib.error as error:
+                raise ValueError("compact public metadata block has an invalid zlib stream") from error
+            if len(raw) != size or not decoder.eof or decoder.unconsumed_tail or decoder.unused_data:
+                raise ValueError("compact public metadata block has an invalid zlib stream")
+            if not hmac.compare_digest(hashlib.sha256(raw).digest(), block_ref):
+                raise ValueError("compact public metadata block hash mismatch")
+            body = json.loads(raw.decode("utf-8"))
+            if (not isinstance(body, Mapping) or set(body) != {"version", "entries"}
+                    or body["version"] != _BLOCK_VERSION or not isinstance(body["entries"], list)
+                    or len(body["entries"]) != count or canonical_json(body).encode("utf-8") != raw):
+                raise ValueError("compact public metadata block is not canonical or complete")
+            decoded: list[Mapping[str, Any]] = []
+            for item in body["entries"]:
+                if (not isinstance(item, Mapping) or set(item) != {"artifact_ref", "metadata"}
+                        or not isinstance(item["artifact_ref"], str) or not isinstance(item["metadata"], Mapping)):
+                    raise ValueError("compact public metadata block entry is malformed")
+                decoded.append(item)
+            entries = tuple(decoded)
+            if cache is not None and size &lt;= MAX_CACHE_BYTES:
+                cache[cache_key] = (entries, size)
+                cache.move_to_end(cache_key)
+                while (len(cache) &gt; MAX_CACHE_BLOCKS
+                       or sum(int(value[1]) for value in cache.values()) &gt; MAX_CACHE_BYTES):
+                    cache.popitem(last=False)
+        ordinal = locator["ordinal"]
+        if type(ordinal) is not int or not 0 &lt;= ordinal &lt; len(entries):
+            raise ValueError("compact public metadata locator ordinal is invalid")
+        item = entries[ordinal]
+        if item["artifact_ref"] != artifact_ref:
+            raise ValueError("compact public metadata locator points to another artifact")
+        metadata = item["metadata"]
+        key_json = metadata.get("instrument_key_json")
+        key_ref = projection.get("instrument_key_ref")
+        if not isinstance(key_json, str) or key_ref != instrument_identity_ref(key_json):
+            raise ValueError("compact public metadata instrument identity mismatch")
+        if artifact_ref != sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                        "record_id": metadata.get("record_id")}):
+&gt;           raise ValueError("compact public metadata record identity mismatch")
+E           ValueError: compact public metadata record identity mismatch
+
+src/atlas/v2/data/compact_observation_index.py:219: ValueError</failure></testcase><testcase classname="tests.v2.test_session037_receipt_query_bounds" name="test_reconstructed_population_overflow_refuses_whole_query" time="14.562" /><testcase classname="tests.v2.test_session037_receipt_query_bounds" name="test_receipt_event_type_budget_is_explicit" time="6.971" /></testsuite></testsuites>

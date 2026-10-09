@@ -57,7 +57,7 @@ def observation(index, *, value=5.0, episode=None):
         "CALM", Decimal(index), "SIMULATED", "NO_FILL" if index % 3 == 0 else "FULL_FILL", sha256_json([index, "eligible"]))
 
 
-def evidence_bound_action(repo, *, liquidity=True, cost=True, funding=True):
+def evidence_bound_action(repo, *, liquidity=True, cost=True, funding=True, action_clock_ns=None):
     import hashlib
 
     from atlas.v2.strategies.s1_trend import S1_POLICY
@@ -127,7 +127,8 @@ def evidence_bound_action(repo, *, liquidity=True, cost=True, funding=True):
             liquidity_ref=s4_ref if liquidity else None))
     sizing = size(repo, case)
     action = freeze_action(repo, candidate=case.candidate, candidate_set=case.candidate_set,
-        sizing=sizing, product=case.product, policy=S1_POLICY, v1=case.v1, v2=case.v2)
+        sizing=sizing, product=case.product, policy=S1_POLICY, v1=case.v1, v2=case.v2,
+        clock_ns=(lambda: action_clock_ns) if action_clock_ns is not None else None)
     return case, action, s4, book, health, fee, schedule, assumptions
 
 

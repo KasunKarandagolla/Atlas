@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "session": "SESSION041",
+  "component": "OfficialCalendarMaintenanceV1",
+  "status": "IMPLEMENTED_UNVERIFIED_SOURCE_QUALIFICATION",
+  "module": "src/atlas/v2/runtime/official_calendar.py",
+  "api": {
+    "cycle": "run_cycle(repository, information_cutoff_ns)",
+    "close": "close(timeout_s=2.1)",
+    "worker_bound": "one fetch worker and one completed response slot",
+    "cadence_minimum_ns": 60000000000,
+    "raw_response_max_bytes": 5000000,
+    "credentials": "none",
+    "order_or_capital_authority": "ZERO"
+  },
+  "sources": [
+    {
+      "source_id": "BLS_OFFICIAL_ICS",
+      "url": "https://www.bls.gov/schedule/news_release/bls.ics",
+      "parser": "OFFICIAL_ICS_V1",
+      "events": ["US_CPI", "US_PAYROLL"],
+      "time_policy": "Require DTSTART with UTC Z or explicit TZID; resolve America/New_York through ZoneInfo for actual DST rules. Floating and all-day values are NOT_ESTIMABLE.",
+      "qualification": "UNVERIFIED"
+    },
+    {
+      "source_id": "FED_FOMC_OFFICIAL_HTML",
+      "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "parser": "OFFICIAL_FOMC_HTML_DATE_ONLY_V1",
+      "time_policy": "Recognized official dates persist NOT_ESTIMABLE with missing field OFFICIAL_RELEASE_TIME. No default 2 p.m. is synthesized.",
+      "qualification": "UNVERIFIED"
+    }
+  ],
+  "profile_configuration": {
+    "api": "OfficialFomcSourceProfileV1.from_dict(profile_json) passed as fomc_source_profile to OfficialCalendarMaintenanceV1",
+    "profile_fields": ["schema_version", "feed_url", "parser", "qualification_evidence_ref", "timezone", "timezone_evidence_ref", "bls_qualification_evidence_ref"],
+    "allowed_fomc_host": "www.federalreserve.gov",
+    "supported_parsers": ["OFFICIAL_ICS_FOMC_V1", "OFFICIAL_FOMC_JSON_V1"],
+    "default_qualification": "UNVERIFIED",
+    "timezone_policy": "JSON time fields are usable only with separately archived official calendar timezone evidence; no timezone is inferred from host or locale.",
+    "verification_policy": "A configured FOMC source remains UNVERIFIED unless the referenced official response parses with complete exact timezone-qualified FOMC decision timing, and a scoped external capability review references that exact raw response and required class.",
+    "product_configuration": "Product configuration can pass the immutable profile object to the calendar runtime; public export validates and retains profile and proof evidence without raw response bytes."
+  },
+  "evidence_policy": {
+    "raw_archived_before_parse": true,
+    "identity": "Raw content SHA-256 plus deterministic source URL identity; duplicate bodies reuse the content-addressed raw artifact.",
+    "source_publication": "Use parsed ICS source timestamp only when available in a dedicated evidence field. Otherwise persist source_publication_at_ns=null and publication_status=PUBLICATION_UNKNOWN; ScheduledEventV2 source_event_at_ns uses actual response receipt for its required chronology field.",
+    "event_revision": "SHA-256 of exact raw response bytes",
+    "typed_artifacts": "Persist actual ScheduledEventV2 and CalendarCoverageV2 rows with metadata.evidence equal to each model to_dict() and artifact/content hashes equal to content_hash. Identical event_id plus schedule_revision reuses the first typed event and receipt.",
+    "aggregate_clocks": "CalendarCoverageV2.observed_at_ns is the oldest actual receipt among latest source evidence; received_at_ns is the newest actual source receipt; available_at_ns is the actual aggregation computation time.",
+    "future_events": "Retain future schedule instants; expose only when source receipt, extraction availability, and evidence availability are at or before the information cutoff.",
+    "coverage": "Aggregate CalendarCoverageV2 is complete only when CPI, payroll, and FOMC have complete source evidence, each configured source carries externally established VERIFIED qualification, and the source coverage intervals intersect. Mere HTTPS availability leaves qualification UNVERIFIED. Date-only FOMC records keep coverage incomplete.",
+    "aggregate": "The adapter retains bounded latest per-source coverage evidence and intersects its intervals. CPI and payroll each require an official BLS ICS event; FOMC requires an exact-time FOMC ICS event from a separately configured source using OFFICIAL_ICS_FOMC_V1. The default Fed HTML source only persists NOT_ESTIMABLE date evidence."
+  },
+  "external_gate": {
+    "status": "REQUIRED",
+    "needed": "Actual source capability and completeness evidence before changing any source qualification to VERIFIED.",
+    "https_alone_sufficient": false
+  },
+  "validation": {
+    "test_file": "tests/v2/test_session041_official_calendar.py",
+    "additional_test_file": "tests/v2/test_session041_broad_export.py",
+    "coverage": ["timezone and DST-aware parsing", "floating-time rejection", "FOMC date-only NOT_ESTIMABLE", "future-event retention", "negative cutoff visibility", "raw content hashing", "PUBLICATION_UNKNOWN persistence", "one-fetch behavior", "immutable profile roundtrip", "external review bound to exact archived official bytes", "configured FOMC remains UNVERIFIED without qualification evidence", "profile proof export validation"]
+  }
+}

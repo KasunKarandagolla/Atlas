@@ -22,6 +22,7 @@ from urllib.parse import quote
 from .._serialization import FrozenMap, canonical_json, nonblank, sha256_json, sha256_ref, timestamp
 from ..contracts import OpportunityWatchV2, WatchStateV2
 from ..models.protocol import ModelManifestV2
+from .compressed_metadata import decode_metadata_json, encode_metadata_json
 from .schema import OPS_SCHEMA_NAMESPACE, OPS_SCHEMA_VERSION, initialize, validate_read_only
 from .writer_lock import OpsWriterLock
 
@@ -102,7 +103,8 @@ class ArtifactIndexEntryV2:
     metadata: Mapping[str, Any]
 
     @classmethod
-    def _from_storage_row(cls, row: sqlite3.Row) -> ArtifactIndexEntryV2:
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -> ArtifactIndexEntryV2:
         """Rebuild an immutable entry from the repository's canonical JSON row."""
         artifact_ref = row["artifact_ref"]
         artifact_type = row["artifact_type"]
@@ -116,7 +118,8 @@ class ArtifactIndexEntryV2:
         timestamp(available_at_ns, field="available_at_ns")
         if available_at_ns < created_at_ns:
             raise ValueError("artifact available_at_ns cannot precede created_at_ns")
-        metadata = json.loads(row["metadata_json"])
+        metadata = (decoded_metadata if decoded_metadata is not None else
+                    decode_metadata_json(artifact_type, row["metadata_json"]))
         if not isinstance(metadata, Mapping):
             raise ValueError("persisted artifact metadata must be a JSON object")
         entry = object.__new__(cls)
@@ -125,7 +128,12 @@ class ArtifactIndexEntryV2:
         object.__setattr__(entry, "content_hash", content_hash)
         object.__setattr__(entry, "created_at_ns", created_at_ns)
         object.__setattr__(entry, "available_at_ns", available_at_ns)
-        object.__setattr__(entry, "metadata", FrozenMap(metadata))
+        # Storage JSON has already been normalized by its strict decoder. Use
+        # the fused immutable conversion without revisiting scalar type cases
+        # through the general-purpose domain-value constructor.
+        frozen = (metadata if isinstance(metadata, FrozenMap) else
+                  FrozenMap.from_json(metadata) if decoded_metadata is None else FrozenMap(metadata))
+        object.__setattr__(entry, "metadata", frozen)
         return entry
 
     def __post_init__(self) -> None:
@@ -207,6 +215,8 @@ _DUE_SOURCE_LANES = {
     "DecisionCalendarEntryV2": "ACTION_OUTCOME",
     "ResearchModelTerminalV1": "PREDICTION_TERMINAL",
     "OpsDecisionEventSourceV1": "OPS_EVENT",
+    "ResearchBasketForecastV2": "S8_BASKET_OUTCOME_V1",
+    "OpsSupervisorReceiptV1": "FROZEN_ACTION_COMPARISON_V1",
 }
 
 
@@ -222,6 +232,12 @@ def prediction_due_lane_v1(lane: str, run_id: str, config_hash: str) -> str:
 
 def _due_source_lane(artifact_type: str, metadata: Mapping[str, Any]) -> str | None:
     lane = _DUE_SOURCE_LANES.get(artifact_type)
+    if lane == "FROZEN_ACTION_COMPARISON_V1":
+        receipt = metadata.get("receipt")
+        if isinstance(receipt, Mapping) and receipt.get("action_ref") is None:
+            # A complete no-action receipt remains the decision denominator;
+            # there is no exact action for a downstream model comparison.
+            return None
     routing = metadata.get("routing")
     if lane == "PREDICTION_TERMINAL" and isinstance(routing, Mapping):
         run_id, config_hash = routing.get("run_id"), routing.get("config_hash")
@@ -276,6 +292,14 @@ _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS: dict[tuple[str, tuple[str, ...]], str] 
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END",
     ("M15OriginAccountingCheckpointV1", ("instrument_key_json",)):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END",
+    ("S4FeatureArtifactV2", ("instrument_key_json",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END",
+    ("OfficialCalendarCoverageEvidenceV1", ("source_id",)):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.source_id') END",
+    ("EventExtractionValidationReceiptV1", ("receipt", "request_ref")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.receipt.request_ref') END",
+    ("ScheduledEventV2", ("evidence", "event_id")):
+        "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.evidence.event_id') END",
     ("M15OriginAccountingRecordV1", ("m15_origin_ref",)):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.m15_origin_ref') END",
     ("ResearchPredictionOutcomeCheckpointV1", ("checkpoint", "run_id")):
@@ -302,15 +326,46 @@ def _archive_json_expression(name: str) -> str:
     return f"CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.{name}') END"
 
 
+def _public_archive_json_expression(name: str) -> str:
+    """Metadata expression for public rows, with legacy identity hydration."""
+    if name == "instrument_key_json":
+        return (
+            "CASE WHEN json_valid(metadata_json) THEN COALESCE("
+            "json_extract(metadata_json,'$.instrument_key_ref'),"
+            "ATLAS_PUBLIC_KEY_REF(json_extract(metadata_json,'$.instrument_key_json'))) END"
+        )
+    return _archive_json_expression(name)
+
+
+def _public_identity_ref(key_json: str) -> str:
+    from ..data.compact_observation_index import instrument_identity_ref
+
+    return instrument_identity_ref(key_json)
+
+
+def _public_metadata_query_expression(metadata_tables_enabled: bool, name: str) -> str:
+    """Match compact indexes after migration and legacy indexes on old readers."""
+    return (_public_archive_json_expression(name) if metadata_tables_enabled
+            else _archive_json_expression(name))
+
+
+def _public_metadata_query_index(metadata_tables_enabled: bool, name: str) -> str:
+    return name + "_v2" if metadata_tables_enabled else name
+
+
+def _public_metadata_query_key(metadata_tables_enabled: bool, key_json: str) -> str:
+    return _public_identity_ref(key_json) if metadata_tables_enabled else key_json
+
+
 _RECEIPT_REPLAY_CANDIDATE_LIMIT = 100_000
 _RECEIPT_EVENT_TYPE_LIMIT = 16
 _RECEIPT_QUERY_INDEXES = tuple(
-    f"CREATE INDEX IF NOT EXISTS public_exact_receipt_{scope}_{view}_lookup ON artifact_index ("
-    + ",".join(_archive_json_expression(name) for name in (
+    f"CREATE INDEX IF NOT EXISTS public_exact_receipt_{scope}_{view}_lookup_v2 ON artifact_index ("
+    + ",".join(_public_archive_json_expression(name) for name in (
         ("instrument_revision", "instrument_key_json", "event_type", "availability_class")
         if scope == "key" else ("instrument_revision", "event_type", "availability_class")))
-    + "," + ("available_at_ns" if view == "actual" else _archive_json_expression("replay_available_at_ns"))
-    + " DESC," + _archive_json_expression("record_id") + " DESC,artifact_ref DESC) "
+    + "," + ("available_at_ns" if view == "actual" else _public_archive_json_expression("replay_available_at_ns"))
+    + " DESC," + _public_archive_json_expression("record_id") + " DESC,artifact_ref DESC) "
     "WHERE artifact_type='PublicObservationIndexV2'"
     for scope in ("key", "revision") for view in ("actual", "replay")
 )
@@ -323,8 +378,8 @@ _ARCHIVE_QUERY_INDEXES = (
     "CREATE INDEX IF NOT EXISTS s3_vwap_context_window ON artifact_index ("
     "json_extract(metadata_json,'$.vwap.key'),json_extract(metadata_json,'$.vwap.information_cutoff_ns') DESC,"
     "artifact_ref) WHERE artifact_type='S3TradeVwapSnapshotV2'",
-    "CREATE INDEX IF NOT EXISTS public_origin_discovery_lookup ON artifact_index ("
-    + ",".join(_archive_json_expression(name) for name in (
+    "CREATE INDEX IF NOT EXISTS public_origin_discovery_lookup_v2 ON artifact_index ("
+    + ",".join(_public_archive_json_expression(name) for name in (
         "instrument_key_json", "event_type", "availability_class"))
     + ",available_at_ns,artifact_ref) WHERE artifact_type='PublicObservationIndexV2'",
     "CREATE INDEX IF NOT EXISTS artifact_type_insertion_lookup ON artifact_index (artifact_type)",
@@ -350,11 +405,6 @@ _ARCHIVE_QUERY_INDEXES = (
     "(source_id,observed_at_ns DESC) WHERE status<>'HEALTHY_CURRENT'",
     "CREATE INDEX IF NOT EXISTS source_health_available_lookup ON source_health "
     "(source_id,available_at_ns DESC,observed_at_ns DESC)",
-    "CREATE INDEX IF NOT EXISTS public_origin_window_lookup ON artifact_index ("
-    + ",".join(_archive_json_expression(name) for name in (
-        "instrument_key_json", "event_type", "availability_class"))
-    + ",available_at_ns," + _archive_json_expression("event_at_ns")
-    + ",artifact_ref) WHERE artifact_type='PublicObservationIndexV2'",
     "CREATE INDEX IF NOT EXISTS m15_accounting_origin_lookup ON artifact_index ("
     + _archive_json_expression("m15_origin_ref")
     + ",available_at_ns,created_at_ns DESC,artifact_ref DESC) "
@@ -376,13 +426,10 @@ _ARCHIVE_QUERY_INDEXES = (
     + _archive_json_expression("trigger_record_id")
     + ",available_at_ns,created_at_ns DESC,artifact_ref DESC) "
     "WHERE artifact_type='OpsDecisionEventSourceV1'",
-    "CREATE INDEX IF NOT EXISTS public_archive_history_lookup ON artifact_index ("
-    + ",".join(_archive_json_expression(name) for name in (
+    "CREATE INDEX IF NOT EXISTS public_archive_history_lookup_v2 ON artifact_index ("
+    + ",".join(_public_archive_json_expression(name) for name in (
         "instrument_key_json", "instrument_revision", "event_type", "availability_class", "event_at_ns"))
     + ",available_at_ns,artifact_ref) WHERE artifact_type='PublicObservationIndexV2'",
-    "CREATE INDEX IF NOT EXISTS public_archive_receipt_lookup ON artifact_index ("
-    + _archive_json_expression("instrument_revision")
-    + ",available_at_ns DESC,artifact_ref DESC) WHERE artifact_type='PublicObservationIndexV2'",
     "CREATE INDEX IF NOT EXISTS l2_archive_restart_lookup ON artifact_index ("
     + ",".join(_archive_json_expression(name) for name in ("instrument_hash", "source_id", "channel"))
     + ",available_at_ns DESC,artifact_ref DESC) WHERE artifact_type='L2FrameArchiveCheckpointV2'",
@@ -429,7 +476,6 @@ _CREATED_METADATA_INDEXES = tuple(
     for (artifact_type, path), expression in _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS.items()
 )
 
-
 @dataclass(frozen=True)
 class RestartSnapshotV2:
     active_watches: tuple[OpportunityWatchV2, ...]
@@ -453,6 +499,8 @@ class OpsRepository:
         self._public_index_cache: OrderedDict[Any, Any] = OrderedDict()
         self._public_index_decode_depth = 0
         self._public_locator_enabled = False
+        self._public_metadata_enabled = False
+        self._public_metadata_cache: OrderedDict[Any, Any] = OrderedDict()
         self._persistence_metrics: dict[str, Any] = {"version": "OPS_PERSISTENCE_TIMING_V1",
             "transaction_count": 0, "active_phase": "IDLE", "authority": "ZERO"}
         self._writer_lease = None if read_only or raw_path == ":memory:" else OpsWriterLock(raw_path)
@@ -480,6 +528,17 @@ class OpsRepository:
         else:
             self._connection = sqlite3.connect(self.path, isolation_level=None, check_same_thread=False)
         self._connection.row_factory = sqlite3.Row
+        from ..data.compact_observation_index import instrument_identity_ref
+
+        def public_key_ref(value: Any) -> str | None:
+            if not isinstance(value, str):
+                return None
+            try:
+                return instrument_identity_ref(value)
+            except (TypeError, ValueError):
+                return None
+
+        self._connection.create_function("ATLAS_PUBLIC_KEY_REF", 1, public_key_ref, deterministic=True)
         self._connection.execute("PRAGMA foreign_keys=ON")
         if not read_only:
             self._connection.execute("PRAGMA journal_mode=WAL")
@@ -497,18 +556,53 @@ class OpsRepository:
             raise RuntimeError("atlas-ops SQLite synchronous=FULL is unavailable")
         try:
             validate_read_only(self._connection) if read_only else initialize(self._connection)
-            from ..data.compact_public_index import LOCATOR_DDL, LOCATOR_TABLE
+            from ..data.compact_observation_index import BLOCK_DDL, IDENTITY_DDL, LOCATOR_DDL
+            from ..data.compact_public_index import LOCATOR_DDL as STREAM_LOCATOR_DDL
+            from ..data.compact_public_index import LOCATOR_TABLE as STREAM_LOCATOR_TABLE
 
             if not read_only:
-                for statement in LOCATOR_DDL:
+                # Readers must see either complete legacy access paths or the
+                # complete v2 representation, including all query indexes.
+                self._connection.execute("BEGIN IMMEDIATE")
+                for statement in (*STREAM_LOCATOR_DDL, *IDENTITY_DDL, *BLOCK_DDL, *LOCATOR_DDL):
                     self._connection.execute(statement)
+                block_columns = {row["name"] for row in self._connection.execute(
+                    "PRAGMA table_info(public_observation_metadata_block_v1)")}
+                if "revision" not in block_columns:
+                    self._connection.execute("ALTER TABLE public_observation_metadata_block_v1 "
+                                             "ADD COLUMN revision INTEGER NOT NULL DEFAULT 0 CHECK(revision>=0)")
+                self._connection.execute(
+                    "CREATE TRIGGER IF NOT EXISTS public_observation_metadata_block_revision_v1 "
+                    "AFTER UPDATE OF compressed_metadata ON public_observation_metadata_block_v1 "
+                    "WHEN NEW.compressed_metadata IS NOT OLD.compressed_metadata "
+                    "BEGIN UPDATE public_observation_metadata_block_v1 SET revision=OLD.revision+1 "
+                    "WHERE block_ref=NEW.block_ref; END")
+                # The previous wide indexes are rebuildable. Drop them once the
+                # digest-keyed v2 indexes are available; otherwise a broad
+                # public universe would keep paying their full-JSON write cost.
+                for name in (
+                    "public_native_m1_source_window_lookup", "public_origin_discovery_lookup",
+                    "public_origin_window_lookup", "public_archive_history_lookup",
+                    "public_archive_receipt_lookup",
+                    *(f"public_exact_receipt_{scope}_{view}_lookup"
+                      for scope in ("key", "revision") for view in ("actual", "replay")),
+                ):
+                    self._connection.execute(f"DROP INDEX IF EXISTS {name}")
             self._public_locator_enabled = self._connection.execute(
-                "SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?", (LOCATOR_TABLE,)).fetchone() is not None
+                "SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?", (STREAM_LOCATOR_TABLE,)).fetchone() is not None
+            self._public_metadata_enabled = all(self._connection.execute(
+                "SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?", (name,)).fetchone() is not None
+                for name in ("public_instrument_identity_v1", "public_observation_metadata_block_v1",
+                             "public_observation_metadata_locator_v1"))
             if not read_only:
                 # These are rebuildable access indexes over accepted artifact
                 # rows, not new evidence tables or a new schema authority.
                 for statement in (*_ARCHIVE_QUERY_INDEXES, *_LATEST_METADATA_INDEXES, *_CREATED_METADATA_INDEXES):
                     self._connection.execute(statement)
+                self._connection.execute("CREATE INDEX IF NOT EXISTS scheduled_event_time_v1 "
+                    "ON artifact_index(json_extract(metadata_json,'$.evidence.scheduled_at_ns'),available_at_ns) "
+                    "WHERE artifact_type='ScheduledEventV2' AND json_valid(metadata_json)")
+                self._connection.commit()
         except BaseException:
             self._connection.close()
             raise
@@ -1161,28 +1255,46 @@ class OpsRepository:
                     if alias is not None:
                         aliases.add(entry.artifact_ref)
             batch = tuple(entry for entry in batch if entry.artifact_ref not in aliases)
-        encoded: dict[str, tuple[ArtifactIndexEntryV2, str]] = {}
+        compact_public: dict[str, tuple[str, str, str]] = {}
+        from ..data.compact_observation_index import compact_projection
+
+        encoded: dict[str, tuple[ArtifactIndexEntryV2, str, str]] = {}
         for entry in batch:
             metadata_json = canonical_json(entry.metadata)
+            storage_json = metadata_json
+            if entry.artifact_type == "PublicObservationIndexV2":
+                if "instrument_key_ref" in entry.metadata:
+                    raise ValueError("public observation metadata uses a reserved compact identity field")
+                # Legacy callers may use a different valid artifact identity.
+                # Keep those rows plain rather than imposing a new domain rule.
+                prepared = (compact_projection(entry.metadata) if entry.artifact_ref == sha256_json(
+                    {"artifact_type": "PublicObservationIndexV2",
+                     "record_id": entry.metadata.get("record_id")}) else None)
+                if prepared is not None:
+                    storage_json, key_ref = prepared
+                    compact_public[entry.artifact_ref] = (
+                        storage_json, key_ref, str(entry.metadata["instrument_key_json"]))
             previous = encoded.get(entry.artifact_ref)
             if previous is not None:
-                prior_entry, prior_json = previous
+                prior_entry, prior_json, prior_storage = previous
                 if (
                     prior_entry.artifact_type,
                     prior_entry.content_hash,
                     prior_entry.created_at_ns,
                     prior_entry.available_at_ns,
                     prior_json,
+                    prior_storage,
                 ) != (
                     entry.artifact_type,
                     entry.content_hash,
                     entry.created_at_ns,
                     entry.available_at_ns,
                     metadata_json,
+                    storage_json,
                 ):
                     raise ValueError("artifact batch repeats an identity with different immutable content")
             else:
-                encoded[entry.artifact_ref] = (entry, metadata_json)
+                encoded[entry.artifact_ref] = (entry, metadata_json, storage_json)
         with self._transaction() as connection:
             existing: dict[str, sqlite3.Row] = {}
             refs = tuple(encoded)
@@ -1197,7 +1309,52 @@ class OpsRepository:
                     ref_batch,
                 ).fetchall()
                 existing.update((row["artifact_ref"], row) for row in rows)
-            for entry, metadata_json in encoded.values():
+            from ..data.compact_observation_index import encode_blocks, register_identity
+
+            new_public = [(entry.artifact_ref, entry.metadata)
+                          for entry, _domain, _storage in encoded.values()
+                          if entry.artifact_ref not in existing and entry.artifact_ref in compact_public]
+            for block in encode_blocks(new_public):
+                prior = connection.execute(
+                    "SELECT entry_count,uncompressed_bytes,codec,compressed_metadata "
+                    "FROM public_observation_metadata_block_v1 WHERE block_ref=?", (block["block_ref"],),
+                ).fetchone()
+                candidate = (block["entry_count"], block["uncompressed_bytes"], "zlib-v1",
+                             block["compressed_metadata"])
+                if prior is None:
+                    connection.execute(
+                        "INSERT INTO public_observation_metadata_block_v1 "
+                        "(block_ref,entry_count,uncompressed_bytes,codec,compressed_metadata) VALUES(?,?,?,?,?)",
+                        (block["block_ref"], *candidate),
+                    )
+                elif (prior["entry_count"], prior["uncompressed_bytes"], prior["codec"],
+                      bytes(prior["compressed_metadata"])) != candidate:
+                    raise ValueError("public metadata block identity conflicts with stored content")
+                locators = block["locators"]
+                marks = ",".join("?" for _ in locators)
+                prior_locators = {bytes(row["artifact_ref"]): row for row in connection.execute(
+                    "SELECT artifact_ref,block_ref,ordinal FROM public_observation_metadata_locator_v1 "
+                    f"WHERE artifact_ref IN ({marks})", tuple(row[0] for row in locators))}
+                missing_locators = []
+                identities: dict[str, str] = {}
+                for artifact_ref, block_ref, ordinal in locators:
+                    prior_locator = prior_locators.get(artifact_ref)
+                    if prior_locator is not None:
+                        if (bytes(prior_locator["block_ref"]) != block_ref
+                                or prior_locator["ordinal"] != ordinal):
+                            raise ValueError("public observation metadata locator identity conflicts")
+                    else:
+                        missing_locators.append((artifact_ref, block_ref, ordinal))
+                    key_ref, identity_json = compact_public[artifact_ref.hex()][1:]
+                    previous_key = identities.setdefault(key_ref, identity_json)
+                    if previous_key != identity_json:
+                        raise ValueError("public instrument identity reference collision")
+                connection.executemany(
+                    "INSERT INTO public_observation_metadata_locator_v1 VALUES(?,?,?)", missing_locators)
+                for key_ref, identity_json in identities.items():
+                    register_identity(connection, key_ref=key_ref, canonical_key_json=identity_json)
+
+            for entry, metadata_json, storage_json in encoded.values():
                 row = existing.get(entry.artifact_ref)
                 if row is not None:
                     stored_tuple = (
@@ -1205,7 +1362,7 @@ class OpsRepository:
                         row["content_hash"],
                         row["created_at_ns"],
                         row["available_at_ns"],
-                        row["metadata_json"],
+                        canonical_json(self.artifact_entry_from_storage_row(row).metadata),
                     )
                     requested_tuple = (
                         entry.artifact_type,
@@ -1225,7 +1382,7 @@ class OpsRepository:
                         entry.content_hash,
                         entry.created_at_ns,
                         entry.available_at_ns,
-                        metadata_json,
+                        encode_metadata_json(entry.artifact_type, storage_json),
                     ),
                 )
                 lane = _due_source_lane(entry.artifact_type, entry.metadata)
@@ -1302,7 +1459,7 @@ class OpsRepository:
                     self.register_artifact(ArtifactIndexEntryV2(ref,"OpsActiveWorkPressureV1",ref,
                         published,published,{"pressure":pressure}))
             raise ValueError("S3_CONTEXT_WINDOW_POPULATION_OVERFLOW")
-        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows
+        return tuple(self.artifact_entry_from_storage_row(row) for row in rows
                      if row["available_at_ns"]<=cutoff_ns)
 
     def latest_healthy_source_before(self, source_id: str, *, before_ns: int) -> SourceHealthV2 | None:
@@ -1376,14 +1533,16 @@ class OpsRepository:
             raise ValueError("active history page has unsupported interval/budget")
         timestamp(after_close_at_ns, field="after_close_at_ns")
         timestamp(cutoff_ns, field="cutoff_ns")
-        prefix = " AND ".join(_archive_json_expression(name) + "=?" for name in (
+        prefix = " AND ".join(_public_metadata_query_expression(self._public_metadata_enabled, name) + "=?" for name in (
             "instrument_key_json", "instrument_revision", "event_type", "availability_class"))
         close = _archive_json_expression("event_at_ns")
-        params = (key.to_canonical_json(), key.contract_revision, "BAR_" + interval, "ACTUAL_SYSTEM")
+        params = (_public_metadata_query_key(self._public_metadata_enabled, key.to_canonical_json()), key.contract_revision,
+                  "BAR_" + interval, "ACTUAL_SYSTEM")
         with self._lock:
             origins = self._connection.execute(
                 "SELECT " + close + " AS close_at_ns FROM artifact_index "
-                "INDEXED BY public_archive_history_lookup "
+                "INDEXED BY " + _public_metadata_query_index(
+                    self._public_metadata_enabled, "public_archive_history_lookup") + " "
                 "WHERE artifact_type='PublicObservationIndexV2' AND " + prefix
                 + " AND " + close + ">? AND " + close + "<=? ORDER BY " + close
                 + ",available_at_ns,artifact_ref LIMIT ?",
@@ -1392,7 +1551,8 @@ class OpsRepository:
                 return (), after_close_at_ns, False
             closes = tuple(sorted({int(row[0]) for row in origins[:limit]}))
             rows = self._connection.execute(
-                "SELECT * FROM artifact_index INDEXED BY public_archive_history_lookup "
+                "SELECT * FROM artifact_index INDEXED BY " + _public_metadata_query_index(
+                    self._public_metadata_enabled, "public_archive_history_lookup") + " "
                 "WHERE artifact_type='PublicObservationIndexV2' AND "
                 + prefix + " AND " + close + " IN (" + ",".join("?" for _ in closes)
                 + ") LIMIT ?",
@@ -1401,7 +1561,7 @@ class OpsRepository:
             raise ValueError("ACTIVE_HISTORY_REVISION_PAGE_OVERFLOW")
         if any(row["available_at_ns"] > cutoff_ns for row in rows):
             raise ValueError("ACTIVE_HISTORY_FUTURE_REVISION_PENDING")
-        return (tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows),
+        return (tuple(self.artifact_entry_from_storage_row(row) for row in rows),
                 closes[-1], len(origins) > limit)
 
     @staticmethod
@@ -1431,7 +1591,7 @@ class OpsRepository:
                     "WHERE artifact_type='PublicCollectorCursorV2' AND rowid>? ORDER BY rowid LIMIT 129",
                     (cursor,)).fetchall()
                 for row in legacy[:128]:
-                    self._update_collector_head(connection, ArtifactIndexEntryV2._from_storage_row(row))
+                    self._update_collector_head(connection, self.artifact_entry_from_storage_row(row))
                 cursor = int(legacy[127]["cursor_rowid"]) if len(legacy) > 128 else -1
                 connection.execute("INSERT INTO due_work_discovery VALUES('COLLECTOR_HEADS_V1',?) "
                     "ON CONFLICT(projection_id) DO UPDATE SET last_rowid=excluded.last_rowid", (cursor,))
@@ -1442,12 +1602,30 @@ class OpsRepository:
             raise ValueError("collector checkpoint migration pending; bounded restart must continue")
         if len(rows) > limit:
             raise ValueError("collector stream head inventory overflow")
-        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
 
     @staticmethod
     def _schedule_artifact_origin(connection: sqlite3.Connection, entry: ArtifactIndexEntryV2,
                                   lane: str) -> None:
         work_id = entry.artifact_ref
+        if lane == "S8_BASKET_OUTCOME_V1":
+            basket = entry.metadata.get("basket")
+            if not isinstance(basket, Mapping):
+                raise ValueError("S8 forecast scheduling requires its sealed basket")
+            decision = basket.get("decision_at_ns")
+            if type(decision) is not int:
+                raise ValueError("S8 forecast scheduling requires an exact decision timestamp")
+            timestamp(decision, field="basket.decision_at_ns")
+            if (entry.artifact_ref != sha256_json(basket) or basket.get("capital_authority") != "ZERO"
+                    or basket.get("trade_plan_allowed") is not False):
+                raise ValueError("S8 forecast scheduling identity or authority mismatch")
+            maturity = decision + 4 * 3_600_000_000_000
+            work_id = sha256_json({"version": "S8BasketOutcomeIdentityV1", "forecast_ref": entry.artifact_ref})
+            OpsRepository._enqueue_due_work(connection, lane=lane, work_id=work_id,
+                source_ref=entry.artifact_ref, created_at_ns=entry.created_at_ns, due_at_ns=maturity,
+                payload={"forecast_ref": entry.artifact_ref, "decision_at_ns": decision,
+                         "maturity_at_ns": maturity})
+            return
         if lane == "OPS_EVENT":
             body = entry.metadata.get("event")
             if isinstance(body, Mapping) and isinstance(body.get("event_id"), str):
@@ -1519,10 +1697,13 @@ class OpsRepository:
                 if lane is not None:
                     metadata: Mapping[str, Any] = {}
                     try:
-                        parsed = json.loads(row["metadata_json"])
+                        parsed = self.artifact_entry_from_storage_row(row).metadata
                         if isinstance(parsed, Mapping):
                             metadata = parsed
-                            lane = _due_source_lane(row["artifact_type"], metadata) or lane
+                            resolved_lane = _due_source_lane(row["artifact_type"], metadata)
+                            if resolved_lane is None:
+                                continue
+                            lane = resolved_lane
                     except (TypeError, ValueError):
                         pass  # Keep malformed origins reachable for quarantine.
                     try:
@@ -1652,7 +1833,7 @@ class OpsRepository:
                 legacy = connection.execute("SELECT * FROM artifact_index WHERE artifact_ref=?", (row[0].hex(),)).fetchone()
                 if legacy is not None:
                     requested = next(entry for entry in entries if entry.artifact_ref == row[0].hex())
-                    if ArtifactIndexEntryV2._from_storage_row(legacy) != requested:
+                    if self.artifact_entry_from_storage_row(legacy) != requested:
                         raise ValueError("compact public locator conflicts with legacy artifact")
                     continue
                 prior = connection.execute("SELECT * FROM public_stream_archive_locator_v1 WHERE artifact_ref=?", (row[0],)).fetchone()
@@ -1678,14 +1859,20 @@ class OpsRepository:
             if compact is None:
                 return None
             return self._decode_public_locator(compact)
-        return ArtifactIndexEntryV2(
-            row["artifact_ref"],
-            row["artifact_type"],
-            row["content_hash"],
-            row["created_at_ns"],
-            row["available_at_ns"],
-            json.loads(row["metadata_json"]),
-        )
+        return self.artifact_entry_from_storage_row(row)
+
+    def get_artifact_header(self, artifact_ref: str) -> Mapping[str, Any] | None:
+        """Read an artifact's small durable identity without hydrating its payload."""
+        sha256_ref(artifact_ref, field="artifact_ref")
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT artifact_type,content_hash,available_at_ns FROM artifact_index WHERE artifact_ref=?",
+                (artifact_ref,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {"artifact_ref": artifact_ref, "artifact_type": row[0],
+                "content_hash": row[1], "available_at_ns": row[2]}
 
     def _decode_public_locator(self, row: sqlite3.Row) -> ArtifactIndexEntryV2:
         from ..data.compact_public_index import decode_row
@@ -1699,6 +1886,23 @@ class OpsRepository:
             finally:
                 self._public_index_decode_depth -= 1
 
+    def artifact_entry_from_storage_row(self, row: sqlite3.Row) -> ArtifactIndexEntryV2:
+        """Hydrate repository storage encodings at the immutable row boundary."""
+        if row["artifact_type"] == "PublicObservationIndexV2":
+            projection = json.loads(row["metadata_json"])
+            if isinstance(projection, Mapping) and "instrument_key_ref" in projection:
+                if not self._public_metadata_enabled:
+                    raise ValueError("compact public metadata tables are unavailable")
+                from ..data.compact_observation_index import decode_metadata
+
+                with self._lock:
+                    metadata = decode_metadata(self._connection, artifact_ref=row["artifact_ref"],
+                        projection_json=row["metadata_json"], cache=self._public_metadata_cache)
+                if metadata is None:
+                    raise ValueError("compact public observation metadata could not be resolved")
+                return ArtifactIndexEntryV2._from_storage_row(row, decoded_metadata=metadata)
+        return ArtifactIndexEntryV2._from_storage_row(row)
+
     def get_artifact_metadata_by_refs(self, artifact_refs: Sequence[str]) -> dict[str, Mapping[str, Any]]:
         """Read exact artifact index columns by ref without rebuilding full domain entries."""
         requested = tuple(artifact_refs)
@@ -1711,6 +1915,7 @@ class OpsRepository:
             sha256_ref(ref, field="artifact_ref")
         entries: dict[str, Mapping[str, Any]] = {}
         with self._lock:
+            storage_rows: list[sqlite3.Row] = []
             for offset in range(0, len(refs), 500):
                 batch = refs[offset : offset + 500]
                 if not batch:
@@ -1720,13 +1925,20 @@ class OpsRepository:
                     f"SELECT * FROM artifact_index WHERE artifact_ref IN ({marks})",
                     batch,
                 ).fetchall()
-                for row in rows:
-                    entries[row["artifact_ref"]] = {
-                        "artifact_type": row["artifact_type"],
-                        "content_hash": row["content_hash"],
-                        "available_at_ns": row["available_at_ns"],
-                        "metadata": json.loads(row["metadata_json"]),
-                    }
+                storage_rows.extend(rows)
+            # Global reference hashes interleave unrelated compressed blocks.
+            # Decode each block together, across SQL lookup pages, so a batch
+            # larger than the eight-block cache does not repeatedly inflate
+            # hundreds of rows for every requested reference. Each row still
+            # passes the full locator/projection/hash/identity validation.
+            for row in self._storage_rows_in_decode_order(storage_rows):
+                entry = self.artifact_entry_from_storage_row(row)
+                entries[row["artifact_ref"]] = {
+                    "artifact_type": entry.artifact_type,
+                    "content_hash": entry.content_hash,
+                    "available_at_ns": entry.available_at_ns,
+                    "metadata": entry.metadata,
+                }
         if self._public_locator_enabled:
             missing = tuple(ref for ref in refs if ref not in entries)
             with self._lock:
@@ -1742,7 +1954,55 @@ class OpsRepository:
                         entries[entry.artifact_ref] = {"artifact_type": entry.artifact_type,
                             "content_hash": entry.content_hash, "available_at_ns": entry.available_at_ns,
                             "metadata": entry.metadata}
-        return entries
+        return {ref: entries[ref] for ref in refs if ref in entries}
+
+    def _storage_rows_in_decode_order(self, rows: Sequence[sqlite3.Row]) -> list[sqlite3.Row]:
+        """Group a caller's already bounded row population by immutable block.
+
+        Caller-visible pagination and evidence order are restored after decode.
+        Malformed row refs stay in the population for the normal row validator;
+        this lookup optimization must not erase invalid evidence accounting.
+        """
+        block_order: dict[str, tuple[bytes, int]] = {}
+        if self._public_metadata_enabled:
+            public_refs = []
+            for row in rows:
+                if row["artifact_type"] != "PublicObservationIndexV2":
+                    continue
+                try:
+                    ref = bytes.fromhex(row["artifact_ref"])
+                except (TypeError, ValueError):
+                    continue
+                if len(ref) == 32:
+                    public_refs.append(ref)
+            with self._lock:
+                for offset in range(0, len(public_refs), 500):
+                    batch = public_refs[offset:offset + 500]
+                    locators = self._connection.execute(
+                        "SELECT artifact_ref,block_ref,ordinal FROM public_observation_metadata_locator_v1 "
+                        "WHERE artifact_ref IN (" + ",".join("?" for _ in batch) + ")", batch).fetchall()
+                    block_order.update((bytes(row["artifact_ref"]).hex(),
+                        (bytes(row["block_ref"]), row["ordinal"])) for row in locators)
+        return sorted(rows, key=lambda row: (*block_order.get(row["artifact_ref"], (b"", -1)),
+            str(row["artifact_ref"])))
+
+    def _artifact_entries_from_storage_rows(self, rows: Sequence[sqlite3.Row]) -> tuple[ArtifactIndexEntryV2, ...]:
+        decoded = {row["artifact_ref"]: self.artifact_entry_from_storage_row(row)
+            for row in self._storage_rows_in_decode_order(rows)}
+        return tuple(decoded[row["artifact_ref"]] for row in rows)
+
+    def _valid_artifact_entries_from_storage_rows(
+        self, rows: Sequence[sqlite3.Row],
+    ) -> tuple[tuple[ArtifactIndexEntryV2, ...], int]:
+        """Decode a bounded result in block order and retain its invalid-row count."""
+        decoded: dict[str, ArtifactIndexEntryV2] = {}
+        invalid = 0
+        for row in self._storage_rows_in_decode_order(rows):
+            try:
+                decoded[row["artifact_ref"]] = self.artifact_entry_from_storage_row(row)
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                invalid += 1
+        return tuple(decoded[row["artifact_ref"]] for row in rows if row["artifact_ref"] in decoded), invalid
 
     def artifact_entries(self, artifact_type: str) -> tuple[ArtifactIndexEntryV2, ...]:
         """Read a small typed artifact-index namespace without adding a warehouse table."""
@@ -1752,10 +2012,7 @@ class OpsRepository:
                 "SELECT * FROM artifact_index WHERE artifact_type=? ORDER BY created_at_ns,artifact_ref",
                 (artifact_type,),
             ).fetchall()
-        result = tuple(
-            ArtifactIndexEntryV2._from_storage_row(row)
-            for row in rows
-        )
+        result = self._artifact_entries_from_storage_rows(rows)
         from ..data.compact_public_index import KINDS
 
         if self._public_locator_enabled and artifact_type in KINDS:
@@ -1803,14 +2060,44 @@ class OpsRepository:
             params = (artifact_type, cutoff, limit + 1)
         with self._lock:
             rows = self._connection.execute(query, params).fetchall()
-        entries: list[ArtifactIndexEntryV2] = []
+        entries, invalid = self._valid_artifact_entries_from_storage_rows(rows[:limit])
+        return LatestArtifactPageV1(entries, len(rows) > limit, invalid)
+
+    def scheduled_event_window(self, *, cutoff_ns: int, limit: int = 64) -> LatestArtifactPageV1:
+        """Indexed blackout interval with latest known revisions for each event."""
+        timestamp(cutoff_ns, field="scheduled calendar cutoff")
+        if type(limit) is not int or not 1 <= limit <= 256:
+            raise ValueError("scheduled calendar population bound invalid")
+        start, end = max(0, cutoff_ns - 15 * 60 * 1_000_000_000), cutoff_ns + 30 * 60 * 1_000_000_000
+        with self._lock:
+            rows = self._connection.execute("SELECT * FROM artifact_index WHERE artifact_type='ScheduledEventV2' "
+                "AND json_valid(metadata_json) AND json_extract(metadata_json,'$.evidence.scheduled_at_ns')>=? "
+                "AND json_extract(metadata_json,'$.evidence.scheduled_at_ns')<=? AND available_at_ns<=? "
+                "ORDER BY available_at_ns DESC,artifact_ref DESC LIMIT ?", (start, end, cutoff_ns, limit + 1)).fetchall()
+        entries: dict[str, ArtifactIndexEntryV2] = {}
         invalid = 0
         for row in rows[:limit]:
             try:
-                entries.append(ArtifactIndexEntryV2._from_storage_row(row))
+                entry = self.artifact_entry_from_storage_row(row)
+                event_id = entry.metadata["evidence"]["event_id"]
+                if not isinstance(event_id, str):
+                    raise ValueError("scheduled event identity missing")
+                if event_id in entries:
+                    continue
+                page = self.latest_artifact_entries("ScheduledEventV2", as_of_ns=cutoff_ns, limit=1,
+                    metadata_path=("evidence", "event_id"), identity_value=event_id)
+                if page.invalid_entry_count or not page.entries:
+                    raise ValueError("scheduled event revision unavailable")
+                latest = page.entries[0]
+                scheduled = latest.metadata["evidence"]["scheduled_at_ns"]
+                if type(scheduled) is not int:
+                    raise ValueError("scheduled event time missing")
+                if start <= scheduled <= end:
+                    entries[event_id] = latest
             except (KeyError, TypeError, ValueError, json.JSONDecodeError):
                 invalid += 1
-        return LatestArtifactPageV1(tuple(entries), len(rows) > limit, invalid)
+        return LatestArtifactPageV1(tuple(sorted(entries.values(), key=lambda entry: entry.artifact_ref)),
+                                    len(rows) > limit, invalid)
 
     def public_archive_history_entries(
         self,
@@ -1862,14 +2149,16 @@ class OpsRepository:
                         values: list[Any] = [instrument_revision]
                         if instrument_key_json is not None:
                             names.append("instrument_key_json")
-                            values.append(instrument_key_json)
+                            values.append(_public_metadata_query_key(self._public_metadata_enabled, instrument_key_json))
                         names.extend(("event_type", "availability_class"))
                         values.extend((kind, source_class))
-                        lane = " AND ".join(_archive_json_expression(name) + "=?" for name in names)
+                        lane = " AND ".join(_public_metadata_query_expression(
+                            self._public_metadata_enabled, name) + "=?" for name in names)
                         order_time = effective if replay else "available_at_ns"
                         budget = _RECEIPT_REPLAY_CANDIDATE_LIMIT + 1 if replay else limit
                         query = ("SELECT * FROM artifact_index INDEXED BY "
-                                 f"public_exact_receipt_{scope}_{view}_lookup "
+                                 f"public_exact_receipt_{scope}_{view}_lookup"
+                                 + ("_v2" if self._public_metadata_enabled else "") + " "
                                  "WHERE artifact_type='PublicObservationIndexV2' AND " + lane
                                  + " AND " + effective + "<=? ORDER BY " + order_time + " DESC,"
                                  + _archive_json_expression("record_id") + " DESC,artifact_ref DESC LIMIT ?")
@@ -1887,22 +2176,25 @@ class OpsRepository:
                 int(row["available_at_ns"]),
                 str(json.loads(row["metadata_json"]).get("record_id", "")),
                 str(row["artifact_ref"])), reverse=True)[:limit]
-            return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+            return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
         else:
             close = _archive_json_expression("event_at_ns")
             if len(kinds) != 1:
                 raise ValueError("bounded causal bar history requires one exact interval")
             # Seek distinct close origins directly. GROUP BY over a materialized
             # retained-history CTE made a small output limit conceal a full scan.
-            base = " AND ".join(_archive_json_expression(name)+"=?" for name in (
+            base = " AND ".join(_public_metadata_query_expression(
+                self._public_metadata_enabled, name)+"=?" for name in (
                 "instrument_key_json","instrument_revision","event_type","availability_class"))
-            exact = (instrument_key_json,instrument_revision,kinds[0],availability_class or "ACTUAL_SYSTEM")
+            exact = (_public_metadata_query_key(self._public_metadata_enabled, instrument_key_json),instrument_revision,
+                     kinds[0],availability_class or "ACTUAL_SYSTEM")
             entries: list[ArtifactIndexEntryV2] = []
             cursor_close = cutoff+1
             with self._lock:
                 for _ in range(limit):
                     origin = self._connection.execute(
-                        "SELECT " + close + " FROM artifact_index INDEXED BY public_archive_history_lookup "
+                        "SELECT " + close + " FROM artifact_index INDEXED BY " + _public_metadata_query_index(
+                            self._public_metadata_enabled, "public_archive_history_lookup") + " "
                         "WHERE artifact_type='PublicObservationIndexV2' AND " + base + " AND "
                         + close + "<? ORDER BY " + close + " DESC LIMIT 1",
                         (*exact,cursor_close)).fetchone()
@@ -1910,13 +2202,14 @@ class OpsRepository:
                         break
                     cursor_close = int(origin[0])
                     revisions = self._connection.execute(
-                        "SELECT * FROM artifact_index INDEXED BY public_archive_history_lookup "
+                        "SELECT * FROM artifact_index INDEXED BY " + _public_metadata_query_index(
+                            self._public_metadata_enabled, "public_archive_history_lookup") + " "
                         "WHERE artifact_type='PublicObservationIndexV2' AND " + base + " AND "
                         + close + "=? AND " + effective + "<=? LIMIT 129",
                         (*exact,cursor_close,cutoff)).fetchall()
                     if len(revisions)>128:
                         raise ValueError("archive exact-origin revision work bound exceeded (128)")
-                    entries.extend(ArtifactIndexEntryV2._from_storage_row(row) for row in revisions)
+                    entries.extend(self.artifact_entry_from_storage_row(row) for row in revisions)
                     if len(entries)>100_000:
                         raise ValueError("archive source lookup exceeded its revision-row bound (100000)")
             return tuple(entries)
@@ -1943,7 +2236,8 @@ class OpsRepository:
         if type(limit) is not int or not 1 <= limit <= 128:
             raise ValueError("exact bar source revision bound must be between 1 and 128")
         query = ("SELECT * FROM artifact_index WHERE artifact_type='PublicObservationIndexV2' "
-                 "AND " + _archive_json_expression("instrument_key_json") + "=? AND "
+                 "AND " + _public_metadata_query_expression(
+                     self._public_metadata_enabled, "instrument_key_json") + "=? AND "
                  + _archive_json_expression("instrument_revision") + "=? AND "
                  + _archive_json_expression("event_type") + "=? AND "
                  + _archive_json_expression("availability_class") + "='ACTUAL_SYSTEM' AND "
@@ -1952,11 +2246,12 @@ class OpsRepository:
                  "AND available_at_ns<=? ORDER BY available_at_ns,"
                  + _archive_json_expression("record_id") + ",artifact_ref LIMIT ?")
         with self._lock:
-            rows = self._connection.execute(query, (instrument_key.to_canonical_json(),
+            rows = self._connection.execute(query, (_public_metadata_query_key(
+                self._public_metadata_enabled, instrument_key.to_canonical_json()),
                 instrument_key.contract_revision, event_type, close, cutoff, limit + 1)).fetchall()
         if len(rows) > limit:
             raise ValueError("exact bar source revision lookup exceeded its explicit bound")
-        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
 
     def public_stream_trade_entries(
         self, instrument_key: InstrumentKeyV2, *, source_id: str,
@@ -1988,7 +2283,7 @@ class OpsRepository:
         with self._lock:
             rows = self._connection.execute(query, (instrument_key.to_canonical_json(),
                 instrument_key.contract_revision, source_id, "TRADE", floor, cutoff, cutoff, limit + 1)).fetchall()
-        result = tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        result = tuple(self.artifact_entry_from_storage_row(row) for row in rows)
         if self._public_locator_enabled:
             from ..data.compact_public_index import feed_ref
 
@@ -2047,7 +2342,7 @@ class OpsRepository:
                 + " AND ".join(field + "=?" for field in fields)
                 + " AND available_at_ns>? AND available_at_ns<=? ORDER BY available_at_ns,artifact_ref LIMIT 1",
                 (instrument_key.to_canonical_json(), source_id, channel, after, through)).fetchall()
-        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
 
     def latest_stream_continuity_entries(self, *, as_of_ns: int) -> tuple[ArtifactIndexEntryV2, ...]:
         """Seek at most eight public continuity heads without decoding their history.
@@ -2085,7 +2380,7 @@ class OpsRepository:
                         )).fetchone()
                         if row is not None:
                             rows.append(row)
-        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
 
     def l2_archive_restart_checkpoints(self, *, limit: int = 1_024) -> tuple[ArtifactIndexEntryV2, ...]:
         """Return one latest checkpoint per stream without loading frame history."""
@@ -2130,7 +2425,7 @@ class OpsRepository:
         if len(rows) > limit:
             raise ValueError("L2 restart exceeded its distinct-stream bound")
         rows.sort(key=lambda row: row["artifact_ref"])
-        return tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
 
     def _typed_creation_rows(self, types: tuple[str, ...], *, cutoff: int | None,
             after: tuple[int, str] | None, limit: int) -> list[sqlite3.Row]:
@@ -2184,10 +2479,7 @@ class OpsRepository:
         )
         rows = self._typed_creation_rows(types, cutoff=cutoff, after=None, limit=limit)
         rows.reverse()
-        return tuple(
-            ArtifactIndexEntryV2._from_storage_row(row)
-            for row in rows
-        )
+        return self._artifact_entries_from_storage_rows(rows)
 
     def artifact_entries_by_types_page(
         self,
@@ -2221,11 +2513,13 @@ class OpsRepository:
         rows = self._typed_creation_rows(types, cutoff=cutoff, after=after, limit=limit)
         entries: list[ArtifactIndexEntryV2] = []
         invalid = 0
-        for row in rows:
+        row_order = {row["artifact_ref"]: index for index, row in enumerate(rows)}
+        for row in self._storage_rows_in_decode_order(rows):
             try:
-                entries.append(ArtifactIndexEntryV2._from_storage_row(row))
+                entries.append(self.artifact_entry_from_storage_row(row))
             except (KeyError, TypeError, ValueError, json.JSONDecodeError):
                 invalid += 1
+        entries.sort(key=lambda entry: row_order[entry.artifact_ref])
         next_cursor = (int(rows[-1]["created_at_ns"]), str(rows[-1]["artifact_ref"])) if rows else None
         raw_keys = tuple((int(row["created_at_ns"]), str(row["artifact_ref"])) for row in rows)
         return ArtifactIndexPageV2(tuple(entries), next_cursor, invalid, raw_keys)
@@ -2303,7 +2597,7 @@ class OpsRepository:
         if after_close_at_ns is not None and after_close_at_ns % duration_ns:
             raise ValueError("native close cursor must align to its source interval")
         key_json = instrument_key.to_canonical_json()
-        key_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.instrument_key_json') END"
+        key_expr = _public_metadata_query_expression(self._public_metadata_enabled, "instrument_key_json")
         event_expr = "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.event_type') END"
         availability_expr = (
             "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.availability_class') END"
@@ -2324,13 +2618,15 @@ class OpsRepository:
                 cursor_available, cursor_ref, complete = head["cursor_available_ns"],head["cursor_ref"],bool(head["complete"])
             if not complete:
                 source_rows = connection.execute(
-                    "SELECT * FROM artifact_index INDEXED BY public_origin_discovery_lookup "
+                    "SELECT * FROM artifact_index INDEXED BY " + _public_metadata_query_index(
+                        self._public_metadata_enabled, "public_origin_discovery_lookup") + " "
                     "WHERE artifact_type='PublicObservationIndexV2' AND " + key_expr + "=? AND "
                     + event_expr + "=? AND " + availability_expr + "=? "
                     "AND available_at_ns>=? AND available_at_ns<=? "
                     "AND (available_at_ns,artifact_ref)>(?,?) "
                     "ORDER BY available_at_ns,artifact_ref LIMIT 129",
-                    (key_json,event_type,AvailabilityClassV2.ACTUAL_SYSTEM.value,
+                    (_public_metadata_query_key(self._public_metadata_enabled, key_json),event_type,
+                     AvailabilityClassV2.ACTUAL_SYSTEM.value,
                      available_from,available_through,cursor_available,cursor_ref)).fetchall()
                 for row in source_rows[:128]:
                     body = json.loads(row["metadata_json"])
@@ -2370,7 +2666,7 @@ class OpsRepository:
         selected_rows = rows[:limit]
         entries: list[ArtifactIndexEntryV2] = []
         for row in selected_rows:
-            entry = ArtifactIndexEntryV2._from_storage_row(row)
+            entry = self.artifact_entry_from_storage_row(row)
             metadata = entry.metadata
             close_at_ns = metadata.get("event_at_ns")
             if (entry.artifact_type != "PublicObservationIndexV2"
@@ -2469,7 +2765,7 @@ class OpsRepository:
         invalid = 0
         for row in selected:
             try:
-                entries.append(ArtifactIndexEntryV2._from_storage_row(row))
+                entries.append(self.artifact_entry_from_storage_row(row))
             except (KeyError, TypeError, ValueError, json.JSONDecodeError):
                 invalid += 1
         return PendingDecisionEventPageV1(tuple(entries), has_more, invalid)
@@ -2495,7 +2791,7 @@ class OpsRepository:
             ).fetchall()
         if not rows:
             return None
-        entries = tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        entries = tuple(self.artifact_entry_from_storage_row(row) for row in rows)
         if len(entries) > 1:
             top = entries[0].metadata.get("checkpoint")
             next_body = entries[1].metadata.get("checkpoint")
@@ -2525,7 +2821,7 @@ class OpsRepository:
             ).fetchall()
         if not rows:
             return None
-        entries = tuple(ArtifactIndexEntryV2._from_storage_row(row) for row in rows)
+        entries = tuple(self.artifact_entry_from_storage_row(row) for row in rows)
         records: list[M15OriginAccountingCheckpointV1] = []
         for entry in entries:
             body = entry.metadata.get("checkpoint")
@@ -2607,7 +2903,7 @@ class OpsRepository:
         invalid = 0
         for row in selected_rows:
             try:
-                entries.append(ArtifactIndexEntryV2._from_storage_row(row))
+                entries.append(self.artifact_entry_from_storage_row(row))
             except (KeyError, TypeError, ValueError, json.JSONDecodeError):
                 invalid += 1
         next_cursor = (

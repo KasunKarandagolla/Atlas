@@ -25,7 +25,8 @@ class FrozenMap(Mapping[str, Any]):
     _items: tuple[tuple[str, Any], ...]
 
     def __init__(self, values: Mapping[str, Any] | Iterator[tuple[str, Any]] | None = None) -> None:
-        items = values.items() if isinstance(values, Mapping) else (values or ())
+        items = (values._items if isinstance(values, FrozenMap) else
+                 values.items() if isinstance(values, Mapping) else (values or ()))
         normalized: list[tuple[str, Any]] = []
         seen: set[str] = set()
         for key, value in items:
@@ -38,8 +39,19 @@ class FrozenMap(Mapping[str, Any]):
         object.__setattr__(self, "_items", tuple(sorted(normalized, key=lambda pair: pair[0])))
 
     def __getitem__(self, key: str) -> Any:
-        for existing, value in self._items:
-            if existing == key:
+        if not isinstance(key, str):
+            raise KeyError(key)
+        # Universe maps contain thousands of exact instrument keys. Linear
+        # lookup here turns one pass over a prior workset into quadratic work.
+        low, high = 0, len(self._items)
+        while low < high:
+            middle = (low + high) // 2
+            existing, value = self._items[middle]
+            if existing < key:
+                low = middle + 1
+            elif existing > key:
+                high = middle
+            else:
                 return value
         raise KeyError(key)
 
@@ -66,7 +78,8 @@ class FrozenMap(Mapping[str, Any]):
             values = json_value(values)
         result = object.__new__(cls)
         items = []
-        for key, value in values.items():
+        source_items = values._items if isinstance(values, FrozenMap) else values.items()
+        for key, value in source_items:
             if not isinstance(key, str) or not key:
                 raise ValueError("object keys must be non-empty strings")
             items.append((key, _freeze_canonical_json(value)))
@@ -89,7 +102,7 @@ def _freeze_canonical_json(value: Any) -> Any:
         return FrozenMap.from_json(value)
     if isinstance(value, (tuple, list)):
         return tuple(_freeze_canonical_json(item) for item in value)
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         return FrozenMap.from_json(value)
     if isinstance(value, float):
         if not math.isfinite(value):
@@ -135,7 +148,7 @@ def json_value(value: Any) -> Any:
         return [json_value(item) for item in value]
     if isinstance(value, list):
         return [json_value(item) for item in value]
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         if not all(isinstance(key, str) for key in value):
             raise ValueError("JSON object keys must be strings")
         return {key: json_value(item) for key, item in value.items()}

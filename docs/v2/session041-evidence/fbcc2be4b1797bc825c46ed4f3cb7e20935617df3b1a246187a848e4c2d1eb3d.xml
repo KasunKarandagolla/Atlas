@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="35.048" timestamp="2026-10-09T00:22:17.842345+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_mixed_broad_capacity" name="test_mixed_1024_contract_public_workload_under_bounded_stalls" time="29.463"><failure message="StopIteration">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-577/test_mixed_1024_contract_publi0')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x7fbd84e31b20&gt;
+
+    def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, record_property):
+        products = _contracts()
+        clock = [NOW]
+        path = tmp_path / "mixed-ops.sqlite"
+        runtime = BroadPublicRuntimeV2(clock_ns=lambda: clock[0],
+            stream_factories={"BYBIT": _idle_stream(), "BINANCE_MARKET": _idle_stream()})
+        source = _DeterministicBybitSource(products, NOW)
+        port = BroadProductionOpsCyclePortV2(public_source=source, broad_runtime=runtime,
+            clock_ns=lambda: clock[0])
+        interpreted: list[CapturedPublicFrameV2] = []
+        original_interpreter = runtime._interpret_frames
+    
+        def observe_interpreter(repository, frames, *, now_ns):
+            interpreted.extend(frames)
+            return original_interpreter(repository, frames, now_ns=now_ns)
+    
+        runtime._interpret_frames = observe_interpreter
+        identity = TuningRunIdentityV1("s41-mixed-broad-capacity", "a" * 64, "b" * 40, 0)
+        report_dir = tmp_path / "reports"
+        offered: list[CapturedPublicFrameV2] = []
+        commit_observation: dict[str, float | int] = {}
+        archive_stall_seconds: list[float] = []
+        reader_snapshots: list[tuple[int, int]] = []
+        report_release = threading.Event()
+        def export_during_stall():
+            if not report_release.wait(60.0):
+                raise TimeoutError("report export did not reach the injected commit stall")
+            return export_tuning_snapshot(path, report_dir, identity, cutoff_ns=NOW + 20_000_000_000)
+    
+        exporter = ReadOnlyReportWorkerV1(export_during_stall)
+        export_completion = []
+    
+        try:
+            with OpsRepository(path) as repository:
+                recovery = port.recover(repository, now_ns=NOW)
+                assert recovery.required_source_ids == ("BINANCE_PUBLIC_V2", "BYBIT_PUBLIC_V2")
+                snapshot = source.acquire_snapshot(now_ns=NOW)
+                port._register_refreshed_stream_products(repository, snapshot)
+                # The fixture is synthetically shaped and may be marked incomplete
+                # by the public health gate; persistence and receipt identity below
+                # remain the measured behavior.
+                port._persist_broad_public_snapshot(repository, snapshot, now_ns=NOW)
+    
+                universe = full_universe(repository, cutoff_ns=NOW)
+                body = latest_workset(repository, cutoff_ns=NOW)
+                selected = active_products(repository, cutoff_ns=NOW)
+                assert universe is not None and body is not None and selected is not None
+                assert len(universe.entries) == 1024
+                assert len({item.key for item in universe.entries}) == 1024
+                assert {item.key.venue for item in universe.entries} == {VenueV2.BYBIT, VenueV2.BINANCE}
+                assert len(selected) &lt;= 24 and len(selected) &gt; 0
+                wal_after_first_publication = _wal_size(path)
+                assert body["selected_count"] == len(selected)
+                assert not any(entry.capital_eligible or entry.scanner_eligible for entry in universe.entries)
+                # Stream subscriptions follow the collector's actual workset tiers and
+                # runtime benchmarks. This fixture has no durable opportunity watches.
+                actual_tiers = {InstrumentKeyV2.from_dict(json.loads(key)): int(value)
+                                for key, value in body["tiers"].items()}
+                deep_keys = {key for key, tier in actual_tiers.items() if tier &gt;= 3}
+                assert runtime.plan is not None
+                assert deep_keys.issubset(set(runtime.plan.keys))
+                assert len(runtime.plan.keys) &lt;= 24
+    
+                # Open a separate read-only snapshot while the live database is in WAL mode.
+                with OpsRepository(path, read_only=True) as reader:
+                    reader_snapshots.append((len(full_universe(reader, cutoff_ns=NOW).entries),
+                        reader._connection.execute("PRAGMA data_version").fetchone()[0]))
+    
+                assert runtime.source is not None and runtime.capture is not None
+                bybit_lane = runtime.source._lanes["BYBIT"]
+                handoff = bybit_lane._handoff
+&gt;               stream_key = next(identity.key for identity in runtime.plan.identities
+                                  if identity.venue == VenueV2.BYBIT
+                                  and identity.channel.startswith("orderbook.50."))
+E                                 StopIteration
+
+tests/v2/test_session041_mixed_broad_capacity.py:133: StopIteration</failure></testcase></testsuite></testsuites>

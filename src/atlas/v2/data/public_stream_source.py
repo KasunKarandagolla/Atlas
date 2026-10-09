@@ -23,6 +23,7 @@ from .public_microstructure_ws import (
     CapturedPublicFrameV2,
     PublicFrameHandoffOverflowV2,
     PublicFrameHandoffStatusV2,
+    SharedPublicFrameBudgetV1,
     capture_public_frames,
     handoff_public_frames,
 )
@@ -55,6 +56,8 @@ class PublicStreamSourceV2:
                  max_queue_items: int = DEFAULT_PUBLIC_FRAME_QUEUE_ITEMS,
                  max_queue_bytes: int = DEFAULT_PUBLIC_FRAME_QUEUE_BYTES,
                  max_drain_items: int = DEFAULT_PUBLIC_FRAME_DRAIN_ITEMS,
+                 shared_budget: SharedPublicFrameBudgetV1 | None = None,
+                 budget_lane: str | None = None,
                  clock_ns: Callable[[], int] = time.time_ns) -> None:
         self.venue = VenueV2(venue)
         self.topics = tuple(topics)
@@ -75,7 +78,8 @@ class PublicStreamSourceV2:
         self._handoff = BoundedPublicFrameHandoffV2(
             venue=self.venue, topics=self.topics,
             max_queue_items=max_queue_items, max_queue_bytes=max_queue_bytes,
-            max_drain_items=max_drain_items,
+            max_drain_items=max_drain_items, shared_budget=shared_budget,
+            budget_lane=budget_lane,
         )
         self._lock = threading.Lock()
         self._state: Literal["CREATED", "RUNNING", "EXHAUSTED", "FAILED", "CLOSED"] = "CREATED"

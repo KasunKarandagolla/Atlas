@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1788.097" timestamp="2026-10-08T07:24:21.760487+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_capacity_max_breadth" name="test_three_full_bulk_cycles_at_maximum_synthetic_breadth" time="1782.619"><failure message="ValueError: TYPED_ARTIFACT_CAUSAL_WINDOW_OVERFLOW">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-366/test_three_full_bulk_cycles_at0')
+
+    def test_three_full_bulk_cycles_at_maximum_synthetic_breadth(tmp_path: Path) -&gt; None:
+        """Exercise 4096 products/8192 receipts per cycle through SQLite and Parquet.
+    
+        Inputs are deterministic synthetic venue-shaped public rows. This uses the
+        production collector, repository, Parquet archive, broad workset publisher,
+        repository restart, exact-ref hydration and archive readback through the
+        existing measurement helper. It has no venue network, stream queue,
+        enrichment, scheduler, decisions, concurrent reports or endurance phase.
+        """
+        peak_rss_before = _process_peak_rss_bytes()
+&gt;       metrics = measure_bounded_cycles(tmp_path, per_venue=2048, cycles=3)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_capacity_max_breadth.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_scale_review.py:227: in measure_bounded_cycles
+    observed = restarted.artifact_entries_by_types(("PublicObservationIndexV2",),
+src/atlas/v2/memory/repository.py:2451: in artifact_entries_by_types
+    rows = self._typed_creation_rows(types, cutoff=cutoff, after=None, limit=limit)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f0b3d5c80e0&gt;
+types = ('PublicObservationIndexV2',), cutoff = 1800000000000000000
+after = None, limit = 10000
+
+    def _typed_creation_rows(self, types: tuple[str, ...], *, cutoff: int | None,
+            after: tuple[int, str] | None, limit: int) -&gt; list[sqlite3.Row]:
+        """Bound raw candidates before availability filtering and global merge."""
+        if len(types) &gt; 128:
+            raise ValueError("typed artifact namespace population exceeds its bound (128)")
+        maximum = 16_384
+        collected: list[sqlite3.Row] = []
+        with self._lock:
+            for kind in types:
+                lane_cursor = after
+                examined = 0
+                visible: list[sqlite3.Row] = []
+                while len(visible) &lt; limit:
+                    cursor = " AND (created_at_ns,artifact_ref)&lt;(?,?)" if lane_cursor is not None else ""
+                    batch = min(limit + 1, maximum - examined + 1)
+                    raw = self._connection.execute(
+                        "SELECT * FROM artifact_index INDEXED BY artifact_type_created_order "
+                        "WHERE artifact_type=?" + cursor + " ORDER BY created_at_ns DESC,artifact_ref DESC LIMIT ?",
+                        (kind, *((lane_cursor[0], lane_cursor[1]) if lane_cursor is not None else ()), batch)).fetchall()
+                    for row in raw:
+                        examined += 1
+                        if examined &gt; maximum:
+&gt;                           raise ValueError("TYPED_ARTIFACT_CAUSAL_WINDOW_OVERFLOW")
+E                           ValueError: TYPED_ARTIFACT_CAUSAL_WINDOW_OVERFLOW
+
+src/atlas/v2/memory/repository.py:2423: ValueError</failure></testcase></testsuite></testsuites>

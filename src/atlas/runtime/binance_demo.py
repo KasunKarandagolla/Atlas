@@ -361,7 +361,10 @@ def classify_negative_order_lookup(*, sent_started: bool, lookup_found: bool,
 class NautilusDemoHost(Protocol):
     order_factory: Any
 
-    def submit_order(self, order: Any, *, params: dict[str, Any] | None = None) -> None: ...
+    def submit_order(self, order: Any, *, position_id: Any | None = None,
+                     params: dict[str, Any] | None = None) -> None: ...
+    def resolve_position_id(self, *, instrument_id: Any, account_id: str,
+                            expected_signed_quantity: Decimal) -> Any: ...
     def cancel_order(self, order: Any) -> None: ...
     def find_order(self, client_order_id: str) -> Any: ...
 
@@ -422,7 +425,7 @@ class BinanceNautilusDemoPort:
         self.account_snapshot_getter = account_snapshot_getter
         self.market_filters = market_filters
 
-    def _account_preflight(self, command: Command, payload: Mapping[str, Any], *, now_ns: int) -> None:
+    def _account_preflight(self, command: Command, payload: Mapping[str, Any], *, now_ns: int) -> Decimal | None:
         from .binance_reconciliation import BinanceAccountSnapshot
 
         if self.account_snapshot_getter is None:
@@ -435,7 +438,7 @@ class BinanceNautilusDemoPort:
                        for row in (account.account, account.dual_side, account.multi_assets))):
             raise ValueError("DEMO_ACCOUNT_PROFILE_STALE_OR_UNQUALIFIED")
         if command.command_type == CommandType.CANCEL_ENTRY:
-            return
+            return None
         configs = [row for row in account.symbol_configs
                    if row.as_dict().get("symbol") == self.product.key.native_symbol]
         if (len(configs) != 1 or configs[0].as_dict().get("marginType") != "ISOLATED"
@@ -456,6 +459,7 @@ class BinanceNautilusDemoPort:
             raise ValueError("DEMO_REDUCTION_POSITION_SCOPE_FAILED")
         if command.command_type == CommandType.REPAIR_STOP and quantity != abs(signed):
             raise ValueError("DEMO_FULL_POSITION_STOP_QUANTITY_MISMATCH")
+        return signed
 
     def compile_entry_ioc(self, command: Command, *, now_ns: int) -> Any:
         """Offline exact IOC compilation; this method has no submit operation.
@@ -492,7 +496,8 @@ class BinanceNautilusDemoPort:
             quantity=Quantity.from_str(payload["quantity"]), price=Price.from_str(payload["price"]),
             client_order_id=ClientOrderId(local), time_in_force=TimeInForce.IOC, reduce_only=False)
 
-    def dispatch(self, command: Command, *, now_ns: int) -> None:
+    def dispatch(self, command: Command, *, now_ns: int,
+                 effect_fence: Callable[[], None] | None = None) -> None:
         from nautilus_trader.model import (
             ClientOrderId,
             InstrumentId,
@@ -518,25 +523,40 @@ class BinanceNautilusDemoPort:
         client_id = validate_client_order_id(payload["client_order_id"])
         side = {"BUY": OrderSide.BUY, "SELL": OrderSide.SELL}.get(payload["side"])
         quantity = Decimal(payload["quantity"])
+        is_repair_stop = command.command_type == CommandType.REPAIR_STOP
         if (side is None or not quantity.is_finite() or quantity <= 0
-                or quantity % self.product.qty_step != 0 or quantity < self.product.min_qty
-                or (self.product.max_qty is not None and quantity > self.product.max_qty)):
+                or quantity % self.product.qty_step != 0
+                or (not is_repair_stop and quantity < self.product.min_qty)
+                or (not is_repair_stop and self.product.max_qty is not None
+                    and quantity > self.product.max_qty)):
             raise ValueError("demo side or quantity filter failed")
         if command.command_type == CommandType.SUBMIT_ENTRY:
             raise ValueError(opening_gate_reason())
-        self._account_preflight(command, payload, now_ns=now_ns)
+        if effect_fence is None:
+            raise ValueError("Binance external effects require a persisted readiness fence")
+        signed_position = self._account_preflight(command, payload, now_ns=now_ns)
         if command.command_type == CommandType.CANCEL_ENTRY:
             order = self.host.find_order(client_id)
             if (order is None or str(order.client_order_id) != client_id
                     or str(order.instrument_id) != f"{payload['symbol']}-PERP.BINANCE"):
                 raise ValueError("missing OMS order requires reconciliation")
+            effect_fence()
             self.host.cancel_order(order)
             return
         if payload["reduce_only"] is not True:
             raise ValueError("demo risk-reduction command must be reduce-only")
+        if self.host.find_order(client_id) is not None:
+            raise ValueError("DEMO_SUBMITTED_ORDER_ID_COLLISION")
         common = {"instrument_id": InstrumentId.from_str(f"{payload['symbol']}-PERP.BINANCE"),
                       "order_side": side, "quantity": Quantity.from_str(payload["quantity"]),
                       "reduce_only": True, "client_order_id": ClientOrderId(client_id)}
+        if signed_position is None:
+            raise ValueError("DEMO_REDUCTION_POSITION_UNRESOLVED")
+        position_id = self.host.resolve_position_id(
+            instrument_id=common["instrument_id"],
+            account_id=f"BINANCE-{self.identity.account_scope_ref}",
+            expected_signed_quantity=signed_position,
+        )
         if command.command_type in {CommandType.FLATTEN, CommandType.SUBMIT_EXIT}:
             if payload["price"] is None:
                 if self.market_filters is None:
@@ -550,43 +570,59 @@ class BinanceNautilusDemoPort:
                     raise ValueError("demo exit price filter failed")
                 order = self.host.order_factory.limit(
                     **common, price=Price.from_str(payload["price"]), time_in_force=TimeInForce.IOC)
-            self.host.submit_order(order)
+            effect_fence()
+            self.host.submit_order(order, position_id=position_id)
         elif command.command_type == CommandType.REPAIR_STOP:
             stop = Decimal(payload["stop"])
             if not stop.is_finite() or stop <= 0 or stop % self.product.tick_size != 0:
                 raise ValueError("demo stop price filter failed")
             order = self.host.order_factory.stop_market(
                 **common, trigger_price=Price.from_str(payload["stop"]), trigger_type=TriggerType.MARK_PRICE)
-            self.host.submit_order(order, params={"close_position": True})
+            if signed_position is None:
+                raise ValueError("DEMO_REPAIR_POSITION_UNRESOLVED")
+            effect_fence()
+            self.host.submit_order(order, position_id=position_id, params={"close_position": True})
         else:
             raise ValueError("demo command unsupported; reconciliation is read-only")
 
 
 def dispatch_persisted_demo_command(*, journal: SQLiteJournal, command_id: str,
                                     port: BinanceNautilusDemoPort, now_ns: int,
-                                    writer_epoch: int, assert_writer: Callable[[], None]) -> Command:
+                                    writer_epoch: int, assert_writer: Callable[[], None],
+                                    readiness_proof: Any = None,
+                                    snapshot_getter: Callable[[], Any] | None = None,
+                                    generation_getter: Callable[[], int] | None = None,
+                                    clock_ns: Callable[[], int] | None = None) -> Command:
     """Persist UNKNOWN before external effects and never replay an uncertain send."""
     assert_writer()
     command = journal.load_command(command_id)
-    intent = journal.load_intent(command.intent_id)
-    if intent.writer_epoch != writer_epoch:
-        raise PersistenceError("stale demo intent writer")
-    payload = json.loads(command.payload)
-    if payload.get("client_order_id") != intent.client_order_id:
-        raise PersistenceError("demo command does not bind durable client identity")
     if command.send_started_at_ns is not None or command.outcome != CommandOutcome.UNSENT:
         raise PersistenceError("demo command requires reconciliation; redispatch refused")
     # Opening qualification is checked before writing send-started; there is
     # neither an opening effect nor a misleading UNKNOWN for a known refusal.
     if command.command_type == CommandType.SUBMIT_ENTRY:
         raise PersistenceError(opening_gate_reason())
-    journal.mark_send_started(command_id, now_ns)
-    assert_writer()
-    try:
-        port.dispatch(journal.load_command(command_id), now_ns=now_ns)
-    except Exception:
-        # Duplicate ID, timeout, process/transport/adapter error: same identity,
-        # durable UNKNOWN and retained reservation. OMS events reconcile later.
-        return journal.load_command(command_id)
+    from atlas.runtime.binance_readiness import validate_binance_command_readiness
+
+    def fence(*, send_started: bool) -> None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+            raise PersistenceError("Binance command readiness context missing")
+        validate_binance_command_readiness(readiness_proof, journal,
+            identity=port.identity, product=port.product, snapshot=snapshot_getter(),
+            command_id=command_id, writer_epoch=writer_epoch,
+            native_generation=generation_getter(), now_ns=clock_ns(), send_started=send_started)
+
+    with journal._transaction_lock:
+        fence(send_started=False)
+        journal.mark_send_started(command_id, now_ns)
+        fence(send_started=True)
+        try:
+            port.dispatch(journal.load_command(command_id), now_ns=clock_ns(),
+                          effect_fence=lambda: fence(send_started=True))
+        except Exception:
+            # The asynchronous OMS call is uncertain until actual readback.
+            # Retain UNKNOWN and the reservation; do not retry automatically.
+            return journal.load_command(command_id)
     # Strategy acceptance is an asynchronous enqueue, not a venue ACK.
     return journal.load_command(command_id)

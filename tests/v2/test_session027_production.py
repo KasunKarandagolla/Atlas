@@ -961,15 +961,11 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
         candidate_set_entry = repository.get_artifact(candidate_set_ref)
         assert candidate_set_entry is not None
         candidate_set = CandidateSetV2.from_dict(json_value(candidate_set_entry.metadata["candidate_set"]))
-        # The fixture intentionally has only one warm feature snapshot. The
-        # newly explicit S1 warmup missingness must block selection instead of
-        # silently allowing S2 to win against an unobservable competitor.
-        if candidate_set.selected_candidate_id is None:
-            assert candidate_set.selection_status.value == "NOT_ESTIMABLE"
-            generation = repository.artifact_entries("OpsCandidateGenerationEvidenceV1")
-            assert generation and "S1:EMA_WARMUP_MISSING" in generation[0].metadata["generation"]["missing_reasons"]
-            assert repository.artifact_entries("ActionArtifactV2") == ()
-            return
+        # All S1/S2 exact prefixes were warmed above. M1 is deliberately absent
+        # and belongs to S3's separate native event, so it must not block this
+        # M15 decision or bypass the remaining restart/economic assertions.
+        generation = repository.artifact_entries("OpsCandidateGenerationEvidenceV1")
+        assert generation and not generation[0].metadata["generation"]["missing_reasons"]
         assert candidate_set.selected_candidate_id is not None
         assert candidate_set.candidates
         candidate_ref = next(iter(candidate_set_entry.metadata["identity"]["candidate_refs"]))

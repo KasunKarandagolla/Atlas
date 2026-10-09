@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "levels": 8,
+  "derived_nodes": 16,
+  "declared_input_visits": 255,
+  "elapsed_seconds": 0.13645013599307276,
+  "scope": "OFFLINE_SHARED_CAUSAL_DAG"
+}

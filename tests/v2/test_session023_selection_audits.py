@@ -44,7 +44,7 @@ POLICIES = {p.policy_hash: p for p in (S1_POLICY, S2_POLICY, S3_POLICY)}
 def calendar(repo, candidate_set, item=None, state="SELECTED", reasons=()):
     policy = POLICIES[item.policy_hash] if item is not None else None
     row = DecisionCalendarEntryV2(candidate_set.content_hash, item.content_hash if item else None,
-        policy.policy_id if policy else "MULTI_SLEEVE_RESEARCH_SELECTION_V1", policy.version if policy else "1.0.0-research",
+        policy.policy_id if policy else "MULTI_SLEEVE_RESEARCH_SELECTION_V1", policy.version if policy else "1.1.0-research",
         policy.policy_hash if policy else MULTI_SLEEVE_SELECTION_HASH, CUTOFF, state,
         "NOT_EVALUATED" if state == "SELECTED" else "NOT_APPLICABLE", None, None, "CANDIDATE_SET",
         reasons, candidate_set.content_hash, CUTOFF, CUTOFF)
@@ -163,10 +163,11 @@ def test_model_and_outcome_evidence_cannot_enter_scanner_selection_inputs(tmp_pa
     assert not any(name in parameters for name in ("m0", "m1", "analogue", "payoff", "outcomes"))
 
 
-@pytest.mark.parametrize("sleeve", ["S4", "S5", "S6", "S7"])
+@pytest.mark.parametrize("sleeve", ["S4", "S5", "S7"])
 def test_non_action_sleeves_are_named_exclusions_and_cannot_masquerade(tmp_path, sleeve):
     audit = research_sleeve_audit(CUTOFF)
-    assert next(row for row in audit.sleeves if row[0] == sleeve)[2] == "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"
+    row = next(row for row in audit.sleeves if row[0] == sleeve)
+    assert row[2] == "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
         item = feature_candidate(repo)
         fake = replace(item, envelope=replace(item.envelope, content_hash=""), policy_hash=sha256_json(sleeve))
@@ -176,6 +177,13 @@ def test_non_action_sleeves_are_named_exclusions_and_cannot_masquerade(tmp_path,
             assemble_multisleeve_research_candidate_set(repo, universe=research_selection_universe(universe()),
                 decision_event_id=EVENT, cutoff_ns=CUTOFF, candidates=(fake,),
                 policies={fake.policy_hash: S1_POLICY}, scanner_evidence_refs={})
+
+
+def test_s6_action_policy_is_shadow_only_and_named_in_complete_sleeve_audit():
+    audit = research_sleeve_audit(CUTOFF)
+    row = next(row for row in audit.sleeves if row[0] == "S6")
+    assert row[1:] == ("ELIGIBLE", "Versioned shadow-only exact action policy; rank policy remains unchanged")
+    assert "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH" in audit.exact_action_policy_ids
 
 
 def test_wrong_s3_horizon_rejected_and_full_calendar_preserves_unselected_no_candidate(tmp_path):

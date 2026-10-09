@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 import os
 import re
+import sqlite3
 import stat
 import threading
 from collections.abc import Mapping
@@ -30,6 +31,32 @@ MAX_MEASUREMENT = (1 << 63) - 1
 _RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
 ProducerState = Literal["CREATED", "RUNNING", "EXHAUSTED", "FAILED", "CLOSED"]
 ReportState = Literal["IDLE", "RUNNING", "SUCCEEDED", "FAILED", "UNKNOWN"]
+TERMINAL_DATABASE_FAILURE_TYPES_V1 = frozenset({
+    "DataError", "DatabaseError", "IntegrityError", "InternalError",
+})
+
+
+def terminal_database_integrity_failure_v1(failure_types: object) -> bool:
+    """Recognize durable SQLite integrity classes, excluding transient lock/I/O errors."""
+    return (isinstance(failure_types, (list, tuple, set, frozenset))
+            and any(isinstance(value, str) and value in TERMINAL_DATABASE_FAILURE_TYPES_V1
+                    for value in failure_types))
+
+
+def database_exception_is_integrity_failure_v1(error: BaseException) -> bool:
+    """Fail closed for terminal SQLite corruption/storage errors, not busy locks."""
+    if type(error).__name__ in TERMINAL_DATABASE_FAILURE_TYPES_V1:
+        return True
+    code = getattr(error, "sqlite_errorcode", None)
+    if type(code) is not int:
+        return False
+    primary_code = code & 0xFF
+    return primary_code in {
+        sqlite3.SQLITE_CORRUPT,
+        sqlite3.SQLITE_NOTADB,
+        sqlite3.SQLITE_IOERR,
+        sqlite3.SQLITE_FULL,
+    }
 
 
 def _integer(value: object, name: str, *, minimum: int = 0) -> None:
@@ -256,6 +283,13 @@ def _irreversible_failure(facts: LiveHealthFactsV1) -> str | None:
         return "EVIDENCE_INTEGRITY_FAILURE"
     if facts.clock_integrity_failure:
         return "EVIDENCE_CLOCK_INTEGRITY_FAILURE"
+    evidence_times = (
+        facts.runtime_heartbeat_at_ns, facts.controller_heartbeat_at_ns, facts.wal_last_progress_at_ns,
+        facts.report_started_at_ns, facts.last_export_success_at_ns,
+        facts.last_export_failure_at_ns, facts.host_observed_at_ns,
+    )
+    if any(type(value) is int and value > facts.observed_at_ns for value in evidence_times):
+        return "HEALTH_OBSERVATION_CLOCK_CONFLICT"
     if facts.unclean_capture_stop:
         return "UNCLEAN_PUBLIC_CAPTURE_STOP"
     return None

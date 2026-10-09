@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="14" time="11.858" timestamp="2026-10-08T19:09:31.497738+05:30" hostname="Kasun"><testcase classname="tests.runtime.test_session041_selected_demo" name="test_constructor_does_not_read_credentials_or_connect_and_open_binds_exact_run" time="0.512" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_common_writer_lease_blocks_second_venue_and_data_root" time="0.437" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_restart_changed_account_remains_ineligible_and_preserves_first_binding" time="0.825" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_stale_writer_fails_before_native_effect" time="0.554" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_native_profile_builds_exact_observed_demo_product_without_running" time="1.097" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_binance_product_binding_preserves_original_contract_hash_on_restart" time="0.926"><failure message="AttributeError: 'BinanceMarketFilters' object has no attribute 'received_at_ns'. Did you mean: 'observed_at_ns'?">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-524/test_binance_product_binding_p0')
+
+    def test_binance_product_binding_preserves_original_contract_hash_on_restart(tmp_path):
+        profile = {"execution_profile": "DEMO_NATIVE_OMS_QUALIFICATION", "execution_instrument_symbol": "SOLUSDT"}
+        first = host(tmp_path, tmp_path / "lease", **profile)
+        first.node_factory = Mock(return_value=SimpleNamespace(node=Mock(), _run_task=None,
+            risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1"))
+        try:
+            first.open()
+            original = first.product
+            assert original is not None
+            binding_path = first.run / "binance-product-binding.json"
+            binding = json.loads(binding_path.read_text(encoding="utf-8"))
+            assert binding["product_contract_hash"] == original.content_hash
+            assert binding["metadata_row_hash"] == original.key.contract_revision
+        finally:
+            first.close()
+    
+        later = host(tmp_path, tmp_path / "lease", clock_ns=lambda: T0 + 9_000_000_000, **profile)
+        later.node_factory = Mock(return_value=SimpleNamespace(node=Mock(), _run_task=None,
+            risk_reduction_profile="BINANCE_DEMO_REDUCE_ONLY_V1"))
+        try:
+            later.open()
+            assert later.product is not None and original is not None
+            assert later.product.content_hash == original.content_hash
+            assert later._instrument_metadata_receipt.received_at_ns == T0 + 9_000_000_000
+&gt;           assert later.market_filters.received_at_ns == T0 + 9_000_000_000
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'BinanceMarketFilters' object has no attribute 'received_at_ns'. Did you mean: 'observed_at_ns'?
+
+tests/runtime/test_session041_selected_demo.py:174: AttributeError</failure></testcase><testcase classname="tests.runtime.test_session041_selected_demo" name="test_binance_product_binding_fails_closed_when_exchange_info_changes" time="1.024" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_binance_product_binding_detects_tampered_contract_snapshot" time="1.015" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_config_hash_changes_for_qualification_profile_and_symbol" time="0.005" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_protected_getter_exact_binding_and_sanitized_tamper" time="0.005" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_protected_getter_rejects_symlinks_and_excess_size" time="0.005" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_selected_bybit_uses_its_exact_profile_and_native_metadata_without_fallback" time="1.098" /><testcase classname="tests.runtime.test_session041_selected_demo" name="test_recovery_capture_rejects_live_native_host_before_signed_read" time="0.641" /><testcase classname="tests.v2.test_session041_stream_service_paging" name="test_reconnect_reconciliation_services_between_exact_ref_pages" time="1.555" /></testsuite></testsuites>

@@ -18,7 +18,7 @@ from typing import Any
 from atlas.v2._serialization import canonical_json, json_value, sha256_json, sha256_ref, strict_fields, timestamp
 from atlas.v2.data.bars import BarIntervalV2
 from atlas.v2.data.history import IndexedCausalBarV2, reconstruct_indexed_causal_bars_v1
-from atlas.v2.data.raw import AvailabilityClassV2
+from atlas.v2.data.raw import AvailabilityClassV2, indexed_availability_matches
 from atlas.v2.instruments import InstrumentKeyV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository, prediction_due_lane_v1
 from atlas.v2.models.baseline import BaselineInputsV2
@@ -377,7 +377,8 @@ class ResearchPredictionOutcomeMaintenanceV1:
             if (entry is None or bar.close_at_ns != boundary or not bar.final
                     or bar.interval != BarIntervalV2.M15 or bar.instrument_revision != key.contract_revision
                     or bar.raw.availability_class != AvailabilityClassV2.ACTUAL_SYSTEM
-                    or bar.raw.available_at_ns > cutoff or entry.available_at_ns != bar.raw.available_at_ns
+                    or bar.raw.available_at_ns > cutoff or entry.available_at_ns > cutoff
+                    or not indexed_availability_matches(bar.raw.available_at_ns, entry.available_at_ns, entry.metadata)
                     or entry.content_hash != bar.raw.content_hash
                     or entry.metadata.get("instrument_key_json") != key.to_canonical_json()
                     or entry.metadata.get("bar_content_hash") != bar.content_hash):

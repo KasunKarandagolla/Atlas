@@ -9,6 +9,7 @@ from atlas.v2._serialization import sha256_json
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, ArtifactIndexPageV2, OpsRepository
 from atlas.v2.runtime.analogue_diagnostic import run_analogue_diagnostic_v1
 
+from .test_session017_risk import CUTOFF
 from .test_session023_analogue import evidence_bound_action
 
 
@@ -57,13 +58,89 @@ def test_missing_required_contracts_are_not_replaced_by_empty_history(tmp_path: 
 
 def test_real_post_cutoff_action_availability_is_explicit_without_backdating(tmp_path: Any) -> None:
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
-        case, action, *_ = evidence_bound_action(repo)
-        later = replace(action, available_at_ns=action.available_at_ns + 1)
-        result = run_analogue_diagnostic_v1(repo, action=later, candidate=case.candidate,
+        case, action, *_ = evidence_bound_action(repo, action_clock_ns=CUTOFF + 1)
+        result = run_analogue_diagnostic_v1(repo, action=action, candidate=case.candidate,
             candidate_set=case.candidate_set, cutoff_ns=case.candidate.decision_at_ns,
-            available_at_ns=later.available_at_ns + 1)
-        assert result.reason == "NOT_ESTIMABLE_ACTION_ARTIFACT_AVAILABLE_AFTER_MARKET_CUTOFF"
-        assert repo.get_artifact(result.result_ref).available_at_ns == later.available_at_ns + 1
+            available_at_ns=action.available_at_ns + 1)
+        assert action.available_at_ns > case.candidate.decision_at_ns
+        assert result.result.compatibility_key is not None
+        assert result.result.support_status == "NOT_ESTIMABLE"
+        assert result.reason != "NOT_ESTIMABLE_ACTION_ARTIFACT_AVAILABLE_AFTER_MARKET_CUTOFF"
+        receipt = repo.get_artifact(result.retrieval_receipt_ref).metadata["receipt"]
+        assert repo.get_artifact(receipt["query_ref"]) is not None
+        assert repo.get_artifact(result.result_ref).available_at_ns == action.available_at_ns + 1
+
+
+def test_delayed_causal_feature_candidate_selection_sizing_and_action_are_analogue_eligible(tmp_path: Any) -> None:
+    from atlas.v2._serialization import json_value
+    from atlas.v2.chronology import record_computation
+    from atlas.v2.contracts import FeatureArtifactV2
+
+    from .test_session037_chronology import Clock, _action, _size
+
+    with OpsRepository(tmp_path / "delayed-derived-chain.sqlite") as repo:
+        case, _initial_action, *_ = evidence_bound_action(repo)
+        cutoff = case.candidate.decision_at_ns
+        original_candidate, original_set = case.candidate, case.candidate_set
+        feature_entry = repo.get_artifact(original_candidate.snapshot_hash)
+        original_feature = FeatureArtifactV2.from_dict(json_value(feature_entry.metadata["feature"]))
+        feature = replace(original_feature, envelope=replace(original_feature.envelope, content_hash="",
+            created_at_ns=cutoff + 2, available_at_ns=cutoff + 3))
+        repo.register_artifact(ArtifactIndexEntryV2(feature.content_hash, "FeatureArtifactV2",
+            feature.content_hash, feature.envelope.created_at_ns, feature.envelope.available_at_ns,
+            {"feature": feature.to_dict()}))
+        record_computation(repo, artifact_ref=feature.content_hash, information_cutoff_ns=cutoff,
+            started_ns=cutoff + 1, finished_ns=cutoff + 2, available_ns=cutoff + 3,
+            input_refs=feature.envelope.input_refs, deadline_ns=original_candidate.deadline_ns)
+
+        candidate = replace(original_candidate, snapshot_hash=feature.content_hash,
+            envelope=replace(original_candidate.envelope, content_hash="", created_at_ns=cutoff + 5,
+                available_at_ns=cutoff + 6, input_refs=(feature.content_hash,)))
+        repo.register_artifact(ArtifactIndexEntryV2(candidate.content_hash, "CandidateActionV2",
+            candidate.content_hash, candidate.envelope.created_at_ns, candidate.envelope.available_at_ns,
+            {"candidate": candidate.to_dict(), "feature_hash": feature.content_hash,
+             "universe_ref": case.universe.content_hash}))
+        record_computation(repo, artifact_ref=candidate.content_hash, information_cutoff_ns=cutoff,
+            started_ns=cutoff + 4, finished_ns=cutoff + 5, available_ns=cutoff + 6,
+            input_refs=candidate.envelope.input_refs, deadline_ns=candidate.deadline_ns)
+
+        set_inputs = tuple(sorted(candidate.content_hash if ref == original_candidate.content_hash else ref
+            for ref in original_set.envelope.input_refs))
+        candidate_set = replace(original_set, envelope=replace(original_set.envelope, content_hash="",
+            created_at_ns=cutoff + 8, available_at_ns=cutoff + 9, input_refs=set_inputs))
+        set_entry = repo.get_artifact(original_set.content_hash)
+        set_metadata = dict(set_entry.metadata)
+        set_metadata["candidate_set"] = candidate_set.to_dict()
+        repo.register_artifact(ArtifactIndexEntryV2(candidate_set.content_hash, "CandidateSetV2",
+            candidate_set.content_hash, candidate_set.envelope.created_at_ns,
+            candidate_set.envelope.available_at_ns, set_metadata))
+        record_computation(repo, artifact_ref=candidate_set.content_hash, information_cutoff_ns=cutoff,
+            started_ns=cutoff + 7, finished_ns=cutoff + 8, available_ns=cutoff + 9,
+            input_refs=set_inputs, deadline_ns=candidate.deadline_ns)
+
+        case.candidate, case.candidate_set = candidate, candidate_set
+        clock = Clock(cutoff + 9)
+        sizing = _size(repo, case, clock)
+        action = _action(repo, case, sizing, clock)
+        result = run_analogue_diagnostic_v1(repo, action=action, candidate=case.candidate,
+            candidate_set=case.candidate_set, cutoff_ns=case.candidate.decision_at_ns,
+            available_at_ns=clock.at + 1)
+
+        refs = (case.candidate.snapshot_hash, case.candidate.content_hash,
+            case.candidate_set.content_hash, sizing.content_hash, action.content_hash)
+        publications = tuple(repo.get_artifact(ref).available_at_ns for ref in refs)
+        assert all(at > case.candidate.decision_at_ns for at in publications)
+        assert result.result.compatibility_key is not None
+        assert result.result.support_status == "NOT_ESTIMABLE"  # No mature compatible labels exist.
+        receipt = repo.get_artifact(result.retrieval_receipt_ref).metadata["receipt"]
+        query = repo.get_artifact(receipt["query_ref"])
+        assert query is not None and query.metadata["query"]["information_cutoff_ns"] == CUTOFF
+
+        unsealed_action = replace(action, available_at_ns=action.available_at_ns + 1)
+        rejected = run_analogue_diagnostic_v1(repo, action=unsealed_action, candidate=case.candidate,
+            candidate_set=case.candidate_set, cutoff_ns=cutoff, available_at_ns=unsealed_action.available_at_ns + 1)
+        assert rejected.result.compatibility_key is None
+        assert rejected.result.support_status == "NOT_ESTIMABLE"
 
 
 def test_population_overflow_and_corruption_are_explicit_not_partial_fits(tmp_path: Any, monkeypatch: Any) -> None:
@@ -193,8 +270,10 @@ def test_matured_source_is_routed_to_existing_revalidated_retrieval(tmp_path: An
                 outcome.net_payoff, outcome.provenance.value, outcome.execution_state.value, sha256_json("fake-witness"))
 
         original_compatibility = runtime.build_analogue_compatibility
-        monkeypatch.setattr(runtime, "build_analogue_compatibility", lambda repository, *, action_ref:
-            original_compatibility(repository, action_ref=action_ref) if action_ref == action.content_hash else compatibility)
+        monkeypatch.setattr(runtime, "build_analogue_compatibility",
+            lambda repository, *, action_ref, consumer_at_ns=None:
+                original_compatibility(repository, action_ref=action_ref, consumer_at_ns=consumer_at_ns)
+                if action_ref == action.content_hash else compatibility)
         original_regime = runtime._regime
         monkeypatch.setattr(runtime, "_regime", lambda repository, candidate_ref, at:
             original_regime(repository, candidate_ref, at) if candidate_ref == case.candidate.content_hash else "FAKE_SOURCE_REGIME")

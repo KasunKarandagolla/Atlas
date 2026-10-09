@@ -1,0 +1,19 @@
+# S41 engineering closure — UNVERIFIED
+
+The strict full-V2 engineering gate is open. No installer was built. The requirement matrix retains 2,592 source clauses and now preserves 331 full heading-path groups. Ordinary unfinished implementation/validation/accounting is explicit and is not promoted to TEST GATE.
+
+Current corrections include S8 source/aggregate replay binding, Binance stop readback freshness and exact position binding, durable selected-run Binance product identity across restart, reconstructed bar availability, dependency-scoped native history, asynchronous transport test synchronization, bounded broad publication servicing, grouped compressed-block reads, per-call causal DAG proof reuse, and the separate zero-authority S7 event extraction broker path. Focused validation is recorded in the ledger; it does not qualify the final integrated SHA.
+
+Recent focused runs passed: 115 Binance execution/recovery cases, 81 compressed-storage/production/S7 cases, 14 product-binding and service-paging cases, 13 selected-demo binding-integrity cases, and 91 research/strategy/S7/Binance integration cases. A separate 4,096-instrument synthetic bulk-only run completed three cycles in 781 seconds and persisted 24,576 exact raw/index records. These results are development-tree evidence, not final-SHA qualification.
+
+The current archive durability fix passed 12 focused cases covering singleton and batched writes, segment rollover, failed directory sync before indexing, and same-writer retry after chronology sampling failure. The real Bybit/Binance queued stream reconciliation integration passed 5 cases with 100ms/500ms/1s lookup stalls; maximum measured post-service gap was 1.023s against a 1.201s bound. This is targeted queue evidence, not full broad-market capacity proof. A combined rerun of archive, dual-venue service paging and S40 resilience passed 24/24 with zero skips.
+
+Remaining closure work includes coordinator review and resolution of the 2,592 source clauses, mixed-workload broad capacity/storage admission, broad-scale sustained burst fairness under persistence stalls, final integrated tests/checks, fresh independent reviews and native Windows validation. External venue/provider/endurance/economic facts remain separately gated.
+
+See SESSION041_FINAL_LIVE_TEST_READINESS.md for all 39 direct readiness answers.
+
+## S41 mixed-workload capacity stop — engineering incomplete
+
+The session is paused at an unresolved bounded-capacity design issue. In the synthetic 1,024-contract workload with concurrent report export, 16-frame capture batches ended in `PREVENTIVE_CAPTURE_PRESSURE_STOP` after 1,419 frames (209 delivered, 1,210 pending; 62/64 pending batches). A second 16-frame run rejected a frame at 480/512 handoff items because the idle Binance lane's protected reserve remained unused. Increasing the batch to 32 retained/offered all 1,791 frames and completed read-only export, but the maximum stream-service gap was 2.399 seconds against the frozen 1.5-second limit; one service call took 2.310 seconds.
+
+Evidence: [16-frame pressure stop](docs/v2/session041-evidence/7bde94433bf3f5bea6482cd82075d32ddbc786f6fb04b1a02c53822491f719d8.xml), [16-frame reserved-capacity rejection](docs/v2/session041-evidence/7a9970f8b745a06112abcb5cac08f2ea66a2ffbd152260867ee6ede364686b3e.xml), and [32-frame service-gap failure](docs/v2/session041-evidence/c4c9ac0bc3287d073f9f118619457102f2faf3a07366389b1f6146f6a2319cff.xml). These synthetic tests have one active Bybit frame producer and an idle Binance stream lane. The source retains 16-frame batches. No frozen buffer, durability, or service limit was relaxed. This tradeoff needs architecture/capacity review before broader capacity validation can resume; the full-V2 gate remains open and no installer may be built.

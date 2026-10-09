@@ -16,7 +16,7 @@ from .._serialization import canonical_json, nonblank, sha256_json, sha256_ref, 
 from ..instruments import InstrumentKeyV2
 from ..memory.repository import OpsRepository
 from .bars import BarIntervalV2, CausalBarV2, close_boundary_ns
-from .raw import AvailabilityClassV2, RawObservationV2
+from .raw import AvailabilityClassV2, RawObservationV2, indexed_availability_matches
 
 MAX_CAUSAL_ARCHIVE_FILES = 20_000
 MAX_CAUSAL_ARCHIVE_ROWS = 2_000_000
@@ -526,8 +526,9 @@ def reconstruct_public_observations_from_archive(
         metadata = entry.get("metadata") if entry is not None else None
         if (entry is None or entry.get("artifact_type") != "PublicObservationIndexV2"
                 or entry.get("content_hash") != observation.content_hash
-                or entry.get("available_at_ns") != observation.available_at_ns
                 or not isinstance(metadata, Mapping)
+                or entry.get("available_at_ns", information_cutoff_ns + 1) > information_cutoff_ns
+                or not indexed_availability_matches(observation.available_at_ns, entry.get("available_at_ns"), metadata)
                 or metadata.get("record_id") != observation.record_id
                 or metadata.get("instrument_revision") != instrument_revision
                 or key is not None and metadata.get("instrument_key_json") != key.to_canonical_json()
@@ -616,20 +617,21 @@ def reconstruct_causal_bars_from_archive(
                         raise ArchiveScanBoundExceededV2("row-count", MAX_CAUSAL_ARCHIVE_ROWS)
                     if row["record_id"] not in selected_record_ids:
                         continue
+                    effective_available = (
+                        row["available_at_ns"]
+                        if view == AvailabilityClassV2.ACTUAL_SYSTEM
+                        else row["replay_available_at_ns"]
+                    )
                     if (
                         row["instrument_revision"] != key.contract_revision
                         or row["event_type"] != f"BAR_{frame.value}"
                         or row["archive_record_kind"] != ArchiveRecordKindV2.PUBLIC_OBSERVATION.value
                         or row["availability_class"] != view.value
+                        or type(effective_available) is not int
+                        or effective_available > information_cutoff_ns
                     ):
                         continue
-                    available = (
-                        row["available_at_ns"]
-                        if view == AvailabilityClassV2.ACTUAL_SYSTEM
-                        else row["replay_available_at_ns"]
-                    )
-                    if type(available) is not int or available > information_cutoff_ns:
-                        continue
+                    available = effective_available
                     raw_bytes = row["raw_payload_bytes"]
                     if (
                         not isinstance(raw_bytes, bytes)
@@ -683,10 +685,16 @@ def reconstruct_causal_bars_from_archive(
         metadata = entry.get("metadata") if entry is not None else None
         bar = candidate.bar
         observation = bar.raw
+        indexed_effective_available = (
+            entry.get("available_at_ns") if entry is not None and view == AvailabilityClassV2.ACTUAL_SYSTEM
+            else metadata.get("replay_available_at_ns") if isinstance(metadata, Mapping) else None
+        )
         if (entry is None or entry.get("artifact_type") != "PublicObservationIndexV2"
                 or entry.get("content_hash") != observation.content_hash
-                or entry.get("available_at_ns") != observation.available_at_ns
                 or not isinstance(metadata, Mapping)
+                or type(indexed_effective_available) is not int
+                or indexed_effective_available > information_cutoff_ns
+                or not indexed_availability_matches(observation.available_at_ns, entry.get("available_at_ns"), metadata)
                 or metadata.get("record_id") != observation.record_id
                 or metadata.get("instrument_revision") != key.contract_revision
                 or metadata.get("instrument_key_json") != key.to_canonical_json()
@@ -740,7 +748,8 @@ def reconstruct_native_bars_from_index_page(
         raise ValueError("native bar reconstruction page exceeds the fixed origin work bound")
     if len(index_entries) > max_origins:
         raise ValueError("native bar reconstruction received more rows than its bounded page")
-    if interval not in (BarIntervalV2.M1, BarIntervalV2.M15, BarIntervalV2.H1, BarIntervalV2.H4):
+    if interval not in (BarIntervalV2.M1, BarIntervalV2.M5, BarIntervalV2.M15,
+                        BarIntervalV2.H1, BarIntervalV2.H4):
         raise ValueError("native indexed reconstruction only supports registered causal intervals")
     event_type = "BAR_" + interval.value
     if not index_entries:
@@ -819,7 +828,7 @@ def reconstruct_native_bars_from_index_page(
                         or observation.event_at_ns != metadata.get("event_at_ns")
                         or observation.published_at_ns != metadata.get("published_at_ns")
                         or observation.received_at_ns != index_entry.created_at_ns
-                        or observation.available_at_ns != index_entry.available_at_ns
+                        or not indexed_availability_matches(observation.available_at_ns, index_entry.available_at_ns, metadata)
                         or observation.content_hash != index_entry.content_hash
                         or observation.raw_payload_hash != metadata.get("raw_payload_hash")
                         or observation.translation_version != metadata.get("translation_version")
@@ -862,7 +871,7 @@ def reconstruct_native_bars_from_index_page(
                         or bar.raw.content_hash != observation.content_hash
                         or bar.close_at_ns != observation.event_at_ns
                         or bar.close_at_ns != metadata.get("event_at_ns")
-                        or bar.raw.available_at_ns != index_entry.available_at_ns
+                        or not indexed_availability_matches(bar.raw.available_at_ns, index_entry.available_at_ns, metadata)
                         or bar.content_hash != metadata.get("bar_content_hash")
                         or sha256_json(dict(bar_wire)) != bar.content_hash):
                     raise ValueError("native bar bar does not verify against its exact source origin")

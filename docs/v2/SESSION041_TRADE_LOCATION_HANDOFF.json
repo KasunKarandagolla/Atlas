@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "workstream": "SESSION041_CAUSAL_TRADE_LOCATION",
+  "status": "IMPLEMENTED_BOUNDED_ZERO_AUTHORITY",
+  "scope": [
+    "src/atlas/v2/features/candles.py",
+    "src/atlas/v2/features/pipeline.py",
+    "tests/v2/test_session041_trade_location.py",
+    "docs/v2/SESSION041_TRADE_LOCATION_HANDOFF.json"
+  ],
+  "features": {
+    "anchored_vwap": {
+      "input": "CausalTrade rows with native trade_id, exact InstrumentKeyV2 and a cutoff-known CausalTradeAnchor",
+      "calculation": "quantity-weighted observed trade price from the anchor event through the information cutoff",
+      "limits": {
+        "maximum_trade_rows": 8192,
+        "maximum_window_ns": 604800000000000,
+        "native_trade_id_required": true,
+        "anchor_confirmation_available_by_cutoff": true
+      }
+    },
+    "fixed_tick_volume_profile": {
+      "input": "CausalTrade rows with native trade_id, explicit window start and cutoff-known ProductContractV2 tick size",
+      "calculation": "aggregate source trade quantities by exact product tick; POC is the greatest quantity and lower tick wins ties",
+      "limits": {
+        "maximum_trade_rows": 8192,
+        "maximum_window_ns": 604800000000000,
+        "maximum_tick_span": 4096,
+        "native_trade_id_required": true,
+        "off_tick_prices_estimable": false
+      }
+    }
+  },
+  "causal_controls": {
+    "row_event_at_must_be_at_or_after_window_start": true,
+    "row_event_at_must_be_at_or_before_cutoff": true,
+    "row_available_at_must_be_at_or_before_cutoff": true,
+    "anchor_available_at_must_be_at_or_before_cutoff": true,
+    "product_available_at_must_be_at_or_before_cutoff": true,
+    "non_actual_system_replay": "NOT_ESTIMABLE because CausalTrade carries no replay availability timestamp",
+    "input_identity": "hash of exact instrument, method, cutoff, window, declared config and eligible native-identified rows",
+    "capital_authority": "ZERO",
+    "coverage_claim": "UNVERIFIED; observed input rows do not establish complete feed coverage"
+  },
+  "feature_pipeline": {
+    "activation": "explicit TradeLocationConfig opt-in",
+    "default_behavior": "existing trade location features remain missing and the existing feature-set version remains in use",
+    "opt_in_versions": [
+      "INTRADAY_CORE_TRADE_LOCATION_V1",
+      "INTRADAY_CORE_EXACT_PREFIX_EMA_ATR_TRADE_LOCATION_V1"
+    ],
+    "missing_values": "FeatureValueV2 with explicit NOT_ESTIMABLE reason"
+  },
+  "verification": {
+    "focused_tests": "pytest -q tests/v2/test_session041_trade_location.py — 6 passed",
+    "adjacent_tests": "pytest -q tests/v2/test_session037_feature_prefix.py tests/v2/test_session021_data_s3.py — 17 passed",
+    "ruff": "ruff check on the two implementation files and owned test — passed",
+    "mypy": "mypy on the two implementation files and owned test — passed"
+  },
+  "missing_inputs_and_limits": [
+    "No trade-feed coverage receipt or completeness proof is part of CausalTrade, so diagnostics cannot certify that supplied trades are complete.",
+    "CausalTrade does not carry source ID or channel; native IDs are required and must be unique within the supplied eligible window, but cross-source identity collisions cannot be independently detected.",
+    "CausalTrade exposes available_at_ns but has no separate raw-publication, durable-index-publication, or reconstructed replay availability evidence. Non-actual replay is therefore NOT_ESTIMABLE for these diagnostics.",
+    "Anchors are explicit caller-declared event anchors. This work does not derive event anchors or validate their market-event semantics."
+  ]
+}

@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "session": 41,
+  "status": "UNVERIFIED",
+  "closure_gate_passed": false,
+  "head_at_inventory": "a01f343f7c6be005e6d92450997bd1bbd0344800",
+  "worktree_dirty": true,
+  "final_code_sha": null,
+  "final_tested_sha": null,
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "economic_status": "NOT ESTIMABLE",
+  "package_created": false,
+  "capabilities": [
+    {
+      "venue": "BYBIT",
+      "data_class": "product metadata",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "bars/bootstrap/gap repair",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "trades/aggregate trade semantics",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "tickers",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "mark/index",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "funding/current/history",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "open interest/current/history",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "depth/book",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "WebSocket continuity",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "snapshot/recovery",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "source capability/health",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "receipt/availability chronology",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BYBIT",
+      "data_class": "listing/filter/status revisions",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "product metadata",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "bars/bootstrap/gap repair",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "trades/aggregate trade semantics",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "tickers",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "mark/index",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "funding/current/history",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "open interest/current/history",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "depth/book",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "WebSocket continuity",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "snapshot/recovery",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "source capability/health",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "receipt/availability chronology",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    },
+    {
+      "venue": "BINANCE",
+      "data_class": "listing/filter/status revisions",
+      "current_state": "UNVERIFIED",
+      "implementation_navigation": [
+        "src/atlas/v2/data/broad_public_source.py",
+        "src/atlas/v2/runtime/broad_public_runtime.py"
+      ],
+      "remaining_proof": "Resolve exact requirement, venue semantics and attributable offline assertions; actual venue evidence is a separate TEST GATE."
+    }
+  ],
+  "non_fabrication_rule": "Unavailable exact trade/L2 or continuity proof blocks only its dependent path as NOT_ESTIMABLE. Candle evidence is not substituted.",
+  "source_contract_review_complete": false
+}

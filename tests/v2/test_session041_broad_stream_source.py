@@ -76,6 +76,7 @@ def test_stream_plan_is_venue_aware_and_aggregate_queue_keeps_global_caps():
     assert status.max_drain_items == 64
     capture = BroadDurablePublicCaptureV2(source).status()
     assert capture.capture["max_pending_batches"] == 64
+    assert capture.capture["batch_frame_limit"] == 16
     assert "lanes" in capture.capture
     bybit_channel = "publicTrade.BTCUSDT"
     binance_channel = "btcusdt@aggTrade"
@@ -90,6 +91,50 @@ def test_stream_plan_is_venue_aware_and_aggregate_queue_keeps_global_caps():
     assert bybit_trade.aggressor_side == "BUY"
     assert binance_trade.aggressor_side == "SELL"
     assert binance_trade.side_convention == "BINANCE_m_TRUE_BUYER_MAKER_SELLER_AGGRESSOR"
+
+
+def test_broad_handoff_borrows_idle_lane_capacity_without_exceeding_frozen_aggregate():
+    plan = _plan()
+    source = BroadPublicStreamSourceV2(
+        plan, stream_factories={name: (lambda: iter(())) for name in plan.lane_topics})
+    bybit = source._lanes["BYBIT"]._handoff
+    binance_depth = source._lanes["BINANCE_DEPTH"]._handoff
+    binance_market = source._lanes["BINANCE_MARKET"]._handoff
+    bybit_frame = _frame(VenueV2.BYBIT, "BYBIT_PUBLIC_WS_BROAD_V2", "publicTrade.BTCUSDT", b"{}")
+    depth_frame = _frame(VenueV2.BINANCE, "BINANCE_DEPTH_PUBLIC_WS_BROAD_V2",
+                         "btcusdt@depth@100ms", b"{}")
+    trade_frame = _frame(VenueV2.BINANCE, "BINANCE_MARKET_PUBLIC_WS_BROAD_V2",
+                         "btcusdt@aggTrade", b"{}")
+
+    # A busy Bybit lane borrows well beyond its former 170-frame static share,
+    # while 32 items remain protected for each Binance lane.
+    assert all(bybit.offer(bybit_frame) for _ in range(448))
+    assert all(binance_depth.offer(depth_frame) for _ in range(32))
+    assert all(binance_market.offer(trade_frame) for _ in range(32))
+    status = source.status().handoff
+    assert status.queue_items == status.high_water_items == 512
+    assert status.max_queue_items == 512
+    assert status.queue_bytes == status.high_water_bytes <= status.max_queue_bytes == 16_000_000
+
+    # Draining releases the same shared reservation and is work-conserving.
+    drained = source.drain(max_items=16)
+    assert len(drained) == 16
+    assert source.status().handoff.queue_items == 496
+    source.close()
+
+
+def test_broad_capture_drain_uses_full_batch_when_only_one_lane_is_busy():
+    plan = _plan()
+    source = BroadPublicStreamSourceV2(
+        plan, stream_factories={name: (lambda: iter(())) for name in plan.lane_topics})
+    bybit = source._lanes["BYBIT"]._handoff
+    frame = _frame(VenueV2.BYBIT, "BYBIT_PUBLIC_WS_BROAD_V2", "publicTrade.BTCUSDT", b"{}")
+    assert all(bybit.offer(frame) for _ in range(20))
+
+    # Quiet Binance lanes do not consume half/third of every capture batch.
+    assert len(source.drain(max_items=16)) == 16
+    assert source.status().handoff.queue_items == 4
+    source.close()
 
 
 def test_binance_depth_frame_preserves_pu_update_range_without_claiming_book():
@@ -166,9 +211,15 @@ def test_runtime_persists_typed_trade_identity_and_receipt_continuity(tmp_path):
     with OpsRepository(tmp_path / "ops.sqlite") as repository:
         runtime._archive = L2FrameArchiveV2(tmp_path / "archive", repository)
         runtime._interpret_frames(repository, (frame,), now_ns=now)
-        entries = repository.artifact_entries("BroadPublicStreamContinuityV2")
+        entries = repository.artifact_entries("BroadPublicStreamContinuityV3")
         assert len(entries) == 2
         assert any(entry.metadata["decision"]["classification"] == "TRADE_ACCEPTED"
+                   for entry in entries)
+        assert all(entry.metadata["decision"]["state_ref"] == sha256_json({
+            "artifact_type": "PublicStreamContinuityStateV1", "state": entry.metadata["state_projection"],
+        }) for entry in entries)
+        assert all(not entry.metadata["state_projection"]["trade_identity_cache"]
+                   and not entry.metadata["state_projection"]["observation_replay_cache"]
                    for entry in entries)
         assert any(entry.metadata["observation"]["trade_id"] == "trade-1" for entry in entries)
         trade_row = next(entry.metadata["observation"] for entry in entries
@@ -300,7 +351,7 @@ def test_actual_connection_epoch_change_invalidates_even_apparently_contiguous_b
             updated = replace(frame, connection_epoch=2, received_at_ns=time.time_ns(), available_at_ns=time.time_ns())
             runtime._interpret_frames(repository, (updated,), now_ns=time.time_ns())
             assert runtime._snapshot_future is not None
-            entries = repository.artifact_entries("BroadPublicStreamContinuityV2")
+            entries = repository.artifact_entries("BroadPublicStreamContinuityV3")
             assert any(entry.metadata["observation"]["kind"] == "RECONNECT" for entry in entries)
         finally:
             runtime.close()

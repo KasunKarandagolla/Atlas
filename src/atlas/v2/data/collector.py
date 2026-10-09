@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from typing import Any
 
 from .._serialization import sha256_json, timestamp
 from ..instruments import InstrumentKeyV2, InstrumentRegistryV2
@@ -18,6 +19,7 @@ from .universe import ComputeTierV2
 
 MAX_RECENT_CURSOR_HASHES_V2 = 512
 MAX_RESTORED_COLLECTOR_STREAMS_V1 = 128
+MAX_RECONCILIATION_REFS_PER_PAGE_V1 = 128
 
 
 class SequenceGapV2(RuntimeError):
@@ -81,12 +83,14 @@ class PublicCollectorV2:
         self.registry = registry
         self.clock_ns = clock_ns
         self.archive = archive
+        self.publish_indexes_after_archive = False
         self.backoff = backoff or BoundedBackoffV2()
         self.required_recovery_epoch_ref = required_recovery_epoch_ref
         self.store = RawObservationStoreV2(max_records=8192)
         self.health = SourceHealthTrackerV2()
         self._last_sequence: dict[tuple[str, str], int] = {}
         self._pending_archive: list[ImportedObservationV2] = []
+        self._archive_flush_generation = 0
         self._pending_records: dict[str, ImportedObservationV2] = {}
         self._pending_instrument_keys: dict[str, InstrumentKeyV2] = {}
         self._pending_index_as_public_observation: dict[str, bool] = {}
@@ -200,6 +204,8 @@ class PublicCollectorV2:
         update_source_health: bool = True,
         index_as_public_observation: bool = True,
         retain_in_memory: bool = True,
+        persisted_public_index_rows_by_ref: Mapping[str, Mapping[str, Any] | None] | None = None,
+        persisted_public_index_generation: int | None = None,
     ) -> CollectorIngestResultV2:
         if type(update_source_health) is not bool:
             raise ValueError("update_source_health must be bool")
@@ -207,12 +213,15 @@ class PublicCollectorV2:
             raise ValueError("index_as_public_observation must be bool")
         if type(retain_in_memory) is not bool:
             raise ValueError("retain_in_memory must be bool")
+        if persisted_public_index_generation is not None and (
+                type(persisted_public_index_generation) is not int or persisted_public_index_generation < 0):
+            raise ValueError("prefetched public index generation must be a nonnegative integer")
         if instrument_key is None:
             instrument_key = self.registry.resolve_key_for_revision(observation.instrument_revision)
         elif (
             not isinstance(instrument_key, InstrumentKeyV2)
             or instrument_key.contract_revision != observation.instrument_revision
-            or not any(item.key == instrument_key for item in self.registry.contracts())
+            or not self.registry.contains_key(instrument_key)
         ):
             raise ValueError("explicit collector instrument key is not registered for the observation revision")
         payload_bytes = raw_payload.encode("utf-8") if isinstance(raw_payload, str) else raw_payload
@@ -226,15 +235,38 @@ class PublicCollectorV2:
         index_type = ("PublicObservationIndexV2" if index_as_public_observation
                       else "PublicStreamTradeObservationIndexV1")
         index_ref = sha256_json({"artifact_type": index_type, "record_id": observation.record_id})
-        if len(self._pending_archive) >= 512:
+        flushed_before_lookup = len(self._pending_archive) >= 512
+        if flushed_before_lookup:
             self.flush_archive()
-        persisted_entry = self.repository.get_artifact(index_ref)
+        # Broad REST snapshots prefetch a fixed row chunk so the sole writer
+        # does not perform a repository lookup for every observation. A
+        # supplied mapping contains explicit None values for known absence.
+        # A local flush can turn an earlier absence into a durable duplicate,
+        # so it requires a fresh exact lookup.
+        if persisted_public_index_rows_by_ref is not None and index_ref not in persisted_public_index_rows_by_ref:
+            raise ValueError("prefetched public artifact lookup does not cover the current identity")
+        persisted_entry = (self.repository.get_artifact(index_ref)
+                           if (persisted_public_index_rows_by_ref is None or flushed_before_lookup
+                               or (persisted_public_index_generation is not None
+                                   and persisted_public_index_generation != self._archive_flush_generation))
+                           else persisted_public_index_rows_by_ref.get(index_ref))
         persistent_hash: str | None = None
         if persisted_entry is not None:
-            indexed = dict(persisted_entry.metadata)
+            if isinstance(persisted_entry, ArtifactIndexEntryV2):
+                persisted_type = persisted_entry.artifact_type
+                indexed = dict(persisted_entry.metadata)
+            elif isinstance(persisted_entry, Mapping):
+                prefetched_type = persisted_entry.get("artifact_type")
+                metadata = persisted_entry.get("metadata")
+                if not isinstance(prefetched_type, str) or not isinstance(metadata, Mapping):
+                    raise ValueError("prefetched public artifact lookup is malformed")
+                persisted_type = prefetched_type
+                indexed = dict(metadata)
+            else:
+                raise ValueError("prefetched public artifact lookup has an invalid value")
             persistent_hash = str(indexed.get("raw_payload_hash", ""))
             persistent_matches = (
-                persisted_entry.artifact_type == index_type
+                persisted_type == index_type
                 and indexed.get("record_id") == observation.record_id
                 and indexed.get("instrument_revision") == observation.instrument_revision
                 and indexed.get("event_type") in (None, observation.event_type)
@@ -433,6 +465,16 @@ class PublicCollectorV2:
             )
         return CollectorIngestResultV2(append, gap)
 
+    @property
+    def pending_archive_count(self) -> int:
+        """Number of rows in the current bounded archive batch."""
+        return len(self._pending_archive)
+
+    @property
+    def archive_flush_generation(self) -> int:
+        """Invalidate prefetched absence after this collector publishes an archive batch."""
+        return self._archive_flush_generation
+
     def flush_archive(self) -> str | None:
         if not self._pending_archive:
             return None
@@ -447,6 +489,9 @@ class PublicCollectorV2:
             }
         )
         path = self.archive.write_observation_chunk(chunk_id, items)
+        publication_ns = self.clock_ns() if self.publish_indexes_after_archive else None
+        if publication_ns is not None and any(publication_ns < item.observation.available_at_ns for item in items):
+            raise ValueError("public archive publication clock regressed")
         index_entries: list[ArtifactIndexEntryV2] = []
         for item in items:
             observation = item.observation
@@ -460,7 +505,7 @@ class PublicCollectorV2:
                     index_type,
                     observation.content_hash,
                     observation.received_at_ns,
-                    observation.available_at_ns,
+                    observation.available_at_ns if publication_ns is None else publication_ns,
                     {
                         "record_id": observation.record_id,
                         "source_id": observation.source_id,
@@ -477,10 +522,14 @@ class PublicCollectorV2:
                         "raw_payload_hash": observation.raw_payload_hash,
                         "bar_content_hash": item.bar.content_hash if item.bar is not None else None,
                         "archive_chunk_id": chunk_id,
+                        **({"publication_profile": "PUBLIC_INDEX_AFTER_ARCHIVE_V1",
+                            "raw_available_at_ns": observation.available_at_ns,
+                            "index_published_at_ns": publication_ns} if publication_ns is not None else {}),
                     },
                 )
             )
         self.repository.register_artifacts(index_entries)
+        self._archive_flush_generation += 1
         self._pending_archive.clear()
         self._pending_records.clear()
         self._pending_instrument_keys.clear()
@@ -530,6 +579,7 @@ class PublicCollectorV2:
         self, source_id: str, *, at_ns: int, complete_snapshot: bool, missed_interval_repaired: bool,
         snapshot_refs: tuple[str, ...] = (), recovery_epoch_ref: str | None = None,
         repair_certificate_refs: tuple[str, ...] = (),
+        service_callback: Callable[[], None] | None = None,
     ) -> PublicSourceHealthV2:
         healthy = complete_snapshot and missed_interval_repaired
         state = PublicSourceStateV2.HEALTHY_CURRENT if healthy else PublicSourceStateV2.INCOMPLETE_SNAPSHOT
@@ -569,17 +619,21 @@ class PublicCollectorV2:
         if recovery_epoch_ref is not None and healthy and not refs:
             raise ValueError("healthy reconnect reconciliation requires exact observation refs")
         if healthy and refs:
-            indexed = self.repository.get_artifact_metadata_by_refs(refs)
-            for ref in refs:
-                entry = indexed.get(ref)
-                metadata = entry.get("metadata") if entry is not None else None
-                if (entry is None or entry.get("artifact_type") != "PublicObservationIndexV2"
-                        or not isinstance(entry.get("content_hash"), str)
-                        or len(entry["content_hash"]) != 64
-                        or not isinstance(entry.get("available_at_ns"), int)
-                        or entry["available_at_ns"] > at_ns or not isinstance(metadata, Mapping)
-                        or metadata.get("source_id") != source_id):
-                    raise ValueError("snapshot reconciliation requires exact available source observation refs")
+            for offset in range(0, len(refs), MAX_RECONCILIATION_REFS_PER_PAGE_V1):
+                if service_callback is not None:
+                    service_callback()
+                page_refs = refs[offset:offset + MAX_RECONCILIATION_REFS_PER_PAGE_V1]
+                indexed = self.repository.get_artifact_metadata_by_refs(page_refs)
+                for ref in page_refs:
+                    entry = indexed.get(ref)
+                    metadata = entry.get("metadata") if entry is not None else None
+                    if (entry is None or entry.get("artifact_type") != "PublicObservationIndexV2"
+                            or not isinstance(entry.get("content_hash"), str)
+                            or len(entry["content_hash"]) != 64
+                            or not isinstance(entry.get("available_at_ns"), int)
+                            or entry["available_at_ns"] > at_ns or not isinstance(metadata, Mapping)
+                            or metadata.get("source_id") != source_id):
+                        raise ValueError("snapshot reconciliation requires exact available source observation refs")
             body = {"version": "OPS_PUBLIC_SOURCE_RECONCILIATION_V1", "source_id": source_id,
                     "available_at_ns": at_ns, "complete_snapshot": True,
                     "missed_interval_repaired": True, "evidence_refs": list(refs),

@@ -1,6 +1,7 @@
 import asyncio
 import queue
 import threading
+import time
 from dataclasses import dataclass
 from decimal import Decimal
 from types import SimpleNamespace
@@ -40,7 +41,7 @@ def _product():
     )
 
 
-def _node(journal, *, port_factory=None):
+def _node(journal, *, port_factory=None, node_builder_factory=None):
     identity = BinanceDemoIdentity("scope-demo", "cred-demo")
     now = 1_800_000_000_000_000_000
     snapshots = []
@@ -60,6 +61,7 @@ def _node(journal, *, port_factory=None):
         account_snapshot_getter=get_snapshot,
         market_filters=object(),
         port_factory=port_factory or (lambda *_args: object()),
+        node_builder_factory=node_builder_factory,
     )
     return runtime, identity, snapshots
 
@@ -70,6 +72,70 @@ def test_actual_pinned_live_node_builds_without_starting_or_reading_account(jour
     assert snapshots == []
     assert runtime.command_queue.maxsize == 32
     assert runtime.event_queue.maxsize == 256
+
+
+def test_close_all_repair_resolves_only_the_exact_open_native_position():
+    from nautilus_trader.model import AccountId, InstrumentId, PositionId
+
+    from atlas.runtime.binance_native import _StrategyHost
+
+    instrument_id = InstrumentId.from_str("SOLUSDT-PERP.BINANCE")
+    account_id = "BINANCE-scope-demo"
+    position = SimpleNamespace(
+        id=PositionId("P-20261007-000001"), instrument_id=instrument_id,
+        account_id=AccountId(account_id), signed_qty=2.0,
+    )
+    cache = SimpleNamespace(
+        positions_open=lambda **kwargs: [position],
+        is_position_open=lambda position_id: position_id == position.id,
+    )
+    host = _StrategyHost(SimpleNamespace(cache=cache))
+    assert host.resolve_position_id(
+        instrument_id=instrument_id,
+        account_id=account_id,
+        expected_signed_quantity=Decimal("2"),
+    ) == position.id
+
+    mismatch = _StrategyHost(SimpleNamespace(cache=SimpleNamespace(
+        positions_open=lambda **kwargs: [position],
+        is_position_open=lambda position_id: True,
+    )))
+    with pytest.raises(PersistenceError, match="IDENTITY_OR_QUANTITY_MISMATCH"):
+        mismatch.resolve_position_id(
+            instrument_id=instrument_id,
+            account_id=account_id,
+            expected_signed_quantity=Decimal("1"),
+        )
+
+
+def test_close_all_repair_configures_only_binance_full_position_risk_eligibility(journal):
+    captured = {}
+
+    class BuiltNode:
+        def add_strategy(self, _strategy):
+            return None
+
+        def handle(self):
+            return SimpleNamespace()
+
+    class Builder:
+        def with_risk_engine_config(self, config):
+            captured["risk_config"] = config
+            return self
+
+        def add_exec_client(self, *_args):
+            return self
+
+        def with_reconciliation(self, _enabled):
+            return self
+
+        def build(self):
+            return BuiltNode()
+
+    runtime, _, _ = _node(journal, node_builder_factory=lambda *_args: Builder())
+    from nautilus_trader.adapters.binance import BINANCE_VENUE
+
+    assert captured["risk_config"].full_position_exit_venues == [BINANCE_VENUE]
 
 
 def test_journal_command_queue_is_deduplicated_and_opening_refused(journal):
@@ -117,7 +183,7 @@ def test_event_overflow_latches_stop_without_leaking_raw_event_text(journal):
     assert runtime.event_queue.qsize() == 255
 
 
-def test_command_dispatch_checks_fence_before_unknown_and_immediately_before_effect(journal):
+def test_native_dispatch_refuses_missing_typed_proof_before_unknown_or_effect(journal):
     make_plan(journal, plan_id="plan")
     now = 1_800_000_000_000_000_000
     intent = Intent(
@@ -145,9 +211,9 @@ def test_command_dispatch_checks_fence_before_unknown_and_immediately_before_eff
     runtime.assert_writer = lambda: fence_calls.append(("fence", None, None))
     runtime.enqueue_command(command.command_id)
     runtime._dispatch(command.command_id, Port(), now)
-    assert [item[0] for item in fence_calls] == ["fence", "fence", "effect"]
-    assert fence_calls[-1][1] == "UNKNOWN"
-    assert journal.load_command(command.command_id).outcome.value == "UNKNOWN"
+    assert [item[0] for item in fence_calls] == ["fence", "fence"]
+    assert journal.load_command(command.command_id).outcome.value == "UNSENT"
+    assert runtime.readiness_reason == "BINANCE_NATIVE_COMMAND_UNRESOLVED"
 
 
 def _native_fill(client_id="c" * 32, *, trade_id="77", quantity="0.2", event_time=1_800_000_000_000_000_000):
@@ -253,6 +319,7 @@ def test_slow_reconciliation_never_blocks_native_timer_or_queues_workers(journal
         calls.append(threading.get_ident())
         entered.set()
         release.wait(5)
+        return None
 
     runtime.reconcile_once = slow_read
     runtime.strategy._port = object()
@@ -268,28 +335,45 @@ def test_slow_reconciliation_never_blocks_native_timer_or_queues_workers(journal
     finally:
         release.set()
         runtime._reconciliation_worker.join(1)
-    assert runtime.reconciliation_ready is True
+    assert runtime.reconciliation_ready is False
+    assert runtime.readiness_reason == "BINANCE_COMMAND_READINESS_UNAVAILABLE"
 
 
-def test_native_timer_dispatches_at_most_eight_commands(journal):
+def test_incomplete_reconciliation_never_opens_native_command_gate(journal):
+    runtime, _, _ = _node(journal)
+    runtime.reconcile_once = lambda: False
+    runtime.request_reconciliation()
+    worker = runtime._reconciliation_worker
+    assert worker is not None
+    worker.join(2)
+    assert not worker.is_alive()
+    assert runtime.reconciliation_ready is False
+    assert runtime.last_failure_code is None
+    assert runtime.readiness_reason == "BINANCE_COMMAND_READINESS_UNAVAILABLE"
+
+
+def test_native_timer_dispatches_only_command_bound_to_current_proof(journal):
     runtime, identity, _ = _node(journal)
     runtime.strategy._port = object()
     runtime.reconciliation_ready = True
     runtime.account_snapshot_getter = lambda: Snapshot(identity.content_hash, True, runtime.strategy.clock.timestamp_ns())
+    runtime._readiness_proof = SimpleNamespace(command_id="0")
+    runtime._last_reconciliation_request_ns = time.monotonic_ns()
     sent = []
     runtime._dispatch = lambda command_id, _port, _now: sent.append(command_id)
     for index in range(10):
         runtime.command_queue.put_nowait(str(index))
         runtime._queued_command_ids.add(str(index))
     runtime.strategy._on_drain_timer(None)
-    assert len(sent) == 8 and runtime.command_queue.qsize() == 2
-    runtime._reconciliation_worker.join(1)
+    assert sent == ["0"] and runtime.command_queue.qsize() == 9
+    assert runtime._reconciliation_worker is None
 
 
 def test_hosted_lifecycle_accepts_future_and_stops_through_captured_handle():
     async def hosted():
         runtime = BinanceNativeNode.__new__(BinanceNativeNode)
         runtime.assert_writer = lambda: None
+        runtime.hydrate_unsent_command = lambda: None
         runtime._run_lock = asyncio.Lock()
         runtime._run_task = None
         runtime._reconciliation_worker = None
@@ -344,7 +428,7 @@ def test_overflow_between_fences_preserves_unknown_and_blocks_effect(journal):
     runtime.assert_writer = fence
     runtime._dispatch("typed-command", Port(), 1_800_000_000_000_000_000)
     assert calls == ["fence", "fence"]
-    assert journal.load_command("typed-command").outcome.value == "UNKNOWN"
+    assert journal.load_command("typed-command").outcome.value == "UNSENT"
     assert runtime.stopped and runtime.queue_overflow
 
 
@@ -396,6 +480,7 @@ def test_cancelling_run_does_not_cancel_native_future_and_requests_handle_stop()
         runtime.stopped = False
         runtime.last_failure_code = None
         runtime.assert_writer = lambda: None
+        runtime.hydrate_unsent_command = lambda: None
         runtime._run_lock = asyncio.Lock()
         runtime._run_task = None
         runtime._reconciliation_worker = None

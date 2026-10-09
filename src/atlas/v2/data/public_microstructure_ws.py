@@ -98,6 +98,83 @@ class PublicFrameHandoffOverflowV2(RuntimeError):
     """Raised by the stream pump after the bounded queue rejects a frame."""
 
 
+class SharedPublicFrameBudgetV1:
+    """One aggregate bounded budget shared by independent public stream lanes.
+
+    Each lane retains a small guaranteed reserve while idle capacity may be
+    borrowed by busy lanes. The sum of queued frames and bytes never exceeds
+    the existing broad-stream limits.
+    """
+
+    def __init__(self, *, max_items: int, max_bytes: int,
+                 reserve_items_per_lane: int, reserve_bytes_per_lane: int) -> None:
+        values = (max_items, max_bytes, reserve_items_per_lane, reserve_bytes_per_lane)
+        if any(type(value) is not int or value < 0 for value in values):
+            raise ValueError("shared public frame budget values must be non-negative integers")
+        if max_items <= 0 or max_bytes <= 0 or reserve_items_per_lane > max_items or reserve_bytes_per_lane > max_bytes:
+            raise ValueError("shared public frame budget requires positive capacities and bounded reserves")
+        self.max_items = max_items
+        self.max_bytes = max_bytes
+        self.reserve_items_per_lane = reserve_items_per_lane
+        self.reserve_bytes_per_lane = reserve_bytes_per_lane
+        self._lock = threading.Lock()
+        self._lanes: dict[str, tuple[int, int]] = {}
+        self._items = 0
+        self._bytes = 0
+        self._high_water_items = 0
+        self._high_water_bytes = 0
+
+    def register_lane(self, lane: str) -> None:
+        if not lane or len(lane) > 64:
+            raise ValueError("shared public frame budget lane identity is invalid")
+        with self._lock:
+            if lane in self._lanes:
+                raise ValueError("shared public frame budget lane is duplicated")
+            if ((len(self._lanes) + 1) * self.reserve_items_per_lane > self.max_items
+                    or (len(self._lanes) + 1) * self.reserve_bytes_per_lane > self.max_bytes):
+                raise ValueError("shared public frame budget cannot preserve all lane reserves")
+            self._lanes[lane] = (0, 0)
+
+    def reserve(self, lane: str, frame_bytes: int) -> bool:
+        if type(frame_bytes) is not int or frame_bytes < 0:
+            raise ValueError("shared public frame reservation size is invalid")
+        with self._lock:
+            if lane not in self._lanes:
+                raise RuntimeError("unregistered public stream lane requested shared capacity")
+            if self._items + 1 > self.max_items or self._bytes + frame_bytes > self.max_bytes:
+                return False
+            # Keep each other lane's unused floor available. The current lane
+            # may fill its own reserve, then borrow only genuinely idle space.
+            protected_items = sum(max(0, self.reserve_items_per_lane - used[0])
+                                  for name, used in self._lanes.items() if name != lane)
+            protected_bytes = sum(max(0, self.reserve_bytes_per_lane - used[1])
+                                  for name, used in self._lanes.items() if name != lane)
+            if (self._items + 1 + protected_items > self.max_items
+                    or self._bytes + frame_bytes + protected_bytes > self.max_bytes):
+                return False
+            items, size = self._lanes[lane]
+            self._lanes[lane] = (items + 1, size + frame_bytes)
+            self._items += 1
+            self._bytes += frame_bytes
+            self._high_water_items = max(self._high_water_items, self._items)
+            self._high_water_bytes = max(self._high_water_bytes, self._bytes)
+            return True
+
+    def release(self, lane: str, frame_bytes: int) -> None:
+        with self._lock:
+            current = self._lanes.get(lane)
+            if current is None or current[0] <= 0 or current[1] < frame_bytes:
+                raise RuntimeError("shared public frame budget accounting underflow")
+            self._lanes[lane] = (current[0] - 1, current[1] - frame_bytes)
+            self._items -= 1
+            self._bytes -= frame_bytes
+
+    def snapshot(self) -> tuple[int, int, int, int, int]:
+        with self._lock:
+            return (self._items, self._bytes, self._high_water_items,
+                    self._high_water_bytes, self.max_items)
+
+
 def bybit_btc_eth_linear_topics() -> tuple[str, ...]:
     """Return the explicit S32 Bybit USDT-linear BTC/ETH book and trade set."""
     return (
@@ -127,7 +204,9 @@ class BoundedPublicFrameHandoffV2:
     def __init__(self, *, venue: VenueV2, topics: tuple[str, ...],
                  max_queue_items: int = DEFAULT_PUBLIC_FRAME_QUEUE_ITEMS,
                  max_queue_bytes: int = DEFAULT_PUBLIC_FRAME_QUEUE_BYTES,
-                 max_drain_items: int = DEFAULT_PUBLIC_FRAME_DRAIN_ITEMS) -> None:
+                 max_drain_items: int = DEFAULT_PUBLIC_FRAME_DRAIN_ITEMS,
+                 shared_budget: SharedPublicFrameBudgetV1 | None = None,
+                 budget_lane: str | None = None) -> None:
         self.venue = VenueV2(venue)
         _validate_subscription(self.venue, topics)
         for value, name in ((max_queue_items, "max_queue_items"),
@@ -141,6 +220,15 @@ class BoundedPublicFrameHandoffV2:
         self.max_queue_items = max_queue_items
         self.max_queue_bytes = max_queue_bytes
         self.max_drain_items = max_drain_items
+        if (shared_budget is None) != (budget_lane is None):
+            raise ValueError("shared public frame budget and lane identity must be supplied together")
+        self._shared_budget = shared_budget
+        self._budget_lane = budget_lane
+        if shared_budget is not None:
+            assert budget_lane is not None
+            # Registration is idempotence-protected by the budget; duplicate
+            # stream lane construction therefore fails closed.
+            shared_budget.register_lane(budget_lane)
         self._queue: deque[CapturedPublicFrameV2] = deque()
         self._queue_bytes = 0
         self._lock = threading.Lock()
@@ -207,7 +295,23 @@ class BoundedPublicFrameHandoffV2:
                 self._backpressure = True
                 self._set_error_locked("FRAME_QUEUE_OVERFLOW", frame.received_at_ns)
                 return False
-            self._queue.append(frame)
+            reserved = False
+            if self._shared_budget is not None:
+                assert self._budget_lane is not None
+                if not self._shared_budget.reserve(self._budget_lane, size):
+                    self._frames_rejected += 1
+                    self._overflowed = True
+                    self._backpressure = True
+                    self._set_error_locked("FRAME_QUEUE_OVERFLOW", frame.received_at_ns)
+                    return False
+                reserved = True
+            try:
+                self._queue.append(frame)
+            except BaseException:
+                if reserved:
+                    assert self._shared_budget is not None and self._budget_lane is not None
+                    self._shared_budget.release(self._budget_lane, size)
+                raise
             self._queue_bytes += size
             self._frames_received += 1
             self._high_water_items = max(self._high_water_items, len(self._queue))
@@ -225,7 +329,12 @@ class BoundedPublicFrameHandoffV2:
         with self._lock:
             count = min(limit, len(self._queue))
             rows = tuple(self._queue.popleft() for _ in range(count))
-            self._queue_bytes -= sum(len(frame.raw_payload_bytes) for frame in rows)
+            released_bytes = sum(len(frame.raw_payload_bytes) for frame in rows)
+            self._queue_bytes -= released_bytes
+            if self._shared_budget is not None:
+                assert self._budget_lane is not None
+                for frame in rows:
+                    self._shared_budget.release(self._budget_lane, len(frame.raw_payload_bytes))
             self._frames_drained += len(rows)
             return rows
 

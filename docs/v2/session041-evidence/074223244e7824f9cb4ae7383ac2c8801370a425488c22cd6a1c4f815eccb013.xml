@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="3" time="3.983" timestamp="2026-10-08T13:06:31.617335+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_broad_storage_preflight" name="test_missing_measurement_fails_closed_with_a_bounded_broad_workload_envelope" time="0.004" /><testcase classname="tests.v2.test_session041_broad_storage_preflight" name="test_measured_envelope_scales_for_enabled_venue_count_and_rejects_low_headroom" time="0.002" /><testcase classname="tests.v2.test_session041_broad_storage_preflight" name="test_v2_product_preflight_preserves_host_contract_and_gates_unmeasured_breadth" time="0.306"><failure message="AssertionError: assert 2 == 1&#10; +  where 2 = len([PosixPath('/tmp/pytest-of-kasun/pytest-441/test_v2_product_preflight_pres0/runs/bf4e8930d5c448fe94fbbe26a2361a3b/pref..._preflight_pres0/runs/bf4e8930d5c448fe94fbbe26a2361a3b/preflight-results/a0e46163dd4c4ad1b14ef7bb559ecfe9.owner.json')])">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-441/test_v2_product_preflight_pres0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7ffa1fb10560&gt;
+
+    def test_v2_product_preflight_preserves_host_contract_and_gates_unmeasured_breadth(
+            tmp_path, monkeypatch):
+        monkeypatch.setattr(product, "build_identity", lambda: {
+            "source_sha": "a" * 40, "version": "2.0.41.0", "runtime_lock_sha256": "b" * 64})
+        config = product.ResearchRunConfigV2(data_root=str(tmp_path.resolve()),
+            public_venues=("BYBIT", "BINANCE"))
+        run = product.create_run(tmp_path, config)
+        manifest = product.load_run(run)
+        host = {
+            "schema_version": 1, "version": "StoragePreflightResultV1",
+            "selected_path": str(run.resolve()), "identity_sha256": manifest["content_hash"],
+            "started_at_ns": 1, "completed_at_ns": 1, "elapsed_ns": 0,
+            "status": "TESTED", "allowed": True, "reasons": [],
+            "limits": StoragePreflightLimitsV1().as_dict(), "measurements": [],
+            "facts": {"free_disk_bytes": 10**15}, "probe_mode": "HOST_PATH", "authority": "ZERO",
+            "capital_enabled": False, "assisted_enabled": False,
+            "live_source_qualification": "TEST GATE", "endurance_qualification": "TEST GATE",
+        }
+        host["content_hash"] = sha256_json({key: value for key, value in host.items()
+            if key != "content_hash"})
+    
+        def child(command, **options):
+            assert command[command.index("--component") + 1] == "preflight"
+            with pytest.raises(OpsWriterAlreadyActive):
+                OpsWriterLock(run / "ops.sqlite").acquire()
+            return SimpleNamespace(returncode=0, stdout=json.dumps(host).encode())
+    
+        monkeypatch.setattr(product.subprocess, "run", child)
+        result = product.preflight_run(run)
+        assert result["version"] == "OwnerPreflightResultV2"
+        assert result["allowed"] is False and result["status"] == "TEST GATE"
+        assert result["host_preflight"] == host
+        assert result["broad_capacity"]["identity_sha256"] == manifest["content_hash"]
+        assert result["broad_capacity"]["selected_path"] == str(run.resolve())
+        assert result["broad_capacity"]["observed_at_ns"] == host["completed_at_ns"]
+        assert "BROAD_WORKLOAD_CAPACITY_MEASUREMENT_UNAVAILABLE" in result["reasons"]
+        assert result["content_hash"] == sha256_json({key: value for key, value in result.items()
+            if key != "content_hash"})
+        assert json.loads((run / "preflight.json").read_text()) == result
+        raw_host_results = [path for path in (run / "preflight-results").glob("*.json")
+            if not path.name.endswith(".broad-capacity.json")]
+&gt;       assert len(raw_host_results) == 1
+E       AssertionError: assert 2 == 1
+E        +  where 2 = len([PosixPath('/tmp/pytest-of-kasun/pytest-441/test_v2_product_preflight_pres0/runs/bf4e8930d5c448fe94fbbe26a2361a3b/pref..._preflight_pres0/runs/bf4e8930d5c448fe94fbbe26a2361a3b/preflight-results/a0e46163dd4c4ad1b14ef7bb559ecfe9.owner.json')])
+
+tests/v2/test_session041_broad_storage_preflight.py:110: AssertionError</failure></testcase></testsuite></testsuites>
