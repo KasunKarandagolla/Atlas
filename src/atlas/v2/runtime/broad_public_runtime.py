@@ -136,11 +136,15 @@ class BroadPublicRuntimeV2:
         clock_ns: Callable[[], int] = time.time_ns,
         interpret_frames: Callable[[OpsRepository, BroadPublicStreamPlanV2, tuple[Any, ...], int], None] | None = None,
         snapshot_reader: Callable[[InstrumentKeyV2, int], tuple[bytes, int]] | None = None,
+        capture_payload_metrics: bool = False,
     ) -> None:
         self.stream_factories = dict(stream_factories or {})
         self.clock_ns = clock_ns
         self.interpret_frames = interpret_frames
         self.snapshot_reader = snapshot_reader
+        if type(capture_payload_metrics) is not bool:
+            raise ValueError("capture payload metric selection must be boolean")
+        self.capture_payload_metrics = capture_payload_metrics
         self.plan: BroadPublicStreamPlanV2 | None = None
         self.source: BroadPublicStreamSourceV2 | None = None
         self.capture: BroadDurablePublicCaptureV2 | None = None
@@ -295,7 +299,8 @@ class BroadPublicRuntimeV2:
             self.source = BroadPublicStreamSourceV2(
                 plan, stream_factories=self.stream_factories, clock_ns=self.clock_ns,
             )
-            self.capture = BroadDurablePublicCaptureV2(self.source, clock_ns=self.clock_ns)
+            self.capture = BroadDurablePublicCaptureV2(self.source, clock_ns=self.clock_ns,
+                capture_payload_metrics=self.capture_payload_metrics)
             self._run_root = run_root
             self._run_id = self._run_identity(run_root)
             for publication_id in repository.unobserved_publications_v2(self._run_id):

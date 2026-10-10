@@ -959,6 +959,8 @@ def _component_command(component: str, run: Path) -> list[str]:
 
 def launch_run(run: Path) -> subprocess.Popen[bytes]:
     manifest = load_run(run)
+    if (run / "qualification-profile.json").exists():
+        raise RuntimeError("QUALIFICATION_ONLY_RUN_CANNOT_ENTER_ORDINARY_STARTUP")
     from .runtime.live_health import QualificationLatchV1
 
     if QualificationLatchV1(run, run_id=manifest["run_id"], config_hash=manifest["config_hash"]).read() is not None:
@@ -1362,6 +1364,14 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
 
     manifest = load_run(run)
     config = _run_config(manifest["configuration"])
+    if (run / "qualification-profile.json").exists():
+        raise RuntimeError("QUALIFICATION_ONLY_RUN_CANNOT_ENTER_ORDINARY_STARTUP")
+    # V2 admission must complete before even constructing a public source.
+    # V1's frozen startup path keeps its existing ordering and checks below.
+    if not smoke and isinstance(config, ResearchRunConfigV2):
+        qualified = preflight_run(run)
+        if not qualified["allowed"]:
+            raise RuntimeError("OWNER_STORAGE_PREFLIGHT_REJECTED")
     # Startup inventory precedes network capture; live monitoring never walks
     # an elapsed-runtime-growing evidence tree. Failure to inventory is visible.
     inventory_started = time.monotonic()
@@ -1388,7 +1398,7 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
         port = create_broad_public_port(enabled_venues=tuple(VenueV2(venue) for venue in config.public_venues))
     else:
         port = create_bybit_public_ws_port()
-    if not smoke and (isinstance(config, ResearchRunConfigV2) or port.public_stream_source is not None):
+    if not smoke and not isinstance(config, ResearchRunConfigV2) and port.public_stream_source is not None:
         qualified = preflight_run(run)
         if not qualified["allowed"]:
             raise RuntimeError("OWNER_STORAGE_PREFLIGHT_REJECTED")
@@ -2358,13 +2368,57 @@ def main() -> int:
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--broker-smoke", action="store_true")
     parser.add_argument("--desktop-smoke", action="store_true")
+    parser.add_argument("--commission-binance-diagnostic", action="store_true")
     parser.add_argument("--data-root", type=Path)
     parser.add_argument("--run-root", type=Path)
+    parser.add_argument("--selected-path", type=Path)
+    parser.add_argument("--identity-sha256")
     parser.add_argument("--launch-id")
     parser.add_argument("--broker-context", type=Path)
     parser.add_argument("--component", choices=("ops", "desktop", "critic-broker",
-        "event-extraction-broker", "preflight", "demo-oms"))
+        "event-extraction-broker", "preflight", "demo-oms", "qualification-host-path",
+        "qualification-diagnostic"))
     args = parser.parse_args()
+    if args.component == "qualification-host-path":
+        if args.selected_path is None or args.identity_sha256 is None:
+            parser.error("qualification host-path probe requires --selected-path and --identity-sha256")
+        from .runtime.storage_preflight import qualify_storage_path
+
+        result = qualify_storage_path(args.selected_path, identity_sha256=args.identity_sha256).as_dict()
+        print(json.dumps(result))
+        return 0 if result["allowed"] else 2
+    if args.component == "qualification-diagnostic":
+        if args.run_root is None:
+            parser.error("qualification diagnostic requires --run-root")
+        from .runtime.binance_qualification import run_qualification_component
+
+        stop = threading.Event()
+        previous_handlers = {kind: signal.signal(kind, lambda signum, frame: stop.set())
+                             for kind in (signal.SIGINT, signal.SIGTERM)}
+        try:
+            diagnostic_receipt = run_qualification_component(args.run_root,
+                supervisor_token=os.environ.pop("ATLAS_QUALIFICATION_PARENT_TOKEN", None),
+                stop_requested=stop.is_set)
+            return 0 if diagnostic_receipt["status"] == "DIAGNOSTIC_COMPLETE" else 2
+        finally:
+            for kind, handler in previous_handlers.items():
+                signal.signal(kind, handler)
+    if args.commission_binance_diagnostic:
+        if args.data_root is None:
+            parser.error("Binance diagnostic commissioning requires selected --data-root")
+        from .runtime.binance_qualification import commission_binance_diagnostic
+
+        stop = threading.Event()
+        previous_handlers = {kind: signal.signal(kind, lambda signum, frame: stop.set())
+                             for kind in (signal.SIGINT, signal.SIGTERM)}
+        try:
+            diagnostic_receipt, diagnostic_exit = commission_binance_diagnostic(
+                args.data_root, stop_requested=stop.is_set)
+            print(json.dumps(diagnostic_receipt))
+            return diagnostic_exit
+        finally:
+            for kind, handler in previous_handlers.items():
+                signal.signal(kind, handler)
     if args.desktop_smoke:
         if args.data_root is None:
             parser.error("desktop smoke requires temporary --data-root")

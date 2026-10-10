@@ -6018,15 +6018,17 @@ class BroadProductionOpsCyclePortV2(ProductionOpsCyclePortV1):
     _serviced_acquisition: Any
 
     def __init__(self, *, public_source: Any, clock_ns: Callable[[], int] = time.time_ns,
-                 broad_runtime: Any | None = None) -> None:
+                 broad_runtime: Any | None = None, capture_payload_metrics: bool = False) -> None:
         super().__init__(public_source=public_source, clock_ns=clock_ns)
         from ..data.universe import ComputeTierV2
         from .broad_public_runtime import BroadPublicRuntimeV2
         from .broad_serviced_acquisition import BroadServicedPublicAcquisitionV2
 
         self._broad_tier_1 = ComputeTierV2.TIER_1
+        self.last_acquisition_snapshot: Any | None = None
         self._broad_lane = broad_runtime or BroadPublicRuntimeV2(clock_ns=clock_ns,
-            snapshot_reader=getattr(public_source, "acquire_depth_snapshot", None))
+            snapshot_reader=getattr(public_source, "acquire_depth_snapshot", None),
+            capture_payload_metrics=capture_payload_metrics)
         self.public_stream_source = self._broad_lane
         self._serviced_acquisition = BroadServicedPublicAcquisitionV2(public_source, clock_ns=clock_ns)
         from .research_basket_outcomes import S8ResearchBasketOutcomeProducerV1
@@ -6373,6 +6375,7 @@ class BroadProductionOpsCyclePortV2(ProductionOpsCyclePortV1):
         self.service_public_stream(repository)
         snapshot = self._serviced_acquisition.acquire(now_ns=now_ns,
             service=lambda: self.service_public_stream(repository))
+        self.last_acquisition_snapshot = snapshot
         if (not snapshot.source_snapshot.get("pending", False)
                 and snapshot.source_snapshot.get("acquisition_due", True)):
             self._register_refreshed_stream_products(repository, snapshot)
@@ -6410,13 +6413,15 @@ class BroadProductionOpsCyclePortV2(ProductionOpsCyclePortV1):
 
 def create_broad_public_port(*, enabled_venues: tuple[VenueV2, ...], public_source: Any = None,
                              clock_ns: Callable[[], int] = time.time_ns,
-                             broad_runtime: Any | None = None) -> BroadProductionOpsCyclePortV2:
+                             broad_runtime: Any | None = None,
+                             capture_payload_metrics: bool = False) -> BroadProductionOpsCyclePortV2:
     from ..data.broad_public_source import BroadPublicCycleSourceV2
 
     source = public_source or BroadPublicCycleSourceV2(enabled_venues=enabled_venues, clock_ns=clock_ns)
     if tuple(sorted(source.enabled_venues, key=lambda item: item.value)) != tuple(sorted(enabled_venues, key=lambda item: item.value)):
         raise ValueError("broad source venue configuration mismatch")
-    return BroadProductionOpsCyclePortV2(public_source=source, clock_ns=clock_ns, broad_runtime=broad_runtime)
+    return BroadProductionOpsCyclePortV2(public_source=source, clock_ns=clock_ns, broad_runtime=broad_runtime,
+        capture_payload_metrics=capture_payload_metrics)
 
 
 def _l2_raw_frame_from_archive_row(row: Mapping[str, Any]) -> L2RawFrameV2:

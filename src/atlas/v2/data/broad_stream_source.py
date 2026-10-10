@@ -343,11 +343,13 @@ class BroadDurablePublicCaptureV2:
     in the wrapped stream status.
     """
 
-    def __init__(self, source: BroadPublicStreamSourceV2, *, clock_ns: Callable[[], int] | None = None) -> None:
+    def __init__(self, source: BroadPublicStreamSourceV2, *, clock_ns: Callable[[], int] | None = None,
+                 capture_payload_metrics: bool = False) -> None:
         self.source = source
         self.venue = "BROAD"
         self.topics = source.topics
-        options: dict[str, Any] = {"capture_batch_frames": MAX_BROAD_CAPTURE_BATCH_FRAMES_V2}
+        options: dict[str, Any] = {"capture_batch_frames": MAX_BROAD_CAPTURE_BATCH_FRAMES_V2,
+                                   "capture_payload_metrics": capture_payload_metrics}
         if clock_ns is not None:
             options["clock_ns"] = clock_ns
         self._capture = DurablePublicCaptureV1(source, **options)
@@ -387,3 +389,9 @@ class BroadDurablePublicCaptureV2:
 
     def captured_frames_at_monotonic_ns(self, cutoff_ns: int) -> int:
         return self._capture.captured_frames_at_monotonic_ns(cutoff_ns)
+
+    def captured_payload_bytes_at_monotonic_ns(self, cutoff_ns: int) -> int:
+        return self._capture.captured_payload_bytes_at_monotonic_ns(cutoff_ns)
+
+    def payload_size_distribution_between_monotonic_ns(self, start_ns: int, end_ns: int) -> dict[str, int]:
+        return self._capture.payload_size_distribution_between_monotonic_ns(start_ns, end_ns)

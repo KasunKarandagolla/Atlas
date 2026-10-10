@@ -31,6 +31,9 @@ from .public_microstructure_ws import CapturedPublicFrameV2
 MAX_PENDING_CAPTURE_BATCHES = 64
 MAX_CAPTURE_BATCH_FRAMES = 256
 CAPTURE_ACCUMULATION_SECONDS = 0.2
+_PAYLOAD_SIZE_BUCKETS = (64, 128, 256, 512, 1_024, 2_048, 4_096, 8_192,
+                         16_384, 32_768, 65_536, 131_072, 262_144, 524_288,
+                         1_048_576, 2_000_000)
 
 
 @dataclass(frozen=True)
@@ -103,15 +106,18 @@ class DurablePublicCaptureV1:
     """
 
     def __init__(self, source: Any, *, clock_ns: Callable[[], int] = time.time_ns,
-                 capture_batch_frames: int = 64) -> None:
+                 capture_batch_frames: int = 64, capture_payload_metrics: bool = False) -> None:
         if (type(capture_batch_frames) is not int or not 1 <= capture_batch_frames
                 <= MAX_CAPTURE_BATCH_FRAMES):
             raise ValueError("capture batch frame bound is outside the sealed descriptor contract")
+        if type(capture_payload_metrics) is not bool:
+            raise ValueError("capture payload metric selection must be boolean")
         self.source = source
         self.venue = source.venue
         self.topics = source.topics
         self.clock_ns = clock_ns
         self.capture_batch_frames = capture_batch_frames
+        self._capture_payload_metrics = capture_payload_metrics
         self._root: Path | None = None
         self._pending: deque[SealedPublicTransportV1] = deque()
         self._lock = threading.Lock()
@@ -119,8 +125,15 @@ class DurablePublicCaptureV1:
         self._thread: threading.Thread | None = None
         self._error: str | None = None
         self._captured_frames = 0
+        self._payload_bytes_written = 0
+        self._payload_bytes_timeline: deque[tuple[int, int]] = deque(maxlen=8192)
+        self._payload_size_histogram = [0] * (len(_PAYLOAD_SIZE_BUCKETS) + 1)
+        self._payload_size_batch_timeline: deque[tuple[int, tuple[int, ...]]] = deque(maxlen=8192)
+        self._payload_size_min: int | None = None
+        self._payload_size_max = 0
         self._capture_in_progress_frames = 0
         self._capture_seal_timeline: deque[tuple[int, int]] = deque(maxlen=8192)
+        self._capture_timeline_truncated_before_ns: int | None = None
         self._delivered_frames = 0
         self._high_water_batches = 0
         self._last_capture_ns: int | None = None
@@ -284,6 +297,16 @@ class DurablePublicCaptureV1:
                 "archive_bytes_written": self._writer.bytes_written if self._writer is not None else 0,
                 "receipt_bytes_written": self._journal.bytes_written if self._journal is not None else 0,
                 "terminal_error": self._error, "authority": "ZERO"}
+            if self._capture_payload_metrics:
+                capture.update({
+                    "payload_bytes_written": self._payload_bytes_written,
+                    "payload_size_min_bytes": self._payload_size_min,
+                    "payload_size_max_bytes": self._payload_size_max,
+                    "payload_size_histogram": {
+                        **{f"le_{bound}": self._payload_size_histogram[index]
+                           for index, bound in enumerate(_PAYLOAD_SIZE_BUCKETS)},
+                        f"gt_{_PAYLOAD_SIZE_BUCKETS[-1]}": self._payload_size_histogram[-1]},
+                })
             error = self._error
         return SimpleNamespace(state="FAILED" if error else status.state,
             attempt_count=status.attempt_count, reconnect_count=status.reconnect_count,
@@ -295,10 +318,46 @@ class DurablePublicCaptureV1:
         if type(cutoff_ns) is not int or cutoff_ns < 0:
             raise ValueError("capture timeline cutoff must be a monotonic timestamp")
         with self._lock:
+            if (self._capture_timeline_truncated_before_ns is not None
+                    and cutoff_ns <= self._capture_timeline_truncated_before_ns):
+                raise ValueError("capture timeline no longer covers the requested cutoff")
             for completed_at_ns, cumulative in reversed(self._capture_seal_timeline):
                 if completed_at_ns <= cutoff_ns:
                     return cumulative
             return 0
+
+    def captured_payload_bytes_at_monotonic_ns(self, cutoff_ns: int) -> int:
+        """Return raw payload bytes sealed by an exact producer cutoff."""
+        if not self._capture_payload_metrics:
+            raise RuntimeError("capture payload metrics were not enabled for this profile")
+        if type(cutoff_ns) is not int or cutoff_ns < 0:
+            raise ValueError("capture timeline cutoff must be a monotonic timestamp")
+        with self._lock:
+            if (self._capture_timeline_truncated_before_ns is not None
+                    and cutoff_ns <= self._capture_timeline_truncated_before_ns):
+                raise ValueError("capture timeline no longer covers the requested cutoff")
+            for completed_at_ns, cumulative in reversed(self._payload_bytes_timeline):
+                if completed_at_ns <= cutoff_ns:
+                    return cumulative
+            return 0
+
+    def payload_size_distribution_between_monotonic_ns(self, start_ns: int, end_ns: int) -> dict[str, int]:
+        if not self._capture_payload_metrics:
+            raise RuntimeError("capture payload metrics were not enabled for this profile")
+        if (type(start_ns) is not int or type(end_ns) is not int or start_ns < 0 or end_ns < start_ns):
+            raise ValueError("payload distribution window is invalid")
+        with self._lock:
+            if (self._capture_timeline_truncated_before_ns is not None
+                    and start_ns <= self._capture_timeline_truncated_before_ns):
+                raise ValueError("capture timeline no longer covers the requested cutoff")
+            totals = [0] * (len(_PAYLOAD_SIZE_BUCKETS) + 1)
+            for completed_at_ns, batch_counts in self._payload_size_batch_timeline:
+                if start_ns < completed_at_ns <= end_ns:
+                    for index, count in enumerate(batch_counts):
+                        totals[index] += count
+        return {
+            **{f"le_{bound}": totals[index] for index, bound in enumerate(_PAYLOAD_SIZE_BUCKETS)},
+            f"gt_{_PAYLOAD_SIZE_BUCKETS[-1]}": totals[-1]}
 
     @staticmethod
     def _pressure_reserve_batches(handoff: Any) -> int:
@@ -443,11 +502,37 @@ class DurablePublicCaptureV1:
                     self._capture_started_monotonic_ns = None
                     continue
                 batch = self._seal(writer, frames)
+                sizes = (tuple(len(frame.raw_payload_bytes) for frame in frames)
+                    if self._capture_payload_metrics else ())
                 with self._lock:
                     self._pending.append(batch)
                     self._captured_frames += len(frames)
                     self._capture_in_progress_frames = 0
-                    self._capture_seal_timeline.append((time.monotonic_ns(), self._captured_frames))
+                    completed_at_ns = time.monotonic_ns()
+                    if (self._capture_payload_metrics
+                            and len(self._capture_seal_timeline) == self._capture_seal_timeline.maxlen):
+                        self._capture_timeline_truncated_before_ns = self._capture_seal_timeline[0][0]
+                    self._capture_seal_timeline.append((completed_at_ns, self._captured_frames))
+                    if self._capture_payload_metrics:
+                        payload_bytes = sum(sizes)
+                        self._payload_bytes_written += payload_bytes
+                        self._payload_size_min = min(sizes) if self._payload_size_min is None else min(
+                            self._payload_size_min, *sizes)
+                        self._payload_size_max = max(self._payload_size_max, *sizes)
+                        batch_histogram = [0] * (len(_PAYLOAD_SIZE_BUCKETS) + 1)
+                        for size in sizes:
+                            matched = False
+                            for index, bound in enumerate(_PAYLOAD_SIZE_BUCKETS):
+                                if size <= bound:
+                                    self._payload_size_histogram[index] += 1
+                                    batch_histogram[index] += 1
+                                    matched = True
+                                    break
+                            if not matched:
+                                self._payload_size_histogram[-1] += 1
+                                batch_histogram[-1] += 1
+                        self._payload_bytes_timeline.append((completed_at_ns, self._payload_bytes_written))
+                        self._payload_size_batch_timeline.append((completed_at_ns, tuple(batch_histogram)))
                     self._high_water_batches = max(self._high_water_batches, len(self._pending))
                     self._last_capture_ns = self.clock_ns()
                     self._max_capture_duration_ns = max(self._max_capture_duration_ns,
