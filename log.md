@@ -1,6 +1,14 @@
 # ATLAS engineering log
 
-## Current checkpoint — 2026-10-10, Binance qualification proposal
+## Current checkpoint — 2026-10-10, final amendment reconciliation
+
+**Status: conditional documentation proposal; non-operative pending explicit versioned acceptance.** Started from `review/session-041-binance-linux-qualification-proposal @ eed7f849da5c8ff418c52fbc8cb0f0fd583d6422`; fresh remote discovery confirmed that exact tip and implementation ancestor `fix/session-041-final-v2-recovery @ dcb5d9dbe6ec58ee337b29accb48f96ef174ec1d`. Work is isolated on `review/session-041-binance-final-reconciliation`. Authority freezes and accepted recovery documents match their recorded hashes. Coordinating addendum SHA-256: `9f618e898ee902f5e6914f7f84728bef12652acffa814ce0a713fbb99e68914c`.
+
+**Inherited review corrections:** keep F1-micro/F1/F4/A2 thresholds and dual-venue failures; use actual due-cycle/report boundaries in the 120-second diagnostic; require a bound workload maximum; preserve the Windows owner commissioning workflow and treat Linux commissioning as a proposed A2 extension; do not use synthetic positions; retain exact S6 selector identities and scope-limited S7 UNKNOWN behavior. Reconciled proposal: [S41 Binance/Linux profile amendment](docs/v2/S41_BINANCE_LINUX_QUALIFICATION_PROFILE_AMENDMENT_PROPOSAL.md), SHA-256 `505351b2f4b172c4d9cbd6dbac0c0792f62729ac55ebf3e6a28ff1297186a0a8`. The three XML failures, five F1 JSON failures, two short P2 probes and three presealed reports are named there and remain unchanged.
+
+**CONFIRMED local result:** no contradictory “12 cycles/two reports” guarantee remains; the diagnostic cannot issue a capacity certificate or bypass `preflight_run`. Existing numeric gates are stated once in the profile mapping. Linux/one-venue qualification remains a proposed versioned extension; it is not current A2 authority. No production code, tests, ledgers, reports, configuration or capital files changed. No runtime or capacity test was run. **Next:** independent coordinating acceptance; if accepted, implement only the authority-zero commissioning/profile-validation slice and stop at its earliest failing gate. Ordinary startup stays fail-closed; capital and assisted execution stay disabled; economics remains `NOT ESTIMABLE`.
+
+## Previous checkpoint — 2026-10-10, Binance qualification proposal
 
 **Status: proposal only; awaiting coordinating review.** Fresh `git ls-remote` confirmed implementation tip `dcb5d9dbe6ec58ee337b29accb48f96ef174ec1d`, which descends from S40. Work is isolated on `review/session-041-binance-linux-qualification-proposal`. The three freezes, R1 decisions/plan and relevant gates were hash-checked; no production, test, configuration, evidence or acceptance-ledger files changed. Proposal: [S41 Binance/Linux profile amendment](docs/v2/S41_BINANCE_LINUX_QUALIFICATION_PROFILE_AMENDMENT_PROPOSAL.md).
 
