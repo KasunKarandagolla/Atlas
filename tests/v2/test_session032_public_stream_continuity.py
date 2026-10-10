@@ -112,6 +112,107 @@ def frame_observation(*, at_ns: int = T0, channel: str = TRADE_CHANNEL,
     )
 
 
+def test_writer_slice_kernel_matches_ordered_v1_reference_byte_for_byte() -> None:
+    initial = tracker()
+    reference = PublicStreamContinuityTrackerV1.from_state(initial.state)
+    sliced = PublicStreamContinuityTrackerV1.from_state(initial.state)
+    exact_a, exact_b, exact_c = "a" * 64, "b" * 64, "c" * 64
+    first_trade = trade_observation("slice-trade", received=T0 + 2, event=T0 + 2,
+                                   exact_payload_hash=exact_a)
+    receipt_regression = replace(
+        trade_observation("receipt-regression", received=T0 + 4, event=T0 + 8,
+                          exact_payload_hash=exact_c),
+        available_at_ns=T0 + 7,
+    )
+    disconnect = PublicStreamObservationV1.transport(
+        instrument=key(), source_id=SOURCE, channel=TRADE_CHANNEL, metadata_ref=META_REF,
+        epoch_id=TRADE_EPOCH, kind=PublicStreamObservationKindV1.DISCONNECT,
+        observed_at_ns=T0 + 8, available_at_ns=T0 + 8,
+    )
+    reconnect = PublicStreamObservationV1.transport(
+        instrument=key(), source_id=SOURCE, channel=TRADE_CHANNEL, metadata_ref=META_REF,
+        epoch_id="connection-2", kind=PublicStreamObservationKindV1.RECONNECT,
+        observed_at_ns=T0 + 9, available_at_ns=T0 + 9,
+    )
+    stale_epoch = trade_observation("stale-epoch", received=T0 + 10, event=T0 + 10,
+                                    exact_payload_hash=exact_a)
+    observations = (
+        frame_observation(at_ns=T0 + 1),
+        first_trade,
+        first_trade,
+        trade_observation("slice-trade", received=T0 + 3, event=T0 + 2,
+                          exact_payload_hash=exact_a),
+        trade_observation("slice-trade", received=T0 + 4, event=T0 + 2,
+                          exact_payload_hash=exact_b),
+        trade_observation("event-regression", received=T0 + 5, event=T0 + 1,
+                          exact_payload_hash=exact_c),
+        receipt_regression,
+        disconnect,
+        reconnect,
+        stale_epoch,
+        replace(trade_observation("new-epoch", received=T0 + 11, event=T0 + 11,
+                                  epoch_id="connection-2", exact_payload_hash=exact_a),
+                available_at_ns=T0 + 20),
+        trade_observation("availability-regression", received=T0 + 12, event=T0 + 12,
+                          epoch_id="connection-2", exact_payload_hash=exact_c),
+    )
+    bindings = {"slice-trade": (exact_a, True, False),
+                "event-regression": (None, True, False),
+                "receipt-regression": (None, True, False),
+                "stale-epoch": (None, True, False),
+                "new-epoch": (None, True, False),
+                "availability-regression": (None, True, False)}
+
+    expected = tuple(reference.apply_deferred(
+        observation, durable_prior_payload_hash=bindings.get(observation.trade_id or "", (None, False, False))[0],
+        durable_lookup_complete=bindings.get(observation.trade_id or "", (None, False, False))[1],
+        durable_identity_conflicted=bindings.get(observation.trade_id or "", (None, False, False))[2],
+    ) for observation in observations)
+    actual = sliced.apply_slice_v2(observations, durable_identities=bindings)
+
+    def observation_ref(item):
+        return item.observation if isinstance(item.observation, str) else item.observation.idempotency_ref
+
+    assert [(observation_ref(item), item.classification, item.reason_code)
+            for item in actual] == [(observation_ref(item), item.classification, item.reason_code)
+                                    for item in expected]
+
+    def logical_projection(item):
+        value = item.state.to_dict()
+        value["trade_identity_cache"] = []
+        value["trade_identity_cache_complete"] = item.state.observed_trade_count == 0
+        value["observation_replay_cache"] = []
+        return value
+
+    assert [logical_projection(item) for item in actual] == [logical_projection(item) for item in expected]
+    assert sliced.state.content_hash == reference.state.content_hash
+
+
+def test_writer_slice_freezes_bounded_caches_once_and_matches_eviction() -> None:
+    initial = tracker().state
+    old_trade_cache = tuple((f"old-{index}", ref(("old", index))) for index in range(2048))
+    old_replay_cache = tuple(ref(("replay", index)) for index in range(2048))
+    seeded = replace(initial, observed_trade_count=2048, trade_identity_cache=old_trade_cache,
+                     observation_replay_cache=old_replay_cache)
+    reference = PublicStreamContinuityTrackerV1.from_state(seeded)
+    sliced = PublicStreamContinuityTrackerV1.from_state(seeded)
+    observations = tuple(
+        trade_observation(f"new-{index}", received=T0 + index + 1, event=T0 + index + 1,
+                          exact_payload_hash=ref(("new", index)))
+        for index in range(8)
+    )
+    bindings = {item.trade_id: (None, True, False) for item in observations}
+    for item in observations:
+        reference.apply_deferred(item, durable_lookup_complete=True)
+    actual = sliced.apply_slice_v2(observations, durable_identities=bindings)
+    assert len(actual) == len(observations)
+    assert sliced.state.to_dict() == reference.state.to_dict()
+    assert sliced.state.trade_identity_cache == old_trade_cache[8:] + tuple(
+        (item.trade_id, item.trade_payload_hash) for item in observations
+    )
+    assert sliced.state.trade_identity_cache_complete is False
+
+
 def report(current: PublicStreamContinuityTrackerV1, *, as_of_ns: int = T0,
            source_health: PublicSourceHealthV2 | None = None,
            source_health_epoch_id: str | None = TRADE_EPOCH,

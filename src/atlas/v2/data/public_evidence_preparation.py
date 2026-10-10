@@ -22,6 +22,7 @@ from typing import Any, Literal
 from .._serialization import canonical_json, sha256_json, sha256_ref
 
 PREPARATION_VERSION_V2 = "PUBLIC_EVIDENCE_PREPARATION_V2"
+PREPARATION_VERSION_V3 = "PUBLIC_EVIDENCE_PREPARATION_V3"
 MAX_PREPARATION_INPUT_BYTES_V2 = 4 * 1024 * 1024
 MAX_PREPARATION_RESULT_BYTES_V2 = 4 * 1024 * 1024
 MAX_PREPARATION_TRADE_ROWS_V2 = 64
@@ -461,6 +462,7 @@ def _worker_main(connection: Any, initial_run_root: str) -> None:
     seal_writer = None
     seal_root = Path(initial_run_root).resolve() / "ops-public-extents"
     parse_cache: dict[tuple[str, int, str], Any] = {}
+    transport_cache: dict[str, tuple[Any, ...]] = {}
     try:
         # Import the fixed parser/sealer dependencies before READY so module
         # import time is startup cost, outside the 1.5 s bounded job watchdog.
@@ -499,14 +501,17 @@ def _worker_main(connection: Any, initial_run_root: str) -> None:
                 job_started_ns = time.monotonic_ns()
                 if request.kind != "PARSE":
                     parse_cache.clear()
-                result_value = _execute_request(request, seal_writer, seal_root, parse_cache)
+                result_value = _execute_request(request, seal_writer, seal_root, parse_cache, transport_cache)
                 if request.kind == "SEAL":
                     seal_writer = result_value.pop("_writer")
                 output = {"request_hash": request_hash, **result_value}
                 payload = canonical_json(output).encode("utf-8")
                 if len(payload) > MAX_PREPARATION_RESULT_BYTES_V2:
                     raise ValueError("preparation result exceeds 4 MiB")
-                _durable_replace(Path(request.output_path), payload)
+                if request.preparation_version == PREPARATION_VERSION_V3:
+                    _replace_rebuildable_input(Path(request.output_path), payload)
+                else:
+                    _durable_replace(Path(request.output_path), payload)
                 result = PublicEvidencePreparationResultV2(
                     request.job_id, request_hash, request.output_path, hashlib.sha256(payload).hexdigest(),
                     len(payload), int(output.get("result_records", 0)),
@@ -523,7 +528,8 @@ def _worker_main(connection: Any, initial_run_root: str) -> None:
 
 
 def _execute_request(request: PublicEvidencePreparationRequestV2, seal_writer: Any,
-                     seal_root: Path, parse_cache: dict[tuple[str, int, str], Any]) -> dict[str, Any]:
+                     seal_root: Path, parse_cache: dict[tuple[str, int, str], Any],
+                     transport_cache: dict[str, tuple[Any, ...]] | None = None) -> dict[str, Any]:
     input_path = Path(request.input_path)
     if input_path.is_symlink() or input_path.stat().st_size > MAX_PREPARATION_INPUT_BYTES_V2:
         raise ValueError("preparation input file violates its size/path bound")
@@ -534,17 +540,20 @@ def _execute_request(request: PublicEvidencePreparationRequestV2, seal_writer: A
         value = json.loads(raw_input)
         if (not isinstance(value, dict)
                 or set(value) not in ({"frame", "instrument", "processed_at_ns", "source_health",
-                                      "source_health_ref"}, {"frames"})):
+                                      "source_health_ref"}, {"frames"},
+                                      {"frames", "transport_binding"})):
             raise ValueError("parse input shape is invalid")
-        output = _parse_input(request, value, parse_cache)
+        output = _parse_input(request, value, parse_cache, transport_cache)
         return output
     return _seal_input(request, raw_input, seal_writer, seal_root)
 
 
 def _parse_input(request: PublicEvidencePreparationRequestV2, value: dict[str, Any],
-                 parse_cache: dict[tuple[str, int, str], Any]) -> dict[str, Any]:
+                 parse_cache: dict[tuple[str, int, str], Any],
+                 transport_cache: dict[str, tuple[Any, ...]] | None = None) -> dict[str, Any]:
     from ..instruments import VenueV2
 
+    has_transport_locator = set(value) == {"frames", "transport_binding"}
     if "frames" in value:
         rows = value["frames"]
         if not isinstance(rows, list) or not 1 <= len(rows) <= MAX_PREPARATION_FRAMES_V2:
@@ -562,6 +571,8 @@ def _parse_input(request: PublicEvidencePreparationRequestV2, value: dict[str, A
         }]
     if not manifest or not isinstance(manifest[0], dict):
         raise ValueError("parse manifest first frame is invalid")
+    if transport_cache is None:
+        transport_cache = {}
     first = manifest[0]
     if (first.get("frame_ordinal") != request.frame_ordinal
             or first.get("trade_ordinal_start") != request.trade_ordinal_start):
@@ -616,6 +627,8 @@ def _parse_input(request: PublicEvidencePreparationRequestV2, value: dict[str, A
             bybit_row_limit=trade_rows_remaining,
             started_at_ns=started,
             parse_cache=parse_cache,
+            transport_binding=value.get("transport_binding") if has_transport_locator else None,
+            transport_cache=transport_cache,
         )
         frame_results.append(frame_result)
         event_total += len(frame_result["events"])
@@ -638,7 +651,7 @@ def _parse_input(request: PublicEvidencePreparationRequestV2, value: dict[str, A
     output_frames = [{key: value for key, value in result.items() if key != "is_bybit_trade"}
                      for result in frame_results]
     return {
-        "version": PREPARATION_VERSION_V2,
+        "version": request.preparation_version,
         "job_id": request.job_id,
         "descriptor_hash": request.descriptor_hash,
         "input_hash": request.input_hash,
@@ -652,6 +665,52 @@ def _parse_input(request: PublicEvidencePreparationRequestV2, value: dict[str, A
     }
 
 
+def _read_transport_frames_v3(
+    request: PublicEvidencePreparationRequestV2,
+    binding: Any,
+    transport_cache: dict[str, tuple[Any, ...]],
+) -> tuple[Any, ...]:
+    """Read and verify the bound immutable capture extent without copying its raw bytes."""
+    from ..memory.repository import ArtifactIndexEntryV2
+    from .durable_public_capture import SealedPublicTransportV1
+    from .public_archive_extents import read_extent_entry
+
+    if not isinstance(binding, dict) or set(binding) != {"batch", "extent"}:
+        raise ValueError("V3 transport locator binding is malformed")
+
+    def entry(value: Any) -> ArtifactIndexEntryV2:
+        fields = {"artifact_ref", "artifact_type", "content_hash", "created_at_ns",
+                  "available_at_ns", "metadata"}
+        if not isinstance(value, dict) or set(value) != fields or not isinstance(value["metadata"], dict):
+            raise ValueError("V3 transport descriptor is malformed")
+        return ArtifactIndexEntryV2(value["artifact_ref"], value["artifact_type"], value["content_hash"],
+                                    value["created_at_ns"], value["available_at_ns"], value["metadata"])
+
+    batch, extent = entry(binding["batch"]), entry(binding["extent"])
+    if (batch.artifact_type != "PublicStreamTransportBatchV2"
+            or batch.artifact_ref != request.descriptor_hash
+            or extent.artifact_type != "PublicArchiveExtentV1"):
+        raise ValueError("V3 transport locator does not match the request descriptor")
+    cached = transport_cache.get(extent.content_hash)
+    if cached is not None:
+        return cached
+    table = read_extent_entry(Path(request.run_root) / "ops-public-extents", extent)
+    rows = table.to_pylist()
+    from .public_microstructure_ws import CapturedPublicFrameV2
+
+    frames = tuple(CapturedPublicFrameV2(
+        row["venue"], row["source_id"], row["channel"], row["raw_payload_bytes"],
+        row["raw_payload_hash"], row["received_at_ns"], row["available_at_ns"],
+        row["connection_epoch"],
+    ) for row in rows)
+    if not frames or len(frames) > 256:
+        raise ValueError("V3 transport extent population is outside its bound")
+    SealedPublicTransportV1(extent, batch, len(frames)).verify_unpublished_frames(frames)
+    transport_cache.clear()
+    transport_cache[extent.content_hash] = frames
+    return frames
+
+
 def _parse_one_frame(
     request: PublicEvidencePreparationRequestV2,
     value: dict[str, Any],
@@ -661,6 +720,8 @@ def _parse_one_frame(
     bybit_row_limit: int,
     started_at_ns: int,
     parse_cache: dict[tuple[str, int, str], Any],
+    transport_binding: Any = None,
+    transport_cache: dict[str, tuple[Any, ...]] | None = None,
 ) -> dict[str, Any]:
     from ..instruments import InstrumentKeyV2, VenueV2
     from .microstructure import L2DeltaV2, L2SequenceFaultV2, L2SnapshotV2
@@ -673,19 +734,37 @@ def _parse_one_frame(
     )
 
     frame_value = value["frame"]
-    if not isinstance(frame_value, dict) or set(frame_value) != {
-        "venue", "source_id", "channel", "raw_payload_b64", "raw_payload_hash", "received_at_ns",
-        "available_at_ns", "connection_epoch",
-    }:
+    v2_fields = {"venue", "source_id", "channel", "raw_payload_b64", "raw_payload_hash",
+                 "received_at_ns", "available_at_ns", "connection_epoch"}
+    v3_fields = {"venue", "source_id", "channel", "transport_ordinal", "raw_payload_hash",
+                 "received_at_ns", "available_at_ns", "connection_epoch"}
+    if not isinstance(frame_value, dict) or set(frame_value) not in (v2_fields, v3_fields):
         raise ValueError("parse frame binding fields are invalid")
-    raw = base64.b64decode(frame_value["raw_payload_b64"], validate=True)
-    if hashlib.sha256(raw).hexdigest() != frame_value["raw_payload_hash"]:
-        raise ValueError("parse frame raw payload hash mismatch")
-    frame = CapturedPublicFrameV2(
-        VenueV2(frame_value["venue"]), frame_value["source_id"], frame_value["channel"], raw,
-        frame_value["raw_payload_hash"], frame_value["received_at_ns"], frame_value["available_at_ns"],
-        frame_value["connection_epoch"],
-    )
+    if "raw_payload_b64" in frame_value:
+        raw = base64.b64decode(frame_value["raw_payload_b64"], validate=True)
+        if hashlib.sha256(raw).hexdigest() != frame_value["raw_payload_hash"]:
+            raise ValueError("parse frame raw payload hash mismatch")
+        frame = CapturedPublicFrameV2(
+            VenueV2(frame_value["venue"]), frame_value["source_id"], frame_value["channel"], raw,
+            frame_value["raw_payload_hash"], frame_value["received_at_ns"], frame_value["available_at_ns"],
+            frame_value["connection_epoch"],
+        )
+    else:
+        if (request.preparation_version != PREPARATION_VERSION_V3 or transport_binding is None
+                or transport_cache is None):
+            raise ValueError("V3 parse request lacks its immutable transport locator")
+        frames = _read_transport_frames_v3(request, transport_binding, transport_cache)
+        ordinal = frame_value["transport_ordinal"]
+        if type(ordinal) is not int or not 0 <= ordinal < len(frames):
+            raise ValueError("V3 parse transport ordinal is outside its exact extent")
+        frame = frames[ordinal]
+        if any(frame_value.get(name) != expected for name, expected in (
+            ("venue", frame.venue.value), ("source_id", frame.source_id), ("channel", frame.channel),
+            ("raw_payload_hash", frame.raw_payload_hash), ("received_at_ns", frame.received_at_ns),
+            ("available_at_ns", frame.available_at_ns), ("connection_epoch", frame.connection_epoch),
+        )):
+            raise ValueError("V3 parse transport locator metadata differs from exact raw")
+        raw = frame.raw_payload_bytes
     key = InstrumentKeyV2.from_dict(value["instrument"])
     processed_at_ns = value["processed_at_ns"]
     if (key.content_hash == "" or type(processed_at_ns) is not int or processed_at_ns < 0

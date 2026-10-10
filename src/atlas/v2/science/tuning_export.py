@@ -192,11 +192,20 @@ class _ProjectionCursor:
         while self.heap and len(rows) < size and self.fetched < self.limit:
             rowid, artifact_type = heapq.heappop(self.heap)
             row = self.connection.execute(
-                "SELECT rowid AS source_rowid,artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,"
-                "CASE WHEN length(metadata_json)<=" + _METADATA_LIMIT_SQL
-                + " THEN metadata_json ELSE '{}' END AS metadata_json,"
-                "length(metadata_json)>" + _METADATA_LIMIT_SQL
-                + " AS metadata_overflow FROM artifact_index NOT INDEXED WHERE rowid=?", (rowid,),
+                "SELECT a.rowid AS source_rowid,a.artifact_ref,a.artifact_type,a.content_hash,a.created_at_ns,a.available_at_ns,"
+                "p.logical_ready_at_ns AS publication_logical_ready_at_ns,"
+                "o.observed_at_ns AS publication_observed_at_ns,"
+                "CASE WHEN l.artifact_ref IS NULL THEN a.available_at_ns "
+                "WHEN o.observed_at_ns IS NULL OR p.logical_ready_at_ns IS NULL THEN NULL "
+                "ELSE MAX(a.available_at_ns,p.logical_ready_at_ns,o.observed_at_ns) END AS effective_available_at_ns,"
+                "CASE WHEN length(a.metadata_json)<=" + _METADATA_LIMIT_SQL
+                + " THEN a.metadata_json ELSE '{}' END AS metadata_json,"
+                "length(a.metadata_json)>" + _METADATA_LIMIT_SQL
+                + " AS metadata_overflow FROM artifact_index AS a NOT INDEXED "
+                "LEFT JOIN public_evidence_locator_v2 AS l ON l.artifact_ref=a.artifact_ref "
+                "LEFT JOIN public_evidence_publication_observation_v2 AS o ON o.publication_id=l.publication_id "
+                "LEFT JOIN public_evidence_publication_v2 AS p ON p.publication_id=l.publication_id "
+                "WHERE a.rowid=?", (rowid,),
             ).fetchone()
             if row is None or row["artifact_type"] != artifact_type:
                 raise ValueError("projection insertion index differs from its exact snapshot row")
@@ -1513,14 +1522,19 @@ def _model_projection(repository: OpsRepository, entry: ArtifactIndexEntryV2,
 def _schema() -> Any:
     import pyarrow as pa
 
-    integer_names = {"created_at_ns", "available_at_ns", "decision_at_ns", "source_rowid", "horizon_ns", "horizon_end_ns",
+    integer_names = {"created_at_ns", "available_at_ns", "logical_available_at_ns",
+                     "publication_logical_ready_at_ns",
+                     "publication_observed_at_ns", "effective_available_at_ns", "decision_at_ns",
+                     "source_rowid", "horizon_ns", "horizon_end_ns",
                      "stage_completed_at_ns", "stage_order", "source_event_at_ns", "received_at_ns", "information_cutoff_ns",
                      "computation_started_ns", "computation_finished_ns", "computation_duration_ns", "publication_latency_ns",
                      "entry_at_ns", "exit_at_ns", "entry_to_exit_duration_ns"}
     list_names = {"reason_codes", "evidence_refs"}
     names = (
         "run_id", "config_hash", "source_sha", "source_rowid", "artifact_ref", "artifact_type",
-        "created_at_ns", "available_at_ns", "row_kind", "decision_at_ns", "decision_ref", "event_id",
+        "created_at_ns", "available_at_ns", "logical_available_at_ns", "publication_logical_ready_at_ns",
+        "publication_observed_at_ns",
+        "effective_available_at_ns", "row_kind", "decision_at_ns", "decision_ref", "event_id",
         "candidate_set_ref", "candidate_ref", "action_hash", "policy_id", "policy_hash", "origin_ref",
         "selection_state", "admission_state", "outcome_target", "label_state", "provenance", "net_payoff",
         "provider_profile_hash", "model_profile_hash", "status", "source_stage", "instrument_key_json", "epoch_id",
@@ -1910,12 +1924,21 @@ def export_tuning_snapshot(
                     ).fetchone()
                     scan_through = window[0] if window is not None and window[0] is not None else after
                     cursor = connection.execute(
-                        "SELECT rowid AS source_rowid,artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,"
-                        "CASE WHEN length(metadata_json)<=" + _METADATA_LIMIT_SQL
-                        + " THEN metadata_json ELSE '{}' END AS metadata_json,"
-                        "length(metadata_json)>" + _METADATA_LIMIT_SQL
-                        + " AS metadata_overflow FROM artifact_index NOT INDEXED WHERE rowid>? AND rowid<=? "
-                        f"AND artifact_type IN ({marks}) ORDER BY rowid LIMIT ?",
+                        "SELECT a.rowid AS source_rowid,a.artifact_ref,a.artifact_type,a.content_hash,a.created_at_ns,a.available_at_ns,"
+                        "p.logical_ready_at_ns AS publication_logical_ready_at_ns,"
+                        "o.observed_at_ns AS publication_observed_at_ns,"
+                        "CASE WHEN l.artifact_ref IS NULL THEN a.available_at_ns "
+                        "WHEN o.observed_at_ns IS NULL OR p.logical_ready_at_ns IS NULL THEN NULL "
+                        "ELSE MAX(a.available_at_ns,p.logical_ready_at_ns,o.observed_at_ns) END AS effective_available_at_ns,"
+                        "CASE WHEN length(a.metadata_json)<=" + _METADATA_LIMIT_SQL
+                        + " THEN a.metadata_json ELSE '{}' END AS metadata_json,"
+                        "length(a.metadata_json)>" + _METADATA_LIMIT_SQL
+                        + " AS metadata_overflow FROM artifact_index AS a NOT INDEXED "
+                        "LEFT JOIN public_evidence_locator_v2 AS l ON l.artifact_ref=a.artifact_ref "
+                        "LEFT JOIN public_evidence_publication_observation_v2 AS o ON o.publication_id=l.publication_id "
+                        "LEFT JOIN public_evidence_publication_v2 AS p ON p.publication_id=l.publication_id "
+                        "WHERE a.rowid>? AND a.rowid<=? "
+                        f"AND a.artifact_type IN ({marks}) ORDER BY a.rowid LIMIT ?",
                         (after, scan_through, *_TYPES, max_rows + 1),
                     )
                     window_scope = "LEGACY_BOUNDED_SOURCE_ROW_WINDOW"
@@ -1929,7 +1952,8 @@ def export_tuning_snapshot(
                         if rows_written >= max_rows:
                             has_more, stop = True, True
                             break
-                        if raw["available_at_ns"] > cutoff_ns:
+                        effective_available = raw["effective_available_at_ns"]
+                        if effective_available is None or effective_available > cutoff_ns:
                             blocked_future, stop = True, True
                             break
                         elapsed = time.monotonic() - started
@@ -1965,7 +1989,11 @@ def export_tuning_snapshot(
                                    "row_kind": "INVALID", "status": "TEST GATE", "metrics_json": "{}",
                                    "reason_codes": ["INDEXED_EVIDENCE_FAILED_VALIDATION"], "evidence_refs": []}
                         row.update(run_id=identity.run_id, config_hash=identity.config_hash,
-                                   source_sha=identity.source_sha, source_rowid=through)
+                                   source_sha=identity.source_sha, source_rowid=through,
+                                   logical_available_at_ns=raw["available_at_ns"],
+                                   publication_logical_ready_at_ns=raw["publication_logical_ready_at_ns"],
+                                   publication_observed_at_ns=raw["publication_observed_at_ns"],
+                                   effective_available_at_ns=effective_available)
                         batch.append(row)
                         rows_written += 1
                         counts["row_kind:" + row["row_kind"]] += 1

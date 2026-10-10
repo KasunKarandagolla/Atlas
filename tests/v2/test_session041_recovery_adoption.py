@@ -137,7 +137,7 @@ def test_private_adoption_stage_detects_payload_corruption_and_enforces_chunk_bo
                 huge_cursor, {"cursor": huge_cursor.to_dict(), "output": huge_output})
 
 
-def test_writable_open_migrates_schema_v1_to_additive_v2(tmp_path):
+def test_writable_open_migrates_schema_v1_to_additive_v3(tmp_path):
     path = tmp_path / "ops.sqlite"
     with OpsRepository(path) as repository, repository._transaction() as connection:
         connection.execute("DROP TABLE public_evidence_stage_v2")
@@ -145,13 +145,120 @@ def test_writable_open_migrates_schema_v1_to_additive_v2(tmp_path):
         connection.execute("DELETE FROM schema_meta WHERE namespace='atlas-ops'")
         connection.execute("INSERT INTO schema_meta(namespace,schema_version) VALUES('atlas-ops',1)")
     with OpsRepository(path) as migrated:
-        assert migrated.schema_version == 2
+        assert migrated.schema_version == 3
         assert migrated._connection.execute(
             "SELECT schema_version FROM schema_meta WHERE namespace='atlas-ops'"
-        ).fetchone()[0] == 2
+        ).fetchone()[0] == 3
+        assert migrated._connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='public_evidence_publication_observation_v2'"
+        ).fetchone() is not None
+        assert migrated._connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='public_evidence_publication_block_v2'"
+        ).fetchone() is not None
         assert migrated._connection.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='public_adoption_cursor_v2'"
         ).fetchone() is not None
+
+
+def test_stream_publication_requires_post_commit_observation_for_causal_reads(tmp_path):
+    from atlas.v2.memory.repository import ArtifactIndexEntryV2
+
+    database_path = tmp_path / "publication-observation.sqlite"
+    with OpsRepository(database_path) as repository:
+        ref = sha256_json({"stream_entry": "causal-test"})
+        instrument = {"venue": "BYBIT", "product": "LINEAR_PERPETUAL", "environment": "MAINNET",
+                      "native_symbol": "BTCUSDT", "contract_revision": "r1"}
+        source_id, channel, metadata_ref = "source", "publicTrade.BTCUSDT", "a" * 64
+        feed_ref = sha256_json({"instrument": instrument, "source_id": source_id,
+            "channel": channel, "metadata_ref": metadata_ref})
+        payload_hash = "c" * 64
+        entry = ArtifactIndexEntryV2(ref, "PublicStreamSourceHealthEvidenceV1", ref, 100, 100,
+            {"observation": {"instrument": instrument, "source_id": source_id, "channel": channel,
+                "metadata_ref": metadata_ref, "available_at_ns": 100, "trade_id": "trade-1",
+                "trade_payload_hash": payload_hash}})
+        descriptor_hash = "b" * 64
+        publication_id = sha256_json({"publication": "causal-test"})
+        trade_identity = {"feed_ref": feed_ref, "trade_id": "trade-1", "payload_hash": payload_hash,
+                          "artifact_ref": ref, "available_at_ns": 100}
+        with repository._transaction() as connection:
+            repository.publish_stream_slice_v1(connection, publication_id=publication_id,
+                run_id="run", descriptor_hash=descriptor_hash, slice_id="complete", logical_ready_at_ns=300,
+                entries=(entry,), trade_identities=(trade_identity,))
+
+        assert repository.get_artifact(ref) == entry
+        assert repository.effective_available_at_ns(ref) is None
+        unobserved_trade = repository.lookup_trade_ids_batch_v2(
+            ((feed_ref, "trade-1"),), run_id="run", as_of_ns=400)[(feed_ref, "trade-1")]
+        assert "prior_payload_hash" not in unobserved_trade and not unobserved_trade["lookup_complete"]
+        before = repository.latest_artifact_entries(
+            "PublicStreamSourceHealthEvidenceV1", as_of_ns=200, limit=4)
+        assert before.entries == ()
+        observed = repository.observe_publication_v2(publication_id, observed_at_ns=250)
+        assert observed == 250
+        assert repository.effective_available_at_ns(ref) == 300
+        assert repository.get_artifact_metadata_by_refs((ref,))[ref]["effective_available_at_ns"] == 300
+        assert repository.latest_artifact_entries(
+            "PublicStreamSourceHealthEvidenceV1", as_of_ns=299, limit=4).entries == ()
+        assert repository.latest_artifact_entries(
+            "PublicStreamSourceHealthEvidenceV1", as_of_ns=300, limit=4).entries == (entry,)
+        pre_ready_trade = repository.lookup_trade_ids_batch_v2(
+            ((feed_ref, "trade-1"),), run_id="run", as_of_ns=299)[(feed_ref, "trade-1")]
+        assert "prior_payload_hash" not in pre_ready_trade and not pre_ready_trade["lookup_complete"]
+        visible_trade = repository.lookup_trade_ids_batch_v2(
+            ((feed_ref, "trade-1"),), run_id="run", as_of_ns=300)[(feed_ref, "trade-1")]
+        assert visible_trade["prior_payload_hash"] == payload_hash
+        assert visible_trade["first_artifact_ref"] == ref
+        assert visible_trade["lookup_complete"] is True
+        assert visible_trade["conflicted"] is False
+        from atlas.v2.science.tuning_export import _ProjectionCursor
+
+        with OpsRepository(database_path, read_only=True) as reader, reader.read_snapshot():
+            cursor = _ProjectionCursor(reader._connection, after=0,
+                through=reader._connection.execute("SELECT max(rowid) FROM artifact_index").fetchone()[0],
+                limit=16)
+            rows = cursor.fetchmany(16)
+            cursor.close()
+        exported = next(row for row in rows if row["artifact_ref"] == ref)
+        assert exported["publication_logical_ready_at_ns"] == 300
+        assert exported["publication_observed_at_ns"] == 250
+        assert exported["effective_available_at_ns"] == 300
+
+        second_ref = sha256_json({"stream_entry": "causal-conflict"})
+        second_payload_hash = "d" * 64
+        second_entry = ArtifactIndexEntryV2(second_ref, entry.artifact_type, second_ref, 400, 400,
+            {"observation": {"instrument": instrument, "source_id": source_id, "channel": channel,
+                "metadata_ref": metadata_ref, "available_at_ns": 400, "trade_id": "trade-1",
+                "trade_payload_hash": second_payload_hash}})
+        conflict_publication_id = sha256_json({"publication": "causal-conflict"})
+        with repository._transaction() as connection:
+            repository.publish_stream_slice_v1(connection, publication_id=conflict_publication_id,
+                run_id="run", descriptor_hash="e" * 64, slice_id="conflict", logical_ready_at_ns=400,
+                entries=(second_entry,), trade_identities=({"feed_ref": feed_ref, "trade_id": "trade-1",
+                    "payload_hash": second_payload_hash, "artifact_ref": second_ref,
+                    "available_at_ns": 400},))
+        before_conflict_observation = repository.lookup_trade_ids_batch_v2(
+            ((feed_ref, "trade-1"),), run_id="run", as_of_ns=449)[(feed_ref, "trade-1")]
+        assert before_conflict_observation["prior_payload_hash"] == payload_hash
+        assert before_conflict_observation["conflicted"] is False
+        repository.observe_publication_v2(conflict_publication_id, observed_at_ns=450)
+        after_conflict_observation = repository.lookup_trade_ids_batch_v2(
+            ((feed_ref, "trade-1"),), run_id="run", as_of_ns=450)[(feed_ref, "trade-1")]
+        assert after_conflict_observation["prior_payload_hash"] == payload_hash
+        assert after_conflict_observation["first_artifact_ref"] == ref
+        assert after_conflict_observation["conflicted"] is True
+
+        rowid = repository._connection.execute(
+            "SELECT rowid FROM artifact_index WHERE artifact_ref=?", (ref,)).fetchone()[0]
+        alias_publication_id = sha256_json({"publication": "causal-alias"})
+        with repository._transaction() as connection:
+            repository.publish_stream_slice_v1(connection, publication_id=alias_publication_id,
+                run_id="run", descriptor_hash="f" * 64, slice_id="alias", logical_ready_at_ns=500,
+                entries=(entry,))
+        assert repository.unobserved_publications_v2("run") == (alias_publication_id,)
+        repository.observe_publication_v2(alias_publication_id, observed_at_ns=550)
+        assert repository.effective_available_at_ns(ref) == 300
+        assert repository._connection.execute(
+            "SELECT rowid FROM artifact_index WHERE artifact_ref=?", (ref,)).fetchone()[0] == rowid
 
 
 def _parse_request(root, *, start: int, end: int, rows: int = 96):

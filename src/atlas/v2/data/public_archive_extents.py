@@ -21,6 +21,7 @@ from .._serialization import json_value, sha256_json, sha256_ref
 from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
 
 EXTENT_TYPE = "PublicArchiveExtentV1"
+FRAME_VIEW_TYPE = "PublicArchiveFrameViewV1"
 MAX_EXTENT_ROWS = 512
 MAX_EXTENT_BYTES = 16 * 1024 * 1024
 MAX_SEGMENT_BYTES = 32 * 1024 * 1024
@@ -406,9 +407,97 @@ def write_extents(
 
 def read_extent(repository: OpsRepository, ref: str) -> Any:
     entry = repository.get_artifact(ref)
+    if entry is not None and entry.artifact_type == FRAME_VIEW_TYPE:
+        return read_frame_view(repository, entry)
     if entry is None or entry.artifact_type != EXTENT_TYPE:
         raise ValueError("public archive extent descriptor missing")
     return read_extent_entry(Path(repository.path).parent / "ops-public-extents", entry)
+
+
+def read_frame_view(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> Any:
+    """Reconstruct and verify an L2 Arrow chunk from immutable captured transport bytes."""
+    import pyarrow as pa
+
+    if not isinstance(entry, ArtifactIndexEntryV2) or entry.artifact_type != FRAME_VIEW_TYPE:
+        raise ValueError("public frame-view descriptor is invalid")
+    view = json_value(entry.metadata.get("view"))
+    expected = {"version", "namespace", "chunk_id", "transport_batch_ref", "transport_batch_hash",
+                "transport_extent_ref", "transport_extent_hash", "row_map_block_ref", "row_count", "authority"}
+    if (set(view) != expected or view["version"] != FRAME_VIEW_TYPE or view["namespace"] != "ops-l2-frames"
+            or view["authority"] != "ZERO" or type(view["row_count"]) is not int
+            or not 1 <= view["row_count"] <= MAX_EXTENT_ROWS
+            or extent_ref(view["namespace"], view["chunk_id"]) != entry.artifact_ref
+            or sha256_json(view) != entry.content_hash or entry.created_at_ns != entry.available_at_ns):
+        raise ValueError("public frame-view identity or bounds mismatch")
+    for name in ("transport_batch_ref", "transport_batch_hash", "transport_extent_ref",
+                 "transport_extent_hash", "row_map_block_ref"):
+        sha256_ref(view[name], field=name)
+    batch = repository.get_artifact(view["transport_batch_ref"])
+    extent = repository.get_artifact(view["transport_extent_ref"])
+    if (batch is None or batch.artifact_type != "PublicStreamTransportBatchV2"
+            or batch.content_hash != view["transport_batch_hash"]
+            or extent is None or extent.artifact_type != EXTENT_TYPE
+            or extent.content_hash != view["transport_extent_hash"]):
+        raise ValueError("public frame-view transport binding is missing or changed")
+    batch_body = json_value(batch.metadata.get("batch"))
+    if (batch_body.get("archive_extent_ref") != extent.artifact_ref
+            or batch_body.get("frame_count", 0) < view["row_count"]
+            or sha256_json(batch_body) != batch.content_hash):
+        raise ValueError("public frame-view transport receipt does not bind its extent")
+    transport = read_extent_entry(Path(repository.path).parent / "ops-public-extents", extent)
+    transport_rows = transport.to_pylist()
+    records = repository.read_public_stream_block_v1(view["row_map_block_ref"])
+    if len(records) != view["row_count"] or len(transport_rows) != batch_body["frame_count"]:
+        raise ValueError("public frame-view row map or transport population changed")
+    output: list[dict[str, Any]] = []
+    from .._serialization import canonical_json
+    from ..instruments import InstrumentKeyV2
+    from .microstructure_archive import L2RawFrameV2
+
+    metadata_rows = []
+    from ..instruments import ProductContractV2
+    for archive_ordinal, record in enumerate(records):
+        if (set(record) != {"archive_ordinal", "transport_ordinal", "metadata", "product_binding"}
+                or record["archive_ordinal"] != archive_ordinal
+                or type(record["transport_ordinal"]) is not int
+                or not 0 <= record["transport_ordinal"] < len(transport_rows)
+                or not isinstance(record["product_binding"], dict)):
+            raise ValueError("public frame-view row binding is malformed")
+        source = transport_rows[record["transport_ordinal"]]
+        metadata = record["metadata"]
+        raw = source.get("raw_payload_bytes")
+        if (not isinstance(raw, bytes) or hashlib.sha256(raw).hexdigest() != source.get("raw_payload_hash")
+                or metadata.get("raw_payload_hash") != source.get("raw_payload_hash")
+                or metadata.get("source_id") != source.get("source_id")
+                or metadata.get("channel") != source.get("channel")
+                or metadata.get("received_at_ns") != source.get("received_at_ns")
+                or metadata.get("available_at_ns", -1) < source.get("available_at_ns", 0)):
+            raise ValueError("public frame-view row differs from durable transport bytes")
+        instrument = InstrumentKeyV2.from_dict(metadata["instrument"])
+        instrument_json = canonical_json(instrument.to_dict())
+        product = ProductContractV2.from_dict(record["product_binding"].get("product", {}))
+        if (record["product_binding"].get("key") != instrument.to_dict()
+                or product.key != instrument
+                or record["product_binding"].get("metadata_ref") != product.metadata_ref):
+            raise ValueError("public frame-view product revision binding is invalid")
+        frame = L2RawFrameV2(
+            instrument=instrument, source_id=metadata["source_id"], channel=metadata["channel"],
+            frame_type=metadata["frame_type"], raw_payload_bytes=raw,
+            raw_payload_hash=metadata["raw_payload_hash"], event_at_ns=metadata["event_at_ns"],
+            received_at_ns=metadata["received_at_ns"], available_at_ns=metadata["available_at_ns"],
+            first_update_id=metadata["first_update_id"], last_update_id=metadata["last_update_id"],
+            previous_update_id=metadata["previous_update_id"], sequence_semantics=metadata["sequence_semantics"],
+            source_health=metadata["source_health"], availability_class=metadata["availability_class"],
+            source_health_ref=metadata["source_health_ref"], transport_ordinal=record["transport_ordinal"],
+            archive_ordinal=archive_ordinal,
+        )
+        if frame.metadata_dict() != metadata:
+            raise ValueError("public frame-view logical metadata reconstruction mismatch")
+        metadata_rows.append(metadata)
+        output.append({**metadata, "instrument_json": instrument_json, "raw_payload_bytes": raw})
+    if sha256_json({"archive_type": "L2RawFrameChunkV2", "frames": metadata_rows}) != view["chunk_id"]:
+        raise ValueError("public frame-view logical chunk identity mismatch")
+    return pa.Table.from_pylist(output)
 
 
 def read_extent_entry(root: str | Path, entry: ArtifactIndexEntryV2) -> Any:
@@ -459,7 +548,10 @@ def read_public_chunk(repository: OpsRepository, root: Path, chunk_id: str) -> A
 
     if root.name in _NAMESPACES:
         ref = extent_ref(root.name, chunk_id)
-        if repository.get_artifact(ref) is not None:
+        descriptor = repository.get_artifact(ref)
+        if descriptor is not None:
+            if descriptor.artifact_type == FRAME_VIEW_TYPE:
+                return read_frame_view(repository, descriptor)
             return read_extent(repository, ref)
     path = root / f"{chunk_id}.parquet"
     if path.is_symlink():

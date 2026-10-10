@@ -119,6 +119,8 @@ class DurablePublicCaptureV1:
         self._thread: threading.Thread | None = None
         self._error: str | None = None
         self._captured_frames = 0
+        self._capture_in_progress_frames = 0
+        self._capture_seal_timeline: deque[tuple[int, int]] = deque(maxlen=8192)
         self._delivered_frames = 0
         self._high_water_batches = 0
         self._last_capture_ns: int | None = None
@@ -265,9 +267,10 @@ class DurablePublicCaptureV1:
     def status(self) -> Any:
         status = self.source.status()
         with self._lock:
-            backlog = sum(batch.frame_count for batch in self._pending)
+            backlog = sum(batch.frame_count for batch in self._pending) + self._capture_in_progress_frames
             capture = {"version": "DURABLE_PUBLIC_CAPTURE_V1", "pending_batches": len(self._pending),
                 "max_pending_batches": MAX_PENDING_CAPTURE_BATCHES, "pending_frames": backlog,
+                "capture_in_progress_frames": self._capture_in_progress_frames,
                 "batch_frame_limit": self.capture_batch_frames,
                 "pressure_reserve_batches": self._pressure_reserve_batches(status.handoff),
                 "pressure_stop_threshold_batches": (MAX_PENDING_CAPTURE_BATCHES
@@ -286,6 +289,16 @@ class DurablePublicCaptureV1:
             attempt_count=status.attempt_count, reconnect_count=status.reconnect_count,
             last_error_code=error or status.last_error_code, handoff=status.handoff,
             pending_frames=backlog, capture=capture)
+
+    def captured_frames_at_monotonic_ns(self, cutoff_ns: int) -> int:
+        """Return the exact cumulative seal count completed by a sampled producer cutoff."""
+        if type(cutoff_ns) is not int or cutoff_ns < 0:
+            raise ValueError("capture timeline cutoff must be a monotonic timestamp")
+        with self._lock:
+            for completed_at_ns, cumulative in reversed(self._capture_seal_timeline):
+                if completed_at_ns <= cutoff_ns:
+                    return cumulative
+            return 0
 
     @staticmethod
     def _pressure_reserve_batches(handoff: Any) -> int:
@@ -420,10 +433,12 @@ class DurablePublicCaptureV1:
                         raise RuntimeError("CAPTURE_WRITER_BACKLOG_EXHAUSTED")
                 started = time.monotonic_ns()
                 self._capture_started_monotonic_ns = started
-                if pressure_stopped:
-                    frames = self._drain_pressure_bundle()
-                else:
-                    frames = self.source.drain(max_items=min(self.capture_batch_frames, queued))
+                with self._lock:
+                    if pressure_stopped:
+                        frames = self._drain_pressure_bundle()
+                    else:
+                        frames = self.source.drain(max_items=min(self.capture_batch_frames, queued))
+                    self._capture_in_progress_frames = len(frames)
                 if not frames:
                     self._capture_started_monotonic_ns = None
                     continue
@@ -431,6 +446,8 @@ class DurablePublicCaptureV1:
                 with self._lock:
                     self._pending.append(batch)
                     self._captured_frames += len(frames)
+                    self._capture_in_progress_frames = 0
+                    self._capture_seal_timeline.append((time.monotonic_ns(), self._captured_frames))
                     self._high_water_batches = max(self._high_water_batches, len(self._pending))
                     self._last_capture_ns = self.clock_ns()
                     self._max_capture_duration_ns = max(self._max_capture_duration_ns,

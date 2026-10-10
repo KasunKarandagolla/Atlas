@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import concurrent.futures
 import copy
 import hashlib
@@ -16,7 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from .._serialization import sha256_json
+from .._serialization import json_value, sha256_json
 from ..data.broad_stream_source import (
     BroadDurablePublicCaptureV2,
     BroadPublicStreamPlanV2,
@@ -44,6 +43,7 @@ from ..data.public_evidence_preparation import (
     MAX_PREPARATION_SEAL_CHUNKS_V2,
     MAX_PREPARATION_TRADE_ROWS_V2,
     PREPARATION_VERSION_V2,
+    PREPARATION_VERSION_V3,
     PublicEvidencePreparationRequestV2,
     PublicEvidencePreparationResultV2,
     PublicEvidencePreparationWorkerV2,
@@ -58,7 +58,8 @@ from ..data.public_microstructure_ws import (
     raw_archive_record,
 )
 from ..data.public_stream_continuity import (
-    PublicStreamContinuityDecisionV1,
+    PUBLIC_STREAM_CONTINUITY_VERSION,
+    PublicStreamContinuityStateV1,
     PublicStreamContinuityTrackerV1,
     PublicStreamObservationKindV1,
     PublicStreamObservationV1,
@@ -78,6 +79,7 @@ _PHASE_TIMING_NAMES = (
     "seal_result_read",
     "stage_commit",
     "interpreter",
+    "publication_observation",
     "archive_seal",
     "archive_prepare_chunks",
     "archive_arrow_encode",
@@ -101,6 +103,7 @@ class _PreparedFrameParseV2:
 class _PreparedFramePublicationV2:
     artifact_entries: tuple[ArtifactIndexEntryV2, ...]
     archive_groups: tuple[tuple[L2RawFrameV2, ...], ...]
+    trade_identities: tuple[Mapping[str, Any], ...] = ()
 
 
 @dataclass
@@ -110,6 +113,12 @@ class _PendingPublicAdoptionV2:
                      PublicEvidencePreparationResultV2, tuple[CapturedPublicFrameV2, ...]]
     request: PublicEvidencePreparationRequestV2
     submitted_at_ns: int
+
+
+def _artifact_entry_wire(entry: ArtifactIndexEntryV2) -> dict[str, Any]:
+    return {"artifact_ref": entry.artifact_ref, "artifact_type": entry.artifact_type,
+            "content_hash": entry.content_hash, "created_at_ns": entry.created_at_ns,
+            "available_at_ns": entry.available_at_ns, "metadata": json_value(entry.metadata)}
 
 
 class BroadPublicRuntimeV2:
@@ -137,6 +146,9 @@ class BroadPublicRuntimeV2:
         self.capture: BroadDurablePublicCaptureV2 | None = None
         self._service_calls = 0
         self._service_frames = 0
+        self._descriptor_cycle_ns: list[int] = []
+        self._descriptor_cycle_frames: list[int] = []
+        self._descriptor_completion_events: list[tuple[int, int]] = []
         self._last_service_at_ns: int | None = None
         self._last_service_started_monotonic_ns: int | None = None
         self._last_service_duration_ns = 0
@@ -286,6 +298,8 @@ class BroadPublicRuntimeV2:
             self.capture = BroadDurablePublicCaptureV2(self.source, clock_ns=self.clock_ns)
             self._run_root = run_root
             self._run_id = self._run_identity(run_root)
+            for publication_id in repository.unobserved_publications_v2(self._run_id):
+                repository.observe_publication_v2(publication_id, observed_at_ns=time.time_ns())
             self._archive = L2FrameArchiveV2(run_root.parent / "ops-l2-frames", repository,
                                              compact_live=True, clock_ns=self.clock_ns)
             if self._preparation_worker is None:
@@ -293,10 +307,51 @@ class BroadPublicRuntimeV2:
             self._preparation_worker.start(run_root)
             self._products = {product.key: product for product in products}
             self._stream_epoch = sha256_json({"plan_id": plan.plan_id, "capture_epoch": self._capture_epoch})
+            self._restore_stream_operational_checkpoints(repository, as_of_ns=now_ns)
             self.capture.configure_capture(run_root, capture_epoch=self._capture_epoch)
             self.capture.recover_controller_capture(repository)
             self.capture.start()
         return plan
+
+    def _restore_stream_operational_checkpoints(self, repository: OpsRepository, *, as_of_ns: int) -> None:
+        if self.plan is None or self._run_id is None:
+            raise RuntimeError("BROAD_PUBLIC_CHECKPOINT_RESTORE_NOT_BOUND")
+        feed_context: dict[str, tuple[InstrumentKeyV2, str, ProductContractV2]] = {}
+        for identity in self.plan.identities:
+            product = self._products.get(identity.key)
+            if product is None:
+                raise ValueError("BROAD_PUBLIC_CHECKPOINT_PRODUCT_REVISION_UNBOUND")
+            source_id = ("BYBIT_PUBLIC_WS_BROAD_V2" if identity.venue.value == "BYBIT"
+                         else "BINANCE_DEPTH_PUBLIC_WS_BROAD_V2" if "@depth" in identity.channel
+                         else "BINANCE_MARKET_PUBLIC_WS_BROAD_V2")
+            feed_ref = sha256_json({"instrument": identity.key.to_dict(), "source_id": source_id,
+                                    "channel": identity.channel, "metadata_ref": product.metadata_ref})
+            feed_context[feed_ref] = (identity.key, identity.channel, product)
+        latest = repository.latest_public_stream_operational_checkpoints_v1(
+            run_id=self._run_id, feed_refs=tuple(feed_context), as_of_ns=as_of_ns,
+        )
+        for feed_ref, entry in latest.items():
+            if set(entry.metadata) != {"checkpoint", "authority"} or entry.metadata["authority"] != "ZERO":
+                raise ValueError("BROAD_PUBLIC_OPERATIONAL_CHECKPOINT_SHAPE_INVALID")
+            checkpoint = entry.metadata["checkpoint"]
+            expected = {"version", "run_id", "publication_id", "feed_ref", "connection_epoch", "state"}
+            if (not isinstance(checkpoint, Mapping) or set(checkpoint) != expected
+                    or checkpoint["version"] != "PUBLIC_STREAM_OPERATIONAL_CHECKPOINT_V1"
+                    or checkpoint["run_id"] != self._run_id or checkpoint["feed_ref"] != feed_ref
+                    or type(checkpoint["connection_epoch"]) is not int or checkpoint["connection_epoch"] < 0):
+                raise ValueError("BROAD_PUBLIC_OPERATIONAL_CHECKPOINT_BINDING_INVALID")
+            if entry.artifact_ref != sha256_json({
+                    "artifact_type": "PublicStreamOperationalCheckpointV1", "checkpoint": dict(checkpoint)}):
+                raise ValueError("BROAD_PUBLIC_OPERATIONAL_CHECKPOINT_HASH_INVALID")
+            state = PublicStreamContinuityStateV1.from_dict(dict(checkpoint["state"]))
+            key, channel, product = feed_context[feed_ref]
+            if (state.instrument, state.channel, state.metadata_ref) != (key, channel, product.metadata_ref):
+                raise ValueError("BROAD_PUBLIC_OPERATIONAL_CHECKPOINT_FEED_MISMATCH")
+            identity = (key, channel)
+            self._trackers[identity] = PublicStreamContinuityTrackerV1.from_state(state)
+            # A process restart is a continuity boundary even if the venue's
+            # connection attempt counter happens to restart at the same value.
+            self._connection_epochs[identity] = -1
 
     def reconfigure(
         self,
@@ -561,6 +616,7 @@ class BroadPublicRuntimeV2:
     ) -> Generator[PublicEvidencePreparationRequestV2,
                     PublicEvidencePreparationResultV2, tuple[CapturedPublicFrameV2, ...]]:
         """Writer-owned adoption continuation with nonblocking PARSE/SEAL yields."""
+        descriptor_cycle_started_ns = time.monotonic_ns()
         frames = sealed.read_unpublished(self._run_root or Path(repository.path).parent)
         prepared = yield from self._prepare_descriptor_events(repository, sealed, frames, now_ns=now_ns)
         old_books, old_trackers, old_epochs = (
@@ -592,20 +648,79 @@ class BroadPublicRuntimeV2:
             raise RuntimeError("BROAD_PUBLIC_PREPARATION_PUBLICATION_MISSING")
         if self._archive is None:
             raise RuntimeError("BROAD_PUBLIC_ARCHIVE_NOT_RECOVERED")
-        with self._measure_phase("archive_seal"):
-            archive_batch, archive_entries = yield from self._seal_prepared_archive(
-                sealed, publication.archive_groups,
-            )
+        archive_batch = self._archive.prepare_frame_views(
+            publication.archive_groups, transport_batch_ref=sealed.batch.artifact_ref,
+            transport_batch_hash=sealed.batch.content_hash,
+            transport_extent_ref=sealed.extent.artifact_ref,
+            product_binding_for_frame=lambda frame: {
+                "key": frame.instrument.to_dict(),
+                "metadata_ref": self._products[frame.instrument].metadata_ref,
+                "product": self._products[frame.instrument].to_dict(),
+            },
+        ) if publication.archive_groups else PreparedL2ArchiveBatchV2(())
+        view_outputs = self._archive.frame_view_entries(
+            archive_batch, transport_batch_ref=sealed.batch.artifact_ref,
+            transport_batch_hash=sealed.batch.content_hash,
+            transport_extent_ref=sealed.extent.artifact_ref,
+            transport_extent_hash=sealed.extent.content_hash,
+        ) if archive_batch.chunks else ()
+        all_public_entries = list(publication.artifact_entries)
+        row_map_blocks = []
+        for row_map_block, view_entry, checkpoint_entry in view_outputs:
+            row_map_blocks.append(row_map_block)
+            all_public_entries.extend((view_entry, checkpoint_entry))
+        if self._run_id is None:
+            raise RuntimeError("BROAD_PUBLIC_RUN_ID_UNAVAILABLE")
+        publication_id = sha256_json({"version": "PUBLIC_STREAM_PUBLICATION_V1",
+            "run_id": self._run_id, "descriptor_hash": sealed.batch.artifact_ref,
+            "slice_id": "descriptor-complete-v1"})
+        affected_feeds: set[tuple[InstrumentKeyV2, str]] = set()
+        for frame in frames:
+            if self.plan is None:
+                raise RuntimeError("BROAD_PUBLIC_INTERPRETER_NOT_RECOVERED")
+            affected_feeds.add((self.plan.key_for_frame(frame), frame.channel))
+        for key, channel in sorted(affected_feeds, key=lambda item: (item[0].to_canonical_json(), item[1])):
+            tracker = staged_trackers.get((key, channel))
+            product = self._products.get(key)
+            if tracker is None or product is None:
+                raise ValueError("BROAD_PUBLIC_OPERATIONAL_CHECKPOINT_STATE_MISSING")
+            source_id = tracker.state.source_id
+            feed_ref = sha256_json({"instrument": key.to_dict(), "source_id": source_id,
+                                    "channel": channel, "metadata_ref": product.metadata_ref})
+            connection_epoch = staged_epochs.get((key, channel))
+            if type(connection_epoch) is not int or connection_epoch < 0:
+                raise ValueError("BROAD_PUBLIC_OPERATIONAL_CHECKPOINT_EPOCH_INVALID")
+            checkpoint = {"version": "PUBLIC_STREAM_OPERATIONAL_CHECKPOINT_V1",
+                "run_id": self._run_id, "publication_id": publication_id, "feed_ref": feed_ref,
+                "connection_epoch": connection_epoch, "state": tracker.to_state().to_dict()}
+            checkpoint_ref = sha256_json({"artifact_type": "PublicStreamOperationalCheckpointV1",
+                                          "checkpoint": checkpoint})
+            ready = max(time.time_ns(), tracker.state.last_available_at_ns or now_ns)
+            all_public_entries.append(ArtifactIndexEntryV2(
+                checkpoint_ref, "PublicStreamOperationalCheckpointV1", checkpoint_ref,
+                ready, ready, {"checkpoint": checkpoint, "authority": "ZERO"},
+            ))
+        logical_ready_at_ns = max(time.time_ns(),
+                                  max((entry.available_at_ns for entry in all_public_entries), default=now_ns))
         with self._measure_phase("public_commit"), repository.atomic_composition():
             adopted_frames = sealed.adopt_verified(repository, frames)
             if adopted_frames != frames:
                 raise ValueError("BROAD_PUBLIC_DURABLE_DESCRIPTOR_CHANGED_DURING_PREPARATION")
-            if publication.artifact_entries:
-                repository.register_artifacts(publication.artifact_entries)
-            self._archive.publish_prepared(archive_batch, archive_entries, repository=repository)
-            if self._run_id is None:
-                raise RuntimeError("BROAD_PUBLIC_RUN_ID_UNAVAILABLE")
+            with repository._transaction() as connection:
+                repository.publish_stream_slice_v1(
+                    connection, publication_id=publication_id, run_id=self._run_id,
+                    descriptor_hash=sealed.batch.artifact_ref, slice_id="descriptor-complete-v1",
+                    logical_ready_at_ns=logical_ready_at_ns, entries=tuple(all_public_entries),
+                    row_map_blocks=tuple(row_map_blocks), trade_identities=publication.trade_identities,
+                )
             repository.clear_public_adoption_v2(self._run_id, sealed.batch.artifact_ref)
+        # This timestamp is sampled only after the public transaction returned.
+        with self._measure_phase("publication_observation"):
+            repository.observe_publication_v2(publication_id, observed_at_ns=time.time_ns())
+        descriptor_completed_ns = time.monotonic_ns()
+        self._descriptor_cycle_ns.append(descriptor_completed_ns - descriptor_cycle_started_ns)
+        self._descriptor_cycle_frames.append(len(frames))
+        self._descriptor_completion_events.append((descriptor_completed_ns, len(frames)))
         # Candidate state becomes visible only after raw identity and all
         # derived rows commit together on the sole repository writer.
         self._sequence_books = staged_books
@@ -648,9 +763,11 @@ class BroadPublicRuntimeV2:
             or stored_cursor.batch_hash != sealed.batch.content_hash
             or stored_cursor.plan_hash != plan_hash
             or stored_cursor.product_hashes != product_hashes
-            or stored_cursor.preparation_version != PREPARATION_VERSION_V2
+            or stored_cursor.preparation_version not in {PREPARATION_VERSION_V2, PREPARATION_VERSION_V3}
         ):
             raise ValueError("BROAD_PUBLIC_PRIVATE_CURSOR_BINDING_MISMATCH")
+        preparation_version = (stored_cursor.preparation_version if stored_cursor is not None
+                               else PREPARATION_VERSION_V3)
 
         prepared_events: dict[int, list[Any]] = {index: [] for index in range(len(frames))}
         trade_hashes: dict[int, list[str]] = {index: [] for index in range(len(frames))}
@@ -660,11 +777,19 @@ class BroadPublicRuntimeV2:
             output = stage.payload["output"]
             request = PublicEvidencePreparationRequestV2.from_dict(dict(output["request"]))
             completion = PublicEvidencePreparationResultV2.from_dict(dict(output["completion"]))
+            if request.preparation_version != preparation_version:
+                raise ValueError("BROAD_PUBLIC_PRIVATE_STAGE_VERSION_MISMATCH")
             if (request.frame_ordinal, request.trade_ordinal_start) != stored_next:
                 raise ValueError("BROAD_PUBLIC_PRIVATE_STAGE_SEQUENCE_GAP")
-            manifest = read_preparation_input(request)
             with self._measure_phase("result_read_rehydrate"):
-                body = read_preparation_result(request, completion)
+                if request.preparation_version == PREPARATION_VERSION_V3:
+                    manifest = output.get("manifest")
+                    body = output.get("result_body")
+                    if not isinstance(manifest, Mapping) or not isinstance(body, Mapping):
+                        raise ValueError("BROAD_PUBLIC_V3_STAGE_MISSING_VERIFIED_INPUT_OR_OUTPUT")
+                else:
+                    manifest = read_preparation_input(request)
+                    body = read_preparation_result(request, completion)
                 frame_results = self._validate_prepared_parse_body(
                     request, body, sealed=sealed, plan_hash=plan_hash,
                     frames=frames, manifest=manifest,
@@ -699,6 +824,8 @@ class BroadPublicRuntimeV2:
 
         private_root = self._run_root / ".public-evidence-preparation" / descriptor_hash
         private_root.mkdir(parents=True, exist_ok=True)
+        transport_binding = {"batch": _artifact_entry_wire(sealed.batch),
+                             "extent": _artifact_entry_wire(sealed.extent)}
         while frame_ordinal < len(frames):
             manifest_frames: list[dict[str, Any]] = []
             estimated_input_bytes = 0
@@ -707,7 +834,7 @@ class BroadPublicRuntimeV2:
                 key = self.plan.key_for_frame(frame)
                 if key not in self._products:
                     raise ValueError("BROAD_STREAM_FRAME_PRODUCT_REVISION_UNBOUND")
-                next_estimate = estimated_input_bytes + 4 * ((len(frame.raw_payload_bytes) + 2) // 3) + 8192
+                next_estimate = estimated_input_bytes + 8192
                 if manifest_frames and next_estimate > MAX_PREPARATION_INPUT_BYTES_V2:
                     break
                 if next_estimate > MAX_PREPARATION_INPUT_BYTES_V2:
@@ -716,18 +843,23 @@ class BroadPublicRuntimeV2:
                 processed_at = processed_at_by_frame.get(
                     ordinal, max(now_ns, frame.available_at_ns),
                 )
+                frame_binding = {
+                    "venue": frame.venue.value,
+                    "source_id": frame.source_id,
+                    "channel": frame.channel,
+                    "raw_payload_hash": frame.raw_payload_hash,
+                    "received_at_ns": frame.received_at_ns,
+                    "available_at_ns": frame.available_at_ns,
+                    "connection_epoch": frame.connection_epoch,
+                }
+                if preparation_version == PREPARATION_VERSION_V3:
+                    frame_binding["transport_ordinal"] = ordinal
+                else:
+                    import base64
+                    frame_binding["raw_payload_b64"] = base64.b64encode(frame.raw_payload_bytes).decode("ascii")
                 manifest_frames.append({
                     "frame_ordinal": ordinal,
-                    "frame": {
-                        "venue": frame.venue.value,
-                        "source_id": frame.source_id,
-                        "channel": frame.channel,
-                        "raw_payload_b64": base64.b64encode(frame.raw_payload_bytes).decode("ascii"),
-                        "raw_payload_hash": frame.raw_payload_hash,
-                        "received_at_ns": frame.received_at_ns,
-                        "available_at_ns": frame.available_at_ns,
-                        "connection_epoch": frame.connection_epoch,
-                    },
+                    "frame": frame_binding,
                     "instrument": key.to_dict(),
                     "processed_at_ns": processed_at,
                     "source_health": "UNKNOWN",
@@ -742,13 +874,15 @@ class BroadPublicRuntimeV2:
             key = self.plan.key_for_frame(first_frame)
             processed_at = first_manifest["processed_at_ns"]
             manifest = {"frames": manifest_frames}
+            if preparation_version == PREPARATION_VERSION_V3:
+                manifest["transport_binding"] = transport_binding
             input_path = private_root / f"slice-{frame_ordinal:04d}-{trade_ordinal:08d}.input.json"
             with self._measure_phase("input_write"):
                 input_hash, _input_bytes = write_preparation_input(input_path, manifest)
             is_bybit_trades = first_frame.venue.value == "BYBIT" and first_frame.channel.startswith("publicTrade.")
             requested_end = trade_ordinal + MAX_PREPARATION_TRADE_ROWS_V2 if is_bybit_trades else 1
             job_identity = sha256_json({
-                "version": PREPARATION_VERSION_V2,
+                "version": preparation_version,
                 "run_id": self._run_id,
                 "descriptor_hash": descriptor_hash,
                 "frame_ordinal": frame_ordinal,
@@ -762,7 +896,8 @@ class BroadPublicRuntimeV2:
             request = PublicEvidencePreparationRequestV2(
                 "PARSE", job_identity, self._run_id, str(self._run_root), descriptor_hash,
                 input_hash, str(input_path), str(output_path), plan_hash, key.content_hash,
-                frame_ordinal, trade_ordinal, requested_end, processed_at_ns=processed_at,
+                frame_ordinal, trade_ordinal, requested_end, preparation_version=preparation_version,
+                processed_at_ns=processed_at,
             )
             result = yield request
             with self._measure_phase("result_read_rehydrate"):
@@ -783,6 +918,13 @@ class BroadPublicRuntimeV2:
             if (next_frame, next_trade) <= (frame_ordinal, trade_ordinal):
                 raise RuntimeError("BROAD_PREPARATION_MANIFEST_MADE_NO_PROGRESS")
             stage_output = {"request": request.to_dict(), "completion": result.__dict__}
+            if preparation_version == PREPARATION_VERSION_V3:
+                stage_output["manifest"] = manifest
+                stage_output["result_body"] = body
+            descriptor_complete = next_frame == len(frames) and next_trade == 0
+            stage_required = (preparation_version == PREPARATION_VERSION_V2
+                              or stored_cursor is not None or bool(stored_stages)
+                              or staged_new_count > 0 or not descriptor_complete)
             cursor = PublicAdoptionCursorV2(
                 run_id=self._run_id,
                 descriptor_hash=descriptor_hash,
@@ -790,7 +932,7 @@ class BroadPublicRuntimeV2:
                 batch_hash=sealed.batch.content_hash,
                 plan_hash=plan_hash,
                 product_hashes=product_hashes,
-                preparation_version=PREPARATION_VERSION_V2,
+                preparation_version=preparation_version,
                 frame_ordinal=frame_ordinal,
                 trade_ordinal_start=trade_ordinal,
                 trade_ordinal_end=actual_end,
@@ -801,15 +943,17 @@ class BroadPublicRuntimeV2:
                 staged_output_hash=sha256_json(stage_output),
                 cursor_generation=generation,
             )
-            with self._measure_phase("stage_commit"):
-                repository.stage_public_adoption_slice_v2(
-                    cursor, {"cursor": cursor.to_dict(), "output": stage_output},
-                )
-            staged_new_count += 1
+            if stage_required:
+                with self._measure_phase("stage_commit"):
+                    repository.stage_public_adoption_slice_v2(
+                        cursor, {"cursor": cursor.to_dict(), "output": stage_output},
+                    )
+                staged_new_count += 1
             frame_ordinal, trade_ordinal = next_frame, next_trade
 
-        if len(stored_stages) + staged_new_count == 0:
-            raise RuntimeError("BROAD_PREPARATION_DESCRIPTOR_HAS_NO_STAGED_SLICES")
+        if ((frame_ordinal, trade_ordinal) != (len(frames), 0)
+                or (len(stored_stages) + staged_new_count == 0 and preparation_version != PREPARATION_VERSION_V3)):
+            raise RuntimeError("BROAD_PREPARATION_DESCRIPTOR_HAS_NO_COMPLETE_VERIFIED_SLICE")
         return {
             ordinal: _PreparedFrameParseV2(tuple(prepared_events[ordinal]), tuple(trade_hashes[ordinal]))
             for ordinal in range(len(frames))
@@ -826,11 +970,20 @@ class BroadPublicRuntimeV2:
         manifest: Mapping[str, Any],
     ) -> tuple[Mapping[str, Any], ...]:
         """Validate every bounded worker result against its durable raw frame."""
+        expected_manifest_keys = ({"frames", "transport_binding"}
+                                  if request.preparation_version == PREPARATION_VERSION_V3 else {"frames"})
         if (self.plan is None or request.kind != "PARSE"
                 or request.descriptor_hash != sealed.batch.artifact_ref
                 or request.plan_hash != plan_hash or request.frame_ordinal >= len(frames)
-                or not isinstance(manifest, Mapping) or set(manifest) != {"frames"}):
+                or request.preparation_version not in {PREPARATION_VERSION_V2, PREPARATION_VERSION_V3}
+                or not isinstance(manifest, Mapping) or set(manifest) != expected_manifest_keys):
             raise ValueError("BROAD_PREPARATION_RESULT_BINDING_INVALID")
+        if (request.preparation_version == PREPARATION_VERSION_V3
+                and manifest.get("transport_binding") != {
+                    "batch": _artifact_entry_wire(sealed.batch),
+                    "extent": _artifact_entry_wire(sealed.extent),
+                }):
+            raise ValueError("BROAD_PREPARATION_TRANSPORT_LOCATOR_BINDING_INVALID")
         manifest_frames = manifest["frames"]
         results = body.get("frame_results")
         body_fields = {
@@ -843,7 +996,7 @@ class BroadPublicRuntimeV2:
                 or not isinstance(results, list) or not 1 <= len(results) <= len(manifest_frames)
                 or set(body) != body_fields
                 or body.get("request_hash") != request.request_hash
-                or body.get("version") != PREPARATION_VERSION_V2
+                or body.get("version") != request.preparation_version
                 or body.get("job_id") != request.job_id
                 or body.get("descriptor_hash") != sealed.batch.artifact_ref
                 or body.get("input_hash") != request.input_hash
@@ -900,12 +1053,16 @@ class BroadPublicRuntimeV2:
                 "venue": frame.venue.value,
                 "source_id": frame.source_id,
                 "channel": frame.channel,
-                "raw_payload_b64": base64.b64encode(frame.raw_payload_bytes).decode("ascii"),
                 "raw_payload_hash": frame.raw_payload_hash,
                 "received_at_ns": frame.received_at_ns,
                 "available_at_ns": frame.available_at_ns,
                 "connection_epoch": frame.connection_epoch,
             }
+            if request.preparation_version == PREPARATION_VERSION_V3:
+                raw_binding["transport_ordinal"] = ordinal
+            else:
+                import base64
+                raw_binding["raw_payload_b64"] = base64.b64encode(frame.raw_payload_bytes).decode("ascii")
             if manifest_item.get("frame") != raw_binding:
                 raise ValueError("BROAD_PREPARATION_RAW_FRAME_BINDING_MISMATCH")
             source_health = manifest_item.get("source_health")
@@ -1180,13 +1337,17 @@ class BroadPublicRuntimeV2:
         books = self._sequence_books.copy()
         trackers = self._trackers.copy()
         epochs = self._connection_epochs.copy()
+        copied_books: set[InstrumentKeyV2] = set()
+        copied_trackers: set[tuple[InstrumentKeyV2, str]] = set()
         for frame in frames:
             key = self.plan.key_for_frame(frame)
-            if key in self._sequence_books:
+            if key in self._sequence_books and key not in copied_books:
                 books[key] = copy.deepcopy(self._sequence_books[key])
+                copied_books.add(key)
             identity = key, frame.channel
-            if identity in self._trackers:
+            if identity in self._trackers and identity not in copied_trackers:
                 trackers[identity] = copy.deepcopy(self._trackers[identity])
+                copied_trackers.add(identity)
         return books, trackers, epochs
 
     def _interpret_frames(
@@ -1204,7 +1365,37 @@ class BroadPublicRuntimeV2:
         if self.plan is None or self._archive is None:
             raise RuntimeError("BROAD_PUBLIC_INTERPRETER_NOT_RECOVERED")
         grouped: dict[tuple[str, str, str], list[L2RawFrameV2]] = {}
-        artifact_entries: list[ArtifactIndexEntryV2] = []
+        artifact_entries: list[ArtifactIndexEntryV2 | None] = []
+        trade_identities: list[Mapping[str, Any]] = []
+        pending_tracker_observations: dict[tuple[InstrumentKeyV2, str], list[PublicStreamObservationV1]] = {}
+        pending_tracker_slots: dict[tuple[InstrumentKeyV2, str], list[int]] = {}
+        pending_durable_identities: dict[
+            tuple[InstrumentKeyV2, str], dict[str, tuple[str | None, bool, bool]]
+        ] = {}
+        pending_trade_identity_rows: list[tuple[int, Mapping[str, Any]]] = []
+        pending_epoch_ids: dict[tuple[InstrumentKeyV2, str], str] = {}
+        trade_lookup: dict[tuple[str, str], Mapping[str, Any]] = {}
+        if prepared_events is not None and self._run_id is not None:
+            lookup_pairs = []
+            for ordinal, parsed in prepared_events.items():
+                if not 0 <= ordinal < len(frames):
+                    raise ValueError("BROAD_PREPARATION_FRAME_ORDINAL_OUT_OF_RANGE")
+                for event in parsed.events:
+                    trades = event if isinstance(event, tuple) else (event,)
+                    for trade in trades:
+                        if not hasattr(trade, "trade_id"):
+                            continue
+                        product = self._products.get(trade.instrument)
+                        if product is None:
+                            raise ValueError("BROAD_STREAM_TRADE_PRODUCT_REVISION_UNBOUND")
+                        feed = sha256_json({"instrument": trade.instrument.to_dict(),
+                            "source_id": trade.source_id, "channel": trade.channel,
+                            "metadata_ref": product.metadata_ref})
+                        lookup_pairs.append((feed, str(trade.trade_id)))
+            for start in range(0, len(lookup_pairs), 64):
+                trade_lookup.update(repository.lookup_trade_ids_batch_v2(
+                    lookup_pairs[start:start + 64], run_id=self._run_id, as_of_ns=now_ns,
+                ))
         if not defer_publication:
             self._poll_snapshot(repository, now_ns=now_ns, grouped=grouped)
         # One immutable lane-health view is sufficient for every frame in this
@@ -1236,16 +1427,27 @@ class BroadPublicRuntimeV2:
             identity = (key, frame.channel)
             tracker = self._trackers.get(identity)
             previous_epoch = self._connection_epochs.get(identity)
+            channel_book = frame.channel.startswith("orderbook.") or "@depth" in frame.channel
             if identity in self._connection_epochs and previous_epoch != frame.connection_epoch:
                 if tracker is not None:
+                    next_epoch = f"{self._stream_epoch}:{key.venue.value}:{frame.channel}:{frame.connection_epoch}"
                     observation = PublicStreamObservationV1.transport(
                         instrument=key, source_id=frame.source_id, channel=frame.channel,
                         metadata_ref=product.metadata_ref,
-                        epoch_id=f"{self._stream_epoch}:{key.venue.value}:{frame.channel}:{frame.connection_epoch}",
+                        epoch_id=next_epoch,
                         kind=PublicStreamObservationKindV1.RECONNECT,
                         observed_at_ns=frame.received_at_ns, available_at_ns=processed_at,
                     )
-                    self._persist_tracker(repository, tracker, observation, artifact_sink=artifact_entries)
+                    if channel_book:
+                        reconnect_entries: list[ArtifactIndexEntryV2 | None] = []
+                        self._persist_tracker(repository, tracker, observation, artifact_sink=reconnect_entries)
+                        artifact_entries.extend(reconnect_entries)
+                    else:
+                        slot = len(artifact_entries)
+                        artifact_entries.append(None)
+                        pending_tracker_observations.setdefault(identity, []).append(observation)
+                        pending_tracker_slots.setdefault(identity, []).append(slot)
+                        pending_epoch_ids[identity] = next_epoch
                 book = self._sequence_books.get(key)
                 if book is not None:
                     book.reconnect(processed_at)
@@ -1259,7 +1461,7 @@ class BroadPublicRuntimeV2:
                     epoch_id=f"{self._stream_epoch}:{key.venue.value}:{frame.channel}:{frame.connection_epoch}",
                 )
                 self._trackers[identity] = tracker
-            channel_book = frame.channel.startswith("orderbook.") or "@depth" in frame.channel
+            active_epoch_id = pending_epoch_ids.get(identity, tracker.state.epoch_id)
             if channel_book:
                 book = self._sequence_books.get(key)
                 if book is None:
@@ -1315,10 +1517,9 @@ class BroadPublicRuntimeV2:
             else:
                 observation = PublicStreamObservationV1.from_frame(
                     frame, instrument=key, metadata_ref=product.metadata_ref,
-                    epoch_id=tracker.state.epoch_id, persisted_at_ns=processed_at,
-                    source_health_ref=health.content_hash, source_health_epoch_id=tracker.state.epoch_id,
+                    epoch_id=active_epoch_id, persisted_at_ns=processed_at,
+                    source_health_ref=health.content_hash, source_health_epoch_id=active_epoch_id,
                 )
-                self._persist_tracker(repository, tracker, observation, artifact_sink=artifact_entries)
                 trade_events = tuple(trade for event in events for trade in (event if isinstance(event, tuple) else (event,)))
                 if prepared_frame is None:
                     payload = json.loads(frame.raw_payload_bytes)
@@ -1332,18 +1533,46 @@ class BroadPublicRuntimeV2:
                     raw_hashes = prepared_frame.trade_payload_hashes
                 if len(raw_hashes) != len(trade_events):
                     raise ValueError("BROAD_TRADE_EXACT_ROW_BINDING_FAILED")
+                trade_observations = []
+                durable_bindings: dict[str, tuple[str | None, bool, bool]] = {}
                 for trade, trade_payload_hash in zip(trade_events, raw_hashes, strict=True):
                     trade_observation = PublicStreamObservationV1(
                         trade.instrument, trade.source_id, trade.channel, product.metadata_ref,
-                        tracker.state.epoch_id, PublicStreamObservationKindV1.TRADE_OBSERVED,
+                        active_epoch_id, PublicStreamObservationKindV1.TRADE_OBSERVED,
                         trade.received_at_ns, max(trade.available_at_ns, processed_at),
                         trade.received_at_ns, trade.event_at_ns, trade.raw_content_ref,
                         trade.trade_id, trade_payload_hash, "CANONICALIZED_PER_TRADE_RAW_ROW_BYTES",
                         source_health_ref=trade.source_health_ref,
-                        source_health_epoch_id=tracker.state.epoch_id,
+                        source_health_epoch_id=active_epoch_id,
                     )
-                    self._persist_tracker(repository, tracker, trade_observation,
-                                          artifact_sink=artifact_entries)
+                    trade_observations.append(trade_observation)
+                    product_feed = sha256_json({"instrument": trade.instrument.to_dict(),
+                        "source_id": trade.source_id, "channel": trade.channel,
+                        "metadata_ref": product.metadata_ref})
+                    ledger = trade_lookup.get((product_feed, trade.trade_id), {})
+                    durable_bindings[trade.trade_id] = (
+                        ledger.get("prior_payload_hash"), bool(ledger.get("lookup_complete", False)),
+                        bool(ledger.get("conflicted", False)),
+                    )
+                pending_durable_identities.setdefault(identity, {}).update(durable_bindings)
+                slice_observations = (observation, *trade_observations)
+                pending_rows = pending_tracker_observations.setdefault(identity, [])
+                pending_slots = pending_tracker_slots.setdefault(identity, [])
+                first_slot = len(artifact_entries)
+                pending_rows.extend(slice_observations)
+                new_slots = list(range(first_slot, first_slot + len(slice_observations)))
+                pending_slots.extend(new_slots)
+                artifact_entries.extend([None] * len(slice_observations))
+                for trade_index, (trade, trade_payload_hash, trade_observation) in enumerate(zip(
+                        trade_events, raw_hashes, trade_observations, strict=True)):
+                    product_feed = sha256_json({"instrument": trade.instrument.to_dict(),
+                        "source_id": trade.source_id, "channel": trade.channel,
+                        "metadata_ref": product.metadata_ref})
+                    pending_trade_identity_rows.append((new_slots[trade_index + 1], {
+                        "feed_ref": product_feed, "trade_id": trade.trade_id,
+                        "payload_hash": trade_payload_hash,
+                        "available_at_ns": trade_observation.available_at_ns,
+                    }))
                 event_at = max((getattr(event, "event_at_ns", 0) or 0 for event in trade_events), default=0) or None
                 raw = raw_archive_record(
                     frame, instrument=key, frame_type=f"TRADE_FRAME_{frame.raw_payload_hash[:16]}",
@@ -1353,6 +1582,30 @@ class BroadPublicRuntimeV2:
                     event_at_ns=event_at, transport_ordinal=frame_ordinal,
                 )
                 grouped.setdefault((key.content_hash, frame.source_id, frame.channel), []).append(raw)
+        for identity, observations in pending_tracker_observations.items():
+            tracker = self._trackers.get(identity)
+            if tracker is None:
+                raise RuntimeError("BROAD_PUBLIC_CONTINUITY_TRACKER_DISAPPEARED_DURING_SLICE")
+            entry_sink: list[ArtifactIndexEntryV2 | None] = []
+            self._persist_tracker_slice(
+                repository, tracker, tuple(observations), artifact_sink=entry_sink,
+                durable_identities=pending_durable_identities.get(identity, {}),
+            )
+            entries = tuple(entry for entry in entry_sink if entry is not None)
+            if len(entries) != len(entry_sink):
+                raise RuntimeError("BROAD_PUBLIC_CONTINUITY_SLICE_SINK_HAS_EMPTY_SLOT")
+            slots = pending_tracker_slots[identity]
+            if len(entries) != len(slots):
+                raise RuntimeError("BROAD_PUBLIC_CONTINUITY_SLICE_OUTPUT_COUNT_MISMATCH")
+            for slot, entry in zip(slots, entries, strict=True):
+                if artifact_entries[slot] is not None:
+                    raise RuntimeError("BROAD_PUBLIC_CONTINUITY_ARTIFACT_SLOT_REUSED")
+                artifact_entries[slot] = entry
+        for slot, row in pending_trade_identity_rows:
+            entry = artifact_entries[slot]
+            if entry is None:
+                raise RuntimeError("BROAD_PUBLIC_TRADE_IDENTITY_ARTIFACT_SLOT_EMPTY")
+            trade_identities.append({**row, "artifact_ref": entry.artifact_ref})
         lane_statuses = self.source.status().lanes if self.source is not None else {}
         for lane_name, lane_status in lane_statuses.items():
             handoff = lane_status.handoff
@@ -1370,12 +1623,16 @@ class BroadPublicRuntimeV2:
                 health.content_hash, "PublicSourceHealthV2", health.content_hash,
                 health.available_at_ns, health.available_at_ns, {"health": health.to_dict(), "lane": body},
             ))
+        if any(entry is None for entry in artifact_entries):
+            raise RuntimeError("BROAD_PUBLIC_CONTINUITY_ARTIFACT_SLOT_UNFILLED")
+        complete_artifact_entries = tuple(entry for entry in artifact_entries if entry is not None)
         if defer_publication:
             return _PreparedFramePublicationV2(
-                tuple(artifact_entries), tuple(tuple(group) for group in grouped.values()),
+                complete_artifact_entries, tuple(tuple(group) for group in grouped.values()),
+                tuple(trade_identities),
             )
-        if artifact_entries:
-            repository.register_artifacts(tuple(artifact_entries))
+        if complete_artifact_entries:
+            repository.register_artifacts(complete_artifact_entries)
         if grouped:
             self._archive.write_chunks(tuple(tuple(group) for group in grouped.values()))
         return None
@@ -1421,7 +1678,7 @@ class BroadPublicRuntimeV2:
 
     def _frame_health(self, repository: OpsRepository, frame: CapturedPublicFrameV2,
                       *, now_ns: int, lane_statuses: Mapping[str, Any] | None = None,
-                      artifact_sink: list[ArtifactIndexEntryV2] | None = None) -> PublicSourceHealthV2:
+                      artifact_sink: list[ArtifactIndexEntryV2 | None] | None = None) -> PublicSourceHealthV2:
         if lane_statuses is None:
             lane_statuses = self.source.status().lanes if self.source is not None else {}
         lane_name = ("BYBIT" if frame.venue.value == "BYBIT" else
@@ -1548,21 +1805,68 @@ class BroadPublicRuntimeV2:
     @staticmethod
     def _persist_tracker(repository: OpsRepository, tracker: PublicStreamContinuityTrackerV1,
                          observation: PublicStreamObservationV1,
-                         *, artifact_sink: list[ArtifactIndexEntryV2] | None = None) -> None:
-        transition = tracker.apply_deferred(observation)
+                         *, artifact_sink: list[ArtifactIndexEntryV2 | None] | None = None,
+                         durable_prior_payload_hash: str | None = None,
+                         durable_lookup_complete: bool = False,
+                         durable_identity_conflicted: bool = False) -> ArtifactIndexEntryV2:
+        return BroadPublicRuntimeV2._persist_tracker_slice(
+            repository, tracker, (observation,), artifact_sink=artifact_sink,
+            durable_identities={observation.trade_id: (durable_prior_payload_hash,
+                durable_lookup_complete, durable_identity_conflicted)} if observation.trade_id is not None else None,
+        )[0]
+
+    @staticmethod
+    def _persist_tracker_slice(
+        repository: OpsRepository,
+        tracker: PublicStreamContinuityTrackerV1,
+        observations: tuple[PublicStreamObservationV1, ...],
+        *,
+        artifact_sink: list[ArtifactIndexEntryV2 | None] | None = None,
+        durable_identities: Mapping[str, tuple[str | None, bool, bool]] | None = None,
+    ) -> tuple[ArtifactIndexEntryV2, ...]:
+        transitions = []
+        identity_bindings = durable_identities or {}
+        for start in range(0, len(observations), 64):
+            slice_rows = observations[start:start + 64]
+            transitions.extend(tracker.apply_slice_v2(slice_rows, durable_identities=identity_bindings))
+        entries = []
+        for transition in transitions:
+            entries.append(BroadPublicRuntimeV2._continuity_entry(transition.observation, transition))
+        if artifact_sink is None:
+            repository.register_artifacts(tuple(entries))
+        else:
+            artifact_sink.extend(entries)
+        return tuple(entries)
+
+    @staticmethod
+    def _continuity_entry(
+        observation: PublicStreamObservationV1,
+        transition: Any,
+    ) -> ArtifactIndexEntryV2:
         # Replay and trade-ID caches are bounded operational accelerators. They
         # are not source evidence, and serializing the growing caches into every
         # accepted trade row made broad capture O(batch × cache-size). Persist
         # an explicit cache-free checkpoint projection while retaining its
         # completeness bit; restart still requires exact durable lookup when
         # the bounded cache is incomplete.
-        scalar_state = replace(
-            transition.state,
-            trade_identity_cache=(),
-            observation_replay_cache=(),
-            trade_identity_cache_complete=(transition.state.observed_trade_count == 0),
-        )
-        state_body = scalar_state.to_dict()
+        state = transition.state
+        state_body = {
+            "schema_version": state.SCHEMA_VERSION,
+            "continuity_version": PUBLIC_STREAM_CONTINUITY_VERSION,
+            "instrument": state.instrument.to_dict(), "source_id": state.source_id,
+            "channel": state.channel, "metadata_ref": state.metadata_ref, "epoch_id": state.epoch_id,
+            "recovery_epoch": state.recovery_epoch, "prior_recovery_ref": state.prior_recovery_ref,
+            "current_recovery_ref": state.current_recovery_ref,
+            "last_available_at_ns": state.last_available_at_ns,
+            "last_transport_receipt_at_ns": state.last_transport_receipt_at_ns,
+            "last_trade_receipt_at_ns": state.last_trade_receipt_at_ns,
+            "last_trade_event_at_ns": state.last_trade_event_at_ns,
+            "observed_trade_count": state.observed_trade_count,
+            "trade_identity_cache": [],
+            "trade_identity_cache_complete": state.observed_trade_count == 0,
+            "observation_replay_cache": [], "gap_reason_codes": list(state.gap_reason_codes),
+            "gap_count": state.gap_count, "transport_disconnected": state.transport_disconnected,
+        }
         state_ref = sha256_json({
             "artifact_type": "PublicStreamContinuityStateV1", "state": state_body,
         })
@@ -1570,18 +1874,15 @@ class BroadPublicRuntimeV2:
         observation_ref = sha256_json({
             "artifact_type": "PublicStreamObservationV1", "observation": observation_body,
         })
-        decision = PublicStreamContinuityDecisionV1(
-            observation_ref, transition.classification, transition.reason_code, state_ref,
-        )
+        decision_body = {"schema_version": 1, "observation_ref": observation_ref,
+            "classification": transition.classification.value, "reason_code": transition.reason_code,
+            "state_ref": state_ref}
         body = {"version": "BROAD_PUBLIC_STREAM_CONTINUITY_V3",
-                "observation": observation_body, "decision": decision.to_dict(),
+                "observation": observation_body, "decision": decision_body,
                 "state_projection": state_body, "authority": "ZERO"}
         ref = sha256_json({"artifact_type": "BroadPublicStreamContinuityV3", "body": body})
         entry = ArtifactIndexEntryV2(
             ref, "BroadPublicStreamContinuityV3", ref, observation.available_at_ns,
             observation.available_at_ns, body,
         )
-        if artifact_sink is None:
-            repository.register_artifact(entry)
-        else:
-            artifact_sink.append(entry)
+        return entry

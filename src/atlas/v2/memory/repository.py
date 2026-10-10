@@ -567,6 +567,8 @@ class OpsRepository:
         self._savepoint_counter = 0
         self._public_extent_writer: Any = None
         self._public_index_cache: OrderedDict[Any, Any] = OrderedDict()
+        self._public_stream_block_cache: OrderedDict[str, tuple[str, tuple[dict[str, Any], ...], int]] = OrderedDict()
+        self._public_stream_block_cache_bytes = 0
         self._public_index_decode_depth = 0
         self._public_locator_enabled = False
         self._public_metadata_enabled = False
@@ -1653,6 +1655,635 @@ class OpsRepository:
                             (key_json,event_type,entry.available_at_ns,entry.available_at_ns,entry.artifact_ref))
         return original_batch
 
+    def store_public_stream_block_v1(self, connection: sqlite3.Connection, block: Any) -> None:
+        """Insert an immutable SQL stream block inside the caller's writer transaction."""
+        if self.read_only or connection is not self._connection or not connection.in_transaction:
+            raise RuntimeError("public stream blocks require the active sole-writer transaction")
+        from ..data.public_stream_evidence_v1 import EncodedPublicStreamBlockV1
+
+        if not isinstance(block, EncodedPublicStreamBlockV1):
+            raise ValueError("public stream block is not the fixed encoded format")
+        from .._serialization import sha256_ref
+
+        sha256_ref(block.block_ref, field="block_ref")
+        sha256_ref(block.decoded_sha256, field="decoded_sha256")
+        if block.format != "SQL_STREAM_V1" or block.codec not in {"identity", "zlib-1"}:
+            raise ValueError("unsupported public stream block representation")
+        candidate = (block.format, block.codec, block.decoded_sha256, block.decoded_bytes,
+                     block.record_count, sqlite3.Binary(block.payload), None)
+        prior = connection.execute(
+            "SELECT format,codec,decoded_sha256,decoded_bytes,record_count,payload,extent_ref "
+            "FROM public_evidence_block_v2 WHERE block_ref=?", (block.block_ref,),
+        ).fetchone()
+        if prior is not None:
+            prior_tuple = (*tuple(prior[:5]), sqlite3.Binary(bytes(prior[5])), prior[6])
+            if prior_tuple != candidate:
+                raise ValueError("public stream block immutable identity conflicts")
+            return
+        connection.execute(
+            "INSERT INTO public_evidence_block_v2 "
+            "(block_ref,format,codec,decoded_sha256,decoded_bytes,record_count,payload,extent_ref) "
+            "VALUES(?,?,?,?,?,?,?,?)", (block.block_ref, *candidate),
+        )
+
+    def read_public_stream_block_v1(self, block_ref: str) -> tuple[dict[str, Any], ...]:
+        import hashlib
+
+        from ..data.public_stream_evidence_v1 import decode_public_stream_block_v1
+
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT block_ref,format,codec,decoded_sha256,decoded_bytes,record_count,payload "
+                "FROM public_evidence_block_v2 WHERE block_ref=?", (block_ref,),
+            ).fetchone()
+        if row is None or row["format"] != "SQL_STREAM_V1" or row["payload"] is None:
+            raise ValueError("public stream SQL block is missing or has another physical format")
+        payload = bytes(row["payload"])
+        payload_digest = hashlib.sha256(payload).hexdigest()
+        cached = self._public_stream_block_cache.get(block_ref)
+        if cached is not None:
+            if cached[0] != payload_digest:
+                self._public_stream_block_cache.pop(block_ref, None)
+                self._public_stream_block_cache_bytes -= cached[2]
+                raise ValueError("cached immutable public stream block changed on disk")
+            self._public_stream_block_cache.move_to_end(block_ref)
+            return cached[1]
+        records = decode_public_stream_block_v1(
+            block_ref=row["block_ref"], format=row["format"], codec=row["codec"],
+            decoded_sha256=row["decoded_sha256"], decoded_bytes=row["decoded_bytes"],
+            record_count=row["record_count"], payload=payload,
+        )
+        size = int(row["decoded_bytes"])
+        self._public_stream_block_cache[block_ref] = (payload_digest, records, size)
+        self._public_stream_block_cache_bytes += size
+        while (len(self._public_stream_block_cache) > 8
+               or self._public_stream_block_cache_bytes > 32 * 1024 * 1024):
+            _old_ref, old = self._public_stream_block_cache.popitem(last=False)
+            self._public_stream_block_cache_bytes -= old[2]
+        return records
+
+    def publish_stream_slice_v1(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        publication_id: str,
+        run_id: str,
+        descriptor_hash: str,
+        slice_id: str,
+        logical_ready_at_ns: int,
+        entries: Sequence[ArtifactIndexEntryV2],
+        row_map_blocks: Sequence[Any] = (),
+        trade_identities: Sequence[Mapping[str, Any]] = (),
+    ) -> str:
+        """Publish one complete bounded stream slice under the sole writer transaction."""
+        from .._serialization import nonblank, timestamp
+        from ..data.public_stream_evidence_v1 import (
+            EncodedPublicStreamBlockV1,
+            encode_public_stream_block_v1,
+        )
+
+        if self.read_only or connection is not self._connection or not connection.in_transaction:
+            raise RuntimeError("stream publication requires the active sole-writer transaction")
+        nonblank(publication_id, field="publication_id")
+        nonblank(run_id, field="run_id")
+        nonblank(slice_id, field="slice_id")
+        sha256_ref(descriptor_hash, field="descriptor_hash")
+        logical_ready = timestamp(logical_ready_at_ns, field="logical_ready_at_ns")
+        supplied_batch = tuple(entries)
+        if not supplied_batch or any(not isinstance(entry, ArtifactIndexEntryV2) for entry in supplied_batch):
+            raise ValueError("complete stream publication must contain typed public evidence")
+        unique_entries: dict[str, ArtifactIndexEntryV2] = {}
+        for entry in supplied_batch:
+            prior_entry = unique_entries.get(entry.artifact_ref)
+            if prior_entry is not None and prior_entry != entry:
+                raise ValueError("one stream publication repeats an immutable ref with conflicting content")
+            unique_entries.setdefault(entry.artifact_ref, entry)
+        batch = tuple(unique_entries.values())
+
+        # Keep immutable rowid order while serializing a block only once.
+        # Continuity bodies store the initial cache-free state and sparse
+        # absolute assignments; their existing artifact hashes remain unchanged.
+        def compact_rows(entries: Sequence[ArtifactIndexEntryV2]):
+            contexts: dict[str, Mapping[str, Any]] = {}
+            previous_states: dict[str, dict[str, Any]] = {}
+            rows: list[Mapping[str, Any]] = []
+            for entry in entries:
+                header = {"artifact_ref": entry.artifact_ref, "artifact_type": entry.artifact_type,
+                    "content_hash": entry.content_hash, "created_at_ns": entry.created_at_ns,
+                    "available_at_ns": entry.available_at_ns}
+                metadata = dict(entry.metadata)
+                if entry.artifact_type != "BroadPublicStreamContinuityV3":
+                    rows.append({**header, "metadata": metadata})
+                    continue
+                observation = metadata.get("observation")
+                decision = metadata.get("decision")
+                state = metadata.get("state_projection")
+                if (not isinstance(observation, Mapping) or not isinstance(decision, Mapping)
+                        or not isinstance(state, Mapping)):
+                    raise ValueError("public continuity stream entry is malformed before compact encoding")
+                feed_ref = sha256_json({"instrument": observation["instrument"],
+                    "source_id": observation["source_id"], "channel": observation["channel"],
+                    "metadata_ref": observation["metadata_ref"]})
+                state_body = dict(state)
+                prior = previous_states.get(feed_ref)
+                if prior is None:
+                    contexts[feed_ref] = {"initial_state_projection": state_body}
+                    delta = {}
+                else:
+                    delta = {name: value for name, value in state_body.items()
+                             if name not in prior or prior[name] != value}
+                previous_states[feed_ref] = state_body
+                rows.append({**header, "compact_continuity": {
+                    "feed_ref": feed_ref, "observation": dict(observation),
+                    "decision": dict(decision), "state_delta": delta,
+                }})
+            return rows, contexts
+
+        def encode_entry_group(entries: Sequence[ArtifactIndexEntryV2]) -> list[EncodedPublicStreamBlockV1]:
+            rows, contexts = compact_rows(entries)
+            try:
+                return [encode_public_stream_block_v1(rows, contexts=contexts or None)]
+            except ValueError as exc:
+                if "4 MiB" not in str(exc) or len(entries) <= 1:
+                    raise
+                middle = len(entries) // 2
+                return [*encode_entry_group(entries[:middle]), *encode_entry_group(entries[middle:])]
+
+        stream_blocks: list[EncodedPublicStreamBlockV1] = []
+        for start in range(0, len(batch), 64):
+            stream_blocks.extend(encode_entry_group(batch[start:start + 64]))
+        encoded_rows = [{ "artifact_ref": entry.artifact_ref } for entry in batch]
+        extra_blocks = tuple(row_map_blocks)
+        if any(not isinstance(item, EncodedPublicStreamBlockV1) for item in extra_blocks):
+            raise ValueError("stream frame-view row map block is not the approved bounded format")
+        all_blocks = (*stream_blocks, *extra_blocks)
+        for block in all_blocks:
+            self.store_public_stream_block_v1(connection, block)
+
+        row_location: dict[str, tuple[str, int]] = {}
+        offset = 0
+        for block in stream_blocks:
+            for record_no in range(block.record_count):
+                row_location[encoded_rows[offset + record_no]["artifact_ref"]] = (block.block_ref, record_no)
+            offset += block.record_count
+        for row_map in extra_blocks:
+            # The physical frame-view artifact is separately represented as an
+            # ordinary logical entry below; its view body names this block.
+            if not any(entry.metadata.get("view", {}).get("row_map_block_ref") == row_map.block_ref
+                       for entry in batch if entry.artifact_type == "PublicArchiveFrameViewV1"):
+                raise ValueError("unbound public frame-view row-map block")
+
+        blocks_hash = tuple(sorted(block.block_ref for block in all_blocks))
+        publication_content_hash = sha256_json({
+            "version": "PUBLIC_STREAM_PUBLICATION_V1", "run_id": run_id,
+            "descriptor_hash": descriptor_hash, "slice_id": slice_id,
+            "entries": [[entry.artifact_ref, entry.content_hash, entry.created_at_ns,
+                         entry.available_at_ns] for entry in batch],
+            "blocks": list(blocks_hash),
+        })
+        prior_publication = connection.execute(
+            "SELECT run_id,descriptor_hash,slice_id,content_hash,logical_ready_at_ns,header_count "
+            "FROM public_evidence_publication_v2 WHERE publication_id=?", (publication_id,),
+        ).fetchone()
+        publication_tuple = (run_id, descriptor_hash, slice_id, publication_content_hash,
+                             logical_ready, len(batch))
+        if prior_publication is None:
+            connection.execute(
+                "INSERT INTO public_evidence_publication_v2 "
+                "(publication_id,run_id,descriptor_hash,slice_id,content_hash,logical_ready_at_ns,header_count) "
+                "VALUES(?,?,?,?,?,?,?)", (publication_id, *publication_tuple),
+            )
+        elif tuple(prior_publication) != publication_tuple:
+            raise ValueError("public stream publication identity conflicts with committed content")
+        expected_publication_blocks = tuple(
+            (publication_id, block.block_ref, ordinal) for ordinal, block in enumerate(all_blocks)
+        )
+        stored_publication_blocks = tuple(tuple(row) for row in connection.execute(
+            "SELECT publication_id,block_ref,block_ordinal FROM public_evidence_publication_block_v2 "
+            "WHERE publication_id=? ORDER BY block_ordinal", (publication_id,),
+        ).fetchall())
+        if not stored_publication_blocks:
+            connection.executemany(
+                "INSERT INTO public_evidence_publication_block_v2 "
+                "(publication_id,block_ref,block_ordinal) VALUES(?,?,?)", expected_publication_blocks,
+            )
+        elif stored_publication_blocks != expected_publication_blocks:
+            raise ValueError("public stream publication block manifest conflicts")
+
+        existing_rows: dict[str, sqlite3.Row] = {}
+        refs = tuple(entry.artifact_ref for entry in batch)
+        for start in range(0, len(refs), 400):
+            part = refs[start:start + 400]
+            marks = ",".join("?" for _ in part)
+            existing_rows.update((row["artifact_ref"], row) for row in connection.execute(
+                f"SELECT * FROM artifact_index WHERE artifact_ref IN ({marks})", part).fetchall())
+        new_rows: list[tuple[Any, ...]] = []
+        locators: list[tuple[Any, ...]] = []
+        for entry in batch:
+            old = existing_rows.get(entry.artifact_ref)
+            if old is not None:
+                if self.artifact_entry_from_storage_row(old) != entry:
+                    raise ValueError("stream publication would rewrite immutable artifact metadata")
+            else:
+                block_ref, record_no = row_location[entry.artifact_ref]
+                marker = {"stream_block_ref": block_ref, "stream_record_no": record_no,
+                          "stream_format": "PUBLIC_STREAM_SQL_BLOCK_V1"}
+                new_rows.append((entry.artifact_ref, entry.artifact_type, entry.content_hash,
+                                 entry.created_at_ns, entry.available_at_ns,
+                                 encode_metadata_json(entry.artifact_type, canonical_json(marker))))
+            block_ref, record_no = row_location[entry.artifact_ref]
+            feed_ref = None
+            event_at = trade_id = raw_hash = None
+            body = entry.metadata
+            observation = body.get("observation") if isinstance(body, Mapping) else None
+            if isinstance(observation, Mapping):
+                instrument = observation.get("instrument")
+                source_id = observation.get("source_id")
+                channel = observation.get("channel")
+                metadata_ref = observation.get("metadata_ref")
+                if (isinstance(instrument, Mapping) and isinstance(source_id, str)
+                        and isinstance(channel, str) and isinstance(metadata_ref, str)):
+                    feed_ref = sha256_json({"instrument": dict(instrument), "source_id": source_id,
+                                            "channel": channel, "metadata_ref": metadata_ref})
+                event_at = observation.get("event_at_ns")
+                trade_id = observation.get("trade_id")
+                raw_hash = observation.get("trade_payload_hash")
+            checkpoint = body.get("checkpoint") if isinstance(body, Mapping) else None
+            if feed_ref is None and isinstance(checkpoint, Mapping):
+                candidate_feed = checkpoint.get("feed_ref")
+                state = checkpoint.get("state")
+                if isinstance(candidate_feed, str) and isinstance(state, Mapping):
+                    feed_ref = candidate_feed
+                    event_at = state.get("last_trade_event_at_ns")
+            locators.append((entry.artifact_ref, publication_id, block_ref, record_no,
+                             feed_ref, event_at, entry.available_at_ns, trade_id, raw_hash))
+        if new_rows:
+            connection.executemany(
+                "INSERT INTO artifact_index(artifact_ref,artifact_type,content_hash,created_at_ns,"
+                "available_at_ns,metadata_json) VALUES(?,?,?,?,?,?)", new_rows,
+            )
+        existing_locators: dict[str, sqlite3.Row] = {}
+        locator_refs = tuple(locator[0] for locator in locators)
+        for start in range(0, len(locator_refs), 400):
+            part = locator_refs[start:start + 400]
+            marks = ",".join("?" for _ in part)
+            existing_locators.update((row["artifact_ref"], row) for row in connection.execute(
+                "SELECT l.artifact_ref,l.publication_id,l.block_ref,l.record_no,l.feed_ref,l.event_at_ns,"
+                "l.available_at_ns,l.trade_id,l.raw_payload_hash,o.observed_at_ns "
+                "FROM public_evidence_locator_v2 l LEFT JOIN public_evidence_publication_observation_v2 o "
+                "ON o.publication_id=l.publication_id "
+                f"WHERE l.artifact_ref IN ({marks})", part,
+            ).fetchall())
+        new_locators: list[tuple[Any, ...]] = []
+        for locator in locators:
+            prior = existing_locators.get(locator[0])
+            if prior is None:
+                new_locators.append(locator)
+                continue
+            prior_domain = tuple(prior[name] for name in
+                ("feed_ref", "event_at_ns", "available_at_ns", "trade_id", "raw_payload_hash"))
+            requested_domain = locator[4:]
+            if prior_domain != requested_domain:
+                raise ValueError("public stream artifact locator identity conflicts")
+            if prior["publication_id"] != publication_id and prior["observed_at_ns"] is None:
+                raise ValueError("public stream artifact alias points to an unobserved publication")
+            if (prior["publication_id"] == publication_id
+                    and tuple(prior[name] for name in ("publication_id", "block_ref", "record_no"))
+                    != locator[1:4]):
+                raise ValueError("public stream artifact locator identity conflicts")
+        if new_locators:
+            connection.executemany(
+                "INSERT INTO public_evidence_locator_v2 "
+                "(artifact_ref,publication_id,block_ref,record_no,feed_ref,event_at_ns,available_at_ns,trade_id,raw_payload_hash) "
+                "VALUES(?,?,?,?,?,?,?,?,?)", new_locators,
+            )
+
+        # Trade identity rows are first-receipt immutable. Fetch the exact bounded
+        # ledger prefix once, then apply duplicate/conflict transitions in order.
+        if len(trade_identities) > 64:
+            raise ValueError("public stream trade identity slice exceeds its 64-row bound")
+        ordered_identities: dict[tuple[str, str], Mapping[str, Any]] = {}
+        intra_slice_conflicts: set[tuple[str, str]] = set()
+        for identity in trade_identities:
+            feed = identity.get("feed_ref")
+            trade_id = identity.get("trade_id")
+            payload_hash = identity.get("payload_hash")
+            artifact_ref = identity.get("artifact_ref")
+            available = identity.get("available_at_ns")
+            if (not isinstance(feed, str) or not isinstance(trade_id, str) or not trade_id
+                    or not isinstance(payload_hash, str) or not isinstance(artifact_ref, str)
+                    or type(available) is not int):
+                raise ValueError("exact trade identity row is malformed")
+            sha256_ref(feed, field="feed_ref")
+            sha256_ref(payload_hash, field="payload_hash")
+            sha256_ref(artifact_ref, field="artifact_ref")
+            timestamp(available, field="trade_identity.available_at_ns")
+            pair = (feed, trade_id)
+            first = ordered_identities.get(pair)
+            if first is None:
+                ordered_identities[pair] = identity
+            elif first["payload_hash"] != payload_hash:
+                intra_slice_conflicts.add(pair)
+        pairs = tuple(ordered_identities)
+        existing_trade_rows: dict[tuple[str, str], sqlite3.Row] = {}
+        if pairs:
+            values = ",".join("(?,?)" for _ in pairs)
+            found = connection.execute(
+                "SELECT feed_ref,trade_id,first_payload_hash,first_artifact_ref,first_available_at_ns,"
+                "conflicted,conflict_publication_id FROM public_trade_identity_v2 "
+                f"WHERE (feed_ref,trade_id) IN (VALUES {values})",
+                tuple(value for pair in pairs for value in pair),
+            ).fetchall()
+            existing_trade_rows = {(row["feed_ref"], row["trade_id"]): row for row in found}
+        new_trade_rows: list[tuple[Any, ...]] = []
+        conflict_updates: list[tuple[Any, ...]] = []
+        for pair, identity in ordered_identities.items():
+            feed, trade_id = pair
+            prior = existing_trade_rows.get(pair)
+            conflict = pair in intra_slice_conflicts
+            if prior is None:
+                new_trade_rows.append((feed, trade_id, identity["payload_hash"], identity["artifact_ref"],
+                    identity["available_at_ns"], int(conflict), publication_id if conflict else None))
+            elif (not prior["conflicted"]
+                  and (prior["first_payload_hash"] != identity["payload_hash"] or conflict)):
+                conflict_updates.append((publication_id, feed, trade_id))
+        if new_trade_rows:
+            connection.executemany(
+                "INSERT INTO public_trade_identity_v2 "
+                "(feed_ref,trade_id,first_payload_hash,first_artifact_ref,first_available_at_ns,conflicted,conflict_publication_id) "
+                "VALUES(?,?,?,?,?,?,?)", new_trade_rows,
+            )
+        if conflict_updates:
+            connection.executemany(
+                "UPDATE public_trade_identity_v2 SET conflicted=1,conflict_publication_id=? "
+                "WHERE feed_ref=? AND trade_id=? AND conflicted=0", conflict_updates,
+            )
+        return publication_id
+
+    def lookup_trade_ids_batch_v2(
+        self, requests: Sequence[tuple[str, str]], *, run_id: str, as_of_ns: int,
+    ) -> dict[tuple[str, str], Mapping[str, Any]]:
+        """Fetch exact prior identities and per-feed genesis coverage in one bounded query."""
+        from .._serialization import nonblank, timestamp
+
+        nonblank(run_id, field="run_id")
+        cutoff = timestamp(as_of_ns, field="trade_identity_lookup_as_of_ns")
+        pairs = tuple(dict.fromkeys(requests))
+        if len(pairs) > 64 or any(not isinstance(feed, str) or not isinstance(trade_id, str)
+                                  or not trade_id for feed, trade_id in pairs):
+            raise ValueError("trade identity lookup exceeds the exact 64-row slice bound")
+        if not pairs:
+            return {}
+        for feed, _trade_id in pairs:
+            sha256_ref(feed, field="feed_ref")
+        with self._lock:
+            row_values = ",".join("(?,?)" for _ in pairs)
+            found = self._connection.execute(
+                "SELECT t.feed_ref,t.trade_id,t.first_payload_hash,t.first_artifact_ref,"
+                "t.first_available_at_ns,CASE WHEN t.conflicted=1 AND c.observed_at_ns IS NOT NULL "
+                "AND cp.logical_ready_at_ns<=? AND c.observed_at_ns<=? THEN 1 ELSE 0 END AS effective_conflict "
+                "FROM public_trade_identity_v2 t "
+                "JOIN artifact_index a ON a.artifact_ref=t.first_artifact_ref "
+                "JOIN public_evidence_locator_v2 fl ON fl.artifact_ref=t.first_artifact_ref "
+                "JOIN public_evidence_publication_v2 fp ON fp.publication_id=fl.publication_id "
+                "JOIN public_evidence_publication_observation_v2 f ON f.publication_id=fl.publication_id "
+                "LEFT JOIN public_evidence_publication_v2 cp ON cp.publication_id=t.conflict_publication_id "
+                "LEFT JOIN public_evidence_publication_observation_v2 c ON c.publication_id=t.conflict_publication_id "
+                "WHERE MAX(a.available_at_ns,fp.logical_ready_at_ns,f.observed_at_ns)<=? AND "
+                f"(t.feed_ref,t.trade_id) IN (VALUES {row_values})",
+                (cutoff, cutoff, cutoff, *(value for pair in pairs for value in pair)),
+            ).fetchall()
+            feeds = tuple(sorted({feed for feed, _ in pairs}))
+            marks = ",".join("?" for _ in feeds)
+            coverage = {row["feed_ref"]: row for row in self._connection.execute(
+                "SELECT feed_ref,run_id,complete_through_available_at_ns,prefix_hash,proof_source "
+                f"FROM public_trade_identity_coverage_v2 WHERE feed_ref IN ({marks})", feeds,
+            ).fetchall()}
+        identities = {(row["feed_ref"], row["trade_id"]): {
+            "prior_payload_hash": row["first_payload_hash"],
+            "first_artifact_ref": row["first_artifact_ref"],
+            "first_available_at_ns": row["first_available_at_ns"],
+            "conflicted": bool(row["effective_conflict"]),
+        } for row in found}
+        result = {}
+        for pair in pairs:
+            item = dict(identities.get(pair, {}))
+            record = coverage.get(pair[0])
+            item["lookup_complete"] = bool(record and record["run_id"] == run_id
+                                           and record["proof_source"] == "NEW_RUN_CAPTURE_GENESIS"
+                                           and int(record["complete_through_available_at_ns"]) <= cutoff)
+            item["coverage_through_available_at_ns"] = (
+                int(record["complete_through_available_at_ns"]) if record else None)
+            result[pair] = item
+        return result
+
+    def observe_publication_v2(self, publication_id: str, *, observed_at_ns: int) -> int:
+        """Persist a post-return observation in its own FULL writer transaction."""
+        from .._serialization import nonblank, sha256_json, timestamp
+
+        nonblank(publication_id, field="publication_id")
+        observed = timestamp(observed_at_ns, field="post_commit_observed_at_ns")
+        with self._transaction() as connection:
+            publication = connection.execute(
+                "SELECT run_id,logical_ready_at_ns FROM public_evidence_publication_v2 WHERE publication_id=?",
+                (publication_id,),
+            ).fetchone()
+            if publication is None:
+                raise ValueError("cannot observe a publication that is not committed and indexed")
+            prior = connection.execute(
+                "SELECT observed_at_ns FROM public_evidence_publication_observation_v2 "
+                "WHERE publication_id=?", (publication_id,),
+            ).fetchone()
+            if prior is not None:
+                return int(prior[0])
+            observation_hash = sha256_json({"publication_id": publication_id,
+                "post_commit_observed_at_ns": observed,
+                "observation_basis": "PUBLIC_COMMIT_RETURNED_TO_ATLAS_WRITER"})
+            connection.execute(
+                "INSERT INTO public_evidence_publication_observation_v2 "
+                "(publication_id,observed_at_ns,observation_hash) VALUES(?,?,?)",
+                (publication_id, observed, observation_hash),
+            )
+            rows = connection.execute(
+                "SELECT feed_ref,trade_id,raw_payload_hash,artifact_ref,available_at_ns "
+                "FROM public_evidence_locator_v2 WHERE publication_id=? AND feed_ref IS NOT NULL "
+                "ORDER BY feed_ref,available_at_ns,artifact_ref", (publication_id,),
+            ).fetchall()
+            coverage: dict[str, tuple[int, list[tuple[str, str, str]]]] = {}
+            for row in rows:
+                old_through, additions = coverage.get(row["feed_ref"], (0, []))
+                if row["trade_id"] is not None:
+                    additions = [*additions, (row["trade_id"], row["raw_payload_hash"], row["artifact_ref"])]
+                coverage[row["feed_ref"]] = (max(old_through, int(row["available_at_ns"])), additions)
+            for feed, (through, identities) in coverage.items():
+                prior_coverage = connection.execute(
+                    "SELECT run_id,complete_through_available_at_ns,prefix_hash "
+                    "FROM public_trade_identity_coverage_v2 WHERE feed_ref=?", (feed,),
+                ).fetchone()
+                if prior_coverage is not None and prior_coverage["run_id"] != publication["run_id"]:
+                    raise ValueError("trade identity coverage belongs to another run genesis")
+                effective_through = max(through, int(publication["logical_ready_at_ns"]), observed,
+                    int(prior_coverage["complete_through_available_at_ns"]) if prior_coverage else 0)
+                prefix = sha256_json({"prior_prefix": prior_coverage["prefix_hash"] if prior_coverage else None,
+                    "publication_id": publication_id, "run_id": publication["run_id"],
+                    "feed_ref": feed, "through": effective_through, "identities": sorted(identities)})
+                if prior_coverage is None:
+                    connection.execute(
+                        "INSERT INTO public_trade_identity_coverage_v2 VALUES(?,?,?,?,?)",
+                        (feed, publication["run_id"], effective_through, prefix, "NEW_RUN_CAPTURE_GENESIS"),
+                    )
+                else:
+                    connection.execute(
+                        "UPDATE public_trade_identity_coverage_v2 SET complete_through_available_at_ns=?,prefix_hash=? "
+                        "WHERE feed_ref=?", (effective_through, prefix, feed),
+                    )
+        return observed
+
+    def unobserved_publications_v2(self, run_id: str, *, limit: int = 64) -> tuple[str, ...]:
+        """Return only complete committed slices that need post-crash observation."""
+        from .._serialization import nonblank
+
+        nonblank(run_id, field="run_id")
+        if type(limit) is not int or not 1 <= limit <= 64:
+            raise ValueError("unobserved publication recovery bound must be 1..64")
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT p.publication_id,p.run_id,p.descriptor_hash,p.slice_id,p.content_hash,"
+                "p.logical_ready_at_ns,p.header_count FROM public_evidence_publication_v2 p "
+                "LEFT JOIN public_evidence_publication_observation_v2 o ON o.publication_id=p.publication_id "
+                "WHERE p.run_id=? AND o.publication_id IS NULL "
+                "ORDER BY p.logical_ready_at_ns,p.publication_id LIMIT ?",
+                (run_id, limit + 1),
+            ).fetchall()
+            if len(rows) > limit:
+                raise ValueError("unobserved committed publication recovery population exceeds its bound")
+        verified: list[str] = []
+        for publication in rows:
+            publication_id = publication["publication_id"]
+            with self._lock:
+                block_rows = self._connection.execute(
+                    "SELECT b.block_ref,b.format,b.codec,b.decoded_sha256,b.decoded_bytes,b.record_count,"
+                    "b.payload,b.extent_ref FROM public_evidence_publication_block_v2 m "
+                    "JOIN public_evidence_block_v2 b ON b.block_ref=m.block_ref "
+                    "WHERE m.publication_id=? ORDER BY m.block_ordinal", (publication_id,),
+                ).fetchall()
+            if not block_rows or len(block_rows) > 128:
+                raise ValueError("committed public stream publication block manifest is missing or oversized")
+            logical_rows: list[dict[str, Any]] = []
+            block_refs = []
+            for block_row in block_rows:
+                if block_row["format"] != "SQL_STREAM_V1" or block_row["payload"] is None:
+                    raise ValueError("committed public stream publication uses an unsupported block format")
+                block_refs.append(block_row["block_ref"])
+                logical_rows.extend(row for row in self.read_public_stream_block_v1(block_row["block_ref"])
+                                    if "artifact_ref" in row)
+            if (len(logical_rows) != publication["header_count"]
+                    or len({row["artifact_ref"] for row in logical_rows}) != len(logical_rows)):
+                raise ValueError("committed public stream publication member count is incomplete")
+            expected_content_hash = sha256_json({
+                "version": "PUBLIC_STREAM_PUBLICATION_V1", "run_id": publication["run_id"],
+                "descriptor_hash": publication["descriptor_hash"], "slice_id": publication["slice_id"],
+                "entries": [[row["artifact_ref"], row["content_hash"], row["created_at_ns"],
+                             row["available_at_ns"]] for row in logical_rows],
+                "blocks": sorted(block_refs),
+            })
+            if expected_content_hash != publication["content_hash"]:
+                raise ValueError("committed public stream publication manifest hash mismatch")
+            refs = tuple(row["artifact_ref"] for row in logical_rows)
+            storage_rows: dict[str, sqlite3.Row] = {}
+            with self._lock:
+                for start in range(0, len(refs), 400):
+                    part = refs[start:start + 400]
+                    marks = ",".join("?" for _ in part)
+                    storage_rows.update((row["artifact_ref"], row) for row in self._connection.execute(
+                        f"SELECT * FROM artifact_index WHERE artifact_ref IN ({marks})", part).fetchall())
+                locator_rows: dict[str, sqlite3.Row] = {}
+                for start in range(0, len(refs), 400):
+                    part = refs[start:start + 400]
+                    marks = ",".join("?" for _ in part)
+                    locator_rows.update((row["artifact_ref"], row) for row in self._connection.execute(
+                        "SELECT l.artifact_ref,l.publication_id,o.observed_at_ns "
+                        "FROM public_evidence_locator_v2 l "
+                        "LEFT JOIN public_evidence_publication_observation_v2 o "
+                        "ON o.publication_id=l.publication_id "
+                        f"WHERE l.artifact_ref IN ({marks})", part,
+                    ).fetchall())
+                for ref in refs:
+                    locator = locator_rows.get(ref)
+                    if locator is None or (locator["publication_id"] != publication_id
+                                           and locator["observed_at_ns"] is None):
+                        raise ValueError("publication member lacks a durable public locator")
+            for expected in logical_rows:
+                row = storage_rows.get(expected["artifact_ref"])
+                if row is None:
+                    raise ValueError("committed public stream publication header is missing")
+                actual = self.artifact_entry_from_storage_row(row)
+                if (actual.artifact_type != expected["artifact_type"]
+                        or actual.content_hash != expected["content_hash"]
+                        or actual.created_at_ns != expected["created_at_ns"]
+                        or actual.available_at_ns != expected["available_at_ns"]):
+                    raise ValueError("committed public stream publication header differs from its block")
+            verified.append(publication_id)
+        return tuple(verified)
+
+    def effective_available_at_ns(self, artifact_ref: str) -> int | None:
+        """Return causal readiness; an E2 header is unavailable without observation."""
+        from .._serialization import sha256_ref
+
+        sha256_ref(artifact_ref, field="artifact_ref")
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT a.available_at_ns,l.publication_id,p.logical_ready_at_ns,o.observed_at_ns "
+                "FROM artifact_index AS a LEFT JOIN public_evidence_locator_v2 AS l "
+                "ON l.artifact_ref=a.artifact_ref LEFT JOIN public_evidence_publication_observation_v2 AS o "
+                "ON o.publication_id=l.publication_id LEFT JOIN public_evidence_publication_v2 AS p "
+                "ON p.publication_id=l.publication_id WHERE a.artifact_ref=?", (artifact_ref,),
+            ).fetchone()
+        if row is None:
+            return None
+        if row["publication_id"] is None:
+            return int(row["available_at_ns"])
+        if row["observed_at_ns"] is None or row["logical_ready_at_ns"] is None:
+            return None
+        return max(int(row["available_at_ns"]), int(row["logical_ready_at_ns"]),
+                   int(row["observed_at_ns"]))
+
+    def latest_public_stream_operational_checkpoints_v1(
+        self, *, run_id: str, feed_refs: Sequence[str], as_of_ns: int,
+    ) -> dict[str, ArtifactIndexEntryV2]:
+        """Return the newest observation-qualified bounded tracker checkpoint per feed."""
+        from .._serialization import nonblank, timestamp
+
+        nonblank(run_id, field="run_id")
+        cutoff = timestamp(as_of_ns, field="as_of_ns")
+        feeds = tuple(sorted(set(feed_refs)))
+        if len(feeds) > 16_384:
+            raise ValueError("public stream checkpoint feed population exceeds its plan bound")
+        for feed in feeds:
+            sha256_ref(feed, field="feed_ref")
+        result: dict[str, ArtifactIndexEntryV2] = {}
+        with self._lock:
+            for start in range(0, len(feeds), 400):
+                part = feeds[start:start + 400]
+                if not part:
+                    continue
+                marks = ",".join("?" for _ in part)
+                rows = self._connection.execute(
+                    "SELECT * FROM (SELECT a.*,l.feed_ref AS __feed_ref,"
+                    "ROW_NUMBER() OVER(PARTITION BY l.feed_ref ORDER BY a.available_at_ns DESC,a.rowid DESC) AS __rank "
+                    "FROM artifact_index AS a JOIN public_evidence_locator_v2 AS l ON l.artifact_ref=a.artifact_ref "
+                    "JOIN public_evidence_publication_v2 AS p ON p.publication_id=l.publication_id "
+                    "JOIN public_evidence_publication_observation_v2 AS o ON o.publication_id=p.publication_id "
+                    f"WHERE a.artifact_type='PublicStreamOperationalCheckpointV1' AND p.run_id=? "
+                    f"AND l.feed_ref IN ({marks}) "
+                    "AND MAX(a.available_at_ns,p.logical_ready_at_ns,o.observed_at_ns)<=?) "
+                    "WHERE __rank=1",
+                    (run_id, *part, cutoff),
+                ).fetchall()
+                for row in rows:
+                    result[row["__feed_ref"]] = self.artifact_entry_from_storage_row(row)
+        return result
+
     def active_history_head(self, key: InstrumentKeyV2, interval: str) -> dict[str, Any] | None:
         """Read one bounded rebuildable indicator checkpoint in the single-writer store."""
         with self._lock:
@@ -2103,8 +2734,10 @@ class OpsRepository:
             ).fetchone()
         if row is None:
             return None
+        effective = self.effective_available_at_ns(artifact_ref)
         return {"artifact_ref": artifact_ref, "artifact_type": row[0],
-                "content_hash": row[1], "available_at_ns": row[2]}
+                "content_hash": row[1], "available_at_ns": row[2],
+                "effective_available_at_ns": effective}
 
     def _decode_public_locator(self, row: sqlite3.Row) -> ArtifactIndexEntryV2:
         from ..data.compact_public_index import decode_row
@@ -2120,6 +2753,34 @@ class OpsRepository:
 
     def artifact_entry_from_storage_row(self, row: sqlite3.Row) -> ArtifactIndexEntryV2:
         """Hydrate repository storage encodings at the immutable row boundary."""
+        stored = json.loads(row["metadata_json"])
+        if isinstance(stored, Mapping) and "stream_block_ref" in stored:
+            if (set(stored) != {"stream_block_ref", "stream_record_no", "stream_format"}
+                    or stored["stream_format"] != "PUBLIC_STREAM_SQL_BLOCK_V1"
+                    or type(stored["stream_record_no"]) is not int):
+                raise ValueError("public stream compact metadata marker is malformed")
+            records = self.read_public_stream_block_v1(stored["stream_block_ref"])
+            ordinal = stored["stream_record_no"]
+            if not 0 <= ordinal < len(records):
+                raise ValueError("public stream compact metadata record is missing")
+            record = records[ordinal]
+            expected = {"artifact_ref": row["artifact_ref"], "artifact_type": row["artifact_type"],
+                        "content_hash": row["content_hash"], "created_at_ns": row["created_at_ns"],
+                        "available_at_ns": row["available_at_ns"]}
+            if any(record.get(name) != value for name, value in expected.items()):
+                raise ValueError("public stream compact metadata header binding mismatch")
+            metadata = record.get("metadata")
+            if not isinstance(metadata, Mapping):
+                raise ValueError("public stream compact metadata body is malformed")
+            with self._lock:
+                locator = self._connection.execute(
+                    "SELECT block_ref,record_no FROM public_evidence_locator_v2 WHERE artifact_ref=?",
+                    (row["artifact_ref"],),
+                ).fetchone()
+            if (locator is None or locator["block_ref"] != stored["stream_block_ref"]
+                    or locator["record_no"] != ordinal):
+                raise ValueError("public stream compact metadata lacks its typed public locator")
+            return ArtifactIndexEntryV2._from_storage_row(row, decoded_metadata=metadata)
         if row["artifact_type"] == "PublicObservationIndexV2":
             projection = json.loads(row["metadata_json"])
             if isinstance(projection, Mapping) and "instrument_key_ref" in projection:
@@ -2154,7 +2815,14 @@ class OpsRepository:
                     continue
                 marks = ",".join("?" for _ in batch)
                 rows = self._connection.execute(
-                    f"SELECT * FROM artifact_index WHERE artifact_ref IN ({marks})",
+                    "SELECT a.*,l.publication_id AS __publication_id,"
+                    "p.logical_ready_at_ns AS __publication_logical_ready_at_ns,"
+                    "o.observed_at_ns AS __publication_observed_at_ns "
+                    "FROM artifact_index AS a "
+                    "LEFT JOIN public_evidence_locator_v2 AS l ON l.artifact_ref=a.artifact_ref "
+                    "LEFT JOIN public_evidence_publication_v2 AS p ON p.publication_id=l.publication_id "
+                    "LEFT JOIN public_evidence_publication_observation_v2 AS o ON o.publication_id=l.publication_id "
+                    f"WHERE a.artifact_ref IN ({marks})",
                     batch,
                 ).fetchall()
                 storage_rows.extend(rows)
@@ -2165,10 +2833,20 @@ class OpsRepository:
             # passes the full locator/projection/hash/identity validation.
             for row in self._storage_rows_in_decode_order(storage_rows):
                 entry = self.artifact_entry_from_storage_row(row)
+                if row["__publication_id"] is None:
+                    effective_available = int(row["available_at_ns"])
+                elif (row["__publication_logical_ready_at_ns"] is None
+                      or row["__publication_observed_at_ns"] is None):
+                    effective_available = None
+                else:
+                    effective_available = max(int(row["available_at_ns"]),
+                        int(row["__publication_logical_ready_at_ns"]),
+                        int(row["__publication_observed_at_ns"]))
                 entries[row["artifact_ref"]] = {
                     "artifact_type": entry.artifact_type,
                     "content_hash": entry.content_hash,
                     "available_at_ns": entry.available_at_ns,
+                    "effective_available_at_ns": effective_available,
                     "metadata": entry.metadata,
                 }
         if self._public_locator_enabled:
@@ -2185,6 +2863,7 @@ class OpsRepository:
                         entry = self._decode_public_locator(row)
                         entries[entry.artifact_ref] = {"artifact_type": entry.artifact_type,
                             "content_hash": entry.content_hash, "available_at_ns": entry.available_at_ns,
+                            "effective_available_at_ns": self.effective_available_at_ns(entry.artifact_ref),
                             "metadata": entry.metadata}
         return {ref: entries[ref] for ref in refs if ref in entries}
 
@@ -2282,13 +2961,25 @@ class OpsRepository:
                 nonblank(identity_value, field="identity_value")
             elif type(identity_value) is not int or not -(2**63) <= identity_value < 2**63:
                 raise ValueError("metadata identity must be a string or a SQLite integer")
-            query = ("SELECT * FROM artifact_index WHERE "
-                f"artifact_type='{artifact_type}' AND {expression}=? AND available_at_ns<=? "
-                "ORDER BY available_at_ns DESC,artifact_ref DESC LIMIT ?")
+            query = ("SELECT a.* FROM artifact_index AS a LEFT JOIN public_evidence_locator_v2 AS l "
+                "ON l.artifact_ref=a.artifact_ref LEFT JOIN public_evidence_publication_observation_v2 AS o "
+                "ON o.publication_id=l.publication_id LEFT JOIN public_evidence_publication_v2 AS p "
+                "ON p.publication_id=l.publication_id WHERE "
+                f"a.artifact_type='{artifact_type}' AND {expression}=? AND "
+                "(CASE WHEN l.artifact_ref IS NULL THEN a.available_at_ns "
+                "WHEN o.observed_at_ns IS NULL OR p.logical_ready_at_ns IS NULL THEN NULL "
+                "ELSE MAX(a.available_at_ns,p.logical_ready_at_ns,o.observed_at_ns) END)<=? "
+                "ORDER BY a.available_at_ns DESC,a.artifact_ref DESC LIMIT ?")
             params = (identity_value, cutoff, limit + 1)
         else:
-            query = ("SELECT * FROM artifact_index WHERE artifact_type=? AND available_at_ns<=? "
-                "ORDER BY available_at_ns DESC,artifact_ref DESC LIMIT ?")
+            query = ("SELECT a.* FROM artifact_index AS a LEFT JOIN public_evidence_locator_v2 AS l "
+                "ON l.artifact_ref=a.artifact_ref LEFT JOIN public_evidence_publication_observation_v2 AS o "
+                "ON o.publication_id=l.publication_id LEFT JOIN public_evidence_publication_v2 AS p "
+                "ON p.publication_id=l.publication_id WHERE a.artifact_type=? AND "
+                "(CASE WHEN l.artifact_ref IS NULL THEN a.available_at_ns "
+                "WHEN o.observed_at_ns IS NULL OR p.logical_ready_at_ns IS NULL THEN NULL "
+                "ELSE MAX(a.available_at_ns,p.logical_ready_at_ns,o.observed_at_ns) END)<=? "
+                "ORDER BY a.available_at_ns DESC,a.artifact_ref DESC LIMIT ?")
             params = (artifact_type, cutoff, limit + 1)
         with self._lock:
             rows = self._connection.execute(query, params).fetchall()
@@ -2672,17 +3363,24 @@ class OpsRepository:
                 examined = 0
                 visible: list[sqlite3.Row] = []
                 while len(visible) < limit:
-                    cursor = " AND (created_at_ns,artifact_ref)<(?,?)" if lane_cursor is not None else ""
+                    cursor = " AND (a.created_at_ns,a.artifact_ref)<(?,?)" if lane_cursor is not None else ""
                     batch = min(limit + 1, maximum - examined + 1)
                     raw = self._connection.execute(
-                        "SELECT * FROM artifact_index INDEXED BY artifact_type_created_order "
-                        "WHERE artifact_type=?" + cursor + " ORDER BY created_at_ns DESC,artifact_ref DESC LIMIT ?",
+                    "SELECT a.*,CASE WHEN l.artifact_ref IS NULL THEN a.available_at_ns "
+                        "WHEN o.observed_at_ns IS NULL OR p.logical_ready_at_ns IS NULL THEN NULL "
+                        "ELSE MAX(a.available_at_ns,p.logical_ready_at_ns,o.observed_at_ns) END "
+                        "AS __effective_available_at_ns FROM artifact_index AS a INDEXED BY artifact_type_created_order "
+                        "LEFT JOIN public_evidence_locator_v2 AS l ON l.artifact_ref=a.artifact_ref "
+                        "LEFT JOIN public_evidence_publication_observation_v2 AS o ON o.publication_id=l.publication_id "
+                        "LEFT JOIN public_evidence_publication_v2 AS p ON p.publication_id=l.publication_id "
+                        "WHERE a.artifact_type=?" + cursor + " ORDER BY a.created_at_ns DESC,a.artifact_ref DESC LIMIT ?",
                         (kind, *((lane_cursor[0], lane_cursor[1]) if lane_cursor is not None else ()), batch)).fetchall()
                     for row in raw:
                         examined += 1
                         if examined > maximum:
                             raise ValueError("TYPED_ARTIFACT_CAUSAL_WINDOW_OVERFLOW")
-                        if cutoff is None or row["available_at_ns"] <= cutoff:
+                        effective = row["__effective_available_at_ns"] if cutoff is not None else None
+                        if cutoff is None or (effective is not None and effective <= cutoff):
                             visible.append(row)
                             if len(visible) == limit:
                                 break

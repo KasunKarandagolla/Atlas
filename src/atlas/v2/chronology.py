@@ -132,6 +132,9 @@ def record_computation(repo: OpsRepository, *, artifact_ref: str, information_cu
     entry = repo.get_artifact(artifact_ref)
     if entry is None or entry.artifact_type not in DERIVED_TYPES or entry.available_at_ns != available_ns:
         raise ValueError("computation receipt does not bind exact publication")
+    target_available = repo.effective_available_at_ns(artifact_ref)
+    if target_available is None:
+        raise ValueError("computation target has no durable post-commit observation")
     refs = tuple(sorted(set(refs) | set(_declared_inputs(entry))))
     if len(refs) > MAX_DEPENDENCIES:
         raise ValueError("derived computation dependencies exceed their bound")
@@ -150,7 +153,10 @@ def record_computation(repo: OpsRepository, *, artifact_ref: str, information_cu
         dependency = cache.get(ref)
         if dependency is None:
             raise ValueError("derived computation lost its checked dependency")
-        input_cutoff = max(input_cutoff, dependency.available_at_ns)
+        dependency_available = repo.effective_available_at_ns(ref)
+        if dependency_available is None:
+            raise ValueError("derived computation input lacks durable publication observation")
+        input_cutoff = max(input_cutoff, dependency_available)
     if input_cutoff > started_ns:
         raise ValueError("derived input publication follows computation start")
     body: dict[str, Any] = {"version": VERSION, "artifact_ref": artifact_ref,
@@ -173,6 +179,7 @@ def causal_artifact(repo: OpsRepository, ref: str, *, cutoff_ns: int,
                     _validated: set[tuple[str, int, int, int]] | None = None) -> bool:
     """Check raw availability at cutoff or a sealed later computation over that prefix."""
     cache = {} if _cache is None else _cache
+    effective_cache: dict[str, int | None] = {}
     budget = [0] if _budget is None else _budget
     # This cache lives only within one exact validation call/row snapshot. The
     # same shared dependency can otherwise be recursively checked exponentially
@@ -189,11 +196,17 @@ def causal_artifact(repo: OpsRepository, ref: str, *, cutoff_ns: int,
             cache[artifact_ref] = repo.get_artifact(artifact_ref)
         return cache[artifact_ref]
 
+    def effective(artifact_ref: str) -> int | None:
+        if artifact_ref not in effective_cache:
+            effective_cache[artifact_ref] = repo.effective_available_at_ns(artifact_ref)
+        return effective_cache[artifact_ref]
+
     try:
         entry = read(ref)
-        if entry is None or entry.available_at_ns > consumer_at_ns:
+        available = effective(ref)
+        if entry is None or available is None or available > consumer_at_ns:
             return False
-        if entry.available_at_ns <= cutoff_ns:
+        if available <= cutoff_ns:
             return True
         if entry.artifact_type not in DERIVED_TYPES:
             return False
@@ -204,8 +217,10 @@ def causal_artifact(repo: OpsRepository, ref: str, *, cutoff_ns: int,
             return True
         seen.add(ref)
         receipt = read(chronology_ref(ref))
+        receipt_available = effective(chronology_ref(ref))
         body = receipt.metadata.get("chronology") if receipt is not None else None
-        if (receipt is None or receipt.artifact_type != VERSION or not isinstance(body, Mapping)
+        if (receipt is None or receipt_available is None or receipt_available > consumer_at_ns
+                or receipt.artifact_type != VERSION or not isinstance(body, Mapping)
                 or set(body) != RECEIPT_FIELDS
                 or receipt.content_hash != sha256_json(body)
                 or body.get("version") != VERSION or body.get("artifact_ref") != ref

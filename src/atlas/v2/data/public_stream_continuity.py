@@ -9,6 +9,7 @@ historical trade coverage.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from functools import cached_property
@@ -569,6 +570,9 @@ class PublicStreamContinuityTrackerV1:
                 raise ValueError("restored tracker state identity does not match requested source revision/epoch")
             self._state = state
         self._trade_identity_lookup = dict(self._state.trade_identity_cache)
+        self._slice_trade_cache: list[tuple[str, str]] | None = None
+        self._slice_replay_cache: list[str] | None = None
+        self._slice_trade_cache_complete: bool | None = None
 
     @property
     def state(self) -> PublicStreamContinuityStateV1:
@@ -626,7 +630,9 @@ class PublicStreamContinuityTrackerV1:
         if type(durable_identity_conflicted) is not bool:
             raise ValueError("durable trade identity conflict must be explicit boolean")
         event_hash = observation.idempotency_ref
-        if event_hash in state.observation_replay_cache:
+        replay_cache = (self._slice_replay_cache if self._slice_replay_cache is not None
+                        else state.observation_replay_cache)
+        if event_hash in replay_cache:
             return _DeferredContinuityDecision(
                 event_hash, PublicStreamClassificationV1.DUPLICATE_OBSERVATION,
                 "IDEMPOTENT_OBSERVATION_REPLAY", state,
@@ -720,6 +726,66 @@ class PublicStreamContinuityTrackerV1:
             )
         raise ValueError(f"observation kind is not valid in the active continuity epoch: {observation.kind}")
 
+    def apply_slice_v2(
+        self,
+        observations: Sequence[PublicStreamObservationV1],
+        *,
+        durable_identities: Mapping[str, tuple[str | None, bool, bool]] | None = None,
+    ) -> tuple[_DeferredContinuityDecision, ...]:
+        """Apply an ordered writer-owned slice while retaining V1 transition semantics.
+
+        Each durable identity value is (prior payload hash, lookup complete,
+        sticky conflict). The bounded kernel owns its tracker and never moves
+        classification, chronology, or trade authority to a preparation worker.
+        """
+        if not isinstance(observations, (tuple, list)) or not 1 <= len(observations) <= 64:
+            raise ValueError("public continuity slice must contain 1..64 ordered observations")
+        identities = durable_identities or {}
+        if not isinstance(identities, Mapping):
+            raise ValueError("public continuity durable identity binding is malformed")
+        for observation in observations:
+            if not isinstance(observation, PublicStreamObservationV1):
+                raise ValueError("public continuity slice contains an untyped observation")
+            if (observation.instrument, observation.source_id, observation.channel, observation.metadata_ref) != (
+                self._state.instrument, self._state.source_id, self._state.channel, self._state.metadata_ref
+            ):
+                raise ValueError("public continuity slice crosses a feed or product revision")
+        if self._slice_trade_cache is not None or self._slice_replay_cache is not None:
+            raise RuntimeError("public continuity writer slice cannot be nested")
+        original_state = self._state
+        original_lookup = self._trade_identity_lookup.copy()
+        self._slice_trade_cache = list(original_state.trade_identity_cache)
+        self._slice_replay_cache = list(original_state.observation_replay_cache)
+        self._slice_trade_cache_complete = original_state.trade_identity_cache_complete
+        self._state = replace(original_state, trade_identity_cache=(), observation_replay_cache=())
+        output: list[_DeferredContinuityDecision] = []
+        try:
+            for observation in observations:
+                binding = identities.get(observation.trade_id or "", (None, False, False))
+                if (not isinstance(binding, tuple) or len(binding) != 3
+                        or type(binding[1]) is not bool or type(binding[2]) is not bool):
+                    raise ValueError("public continuity slice durable identity binding is malformed")
+                output.append(self.apply_deferred(
+                    observation, durable_prior_payload_hash=binding[0],
+                    durable_lookup_complete=binding[1],
+                    durable_identity_conflicted=binding[2],
+                ))
+            self._state = replace(
+                self._state,
+                trade_identity_cache=tuple.__new__(_ValidatedTradeCache, tuple(self._slice_trade_cache)),
+                trade_identity_cache_complete=bool(self._slice_trade_cache_complete),
+                observation_replay_cache=tuple.__new__(_ValidatedReplayCache, tuple(self._slice_replay_cache)),
+            )
+            return tuple(output)
+        except BaseException:
+            self._state = original_state
+            self._trade_identity_lookup = original_lookup
+            raise
+        finally:
+            self._slice_trade_cache = None
+            self._slice_replay_cache = None
+            self._slice_trade_cache_complete = None
+
     def _start_epoch(self, observation: PublicStreamObservationV1, event_hash: str) -> None:
         old = self._state
         reason = observation.reason_code or _default_reason(observation.kind)
@@ -730,6 +796,11 @@ class PublicStreamContinuityTrackerV1:
                                     "transition_at_ns": observation.observed_at_ns,
                                     "transition_ref": event_hash})
         prior_cache = old.trade_identity_cache
+        if self._slice_trade_cache is not None:
+            prior_cache = ()
+            assert self._slice_replay_cache is not None
+            self._slice_replay_cache.clear()
+            self._slice_replay_cache.append(event_hash)
         # Trade IDs are source identities and are useful across reconnects;
         # retain the bounded cache, but never interpret it as history proof.
         state = replace(
@@ -743,7 +814,8 @@ class PublicStreamContinuityTrackerV1:
             transport_disconnected=False,
             trade_identity_cache=prior_cache,
         )
-        state = replace(state, observation_replay_cache=(event_hash,))
+        if self._slice_replay_cache is None:
+            state = replace(state, observation_replay_cache=(event_hash,))
         self._state = state
 
     def _apply_trade(self, observation: PublicStreamObservationV1,
@@ -780,7 +852,10 @@ class PublicStreamContinuityTrackerV1:
             if receipt_out_of_order:
                 reason = f"{reason};RECEIPT_ORDER_REGRESSED"
             return self._decision(observation, classification, reason)
-        if not state.trade_identity_cache_complete and not durable_lookup_complete:
+        cache_complete = (self._slice_trade_cache_complete
+                          if self._slice_trade_cache_complete is not None
+                          else state.trade_identity_cache_complete)
+        if not cache_complete and not durable_lookup_complete:
             self._add_gap("TRADE_IDENTITY_LOOKUP_REQUIRED_AFTER_BOUNDED_CACHE_EVICTION")
             if receipt_out_of_order:
                 self._add_gap("OUT_OF_ORDER_RECEIPT_TIME")
@@ -794,9 +869,21 @@ class PublicStreamContinuityTrackerV1:
         if receipt_out_of_order:
             self._add_gap("OUT_OF_ORDER_RECEIPT_TIME")
             state = self._state
-        cache = _ValidatedTradeCache(state.trade_identity_cache).append_row((trade_id, payload_hash))
-        cache_complete: bool = state.trade_identity_cache_complete
-        if len(state.trade_identity_cache) == MAX_TRADE_ID_CACHE:
+        if self._slice_trade_cache is None:
+            cache = _ValidatedTradeCache(state.trade_identity_cache).append_row((trade_id, payload_hash))
+            cache_complete = state.trade_identity_cache_complete
+        else:
+            cache_rows = self._slice_trade_cache
+            cache = ()
+            if len(cache_rows) == MAX_TRADE_ID_CACHE:
+                evicted_id, _ = cache_rows.pop(0)
+                self._trade_identity_lookup.pop(evicted_id, None)
+                self._slice_trade_cache_complete = False
+            nonblank(trade_id, field="trade_id")
+            sha256_ref(payload_hash, field="trade_payload_hash")
+            cache_rows.append((trade_id, payload_hash))
+            cache_complete = bool(self._slice_trade_cache_complete)
+        if self._slice_trade_cache is None and len(state.trade_identity_cache) == MAX_TRADE_ID_CACHE:
             evicted_id, _ = state.trade_identity_cache[0]
             self._trade_identity_lookup.pop(evicted_id, None)
             cache_complete = False
@@ -843,6 +930,12 @@ class PublicStreamContinuityTrackerV1:
         )
 
     def _remember_observation(self, event_hash: str) -> None:
+        if self._slice_replay_cache is not None:
+            sha256_ref(event_hash, field="observation_hash")
+            self._slice_replay_cache.append(event_hash)
+            if len(self._slice_replay_cache) > MAX_OBSERVATION_REPLAY_CACHE:
+                del self._slice_replay_cache[:-MAX_OBSERVATION_REPLAY_CACHE]
+            return
         cache = _ValidatedReplayCache(self._state.observation_replay_cache).append_ref(event_hash)
         self._state = replace(self._state,
                               observation_replay_cache=cache)

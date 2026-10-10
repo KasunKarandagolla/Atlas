@@ -79,7 +79,8 @@ def _refs(repository: OpsRepository, refs: Any, *, available_at_ns: int,
             or tuple(refs) != tuple(sorted(set(refs)))):
         raise ValueError("broad references must be unique, sorted and bounded")
     entries = repository.get_artifact_metadata_by_refs(refs)
-    if any(ref not in entries or entries[ref]["available_at_ns"] > available_at_ns for ref in refs):
+    if any(ref not in entries or entries[ref].get("effective_available_at_ns") is None
+           or entries[ref]["effective_available_at_ns"] > available_at_ns for ref in refs):
         raise ValueError("broad evidence dependency missing or unavailable")
     return entries
 

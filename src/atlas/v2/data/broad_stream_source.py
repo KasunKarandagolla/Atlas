@@ -384,3 +384,6 @@ class BroadDurablePublicCaptureV2:
         capture["lanes"] = source_status.lanes
         return SimpleNamespace(**vars(source_status), capture=capture,
                                pending_frames=capture_status.pending_frames)
+
+    def captured_frames_at_monotonic_ns(self, cutoff_ns: int) -> int:
+        return self._capture.captured_frames_at_monotonic_ns(cutoff_ns)

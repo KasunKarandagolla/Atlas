@@ -8,7 +8,9 @@ import hashlib
 import json
 import threading
 import time
+import zlib
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -154,6 +156,29 @@ def test_broad_runtime_status_summarizes_phase_timing_counters():
     assert runtime.progress_snapshot()["stream_phase_timings_ns"] == status.phase_timings_ns
 
 
+def test_candidate_state_copies_each_distinct_feed_once(monkeypatch):
+    product = _product("BTCUSDT", VenueV2.BYBIT)
+    runtime = BroadPublicRuntimeV2()
+    runtime.plan = type("Plan", (), {"key_for_frame": lambda _self, _frame: product.key})()
+    tracker_key = (product.key, "publicTrade.BTCUSDT")
+    runtime._sequence_books[product.key] = object()
+    runtime._trackers[tracker_key] = object()
+    frames = tuple(CapturedPublicFrameV2(
+        VenueV2.BYBIT, "BYBIT_PUBLIC_WS_BROAD_V2", "publicTrade.BTCUSDT",
+        b"{}", hashlib.sha256(b"{}").hexdigest(), NOW + index, NOW + index, 1,
+    ) for index in range(3))
+    copied: list[object] = []
+    monkeypatch.setattr("atlas.v2.runtime.broad_public_runtime.copy.deepcopy",
+                        lambda value: copied.append(value) or value)
+
+    books, trackers, epochs = runtime._candidate_state_for_frames(frames)
+
+    assert books[product.key] is runtime._sequence_books[product.key]
+    assert trackers[tracker_key] is runtime._trackers[tracker_key]
+    assert epochs == {}
+    assert copied == [runtime._sequence_books[product.key], runtime._trackers[tracker_key]]
+
+
 def test_broad_production_port_integrates_acquisition_stream_workset_and_restart(tmp_path):
     # Identical native symbols remain distinct cross-venue product identities.
     products = (_product("BTCUSDT", VenueV2.BYBIT), _product("BTCUSDT", VenueV2.BINANCE))
@@ -214,6 +239,7 @@ def test_broad_production_port_integrates_acquisition_stream_workset_and_restart
 def test_preparation_completion_is_nonblocking_and_publication_stays_writer_owned(tmp_path, monkeypatch):
     products = (_product("BTCUSDT", VenueV2.BYBIT), _product("BTCUSDT", VenueV2.BINANCE))
     port, runtime, _source = _port(products, NOW)
+    port_closed = False
     try:
         with OpsRepository(tmp_path / "async-adoption.sqlite") as repository:
             port.recover(repository, now_ns=NOW)
@@ -248,6 +274,20 @@ def test_preparation_completion_is_nonblocking_and_publication_stays_writer_owne
 
             worker = runtime._preparation_worker
             assert worker is not None
+            original_submit = worker.submit
+            submitted_manifests = []
+
+            def inspect_v3_submit(request):
+                manifest = json.loads(Path(request.input_path).read_text())
+                assert request.preparation_version == "PUBLIC_EVIDENCE_PREPARATION_V3"
+                assert set(manifest) == {"frames", "transport_binding"}
+                assert all("raw_payload_b64" not in item["frame"] for item in manifest["frames"])
+                assert all(item["frame"]["transport_ordinal"] == item["frame_ordinal"]
+                           for item in manifest["frames"])
+                submitted_manifests.append(manifest)
+                original_submit(request)
+
+            monkeypatch.setattr(worker, "submit", inspect_v3_submit)
             runtime.service(repository, now_ns=NOW + 10)
             pending = runtime._pending_adoption
             assert pending is not None
@@ -268,31 +308,14 @@ def test_preparation_completion_is_nonblocking_and_publication_stays_writer_owne
 
             monkeypatch.setattr(worker, "poll", original_poll)
             deadline = time.monotonic() + 5.0
-            while (runtime._pending_adoption is not None
-                   and runtime._pending_adoption.request.kind != "SEAL"
-                   and time.monotonic() < deadline):
+            while runtime._pending_adoption is not None and time.monotonic() < deadline:
                 runtime.service(repository, now_ns=NOW + 12)
                 time.sleep(0.001)
-            assert runtime._pending_adoption is not None
-            assert runtime._pending_adoption.request.kind == "SEAL"
-            cursor, stages = repository.public_adoption_stages_v2(
-                runtime._run_id or "", descriptor.batch.artifact_ref,
-            )
-            assert cursor is not None and stages
-            monkeypatch.setattr(worker, "poll", lambda: None)
-            started = time.monotonic_ns()
-            runtime.service(repository, now_ns=NOW + 13)
-            seal_poll_duration = time.monotonic_ns() - started
-            assert seal_poll_duration < 100_000_000
-            assert repository.get_artifact(descriptor.batch.artifact_ref) is None
-            assert runtime._service_frames == 0
-            assert runtime._pending_adoption is not None
-            monkeypatch.setattr(worker, "poll", original_poll)
-            deadline = time.monotonic() + 5.0
-            while runtime._pending_adoption is not None and time.monotonic() < deadline:
-                runtime.service(repository, now_ns=NOW + 14)
-                time.sleep(0.001)
             assert runtime._pending_adoption is None
+            assert submitted_manifests
+            assert repository.public_adoption_stages_v2(
+                runtime._run_id or "", descriptor.batch.artifact_ref,
+            ) == (None, ())
             port.finish_public_capture(repository)
             status = runtime.status()
             assert status.capture["pending_frames"] == 0
@@ -303,12 +326,61 @@ def test_preparation_completion_is_nonblocking_and_publication_stays_writer_owne
             assert runtime._archive is not None
             checkpoints = repository.artifact_entries("L2FrameArchiveCheckpointV3")
             assert len(checkpoints) == 1
+            view_ref = str(checkpoints[0].metadata["archive_extent_ref"])
+            view_descriptor = repository.get_artifact(view_ref)
+            assert view_descriptor is not None
+            assert view_descriptor.artifact_type == "PublicArchiveFrameViewV1"
             rows = runtime._archive.read_chunk(str(checkpoints[0].metadata["chunk_id"]))
             assert {row["raw_payload_hash"]: row["raw_payload_bytes"] for row in rows} == expected_payloads
+            publication = repository._connection.execute(
+                "SELECT publication_id FROM public_evidence_locator_v2 WHERE artifact_ref=?", (view_ref,),
+            ).fetchone()
+            assert publication is not None
+            assert repository._connection.execute(
+                "SELECT 1 FROM public_evidence_publication_observation_v2 WHERE publication_id=?",
+                (publication[0],),
+            ).fetchone() is not None
+            continuity_entries = repository.artifact_entries("BroadPublicStreamContinuityV3")
+            assert len(continuity_entries) == 4
+            assert all(repository.get_artifact(item.artifact_ref) == item for item in continuity_entries)
+            lane_health = tuple(
+                item for item in repository.artifact_entries("PublicSourceHealthV2")
+                if "lane" in item.metadata
+            )
+            assert lane_health
+            assert all(repository.effective_available_at_ns(item.artifact_ref) is not None
+                       for item in lane_health)
+            compact_row = repository._connection.execute(
+                "SELECT b.codec,b.payload FROM public_evidence_locator_v2 l "
+                "JOIN public_evidence_block_v2 b ON b.block_ref=l.block_ref "
+                "WHERE l.artifact_ref=?", (continuity_entries[0].artifact_ref,),
+            ).fetchone()
+            assert compact_row is not None
+            compact_payload = (zlib.decompress(compact_row["payload"])
+                               if compact_row["codec"] == "zlib-1" else bytes(compact_row["payload"]))
+            assert "contexts" in json.loads(compact_payload)
+            operational = repository.artifact_entries("PublicStreamOperationalCheckpointV1")
+            assert len(operational) == 1
+            assert len(operational[0].metadata["checkpoint"]["state"]["trade_identity_cache"]) == 2
             lifecycle = json.loads((tmp_path / "public-capture-lifecycle-v1.json").read_text())
             assert lifecycle["state"] == "CLEAN"
-    finally:
         port.close()
+        port_closed = True
+        restarted, restarted_runtime, _source = _port(products, NOW + 10_000_000_000)
+        try:
+            with OpsRepository(tmp_path / "async-adoption.sqlite") as repository:
+                restarted_runtime.recover(repository, run_root=tmp_path, products=products, tiers={},
+                    now_ns=NOW + 10_000_000_000, benchmark_keys=(products[0].key, products[1].key))
+                assert set(restarted_runtime._trackers) == {
+                    (products[0].key, "publicTrade.BTCUSDT"),
+                }
+                assert set(restarted_runtime._connection_epochs.values()) == {-1}
+                restarted.finish_public_capture(repository)
+        finally:
+            restarted.close()
+    finally:
+        if not port_closed:
+            port.close()
 
 
 def test_alt_only_inventory_keeps_deterministic_stream_seed_after_publication(tmp_path):
@@ -476,6 +548,10 @@ def test_broad_runtime_capture_progresses_during_sqlite_commit_stall(tmp_path):
             benchmark_keys=(products[0].key, products[1].key),
         )
         assert restarted_runtime.status().capture["terminal_error"] is None
+        # This fixture replaces the interpreter with a frame collector above,
+        # so it intentionally creates no continuity checkpoint to restore.
+        assert restarted_runtime._trackers == {}
+        assert restarted_runtime._connection_epochs == {}
         restarted_runtime.finish(repository)
         restarted_runtime.close()
 

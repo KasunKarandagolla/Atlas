@@ -7,7 +7,7 @@ individual frames never create capital-control SQLite rows.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -105,6 +105,7 @@ class PreparedL2ArchiveChunkV2:
     chunk_id: str
     frames: tuple[L2RawFrameV2, ...]
     table: Any | None
+    frame_view_block: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -134,6 +135,107 @@ class L2FrameArchiveV2:
     ) -> PreparedL2ArchiveBatchV2:
         """Build bounded immutable Arrow tables without touching SQLite/files."""
         return self.prepare_frame_groups(frame_groups)
+
+    @staticmethod
+    def prepare_frame_views(
+        frame_groups: tuple[tuple[L2RawFrameV2, ...], ...],
+        *,
+        transport_batch_ref: str,
+        transport_batch_hash: str,
+        transport_extent_ref: str,
+        product_binding_for_frame: Callable[[L2RawFrameV2], Mapping[str, Any]],
+    ) -> PreparedL2ArchiveBatchV2:
+        """Build metadata-only L2 locators over one already durable transport extent."""
+        from .public_stream_evidence_v1 import encode_public_stream_block_v1
+
+        for name, value in (("transport_batch_ref", transport_batch_ref),
+                            ("transport_batch_hash", transport_batch_hash),
+                            ("transport_extent_ref", transport_extent_ref)):
+            sha256_ref(value, field=name)
+        if not frame_groups or len(frame_groups) > 256:
+            raise ValueError("frame-view batch is empty or exceeds its bounded group count")
+        chunks: list[PreparedL2ArchiveChunkV2] = []
+        for group in frame_groups:
+            if not group or any(not isinstance(frame, L2RawFrameV2) for frame in group):
+                raise ValueError("frame-view group requires typed raw frames")
+            ordered = tuple(sorted(group, key=lambda frame: (
+                frame.available_at_ns, frame.source_id, frame.channel,
+                frame.last_update_id if frame.last_update_id is not None else -1,
+                frame.raw_payload_hash,
+            )))
+            if len(ordered) > 512:
+                for start in range(0, len(ordered), 512):
+                    chunks.extend(L2FrameArchiveV2.prepare_frame_views(
+                        (ordered[start:start + 512],), transport_batch_ref=transport_batch_ref,
+                        transport_batch_hash=transport_batch_hash,
+                        transport_extent_ref=transport_extent_ref,
+                        product_binding_for_frame=product_binding_for_frame,
+                    ).chunks)
+                continue
+            identities: dict[str, str] = {}
+            rows: list[dict[str, Any]] = []
+            for archive_ordinal, frame in enumerate(ordered):
+                if frame.transport_ordinal is None:
+                    raise ValueError("captured frame-view row lacks its exact transport ordinal")
+                prior = identities.setdefault(frame.record_id, frame.raw_payload_hash)
+                if prior != frame.raw_payload_hash:
+                    raise ValueError("conflicting duplicate raw frame identity")
+                binding = dict(product_binding_for_frame(frame))
+                if not binding:
+                    raise ValueError("captured frame-view row lacks full product/revision binding")
+                rows.append({"archive_ordinal": archive_ordinal,
+                             "transport_ordinal": frame.transport_ordinal,
+                             "metadata": frame.metadata_dict(),
+                             "product_binding": binding})
+            chunk_id = sha256_json({"archive_type": "L2RawFrameChunkV2",
+                                    "frames": [frame.metadata_dict() for frame in ordered]})
+            block = encode_public_stream_block_v1(rows)
+            chunks.append(PreparedL2ArchiveChunkV2(chunk_id, ordered, None, block))
+        chunks.sort(key=lambda item: item.chunk_id)
+        return PreparedL2ArchiveBatchV2(tuple(chunks))
+
+    def frame_view_entries(
+        self,
+        batch: PreparedL2ArchiveBatchV2,
+        *,
+        transport_batch_ref: str,
+        transport_batch_hash: str,
+        transport_extent_ref: str,
+        transport_extent_hash: str,
+    ) -> tuple[tuple[Any, ArtifactIndexEntryV2, ArtifactIndexEntryV2], ...]:
+        """Return row-map blocks, physical view headers, and legacy-shaped checkpoints."""
+        from .public_archive_extents import FRAME_VIEW_TYPE, extent_ref
+        from .public_stream_evidence_v1 import EncodedPublicStreamBlockV1
+
+        outputs = []
+        for chunk in batch.chunks:
+            if not isinstance(chunk.frame_view_block, EncodedPublicStreamBlockV1):
+                raise ValueError("captured public archive chunk lacks its immutable row-map block")
+            view = {"version": FRAME_VIEW_TYPE, "namespace": "ops-l2-frames",
+                    "chunk_id": chunk.chunk_id, "transport_batch_ref": transport_batch_ref,
+                    "transport_batch_hash": transport_batch_hash,
+                    "transport_extent_ref": transport_extent_ref,
+                    "transport_extent_hash": transport_extent_hash,
+                    "row_map_block_ref": chunk.frame_view_block.block_ref,
+                    "row_count": len(chunk.frames), "authority": "ZERO"}
+            ref = extent_ref("ops-l2-frames", chunk.chunk_id)
+            available = max(frame.available_at_ns for frame in chunk.frames)
+            view_entry = ArtifactIndexEntryV2(ref, FRAME_VIEW_TYPE, sha256_json(view), available,
+                                              available, {"view": view})
+            last = chunk.frames[-1]
+            checkpoint_ref = self.checkpoint_ref(chunk.chunk_id)
+            checkpoint = ArtifactIndexEntryV2(
+                checkpoint_ref, "L2FrameArchiveCheckpointV3", chunk.chunk_id, available, available,
+                {"schema_version": 3, "chunk_id": chunk.chunk_id, "archive_extent_ref": ref,
+                 "instrument": last.instrument.to_dict(), "instrument_hash": last.instrument.content_hash,
+                 "source_id": last.source_id, "channel": last.channel,
+                 "high_water_update_id": last.last_update_id, "last_record_id": last.record_id,
+                 "last_payload_hash": last.raw_payload_hash, "sequence_semantics": last.sequence_semantics,
+                 "state_after_restart": "SNAPSHOT_RECOVERY", "source_health_after_restart": "INCOMPLETE_SNAPSHOT",
+                 "frame_count": len(chunk.frames)},
+            )
+            outputs.append((chunk.frame_view_block, view_entry, checkpoint))
+        return tuple(outputs)
 
     @staticmethod
     def prepare_frame_groups(

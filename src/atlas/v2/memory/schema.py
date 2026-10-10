@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import sqlite3
 
-OPS_SCHEMA_VERSION = 2
+OPS_SCHEMA_VERSION = 3
 OPS_SCHEMA_NAMESPACE = "atlas-ops"
 _REQUIRED_TABLES = {
     "schema_meta", "watch", "watch_transition", "ops_outbox", "source_health",
     "model_registry", "artifact_index",
     "public_evidence_stage_v2", "public_adoption_cursor_v2",
+    "public_evidence_block_v2", "public_evidence_locator_v2",
+    "public_trade_identity_v2", "public_trade_identity_coverage_v2",
+    "public_evidence_publication_v2", "public_evidence_publication_block_v2",
+    "public_evidence_publication_observation_v2",
 }
 
 _DDL = (
@@ -223,6 +227,83 @@ _PUBLIC_ADOPTION_DDL = (
     )""",
 )
 
+# Schema 3 is the accepted additive E2 stream-evidence format. Public headers
+# are inserted only with their complete publication; staging remains in the
+# private v2 control tables above.
+_PUBLIC_EVIDENCE_V3_DDL = (
+    """CREATE TABLE IF NOT EXISTS public_evidence_block_v2 (
+        block_ref TEXT PRIMARY KEY,
+        format TEXT NOT NULL CHECK(format IN ('SQL_STREAM_V1','ARROW_EXTENT_V1')),
+        codec TEXT NOT NULL CHECK(codec IN ('identity','zlib-1','arrow-extent-v1')),
+        decoded_sha256 TEXT NOT NULL,
+        decoded_bytes INTEGER NOT NULL CHECK(decoded_bytes BETWEEN 1 AND 4194304),
+        record_count INTEGER NOT NULL CHECK(record_count BETWEEN 1 AND 512),
+        payload BLOB,
+        extent_ref TEXT,
+        CHECK((format='SQL_STREAM_V1' AND codec IN ('identity','zlib-1')
+               AND payload IS NOT NULL AND extent_ref IS NULL)
+           OR (format='ARROW_EXTENT_V1' AND codec='arrow-extent-v1'
+               AND payload IS NULL AND extent_ref IS NOT NULL))
+    )""",
+    """CREATE TABLE IF NOT EXISTS public_evidence_publication_v2 (
+        publication_id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        descriptor_hash TEXT NOT NULL,
+        slice_id TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        logical_ready_at_ns INTEGER NOT NULL CHECK(logical_ready_at_ns>=0),
+        header_count INTEGER NOT NULL CHECK(header_count BETWEEN 1 AND 4096),
+        first_artifact_rowid INTEGER,
+        last_artifact_rowid INTEGER,
+        UNIQUE(run_id,descriptor_hash,slice_id)
+    )""",
+    """CREATE TABLE IF NOT EXISTS public_evidence_publication_block_v2 (
+        publication_id TEXT NOT NULL REFERENCES public_evidence_publication_v2(publication_id),
+        block_ref TEXT NOT NULL REFERENCES public_evidence_block_v2(block_ref),
+        block_ordinal INTEGER NOT NULL CHECK(block_ordinal>=0),
+        PRIMARY KEY(publication_id,block_ref),
+        UNIQUE(publication_id,block_ordinal)
+    ) WITHOUT ROWID""",
+    """CREATE TABLE IF NOT EXISTS public_evidence_locator_v2 (
+        artifact_ref TEXT PRIMARY KEY REFERENCES artifact_index(artifact_ref),
+        publication_id TEXT NOT NULL REFERENCES public_evidence_publication_v2(publication_id),
+        block_ref TEXT NOT NULL REFERENCES public_evidence_block_v2(block_ref),
+        record_no INTEGER NOT NULL CHECK(record_no BETWEEN 0 AND 511),
+        feed_ref TEXT,
+        event_at_ns INTEGER,
+        available_at_ns INTEGER NOT NULL CHECK(available_at_ns>=0),
+        trade_id TEXT,
+        raw_payload_hash TEXT
+    )""",
+    "CREATE INDEX IF NOT EXISTS public_evidence_locator_feed_time_v2 "
+    "ON public_evidence_locator_v2(feed_ref,event_at_ns DESC,available_at_ns DESC,artifact_ref DESC)",
+    "CREATE INDEX IF NOT EXISTS public_evidence_locator_trade_id_v2 "
+    "ON public_evidence_locator_v2(feed_ref,trade_id,available_at_ns,artifact_ref) WHERE trade_id IS NOT NULL",
+    """CREATE TABLE IF NOT EXISTS public_trade_identity_v2 (
+        feed_ref TEXT NOT NULL,
+        trade_id TEXT NOT NULL,
+        first_payload_hash TEXT NOT NULL,
+        first_artifact_ref TEXT NOT NULL,
+        first_available_at_ns INTEGER NOT NULL CHECK(first_available_at_ns>=0),
+        conflicted INTEGER NOT NULL DEFAULT 0 CHECK(conflicted IN (0,1)),
+        conflict_publication_id TEXT REFERENCES public_evidence_publication_v2(publication_id),
+        PRIMARY KEY(feed_ref,trade_id)
+    ) WITHOUT ROWID""",
+    """CREATE TABLE IF NOT EXISTS public_trade_identity_coverage_v2 (
+        feed_ref TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        complete_through_available_at_ns INTEGER NOT NULL CHECK(complete_through_available_at_ns>=0),
+        prefix_hash TEXT NOT NULL,
+        proof_source TEXT NOT NULL CHECK(proof_source IN ('NEW_RUN_CAPTURE_GENESIS','VERIFIED_LEGACY_RECONSTRUCTION'))
+    ) WITHOUT ROWID""",
+    """CREATE TABLE IF NOT EXISTS public_evidence_publication_observation_v2 (
+        publication_id TEXT PRIMARY KEY REFERENCES public_evidence_publication_v2(publication_id),
+        observed_at_ns INTEGER NOT NULL CHECK(observed_at_ns>=0),
+        observation_hash TEXT NOT NULL,
+        UNIQUE(publication_id,observation_hash)
+    )""",
+)
+
 
 def initialize(connection: sqlite3.Connection) -> None:
     """Initialize only an empty ops DB, or validate the known schema version."""
@@ -248,13 +329,33 @@ def initialize(connection: sqlite3.Connection) -> None:
                     connection.execute(statement)
                 connection.execute(
                     "UPDATE schema_meta SET schema_version=? WHERE namespace=?",
-                    (OPS_SCHEMA_VERSION, OPS_SCHEMA_NAMESPACE),
+                    (2, OPS_SCHEMA_NAMESPACE),
                 )
                 connection.commit()
             except BaseException:
                 connection.rollback()
                 raise
             tables.update(("public_evidence_stage_v2", "public_adoption_cursor_v2"))
+            version = 2
+        if version == 2:
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                for statement in _PUBLIC_EVIDENCE_V3_DDL:
+                    connection.execute(statement)
+                connection.execute(
+                    "UPDATE schema_meta SET schema_version=? WHERE namespace=?",
+                    (OPS_SCHEMA_VERSION, OPS_SCHEMA_NAMESPACE),
+                )
+                connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
+            tables.update({
+                "public_evidence_block_v2", "public_evidence_locator_v2",
+                "public_trade_identity_v2", "public_trade_identity_coverage_v2",
+                "public_evidence_publication_v2", "public_evidence_publication_block_v2",
+                "public_evidence_publication_observation_v2",
+            })
             version = OPS_SCHEMA_VERSION
         if version != OPS_SCHEMA_VERSION:
             raise RuntimeError(f"unsupported atlas-ops schema version: {version!r}")
@@ -267,6 +368,8 @@ def initialize(connection: sqlite3.Connection) -> None:
             for statement in _DUE_WORK_DDL:
                 connection.execute(statement)
             for statement in _PUBLIC_ADOPTION_DDL:
+                connection.execute(statement)
+            for statement in _PUBLIC_EVIDENCE_V3_DDL:
                 connection.execute(statement)
             if "collector_cursor_head" not in tables:
                 connection.execute("INSERT OR IGNORE INTO due_work_discovery(projection_id,last_rowid) "
@@ -285,6 +388,8 @@ def initialize(connection: sqlite3.Connection) -> None:
         for statement in _DUE_WORK_DDL:
             connection.execute(statement)
         for statement in _PUBLIC_ADOPTION_DDL:
+            connection.execute(statement)
+        for statement in _PUBLIC_EVIDENCE_V3_DDL:
             connection.execute(statement)
         connection.execute("INSERT INTO due_work_discovery(projection_id,last_rowid) "
                            "VALUES('COLLECTOR_HEADS_V1',-1)")
