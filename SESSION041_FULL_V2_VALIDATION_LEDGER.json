@@ -3319,6 +3319,60 @@
       }
     }
   ],
+  "r2_checkpoint": {
+    "accepted_r1_base_sha": "eaf51d367dea1e13be544f7de23a6626279f7ad9",
+    "implementation_sha": "3bd112af51c68621258bee92fea9048034f03b0e",
+    "implementation_branch": "fix/session-041-final-v2-recovery",
+    "status": "STOPPED_AT_F1_CAPACITY_NOT_QUALIFIED",
+    "engineering_capacity_qualified": false,
+    "owner_device_qualified": false,
+    "f1_profile_hash": "104efecc016d647b73180eeb0226301102d65747e97659f626c654b957d223c8",
+    "f1_source_bound_report": {
+      "path": "docs/v2/session041-evidence/2e5f73a07660f6ec95fd29907074df99253359bc7d4bfab5e6feeb53cb0a8489.json",
+      "sha256": "2e5f73a07660f6ec95fd29907074df99253359bc7d4bfab5e6feeb53cb0a8489",
+      "passed": false,
+      "duration_seconds": 7.749,
+      "target_seconds": 60,
+      "host_platform": "Linux-5.15.0-177-generic-x86_64-with-glibc2.35",
+      "host_cpu_count": 2,
+      "offered_frames": 1206,
+      "captured_frames": 1206,
+      "indexed_frames": 112,
+      "pending_frames_at_stop": 1094,
+      "rejected_frames": 0,
+      "preventive_stop": true,
+      "indexed_frames_per_second": 14.453,
+      "mean_16_frame_processing_ms": 200.144,
+      "max_service_gap_ms": 1601.017,
+      "required_max_service_gap_ms": 1500,
+      "burst_reached": false
+    },
+    "additional_failed_f1_reports": [
+      {"path": "docs/v2/session041-evidence/13e099c597a41e4405b376380625bad3b455abdc02134bbccd886c3aefaf1606.json", "sha256": "13e099c597a41e4405b376380625bad3b455abdc02134bbccd886c3aefaf1606"},
+      {"path": "docs/v2/session041-evidence/f07b357446b555130fd30d53e1a76b8254b016ac56cc96dcc9a75c647f3ff892.json", "sha256": "f07b357446b555130fd30d53e1a76b8254b016ac56cc96dcc9a75c647f3ff892"},
+      {"path": "docs/v2/session041-evidence/f869afb6a25492617717c2725c09d9d9dec9c159ed33a7c67c879dd8748ff4b8.json", "sha256": "f869afb6a25492617717c2725c09d9d9dec9c159ed33a7c67c879dd8748ff4b8"},
+      {"path": "docs/v2/session041-evidence/ec0793add3345bd8dcf3d9f050b8343d2af73a27e73fd52cbc3875179ea4deb3.json", "sha256": "ec0793add3345bd8dcf3d9f050b8343d2af73a27e73fd52cbc3875179ea4deb3"}
+    ],
+    "source_stable_focused_gate": {
+      "sha": "3bd112af51c68621258bee92fea9048034f03b0e",
+      "command": "python -m pytest -q tests/v2/test_session041_recovery_queue.py tests/v2/test_session041_recovery_adoption.py tests/v2/test_session041_public_runtime_integration.py",
+      "collected": 33,
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0
+    },
+    "static_changed_seam": {"ruff": "PASS", "compileall": "PASS", "git_diff_check": "PASS"},
+    "remaining_engineering_gates": [
+      "F1 must pass on a host bound to the selected run profile before E2/P2 or intelligence expansion.",
+      "E2 physical evidence, post-commit observation gating, broad polling capacity and F2-F4 remain open.",
+      "Full V1/V2 suites, final mixed 30-minute qualification, native Windows, final independent review and security/dependency gates remain open."
+    ],
+    "external_gates": [
+      "Authenticated Bybit/Binance behavior and protection equivalence TEST GATE.",
+      "Owner Windows commissioning, long-run endurance and prospective economics; economics remains NOT ESTIMABLE."
+    ],
+    "single_unresolved_question": "Can the accepted implementation meet F1 on the actual selected owner host/profile? If a resource-matched run fails, coordinating capacity architecture review is required before further integration."
+  },
   "final_code_sha": null,
   "final_tested_sha": null,
   "head_at_inventory": "a01f343f7c6be005e6d92450997bd1bbd0344800",

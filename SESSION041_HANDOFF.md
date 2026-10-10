@@ -2,6 +2,19 @@
 
 Status: **UNVERIFIED — engineering closure has not passed.** This is an active work checkpoint, not a release or final acceptance report.
 
+## S41-R2 bounded implementation checkpoint — 2026-10-10
+
+Status: **STOPPED AT F1 — capacity not qualified.** Implementation is limited to the accepted R1 design and must not proceed into full E2/P2 or intelligence integration until the early throughput gate passes on a host bound to the intended run profile.
+
+- Accepted R1 base: `eaf51d367dea1e13be544f7de23a6626279f7ad9`.
+- Implementation checkpoint: `3bd112af51c68621258bee92fea9048034f03b0e` on `fix/session-041-final-v2-recovery`; the final remote branch tip is reported with this checkpoint handoff.
+- Latest source-bound F1 report: `docs/v2/session041-evidence/2e5f73a07660f6ec95fd29907074df99253359bc7d4bfab5e6feeb53cb0a8489.json` (SHA-256 `2e5f73a07660f6ec95fd29907074df99253359bc7d4bfab5e6feeb53cb0a8489`). It binds base commit `3bd112a`, F1 profile hash `104efecc016d647b73180eeb0226301102d65747e97659f626c654b957d223c8`, and the exact changed source file hashes.
+- F1 ran 7.75 seconds of the required 60 before `PREVENTIVE_CAPTURE_PRESSURE_STOP`. It offered and durably captured 1,206 frames, indexed 112, and ended with 1,094 pending. Indexed rate was 14.45 frames/s; mean 16-frame processing was 200.14 ms against the 100 ms gate; maximum service gap was 1.601 s against 1.5 s. The 320 frames/s burst was not reached. There were no frame rejections in this run, but final drain and the complete offered/captured/indexed equivalence gate failed.
+- The measured host was Linux with 2 reported CPUs and about 95 GB free on the test device. It is not the selected owner Windows device. Four preceding F1 reports are retained beside the latest report; all failed, including runs with worker watchdog timeouts and indexed rates below 7 frames/s. None qualifies the owner's device.
+- Source-stable changed-seam test command on `3bd112a`: `python -m pytest -q tests/v2/test_session041_recovery_queue.py tests/v2/test_session041_recovery_adoption.py tests/v2/test_session041_public_runtime_integration.py` — 33 passed. Ruff, compileall and `git diff --check` passed for the touched seams. Full V1/V2, 30-minute capacity, native Windows, security/dependency and independent final review gates were not run.
+
+The unresolved decision is whether the accepted implementation can meet F1 on the actual selected owner host/profile. The recommended next step is to run this same F1 profile on a host meeting that declared resource envelope and bind its report to the exact code/profile. If it still fails, stop for coordinating architecture review before broad integration. Do not relax queue, durability, service or cadence limits. No capital or assisted execution is enabled; economics remains **NOT ESTIMABLE**. Authenticated venue behavior/protection, owner endurance, prospective economics and packaging remain separate later gates.
+
 ## Repository identity
 
 - Branch: `impl/session-041-final-full-v2-engineering-closure`.

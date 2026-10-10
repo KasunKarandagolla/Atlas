@@ -2,6 +2,12 @@
 
 This is a continuing engineering record, not a final release or live-test candidate acceptance. Final code/tested SHA and Windows package are absent. Capital and assisted execution are disabled; economics are **NOT ESTIMABLE**.
 
+## Current S41-R2 checkpoint — 2026-10-10
+
+Not ready for the owner live-test program. The R2 implementation is stopped at the required early F1 capacity gate on checkpoint `3bd112af51c68621258bee92fea9048034f03b0e`. The source-bound report `docs/v2/session041-evidence/2e5f73a07660f6ec95fd29907074df99253359bc7d4bfab5e6feeb53cb0a8489.json` failed after 7.75 seconds: preventive capture-pressure stop, 112 indexed of 1,206 captured, 1,094 pending, 200.14 ms mean 16-frame processing, 1.601 s maximum service gap, and no measured burst. The test host reported 2 CPUs and does not qualify the selected owner device. The 33 focused queue/adoption/runtime tests passed on the checkpoint SHA; no full-suite or final qualification is claimed.
+
+The next decision depends on an F1 run bound to a host meeting the selected run profile. If that run fails, capacity architecture review is required before broad integration. Capital and assisted execution remain disabled; economics remains **NOT ESTIMABLE**. Authenticated venue/protection, native Windows owner behavior, endurance and prospective economic evidence remain separate gates.
+
 1. UNVERIFIED. Complete authorized engineering is not yet established; the matrix and ordinary work remain open.
 
 2. No. Full current-SHA offline/native gates are incomplete.
