@@ -9,7 +9,7 @@ import hashlib
 import json
 import time
 from collections import deque
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -22,7 +22,7 @@ from ..data.broad_stream_source import (
     BroadPublicStreamPlanV2,
     BroadPublicStreamSourceV2,
 )
-from ..data.durable_public_capture import MAX_PENDING_CAPTURE_BATCHES, SealedPublicTransportV1
+from ..data.durable_public_capture import SealedPublicTransportV1
 from ..data.health import PublicSourceHealthV2, PublicSourceStateV2
 from ..data.microstructure import (
     BookStateV2,
@@ -31,12 +31,16 @@ from ..data.microstructure import (
     L2SnapshotV2,
     SequenceValidBookV2,
 )
-from ..data.microstructure_archive import L2FrameArchiveV2, L2RawFrameV2
+from ..data.microstructure_archive import (
+    L2FrameArchiveV2,
+    L2RawFrameV2,
+    PreparedL2ArchiveBatchV2,
+    PreparedL2ArchiveChunkV2,
+)
 from ..data.public_evidence_preparation import (
     MAX_PREPARATION_FRAMES_V2,
     MAX_PREPARATION_INPUT_BYTES_V2,
     MAX_PREPARATION_OUTPUT_RECORDS_V2,
-    MAX_PREPARATION_RESULT_BYTES_V2,
     MAX_PREPARATION_SEAL_CHUNKS_V2,
     MAX_PREPARATION_TRADE_ROWS_V2,
     PREPARATION_VERSION_V2,
@@ -46,7 +50,6 @@ from ..data.public_evidence_preparation import (
     decode_prepared_events,
     read_preparation_input,
     read_preparation_result,
-    write_preparation_blob,
     write_preparation_input,
 )
 from ..data.public_microstructure_ws import (
@@ -66,6 +69,8 @@ from ..memory.repository import ArtifactIndexEntryV2, OpsRepository, PublicAdopt
 _PHASE_TIMING_NAMES = (
     "input_write",
     "worker_wait",
+    "worker_poll",
+    "worker_pending",
     "worker_execution",
     "seal_worker_wait",
     "seal_worker_execution",
@@ -96,6 +101,15 @@ class _PreparedFrameParseV2:
 class _PreparedFramePublicationV2:
     artifact_entries: tuple[ArtifactIndexEntryV2, ...]
     archive_groups: tuple[tuple[L2RawFrameV2, ...], ...]
+
+
+@dataclass
+class _PendingPublicAdoptionV2:
+    sealed: SealedPublicTransportV1
+    steps: Generator[PublicEvidencePreparationRequestV2,
+                     PublicEvidencePreparationResultV2, tuple[CapturedPublicFrameV2, ...]]
+    request: PublicEvidencePreparationRequestV2
+    submitted_at_ns: int
 
 
 class BroadPublicRuntimeV2:
@@ -134,6 +148,7 @@ class BroadPublicRuntimeV2:
         self._capture_epoch = "0" * 64
         self._archive: L2FrameArchiveV2 | None = None
         self._preparation_worker: PublicEvidencePreparationWorkerV2 | None = None
+        self._pending_adoption: _PendingPublicAdoptionV2 | None = None
         self._products: dict[InstrumentKeyV2, ProductContractV2] = {}
         self._sequence_books: dict[InstrumentKeyV2, SequenceValidBookV2] = {}
         self._trackers: dict[tuple[InstrumentKeyV2, str], PublicStreamContinuityTrackerV1] = {}
@@ -177,21 +192,44 @@ class BroadPublicRuntimeV2:
         finally:
             self._record_phase_duration_ns(phase, time.monotonic_ns() - started)
 
-    def _wait_for_preparation(self, worker: PublicEvidencePreparationWorkerV2,
-                              request: PublicEvidencePreparationRequestV2
-                              ) -> PublicEvidencePreparationResultV2:
+    def _submit_preparation(
+        self,
+        steps: Generator[PublicEvidencePreparationRequestV2,
+                         PublicEvidencePreparationResultV2, tuple[CapturedPublicFrameV2, ...]],
+        sealed: SealedPublicTransportV1,
+    ) -> _PendingPublicAdoptionV2:
+        worker = self._preparation_worker
+        if worker is None:
+            raise RuntimeError("BROAD_PUBLIC_PREPARATION_WORKER_UNAVAILABLE")
+        request = next(steps)
+        worker.submit(request)
+        return _PendingPublicAdoptionV2(sealed, steps, request, time.monotonic_ns())
+
+    def _advance_preparation(self) -> tuple[bool, tuple[CapturedPublicFrameV2, ...] | None]:
+        """Poll the single worker slot; continuation work stays on this writer."""
+        pending = self._pending_adoption
+        worker = self._preparation_worker
+        if pending is None or worker is None:
+            raise RuntimeError("BROAD_PUBLIC_PREPARATION_PENDING_STATE_INVALID")
         started = time.monotonic_ns()
-        try:
-            result = worker.wait(request)
-        finally:
-            wait_duration = time.monotonic_ns() - started
-            self._record_phase_duration_ns("worker_wait", wait_duration)
-            if request.kind == "SEAL":
-                self._record_phase_duration_ns("seal_worker_wait", wait_duration)
+        result = worker.poll()
+        self._record_phase_duration_ns("worker_poll", time.monotonic_ns() - started)
+        if result is None:
+            return False, None
+        result = worker.take_completion()
+        self._record_phase_duration_ns("worker_pending", time.monotonic_ns() - pending.submitted_at_ns)
         self._record_phase_duration_ns("worker_execution", result.execution_duration_ns)
-        if request.kind == "SEAL":
+        if pending.request.kind == "SEAL":
             self._record_phase_duration_ns("seal_worker_execution", result.execution_duration_ns)
-        return result
+        try:
+            next_request = pending.steps.send(result)
+        except StopIteration as completed:
+            self._pending_adoption = None
+            return True, completed.value
+        worker.submit(next_request)
+        pending.request = next_request
+        pending.submitted_at_ns = time.monotonic_ns()
+        return True, None
 
     @property
     def sequence_books(self) -> Mapping[InstrumentKeyV2, SequenceValidBookV2]:
@@ -329,6 +367,14 @@ class BroadPublicRuntimeV2:
                 if grouped:
                     self._archive.write_chunks(tuple(tuple(group) for group in grouped.values()))
             for _ in range(4):
+                if self.interpret_frames is None and self._pending_adoption is not None:
+                    _progressed, frames = self._advance_preparation()
+                    if frames is None:
+                        break
+                    self._record_adopted_frames(frames)
+                    if time.monotonic_ns() - started >= 50_000_000:
+                        break
+                    continue
                 status = self.capture.status()
                 if status.state == "FAILED" or status.capture.get("terminal_error"):
                     raise RuntimeError("BROAD_PUBLIC_CAPTURE_TERMINAL_FAILURE")
@@ -339,76 +385,19 @@ class BroadPublicRuntimeV2:
                     break
                 if not isinstance(sealed, SealedPublicTransportV1):
                     raise TypeError("broad public capture returned an invalid sealed batch")
-                # The immutable archive extent and descriptor become durable
-                # before any frame is parsed or routed to stateful consumers.
-                # One repository composition then publishes the exact raw
-                # index and all derived rows together. This avoids a FULL
-                # synchronous commit for every small per-frame health/trade
-                # record while keeping raw bytes durable before SQL effects.
-                if self.interpret_frames is not None:
+                if self.interpret_frames is None:
+                    steps = self._adopt_sealed_descriptor(repository, sealed, now_ns=now_ns)
+                    self._pending_adoption = self._submit_preparation(steps, sealed)
+                    # One descriptor is retained until every worker result is
+                    # validated and the sole writer commits its publication.
+                    break
+                # Compatibility callback remains a synchronous, isolated test seam.
+                else:
                     with self._measure_phase("public_commit"), repository.atomic_composition():
                         frames = sealed.adopt(repository)
                         with self._measure_phase("interpreter"):
                             self.interpret_frames(repository, self.plan, frames, now_ns)
-                else:
-                    frames = sealed.read_unpublished(self._run_root or Path(repository.path).parent)
-                    prepared = self._prepare_descriptor_events(repository, sealed, frames, now_ns=now_ns)
-                    old_books, old_trackers, old_epochs = (
-                        self._sequence_books, self._trackers, self._connection_epochs,
-                    )
-                    staged_books, staged_trackers, staged_epochs = self._candidate_state_for_frames(frames)
-                    old_snapshot_failure = self._snapshot_failure
-                    deferred_snapshot_requests: list[tuple[ProductContractV2, CapturedPublicFrameV2,
-                                                          L2DeltaV2, int]] = []
-                    self._sequence_books, self._trackers, self._connection_epochs = (
-                        staged_books, staged_trackers, staged_epochs,
-                    )
-                    self._deferred_snapshot_requests = deferred_snapshot_requests
-                    self._prepared_events_for_call = prepared
-                    self._defer_publication_for_call = True
-                    try:
-                        with self._measure_phase("interpreter"):
-                            publication = self._interpret_frames(
-                                repository, frames, now_ns=now_ns,
-                            )
-                        staged_snapshot_failure = self._snapshot_failure
-                    finally:
-                        self._sequence_books, self._trackers, self._connection_epochs = (
-                            old_books, old_trackers, old_epochs,
-                        )
-                        self._snapshot_failure = old_snapshot_failure
-                        self._deferred_snapshot_requests = None
-                        self._prepared_events_for_call = None
-                        self._defer_publication_for_call = False
-                    if publication is None:
-                        raise RuntimeError("BROAD_PUBLIC_PREPARATION_PUBLICATION_MISSING")
-                    with self._measure_phase("archive_seal"):
-                        with self._measure_phase("archive_prepare_chunks"):
-                            archive_batch = self._archive.prepare_chunks(publication.archive_groups)
-                        archive_entries = self._seal_prepared_archive(sealed, archive_batch)
-                    with self._measure_phase("public_commit"), repository.atomic_composition():
-                        adopted_frames = sealed.adopt_verified(repository, frames)
-                        if adopted_frames != frames:
-                            raise ValueError("BROAD_PUBLIC_DURABLE_DESCRIPTOR_CHANGED_DURING_PREPARATION")
-                        if publication.artifact_entries:
-                            repository.register_artifacts(publication.artifact_entries)
-                        self._archive.publish_prepared(archive_batch, archive_entries, repository=repository)
-                        if self._run_id is None:
-                            raise RuntimeError("BROAD_PUBLIC_RUN_ID_UNAVAILABLE")
-                        repository.clear_public_adoption_v2(self._run_id, sealed.batch.artifact_ref)
-                    # Candidate books, trackers and connection epochs become
-                    # visible only after raw identity and all derived rows
-                    # commit together.
-                    self._sequence_books = staged_books
-                    self._trackers = staged_trackers
-                    self._connection_epochs = staged_epochs
-                    self._snapshot_failure = staged_snapshot_failure
-                    for product, frame, delta, processed_at in deferred_snapshot_requests:
-                        self._queue_snapshot_delta(repository, product, frame, delta, processed_at)
-                self._service_frames += len(frames)
-                for frame in frames:
-                    lane = frame.source_id.removesuffix("_PUBLIC_WS_BROAD_V2")
-                    self._indexed_frames_by_lane[lane] = self._indexed_frames_by_lane.get(lane, 0) + 1
+                self._record_adopted_frames(frames)
                 if time.monotonic_ns() - started >= 50_000_000:
                     break
         except Exception as exc:
@@ -424,6 +413,12 @@ class BroadPublicRuntimeV2:
             self._last_service_duration_ns = time.monotonic_ns() - started
             self._max_service_duration_ns = max(self._max_service_duration_ns, self._last_service_duration_ns)
 
+    def _record_adopted_frames(self, frames: tuple[CapturedPublicFrameV2, ...]) -> None:
+        self._service_frames += len(frames)
+        for frame in frames:
+            lane = frame.source_id.removesuffix("_PUBLIC_WS_BROAD_V2")
+            self._indexed_frames_by_lane[lane] = self._indexed_frames_by_lane.get(lane, 0) + 1
+
     def finish(self, repository: OpsRepository) -> None:
         if self.capture is None:
             return
@@ -431,13 +426,18 @@ class BroadPublicRuntimeV2:
         if self._terminal_error is not None:
             raise RuntimeError("BROAD_PUBLIC_CAPTURE_NOT_CLEAN")
         deadline = time.monotonic() + 5.0
-        for _ in range(MAX_PENDING_CAPTURE_BATCHES):
-            if not self.capture.status().pending_frames:
+        while True:
+            capture_pending = self.capture.status().pending_frames
+            if not capture_pending and self._pending_adoption is None:
                 break
             if time.monotonic() >= deadline:
                 raise RuntimeError("BROAD_PUBLIC_CAPTURE_FINAL_BACKLOG_DEADLINE_EXCEEDED")
             self.service(repository, now_ns=self.clock_ns())
-        if self.capture.status().pending_frames:
+            # Polling is nonblocking by design. Yield briefly while the single
+            # bounded process job runs instead of spinning the sole writer.
+            if self._pending_adoption is not None:
+                time.sleep(0.001)
+        if self.capture.status().pending_frames or self._pending_adoption is not None:
             raise RuntimeError("BROAD_PUBLIC_CAPTURE_FINAL_BACKLOG_EXCEEDED")
         self.capture.mark_controller_capture_clean(repository)
 
@@ -487,7 +487,8 @@ class BroadPublicRuntimeV2:
 
     def _record_occupancy_sample(self) -> None:
         try:
-            pending = self.capture.status().pending_frames if self.capture is not None else 0
+            pending = ((self.capture.status().pending_frames if self.capture is not None else 0)
+                       + self._pending_adoption_frames())
         except Exception:
             pending = -1
         self._occupancy_samples.append({
@@ -496,6 +497,10 @@ class BroadPublicRuntimeV2:
             "indexed_frames": sum(self._indexed_frames_by_lane.values()),
             "indexed_by_lane": dict(sorted(self._indexed_frames_by_lane.items())),
         })
+
+    def _pending_adoption_frames(self) -> int:
+        pending = self._pending_adoption
+        return pending.sealed.frame_count if pending is not None else 0
 
     def status(self) -> Any:
         if self.capture is None:
@@ -511,8 +516,10 @@ class BroadPublicRuntimeV2:
             capture = {"pending_batches": 0, "max_pending_batches": 64, "pending_frames": 0,
                        "captured_frames": 0, "delivered_frames": 0, "terminal_error": self._terminal_error,
                        "active_capture_duration_ns": 0, "authority": "ZERO"}
+            capture["adoption_pending_batches"] = int(self._pending_adoption is not None)
+            capture["pending_frames"] = self._pending_adoption_frames()
             return SimpleNamespace(state="FAILED" if self._terminal_error else "CREATED", attempt_count=0,
-                                   handoff=handoff, capture=capture, pending_frames=0,
+                                   handoff=handoff, capture=capture, pending_frames=capture["pending_frames"],
                                    plan_id=None, lanes={},
                                    phase_timings_ns=self._phase_timing_summary_ns())
         source_status = self.capture.status()
@@ -526,10 +533,12 @@ class BroadPublicRuntimeV2:
                 else PublicSourceStateV2.INCOMPLETE_SNAPSHOT.value
             )
         capture = dict(source_status.capture)
+        capture["adoption_pending_batches"] = int(self._pending_adoption is not None)
+        capture["pending_frames"] = int(capture.get("pending_frames", 0)) + self._pending_adoption_frames()
         capture["terminal_error"] = self._terminal_error or capture.get("terminal_error")
         return SimpleNamespace(
             state=source_status.state, attempt_count=source_status.attempt_count,
-            handoff=source_status.handoff, capture=capture, pending_frames=source_status.pending_frames,
+            handoff=source_status.handoff, capture=capture, pending_frames=capture["pending_frames"],
             plan_id=self.plan.plan_id if self.plan is not None else None,
             lanes=source_status.lanes, service_calls=self._service_calls, service_frames=self._service_frames,
             last_service_at_ns=self._last_service_at_ns,
@@ -543,6 +552,70 @@ class BroadPublicRuntimeV2:
             authority="ZERO",
         )
 
+    def _adopt_sealed_descriptor(
+        self,
+        repository: OpsRepository,
+        sealed: SealedPublicTransportV1,
+        *,
+        now_ns: int,
+    ) -> Generator[PublicEvidencePreparationRequestV2,
+                    PublicEvidencePreparationResultV2, tuple[CapturedPublicFrameV2, ...]]:
+        """Writer-owned adoption continuation with nonblocking PARSE/SEAL yields."""
+        frames = sealed.read_unpublished(self._run_root or Path(repository.path).parent)
+        prepared = yield from self._prepare_descriptor_events(repository, sealed, frames, now_ns=now_ns)
+        old_books, old_trackers, old_epochs = (
+            self._sequence_books, self._trackers, self._connection_epochs,
+        )
+        staged_books, staged_trackers, staged_epochs = self._candidate_state_for_frames(frames)
+        old_snapshot_failure = self._snapshot_failure
+        deferred_snapshot_requests: list[tuple[ProductContractV2, CapturedPublicFrameV2,
+                                              L2DeltaV2, int]] = []
+        self._sequence_books, self._trackers, self._connection_epochs = (
+            staged_books, staged_trackers, staged_epochs,
+        )
+        self._deferred_snapshot_requests = deferred_snapshot_requests
+        self._prepared_events_for_call = prepared
+        self._defer_publication_for_call = True
+        try:
+            with self._measure_phase("interpreter"):
+                publication = self._interpret_frames(repository, frames, now_ns=now_ns)
+            staged_snapshot_failure = self._snapshot_failure
+        finally:
+            self._sequence_books, self._trackers, self._connection_epochs = (
+                old_books, old_trackers, old_epochs,
+            )
+            self._snapshot_failure = old_snapshot_failure
+            self._deferred_snapshot_requests = None
+            self._prepared_events_for_call = None
+            self._defer_publication_for_call = False
+        if publication is None:
+            raise RuntimeError("BROAD_PUBLIC_PREPARATION_PUBLICATION_MISSING")
+        if self._archive is None:
+            raise RuntimeError("BROAD_PUBLIC_ARCHIVE_NOT_RECOVERED")
+        with self._measure_phase("archive_seal"):
+            archive_batch, archive_entries = yield from self._seal_prepared_archive(
+                sealed, publication.archive_groups,
+            )
+        with self._measure_phase("public_commit"), repository.atomic_composition():
+            adopted_frames = sealed.adopt_verified(repository, frames)
+            if adopted_frames != frames:
+                raise ValueError("BROAD_PUBLIC_DURABLE_DESCRIPTOR_CHANGED_DURING_PREPARATION")
+            if publication.artifact_entries:
+                repository.register_artifacts(publication.artifact_entries)
+            self._archive.publish_prepared(archive_batch, archive_entries, repository=repository)
+            if self._run_id is None:
+                raise RuntimeError("BROAD_PUBLIC_RUN_ID_UNAVAILABLE")
+            repository.clear_public_adoption_v2(self._run_id, sealed.batch.artifact_ref)
+        # Candidate state becomes visible only after raw identity and all
+        # derived rows commit together on the sole repository writer.
+        self._sequence_books = staged_books
+        self._trackers = staged_trackers
+        self._connection_epochs = staged_epochs
+        self._snapshot_failure = staged_snapshot_failure
+        for product, frame, delta, processed_at in deferred_snapshot_requests:
+            self._queue_snapshot_delta(repository, product, frame, delta, processed_at)
+        return frames
+
     def _prepare_descriptor_events(
         self,
         repository: OpsRepository,
@@ -550,7 +623,8 @@ class BroadPublicRuntimeV2:
         frames: tuple[CapturedPublicFrameV2, ...],
         *,
         now_ns: int,
-    ) -> dict[int, _PreparedFrameParseV2]:
+    ) -> Generator[PublicEvidencePreparationRequestV2,
+                    PublicEvidencePreparationResultV2, dict[int, _PreparedFrameParseV2]]:
         if self.plan is None or self._run_root is None or self._run_id is None:
             raise RuntimeError("BROAD_PUBLIC_PREPARATION_NOT_RECOVERED")
         worker = self._preparation_worker
@@ -690,7 +764,7 @@ class BroadPublicRuntimeV2:
                 input_hash, str(input_path), str(output_path), plan_hash, key.content_hash,
                 frame_ordinal, trade_ordinal, requested_end, processed_at_ns=processed_at,
             )
-            result = self._wait_for_preparation(worker, request)
+            result = yield request
             with self._measure_phase("result_read_rehydrate"):
                 body = read_preparation_result(request, result)
                 frame_results = self._validate_prepared_parse_body(
@@ -953,50 +1027,57 @@ class BroadPublicRuntimeV2:
     def _seal_prepared_archive(
         self,
         sealed: SealedPublicTransportV1,
-        batch: Any,
-    ) -> tuple[ArtifactIndexEntryV2, ...]:
+        archive_groups: tuple[tuple[L2RawFrameV2, ...], ...],
+    ) -> Generator[PublicEvidencePreparationRequestV2,
+                    PublicEvidencePreparationResultV2,
+                    tuple[PreparedL2ArchiveBatchV2, tuple[ArtifactIndexEntryV2, ...]]]:
         if self._run_root is None or self.plan is None or self._preparation_worker is None:
             raise RuntimeError("BROAD_PUBLIC_ARCHIVE_PREPARATION_NOT_RECOVERED")
-        if not batch.chunks:
-            return ()
-        import pyarrow as pa
-
-        from ..data.public_archive_extents import EXTENT_TYPE, extent_ref
-
-        if (len(batch.chunks) > MAX_PREPARATION_SEAL_CHUNKS_V2
-                or sum(chunk.table.num_rows for chunk in batch.chunks)
-                > MAX_PREPARATION_OUTPUT_RECORDS_V2):
+        if not archive_groups:
+            return PreparedL2ArchiveBatchV2(()), ()
+        archive_frames: list[L2RawFrameV2] = []
+        group_ordinals: list[list[int]] = []
+        for group in archive_groups:
+            if not group:
+                raise ValueError("BROAD_ARCHIVE_PREPARATION_EMPTY_GROUP")
+            ordinals = []
+            for frame in group:
+                if frame.transport_ordinal is None:
+                    raise ValueError("BROAD_ARCHIVE_TRANSPORT_ORDINAL_MISSING")
+                ordinal = len(archive_frames)
+                archive_frames.append(replace(frame, archive_ordinal=ordinal))
+                ordinals.append(ordinal)
+            group_ordinals.append(ordinals)
+        if len(archive_frames) > MAX_PREPARATION_OUTPUT_RECORDS_V2:
             raise ValueError("BROAD_ARCHIVE_SEAL_BATCH_EXCEEDS_BOUND")
         private_root = self._run_root / ".public-evidence-preparation" / sealed.batch.artifact_ref
         private_root.mkdir(parents=True, exist_ok=True)
-        chunk_ids = tuple(chunk.chunk_id for chunk in batch.chunks)
-        floor_by_chunk = {
-            chunk.chunk_id: chunk.frames[-1].available_at_ns for chunk in batch.chunks
+        input_path = private_root / f"seal-manifest-{sealed.batch.artifact_ref}.json"
+        input_value = {
+            "version": "PUBLIC_ARCHIVE_PREPARE_SEAL_V1",
+            "transport_batch_ref": sealed.batch.artifact_ref,
+            "transport_batch": dict(sealed.batch.metadata["batch"]),
+            "transport_extent": {
+                "artifact_ref": sealed.extent.artifact_ref,
+                "artifact_type": sealed.extent.artifact_type,
+                "content_hash": sealed.extent.content_hash,
+                "created_at_ns": sealed.extent.created_at_ns,
+                "available_at_ns": sealed.extent.available_at_ns,
+                "metadata": dict(sealed.extent.metadata),
+            },
+            "records": [{"archive_ordinal": frame.archive_ordinal,
+                         "transport_ordinal": frame.transport_ordinal,
+                         "metadata": frame.metadata_dict()} for frame in archive_frames],
+            "groups": group_ordinals,
         }
-        rows = []
-        for chunk in batch.chunks:
-            for row in chunk.table.to_pylist():
-                rows.append({**row, "_atlas_chunk_id": chunk.chunk_id,
-                             "_atlas_floor_ns": floor_by_chunk[chunk.chunk_id]})
-        seal_table = pa.Table.from_pylist(rows)
-        if (not 1 <= seal_table.num_rows <= MAX_PREPARATION_OUTPUT_RECORDS_V2
-                or seal_table.nbytes > MAX_PREPARATION_RESULT_BYTES_V2):
-            raise ValueError("BROAD_ARCHIVE_SEAL_BATCH_EXCEEDS_BYTE_BOUND")
-        stream = pa.BufferOutputStream()
-        with self._measure_phase("archive_arrow_encode"), pa.ipc.new_stream(
-            stream, seal_table.schema,
-        ) as writer:
-            writer.write_table(seal_table)
-        input_path = private_root / f"seal-batch-{sealed.batch.artifact_ref}.arrow"
         with (self._measure_phase("input_write"), self._measure_phase("seal_input_write")):
-            input_hash, _input_bytes = write_preparation_blob(
-                input_path, stream.getvalue().to_pybytes(),
-            )
-        batch_id = sha256_json({"version": "PUBLIC_ARCHIVE_SEAL_BATCH_V1",
-                                "chunk_ids": list(chunk_ids)})
+            input_hash, _input_bytes = write_preparation_input(input_path, input_value)
+        batch_id = sha256_json({"version": "PUBLIC_ARCHIVE_PREPARE_SEAL_V1",
+                                "descriptor_hash": sealed.batch.artifact_ref,
+                                "input_hash": input_hash})
         output_path = private_root / f"seal-result-{batch_id}.json"
-        key = batch.chunks[0].frames[0].instrument
-        floor_ns = max(floor_by_chunk.values())
+        key = archive_frames[0].instrument
+        floor_ns = max(frame.available_at_ns for frame in archive_frames)
         clock_at_ns = max(self.clock_ns(), floor_ns)
         job_id = sha256_json({"kind": "SEAL", "descriptor": sealed.batch.artifact_ref,
                              "chunk_id": batch_id, "input_hash": input_hash,
@@ -1008,10 +1089,11 @@ class BroadPublicRuntimeV2:
             0, 0, 0, namespace="ops-l2-frames", chunk_id=batch_id,
             floor_ns=floor_ns, clock_at_ns=clock_at_ns,
         )
-        completion = self._wait_for_preparation(self._preparation_worker, request)
+        completion = yield request
         with self._measure_phase("result_read_rehydrate"):
             with self._measure_phase("seal_result_read"):
                 body = read_preparation_result(request, completion)
+            chunk_bindings = body.get("archive_chunks")
             extents = body.get("extents")
             if (body.get("version") != PREPARATION_VERSION_V2
                     or body.get("job_id") != request.job_id
@@ -1020,14 +1102,17 @@ class BroadPublicRuntimeV2:
                     or body.get("plan_hash") != self.plan.plan_id
                     or body.get("product_hash") != key.content_hash
                     or body.get("chunk_id") != batch_id
-                    or body.get("chunk_ids") != list(chunk_ids)
                     or body.get("frame_ordinal") != 0
-                    or body.get("result_records") != seal_table.num_rows
-                    or not isinstance(extents, list) or len(extents) != len(chunk_ids)
+                    or body.get("trade_ordinal_start") != 0 or body.get("trade_ordinal_end") != 0
+                    or body.get("result_records") != len(archive_frames)
+                    or not isinstance(chunk_bindings, list) or not chunk_bindings
+                    or len(chunk_bindings) > MAX_PREPARATION_SEAL_CHUNKS_V2
+                    or not isinstance(extents, list) or len(extents) != len(chunk_bindings)
                     or not isinstance(body.get("seal_metrics"), Mapping)):
                 raise ValueError("BROAD_ARCHIVE_SEAL_RESULT_BINDING_INVALID")
             metrics = body["seal_metrics"]
             for source_name, phase_name in (
+                ("prepare_ns", "archive_prepare_chunks"),
                 ("arrow_encode_ns", "archive_arrow_encode"),
                 ("compression_ns", "archive_compression"),
                 ("write_ns", "archive_extent_write"),
@@ -1039,10 +1124,33 @@ class BroadPublicRuntimeV2:
                 if type(duration) is not int or duration < 0:
                     raise ValueError("BROAD_ARCHIVE_SEAL_METRICS_INVALID")
                 self._record_phase_duration_ns(phase_name, duration)
-            sealed_entries = []
-            by_chunk = dict(zip(chunk_ids, extents, strict=True))
-            for chunk_id in chunk_ids:
-                extent = by_chunk[chunk_id]
+            from ..data.public_archive_extents import EXTENT_TYPE, extent_ref
+
+            prepared_chunks = []
+            sealed_entries: list[ArtifactIndexEntryV2] = []
+            seen_archive_ordinals: list[int] = []
+            for binding, extent in zip(chunk_bindings, extents, strict=True):
+                if (not isinstance(binding, Mapping)
+                        or set(binding) != {"chunk_id", "archive_ordinals"}):
+                    raise ValueError("BROAD_ARCHIVE_SEAL_CHUNK_BINDING_INVALID")
+                chunk_id = str(binding["chunk_id"])
+                ordinals = binding["archive_ordinals"]
+                if (not isinstance(ordinals, list) or not 1 <= len(ordinals) <= 512
+                        or any(type(ordinal) is not int or not 0 <= ordinal < len(archive_frames)
+                               for ordinal in ordinals)):
+                    raise ValueError("BROAD_ARCHIVE_SEAL_ORDINAL_BINDING_INVALID")
+                frames = tuple(archive_frames[ordinal] for ordinal in ordinals)
+                ordered = tuple(sorted(frames, key=lambda frame: (
+                    frame.available_at_ns, frame.source_id, frame.channel,
+                    frame.last_update_id if frame.last_update_id is not None else -1,
+                    frame.raw_payload_hash,
+                )))
+                expected_id = sha256_json({"archive_type": "L2RawFrameChunkV2",
+                                           "frames": [frame.metadata_dict() for frame in ordered]})
+                if expected_id != chunk_id:
+                    raise ValueError("BROAD_ARCHIVE_SEAL_CHUNK_IDENTITY_INVALID")
+                seen_archive_ordinals.extend(ordinals)
+                prepared_chunks.append(PreparedL2ArchiveChunkV2(chunk_id, ordered, None))
                 if not isinstance(extent, Mapping):
                     raise ValueError("BROAD_ARCHIVE_SEAL_EXTENT_INVALID")
                 metadata = extent.get("metadata")
@@ -1058,7 +1166,9 @@ class BroadPublicRuntimeV2:
                     str(extent["content_hash"]), int(extent["created_at_ns"]),
                     int(extent["available_at_ns"]), metadata,
                 ))
-        return tuple(sealed_entries)
+            if sorted(seen_archive_ordinals) != list(range(len(archive_frames))):
+                raise ValueError("BROAD_ARCHIVE_SEAL_ORDINAL_POPULATION_INVALID")
+        return PreparedL2ArchiveBatchV2(tuple(prepared_chunks)), tuple(sealed_entries)
 
     def _candidate_state_for_frames(self, frames: tuple[CapturedPublicFrameV2, ...]) -> tuple[
         dict[InstrumentKeyV2, SequenceValidBookV2],
@@ -1173,7 +1283,7 @@ class BroadPublicRuntimeV2:
                             frame, instrument=key, frame_type="DELTA_AWAITING_REST_SNAPSHOT",
                             sequence_semantics="BINANCE_U_PU", first_update_id=event.first_update_id,
                             last_update_id=event.last_update_id, previous_update_id=event.previous_update_id,
-                            event_at_ns=event.event_at_ns,
+                            event_at_ns=event.event_at_ns, transport_ordinal=frame_ordinal,
                         )
                         grouped.setdefault((key.content_hash, frame.source_id, frame.channel), []).append(raw)
                     continue
@@ -1199,7 +1309,7 @@ class BroadPublicRuntimeV2:
                         first_update_id=getattr(event, "first_update_id", None),
                         last_update_id=getattr(event, "last_update_id", None),
                         previous_update_id=getattr(event, "previous_update_id", None),
-                        event_at_ns=event.event_at_ns,
+                        event_at_ns=event.event_at_ns, transport_ordinal=frame_ordinal,
                     )
                     grouped.setdefault((key.content_hash, frame.source_id, frame.channel), []).append(raw)
             else:
@@ -1240,7 +1350,7 @@ class BroadPublicRuntimeV2:
                     sequence_semantics=("BYBIT_TRADE_ID_IS_IDENTITY_NOT_REPLAY_CURSOR"
                                         if key.venue.value == "BYBIT" else
                                         "BINANCE_AGG_TRADE_ID_IS_IDENTITY_NOT_REPLAY_CURSOR"),
-                    event_at_ns=event_at,
+                    event_at_ns=event_at, transport_ordinal=frame_ordinal,
                 )
                 grouped.setdefault((key.content_hash, frame.source_id, frame.channel), []).append(raw)
         lane_statuses = self.source.status().lanes if self.source is not None else {}

@@ -842,9 +842,11 @@ def raw_archive_record(frame: CapturedPublicFrameV2, *, instrument: InstrumentKe
                        frame_type: str, sequence_semantics: str,
                        first_update_id: int | None = None, last_update_id: int | None = None,
                        previous_update_id: int | None = None, event_at_ns: int | None = None,
-                       source_health: str = "UNKNOWN", source_health_ref: str | None = None) -> L2RawFrameV2:
+                       source_health: str = "UNKNOWN", source_health_ref: str | None = None,
+                       transport_ordinal: int | None = None) -> L2RawFrameV2:
     return L2RawFrameV2(instrument, frame.source_id, frame.channel, frame_type,
                          frame.raw_payload_bytes, frame.raw_payload_hash, event_at_ns,
                          frame.received_at_ns, frame.available_at_ns,
                          first_update_id, last_update_id, previous_update_id,
-                         sequence_semantics, source_health, "ACTUAL_SYSTEM", source_health_ref)
+                         sequence_semantics, source_health, "ACTUAL_SYSTEM", source_health_ref,
+                         transport_ordinal)

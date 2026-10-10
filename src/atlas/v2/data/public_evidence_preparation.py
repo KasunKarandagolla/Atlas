@@ -783,6 +783,10 @@ def _parse_one_frame(
 
 def _seal_input(request: PublicEvidencePreparationRequestV2, raw_input: bytes,
                 seal_writer: Any, seal_root: Path) -> dict[str, Any]:
+    if raw_input.startswith(b"{"):
+        value = json.loads(raw_input)
+        if isinstance(value, dict) and value.get("version") == "PUBLIC_ARCHIVE_PREPARE_SEAL_V1":
+            return _prepare_and_seal_archive_input(request, value, seal_writer, seal_root)
     import pyarrow as pa
 
     if seal_writer is None:
@@ -869,3 +873,144 @@ def _seal_input(request: PublicEvidencePreparationRequestV2, raw_input: bytes,
                        "available_at_ns": entry.available_at_ns, "metadata": dict(entry.metadata)},
             "seal_metrics": dict(seal_writer.metrics),
             "_writer": seal_writer}
+
+
+def _prepare_and_seal_archive_input(
+    request: PublicEvidencePreparationRequestV2,
+    value: dict[str, Any],
+    seal_writer: Any,
+    seal_root: Path,
+) -> dict[str, Any]:
+    """Prepare archive Arrow blocks from exact durable transport ordinals, then seal them."""
+    from ..instruments import InstrumentKeyV2
+    from ..memory.repository import ArtifactIndexEntryV2
+    from .microstructure_archive import L2FrameArchiveV2, L2RawFrameV2
+    from .public_archive_extents import MAX_EXTENT_BATCH_BYTES, PublicArchiveSegmentWriterV1, read_extent_entry
+
+    expected_fields = {"version", "transport_batch_ref", "transport_batch", "transport_extent",
+                       "records", "groups"}
+    if set(value) != expected_fields or request.kind != "SEAL":
+        raise ValueError("archive preparation manifest shape is invalid")
+    transport_batch_ref = value["transport_batch_ref"]
+    batch_body = value["transport_batch"]
+    extent_data = value["transport_extent"]
+    if (not isinstance(transport_batch_ref, str) or transport_batch_ref != request.descriptor_hash
+            or not isinstance(batch_body, dict) or not isinstance(extent_data, dict)
+            or set(extent_data) != {"artifact_ref", "artifact_type", "content_hash", "created_at_ns",
+                                    "available_at_ns", "metadata"}):
+        raise ValueError("archive preparation transport binding is invalid")
+    extent_entry = ArtifactIndexEntryV2(
+        str(extent_data["artifact_ref"]), str(extent_data["artifact_type"]),
+        str(extent_data["content_hash"]), int(extent_data["created_at_ns"]),
+        int(extent_data["available_at_ns"]), extent_data["metadata"],
+    )
+    transport_available = batch_body.get("available_at_ns")
+    if (extent_entry.artifact_type != "PublicArchiveExtentV1"
+            or batch_body.get("archive_extent_ref") != extent_entry.artifact_ref
+            or type(transport_available) is not int
+            or transport_available < extent_entry.available_at_ns
+            or batch_body.get("authority") != "ZERO"
+            or sha256_json(batch_body) != transport_batch_ref):
+        raise ValueError("archive preparation transport descriptor is inconsistent")
+    transport_table = read_extent_entry(Path(request.run_root) / "ops-public-extents", extent_entry)
+    transport_rows = transport_table.to_pylist()
+    if (not 1 <= len(transport_rows) <= 256
+            or batch_body.get("frame_count") != len(transport_rows)
+            or batch_body.get("first_received_at_ns") != transport_rows[0]["received_at_ns"]
+            or batch_body.get("last_received_at_ns") != transport_rows[-1]["received_at_ns"]):
+        raise ValueError("archive preparation transport row population changed")
+    headers = []
+    for ordinal, row in enumerate(transport_rows):
+        if row.get("fifo_index") != ordinal:
+            raise ValueError("archive preparation transport FIFO changed")
+        headers.append({name: row[name] for name in (
+            "venue", "source_id", "channel", "raw_payload_hash", "received_at_ns",
+            "available_at_ns", "connection_epoch",
+        )} | {"fifo_index": ordinal})
+    if batch_body.get("chunk_id") != sha256_json({
+            "version": "PublicStreamTransportBatchV1", "frames": headers}):
+        raise ValueError("archive preparation transport header binding changed")
+
+    records = value["records"]
+    groups = value["groups"]
+    if (not isinstance(records, list) or not records or len(records) > 512
+            or not isinstance(groups, list) or not groups or len(groups) > 256):
+        raise ValueError("archive preparation frame population exceeds its fixed bound")
+    by_archive_ordinal: dict[int, L2RawFrameV2] = {}
+    for record in records:
+        if (not isinstance(record, dict) or set(record) != {
+                "archive_ordinal", "transport_ordinal", "metadata"}
+                or not isinstance(record["metadata"], dict)):
+            raise ValueError("archive preparation record descriptor is invalid")
+        archive_ordinal = record["archive_ordinal"]
+        transport_ordinal = record["transport_ordinal"]
+        metadata = record["metadata"]
+        if (type(archive_ordinal) is not int or archive_ordinal in by_archive_ordinal
+                or type(transport_ordinal) is not int or not 0 <= transport_ordinal < len(transport_rows)):
+            raise ValueError("archive preparation ordinal binding is invalid")
+        source_row = transport_rows[transport_ordinal]
+        instrument = InstrumentKeyV2.from_dict(metadata.get("instrument"))
+        if (metadata.get("source_id") != source_row["source_id"]
+                or metadata.get("channel") != source_row["channel"]
+                or metadata.get("raw_payload_hash") != source_row["raw_payload_hash"]
+                or metadata.get("received_at_ns") != source_row["received_at_ns"]
+                or metadata.get("available_at_ns") != source_row["available_at_ns"]
+                or instrument.venue.value != source_row["venue"]
+                or hashlib.sha256(source_row["raw_payload_bytes"]).hexdigest() != source_row["raw_payload_hash"]):
+            raise ValueError("archive preparation raw frame binding changed")
+        raw_frame = L2RawFrameV2(
+            instrument, metadata["source_id"], metadata["channel"], metadata["frame_type"],
+            source_row["raw_payload_bytes"], metadata["raw_payload_hash"], metadata["event_at_ns"],
+            metadata["received_at_ns"], metadata["available_at_ns"], metadata["first_update_id"],
+            metadata["last_update_id"], metadata["previous_update_id"], metadata["sequence_semantics"],
+            metadata["source_health"], metadata["availability_class"], metadata["source_health_ref"],
+            transport_ordinal, archive_ordinal,
+        )
+        if metadata != raw_frame.metadata_dict():
+            raise ValueError("archive preparation metadata does not bind its typed raw frame")
+        by_archive_ordinal[archive_ordinal] = raw_frame
+    if set(by_archive_ordinal) != set(range(len(records))):
+        raise ValueError("archive preparation archive ordinals are not contiguous")
+    prepared_groups = []
+    seen_ordinals = []
+    for group in groups:
+        if (not isinstance(group, list) or not group
+                or any(type(ordinal) is not int or ordinal not in by_archive_ordinal for ordinal in group)):
+            raise ValueError("archive preparation group references an unknown row")
+        seen_ordinals.extend(group)
+        prepared_groups.append(tuple(by_archive_ordinal[ordinal] for ordinal in group))
+    if sorted(seen_ordinals) != list(range(len(records))):
+        raise ValueError("archive preparation groups omit or repeat a row")
+
+    prepare_started_ns = time.monotonic_ns()
+    batch = L2FrameArchiveV2.prepare_frame_groups(tuple(prepared_groups))
+    prepare_ns = time.monotonic_ns() - prepare_started_ns
+    if (not batch.chunks or len(batch.chunks) > 16
+            or sum(chunk.table.num_rows for chunk in batch.chunks) != len(records)):
+        raise ValueError("archive preparation produced an invalid chunk set")
+    if seal_writer is None:
+        seal_writer = PublicArchiveSegmentWriterV1(seal_root)
+    if not isinstance(seal_writer, PublicArchiveSegmentWriterV1):
+        raise ValueError("archive preparation requires the fixed file-only extent writer")
+    specs = tuple((chunk.table, request.namespace, chunk.chunk_id,
+                   lambda request=request: request.clock_at_ns,
+                   chunk.frames[-1].available_at_ns) for chunk in batch.chunks)
+    if sum(table.nbytes for table, *_ in specs) > MAX_EXTENT_BATCH_BYTES:
+        raise ValueError("prepared archive descriptor batch exceeds 64 MiB")
+    entries = seal_writer.seal_many(specs)
+    if len(entries) != len(batch.chunks):
+        raise RuntimeError("archive preparation worker did not seal every chunk")
+    chunk_bindings = [{"chunk_id": chunk.chunk_id,
+                       "archive_ordinals": [frame.archive_ordinal for frame in chunk.frames]}
+                      for chunk in batch.chunks]
+    extents = [{"artifact_ref": entry.artifact_ref, "artifact_type": entry.artifact_type,
+                "content_hash": entry.content_hash, "created_at_ns": entry.created_at_ns,
+                "available_at_ns": entry.available_at_ns, "metadata": dict(entry.metadata)}
+               for entry in entries]
+    return {"version": PREPARATION_VERSION_V2, "job_id": request.job_id,
+            "descriptor_hash": request.descriptor_hash, "input_hash": request.input_hash,
+            "plan_hash": request.plan_hash, "product_hash": request.product_hash,
+            "frame_ordinal": 0, "trade_ordinal_start": 0, "trade_ordinal_end": 0,
+            "chunk_id": request.chunk_id, "result_records": len(records),
+            "archive_chunks": chunk_bindings, "extents": extents,
+            "seal_metrics": {**seal_writer.metrics, "prepare_ns": prepare_ns}, "_writer": seal_writer}

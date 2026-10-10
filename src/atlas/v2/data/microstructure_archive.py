@@ -36,6 +36,8 @@ class L2RawFrameV2:
     source_health: str
     availability_class: str
     source_health_ref: str | None = None
+    transport_ordinal: int | None = None
+    archive_ordinal: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.instrument, InstrumentKeyV2):
@@ -60,6 +62,12 @@ class L2RawFrameV2:
                 raise ValueError(f"{name} must be nonnegative or null")
         if self.source_health_ref is not None:
             sha256_ref(self.source_health_ref, field="source_health_ref")
+        if self.transport_ordinal is not None and (
+                type(self.transport_ordinal) is not int or self.transport_ordinal < 0):
+            raise ValueError("transport ordinal must be nonnegative or null")
+        if self.archive_ordinal is not None and (
+                type(self.archive_ordinal) is not int or self.archive_ordinal < 0):
+            raise ValueError("archive ordinal must be nonnegative or null")
 
     @cached_property
     def record_id(self) -> str:
@@ -96,7 +104,7 @@ class L2RestartCursorV2:
 class PreparedL2ArchiveChunkV2:
     chunk_id: str
     frames: tuple[L2RawFrameV2, ...]
-    table: Any
+    table: Any | None
 
 
 @dataclass(frozen=True)
@@ -125,6 +133,13 @@ class L2FrameArchiveV2:
         frame_groups: tuple[tuple[L2RawFrameV2, ...], ...],
     ) -> PreparedL2ArchiveBatchV2:
         """Build bounded immutable Arrow tables without touching SQLite/files."""
+        return self.prepare_frame_groups(frame_groups)
+
+    @staticmethod
+    def prepare_frame_groups(
+        frame_groups: tuple[tuple[L2RawFrameV2, ...], ...],
+    ) -> PreparedL2ArchiveBatchV2:
+        """Prepare bounded chunks as a pure operation with no repository handle."""
         import pyarrow as pa
 
         if not frame_groups:
@@ -209,7 +224,18 @@ class L2FrameArchiveV2:
                 raise ValueError("prepared archive worker descriptor does not bind its chunk")
             if ref in known:
                 prior = repo.get_artifact(ref)
-                if prior is None or prior.artifact_type != EXTENT_TYPE or not read_extent(repo, ref).equals(chunk.table):
+                if prior is None or prior.artifact_type != EXTENT_TYPE:
+                    raise ValueError("immutable public archive extent conflict")
+                prior_table = read_extent(repo, ref)
+                if chunk.table is not None:
+                    equal = prior_table.equals(chunk.table)
+                else:
+                    expected_rows = [{**frame.metadata_dict(),
+                                      "instrument_json": canonical_json(frame.instrument.to_dict()),
+                                      "raw_payload_bytes": frame.raw_payload_bytes}
+                                     for frame in chunk.frames]
+                    equal = prior_table.to_pylist() == expected_rows
+                if not equal:
                     raise ValueError("immutable public archive extent conflict")
                 resolved[ref] = prior
             else:

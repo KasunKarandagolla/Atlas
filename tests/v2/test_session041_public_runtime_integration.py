@@ -211,6 +211,106 @@ def test_broad_production_port_integrates_acquisition_stream_workset_and_restart
     restarted.close()
 
 
+def test_preparation_completion_is_nonblocking_and_publication_stays_writer_owned(tmp_path, monkeypatch):
+    products = (_product("BTCUSDT", VenueV2.BYBIT), _product("BTCUSDT", VenueV2.BINANCE))
+    port, runtime, _source = _port(products, NOW)
+    try:
+        with OpsRepository(tmp_path / "async-adoption.sqlite") as repository:
+            port.recover(repository, now_ns=NOW)
+            assert runtime.source is not None and runtime.capture is not None
+            lane = runtime.source._lanes["BYBIT"]._handoff
+            expected_payloads = {}
+            for index in range(2):
+                at_ns = NOW - 1_000_000_000 + index + 1
+                at_ms = at_ns // 1_000_000
+                raw = json.dumps({"topic": "publicTrade.BTCUSDT", "type": "snapshot",
+                    "ts": at_ms, "data": [{"T": at_ms, "s": "BTCUSDT", "S": "Buy",
+                        "v": "0.01", "p": "100", "i": f"async-{index}"}]},
+                    separators=(",", ":")).encode()
+                frame = CapturedPublicFrameV2(
+                    VenueV2.BYBIT, "BYBIT_PUBLIC_WS_BROAD_V2", "publicTrade.BTCUSDT",
+                    raw, hashlib.sha256(raw).hexdigest(), at_ns, at_ns, 1,
+                )
+                assert lane.offer(frame)
+                expected_payloads[frame.raw_payload_hash] = raw
+
+            deadline = time.monotonic() + 3.0
+            while (runtime.capture.status().capture["pending_batches"] == 0
+                   and time.monotonic() < deadline):
+                time.sleep(0.005)
+            capture_status = runtime.capture.status()
+            assert capture_status.capture["pending_batches"] > 0, (
+                f"terminal={capture_status.capture['terminal_error']!r}; "
+                f"received={capture_status.handoff.frames_received}; "
+                f"queued={capture_status.handoff.queue_items}; "
+                f"captured={capture_status.capture['captured_frames']}"
+            )
+
+            worker = runtime._preparation_worker
+            assert worker is not None
+            runtime.service(repository, now_ns=NOW + 10)
+            pending = runtime._pending_adoption
+            assert pending is not None
+            descriptor = pending.sealed
+            original_poll = worker.poll
+            monkeypatch.setattr(worker, "poll", lambda: None)
+            started = time.monotonic_ns()
+            runtime.service(repository, now_ns=NOW + 11)
+            parse_poll_duration = time.monotonic_ns() - started
+
+            assert parse_poll_duration < 100_000_000
+            assert runtime._pending_adoption is pending
+            assert runtime.status().capture["pending_frames"] == descriptor.frame_count
+            assert runtime.status().capture["adoption_pending_batches"] == 1
+            assert repository.get_artifact(descriptor.batch.artifact_ref) is None
+            assert runtime._service_frames == 0
+            assert runtime.sequence_books == {}
+
+            monkeypatch.setattr(worker, "poll", original_poll)
+            deadline = time.monotonic() + 5.0
+            while (runtime._pending_adoption is not None
+                   and runtime._pending_adoption.request.kind != "SEAL"
+                   and time.monotonic() < deadline):
+                runtime.service(repository, now_ns=NOW + 12)
+                time.sleep(0.001)
+            assert runtime._pending_adoption is not None
+            assert runtime._pending_adoption.request.kind == "SEAL"
+            cursor, stages = repository.public_adoption_stages_v2(
+                runtime._run_id or "", descriptor.batch.artifact_ref,
+            )
+            assert cursor is not None and stages
+            monkeypatch.setattr(worker, "poll", lambda: None)
+            started = time.monotonic_ns()
+            runtime.service(repository, now_ns=NOW + 13)
+            seal_poll_duration = time.monotonic_ns() - started
+            assert seal_poll_duration < 100_000_000
+            assert repository.get_artifact(descriptor.batch.artifact_ref) is None
+            assert runtime._service_frames == 0
+            assert runtime._pending_adoption is not None
+            monkeypatch.setattr(worker, "poll", original_poll)
+            deadline = time.monotonic() + 5.0
+            while runtime._pending_adoption is not None and time.monotonic() < deadline:
+                runtime.service(repository, now_ns=NOW + 14)
+                time.sleep(0.001)
+            assert runtime._pending_adoption is None
+            port.finish_public_capture(repository)
+            status = runtime.status()
+            assert status.capture["pending_frames"] == 0
+            assert status.capture["captured_frames"] == 2
+            assert status.capture["delivered_frames"] == 2
+            assert runtime._service_frames == 2
+            assert repository.get_artifact(descriptor.batch.artifact_ref) == descriptor.batch
+            assert runtime._archive is not None
+            checkpoints = repository.artifact_entries("L2FrameArchiveCheckpointV3")
+            assert len(checkpoints) == 1
+            rows = runtime._archive.read_chunk(str(checkpoints[0].metadata["chunk_id"]))
+            assert {row["raw_payload_hash"]: row["raw_payload_bytes"] for row in rows} == expected_payloads
+            lifecycle = json.loads((tmp_path / "public-capture-lifecycle-v1.json").read_text())
+            assert lifecycle["state"] == "CLEAN"
+    finally:
+        port.close()
+
+
 def test_alt_only_inventory_keeps_deterministic_stream_seed_after_publication(tmp_path):
     products = (_product("ALT01USDT", VenueV2.BYBIT),
                 _product("ALT02USDT", VenueV2.BINANCE))
