@@ -1,6 +1,14 @@
 # ATLAS engineering log
 
-## Current checkpoint — 2026-10-10
+## Current checkpoint — 2026-10-11
+
+**Status: bounded diagnostic-only commissioning slice committed, not runtime-qualified.** Branch `fix/session-041-linux-binance-commissioning` is based on `dcb5d9dbe6ec58ee337b29accb48f96ef174ec1d`; implementation commit is `829ab954d50f65044bf7dbf8c5cf3db0f3ceba64`. Accepted design: `dfe6bd4e21698454982f0e5e04ad93c2ef6f51ef`. The copied proposal is byte-identical, SHA-256 `505351b2f4b172c4d9cbd6dbac0c0792f62729ac55ebf3e6a28ff1297186a0a8`. Scope authority is **DIAGNOSTIC IMPLEMENTATION ONLY**; no live request, capacity certificate, production admission, execution or capital authority was created.
+
+**CONFIRMED:** 21 focused profile/isolation/cadence/publication tests and 17 V1 journal/migration/E2 causal regressions pass. Ruff, compileall, diff check, targeted mypy (five changed files) and `pip check` pass. JUnit hashes: focus `fd0f7e425c8a26247d1873e514a00e00d8757a19ebee1e7bdbbf92827efe003a`; safety `53bc66340e113195bd95ee4d617d4937b881321b6785383db38fd656fdb0e7e6`.
+
+**BLOCKED BY ENVIRONMENT:** production writer/reader fixture `test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture` fails before `source.start()` with missing Python 3.12 `pyarrow` (JUnit SHA-256 `a9aaeb9431b6074d7ab06fd22b41b77408b3879bf282397b4c549fdd5297d75b`). `pyarrow>=25.0.1` is a required project dependency; NumPy is also absent in this interpreter. No dependency was installed, and no network traffic occurred. Review the pushed checkpoint; resolve the runtime dependency gate before any live 120-second diagnostic. Do not run A2, F1–F4, packaging or execution.
+
+## Prior F1 implementation checkpoint — 2026-10-10
 
 **Status: STOPPED before F1-micro at the corrected presealed feasibility gate.** Tested implementation checkpoint `ac9770bff25904585dfde015b4c032b3c4874f8a` is pushed on `fix/session-041-final-v2-recovery`, descending from authorized base `42e87fd34e815314a2caff62ecfb78b2e9122d44`. The exact tested source working-tree hash is `31a909d2fc62552fb90befc43c5b5af1835b81f1d6b8e425b239696e5850d468`. Accepted correction SHA is `1ed578f503aca1d5e61eeab5439f7b606d7fb15a`; its [specification](docs/v2/S41_F1_THROUGHPUT_ARCHITECTURE_CORRECTION.md) remains controlling alongside the freezes. Exact-source presealed report averages 478.4 ms per 16-frame descriptor (limit 66.7 ms). F1-micro and full F1 were not run. The validation ledger remains authoritative: `SESSION041_FULL_V2_VALIDATION_LEDGER.json`.
 
