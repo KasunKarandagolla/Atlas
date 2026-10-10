@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import base64
 import concurrent.futures
+import copy
 import hashlib
 import json
 import time
+from collections import deque
 from collections.abc import Callable, Mapping
-from dataclasses import replace
+from contextlib import contextmanager
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -28,18 +32,70 @@ from ..data.microstructure import (
     SequenceValidBookV2,
 )
 from ..data.microstructure_archive import L2FrameArchiveV2, L2RawFrameV2
+from ..data.public_evidence_preparation import (
+    MAX_PREPARATION_FRAMES_V2,
+    MAX_PREPARATION_INPUT_BYTES_V2,
+    MAX_PREPARATION_OUTPUT_RECORDS_V2,
+    MAX_PREPARATION_RESULT_BYTES_V2,
+    MAX_PREPARATION_SEAL_CHUNKS_V2,
+    MAX_PREPARATION_TRADE_ROWS_V2,
+    PREPARATION_VERSION_V2,
+    PublicEvidencePreparationRequestV2,
+    PublicEvidencePreparationResultV2,
+    PublicEvidencePreparationWorkerV2,
+    decode_prepared_events,
+    read_preparation_input,
+    read_preparation_result,
+    write_preparation_blob,
+    write_preparation_input,
+)
 from ..data.public_microstructure_ws import (
     CapturedPublicFrameV2,
     parse_binance_rest_snapshot,
     raw_archive_record,
 )
 from ..data.public_stream_continuity import (
+    PublicStreamContinuityDecisionV1,
     PublicStreamContinuityTrackerV1,
     PublicStreamObservationKindV1,
     PublicStreamObservationV1,
 )
 from ..instruments import InstrumentKeyV2, ProductContractV2
-from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
+from ..memory.repository import ArtifactIndexEntryV2, OpsRepository, PublicAdoptionCursorV2
+
+_PHASE_TIMING_NAMES = (
+    "input_write",
+    "worker_wait",
+    "worker_execution",
+    "seal_worker_wait",
+    "seal_worker_execution",
+    "result_read_rehydrate",
+    "seal_result_read",
+    "stage_commit",
+    "interpreter",
+    "archive_seal",
+    "archive_prepare_chunks",
+    "archive_arrow_encode",
+    "seal_input_write",
+    "archive_compression",
+    "archive_extent_write",
+    "archive_extent_fsync",
+    "archive_extent_rename",
+    "archive_directory_sync",
+    "public_commit",
+)
+
+
+@dataclass(frozen=True)
+class _PreparedFrameParseV2:
+    events: tuple[Any, ...]
+    trade_payload_hashes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class _PreparedFramePublicationV2:
+    artifact_entries: tuple[ArtifactIndexEntryV2, ...]
+    archive_groups: tuple[tuple[L2RawFrameV2, ...], ...]
 
 
 class BroadPublicRuntimeV2:
@@ -74,8 +130,10 @@ class BroadPublicRuntimeV2:
         self._max_service_duration_ns = 0
         self._terminal_error: str | None = None
         self._run_root: Path | None = None
+        self._run_id: str | None = None
         self._capture_epoch = "0" * 64
         self._archive: L2FrameArchiveV2 | None = None
+        self._preparation_worker: PublicEvidencePreparationWorkerV2 | None = None
         self._products: dict[InstrumentKeyV2, ProductContractV2] = {}
         self._sequence_books: dict[InstrumentKeyV2, SequenceValidBookV2] = {}
         self._trackers: dict[tuple[InstrumentKeyV2, str], PublicStreamContinuityTrackerV1] = {}
@@ -90,10 +148,71 @@ class BroadPublicRuntimeV2:
         self._snapshot_failure: str | None = None
         self._connection_epochs: dict[tuple[InstrumentKeyV2, str], int | None] = {}
         self._snapshot_buffer_bytes = 0
+        self._deferred_snapshot_requests: list[tuple[ProductContractV2, CapturedPublicFrameV2,
+                                                     L2DeltaV2, int]] | None = None
+        self._prepared_events_for_call: Mapping[int, _PreparedFrameParseV2] | None = None
+        self._defer_publication_for_call = False
+        self._indexed_frames_by_lane: dict[str, int] = {}
+        self._occupancy_samples: deque[dict[str, Any]] = deque(maxlen=8192)
+        self._phase_timing_stats_ns = {name: [0, 0, 0] for name in _PHASE_TIMING_NAMES}
+
+    def _record_phase_duration_ns(self, phase: str, duration_ns: int) -> None:
+        stats = self._phase_timing_stats_ns[phase]
+        duration = max(0, int(duration_ns))
+        stats[0] += 1
+        stats[1] += duration
+        stats[2] = max(stats[2], duration)
+
+    def _phase_timing_summary_ns(self) -> dict[str, dict[str, int]]:
+        return {
+            phase: {"count": stats[0], "sum_ns": stats[1], "max_ns": stats[2]}
+            for phase, stats in self._phase_timing_stats_ns.items()
+        }
+
+    @contextmanager
+    def _measure_phase(self, phase: str):
+        started = time.monotonic_ns()
+        try:
+            yield
+        finally:
+            self._record_phase_duration_ns(phase, time.monotonic_ns() - started)
+
+    def _wait_for_preparation(self, worker: PublicEvidencePreparationWorkerV2,
+                              request: PublicEvidencePreparationRequestV2
+                              ) -> PublicEvidencePreparationResultV2:
+        started = time.monotonic_ns()
+        try:
+            result = worker.wait(request)
+        finally:
+            wait_duration = time.monotonic_ns() - started
+            self._record_phase_duration_ns("worker_wait", wait_duration)
+            if request.kind == "SEAL":
+                self._record_phase_duration_ns("seal_worker_wait", wait_duration)
+        self._record_phase_duration_ns("worker_execution", result.execution_duration_ns)
+        if request.kind == "SEAL":
+            self._record_phase_duration_ns("seal_worker_execution", result.execution_duration_ns)
+        return result
 
     @property
     def sequence_books(self) -> Mapping[InstrumentKeyV2, SequenceValidBookV2]:
         return dict(self._sequence_books)
+
+    @staticmethod
+    def _run_identity(run_root: Path) -> str:
+        root = Path(run_root).resolve()
+        manifest_path = root / "run.json"
+        if manifest_path.exists():
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            run_id = manifest.get("run_id") if isinstance(manifest, dict) else None
+            if not isinstance(run_id, str) or run_id != root.name:
+                raise ValueError("public preparation run manifest does not bind its run directory")
+            return run_id
+        # Isolated runtime fixtures omit the product run manifest. Production
+        # runs always carry it, while the directory name remains stable in the
+        # focused repository tests.
+        if not root.name:
+            raise ValueError("public preparation run root has no stable identity")
+        return root.name
 
     def recover(
         self,
@@ -128,8 +247,12 @@ class BroadPublicRuntimeV2:
             )
             self.capture = BroadDurablePublicCaptureV2(self.source, clock_ns=self.clock_ns)
             self._run_root = run_root
+            self._run_id = self._run_identity(run_root)
             self._archive = L2FrameArchiveV2(run_root.parent / "ops-l2-frames", repository,
                                              compact_live=True, clock_ns=self.clock_ns)
+            if self._preparation_worker is None:
+                self._preparation_worker = PublicEvidencePreparationWorkerV2()
+            self._preparation_worker.start(run_root)
             self._products = {product.key: product for product in products}
             self._stream_epoch = sha256_json({"plan_id": plan.plan_id, "capture_epoch": self._capture_epoch})
             self.capture.configure_capture(run_root, capture_epoch=self._capture_epoch)
@@ -222,13 +345,70 @@ class BroadPublicRuntimeV2:
                 # index and all derived rows together. This avoids a FULL
                 # synchronous commit for every small per-frame health/trade
                 # record while keeping raw bytes durable before SQL effects.
-                with repository.atomic_composition():
-                    frames = sealed.adopt(repository)
-                    if self.interpret_frames is not None:
-                        self.interpret_frames(repository, self.plan, frames, now_ns)
-                    else:
-                        self._interpret_frames(repository, frames, now_ns=now_ns)
+                if self.interpret_frames is not None:
+                    with self._measure_phase("public_commit"), repository.atomic_composition():
+                        frames = sealed.adopt(repository)
+                        with self._measure_phase("interpreter"):
+                            self.interpret_frames(repository, self.plan, frames, now_ns)
+                else:
+                    frames = sealed.read_unpublished(self._run_root or Path(repository.path).parent)
+                    prepared = self._prepare_descriptor_events(repository, sealed, frames, now_ns=now_ns)
+                    old_books, old_trackers, old_epochs = (
+                        self._sequence_books, self._trackers, self._connection_epochs,
+                    )
+                    staged_books, staged_trackers, staged_epochs = self._candidate_state_for_frames(frames)
+                    old_snapshot_failure = self._snapshot_failure
+                    deferred_snapshot_requests: list[tuple[ProductContractV2, CapturedPublicFrameV2,
+                                                          L2DeltaV2, int]] = []
+                    self._sequence_books, self._trackers, self._connection_epochs = (
+                        staged_books, staged_trackers, staged_epochs,
+                    )
+                    self._deferred_snapshot_requests = deferred_snapshot_requests
+                    self._prepared_events_for_call = prepared
+                    self._defer_publication_for_call = True
+                    try:
+                        with self._measure_phase("interpreter"):
+                            publication = self._interpret_frames(
+                                repository, frames, now_ns=now_ns,
+                            )
+                        staged_snapshot_failure = self._snapshot_failure
+                    finally:
+                        self._sequence_books, self._trackers, self._connection_epochs = (
+                            old_books, old_trackers, old_epochs,
+                        )
+                        self._snapshot_failure = old_snapshot_failure
+                        self._deferred_snapshot_requests = None
+                        self._prepared_events_for_call = None
+                        self._defer_publication_for_call = False
+                    if publication is None:
+                        raise RuntimeError("BROAD_PUBLIC_PREPARATION_PUBLICATION_MISSING")
+                    with self._measure_phase("archive_seal"):
+                        with self._measure_phase("archive_prepare_chunks"):
+                            archive_batch = self._archive.prepare_chunks(publication.archive_groups)
+                        archive_entries = self._seal_prepared_archive(sealed, archive_batch)
+                    with self._measure_phase("public_commit"), repository.atomic_composition():
+                        adopted_frames = sealed.adopt_verified(repository, frames)
+                        if adopted_frames != frames:
+                            raise ValueError("BROAD_PUBLIC_DURABLE_DESCRIPTOR_CHANGED_DURING_PREPARATION")
+                        if publication.artifact_entries:
+                            repository.register_artifacts(publication.artifact_entries)
+                        self._archive.publish_prepared(archive_batch, archive_entries, repository=repository)
+                        if self._run_id is None:
+                            raise RuntimeError("BROAD_PUBLIC_RUN_ID_UNAVAILABLE")
+                        repository.clear_public_adoption_v2(self._run_id, sealed.batch.artifact_ref)
+                    # Candidate books, trackers and connection epochs become
+                    # visible only after raw identity and all derived rows
+                    # commit together.
+                    self._sequence_books = staged_books
+                    self._trackers = staged_trackers
+                    self._connection_epochs = staged_epochs
+                    self._snapshot_failure = staged_snapshot_failure
+                    for product, frame, delta, processed_at in deferred_snapshot_requests:
+                        self._queue_snapshot_delta(repository, product, frame, delta, processed_at)
                 self._service_frames += len(frames)
+                for frame in frames:
+                    lane = frame.source_id.removesuffix("_PUBLIC_WS_BROAD_V2")
+                    self._indexed_frames_by_lane[lane] = self._indexed_frames_by_lane.get(lane, 0) + 1
                 if time.monotonic_ns() - started >= 50_000_000:
                     break
         except Exception as exc:
@@ -238,6 +418,7 @@ class BroadPublicRuntimeV2:
             finally:
                 raise
         finally:
+            self._record_occupancy_sample()
             self._service_calls += 1
             self._last_service_at_ns = now_ns
             self._last_service_duration_ns = time.monotonic_ns() - started
@@ -265,6 +446,8 @@ class BroadPublicRuntimeV2:
             self.capture.close()
         if self._snapshot_executor is not None:
             self._snapshot_executor.shutdown(wait=False, cancel_futures=True)
+        if self._preparation_worker is not None:
+            self._preparation_worker.close()
 
     def request_pressure_stop(self) -> None:
         if self.capture is not None:
@@ -295,8 +478,24 @@ class BroadPublicRuntimeV2:
             "stream_max_service_gap_seconds": self._max_service_gap_ns / 1_000_000_000,
             "stream_last_service_duration_seconds": self._last_service_duration_ns / 1_000_000_000,
             "stream_service_duration_seconds": self._max_service_duration_ns / 1_000_000_000,
+            "stream_indexed_frames": sum(self._indexed_frames_by_lane.values()),
+            "stream_indexed_frames_by_lane": dict(sorted(self._indexed_frames_by_lane.items())),
+            "stream_occupancy_samples": tuple(dict(sample) for sample in self._occupancy_samples),
+            "stream_phase_timings_ns": self._phase_timing_summary_ns(),
             "evidence_integrity_failure": self._terminal_error is not None,
         }
+
+    def _record_occupancy_sample(self) -> None:
+        try:
+            pending = self.capture.status().pending_frames if self.capture is not None else 0
+        except Exception:
+            pending = -1
+        self._occupancy_samples.append({
+            "observed_at_ns": self.clock_ns(),
+            "pending_frames": pending,
+            "indexed_frames": sum(self._indexed_frames_by_lane.values()),
+            "indexed_by_lane": dict(sorted(self._indexed_frames_by_lane.items())),
+        })
 
     def status(self) -> Any:
         if self.capture is None:
@@ -314,7 +513,8 @@ class BroadPublicRuntimeV2:
                        "active_capture_duration_ns": 0, "authority": "ZERO"}
             return SimpleNamespace(state="FAILED" if self._terminal_error else "CREATED", attempt_count=0,
                                    handoff=handoff, capture=capture, pending_frames=0,
-                                   plan_id=None, lanes={})
+                                   plan_id=None, lanes={},
+                                   phase_timings_ns=self._phase_timing_summary_ns())
         source_status = self.capture.status()
         now_ns = self.clock_ns()
         for name, lane in source_status.lanes.items():
@@ -336,21 +536,573 @@ class BroadPublicRuntimeV2:
             last_service_duration_ns=self._last_service_duration_ns,
             max_service_gap_ns=self._max_service_gap_ns,
             max_service_duration_ns=self._max_service_duration_ns,
+            indexed_frames=sum(self._indexed_frames_by_lane.values()),
+            indexed_frames_by_lane=dict(sorted(self._indexed_frames_by_lane.items())),
+            occupancy_samples=tuple(dict(sample) for sample in self._occupancy_samples),
+            phase_timings_ns=self._phase_timing_summary_ns(),
             authority="ZERO",
         )
 
-    def _interpret_frames(self, repository: OpsRepository, frames: tuple[CapturedPublicFrameV2, ...], *, now_ns: int) -> None:
+    def _prepare_descriptor_events(
+        self,
+        repository: OpsRepository,
+        sealed: SealedPublicTransportV1,
+        frames: tuple[CapturedPublicFrameV2, ...],
+        *,
+        now_ns: int,
+    ) -> dict[int, _PreparedFrameParseV2]:
+        if self.plan is None or self._run_root is None or self._run_id is None:
+            raise RuntimeError("BROAD_PUBLIC_PREPARATION_NOT_RECOVERED")
+        worker = self._preparation_worker
+        if worker is None:
+            raise RuntimeError("BROAD_PUBLIC_PREPARATION_WORKER_UNAVAILABLE")
+        descriptor_hash = sealed.batch.artifact_ref
+        plan_hash = self.plan.plan_id
+        descriptor_products = {
+            self.plan.key_for_frame(frame) for frame in frames
+        }
+        product_hashes = tuple(sorted(
+            {self._products[key].content_hash for key in descriptor_products if key in self._products}
+        ))
+        if len(product_hashes) != len(descriptor_products):
+            raise ValueError("BROAD_PUBLIC_DESCRIPTOR_PRODUCT_BINDING_INCOMPLETE")
+        stored_cursor, stored_stages = repository.public_adoption_stages_v2(
+            self._run_id, descriptor_hash,
+        )
+        if stored_cursor is not None and (
+            stored_cursor.extent_hash != sealed.extent.content_hash
+            or stored_cursor.batch_hash != sealed.batch.content_hash
+            or stored_cursor.plan_hash != plan_hash
+            or stored_cursor.product_hashes != product_hashes
+            or stored_cursor.preparation_version != PREPARATION_VERSION_V2
+        ):
+            raise ValueError("BROAD_PUBLIC_PRIVATE_CURSOR_BINDING_MISMATCH")
+
+        prepared_events: dict[int, list[Any]] = {index: [] for index in range(len(frames))}
+        trade_hashes: dict[int, list[str]] = {index: [] for index in range(len(frames))}
+        processed_at_by_frame: dict[int, int] = {}
+        stored_next = (0, 0)
+        for stage in stored_stages:
+            output = stage.payload["output"]
+            request = PublicEvidencePreparationRequestV2.from_dict(dict(output["request"]))
+            completion = PublicEvidencePreparationResultV2.from_dict(dict(output["completion"]))
+            if (request.frame_ordinal, request.trade_ordinal_start) != stored_next:
+                raise ValueError("BROAD_PUBLIC_PRIVATE_STAGE_SEQUENCE_GAP")
+            manifest = read_preparation_input(request)
+            with self._measure_phase("result_read_rehydrate"):
+                body = read_preparation_result(request, completion)
+                frame_results = self._validate_prepared_parse_body(
+                    request, body, sealed=sealed, plan_hash=plan_hash,
+                    frames=frames, manifest=manifest,
+                )
+                decoded = self._decode_and_bind_manifest_events(frame_results, frames)
+            first_result = frame_results[0]
+            next_frame, next_trade = self._next_manifest_cursor(frame_results)
+            cursor = stage.cursor
+            if (cursor.frame_ordinal != request.frame_ordinal
+                    or cursor.trade_ordinal_start != request.trade_ordinal_start
+                    or cursor.trade_ordinal_end != first_result["trade_ordinal_end"]
+                    or (cursor.next_frame_ordinal, cursor.next_trade_ordinal) != (next_frame, next_trade)):
+                raise ValueError("BROAD_PUBLIC_PRIVATE_CURSOR_RESULT_MISMATCH")
+            stored_next = (next_frame, next_trade)
+            for frame_ordinal, events, hashes, processed_at in decoded:
+                prepared_events[frame_ordinal].extend(events)
+                trade_hashes[frame_ordinal].extend(hashes)
+                processed_at_by_frame[frame_ordinal] = processed_at
+
+        staged_new_count = 0
+        if stored_cursor is None:
+            frame_ordinal, trade_ordinal = 0, 0
+            generation = 0
+        else:
+            frame_ordinal = stored_cursor.next_frame_ordinal
+            trade_ordinal = stored_cursor.next_trade_ordinal
+            generation = stored_cursor.cursor_generation
+            if stored_next != (frame_ordinal, trade_ordinal):
+                raise ValueError("BROAD_PUBLIC_PRIVATE_STAGE_SEQUENCE_GAP")
+        if frame_ordinal > len(frames) or (frame_ordinal == len(frames) and trade_ordinal != 0):
+            raise ValueError("BROAD_PUBLIC_PRIVATE_CURSOR_ORDINAL_OUT_OF_RANGE")
+
+        private_root = self._run_root / ".public-evidence-preparation" / descriptor_hash
+        private_root.mkdir(parents=True, exist_ok=True)
+        while frame_ordinal < len(frames):
+            manifest_frames: list[dict[str, Any]] = []
+            estimated_input_bytes = 0
+            for ordinal in range(frame_ordinal, min(len(frames), frame_ordinal + MAX_PREPARATION_FRAMES_V2)):
+                frame = frames[ordinal]
+                key = self.plan.key_for_frame(frame)
+                if key not in self._products:
+                    raise ValueError("BROAD_STREAM_FRAME_PRODUCT_REVISION_UNBOUND")
+                next_estimate = estimated_input_bytes + 4 * ((len(frame.raw_payload_bytes) + 2) // 3) + 8192
+                if manifest_frames and next_estimate > MAX_PREPARATION_INPUT_BYTES_V2:
+                    break
+                if next_estimate > MAX_PREPARATION_INPUT_BYTES_V2:
+                    raise ValueError("BROAD_PREPARATION_FRAME_EXCEEDS_INPUT_BOUND")
+                start_ordinal = trade_ordinal if ordinal == frame_ordinal else 0
+                processed_at = processed_at_by_frame.get(
+                    ordinal, max(now_ns, frame.available_at_ns),
+                )
+                manifest_frames.append({
+                    "frame_ordinal": ordinal,
+                    "frame": {
+                        "venue": frame.venue.value,
+                        "source_id": frame.source_id,
+                        "channel": frame.channel,
+                        "raw_payload_b64": base64.b64encode(frame.raw_payload_bytes).decode("ascii"),
+                        "raw_payload_hash": frame.raw_payload_hash,
+                        "received_at_ns": frame.received_at_ns,
+                        "available_at_ns": frame.available_at_ns,
+                        "connection_epoch": frame.connection_epoch,
+                    },
+                    "instrument": key.to_dict(),
+                    "processed_at_ns": processed_at,
+                    "source_health": "UNKNOWN",
+                    "source_health_ref": None,
+                    "trade_ordinal_start": start_ordinal,
+                })
+                estimated_input_bytes = next_estimate
+            if not manifest_frames:
+                raise RuntimeError("BROAD_PREPARATION_EMPTY_MANIFEST")
+            first_manifest = manifest_frames[0]
+            first_frame = frames[frame_ordinal]
+            key = self.plan.key_for_frame(first_frame)
+            processed_at = first_manifest["processed_at_ns"]
+            manifest = {"frames": manifest_frames}
+            input_path = private_root / f"slice-{frame_ordinal:04d}-{trade_ordinal:08d}.input.json"
+            with self._measure_phase("input_write"):
+                input_hash, _input_bytes = write_preparation_input(input_path, manifest)
+            is_bybit_trades = first_frame.venue.value == "BYBIT" and first_frame.channel.startswith("publicTrade.")
+            requested_end = trade_ordinal + MAX_PREPARATION_TRADE_ROWS_V2 if is_bybit_trades else 1
+            job_identity = sha256_json({
+                "version": PREPARATION_VERSION_V2,
+                "run_id": self._run_id,
+                "descriptor_hash": descriptor_hash,
+                "frame_ordinal": frame_ordinal,
+                "trade_ordinal_start": trade_ordinal,
+                "trade_ordinal_end": requested_end,
+                "input_hash": input_hash,
+                "plan_hash": plan_hash,
+                "product_hash": key.content_hash,
+            })
+            output_path = private_root / f"result-{job_identity}.json"
+            request = PublicEvidencePreparationRequestV2(
+                "PARSE", job_identity, self._run_id, str(self._run_root), descriptor_hash,
+                input_hash, str(input_path), str(output_path), plan_hash, key.content_hash,
+                frame_ordinal, trade_ordinal, requested_end, processed_at_ns=processed_at,
+            )
+            result = self._wait_for_preparation(worker, request)
+            with self._measure_phase("result_read_rehydrate"):
+                body = read_preparation_result(request, result)
+                frame_results = self._validate_prepared_parse_body(
+                    request, body, sealed=sealed, plan_hash=plan_hash,
+                    frames=frames, manifest=manifest,
+                )
+                decoded = self._decode_and_bind_manifest_events(frame_results, frames)
+            first_result = frame_results[0]
+            actual_end = first_result["trade_ordinal_end"]
+            next_frame, next_trade = self._next_manifest_cursor(frame_results)
+            for ordinal, events, hashes, logical_time in decoded:
+                prepared_events[ordinal].extend(events)
+                trade_hashes[ordinal].extend(hashes)
+                processed_at_by_frame[ordinal] = logical_time
+            generation += 1
+            if (next_frame, next_trade) <= (frame_ordinal, trade_ordinal):
+                raise RuntimeError("BROAD_PREPARATION_MANIFEST_MADE_NO_PROGRESS")
+            stage_output = {"request": request.to_dict(), "completion": result.__dict__}
+            cursor = PublicAdoptionCursorV2(
+                run_id=self._run_id,
+                descriptor_hash=descriptor_hash,
+                extent_hash=sealed.extent.content_hash,
+                batch_hash=sealed.batch.content_hash,
+                plan_hash=plan_hash,
+                product_hashes=product_hashes,
+                preparation_version=PREPARATION_VERSION_V2,
+                frame_ordinal=frame_ordinal,
+                trade_ordinal_start=trade_ordinal,
+                trade_ordinal_end=actual_end,
+                next_frame_ordinal=next_frame,
+                next_trade_ordinal=next_trade,
+                logical_started_at_ns=processed_at,
+                logical_finished_at_ns=max(processed_at, result.completed_at_ns),
+                staged_output_hash=sha256_json(stage_output),
+                cursor_generation=generation,
+            )
+            with self._measure_phase("stage_commit"):
+                repository.stage_public_adoption_slice_v2(
+                    cursor, {"cursor": cursor.to_dict(), "output": stage_output},
+                )
+            staged_new_count += 1
+            frame_ordinal, trade_ordinal = next_frame, next_trade
+
+        if len(stored_stages) + staged_new_count == 0:
+            raise RuntimeError("BROAD_PREPARATION_DESCRIPTOR_HAS_NO_STAGED_SLICES")
+        return {
+            ordinal: _PreparedFrameParseV2(tuple(prepared_events[ordinal]), tuple(trade_hashes[ordinal]))
+            for ordinal in range(len(frames))
+        }
+
+    def _validate_prepared_parse_body(
+        self,
+        request: PublicEvidencePreparationRequestV2,
+        body: Mapping[str, Any],
+        *,
+        sealed: SealedPublicTransportV1,
+        plan_hash: str,
+        frames: tuple[CapturedPublicFrameV2, ...],
+        manifest: Mapping[str, Any],
+    ) -> tuple[Mapping[str, Any], ...]:
+        """Validate every bounded worker result against its durable raw frame."""
+        if (self.plan is None or request.kind != "PARSE"
+                or request.descriptor_hash != sealed.batch.artifact_ref
+                or request.plan_hash != plan_hash or request.frame_ordinal >= len(frames)
+                or not isinstance(manifest, Mapping) or set(manifest) != {"frames"}):
+            raise ValueError("BROAD_PREPARATION_RESULT_BINDING_INVALID")
+        manifest_frames = manifest["frames"]
+        results = body.get("frame_results")
+        body_fields = {
+            "request_hash", "version", "job_id", "descriptor_hash", "input_hash", "plan_hash",
+            "frame_ordinal", "trade_ordinal_start", "trade_ordinal_end", "trade_total",
+            "frame_results", "result_records",
+        }
+        if (not isinstance(manifest_frames, list)
+                or not 1 <= len(manifest_frames) <= MAX_PREPARATION_FRAMES_V2
+                or not isinstance(results, list) or not 1 <= len(results) <= len(manifest_frames)
+                or set(body) != body_fields
+                or body.get("request_hash") != request.request_hash
+                or body.get("version") != PREPARATION_VERSION_V2
+                or body.get("job_id") != request.job_id
+                or body.get("descriptor_hash") != sealed.batch.artifact_ref
+                or body.get("input_hash") != request.input_hash
+                or body.get("plan_hash") != request.plan_hash):
+            raise ValueError("BROAD_PREPARATION_RESULT_BINDING_INVALID")
+        first_frame = frames[request.frame_ordinal]
+        first_key = self.plan.key_for_frame(first_frame)
+        first_is_bybit = first_frame.venue.value == "BYBIT" and first_frame.channel.startswith("publicTrade.")
+        canonical_start = request.trade_ordinal_start if first_is_bybit else 0
+        canonical_end = canonical_start + MAX_PREPARATION_TRADE_ROWS_V2 if first_is_bybit else 1
+        if (request.product_hash != first_key.content_hash
+                or request.trade_ordinal_start != canonical_start
+                or request.trade_ordinal_end != canonical_end
+                or not isinstance(manifest_frames[0], dict)):
+            raise ValueError("BROAD_PREPARATION_REQUEST_CURSOR_INVALID")
+        first_input = manifest_frames[0]
+        if (first_input.get("frame_ordinal") != request.frame_ordinal
+                or first_input.get("trade_ordinal_start") != request.trade_ordinal_start
+                or first_input.get("instrument") != first_key.to_dict()
+                or first_input.get("processed_at_ns") != request.processed_at_ns):
+            raise ValueError("BROAD_PREPARATION_MANIFEST_START_INVALID")
+
+        budget_left = MAX_PREPARATION_TRADE_ROWS_V2
+        event_total = 0
+        validated: list[Mapping[str, Any]] = []
+        expected_result_fields = {
+            "frame_ordinal", "venue", "source_id", "channel", "raw_payload_hash",
+            "received_at_ns", "available_at_ns", "connection_epoch", "product_hash",
+            "source_health", "source_health_ref", "processed_at_ns", "trade_ordinal_start",
+            "trade_ordinal_requested_end", "trade_ordinal_end", "trade_total", "events",
+            "trade_payload_hashes",
+        }
+        expected_manifest_fields = {
+            "frame_ordinal", "frame", "instrument", "processed_at_ns", "source_health",
+            "source_health_ref", "trade_ordinal_start",
+        }
+        for offset, result in enumerate(results):
+            manifest_item = manifest_frames[offset]
+            ordinal = request.frame_ordinal + offset
+            if (ordinal >= len(frames) or not isinstance(manifest_item, dict)
+                    or set(manifest_item) != expected_manifest_fields
+                    or type(manifest_item.get("frame_ordinal")) is not int
+                    or manifest_item["frame_ordinal"] != ordinal
+                    or type(manifest_item.get("processed_at_ns")) is not int
+                    or manifest_item["processed_at_ns"] < frames[ordinal].available_at_ns
+                    or manifest_item.get("trade_ordinal_start") != (
+                        request.trade_ordinal_start if offset == 0 else 0)):
+                raise ValueError("BROAD_PREPARATION_MANIFEST_SEQUENCE_INVALID")
+            frame = frames[ordinal]
+            key = self.plan.key_for_frame(frame)
+            if key not in self._products or manifest_item.get("instrument") != key.to_dict():
+                raise ValueError("BROAD_PREPARATION_PRODUCT_REVISION_MISMATCH")
+            raw_binding = {
+                "venue": frame.venue.value,
+                "source_id": frame.source_id,
+                "channel": frame.channel,
+                "raw_payload_b64": base64.b64encode(frame.raw_payload_bytes).decode("ascii"),
+                "raw_payload_hash": frame.raw_payload_hash,
+                "received_at_ns": frame.received_at_ns,
+                "available_at_ns": frame.available_at_ns,
+                "connection_epoch": frame.connection_epoch,
+            }
+            if manifest_item.get("frame") != raw_binding:
+                raise ValueError("BROAD_PREPARATION_RAW_FRAME_BINDING_MISMATCH")
+            source_health = manifest_item.get("source_health")
+            source_health_ref = manifest_item.get("source_health_ref")
+            if source_health != "UNKNOWN" or source_health_ref is not None:
+                raise ValueError("BROAD_PREPARATION_HEALTH_INPUT_INVALID")
+            is_bybit = frame.venue.value == "BYBIT" and frame.channel.startswith("publicTrade.")
+            start = manifest_item["trade_ordinal_start"]
+            events = result.get("events") if isinstance(result, dict) else None
+            hashes = result.get("trade_payload_hashes") if isinstance(result, dict) else None
+            end = result.get("trade_ordinal_end") if isinstance(result, dict) else None
+            total = result.get("trade_total") if isinstance(result, dict) else None
+            requested_end = result.get("trade_ordinal_requested_end") if isinstance(result, dict) else None
+            # The PARSE worker is the sole JSON parser. Its result is digest-bound
+            # to the exact raw input; keep this validation to typed counts/cursors
+            # and event/source/product identity instead of scanning raw JSON again.
+            expected_request_end = min(start + budget_left, total) if is_bybit and type(total) is int else 1
+            if (not isinstance(result, dict) or set(result) != expected_result_fields
+                    or any(type(result.get(name)) is not int for name in (
+                        "frame_ordinal", "received_at_ns", "available_at_ns", "processed_at_ns",
+                        "trade_ordinal_start", "trade_ordinal_requested_end", "trade_ordinal_end",
+                        "trade_total",
+                    ))
+                    or any(result.get(name) != expected for name, expected in (
+                        ("frame_ordinal", ordinal), ("venue", frame.venue.value),
+                        ("source_id", frame.source_id), ("channel", frame.channel),
+                        ("raw_payload_hash", frame.raw_payload_hash),
+                        ("received_at_ns", frame.received_at_ns),
+                        ("available_at_ns", frame.available_at_ns),
+                        ("connection_epoch", frame.connection_epoch),
+                        ("product_hash", key.content_hash),
+                        ("source_health", source_health), ("source_health_ref", source_health_ref),
+                        ("processed_at_ns", manifest_item["processed_at_ns"]),
+                        ("trade_ordinal_start", start),
+                    ))
+                    or total < 0
+                    or not isinstance(events, list) or not isinstance(hashes, list)
+                    or len(events) > MAX_PREPARATION_TRADE_ROWS_V2
+                    or len(hashes) > MAX_PREPARATION_TRADE_ROWS_V2
+                    or requested_end != expected_request_end or end < start or end > requested_end
+                    or total < end):
+                raise ValueError("BROAD_PREPARATION_FRAME_RESULT_BINDING_INVALID")
+            if is_bybit:
+                count = end - start
+                empty_completed = start == 0 and end == total == 0 and not events and not hashes
+                if (len(events) != count or len(hashes) != count
+                        or (count == 0 and not empty_completed)):
+                    raise ValueError("BROAD_PREPARATION_TRADE_SLICE_INVALID")
+                budget_left -= count
+            else:
+                expected_hash_count = 1 if frame.venue.value == "BINANCE" and frame.channel.endswith("@aggTrade") else 0
+                if (start != 0 or end != 1 or total != 1 or len(events) != 1
+                        or len(hashes) != expected_hash_count or expected_hash_count > budget_left):
+                    raise ValueError("BROAD_PREPARATION_SINGLE_FRAME_RESULT_INVALID")
+                budget_left -= expected_hash_count
+            for digest in hashes:
+                if (not isinstance(digest, str) or len(digest) != 64
+                        or any(character not in "0123456789abcdef" for character in digest)):
+                    raise ValueError("BROAD_PREPARATION_TRADE_HASH_INVALID")
+            event_total += len(events)
+            if event_total > 512:
+                raise ValueError("BROAD_PREPARATION_RESULT_EXCEEDS_RECORD_BOUND")
+            validated.append(result)
+            if is_bybit and end < total:
+                if offset != len(results) - 1:
+                    raise ValueError("BROAD_PREPARATION_MANIFEST_CONTINUES_PARTIAL_TRADE_FRAME")
+                break
+            if is_bybit and budget_left == 0 and offset != len(results) - 1:
+                raise ValueError("BROAD_PREPARATION_MANIFEST_EXCEEDS_TRADE_BUDGET")
+        if (len(validated) != len(results) or type(body.get("result_records")) is not int
+                or body["result_records"] != event_total):
+            raise ValueError("BROAD_PREPARATION_RESULT_RECORD_COUNT_INVALID")
+        first_result = validated[0]
+        if any(body.get(name) != first_result[name] for name in (
+            "frame_ordinal", "trade_ordinal_start", "trade_ordinal_end", "trade_total",
+        )):
+            raise ValueError("BROAD_PREPARATION_RESULT_START_SUMMARY_INVALID")
+        return tuple(validated)
+
+    @staticmethod
+    def _next_manifest_cursor(frame_results: tuple[Mapping[str, Any], ...]) -> tuple[int, int]:
+        if not frame_results:
+            raise ValueError("BROAD_PREPARATION_EMPTY_RESULT_MANIFEST")
+        last = frame_results[-1]
+        is_bybit = last["venue"] == "BYBIT" and last["channel"].startswith("publicTrade.")
+        if is_bybit and last["trade_ordinal_end"] < last["trade_total"]:
+            return last["frame_ordinal"], last["trade_ordinal_end"]
+        return last["frame_ordinal"] + 1, 0
+
+    def _decode_and_bind_manifest_events(
+        self,
+        frame_results: tuple[Mapping[str, Any], ...],
+        frames: tuple[CapturedPublicFrameV2, ...],
+    ) -> tuple[tuple[int, tuple[Any, ...], tuple[str, ...], int], ...]:
+        if self.plan is None:
+            raise RuntimeError("BROAD_PUBLIC_PREPARATION_PLAN_UNAVAILABLE")
+        decoded: list[tuple[int, tuple[Any, ...], tuple[str, ...], int]] = []
+        for result in frame_results:
+            ordinal = result["frame_ordinal"]
+            frame = frames[ordinal]
+            key = self.plan.key_for_frame(frame)
+            events = decode_prepared_events({"events": result["events"]})
+            for event in events:
+                if (event.instrument != key or event.source_id != frame.source_id
+                        or event.channel != frame.channel
+                        or event.raw_content_ref != frame.raw_payload_hash
+                        or event.received_at_ns != frame.received_at_ns
+                        or event.available_at_ns != max(frame.available_at_ns, result["processed_at_ns"])
+                        or event.source_health != result["source_health"]
+                        or event.source_health_ref != result["source_health_ref"]):
+                    raise ValueError("BROAD_PREPARATION_DECODED_EVENT_BINDING_INVALID")
+            is_bybit_trade = frame.venue.value == "BYBIT" and frame.channel.startswith("publicTrade.")
+            hashes = tuple(result["trade_payload_hashes"])
+            if is_bybit_trade and len(hashes) != len(events):
+                raise ValueError("BROAD_PREPARATION_DECODED_TRADE_HASH_COUNT_INVALID")
+            decoded.append((ordinal, events, hashes, result["processed_at_ns"]))
+        return tuple(decoded)
+
+    def _seal_prepared_archive(
+        self,
+        sealed: SealedPublicTransportV1,
+        batch: Any,
+    ) -> tuple[ArtifactIndexEntryV2, ...]:
+        if self._run_root is None or self.plan is None or self._preparation_worker is None:
+            raise RuntimeError("BROAD_PUBLIC_ARCHIVE_PREPARATION_NOT_RECOVERED")
+        if not batch.chunks:
+            return ()
+        import pyarrow as pa
+
+        from ..data.public_archive_extents import EXTENT_TYPE, extent_ref
+
+        if (len(batch.chunks) > MAX_PREPARATION_SEAL_CHUNKS_V2
+                or sum(chunk.table.num_rows for chunk in batch.chunks)
+                > MAX_PREPARATION_OUTPUT_RECORDS_V2):
+            raise ValueError("BROAD_ARCHIVE_SEAL_BATCH_EXCEEDS_BOUND")
+        private_root = self._run_root / ".public-evidence-preparation" / sealed.batch.artifact_ref
+        private_root.mkdir(parents=True, exist_ok=True)
+        chunk_ids = tuple(chunk.chunk_id for chunk in batch.chunks)
+        floor_by_chunk = {
+            chunk.chunk_id: chunk.frames[-1].available_at_ns for chunk in batch.chunks
+        }
+        rows = []
+        for chunk in batch.chunks:
+            for row in chunk.table.to_pylist():
+                rows.append({**row, "_atlas_chunk_id": chunk.chunk_id,
+                             "_atlas_floor_ns": floor_by_chunk[chunk.chunk_id]})
+        seal_table = pa.Table.from_pylist(rows)
+        if (not 1 <= seal_table.num_rows <= MAX_PREPARATION_OUTPUT_RECORDS_V2
+                or seal_table.nbytes > MAX_PREPARATION_RESULT_BYTES_V2):
+            raise ValueError("BROAD_ARCHIVE_SEAL_BATCH_EXCEEDS_BYTE_BOUND")
+        stream = pa.BufferOutputStream()
+        with self._measure_phase("archive_arrow_encode"), pa.ipc.new_stream(
+            stream, seal_table.schema,
+        ) as writer:
+            writer.write_table(seal_table)
+        input_path = private_root / f"seal-batch-{sealed.batch.artifact_ref}.arrow"
+        with (self._measure_phase("input_write"), self._measure_phase("seal_input_write")):
+            input_hash, _input_bytes = write_preparation_blob(
+                input_path, stream.getvalue().to_pybytes(),
+            )
+        batch_id = sha256_json({"version": "PUBLIC_ARCHIVE_SEAL_BATCH_V1",
+                                "chunk_ids": list(chunk_ids)})
+        output_path = private_root / f"seal-result-{batch_id}.json"
+        key = batch.chunks[0].frames[0].instrument
+        floor_ns = max(floor_by_chunk.values())
+        clock_at_ns = max(self.clock_ns(), floor_ns)
+        job_id = sha256_json({"kind": "SEAL", "descriptor": sealed.batch.artifact_ref,
+                             "chunk_id": batch_id, "input_hash": input_hash,
+                             "plan_hash": self.plan.plan_id})
+        request = PublicEvidencePreparationRequestV2(
+            "SEAL", job_id, self._run_id or self._run_identity(self._run_root),
+            str(self._run_root), sealed.batch.artifact_ref, input_hash,
+            str(input_path), str(output_path), self.plan.plan_id, key.content_hash,
+            0, 0, 0, namespace="ops-l2-frames", chunk_id=batch_id,
+            floor_ns=floor_ns, clock_at_ns=clock_at_ns,
+        )
+        completion = self._wait_for_preparation(self._preparation_worker, request)
+        with self._measure_phase("result_read_rehydrate"):
+            with self._measure_phase("seal_result_read"):
+                body = read_preparation_result(request, completion)
+            extents = body.get("extents")
+            if (body.get("version") != PREPARATION_VERSION_V2
+                    or body.get("job_id") != request.job_id
+                    or body.get("descriptor_hash") != sealed.batch.artifact_ref
+                    or body.get("input_hash") != input_hash
+                    or body.get("plan_hash") != self.plan.plan_id
+                    or body.get("product_hash") != key.content_hash
+                    or body.get("chunk_id") != batch_id
+                    or body.get("chunk_ids") != list(chunk_ids)
+                    or body.get("frame_ordinal") != 0
+                    or body.get("result_records") != seal_table.num_rows
+                    or not isinstance(extents, list) or len(extents) != len(chunk_ids)
+                    or not isinstance(body.get("seal_metrics"), Mapping)):
+                raise ValueError("BROAD_ARCHIVE_SEAL_RESULT_BINDING_INVALID")
+            metrics = body["seal_metrics"]
+            for source_name, phase_name in (
+                ("arrow_encode_ns", "archive_arrow_encode"),
+                ("compression_ns", "archive_compression"),
+                ("write_ns", "archive_extent_write"),
+                ("fsync_ns", "archive_extent_fsync"),
+                ("rename_ns", "archive_extent_rename"),
+                ("directory_sync_ns", "archive_directory_sync"),
+            ):
+                duration = metrics.get(source_name)
+                if type(duration) is not int or duration < 0:
+                    raise ValueError("BROAD_ARCHIVE_SEAL_METRICS_INVALID")
+                self._record_phase_duration_ns(phase_name, duration)
+            sealed_entries = []
+            by_chunk = dict(zip(chunk_ids, extents, strict=True))
+            for chunk_id in chunk_ids:
+                extent = by_chunk[chunk_id]
+                if not isinstance(extent, Mapping):
+                    raise ValueError("BROAD_ARCHIVE_SEAL_EXTENT_INVALID")
+                metadata = extent.get("metadata")
+                extent_metadata = metadata.get("extent") if isinstance(metadata, Mapping) else None
+                if (extent.get("artifact_ref") != extent_ref("ops-l2-frames", chunk_id)
+                        or extent.get("artifact_type") != EXTENT_TYPE
+                        or not isinstance(extent_metadata, Mapping)
+                        or extent_metadata.get("namespace") != "ops-l2-frames"
+                        or extent_metadata.get("chunk_id") != chunk_id):
+                    raise ValueError("BROAD_ARCHIVE_SEAL_EXTENT_BINDING_INVALID")
+                sealed_entries.append(ArtifactIndexEntryV2(
+                    str(extent["artifact_ref"]), str(extent["artifact_type"]),
+                    str(extent["content_hash"]), int(extent["created_at_ns"]),
+                    int(extent["available_at_ns"]), metadata,
+                ))
+        return tuple(sealed_entries)
+
+    def _candidate_state_for_frames(self, frames: tuple[CapturedPublicFrameV2, ...]) -> tuple[
+        dict[InstrumentKeyV2, SequenceValidBookV2],
+        dict[tuple[InstrumentKeyV2, str], PublicStreamContinuityTrackerV1],
+        dict[tuple[InstrumentKeyV2, str], int | None],
+    ]:
+        if self.plan is None:
+            raise RuntimeError("BROAD_PUBLIC_INTERPRETER_NOT_RECOVERED")
+        books = self._sequence_books.copy()
+        trackers = self._trackers.copy()
+        epochs = self._connection_epochs.copy()
+        for frame in frames:
+            key = self.plan.key_for_frame(frame)
+            if key in self._sequence_books:
+                books[key] = copy.deepcopy(self._sequence_books[key])
+            identity = key, frame.channel
+            if identity in self._trackers:
+                trackers[identity] = copy.deepcopy(self._trackers[identity])
+        return books, trackers, epochs
+
+    def _interpret_frames(
+        self,
+        repository: OpsRepository,
+        frames: tuple[CapturedPublicFrameV2, ...],
+        *,
+        now_ns: int,
+        prepared_events: Mapping[int, _PreparedFrameParseV2] | None = None,
+        defer_publication: bool = False,
+    ) -> _PreparedFramePublicationV2 | None:
+        if prepared_events is None:
+            prepared_events = self._prepared_events_for_call
+        defer_publication = defer_publication or self._defer_publication_for_call
         if self.plan is None or self._archive is None:
             raise RuntimeError("BROAD_PUBLIC_INTERPRETER_NOT_RECOVERED")
         grouped: dict[tuple[str, str, str], list[L2RawFrameV2]] = {}
         artifact_entries: list[ArtifactIndexEntryV2] = []
-        self._poll_snapshot(repository, now_ns=now_ns, grouped=grouped)
+        if not defer_publication:
+            self._poll_snapshot(repository, now_ns=now_ns, grouped=grouped)
         # One immutable lane-health view is sufficient for every frame in this
         # sealed FIFO extent. Re-reading all venue lane locks for every frame
         # made broad batches pay O(frames × lanes) status work on the sole
         # repository writer.
         lane_statuses = self.source.status().lanes if self.source is not None else {}
-        for frame in frames:
+        for frame_ordinal, frame in enumerate(frames):
             key = self.plan.key_for_frame(frame)
             product = self._products.get(key)
             if product is None:
@@ -358,10 +1110,19 @@ class BroadPublicRuntimeV2:
             processed_at = max(now_ns, frame.available_at_ns)
             health = self._frame_health(repository, frame, now_ns=processed_at,
                                         lane_statuses=lane_statuses, artifact_sink=artifact_entries)
-            events = self.plan.parse_frame(
-                frame, processed_at_ns=processed_at, source_health=health.state.value,
-                source_health_ref=health.content_hash,
-            )
+            if prepared_events is None:
+                events = self.plan.parse_frame(
+                    frame, processed_at_ns=processed_at, source_health=health.state.value,
+                    source_health_ref=health.content_hash,
+                )
+                prepared_frame = None
+            else:
+                prepared_frame = prepared_events.get(frame_ordinal)
+                if prepared_frame is None:
+                    raise ValueError("BROAD_PREPARATION_FRAME_ORDINAL_MISSING")
+                events = tuple(replace(
+                    event, source_health=health.state.value, source_health_ref=health.content_hash,
+                ) for event in prepared_frame.events)
             identity = (key, frame.channel)
             tracker = self._trackers.get(identity)
             previous_epoch = self._connection_epochs.get(identity)
@@ -404,7 +1165,10 @@ class BroadPublicRuntimeV2:
                     for event in events:
                         if not isinstance(event, L2DeltaV2):
                             continue
-                        self._queue_snapshot_delta(repository, product, frame, event, processed_at)
+                        if self._deferred_snapshot_requests is None:
+                            self._queue_snapshot_delta(repository, product, frame, event, processed_at)
+                        else:
+                            self._deferred_snapshot_requests.append((product, frame, event, processed_at))
                         raw = raw_archive_record(
                             frame, instrument=key, frame_type="DELTA_AWAITING_REST_SNAPSHOT",
                             sequence_semantics="BINANCE_U_PU", first_update_id=event.first_update_id,
@@ -446,16 +1210,19 @@ class BroadPublicRuntimeV2:
                 )
                 self._persist_tracker(repository, tracker, observation, artifact_sink=artifact_entries)
                 trade_events = tuple(trade for event in events for trade in (event if isinstance(event, tuple) else (event,)))
-                payload = json.loads(frame.raw_payload_bytes)
-                raw_rows = payload.get("data", payload)
-                if isinstance(raw_rows, Mapping):
-                    raw_rows = (raw_rows,)
-                if not isinstance(raw_rows, (tuple, list)) or len(raw_rows) != len(trade_events):
-                    raise ValueError("BROAD_TRADE_EXACT_ROW_BINDING_FAILED")
-                for trade, raw_row in zip(trade_events, raw_rows, strict=True):
-                    if not isinstance(raw_row, Mapping):
+                if prepared_frame is None:
+                    payload = json.loads(frame.raw_payload_bytes)
+                    raw_rows = payload.get("data", payload)
+                    if isinstance(raw_rows, Mapping):
+                        raw_rows = (raw_rows,)
+                    if not isinstance(raw_rows, (tuple, list)) or len(raw_rows) != len(trade_events):
                         raise ValueError("BROAD_TRADE_EXACT_ROW_BINDING_FAILED")
-                    trade_payload_hash = sha256_json(raw_row)
+                    raw_hashes = tuple(sha256_json(row) for row in raw_rows if isinstance(row, Mapping))
+                else:
+                    raw_hashes = prepared_frame.trade_payload_hashes
+                if len(raw_hashes) != len(trade_events):
+                    raise ValueError("BROAD_TRADE_EXACT_ROW_BINDING_FAILED")
+                for trade, trade_payload_hash in zip(trade_events, raw_hashes, strict=True):
                     trade_observation = PublicStreamObservationV1(
                         trade.instrument, trade.source_id, trade.channel, product.metadata_ref,
                         tracker.state.epoch_id, PublicStreamObservationKindV1.TRADE_OBSERVED,
@@ -476,10 +1243,6 @@ class BroadPublicRuntimeV2:
                     event_at_ns=event_at,
                 )
                 grouped.setdefault((key.content_hash, frame.source_id, frame.channel), []).append(raw)
-        if artifact_entries:
-            repository.register_artifacts(tuple(artifact_entries))
-        if grouped:
-            self._archive.write_chunks(tuple(tuple(group) for group in grouped.values()))
         lane_statuses = self.source.status().lanes if self.source is not None else {}
         for lane_name, lane_status in lane_statuses.items():
             handoff = lane_status.handoff
@@ -493,10 +1256,19 @@ class BroadPublicRuntimeV2:
                     "disconnect_count": handoff.disconnect_count}
             health = PublicSourceHealthV2(source_id, observed, max(observed, now_ns), state,
                                           sha256_json(body), "bounded broad stream lane health")
-            repository.register_artifact(ArtifactIndexEntryV2(
+            artifact_entries.append(ArtifactIndexEntryV2(
                 health.content_hash, "PublicSourceHealthV2", health.content_hash,
                 health.available_at_ns, health.available_at_ns, {"health": health.to_dict(), "lane": body},
             ))
+        if defer_publication:
+            return _PreparedFramePublicationV2(
+                tuple(artifact_entries), tuple(tuple(group) for group in grouped.values()),
+            )
+        if artifact_entries:
+            repository.register_artifacts(tuple(artifact_entries))
+        if grouped:
+            self._archive.write_chunks(tuple(tuple(group) for group in grouped.values()))
+        return None
 
     def _queue_snapshot_delta(self, repository: OpsRepository, product: ProductContractV2,
                                frame: CapturedPublicFrameV2, delta: L2DeltaV2, now_ns: int) -> None:
@@ -681,10 +1453,18 @@ class BroadPublicRuntimeV2:
             trade_identity_cache_complete=(transition.state.observed_trade_count == 0),
         )
         state_body = scalar_state.to_dict()
-        state_ref = scalar_state.content_hash
-        decision = transition.seal(state_ref=state_ref)
+        state_ref = sha256_json({
+            "artifact_type": "PublicStreamContinuityStateV1", "state": state_body,
+        })
+        observation_body = observation.to_dict()
+        observation_ref = sha256_json({
+            "artifact_type": "PublicStreamObservationV1", "observation": observation_body,
+        })
+        decision = PublicStreamContinuityDecisionV1(
+            observation_ref, transition.classification, transition.reason_code, state_ref,
+        )
         body = {"version": "BROAD_PUBLIC_STREAM_CONTINUITY_V3",
-                "observation": observation.to_dict(), "decision": decision.to_dict(),
+                "observation": observation_body, "decision": decision.to_dict(),
                 "state_projection": state_body, "authority": "ZERO"}
         ref = sha256_json({"artifact_type": "BroadPublicStreamContinuityV3", "body": body})
         entry = ArtifactIndexEntryV2(

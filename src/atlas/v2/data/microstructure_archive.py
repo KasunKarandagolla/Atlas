@@ -92,6 +92,18 @@ class L2RestartCursorV2:
     source_health_after_restart: str = "INCOMPLETE_SNAPSHOT"
 
 
+@dataclass(frozen=True)
+class PreparedL2ArchiveChunkV2:
+    chunk_id: str
+    frames: tuple[L2RawFrameV2, ...]
+    table: Any
+
+
+@dataclass(frozen=True)
+class PreparedL2ArchiveBatchV2:
+    chunks: tuple[PreparedL2ArchiveChunkV2, ...]
+
+
 class L2FrameArchiveV2:
     def __init__(self, root: str | Path, repository: OpsRepository, *, compact_live: bool = False,
                  clock_ns: Callable[[], int] | None = None) -> None:
@@ -99,6 +111,7 @@ class L2FrameArchiveV2:
         self.repository = repository
         self.compact_live = compact_live
         self.clock_ns = clock_ns
+        self._file_writer: Any | None = None
 
     def checkpoint_ref(self, chunk_id: str) -> str:
         kind = "L2FrameArchiveCheckpointV3" if self.compact_live else "L2FrameArchiveCheckpointV2"
@@ -106,6 +119,129 @@ class L2FrameArchiveV2:
 
     def write_chunk(self, frames: tuple[L2RawFrameV2, ...]) -> tuple[str, Path]:
         return self.write_chunks((frames,))[0]
+
+    def prepare_chunks(
+        self,
+        frame_groups: tuple[tuple[L2RawFrameV2, ...], ...],
+    ) -> PreparedL2ArchiveBatchV2:
+        """Build bounded immutable Arrow tables without touching SQLite/files."""
+        import pyarrow as pa
+
+        if not frame_groups:
+            return PreparedL2ArchiveBatchV2(())
+        if len(frame_groups) > 256:
+            raise ValueError("archive chunk batch item bound exceeded")
+        chunks: list[PreparedL2ArchiveChunkV2] = []
+
+        def append_bounded(ordered: tuple[L2RawFrameV2, ...]) -> None:
+            rows = [{**frame.metadata_dict(), "instrument_json": canonical_json(frame.instrument.to_dict()),
+                     "raw_payload_bytes": frame.raw_payload_bytes} for frame in ordered]
+            table = pa.Table.from_pylist(rows)
+            if table.nbytes > 4 * 1024 * 1024:
+                if len(ordered) == 1:
+                    raise ValueError("one interpreted public frame exceeds the 4 MiB archive chunk bound")
+                middle = len(ordered) // 2
+                append_bounded(ordered[:middle])
+                append_bounded(ordered[middle:])
+                return
+            chunk_id = sha256_json({"archive_type": "L2RawFrameChunkV2",
+                                    "frames": [frame.metadata_dict() for frame in ordered]})
+            chunks.append(PreparedL2ArchiveChunkV2(chunk_id, ordered, table))
+
+        for frames in frame_groups:
+            if not frames or any(not isinstance(frame, L2RawFrameV2) for frame in frames):
+                raise ValueError("archive chunk requires nonempty typed raw frames")
+            ordered = tuple(sorted(frames, key=lambda f: (f.available_at_ns, f.source_id, f.channel,
+                                                           f.last_update_id if f.last_update_id is not None else -1,
+                                                           f.raw_payload_hash)))
+            keys = {(f.instrument.content_hash, f.source_id, f.channel) for f in ordered}
+            if len(keys) != 1:
+                raise ValueError("one Parquet chunk must contain one instrument/source/channel stream")
+            identities: dict[str, str] = {}
+            for frame in ordered:
+                old = identities.get(frame.record_id)
+                if old is not None and old != frame.raw_payload_hash:
+                    raise ValueError("conflicting duplicate raw frame identity")
+                identities[frame.record_id] = frame.raw_payload_hash
+            if len(ordered) > 512:
+                for start in range(0, len(ordered), 512):
+                    append_bounded(ordered[start:start + 512])
+            else:
+                append_bounded(ordered)
+        chunks.sort(key=lambda item: item.chunk_id)
+        return PreparedL2ArchiveBatchV2(tuple(chunks))
+
+    def seal_prepared(self, batch: PreparedL2ArchiveBatchV2, writer: Any) -> tuple[ArtifactIndexEntryV2, ...]:
+        """File-only archive sealing; caller publishes descriptors after SQL begins."""
+        if not self.compact_live:
+            raise ValueError("prepared public extent sealing is only available in compact-live mode")
+        from .public_archive_extents import MAX_EXTENT_BATCH_BYTES, PublicArchiveSegmentWriterV1
+
+        if not isinstance(writer, PublicArchiveSegmentWriterV1):
+            raise ValueError("prepared archive requires the file-only public segment writer")
+        specs = tuple((item.table, "ops-l2-frames", item.chunk_id,
+                       self.clock_ns or (lambda item=item: item.frames[-1].available_at_ns),
+                       item.frames[-1].available_at_ns) for item in batch.chunks)
+        if sum(table.nbytes for table, *_ in specs) > MAX_EXTENT_BATCH_BYTES:
+            raise ValueError("prepared archive descriptor batch exceeds 64 MiB")
+        return writer.seal_many(specs)
+
+    def publish_prepared(
+        self,
+        batch: PreparedL2ArchiveBatchV2,
+        sealed_entries: tuple[ArtifactIndexEntryV2, ...],
+        *,
+        repository: OpsRepository | None = None,
+    ) -> tuple[tuple[str, Path], ...]:
+        """Register verified durable extent locators/checkpoints in caller transaction."""
+        from .public_archive_extents import EXTENT_TYPE, extent_ref, read_extent
+
+        repo = repository or self.repository
+        if not self.compact_live or len(batch.chunks) != len(sealed_entries):
+            raise ValueError("prepared archive seal count or mode is invalid")
+        refs = tuple(extent_ref("ops-l2-frames", item.chunk_id) for item in batch.chunks)
+        known = repo.get_artifact_metadata_by_refs(refs)
+        resolved: dict[str, ArtifactIndexEntryV2] = {}
+        new_entries: list[ArtifactIndexEntryV2] = []
+        for chunk, ref, sealed in zip(batch.chunks, refs, sealed_entries, strict=True):
+            if (sealed.artifact_ref != ref or sealed.artifact_type != EXTENT_TYPE
+                    or sealed.metadata.get("extent", {}).get("chunk_id") != chunk.chunk_id):
+                raise ValueError("prepared archive worker descriptor does not bind its chunk")
+            if ref in known:
+                prior = repo.get_artifact(ref)
+                if prior is None or prior.artifact_type != EXTENT_TYPE or not read_extent(repo, ref).equals(chunk.table):
+                    raise ValueError("immutable public archive extent conflict")
+                resolved[ref] = prior
+            else:
+                new_entries.append(sealed)
+                resolved[ref] = sealed
+        if new_entries:
+            repo.register_artifacts(tuple(new_entries))
+        checkpoints: list[ArtifactIndexEntryV2] = []
+        outputs: list[tuple[str, Path]] = []
+        for chunk, ref in zip(batch.chunks, refs, strict=True):
+            descriptor = resolved[ref]
+            metadata = descriptor.metadata.get("extent")
+            if metadata is None:
+                raise RuntimeError("durable public archive extent descriptor missing after seal")
+            available = int(metadata["available_at_ns"])
+            last = chunk.frames[-1]
+            checkpoint_ref = self.checkpoint_ref(chunk.chunk_id)
+            checkpoints.append(ArtifactIndexEntryV2(
+                checkpoint_ref, "L2FrameArchiveCheckpointV3", chunk.chunk_id, available, available,
+                {"schema_version": 3, "chunk_id": chunk.chunk_id, "archive_extent_ref": ref,
+                 "instrument": last.instrument.to_dict(), "instrument_hash": last.instrument.content_hash,
+                 "source_id": last.source_id, "channel": last.channel,
+                 "high_water_update_id": last.last_update_id, "last_record_id": last.record_id,
+                 "last_payload_hash": last.raw_payload_hash, "sequence_semantics": last.sequence_semantics,
+                 "state_after_restart": "SNAPSHOT_RECOVERY", "source_health_after_restart": "INCOMPLETE_SNAPSHOT",
+                 "frame_count": len(chunk.frames)},
+            ))
+            outputs.append((chunk.chunk_id, Path(repo.path).parent / "ops-public-extents"
+                            / str(metadata["segment_name"])))
+        if checkpoints:
+            repo.register_artifacts(tuple(checkpoints))
+        return tuple(outputs)
 
     def write_chunks(
         self,

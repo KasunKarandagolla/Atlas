@@ -677,8 +677,8 @@ def build_s6_candidate_action(
         "decision_cutoff_ns": decision_cutoff_ns,
         "previous_15m_ref": previous_15m.content_hash,
         "trigger_15m_ref": trigger_15m.content_hash,
-        "status": "ELIGIBLE",
-        "reason": "S6_CONFIRMED_CLOSE_TRIGGER",
+        "status": "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT",
+        "reason": "S6_ACTION_APPROVAL_PENDING",
         "selector_influence": "ZERO",
     }
     trigger_ref = sha256_json(trigger_body)

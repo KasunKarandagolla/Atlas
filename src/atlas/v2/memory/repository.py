@@ -46,6 +46,76 @@ class DedupeConflict(RuntimeError):
 
 
 @dataclass(frozen=True)
+class PublicAdoptionCursorV2:
+    """Private resumable cursor for one durable public transport descriptor."""
+
+    run_id: str
+    descriptor_hash: str
+    extent_hash: str
+    batch_hash: str
+    plan_hash: str
+    product_hashes: tuple[str, ...]
+    preparation_version: str
+    frame_ordinal: int
+    trade_ordinal_start: int
+    trade_ordinal_end: int
+    next_frame_ordinal: int
+    next_trade_ordinal: int
+    logical_started_at_ns: int
+    logical_finished_at_ns: int
+    staged_output_hash: str
+    cursor_generation: int
+
+    def __post_init__(self) -> None:
+        nonblank(self.run_id, field="run_id")
+        nonblank(self.preparation_version, field="preparation_version")
+        for name in ("descriptor_hash", "extent_hash", "batch_hash", "plan_hash", "staged_output_hash"):
+            sha256_ref(getattr(self, name), field=name)
+        if not self.product_hashes or tuple(sorted(set(self.product_hashes))) != self.product_hashes:
+            raise ValueError("public adoption product bindings must be sorted and unique")
+        for value in self.product_hashes:
+            sha256_ref(value, field="product_hash")
+        for name in ("frame_ordinal", "trade_ordinal_start", "trade_ordinal_end", "next_frame_ordinal",
+                     "next_trade_ordinal", "logical_started_at_ns", "logical_finished_at_ns", "cursor_generation"):
+            value = getattr(self, name)
+            if type(value) is not int or value < (1 if name == "cursor_generation" else 0):
+                raise ValueError(f"{name} must be a nonnegative integer")
+        if (self.trade_ordinal_end < self.trade_ordinal_start
+                or self.logical_finished_at_ns < self.logical_started_at_ns):
+            raise ValueError("public adoption slice range or logical timing is invalid")
+        if (self.next_frame_ordinal, self.next_trade_ordinal) < (self.frame_ordinal, self.trade_ordinal_end):
+            raise ValueError("public adoption cursor cannot move backwards")
+
+    @property
+    def binding_hash(self) -> str:
+        return sha256_json({"run_id": self.run_id, "descriptor_hash": self.descriptor_hash,
+                            "extent_hash": self.extent_hash, "batch_hash": self.batch_hash,
+                            "plan_hash": self.plan_hash, "product_hashes": list(self.product_hashes),
+                            "preparation_version": self.preparation_version})
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"run_id": self.run_id, "descriptor_hash": self.descriptor_hash,
+                "extent_hash": self.extent_hash, "batch_hash": self.batch_hash,
+                "plan_hash": self.plan_hash, "product_hashes": list(self.product_hashes),
+                "preparation_version": self.preparation_version, "frame_ordinal": self.frame_ordinal,
+                "trade_ordinal_start": self.trade_ordinal_start, "trade_ordinal_end": self.trade_ordinal_end,
+                "next_frame_ordinal": self.next_frame_ordinal, "next_trade_ordinal": self.next_trade_ordinal,
+                "logical_started_at_ns": self.logical_started_at_ns,
+                "logical_finished_at_ns": self.logical_finished_at_ns,
+                "staged_output_hash": self.staged_output_hash,
+                "cursor_generation": self.cursor_generation}
+
+
+@dataclass(frozen=True)
+class PublicAdoptionStageSliceV2:
+    cursor: PublicAdoptionCursorV2
+    payload: Mapping[str, Any]
+
+
+MAX_PUBLIC_ADOPTION_SLICE_BYTES_V2 = 4 * 1024 * 1024
+
+
+@dataclass(frozen=True)
 class TransitionResultV2:
     watch: OpportunityWatchV2
     inserted: bool
@@ -1177,6 +1247,168 @@ class OpsRepository:
         if sha256_json(payload) != row["payload_hash"]:
             raise RuntimeError("stored source health hash mismatch")
         return SourceHealthV2(**payload)
+
+    def stage_public_adoption_slice_v2(
+        self,
+        cursor: PublicAdoptionCursorV2,
+        payload: Mapping[str, Any],
+    ) -> PublicAdoptionStageSliceV2:
+        """Durably append one private bounded slice and advance its exact cursor.
+
+        The stage/cursor pair share one transaction/savepoint. Neither table is
+        part of the public artifact inventory or any causal reader.
+        """
+        if self.read_only:
+            raise ValueError("public adoption staging requires the sole writable repository")
+        if not isinstance(cursor, PublicAdoptionCursorV2) or not isinstance(payload, Mapping):
+            raise ValueError("public adoption stage requires its fixed cursor and JSON payload")
+        payload_json = canonical_json(payload)
+        if len(payload_json.encode("utf-8")) > MAX_PUBLIC_ADOPTION_SLICE_BYTES_V2:
+            raise ValueError("public adoption slice exceeds its 4 MiB private bound")
+        payload_value = json.loads(payload_json)
+        if not isinstance(payload_value, Mapping) or not isinstance(payload_value.get("output"), Mapping):
+            raise ValueError("public adoption staged slice requires an output object")
+        payload_hash = sha256_json(payload_value)
+        if sha256_json(payload_value["output"]) != cursor.staged_output_hash:
+            raise ValueError("public adoption staged output hash does not bind payload")
+        binding_hash = cursor.binding_hash
+        cursor_json = canonical_json(cursor.to_dict())
+        cursor_hash = sha256_json(cursor.to_dict())
+        now_ns = time.time_ns()
+        with self._transaction() as connection:
+            prior = connection.execute(
+                "SELECT * FROM public_adoption_cursor_v2 WHERE run_id=? AND descriptor_hash=?",
+                (cursor.run_id, cursor.descriptor_hash),
+            ).fetchone()
+            if prior is not None:
+                prior_cursor = json.loads(prior["cursor_json"])
+                if sha256_json(prior_cursor) != prior["cursor_hash"]:
+                    raise RuntimeError("stored public adoption cursor hash mismatch")
+                prior_binding = prior["binding_hash"]
+                if (prior_binding != binding_hash or prior["extent_hash"] != cursor.extent_hash
+                        or prior["batch_hash"] != cursor.batch_hash):
+                    raise ValueError("public adoption descriptor restart binding changed")
+                prior_generation = int(prior["cursor_generation"])
+                if cursor.cursor_generation == prior_generation:
+                    existing = connection.execute(
+                        "SELECT payload_hash,payload_json,binding_hash,slice_generation FROM public_evidence_stage_v2 "
+                        "WHERE run_id=? AND descriptor_hash=? AND frame_ordinal=? AND trade_ordinal_start=?",
+                        (cursor.run_id, cursor.descriptor_hash, cursor.frame_ordinal,
+                         cursor.trade_ordinal_start),
+                    ).fetchone()
+                    if (existing is None or existing["payload_hash"] != payload_hash
+                            or existing["payload_json"] != payload_json
+                            or existing["binding_hash"] != binding_hash
+                            or existing["slice_generation"] != cursor.cursor_generation
+                            or prior_cursor != cursor.to_dict()):
+                        raise ValueError("public adoption cursor generation was reused with different output")
+                    return PublicAdoptionStageSliceV2(cursor, FrozenMap.from_json(payload_value))
+                if cursor.cursor_generation != prior_generation + 1:
+                    raise ValueError("public adoption cursor generation skipped or regressed")
+                old_next = (prior_cursor["next_frame_ordinal"], prior_cursor["next_trade_ordinal"])
+                if (cursor.frame_ordinal, cursor.trade_ordinal_start) != old_next:
+                    raise ValueError("public adoption cursor is not contiguous with prior slice")
+            elif cursor.cursor_generation != 1 or (cursor.frame_ordinal, cursor.trade_ordinal_start) != (0, 0):
+                raise ValueError("first public adoption slice must start at descriptor ordinal zero")
+            connection.execute(
+                """INSERT INTO public_evidence_stage_v2
+                   (run_id,descriptor_hash,frame_ordinal,trade_ordinal_start,trade_ordinal_end,
+                    slice_generation,binding_hash,payload_hash,payload_json,created_at_ns)
+                   VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (cursor.run_id, cursor.descriptor_hash, cursor.frame_ordinal, cursor.trade_ordinal_start,
+                 cursor.trade_ordinal_end, cursor.cursor_generation, binding_hash, payload_hash,
+                 payload_json, now_ns),
+            )
+            connection.execute(
+                """INSERT INTO public_adoption_cursor_v2
+                   (run_id,descriptor_hash,extent_hash,batch_hash,binding_hash,cursor_generation,
+                    cursor_json,cursor_hash,updated_at_ns)
+                   VALUES(?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(run_id,descriptor_hash) DO UPDATE SET
+                    extent_hash=excluded.extent_hash,batch_hash=excluded.batch_hash,
+                    binding_hash=excluded.binding_hash,cursor_generation=excluded.cursor_generation,
+                    cursor_json=excluded.cursor_json,cursor_hash=excluded.cursor_hash,
+                    updated_at_ns=excluded.updated_at_ns""",
+                (cursor.run_id, cursor.descriptor_hash, cursor.extent_hash, cursor.batch_hash,
+                 binding_hash, cursor.cursor_generation, cursor_json, cursor_hash, now_ns),
+            )
+        return PublicAdoptionStageSliceV2(cursor, FrozenMap.from_json(payload_value))
+
+    def public_adoption_stages_v2(
+        self, run_id: str, descriptor_hash: str,
+    ) -> tuple[PublicAdoptionCursorV2 | None, tuple[PublicAdoptionStageSliceV2, ...]]:
+        """Read and verify private resumable slices for the exact raw descriptor."""
+        nonblank(run_id, field="run_id")
+        sha256_ref(descriptor_hash, field="descriptor_hash")
+        with self._lock:
+            cursor_row = self._connection.execute(
+                "SELECT * FROM public_adoption_cursor_v2 WHERE run_id=? AND descriptor_hash=?",
+                (run_id, descriptor_hash),
+            ).fetchone()
+            rows = self._connection.execute(
+                "SELECT * FROM public_evidence_stage_v2 WHERE run_id=? AND descriptor_hash=? "
+                "ORDER BY frame_ordinal,trade_ordinal_start",
+                (run_id, descriptor_hash),
+            ).fetchall()
+        if cursor_row is None:
+            if rows:
+                raise RuntimeError("private public adoption slices exist without a cursor")
+            return None, ()
+        cursor_value = json.loads(cursor_row["cursor_json"])
+        if sha256_json(cursor_value) != cursor_row["cursor_hash"]:
+            raise RuntimeError("stored public adoption cursor hash mismatch")
+        cursor = PublicAdoptionCursorV2(**{
+            **cursor_value, "product_hashes": tuple(cursor_value["product_hashes"]),
+        })
+        if (cursor.run_id != run_id or cursor.descriptor_hash != descriptor_hash
+                or cursor.binding_hash != cursor_row["binding_hash"]
+                or cursor.extent_hash != cursor_row["extent_hash"]
+                or cursor.batch_hash != cursor_row["batch_hash"]
+                or cursor.cursor_generation != cursor_row["cursor_generation"]):
+            raise RuntimeError("stored public adoption cursor binding mismatch")
+        stages: list[PublicAdoptionStageSliceV2] = []
+        expected_generation = 1
+        expected_next = (0, 0)
+        for row in rows:
+            payload = json.loads(row["payload_json"])
+            stage_generation = row["slice_generation"]
+            stage_cursor = payload.get("cursor") if isinstance(payload, Mapping) else None
+            if (sha256_json(payload) != row["payload_hash"]
+                    or row["binding_hash"] != cursor.binding_hash
+                    or type(stage_generation) is not int or stage_generation != expected_generation
+                    or (row["frame_ordinal"], row["trade_ordinal_start"]) != expected_next):
+                raise RuntimeError("stored public adoption slice hash, binding or ordinal mismatch")
+            if not isinstance(stage_cursor, Mapping):
+                raise RuntimeError("stored public adoption slice is missing its cursor binding")
+            stage_cursor_value = PublicAdoptionCursorV2(**{
+                **stage_cursor, "product_hashes": tuple(stage_cursor["product_hashes"]),
+            })
+            if (stage_cursor_value.cursor_generation != stage_generation
+                    or stage_cursor_value.binding_hash != cursor.binding_hash
+                    or stage_cursor_value.frame_ordinal != row["frame_ordinal"]
+                    or stage_cursor_value.trade_ordinal_start != row["trade_ordinal_start"]
+                    or stage_cursor_value.trade_ordinal_end != row["trade_ordinal_end"]
+                    or not isinstance(payload.get("output"), Mapping)
+                    or stage_cursor_value.staged_output_hash != sha256_json(payload["output"])):
+                raise RuntimeError("stored public adoption slice cursor differs from its staged payload")
+            expected_next = (stage_cursor_value.next_frame_ordinal, stage_cursor_value.next_trade_ordinal)
+            stages.append(PublicAdoptionStageSliceV2(stage_cursor_value, FrozenMap.from_json(payload)))
+            expected_generation += 1
+        if not stages or stages[-1].cursor != cursor or len(stages) != cursor.cursor_generation:
+            raise RuntimeError("public adoption cursor does not terminate its staged slice sequence")
+        return cursor, tuple(stages)
+
+    def clear_public_adoption_v2(self, run_id: str, descriptor_hash: str) -> None:
+        """Retire private staging only in the same transaction as final publication."""
+        if self.read_only:
+            raise ValueError("public adoption staging retirement requires the writable repository")
+        nonblank(run_id, field="run_id")
+        sha256_ref(descriptor_hash, field="descriptor_hash")
+        with self._transaction() as connection:
+            connection.execute("DELETE FROM public_evidence_stage_v2 WHERE run_id=? AND descriptor_hash=?",
+                               (run_id, descriptor_hash))
+            connection.execute("DELETE FROM public_adoption_cursor_v2 WHERE run_id=? AND descriptor_hash=?",
+                               (run_id, descriptor_hash))
 
     def register_model_manifest(self, manifest: ModelManifestV2) -> str:
         manifest_hash = manifest.manifest_hash

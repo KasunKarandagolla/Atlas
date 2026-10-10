@@ -1,5 +1,8 @@
 import hashlib
 import json
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -212,6 +215,71 @@ def test_income_persistence_is_idempotent_and_conflicts_are_audited(tmp_path):
             effective_time_ns=first[0].effective_time_ns, received_at_ns=now,
             event_type="FUNDING_FEE", revision="changed",
         ))
+
+
+def test_conflicting_income_keeps_transport_receipt_before_quarantine(tmp_path):
+    journal = SQLiteJournal(tmp_path / "conflicting-income.sqlite")
+    identity = BinanceDemoIdentity("scope-a", "cred-a")
+    now = 1_800_000_000_000_000_000
+    original = {"tranId": 55, "incomeType": "FUNDING_FEE", "asset": "USDT", "income": "-0.17",
+                "time": now // 1_000_000 - 20}
+    conflicting = {**original, "income": "-0.18"}
+    record_binance_income(journal, identity, [original], received_at_ns=now)
+
+    from atlas.persistence.sqlite import PersistenceError
+
+    with pytest.raises(PersistenceError, match="conflicting economic event"):
+        record_binance_income(journal, identity, [conflicting], received_at_ns=now + 1)
+
+    expected_hashes = {
+        normalize_binance_income(identity, [row], received_at_ns=now)[0][1].source_hash
+        for row in (original, conflicting)
+    }
+    persisted_hashes = {
+        row[0]
+        for row in journal._conn.execute(
+            "SELECT raw_hash FROM observations WHERE source='BINANCE_DEMO_INCOME'"
+        )
+    }
+    assert persisted_hashes == expected_hashes
+    assert journal.count("economic_events") == 1
+
+
+def test_concurrent_income_replay_reuses_one_economic_row(tmp_path, monkeypatch):
+    journal = SQLiteJournal(tmp_path / "concurrent-income.sqlite")
+    identity = BinanceDemoIdentity("scope-a", "cred-a")
+    now = 1_800_000_000_000_000_000
+    row = {"tranId": 55, "incomeType": "FUNDING_FEE", "asset": "USDT", "income": "-0.17",
+           "time": now // 1_000_000 - 20}
+    normalized_barrier = threading.Barrier(2)
+    import atlas.runtime.binance_reconciliation as reconciliation
+
+    original_normalizer = reconciliation.normalize_binance_income
+    original_loader = journal.load_economic_event
+
+    def synchronized_normalizer(*args, **kwargs):
+        result = original_normalizer(*args, **kwargs)
+        normalized_barrier.wait(timeout=2)
+        return result
+
+    def delayed_loader(account, transaction_id):
+        prior = original_loader(account, transaction_id)
+        if prior is None:
+            time.sleep(0.05)
+        return prior
+
+    monkeypatch.setattr(reconciliation, "normalize_binance_income", synchronized_normalizer)
+    monkeypatch.setattr(journal, "load_economic_event", delayed_loader)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        calls = [
+            pool.submit(record_binance_income, journal, identity, [row], received_at_ns=now + offset)
+            for offset in (0, 1)
+        ]
+        results = [call.result(timeout=5) for call in calls]
+
+    assert results[0] == results[1]
+    assert journal.count("economic_events") == 1
+    assert journal.count("observations") == 2
 
 
 @pytest.mark.parametrize("field,value", [("id", None), ("id", True), ("orderId", []), ("qty", True),

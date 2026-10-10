@@ -496,23 +496,30 @@ def record_binance_income(
     """Persist exact typed income/funding/cost rows idempotently."""
     recorded: list[EconomicEvent] = []
     for event, source in normalize_binance_income(identity, rows, received_at_ns=received_at_ns):
-        prior = journal.load_economic_event(event.account, event.venue_transaction_id)
-        if prior is None:
-            journal.append_economic_event(event)
-        elif (prior.currency, prior.amount, prior.effective_time_ns, prior.event_type, prior.revision) != (
-            event.currency, event.amount, event.effective_time_ns, event.event_type, event.revision,
-        ):
-            # Delegate conflict diagnostics and preservation to the journal.
-            journal.append_economic_event(event)
-        journal.append_observation(Observation(
-            observation_id=uuid.uuid4().hex,
-            source="BINANCE_DEMO_INCOME",
-            venue_identity=identity.content_hash,
-            source_time_ns=event.effective_time_ns,
-            receive_time_ns=received_at_ns,
-            raw_hash=source.source_hash,
-            completeness="EXACT_RESPONSE_ROW",
-        ))
+        # Preserve every transport receipt, including a conflicting payload,
+        # before applying the economic natural-key check. Serialize the
+        # caller-side lookup and insert with native callbacks so a concurrent
+        # replay reuses the same economic row instead of surfacing as a false
+        # duplicate append.
+        with journal._transaction_lock:
+            journal.append_observation(Observation(
+                observation_id=uuid.uuid4().hex,
+                source="BINANCE_DEMO_INCOME",
+                venue_identity=identity.content_hash,
+                source_time_ns=event.effective_time_ns,
+                receive_time_ns=received_at_ns,
+                raw_hash=source.source_hash,
+                completeness="EXACT_RESPONSE_ROW",
+            ))
+            prior = journal.load_economic_event(event.account, event.venue_transaction_id)
+            if prior is None:
+                journal.append_economic_event(event)
+                prior = event
+            elif (prior.currency, prior.amount, prior.effective_time_ns, prior.event_type, prior.revision) != (
+                event.currency, event.amount, event.effective_time_ns, event.event_type, event.revision,
+            ):
+                # Keep append rejection authoritative for conflicting facts.
+                journal.append_economic_event(event)
         recorded.append(prior if prior is not None else event)
     return tuple(recorded)
 

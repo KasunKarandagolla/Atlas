@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import sqlite3
 
-OPS_SCHEMA_VERSION = 1
+OPS_SCHEMA_VERSION = 2
 OPS_SCHEMA_NAMESPACE = "atlas-ops"
 _REQUIRED_TABLES = {
     "schema_meta", "watch", "watch_transition", "ops_outbox", "source_health",
     "model_registry", "artifact_index",
+    "public_evidence_stage_v2", "public_adoption_cursor_v2",
 }
 
 _DDL = (
@@ -192,6 +193,36 @@ _DUE_WORK_DDL = (
     )""",
 )
 
+# Private broad-stream adoption state. These rows are writer control data and
+# deliberately have no views/indexes into artifact_index or export inventories.
+_PUBLIC_ADOPTION_DDL = (
+    """CREATE TABLE IF NOT EXISTS public_evidence_stage_v2 (
+        run_id TEXT NOT NULL,
+        descriptor_hash TEXT NOT NULL,
+        frame_ordinal INTEGER NOT NULL CHECK(frame_ordinal >= 0),
+        trade_ordinal_start INTEGER NOT NULL CHECK(trade_ordinal_start >= 0),
+        trade_ordinal_end INTEGER NOT NULL CHECK(trade_ordinal_end >= trade_ordinal_start),
+        slice_generation INTEGER NOT NULL CHECK(slice_generation > 0),
+        binding_hash TEXT NOT NULL,
+        payload_hash TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        created_at_ns INTEGER NOT NULL CHECK(created_at_ns >= 0),
+        PRIMARY KEY(run_id, descriptor_hash, frame_ordinal, trade_ordinal_start)
+    )""",
+    """CREATE TABLE IF NOT EXISTS public_adoption_cursor_v2 (
+        run_id TEXT NOT NULL,
+        descriptor_hash TEXT NOT NULL,
+        extent_hash TEXT NOT NULL,
+        batch_hash TEXT NOT NULL,
+        binding_hash TEXT NOT NULL,
+        cursor_generation INTEGER NOT NULL CHECK(cursor_generation > 0),
+        cursor_json TEXT NOT NULL,
+        cursor_hash TEXT NOT NULL,
+        updated_at_ns INTEGER NOT NULL CHECK(updated_at_ns >= 0),
+        PRIMARY KEY(run_id, descriptor_hash)
+    )""",
+)
+
 
 def initialize(connection: sqlite3.Connection) -> None:
     """Initialize only an empty ops DB, or validate the known schema version."""
@@ -210,6 +241,21 @@ def initialize(connection: sqlite3.Connection) -> None:
         version = rows[0][0]
         if type(version) is not int or version > OPS_SCHEMA_VERSION:
             raise RuntimeError(f"unsupported future atlas-ops schema version: {version!r}")
+        if version == 1:
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                for statement in _PUBLIC_ADOPTION_DDL:
+                    connection.execute(statement)
+                connection.execute(
+                    "UPDATE schema_meta SET schema_version=? WHERE namespace=?",
+                    (OPS_SCHEMA_VERSION, OPS_SCHEMA_NAMESPACE),
+                )
+                connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
+            tables.update(("public_evidence_stage_v2", "public_adoption_cursor_v2"))
+            version = OPS_SCHEMA_VERSION
         if version != OPS_SCHEMA_VERSION:
             raise RuntimeError(f"unsupported atlas-ops schema version: {version!r}")
         if not _REQUIRED_TABLES.issubset(tables):
@@ -219,6 +265,8 @@ def initialize(connection: sqlite3.Connection) -> None:
             for statement in _ARTIFACT_IDENTITY_INDEX_DDL:
                 connection.execute(statement.replace("CREATE INDEX ", "CREATE INDEX IF NOT EXISTS ", 1))
             for statement in _DUE_WORK_DDL:
+                connection.execute(statement)
+            for statement in _PUBLIC_ADOPTION_DDL:
                 connection.execute(statement)
             if "collector_cursor_head" not in tables:
                 connection.execute("INSERT OR IGNORE INTO due_work_discovery(projection_id,last_rowid) "
@@ -236,10 +284,12 @@ def initialize(connection: sqlite3.Connection) -> None:
             connection.execute(statement)
         for statement in _DUE_WORK_DDL:
             connection.execute(statement)
+        for statement in _PUBLIC_ADOPTION_DDL:
+            connection.execute(statement)
         connection.execute("INSERT INTO due_work_discovery(projection_id,last_rowid) "
                            "VALUES('COLLECTOR_HEADS_V1',-1)")
         connection.execute(
-            "INSERT INTO schema_meta(namespace, schema_version) VALUES (?, ?)",
+        "INSERT INTO schema_meta(namespace, schema_version) VALUES (?, ?)",
             (OPS_SCHEMA_NAMESPACE, OPS_SCHEMA_VERSION),
         )
         connection.commit()

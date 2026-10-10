@@ -11,7 +11,7 @@ import json
 import threading
 import time
 from collections import deque
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Any, cast
@@ -94,6 +94,27 @@ class PublicFrameHandoffStatusV2:
     last_error_at_ns: int | None
 
 
+@dataclass(frozen=True)
+class SharedPublicFrameBudgetSnapshotV2:
+    """One immutable view of shared queue reservations and lifetime loss."""
+
+    generation: int
+    sampled_at_ns: int
+    reserved_items: int
+    reserved_bytes: int
+    high_water_items: int
+    high_water_bytes: int
+    max_items: int
+    max_bytes: int
+    lane_reserved_items: tuple[tuple[str, int], ...]
+    lane_reserved_bytes: tuple[tuple[str, int], ...]
+    lane_reservation_floor_items: tuple[tuple[str, int], ...]
+    lane_reservation_floor_bytes: tuple[tuple[str, int], ...]
+    rejection_counts: tuple[tuple[str, int], ...]
+    loss_latched: bool
+    loss_reasons: tuple[str, ...]
+
+
 class PublicFrameHandoffOverflowV2(RuntimeError):
     """Raised by the stream pump after the bounded queue rejects a frame."""
 
@@ -123,6 +144,14 @@ class SharedPublicFrameBudgetV1:
         self._bytes = 0
         self._high_water_items = 0
         self._high_water_bytes = 0
+        self._generation = 0
+        self._rejection_counts = {
+            "LOCAL_LIMIT": 0,
+            "SHARED_LIMIT": 0,
+            "APPEND_FAILURE": 0,
+        }
+        self._loss_latched = False
+        self._loss_reasons: set[str] = set()
 
     def register_lane(self, lane: str) -> None:
         if not lane or len(lane) > 64:
@@ -134,14 +163,55 @@ class SharedPublicFrameBudgetV1:
                     or (len(self._lanes) + 1) * self.reserve_bytes_per_lane > self.max_bytes):
                 raise ValueError("shared public frame budget cannot preserve all lane reserves")
             self._lanes[lane] = (0, 0)
+            self._generation += 1
+            self._assert_invariants_locked()
+
+    def _assert_invariants_locked(self) -> None:
+        """Raise if any internal reservation or loss counter is corrupt."""
+        allocations = tuple(self._lanes.values())
+        if any(type(items) is not int or type(size) is not int or items < 0 or size < 0
+               for items, size in allocations):
+            raise RuntimeError("shared public frame budget contains a negative or invalid lane allocation")
+        if (type(self._items) is not int or type(self._bytes) is not int
+                or self._items < 0 or self._bytes < 0
+                or self._items != sum(items for items, _ in allocations)
+                or self._bytes != sum(size for _, size in allocations)
+                or self._items > self.max_items or self._bytes > self.max_bytes):
+            raise RuntimeError("shared public frame budget totals violate reservation invariants")
+        if (type(self._high_water_items) is not int or type(self._high_water_bytes) is not int
+                or self._high_water_items < self._items or self._high_water_bytes < self._bytes
+                or self._high_water_items > self.max_items or self._high_water_bytes > self.max_bytes):
+            raise RuntimeError("shared public frame budget high-water values violate capacity bounds")
+        if (set(self._rejection_counts) != {"LOCAL_LIMIT", "SHARED_LIMIT", "APPEND_FAILURE"}
+                or any(type(value) is not int or value < 0 for value in self._rejection_counts.values())
+                or type(self._loss_latched) is not bool
+                or not self._loss_reasons.issubset(self._rejection_counts)
+                or (self._loss_reasons and not self._loss_latched)):
+            raise RuntimeError("shared public frame budget loss accounting is corrupt")
+
+    def _record_rejection_locked(self, cause: str) -> None:
+        if cause not in self._rejection_counts:
+            raise ValueError("shared public frame rejection cause is invalid")
+        self._rejection_counts[cause] += 1
+        self._loss_latched = True
+        self._loss_reasons.add(cause)
+        self._generation += 1
+        self._assert_invariants_locked()
+
+    def record_rejection(self, cause: str) -> None:
+        """Record one rejected or unappendable frame and latch loss for this run."""
+        with self._lock:
+            self._record_rejection_locked(cause)
 
     def reserve(self, lane: str, frame_bytes: int) -> bool:
         if type(frame_bytes) is not int or frame_bytes < 0:
             raise ValueError("shared public frame reservation size is invalid")
         with self._lock:
+            self._assert_invariants_locked()
             if lane not in self._lanes:
                 raise RuntimeError("unregistered public stream lane requested shared capacity")
             if self._items + 1 > self.max_items or self._bytes + frame_bytes > self.max_bytes:
+                self._record_rejection_locked("SHARED_LIMIT")
                 return False
             # Keep each other lane's unused floor available. The current lane
             # may fill its own reserve, then borrow only genuinely idle space.
@@ -151,6 +221,7 @@ class SharedPublicFrameBudgetV1:
                                   for name, used in self._lanes.items() if name != lane)
             if (self._items + 1 + protected_items > self.max_items
                     or self._bytes + frame_bytes + protected_bytes > self.max_bytes):
+                self._record_rejection_locked("SHARED_LIMIT")
                 return False
             items, size = self._lanes[lane]
             self._lanes[lane] = (items + 1, size + frame_bytes)
@@ -158,19 +229,52 @@ class SharedPublicFrameBudgetV1:
             self._bytes += frame_bytes
             self._high_water_items = max(self._high_water_items, self._items)
             self._high_water_bytes = max(self._high_water_bytes, self._bytes)
+            self._generation += 1
+            self._assert_invariants_locked()
             return True
 
     def release(self, lane: str, frame_bytes: int) -> None:
+        if type(frame_bytes) is not int or frame_bytes < 0:
+            raise ValueError("shared public frame release size is invalid")
         with self._lock:
+            self._assert_invariants_locked()
             current = self._lanes.get(lane)
             if current is None or current[0] <= 0 or current[1] < frame_bytes:
                 raise RuntimeError("shared public frame budget accounting underflow")
             self._lanes[lane] = (current[0] - 1, current[1] - frame_bytes)
             self._items -= 1
             self._bytes -= frame_bytes
+            self._generation += 1
+            self._assert_invariants_locked()
+
+    def snapshot_v2(self) -> SharedPublicFrameBudgetSnapshotV2:
+        """Return a coherent reservation snapshot without acquiring lane locks."""
+        with self._lock:
+            self._assert_invariants_locked()
+            sampled_at_ns = time.time_ns()
+            lanes = tuple(sorted(self._lanes))
+            return SharedPublicFrameBudgetSnapshotV2(
+                generation=self._generation,
+                sampled_at_ns=sampled_at_ns,
+                reserved_items=self._items,
+                reserved_bytes=self._bytes,
+                high_water_items=self._high_water_items,
+                high_water_bytes=self._high_water_bytes,
+                max_items=self.max_items,
+                max_bytes=self.max_bytes,
+                lane_reserved_items=tuple((lane, self._lanes[lane][0]) for lane in lanes),
+                lane_reserved_bytes=tuple((lane, self._lanes[lane][1]) for lane in lanes),
+                lane_reservation_floor_items=tuple((lane, self.reserve_items_per_lane) for lane in lanes),
+                lane_reservation_floor_bytes=tuple((lane, self.reserve_bytes_per_lane) for lane in lanes),
+                rejection_counts=tuple(sorted(self._rejection_counts.items())),
+                loss_latched=self._loss_latched,
+                loss_reasons=tuple(sorted(self._loss_reasons)),
+            )
 
     def snapshot(self) -> tuple[int, int, int, int, int]:
+        """Retain the original V1 tuple API for existing callers."""
         with self._lock:
+            self._assert_invariants_locked()
             return (self._items, self._bytes, self._high_water_items,
                     self._high_water_bytes, self.max_items)
 
@@ -294,6 +398,8 @@ class BoundedPublicFrameHandoffV2:
                 self._overflowed = True
                 self._backpressure = True
                 self._set_error_locked("FRAME_QUEUE_OVERFLOW", frame.received_at_ns)
+                if self._shared_budget is not None:
+                    self._shared_budget.record_rejection("LOCAL_LIMIT")
                 return False
             reserved = False
             if self._shared_budget is not None:
@@ -308,8 +414,13 @@ class BoundedPublicFrameHandoffV2:
             try:
                 self._queue.append(frame)
             except BaseException:
+                self._frames_rejected += 1
+                self._overflowed = True
+                self._backpressure = True
+                self._set_error_locked("FRAME_QUEUE_APPEND_FAILURE", frame.received_at_ns)
                 if reserved:
                     assert self._shared_budget is not None and self._budget_lane is not None
+                    self._shared_budget.record_rejection("APPEND_FAILURE")
                     self._shared_budget.release(self._budget_lane, size)
                 raise
             self._queue_bytes += size
@@ -537,10 +648,12 @@ def _book_levels(values: Any) -> tuple[BookLevelV2, ...]:
 def parse_bybit_orderbook_frame(frame: CapturedPublicFrameV2, *, instrument: InstrumentKeyV2,
                                 declared_depth: int = 50, source_health: str = "UNKNOWN",
                                 source_health_ref: str | None = None, processed_at_ns: int | None = None,
-                                availability_class: str = "ACTUAL_SYSTEM") -> L2SnapshotV2 | L2DeltaV2 | L2SequenceFaultV2:
+                                availability_class: str = "ACTUAL_SYSTEM",
+                                _decoded_payload: Mapping[str, Any] | None = None
+                                ) -> L2SnapshotV2 | L2DeltaV2 | L2SequenceFaultV2:
     if frame.venue != VenueV2.BYBIT:
         raise ValueError("Bybit parser received a different venue")
-    payload = json.loads(frame.raw_payload_bytes)
+    payload = json.loads(frame.raw_payload_bytes) if _decoded_payload is None else _decoded_payload
     data = payload.get("data")
     expected_topic = f"orderbook.{declared_depth}.{instrument.native_symbol}"
     if (not isinstance(data, dict) or payload.get("topic") != expected_topic
@@ -580,10 +693,12 @@ def parse_bybit_orderbook_frame(frame: CapturedPublicFrameV2, *, instrument: Ins
 def parse_binance_depth_frame(frame: CapturedPublicFrameV2, *, instrument: InstrumentKeyV2,
                               source_health: str = "UNKNOWN",
                               source_health_ref: str | None = None, processed_at_ns: int | None = None,
-                              availability_class: str = "ACTUAL_SYSTEM") -> L2DeltaV2 | L2SequenceFaultV2:
+                              availability_class: str = "ACTUAL_SYSTEM",
+                              _decoded_payload: Mapping[str, Any] | None = None
+                              ) -> L2DeltaV2 | L2SequenceFaultV2:
     if frame.venue != VenueV2.BINANCE:
         raise ValueError("Binance parser received a different venue")
-    wrapper = json.loads(frame.raw_payload_bytes)
+    wrapper = json.loads(frame.raw_payload_bytes) if _decoded_payload is None else _decoded_payload
     payload = wrapper.get("data", wrapper)
     stream = wrapper.get("stream", "")
     if (not isinstance(payload, dict) or not stream
@@ -637,10 +752,11 @@ def parse_binance_rest_snapshot(raw_payload_bytes: bytes, *, instrument: Instrum
 def parse_bybit_trades(frame: CapturedPublicFrameV2, *, instrument: InstrumentKeyV2,
                        source_health: str = "UNKNOWN",
                        source_health_ref: str | None = None, processed_at_ns: int | None = None,
-                       availability_class: str = "ACTUAL_SYSTEM") -> tuple[AggressiveTradeV2, ...]:
+                       availability_class: str = "ACTUAL_SYSTEM",
+                       _decoded_payload: Mapping[str, Any] | None = None) -> tuple[AggressiveTradeV2, ...]:
     if frame.venue != VenueV2.BYBIT:
         raise ValueError("Bybit trade parser received a different venue")
-    payload = json.loads(frame.raw_payload_bytes)
+    payload = json.loads(frame.raw_payload_bytes) if _decoded_payload is None else _decoded_payload
     if payload.get("topic") != f"publicTrade.{instrument.native_symbol}" or not isinstance(payload.get("data"), list):
         raise ValueError("Bybit trade topic/data does not match instrument")
     result = []
@@ -662,10 +778,11 @@ def parse_bybit_trades(frame: CapturedPublicFrameV2, *, instrument: InstrumentKe
 def parse_binance_aggtrade(frame: CapturedPublicFrameV2, *, instrument: InstrumentKeyV2,
                            source_health: str = "UNKNOWN",
                            source_health_ref: str | None = None, processed_at_ns: int | None = None,
-                           availability_class: str = "ACTUAL_SYSTEM") -> AggressiveTradeV2:
+                           availability_class: str = "ACTUAL_SYSTEM",
+                           _decoded_payload: Mapping[str, Any] | None = None) -> AggressiveTradeV2:
     if frame.venue != VenueV2.BINANCE:
         raise ValueError("Binance aggTrade parser received a different venue")
-    wrapper = json.loads(frame.raw_payload_bytes)
+    wrapper = json.loads(frame.raw_payload_bytes) if _decoded_payload is None else _decoded_payload
     row = wrapper.get("data", wrapper)
     if not isinstance(row, dict):
         raise ValueError("Binance aggregate trade body is malformed")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -275,31 +276,49 @@ class BroadPublicStreamSourceV2:
             raise RuntimeError("one or more broad public stream lanes failed bounded close") from errors[0]
 
     def status(self) -> Any:
+        # The shared reservation snapshot is authoritative for aggregate counts.
+        # Its mutex is released before collecting the independently sampled
+        # lane diagnostics, preserving lane -> budget lock order.
+        budget = self._queue_budget.snapshot_v2()
         lane_status = {name: source.status() for name, source in self._lanes.items()}
         handoffs = [item.handoff for item in lane_status.values()]
-        queued_items = sum(item.queue_items for item in handoffs)
-        queued_bytes = sum(item.queue_bytes for item in handoffs)
-        budget_items, budget_bytes, budget_high_items, budget_high_bytes, _ = self._queue_budget.snapshot()
-        if queued_items != budget_items or queued_bytes != budget_bytes:
-            raise RuntimeError("broad public handoff accounting differs from its shared budget")
+        # Reserved totals include capacity between reserve and append and
+        # between pop and release. They are conservative aggregate occupancy,
+        # not an atomic physical-deque count. Lane snapshots remain diagnostic.
+        queued_items = budget.reserved_items
+        queued_bytes = budget.reserved_bytes
+        diagnostic_sampled_at_ns = time.time_ns()
+        current_pressure = (
+            budget.reserved_items * 4 >= budget.max_items * 3
+            or budget.reserved_bytes * 4 >= budget.max_bytes * 3
+        )
         state = "FAILED" if any(item.state == "FAILED" for item in lane_status.values()) else (
             "CLOSED" if all(item.state == "CLOSED" for item in lane_status.values()) else
             "RUNNING" if all(item.state == "RUNNING" for item in lane_status.values()) else
             "DEGRADED" if any(item.state == "RUNNING" for item in lane_status.values()) else "CREATED")
         handoff = SimpleNamespace(
             venue="BROAD", topics=self.topics, queue_items=queued_items, queue_bytes=queued_bytes,
-            max_queue_items=MAX_BROAD_STREAM_QUEUE_ITEMS_V2,
-            max_queue_bytes=MAX_BROAD_STREAM_QUEUE_BYTES_V2,
+            max_queue_items=budget.max_items,
+            max_queue_bytes=budget.max_bytes,
             max_drain_items=MAX_BROAD_STREAM_DRAIN_ITEMS_V2,
-            high_water_items=budget_high_items,
-            high_water_bytes=budget_high_bytes,
+            high_water_items=budget.high_water_items,
+            high_water_bytes=budget.high_water_bytes,
+            generation=budget.generation,
+            sampled_at_ns=budget.sampled_at_ns,
+            lane_diagnostic_sampled_at_ns=diagnostic_sampled_at_ns,
+            lane_status_is_diagnostic=True,
+            rejection_counts=budget.rejection_counts,
+            loss_latched=budget.loss_latched,
+            loss_reasons=budget.loss_reasons,
             frames_received=sum(item.frames_received for item in handoffs),
             frames_drained=sum(item.frames_drained for item in handoffs),
             controls_received=sum(item.controls_received for item in handoffs),
-            frames_rejected=sum(item.frames_rejected for item in handoffs),
+            frames_rejected=sum(count for _, count in budget.rejection_counts),
+            lane_frames_rejected=sum(item.frames_rejected for item in handoffs),
+            lane_overflowed=tuple((name, item.handoff.overflowed) for name, item in lane_status.items()),
             closed_rejections=sum(item.closed_rejections for item in handoffs),
-            overflowed=any(item.overflowed for item in handoffs),
-            backpressure=any(item.backpressure for item in handoffs),
+            overflowed=budget.loss_latched,
+            backpressure=current_pressure,
             connected=all(item.connected for item in handoffs), closed=all(item.closed for item in handoffs),
             disconnect_count=sum(item.disconnect_count for item in handoffs),
             last_disconnect_at_ns=max((item.last_disconnect_at_ns for item in handoffs if item.last_disconnect_at_ns is not None), default=None),

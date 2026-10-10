@@ -6,8 +6,15 @@ from decimal import Decimal
 
 import pytest
 
-from atlas.v2._serialization import FrozenMap, sha256_json
-from atlas.v2.contracts import CandidateSelectionStatus
+from atlas.v2._serialization import FrozenMap, json_value, sha256_json
+from atlas.v2.contracts import (
+    ArtifactEnvelope,
+    CandidateSelectionStatus,
+    CandidateSetEntryV2,
+    CandidateSetV2,
+    EligibilityStatusV2,
+    V2Side,
+)
 from atlas.v2.instruments import StrategyEligibilityV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.science.audits import (
@@ -19,11 +26,21 @@ from atlas.v2.science.audits import (
 )
 from atlas.v2.science.outcomes import DecisionCalendarEntryV2, index_decision_calendar_entry
 from atlas.v2.science.research_selection import (
+    EXACT_ACTION_POLICIES,
+    MULTI_SLEEVE_SELECTION_BODY,
     MULTI_SLEEVE_SELECTION_HASH,
+    MULTI_SLEEVE_SELECTION_VERSION,
+    NEW_RUN_SELECTION_HASH,
+    NEW_RUN_SELECTION_VERSION,
+    RESEARCH_SELECTION_REGISTRY_V1,
+    S41_REPLAY_SELECTION_HASH,
+    S41_REPLAY_SELECTION_VERSION,
     assemble_multisleeve_research_candidate_set,
     research_selection_universe,
     research_sleeve_audit,
+    resolve_research_selection_registry,
 )
+from atlas.v2.science.session023_report import SESSION023_SELECTION_BODY_V1, SESSION023_SELECTION_HASH_V1
 from atlas.v2.selection import (
     ScannerRankEvidenceV1,
     ScannerSelectionSourceV1,
@@ -44,7 +61,7 @@ POLICIES = {p.policy_hash: p for p in (S1_POLICY, S2_POLICY, S3_POLICY)}
 def calendar(repo, candidate_set, item=None, state="SELECTED", reasons=()):
     policy = POLICIES[item.policy_hash] if item is not None else None
     row = DecisionCalendarEntryV2(candidate_set.content_hash, item.content_hash if item else None,
-        policy.policy_id if policy else "MULTI_SLEEVE_RESEARCH_SELECTION_V1", policy.version if policy else "1.1.0-research",
+        policy.policy_id if policy else "MULTI_SLEEVE_RESEARCH_SELECTION_V1", policy.version if policy else MULTI_SLEEVE_SELECTION_VERSION,
         policy.policy_hash if policy else MULTI_SLEEVE_SELECTION_HASH, CUTOFF, state,
         "NOT_EVALUATED" if state == "SELECTED" else "NOT_APPLICABLE", None, None, "CANDIDATE_SET",
         reasons, candidate_set.content_hash, CUTOFF, CUTOFF)
@@ -182,8 +199,60 @@ def test_non_action_sleeves_are_named_exclusions_and_cannot_masquerade(tmp_path,
 def test_s6_action_policy_is_shadow_only_and_named_in_complete_sleeve_audit():
     audit = research_sleeve_audit(CUTOFF)
     row = next(row for row in audit.sleeves if row[0] == "S6")
-    assert row[1:] == ("ELIGIBLE", "Versioned shadow-only exact action policy; rank policy remains unchanged")
-    assert "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH" in audit.exact_action_policy_ids
+    assert row[1:] == ("EXCLUDED", "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT / S6_ACTION_APPROVAL_PENDING")
+    assert "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH" not in audit.exact_action_policy_ids
+
+
+def test_research_selector_registry_freezes_new_run_and_s41_replay_identities():
+    assert MULTI_SLEEVE_SELECTION_VERSION == NEW_RUN_SELECTION_VERSION == "1.0.0-research"
+    assert MULTI_SLEEVE_SELECTION_BODY == SESSION023_SELECTION_BODY_V1
+    assert MULTI_SLEEVE_SELECTION_HASH == NEW_RUN_SELECTION_HASH == SESSION023_SELECTION_HASH_V1
+    assert sorted(EXACT_ACTION_POLICIES) == [
+        "S1_MTF_TREND_PULLBACK", "S2_COMPRESSION_BREAKOUT", "S3_VWAP_STAT_MEAN_REVERSION",
+    ]
+    accepted = resolve_research_selection_registry(NEW_RUN_SELECTION_VERSION,
+        NEW_RUN_SELECTION_HASH, purpose="NEW_RUN")
+    assert accepted.disposition == "NEW_RUN_AND_REPLAY"
+    assert accepted.body == SESSION023_SELECTION_BODY_V1
+
+    replay = resolve_research_selection_registry(S41_REPLAY_SELECTION_VERSION,
+        S41_REPLAY_SELECTION_HASH, purpose="REPLAY")
+    assert replay.disposition == "REPLAY_ONLY"
+    assert replay.body["version"] == "1.1.0-research"
+    assert replay.selection_hash == S41_REPLAY_SELECTION_HASH
+    assert len(RESEARCH_SELECTION_REGISTRY_V1) == 2
+    with pytest.raises(ValueError, match="S6_ACTION_APPROVAL_PENDING"):
+        resolve_research_selection_registry(S41_REPLAY_SELECTION_VERSION,
+            S41_REPLAY_SELECTION_HASH, purpose="NEW_RUN")
+    with pytest.raises(ValueError, match="S6_ACTION_APPROVAL_PENDING"):
+        research_selection_universe(universe(), version=S41_REPLAY_SELECTION_VERSION,
+            selection_hash=S41_REPLAY_SELECTION_HASH)
+
+
+def test_s41_candidate_set_replay_keeps_its_original_identity(tmp_path):
+    source_universe = universe()
+    candidate_id = "historical-s41-candidate"
+    feature_ref = sha256_json("historical-s41-selection-feature")
+    historical = CandidateSetV2(
+        ArtifactEnvelope(1, sha256_json("historical-s41-candidate-set"), CUTOFF, CUTOFF,
+            "HISTORICAL_S41_REPLAY_FIXTURE_V1", ()),
+        "historical-s41-decision-event", source_universe.content_hash, S41_REPLAY_SELECTION_HASH,
+        (CandidateSetEntryV2(candidate_id, "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH",
+            source_universe.entries[0].key, V2Side.LONG, (feature_ref,),
+            EligibilityStatusV2.ELIGIBLE, 1, "SCANNER_RANK_POLICY_KEY_CANDIDATE_ID"),),
+        candidate_id, "historical S41 tie break", CandidateSelectionStatus.SELECTED,
+    )
+    historical_json = historical.to_canonical_json()
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        repo.register_artifact(ArtifactIndexEntryV2(historical.content_hash, "CandidateSetV2",
+            historical.content_hash, CUTOFF, CUTOFF, {"candidate_set": historical.to_dict()}))
+        replay = resolve_research_selection_registry(S41_REPLAY_SELECTION_VERSION,
+            S41_REPLAY_SELECTION_HASH, purpose="REPLAY")
+        stored = repo.get_artifact(historical.content_hash)
+        assert replay.selection_hash == stored.metadata["candidate_set"]["selection_policy_hash"]
+        restored = CandidateSetV2.from_dict(json_value(stored.metadata["candidate_set"]))
+        assert restored.content_hash == historical.content_hash
+        assert restored.to_canonical_json() == historical_json
 
 
 def test_wrong_s3_horizon_rejected_and_full_calendar_preserves_unselected_no_candidate(tmp_path):

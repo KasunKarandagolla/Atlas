@@ -23,6 +23,8 @@ from atlas.v2.data.raw import RawObservationV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.science.research_selection import (
     EXACT_ACTION_POLICIES,
+    MULTI_SLEEVE_SELECTION_HASH,
+    _persist_s6_observation_sidecar,
     assemble_multisleeve_research_candidate_set,
     research_selection_universe,
 )
@@ -248,7 +250,7 @@ def test_post_cutoff_candidate_has_exact_chronology_receipts_before_selection(tm
 
 
 @pytest.mark.parametrize("side", [V2Side.LONG, V2Side.SHORT])
-def test_s6_builds_exact_unsized_zero_authority_shadow_candidate(s6_cases, side):
+def test_s6_builds_exact_unsized_zero_authority_shadow_candidate(s6_cases, side, tmp_path, monkeypatch):
     case = s6_cases[side]
     result = _build(case)
     candidate = result.candidate
@@ -276,6 +278,8 @@ def test_s6_builds_exact_unsized_zero_authority_shadow_candidate(s6_cases, side)
     assert trigger_artifact is not None
     assert trigger_artifact.artifact_type == "S6ActionTriggerEligibilityV1"
     assert trigger_artifact.metadata["trigger"]["action_policy_hash"] == S6_ACTION_POLICY.policy_hash
+    assert trigger_artifact.metadata["trigger"]["status"] == "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"
+    assert trigger_artifact.metadata["trigger"]["reason"] == "S6_ACTION_APPROVAL_PENDING"
     if side == V2Side.LONG:
         repository = case[0]
         base_universe = case[12]
@@ -299,14 +303,117 @@ def test_s6_builds_exact_unsized_zero_authority_shadow_candidate(s6_cases, side)
         rank = ScannerRankEvidenceV1(candidate.candidate_id, 1, "SCANNER_V1", "1.0",
             universe.content_hash, event_id, case[10], source_ref)
         rank_ref = register_scanner_rank(repository, rank)
+        clock_values = []
+        def clock():
+            clock_values.append(case[10] + len(clock_values))
+            return clock_values[-1]
+
         selected = assemble_multisleeve_research_candidate_set(repository,
             universe=universe, decision_event_id=event_id, cutoff_ns=candidate.decision_at_ns,
                 candidates=(candidate,),
                 policies={policy.policy_hash: policy for policy in EXACT_ACTION_POLICIES.values()},
-            scanner_evidence_refs={candidate.candidate_id: (rank_ref,)}, clock_ns=lambda: case[10])
-        assert selected.selection_status == CandidateSelectionStatus.SELECTED
-        assert selected.selected_candidate_id == candidate.candidate_id
-        assert selected.candidates[0].policy_id == S6_ACTION_POLICY.policy_id
+            scanner_evidence_refs={candidate.candidate_id: (rank_ref,)}, clock_ns=clock)
+        assert clock_values == [case[10], case[10] + 1, case[10] + 2]
+        assert selected.selection_status == CandidateSelectionStatus.NO_CANDIDATE
+        assert selected.selected_candidate_id is None
+        assert selected.candidates == ()
+        sidecars = repository.artifact_entries("S6ExcludedCandidateObservationV1")
+        assert len(sidecars) == 1
+        sidecar_ref = sidecars[0].artifact_ref
+        observation = sidecars[0].metadata["observation"]
+        assert observation["selection_policy_hash"] == MULTI_SLEEVE_SELECTION_HASH
+        assert observation["proposed_action_policy_hash"] == S6_ACTION_POLICY.policy_hash
+        assert observation["eligibility_status"] == "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT"
+        assert observation["reason"] == "S6_ACTION_APPROVAL_PENDING"
+        assert rank_ref in observation["rank_refs"]
+        assert observation["scanner_rank_observations"][0]["evidence"]["scanner_rank"] == 1
+        assert result.trigger_ref in observation["trigger_refs"]
+        assert case[2].hypothesis_id in observation["hypothesis_refs"]
+        assert candidate.content_hash in observation["shadow_refs"]
+        assert candidate.snapshot_hash in observation["source_refs"]
+        watch = repository.get_watch(case[2].watch_id)
+        assert watch is not None
+        assert observation["watch_refs"] == (case[2].watch_id,)
+        assert observation["watch_observation"]["status"] == "PRESENT"
+        assert observation["watch_observation"]["watch_id"] == case[2].watch_id
+        assert observation["watch_observation"]["state"] == watch.state.value
+        assert observation["watch_observation"]["state_version"] == watch.state_version
+        assert observation["watch_observation"]["content_hash"] == watch.content_hash
+        assert observation["watch_observation"]["watch"]["watch_id"] == case[2].watch_id
+        assert observation["denominator"]["eligible_breadth"] == 20
+        assert observation["denominator"]["rankable_breadth"] > 0
+        assert dict(observation["missing_action"]) == {
+            "status": "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT",
+            "reason": "S6_ACTION_APPROVAL_PENDING",
+            "existing_missing_contract": "S6_stop_and_exact_action_semantics_RESERVED_FOR_SESSION_023",
+        }
+        assert observation["selector_influence"] == "ZERO"
+        assert observation["universe_ref"] == universe.content_hash
+        assert observation["cutoff_ns"] == candidate.decision_at_ns
+        assert all(repository.get_artifact(ref) is None for ref in observation["missing_refs"])
+        sidecar = repository.get_artifact(sidecar_ref)
+        assert sidecar is not None
+        indexed_refs = {candidate.content_hash, universe.content_hash,
+            *observation["rank_refs"], *observation["trigger_refs"],
+            *observation["hypothesis_refs"], *observation["shadow_refs"],
+            *observation["source_refs"], *watch.evidence_refs,
+            observation["denominator"]["denominator_ref"]}
+        indexed_refs.update(item["evidence"].get("source_artifact_ref")
+            for item in observation["scanner_rank_observations"]
+            if isinstance(item.get("evidence"), dict)
+            and isinstance(item["evidence"].get("source_artifact_ref"), str))
+        indexed_entries = [repository.get_artifact(ref) for ref in indexed_refs]
+        expected_available = max(entry.available_at_ns for entry in indexed_entries if entry is not None)
+        expected_available = max(expected_available, watch.updated_at_ns)
+        assert sidecar.available_at_ns == expected_available
+        with OpsRepository(tmp_path / "without-s6.sqlite") as no_s6_repository:
+            no_s6_repository.register_artifact(ArtifactIndexEntryV2(universe.content_hash,
+                "UniverseContractV2", universe.content_hash, universe.envelope.created_at_ns,
+                universe.envelope.available_at_ns, {"universe": universe.to_dict()}))
+            no_s6_clock_values = []
+            def no_s6_clock():
+                no_s6_clock_values.append(case[10] + len(no_s6_clock_values))
+                return no_s6_clock_values[-1]
+
+            without_s6 = assemble_multisleeve_research_candidate_set(no_s6_repository,
+                universe=universe, decision_event_id=event_id, cutoff_ns=candidate.decision_at_ns,
+                candidates=(), policies={}, scanner_evidence_refs={}, clock_ns=no_s6_clock)
+        assert no_s6_clock_values == [case[10], case[10] + 1, case[10] + 2]
+        assert without_s6.content_hash == selected.content_hash
+        assert (without_s6.envelope.created_at_ns, without_s6.envelope.available_at_ns) == (
+            selected.envelope.created_at_ns, selected.envelope.available_at_ns)
+
+        retried = assemble_multisleeve_research_candidate_set(repository,
+            universe=universe, decision_event_id=event_id, cutoff_ns=candidate.decision_at_ns,
+            candidates=(candidate,), policies={},
+            scanner_evidence_refs={candidate.candidate_id: (rank_ref,)},
+            clock_ns=lambda: selected.envelope.available_at_ns)
+        retried_sidecars = repository.artifact_entries("S6ExcludedCandidateObservationV1")
+        assert retried.content_hash == selected.content_hash
+        assert len(retried_sidecars) == 1
+        assert retried_sidecars[0].artifact_ref == sidecar_ref
+
+        changed_universe = replace(universe,
+            envelope=replace(universe.envelope, content_hash=""),
+            decision_slot_ns=universe.decision_slot_ns + 1)
+        with pytest.raises(ValueError, match="universe/cutoff identity"):
+            _persist_s6_observation_sidecar(repository, candidate=candidate,
+                universe=changed_universe, decision_event_id=event_id,
+                cutoff_ns=candidate.decision_at_ns, scanner_refs=(rank_ref,))
+        with pytest.raises(ValueError, match="universe/cutoff identity"):
+            _persist_s6_observation_sidecar(repository, candidate=candidate,
+                universe=universe, decision_event_id=event_id,
+                cutoff_ns=candidate.decision_at_ns + 1, scanner_refs=(rank_ref,))
+
+        monkeypatch.setattr(repository, "get_watch", lambda _: None)
+        missing_watch_ref = _persist_s6_observation_sidecar(repository, candidate=candidate,
+            universe=universe, decision_event_id=f"{event_id}-missing-watch",
+            cutoff_ns=candidate.decision_at_ns, scanner_refs=(rank_ref,))
+        missing_watch = repository.get_artifact(missing_watch_ref).metadata["observation"]
+        assert missing_watch["watch_refs"] == ()
+        assert missing_watch["watch_observation"]["status"] == "MISSING"
+        assert missing_watch["watch_observation"]["watch_id"] == case[2].watch_id
+        assert missing_watch["watch_observation"]["reason"] == "PERSISTED_WATCH_NOT_FOUND"
         assert candidate.quantity is None and candidate.account_scope is None
 
 

@@ -207,7 +207,7 @@ class PublicArchiveSegmentWriterV1:
                         "extent_count": len(chunks)}
         encoded: list[tuple[Any, str, str, Callable[[], int], int, str, bytes, int]] = []
         refs: set[str] = set()
-        arrow_encode_ns = compression_ns = write_ns = fsync_ns = directory_sync_ns = 0
+        arrow_encode_ns = compression_ns = write_ns = fsync_ns = directory_sync_ns = rename_ns = 0
         encoded_bytes = 0
         for table, namespace, chunk_id, clock_ns, floor_ns in chunks:
             ref = extent_ref(namespace, chunk_id)
@@ -250,7 +250,8 @@ class PublicArchiveSegmentWriterV1:
         pending_bytes = 0
 
         def flush_segment() -> None:
-            nonlocal segment_path, segment_offset, pending, pending_bytes, write_ns, fsync_ns, directory_sync_ns
+            nonlocal segment_path, segment_offset, pending, pending_bytes, write_ns, fsync_ns
+            nonlocal directory_sync_ns, rename_ns
             if not pending:
                 return
             path = segment_path or self.root / f"public-{uuid.uuid4().hex}.arrow"
@@ -273,7 +274,12 @@ class PublicArchiveSegmentWriterV1:
             if segment_path is None:
                 self.metrics = {**self.metrics, "active_phase": "ARCHIVE_PUBLISH",
                                 "phase_started_monotonic_ns": time.monotonic_ns()}
+                publish_started = time.monotonic_ns()
+                directory_sync_before = directory_sync_ns
                 directory_sync_ns += _publish_new_segment(write_path, path)
+                publish_finished = time.monotonic_ns()
+                rename_ns += max(0, publish_finished - publish_started
+                                 - (directory_sync_ns - directory_sync_before))
             write_ns += fsync_started - write_started
             fsync_ns += file_sync_finished - fsync_started
             segment_offset = base_offset + len(payload)
@@ -315,7 +321,8 @@ class PublicArchiveSegmentWriterV1:
         flush_segment()
         self.metrics = {"active_phase": "IDLE", "extent_count": len(encoded),
             "arrow_encode_ns": arrow_encode_ns, "compression_ns": compression_ns,
-            "write_ns": write_ns, "fsync_ns": fsync_ns, "directory_sync_ns": directory_sync_ns,
+            "write_ns": write_ns, "fsync_ns": fsync_ns, "rename_ns": rename_ns,
+            "directory_sync_ns": directory_sync_ns,
             "total_ns": time.monotonic_ns() - started,
             "observed_at_ns": max(item[3]() for item in encoded), "bytes_written": self.bytes_written}
         return tuple(entries)
@@ -398,11 +405,19 @@ def write_extents(
 
 
 def read_extent(repository: OpsRepository, ref: str) -> Any:
-    import pyarrow as pa
-
     entry = repository.get_artifact(ref)
     if entry is None or entry.artifact_type != EXTENT_TYPE:
         raise ValueError("public archive extent descriptor missing")
+    return read_extent_entry(Path(repository.path).parent / "ops-public-extents", entry)
+
+
+def read_extent_entry(root: str | Path, entry: ArtifactIndexEntryV2) -> Any:
+    """Read a hash-verified extent from its immutable descriptor without SQL."""
+    import pyarrow as pa
+
+    if not isinstance(entry, ArtifactIndexEntryV2) or entry.artifact_type != EXTENT_TYPE:
+        raise ValueError("public archive extent descriptor is invalid")
+    ref = entry.artifact_ref
     body = json_value(entry.metadata["extent"])
     if (set(body) != {"version", "namespace", "chunk_id", "segment_name", "offset", "length", "sha256",
                       "row_count", "available_at_ns", "authority", "decoded_bytes", "encoding", "ipc_bytes"}
@@ -420,7 +435,7 @@ def read_extent(repository: OpsRepository, ref: str) -> Any:
             or body["offset"] + body["length"] > MAX_SEGMENT_BYTES):
         raise ValueError("public archive extent identity or bounds mismatch")
     sha256_ref(body["sha256"], field="extent sha256")
-    path = Path(repository.path).parent / "ops-public-extents" / body["segment_name"]
+    path = Path(root) / body["segment_name"]
     if path.is_symlink():
         raise ValueError("public archive segment cannot be a symlink")
     with path.open("rb") as handle:

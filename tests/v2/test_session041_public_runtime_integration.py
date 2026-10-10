@@ -132,6 +132,28 @@ def _port(products: tuple[ProductContractV2, ...], at_ns: int):
         broad_runtime=runtime, clock_ns=lambda: at_ns), runtime, source
 
 
+def test_broad_runtime_status_summarizes_phase_timing_counters():
+    runtime = BroadPublicRuntimeV2()
+    runtime._record_phase_duration_ns("worker_wait", 12)
+    runtime._record_phase_duration_ns("worker_wait", 5)
+    runtime._record_phase_duration_ns("worker_execution", 4)
+
+    status = runtime.status()
+    assert status.phase_timings_ns["worker_wait"] == {
+        "count": 2, "sum_ns": 17, "max_ns": 12,
+    }
+    assert status.phase_timings_ns["worker_execution"] == {
+        "count": 1, "sum_ns": 4, "max_ns": 4,
+    }
+    assert status.phase_timings_ns["input_write"] == {
+        "count": 0, "sum_ns": 0, "max_ns": 0,
+    }
+    assert status.phase_timings_ns["archive_extent_rename"] == {
+        "count": 0, "sum_ns": 0, "max_ns": 0,
+    }
+    assert runtime.progress_snapshot()["stream_phase_timings_ns"] == status.phase_timings_ns
+
+
 def test_broad_production_port_integrates_acquisition_stream_workset_and_restart(tmp_path):
     # Identical native symbols remain distinct cross-venue product identities.
     products = (_product("BTCUSDT", VenueV2.BYBIT), _product("BTCUSDT", VenueV2.BINANCE))

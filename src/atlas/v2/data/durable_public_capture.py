@@ -25,7 +25,7 @@ from .capture_receipts import (
     _replace_durable_pointer,
     read_last_capture_receipt,
 )
-from .public_archive_extents import PublicArchiveSegmentWriterV1, read_extent
+from .public_archive_extents import PublicArchiveSegmentWriterV1, read_extent, read_extent_entry
 from .public_microstructure_ws import CapturedPublicFrameV2
 
 MAX_PENDING_CAPTURE_BATCHES = 64
@@ -39,14 +39,13 @@ class SealedPublicTransportV1:
     batch: ArtifactIndexEntryV2
     frame_count: int
 
-    def adopt(self, repository: OpsRepository) -> tuple[CapturedPublicFrameV2, ...]:
-        """Controller-only publication and strict reconstruction before interpretation."""
-        repository.register_artifact(self.extent)
-        rows = read_extent(repository, self.extent.artifact_ref).to_pylist()
+    def read_unpublished(self, run_root: str | Path) -> tuple[CapturedPublicFrameV2, ...]:
+        """Verify and reconstruct the durable batch without publishing SQL rows."""
+        table = read_extent_entry(Path(run_root) / "ops-public-extents", self.extent)
+        rows = table.to_pylist()
         if not 1 <= len(rows) == self.frame_count <= MAX_CAPTURE_BATCH_FRAMES:
             raise ValueError("sealed transport frame population invalid")
         frames = []
-        headers = []
         for index, row in enumerate(rows):
             if row["fifo_index"] != index:
                 raise ValueError("sealed transport FIFO changed")
@@ -54,7 +53,20 @@ class SealedPublicTransportV1:
                 row["raw_payload_bytes"], row["raw_payload_hash"], row["received_at_ns"],
                 row["available_at_ns"], row["connection_epoch"])
             frames.append(frame)
-            headers.append({k: v for k, v in row.items() if k != "raw_payload_bytes"})
+        self.verify_unpublished_frames(tuple(frames))
+        return tuple(frames)
+
+    def verify_unpublished_frames(self, frames: tuple[CapturedPublicFrameV2, ...]) -> None:
+        """Verify an already reconstructed extent population without rereading it."""
+        if not 1 <= len(frames) == self.frame_count <= MAX_CAPTURE_BATCH_FRAMES:
+            raise ValueError("sealed transport frame population invalid")
+        if any(not isinstance(frame, CapturedPublicFrameV2) for frame in frames):
+            raise ValueError("sealed transport contains an untyped frame")
+        headers = [{"venue": frame.venue.value, "source_id": frame.source_id,
+            "channel": frame.channel, "raw_payload_hash": frame.raw_payload_hash,
+            "received_at_ns": frame.received_at_ns, "available_at_ns": frame.available_at_ns,
+            "connection_epoch": frame.connection_epoch, "fifo_index": index}
+            for index, frame in enumerate(frames)]
         body = json_value(self.batch.metadata["batch"])
         if (body["chunk_id"] != sha256_json({"version": "PublicStreamTransportBatchV1", "frames": headers})
                 or body["archive_extent_ref"] != self.extent.artifact_ref
@@ -65,8 +77,20 @@ class SealedPublicTransportV1:
                 or self.batch.artifact_ref != self.batch.content_hash
                 or self.extent.available_at_ns > self.batch.available_at_ns):
             raise ValueError("sealed transport identity or chronology changed")
+
+    def adopt(self, repository: OpsRepository) -> tuple[CapturedPublicFrameV2, ...]:
+        """Controller-only publication and strict reconstruction before interpretation."""
+        frames = self.read_unpublished(Path(repository.path).parent)
+        return self.adopt_verified(repository, frames)
+
+    def adopt_verified(
+        self, repository: OpsRepository, frames: tuple[CapturedPublicFrameV2, ...],
+    ) -> tuple[CapturedPublicFrameV2, ...]:
+        """Publish a descriptor after its exact raw extent was verified outside SQL."""
+        self.verify_unpublished_frames(frames)
+        repository.register_artifact(self.extent)
         repository.register_artifact(self.batch)
-        return tuple(frames)
+        return frames
 
 
 class DurablePublicCaptureV1:
