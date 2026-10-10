@@ -1,6 +1,14 @@
 # ATLAS engineering log
 
-## Current checkpoint — 2026-10-10
+## Current checkpoint — 2026-10-10, Binance qualification proposal
+
+**Status: proposal only; awaiting coordinating review.** Fresh `git ls-remote` confirmed implementation tip `dcb5d9dbe6ec58ee337b29accb48f96ef174ec1d`, which descends from S40. Work is isolated on `review/session-041-binance-linux-qualification-proposal`. The three freezes, R1 decisions/plan and relevant gates were hash-checked; no production, test, configuration, evidence or acceptance-ledger files changed. Proposal: [S41 Binance/Linux profile amendment](docs/v2/S41_BINANCE_LINUX_QUALIFICATION_PROFILE_AMENDMENT_PROPOSAL.md).
+
+**CONFIRMED:** ordinary V2 start still fails closed because broad capacity is `None`; UI defaults Bybit on although `ResearchRunConfigV2` can encode Binance-only. No owner run/workset/watch snapshot was found in the inspected default location. The saved two-symbol public observer is not ATLAS capacity evidence (SHA `84d9d9664d99d88f07cd8e4c8ee7ca45da7e8638f1cf97ec0a6f9d7c8fcbd5ad`). The synthetic presealed descriptor report remains failed at 478.376 ms mean (64 frames, four cycles; file SHA `7b3b491c311503441599e42f6471c1dc50081c5693e4f497e4d491d60fc82cba`).
+
+**PROPOSED, not inherited authority:** add a single Binance host-bound profile and use the accepted A2 commissioning child as a path-checked preflight stage; its 120-second live result would not issue the A2 capacity certificate. The proposal preserves dual-venue failure evidence and all queue/durability/service bounds. **Unknown:** owner watches/resources and full Linux/native Windows capacity. No tests or live diagnostics were run. Next: coordinating review; production start remains unqualified.
+
+## Prior R2 implementation checkpoint — 2026-10-10
 
 **Status: STOPPED before F1-micro at the corrected presealed feasibility gate.** Tested implementation checkpoint `ac9770bff25904585dfde015b4c032b3c4874f8a` is pushed on `fix/session-041-final-v2-recovery`, descending from authorized base `42e87fd34e815314a2caff62ecfb78b2e9122d44`. The exact tested source working-tree hash is `31a909d2fc62552fb90befc43c5b5af1835b81f1d6b8e425b239696e5850d468`. Accepted correction SHA is `1ed578f503aca1d5e61eeab5439f7b606d7fb15a`; its [specification](docs/v2/S41_F1_THROUGHPUT_ARCHITECTURE_CORRECTION.md) remains controlling alongside the freezes. Exact-source presealed report averages 478.4 ms per 16-frame descriptor (limit 66.7 ms). F1-micro and full F1 were not run. The validation ledger remains authoritative: `SESSION041_FULL_V2_VALIDATION_LEDGER.json`.
 
