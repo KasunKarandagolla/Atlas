@@ -1,7 +1,7 @@
 {
   "artifact": "S41_RECOVERY_GATE_MATRIX",
   "schema_version": 1,
-  "status": "DESIGN_SPECIFICATION_PENDING_COORDINATING_REVIEW",
+  "status": "CONDITIONALLY_ACCEPTED_FINAL_CORRECTIONS_FOR_REVIEW",
   "base_sha": "9bfcfa5ea45388cecf2081e753930e3287828871",
   "s40_ancestor_sha": "55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393",
   "authorities": [
@@ -109,7 +109,7 @@
       "required_assertions": [
         "Transactional additive ops schema migration; failed migration leaves schema/data intact.",
         "Schema 2 readers support all legacy formats; old binary rejects schema 2 writes; no mandatory backfill.",
-        "Logical refs/hashes/metadata/header parity and mixed inventory/cursor namespaces preserved."
+        "Logical identity/header parity; private staging outside all public evidence tables/artifact_index; E2 shares existing insertion rowid, older compact compatibility cursor retained."
       ],
       "status": "OPEN_UNIMPLEMENTED",
       "limits": {
@@ -178,10 +178,13 @@
       ],
       "required_assertions": [
         "Parse/hash once; ordinal map and batch header/feed/ID queries replace repeated row scans/savepoints.",
-        "Cursor/trade-ID/staged state commit together; rollback installs no advanced state.",
-        "No public visibility until complete frame and committed publication receipt; effective availability after staging commit.",
+        "Cursor/staged identities/state commit privately; complete public batch and staging retirement insert atomically; rollback/failed commit expose no partial public rows.",
+        "Logical time is not commit completion: sample actual post-commit observation only after public COMMIT returns, durably record it before consumption; causal queries require its cutoff-qualified join.",
         "REST/snapshot delta replay yields without receipt/sequence reordering; deadline preserved.",
-        "Slice batches encoding/staging/publication across completed frames; no new per-frame fsync/commit amplification."
+        "Slice batches encoding/staging/publication across completed frames; no new per-frame fsync/commit amplification.",
+        "Generic/header/batched/type/direct-SQL readers never see private staging; no staged-public-row filtering design.",
+        "Ambiguous public commit reopens and verifies entire deterministic batch; crash before durable observation uses fresh recovery time, never pre-commit time.",
+        "Grouped post-commit observation cost measured; published in-memory state and dependent effects wait for durability; public aliases keep first rowid/time."
       ],
       "status": "OPEN_UNIMPLEMENTED",
       "limits": {
@@ -223,10 +226,10 @@
       ],
       "required_assertions": [
         "Maximum legal 4096-product workset reconstructs/exports despite old 8-MiB projection ceiling.",
-        "Read-only bounded pages use immutable cutoff/high-water and all cursor namespaces.",
+        "Read-only bounded pages use cutoff/observation-qualified existing insertion-rowid high-water; E2 adds no cursor namespace.",
         "Release DB snapshot before compression/aggregate work; interrupted budget advances no manifest/cursor.",
         "All logical and publication chronologies exported and validated.",
-        "E2 publication-sequence/ordinal cursor discovers staged rows published after earlier export; legacy rowid scan excludes E2."
+        "Cap high-water before a public batch with missing observation or effective availability later than cutoff; private staging has no rowid; later eligible export discovers it without skip/duplicate."
       ],
       "status": "OPEN_UNIMPLEMENTED"
     },
@@ -277,9 +280,18 @@
       "required_assertions": [
         "New-run unapproved numeric action policy excluded, ranking/watch/trigger research preserved.",
         "Existing 1.0.0 authorized competitor contract used; incomplete S6 action coverage explicit.",
-        "Old recorded policy/hash replay preserved without new authority; quantity absent and capital disabled."
+        "Old recorded policy/hash replay preserved without new authority; quantity absent and capital disabled.",
+        "Registry preserves exact S40 1.0.0 and paused S41 1.1.0 bodies/hashes and recorded competitor bindings; new runs allow accepted S1-S3 only.",
+        "Old 1.1.0 recorded actions replay unchanged; no numerical approval inferred. Excluded-S6 sidecar retains rank/trigger/shadow refs and unavailable-action denominator evidence."
       ],
-      "status": "OPEN_UNIMPLEMENTED"
+      "status": "OPEN_UNIMPLEMENTED",
+      "selection_registry": {
+        "new_run_version": "1.0.0-research",
+        "new_run_hash": "37355c64d45a67bdce3a271a63db377b953c05847561bcda33847c27cecb0dac",
+        "historical_s41_version": "1.1.0-research",
+        "historical_s41_hash": "9bd4d8e41e0199a1e1f3ee0e5f72f824661ad346ef056f6a88d32356f7663795",
+        "new_s6_action_approval": "EXPLICIT_OWNER_POLICY_VERSION_HASH_REQUIRED"
+      }
     },
     {
       "id": "S7_GATE",
@@ -295,10 +307,12 @@
       ],
       "required_assertions": [
         "Persist exact event abnormality source/spread/volatility tri-state with cutoff lineage.",
-        "No unsupported volatility NORMAL threshold; required UNKNOWN/calendar missing keeps gate blocked.",
+        "Unapproved volatility cannot certify NORMAL; UNKNOWN blocks only an applicable required calendar/blackout-extension/incident/instrument/source contract, never unrelated times globally.",
         "30-min-before/15-min-after minimum preserved; unresolved incidents not auto-cleared.",
         "Dedicated extraction endpoint protocol V1 rejects wrong operation/profile/schema; billable intent precedes effect.",
-        "ABNORMAL component wins over UNKNOWN; existing blackout/incident blocking never cleared by diagnostic precedence."
+        "ABNORMAL component wins over UNKNOWN; existing blackout/incident blocking never cleared by diagnostic precedence.",
+        "Adversarial boundaries event-30m/event+15m; no applicable extension + healthy required sources/calendar permits unrelated time despite diagnostic UNKNOWN.",
+        "Affected active abnormal extension/unresolved incident cannot clear on UNKNOWN or timer; unrelated venue/instrument cannot widen scope. Required-calendar/applicable-source missingness fails closed."
       ],
       "status": "OPEN_UNIMPLEMENTED",
       "limits": {
@@ -386,13 +400,17 @@
       ],
       "test_targets": [
         "tests/v2/test_session041_recovery_admission.py",
-        "tests/v2/test_session041_broad_storage_preflight.py"
+        "tests/v2/test_session041_broad_storage_preflight.py",
+        "Bundled Windows owner wizard/AtlasProduct.exe --commission-capacity (planned), tested in native source/frozen-entry modes"
       ],
       "required_assertions": [
         "Missing/mismatched/failed measurement rejects before long run; no None-to-guessed-constant replacement.",
         "Actual final-format source/tree/profile/lock/schema/host/device binding and rates/startup/transients.",
         "Disk component accounting once, declared reserves and memory budgets; independent runtime sample and preventive terminal stop.",
-        "No short-run endurance claim or automatic cadence/breadth downgrade."
+        "No short-run endurance claim or automatic cadence/breadth downgrade.",
+        "Choose data folder/profile/Qualify this drive runs bundled runtime/harness on selected volume, with no owner Python/terminal/WSL/developer tools.",
+        "DPAPI-protected certificate and immutable hashed results retained under selected root; exact host/user/device/path/build/locks/representation/profile bindings and current <=30-s probe required for reuse.",
+        "CI-device certificate never admits owner device; failure/cancel/timeout/invalidation retains reason and disables Start Research, with no automatic profile/drive downgrade."
       ],
       "status": "OPEN_UNIMPLEMENTED",
       "limits": {
@@ -404,8 +422,88 @@
         "probe_max_sync_ns": 800000000,
         "probe_mean_64_frame_batch_ns": 200000000,
         "resource_warning_fraction": 0.85,
-        "cpu_window_seconds": 60
+        "cpu_window_seconds": 60,
+        "commission_measurement_seconds": 1800,
+        "commission_normal_minutes": "30-35",
+        "commission_total_seconds_max": 2700,
+        "commission_setup_seconds_max": 600,
+        "commission_finalize_seconds_max": 300,
+        "installer_authorized": false
       }
+    },
+    {
+      "id": "EARLY_FEASIBILITY",
+      "level": "integrated",
+      "authority": [
+        "AUTH02 \u00a7\u00a77,8,29,32"
+      ],
+      "test_targets": [
+        "scripts/session041_recovery_capacity.py --checkpoint F0/F1/F2-256/F2-1024/F3/F4 (planned)"
+      ],
+      "required_assertions": [
+        "Exploratory baseline costs recorded before bulk implementation; gate failures permit focused minimum prototypes only, not full feature expansion.",
+        "Q2/microbenchmark, 256 then 1024 polling/index, target cycle check and first concurrent two-lane writer precede intelligence integration.",
+        "Each result binds source/profile/input/host and reports offered/accepted/raw/indexed fps, trade rates, backlog slope, cycle latency, SQL/archive/commit cost and measured bottleneck.",
+        "30-minute final qualification forbidden until early throughput/latency/correctness criteria pass; frozen bounds/durability unchanged."
+      ],
+      "status": "OPEN_UNIMPLEMENTED",
+      "checkpoints": [
+        {
+          "id": "F0",
+          "seconds": 60,
+          "go": "Complete attributable per-frame/per-trade parse/hash/SQL/archive/commit/fsync costs; baseline failures retained."
+        },
+        {
+          "id": "F1",
+          "seconds": 60,
+          "sustained_fps_min": 160,
+          "burst_fps": 320,
+          "burst_seconds": 1,
+          "burst_at_seconds": [
+            30
+          ],
+          "mean_16_frame_ms_max": 100,
+          "service_gap_ns_max": 1500000000,
+          "backlog_slope_max": 0,
+          "go": "Queue invariants, zero loss/reject and exact drain/publication."
+        },
+        {
+          "id": "F2-256",
+          "products": 256,
+          "cycles": 3,
+          "cycle_seconds_max": 10,
+          "go": "Raw/index/revision/cutoff correctness and no due backlog."
+        },
+        {
+          "id": "F2-1024",
+          "products": 1024,
+          "cycles": 3,
+          "cycle_seconds_max": 10,
+          "go": "Same assertions; no extrapolation from 256."
+        },
+        {
+          "id": "F3",
+          "products": "exact selected target, <=4096",
+          "cycles": 3,
+          "cycle_seconds_max": 10,
+          "go": "Full mandatory polling/universe/workset writes; before full E2/worker completion."
+        },
+        {
+          "id": "F4",
+          "seconds": 120,
+          "per_lane_fps": 80,
+          "sustained_aggregate_fps_min": 160,
+          "burst_fps": 320,
+          "burst_seconds": 1,
+          "burst_at_seconds": [
+            30,
+            90
+          ],
+          "service_gap_ns_max": 1500000000,
+          "backlog_slope_max": 0,
+          "go": "Zero loss/reject, complete drain and publication/restart; before M1/S4-S8 integration."
+        }
+      ]
     },
     {
       "id": "MIXED_CAPACITY",
@@ -434,7 +532,12 @@
         "growth_window_seconds": 60,
         "non_ml_rss_target_bytes": 1500000000,
         "endurance_proven": false
-      }
+      },
+      "prerequisites": [
+        "EARLY_FEASIBILITY F1-F4 passed",
+        "E2 private staging/publication/cutoff correctness passed",
+        "final integrated source/profile frozen for qualification"
+      ]
     },
     {
       "id": "AUDIT_CROSSWALK",
@@ -581,5 +684,10 @@
       "status": "OPEN_EXTERNAL",
       "external_evidence": "Actual native Windows execution host and attributable completed reports; engineering source checks do not substitute."
     }
-  ]
+  ],
+  "review_correction": {
+    "reviewed_sha": "694757494c42133cb0f2a5c1c34ec3e8b8dae696",
+    "date": "2026-10-10",
+    "scope": "Five final coordinating corrections; docs only; no implementation or qualification executed."
+  }
 }
