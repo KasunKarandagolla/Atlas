@@ -36,6 +36,20 @@ from atlas.v2.memory.repository import OpsRepository, PublicAdoptionCursorV2
 from atlas.v2.runtime.broad_public_runtime import BroadPublicRuntimeV2
 
 
+def _blocked_test_preparation_worker(connection, run_root: str) -> None:
+    """A process fixture that acknowledges an in-flight job, then waits to be killed."""
+    import json
+    import time
+
+    connection.send_bytes(json.dumps({"phase": "READY", "run_root": str(Path(run_root).resolve())},
+                                     separators=(",", ":")).encode())
+    message = json.loads(connection.recv_bytes(16 * 1024))
+    request = message["request"]
+    connection.send_bytes(json.dumps({"phase": "STARTED", "job_id": request["job_id"],
+        "request_hash": message["request_hash"]}, separators=(",", ":")).encode())
+    time.sleep(30)
+
+
 def _slice(generation: int, *, frame: int = 0, start: int = 0, end: int = 64,
            next_frame: int = 0, next_trade: int = 64):
     output = {"records": [generation], "result_path": f"private/prepared-{generation}.json"}
@@ -569,9 +583,27 @@ def test_parse_result_validation_rejects_corrupt_bindings_and_zero_progress(tmp_
 
 def test_spawn_parse_worker_fails_closed_on_crash_timeout_and_corrupt_result(tmp_path):
     crashed_request, _ = _parse_request(tmp_path, start=0, end=64)
-    crashed = PublicEvidencePreparationWorkerV2()
+
+    class BlockedPreparationWorker(PublicEvidencePreparationWorkerV2):
+        def _start(self, run_root: str) -> None:
+            parent, child = self._context.Pipe(duplex=True)
+            process = self._context.Process(target=_blocked_test_preparation_worker,
+                args=(child, run_root), name="atlas-test-blocked-preparation", daemon=True)
+            process.start()
+            child.close()
+            self._process, self._connection = process, parent
+            self._run_root = str(Path(run_root).resolve())
+
+    crashed = BlockedPreparationWorker()
     try:
         crashed.submit(crashed_request)
+        import time
+
+        deadline = time.monotonic() + 3.0
+        while crashed._job_started_at is None and time.monotonic() < deadline:
+            crashed.poll()
+            time.sleep(0.001)
+        assert crashed._job_started_at is not None
         crashed.terminate_for_test()
         with pytest.raises(PublicEvidencePreparationError, match="exited|pipe closed"):
             crashed.poll()
