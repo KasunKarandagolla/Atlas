@@ -135,6 +135,39 @@ DEFAULT_NEWS_SOURCES_V2 = (
                        ("community-api.coinmetrics.io",)),
 )
 
+_PUBLIC_CONTEXT_SOURCE_VENUES_V2 = {
+    "BYBIT_OFFICIAL": "BYBIT",
+    "BYBIT_STATUS": "BYBIT",
+    "BINANCE_OFFICIAL": "BINANCE",
+    "BINANCE_STATUS": "BINANCE",
+}
+
+
+def public_context_sources_for_venues(
+    public_venues: Sequence[str],
+) -> tuple[NewsSourceConfigV2, ...]:
+    """Select the immutable public-context source set for a V2 venue profile.
+
+    Shared macro, regulator, discovery and community-context feeds remain
+    available. Venue-specific sources are included only for selected venues;
+    an inactive venue is not represented as a failed or healthy source.
+    """
+    if (isinstance(public_venues, str) or not isinstance(public_venues, Sequence)
+            or not public_venues or len(public_venues) > 2
+            or any(not isinstance(venue, str) or venue not in {"BYBIT", "BINANCE"}
+                   for venue in public_venues)
+            or len(set(public_venues)) != len(public_venues)):
+        raise ValueError("public context requires a unique registered V2 venue tuple")
+    enabled = frozenset(public_venues)
+    sources = tuple(
+        source for source in DEFAULT_NEWS_SOURCES_V2
+        if ((venue := _PUBLIC_CONTEXT_SOURCE_VENUES_V2.get(source.source_id)) is None
+            or venue in enabled)
+    )
+    if not sources:
+        raise ValueError("public context venue profile selected no sources")
+    return sources
+
 
 def official_project_security_source_v2(source_id: str, feed_url: str) -> NewsSourceConfigV2:
     """Create an explicitly allowlisted official project/security source."""

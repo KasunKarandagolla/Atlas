@@ -231,6 +231,15 @@ class ResearchRunConfigV2:
 RunConfig = ResearchRunConfigV1 | ResearchRunConfigV2
 
 
+def _public_context_sources_for_config(config: RunConfig) -> tuple[Any, ...] | None:
+    """Return a V2-selected source set while preserving the frozen V1 default."""
+    if not isinstance(config, ResearchRunConfigV2):
+        return None
+    from .news.events import public_context_sources_for_venues
+
+    return public_context_sources_for_venues(config.public_venues)
+
+
 def canonical_data_root(data_root: Path) -> str:
     return str(data_root.expanduser().resolve())
 
@@ -1561,9 +1570,14 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
                     event_extraction = _start_installed_event_extraction(
                         run, epoch_id, service=supervisor.service_public_stream)
                     state["provider_health"] = "IMPLEMENTED"
-                public_context = PublicContextMaintenanceV1(
-                    event_extraction_provider=(event_extraction.provider
-                        if event_extraction is not None else None))
+                context_sources = _public_context_sources_for_config(config)
+                context_kwargs: dict[str, Any] = {
+                    "event_extraction_provider": (event_extraction.provider
+                        if event_extraction is not None else None),
+                }
+                if context_sources is not None:
+                    context_kwargs["sources"] = context_sources
+                public_context = PublicContextMaintenanceV1(**context_kwargs)
                 from .runtime.official_calendar import OfficialFomcSourceProfileV1
 
                 fomc_profile = (OfficialFomcSourceProfileV1.from_dict(json.loads(config.official_fomc_source_profile_json))
