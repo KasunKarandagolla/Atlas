@@ -13,6 +13,7 @@ import importlib
 import json
 import multiprocessing
 import os
+import sys
 import time
 import uuid
 from dataclasses import dataclass
@@ -137,6 +138,15 @@ class PublicEvidencePreparationError(RuntimeError):
 
 class PublicEvidencePreparationTimeout(PublicEvidencePreparationError):
     pass
+
+
+def _read_proc_stat_fields(path: Path) -> list[str]:
+    raw = path.read_text(encoding="ascii")
+    close = raw.rfind(")")
+    if close < 0:
+        raise ValueError("Linux process stat row is malformed")
+    # The command name is parenthesized and may itself contain spaces.
+    return raw[close + 1:].split()
 
 
 def _require_path(value: str, *, field: str) -> None:
@@ -304,6 +314,33 @@ class PublicEvidencePreparationWorkerV2:
     @property
     def busy(self) -> bool:
         return self._request is not None or self._completion is not None
+
+    def resource_sample(self) -> dict[str, int] | None:
+        """Return Linux process counters for the already-owned preparation worker."""
+        process = self._process
+        if process is None or process.pid is None or not sys.platform.startswith("linux"):
+            return None
+        pid = process.pid
+        try:
+            stat_fields = _read_proc_stat_fields(Path(f"/proc/{pid}/stat"))
+            cpu_ticks = int(stat_fields[11]) + int(stat_fields[12])
+            rss_pages = int(stat_fields[21])
+            process_start_ticks = int(stat_fields[19])
+            io_fields = {}
+            for line in Path(f"/proc/{pid}/io").read_text(encoding="ascii").splitlines():
+                name, raw = line.split(":", 1)
+                io_fields[name] = int(raw.strip())
+            return {
+                "cpu_ticks": cpu_ticks,
+                "cpu_ticks_per_second": int(os.sysconf("SC_CLK_TCK")),
+                "worker_instance_ref": hashlib.sha256(
+                    f"{pid}:{process_start_ticks}".encode("ascii")).hexdigest(),
+                "rss_bytes": max(0, rss_pages) * os.sysconf("SC_PAGE_SIZE"),
+                "read_bytes": io_fields["read_bytes"],
+                "write_bytes": io_fields["write_bytes"],
+            }
+        except (OSError, ValueError, IndexError, KeyError):
+            return None
 
     def submit(self, request: PublicEvidencePreparationRequestV2) -> None:
         if self.busy:

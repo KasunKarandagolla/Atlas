@@ -164,10 +164,13 @@ class PublicArchiveSegmentWriterV1:
             os.fsync(handle.fileno())
         file_sync_finished = time.monotonic_ns()
         directory_sync_ns = 0
+        rename_ns = 0
         if new_segment:
             self.metrics = {**self.metrics, "active_phase": "ARCHIVE_PUBLISH",
                             "phase_started_monotonic_ns": time.monotonic_ns()}
+            publish_started = time.monotonic_ns()
             directory_sync_ns = _publish_new_segment(write_path, segment_path)
+            rename_ns = max(0, time.monotonic_ns() - publish_started - directory_sync_ns)
         finished = time.monotonic_ns()
         new_offset = offset + len(payload)
         if segment_path.stat().st_size != new_offset:
@@ -177,7 +180,8 @@ class PublicArchiveSegmentWriterV1:
         self.path = segment_path
         self.metrics = {"active_phase": "IDLE", "arrow_encode_ns": encoded_at - started,
             "compression_ns": compressed_at - encoded_at, "write_ns": fsync_at - writing_at,
-            "fsync_ns": file_sync_finished - fsync_at, "directory_sync_ns": directory_sync_ns,
+            "fsync_ns": file_sync_finished - fsync_at, "rename_ns": rename_ns,
+            "directory_sync_ns": directory_sync_ns, "extent_count": 1,
             "total_ns": finished - started,
             "observed_at_ns": clock_ns(), "bytes_written": self.bytes_written}
         from ..chronology import sample

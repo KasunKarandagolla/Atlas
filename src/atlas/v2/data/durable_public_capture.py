@@ -27,6 +27,7 @@ from .capture_receipts import (
 )
 from .public_archive_extents import PublicArchiveSegmentWriterV1, read_extent, read_extent_entry
 from .public_microstructure_ws import CapturedPublicFrameV2
+from .qualification_telemetry import QualificationTrafficWindowV1
 
 MAX_PENDING_CAPTURE_BATCHES = 64
 MAX_CAPTURE_BATCH_FRAMES = 256
@@ -118,6 +119,11 @@ class DurablePublicCaptureV1:
         self.clock_ns = clock_ns
         self.capture_batch_frames = capture_batch_frames
         self._capture_payload_metrics = capture_payload_metrics
+        self._qualification_traffic = (QualificationTrafficWindowV1()
+            if capture_payload_metrics else None)
+        self._qualification_window_ns: tuple[int, int] | None = None
+        self._qualification_archive_metrics: dict[str, Any] = {}
+        self._qualification_archive_bytes_cursor = 0
         self._root: Path | None = None
         self._pending: deque[SealedPublicTransportV1] = deque()
         self._lock = threading.Lock()
@@ -313,6 +319,63 @@ class DurablePublicCaptureV1:
             last_error_code=error or status.last_error_code, handoff=status.handoff,
             pending_frames=backlog, capture=capture)
 
+    def begin_qualification_window(self, start_ns: int, end_ns: int) -> None:
+        if not self._capture_payload_metrics or self._qualification_traffic is None:
+            raise RuntimeError("qualification capture metrics are disabled")
+        with self._lock:
+            self._qualification_traffic.begin_window(start_ns, end_ns)
+            self._qualification_window_ns = (start_ns, end_ns)
+            self._qualification_archive_bytes_cursor = (
+                self._writer.bytes_written if self._writer is not None else 0)
+            self._qualification_archive_metrics = {
+                "window_start_monotonic_ns": start_ns,
+                "window_end_monotonic_ns": end_ns,
+                "history_complete": True,
+                "operation_count": 0,
+                "extent_count": 0,
+                "archive_bytes_written": 0,
+                "arrow_encode_ns": 0,
+                "compression_ns": 0,
+                "write_ns": 0,
+                "fsync_ns": 0,
+                "rename_ns": 0,
+                "directory_sync_ns": 0,
+                "total_ns": 0,
+                "max_fsync_ns": 0,
+            }
+
+    def qualification_metrics_snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            if self._qualification_traffic is None:
+                raise RuntimeError("qualification capture metrics are disabled")
+            return {
+                "traffic": self._qualification_traffic.snapshot(),
+                "archive": dict(self._qualification_archive_metrics),
+            }
+
+    def _record_qualification_archive_locked(self, *, completed_at_ns: int) -> None:
+        if self._qualification_traffic is None or self._qualification_window_ns is None:
+            return
+        start_ns, end_ns = self._qualification_window_ns
+        archive_bytes = self._writer.bytes_written if self._writer is not None else 0
+        byte_delta = max(0, archive_bytes - self._qualification_archive_bytes_cursor)
+        self._qualification_archive_bytes_cursor = archive_bytes
+        if not start_ns <= completed_at_ns < end_ns:
+            return
+        metrics = self._writer.metrics if self._writer is not None else {}
+        fields = ("arrow_encode_ns", "compression_ns", "write_ns", "fsync_ns",
+                  "rename_ns", "directory_sync_ns", "total_ns", "extent_count")
+        if any(type(metrics.get(name)) is not int or metrics[name] < 0 for name in fields):
+            self._qualification_archive_metrics["history_complete"] = False
+            return
+        totals = self._qualification_archive_metrics
+        totals["operation_count"] += 1
+        totals["extent_count"] += metrics["extent_count"]
+        totals["archive_bytes_written"] += byte_delta
+        for name in fields[:-1]:
+            totals[name] += metrics[name]
+        totals["max_fsync_ns"] = max(totals["max_fsync_ns"], metrics["fsync_ns"])
+
     def captured_frames_at_monotonic_ns(self, cutoff_ns: int) -> int:
         """Return the exact cumulative seal count completed by a sampled producer cutoff."""
         if type(cutoff_ns) is not int or cutoff_ns < 0:
@@ -358,6 +421,24 @@ class DurablePublicCaptureV1:
         return {
             **{f"le_{bound}": totals[index] for index, bound in enumerate(_PAYLOAD_SIZE_BUCKETS)},
             f"gt_{_PAYLOAD_SIZE_BUCKETS[-1]}": totals[-1]}
+
+    def payload_size_distribution_in_window(self, start_ns: int, end_ns: int) -> dict[str, int]:
+        """Return exact payload buckets for the half-open monotonic interval [start,end)."""
+        if not self._capture_payload_metrics:
+            raise RuntimeError("capture payload metrics were not enabled for this profile")
+        if (type(start_ns) is not int or type(end_ns) is not int or start_ns < 0 or end_ns <= start_ns):
+            raise ValueError("payload distribution window is invalid")
+        with self._lock:
+            if (self._capture_timeline_truncated_before_ns is not None
+                    and start_ns <= self._capture_timeline_truncated_before_ns):
+                raise ValueError("capture timeline no longer covers the requested cutoff")
+            totals = [0] * (len(_PAYLOAD_SIZE_BUCKETS) + 1)
+            for completed_at_ns, batch_counts in self._payload_size_batch_timeline:
+                if start_ns <= completed_at_ns < end_ns:
+                    for index, count in enumerate(batch_counts):
+                        totals[index] += count
+        return {**{f"le_{bound}": totals[index] for index, bound in enumerate(_PAYLOAD_SIZE_BUCKETS)},
+                f"gt_{_PAYLOAD_SIZE_BUCKETS[-1]}": totals[-1]}
 
     @staticmethod
     def _pressure_reserve_batches(handoff: Any) -> int:
@@ -509,6 +590,12 @@ class DurablePublicCaptureV1:
                     self._captured_frames += len(frames)
                     self._capture_in_progress_frames = 0
                     completed_at_ns = time.monotonic_ns()
+                    if self._qualification_traffic is not None:
+                        for frame in frames:
+                            self._qualification_traffic.record(at_ns=completed_at_ns,
+                                lane=frame.source_id.removesuffix("_PUBLIC_WS_BROAD_V2"),
+                                channel=frame.channel, payload_bytes=len(frame.raw_payload_bytes))
+                        self._record_qualification_archive_locked(completed_at_ns=completed_at_ns)
                     if (self._capture_payload_metrics
                             and len(self._capture_seal_timeline) == self._capture_seal_timeline.maxlen):
                         self._capture_timeline_truncated_before_ns = self._capture_seal_timeline[0][0]

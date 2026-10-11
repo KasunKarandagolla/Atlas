@@ -213,6 +213,9 @@ def test_capture_payload_histogram_keeps_oversize_bucket_and_exact_window():
     assert distribution[f"le_{_PAYLOAD_SIZE_BUCKETS[0]}"] == 3
     distribution = capture.payload_size_distribution_between_monotonic_ns(0, 10)
     assert distribution[f"gt_{_PAYLOAD_SIZE_BUCKETS[-1]}"] == 2
+    in_window = capture.payload_size_distribution_in_window(10, 20)
+    assert in_window[f"gt_{_PAYLOAD_SIZE_BUCKETS[-1]}"] == 2
+    assert in_window[f"le_{_PAYLOAD_SIZE_BUCKETS[0]}"] == 0
 
 
 def test_capture_payload_metrics_are_opt_in_for_qualification_only():
@@ -343,6 +346,160 @@ def test_rate_samples_use_actual_monotonic_counter_deltas():
     assert rates["durable_payload_bytes_per_second"][0]["rate"] == 200
 
 
+def test_qualification_traffic_keeps_lane_channel_rates_and_exact_burst_peaks():
+    from atlas.v2.data.qualification_telemetry import QualificationTrafficWindowV1
+
+    start = 100
+    end = start + 3_000_000_000
+    traffic = QualificationTrafficWindowV1()
+    traffic.begin_window(start, end)
+    traffic.record(at_ns=start + 10, lane="BINANCE_MARKET", channel="btcusdt@aggTrade", payload_bytes=5)
+    traffic.record(at_ns=start + 20, lane="BINANCE_MARKET", channel="btcusdt@aggTrade", payload_bytes=7)
+    traffic.record(at_ns=start + 1_000_000_010, lane="BINANCE_MARKET",
+        channel="btcusdt@aggTrade", payload_bytes=11)
+    traffic.record(at_ns=start + 1_000_000_020, lane="BINANCE_DEPTH",
+        channel="btcusdt@depth@100ms", payload_bytes=3)
+    summary = qualification._traffic_window_summary(traffic.snapshot(), window_start_ns=start,
+        window_end_ns=end, expected_identities=(
+            ("BINANCE_MARKET", "btcusdt@aggTrade"), ("BINANCE_DEPTH", "btcusdt@depth@100ms")))
+    assert summary["complete"] is True
+    assert summary["lane_rates"]["BINANCE_MARKET"]["frames"] == 3
+    assert summary["lane_rates"]["BINANCE_DEPTH"]["frames"] == 1
+    market = summary["lane_rates"]["BINANCE_MARKET"]["channels"]["btcusdt@aggTrade"]
+    assert market["payload_bytes"] == 23
+    assert market["mean_payload_bytes"] == pytest.approx(23 / 3)
+    peak = summary["one_second_peaks"]["all_lanes"]
+    assert peak["frames"] == {"second": 0, "value": 2}
+    assert peak["payload_bytes"] == {"second": 1, "value": 14}
+    market_peaks = summary["one_second_peaks"]["lanes"]["BINANCE_MARKET"]
+    assert market_peaks["frames"] == {"second": 0, "value": 2}
+    assert market_peaks["payload_bytes"] == {"second": 0, "value": 12}
+    assert summary["peak_bucket_basis"] == "fixed one-second buckets anchored at window_start_monotonic_ns"
+
+
+def test_qualification_traffic_empty_and_truncated_windows_are_explicit():
+    from atlas.v2.data.qualification_telemetry import QualificationTrafficWindowV1
+
+    start, end = 500, 500 + 2_000_000_000
+    traffic = QualificationTrafficWindowV1()
+    traffic.begin_window(start, end)
+    empty = qualification._traffic_window_summary(traffic.snapshot(), window_start_ns=start,
+        window_end_ns=end, expected_identities=(("BINANCE_MARKET", "btcusdt@aggTrade"),))
+    identity = empty["identity_rates"][0]
+    assert identity["observed"] is False
+    assert identity["frames_per_second"] == 0
+    assert identity["mean_payload_bytes"] is None
+    traffic._history_truncated = True
+    with pytest.raises(ValueError, match="WINDOW_MISSING_OR_TRUNCATED"):
+        qualification._traffic_window_summary(traffic.snapshot(), window_start_ns=start,
+            window_end_ns=end, expected_identities=())
+
+
+def _resource_fixture(at_ns: int, *, cpu_ticks: int = 10) -> dict:
+    return {"sampled_at_monotonic_ns": at_ns, "process_cpu_seconds": cpu_ticks / 10,
+        "process_rss_bytes": 1000, "process_peak_rss_bytes": 1200,
+        "process_io_bytes": {"read_bytes": 100, "write_bytes": 200 + cpu_ticks},
+        "worker": {"cpu_ticks": cpu_ticks, "cpu_ticks_per_second": 100,
+            "worker_instance_ref": "a" * 64, "rss_bytes": 500, "read_bytes": 20,
+            "write_bytes": 30 + cpu_ticks},
+        "host_cpu_counters": {"total_ticks": at_ns, "idle_ticks": at_ns // 2},
+        "host_resources": {"host_memory_available_bytes": 4096, "cgroup_memory": {"current_bytes": 2048},
+            "process_affinity_cpu_count": 2},
+        "system_psi": {
+            "cpu": {"some": {"avg10": 0.1, "avg60": 0.1, "avg300": 0.1, "total": 1}},
+            "memory": {"some": {"avg10": 0.1, "avg60": 0.1, "avg300": 0.1, "total": 1},
+                "full": {"avg10": 0.0, "avg60": 0.0, "avg300": 0.0, "total": 0}},
+            "io": {"some": {"avg10": 0.2, "avg60": 0.2, "avg300": 0.2, "total": 2},
+                "full": {"avg10": 0.0, "avg60": 0.0, "avg300": 0.0, "total": 0}},
+        },
+        "free_disk_bytes": 10_000, "sqlite_bytes": 500, "wal_bytes": 100}
+
+
+def test_resource_summary_exposes_missing_one_second_buckets_and_worker_metrics():
+    start, end = 1_000_000_000, 4_000_000_000
+    incomplete = [
+        {"resource": _resource_fixture(start + 200_000_000)},
+        {"resource": _resource_fixture(start + 2_200_000_000, cpu_ticks=20)},
+        {"resource": _resource_fixture(end + 10_000_000, cpu_ticks=21)},
+    ]
+    missing = qualification._resource_summary(incomplete, window_complete=True,
+        window_start_ns=start, window_end_ns=end)
+    assert missing["measurement_window_complete"] is False
+    assert missing["missing_second_buckets"] == [1]
+    assert missing["max_sample_gap_ns"] is not None
+
+    complete = [{"resource": _resource_fixture(start + offset, cpu_ticks=10 + index * 10)}
+        for index, offset in enumerate((200_000_000, 1_200_000_000, 2_200_000_000))]
+    complete.append({"resource": _resource_fixture(end + 10_000_000, cpu_ticks=41),
+        "window_boundary_sample": True})
+    summary = qualification._resource_summary(complete, window_complete=True,
+        window_start_ns=start, window_end_ns=end)
+    assert summary["measurement_window_complete"] is True
+    assert summary["missing_second_buckets"] == []
+    assert summary["worker_rss_max_bytes"] == 500
+    assert summary["worker_instance_stable"] is True
+    assert summary["sqlite_max_bytes"] == 500
+    assert summary["wal_max_bytes"] == 100
+    assert summary["sample_timestamps_monotonic_ns"] == [
+        start + 200_000_000, start + 1_200_000_000, start + 2_200_000_000, end + 10_000_000]
+    incomplete_pressure = [dict(item, resource=dict(item["resource"],
+        system_psi={"cpu": {}, "memory": {}, "io": {}})) for item in complete]
+    missing_pressure = qualification._resource_summary(incomplete_pressure, window_complete=True,
+        window_start_ns=start, window_end_ns=end)
+    assert missing_pressure["measurement_window_complete"] is False
+    assert any("system_psi" in item["missing"] for item in missing_pressure["missing_sensor_fields"])
+
+
+def test_diagnostic_failure_receipt_carries_missing_measurement_reasons(tmp_path):
+    start, end = 10_000_000_000, 11_000_000_000
+    measured, failure = qualification._qualification_measurements({}, stream_plan={"lane_topics": {}},
+        repository_metrics={}, resource_summary={"measurement_window_complete": False},
+        window_start_ns=start, window_end_ns=end)
+    assert failure is not None
+    receipt = qualification._write_receipt(tmp_path, {"schema_version": 1,
+        "status": "DIAGNOSTIC_FAILED", "reason": failure,
+        "measured_window_seconds": 1, "measurement_window_complete": False,
+        "diagnostic_measurements": measured})
+    assert receipt["status"] == "DIAGNOSTIC_FAILED"
+    assert receipt["reason"].startswith("QUALIFICATION_TELEMETRY_INCOMPLETE_")
+    assert receipt["diagnostic_measurements"]["missing_measurements"]
+    with pytest.raises(ValueError, match="QUALIFICATION_COMPLETE_RECEIPT_TELEMETRY_INCOMPLETE"):
+        qualification._write_receipt(tmp_path, {"schema_version": 1,
+            "status": "DIAGNOSTIC_COMPLETE", "measured_window_seconds": 120,
+            "measurement_window_complete": True, "diagnostic_measurements": measured})
+
+
+def test_repository_reports_window_scoped_sqlite_commit_timing(tmp_path):
+    start = time.monotonic_ns()
+    end = start + 30_000_000_000
+    with OpsRepository(tmp_path / "timing.sqlite") as repository:
+        repository.begin_persistence_timing_window(start_ns=start, end_ns=end)
+        ref = sha256_json({"fixture": "timing-window-commit"})
+        entry = ArtifactIndexEntryV2(ref, "QualificationTimingFixtureV1", ref,
+            time.time_ns(), time.time_ns(), {"fixture": "timing-window-commit"})
+        with repository.atomic_composition():
+            repository.register_artifact(entry)
+        timing = repository.persistence_timing_window()
+    assert timing["transaction_count"] == 1
+    assert timing["successful_transaction_count"] == 1
+    assert timing["commit_attempt_count"] == 1
+    assert timing["commit_duration_sum_ns"] >= 0
+    assert timing["row_and_archive_duration_sum_ns"] >= 0
+
+
+def test_phase_window_preserves_worker_phase_semantics_without_summing():
+    from atlas.v2.data.qualification_telemetry import QualificationPhaseWindowV1
+
+    phases = QualificationPhaseWindowV1(("worker_execution", "seal_worker_execution"))
+    phases.begin_window(100, 1_000_000_100)
+    phases.record(at_ns=200, phase="worker_execution", duration_ns=700)
+    phases.record(at_ns=200, phase="seal_worker_execution", duration_ns=700)
+    phases.record(at_ns=1_000_000_100, phase="worker_execution", duration_ns=900)
+    result = phases.snapshot()
+    assert result["phases"]["worker_execution"] == {"count": 1, "sum_ns": 700, "max_ns": 700}
+    assert result["phases"]["seal_worker_execution"] == {"count": 1, "sum_ns": 700, "max_ns": 700}
+
+
 def test_causal_reader_excludes_unobserved_and_future_publication(tmp_path):
     ref = sha256_json({"qualification": "causal-publication"})
     instrument = {"venue": "BINANCE", "product": "LINEAR_PERPETUAL", "environment": "MAINNET",
@@ -443,6 +600,9 @@ def test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture(tmp
                 now_ns=now_ns, benchmark_keys=(key,))
             assert runtime.plan is not None
             assert {identity.venue for identity in runtime.plan.identities} == {VenueV2.BINANCE}
+            metric_start = time.monotonic_ns() + 100_000_000
+            runtime.begin_qualification_window(metric_start, metric_start + 10_000_000_000)
+            time.sleep(max(0, metric_start - time.monotonic_ns()) / 1_000_000_000)
             deadline = time.monotonic() + 5
             while runtime.status().indexed_frames == 0 and time.monotonic() < deadline:
                 runtime.service(repository, now_ns=time.time_ns())
@@ -456,6 +616,29 @@ def test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture(tmp
             assert status.capture["pending_frames"] == 0
             assert status.indexed_frames == status.capture["captured_frames"]
             assert repository.unobserved_publications_v2(run_root.name) == ()
+            diagnostic_metrics = runtime.qualification_metrics_snapshot()
+            source_frames = sum(row["frames"] for lane in diagnostic_metrics["source"].values()
+                for row in lane["identities"])
+            capture_frames = sum(row["frames"] for row in diagnostic_metrics["capture"]["traffic"]["identities"])
+            indexed_frames = sum(row["frames"] for row in diagnostic_metrics["index"]["identities"])
+            assert source_frames > 0
+            assert capture_frames > 0
+            assert indexed_frames > 0
+            trade_geometry = diagnostic_metrics["trade_geometry"]
+            assert trade_geometry
+            assert sum(int(item["trade_rows"] or 0) for item in trade_geometry) == sum(
+                int(item["parsed_frames"] or 0) for item in trade_geometry)
+            assert diagnostic_metrics["phase_timings_ns"]["window_started"] is True
+            assert diagnostic_metrics["phase_timings_ns"]["phases"]["public_commit"]["count"] > 0
+            archive_metrics = diagnostic_metrics["capture"]["archive"]
+            assert archive_metrics["operation_count"] > 0
+            assert archive_metrics["extent_count"] > 0
+            assert archive_metrics["archive_bytes_written"] > 0
+            assert archive_metrics["fsync_ns"] >= 0
+            worker_resource = runtime.qualification_worker_resource_sample()
+            assert worker_resource is not None
+            assert worker_resource["cpu_ticks_per_second"] > 0
+            assert worker_resource["rss_bytes"] > 0
             source_id = "BINANCE_MARKET_PUBLIC_WS_BROAD_V2"
             feed_ref = sha256_json({"instrument": key.to_dict(), "source_id": source_id,
                 "channel": "btcusdt@aggTrade", "metadata_ref": product.metadata_ref})

@@ -575,6 +575,7 @@ class OpsRepository:
         self._public_metadata_cache: OrderedDict[Any, Any] = OrderedDict()
         self._persistence_metrics: dict[str, Any] = {"version": "OPS_PERSISTENCE_TIMING_V1",
             "transaction_count": 0, "active_phase": "IDLE", "authority": "ZERO"}
+        self._persistence_metrics_window: dict[str, Any] | None = None
         self._writer_lease = None if read_only or raw_path == ":memory:" else OpsWriterLock(raw_path)
         if self._writer_lease is not None:
             self._writer_lease.acquire()
@@ -753,6 +754,32 @@ class OpsRepository:
         """
         return dict(self._persistence_metrics)
 
+    def begin_persistence_timing_window(self, *, start_ns: int, end_ns: int) -> None:
+        """Start a bounded in-memory commit timing window; performs no SQL."""
+        if (type(start_ns) is not int or type(end_ns) is not int or start_ns < 0
+                or end_ns <= start_ns or end_ns - start_ns > 300_000_000_000):
+            raise ValueError("persistence timing window is outside its fixed bound")
+        with self._lock:
+            if self.read_only or self._connection.in_transaction:
+                raise RuntimeError("persistence timing window requires an idle sole-writer repository")
+            self._persistence_metrics_window = {
+                "window_started": True, "window_start_monotonic_ns": start_ns,
+                "window_end_monotonic_ns": end_ns, "history_complete": True,
+                "transaction_count": 0, "successful_transaction_count": 0,
+                "failed_transaction_count": 0, "commit_attempt_count": 0,
+                "commit_duration_sum_ns": 0, "commit_duration_max_ns": 0,
+                "begin_duration_sum_ns": 0, "begin_duration_max_ns": 0,
+                "row_and_archive_duration_sum_ns": 0, "row_and_archive_duration_max_ns": 0,
+                "rollback_duration_sum_ns": 0, "rollback_duration_max_ns": 0,
+            }
+
+    def persistence_timing_window(self) -> dict[str, Any]:
+        with self._lock:
+            return dict(self._persistence_metrics_window or {
+                "window_started": False, "history_complete": False,
+                "window_start_monotonic_ns": None, "window_end_monotonic_ns": None,
+            })
+
     def _persistence_phase(self, phase: str, started: int) -> None:
         self._persistence_metrics = {**self._persistence_metrics, "active_phase": phase,
             "phase_started_monotonic_ns": started, "phase_observed_at_ns": time.time_ns()}
@@ -833,6 +860,8 @@ class OpsRepository:
                             commit_duration = time.monotonic_ns() - commit_started
                 finally:
                     if self.savepoint is None:
+                        window = self.repository._persistence_metrics_window
+                        observed_mono_ns = time.monotonic_ns() if window is not None else None
                         prior = self.repository._persistence_metrics
                         self.repository._persistence_metrics = {**prior, "active_phase": "IDLE",
                             "transaction_count": prior["transaction_count"] + 1,
@@ -842,6 +871,23 @@ class OpsRepository:
                             "transaction_failed": bool(exc_type) or commit_failed,
                             "max_commit_duration_ns": max(prior.get("max_commit_duration_ns", 0), commit_duration),
                             "transaction_observed_at_ns": time.time_ns()}
+                        if (window is not None
+                                and observed_mono_ns is not None
+                                and window["window_start_monotonic_ns"] <= observed_mono_ns
+                                < window["window_end_monotonic_ns"]):
+                            window["transaction_count"] += 1
+                            window["successful_transaction_count"] += int(exc_type is None and not commit_failed)
+                            window["failed_transaction_count"] += int(exc_type is not None or commit_failed)
+                            window["commit_attempt_count"] += int(exc_type is None or commit_failed)
+                            window["commit_duration_sum_ns"] += commit_duration
+                            window["commit_duration_max_ns"] = max(window["commit_duration_max_ns"], commit_duration)
+                            window["begin_duration_sum_ns"] += self.begin_duration_ns
+                            window["begin_duration_max_ns"] = max(window["begin_duration_max_ns"], self.begin_duration_ns)
+                            window["row_and_archive_duration_sum_ns"] += body_duration
+                            window["row_and_archive_duration_max_ns"] = max(
+                                window["row_and_archive_duration_max_ns"], body_duration)
+                            window["rollback_duration_sum_ns"] += rollback_duration
+                            window["rollback_duration_max_ns"] = max(window["rollback_duration_max_ns"], rollback_duration)
                     self.repository._lock.release()
 
         return Transaction(self)

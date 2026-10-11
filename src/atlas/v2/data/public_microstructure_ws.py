@@ -23,6 +23,7 @@ from .capabilities import capability_for_public_channel_v2, default_evidence_cap
 from .derivatives import DerivativeAvailabilityV2, LiquidationCoverageV2, LiquidationObservationV2
 from .microstructure import AggressiveTradeV2, BookLevelV2, L2DeltaV2, L2SequenceFaultV2, L2SnapshotV2
 from .microstructure_archive import L2RawFrameV2
+from .qualification_telemetry import QualificationTrafficWindowV1
 
 MAX_PUBLIC_FRAME_BYTES = 2_000_000
 MAX_PUBLIC_SUBSCRIPTION_TOPICS = 32
@@ -310,7 +311,8 @@ class BoundedPublicFrameHandoffV2:
                  max_queue_bytes: int = DEFAULT_PUBLIC_FRAME_QUEUE_BYTES,
                  max_drain_items: int = DEFAULT_PUBLIC_FRAME_DRAIN_ITEMS,
                  shared_budget: SharedPublicFrameBudgetV1 | None = None,
-                 budget_lane: str | None = None) -> None:
+                 budget_lane: str | None = None,
+                 qualification_telemetry: bool = False) -> None:
         self.venue = VenueV2(venue)
         _validate_subscription(self.venue, topics)
         for value, name in ((max_queue_items, "max_queue_items"),
@@ -328,6 +330,10 @@ class BoundedPublicFrameHandoffV2:
             raise ValueError("shared public frame budget and lane identity must be supplied together")
         self._shared_budget = shared_budget
         self._budget_lane = budget_lane
+        if type(qualification_telemetry) is not bool:
+            raise ValueError("qualification telemetry selection must be boolean")
+        self._qualification_traffic = (QualificationTrafficWindowV1()
+            if qualification_telemetry else None)
         if shared_budget is not None:
             assert budget_lane is not None
             # Registration is idempotence-protected by the budget; duplicate
@@ -425,12 +431,27 @@ class BoundedPublicFrameHandoffV2:
                 raise
             self._queue_bytes += size
             self._frames_received += 1
+            if self._qualification_traffic is not None:
+                self._qualification_traffic.record(at_ns=time.monotonic_ns(),
+                    lane=self._budget_lane or self.venue.value, channel=frame.channel, payload_bytes=size)
             self._high_water_items = max(self._high_water_items, len(self._queue))
             self._high_water_bytes = max(self._high_water_bytes, self._queue_bytes)
             if (len(self._queue) * 4 >= self.max_queue_items * 3
                     or self._queue_bytes * 4 >= self.max_queue_bytes * 3):
                 self._backpressure = True
         return True
+
+    def begin_qualification_window(self, start_ns: int, end_ns: int) -> None:
+        with self._lock:
+            if self._qualification_traffic is None:
+                raise RuntimeError("qualification traffic metrics are disabled")
+            self._qualification_traffic.begin_window(start_ns, end_ns)
+
+    def qualification_traffic_snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            if self._qualification_traffic is None:
+                raise RuntimeError("qualification traffic metrics are disabled")
+            return self._qualification_traffic.snapshot()
 
     def drain(self, *, max_items: int | None = None) -> tuple[CapturedPublicFrameV2, ...]:
         """Remove at most the configured per-call work bound, preserving FIFO order."""

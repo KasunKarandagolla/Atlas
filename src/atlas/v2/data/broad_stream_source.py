@@ -175,7 +175,8 @@ class BroadPublicStreamSourceV2:
     """Composable stream lanes whose aggregate queues preserve 512/16MB caps."""
 
     def __init__(self, plan: BroadPublicStreamPlanV2, *, stream_factories: Mapping[str, Callable] | None = None,
-                 clock_ns: Callable[[], int] | None = None) -> None:
+                 clock_ns: Callable[[], int] | None = None,
+                 qualification_telemetry: bool = False) -> None:
         self.plan = plan
         self.topics = tuple(sorted(topic for topics in plan.lane_topics.values() for topic in topics))
         self.venue = "BROAD"
@@ -204,6 +205,7 @@ class BroadPublicStreamSourceV2:
                 "max_queue_bytes": MAX_BROAD_STREAM_QUEUE_BYTES_V2,
                 "max_drain_items": MAX_BROAD_STREAM_DRAIN_ITEMS_V2,
                 "shared_budget": self._queue_budget, "budget_lane": name,
+                "qualification_telemetry": qualification_telemetry,
             }
             if name in factories:
                 kwargs["stream_factory"] = factories[name]
@@ -212,6 +214,14 @@ class BroadPublicStreamSourceV2:
             self._lanes[name] = PublicStreamSourceV2(**kwargs)
         self._drain_rotation = 0
         self._started: list[str] = []
+
+    def begin_qualification_window(self, start_ns: int, end_ns: int) -> None:
+        for source in self._lanes.values():
+            source.begin_qualification_window(start_ns, end_ns)
+
+    def qualification_traffic_snapshot(self) -> dict[str, Any]:
+        return {name: source.qualification_traffic_snapshot()
+                for name, source in sorted(self._lanes.items())}
 
     @property
     def lane_names(self) -> tuple[str, ...]:
@@ -378,6 +388,12 @@ class BroadDurablePublicCaptureV2:
     def close(self) -> None:
         self._capture.close()
 
+    def begin_qualification_window(self, start_ns: int, end_ns: int) -> None:
+        self._capture.begin_qualification_window(start_ns, end_ns)
+
+    def qualification_metrics_snapshot(self) -> dict[str, Any]:
+        return self._capture.qualification_metrics_snapshot()
+
     def status(self) -> Any:
         source_status = self.source.status()
         capture_status = self._capture.status()
@@ -395,3 +411,6 @@ class BroadDurablePublicCaptureV2:
 
     def payload_size_distribution_between_monotonic_ns(self, start_ns: int, end_ns: int) -> dict[str, int]:
         return self._capture.payload_size_distribution_between_monotonic_ns(start_ns, end_ns)
+
+    def payload_size_distribution_in_window(self, start_ns: int, end_ns: int) -> dict[str, int]:
+        return self._capture.payload_size_distribution_in_window(start_ns, end_ns)

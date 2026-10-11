@@ -12,7 +12,7 @@ import threading
 import time
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from ..instruments import VenueV2
 from .public_microstructure_ws import (
@@ -58,6 +58,7 @@ class PublicStreamSourceV2:
                  max_drain_items: int = DEFAULT_PUBLIC_FRAME_DRAIN_ITEMS,
                  shared_budget: SharedPublicFrameBudgetV1 | None = None,
                  budget_lane: str | None = None,
+                 qualification_telemetry: bool = False,
                  clock_ns: Callable[[], int] = time.time_ns) -> None:
         self.venue = VenueV2(venue)
         self.topics = tuple(topics)
@@ -79,7 +80,7 @@ class PublicStreamSourceV2:
             venue=self.venue, topics=self.topics,
             max_queue_items=max_queue_items, max_queue_bytes=max_queue_bytes,
             max_drain_items=max_drain_items, shared_budget=shared_budget,
-            budget_lane=budget_lane,
+            budget_lane=budget_lane, qualification_telemetry=qualification_telemetry,
         )
         self._lock = threading.Lock()
         self._state: Literal["CREATED", "RUNNING", "EXHAUSTED", "FAILED", "CLOSED"] = "CREATED"
@@ -124,6 +125,12 @@ class PublicStreamSourceV2:
             reconnects = self._reconnect_count
             error = self._last_error_code
         return PublicStreamSourceStatusV2(state, attempts, reconnects, error, self._handoff.snapshot())
+
+    def begin_qualification_window(self, start_ns: int, end_ns: int) -> None:
+        self._handoff.begin_qualification_window(start_ns, end_ns)
+
+    def qualification_traffic_snapshot(self) -> dict[str, Any]:
+        return self._handoff.qualification_traffic_snapshot()
 
     def request_close(self) -> None:
         """Request a research capture stop without waiting on the producer.

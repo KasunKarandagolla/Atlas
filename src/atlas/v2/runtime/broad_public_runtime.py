@@ -64,6 +64,7 @@ from ..data.public_stream_continuity import (
     PublicStreamObservationKindV1,
     PublicStreamObservationV1,
 )
+from ..data.qualification_telemetry import QualificationPhaseWindowV1, QualificationTrafficWindowV1
 from ..instruments import InstrumentKeyV2, ProductContractV2
 from ..memory.repository import ArtifactIndexEntryV2, OpsRepository, PublicAdoptionCursorV2
 
@@ -184,6 +185,12 @@ class BroadPublicRuntimeV2:
         self._prepared_events_for_call: Mapping[int, _PreparedFrameParseV2] | None = None
         self._defer_publication_for_call = False
         self._indexed_frames_by_lane: dict[str, int] = {}
+        self._qualification_index_traffic = (QualificationTrafficWindowV1()
+            if capture_payload_metrics else None)
+        self._qualification_phase_window = (QualificationPhaseWindowV1(_PHASE_TIMING_NAMES)
+            if capture_payload_metrics else None)
+        self._qualification_trade_geometry: dict[tuple[str, str], dict[str, int | None]] = {}
+        self._qualification_window_ns: tuple[int, int] | None = None
         self._occupancy_samples: deque[dict[str, Any]] = deque(maxlen=8192)
         self._phase_timing_stats_ns = {name: [0, 0, 0] for name in _PHASE_TIMING_NAMES}
 
@@ -193,6 +200,9 @@ class BroadPublicRuntimeV2:
         stats[0] += 1
         stats[1] += duration
         stats[2] = max(stats[2], duration)
+        if self._qualification_phase_window is not None:
+            self._qualification_phase_window.record(at_ns=time.monotonic_ns(),
+                phase=phase, duration_ns=duration)
 
     def _phase_timing_summary_ns(self) -> dict[str, dict[str, int]]:
         return {
@@ -298,6 +308,7 @@ class BroadPublicRuntimeV2:
             self.plan = plan
             self.source = BroadPublicStreamSourceV2(
                 plan, stream_factories=self.stream_factories, clock_ns=self.clock_ns,
+                qualification_telemetry=self.capture_payload_metrics,
             )
             self.capture = BroadDurablePublicCaptureV2(self.source, clock_ns=self.clock_ns,
                 capture_payload_metrics=self.capture_payload_metrics)
@@ -478,6 +489,34 @@ class BroadPublicRuntimeV2:
         for frame in frames:
             lane = frame.source_id.removesuffix("_PUBLIC_WS_BROAD_V2")
             self._indexed_frames_by_lane[lane] = self._indexed_frames_by_lane.get(lane, 0) + 1
+
+    def begin_qualification_window(self, start_ns: int, end_ns: int) -> None:
+        if (self._qualification_index_traffic is None or self._qualification_phase_window is None
+                or self.source is None or self.capture is None):
+            raise RuntimeError("qualification runtime metrics are disabled or not recovered")
+        self.source.begin_qualification_window(start_ns, end_ns)
+        self.capture.begin_qualification_window(start_ns, end_ns)
+        self._qualification_index_traffic.begin_window(start_ns, end_ns)
+        self._qualification_phase_window.begin_window(start_ns, end_ns)
+        self._qualification_window_ns = (start_ns, end_ns)
+        self._qualification_trade_geometry.clear()
+
+    def qualification_metrics_snapshot(self) -> dict[str, Any]:
+        if (self._qualification_index_traffic is None or self._qualification_phase_window is None
+                or self.source is None or self.capture is None):
+            raise RuntimeError("qualification runtime metrics are disabled")
+        return {
+            "source": self.source.qualification_traffic_snapshot(),
+            "capture": self.capture.qualification_metrics_snapshot(),
+            "index": self._qualification_index_traffic.snapshot(),
+            "trade_geometry": [{"lane": lane, "channel": channel, **dict(values)}
+                for (lane, channel), values in sorted(self._qualification_trade_geometry.items())],
+            "phase_timings_ns": self._qualification_phase_window.snapshot(),
+        }
+
+    def qualification_worker_resource_sample(self) -> dict[str, int] | None:
+        worker = self._preparation_worker
+        return worker.resource_sample() if worker is not None else None
 
     def finish(self, repository: OpsRepository) -> None:
         if self.capture is None:
@@ -723,6 +762,30 @@ class BroadPublicRuntimeV2:
         with self._measure_phase("publication_observation"):
             repository.observe_publication_v2(publication_id, observed_at_ns=time.time_ns())
         descriptor_completed_ns = time.monotonic_ns()
+        if (self._qualification_index_traffic is not None and self._qualification_window_ns is not None
+                and self._qualification_window_ns[0] <= descriptor_completed_ns < self._qualification_window_ns[1]):
+            for ordinal, frame in enumerate(frames):
+                lane = frame.source_id.removesuffix("_PUBLIC_WS_BROAD_V2")
+                identity = lane, frame.channel
+                self._qualification_index_traffic.record(at_ns=descriptor_completed_ns, lane=lane,
+                    channel=frame.channel, payload_bytes=len(frame.raw_payload_bytes))
+                parsed_frame = prepared.get(ordinal)
+                if parsed_frame is None:
+                    continue
+                trade_count = len(parsed_frame.trade_payload_hashes)
+                geometry = self._qualification_trade_geometry.setdefault(identity, {
+                    "parsed_frames": 0, "trade_rows": 0, "frames_with_trades": 0,
+                    "min_trades_per_frame": None, "max_trades_per_frame": None,
+                })
+                geometry["parsed_frames"] = int(geometry["parsed_frames"] or 0) + 1
+                geometry["trade_rows"] = int(geometry["trade_rows"] or 0) + trade_count
+                geometry["frames_with_trades"] = int(geometry["frames_with_trades"] or 0) + int(trade_count > 0)
+                prior_min = geometry["min_trades_per_frame"]
+                prior_max = geometry["max_trades_per_frame"]
+                geometry["min_trades_per_frame"] = (trade_count if prior_min is None
+                    else min(int(prior_min), trade_count))
+                geometry["max_trades_per_frame"] = (trade_count if prior_max is None
+                    else max(int(prior_max), trade_count))
         self._descriptor_cycle_ns.append(descriptor_completed_ns - descriptor_cycle_started_ns)
         self._descriptor_cycle_frames.append(len(frames))
         self._descriptor_completion_events.append((descriptor_completed_ns, len(frames)))

@@ -39,6 +39,8 @@ HOST_PATH_WORKER_DEADLINE_SECONDS = 35
 QUEUE_ITEMS_LIMIT = 512
 QUEUE_BYTES_LIMIT = 16_000_000
 STREAM_SERVICE_GAP_LIMIT_NS = 1_500_000_000
+RESOURCE_SAMPLE_INTERVAL_NS = 1_000_000_000
+NANOSECONDS_PER_SECOND = RESOURCE_SAMPLE_INTERVAL_NS
 MAX_STREAM_INSTRUMENTS = 16
 MAX_DEPTH_INSTRUMENTS = 8
 MAX_STREAM_TOPICS = 32
@@ -214,6 +216,22 @@ def _write_immutable(path: Path, body: dict[str, Any]) -> None:
 
 
 def _write_receipt(run: Path, body: dict[str, Any]) -> dict[str, Any]:
+    if body.get("status") == "DIAGNOSTIC_COMPLETE":
+        measurements = body.get("diagnostic_measurements")
+        if (not isinstance(measurements, Mapping) or measurements.get("complete") is not True
+                or measurements.get("missing_measurements") != []
+                or any(not isinstance(measurements.get(name), Mapping)
+                       or measurements[name].get("complete") is not True
+                       for name in ("source_traffic", "durable_capture_traffic", "indexed_traffic"))
+                or not isinstance(measurements.get("trade_geometry"), Mapping)
+                or measurements["trade_geometry"].get("complete") is not True
+                or not isinstance(measurements.get("payload_geometry"), Mapping)
+                or measurements["payload_geometry"].get("measurement") != "COMPLETE"
+                or not isinstance(measurements.get("resource_sampling"), Mapping)
+                or measurements["resource_sampling"].get("measurement_window_complete") is not True
+                or body.get("measurement_window_complete") is not True
+                or body.get("measured_window_seconds") != MEASURED_SECONDS):
+            raise ValueError("QUALIFICATION_COMPLETE_RECEIPT_TELEMETRY_INCOMPLETE")
     receipt_body = {**body, "version": "BINANCE_PUBLIC_DIAGNOSTIC_RECEIPT_V1",
         "authority": "ZERO", "capacity_certificate_issued": False,
         "production_admission": False, "capital_enabled": False,
@@ -499,6 +517,29 @@ def _rss_bytes() -> int | None:
         return None
 
 
+def _proc_io_bytes(path: Path) -> dict[str, int] | None:
+    try:
+        fields = {}
+        for line in path.read_text(encoding="ascii").splitlines():
+            name, raw = line.split(":", 1)
+            fields[name] = int(raw.strip())
+        return {name: fields[name] for name in ("read_bytes", "write_bytes")}
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _host_cpu_counters() -> dict[str, int] | None:
+    try:
+        line = next(item for item in Path("/proc/stat").read_text(encoding="ascii").splitlines()
+                    if item.startswith("cpu "))
+        values = [int(value) for value in line.split()[1:9]]
+        if len(values) < 4:
+            return None
+        return {"total_ticks": sum(values), "idle_ticks": values[3] + (values[4] if len(values) > 4 else 0)}
+    except (OSError, ValueError, StopIteration):
+        return None
+
+
 def _host_resource_facts() -> dict[str, Any]:
     meminfo: dict[str, int] = {}
     try:
@@ -548,16 +589,39 @@ def _host_resource_facts() -> dict[str, Any]:
     }
 
 
-def _resource_telemetry(run: Path) -> dict[str, Any]:
+def _psi_sample_complete(value: Any) -> bool:
+    if not isinstance(value, Mapping):
+        return False
+    for resource_name, row_names in (("cpu", ("some",)),
+                                    ("memory", ("some", "full")),
+                                    ("io", ("some", "full"))):
+        rows = value.get(resource_name)
+        if not isinstance(rows, Mapping):
+            return False
+        for row_name in row_names:
+            row = rows.get(row_name)
+            if (not isinstance(row, Mapping)
+                    or any(type(row.get(key)) not in (int, float)
+                           for key in ("avg10", "avg60", "avg300", "total"))):
+                return False
+    return True
+
+
+def _resource_telemetry(run: Path, *, port: Any) -> dict[str, Any]:
     import resource
 
     db = run / "ops.sqlite"
     wal = run / "ops.sqlite-wal"
+    stream_runtime = port.public_stream_source
+    worker_sample = stream_runtime.qualification_worker_resource_sample()
     return {
         "sampled_at_monotonic_ns": time.monotonic_ns(),
         "process_cpu_seconds": time.process_time(),
         "process_rss_bytes": _rss_bytes(),
         "process_peak_rss_bytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024,
+        "process_io_bytes": _proc_io_bytes(Path("/proc/self/io")),
+        "worker": worker_sample,
+        "host_cpu_counters": _host_cpu_counters(),
         "host_resources": _host_resource_facts(),
         "system_psi": _read_psi(),
         "free_disk_bytes": shutil.disk_usage(run).free,
@@ -566,11 +630,81 @@ def _resource_telemetry(run: Path) -> dict[str, Any]:
     }
 
 
-def _resource_summary(samples: Sequence[Mapping[str, Any]], *, window_complete: bool) -> dict[str, Any]:
-    resources = [item["resource"] for item in samples if isinstance(item.get("resource"), Mapping)]
+def _resource_summary(samples: Sequence[Mapping[str, Any]], *, window_complete: bool,
+                      window_start_ns: int | None = None,
+                      window_end_ns: int | None = None) -> dict[str, Any]:
+    all_resources = [item["resource"] for item in samples if isinstance(item.get("resource"), Mapping)]
+    resources = [item for item in all_resources if type(item.get("sampled_at_monotonic_ns")) is int
+                 and (window_start_ns is None or item["sampled_at_monotonic_ns"] >= window_start_ns)
+                 and (window_end_ns is None or item["sampled_at_monotonic_ns"] < window_end_ns)]
+    endpoint = next((item for item in reversed(all_resources)
+                     if window_end_ns is not None
+                     and type(item.get("sampled_at_monotonic_ns")) is int
+                     and item["sampled_at_monotonic_ns"] >= window_end_ns), None)
     if not resources:
-        return {"sample_count": 0, "measurement_window_complete": window_complete}
-    first, last = resources[0], resources[-1]
+        return {"sample_count": 0, "measurement_window_complete": False,
+                "missing_second_buckets": list(range(MEASURED_SECONDS)),
+                "max_sample_gap_ns": None, "boundary_sample_present": endpoint is not None}
+    resources.sort(key=lambda item: item["sampled_at_monotonic_ns"])
+    first = resources[0]
+    last = endpoint or resources[-1]
+    duration_ns = ((window_end_ns - window_start_ns) if window_start_ns is not None
+                   and window_end_ns is not None else None)
+    expected_buckets = ((duration_ns + RESOURCE_SAMPLE_INTERVAL_NS - 1) // RESOURCE_SAMPLE_INTERVAL_NS
+                        if duration_ns is not None else 0)
+    bucket_counts: dict[int, int] = {}
+    if window_start_ns is not None and window_end_ns is not None:
+        for item in resources:
+            bucket = (item["sampled_at_monotonic_ns"] - window_start_ns) // RESOURCE_SAMPLE_INTERVAL_NS
+            bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
+    missing_buckets = [index for index in range(expected_buckets) if bucket_counts.get(index, 0) == 0]
+    gap_points = [item["sampled_at_monotonic_ns"] for item in resources]
+    if window_start_ns is not None:
+        gap_points.insert(0, window_start_ns)
+    if endpoint is not None:
+        gap_points.append(endpoint["sampled_at_monotonic_ns"])
+    elif window_end_ns is not None:
+        gap_points.append(window_end_ns)
+    storage_samples = (*resources, *((endpoint,) if endpoint is not None else ()))
+    max_gap_ns = max((right - left for left, right in zip(gap_points, gap_points[1:], strict=False)),
+                     default=None)
+    missing_sensor_fields: list[dict[str, Any]] = []
+    required_samples = (*resources, *((endpoint,) if endpoint is not None else ()))
+    for index, item in enumerate(required_samples):
+        absent = []
+        if type(item.get("process_cpu_seconds")) not in (int, float):
+            absent.append("process_cpu_seconds")
+        if type(item.get("process_rss_bytes")) is not int:
+            absent.append("process_rss_bytes")
+        process_io = item.get("process_io_bytes")
+        if not isinstance(process_io, Mapping) or any(type(process_io.get(name)) is not int
+                for name in ("read_bytes", "write_bytes")):
+            absent.append("process_io_bytes")
+        worker = item.get("worker")
+        if (not isinstance(worker, Mapping) or any(type(worker.get(name)) is not int
+                for name in ("cpu_ticks", "cpu_ticks_per_second", "rss_bytes", "read_bytes", "write_bytes"))
+                or not isinstance(worker.get("worker_instance_ref"), str)):
+            absent.append("worker_process_counters")
+        cpu = item.get("host_cpu_counters")
+        if not isinstance(cpu, Mapping) or any(type(cpu.get(name)) is not int
+                for name in ("total_ticks", "idle_ticks")):
+            absent.append("host_cpu_counters")
+        host_facts = item.get("host_resources")
+        if not isinstance(host_facts, Mapping) or type(host_facts.get("host_memory_available_bytes")) is not int:
+            absent.append("host_memory_available_bytes")
+        psi = item.get("system_psi")
+        if not _psi_sample_complete(psi):
+            absent.append("system_psi")
+        if any(type(item.get(name)) is not int for name in ("free_disk_bytes", "sqlite_bytes", "wal_bytes")):
+            absent.append("filesystem_sqlite_wal_counters")
+        if absent:
+            missing_sensor_fields.append({"sample_index": index, "missing": absent})
+    worker_instance_refs = {item["worker"].get("worker_instance_ref") for item in required_samples
+        if isinstance(item.get("worker"), Mapping)}
+    worker_instance_stable = (len(worker_instance_refs) == 1 and len(required_samples) > 0
+        and all(isinstance(item.get("worker"), Mapping) for item in required_samples))
+    if not worker_instance_stable:
+        missing_sensor_fields.append({"missing": ["worker_instance_changed_or_unavailable"]})
     rss_values: list[int] = []
     for item in resources:
         value = item.get("process_rss_bytes")
@@ -590,24 +724,72 @@ def _resource_summary(samples: Sequence[Mapping[str, Any]], *, window_complete: 
             current = cgroup.get("current_bytes")
             if isinstance(current, int):
                 cgroup_memory_current.append(current)
-    span_seconds = max(0.001, (resources[-1]["sampled_at_monotonic_ns"]
-        - resources[0]["sampled_at_monotonic_ns"]) / 1_000_000_000)
+    span_seconds = max(0.001, (last["sampled_at_monotonic_ns"]
+        - first["sampled_at_monotonic_ns"]) / 1_000_000_000)
     cpu_capacity: float = 1.0
     host = last.get("host_resources")
     if isinstance(host, Mapping):
         configured_capacity = host.get("cgroup_cpu_quota") or host.get("process_affinity_cpu_count")
         if isinstance(configured_capacity, (int, float)) and configured_capacity > 0:
             cpu_capacity = float(configured_capacity)
-    cpu_seconds = max(0.0, last["process_cpu_seconds"] - first["process_cpu_seconds"])
+    cpu_seconds = (max(0.0, last["process_cpu_seconds"] - first["process_cpu_seconds"])
+                   if type(last.get("process_cpu_seconds")) in (int, float)
+                   and type(first.get("process_cpu_seconds")) in (int, float) else None)
+    worker_first, worker_last = first.get("worker"), last.get("worker")
+    worker_cpu_seconds = None
+    worker_write_bytes = None
+    if isinstance(worker_first, Mapping) and isinstance(worker_last, Mapping):
+        tick_hz = worker_first.get("cpu_ticks_per_second")
+        if (type(tick_hz) is int and tick_hz > 0 and worker_last.get("cpu_ticks_per_second") == tick_hz
+                and type(worker_first.get("cpu_ticks")) is int and type(worker_last.get("cpu_ticks")) is int):
+            worker_cpu_seconds = max(0, worker_last["cpu_ticks"] - worker_first["cpu_ticks"]) / tick_hz
+        if type(worker_first.get("write_bytes")) is int and type(worker_last.get("write_bytes")) is int:
+            worker_write_bytes = max(0, worker_last["write_bytes"] - worker_first["write_bytes"])
+    process_io_first, process_io_last = first.get("process_io_bytes"), last.get("process_io_bytes")
+    process_write_bytes = None
+    if (isinstance(process_io_first, Mapping) and isinstance(process_io_last, Mapping)
+            and type(process_io_first.get("write_bytes")) is int
+            and type(process_io_last.get("write_bytes")) is int):
+        process_write_bytes = max(0, process_io_last["write_bytes"] - process_io_first["write_bytes"])
+    host_cpu_first, host_cpu_last = first.get("host_cpu_counters"), last.get("host_cpu_counters")
+    host_cpu_busy_percent = None
+    if isinstance(host_cpu_first, Mapping) and isinstance(host_cpu_last, Mapping):
+        total_delta = host_cpu_last.get("total_ticks", 0) - host_cpu_first.get("total_ticks", 0)
+        idle_delta = host_cpu_last.get("idle_ticks", 0) - host_cpu_first.get("idle_ticks", 0)
+        if type(total_delta) is int and total_delta > 0 and type(idle_delta) is int:
+            host_cpu_busy_percent = max(0.0, min(100.0, (total_delta - idle_delta) / total_delta * 100.0))
     return {
         "sample_count": len(resources),
-        "measurement_window_complete": window_complete,
-        "sample_span_ns": max(0, resources[-1]["sampled_at_monotonic_ns"]
-            - resources[0]["sampled_at_monotonic_ns"]),
+        "boundary_sample_present": endpoint is not None,
+        "boundary_sample_at_monotonic_ns": endpoint.get("sampled_at_monotonic_ns") if endpoint else None,
+        "measurement_window_complete": (window_complete and not missing_buckets and not missing_sensor_fields
+            and max_gap_ns is not None and max_gap_ns <= 1_500_000_000 and endpoint is not None),
+        "expected_second_buckets": expected_buckets,
+        "observed_second_buckets": len(bucket_counts),
+        "missing_second_buckets": missing_buckets,
+        "sample_bucket_counts": {str(key): value for key, value in sorted(bucket_counts.items())},
+        "sample_timestamps_monotonic_ns": [item["sampled_at_monotonic_ns"] for item in required_samples],
+        "sample_gaps_ns": [right - left for left, right in zip(gap_points, gap_points[1:], strict=False)],
+        "max_sample_gap_ns": max_gap_ns,
+        "missing_sensor_fields": missing_sensor_fields,
+        "sample_span_ns": max(0, last["sampled_at_monotonic_ns"]
+            - first["sampled_at_monotonic_ns"]),
         "process_cpu_seconds_delta": cpu_seconds,
-        "process_cpu_percent_of_allocated_capacity": cpu_seconds / span_seconds / cpu_capacity * 100.0,
+        "process_cpu_percent_of_allocated_capacity": (cpu_seconds / span_seconds / cpu_capacity * 100.0
+            if cpu_seconds is not None else None),
+        "worker_cpu_seconds_delta": worker_cpu_seconds,
+        "worker_cpu_percent_of_allocated_capacity": (worker_cpu_seconds / span_seconds
+            / cpu_capacity * 100.0 if worker_cpu_seconds is not None else None),
+        "host_cpu_busy_percent": host_cpu_busy_percent,
         "process_rss_max_bytes": max(rss_values) if rss_values else None,
-        "process_peak_rss_max_bytes": max(item["process_peak_rss_bytes"] for item in resources),
+        "process_peak_rss_max_bytes": max((item["process_peak_rss_bytes"] for item in resources
+            if type(item.get("process_peak_rss_bytes")) is int), default=None),
+        "worker_rss_max_bytes": max((item["worker"].get("rss_bytes") for item in resources
+            if isinstance(item.get("worker"), Mapping)
+            and type(item["worker"].get("rss_bytes")) is int), default=None),
+        "worker_instance_stable": worker_instance_stable,
+        "process_write_bytes_delta": process_write_bytes,
+        "worker_write_bytes_delta": worker_write_bytes,
         "host_memory_available_min_bytes": min(host_memory_available) if host_memory_available else None,
         "cgroup_memory_current_max_bytes": max(cgroup_memory_current) if cgroup_memory_current else None,
         "free_disk_start_bytes": first["free_disk_bytes"],
@@ -615,9 +797,17 @@ def _resource_summary(samples: Sequence[Mapping[str, Any]], *, window_complete: 
         "free_disk_min_bytes": min(item["free_disk_bytes"] for item in resources),
         "sqlite_start_bytes": first["sqlite_bytes"], "sqlite_end_bytes": last["sqlite_bytes"],
         "sqlite_growth_bytes": last["sqlite_bytes"] - first["sqlite_bytes"],
+        "sqlite_max_bytes": max(item["sqlite_bytes"] for item in storage_samples),
         "wal_start_bytes": first["wal_bytes"], "wal_end_bytes": last["wal_bytes"],
         "wal_growth_bytes": last["wal_bytes"] - first["wal_bytes"],
+        "wal_max_bytes": max(item["wal_bytes"] for item in storage_samples),
         "system_psi_samples": [item["system_psi"] for item in resources],
+        "resource_observation_scope": {
+            "process": "ATLAS diagnostic process CPU/RSS/process I/O",
+            "worker": "existing public evidence preparation child CPU/RSS/process I/O",
+            "host": "host aggregate CPU and memory counters; PSI is host-wide",
+            "filesystem": "selected data filesystem free bytes plus ops.sqlite/WAL growth",
+        },
     }
 
 
@@ -657,6 +847,7 @@ def _runtime_telemetry(port: Any, *, run: Path) -> dict[str, Any]:
         if not name.startswith("BINANCE") or lane.handoff.venue.value != "BINANCE":
             raise ValueError("QUALIFICATION_NON_BINANCE_LANE_ACTIVE")
         lanes[name] = {"state": lane.state, "connected": lane.handoff.connected,
+            "topics": list(lane.handoff.topics),
             "queue_items": lane.handoff.queue_items, "queue_bytes": lane.handoff.queue_bytes,
             "high_water_items": lane.handoff.high_water_items,
             "high_water_bytes": lane.handoff.high_water_bytes,
@@ -678,6 +869,8 @@ def _runtime_telemetry(port: Any, *, run: Path) -> dict[str, Any]:
         "queue_high_water_bytes": handoff.high_water_bytes, "queue_loss_latched": handoff.loss_latched,
         "capture": capture, "captured_frames": int(capture.get("captured_frames", 0)),
         "indexed_frames": status.indexed_frames,
+        "indexed_frames_by_lane": dict(status.indexed_frames_by_lane),
+        "phase_timings_ns": status.phase_timings_ns,
         "captured_payload_bytes": int(capture.get("payload_bytes_written", 0)),
         "max_service_gap_ns": int(status.max_service_gap_ns),
         "source_health": progress["stream_source_states"],
@@ -765,7 +958,10 @@ def _sampled_rates(samples: Sequence[Mapping[str, Any]]) -> dict[str, list[dict[
         "durably_captured_frames_per_second": [],
         "durable_payload_bytes_per_second": [],
     }
-    for left, right in zip(samples[:-1], samples[1:], strict=True):
+    rate_samples = [item for item in samples if type(item.get("sampled_at_monotonic_ns")) is int
+        and all(type(item.get(name)) is int for name in ("frames_received", "captured_frames",
+                                                         "captured_payload_bytes"))]
+    for left, right in zip(rate_samples[:-1], rate_samples[1:], strict=True):
         elapsed_ns = right["sampled_at_monotonic_ns"] - left["sampled_at_monotonic_ns"]
         if elapsed_ns <= 0:
             continue
@@ -792,6 +988,326 @@ def _rate_summary(rates: Mapping[str, Sequence[Mapping[str, Any]]]) -> dict[str,
         summary[name] = {"sample_count": len(values), "mean": sum(values) / len(values),
             "p95": values[p95_index], "maximum": values[-1]}
     return summary
+
+
+def _combine_traffic_windows(values: Mapping[str, Any] | Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    snapshots: list[Mapping[str, Any]] = []
+    if isinstance(values, Mapping):
+        candidates = [values] if "window_started" in values else list(values.values())
+    else:
+        candidates = list(values)
+    if not candidates or any(not isinstance(item, Mapping) for item in candidates):
+        return {"window_started": False, "history_complete": False}
+    snapshots.extend(cast(Mapping[str, Any], item) for item in candidates)
+    first = snapshots[0]
+    start, end = first.get("window_start_monotonic_ns"), first.get("window_end_monotonic_ns")
+    if (first.get("window_started") is not True or type(start) is not int or type(end) is not int
+            or any(item.get("window_started") is not True
+                   or item.get("window_start_monotonic_ns") != start
+                   or item.get("window_end_monotonic_ns") != end for item in snapshots)):
+        return {"window_started": False, "history_complete": False}
+    totals: dict[tuple[str, str], dict[str, Any]] = {}
+    buckets: dict[int, dict[tuple[str, str], dict[str, Any]]] = {}
+    history_complete = True
+    for snapshot in snapshots:
+        history_complete = history_complete and snapshot.get("history_complete") is True
+        for row in snapshot.get("identities", ()):
+            if not isinstance(row, Mapping):
+                history_complete = False
+                continue
+            lane, channel = row.get("lane"), row.get("channel")
+            if not isinstance(lane, str) or not lane or not isinstance(channel, str) or not channel:
+                history_complete = False
+                continue
+            key = (lane, channel)
+            current = totals.get(key)
+            if current is None:
+                totals[key] = dict(row)
+            else:
+                current["frames"] += row.get("frames", 0)
+                current["payload_bytes"] += row.get("payload_bytes", 0)
+                minima = [item for item in (current.get("payload_min_bytes"), row.get("payload_min_bytes"))
+                          if type(item) is int]
+                maxima = [item for item in (current.get("payload_max_bytes"), row.get("payload_max_bytes"))
+                          if type(item) is int]
+                current["payload_min_bytes"] = min(minima) if minima else None
+                current["payload_max_bytes"] = max(maxima) if maxima else None
+        for bucket in snapshot.get("buckets", ()):
+            second = bucket.get("second")
+            if type(second) is not int or second < 0:
+                history_complete = False
+                continue
+            target = buckets.setdefault(second, {})
+            for row in bucket.get("identities", ()):
+                if not isinstance(row, Mapping):
+                    history_complete = False
+                    continue
+                lane, channel = row.get("lane"), row.get("channel")
+                if not isinstance(lane, str) or not lane or not isinstance(channel, str) or not channel:
+                    history_complete = False
+                    continue
+                key = (lane, channel)
+                current = target.get(key)
+                if current is None:
+                    target[key] = dict(row)
+                else:
+                    current["frames"] += row.get("frames", 0)
+                    current["payload_bytes"] += row.get("payload_bytes", 0)
+                    minima = [item for item in (current.get("payload_min_bytes"), row.get("payload_min_bytes"))
+                              if type(item) is int]
+                    maxima = [item for item in (current.get("payload_max_bytes"), row.get("payload_max_bytes"))
+                              if type(item) is int]
+                    current["payload_min_bytes"] = min(minima) if minima else None
+                    current["payload_max_bytes"] = max(maxima) if maxima else None
+    expected_buckets = (end - start + RESOURCE_SAMPLE_INTERVAL_NS - 1) // RESOURCE_SAMPLE_INTERVAL_NS
+    return {"window_started": True, "history_complete": history_complete,
+        "window_start_monotonic_ns": start, "window_end_monotonic_ns": end,
+        "expected_bucket_count": expected_buckets,
+        "identities": [{**row, "lane": key[0], "channel": key[1]}
+            for key, row in sorted(totals.items())],
+        "buckets": [{"second": second, "identities": [
+            {**row, "lane": key[0], "channel": key[1]} for key, row in sorted(identity_rows.items())]}
+            for second, identity_rows in sorted(buckets.items())]}
+
+
+def _traffic_window_summary(snapshot: Mapping[str, Any], *, window_start_ns: int,
+                             window_end_ns: int, expected_identities: Sequence[tuple[str, str]]) -> dict[str, Any]:
+    if (snapshot.get("window_started") is not True or snapshot.get("history_complete") is not True
+            or snapshot.get("window_start_monotonic_ns") != window_start_ns
+            or snapshot.get("window_end_monotonic_ns") != window_end_ns):
+        raise ValueError("QUALIFICATION_TRAFFIC_WINDOW_MISSING_OR_TRUNCATED")
+    expected_buckets = (window_end_ns - window_start_ns + RESOURCE_SAMPLE_INTERVAL_NS - 1) // RESOURCE_SAMPLE_INTERVAL_NS
+    if snapshot.get("expected_bucket_count") != expected_buckets:
+        raise ValueError("QUALIFICATION_TRAFFIC_BUCKET_COUNT_INVALID")
+    totals: dict[tuple[str, str], Mapping[str, Any]] = {}
+    for row in snapshot.get("identities", ()):
+        if not isinstance(row, Mapping):
+            raise ValueError("QUALIFICATION_TRAFFIC_IDENTITY_INVALID")
+        lane, channel = row.get("lane"), row.get("channel")
+        if (not isinstance(lane, str) or not lane or not isinstance(channel, str) or not channel
+                or any(type(row.get(name)) is not int or row[name] < 0
+                    for name in ("frames", "payload_bytes"))):
+            raise ValueError("QUALIFICATION_TRAFFIC_IDENTITY_INVALID")
+        key = (lane, channel)
+        if key in totals:
+            raise ValueError("QUALIFICATION_TRAFFIC_IDENTITY_INVALID")
+        totals[key] = row
+    bucket_values: dict[int, dict[tuple[str, str], Mapping[str, Any]]] = {}
+    for bucket in snapshot.get("buckets", ()):
+        if not isinstance(bucket, Mapping) or type(bucket.get("second")) is not int:
+            raise ValueError("QUALIFICATION_TRAFFIC_BUCKET_INVALID")
+        second = bucket["second"]
+        if not 0 <= second < expected_buckets or second in bucket_values:
+            raise ValueError("QUALIFICATION_TRAFFIC_BUCKET_INVALID")
+        rows: dict[tuple[str, str], Mapping[str, Any]] = {}
+        for row in bucket.get("identities", ()):
+            if not isinstance(row, Mapping):
+                raise ValueError("QUALIFICATION_TRAFFIC_BUCKET_IDENTITY_INVALID")
+            lane_name, channel = row.get("lane"), row.get("channel")
+            if (not isinstance(lane_name, str) or not lane_name
+                    or not isinstance(channel, str) or not channel
+                    or type(row.get("frames")) is not int or row["frames"] < 0
+                    or type(row.get("payload_bytes")) is not int or row["payload_bytes"] < 0):
+                raise ValueError("QUALIFICATION_TRAFFIC_BUCKET_IDENTITY_INVALID")
+            key = (lane_name, channel)
+            if key in rows:
+                raise ValueError("QUALIFICATION_TRAFFIC_BUCKET_IDENTITY_INVALID")
+            rows[key] = row
+        bucket_values[second] = rows
+    summed: dict[tuple[str, str], list[int]] = {}
+    peaks_by_lane: dict[str, dict[str, dict[str, int]]] = {}
+    peaks_by_identity: dict[tuple[str, str], dict[str, dict[str, int]]] = {}
+    overall_peak = {"frames": {"second": 0, "value": 0},
+        "payload_bytes": {"second": 0, "value": 0}}
+    for second in range(expected_buckets):
+        rows = bucket_values.get(second, {})
+        lane_values: dict[str, list[int]] = {}
+        all_frames = all_bytes = 0
+        for key, row in rows.items():
+            pair = summed.setdefault(key, [0, 0])
+            pair[0] += row["frames"]
+            pair[1] += row["payload_bytes"]
+            lane_total = lane_values.setdefault(key[0], [0, 0])
+            lane_total[0] += row["frames"]
+            lane_total[1] += row["payload_bytes"]
+            all_frames += row["frames"]
+            all_bytes += row["payload_bytes"]
+            identity_peak = peaks_by_identity.setdefault(key, {
+                "frames": {"second": 0, "value": 0},
+                "payload_bytes": {"second": 0, "value": 0},
+            })
+            if row["frames"] > identity_peak["frames"]["value"]:
+                identity_peak["frames"] = {"second": second, "value": row["frames"]}
+            if row["payload_bytes"] > identity_peak["payload_bytes"]["value"]:
+                identity_peak["payload_bytes"] = {"second": second, "value": row["payload_bytes"]}
+        if all_frames > overall_peak["frames"]["value"]:
+            overall_peak["frames"] = {"second": second, "value": all_frames}
+        if all_bytes > overall_peak["payload_bytes"]["value"]:
+            overall_peak["payload_bytes"] = {"second": second, "value": all_bytes}
+        for lane, (frames, payload_bytes) in lane_values.items():
+            lane_peak = peaks_by_lane.setdefault(lane, {
+                "frames": {"second": 0, "value": 0},
+                "payload_bytes": {"second": 0, "value": 0},
+            })
+            if frames > lane_peak["frames"]["value"]:
+                lane_peak["frames"] = {"second": second, "value": frames}
+            if payload_bytes > lane_peak["payload_bytes"]["value"]:
+                lane_peak["payload_bytes"] = {"second": second, "value": payload_bytes}
+    for key in set(summed) | set(totals):
+        total = totals.get(key, {})
+        if [total.get("frames", 0), total.get("payload_bytes", 0)] != summed.get(key, [0, 0]):
+            raise ValueError("QUALIFICATION_TRAFFIC_BUCKET_TOTAL_MISMATCH")
+    duration_seconds = (window_end_ns - window_start_ns) / NANOSECONDS_PER_SECOND
+    identities: list[dict[str, Any]] = []
+    for lane, channel in sorted(set(expected_identities) | set(totals)):
+        row = totals.get((lane, channel), {})
+        frames = int(row.get("frames", 0))
+        payload_bytes = int(row.get("payload_bytes", 0))
+        identities.append({"lane": lane, "channel": channel, "frames": frames,
+            "payload_bytes": payload_bytes, "frames_per_second": frames / duration_seconds,
+            "payload_bytes_per_second": payload_bytes / duration_seconds,
+            "payload_min_bytes": row.get("payload_min_bytes"), "payload_max_bytes": row.get("payload_max_bytes"),
+            "mean_payload_bytes": payload_bytes / frames if frames else None,
+            "observed": frames > 0})
+    for lane, channel in expected_identities:
+        peaks_by_identity.setdefault((lane, channel), {
+            "frames": {"second": 0, "value": 0},
+            "payload_bytes": {"second": 0, "value": 0},
+        })
+        peaks_by_lane.setdefault(lane, {
+            "frames": {"second": 0, "value": 0},
+            "payload_bytes": {"second": 0, "value": 0},
+        })
+    lanes: dict[str, dict[str, Any]] = {}
+    for item in identities:
+        lane_summary = lanes.setdefault(item["lane"], {"frames": 0, "payload_bytes": 0, "channels": {}})
+        lane_summary["frames"] += item["frames"]
+        lane_summary["payload_bytes"] += item["payload_bytes"]
+        lane_summary["channels"][item["channel"]] = item
+    for lane_summary in lanes.values():
+        lane_summary["frames_per_second"] = lane_summary["frames"] / duration_seconds
+        lane_summary["payload_bytes_per_second"] = lane_summary["payload_bytes"] / duration_seconds
+    return {"window_start_monotonic_ns": window_start_ns, "window_end_monotonic_ns": window_end_ns,
+        "complete": True, "measured_seconds": duration_seconds,
+        "identity_rates": identities, "lane_rates": lanes,
+        "one_second_peaks": {"all_lanes": overall_peak, "lanes": peaks_by_lane,
+            "identities": [{"lane": key[0], "channel": key[1], **value}
+                for key, value in sorted(peaks_by_identity.items())]},
+        "peak_bucket_basis": "fixed one-second buckets anchored at window_start_monotonic_ns"}
+
+
+def _trade_geometry_summary(indexed_summary: Mapping[str, Any],
+                            trade_geometry: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    indexed = {(item["lane"], item["channel"]): item["frames"]
+               for item in indexed_summary.get("identity_rates", ())}
+    measured = {(item.get("lane"), item.get("channel")): item for item in trade_geometry
+                if isinstance(item, Mapping)}
+    missing = []
+    rows = []
+    for identity, frame_count in sorted(indexed.items()):
+        item = measured.get(identity)
+        if frame_count == 0 and item is None:
+            rows.append({"lane": identity[0], "channel": identity[1], "indexed_frames": 0,
+                "parsed_frames": 0, "trade_rows": 0, "frames_with_trades": 0,
+                "mean_trades_per_frame": None, "min_trades_per_frame": None,
+                "max_trades_per_frame": None, "measurement": "NO_INDEXED_FRAMES"})
+            continue
+        if item is None or item.get("parsed_frames") != frame_count:
+            missing.append({"lane": identity[0], "channel": identity[1],
+                "indexed_frames": frame_count, "parsed_frames": item.get("parsed_frames") if item else None})
+            continue
+        trade_rows = item.get("trade_rows")
+        if type(trade_rows) is not int or trade_rows < 0:
+            missing.append({"lane": identity[0], "channel": identity[1], "reason": "TRADE_COUNT_MISSING"})
+            continue
+        rows.append({"lane": identity[0], "channel": identity[1], "indexed_frames": frame_count,
+            "parsed_frames": item["parsed_frames"], "trade_rows": trade_rows,
+            "frames_with_trades": item.get("frames_with_trades"),
+            "mean_trades_per_frame": trade_rows / frame_count if frame_count else None,
+            "min_trades_per_frame": item.get("min_trades_per_frame"),
+            "max_trades_per_frame": item.get("max_trades_per_frame")})
+    return {"complete": not missing, "missing_identities": missing, "by_identity": rows,
+        "trade_rows": sum(int(item["trade_rows"]) for item in rows),
+        "indexed_frames": sum(int(item["indexed_frames"]) for item in rows),
+        "mean_trades_per_indexed_frame": (sum(int(item["trade_rows"]) for item in rows)
+            / sum(int(item["indexed_frames"]) for item in rows) if rows else None)}
+
+
+def _qualification_measurements(runtime_metrics: Mapping[str, Any], *,
+                                stream_plan: Mapping[str, Any], repository_metrics: Mapping[str, Any],
+                                resource_summary: Mapping[str, Any], window_start_ns: int,
+                                window_end_ns: int) -> tuple[dict[str, Any], str | None]:
+    expected_identities = [(lane, topic) for lane, topics in stream_plan.get("lane_topics", {}).items()
+                           for topic in topics]
+    failures: list[str] = []
+    source_snapshot = _combine_traffic_windows(runtime_metrics.get("source", {}))
+    capture_bundle = runtime_metrics.get("capture", {})
+    capture_snapshot = capture_bundle.get("traffic", {}) if isinstance(capture_bundle, Mapping) else {}
+    index_snapshot = runtime_metrics.get("index", {})
+    traffic: dict[str, Any] = {}
+    for name, snapshot in (("source", source_snapshot), ("capture", capture_snapshot), ("index", index_snapshot)):
+        try:
+            traffic[name] = _traffic_window_summary(snapshot, window_start_ns=window_start_ns,
+                window_end_ns=window_end_ns, expected_identities=expected_identities)
+        except (TypeError, ValueError, KeyError):
+            failures.append(f"{name.upper()}_TRAFFIC_WINDOW_INCOMPLETE")
+            traffic[name] = {"complete": False, "window_start_monotonic_ns": window_start_ns,
+                "window_end_monotonic_ns": window_end_ns, "identity_rates": [], "lane_rates": {},
+                "one_second_peaks": None}
+    trade_geometry = _trade_geometry_summary(traffic["index"], runtime_metrics.get("trade_geometry", ()))
+    if not trade_geometry["complete"]:
+        failures.append("TRADE_ROWS_PER_INDEXED_FRAME_INCOMPLETE")
+    archive = capture_bundle.get("archive") if isinstance(capture_bundle, Mapping) else None
+    archive_fields = ("operation_count", "extent_count", "archive_bytes_written", "arrow_encode_ns",
+        "compression_ns", "write_ns", "fsync_ns", "rename_ns", "directory_sync_ns", "total_ns", "max_fsync_ns")
+    if (not isinstance(archive, Mapping) or archive.get("history_complete") is not True
+            or archive.get("window_start_monotonic_ns") != window_start_ns
+            or archive.get("window_end_monotonic_ns") != window_end_ns
+            or any(type(archive.get(name)) is not int or archive[name] < 0 for name in archive_fields)
+            or archive.get("operation_count", 0) == 0 or archive.get("archive_bytes_written", 0) == 0):
+        failures.append("RAW_ARCHIVE_TIMING_OR_BYTES_INCOMPLETE")
+    persistence_fields = ("transaction_count", "successful_transaction_count", "failed_transaction_count",
+        "commit_attempt_count", "commit_duration_sum_ns", "commit_duration_max_ns",
+        "begin_duration_sum_ns", "begin_duration_max_ns", "row_and_archive_duration_sum_ns",
+        "row_and_archive_duration_max_ns", "rollback_duration_sum_ns", "rollback_duration_max_ns")
+    if (repository_metrics.get("window_started") is not True
+            or repository_metrics.get("history_complete") is not True
+            or repository_metrics.get("window_start_monotonic_ns") != window_start_ns
+            or repository_metrics.get("window_end_monotonic_ns") != window_end_ns
+            or any(type(repository_metrics.get(name)) is not int or repository_metrics[name] < 0
+                   for name in persistence_fields)
+            or repository_metrics.get("commit_attempt_count", 0) == 0):
+        failures.append("SQLITE_TRANSACTION_TIMING_INCOMPLETE")
+    phase_window = runtime_metrics.get("phase_timings_ns")
+    phases = phase_window.get("phases") if isinstance(phase_window, Mapping) else None
+    if (not isinstance(phase_window, Mapping) or phase_window.get("window_started") is not True
+            or phase_window.get("history_complete") is not True
+            or phase_window.get("window_start_monotonic_ns") != window_start_ns
+            or phase_window.get("window_end_monotonic_ns") != window_end_ns
+            or not isinstance(phases, Mapping) or not phases
+            or any(not isinstance(value, Mapping)
+                   or any(type(value.get(key)) is not int or value[key] < 0
+                          for key in ("count", "sum_ns", "max_ns")) for value in phases.values())):
+        failures.append("WRITER_WORKER_PHASE_TIMING_INCOMPLETE")
+    if resource_summary.get("measurement_window_complete") is not True:
+        failures.append("RESOURCE_SAMPLE_COVERAGE_INCOMPLETE")
+    measurements = {
+        "complete": not failures,
+        "window_start_monotonic_ns": window_start_ns,
+        "window_end_monotonic_ns": window_end_ns,
+        "source_traffic": traffic["source"],
+        "durable_capture_traffic": traffic["capture"],
+        "indexed_traffic": traffic["index"],
+        "trade_geometry": trade_geometry,
+        "raw_archive_timing": dict(archive) if isinstance(archive, Mapping) else None,
+        "sqlite_transaction_timing": dict(repository_metrics),
+        "writer_worker_phase_timings_ns": dict(phases) if isinstance(phases, Mapping) else None,
+        "phase_timing_semantics": "Phase-local durations overlap across nested and worker activity; do not sum them as elapsed wall time.",
+        "resource_sampling": dict(resource_summary),
+        "missing_measurements": failures,
+    }
+    return measurements, ("QUALIFICATION_TELEMETRY_INCOMPLETE_" + failures[0]
+        if failures else None)
 
 
 def _snapshot_cycle(port: Any, repository: Any, recovery: Any, *, scheduled_ns: int,
@@ -976,16 +1492,19 @@ def run_qualification_component(run: Path, *, supervisor_token: str | None = Non
             readiness_elapsed_ns = max(0, time.monotonic_ns() - readiness_started)
         if failure_reason is None:
             assert first_due_start_ns is not None
-            window_start_ns = time.monotonic_ns()
+            # Arm every opt-in recorder before the exact half-open window begins.
+            # Traffic and completion events before this future boundary are excluded.
+            window_start_ns = time.monotonic_ns() + 100_000_000
             window_end_ns = window_start_ns + MEASURED_SECONDS * 1_000_000_000
             next_poll_ns = _next_due_poll_ns(first_due_start_ns, window_start_ns)
             next_report_ns = window_start_ns + REPORT_INTERVAL_NS
             next_sample_ns = window_start_ns
             capture_layer = port.public_stream_source.capture
-            window_capture_start_frames = capture_layer.captured_frames_at_monotonic_ns(window_start_ns)
-            window_capture_start_bytes = capture_layer.captured_payload_bytes_at_monotonic_ns(window_start_ns)
+            port.public_stream_source.begin_qualification_window(window_start_ns, window_end_ns)
+            repository.begin_persistence_timing_window(start_ns=window_start_ns, end_ns=window_end_ns)
             window_disconnect_counts = {name: lane["disconnect_count"]
                 for name, lane in _runtime_telemetry(port, run=run)["lanes"].items()}
+            time.sleep(max(0, window_start_ns - time.monotonic_ns()) / NANOSECONDS_PER_SECOND)
             while time.monotonic_ns() < window_end_ns:
                 now_mono = time.monotonic_ns()
                 if stop_requested():
@@ -1028,7 +1547,7 @@ def run_qualification_component(run: Path, *, supervisor_token: str | None = Non
                             "status": missed})
                         failure_reason = "INCOMPLETE_REPORT_SLOT_ACCOUNTING"
                         break
-                    slot = {"scheduled_offset_ns": next_report_ns - window_start_ns,
+                    slot: dict[str, Any] = {"scheduled_offset_ns": next_report_ns - window_start_ns,
                         "started_at_ns": time.time_ns(),
                         "started_offset_ns": report_attempted_ns - window_start_ns,
                         "started": report_worker.start()}
@@ -1044,11 +1563,14 @@ def run_qualification_component(run: Path, *, supervisor_token: str | None = Non
                     repository=repository, run_id=manifest["run_id"], port=port, now_ns=now_wall)
                 sample_at_ns = runtime_sample["sampled_at_monotonic_ns"]
                 if sample_at_ns >= next_sample_ns:
-                    system = _resource_telemetry(run)
+                    system = _resource_telemetry(run, port=port)
+                    resource_at_ns = system["sampled_at_monotonic_ns"]
                     runtime_sample["resource"] = system
-                    runtime_sample["window_offset_ns"] = max(0, sample_at_ns - window_start_ns)
+                    runtime_sample["window_offset_ns"] = max(0, resource_at_ns - window_start_ns)
                     telemetry.append(runtime_sample)
-                    next_sample_ns = sample_at_ns + 1_000_000_000
+                    next_sample_ns = (window_start_ns
+                        + ((resource_at_ns - window_start_ns) // RESOURCE_SAMPLE_INTERVAL_NS + 1)
+                        * RESOURCE_SAMPLE_INTERVAL_NS)
                 wait_ns = min(50_000_000, max(1_000_000, window_end_ns - time.monotonic_ns()))
                 time.sleep(wait_ns / 1_000_000_000)
             window_completed = time.monotonic_ns() >= window_end_ns
@@ -1069,6 +1591,13 @@ def run_qualification_component(run: Path, *, supervisor_token: str | None = Non
                     next_report_ns += REPORT_INTERVAL_NS
             if not window_completed and failure_reason is None:
                 failure_reason = "MEASUREMENT_WINDOW_DID_NOT_REACH_120_SECONDS"
+            measurement_runtime_metrics = port.public_stream_source.qualification_metrics_snapshot()
+            if window_completed and not any(
+                    isinstance(item.get("resource"), Mapping)
+                    and item["resource"].get("sampled_at_monotonic_ns", 0) >= window_end_ns
+                    for item in telemetry):
+                boundary_resource = _resource_telemetry(run, port=port)
+                telemetry.append({"resource": boundary_resource, "window_boundary_sample": True})
         # Stop acquisition and drain every accepted frame through the existing
         # raw-first capture, sole writer, commit and post-commit observer.
         if port is not None:
@@ -1144,16 +1673,47 @@ def run_qualification_component(run: Path, *, supervisor_token: str | None = Non
                 actual_window_end_ns = min(time.monotonic_ns(), window_end_ns)
             measured_seconds = ((actual_window_end_ns - window_start_ns) / 1_000_000_000
                 if actual_window_end_ns is not None and window_start_ns is not None else 0)
-            measured_capture_frames = (capture_layer.captured_frames_at_monotonic_ns(actual_window_end_ns)
-                - window_capture_start_frames if actual_window_end_ns is not None else 0)
-            measured_capture_bytes = (capture_layer.captured_payload_bytes_at_monotonic_ns(actual_window_end_ns)
-                - window_capture_start_bytes if actual_window_end_ns is not None else 0)
-            measured_payload_histogram = (capture_layer.payload_size_distribution_between_monotonic_ns(
-                window_start_ns, actual_window_end_ns) if actual_window_end_ns is not None else {})
+            capture_traffic_snapshot = measurement_runtime_metrics.get("capture", {}).get("traffic", {})
+            captured_identities = (capture_traffic_snapshot.get("identities", ())
+                if isinstance(capture_traffic_snapshot, Mapping) else ())
+            measured_capture_frames = sum(int(item.get("frames", 0)) for item in captured_identities
+                if isinstance(item, Mapping))
+            measured_capture_bytes = sum(int(item.get("payload_bytes", 0)) for item in captured_identities
+                if isinstance(item, Mapping))
+            measured_payload_histogram = (capture_layer.payload_size_distribution_in_window(
+                window_start_ns, window_end_ns) if actual_window_end_ns is not None else {})
             traffic_failure = _measured_traffic_failure(window_complete=window_completed,
                 frame_count=measured_capture_frames, payload_bytes=measured_capture_bytes)
             failure_reason = failure_reason or traffic_failure
             observed_rates = _sampled_rates(telemetry)
+            resource_window = _resource_summary(telemetry, window_complete=window_completed,
+                window_start_ns=window_start_ns, window_end_ns=window_end_ns)
+            if window_start_ns is not None and window_end_ns is not None:
+                stream_plan = source_selection.get("stream_plan", {})
+                measurement_telemetry, telemetry_failure = _qualification_measurements(
+                    measurement_runtime_metrics, stream_plan=stream_plan,
+                    repository_metrics=repository.persistence_timing_window(),
+                    resource_summary=resource_window, window_start_ns=window_start_ns,
+                    window_end_ns=window_end_ns)
+                failure_reason = failure_reason or telemetry_failure
+                histogram_frames = sum(value for value in measured_payload_histogram.values()
+                                       if type(value) is int)
+                histogram_complete = histogram_frames == measured_capture_frames
+                measurement_telemetry["payload_geometry"] = {
+                    "measurement": "COMPLETE" if histogram_complete else "MISSING_OR_TRUNCATED",
+                    "captured_frames": measured_capture_frames,
+                    "histogram_frames": histogram_frames,
+                    "mean_payload_bytes": (measured_capture_bytes / measured_capture_frames
+                        if histogram_complete and measured_capture_frames else None),
+                    "payload_size_histogram": measured_payload_histogram,
+                    "timestamp_basis": "durable capture seal completion monotonic timestamp",
+                }
+                if not histogram_complete:
+                    measurement_telemetry["missing_measurements"].append("DURABLE_PAYLOAD_GEOMETRY_INCOMPLETE")
+                    failure_reason = failure_reason or "QUALIFICATION_TELEMETRY_INCOMPLETE_DURABLE_PAYLOAD_GEOMETRY"
+            else:
+                measurement_telemetry = {"missing_measurements": ["MEASUREMENT_WINDOW_NOT_STARTED"]}
+                failure_reason = failure_reason or "QUALIFICATION_TELEMETRY_INCOMPLETE_MEASUREMENT_WINDOW"
             body = {
                 "schema_version": 1,
                 "status": "DIAGNOSTIC_FAILED" if failure_reason else "DIAGNOSTIC_COMPLETE",
@@ -1193,7 +1753,8 @@ def run_qualification_component(run: Path, *, supervisor_token: str | None = Non
                         if isinstance(item.get("export_result"), Mapping) else None}
                     for item in report_results],
                 "runtime_samples": telemetry,
-                "resource_summary": _resource_summary(telemetry, window_complete=window_completed),
+                "resource_summary": resource_window,
+                "diagnostic_measurements": measurement_telemetry,
                 "final_30_second_backlog": final_backlog,
                 "final_runtime": final_runtime,
                 "venue_isolation_evidence": {
@@ -1221,7 +1782,11 @@ def run_qualification_component(run: Path, *, supervisor_token: str | None = Non
                      "frames_per_second": ((right["frames_received"] - left["frames_received"])
                         / ((right["sampled_at_monotonic_ns"] - left["sampled_at_monotonic_ns"])
                            / 1_000_000_000))}
-                    for left, right in zip(telemetry[:-1], telemetry[1:], strict=True)
+                    for left, right in zip(
+                        [item for item in telemetry if type(item.get("frames_received")) is int],
+                        [item for item in telemetry if type(item.get("frames_received")) is int][1:],
+                        strict=False,
+                    )
                     if right["sampled_at_monotonic_ns"] > left["sampled_at_monotonic_ns"]],
                 "observed_rates": observed_rates,
                 "observed_rate_summary": _rate_summary(observed_rates),
