@@ -1,5 +1,7 @@
 # S41 paused review snapshot — blockers and issues
 
+> **Historical status notice (2026-10-11):** This is the original paused S41 snapshot, not an instruction to resume its old sequence. Its failures, dual-venue synthetic workload description and hashes remain unchanged. Current status and next action are in [`README.md`](README.md) and [`log.md`](log.md). The selected first-test profile has one active public venue (Binance); the V2 freeze still permits simultaneous Bybit/Binance public research as a capability. Simultaneous multi-venue capital, automatic cross-venue routing and arbitrage remain deferred unless separately versioned. Capital and assisted execution remain disabled.
+
 **Purpose:** independent review of the paused Session 041 working tree. This is a blocker inventory, not a release/readiness claim. The full-V2 engineering gate is open. No installer was built and no owner live campaign was run.
 
 **Snapshot:** branch `impl/session-041-final-full-v2-engineering-closure`, base HEAD `a01f343f7c6be005e6d92450997bd1bbd0344800`, with the uncommitted S41 tree that will be captured by the temporary review branch. No final tested SHA exists. All S41 test reports cited here are development-tree evidence unless explicitly stated otherwise.

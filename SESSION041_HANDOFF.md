@@ -1,5 +1,7 @@
 # Session 041 — active engineering handoff
 
+> **Historical status notice (2026-10-11):** This preserves the S41 checkpoint, findings and evidence as recorded; it is no longer the current next-session instruction. Current project status is in [`README.md`](README.md) and [`log.md`](log.md). The owner's first-test profile is one active public venue (Binance), with Bybit inactive and capital/assisted execution disabled. The V2 freeze permits simultaneous Bybit/Binance public research as a capability, but does not require it for this profile. Simultaneous multi-venue capital, automatic cross-venue routing and arbitrage remain deferred unless separately versioned. No historical result or hash below has been changed.
+
 Status: **UNVERIFIED — engineering closure has not passed.** This is an active work checkpoint, not a release or final acceptance report.
 
 ## S41-R2 bounded implementation checkpoint — 2026-10-10

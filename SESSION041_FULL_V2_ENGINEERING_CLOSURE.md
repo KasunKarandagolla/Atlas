@@ -1,5 +1,7 @@
 # S41 engineering closure — UNVERIFIED
 
+> **Historical status notice (2026-10-11):** This document retains its S41 engineering results and open gates; it is not the current S44 handoff. Read [`README.md`](README.md) and [`log.md`](log.md) for current status. The first-test operating profile is one active public venue (Binance), with Bybit inactive and capital/assisted execution disabled. Simultaneous Bybit/Binance public research remains a permitted V2 capability; multi-venue capital, automatic cross-venue routing and arbitrage remain deferred unless separately versioned. Historical dual-venue failures and hashes are intentionally preserved.
+
 The strict full-V2 engineering gate is open. No installer was built. The requirement matrix retains 2,592 source clauses and now preserves 331 full heading-path groups. Ordinary unfinished implementation/validation/accounting is explicit and is not promoted to TEST GATE.
 
 Current corrections include S8 source/aggregate replay binding, Binance stop readback freshness and exact position binding, durable selected-run Binance product identity across restart, reconstructed bar availability, dependency-scoped native history, asynchronous transport test synchronization, bounded broad publication servicing, grouped compressed-block reads, per-call causal DAG proof reuse, and the separate zero-authority S7 event extraction broker path. Focused validation is recorded in the ledger; it does not qualify the final integrated SHA.

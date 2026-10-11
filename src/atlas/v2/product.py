@@ -35,6 +35,7 @@ RUN_PROFILE = "PUBLIC_BYBIT_BASELINE_V1"
 S7_EVENT_EXTRACTION_PROFILE = "openai-gpt6-astra-s7-event-extraction-v1"
 PROVIDER_PROFILES = {"DISABLED", "deepseek-v41-action-critic-v1", S7_EVENT_EXTRACTION_PROFILE}
 V1_PROVIDER_PROFILES = {"DISABLED", "deepseek-v41-action-critic-v1"}
+BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1 = "BINANCE_CLOSE_DRIVEN_M15_V1"
 MAX_CONFIG_BYTES = 16_384
 
 
@@ -159,6 +160,7 @@ class ResearchRunConfigV2:
     report_interval_seconds: int = 60
     minimum_free_disk_bytes: int = 1_073_741_824
     provider_profile: str = "DISABLED"
+    public_acquisition_profile: str | None = None
 
     def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 2:
@@ -195,6 +197,15 @@ class ResearchRunConfigV2:
         if (not isinstance(self.provider_profile, str)
                 or self.provider_profile not in PROVIDER_PROFILES):
             raise ValueError("unregistered provider dispatch profile")
+        if self.public_acquisition_profile not in (None, BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1):
+            raise ValueError("unregistered public acquisition profile")
+        if self.public_acquisition_profile == BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1 and (
+                self.public_venues != ("BINANCE",) or self.selected_execution_venue != "BINANCE"
+                or self.execution_profile != "DISABLED" or self.provider_profile != "DISABLED"
+                or any(getattr(self, name) is not None for name in (
+                    "account_scope_ref", "capability_profile_ref", "credential_ref",
+                    "execution_instrument_symbol"))):
+            raise ValueError("close-driven M15 profile requires an isolated Binance-only, execution/provider-disabled run")
         for field_name in ("account_scope_ref", "capability_profile_ref", "credential_ref"):
             value = getattr(self, field_name)
             if value is not None and (not isinstance(value, str) or _OPAQUE_REFERENCE_RE.fullmatch(value) is None):
@@ -225,7 +236,10 @@ class ResearchRunConfigV2:
 
     @property
     def content_hash(self) -> str:
-        return sha256_json(asdict(self))
+        body = asdict(self)
+        if self.public_acquisition_profile is None:
+            body.pop("public_acquisition_profile")
+        return sha256_json(body)
 
 
 RunConfig = ResearchRunConfigV1 | ResearchRunConfigV2
@@ -1404,7 +1418,10 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
         from .instruments import VenueV2
         from .runtime.production import create_broad_public_port
 
-        port = create_broad_public_port(enabled_venues=tuple(VenueV2(venue) for venue in config.public_venues))
+        port = create_broad_public_port(
+            enabled_venues=tuple(VenueV2(venue) for venue in config.public_venues),
+            close_driven_m15_profile=(
+                config.public_acquisition_profile == BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1))
     else:
         port = create_bybit_public_ws_port()
     if not smoke and not isinstance(config, ResearchRunConfigV2) and port.public_stream_source is not None:
@@ -1968,13 +1985,15 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     browse = QPushButton("Choose folder")
     layout.addWidget(browse)
     public_bybit = QCheckBox("Collect public Bybit")
-    public_bybit.setChecked(True)
+    public_bybit.setChecked(False)
     public_binance = QCheckBox("Collect public Binance")
+    public_binance.setChecked(True)
     layout.addWidget(public_bybit)
     layout.addWidget(public_binance)
     execution_venue = QComboBox()
     execution_venue.addItem("Bybit", "BYBIT")
     execution_venue.addItem("Binance", "BINANCE")
+    execution_venue.setCurrentIndex(1)
     layout.addWidget(QLabel("Selected demo/test execution venue"))
     layout.addWidget(execution_venue)
     execution_environment = QComboBox()
@@ -2008,6 +2027,13 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     provider.addItem("Optional OpenAI GPT-6 Astra S7 event extraction", S7_EVENT_EXTRACTION_PROFILE)
     layout.addWidget(QLabel("Intelligence configuration for new runs"))
     layout.addWidget(provider)
+    acquisition_profile = QComboBox()
+    acquisition_profile.addItem("Standard broad refresh", None)
+    acquisition_profile.addItem(
+        "Close-driven Binance M15 (experimental; independent review required)",
+        BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1)
+    layout.addWidget(QLabel("Public acquisition profile for a new run"))
+    layout.addWidget(acquisition_profile)
     owner_pairs_edit = QLineEdit()
     owner_pairs_edit.setReadOnly(True)
     owner_pairs_button = QPushButton("Select optional S8 research pair configuration")
@@ -2147,6 +2173,7 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
                     execution_profile=execution_profile.currentData(),
                     execution_instrument_symbol=execution_symbol.text().strip() or None,
                     provider_profile=provider.currentData(),
+                    public_acquisition_profile=acquisition_profile.currentData(),
                     owner_pair_configuration_hash=pair_hash,
                     official_fomc_source_profile_json=calendar_profile_edit.property("canonical_profile"),
                 )

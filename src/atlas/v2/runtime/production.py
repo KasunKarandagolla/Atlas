@@ -26,7 +26,9 @@ from .._serialization import canonical_json, json_value, sha256_json, sha256_ref
 from ..chronology import causal_artifact, record_computation, sample
 from ..contracts import CandidateActionV2, CandidateSetV2, PolicySpecV2, V2Side
 from ..data.bars import BarIntervalV2, CausalBarStoreV2
+from ..data.binance import SOURCE_ID as BINANCE_HTTP_SOURCE_ID
 from ..data.binance import translate_agg_trades
+from ..data.bybit import SOURCE_ID as BYBIT_HTTP_SOURCE_ID
 from ..data.bybit import translate_recent_trades
 from ..data.collector import MAX_RECONCILIATION_REFS_PER_PAGE_V1, PublicCollectorV2
 from ..data.health import PublicSourceHealthV2, PublicSourceStateV2
@@ -553,8 +555,6 @@ class IndexedPublicCycleSourceV1:
             # new accounting checkpoint existed. The old path is bounded to
             # the newest causal bar and shares the same immutable event writer.
             for product in collector.registry.contracts():
-                if self.scope_public_sources and not source_current(_source_id_for_product(product)):
-                    continue
                 bars = reconstruct_causal_bars_from_archive(
                     repository, archive_root, key=product.key, interval=BarIntervalV2.M15,
                     information_cutoff_ns=now_ns, availability_class=AvailabilityClassV2.ACTUAL_SYSTEM,
@@ -563,6 +563,8 @@ class IndexedPublicCycleSourceV1:
                 if not bars:
                     continue
                 trigger = bars[-1].bar
+                if self.scope_public_sources and not source_current(trigger.raw.source_id):
+                    continue
                 if now_ns - trigger.close_at_ns > 5_000_000_000:
                     continue
                 existing_page = repository.latest_artifact_entries("OpsDecisionEventSourceV1", as_of_ns=now_ns,
@@ -653,7 +655,7 @@ class IndexedPublicCycleSourceV1:
                     )
                 elif (plan.action == S3M1OriginAccountingAction.CREATE_TIMELY_EVENT
                       and (not events_allowed or (self.scope_public_sources
-                           and not source_current(_source_id_for_product(product))))):
+                           and not source_current(bar.raw.source_id)))):
                     _persist_late_s3_m1_origin_gate(
                         repository, product, bar, observed_at_ns=now_ns,
                         reason_code="NATIVE_M1_SOURCE_HEALTH_NOT_CURRENT",
@@ -3154,11 +3156,20 @@ class ProductionOpsCyclePortV1:
         refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
         pending_refs: dict[str, str] = {}
         manifest = snapshot.source_snapshot.get("metadata", {})
-        accepted_by_source = {source: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
+        source_by_venue = {
+            VenueV2.BYBIT: BYBIT_HTTP_SOURCE_ID,
+            VenueV2.BINANCE: BINANCE_HTTP_SOURCE_ID,
+        }
+        accepted_by_source = {
+            source_by_venue[venue]: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
             and venue.value not in snapshot.source_snapshot.get("metadata_stale", ())
-            for venue in cast(Any, self.public_source).enabled_venues for source in (
-                "BYBIT_PUBLIC_V2" if venue == VenueV2.BYBIT else "BINANCE_USDM_PUBLIC_V2",)}
+            for venue in cast(Any, self.public_source).enabled_venues
+        }
         accepted = all(accepted_by_source.values())
+        current_products_by_key = {
+            product.key: product for product in cast(Any, self.public_source).current_products
+        }
+        metadata_bindings: dict[str, tuple[str, str, Mapping[str, Any]]] = {}
         def adoption_clock() -> int:
             nonlocal publication
             publication = sample(self.clock_ns, floor_ns=publication)
@@ -3227,6 +3238,18 @@ class ProductionOpsCyclePortV1:
                     continue
                 original_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
                                            "record_id": item.observation.record_id})
+                if source_raw.event_type == "PRODUCT_METADATA":
+                    product = current_products_by_key.get(item.instrument_key)
+                    row = json.loads(item.raw_payload)
+                    if (product is None or not isinstance(row, Mapping)
+                            or product.metadata_ref != source_raw.raw_payload_hash
+                            or sha256_json(row) != product.metadata_ref):
+                        accepted = False
+                        accepted_by_source[source_raw.source_id] = False
+                        rejected_indexes.append(index)
+                        continue
+                    metadata_bindings.setdefault(product.metadata_ref,
+                        (original_ref, source_raw.source_id, row))
                 prior = prefetched_indexes.get(original_ref)
                 prior_metadata = prior.get("metadata") if prior is not None else None
                 if item.bar is not None and prior_metadata is not None:
@@ -3305,6 +3328,33 @@ class ProductionOpsCyclePortV1:
                     else:
                         accepted = False
                         accepted_by_source[source_id] = False
+            # ProductContractV2.metadata_ref is the exact hash of its raw
+            # exchange metadata row. Publish that causal lookup only after its
+            # source observation has crossed the durable archive/index boundary.
+            metadata_refs = tuple(sorted({observation_ref
+                for observation_ref, _source_id, _row in metadata_bindings.values()}))
+            metadata_indexes = repository.get_artifact_metadata_by_refs(metadata_refs)
+            for metadata_ref, (observation_ref, source_id, row) in sorted(metadata_bindings.items()):
+                indexed = metadata_indexes.get(observation_ref)
+                metadata_ok = (indexed is not None
+                    and indexed.get("artifact_type") == "PublicObservationIndexV2"
+                    and indexed.get("available_at_ns") <= publication
+                    and indexed.get("metadata", {}).get("source_id") == source_id
+                    and indexed.get("metadata", {}).get("raw_payload_hash") == metadata_ref)
+                if not metadata_ok:
+                    accepted = False
+                    accepted_by_source[source_id] = False
+                    continue
+                prior_metadata = repository.get_artifact(metadata_ref)
+                metadata_body = {"metadata": dict(row), "input_refs": (observation_ref,),
+                    "source_id": source_id, "source_observation_ref": observation_ref}
+                if prior_metadata is None:
+                    repository.register_artifact(ArtifactIndexEntryV2(metadata_ref,
+                        "ProductMetadataEvidenceV1", metadata_ref, publication, publication, metadata_body))
+                elif (prior_metadata.artifact_type != "ProductMetadataEvidenceV1"
+                      or prior_metadata.content_hash != metadata_ref
+                      or canonical_json(prior_metadata.metadata.get("metadata")) != canonical_json(row)):
+                    raise ValueError("PRODUCT_METADATA_REF_CONFLICT")
         finally:
             collector.clock_ns = prior_clock
         # Current bulk observations prove only their declared scope. A prior
@@ -6237,6 +6287,15 @@ class BroadProductionOpsCyclePortV2(ProductionOpsCyclePortV1):
                 setter(tuple(ProductContractV2.from_dict(json_value(
                     _required_artifact(repository, ref).metadata["product"])).key
                     for ref in previous_workset["active_product_refs"]))
+            close_setter = getattr(self.public_source, "set_close_driven_m15_keys", None)
+            if callable(close_setter) and getattr(self.public_source, "close_driven_m15_profile", False):
+                active_history_keys = {ProductContractV2.from_dict(json_value(
+                    _required_artifact(repository, ref).metadata["product"])).key
+                    for ref in previous_workset["active_product_refs"]}
+                s1_s2_watches = {watch.key for watch in _bounded_active_watches(repository)
+                    if watch.policy_hash in {S1_POLICY.policy_hash, S2_POLICY.policy_hash}}
+                close_setter(tuple(sorted(active_history_keys | s1_s2_watches,
+                    key=lambda key: key.to_canonical_json())))
         epoch = _new_recovery_epoch(repository, started_at_ns=now_ns)
         collector = PublicCollectorV2(repository=repository, registry=registry, clock_ns=self.clock_ns,
             archive=ParquetObservationArchiveV2(Path(repository.path).parent / "ops-observations",
@@ -6347,6 +6406,15 @@ class BroadProductionOpsCyclePortV2(ProductionOpsCyclePortV1):
                 benchmark_keys=self._broad_stream_seed_keys(
                     self.public_source.current_products, now_ns=at_ns),
                 active_watch_keys=stream_watches)
+        close_setter = getattr(self.public_source, "set_close_driven_m15_keys", None)
+        if callable(close_setter) and getattr(self.public_source, "close_driven_m15_profile", False):
+            active_history_keys = {ProductContractV2.from_dict(json_value(
+                _required_artifact(repository, ref).metadata["product"])).key
+                for ref in workset["active_product_refs"]}
+            s1_s2_watches = {watch.key for watch in _bounded_active_watches(repository)
+                if watch.policy_hash in {S1_POLICY.policy_hash, S2_POLICY.policy_hash}}
+            close_setter(tuple(sorted(active_history_keys | s1_s2_watches,
+                key=lambda key: key.to_canonical_json())))
         state = self.public_source.export_state()
         ref = sha256_json(state)
         if repository.get_artifact(ref) is None:
@@ -6414,12 +6482,16 @@ class BroadProductionOpsCyclePortV2(ProductionOpsCyclePortV1):
 def create_broad_public_port(*, enabled_venues: tuple[VenueV2, ...], public_source: Any = None,
                              clock_ns: Callable[[], int] = time.time_ns,
                              broad_runtime: Any | None = None,
-                             capture_payload_metrics: bool = False) -> BroadProductionOpsCyclePortV2:
+                             capture_payload_metrics: bool = False,
+                             close_driven_m15_profile: bool = False) -> BroadProductionOpsCyclePortV2:
     from ..data.broad_public_source import BroadPublicCycleSourceV2
 
-    source = public_source or BroadPublicCycleSourceV2(enabled_venues=enabled_venues, clock_ns=clock_ns)
+    source = public_source or BroadPublicCycleSourceV2(enabled_venues=enabled_venues, clock_ns=clock_ns,
+        close_driven_m15_profile=close_driven_m15_profile)
     if tuple(sorted(source.enabled_venues, key=lambda item: item.value)) != tuple(sorted(enabled_venues, key=lambda item: item.value)):
         raise ValueError("broad source venue configuration mismatch")
+    if bool(getattr(source, "close_driven_m15_profile", False)) != close_driven_m15_profile:
+        raise ValueError("broad source acquisition profile configuration mismatch")
     return BroadProductionOpsCyclePortV2(public_source=source, clock_ns=clock_ns, broad_runtime=broad_runtime,
         capture_payload_metrics=capture_payload_metrics)
 

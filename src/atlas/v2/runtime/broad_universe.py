@@ -14,6 +14,8 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from .._serialization import json_value, sha256_json
+from ..data.binance import SOURCE_ID as BINANCE_HTTP_SOURCE_ID
+from ..data.bybit import SOURCE_ID as BYBIT_HTTP_SOURCE_ID
 from ..data.health import PublicSourceStateV2
 from ..data.universe import ComputeTierV2, DynamicUniverseRuntimeV2, UniverseObservationV2
 from ..instruments import InstrumentKeyV2, ProductContractV2, UniverseContractV2
@@ -213,7 +215,10 @@ def publish_broad_workset(repository: OpsRepository, *, products: tuple[ProductC
         if key not in by_key:
             raise ValueError("BROAD_RECORD_UNKNOWN_PRODUCT")
         if item.bar is not None:
-            new_closes.setdefault((key, item.bar.interval.value), []).append(item.bar.close_at_ns)
+            # Coverage uses the stable internal labels in INTERVAL_NS (M15,
+            # H1, ...), while BarIntervalV2.value is the venue wire label
+            # (15M, 1H, ...). Keep those vocabularies separate at ingestion.
+            new_closes.setdefault((key, item.bar.interval.name), []).append(item.bar.close_at_ns)
         elif item.observation.event_type in {"TICKER_MARK_INDEX_FUNDING_OI", "BOOK_TICKER",
                                              "MARK_INDEX_CURRENT_FUNDING", "TICKER_24H"}:
             row = json.loads(item.raw_payload)
@@ -259,7 +264,14 @@ def publish_broad_workset(repository: OpsRepository, *, products: tuple[ProductC
             "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH": min(counts["H1"] // 24, counts["H4"] // 6)}
         bars_present = all(ranges.get(interval) and 0 <= available_at_ns - ranges[interval][-1][1]
                            <= step * 2 + 5_000_000_000 for interval, step in INTERVAL_NS.items())
-        source_id = "BYBIT_PUBLIC_V2" if product.key.venue.value == "BYBIT" else "BINANCE_USDM_PUBLIC_V2"
+        wire_source_id, http_source_id = (
+            ("BYBIT_PUBLIC_V2", BYBIT_HTTP_SOURCE_ID)
+            if product.key.venue.value == "BYBIT"
+            else ("BINANCE_USDM_PUBLIC_V2", BINANCE_HTTP_SOURCE_ID)
+        )
+        # The broad REST acquisition owns the workset's current snapshot health.
+        # Older fixtures and stream-only callers may provide the V2 source key.
+        source_id = http_source_id if http_source_id in source_state else wire_source_id
         state = source_state.get(source_id, "INCOMPLETE_SNAPSHOT")
         health = (PublicSourceStateV2(state) if state in PublicSourceStateV2._value2member_map_
                   else PublicSourceStateV2.INCOMPLETE_SNAPSHOT)

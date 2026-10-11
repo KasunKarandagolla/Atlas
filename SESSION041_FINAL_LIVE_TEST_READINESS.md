@@ -1,5 +1,7 @@
 # S41 readiness — draft, closure open
 
+> **Historical status notice (2026-10-11):** The readiness answers and S41 test/capacity evidence below remain historical and are not rewritten by later work. For the current checkpoint, owner venue profile and next step, see [`README.md`](README.md) and [`log.md`](log.md). First-test collection is Binance-only; this does not revoke the V2 capability for simultaneous Bybit/Binance public research. Multi-venue capital, automatic cross-venue routing and arbitrage remain deferred unless separately versioned. Capital and assisted execution remain disabled. No historical result or hash below has been changed.
+
 This is a continuing engineering record, not a final release or live-test candidate acceptance. Final code/tested SHA and Windows package are absent. Capital and assisted execution are disabled; economics are **NOT ESTIMABLE**.
 
 ## Current S41-R2 checkpoint — 2026-10-10
