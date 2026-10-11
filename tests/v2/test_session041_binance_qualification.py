@@ -456,17 +456,88 @@ def test_diagnostic_failure_receipt_carries_missing_measurement_reasons(tmp_path
         repository_metrics={}, resource_summary={"measurement_window_complete": False},
         window_start_ns=start, window_end_ns=end)
     assert failure is not None
-    receipt = qualification._write_receipt(tmp_path, {"schema_version": 1,
+    failed_body = {"schema_version": 1,
         "status": "DIAGNOSTIC_FAILED", "reason": failure,
         "measured_window_seconds": 1, "measurement_window_complete": False,
-        "diagnostic_measurements": measured})
+        "diagnostic_measurements": measured}
+    receipt = qualification._write_receipt(tmp_path, failed_body)
     assert receipt["status"] == "DIAGNOSTIC_FAILED"
     assert receipt["reason"].startswith("QUALIFICATION_TELEMETRY_INCOMPLETE_")
     assert receipt["diagnostic_measurements"]["missing_measurements"]
+    receipt_path = tmp_path / qualification.RECEIPT_FILE
+    original_bytes = receipt_path.read_bytes()
+    assert qualification._write_receipt(tmp_path, failed_body) == receipt
+    with pytest.raises(ValueError, match="QUALIFICATION_RECEIPT_IMMUTABLE_CONFLICT"):
+        qualification._write_receipt(tmp_path, {**failed_body, "reason": "different failure"})
+    assert receipt_path.read_bytes() == original_bytes
     with pytest.raises(ValueError, match="QUALIFICATION_COMPLETE_RECEIPT_TELEMETRY_INCOMPLETE"):
         qualification._write_receipt(tmp_path, {"schema_version": 1,
             "status": "DIAGNOSTIC_COMPLETE", "measured_window_seconds": 120,
             "measurement_window_complete": True, "diagnostic_measurements": measured})
+
+
+def test_trade_geometry_distinguishes_zero_activity_from_missing_evidence():
+    indexed = {"complete": True, "identity_rates": [
+        {"lane": "BINANCE_MARKET", "channel": "btcusdt@aggTrade", "frames": 0}]}
+    summary = qualification._trade_geometry_summary(indexed, ())
+    assert summary["complete"] is True
+    assert summary["measurement"] == "NO_INDEXED_FRAMES"
+    assert summary["indexed_frames"] == 0
+    assert summary["trade_rows"] == 0
+    assert summary["mean_trades_per_indexed_frame"] is None
+    assert summary["by_identity"][0]["measurement"] == "NO_INDEXED_FRAMES"
+
+    incomplete_index = qualification._trade_geometry_summary({"complete": False,
+        "identity_rates": []}, ())
+    assert incomplete_index["complete"] is False
+    assert incomplete_index["measurement"] == "INCOMPLETE"
+    assert incomplete_index["missing_identities"] == [{"reason": "INDEXED_TRAFFIC_INCOMPLETE"}]
+
+
+def test_trade_geometry_accounts_for_partially_populated_lanes():
+    indexed = {"complete": True, "identity_rates": [
+        {"lane": "BYBIT", "channel": "publicTrade.BTCUSDT", "frames": 2},
+        {"lane": "BINANCE_MARKET", "channel": "btcusdt@aggTrade", "frames": 0}]}
+    summary = qualification._trade_geometry_summary(indexed, ({
+        "lane": "BYBIT", "channel": "publicTrade.BTCUSDT", "parsed_frames": 2,
+        "trade_rows": 3, "frames_with_trades": 2,
+        "min_trades_per_frame": 1, "max_trades_per_frame": 2,
+    },))
+    assert summary["complete"] is True
+    assert summary["measurement"] == "COMPLETE"
+    assert summary["indexed_frames"] == 2
+    assert summary["mean_trades_per_indexed_frame"] == 1.5
+    by_identity = {(item["lane"], item["channel"]): item for item in summary["by_identity"]}
+    assert by_identity[("BINANCE_MARKET", "btcusdt@aggTrade")]["measurement"] == "NO_INDEXED_FRAMES"
+    assert by_identity[("BYBIT", "publicTrade.BTCUSDT")]["trade_rows"] == 3
+
+
+def test_missing_trade_geometry_and_empty_stream_cannot_complete_receipt(tmp_path):
+    indexed = {"complete": True, "identity_rates": [
+        {"lane": "BINANCE_MARKET", "channel": "btcusdt@aggTrade", "frames": 1}]}
+    missing = qualification._trade_geometry_summary(indexed, ())
+    assert missing["complete"] is False
+    assert missing["measurement"] == "INCOMPLETE"
+    assert missing["missing_identities"] == [{"lane": "BINANCE_MARKET",
+        "channel": "btcusdt@aggTrade", "indexed_frames": 1, "parsed_frames": None}]
+
+    zero = qualification._trade_geometry_summary({"complete": True, "identity_rates": [
+        {"lane": "BINANCE_MARKET", "channel": "btcusdt@aggTrade", "frames": 0}]}, ())
+    measurements = {"complete": True, "missing_measurements": [],
+        "source_traffic": {"complete": True}, "durable_capture_traffic": {"complete": True},
+        "indexed_traffic": {"complete": True}, "trade_geometry": zero,
+        "payload_geometry": {"measurement": "COMPLETE"},
+        "resource_sampling": {"measurement_window_complete": True}}
+    with pytest.raises(ValueError, match="QUALIFICATION_COMPLETE_RECEIPT_TELEMETRY_INCOMPLETE"):
+        qualification._write_receipt(tmp_path, {"schema_version": 1,
+            "status": "DIAGNOSTIC_COMPLETE", "measured_window_seconds": 120,
+            "measurement_window_complete": True, "diagnostic_measurements": measurements})
+    nonempty = {**measurements, "trade_geometry": {"complete": True,
+        "measurement": "COMPLETE", "indexed_frames": 1}}
+    accepted = qualification._write_receipt(tmp_path / "nonempty", {"schema_version": 1,
+        "status": "DIAGNOSTIC_COMPLETE", "measured_window_seconds": 120,
+        "measurement_window_complete": True, "diagnostic_measurements": nonempty})
+    assert accepted["status"] == "DIAGNOSTIC_COMPLETE"
 
 
 def test_repository_reports_window_scoped_sqlite_commit_timing(tmp_path):

@@ -225,6 +225,9 @@ def _write_receipt(run: Path, body: dict[str, Any]) -> dict[str, Any]:
                        for name in ("source_traffic", "durable_capture_traffic", "indexed_traffic"))
                 or not isinstance(measurements.get("trade_geometry"), Mapping)
                 or measurements["trade_geometry"].get("complete") is not True
+                or measurements["trade_geometry"].get("measurement") != "COMPLETE"
+                or type(measurements["trade_geometry"].get("indexed_frames")) is not int
+                or measurements["trade_geometry"]["indexed_frames"] <= 0
                 or not isinstance(measurements.get("payload_geometry"), Mapping)
                 or measurements["payload_geometry"].get("measurement") != "COMPLETE"
                 or not isinstance(measurements.get("resource_sampling"), Mapping)
@@ -1198,6 +1201,11 @@ def _traffic_window_summary(snapshot: Mapping[str, Any], *, window_start_ns: int
 
 def _trade_geometry_summary(indexed_summary: Mapping[str, Any],
                             trade_geometry: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    if indexed_summary.get("complete") is not True:
+        return {"complete": False, "measurement": "INCOMPLETE",
+            "missing_identities": [{"reason": "INDEXED_TRAFFIC_INCOMPLETE"}],
+            "by_identity": [], "trade_rows": 0, "indexed_frames": 0,
+            "mean_trades_per_indexed_frame": None}
     indexed = {(item["lane"], item["channel"]): item["frames"]
                for item in indexed_summary.get("identity_rates", ())}
     measured = {(item.get("lane"), item.get("channel")): item for item in trade_geometry
@@ -1226,11 +1234,15 @@ def _trade_geometry_summary(indexed_summary: Mapping[str, Any],
             "mean_trades_per_frame": trade_rows / frame_count if frame_count else None,
             "min_trades_per_frame": item.get("min_trades_per_frame"),
             "max_trades_per_frame": item.get("max_trades_per_frame")})
-    return {"complete": not missing, "missing_identities": missing, "by_identity": rows,
-        "trade_rows": sum(int(item["trade_rows"]) for item in rows),
-        "indexed_frames": sum(int(item["indexed_frames"]) for item in rows),
-        "mean_trades_per_indexed_frame": (sum(int(item["trade_rows"]) for item in rows)
-            / sum(int(item["indexed_frames"]) for item in rows) if rows else None)}
+    trade_rows = sum(int(item["trade_rows"]) for item in rows)
+    indexed_frames = sum(int(item["indexed_frames"]) for item in rows)
+    complete = not missing
+    measurement = ("INCOMPLETE" if not complete else
+        "COMPLETE" if indexed_frames > 0 else "NO_INDEXED_FRAMES")
+    return {"complete": complete, "measurement": measurement,
+        "missing_identities": missing, "by_identity": rows,
+        "trade_rows": trade_rows, "indexed_frames": indexed_frames,
+        "mean_trades_per_indexed_frame": (trade_rows / indexed_frames if indexed_frames else None)}
 
 
 def _qualification_measurements(runtime_metrics: Mapping[str, Any], *,
