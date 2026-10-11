@@ -1,0 +1,26 @@
+.F........................                                               [100%]
+=================================== FAILURES ===================================
+_ test_fake_bybit_source_flows_through_collector_archive_index_supervisor_and_calendar _
+
+tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-83/test_fake_bybit_source_flows_t0')
+
+    def test_fake_bybit_source_flows_through_collector_archive_index_supervisor_and_calendar(tmp_path):
+        reader = _FakeBybitReader(CUTOFF)
+        source = BybitPublicCycleSourceV1(reader, clock_ns=_FakeClock(CUTOFF))
+        port = production.ProductionOpsCyclePortV1(public_source=source)
+        db = tmp_path / "ops.sqlite"
+        with OpsSupervisorV2(db, port, clock_ns=_FakeClock(CUTOFF)) as supervisor:
+            result = supervisor.run_once()
+            assert supervisor.repository is not None
+            repository = supervisor.repository
+            assert repository.artifact_entries("ProductContractV2")
+            assert repository.artifact_entries("PublicObservationIndexV2")
+            assert repository.artifact_entries("OpsPublicSourceReconciliationV1")
+>           assert repository.artifact_entries("OpsSupervisorReceiptV1")
+E           AssertionError: assert ()
+E            +  where () = artifact_entries('OpsSupervisorReceiptV1')
+E            +    where artifact_entries = <atlas.v2.memory.repository.OpsRepository object at 0x7fce8d81f6b0>.artifact_entries
+
+tests/v2/test_session031_public_shadow_readiness.py:165: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v2/test_session031_public_shadow_readiness.py::test_fake_bybit_source_flows_through_collector_archive_index_supervisor_and_calendar

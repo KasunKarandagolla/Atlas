@@ -1,0 +1,660 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="16" skipped="0" tests="59" time="90.186" timestamp="2026-10-12T00:47:14.246295+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_replay_outcome_keeps_exact_fill_cost_funding_and_chronology[10-PARTIAL_FILL]" file="tests/v2/test_session033_outcome_resolution.py" line="102" time="1.465" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_replay_outcome_keeps_exact_fill_cost_funding_and_chronology[100-FULL_FILL]" file="tests/v2/test_session033_outcome_resolution.py" line="102" time="1.613" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_advancing_clock_separates_cutoff_from_production_and_defers_late_evidence" file="tests/v2/test_session033_outcome_resolution.py" line="142" time="2.495" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_decision_identity_after_cutoff_is_not_consumed" file="tests/v2/test_session033_outcome_resolution.py" line="244" time="1.492" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_supported_no_fill_requires_exact_replay_record" file="tests/v2/test_session033_outcome_resolution.py" line="261" time="2.568" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_missing_cost_or_replay_evidence_never_matures[missing_fee_ref]" file="tests/v2/test_session033_outcome_resolution.py" line="291" time="1.480" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_missing_cost_or_replay_evidence_never_matures[missing_funding_schedule_ref]" file="tests/v2/test_session033_outcome_resolution.py" line="291" time="1.177" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_missing_cost_or_replay_evidence_never_matures[fee_not_in_inputs]" file="tests/v2/test_session033_outcome_resolution.py" line="291" time="1.232" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_missing_cost_or_replay_evidence_never_matures[funding_not_in_inputs]" file="tests/v2/test_session033_outcome_resolution.py" line="291" time="1.209" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_missing_cost_or_replay_evidence_never_matures[missing_replay_assumptions_ref]" file="tests/v2/test_session033_outcome_resolution.py" line="291" time="1.259" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_conflicting_replay_paths_fail_closed" file="tests/v2/test_session033_outcome_resolution.py" line="308" time="1.262" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_actual_provenance_requires_exact_close_and_action_binding" file="tests/v2/test_session033_outcome_resolution.py" line="327" time="1.442" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_predeclared_diagnostic_for_unselected_candidate_is_non_executable" file="tests/v2/test_session033_outcome_resolution.py" line="419" time="1.060" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_expired_decision_is_censored_only_with_exact_expiry_evidence" file="tests/v2/test_session033_outcome_resolution.py" line="458" time="0.985" /><testcase classname="tests.v2.test_session033_outcome_resolution" name="test_critic_link_cannot_substitute_for_absent_matured_outcome" file="tests/v2/test_session033_outcome_resolution.py" line="485" time="1.329" /><testcase classname="tests.v2.test_session033_outcome_runtime" name="test_downstream_maintenance_uses_writer_after_receipt_is_sealed" file="tests/v2/test_session033_outcome_runtime.py" line="181" time="0.374" /><testcase classname="tests.v2.test_session033_outcome_runtime" name="test_maintenance_failure_is_sanitized_and_cannot_change_decision_receipt" file="tests/v2/test_session033_outcome_runtime.py" line="211" time="0.719" /><testcase classname="tests.v2.test_session033_outcome_runtime" name="test_default_supervisor_uses_outcome_maturity_coordinator" file="tests/v2/test_session033_outcome_runtime.py" line="250" time="0.366" /><testcase classname="tests.v2.test_session033_outcome_runtime" name="test_supervisor_advancing_clock_keeps_fixed_cutoff_and_sealed_receipts" file="tests/v2/test_session033_outcome_runtime.py" line="295" time="3.980"><failure message="AssertionError: assert [('cycle_star...460000000008)] == [('cycle_star...460000000010)]&#10;  &#10;  Right contains one more item: ('validation_finished', 1814460000000010)&#10;  Use -v to get more diff">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_supervisor_advancing_cloc0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f36a40d29c0&gt;
+
+    def test_supervisor_advancing_clock_keeps_fixed_cutoff_and_sealed_receipts(
+        tmp_path: Path, monkeypatch: Any,
+    ) -&gt; None:
+        actual_maintenance = outcome_maturity.run_outcome_maturity_cycle
+    
+        def prepare(path: Path) -&gt; dict[str, Any]:
+            with OpsRepository(path) as repository:
+                return _prepare_advancing_maturity_inputs(repository)
+    
+        baseline_path = tmp_path / "timing-baseline.sqlite"
+        baseline_inputs = prepare(baseline_path)
+        t0 = baseline_inputs["cutoff_ns"]
+        t1, t2, t3, t4 = t0 + 1, t0 + 2, t0 + 3, t0 + 4
+    
+        def install_after_receipt(repository: OpsRepository, inputs: dict[str, Any]) -&gt; None:
+            assert len(repository.artifact_entries("OpsSupervisorReceiptV1")) == 1
+            assert len(repository.artifact_entries("OpsSupervisorCycleReceiptV1")) == 1
+            _install_future_diagnostic(repository, inputs, t1)
+    
+        baseline = OpsSupervisorV2(
+            baseline_path,
+            _SingleEventPort(t0),
+            clock_ns=_Clock(t0),
+            post_cycle_maintenance=lambda repository, _cutoff: install_after_receipt(repository, baseline_inputs),
+        )
+        with baseline:
+            baseline_result = baseline.run_once()
+    
+        treatment_path = tmp_path / "timing-treatment.sqlite"
+        treatment_inputs = prepare(treatment_path)
+        assert treatment_inputs["cutoff_ns"] == t0
+    
+        class TimelineClock:
+            def __init__(self) -&gt; None:
+                self.started = False
+                self.maintenance_started = False
+                self.validation_finished = False
+                self.events: list[tuple[str, int]] = []
+    
+            def __call__(self) -&gt; int:
+                if not self.started:
+                    self.started = True
+                    self.events.append(("cycle_started", t0))
+                    return t0
+                if not self.maintenance_started or not self.validation_finished:
+                    return t2
+                return t4
+    
+            def mark_receipts_sealed(self) -&gt; None:
+                self.events.append(("receipts_sealed", t1))
+                self.maintenance_started = True
+    
+            def mark_validation_finished(self) -&gt; None:
+                self.events.append(("validation_finished", t3))
+                self.validation_finished = True
+    
+        timeline = TimelineClock()
+        late_diagnostic_refs: list[str] = []
+    
+        def maintenance(
+            repository: OpsRepository,
+            *,
+            evidence_cutoff_ns: int,
+            production_clock_ns: Any,
+            monotonic_ns: Any,
+            maintenance_budget_ns: int,
+        ) -&gt; object:
+            assert evidence_cutoff_ns == t0
+            timeline.mark_receipts_sealed()
+            late_diagnostic_refs.append(_install_future_diagnostic(repository, treatment_inputs, t1))
+            return actual_maintenance(
+                repository,
+                evidence_cutoff_ns=evidence_cutoff_ns,
+                production_clock_ns=production_clock_ns,
+                monotonic_ns=monotonic_ns,
+                maintenance_budget_ns=maintenance_budget_ns,
+            )
+    
+        monkeypatch.setattr(outcome_maturity, "run_outcome_maturity_cycle", maintenance)
+        validate = outcome_contract._validate_policy_payoff
+    
+        def validate_then_advance(repository, outcome, identity):
+            validate(repository, outcome, identity)
+            timeline.mark_validation_finished()
+    
+        monkeypatch.setattr(outcome_contract, "_validate_policy_payoff", validate_then_advance)
+        supervisor = OpsSupervisorV2(
+            treatment_path,
+            _SingleEventPort(t0),
+            clock_ns=timeline,
+            monotonic_ns=lambda: 0,
+        )
+        with supervisor:
+            repository = supervisor._ensure_open()
+            late_evidence_cutoffs: list[int] = []
+            query_identity = repository.artifact_entries_by_metadata_identity
+    
+            def track_identity_query(*args: Any, **kwargs: Any):
+                if args[0] == "DiagnosticTargetEvidenceV2" and args[2] == treatment_inputs["decision_ref"]:
+                    late_evidence_cutoffs.append(kwargs["as_of_ns"])
+                return query_identity(*args, **kwargs)
+    
+            monkeypatch.setattr(repository, "artifact_entries_by_metadata_identity", track_identity_query)
+            result = supervisor.run_once()
+&gt;           assert timeline.events[:3] == [
+                ("cycle_started", t0),
+                ("receipts_sealed", t1),
+                ("validation_finished", t3),
+            ]
+E           AssertionError: assert [('cycle_star...460000000008)] == [('cycle_star...460000000010)]
+E             
+E             Right contains one more item: ('validation_finished', 1814460000000010)
+E             Use -v to get more diff
+
+tests/v2/test_session033_outcome_runtime.py:400: AssertionError</failure></testcase><testcase classname="tests.v2.test_session033_outcome_runtime" name="test_downstream_maturity_degradation_preserves_supervisor_receipts[budget_exhaustion]" file="tests/v2/test_session033_outcome_runtime.py" line="489" time="1.111"><failure message="AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_BUDGET_EXHAUSTED'&#10;  &#10;  - MAINTENANCE_BUDGET_EXHAUSTED&#10;  + WITHIN_BUDGET">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_downstream_maturity_degra0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f36a40ccfe0&gt;
+scenario = 'budget_exhaustion'
+
+    @pytest.mark.parametrize("scenario", ("budget_exhaustion", "malformed_calendar"))
+    def test_downstream_maturity_degradation_preserves_supervisor_receipts(
+        tmp_path: Path, monkeypatch: Any, scenario: str,
+    ) -&gt; None:
+        now_ns = 1_800_000_000_000_000_000
+        baseline_path = tmp_path / f"{scenario}-baseline.sqlite"
+        treatment_path = tmp_path / f"{scenario}-treatment.sqlite"
+    
+        def prepare(path: Path) -&gt; None:
+            with OpsRepository(path) as repository:
+                if scenario == "budget_exhaustion":
+                    maturity_calendar(repository, 1, at_ns=now_ns - 100)
+                if scenario == "malformed_calendar":
+                    raw_ref = sha256_json({"malformed_runtime_calendar": scenario})
+                    repository._connection.execute(
+                        "INSERT INTO artifact_index(artifact_ref,artifact_type,content_hash,created_at_ns,"
+                        "available_at_ns,metadata_json) VALUES(?,?,?,?,?,?)",
+                        (raw_ref, "DecisionCalendarEntryV2", raw_ref, now_ns - 2, now_ns - 2, "{malformed-json"),
+                    )
+    
+        prepare(baseline_path)
+        prepare(treatment_path)
+        baseline = OpsSupervisorV2(
+            baseline_path, _SingleEventPort(now_ns), clock_ns=_Clock(now_ns),
+            post_cycle_maintenance=lambda _repository, _cutoff: None,
+        )
+        with baseline:
+            baseline_result = baseline.run_once()
+    
+        resolver_calls: list[str] = []
+    
+        def unexpected_resolver(_repository, entry, _cutoff, **_kwargs):
+            resolver_calls.append(entry.artifact_ref)
+            raise AssertionError("expired or malformed work must not start outcome resolution")
+    
+        monkeypatch.setattr(outcome_maturity, "resolve_decision_outcome", unexpected_resolver)
+        monotonic_calls = [0]
+    
+        def monotonic_ns() -&gt; int:
+            monotonic_calls[0] += 1
+            if scenario == "budget_exhaustion" and monotonic_calls[0] &gt; 6:
+                return 1
+            return 0
+    
+        supervisor = OpsSupervisorV2(
+            treatment_path,
+            _SingleEventPort(now_ns),
+            clock_ns=_Clock(now_ns),
+            monotonic_ns=monotonic_ns,
+            outcome_maintenance_budget_ns=1 if scenario == "budget_exhaustion" else None,
+        )
+        with supervisor:
+            result = supervisor.run_once()
+    
+        assert result.cycle == baseline_result.cycle
+        assert tuple(item.to_dict() for item in result.event_receipts) == tuple(
+            item.to_dict() for item in baseline_result.event_receipts
+        )
+        assert result.event_receipts[0].result == baseline_result.event_receipts[0].result
+        assert result.event_receipts[0].action_ref == baseline_result.event_receipts[0].action_ref
+        assert result.cycle.failure_types == ()
+        assert resolver_calls == []
+    
+        with OpsRepository(treatment_path, read_only=True) as reader:
+            report = reader.artifact_entries("OutcomeMaturityCycleReportV1")[0].metadata["report"]
+            if scenario == "budget_exhaustion":
+&gt;               assert report["maintenance_budget_status"] == "MAINTENANCE_BUDGET_EXHAUSTED"
+E               AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_BUDGET_EXHAUSTED'
+E                 
+E                 - MAINTENANCE_BUDGET_EXHAUSTED
+E                 + WITHIN_BUDGET
+
+tests/v2/test_session033_outcome_runtime.py:556: AssertionError</failure></testcase><testcase classname="tests.v2.test_session033_outcome_runtime" name="test_downstream_maturity_degradation_preserves_supervisor_receipts[malformed_calendar]" file="tests/v2/test_session033_outcome_runtime.py" line="489" time="0.908"><failure message="AssertionError: assert 'CALENDAR_PAGE_READ_FAILURE' == 'MALFORMED_CA...AR_INDEX_ROWS'&#10;  &#10;  - MALFORMED_CALENDAR_INDEX_ROWS&#10;  + CALENDAR_PAGE_READ_FAILURE">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_downstream_maturity_degra1')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f36a40cf6e0&gt;
+scenario = 'malformed_calendar'
+
+    @pytest.mark.parametrize("scenario", ("budget_exhaustion", "malformed_calendar"))
+    def test_downstream_maturity_degradation_preserves_supervisor_receipts(
+        tmp_path: Path, monkeypatch: Any, scenario: str,
+    ) -&gt; None:
+        now_ns = 1_800_000_000_000_000_000
+        baseline_path = tmp_path / f"{scenario}-baseline.sqlite"
+        treatment_path = tmp_path / f"{scenario}-treatment.sqlite"
+    
+        def prepare(path: Path) -&gt; None:
+            with OpsRepository(path) as repository:
+                if scenario == "budget_exhaustion":
+                    maturity_calendar(repository, 1, at_ns=now_ns - 100)
+                if scenario == "malformed_calendar":
+                    raw_ref = sha256_json({"malformed_runtime_calendar": scenario})
+                    repository._connection.execute(
+                        "INSERT INTO artifact_index(artifact_ref,artifact_type,content_hash,created_at_ns,"
+                        "available_at_ns,metadata_json) VALUES(?,?,?,?,?,?)",
+                        (raw_ref, "DecisionCalendarEntryV2", raw_ref, now_ns - 2, now_ns - 2, "{malformed-json"),
+                    )
+    
+        prepare(baseline_path)
+        prepare(treatment_path)
+        baseline = OpsSupervisorV2(
+            baseline_path, _SingleEventPort(now_ns), clock_ns=_Clock(now_ns),
+            post_cycle_maintenance=lambda _repository, _cutoff: None,
+        )
+        with baseline:
+            baseline_result = baseline.run_once()
+    
+        resolver_calls: list[str] = []
+    
+        def unexpected_resolver(_repository, entry, _cutoff, **_kwargs):
+            resolver_calls.append(entry.artifact_ref)
+            raise AssertionError("expired or malformed work must not start outcome resolution")
+    
+        monkeypatch.setattr(outcome_maturity, "resolve_decision_outcome", unexpected_resolver)
+        monotonic_calls = [0]
+    
+        def monotonic_ns() -&gt; int:
+            monotonic_calls[0] += 1
+            if scenario == "budget_exhaustion" and monotonic_calls[0] &gt; 6:
+                return 1
+            return 0
+    
+        supervisor = OpsSupervisorV2(
+            treatment_path,
+            _SingleEventPort(now_ns),
+            clock_ns=_Clock(now_ns),
+            monotonic_ns=monotonic_ns,
+            outcome_maintenance_budget_ns=1 if scenario == "budget_exhaustion" else None,
+        )
+        with supervisor:
+            result = supervisor.run_once()
+    
+        assert result.cycle == baseline_result.cycle
+        assert tuple(item.to_dict() for item in result.event_receipts) == tuple(
+            item.to_dict() for item in baseline_result.event_receipts
+        )
+        assert result.event_receipts[0].result == baseline_result.event_receipts[0].result
+        assert result.event_receipts[0].action_ref == baseline_result.event_receipts[0].action_ref
+        assert result.cycle.failure_types == ()
+        assert resolver_calls == []
+    
+        with OpsRepository(treatment_path, read_only=True) as reader:
+            report = reader.artifact_entries("OutcomeMaturityCycleReportV1")[0].metadata["report"]
+            if scenario == "budget_exhaustion":
+                assert report["maintenance_budget_status"] == "MAINTENANCE_BUDGET_EXHAUSTED"
+                assert report["decisions_inspected"] == 0
+            else:
+&gt;               assert report["failure_code"] == "MALFORMED_CALENDAR_INDEX_ROWS"
+E               AssertionError: assert 'CALENDAR_PAGE_READ_FAILURE' == 'MALFORMED_CA...AR_INDEX_ROWS'
+E                 
+E                 - MALFORMED_CALENDAR_INDEX_ROWS
+E                 + CALENDAR_PAGE_READ_FAILURE
+
+tests/v2/test_session033_outcome_runtime.py:559: AssertionError</failure></testcase><testcase classname="tests.v2.test_session033_outcome_runtime" name="test_metadata_identity_lookup_is_exact_bounded_and_causal" file="tests/v2/test_session033_outcome_runtime.py" line="562" time="0.410" /><testcase classname="tests.v2.test_session033_outcome_runtime" name="test_repository_restores_additive_lookup_indexes_on_existing_schema" file="tests/v2/test_session033_outcome_runtime.py" line="610" time="0.373" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_producer_publishes_existing_execution_contract[100-100-FULL_FILL-239.855]" file="tests/v2/test_session037_action_outcome_producer.py" line="62" time="1.410" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_producer_publishes_existing_execution_contract[0.5-100-PARTIAL_FILL-4.895]" file="tests/v2/test_session037_action_outcome_producer.py" line="62" time="1.743" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_producer_publishes_existing_execution_contract[0-100-NO_FILL-0]" file="tests/v2/test_session037_action_outcome_producer.py" line="62" time="1.631" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_producer_publishes_existing_execution_contract[100-101-NO_FILL-0]" file="tests/v2/test_session037_action_outcome_producer.py" line="62" time="1.362" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_restart_reuses_same_payoff_identity" file="tests/v2/test_session037_action_outcome_producer.py" line="84" time="2.388" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_missing_native_bbo_support_is_not_fabricated" file="tests/v2/test_session037_action_outcome_producer.py" line="98" time="1.443" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_future_sources_stay_unavailable" file="tests/v2/test_session037_action_outcome_producer.py" line="111" time="1.526" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_sealed_minute_tamper_cannot_publish_payoff" file="tests/v2/test_session037_action_outcome_producer.py" line="121" time="1.293" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_conflicting_sources_fail_closed_before_replay" file="tests/v2/test_session037_action_outcome_producer.py" line="133" time="1.430" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_explicit_conservative_bound_records_supported" file="tests/v2/test_session037_action_outcome_producer.py" line="144" time="1.460" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_unsealed_minute_and_unbounded_sources_rejected" file="tests/v2/test_session037_action_outcome_producer.py" line="153" time="1.159" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_default_lookups_are_exact_and_bounded" file="tests/v2/test_session037_action_outcome_producer.py" line="162" time="1.529" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_no_action_calendar_is_unsupported" file="tests/v2/test_session037_action_outcome_producer.py" line="182" time="0.367" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_future_predeclared_assumptions_fail_closed" file="tests/v2/test_session037_action_outcome_producer.py" line="192" time="1.395" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_advancing_clock_publishes_after_calculation_and_seals_lifecycle" file="tests/v2/test_session037_action_outcome_producer.py" line="204" time="1.593" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_later_production_clock_cannot_admit_future_replay_setup" file="tests/v2/test_session037_action_outcome_producer.py" line="245" time="1.362" /><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_default_coordinator_defers_new_payoff_then_matures_after_restart" file="tests/v2/test_session037_action_outcome_producer.py" line="261" time="1.367"><failure message="AssertionError: assert 'CALENDAR_PAGE_READ_FAILURE' is None&#10; +  where 'CALENDAR_PAGE_READ_FAILURE' = OutcomeMaturityCycleReportV1(cycle_at_ns=1814460000000001, evidence_cutoff_ns=1814460000000000, computation_started_ns...erflow': False, 'oldest_pending_age_ns': 14460000000000, 'oldest_due_age_ns': 14460000000000}, due_work_discovery=None).failure_code">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_default_coordinator_defer0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f36a40ccfe0&gt;
+
+    def test_default_coordinator_defers_new_payoff_then_matures_after_restart(tmp_path, monkeypatch):
+        """The installed due-work path produces evidence without widening its cutoff."""
+        from atlas.v2.runtime import outcome_maturity as coordinator
+    
+        path = tmp_path / "coordinator.sqlite"
+        with OpsRepository(path) as repo:
+            _, calendar, evidence = _fixture(repo)
+            index_action_replay_source_evidence(repo, evidence)
+            cutoff = evidence.available_at_ns
+            # Exercise the default producer and resolver, with no injected labels.
+            monkeypatch.setattr(repo, "artifact_entries", lambda *_args: pytest.fail("full history scan"))
+            first = coordinator.run_outcome_maturity_cycle(repo, evidence_cutoff_ns=cutoff,
+                production_clock_ns=lambda: cutoff + 1, monotonic_ns=lambda: 0)
+&gt;           assert first.failure_code is None
+E           AssertionError: assert 'CALENDAR_PAGE_READ_FAILURE' is None
+E            +  where 'CALENDAR_PAGE_READ_FAILURE' = OutcomeMaturityCycleReportV1(cycle_at_ns=1814460000000001, evidence_cutoff_ns=1814460000000000, computation_started_ns...erflow': False, 'oldest_pending_age_ns': 14460000000000, 'oldest_due_age_ns': 14460000000000}, due_work_discovery=None).failure_code
+
+tests/v2/test_session037_action_outcome_producer.py:275: AssertionError</failure></testcase><testcase classname="tests.v2.test_session037_action_outcome_producer" name="test_maximum_sealed_replay_source_fits_default_coordinator_read_budget" file="tests/v2/test_session037_action_outcome_producer.py" line="309" time="2.714"><failure message="AssertionError: assert 'CALENDAR_PAGE_READ_FAILURE' is None&#10; +  where 'CALENDAR_PAGE_READ_FAILURE' = OutcomeMaturityCycleReportV1(cycle_at_ns=1815360000000001, evidence_cutoff_ns=1815360000000000, computation_started_ns...erflow': False, 'oldest_pending_age_ns': 15360000000000, 'oldest_due_age_ns': 15360000000000}, due_work_discovery=None).failure_code">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_maximum_sealed_replay_sou0')
+
+    def test_maximum_sealed_replay_source_fits_default_coordinator_read_budget(tmp_path):
+        """Admitted 256-minute/1,024-raw support must fit the installed read budget."""
+        from atlas.v2.runtime import outcome_maturity as coordinator
+    
+        with OpsRepository(tmp_path / "maximum.sqlite") as repo:
+            # One outer transaction keeps this boundary fixture cheap to construct;
+            # the actual coordinator still uses its normal bounded repository view.
+            with repo.atomic_composition():
+                _, calendar, evidence = _fixture(repo, raw_count=1024, minutes=tuple(
+                    minute(CUTOFF + i * MINUTE_NS, bid="110" if i &gt;= 240 else "100",
+                        ask="110" if i &gt;= 240 else "100", mark_low="110" if i &gt;= 240 else "100",
+                        mark_high="110" if i &gt;= 240 else "100", last_low="110" if i &gt;= 240 else "100",
+                        last_high="110" if i &gt;= 240 else "100") for i in range(256)))
+                index_action_replay_source_evidence(repo, evidence)
+            cutoff = evidence.available_at_ns
+            first = coordinator.run_outcome_maturity_cycle(repo, evidence_cutoff_ns=cutoff,
+                production_clock_ns=lambda: cutoff + 1, monotonic_ns=lambda: 0)
+&gt;           assert first.failure_code is None
+E           AssertionError: assert 'CALENDAR_PAGE_READ_FAILURE' is None
+E            +  where 'CALENDAR_PAGE_READ_FAILURE' = OutcomeMaturityCycleReportV1(cycle_at_ns=1815360000000001, evidence_cutoff_ns=1815360000000000, computation_started_ns...erflow': False, 'oldest_pending_age_ns': 15360000000000, 'oldest_due_age_ns': 15360000000000}, due_work_discovery=None).failure_code
+
+tests/v2/test_session037_action_outcome_producer.py:327: AssertionError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_atomic_new_origin_bypasses_bounded_migration_backlog" file="tests/v2/test_session037_due_work.py" line="25" time="0.887" /><testcase classname="tests.v2.test_session037_due_work" name="test_terminal_history_is_retired_and_new_opportunity_is_immediately_due" file="tests/v2/test_session037_due_work.py" line="38" time="5.587"><failure message="IndexError: No item with that key">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_terminal_history_is_retir0')
+
+    def test_terminal_history_is_retired_and_new_opportunity_is_immediately_due(tmp_path):
+        path = tmp_path / "ops.sqlite"
+        with OpsRepository(path) as repo:
+            for i in range(100):
+                decision = _calendar(repo, i)
+                repo.retire_due_work("ACTION_OUTCOME", decision.content_hash, reason_code="UNSUPPORTED")
+            new = _calendar(repo, 101)
+&gt;           repo.discover_due_work(limit=64)
+
+tests/v2/test_session037_due_work.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/memory/repository.py:2609: in discover_due_work
+    parsed = self.artifact_entry_from_storage_row(row).metadata
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2843: in artifact_entry_from_storage_row
+    return ArtifactIndexEntryV2._from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = &lt;class 'atlas.v2.memory.repository.ArtifactIndexEntryV2'&gt;
+row = &lt;sqlite3.Row object at 0x7f369e308f10&gt;, decoded_metadata = None
+
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -&gt; ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+&gt;       content_hash = row["content_hash"]
+                       ^^^^^^^^^^^^^^^^^^^
+E       IndexError: No item with that key
+
+src/atlas/v2/memory/repository.py:181: IndexError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_pending_horizon_is_rescheduled_and_terminal_support_not_revisited" file="tests/v2/test_session037_due_work.py" line="56" time="0.359"><failure message="AssertionError: assert 0 == 1&#10; +  where 0 = OutcomeMaturityCycleReportV1(cycle_at_ns=1800000000000011, evidence_cutoff_ns=1800000000000011, computation_started_ns..._bound': 1, 'due_page_overflow': False, 'oldest_pending_age_ns': 10, 'oldest_due_age_ns': 10}, due_work_discovery=None).pending_count&#10; +    where OutcomeMaturityCycleReportV1(cycle_at_ns=1800000000000011, evidence_cutoff_ns=1800000000000011, computation_started_ns..._bound': 1, 'due_page_overflow': False, 'oldest_pending_age_ns': 10, 'oldest_due_age_ns': 10}, due_work_discovery=None) = _cycle(&lt;atlas.v2.memory.repository.OpsRepository object at 0x7f369e30ad50&gt;, 1800000000000011)">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_pending_horizon_is_resche0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f369e30bce0&gt;
+
+    def test_pending_horizon_is_rescheduled_and_terminal_support_not_revisited(tmp_path, monkeypatch):
+        path = tmp_path / "ops.sqlite"
+        with OpsRepository(path) as repo:
+            decision = _calendar(repo, 1)
+            now = decision.available_at_ns + 10
+            horizon = now + coordinator.OUTCOME_DUE_RETRY_INTERVAL_NS_V1 + 100
+            calls = []
+    
+            def resolve(_repo, entry, cutoff, **_kwargs):
+                calls.append(entry.artifact_ref)
+                return _resolution(decision, "PENDING", horizon=horizon) if cutoff &lt; horizon else (
+                    _resolution(decision, "UNSUPPORTED", horizon=horizon))
+    
+            monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolve)
+&gt;           assert _cycle(repo, now).pending_count == 1
+E           AssertionError: assert 0 == 1
+E            +  where 0 = OutcomeMaturityCycleReportV1(cycle_at_ns=1800000000000011, evidence_cutoff_ns=1800000000000011, computation_started_ns..._bound': 1, 'due_page_overflow': False, 'oldest_pending_age_ns': 10, 'oldest_due_age_ns': 10}, due_work_discovery=None).pending_count
+E            +    where OutcomeMaturityCycleReportV1(cycle_at_ns=1800000000000011, evidence_cutoff_ns=1800000000000011, computation_started_ns..._bound': 1, 'due_page_overflow': False, 'oldest_pending_age_ns': 10, 'oldest_due_age_ns': 10}, due_work_discovery=None) = _cycle(&lt;atlas.v2.memory.repository.OpsRepository object at 0x7f369e30ad50&gt;, 1800000000000011)
+
+tests/v2/test_session037_due_work.py:71: AssertionError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_due_overflow_and_oldest_backlog_are_visible" file="tests/v2/test_session037_due_work.py" line="79" time="0.562" /><testcase classname="tests.v2.test_session037_due_work" name="test_read_only_observer_sees_pressure_while_writer_continues" file="tests/v2/test_session037_due_work.py" line="93" time="0.418" /><testcase classname="tests.v2.test_session037_due_work" name="test_supported_action_outcome_retires_without_historical_validation_loop" file="tests/v2/test_session037_due_work.py" line="104" time="1.282"><failure message="AssertionError: assert 0 == 1&#10; +  where 0 = OutcomeMaturityCycleReportV1(cycle_at_ns=1814460000000001, evidence_cutoff_ns=1814460000000001, computation_started_ns...erflow': False, 'oldest_pending_age_ns': 14460000000001, 'oldest_due_age_ns': 14460000000001}, due_work_discovery=None).outcomes_indexed">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_supported_action_outcome_0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f369e308e00&gt;
+
+    def test_supported_action_outcome_retires_without_historical_validation_loop(tmp_path, monkeypatch):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            _case, _action, _payoff, outcome = _supported_replay_fixture(repo)
+            monkeypatch.setattr(repo, "artifact_entries", lambda *_args: pytest.fail("unbounded history read"))
+            first = _cycle(repo, outcome.available_at_ns)
+&gt;           assert first.outcomes_indexed == 1
+E           AssertionError: assert 0 == 1
+E            +  where 0 = OutcomeMaturityCycleReportV1(cycle_at_ns=1814460000000001, evidence_cutoff_ns=1814460000000001, computation_started_ns...erflow': False, 'oldest_pending_age_ns': 14460000000001, 'oldest_due_age_ns': 14460000000001}, due_work_discovery=None).outcomes_indexed
+
+tests/v2/test_session037_due_work.py:110: AssertionError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_prediction_crash_after_label_keeps_first_measurement_and_retires" file="tests/v2/test_session037_due_work.py" line="115" time="1.302"><failure message="IndexError: No item with that key">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_prediction_crash_after_la0')
+
+    def test_prediction_crash_after_label_keeps_first_measurement_and_retires(tmp_path):
+        path = tmp_path / "ops.sqlite"
+        with OpsRepository(path) as repo:
+            maintenance, item, now = _matured_fixture(repo, tmp_path)
+            # Publish immutable label/completion but leave queue progress unfinished.
+            measured, writes = maintenance._maintain_due_horizon(repo, item.terminal_ref, item.horizon_ns, now[0])
+            assert writes == 1
+            first_ref = measured.content_hash
+        with OpsRepository(path) as repo:
+            maintenance = ResearchPredictionOutcomeMaintenanceV1(run_id=item.run_id, config_hash=item.config_hash,
+                archive_root=tmp_path, clock_ns=lambda: now[0],
+                bar_reader=lambda *_args, **_kwargs: pytest.fail("completed raw reread"))
+&gt;           resumed = maintenance.run_cycle(repo, evidence_cutoff_ns=now[0])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session037_due_work.py:128: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/research_prediction_outcomes.py:476: in run_cycle
+    discovery = repo.discover_due_work()
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2609: in discover_due_work
+    parsed = self.artifact_entry_from_storage_row(row).metadata
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2843: in artifact_entry_from_storage_row
+    return ArtifactIndexEntryV2._from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = &lt;class 'atlas.v2.memory.repository.ArtifactIndexEntryV2'&gt;
+row = &lt;sqlite3.Row object at 0x7f369e308fd0&gt;, decoded_metadata = None
+
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -&gt; ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+&gt;       content_hash = row["content_hash"]
+                       ^^^^^^^^^^^^^^^^^^^
+E       IndexError: No item with that key
+
+src/atlas/v2/memory/repository.py:181: IndexError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_prediction_label_published_after_cutoff_defers_without_remeasurement" file="tests/v2/test_session037_due_work.py" line="135" time="1.211"><failure message="IndexError: No item with that key">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_prediction_label_publishe0')
+
+    def test_prediction_label_published_after_cutoff_defers_without_remeasurement(tmp_path):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            maintenance, item, now = _matured_fixture(repo, tmp_path)
+            original_ref = index_research_prediction_outcome_v1(repo, item)
+            maintenance.bar_reader = lambda *_args, **_kwargs: pytest.fail("published label raw reread")
+&gt;           first = maintenance.run_cycle(repo, evidence_cutoff_ns=item.available_at_ns - 1)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session037_due_work.py:141: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/research_prediction_outcomes.py:476: in run_cycle
+    discovery = repo.discover_due_work()
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2609: in discover_due_work
+    parsed = self.artifact_entry_from_storage_row(row).metadata
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2843: in artifact_entry_from_storage_row
+    return ArtifactIndexEntryV2._from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = &lt;class 'atlas.v2.memory.repository.ArtifactIndexEntryV2'&gt;
+row = &lt;sqlite3.Row object at 0x7f36a40b0910&gt;, decoded_metadata = None
+
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -&gt; ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+&gt;       content_hash = row["content_hash"]
+                       ^^^^^^^^^^^^^^^^^^^
+E       IndexError: No item with that key
+
+src/atlas/v2/memory/repository.py:181: IndexError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_existing_schema_migration_discovers_sources_and_never_reenqueues_retired" file="tests/v2/test_session037_due_work.py" line="151" time="0.588"><failure message="IndexError: No item with that key">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_existing_schema_migration0')
+
+    def test_existing_schema_migration_discovers_sources_and_never_reenqueues_retired(tmp_path):
+        path = tmp_path / "ops.sqlite"
+        with OpsRepository(path) as repo:
+            decision = _calendar(repo, 1)
+            # Emulate an accepted pre-projection store without changing its evidence.
+            for table in ("due_work", "due_work_pressure", "due_work_discovery"):
+                repo._connection.execute(f"DROP TABLE {table}")
+        with OpsRepository(path) as repo:
+            assert repo.due_work_items("ACTION_OUTCOME", as_of_ns=decision.available_at_ns) == ()
+&gt;           assert repo.discover_due_work(limit=1)["rows_inspected"] == 1
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session037_due_work.py:161: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/memory/repository.py:2609: in discover_due_work
+    parsed = self.artifact_entry_from_storage_row(row).metadata
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2843: in artifact_entry_from_storage_row
+    return ArtifactIndexEntryV2._from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = &lt;class 'atlas.v2.memory.repository.ArtifactIndexEntryV2'&gt;
+row = &lt;sqlite3.Row object at 0x7f36a40d21a0&gt;, decoded_metadata = None
+
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -&gt; ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+&gt;       content_hash = row["content_hash"]
+                       ^^^^^^^^^^^^^^^^^^^
+E       IndexError: No item with that key
+
+src/atlas/v2/memory/repository.py:181: IndexError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_quarantine_preserves_exact_identity_reason_and_restart_pressure" file="tests/v2/test_session037_due_work.py" line="167" time="0.371"><failure message="IndexError: No item with that key">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_quarantine_preserves_exac0')
+
+    def test_quarantine_preserves_exact_identity_reason_and_restart_pressure(tmp_path):
+        path = tmp_path / "ops.sqlite"
+        with OpsRepository(path) as repo:
+            decision = _calendar(repo, 1)
+            repo.quarantine_due_work("ACTION_OUTCOME", decision.content_hash, reason_code="MALFORMED_CALENDAR_ENTRY")
+            repo.quarantine_due_work("ACTION_OUTCOME", decision.content_hash, reason_code="MALFORMED_CALENDAR_ENTRY")
+        with OpsRepository(path) as repo:
+&gt;           repo.discover_due_work()
+
+tests/v2/test_session037_due_work.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/memory/repository.py:2609: in discover_due_work
+    parsed = self.artifact_entry_from_storage_row(row).metadata
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2843: in artifact_entry_from_storage_row
+    return ArtifactIndexEntryV2._from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = &lt;class 'atlas.v2.memory.repository.ArtifactIndexEntryV2'&gt;
+row = &lt;sqlite3.Row object at 0x7f369e30aa70&gt;, decoded_metadata = None
+
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -&gt; ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+&gt;       content_hash = row["content_hash"]
+                       ^^^^^^^^^^^^^^^^^^^
+E       IndexError: No item with that key
+
+src/atlas/v2/memory/repository.py:181: IndexError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_malformed_action_calendar_is_accounted_and_quarantined" file="tests/v2/test_session037_due_work.py" line="183" time="0.301"><failure message="AssertionError: assert 0 == 1&#10; +  where 0 = OutcomeMaturityCycleReportV1(cycle_at_ns=10, evidence_cutoff_ns=10, computation_started_ns=10, computation_finished_ns...er_bound': 1, 'due_page_overflow': False, 'oldest_pending_age_ns': 9, 'oldest_due_age_ns': 9}, due_work_discovery=None).invalid_calendar_entries">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_malformed_action_calendar0')
+
+    def test_malformed_action_calendar_is_accounted_and_quarantined(tmp_path):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            ref = sha256_json({"calendar": "malformed"})
+            repo.register_artifact(ArtifactIndexEntryV2(ref, "DecisionCalendarEntryV2", ref, 1, 1, {}))
+            first = _cycle(repo, 10)
+&gt;           assert first.invalid_calendar_entries == 1
+E           AssertionError: assert 0 == 1
+E            +  where 0 = OutcomeMaturityCycleReportV1(cycle_at_ns=10, evidence_cutoff_ns=10, computation_started_ns=10, computation_finished_ns...er_bound': 1, 'due_page_overflow': False, 'oldest_pending_age_ns': 9, 'oldest_due_age_ns': 9}, due_work_discovery=None).invalid_calendar_entries
+
+tests/v2/test_session037_due_work.py:189: AssertionError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_malformed_prediction_terminal_is_quarantined_with_structured_diagnostic" file="tests/v2/test_session037_due_work.py" line="194" time="0.298"><failure message="IndexError: No item with that key">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_malformed_prediction_term0')
+
+    def test_malformed_prediction_terminal_is_quarantined_with_structured_diagnostic(tmp_path):
+        path = tmp_path / "ops.sqlite"
+        ref = sha256_json({"terminal": "malformed"})
+        with OpsRepository(path) as repo:
+            repo.register_artifact(ArtifactIndexEntryV2(ref, "ResearchModelTerminalV1", ref, 1, 1, {}))
+            maintenance = ResearchPredictionOutcomeMaintenanceV1(run_id="run-a", config_hash="a" * 64,
+                archive_root=tmp_path, clock_ns=lambda: 10)
+&gt;           report = maintenance.run_cycle(repo, evidence_cutoff_ns=10)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session037_due_work.py:202: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/research_prediction_outcomes.py:476: in run_cycle
+    discovery = repo.discover_due_work()
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2609: in discover_due_work
+    parsed = self.artifact_entry_from_storage_row(row).metadata
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2843: in artifact_entry_from_storage_row
+    return ArtifactIndexEntryV2._from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = &lt;class 'atlas.v2.memory.repository.ArtifactIndexEntryV2'&gt;
+row = &lt;sqlite3.Row object at 0x7f36a40db310&gt;, decoded_metadata = None
+
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -&gt; ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+&gt;       content_hash = row["content_hash"]
+                       ^^^^^^^^^^^^^^^^^^^
+E       IndexError: No item with that key
+
+src/atlas/v2/memory/repository.py:181: IndexError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_prediction_runs_do_not_inspect_or_quarantine_other_run_work" file="tests/v2/test_session037_due_work.py" line="210" time="0.348"><failure message="IndexError: No item with that key">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_prediction_runs_do_not_in0')
+
+    def test_prediction_runs_do_not_inspect_or_quarantine_other_run_work(tmp_path):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            routing = {"run_id": "run-b", "config_hash": "b" * 64}
+            ref = sha256_json(routing)
+            repo.register_artifact(ArtifactIndexEntryV2(ref, "ResearchModelTerminalV1", ref, 1, 1, {"routing": routing}))
+            lane = prediction_due_lane_v1("PREDICTION_TERMINAL", "run-b", "b" * 64)
+            maintenance = ResearchPredictionOutcomeMaintenanceV1(run_id="run-a", config_hash="a" * 64,
+                archive_root=tmp_path, clock_ns=lambda: 10)
+&gt;           report = maintenance.run_cycle(repo, evidence_cutoff_ns=10)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session037_due_work.py:219: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/research_prediction_outcomes.py:476: in run_cycle
+    discovery = repo.discover_due_work()
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2609: in discover_due_work
+    parsed = self.artifact_entry_from_storage_row(row).metadata
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2843: in artifact_entry_from_storage_row
+    return ArtifactIndexEntryV2._from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = &lt;class 'atlas.v2.memory.repository.ArtifactIndexEntryV2'&gt;
+row = &lt;sqlite3.Row object at 0x7f36a40dbf40&gt;, decoded_metadata = None
+
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -&gt; ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+&gt;       content_hash = row["content_hash"]
+                       ^^^^^^^^^^^^^^^^^^^
+E       IndexError: No item with that key
+
+src/atlas/v2/memory/repository.py:181: IndexError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_prediction_missing_later_endpoint_retries_at_future_due_time" file="tests/v2/test_session037_due_work.py" line="230" time="1.018"><failure message="IndexError: No item with that key">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-80/test_prediction_missing_later_0')
+
+    def test_prediction_missing_later_endpoint_retries_at_future_due_time(tmp_path):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            maintenance, item, now = _matured_fixture(repo, tmp_path)
+            endpoint = repo.get_artifact(item.measurement_ref).metadata["measurement"]["horizon_bar_source_ref"]
+            # Model evidence exists before this final endpoint is published.
+            entry = repo.get_artifact(endpoint)
+            repo._connection.execute("DELETE FROM artifact_index WHERE artifact_ref=?", (endpoint,))
+&gt;           first = maintenance.run_cycle(repo, evidence_cutoff_ns=now[0])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session037_due_work.py:238: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/research_prediction_outcomes.py:476: in run_cycle
+    discovery = repo.discover_due_work()
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2609: in discover_due_work
+    parsed = self.artifact_entry_from_storage_row(row).metadata
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2843: in artifact_entry_from_storage_row
+    return ArtifactIndexEntryV2._from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = &lt;class 'atlas.v2.memory.repository.ArtifactIndexEntryV2'&gt;
+row = &lt;sqlite3.Row object at 0x7f36a40da0b0&gt;, decoded_metadata = None
+
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -&gt; ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+&gt;       content_hash = row["content_hash"]
+                       ^^^^^^^^^^^^^^^^^^^
+E       IndexError: No item with that key
+
+src/atlas/v2/memory/repository.py:181: IndexError</failure></testcase><testcase classname="tests.v2.test_session037_due_work" name="test_atomic_composition_rolls_back_watch_transition_artifacts_and_due_work" file="tests/v2/test_session037_due_work.py" line="249" time="0.405" /><testcase classname="tests.v2.test_session037_due_work" name="test_nested_composition_failure_rolls_back_only_inner_work_and_outer_commit_is_visible" file="tests/v2/test_session037_due_work.py" line="268" time="0.366" /><testcase classname="tests.v2.test_session037_due_work" name="test_latest_artifact_page_orders_available_evidence_and_exposes_history_overflow" file="tests/v2/test_session037_due_work.py" line="287" time="1.177" /><testcase classname="tests.v2.test_session037_due_work" name="test_latest_identity_pages_use_available_index_with_exact_string_and_integer_keys" file="tests/v2/test_session037_due_work.py" line="309" time="1.108" /></testsuite></testsuites>

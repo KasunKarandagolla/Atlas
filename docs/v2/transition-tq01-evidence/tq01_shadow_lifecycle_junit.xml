@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="118.273" timestamp="2026-10-11T23:49:23.843378+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session020_phase2_e2e" name="test_phase2_s1_s2_persistence_ipc_and_matured_outcome" time="114.718" /></testsuite></testsuites>

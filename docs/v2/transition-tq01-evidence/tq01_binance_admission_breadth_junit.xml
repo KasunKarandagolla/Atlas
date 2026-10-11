@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="71" time="73.743" timestamp="2026-10-12T00:23:55.341676+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_binance_qualification" name="test_profile_is_immutable_binance_only_and_has_no_authority" file="tests/v2/test_session041_binance_qualification.py" line="89" time="0.019" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_child_environment_drops_credentials_and_provider_secrets" file="tests/v2/test_session041_binance_qualification.py" line="113" time="0.003" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_selected_path_rejects_symlink_source_tree_and_root" file="tests/v2/test_session041_binance_qualification.py" line="127" time="0.012" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_binance_factory_never_constructs_bybit_or_authenticated_clients" file="tests/v2/test_session041_binance_qualification.py" line="138" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_due_cycle_and_queue_loss_gates_fail_closed" file="tests/v2/test_session041_binance_qualification.py" line="166" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_capture_payload_histogram_keeps_oversize_bucket_and_exact_window" file="tests/v2/test_session041_binance_qualification.py" line="200" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_capture_payload_metrics_are_opt_in_for_qualification_only" file="tests/v2/test_session041_binance_qualification.py" line="220" time="0.004" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_final_backlog_gate_detects_growth_and_requires_coverage" file="tests/v2/test_session041_binance_qualification.py" line="253" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_report_slots_missed_beyond_one_cadence_fail_closed" file="tests/v2/test_session041_binance_qualification.py" line="295" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_completed_measurement_requires_real_durable_public_payload" file="tests/v2/test_session041_binance_qualification.py" line="305" time="0.003" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_stream_manifest_enforces_reviewed_population_caps" file="tests/v2/test_session041_binance_qualification.py" line="316" time="0.005" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_capture_payload_metric_gate_fails_closed_when_not_enabled" file="tests/v2/test_session041_binance_qualification.py" line="329" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_rate_samples_use_actual_monotonic_counter_deltas" file="tests/v2/test_session041_binance_qualification.py" line="336" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_qualification_traffic_keeps_lane_channel_rates_and_exact_burst_peaks" file="tests/v2/test_session041_binance_qualification.py" line="348" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_qualification_traffic_empty_and_truncated_windows_are_explicit" file="tests/v2/test_session041_binance_qualification.py" line="379" time="0.003" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_resource_summary_exposes_missing_one_second_buckets_and_worker_metrics" file="tests/v2/test_session041_binance_qualification.py" line="417" time="0.004" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_diagnostic_failure_receipt_carries_missing_measurement_reasons" file="tests/v2/test_session041_binance_qualification.py" line="452" time="0.054" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_trade_geometry_distinguishes_zero_activity_from_missing_evidence" file="tests/v2/test_session041_binance_qualification.py" line="478" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_trade_geometry_accounts_for_partially_populated_lanes" file="tests/v2/test_session041_binance_qualification.py" line="496" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_missing_trade_geometry_and_empty_stream_cannot_complete_receipt" file="tests/v2/test_session041_binance_qualification.py" line="514" time="0.034" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_repository_reports_window_scoped_sqlite_commit_timing" file="tests/v2/test_session041_binance_qualification.py" line="542" time="0.350" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_phase_window_preserves_worker_phase_semantics_without_summing" file="tests/v2/test_session041_binance_qualification.py" line="560" time="0.002" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_causal_reader_excludes_unobserved_and_future_publication" file="tests/v2/test_session041_binance_qualification.py" line="573" time="0.361" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_causal_read_requires_every_active_stream_checkpoint" file="tests/v2/test_session041_binance_qualification.py" line="606" time="0.007" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture" file="tests/v2/test_session041_binance_qualification.py" line="640" time="3.118" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_ordinary_v2_start_rejects_before_public_factory_when_capacity_missing" file="tests/v2/test_session041_binance_qualification.py" line="725" time="0.364" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_qualification_marker_blocks_ordinary_run_and_restart" file="tests/v2/test_session041_binance_qualification.py" line="750" time="0.545" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_cancellation_before_measurement_emits_failed_receipt_without_decisions" file="tests/v2/test_session041_binance_qualification.py" line="765" time="0.487" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_diagnostic_child_requires_supervisor_token" file="tests/v2/test_session041_binance_qualification.py" line="838" time="0.108" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_parent_rejects_unsafe_path_before_host_probe_or_child" file="tests/v2/test_session041_binance_qualification.py" line="845" time="0.004" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_supervisor_binds_one_time_child_and_private_run_tree" file="tests/v2/test_session041_binance_qualification.py" line="855" time="0.100" /><testcase classname="tests.v2.test_session043_binance_context_isolation" name="test_v2_context_sources_are_bound_to_venues_and_preserve_legacy_defaults" file="tests/v2/test_session043_binance_context_isolation.py" line="61" time="0.014" /><testcase classname="tests.v2.test_session043_binance_context_isolation" name="test_selected_source_policy_and_receipt_bind_only_binance_context_and_restart" file="tests/v2/test_session043_binance_context_isolation.py" line="95" time="0.442" /><testcase classname="tests.v2.test_session043_binance_context_isolation" name="test_selected_binance_source_failure_is_not_replaced_with_healthy_evidence" file="tests/v2/test_session043_binance_context_isolation.py" line="144" time="0.325" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_broad_source_paginates_and_keeps_both_venues_and_nontrading_products" file="tests/v2/test_session041_broad_public_source.py" line="128" time="0.009" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_broad_source_cursor_loop_fails_closed_without_partial_products" file="tests/v2/test_session041_broad_public_source.py" line="145" time="0.006" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_broad_source_snapshot_is_bounded_and_exposes_complete_manifest" file="tests/v2/test_session041_broad_public_source.py" line="154" time="0.038" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_stale_metadata_is_marked_incomplete_and_never_hidden" file="tests/v2/test_session041_broad_public_source.py" line="170" time="0.015" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_future_metadata_receipt_is_rejected_at_actual_completion" file="tests/v2/test_session041_broad_public_source.py" line="179" time="0.005" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_refresh_missing_previously_active_contract_fails_closed_and_retains_last_population" file="tests/v2/test_session041_broad_public_source.py" line="186" time="0.008" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_repeated_bulk_snapshot_preserves_distinct_actual_receipts" file="tests/v2/test_session041_broad_public_source.py" line="201" time="0.020" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_enrichment_budget_deferral_does_not_invalidate_complete_cheap_venue_snapshot" file="tests/v2/test_session041_broad_public_source.py" line="221" time="0.023" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_cheap_endpoint_failure_is_scoped_to_its_venue" file="tests/v2/test_session041_broad_public_source.py" line="234" time="0.029" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_cheap_refresh_cadence_returns_no_new_observation_claims_between_due_cycles" file="tests/v2/test_session041_broad_public_source.py" line="249" time="0.019" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_bulk_missing_active_symbol_cannot_claim_complete_market" file="tests/v2/test_session041_broad_public_source.py" line="266" time="0.016" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_cadence_reuse_preserves_prior_failure_and_metadata_cache_failure" file="tests/v2/test_session041_broad_public_source.py" line="276" time="0.016" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_metadata_refresh_and_market_acquisition_share_request_budget" file="tests/v2/test_session041_broad_public_source.py" line="291" time="0.015" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_bootstrap_partial_venue_failure_cannot_leave_successful_partial_cache" file="tests/v2/test_session041_broad_public_source.py" line="300" time="0.007" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_depth_snapshot_has_independent_http_transport_owner" file="tests/v2/test_session041_broad_public_source.py" line="311" time="0.004" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_post_request_timeout_does_not_certify_a_late_market_response" file="tests/v2/test_session041_broad_public_source.py" line="318" time="0.009" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_binance_turnover_is_actual_bulk_observation_with_exact_payload" file="tests/v2/test_session041_broad_public_source.py" line="335" time="0.020" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_history_backfill_keeps_refreshing_current_native_pages_after_restore" file="tests/v2/test_session041_broad_public_source.py" line="345" time="0.033" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_metadata_receipts_after_request_start_are_adopted_at_actual_completion" file="tests/v2/test_session041_broad_public_source.py" line="365" time="0.014" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_metadata_clock_regression_invalidates_the_cache" file="tests/v2/test_session041_broad_public_source.py" line="393" time="0.005" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_market_receipt_after_actual_completion_cannot_become_healthy" file="tests/v2/test_session041_broad_public_source.py" line="412" time="0.015" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_failed_market_read_does_not_fabricate_a_current_source_receipt" file="tests/v2/test_session041_broad_public_source.py" line="431" time="0.016" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BYBIT-trades]" file="tests/v2/test_session041_broad_public_source.py" line="444" time="0.017" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BYBIT-funding]" file="tests/v2/test_session041_broad_public_source.py" line="444" time="0.016" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BYBIT-oi]" file="tests/v2/test_session041_broad_public_source.py" line="444" time="0.019" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BINANCE-funding]" file="tests/v2/test_session041_broad_public_source.py" line="444" time="0.021" /><testcase classname="tests.v2.test_session041_broad_public_source" name="test_derivative_pages_are_bounded_before_translation[BINANCE-oi]" file="tests/v2/test_session041_broad_public_source.py" line="444" time="0.019" /><testcase classname="tests.v2.test_session041_capacity_max_breadth" name="test_three_full_bulk_cycles_at_maximum_synthetic_breadth" file="tests/v2/test_session041_capacity_max_breadth.py" line="26" time="9.787"><failure message="AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-65/test_three_full_bulk_cycles_at0')
+
+    def test_three_full_bulk_cycles_at_maximum_synthetic_breadth(tmp_path: Path) -&gt; None:
+        """Exercise 4096 products/8192 receipts per cycle through SQLite and Parquet.
+    
+        Inputs are deterministic synthetic venue-shaped public rows. This uses the
+        production collector, repository, Parquet archive, broad workset publisher,
+        repository restart, exact-ref hydration and archive readback through the
+        existing measurement helper. It has no venue network, stream queue,
+        enrichment, scheduler, decisions, concurrent reports or endurance phase.
+        """
+        peak_rss_before = _process_peak_rss_bytes()
+&gt;       metrics = measure_bounded_cycles(tmp_path, per_venue=2048, cycles=3)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_capacity_max_breadth.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_scale_review.py:151: in measure_bounded_cycles
+    assert ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo, acquired, now_ns=at[0])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7fd9e2d78080&gt;...ambda&gt; at 0x7fd9e9769940&gt;, service_public_stream=&lt;function measure_bounded_cycles.&lt;locals&gt;.&lt;lambda&gt; at 0x7fd9f40a4400&gt;)
+repository = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fd9f434a300&gt;
+snapshot = BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='2d2f07ba3630d683f807ecb9561...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32)
+now_ns = 1800000000000000000
+
+    def _persist_broad_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -&gt; bool:
+        """Adopt both venues on the sole writer without inventing history completeness."""
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        publication = sample(self.clock_ns, floor_ns=now_ns)
+        if max(snapshot.observed_at_ns, snapshot.latest_received_at_ns) &gt; publication:
+            raise ValueError("BROAD_PUBLIC_SNAPSHOT_FUTURE_RECEIPT")
+        prior_clock = collector.clock_ns
+        rejected_indexes: list[int] = []
+        refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
+        pending_refs: dict[str, str] = {}
+        manifest = snapshot.source_snapshot.get("metadata", {})
+        source_by_venue = {
+            VenueV2.BYBIT: BYBIT_HTTP_SOURCE_ID,
+            VenueV2.BINANCE: BINANCE_HTTP_SOURCE_ID,
+        }
+        accepted_by_source = {
+            source_by_venue[venue]: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
+            and venue.value not in snapshot.source_snapshot.get("metadata_stale", ())
+            for venue in cast(Any, self.public_source).enabled_venues
+        }
+        accepted = all(accepted_by_source.values())
+        current_products_by_key = {
+&gt;           product.key: product for product in cast(Any, self.public_source).current_products
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        }
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'
+
+src/atlas/v2/runtime/production.py:3170: AttributeError</failure></testcase><testcase classname="tests.v2.test_session041_mixed_broad_capacity" name="test_mixed_1024_contract_public_workload_under_bounded_stalls" file="tests/v2/test_session041_mixed_broad_capacity.py" line="72" time="40.358"><failure message="assert (True and not [AssertionError('bounded public handoff rejected a frame: {&quot;capture_captured_frames&quot;: 690, &quot;capture_delivered_frames&quot;:...false, &quot;queue_high_water&quot;: 480, &quot;queue_items&quot;: 480, &quot;queue_max&quot;: 512, &quot;queue_overflowed&quot;: true, &quot;queue_rejected&quot;: 1}')])&#10; +  where True = is_set()&#10; +    where is_set = &lt;threading.Event at 0x7fd9f4321f10: set&gt;.is_set">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-65/test_mixed_1024_contract_publi0')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x7fd9e804a660&gt;
+
+    def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, record_property):
+        products = _contracts()
+        clock = [NOW]
+        path = tmp_path / "mixed-ops.sqlite"
+        runtime = BroadPublicRuntimeV2(clock_ns=lambda: clock[0],
+            stream_factories={"BYBIT": _idle_stream(), "BINANCE_MARKET": _idle_stream()})
+        source = _DeterministicBybitSource(products, NOW)
+        port = BroadProductionOpsCyclePortV2(public_source=source, broad_runtime=runtime,
+            clock_ns=lambda: clock[0])
+        interpreted: list[CapturedPublicFrameV2] = []
+        original_interpreter = runtime._interpret_frames
+        interpreter_samples: list[dict[str, int]] = []
+    
+        def observe_interpreter(repository, frames, *, now_ns):
+            started = time.monotonic_ns()
+            interpreted.extend(frames)
+            try:
+                return original_interpreter(repository, frames, now_ns=now_ns)
+            finally:
+                interpreter_samples.append({"frames": len(frames), "duration_ns": time.monotonic_ns() - started})
+    
+        runtime._interpret_frames = observe_interpreter
+        identity = TuningRunIdentityV1("s41-mixed-broad-capacity", "a" * 64, "b" * 40, 0)
+        report_dir = tmp_path / "reports"
+        offered: list[CapturedPublicFrameV2] = []
+        commit_observation: dict[str, float | int] = {}
+        archive_stall_seconds: list[float] = []
+        reader_snapshots: list[tuple[int, int]] = []
+        report_release = threading.Event()
+        producer_stop = threading.Event()
+        def export_during_stall():
+            if not report_release.wait(60.0):
+                raise TimeoutError("report export did not reach the injected commit stall")
+            return export_tuning_snapshot(path, report_dir, identity, cutoff_ns=NOW + 20_000_000_000)
+    
+        exporter = ReadOnlyReportWorkerV1(export_during_stall)
+        export_completion = []
+    
+        try:
+            with OpsRepository(path) as repository:
+                # Persist representative active watch state through the repository's
+                # domain API. The production recovery/workset code discovers these
+                # rows; the stream plan receives no direct active-key override.
+                cohort_venue = sorted((VenueV2.BYBIT, VenueV2.BINANCE), key=lambda venue: venue.value)[
+                    (NOW // DAY_NS) % 2]
+                cohort_candidates = sorted((item for item in products if item.key.venue == cohort_venue),
+                    key=lambda item: (item.key.native_symbol != "BTCUSDT",
+                        item.key.native_symbol not in {"BTCUSDT", "ETHUSDT"},
+                        item.key.to_canonical_json()))[:20]
+                watch_keys = tuple(item.key for item in cohort_candidates[:8])
+                for index, key in enumerate(watch_keys):
+                    watch_id = sha256_json({"session": "041-mixed-watch", "key": key.to_dict()})
+                    repository.create_watch(OpportunityWatchV2(
+                        watch_id, key, "SYNTHETIC_CAPACITY_PROBE", "V1",
+                        sha256_json({"policy": index}), WatchStateV2.DETECTED, 0,
+                        NOW, NOW, sha256_json({"thesis": index}), (), "TRADE",
+                        NOW + 60_000_000_000, NOW))
+                recovery = port.recover(repository, now_ns=NOW)
+                assert recovery.required_source_ids == ("BINANCE_PUBLIC_V2", "BYBIT_PUBLIC_V2")
+                assert port._collector_recovery is not None
+                collector = port._collector_recovery.collector
+                archive_flush_pending_counts: list[int] = []
+                archive_flush_durations_seconds: list[float] = []
+                original_flush_archive = collector.flush_archive
+    
+                def observe_archive_flush():
+                    archive_flush_pending_counts.append(collector.pending_archive_count)
+                    started = time.monotonic()
+                    try:
+                        return original_flush_archive()
+                    finally:
+                        archive_flush_durations_seconds.append(time.monotonic() - started)
+    
+                collector.flush_archive = observe_archive_flush
+                snapshot = source.acquire_snapshot(now_ns=NOW)
+                port._register_refreshed_stream_products(repository, snapshot)
+                runtime_service_samples: list[int] = []
+                runtime_service_timestamps: list[tuple[int, str]] = []
+                runtime_stage_samples: list[dict[str, object]] = []
+                service_phase = ["INITIAL_BROAD_SNAPSHOT_ADOPTION"]
+                original_port_service = port.service_public_stream
+    
+                def observe_port_service(repository):
+                    caller = sys._getframe(1)
+                    frames = []
+                    while caller is not None:
+                        frames.append(caller)
+                        caller = caller.f_back
+                    names = {frame.f_code.co_name for frame in frames}
+                    workset = next((frame for frame in frames
+                        if frame.f_code.co_name == "publish_broad_workset"), None)
+                    if workset is not None:
+                        service_phase[0] = f"BROAD_WORKSET_LINE_{workset.f_lineno}"
+                    elif "reconfigure" in names:
+                        service_phase[0] = "BROAD_STREAM_RECONFIGURE"
+                    elif "finish" in names:
+                        service_phase[0] = "BROAD_STREAM_FINISH"
+                    else:
+                        if "&lt;lambda&gt;" in names:
+                            service_phase[0] = "SERVICED_ACQUISITION_OR_SNAPSHOT"
+                        else:
+                            adoption = max((frame for frame in frames
+                                if frame.f_code.co_name == "_persist_broad_public_snapshot"),
+                                key=lambda frame: frame.f_lineno, default=None)
+                            if adoption is not None and adoption.f_lineno &gt;= 6307:
+                                if adoption.f_lineno &lt;= 6325:
+                                    service_phase[0] = "BROAD_SNAPSHOT_AND_WORKSET"
+                                elif adoption.f_lineno &lt;= 6333:
+                                    service_phase[0] = "BROAD_ENRICHMENT_SELECTION"
+                                elif adoption.f_lineno &lt;= 6347:
+                                    service_phase[0] = "BROAD_STREAM_RECONFIGURE"
+                                else:
+                                    service_phase[0] = "BROAD_SCHEDULER_STATE_PUBLISH"
+                    return original_port_service(repository)
+    
+                port.service_public_stream = observe_port_service
+                original_runtime_service = runtime.service
+                runtime_persistence_samples: list[dict[str, object]] = []
+    
+                def observe_runtime_service(repository, *, now_ns):
+                    started = time.monotonic_ns()
+                    runtime_service_timestamps.append((started, service_phase[0]))
+                    try:
+                        return original_runtime_service(repository, now_ns=now_ns)
+                    finally:
+                        duration_ns = time.monotonic_ns() - started
+                        runtime_service_samples.append(duration_ns)
+                        if duration_ns &gt;= 100_000_000:
+                            persistence = repository.persistence_metrics()
+                            runtime_persistence_samples.append({
+                                "service_duration_ns": duration_ns,
+                                "transaction_count": persistence.get("transaction_count"),
+                                "row_and_archive_duration_ns": persistence.get("row_and_archive_duration_ns"),
+                                "commit_duration_ns": persistence.get("commit_duration_ns"),
+                                "max_commit_duration_ns": persistence.get("max_commit_duration_ns"),
+                            })
+    
+                runtime.service = observe_runtime_service
+                original_reconfigure = runtime.reconfigure
+    
+                def observe_reconfigure(*args, **kwargs):
+                    started = time.monotonic_ns()
+                    try:
+                        return original_reconfigure(*args, **kwargs)
+                    finally:
+                        runtime_stage_samples.append({"stage": "runtime.reconfigure",
+                            "duration_ns": time.monotonic_ns() - started})
+    
+                runtime.reconfigure = observe_reconfigure
+                archive_write_samples: list[dict[str, int]] = []
+                assert runtime._archive is not None
+                original_runtime_archive_write = runtime._archive.write_chunks
+    
+                def observe_runtime_archive_write(chunks):
+                    frame_count = sum(len(group) for group in chunks)
+                    started = time.monotonic_ns()
+                    try:
+                        return original_runtime_archive_write(chunks)
+                    finally:
+                        archive_write_samples.append({"frames": frame_count,
+                            "duration_ns": time.monotonic_ns() - started})
+    
+                runtime._archive.write_chunks = observe_runtime_archive_write
+                # The fixture is synthetically shaped and may be marked incomplete
+                # by the public health gate; persistence and receipt identity below
+                # remain the measured behavior.
+                port._persist_broad_public_snapshot(repository, snapshot, now_ns=NOW)
+    
+                service_phase[0] = "INITIAL_UNIVERSE_AND_WORKSET_READ"
+                def service_runtime():
+                    port.service_public_stream(repository)
+    
+                universe = full_universe(repository, cutoff_ns=NOW, service=service_runtime)
+                body = latest_workset(repository, cutoff_ns=NOW, service=service_runtime)
+                selected = active_products(repository, cutoff_ns=NOW, service=service_runtime)
+                assert universe is not None and body is not None and selected is not None
+                assert len(universe.entries) == 1024
+                assert len({item.key for item in universe.entries}) == 1024
+                assert {item.key.venue for item in universe.entries} == {VenueV2.BYBIT, VenueV2.BINANCE}
+                assert len(selected) &lt;= 24 and len(selected) &gt; 0
+                wal_after_first_publication = _wal_size(path)
+                assert body["selected_count"] == len(selected)
+                assert not any(entry.capital_eligible or entry.scanner_eligible for entry in universe.entries)
+                # Stream subscriptions follow the collector's actual workset tiers,
+                # repository watch state, and runtime benchmarks.
+                actual_tiers = {InstrumentKeyV2.from_dict(json.loads(key)): int(value)
+                                for key, value in body["tiers"].items()}
+                tier3_keys = {key for key, tier in actual_tiers.items() if tier &gt;= 3}
+                deep_keys = {item.key for item in runtime.plan.identities
+                             if item.channel.startswith("orderbook.50.") or "@depth" in item.channel}
+                assert runtime.plan is not None
+                assert len(deep_keys) == 8 and set(watch_keys).issubset(deep_keys)
+                assert tier3_keys.issubset(set(runtime.plan.keys))
+                assert len(runtime.plan.keys) &lt;= 24
+    
+                # Open a separate read-only snapshot while the live database is in WAL mode.
+                # Keep the supervisor's normal public-stream service boundary active
+                # while diagnostics inspect the published broad universe.
+                service_phase[0] = "INITIAL_READ_ONLY_SNAPSHOT_OPEN"
+                port.service_public_stream(repository)
+                with OpsRepository(path, read_only=True) as reader:
+                    reader_snapshots.append((len(full_universe(reader, cutoff_ns=NOW,
+                        service=service_runtime).entries),
+                        reader._connection.execute("PRAGMA data_version").fetchone()[0]))
+                port.service_public_stream(repository)
+    
+                assert runtime.source is not None and runtime.capture is not None
+                bybit_lane = runtime.source._lanes["BYBIT"]
+                handoff = bybit_lane._handoff
+                stream_key = next(identity.key for identity in runtime.plan.identities
+                                  if identity.venue == VenueV2.BYBIT
+                                  and identity.channel.startswith("publicTrade."))
+    
+                # A real read-only report worker runs alongside ingestion; its output
+                # is polled while capture continues, then the exact same export is
+                # checked after the ingestion cutoff.
+                # The read-only worker is gated until the active commit stall, so
+                # its SQLite snapshot opens while the writer is committing.
+                port.service_public_stream(repository)
+                assert exporter.start()
+                before_artifacts = repository._connection.execute(
+                    "SELECT count(*) FROM artifact_index").fetchone()[0]
+    
+                original_connection = repository._connection
+                stalled = False
+                stream_go = threading.Event()
+                producer_done = threading.Event()
+                producer_error: list[BaseException] = []
+                captured_during_commit: list[int] = []
+                capture_during_commit_samples: list[dict[str, object]] = []
+    
+                def producer() -&gt; None:
+                    try:
+                        assert stream_go.wait(2.0)
+                        next_due = time.monotonic()
+                        index = 0
+                        while not producer_stop.is_set():
+                            frame = _frame(index, stream_key)
+                            if not handoff.offer(frame):
+                                capture_status = runtime.capture.status() if runtime.capture is not None else None
+                                handoff_status = handoff.snapshot()
+                                detail = {
+                                    "index": index,
+                                    "queue_items": handoff_status.queue_items,
+                                    "queue_max": handoff_status.max_queue_items,
+                                    "queue_high_water": handoff_status.high_water_items,
+                                    "queue_rejected": handoff_status.frames_rejected,
+                                    "queue_closed": handoff_status.closed,
+                                    "queue_overflowed": handoff_status.overflowed,
+                                    "queue_backpressure": handoff_status.backpressure,
+                                    "capture_pending_batches": (capture_status.capture["pending_batches"]
+                                        if capture_status is not None else None),
+                                    "capture_max_pending_batches": (capture_status.capture["max_pending_batches"]
+                                        if capture_status is not None else None),
+                                    "capture_pressure_threshold_batches": (capture_status.capture[
+                                        "pressure_stop_threshold_batches"] if capture_status is not None else None),
+                                    "capture_pending_frames": (capture_status.capture["pending_frames"]
+                                        if capture_status is not None else None),
+                                    "capture_captured_frames": (capture_status.capture["captured_frames"]
+                                        if capture_status is not None else None),
+                                    "capture_delivered_frames": (capture_status.capture["delivered_frames"]
+                                        if capture_status is not None else None),
+                                    "capture_terminal_error": (capture_status.capture["terminal_error"]
+                                        if capture_status is not None else None),
+                                }
+                                raise AssertionError(
+                                    "bounded public handoff rejected a frame: " + json.dumps(detail, sort_keys=True))
+                            offered.append(frame)
+                            index += 1
+                            next_due += 1 / 160
+                            producer_stop.wait(max(0.0, next_due - time.monotonic()))
+                    except BaseException as exc:
+                        producer_error.append(exc)
+                    finally:
+                        producer_done.set()
+    
+                class CommitStall:
+                    def __getattr__(self, name):
+                        return getattr(original_connection, name)
+    
+                    def commit(self):
+                        nonlocal stalled
+                        if not stalled:
+                            stalled = True
+                            stream_go.set()
+                            report_release.set()
+                            before = time.monotonic()
+                            assert runtime.capture is not None
+                            deadline = before + 3.0
+                            while time.monotonic() &lt; deadline:
+                                capture_status = runtime.capture.status()
+                                captured = int(capture_status.capture["captured_frames"])
+                                capture_during_commit_samples.append({
+                                    "captured_frames": captured,
+                                    "queued_frames": capture_status.handoff.queue_items,
+                                    "pending_frames": capture_status.capture["pending_frames"],
+                                    "terminal_error": capture_status.capture["terminal_error"],
+                                    "archive_phase": capture_status.capture["archive"].get("active_phase"),
+                                    "capture_thread_alive": bool(runtime.capture._capture._thread
+                                        and runtime.capture._capture._thread.is_alive()),
+                                })
+                                if captured and time.monotonic() - before &gt;= 0.5:
+                                    captured_during_commit.append(captured)
+                                    break
+                                time.sleep(0.01)
+                            commit_observation["stall_seconds"] = time.monotonic() - before
+                            commit_observation["captured_during_stall"] = max(captured_during_commit, default=0)
+                            commit_observation["samples"] = capture_during_commit_samples
+                        return original_connection.commit()
+    
+                producer_thread = threading.Thread(target=producer, name="s41-mixed-producer")
+                producer_thread.start()
+                repository._connection = CommitStall()
+                try:
+                    marker = {"mixed_stall_marker": NOW}
+                    marker_ref = sha256_json(marker)
+                    repository.register_artifact(ArtifactIndexEntryV2(marker_ref,
+                        "Session041MixedStallMarkerV1", marker_ref, NOW, NOW, marker))
+                finally:
+                    repository._connection = original_connection
+                marker_count = repository._connection.execute("SELECT count(*) FROM artifact_index").fetchone()[0]
+                completion = None
+                report_deadline = time.monotonic() + 60.0
+                report_service_calls = 0
+                service_phase[0] = "CONCURRENT_REPORT_EXPORT"
+                while completion is None and time.monotonic() &lt; report_deadline:
+                    try:
+                        port.service_public_stream(repository)
+                    except Exception as exc:
+                        capture_status = runtime.capture.status() if runtime.capture is not None else None
+                        detail = {
+                            "failure": f"{type(exc).__name__}:{exc}",
+                            "captured_frames": (capture_status.capture.get("captured_frames")
+                                if capture_status is not None else None),
+                            "delivered_frames": (capture_status.capture.get("delivered_frames")
+                                if capture_status is not None else None),
+                            "pending_batches": (capture_status.capture.get("pending_batches")
+                                if capture_status is not None else None),
+                            "pending_frames": (capture_status.capture.get("pending_frames")
+                                if capture_status is not None else None),
+                            "handoff_items": (capture_status.handoff.queue_items
+                                if capture_status is not None else None),
+                            "handoff_overflowed": (capture_status.handoff.overflowed
+                                if capture_status is not None else None),
+                            "capture_terminal_error": (capture_status.capture.get("terminal_error")
+                                if capture_status is not None else None),
+                            "service_calls": len(runtime_service_samples),
+                            "service_max_ns": max(runtime_service_samples, default=0),
+                            "service_recent_ns": runtime_service_samples[-12:],
+                            "interpreter_recent_ms": [round(row["duration_ns"] / 1_000_000, 2)
+                                for row in interpreter_samples[-12:]],
+                            "archive_recent_ms": [round(row["duration_ns"] / 1_000_000, 2)
+                                for row in archive_write_samples[-12:]],
+                            "capture_archive": (capture_status.capture.get("archive")
+                                if capture_status is not None else None),
+                            "service_persistence_slow_samples": runtime_persistence_samples[-5:],
+                        }
+                        raise AssertionError("mixed capacity service failed: " +
+                                             json.dumps(detail, sort_keys=True)) from exc
+                    report_service_calls += 1
+                    completion = exporter.poll()
+                    if completion is None:
+                        time.sleep(0.01)
+                assert completion is not None
+                producer_stop.set()
+                producer_thread.join(timeout=3.0)
+&gt;               assert producer_done.is_set() and not producer_error
+E               assert (True and not [AssertionError('bounded public handoff rejected a frame: {"capture_captured_frames": 690, "capture_delivered_frames":...false, "queue_high_water": 480, "queue_items": 480, "queue_max": 512, "queue_overflowed": true, "queue_rejected": 1}')])
+E                +  where True = is_set()
+E                +    where is_set = &lt;threading.Event at 0x7fd9f4321f10: set&gt;.is_set
+
+tests/v2/test_session041_mixed_broad_capacity.py:439: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_broad_research_queue" name="test_snapshot_survives_restart_with_exact_cutoff_history_and_no_books" file="tests/v2/test_session041_broad_research_queue.py" line="78" time="0.586" /><testcase classname="tests.v2.test_session041_broad_research_queue" name="test_queue_is_one_slot_and_emits_explicit_deferred_record" file="tests/v2/test_session041_broad_research_queue.py" line="100" time="0.573" /><testcase classname="tests.v2.test_session041_broad_research_queue" name="test_completion_artifact_and_due_retirement_are_atomic_and_idempotent" file="tests/v2/test_session041_broad_research_queue.py" line="125" time="0.444" /><testcase classname="tests.v2.test_session041_broad_research_queue" name="test_exact_prepared_s4_feature_and_receipt_round_trip" file="tests/v2/test_session041_broad_research_queue.py" line="152" time="0.479" /><testcase classname="tests.v2.test_session041_broad_research_queue" name="test_late_universe_is_accepted_only_with_a_causal_receipt" file="tests/v2/test_session041_broad_research_queue.py" line="177" time="0.570" /><testcase classname="tests.v2.test_session041_broad_research_queue" name="test_corrupt_snapshot_and_future_cutoff_evidence_fail_closed" file="tests/v2/test_session041_broad_research_queue.py" line="194" time="0.786" /><testcase classname="tests.v2.test_session041_scale_review" name="test_two_representative_bulk_cycles_retain_all_receipts_and_cutoffs" file="tests/v2/test_session041_scale_review.py" line="268" time="0.991"><failure message="AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-65/test_two_representative_bulk_c0')
+
+    def test_two_representative_bulk_cycles_retain_all_receipts_and_cutoffs(tmp_path):
+&gt;       metrics = measure_bounded_cycles(tmp_path)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_scale_review.py:270: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_scale_review.py:151: in measure_bounded_cycles
+    assert ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo, acquired, now_ns=at[0])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7fd9e2d1c2f0&gt;...ambda&gt; at 0x7fd9e29d84a0&gt;, service_public_stream=&lt;function measure_bounded_cycles.&lt;locals&gt;.&lt;lambda&gt; at 0x7fd9e29d8540&gt;)
+repository = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fd9f4310cb0&gt;
+snapshot = BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='2d2f07ba3630d683f807ecb9561...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32)
+now_ns = 1800000000000000000
+
+    def _persist_broad_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -&gt; bool:
+        """Adopt both venues on the sole writer without inventing history completeness."""
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        publication = sample(self.clock_ns, floor_ns=now_ns)
+        if max(snapshot.observed_at_ns, snapshot.latest_received_at_ns) &gt; publication:
+            raise ValueError("BROAD_PUBLIC_SNAPSHOT_FUTURE_RECEIPT")
+        prior_clock = collector.clock_ns
+        rejected_indexes: list[int] = []
+        refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
+        pending_refs: dict[str, str] = {}
+        manifest = snapshot.source_snapshot.get("metadata", {})
+        source_by_venue = {
+            VenueV2.BYBIT: BYBIT_HTTP_SOURCE_ID,
+            VenueV2.BINANCE: BINANCE_HTTP_SOURCE_ID,
+        }
+        accepted_by_source = {
+            source_by_venue[venue]: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
+            and venue.value not in snapshot.source_snapshot.get("metadata_stale", ())
+            for venue in cast(Any, self.public_source).enabled_venues
+        }
+        accepted = all(accepted_by_source.values())
+        current_products_by_key = {
+&gt;           product.key: product for product in cast(Any, self.public_source).current_products
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        }
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'
+
+src/atlas/v2/runtime/production.py:3170: AttributeError</failure></testcase><testcase classname="tests.v2.test_session041_scale_review" name="test_future_row_rejection_keeps_exact_rejection_identity" file="tests/v2/test_session041_scale_review.py" line="277" time="0.287"><failure message="AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-65/test_future_row_rejection_keep0')
+
+    def test_future_row_rejection_keeps_exact_rejection_identity(tmp_path):
+        products = _products(1)
+        registry = InstrumentRegistryV2()
+        for product in products:
+            registry.register(product)
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            collector = PublicCollectorV2(repository=repo, registry=registry, clock_ns=lambda: NOW,
+                archive=ParquetObservationArchiveV2(tmp_path / "ops-observations"))
+            port = SimpleNamespace(_collector_recovery=SimpleNamespace(collector=collector),
+                public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES),
+                clock_ns=lambda: NOW, service_public_stream=lambda _repo: None)
+            records = _records(products, NOW, future=True)
+&gt;           assert not ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo,
+                _snapshot(records, NOW), now_ns=NOW)
+
+tests/v2/test_session041_scale_review.py:290: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7fd9e2d031d0&gt;..._public_stream=&lt;function test_future_row_rejection_keeps_exact_rejection_identity.&lt;locals&gt;.&lt;lambda&gt; at 0x7fd9e2b0df80&gt;)
+repository = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fd9e2d035f0&gt;
+snapshot = BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='2d2f07ba3630d683f807ecb9561...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32)
+now_ns = 1800000000000000000
+
+    def _persist_broad_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -&gt; bool:
+        """Adopt both venues on the sole writer without inventing history completeness."""
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        publication = sample(self.clock_ns, floor_ns=now_ns)
+        if max(snapshot.observed_at_ns, snapshot.latest_received_at_ns) &gt; publication:
+            raise ValueError("BROAD_PUBLIC_SNAPSHOT_FUTURE_RECEIPT")
+        prior_clock = collector.clock_ns
+        rejected_indexes: list[int] = []
+        refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
+        pending_refs: dict[str, str] = {}
+        manifest = snapshot.source_snapshot.get("metadata", {})
+        source_by_venue = {
+            VenueV2.BYBIT: BYBIT_HTTP_SOURCE_ID,
+            VenueV2.BINANCE: BINANCE_HTTP_SOURCE_ID,
+        }
+        accepted_by_source = {
+            source_by_venue[venue]: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
+            and venue.value not in snapshot.source_snapshot.get("metadata_stale", ())
+            for venue in cast(Any, self.public_source).enabled_venues
+        }
+        accepted = all(accepted_by_source.values())
+        current_products_by_key = {
+&gt;           product.key: product for product in cast(Any, self.public_source).current_products
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        }
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'
+
+src/atlas/v2/runtime/production.py:3170: AttributeError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,169 @@
+..........FFFF.                                                          [100%]
+=================================== FAILURES ===================================
+_____ test_elapsed_budget_expires_before_next_decision_and_restart_resumes _____
+
+tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-79/test_elapsed_budget_expires_be0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f12f8ccdfa0>
+
+    def test_elapsed_budget_expires_before_next_decision_and_restart_resumes(
+        tmp_path: Path, monkeypatch,
+    ) -> None:
+        base = 1_800_000_000_000_000
+        path = tmp_path / "budget-restart.sqlite"
+        with OpsRepository(path) as repository:
+            decisions = tuple(_calendar(repository, index, at_ns=base) for index in (1, 2, 3))
+            receipt_body = {"sealed": "unchanged", "decision_refs": [item.content_hash for item in decisions]}
+            receipt_ref = sha256_json(receipt_body)
+            repository.register_artifact(ArtifactIndexEntryV2(
+                receipt_ref, "OpsSupervisorReceiptV1", receipt_ref, base, base, {"receipt": receipt_body},
+            ))
+            before = repository.get_artifact(receipt_ref)
+            assert before is not None
+            seen: list[str] = []
+    
+            class ExpiresBeforeSecondDecision:
+                returned_from_first_resolver = False
+                calls_after_return = 0
+    
+                def __call__(self) -> int:
+                    if not self.returned_from_first_resolver:
+                        return 0
+                    self.calls_after_return += 1
+                    return {1: 98, 2: 99}.get(self.calls_after_return, 100)
+    
+            mono = ExpiresBeforeSecondDecision()
+    
+            def resolver(_repo: Any, entry: ArtifactIndexEntryV2, _cutoff: int, **_kwargs: Any):
+                seen.append(entry.artifact_ref)
+                decision = DecisionCalendarEntryV2.from_dict(json_value(entry.metadata["decision_entry"]))
+                mono.returned_from_first_resolver = True
+                return _resolution(decision, "UNSUPPORTED", reason="NO_PREDECLARED_TARGET")
+    
+            monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolver)
+            cutoff = base + 1_000
+            first = coordinator.run_outcome_maturity_cycle(
+                repository, evidence_cutoff_ns=cutoff, production_clock_ns=lambda: cutoff,
+                monotonic_ns=mono, maintenance_budget_ns=100,
+            )
+            after = repository.get_artifact(receipt_ref)
+            assert after == before
+>           assert first.maintenance_budget_status == "MAINTENANCE_BUDGET_EXHAUSTED"
+E           AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_BUDGET_EXHAUSTED'
+E             
+E             - MAINTENANCE_BUDGET_EXHAUSTED
+E             + WITHIN_BUDGET
+
+tests/v2/test_session033_outcome_maturity.py:447: AssertionError
+________ test_resolver_overrun_is_reported_and_completed_result_is_kept ________
+
+tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-79/test_resolver_overrun_is_repor0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f12f8927f80>
+
+    def test_resolver_overrun_is_reported_and_completed_result_is_kept(
+        tmp_path: Path, monkeypatch,
+    ) -> None:
+        base = 1_800_000_000_000_000
+        with OpsRepository(tmp_path / "budget-overrun.sqlite") as repository:
+            tuple(_calendar(repository, index, at_ns=base) for index in (1, 2))
+            monotonic = [0]
+            seen: list[str] = []
+    
+            def resolver(_repo: Any, entry: ArtifactIndexEntryV2, _cutoff: int, **_kwargs: Any):
+                seen.append(entry.artifact_ref)
+                monotonic[0] = 105
+                decision = DecisionCalendarEntryV2.from_dict(json_value(entry.metadata["decision_entry"]))
+                return _resolution(decision, "UNSUPPORTED", reason="NO_PREDECLARED_TARGET")
+    
+            monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolver)
+            cutoff = base + 1_000
+            report = coordinator.run_outcome_maturity_cycle(
+                repository, cutoff, production_clock_ns=lambda: cutoff,
+                monotonic_ns=lambda: monotonic[0], maintenance_budget_ns=100,
+            )
+>           assert report.maintenance_budget_status == "MAINTENANCE_DEADLINE_OVERRUN"
+E           AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_DEADLINE_OVERRUN'
+E             
+E             - MAINTENANCE_DEADLINE_OVERRUN
+E             + WITHIN_BUDGET
+
+tests/v2/test_session033_outcome_maturity.py:490: AssertionError
+_______ test_permanently_slow_first_item_does_not_starve_older_decisions _______
+
+tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-79/test_permanently_slow_first_it0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f12f8cccdd0>
+
+    def test_permanently_slow_first_item_does_not_starve_older_decisions(
+        tmp_path: Path, monkeypatch,
+    ) -> None:
+        base = 1_800_000_000_000_000
+        with OpsRepository(tmp_path / "slow-first.sqlite") as repository:
+            decisions = tuple(_calendar(repository, index, at_ns=base) for index in (1, 2, 3))
+            seen: list[str] = []
+            monotonic = [0]
+    
+            def resolver(_repo: Any, entry: ArtifactIndexEntryV2, _cutoff: int, **_kwargs: Any):
+                seen.append(entry.artifact_ref)
+                monotonic[0] += 51
+                decision = DecisionCalendarEntryV2.from_dict(json_value(entry.metadata["decision_entry"]))
+                return _resolution(decision, "UNSUPPORTED", reason="NO_PREDECLARED_TARGET")
+    
+            monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolver)
+            for offset in range(3):
+                monotonic[0] = 0
+                cutoff = base + 1_000 + offset
+                report = coordinator.run_outcome_maturity_cycle(
+                    repository, cutoff, production_clock_ns=lambda cutoff=cutoff: cutoff,
+                    monotonic_ns=lambda: monotonic[0], maintenance_budget_ns=50,
+                )
+>               assert report.maintenance_budget_status == "MAINTENANCE_DEADLINE_OVERRUN"
+E               AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_DEADLINE_OVERRUN'
+E                 
+E                 - MAINTENANCE_DEADLINE_OVERRUN
+E                 + WITHIN_BUDGET
+
+tests/v2/test_session033_outcome_maturity.py:522: AssertionError
+___ test_status_checkpoint_and_report_use_production_utc_after_fixed_cutoff ____
+
+tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-79/test_status_checkpoint_and_rep0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f12f892bb30>
+
+    def test_status_checkpoint_and_report_use_production_utc_after_fixed_cutoff(
+        tmp_path: Path, monkeypatch,
+    ) -> None:
+        base = 1_800_000_000_000_000
+        cutoff = base + 10
+        with OpsRepository(tmp_path / "production-times.sqlite") as repository:
+            decision = _calendar(repository, 1, at_ns=base)
+    
+            class AdvancingUTC:
+                now = cutoff + 1
+    
+                def __call__(self) -> int:
+                    self.now += 1
+                    return self.now
+    
+            utc = AdvancingUTC()
+            resolver_finished: list[int] = []
+    
+            def resolver(_repo: Any, entry: ArtifactIndexEntryV2, evidence_cutoff: int, *, clock_ns):
+                assert evidence_cutoff == cutoff
+                resolver_finished.append(clock_ns())
+                parsed = DecisionCalendarEntryV2.from_dict(json_value(entry.metadata["decision_entry"]))
+                return _resolution(parsed, "UNRESOLVED", reason="EVIDENCE_PENDING")
+    
+            monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolver)
+            report = coordinator.run_outcome_maturity_cycle(
+                repository, evidence_cutoff_ns=cutoff, production_clock_ns=utc,
+                monotonic_ns=lambda: 0,
+            )
+            statuses = _status_entries(repository, decision.content_hash, as_of_ns=report.cycle_at_ns)
+>           assert len(statuses) == 1
+E           assert 0 == 1
+E            +  where 0 = len(())
+
+tests/v2/test_session033_outcome_maturity.py:558: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v2/test_session033_outcome_maturity.py::test_elapsed_budget_expires_before_next_decision_and_restart_resumes
+FAILED tests/v2/test_session033_outcome_maturity.py::test_resolver_overrun_is_reported_and_completed_result_is_kept
+FAILED tests/v2/test_session033_outcome_maturity.py::test_permanently_slow_first_item_does_not_starve_older_decisions
+FAILED tests/v2/test_session033_outcome_maturity.py::test_status_checkpoint_and_report_use_production_utc_after_fixed_cutoff

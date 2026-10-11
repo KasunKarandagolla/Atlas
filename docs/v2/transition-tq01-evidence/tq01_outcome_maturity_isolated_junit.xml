@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="15" time="17.221" timestamp="2026-10-12T00:46:36.938200+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_restart_before_horizon_is_idempotent_and_status_is_deduplicated" file="tests/v2/test_session033_outcome_maturity.py" line="102" time="0.460" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_supported_matured_outcome_indexes_once_and_restart_revalidates_same_identity" file="tests/v2/test_session033_outcome_maturity.py" line="128" time="2.550" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_conflicting_indexed_outcomes_fail_closed_without_resolver_call" file="tests/v2/test_session033_outcome_maturity.py" line="163" time="1.621" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_derived_outcome_remains_invisible_until_its_production_time" file="tests/v2/test_session033_outcome_maturity.py" line="185" time="1.447" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_unresolved_then_matured_statuses_are_append_only" file="tests/v2/test_session033_outcome_maturity.py" line="206" time="1.639" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_bounded_pages_process_every_decision_without_starving_older_rows" file="tests/v2/test_session033_outcome_maturity.py" line="243" time="2.819" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_malformed_calendar_is_retained_as_unresolved_and_never_labeled" file="tests/v2/test_session033_outcome_maturity.py" line="279" time="0.368" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_resolver_failure_keeps_sealed_receipt_unchanged_and_sanitizes_error" file="tests/v2/test_session033_outcome_maturity.py" line="303" time="0.527" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_malformed_only_page_is_accounted_then_restart_reaches_older_decision" file="tests/v2/test_session033_outcome_maturity.py" line="331" time="0.666" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_malformed_and_valid_calendar_rows_interleaved_without_skips" file="tests/v2/test_session033_outcome_maturity.py" line="376" time="0.577" /><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_elapsed_budget_expires_before_next_decision_and_restart_resumes" file="tests/v2/test_session033_outcome_maturity.py" line="404" time="0.369"><failure message="AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_BUDGET_EXHAUSTED'&#10;  &#10;  - MAINTENANCE_BUDGET_EXHAUSTED&#10;  + WITHIN_BUDGET">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-79/test_elapsed_budget_expires_be0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f12f8ccdfa0&gt;
+
+    def test_elapsed_budget_expires_before_next_decision_and_restart_resumes(
+        tmp_path: Path, monkeypatch,
+    ) -&gt; None:
+        base = 1_800_000_000_000_000
+        path = tmp_path / "budget-restart.sqlite"
+        with OpsRepository(path) as repository:
+            decisions = tuple(_calendar(repository, index, at_ns=base) for index in (1, 2, 3))
+            receipt_body = {"sealed": "unchanged", "decision_refs": [item.content_hash for item in decisions]}
+            receipt_ref = sha256_json(receipt_body)
+            repository.register_artifact(ArtifactIndexEntryV2(
+                receipt_ref, "OpsSupervisorReceiptV1", receipt_ref, base, base, {"receipt": receipt_body},
+            ))
+            before = repository.get_artifact(receipt_ref)
+            assert before is not None
+            seen: list[str] = []
+    
+            class ExpiresBeforeSecondDecision:
+                returned_from_first_resolver = False
+                calls_after_return = 0
+    
+                def __call__(self) -&gt; int:
+                    if not self.returned_from_first_resolver:
+                        return 0
+                    self.calls_after_return += 1
+                    return {1: 98, 2: 99}.get(self.calls_after_return, 100)
+    
+            mono = ExpiresBeforeSecondDecision()
+    
+            def resolver(_repo: Any, entry: ArtifactIndexEntryV2, _cutoff: int, **_kwargs: Any):
+                seen.append(entry.artifact_ref)
+                decision = DecisionCalendarEntryV2.from_dict(json_value(entry.metadata["decision_entry"]))
+                mono.returned_from_first_resolver = True
+                return _resolution(decision, "UNSUPPORTED", reason="NO_PREDECLARED_TARGET")
+    
+            monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolver)
+            cutoff = base + 1_000
+            first = coordinator.run_outcome_maturity_cycle(
+                repository, evidence_cutoff_ns=cutoff, production_clock_ns=lambda: cutoff,
+                monotonic_ns=mono, maintenance_budget_ns=100,
+            )
+            after = repository.get_artifact(receipt_ref)
+            assert after == before
+&gt;           assert first.maintenance_budget_status == "MAINTENANCE_BUDGET_EXHAUSTED"
+E           AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_BUDGET_EXHAUSTED'
+E             
+E             - MAINTENANCE_BUDGET_EXHAUSTED
+E             + WITHIN_BUDGET
+
+tests/v2/test_session033_outcome_maturity.py:447: AssertionError</failure></testcase><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_resolver_overrun_is_reported_and_completed_result_is_kept" file="tests/v2/test_session033_outcome_maturity.py" line="468" time="0.485"><failure message="AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_DEADLINE_OVERRUN'&#10;  &#10;  - MAINTENANCE_DEADLINE_OVERRUN&#10;  + WITHIN_BUDGET">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-79/test_resolver_overrun_is_repor0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f12f8927f80&gt;
+
+    def test_resolver_overrun_is_reported_and_completed_result_is_kept(
+        tmp_path: Path, monkeypatch,
+    ) -&gt; None:
+        base = 1_800_000_000_000_000
+        with OpsRepository(tmp_path / "budget-overrun.sqlite") as repository:
+            tuple(_calendar(repository, index, at_ns=base) for index in (1, 2))
+            monotonic = [0]
+            seen: list[str] = []
+    
+            def resolver(_repo: Any, entry: ArtifactIndexEntryV2, _cutoff: int, **_kwargs: Any):
+                seen.append(entry.artifact_ref)
+                monotonic[0] = 105
+                decision = DecisionCalendarEntryV2.from_dict(json_value(entry.metadata["decision_entry"]))
+                return _resolution(decision, "UNSUPPORTED", reason="NO_PREDECLARED_TARGET")
+    
+            monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolver)
+            cutoff = base + 1_000
+            report = coordinator.run_outcome_maturity_cycle(
+                repository, cutoff, production_clock_ns=lambda: cutoff,
+                monotonic_ns=lambda: monotonic[0], maintenance_budget_ns=100,
+            )
+&gt;           assert report.maintenance_budget_status == "MAINTENANCE_DEADLINE_OVERRUN"
+E           AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_DEADLINE_OVERRUN'
+E             
+E             - MAINTENANCE_DEADLINE_OVERRUN
+E             + WITHIN_BUDGET
+
+tests/v2/test_session033_outcome_maturity.py:490: AssertionError</failure></testcase><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_permanently_slow_first_item_does_not_starve_older_decisions" file="tests/v2/test_session033_outcome_maturity.py" line="498" time="0.319"><failure message="AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_DEADLINE_OVERRUN'&#10;  &#10;  - MAINTENANCE_DEADLINE_OVERRUN&#10;  + WITHIN_BUDGET">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-79/test_permanently_slow_first_it0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f12f8cccdd0&gt;
+
+    def test_permanently_slow_first_item_does_not_starve_older_decisions(
+        tmp_path: Path, monkeypatch,
+    ) -&gt; None:
+        base = 1_800_000_000_000_000
+        with OpsRepository(tmp_path / "slow-first.sqlite") as repository:
+            decisions = tuple(_calendar(repository, index, at_ns=base) for index in (1, 2, 3))
+            seen: list[str] = []
+            monotonic = [0]
+    
+            def resolver(_repo: Any, entry: ArtifactIndexEntryV2, _cutoff: int, **_kwargs: Any):
+                seen.append(entry.artifact_ref)
+                monotonic[0] += 51
+                decision = DecisionCalendarEntryV2.from_dict(json_value(entry.metadata["decision_entry"]))
+                return _resolution(decision, "UNSUPPORTED", reason="NO_PREDECLARED_TARGET")
+    
+            monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolver)
+            for offset in range(3):
+                monotonic[0] = 0
+                cutoff = base + 1_000 + offset
+                report = coordinator.run_outcome_maturity_cycle(
+                    repository, cutoff, production_clock_ns=lambda cutoff=cutoff: cutoff,
+                    monotonic_ns=lambda: monotonic[0], maintenance_budget_ns=50,
+                )
+&gt;               assert report.maintenance_budget_status == "MAINTENANCE_DEADLINE_OVERRUN"
+E               AssertionError: assert 'WITHIN_BUDGET' == 'MAINTENANCE_DEADLINE_OVERRUN'
+E                 
+E                 - MAINTENANCE_DEADLINE_OVERRUN
+E                 + WITHIN_BUDGET
+
+tests/v2/test_session033_outcome_maturity.py:522: AssertionError</failure></testcase><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_status_checkpoint_and_report_use_production_utc_after_fixed_cutoff" file="tests/v2/test_session033_outcome_maturity.py" line="527" time="0.338"><failure message="assert 0 == 1&#10; +  where 0 = len(())">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-79/test_status_checkpoint_and_rep0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f12f892bb30&gt;
+
+    def test_status_checkpoint_and_report_use_production_utc_after_fixed_cutoff(
+        tmp_path: Path, monkeypatch,
+    ) -&gt; None:
+        base = 1_800_000_000_000_000
+        cutoff = base + 10
+        with OpsRepository(tmp_path / "production-times.sqlite") as repository:
+            decision = _calendar(repository, 1, at_ns=base)
+    
+            class AdvancingUTC:
+                now = cutoff + 1
+    
+                def __call__(self) -&gt; int:
+                    self.now += 1
+                    return self.now
+    
+            utc = AdvancingUTC()
+            resolver_finished: list[int] = []
+    
+            def resolver(_repo: Any, entry: ArtifactIndexEntryV2, evidence_cutoff: int, *, clock_ns):
+                assert evidence_cutoff == cutoff
+                resolver_finished.append(clock_ns())
+                parsed = DecisionCalendarEntryV2.from_dict(json_value(entry.metadata["decision_entry"]))
+                return _resolution(parsed, "UNRESOLVED", reason="EVIDENCE_PENDING")
+    
+            monkeypatch.setattr(coordinator, "resolve_decision_outcome", resolver)
+            report = coordinator.run_outcome_maturity_cycle(
+                repository, evidence_cutoff_ns=cutoff, production_clock_ns=utc,
+                monotonic_ns=lambda: 0,
+            )
+            statuses = _status_entries(repository, decision.content_hash, as_of_ns=report.cycle_at_ns)
+&gt;           assert len(statuses) == 1
+E           assert 0 == 1
+E            +  where 0 = len(())
+
+tests/v2/test_session033_outcome_maturity.py:558: AssertionError</failure></testcase><testcase classname="tests.v2.test_session033_outcome_maturity" name="test_evidence_arriving_during_maintenance_is_deferred_to_later_cutoff" file="tests/v2/test_session033_outcome_maturity.py" line="572" time="0.417" /></testsuite></testsuites>

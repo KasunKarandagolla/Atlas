@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="5.163" timestamp="2026-10-12T00:52:46.159026+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_fake_bybit_source_flows_through_collector_archive_index_supervisor_and_calendar" file="tests/v2/test_session031_public_shadow_readiness.py" line="152" time="2.700"><failure message="AssertionError: assert ()&#10; +  where () = artifact_entries('OpsSupervisorReceiptV1')&#10; +    where artifact_entries = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fac58702c00&gt;.artifact_entries">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-84/test_fake_bybit_source_flows_t0')
+
+    def test_fake_bybit_source_flows_through_collector_archive_index_supervisor_and_calendar(tmp_path):
+        reader = _FakeBybitReader(CUTOFF)
+        source = BybitPublicCycleSourceV1(reader, clock_ns=_FakeClock(CUTOFF))
+        port = production.ProductionOpsCyclePortV1(public_source=source)
+        db = tmp_path / "ops.sqlite"
+        with OpsSupervisorV2(db, port, clock_ns=_FakeClock(CUTOFF)) as supervisor:
+            result = supervisor.run_once()
+            assert supervisor.repository is not None
+            repository = supervisor.repository
+            assert repository.artifact_entries("ProductContractV2")
+            assert repository.artifact_entries("PublicObservationIndexV2")
+            assert repository.artifact_entries("OpsPublicSourceReconciliationV1")
+&gt;           assert repository.artifact_entries("OpsSupervisorReceiptV1")
+E           AssertionError: assert ()
+E            +  where () = artifact_entries('OpsSupervisorReceiptV1')
+E            +    where artifact_entries = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fac58702c00&gt;.artifact_entries
+
+tests/v2/test_session031_public_shadow_readiness.py:165: AssertionError</failure></testcase></testsuite></testsuites>

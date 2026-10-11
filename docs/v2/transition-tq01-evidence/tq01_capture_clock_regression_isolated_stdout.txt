@@ -1,0 +1,24 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____ test_capture_cannot_raise_availability_floor_to_hide_a_regressed_clock ____
+
+tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-90/test_capture_cannot_raise_avai0')
+
+    def test_capture_cannot_raise_availability_floor_to_hide_a_regressed_clock(tmp_path):
+        now = time.time_ns()
+        source = QueueStream(lambda: now)
+        capture = DurablePublicCaptureV1(source, clock_ns=lambda: now - 1)
+        capture.configure_capture(tmp_path)
+        capture.start()
+        assert source.handoff.offer(MixedWorkload().frame(now))
+        wait_for(lambda: capture.status().state == "FAILED")
+        assert capture.status().capture["terminal_error"] == "RAW_CAPTURE_FAILED_VALUEERROR"
+>       assert capture.status().pending_frames == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = namespace(state='FAILED', attempt_count=1, reconnect_count=0, last_error_code='RAW_CAPTURE_FAILED_VALUEERROR', handoff...tes_written': 946, 'receipt_bytes_written': 0, 'terminal_error': 'RAW_CAPTURE_FAILED_VALUEERROR', 'authority': 'ZERO'}).pending_frames
+E        +    where namespace(state='FAILED', attempt_count=1, reconnect_count=0, last_error_code='RAW_CAPTURE_FAILED_VALUEERROR', handoff...tes_written': 946, 'receipt_bytes_written': 0, 'terminal_error': 'RAW_CAPTURE_FAILED_VALUEERROR', 'authority': 'ZERO'}) = status()
+E        +      where status = <atlas.v2.data.durable_public_capture.DurablePublicCaptureV1 object at 0x7fb264a0a1b0>.status
+
+tests/v2/test_session040_durable_capture.py:256: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v2/test_session040_durable_capture.py::test_capture_cannot_raise_availability_floor_to_hide_a_regressed_clock

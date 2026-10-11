@@ -1,0 +1,31 @@
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+PyYAML==6.0.3
+TA-Lib==0.8.1
+certifi==2026.7.22
+charset-normalizer==3.5.2
+einops==0.8.1
+filelock==4.1.1
+fsspec==2026.9.0
+hf-xet==1.7.0
+huggingface-hub==0.33.1
+idna==3.20
+mpmath==1.3.0
+networkx==3.7
+numpy==2.5.3
+packaging==26.3
+pandas-ta-classic @ file:///tmp/atlas-tq01-pandas-ta/pandas_ta_classic-0.8.32-py3-none-any.whl#sha256=e8e1ede0c13d5927d28c91dce3d5ab2c71a1fb7f2e62fb61fe95178d4ab768e0
+pandas==2.2.2
+python-dateutil==2.9.0.post0
+pytz==2026.5
+requests==2.34.2
+safetensors==0.6.2
+setuptools==84.0.0
+six==1.17.0
+smartmoneyconcepts @ file:///tmp/atlas-tq01-smc/smartmoneyconcepts-0.0.27-py3-none-any.whl#sha256=aa5094fa3a361abbbbba358fe885d859537e2eba27374a934e28db353b97ae9b
+sympy==1.14.0
+torch==2.7.1+cpu
+tqdm==4.67.1
+typing_extensions==4.16.0
+tzdata==2026.5
+urllib3==2.8.0

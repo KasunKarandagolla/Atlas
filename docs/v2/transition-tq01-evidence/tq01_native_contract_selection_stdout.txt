@@ -1,0 +1,147 @@
+....................F.F.F..................................              [100%]
+=================================== FAILURES ===================================
+_ test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[None-dispatch_persisted_demo_command] _
+
+journal = <atlas.persistence.sqlite.SQLiteJournal object at 0x7fce843cdee0>
+dispatcher = <function dispatch_persisted_demo_command at 0x7fcea23445e0>
+failure = None
+
+    @pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
+    @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+    def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+        intent = add_intent(journal)
+        before = journal.load_reservation(intent.intent_id)
+        command = journal.prepare_dispatch(
+            intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
+            command_id="review-close", command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id}, created_at_ns=T0,
+        )
+        seen = []
+    
+        def effect(command, *, now_ns):
+            durable = journal.load_command(command.command_id)
+            assert durable.outcome == CommandOutcome.UNKNOWN
+            assert durable.send_started_at_ns == now_ns
+            seen.append(command.command_id)
+            if failure:
+                raise failure("fixture sensitive transport detail")
+    
+        args = {"journal": journal, "command_id": command.command_id,
+                "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
+                "writer_epoch": 1, "assert_writer": lambda: None}
+>       assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+               ^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_execution_final_review.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:617: in dispatch_persisted_demo_command
+    fence(send_started=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+send_started = False
+
+    def fence(*, send_started: bool) -> None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+>           raise PersistenceError("Binance command readiness context missing")
+E           atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing
+
+src/atlas/runtime/binance_demo.py:610: PersistenceError
+_ test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[TimeoutError-dispatch_persisted_demo_command] _
+
+journal = <atlas.persistence.sqlite.SQLiteJournal object at 0x7fce843cd730>
+dispatcher = <function dispatch_persisted_demo_command at 0x7fcea23445e0>
+failure = <class 'TimeoutError'>
+
+    @pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
+    @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+    def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+        intent = add_intent(journal)
+        before = journal.load_reservation(intent.intent_id)
+        command = journal.prepare_dispatch(
+            intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
+            command_id="review-close", command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id}, created_at_ns=T0,
+        )
+        seen = []
+    
+        def effect(command, *, now_ns):
+            durable = journal.load_command(command.command_id)
+            assert durable.outcome == CommandOutcome.UNKNOWN
+            assert durable.send_started_at_ns == now_ns
+            seen.append(command.command_id)
+            if failure:
+                raise failure("fixture sensitive transport detail")
+    
+        args = {"journal": journal, "command_id": command.command_id,
+                "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
+                "writer_epoch": 1, "assert_writer": lambda: None}
+>       assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+               ^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_execution_final_review.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:617: in dispatch_persisted_demo_command
+    fence(send_started=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+send_started = False
+
+    def fence(*, send_started: bool) -> None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+>           raise PersistenceError("Binance command readiness context missing")
+E           atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing
+
+src/atlas/runtime/binance_demo.py:610: PersistenceError
+_ test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[ValueError-dispatch_persisted_demo_command] _
+
+journal = <atlas.persistence.sqlite.SQLiteJournal object at 0x7fce843ce960>
+dispatcher = <function dispatch_persisted_demo_command at 0x7fcea23445e0>
+failure = <class 'ValueError'>
+
+    @pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
+    @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+    def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+        intent = add_intent(journal)
+        before = journal.load_reservation(intent.intent_id)
+        command = journal.prepare_dispatch(
+            intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
+            command_id="review-close", command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id}, created_at_ns=T0,
+        )
+        seen = []
+    
+        def effect(command, *, now_ns):
+            durable = journal.load_command(command.command_id)
+            assert durable.outcome == CommandOutcome.UNKNOWN
+            assert durable.send_started_at_ns == now_ns
+            seen.append(command.command_id)
+            if failure:
+                raise failure("fixture sensitive transport detail")
+    
+        args = {"journal": journal, "command_id": command.command_id,
+                "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
+                "writer_epoch": 1, "assert_writer": lambda: None}
+>       assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+               ^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_execution_final_review.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/runtime/binance_demo.py:617: in dispatch_persisted_demo_command
+    fence(send_started=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+send_started = False
+
+    def fence(*, send_started: bool) -> None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+>           raise PersistenceError("Binance command readiness context missing")
+E           atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing
+
+src/atlas/runtime/binance_demo.py:610: PersistenceError
+=========================== short test summary info ============================
+FAILED tests/runtime/test_session041_execution_final_review.py::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[None-dispatch_persisted_demo_command]
+FAILED tests/runtime/test_session041_execution_final_review.py::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[TimeoutError-dispatch_persisted_demo_command]
+FAILED tests/runtime/test_session041_execution_final_review.py::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[ValueError-dispatch_persisted_demo_command]

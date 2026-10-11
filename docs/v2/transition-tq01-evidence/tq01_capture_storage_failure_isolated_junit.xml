@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="4.911" timestamp="2026-10-12T01:02:35.719358+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session040_durable_capture" name="test_capture_failure_preserves_raw_receipts_and_is_terminal" file="tests/v2/test_session040_durable_capture.py" line="110" time="0.690"><failure message="AssertionError: assert 2 == 1&#10; +  where 2 = namespace(state='FAILED', attempt_count=1, reconnect_count=0, last_error_code='RAW_CAPTURE_FAILED_OSERROR', handoff=Pu...tes_written': 945, 'receipt_bytes_written': 2206, 'terminal_error': 'RAW_CAPTURE_FAILED_OSERROR', 'authority': 'ZERO'}).pending_frames&#10; +    where namespace(state='FAILED', attempt_count=1, reconnect_count=0, last_error_code='RAW_CAPTURE_FAILED_OSERROR', handoff=Pu...tes_written': 945, 'receipt_bytes_written': 2206, 'terminal_error': 'RAW_CAPTURE_FAILED_OSERROR', 'authority': 'ZERO'}) = status()&#10; +      where status = &lt;atlas.v2.data.durable_public_capture.DurablePublicCaptureV1 object at 0x7f6c3c9785f0&gt;.status">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-89/test_capture_failure_preserves0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f6c44bce690&gt;
+
+    def test_capture_failure_preserves_raw_receipts_and_is_terminal(tmp_path, monkeypatch):
+        source = QueueStream(time.time_ns)
+        capture = DurablePublicCaptureV1(source)
+        capture.configure_capture(tmp_path)
+        capture.start()
+        workload = MixedWorkload()
+        first = workload.frame(time.time_ns())
+        assert source.handoff.offer(first)
+        wait_for(lambda: capture.status().pending_frames == 1)
+    
+        def failed_seal(*args, **kwargs):
+            raise OSError("offline injected storage failure")
+    
+        monkeypatch.setattr(PublicArchiveSegmentWriterV1, "seal", failed_seal)
+        assert source.handoff.offer(workload.frame(time.time_ns()))
+        wait_for(lambda: capture.status().state == "FAILED")
+        assert capture.status().capture["terminal_error"] == "RAW_CAPTURE_FAILED_OSERROR"
+        assert list((tmp_path / "ops-public-capture").glob("capture-*.bin"))
+&gt;       assert capture.status().pending_frames == 1
+E       AssertionError: assert 2 == 1
+E        +  where 2 = namespace(state='FAILED', attempt_count=1, reconnect_count=0, last_error_code='RAW_CAPTURE_FAILED_OSERROR', handoff=Pu...tes_written': 945, 'receipt_bytes_written': 2206, 'terminal_error': 'RAW_CAPTURE_FAILED_OSERROR', 'authority': 'ZERO'}).pending_frames
+E        +    where namespace(state='FAILED', attempt_count=1, reconnect_count=0, last_error_code='RAW_CAPTURE_FAILED_OSERROR', handoff=Pu...tes_written': 945, 'receipt_bytes_written': 2206, 'terminal_error': 'RAW_CAPTURE_FAILED_OSERROR', 'authority': 'ZERO'}) = status()
+E        +      where status = &lt;atlas.v2.data.durable_public_capture.DurablePublicCaptureV1 object at 0x7f6c3c9785f0&gt;.status
+
+tests/v2/test_session040_durable_capture.py:129: AssertionError</failure></testcase></testsuite></testsuites>

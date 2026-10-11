@@ -1,0 +1,23 @@
+	Command being timed: "env PYTHONPATH=/home/kasun/Music/atlas-tq01-worktree/src:/home/kasun/Music/atlas-tq01-worktree/tests /home/kasun/Music/atlas/.venv/bin/python -m pytest -q -o junit_family=legacy tests/v2/test_session031_preflight_remediation.py --junitxml=docs/v2/transition-tq01-evidence/tq01_preflight_bounded_inventory_junit.xml"
+	User time (seconds): 15.55
+	System time (seconds): 0.91
+	Percent of CPU this job got: 69%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:23.85
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 76004
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 106
+	Minor (reclaiming a frame) page faults: 16983
+	Voluntary context switches: 405
+	Involuntary context switches: 8785
+	Swaps: 0
+	File system inputs: 32
+	File system outputs: 87712
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

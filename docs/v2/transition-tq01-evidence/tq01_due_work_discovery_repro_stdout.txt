@@ -1,0 +1,41 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ test_terminal_history_is_retired_and_new_opportunity_is_immediately_due ____
+
+tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-81/test_terminal_history_is_retir0')
+
+    def test_terminal_history_is_retired_and_new_opportunity_is_immediately_due(tmp_path):
+        path = tmp_path / "ops.sqlite"
+        with OpsRepository(path) as repo:
+            for i in range(100):
+                decision = _calendar(repo, i)
+                repo.retire_due_work("ACTION_OUTCOME", decision.content_hash, reason_code="UNSUPPORTED")
+            new = _calendar(repo, 101)
+>           repo.discover_due_work(limit=64)
+
+tests/v2/test_session037_due_work.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/memory/repository.py:2609: in discover_due_work
+    parsed = self.artifact_entry_from_storage_row(row).metadata
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/atlas/v2/memory/repository.py:2843: in artifact_entry_from_storage_row
+    return ArtifactIndexEntryV2._from_storage_row(row)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'atlas.v2.memory.repository.ArtifactIndexEntryV2'>
+row = <sqlite3.Row object at 0x7fd3c7965210>, decoded_metadata = None
+
+    @classmethod
+    def _from_storage_row(cls, row: sqlite3.Row, *,
+                          decoded_metadata: Mapping[str, Any] | None = None) -> ArtifactIndexEntryV2:
+        """Rebuild an immutable entry from the repository's canonical JSON row."""
+        artifact_ref = row["artifact_ref"]
+        artifact_type = row["artifact_type"]
+>       content_hash = row["content_hash"]
+                       ^^^^^^^^^^^^^^^^^^^
+E       IndexError: No item with that key
+
+src/atlas/v2/memory/repository.py:181: IndexError
+=========================== short test summary info ============================
+FAILED tests/v2/test_session037_due_work.py::test_terminal_history_is_retired_and_new_opportunity_is_immediately_due

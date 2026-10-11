@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="3" time="155.357" timestamp="2026-10-12T00:26:34.877407+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session041_scale_review" name="test_two_representative_bulk_cycles_retain_all_receipts_and_cutoffs" file="tests/v2/test_session041_scale_review.py" line="269" time="4.756"><failure message="AssertionError: assert False&#10; +  where False = &lt;function ProductionOpsCyclePortV1._persist_broad_public_snapshot at 0x7fc874fc0a40&gt;(namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7fc874e5c0b0&gt;...ambda&gt; at 0x7fc874fc7420&gt;, service_public_stream=&lt;function measure_bounded_cycles.&lt;locals&gt;.&lt;lambda&gt; at 0x7fc874fc74c0&gt;), &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fc8751d3b90&gt;, BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='2d2f07ba3630d683f807ecb9561...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32), now_ns=1800000000000000000)&#10; +    where &lt;function ProductionOpsCyclePortV1._persist_broad_public_snapshot at 0x7fc874fc0a40&gt; = ProductionOpsCyclePortV1._persist_broad_public_snapshot">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-68/test_two_representative_bulk_c0')
+
+    def test_two_representative_bulk_cycles_retain_all_receipts_and_cutoffs(tmp_path):
+&gt;       metrics = measure_bounded_cycles(tmp_path)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_scale_review.py:271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = PosixPath('/tmp/pytest-of-kasun/pytest-68/test_two_representative_bulk_c0')
+per_venue = 128, cycles = 2
+
+    def measure_bounded_cycles(root: Path, *, per_venue=128, cycles=2):
+        """Real SQLite/collector/Parquet/workset path; fake source and fixed receipts."""
+        root.mkdir(parents=True, exist_ok=True)
+        products = _products(per_venue)
+        at = [NOW]
+        registry = InstrumentRegistryV2()
+        for product in products:
+            registry.register(product)
+        metrics = {"population": len(products), "cycles": cycles, "cadence_seconds": 10,
+            "source_shape": "one Bybit ticker and three Binance bulk market rows per symbol",
+            "excluded": ["network", "streams", "enrichment", "scheduler state", "reports", "decision work"],
+            "samples": []}
+        with OpsRepository(root / "ops.sqlite") as repo:
+            repo.register_artifacts(tuple(ArtifactIndexEntryV2(p.content_hash, "ProductContractV2", p.content_hash,
+                NOW, NOW, {"product": p.to_dict()}) for p in products))
+            collector = PublicCollectorV2(repository=repo, registry=registry, clock_ns=lambda: at[0],
+                archive=ParquetObservationArchiveV2(root / "ops-observations",
+                    compact_stream_repository=repo, clock_ns=lambda: at[0]))
+            collector.publish_indexes_after_archive = True
+            phase_service = {"last_at": 0.0, "max_gap": 0.0, "calls": 0}
+    
+            def service():
+                assert not repo._connection.in_transaction
+                observed = time.perf_counter()
+                phase_service["max_gap"] = max(phase_service["max_gap"], observed - phase_service["last_at"])
+                phase_service["last_at"] = observed
+                phase_service["calls"] += 1
+    
+            def start_phase():
+                phase_service.update(last_at=time.perf_counter(), max_gap=0.0, calls=0)
+    
+            def finish_phase():
+                return {"calls": phase_service["calls"], "max_gap_seconds": max(
+                    phase_service["max_gap"], time.perf_counter() - phase_service["last_at"])}
+    
+            port = SimpleNamespace(_collector_recovery=SimpleNamespace(collector=collector),
+                public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES,
+                    current_products=products),
+                clock_ns=lambda: at[0], service_public_stream=lambda _repo: service())
+            def db_bytes():
+                return (repo._connection.execute("PRAGMA page_count").fetchone()[0]
+                    * repo._connection.execute("PRAGMA page_size").fetchone()[0])
+            def storage_write_bytes():
+                return int(next(line.split(":", 1)[1] for line in Path("/proc/self/io").read_text().splitlines()
+                    if line.startswith("write_bytes:")))
+            baseline = db_bytes()
+            write_baseline = storage_write_bytes()
+            previous_writes = write_baseline
+            previous = baseline
+            hashes = []
+            expected_raw = {}
+            expected_index = {}
+            for cycle in range(cycles):
+                at[0] = NOW + cycle * STEP
+                records = _records(products, at[0])
+                for record in records:
+                    observation = record.observation
+                    assert observation.record_id not in expected_raw
+                    expected_raw[observation.record_id] = (canonical_json(observation.to_dict()), record.raw_payload)
+                acquired = _snapshot(records, at[0])
+                start_phase()
+                started = time.perf_counter()
+&gt;               assert ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo, acquired, now_ns=at[0])
+E               AssertionError: assert False
+E                +  where False = &lt;function ProductionOpsCyclePortV1._persist_broad_public_snapshot at 0x7fc874fc0a40&gt;(namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7fc874e5c0b0&gt;...ambda&gt; at 0x7fc874fc7420&gt;, service_public_stream=&lt;function measure_bounded_cycles.&lt;locals&gt;.&lt;lambda&gt; at 0x7fc874fc74c0&gt;), &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fc8751d3b90&gt;, BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='2d2f07ba3630d683f807ecb9561...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32), now_ns=1800000000000000000)
+E                +    where &lt;function ProductionOpsCyclePortV1._persist_broad_public_snapshot at 0x7fc874fc0a40&gt; = ProductionOpsCyclePortV1._persist_broad_public_snapshot
+
+tests/v2/test_session041_scale_review.py:152: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_scale_review" name="test_future_row_rejection_keeps_exact_rejection_identity" file="tests/v2/test_session041_scale_review.py" line="278" time="0.587" /><testcase classname="tests.v2.test_session041_capacity_max_breadth" name="test_three_full_bulk_cycles_at_maximum_synthetic_breadth" file="tests/v2/test_session041_capacity_max_breadth.py" line="26" time="146.549"><failure message="AssertionError: assert False&#10; +  where False = &lt;function ProductionOpsCyclePortV1._persist_broad_public_snapshot at 0x7fc874fc0a40&gt;(namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7fc875a5f740&gt;...ambda&gt; at 0x7fc874eb8400&gt;, service_public_stream=&lt;function measure_bounded_cycles.&lt;locals&gt;.&lt;lambda&gt; at 0x7fc874eb84a0&gt;), &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fc86303b110&gt;, BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='2d2f07ba3630d683f807ecb9561...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32), now_ns=1800000000000000000)&#10; +    where &lt;function ProductionOpsCyclePortV1._persist_broad_public_snapshot at 0x7fc874fc0a40&gt; = ProductionOpsCyclePortV1._persist_broad_public_snapshot">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-68/test_three_full_bulk_cycles_at0')
+
+    def test_three_full_bulk_cycles_at_maximum_synthetic_breadth(tmp_path: Path) -&gt; None:
+        """Exercise 4096 products/8192 receipts per cycle through SQLite and Parquet.
+    
+        Inputs are deterministic synthetic venue-shaped public rows. This uses the
+        production collector, repository, Parquet archive, broad workset publisher,
+        repository restart, exact-ref hydration and archive readback through the
+        existing measurement helper. It has no venue network, stream queue,
+        enrichment, scheduler, decisions, concurrent reports or endurance phase.
+        """
+        peak_rss_before = _process_peak_rss_bytes()
+&gt;       metrics = measure_bounded_cycles(tmp_path, per_venue=2048, cycles=3)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_capacity_max_breadth.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = PosixPath('/tmp/pytest-of-kasun/pytest-68/test_three_full_bulk_cycles_at0')
+per_venue = 2048, cycles = 3
+
+    def measure_bounded_cycles(root: Path, *, per_venue=128, cycles=2):
+        """Real SQLite/collector/Parquet/workset path; fake source and fixed receipts."""
+        root.mkdir(parents=True, exist_ok=True)
+        products = _products(per_venue)
+        at = [NOW]
+        registry = InstrumentRegistryV2()
+        for product in products:
+            registry.register(product)
+        metrics = {"population": len(products), "cycles": cycles, "cadence_seconds": 10,
+            "source_shape": "one Bybit ticker and three Binance bulk market rows per symbol",
+            "excluded": ["network", "streams", "enrichment", "scheduler state", "reports", "decision work"],
+            "samples": []}
+        with OpsRepository(root / "ops.sqlite") as repo:
+            repo.register_artifacts(tuple(ArtifactIndexEntryV2(p.content_hash, "ProductContractV2", p.content_hash,
+                NOW, NOW, {"product": p.to_dict()}) for p in products))
+            collector = PublicCollectorV2(repository=repo, registry=registry, clock_ns=lambda: at[0],
+                archive=ParquetObservationArchiveV2(root / "ops-observations",
+                    compact_stream_repository=repo, clock_ns=lambda: at[0]))
+            collector.publish_indexes_after_archive = True
+            phase_service = {"last_at": 0.0, "max_gap": 0.0, "calls": 0}
+    
+            def service():
+                assert not repo._connection.in_transaction
+                observed = time.perf_counter()
+                phase_service["max_gap"] = max(phase_service["max_gap"], observed - phase_service["last_at"])
+                phase_service["last_at"] = observed
+                phase_service["calls"] += 1
+    
+            def start_phase():
+                phase_service.update(last_at=time.perf_counter(), max_gap=0.0, calls=0)
+    
+            def finish_phase():
+                return {"calls": phase_service["calls"], "max_gap_seconds": max(
+                    phase_service["max_gap"], time.perf_counter() - phase_service["last_at"])}
+    
+            port = SimpleNamespace(_collector_recovery=SimpleNamespace(collector=collector),
+                public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES,
+                    current_products=products),
+                clock_ns=lambda: at[0], service_public_stream=lambda _repo: service())
+            def db_bytes():
+                return (repo._connection.execute("PRAGMA page_count").fetchone()[0]
+                    * repo._connection.execute("PRAGMA page_size").fetchone()[0])
+            def storage_write_bytes():
+                return int(next(line.split(":", 1)[1] for line in Path("/proc/self/io").read_text().splitlines()
+                    if line.startswith("write_bytes:")))
+            baseline = db_bytes()
+            write_baseline = storage_write_bytes()
+            previous_writes = write_baseline
+            previous = baseline
+            hashes = []
+            expected_raw = {}
+            expected_index = {}
+            for cycle in range(cycles):
+                at[0] = NOW + cycle * STEP
+                records = _records(products, at[0])
+                for record in records:
+                    observation = record.observation
+                    assert observation.record_id not in expected_raw
+                    expected_raw[observation.record_id] = (canonical_json(observation.to_dict()), record.raw_payload)
+                acquired = _snapshot(records, at[0])
+                start_phase()
+                started = time.perf_counter()
+&gt;               assert ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo, acquired, now_ns=at[0])
+E               AssertionError: assert False
+E                +  where False = &lt;function ProductionOpsCyclePortV1._persist_broad_public_snapshot at 0x7fc874fc0a40&gt;(namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7fc875a5f740&gt;...ambda&gt; at 0x7fc874eb8400&gt;, service_public_stream=&lt;function measure_bounded_cycles.&lt;locals&gt;.&lt;lambda&gt; at 0x7fc874eb84a0&gt;), &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fc86303b110&gt;, BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='2d2f07ba3630d683f807ecb9561...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32), now_ns=1800000000000000000)
+E                +    where &lt;function ProductionOpsCyclePortV1._persist_broad_public_snapshot at 0x7fc874fc0a40&gt; = ProductionOpsCyclePortV1._persist_broad_public_snapshot
+
+tests/v2/test_session041_scale_review.py:152: AssertionError</failure></testcase></testsuite></testsuites>
