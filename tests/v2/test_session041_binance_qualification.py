@@ -424,11 +424,12 @@ def test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture(tmp
         trade_id = 1
         while True:
             received = time.time_ns()
-            payload = json.dumps({"e": "aggTrade", "E": received // 1_000_000,
+            payload = json.dumps({"stream": "btcusdt@aggTrade", "data": {
+                "e": "aggTrade", "E": received // 1_000_000,
                 "s": "BTCUSDT", "a": trade_id, "p": "100.01", "q": "0.01",
-                "T": received // 1_000_000, "m": False}, separators=(",", ":")).encode()
+                "T": received // 1_000_000, "m": False}}, separators=(",", ":")).encode()
             yield CapturedPublicFrameV2(VenueV2.BINANCE, "BINANCE_MARKET_PUBLIC_WS_BROAD_V2",
-                "aggTrade.BTCUSDT", payload, hashlib.sha256(payload).hexdigest(), received, received, 1)
+                "btcusdt@aggTrade", payload, hashlib.sha256(payload).hexdigest(), received, received, 1)
             trade_id += 1
             await asyncio.sleep(0.025)
 
@@ -457,7 +458,7 @@ def test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture(tmp
             assert repository.unobserved_publications_v2(run_root.name) == ()
             source_id = "BINANCE_MARKET_PUBLIC_WS_BROAD_V2"
             feed_ref = sha256_json({"instrument": key.to_dict(), "source_id": source_id,
-                "channel": "aggTrade.BTCUSDT", "metadata_ref": product.metadata_ref})
+                "channel": "btcusdt@aggTrade", "metadata_ref": product.metadata_ref})
             cutoff = time.time_ns()
             checkpoints = repository.latest_public_stream_operational_checkpoints_v1(
                 run_id=run_root.name, feed_refs=(feed_ref,), as_of_ns=cutoff)
