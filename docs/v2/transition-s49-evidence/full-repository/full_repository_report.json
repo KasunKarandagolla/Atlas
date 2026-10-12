@@ -1,0 +1,58 @@
+{
+  "authenticated_exchange_calls": 0,
+  "completion": "INCOMPLETE: no repository-wide pass/fail total is available",
+  "generated_at_utc": "2026-10-12T20:38:00.826782+00:00",
+  "network_guard": "BUBBLEWRAP_UNSHARE_NET plus Python socket/URL non-loopback guard",
+  "offline": true,
+  "provider_calls": 0,
+  "schema": "ATLAS_S49_FULL_REPOSITORY_TEST_V1",
+  "suite_result": {
+    "collected_tests": 2783,
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "--disable-warnings",
+      "tests",
+      "--junitxml=/home/kasun/Music/atlas-s49/docs/v2/transition-s49-evidence/full-repository/runs/full-repository-pytest.junit.xml"
+    ],
+    "duration_seconds": 3684.629,
+    "errors": 0,
+    "expected_gate": false,
+    "expected_gate_failures": [],
+    "failures": 0,
+    "interrupt_reason": "bounded one-hour run stopped during a long historical fixture; no complete JUnit summary",
+    "interrupted_test_fixture": "tests/v2/test_session027_production.py::test_default_production_native_m1_s3_stays_closed_without_trade_completeness",
+    "interruption_signal": "SIGKILL (signal 9) after the one-hour runtime checkpoint",
+    "junit": null,
+    "last_flushed_progress_percent": 41,
+    "last_progress_percent": 41,
+    "log": "docs/v2/transition-s49-evidence/full-repository/runs/full-repository-pytest.log",
+    "name": "full-repository-pytest",
+    "partial_marker_counts": {
+      "errors": 0,
+      "failures": 6,
+      "passed": 1185,
+      "skipped": 5,
+      "xfailed": 0,
+      "xpassed": 0
+    },
+    "reached_percent": 43.0,
+    "resource_usage": {
+      "available": true,
+      "file_system_input_blocks": 465408,
+      "file_system_output_blocks": 3222856,
+      "max_rss_kib": 996196,
+      "raw": "Command terminated by signal 9\n\tCommand being timed: \"/home/kasun/Music/atlas/.venv/bin/python -m pytest -q --disable-warnings tests --junitxml=/home/kasun/Music/atlas-s49/docs/v2/transition-s49-evidence/full-repository/runs/full-repository-pytest.junit.xml\"\n\tUser time (seconds): 1934.34\n\tSystem time (seconds): 110.81\n\tPercent of CPU this job got: 55%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 1:01:24\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 996196\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 6607\n\tMinor (reclaiming a frame) page faults: 455937\n\tVoluntary context switches: 51139\n\tInvoluntary context switches: 1287862\n\tSwaps: 0\n\tFile system inputs: 465408\n\tFile system outputs: 3222856\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "system_cpu_seconds": 110.81,
+      "user_cpu_seconds": 1934.34
+    },
+    "return_code": 137,
+    "skipped": 0,
+    "status": "INCOMPLETE",
+    "summary_complete": false,
+    "tests": 0,
+    "tests_reached_before_interrupt": 1196
+  }
+}

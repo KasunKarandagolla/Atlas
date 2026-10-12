@@ -1,0 +1,642 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="238" time="724.057" timestamp="2026-10-12T23:44:06.955485+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session020_archive_remediation" name="test_same_bar_revision_selection_is_cutoff_and_directory_order_independent[ACTUAL_SYSTEM]" time="1.355" /><testcase classname="tests.v2.test_session020_archive_remediation" name="test_same_bar_revision_selection_is_cutoff_and_directory_order_independent[RECONSTRUCTED_MARKET]" time="1.014" /><testcase classname="tests.v2.test_session020_archive_remediation" name="test_archive_scan_bound_exhaustion_raises_without_returning_partial_rows[file-count-1]" time="1.114" /><testcase classname="tests.v2.test_session020_archive_remediation" name="test_archive_scan_bound_exhaustion_raises_without_returning_partial_rows[row-count-1]" time="0.979" /><testcase classname="tests.v2.test_session020_archive_remediation" name="test_archive_scan_bound_exhaustion_raises_without_returning_partial_rows[chunk-file-bytes-1]" time="1.171" /><testcase classname="tests.v2.test_session020_archive_remediation" name="test_archive_scan_bound_exhaustion_raises_without_returning_partial_rows[chunk-decoded-bytes-1]" time="1.278" /><testcase classname="tests.v2.test_session020_archive_remediation" name="test_malformed_unrelated_archive_file_is_skipped_without_hiding_valid_rows" time="0.737" /><testcase classname="tests.v2.test_session020_archive_remediation" name="test_missing_immutable_index_locator_fails_closed_without_glob_rediscovery" time="0.894" /><testcase classname="tests.v2.test_session021_universe" name="test_s3_s6_history_eligibility_is_policy_specific_and_noncapital" time="0.010" /><testcase classname="tests.v2.test_session021_universe" name="test_future_listing_and_status_revision_do_not_change_earlier_universe" time="0.010" /><testcase classname="tests.v2.test_session037_active_history" name="test_exact_full_prefix_equivalence_beyond_two_tail_windows[15M]" time="16.855" /><testcase classname="tests.v2.test_session037_active_history" name="test_exact_full_prefix_equivalence_beyond_two_tail_windows[1H]" time="0.783" /><testcase classname="tests.v2.test_session037_active_history" name="test_exact_full_prefix_equivalence_beyond_two_tail_windows[4H]" time="0.536" /><testcase classname="tests.v2.test_session037_active_history" name="test_exact_full_prefix_equivalence_beyond_two_tail_windows[1M]" time="68.871" /><testcase classname="tests.v2.test_session037_active_history" name="test_serialized_restart_preserves_seeds_exactly_and_hash_is_immutable" time="12.649" /><testcase classname="tests.v2.test_session037_active_history" name="test_warmup_seed_boundaries_and_empty_increment_are_explicit" time="1.752" /><testcase classname="tests.v2.test_session037_active_history" name="test_late_revision_duplicate_or_reordered_page_requires_explicit_rebuild" time="0.092" /><testcase classname="tests.v2.test_session037_active_history" name="test_gaps_are_retained_and_counted_without_manufacturing_bars_or_days" time="0.005" /><testcase classname="tests.v2.test_session037_active_history" name="test_work_and_wire_budgets_identity_and_authority_are_strict" time="0.108" /><testcase classname="tests.v2.test_session037_active_history" name="test_reconstructed_market_and_forming_bars_never_enter_actual_state" time="0.019" /><testcase classname="tests.v2.test_session037_active_history" name="test_every_middle_tail_indicator_and_raw_receipt_is_identity_bound" time="1.206" /><testcase classname="tests.v2.test_session037_active_history" name="test_invalid_empty_or_non_object_wire_tail_is_explicitly_rejected[tail0]" time="0.008" /><testcase classname="tests.v2.test_session037_active_history" name="test_invalid_empty_or_non_object_wire_tail_is_explicitly_rejected[tail1]" time="0.016" /><testcase classname="tests.v2.test_session037_active_history" name="test_invalid_empty_or_non_object_wire_tail_is_explicitly_rejected[tail2]" time="0.007" /><testcase classname="tests.v2.test_session037_active_history" name="test_invalid_empty_or_non_object_wire_tail_is_explicitly_rejected[tail3]" time="0.005" /><testcase classname="tests.v2.test_session037_active_history" name="test_invalid_empty_or_non_object_wire_tail_is_explicitly_rejected[tail4]" time="0.004" /><testcase classname="tests.v2.test_session037_active_history" name="test_invalid_empty_or_non_object_wire_tail_is_explicitly_rejected[tail5]" time="0.009" /><testcase classname="tests.v2.test_session037_active_history" name="test_wire_tail_summary_count_rejects_boolean_and_wrong_source_locator" time="0.005" /><testcase classname="tests.v2.test_session037_chronology" name="test_shared_dependency_dag_has_linear_proof_work_and_no_cross_call_cache" time="1.557" /><testcase classname="tests.v2.test_session037_chronology" name="test_delayed_feature_selection_sizing_action_keep_original_m0_cutoff" time="2.221" /><testcase classname="tests.v2.test_session037_chronology" name="test_restart_reuses_exact_sizing_and_action_publications" time="1.807" /><testcase classname="tests.v2.test_session037_chronology" name="test_hash_valid_receipt_cannot_backdate_input_cutoff_or_widen_market_prefix[change0]" time="1.654" /><testcase classname="tests.v2.test_session037_chronology" name="test_hash_valid_receipt_cannot_backdate_input_cutoff_or_widen_market_prefix[change1]" time="1.558" /><testcase classname="tests.v2.test_session037_chronology" name="test_hash_valid_receipt_cannot_backdate_input_cutoff_or_widen_market_prefix[change2]" time="1.292" /><testcase classname="tests.v2.test_session037_chronology" name="test_actual_feature_publication_uses_clock_and_rejects_future_bar" time="0.691" /><testcase classname="tests.v2.test_session037_chronology" name="test_raw_after_cutoff_cannot_receive_or_be_laundered_through_receipt" time="0.615" /><testcase classname="tests.v2.test_session037_chronology" name="test_corrupt_derived_receipt_prevents_m0_consumption" time="1.617" /><testcase classname="tests.v2.test_session037_chronology" name="test_late_sizing_is_auditable_but_not_consumer_eligible" time="1.479" /><testcase classname="tests.v2.test_session037_chronology" name="test_action_cannot_publish_after_original_deadline" time="1.516" /><testcase classname="tests.v2.test_session037_chronology" name="test_no_candidate_composition_roundtrip_preserves_raw_event_identity" time="1.067" /><testcase classname="tests.v2.test_session037_chronology" name="test_delayed_candidate_set_indexes_exact_cutoff_calendar_and_rejects_bad_receipt" time="1.338" /><testcase classname="tests.v2.test_session037_chronology" name="test_production_hard_risk_calendar_waits_for_exact_action_publication" time="2.202" /><testcase classname="tests.v2.test_session037_chronology" name="test_default_port_expires_watch_on_restart_without_reopening_terminal_state" time="0.914" /><testcase classname="tests.v2.test_session037_due_work" name="test_atomic_new_origin_bypasses_bounded_migration_backlog" time="1.103" /><testcase classname="tests.v2.test_session037_due_work" name="test_terminal_history_is_retired_and_new_opportunity_is_immediately_due" time="5.760" /><testcase classname="tests.v2.test_session037_due_work" name="test_pending_horizon_is_rescheduled_and_terminal_support_not_revisited" time="0.727" /><testcase classname="tests.v2.test_session037_due_work" name="test_due_overflow_and_oldest_backlog_are_visible" time="0.569" /><testcase classname="tests.v2.test_session037_due_work" name="test_read_only_observer_sees_pressure_while_writer_continues" time="0.360" /><testcase classname="tests.v2.test_session037_due_work" name="test_supported_action_outcome_retires_without_historical_validation_loop" time="1.826" /><testcase classname="tests.v2.test_session037_due_work" name="test_prediction_crash_after_label_keeps_first_measurement_and_retires" time="1.826" /><testcase classname="tests.v2.test_session037_due_work" name="test_prediction_label_published_after_cutoff_defers_without_remeasurement" time="2.220" /><testcase classname="tests.v2.test_session037_due_work" name="test_existing_schema_migration_discovers_sources_and_never_reenqueues_retired" time="0.800" /><testcase classname="tests.v2.test_session037_due_work" name="test_due_work_projection_preserves_immutable_origin_and_cursor_across_replay_and_restart" time="0.683" /><testcase classname="tests.v2.test_session037_due_work" name="test_due_work_discovery_keeps_incomplete_and_malformed_origins_quarantinable" time="0.885" /><testcase classname="tests.v2.test_session037_due_work" name="test_quarantine_preserves_exact_identity_reason_and_restart_pressure" time="0.741" /><testcase classname="tests.v2.test_session037_due_work" name="test_malformed_action_calendar_is_accounted_and_quarantined" time="0.605" /><testcase classname="tests.v2.test_session037_due_work" name="test_malformed_prediction_terminal_is_quarantined_with_structured_diagnostic" time="0.546" /><testcase classname="tests.v2.test_session037_due_work" name="test_prediction_runs_do_not_inspect_or_quarantine_other_run_work" time="0.707" /><testcase classname="tests.v2.test_session037_due_work" name="test_prediction_missing_later_endpoint_retries_at_future_due_time" time="1.694" /><testcase classname="tests.v2.test_session037_due_work" name="test_atomic_composition_rolls_back_watch_transition_artifacts_and_due_work" time="0.650" /><testcase classname="tests.v2.test_session037_due_work" name="test_nested_composition_failure_rolls_back_only_inner_work_and_outer_commit_is_visible" time="0.388" /><testcase classname="tests.v2.test_session037_due_work" name="test_latest_artifact_page_orders_available_evidence_and_exposes_history_overflow" time="1.187" /><testcase classname="tests.v2.test_session037_due_work" name="test_latest_identity_pages_use_available_index_with_exact_string_and_integer_keys" time="1.509" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_binding_preserves_every_economic_and_independence_fact_and_exact_restart" time="2.501" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_binding_refuses_foreign_or_future_template_without_any_partial_publication[quantity]" time="1.502" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_binding_refuses_foreign_or_future_template_without_any_partial_publication[action]" time="1.796" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_binding_refuses_foreign_or_future_template_without_any_partial_publication[cutoff]" time="1.561" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_binding_refuses_foreign_or_future_template_without_any_partial_publication[model]" time="1.797" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_binding_refuses_foreign_or_future_template_without_any_partial_publication[fee]" time="1.621" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_binding_refuses_foreign_or_future_template_without_any_partial_publication[future]" time="1.727" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_binding_refuses_late_atomic_population_and_raw_templates" time="1.891" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_support_provenance_is_not_created_or_repaired_by_binding" time="1.619" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_restart_refuses_changed_publication_chronology" time="1.791" /><testcase classname="tests.v2.test_session037_economic_binding" name="test_derived_populations_are_sorted_independently_of_original_hash_order" time="2.003" /><testcase classname="tests.v2.test_session037_feature_prefix" name="test_policy_features_use_exact_prefix_indicators_and_bound_checkpoint_refs" time="5.889" /><testcase classname="tests.v2.test_session037_feature_prefix" name="test_exact_prefix_feature_context_refuses_mismatched_tail_or_incomplete_manifest" time="3.420" /><testcase classname="tests.v2.test_session037_product_refresh" name="test_hourly_unchanged_metadata_refresh_retains_one_causal_full_key" time="1.275" /><testcase classname="tests.v2.test_session037_product_refresh" name="test_conflicting_same_effective_product_receipts_fail_closed" time="1.508" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_fresh_public_missing_prerequisites_have_no_fabricated_values" time="1.297" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_supplied_supported_facts_publish_exact_refs_and_causal_clear_gate" time="1.036" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_restart_reuses_exact_publication_and_rejects_changed_evidence" time="1.088" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_late_prerequisite_publication_is_retained_but_not_consumer_eligible" time="0.848" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_invalid_supplied_evidence_is_not_promoted[type]" time="0.961" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_invalid_supplied_evidence_is_not_promoted[body]" time="0.855" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_invalid_supplied_evidence_is_not_promoted[source]" time="0.798" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_invalid_supplied_evidence_is_not_promoted[key]" time="0.923" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_future_fee_and_future_event_facts_rejected" time="0.974" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_source_backed_unresolved_incident_remains_blocked" time="1.166" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_regressing_processing_clock_cannot_publish_inventory" time="1.086" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_restart_with_event_facts_reuses_exact_gate_and_cannot_change_origin" time="1.230" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_conflicting_event_input_rolls_back_gate_inventory_and_other_inputs" time="1.457" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_event_fact_and_reference_bounds_do_not_leave_partial_publications[64]" time="2.721" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_event_fact_and_reference_bounds_do_not_leave_partial_publications[65]" time="2.842" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_unqualified_venue_and_unknown_account_remain_unestimable" time="1.480" /><testcase classname="tests.v2.test_session037_research_prerequisites" name="test_declared_execution_model_requires_exact_indexed_content_and_availability" time="1.028" /><testcase classname="tests.v2.test_session037_strategy_prefix" name="test_s1_full_prefix_watch_and_candidate_equal_bounded_exact_state[529]" time="15.346" /><testcase classname="tests.v2.test_session037_strategy_prefix" name="test_s1_full_prefix_watch_and_candidate_equal_bounded_exact_state[785]" time="24.172" /><testcase classname="tests.v2.test_session037_strategy_prefix" name="test_s2_full_prefix_candidate_economics_and_statistics_equal_exact_tail[5821]" time="20.577" /><testcase classname="tests.v2.test_session037_strategy_prefix" name="test_s2_full_prefix_candidate_economics_and_statistics_equal_exact_tail[8723]" time="27.914" /><testcase classname="tests.v2.test_session037_strategy_prefix" name="test_supplied_mismatched_or_future_history_refuses_without_legacy_fallback" time="11.591" /><testcase classname="tests.v2.test_session037_strategy_prefix" name="test_s1_mismatched_setup_and_trigger_history_refuse_without_watch_mutation" time="1.049" /><testcase classname="tests.v2.test_session041_capacity_max_breadth" name="test_three_full_bulk_cycles_at_maximum_synthetic_breadth" time="16.075"><failure message="AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-198/test_three_full_bulk_cycles_at0')
+
+    def test_three_full_bulk_cycles_at_maximum_synthetic_breadth(tmp_path: Path) -&gt; None:
+        """Exercise 4096 products/8192 receipts per cycle through SQLite and Parquet.
+    
+        Inputs are deterministic synthetic venue-shaped public rows. This uses the
+        production collector, repository, Parquet archive, broad workset publisher,
+        repository restart, exact-ref hydration and archive readback through the
+        existing measurement helper. It has no venue network, stream queue,
+        enrichment, scheduler, decisions, concurrent reports or endurance phase.
+        """
+        peak_rss_before = _process_peak_rss_bytes()
+&gt;       metrics = measure_bounded_cycles(tmp_path, per_venue=2048, cycles=3)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session041_capacity_max_breadth.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v2/test_session041_scale_review.py:151: in measure_bounded_cycles
+    assert ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo, acquired, now_ns=at[0])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7f5daac35220&gt;...ambda&gt; at 0x7f5daabc39c0&gt;, service_public_stream=&lt;function measure_bounded_cycles.&lt;locals&gt;.&lt;lambda&gt; at 0x7f5daabc37e0&gt;)
+repository = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f5da89e1460&gt;
+snapshot = BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='2d2f07ba3630d683f807ecb9561...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32)
+now_ns = 1800000000000000000
+
+    def _persist_broad_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -&gt; bool:
+        """Adopt both venues on the sole writer without inventing history completeness."""
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        publication = sample(self.clock_ns, floor_ns=now_ns)
+        if max(snapshot.observed_at_ns, snapshot.latest_received_at_ns) &gt; publication:
+            raise ValueError("BROAD_PUBLIC_SNAPSHOT_FUTURE_RECEIPT")
+        prior_clock = collector.clock_ns
+        rejected_indexes: list[int] = []
+        refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
+        pending_refs: dict[str, str] = {}
+        manifest = snapshot.source_snapshot.get("metadata", {})
+        source_by_venue = {
+            VenueV2.BYBIT: BYBIT_HTTP_SOURCE_ID,
+            VenueV2.BINANCE: BINANCE_HTTP_SOURCE_ID,
+        }
+        accepted_by_source = {
+            source_by_venue[venue]: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
+            and venue.value not in snapshot.source_snapshot.get("metadata_stale", ())
+            for venue in cast(Any, self.public_source).enabled_venues
+        }
+        accepted = all(accepted_by_source.values())
+        current_products_by_key = {
+&gt;           product.key: product for product in cast(Any, self.public_source).current_products
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        }
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'
+
+src/atlas/v2/runtime/production.py:3170: AttributeError</failure></testcase><testcase classname="tests.v2.test_session041_capture_pressure_reserve" name="test_pending_descriptor_reserve_stops_before_exhaustion_and_seals_accepted_queue" time="16.854" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_broad_profile_rejects_stale_metadata_but_default_profile_remains_compatible" time="0.053" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_fresh_metadata_receipt_does_not_require_fabricating_a_contract_revision" time="0.006" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_known_probability_exploration_is_stable_outside_primary_shortlist" time="0.024" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_broad_universe_population_bounds_fail_closed_per_venue_and_globally" time="0.008" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_broad_subscription_plan_has_bounded_tier3_fanout" time="0.029" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_s3_native_cadence_promotion_stays_within_global_tier3_cap" time="0.022" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_active_watches_reserve_tier3_slots_before_ranked_scanner_population[4]" time="0.033" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_active_watches_reserve_tier3_slots_before_ranked_scanner_population[8]" time="0.020" /><testcase classname="tests.v2.test_session041_dynamic_universe" name="test_policy_eligibility_uses_observed_per_policy_history_when_supplied" time="0.003" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_publication_services_sole_writer_without_changing_selection" time="3.975" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_publication_service_failure_cannot_publish_complete_workset" time="0.434" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_full_inventory_is_distinct_bounded_and_restart_reproduces_workset" time="57.451" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_full_universe_cache_is_bound_to_the_cutoff_visible_workset" time="0.776" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_new_mark_receipt_cannot_refresh_old_quote_fields" time="0.531" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_suspension_is_current_and_old_state_is_still_replayable" time="0.510" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_broad_pending_read_services_writer_and_keeps_one_original_completion" time="0.096" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_runtime_recovery_preserves_nonbenchmark_dual_venue_inventory" time="2.585" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_conserve_effort_records_optional_deferral_without_pausing_outcomes" time="0.512" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_collection_path_services_stream_and_commits_broad_workset" time="0.958" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_population_overflow_is_an_explicit_gate" time="1.135" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_is_actual_and_preserves_its_source_cutoff" time="0.521" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_workset_publication_rejects_regressing_clock" time="0.343" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_same_venue_research_cohort_has_twenty_keys_within_global_history_bound" time="1.283" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_adoption_waits_for_durable_archive_before_proving_current_source_health" time="0.817" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_future_market_event_is_rejected_without_rescuing_publication_time" time="0.794" /><testcase classname="tests.v2.test_session041_production_breadth" name="test_archive_completion_controls_public_index_visibility" time="0.626" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_broad_runtime_status_summarizes_phase_timing_counters" time="0.002" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_candidate_state_copies_each_distinct_feed_once" time="0.003" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_broad_production_port_integrates_acquisition_stream_workset_and_restart" time="9.334" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_preparation_completion_is_nonblocking_and_publication_stays_writer_owned" time="7.271" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_alt_only_inventory_keeps_deterministic_stream_seed_after_publication" time="3.397" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_broad_runtime_capture_progresses_during_sqlite_commit_stall" time="9.135" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls[0.1]" time="5.298" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls[0.5]" time="7.673" /><testcase classname="tests.v2.test_session041_public_runtime_integration" name="test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls[1.0]" time="7.953"><failure message="AssertionError: {'post_service_gap_ns': 1255991079, 'read_stall_overlap_ns': 1000105325, 'actual_service_durations_ns': [22750482, 898695, 115890255], 'actual_service_count': 3, ...}&#10;assert 1255991079 &lt;= 1200105327">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-198/test_reconciliation_services_r2')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f5da8d554c0&gt;
+read_stall_seconds = 1.0
+
+    @pytest.mark.parametrize("read_stall_seconds", [0.1, 0.5, 1.0])
+    def test_reconciliation_services_real_broad_stream_between_pages_under_read_stalls(
+        tmp_path, monkeypatch, read_stall_seconds: float,
+    ):
+        products = (_product("BTCUSDT", VenueV2.BYBIT), _product("BTCUSDT", VenueV2.BINANCE))
+        port, runtime, _source = _port(products, NOW)
+        service_starts: list[int] = []
+        service_durations: list[int] = []
+        read_stalls: list[tuple[int, int]] = []
+        producer_errors: list[BaseException] = []
+        actual_service_starts: list[int] = []
+        actual_service_ends: list[int] = []
+        adoption_durations_ns: list[int] = []
+        interpretation_durations_ns: list[int] = []
+        archive_write_durations_ns: list[int] = []
+        extent_write_phase_metrics: list[dict[str, int | str]] = []
+        allow_burst = (threading.Event(), threading.Event())
+        burst_frames = 2
+        frame_ordinal = 0
+        path = tmp_path / f"paged-reconciliation-{int(read_stall_seconds * 1000)}.sqlite"
+    
+        def offer_burst(handoffs, count: int) -&gt; None:
+            nonlocal frame_ordinal
+            for _ in range(count):
+                frame_ordinal += 1
+                received = NOW - 1_000_000_000 + frame_ordinal
+                if frame_ordinal % 2:
+                    event_ms = received // 1_000_000
+                    body = {"topic": "publicTrade.BTCUSDT", "type": "snapshot", "ts": event_ms,
+                        "data": [{"T": event_ms, "s": "BTCUSDT", "S": "Buy", "v": "0.01",
+                            "p": "100.01", "i": f"s41-paged-{frame_ordinal}"}]}
+                    venue, source_id, channel, lane_name = (VenueV2.BYBIT,
+                        "BYBIT_PUBLIC_WS_BROAD_V2", "publicTrade.BTCUSDT", "BYBIT")
+                else:
+                    body = {"stream": "btcusdt@aggTrade", "data": {
+                        "e": "aggTrade", "E": received // 1_000_000, "s": "BTCUSDT",
+                        "a": frame_ordinal, "p": "100.01", "q": "0.01", "f": frame_ordinal,
+                        "l": frame_ordinal, "T": received // 1_000_000, "m": False}}
+                    venue, source_id, channel, lane_name = (VenueV2.BINANCE,
+                        "BINANCE_MARKET_PUBLIC_WS_BROAD_V2", "btcusdt@aggTrade", "BINANCE_MARKET")
+                payload = json.dumps(body, separators=(",", ":")).encode()
+                frame = CapturedPublicFrameV2(venue, source_id, channel, payload,
+                    hashlib.sha256(payload).hexdigest(), received, received, 1)
+                assert handoffs[lane_name].offer(frame)
+    
+        with OpsRepository(path) as repository:
+            port.recover(repository, now_ns=NOW)
+            assert runtime.source is not None and runtime.capture is not None
+            handoffs = {name: lane._handoff for name, lane in runtime.source._lanes.items()}
+            capture = runtime.capture
+            original_runtime_service = runtime.service
+            original_adopt = SealedPublicTransportV1.adopt
+            original_interpret = runtime._interpret_frames
+            original_archive_write = L2FrameArchiveV2.write_chunks
+    
+            def measured_adopt(sealed, repository):
+                started = time.perf_counter_ns()
+                try:
+                    return original_adopt(sealed, repository)
+                finally:
+                    adoption_durations_ns.append(time.perf_counter_ns() - started)
+    
+            def measured_interpret(repository, frames, *, now_ns):
+                started = time.perf_counter_ns()
+                try:
+                    return original_interpret(repository, frames, now_ns=now_ns)
+                finally:
+                    interpretation_durations_ns.append(time.perf_counter_ns() - started)
+    
+            def measured_archive_write(archive, frames):
+                started = time.perf_counter_ns()
+                try:
+                    original_import = builtins.__import__
+    
+                    def reject_parquet_import(name, *args, **kwargs):
+                        if name == "pyarrow.parquet":
+                            raise AssertionError("compact live archive must not import legacy Parquet writer")
+                        return original_import(name, *args, **kwargs)
+    
+                    with monkeypatch.context() as import_guard:
+                        import_guard.setattr(builtins, "__import__", reject_parquet_import)
+                        return original_archive_write(archive, frames)
+                finally:
+                    archive_write_durations_ns.append(time.perf_counter_ns() - started)
+                    writer = archive.repository._public_extent_writer
+                    if writer is not None:
+                        extent_write_phase_metrics.append(dict(writer.metrics))
+    
+            monkeypatch.setattr(SealedPublicTransportV1, "adopt", measured_adopt)
+            monkeypatch.setattr(runtime, "_interpret_frames", measured_interpret)
+            monkeypatch.setattr(L2FrameArchiveV2, "write_chunks", measured_archive_write)
+    
+            def measured_runtime_service(repository, *, now_ns):
+                actual_service_starts.append(time.perf_counter_ns())
+                try:
+                    return original_runtime_service(repository, now_ns=now_ns)
+                finally:
+                    actual_service_ends.append(time.perf_counter_ns())
+    
+            monkeypatch.setattr(runtime, "service", measured_runtime_service)
+            offer_burst(handoffs, burst_frames)
+            before = capture.status().capture["pending_batches"]
+            deadline = time.monotonic() + 5
+            while capture.status().capture["pending_batches"] &lt;= before and time.monotonic() &lt; deadline:
+                time.sleep(0.01)
+            assert capture.status().capture["pending_batches"] &gt; before
+    
+            # 257 immutable refs force three collector pages. Delays are injected
+            # only for those exact page reads; stream service runs on the real
+            # supervisor path between them, on the same sole repository writer.
+            refs = []
+            entries = []
+            for index in range(257):
+                record_id = f"s41-reconnect-observation-{index}"
+                ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": record_id})
+                refs.append(ref)
+                entries.append(ArtifactIndexEntryV2(ref, "PublicObservationIndexV2",
+                    sha256_json({"observation": record_id}), NOW + 1, NOW + 1,
+                    {"record_id": record_id, "source_id": "BYBIT_PUBLIC_V2"}))
+            repository.register_artifacts(tuple(entries))
+            ordered_refs = tuple(sorted(refs))
+            pages = {ordered_refs[offset:offset + 128] for offset in range(0, len(ordered_refs), 128)}
+            original_lookup = repository.get_artifact_metadata_by_refs
+    
+            def stalled_lookup(artifact_refs):
+                requested = tuple(artifact_refs)
+                if requested in pages:
+                    started = time.perf_counter_ns()
+                    time.sleep(read_stall_seconds)
+                    read_stalls.append((started, time.perf_counter_ns()))
+                return original_lookup(artifact_refs)
+    
+            monkeypatch.setattr(repository, "get_artifact_metadata_by_refs", stalled_lookup)
+            collector_state = port._collector_recovery
+            assert collector_state is not None
+            collector = collector_state.collector
+    
+            def producer() -&gt; None:
+                try:
+                    for event in allow_burst:
+                        if not event.wait(30):
+                            raise AssertionError("next broad stream burst was not released by page service")
+                        offer_burst(handoffs, burst_frames)
+                except BaseException as exc:
+                    producer_errors.append(exc)
+    
+            producer_thread = threading.Thread(target=producer, name="s41-reconcile-stream-producer")
+            producer_thread.start()
+    
+            def service() -&gt; None:
+                assert not repository._connection.in_transaction
+                expected_captured = burst_frames * (len(service_starts) + 1)
+                deadline = time.monotonic() + 10
+                while (capture.status().capture["captured_frames"] &lt; expected_captured
+                       and time.monotonic() &lt; deadline):
+                    time.sleep(0.0005)
+                assert capture.status().capture["captured_frames"] &gt;= expected_captured
+                started = time.perf_counter_ns()
+                port.service_public_stream(repository)
+                service_durations.append(time.perf_counter_ns() - started)
+                service_starts.append(started)
+                if len(service_starts) &lt;= len(allow_burst):
+                    allow_burst[len(service_starts) - 1].set()
+    
+            health = collector.reconcile_after_reconnect(
+                "BYBIT_PUBLIC_V2", at_ns=NOW + 10_000_000_000,
+                complete_snapshot=True, missed_interval_repaired=True,
+                snapshot_refs=ordered_refs,
+                recovery_epoch_ref=collector.required_recovery_epoch_ref,
+                service_callback=service,
+            )
+            producer_thread.join(timeout=5)
+            assert not producer_thread.is_alive() and not producer_errors
+            assert health.state.value == "HEALTHY_CURRENT"
+            assert len(service_starts) == len(read_stalls) == 3
+            assert len(service_durations) == 3
+            assert sum(lane.snapshot().frames_rejected for lane in handoffs.values()) == 0
+            assert {name: lane.snapshot().frames_drained for name, lane in handoffs.items()} == {
+                "BYBIT": burst_frames * 3 // 2, "BINANCE_MARKET": burst_frames * 3 // 2,
+            }
+            assert capture.status().capture["high_water_batches"] &lt; capture.status().capture["max_pending_batches"]
+    
+            # Measure actual BroadPublicRuntime entries, not merely callbacks. Once
+            # the prior service ends, the next service is bounded by any injected
+            # page stall, the 200ms capture/service budget, and clock resolution.
+            assert len(actual_service_starts) &gt;= 2
+            assert len(actual_service_ends) == len(actual_service_starts)
+            service_gaps_ns = []
+            service_gap_limits_ns = []
+            clock_allowance_ns = int(2 * time.get_clock_info("perf_counter").resolution * 1_000_000_000)
+            for index in range(1, len(actual_service_starts)):
+                left, right = actual_service_ends[index - 1], actual_service_starts[index]
+                overlap_ns = sum(max(0, min(right, end) - max(left, start))
+                    for start, end in read_stalls if end &gt; left and start &lt; right)
+                gap_ns = right - left
+                allowed_ns = overlap_ns + 200_000_000 + clock_allowance_ns
+                service_gaps_ns.append(gap_ns)
+                service_gap_limits_ns.append(allowed_ns)
+&gt;               assert gap_ns &lt;= allowed_ns, {
+                    "post_service_gap_ns": gap_ns,
+                    "read_stall_overlap_ns": overlap_ns,
+                    "actual_service_durations_ns": [end - start for start, end in zip(
+                        actual_service_starts, actual_service_ends, strict=True)],
+                    "actual_service_count": len(actual_service_starts),
+                    "runtime_reported_max_gap_ns": runtime._max_service_gap_ns,
+                }
+E               AssertionError: {'post_service_gap_ns': 1255991079, 'read_stall_overlap_ns': 1000105325, 'actual_service_durations_ns': [22750482, 898695, 115890255], 'actual_service_count': 3, ...}
+E               assert 1255991079 &lt;= 1200105327
+
+tests/v2/test_session041_public_runtime_integration.py:757: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_s6_cohort" name="test_mixed_environment_peer_cannot_pollute_s6_proxy_cohort" time="30.095" /><testcase classname="tests.v2.test_session041_s6_cohort" name="test_s6_proxy_cohort_matches_full_venue_environment_product_identity" time="0.016" /><testcase classname="tests.v2.test_session041_s6_cohort" name="test_full_strategy_surface_keeps_bybit_and_binance_s6_cohorts_distinct" time="1.154" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_full_surface_emits_explicit_not_estimable_roles_and_zero_authority" time="2.001" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s4_requires_indexed_feature_and_preserves_actual_feature_publication" time="2.159" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_universe_must_be_visible_at_information_cutoff" time="1.567" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_global_population_bound_counts_nested_prepared_histories" time="1.622" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s7_calendar_or_empty_context_never_generates_directional_rows" time="1.975" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_explicit_s7_inputs_cannot_define_the_complete_indexed_event_population" time="3.339" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_derived_surface_waits_for_actual_universe_publication" time="2.185" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s8_uses_only_exact_owner_registered_pair_definitions" time="0.890" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication" time="1.659" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s7_event_overflow_is_deterministic_explicit_and_does_not_stop_other_roles" time="4.676" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_native_public_locator_validates_raw_hash_and_exact_archive" time="0.586" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_actual_loader_preserves_native_history_and_services_compose" time="3.898" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_loader_reuses_exact_production_causal_bar_index" time="2.608" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_loader_binds_btc_proxy_to_prepared_same_venue_cohort" time="2.538" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later" time="7.570" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs" time="2.095" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_critic_packet_retains_exact_analogue_retrieval_receipt_and_replay" time="6.281" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_critic_market_lineage_keeps_t0_and_original_deadline[timely_derived]" time="0.693" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_critic_market_lineage_keeps_t0_and_original_deadline[future_raw]" time="0.371" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_critic_market_lineage_keeps_t0_and_original_deadline[after_original_deadline]" time="0.534" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency" time="2.883" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s5_funding_alone_and_unqualified_flow_cannot_confirm" time="1.855" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason" time="2.469" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s4_baseline_requires_three_qualified_prior_exact_samples" time="3.806" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s4_baseline_rejects_index_body_that_differs_from_typed_fit" time="3.551" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_prepared_s5_composes_with_actual_context_publication_and_receipt" time="5.250" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_prepared_s5_rejects_future_raw_source_despite_late_delivery" time="5.223" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_prior_prefix_research_receipt_keeps_own_cutoff_and_rejects_future_raw" time="0.613" /><testcase classname="tests.v2.test_session041_strategy_surface" name="test_s6_reuses_exact_immutable_first_publication" time="0.494" /><testcase classname="tests.v2.test_session041_mixed_broad_capacity" name="test_mixed_1024_contract_public_workload_under_bounded_stalls" time="48.594"><failure message="assert (True and not [AssertionError('bounded public handoff rejected a frame: {&quot;capture_captured_frames&quot;: 354, &quot;capture_delivered_frames&quot;:...false, &quot;queue_high_water&quot;: 480, &quot;queue_items&quot;: 480, &quot;queue_max&quot;: 512, &quot;queue_overflowed&quot;: true, &quot;queue_rejected&quot;: 1}')])&#10; +  where True = is_set()&#10; +    where is_set = &lt;threading.Event at 0x7f5d99a9c3e0: set&gt;.is_set">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-198/test_mixed_1024_contract_publi0')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x7f5d998177e0&gt;
+
+    def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, record_property):
+        products = _contracts()
+        clock = [NOW]
+        path = tmp_path / "mixed-ops.sqlite"
+        runtime = BroadPublicRuntimeV2(clock_ns=lambda: clock[0],
+            stream_factories={"BYBIT": _idle_stream(), "BINANCE_MARKET": _idle_stream()})
+        source = _DeterministicBybitSource(products, NOW)
+        port = BroadProductionOpsCyclePortV2(public_source=source, broad_runtime=runtime,
+            clock_ns=lambda: clock[0])
+        interpreted: list[CapturedPublicFrameV2] = []
+        original_interpreter = runtime._interpret_frames
+        interpreter_samples: list[dict[str, int]] = []
+    
+        def observe_interpreter(repository, frames, *, now_ns):
+            started = time.monotonic_ns()
+            interpreted.extend(frames)
+            try:
+                return original_interpreter(repository, frames, now_ns=now_ns)
+            finally:
+                interpreter_samples.append({"frames": len(frames), "duration_ns": time.monotonic_ns() - started})
+    
+        runtime._interpret_frames = observe_interpreter
+        identity = TuningRunIdentityV1("s41-mixed-broad-capacity", "a" * 64, "b" * 40, 0)
+        report_dir = tmp_path / "reports"
+        offered: list[CapturedPublicFrameV2] = []
+        commit_observation: dict[str, float | int] = {}
+        archive_stall_seconds: list[float] = []
+        reader_snapshots: list[tuple[int, int]] = []
+        report_release = threading.Event()
+        producer_stop = threading.Event()
+        def export_during_stall():
+            if not report_release.wait(60.0):
+                raise TimeoutError("report export did not reach the injected commit stall")
+            return export_tuning_snapshot(path, report_dir, identity, cutoff_ns=NOW + 20_000_000_000)
+    
+        exporter = ReadOnlyReportWorkerV1(export_during_stall)
+        export_completion = []
+    
+        try:
+            with OpsRepository(path) as repository:
+                # Persist representative active watch state through the repository's
+                # domain API. The production recovery/workset code discovers these
+                # rows; the stream plan receives no direct active-key override.
+                cohort_venue = sorted((VenueV2.BYBIT, VenueV2.BINANCE), key=lambda venue: venue.value)[
+                    (NOW // DAY_NS) % 2]
+                cohort_candidates = sorted((item for item in products if item.key.venue == cohort_venue),
+                    key=lambda item: (item.key.native_symbol != "BTCUSDT",
+                        item.key.native_symbol not in {"BTCUSDT", "ETHUSDT"},
+                        item.key.to_canonical_json()))[:20]
+                watch_keys = tuple(item.key for item in cohort_candidates[:8])
+                for index, key in enumerate(watch_keys):
+                    watch_id = sha256_json({"session": "041-mixed-watch", "key": key.to_dict()})
+                    repository.create_watch(OpportunityWatchV2(
+                        watch_id, key, "SYNTHETIC_CAPACITY_PROBE", "V1",
+                        sha256_json({"policy": index}), WatchStateV2.DETECTED, 0,
+                        NOW, NOW, sha256_json({"thesis": index}), (), "TRADE",
+                        NOW + 60_000_000_000, NOW))
+                recovery = port.recover(repository, now_ns=NOW)
+                assert recovery.required_source_ids == ("BINANCE_PUBLIC_V2", "BYBIT_PUBLIC_V2")
+                assert port._collector_recovery is not None
+                collector = port._collector_recovery.collector
+                archive_flush_pending_counts: list[int] = []
+                archive_flush_durations_seconds: list[float] = []
+                original_flush_archive = collector.flush_archive
+    
+                def observe_archive_flush():
+                    archive_flush_pending_counts.append(collector.pending_archive_count)
+                    started = time.monotonic()
+                    try:
+                        return original_flush_archive()
+                    finally:
+                        archive_flush_durations_seconds.append(time.monotonic() - started)
+    
+                collector.flush_archive = observe_archive_flush
+                snapshot = source.acquire_snapshot(now_ns=NOW)
+                port._register_refreshed_stream_products(repository, snapshot)
+                runtime_service_samples: list[int] = []
+                runtime_service_timestamps: list[tuple[int, str]] = []
+                runtime_stage_samples: list[dict[str, object]] = []
+                service_phase = ["INITIAL_BROAD_SNAPSHOT_ADOPTION"]
+                original_port_service = port.service_public_stream
+    
+                def observe_port_service(repository):
+                    caller = sys._getframe(1)
+                    frames = []
+                    while caller is not None:
+                        frames.append(caller)
+                        caller = caller.f_back
+                    names = {frame.f_code.co_name for frame in frames}
+                    workset = next((frame for frame in frames
+                        if frame.f_code.co_name == "publish_broad_workset"), None)
+                    if workset is not None:
+                        service_phase[0] = f"BROAD_WORKSET_LINE_{workset.f_lineno}"
+                    elif "reconfigure" in names:
+                        service_phase[0] = "BROAD_STREAM_RECONFIGURE"
+                    elif "finish" in names:
+                        service_phase[0] = "BROAD_STREAM_FINISH"
+                    else:
+                        if "&lt;lambda&gt;" in names:
+                            service_phase[0] = "SERVICED_ACQUISITION_OR_SNAPSHOT"
+                        else:
+                            adoption = max((frame for frame in frames
+                                if frame.f_code.co_name == "_persist_broad_public_snapshot"),
+                                key=lambda frame: frame.f_lineno, default=None)
+                            if adoption is not None and adoption.f_lineno &gt;= 6307:
+                                if adoption.f_lineno &lt;= 6325:
+                                    service_phase[0] = "BROAD_SNAPSHOT_AND_WORKSET"
+                                elif adoption.f_lineno &lt;= 6333:
+                                    service_phase[0] = "BROAD_ENRICHMENT_SELECTION"
+                                elif adoption.f_lineno &lt;= 6347:
+                                    service_phase[0] = "BROAD_STREAM_RECONFIGURE"
+                                else:
+                                    service_phase[0] = "BROAD_SCHEDULER_STATE_PUBLISH"
+                    return original_port_service(repository)
+    
+                port.service_public_stream = observe_port_service
+                original_runtime_service = runtime.service
+                runtime_persistence_samples: list[dict[str, object]] = []
+    
+                def observe_runtime_service(repository, *, now_ns):
+                    started = time.monotonic_ns()
+                    runtime_service_timestamps.append((started, service_phase[0]))
+                    try:
+                        return original_runtime_service(repository, now_ns=now_ns)
+                    finally:
+                        duration_ns = time.monotonic_ns() - started
+                        runtime_service_samples.append(duration_ns)
+                        if duration_ns &gt;= 100_000_000:
+                            persistence = repository.persistence_metrics()
+                            runtime_persistence_samples.append({
+                                "service_duration_ns": duration_ns,
+                                "transaction_count": persistence.get("transaction_count"),
+                                "row_and_archive_duration_ns": persistence.get("row_and_archive_duration_ns"),
+                                "commit_duration_ns": persistence.get("commit_duration_ns"),
+                                "max_commit_duration_ns": persistence.get("max_commit_duration_ns"),
+                            })
+    
+                runtime.service = observe_runtime_service
+                original_reconfigure = runtime.reconfigure
+    
+                def observe_reconfigure(*args, **kwargs):
+                    started = time.monotonic_ns()
+                    try:
+                        return original_reconfigure(*args, **kwargs)
+                    finally:
+                        runtime_stage_samples.append({"stage": "runtime.reconfigure",
+                            "duration_ns": time.monotonic_ns() - started})
+    
+                runtime.reconfigure = observe_reconfigure
+                archive_write_samples: list[dict[str, int]] = []
+                assert runtime._archive is not None
+                original_runtime_archive_write = runtime._archive.write_chunks
+    
+                def observe_runtime_archive_write(chunks):
+                    frame_count = sum(len(group) for group in chunks)
+                    started = time.monotonic_ns()
+                    try:
+                        return original_runtime_archive_write(chunks)
+                    finally:
+                        archive_write_samples.append({"frames": frame_count,
+                            "duration_ns": time.monotonic_ns() - started})
+    
+                runtime._archive.write_chunks = observe_runtime_archive_write
+                # The fixture is synthetically shaped and may be marked incomplete
+                # by the public health gate; persistence and receipt identity below
+                # remain the measured behavior.
+                port._persist_broad_public_snapshot(repository, snapshot, now_ns=NOW)
+    
+                service_phase[0] = "INITIAL_UNIVERSE_AND_WORKSET_READ"
+                def service_runtime():
+                    port.service_public_stream(repository)
+    
+                universe = full_universe(repository, cutoff_ns=NOW, service=service_runtime)
+                body = latest_workset(repository, cutoff_ns=NOW, service=service_runtime)
+                selected = active_products(repository, cutoff_ns=NOW, service=service_runtime)
+                assert universe is not None and body is not None and selected is not None
+                assert len(universe.entries) == 1024
+                assert len({item.key for item in universe.entries}) == 1024
+                assert {item.key.venue for item in universe.entries} == {VenueV2.BYBIT, VenueV2.BINANCE}
+                assert len(selected) &lt;= 24 and len(selected) &gt; 0
+                wal_after_first_publication = _wal_size(path)
+                assert body["selected_count"] == len(selected)
+                assert not any(entry.capital_eligible or entry.scanner_eligible for entry in universe.entries)
+                # Stream subscriptions follow the collector's actual workset tiers,
+                # repository watch state, and runtime benchmarks.
+                actual_tiers = {InstrumentKeyV2.from_dict(json.loads(key)): int(value)
+                                for key, value in body["tiers"].items()}
+                tier3_keys = {key for key, tier in actual_tiers.items() if tier &gt;= 3}
+                deep_keys = {item.key for item in runtime.plan.identities
+                             if item.channel.startswith("orderbook.50.") or "@depth" in item.channel}
+                assert runtime.plan is not None
+                assert len(deep_keys) == 8 and set(watch_keys).issubset(deep_keys)
+                assert tier3_keys.issubset(set(runtime.plan.keys))
+                assert len(runtime.plan.keys) &lt;= 24
+    
+                # Open a separate read-only snapshot while the live database is in WAL mode.
+                # Keep the supervisor's normal public-stream service boundary active
+                # while diagnostics inspect the published broad universe.
+                service_phase[0] = "INITIAL_READ_ONLY_SNAPSHOT_OPEN"
+                port.service_public_stream(repository)
+                with OpsRepository(path, read_only=True) as reader:
+                    reader_snapshots.append((len(full_universe(reader, cutoff_ns=NOW,
+                        service=service_runtime).entries),
+                        reader._connection.execute("PRAGMA data_version").fetchone()[0]))
+                port.service_public_stream(repository)
+    
+                assert runtime.source is not None and runtime.capture is not None
+                bybit_lane = runtime.source._lanes["BYBIT"]
+                handoff = bybit_lane._handoff
+                stream_key = next(identity.key for identity in runtime.plan.identities
+                                  if identity.venue == VenueV2.BYBIT
+                                  and identity.channel.startswith("publicTrade."))
+    
+                # A real read-only report worker runs alongside ingestion; its output
+                # is polled while capture continues, then the exact same export is
+                # checked after the ingestion cutoff.
+                # The read-only worker is gated until the active commit stall, so
+                # its SQLite snapshot opens while the writer is committing.
+                port.service_public_stream(repository)
+                assert exporter.start()
+                before_artifacts = repository._connection.execute(
+                    "SELECT count(*) FROM artifact_index").fetchone()[0]
+    
+                original_connection = repository._connection
+                stalled = False
+                stream_go = threading.Event()
+                producer_done = threading.Event()
+                producer_error: list[BaseException] = []
+                captured_during_commit: list[int] = []
+                capture_during_commit_samples: list[dict[str, object]] = []
+    
+                def producer() -&gt; None:
+                    try:
+                        assert stream_go.wait(2.0)
+                        next_due = time.monotonic()
+                        index = 0
+                        while not producer_stop.is_set():
+                            frame = _frame(index, stream_key)
+                            if not handoff.offer(frame):
+                                capture_status = runtime.capture.status() if runtime.capture is not None else None
+                                handoff_status = handoff.snapshot()
+                                detail = {
+                                    "index": index,
+                                    "queue_items": handoff_status.queue_items,
+                                    "queue_max": handoff_status.max_queue_items,
+                                    "queue_high_water": handoff_status.high_water_items,
+                                    "queue_rejected": handoff_status.frames_rejected,
+                                    "queue_closed": handoff_status.closed,
+                                    "queue_overflowed": handoff_status.overflowed,
+                                    "queue_backpressure": handoff_status.backpressure,
+                                    "capture_pending_batches": (capture_status.capture["pending_batches"]
+                                        if capture_status is not None else None),
+                                    "capture_max_pending_batches": (capture_status.capture["max_pending_batches"]
+                                        if capture_status is not None else None),
+                                    "capture_pressure_threshold_batches": (capture_status.capture[
+                                        "pressure_stop_threshold_batches"] if capture_status is not None else None),
+                                    "capture_pending_frames": (capture_status.capture["pending_frames"]
+                                        if capture_status is not None else None),
+                                    "capture_captured_frames": (capture_status.capture["captured_frames"]
+                                        if capture_status is not None else None),
+                                    "capture_delivered_frames": (capture_status.capture["delivered_frames"]
+                                        if capture_status is not None else None),
+                                    "capture_terminal_error": (capture_status.capture["terminal_error"]
+                                        if capture_status is not None else None),
+                                }
+                                raise AssertionError(
+                                    "bounded public handoff rejected a frame: " + json.dumps(detail, sort_keys=True))
+                            offered.append(frame)
+                            index += 1
+                            next_due += 1 / 160
+                            producer_stop.wait(max(0.0, next_due - time.monotonic()))
+                    except BaseException as exc:
+                        producer_error.append(exc)
+                    finally:
+                        producer_done.set()
+    
+                class CommitStall:
+                    def __getattr__(self, name):
+                        return getattr(original_connection, name)
+    
+                    def commit(self):
+                        nonlocal stalled
+                        if not stalled:
+                            stalled = True
+                            stream_go.set()
+                            report_release.set()
+                            before = time.monotonic()
+                            assert runtime.capture is not None
+                            deadline = before + 3.0
+                            while time.monotonic() &lt; deadline:
+                                capture_status = runtime.capture.status()
+                                captured = int(capture_status.capture["captured_frames"])
+                                capture_during_commit_samples.append({
+                                    "captured_frames": captured,
+                                    "queued_frames": capture_status.handoff.queue_items,
+                                    "pending_frames": capture_status.capture["pending_frames"],
+                                    "terminal_error": capture_status.capture["terminal_error"],
+                                    "archive_phase": capture_status.capture["archive"].get("active_phase"),
+                                    "capture_thread_alive": bool(runtime.capture._capture._thread
+                                        and runtime.capture._capture._thread.is_alive()),
+                                })
+                                if captured and time.monotonic() - before &gt;= 0.5:
+                                    captured_during_commit.append(captured)
+                                    break
+                                time.sleep(0.01)
+                            commit_observation["stall_seconds"] = time.monotonic() - before
+                            commit_observation["captured_during_stall"] = max(captured_during_commit, default=0)
+                            commit_observation["samples"] = capture_during_commit_samples
+                        return original_connection.commit()
+    
+                producer_thread = threading.Thread(target=producer, name="s41-mixed-producer")
+                producer_thread.start()
+                repository._connection = CommitStall()
+                try:
+                    marker = {"mixed_stall_marker": NOW}
+                    marker_ref = sha256_json(marker)
+                    repository.register_artifact(ArtifactIndexEntryV2(marker_ref,
+                        "Session041MixedStallMarkerV1", marker_ref, NOW, NOW, marker))
+                finally:
+                    repository._connection = original_connection
+                marker_count = repository._connection.execute("SELECT count(*) FROM artifact_index").fetchone()[0]
+                completion = None
+                report_deadline = time.monotonic() + 60.0
+                report_service_calls = 0
+                service_phase[0] = "CONCURRENT_REPORT_EXPORT"
+                while completion is None and time.monotonic() &lt; report_deadline:
+                    try:
+                        port.service_public_stream(repository)
+                    except Exception as exc:
+                        capture_status = runtime.capture.status() if runtime.capture is not None else None
+                        detail = {
+                            "failure": f"{type(exc).__name__}:{exc}",
+                            "captured_frames": (capture_status.capture.get("captured_frames")
+                                if capture_status is not None else None),
+                            "delivered_frames": (capture_status.capture.get("delivered_frames")
+                                if capture_status is not None else None),
+                            "pending_batches": (capture_status.capture.get("pending_batches")
+                                if capture_status is not None else None),
+                            "pending_frames": (capture_status.capture.get("pending_frames")
+                                if capture_status is not None else None),
+                            "handoff_items": (capture_status.handoff.queue_items
+                                if capture_status is not None else None),
+                            "handoff_overflowed": (capture_status.handoff.overflowed
+                                if capture_status is not None else None),
+                            "capture_terminal_error": (capture_status.capture.get("terminal_error")
+                                if capture_status is not None else None),
+                            "service_calls": len(runtime_service_samples),
+                            "service_max_ns": max(runtime_service_samples, default=0),
+                            "service_recent_ns": runtime_service_samples[-12:],
+                            "interpreter_recent_ms": [round(row["duration_ns"] / 1_000_000, 2)
+                                for row in interpreter_samples[-12:]],
+                            "archive_recent_ms": [round(row["duration_ns"] / 1_000_000, 2)
+                                for row in archive_write_samples[-12:]],
+                            "capture_archive": (capture_status.capture.get("archive")
+                                if capture_status is not None else None),
+                            "service_persistence_slow_samples": runtime_persistence_samples[-5:],
+                        }
+                        raise AssertionError("mixed capacity service failed: " +
+                                             json.dumps(detail, sort_keys=True)) from exc
+                    report_service_calls += 1
+                    completion = exporter.poll()
+                    if completion is None:
+                        time.sleep(0.01)
+                assert completion is not None
+                producer_stop.set()
+                producer_thread.join(timeout=3.0)
+&gt;               assert producer_done.is_set() and not producer_error
+E               assert (True and not [AssertionError('bounded public handoff rejected a frame: {"capture_captured_frames": 354, "capture_delivered_frames":...false, "queue_high_water": 480, "queue_items": 480, "queue_max": 512, "queue_overflowed": true, "queue_rejected": 1}')])
+E                +  where True = is_set()
+E                +    where is_set = &lt;threading.Event at 0x7f5d99a9c3e0: set&gt;.is_set
+
+tests/v2/test_session041_mixed_broad_capacity.py:439: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_stream_plan_is_venue_aware_and_aggregate_queue_keeps_global_caps" time="0.007" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_broad_handoff_borrows_idle_lane_capacity_without_exceeding_frozen_aggregate" time="0.037" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_broad_capture_drain_uses_full_batch_when_only_one_lane_is_busy" time="0.007" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_binance_depth_frame_preserves_pu_update_range_without_claiming_book" time="0.004" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_stream_plan_fails_closed_on_deep_fanout_and_missing_product_revision" time="0.013" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_runtime_binance_snapshot_worker_bridges_buffered_actual_diff" time="0.448" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_runtime_persists_typed_trade_identity_and_receipt_continuity" time="0.396" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[0.1]" time="0.822" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[0.5]" time="1.164" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[1.0]" time="1.714" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[3.0]" time="3.862" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[5.0]" time="6.027" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_invalidated_snapshot_cannot_seed_a_book_after_worker_completion[epoch]" time="0.344" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_invalidated_snapshot_cannot_seed_a_book_after_worker_completion[overflow]" time="0.340" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_invalidated_snapshot_cannot_seed_a_book_after_worker_completion[deadline]" time="0.336" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_progress_reads_actual_lane_health_and_does_not_retain_stale_current_claim" time="0.013" /><testcase classname="tests.v2.test_session041_broad_stream_source" name="test_actual_connection_epoch_change_invalidates_even_apparently_contiguous_book" time="0.847" /><testcase classname="tests.v2.test_session041_stream_service_paging" name="test_reconnect_reconciliation_services_between_exact_ref_pages" time="1.619" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_profile_is_immutable_binance_only_and_has_no_authority" time="0.061" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_child_environment_drops_credentials_and_provider_secrets" time="0.011" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_selected_path_rejects_symlink_source_tree_and_root" time="0.066" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_binance_factory_never_constructs_bybit_or_authenticated_clients" time="0.005" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_due_cycle_and_queue_loss_gates_fail_closed" time="0.005" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_capture_payload_histogram_keeps_oversize_bucket_and_exact_window" time="0.004" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_capture_payload_metrics_are_opt_in_for_qualification_only" time="0.006" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_final_backlog_gate_detects_growth_and_requires_coverage" time="0.010" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_report_slots_missed_beyond_one_cadence_fail_closed" time="0.004" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_completed_measurement_requires_real_durable_public_payload" time="0.005" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_stream_manifest_enforces_reviewed_population_caps" time="0.006" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_capture_payload_metric_gate_fails_closed_when_not_enabled" time="0.005" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_rate_samples_use_actual_monotonic_counter_deltas" time="0.004" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_qualification_traffic_keeps_lane_channel_rates_and_exact_burst_peaks" time="0.006" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_qualification_traffic_empty_and_truncated_windows_are_explicit" time="0.005" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_resource_summary_exposes_missing_one_second_buckets_and_worker_metrics" time="0.008" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_diagnostic_failure_receipt_carries_missing_measurement_reasons" time="0.150" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_trade_geometry_distinguishes_zero_activity_from_missing_evidence" time="0.003" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_trade_geometry_accounts_for_partially_populated_lanes" time="0.006" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_missing_trade_geometry_and_empty_stream_cannot_complete_receipt" time="0.067" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_repository_reports_window_scoped_sqlite_commit_timing" time="0.506" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_phase_window_preserves_worker_phase_semantics_without_summing" time="0.004" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_causal_reader_excludes_unobserved_and_future_publication" time="0.530" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_causal_read_requires_every_active_stream_checkpoint" time="0.003" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture" time="7.216" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_ordinary_v2_start_rejects_before_public_factory_when_capacity_missing" time="0.287" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_qualification_marker_blocks_ordinary_run_and_restart" time="0.564" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_cancellation_before_measurement_emits_failed_receipt_without_decisions" time="0.599" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_diagnostic_child_requires_supervisor_token" time="0.207" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_parent_rejects_unsafe_path_before_host_probe_or_child" time="0.005" /><testcase classname="tests.v2.test_session041_binance_qualification" name="test_supervisor_binds_one_time_child_and_private_run_tree" time="0.119" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_new_profile_is_versioned_opt_in_and_leaves_v1_hash_shape_unchanged" time="0.016" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_reuses_bulk_quotes_publishes_one_exact_final_m15_and_restores" time="0.018"><properties><property name="source_acquisition_duration_ns" value="6826560" /><property name="close_attempt_duration_ns" value="2967589" /></properties></testcase><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_rejects_eligible_population_overflow_without_truncating" time="0.013" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_rejects_incompatible_venue_before_inactive_client_construction" time="0.003" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_marks_late_final_bar_instead_of_calling_it_complete" time="0.011" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_broad_workset_uses_internal_interval_and_rest_health_identity" time="0.473" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_timely_profile_origin_reaches_durable_candidate_set_and_restart_is_idempotent" time="9.099"><properties><property name="supervisor_collection_elapsed_ns" value="2167399246" /><property name="source_acquisition_duration_ns" value="9464695" /></properties></testcase><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_late_close_profile_is_durably_missing_without_event_after_restart" time="7.095" /><testcase classname="tests.v2.test_session046_peer_context" name="test_pair_context_uses_exact_common_h1_returns_and_existing_s6_betas" time="5.900" /><testcase classname="tests.v2.test_session046_peer_context" name="test_future_tail_and_late_revision_do_not_change_point_in_time_identity" time="0.344" /><testcase classname="tests.v2.test_session046_peer_context" name="test_missing_misaligned_and_gapped_inputs_are_explicitly_unavailable" time="0.253" /><testcase classname="tests.v2.test_session046_peer_context" name="test_zero_variance_and_btc_collinearity_never_emit_numeric_zero" time="0.617" /><testcase classname="tests.v2.test_session046_peer_context" name="test_reconstructed_view_is_explicit_and_never_mixed_with_actual_s6_state" time="18.882" /><testcase classname="tests.v2.test_session046_peer_context" name="test_cache_rebuilds_after_restart_and_invalidates_on_source_change" time="0.607" /><testcase classname="tests.v2.test_session046_peer_context" name="test_cache_cutoff_ttl_and_h1_revision_invalidation" time="1.933" /><testcase classname="tests.v2.test_session046_peer_context" name="test_cache_expired_before_publication_is_stale_not_not_yet_available" time="0.225" /><testcase classname="tests.v2.test_session046_peer_context" name="test_new_product_revision_is_not_eligible_for_old_universe_cache" time="0.156" /><testcase classname="tests.v2.test_session046_peer_context" name="test_cache_eviction_is_bounded_fifo_and_pair_only_has_no_venue_side_effects" time="1.123" /></testsuite></testsuites>

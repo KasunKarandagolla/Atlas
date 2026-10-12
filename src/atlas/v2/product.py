@@ -133,6 +133,12 @@ class ResearchRunConfigV1:
 _OPAQUE_REFERENCE_RE = re.compile(r"(?:ref_[A-Za-z0-9_-]{1,120}|sha256:[0-9a-f]{64})\Z")
 
 
+def _discovery_effort_for_slider(value: int) -> str:
+    if type(value) is not int or value not in (0, 1):
+        raise ValueError("discovery effort slider value must be 0 or 1")
+    return "CONSERVE" if value == 0 else "STANDARD"
+
+
 @dataclass(frozen=True)
 class ResearchRunConfigV2:
     """Owner-declared, non-capital run selection frozen before preflight.
@@ -161,6 +167,7 @@ class ResearchRunConfigV2:
     minimum_free_disk_bytes: int = 1_073_741_824
     provider_profile: str = "DISABLED"
     public_acquisition_profile: str | None = None
+    discovery_effort: str | None = None
 
     def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 2:
@@ -199,6 +206,8 @@ class ResearchRunConfigV2:
             raise ValueError("unregistered provider dispatch profile")
         if self.public_acquisition_profile not in (None, BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1):
             raise ValueError("unregistered public acquisition profile")
+        if self.discovery_effort not in (None, "CONSERVE", "STANDARD"):
+            raise ValueError("unsupported optional discovery effort")
         if self.public_acquisition_profile == BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1 and (
                 self.public_venues != ("BINANCE",) or self.selected_execution_venue != "BINANCE"
                 or self.execution_profile != "DISABLED" or self.provider_profile != "DISABLED"
@@ -239,6 +248,10 @@ class ResearchRunConfigV2:
         body = asdict(self)
         if self.public_acquisition_profile is None:
             body.pop("public_acquisition_profile")
+        # Missing means a pre-S49 run using the original standard queue cadence.
+        # Keep its immutable configuration hash readable without migration.
+        if self.discovery_effort is None:
+            body.pop("discovery_effort")
         return sha256_json(body)
 
 
@@ -273,8 +286,10 @@ def _selected_run_configuration_text(
 ) -> str:
     """Render immutable run identity without exposing protected secret values."""
     if isinstance(config, ResearchRunConfigV2):
+        discovery_effort = config.discovery_effort or "STANDARD"
         identity = (
             f"public venues: {' + '.join(config.public_venues)}; "
+            f"discovery effort: {discovery_effort}; "
             f"authenticated execution: {config.selected_execution_venue} / {config.execution_environment}; "
             f"execution profile: {config.execution_profile}; "
             f"native instrument: {config.execution_instrument_symbol or 'NOT SET'}; "
@@ -984,6 +999,11 @@ def launch_run(run: Path) -> subprocess.Popen[bytes]:
     manifest = load_run(run)
     if (run / "qualification-profile.json").exists():
         raise RuntimeError("QUALIFICATION_ONLY_RUN_CANNOT_ENTER_ORDINARY_STARTUP")
+    config = _run_config(manifest["configuration"])
+    if config.provider_profile != "DISABLED":
+        raise RuntimeError("EXTERNAL_PROVIDER_CALL_REQUIRES_SEPARATE_AUTHORIZATION")
+    if isinstance(config, ResearchRunConfigV2) and config.execution_profile != "DISABLED":
+        raise RuntimeError("AUTHENTICATED_EXCHANGE_ACCESS_REQUIRES_SEPARATE_AUTHORIZATION")
     from .runtime.live_health import QualificationLatchV1
 
     if QualificationLatchV1(run, run_id=manifest["run_id"], config_hash=manifest["config_hash"]).read() is not None:
@@ -1421,7 +1441,8 @@ def run_component(run: Path, *, smoke: bool = False, stop_requested: Callable[[]
         port = create_broad_public_port(
             enabled_venues=tuple(VenueV2(venue) for venue in config.public_venues),
             close_driven_m15_profile=(
-                config.public_acquisition_profile == BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1))
+                config.public_acquisition_profile == BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1),
+            discovery_effort=config.discovery_effort or "STANDARD")
     else:
         port = create_bybit_public_ws_port()
     if not smoke and not isinstance(config, ResearchRunConfigV2) and port.public_stream_source is not None:
@@ -1960,17 +1981,17 @@ def owner_live_indicator(run: Path, *, now_ns: int) -> dict[str, Any]:
 def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     from concurrent.futures import ThreadPoolExecutor
 
-    from PySide6.QtCore import QTimer
+    from PySide6.QtCore import Qt, QTimer
     from PySide6.QtWidgets import (
         QApplication,
         QCheckBox,
         QComboBox,
         QFileDialog,
-        QInputDialog,
         QLabel,
         QLineEdit,
         QMessageBox,
         QPushButton,
+        QSlider,
         QVBoxLayout,
         QWidget,
     )
@@ -2002,10 +2023,9 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     layout.addWidget(QLabel("Execution environment"))
     layout.addWidget(execution_environment)
     execution_profile = QComboBox()
+    execution_profile.setObjectName("atlasExecutionProfile")
     execution_profile.addItem("Disabled", "DISABLED")
-    execution_profile.addItem("Demo/test account checks", "DEMO_READ_ONLY_QUALIFICATION")
-    execution_profile.addItem("Demo/test native OMS qualification", "DEMO_NATIVE_OMS_QUALIFICATION")
-    layout.addWidget(QLabel("Demo/test qualification profile for a new run"))
+    layout.addWidget(QLabel("Exchange account / execution profile — disabled in this observer"))
     layout.addWidget(execution_profile)
     execution_symbol = QLineEdit()
     layout.addWidget(QLabel("Native demo/test symbol (required for OMS qualification)"))
@@ -2022,10 +2042,9 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     layout.addWidget(QLabel("Research runs"))
     layout.addWidget(runs)
     provider = QComboBox()
+    provider.setObjectName("atlasProviderProfile")
     provider.addItem("Intelligence disabled", "DISABLED")
-    provider.addItem("Optional DeepSeek V4.1 Flash action critic", "deepseek-v41-action-critic-v1")
-    provider.addItem("Optional OpenAI GPT-6 Astra S7 event extraction", S7_EVENT_EXTRACTION_PROFILE)
-    layout.addWidget(QLabel("Intelligence configuration for new runs"))
+    layout.addWidget(QLabel("External AI provider — disabled until separately authorized"))
     layout.addWidget(provider)
     acquisition_profile = QComboBox()
     acquisition_profile.addItem("Standard broad refresh", None)
@@ -2034,6 +2053,33 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
         BINANCE_CLOSE_DRIVEN_M15_PROFILE_V1)
     layout.addWidget(QLabel("Public acquisition profile for a new run"))
     layout.addWidget(acquisition_profile)
+    layout.addWidget(QLabel("Discovery effort — optional deep research only"))
+    discovery_effort = QSlider(Qt.Orientation.Horizontal)
+    discovery_effort.setObjectName("atlasDiscoveryEffort")
+    discovery_effort.setRange(0, 1)
+    discovery_effort.setSingleStep(1)
+    discovery_effort.setTickInterval(1)
+    discovery_effort.setTickPosition(QSlider.TickPosition.TicksBelow)
+    discovery_effort.setValue(1)
+    layout.addWidget(discovery_effort)
+    discovery_effort_label = QLabel()
+    discovery_effort_label.setWordWrap(True)
+    layout.addWidget(discovery_effort_label)
+
+    def describe_discovery_effort(value: int) -> None:
+        if value == 0:
+            discovery_effort_label.setText(
+                "Conserve: hold optional broad-strategy research in its durable queue and record the deferral. "
+                "Market observations, S1/S2 deadlines, risk/protection, decision events, outcomes and recovery continue."
+            )
+        else:
+            discovery_effort_label.setText(
+                "Standard: process up to one queued optional broad-research snapshot per maintenance cycle. "
+                "Mandatory market and safety work is independent of this setting."
+            )
+
+    discovery_effort.valueChanged.connect(describe_discovery_effort)
+    describe_discovery_effort(discovery_effort.value())
     owner_pairs_edit = QLineEdit()
     owner_pairs_edit.setReadOnly(True)
     owner_pairs_button = QPushButton("Select optional S8 research pair configuration")
@@ -2058,10 +2104,6 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     buttons = {name: QPushButton(name) for name in ("Create run", "Storage preflight", "Start / resume", "Stop", "Export report")}
     for button in buttons.values():
         layout.addWidget(button)
-    secret_button = QPushButton("Store selected provider key securely")
-    layout.addWidget(secret_button)
-    venue_secret_button = QPushButton("Configure demo/test credentials securely")
-    layout.addWidget(venue_secret_button)
     credential_status_label = QLabel("Demo/test credential status: NOT CONFIGURED")
     layout.addWidget(credential_status_label)
     selected_run_configuration_label = QLabel(
@@ -2071,17 +2113,15 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     alerts_label = QLabel("Recent public alerts: no selected run")
     alerts_label.setWordWrap(True)
     layout.addWidget(alerts_label)
-    demo_check_button = QPushButton("Check selected demo/test account")
-    layout.addWidget(demo_check_button)
-    demo_start_button = QPushButton("Start selected demo/test OMS")
-    demo_stop_button = QPushButton("Stop selected demo/test OMS")
-    layout.addWidget(demo_start_button)
-    layout.addWidget(demo_stop_button)
-    layout.addWidget(QLabel("Provider use requires an explicitly selected run configuration and protected key. Live provider conformance remains a TEST GATE."))
+    layout.addWidget(QLabel(
+        "Credentials are provisioned outside this window. This interface does not accept secrets or start exchange execution."
+    ))
+    layout.addWidget(QLabel(
+        "Provider dispatch is separate from this read-only observer; external provider qualification remains a TEST GATE."
+    ))
     reports = ThreadPoolExecutor(max_workers=1, thread_name_prefix="atlas-report")
     pending_report: Any = None
     pending_preflight: Any = None
-    pending_demo_check: Any = None
     last_selected_details_refresh = float("-inf")
 
     def refresh_credential_status() -> None:
@@ -2174,6 +2214,7 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
                     execution_instrument_symbol=execution_symbol.text().strip() or None,
                     provider_profile=provider.currentData(),
                     public_acquisition_profile=acquisition_profile.currentData(),
+                    discovery_effort=_discovery_effort_for_slider(discovery_effort.value()),
                     owner_pair_configuration_hash=pair_hash,
                     official_fomc_source_profile_json=calendar_profile_edit.property("canonical_profile"),
                 )
@@ -2236,65 +2277,8 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
 
     calendar_profile_button.clicked.connect(choose_calendar_profile)
 
-    def store_secret() -> None:
-        nonlocal last_selected_details_refresh
-        profile = provider.currentData()
-        if profile == "DISABLED":
-            QMessageBox.information(window, "ATLAS", "Select a provider profile before storing its key.")
-            return
-        provider_name = "OpenAI" if profile == S7_EVENT_EXTRACTION_PROFILE else "DeepSeek"
-        value, accepted = QInputDialog.getText(window, "Optional provider key", provider_name + " API key",
-                                               QLineEdit.EchoMode.Password)
-        if accepted and value:
-            try:
-                WindowsSecretStore(Path(root_edit.text()).expanduser().resolve() / "secrets").put_provider_key(
-                    profile, value)
-                last_selected_details_refresh = float("-inf")
-                refresh_selected_run_details()
-                QMessageBox.information(window, "ATLAS", "Key stored with Windows protection in the selected data root. No key value is displayed.")
-            except Exception as exc:
-                QMessageBox.warning(window, "ATLAS", "Secret storage failed: " + type(exc).__name__)
-            finally:
-                value = ""
-
-    def store_venue_credentials() -> None:
-        reference = credential_ref.text().strip()
-        if not reference:
-            QMessageBox.warning(window, "ATLAS", "Enter an opaque credential reference before configuring demo/test credentials.")
-            return
-        key, key_accepted = QInputDialog.getText(window, "Demo/test credential", "API key",
-                                                 QLineEdit.EchoMode.Password)
-        if not key_accepted or not key:
-            return
-        secret, secret_accepted = QInputDialog.getText(window, "Demo/test credential", "API secret",
-                                                       QLineEdit.EchoMode.Password)
-        if not secret_accepted or not secret:
-            key = ""
-            return
-        try:
-            venue = execution_venue.currentData()
-            environment = execution_environment.currentData()
-            WindowsSecretStore(Path(root_edit.text()).expanduser().resolve() / "secrets").put_demo_exchange_credentials(
-                reference, venue, environment, key, secret)
-            refresh_credential_status()
-            QMessageBox.information(window, "ATLAS", "Demo/test credential is protected for this venue, environment, and reference. No venue authentication or order call is performed.")
-        except Exception as exc:
-            QMessageBox.warning(window, "ATLAS", "Credential storage failed: " + type(exc).__name__)
-        finally:
-            key = ""
-            secret = ""
-
     def refresh_status() -> None:
-        nonlocal pending_report, pending_preflight, pending_demo_check
-        if pending_demo_check is not None and pending_demo_check.done():
-            try:
-                result = pending_demo_check.result()
-                QMessageBox.information(window, "ATLAS demo/test account", result["account_profile"] + ": "
-                    + ", ".join(result["account_profile_reasons"]) + "\nCapital and assisted execution disabled.")
-            except Exception as exc:
-                QMessageBox.warning(window, "ATLAS demo/test account", "Account check failed: " + type(exc).__name__)
-            pending_demo_check = None
-            demo_check_button.setEnabled(True)
+        nonlocal pending_report, pending_preflight
         if pending_preflight is not None and pending_preflight.done():
             try:
                 result = pending_preflight.result()
@@ -2335,19 +2319,6 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     for name, button in buttons.items():
         button.clicked.connect(lambda checked=False, name=name: action(name))
     browse.clicked.connect(choose_folder)
-    secret_button.clicked.connect(store_secret)
-    venue_secret_button.clicked.connect(store_venue_credentials)
-
-    def check_selected_demo() -> None:
-        nonlocal pending_demo_check
-        try:
-            if pending_demo_check is None:
-                pending_demo_check = reports.submit(check_demo_account_for_run, selected())
-                demo_check_button.setEnabled(False)
-        except Exception as exc:
-            QMessageBox.warning(window, "ATLAS demo/test account", "Account check failed: " + type(exc).__name__)
-
-    demo_check_button.clicked.connect(check_selected_demo)
     def selected_run_changed(_index: int = -1) -> None:
         nonlocal last_selected_details_refresh
         last_selected_details_refresh = float("-inf")
@@ -2355,17 +2326,6 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
 
     runs.currentIndexChanged.connect(selected_run_changed)
 
-    def demo_action(start: bool) -> None:
-        try:
-            if start:
-                launch_selected_demo(selected())
-            else:
-                request_demo_stop(selected())
-        except Exception as exc:
-            QMessageBox.warning(window, "ATLAS demo/test OMS", "Operation failed: " + type(exc).__name__)
-
-    demo_start_button.clicked.connect(lambda: demo_action(True))
-    demo_stop_button.clicked.connect(lambda: demo_action(False))
     root_edit.editingFinished.connect(refresh_runs)
     root_edit.editingFinished.connect(refresh_credential_status)
     credential_ref.editingFinished.connect(refresh_credential_status)
@@ -2376,7 +2336,7 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
     timer = QTimer(window)
     timer.timeout.connect(refresh_status)
     timer.start(2000)
-    window.resize(600, 500)
+    window.resize(680, 820)
     window.show()
     smoke_result: dict[str, Any] = {}
     if smoke:
@@ -2384,6 +2344,11 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
             refresh_status()
             smoke_result.update(status="TESTED", check="DESKTOP_STARTUP_AND_OWNER_GUIDANCE",
                 window_visible=window.isVisible(), preflight_control_present="Storage preflight" in buttons,
+                discovery_effort_control_present=discovery_effort.objectName() == "atlasDiscoveryEffort",
+                discovery_effort_default="STANDARD" if discovery_effort.value() == 1 else "CONSERVE",
+                external_provider_options_present=provider.count() > 1,
+                authenticated_execution_options_present=execution_profile.count() > 1,
+                credential_inputs_present=False, exchange_execution_controls_present=False,
                 health_indicator_present=bool(health_label.text()), live_run_started=False,
                 capital_enabled=False, assisted_enabled=False)
             window.close()
@@ -2394,7 +2359,11 @@ def desktop(*, smoke: bool = False, data_root: Path | None = None) -> int:
         result = app.exec()
         if smoke:
             if not smoke_result or not all(smoke_result[key] for key in (
-                    "window_visible", "preflight_control_present", "health_indicator_present")):
+                    "window_visible", "preflight_control_present", "discovery_effort_control_present",
+                    "health_indicator_present")) or smoke_result.get("external_provider_options_present") is not False \
+                    or smoke_result.get("authenticated_execution_options_present") is not False \
+                    or smoke_result.get("credential_inputs_present") is not False \
+                    or smoke_result.get("exchange_execution_controls_present") is not False:
                 raise ValueError("desktop startup/owner-guidance smoke did not complete")
             print(json.dumps(smoke_result))
         return result

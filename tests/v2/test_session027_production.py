@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import builtins
 import importlib
+import os
 import socket
 import urllib.request
 from collections.abc import Mapping
@@ -1088,6 +1089,12 @@ def test_default_production_composes_public_to_risk_action_and_economics_after_r
             for artifact_type in before_restart
         }
     assert after_restart == before_restart
+
+    if os.environ.get("ATLAS_S49_REQUIRE_AGENT_BRIDGE") == "1":
+        assert receipt.agent_mode != "DISABLED", (
+            "ATLAS_S49_AGENT_INTEGRATION_GATE: actual production event receipt keeps the S47 research agent disabled; "
+            "Decision Brief/agent/memory are not connected to this runtime workflow"
+        )
 
 
 def test_default_production_native_m1_s3_stays_closed_without_trade_completeness(tmp_path, monkeypatch):

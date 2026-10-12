@@ -9,14 +9,18 @@ from conftest import T0, add_intent, q
 
 from atlas.domain.enums import CommandOutcome, CommandType
 from atlas.domain.execution import make_command
-from atlas.runtime.binance_demo import BinanceDemoIdentity
+from atlas.runtime.binance_demo import (
+    BinanceDemoIdentity,
+    external_client_order_id,
+    verify_binance_protection,
+)
 from atlas.runtime.position_lifecycle import project_position_lifecycle
 from atlas.runtime.reconciliation_evidence import DEFAULT_EXECUTION_RISK_QUERIES, QueryType, ReconciliationRun
 from atlas.v2.strategies.s1_trend import ExecutableQuote
 from tests.runtime.test_session041_binance_demo import product
 
 
-def capture(journal, *, qty="0", contingent=0, fault=None, unknown=False):
+def capture(journal, *, qty="0", contingent=0, fault=None, unknown=False, run_id="s48-run", verified_stop=False):
     p = product()
     identity = BinanceDemoIdentity("owner-demo", "binance-demo-key")
     intent = add_intent(journal)
@@ -36,8 +40,67 @@ def capture(journal, *, qty="0", contingent=0, fault=None, unknown=False):
     journal.persist_command(command)
     journal.mark_send_started("entry", T0 + 1)
     journal.update_command_outcome("entry", CommandOutcome.UNKNOWN if unknown else CommandOutcome.RECONCILED)
+    if verified_stop:
+        stop_client_id = "a" * 32
+        stop = make_command(
+            command_id="repair-stop",
+            intent_id=intent.intent_id,
+            command_type=CommandType.REPAIR_STOP,
+            payload_dict={
+                "identity_hash": identity.content_hash,
+                "instrument_ref": p.content_hash,
+                "symbol": "SOLUSDT",
+                "client_order_id": stop_client_id,
+                "side": "SELL",
+                "quantity": str(abs(Decimal(qty))),
+                "price": "100",
+                "stop": "90",
+                "reduce_only": True,
+            },
+            expected_state_version=0,
+            created_at_ns=T0,
+        )
+        journal.persist_command(stop)
+        journal.mark_send_started(stop.command_id, T0 + 1)
+        journal.update_command_outcome(stop.command_id, CommandOutcome.RECONCILED)
+        raw_stop = {
+            "symbol": "SOLUSDT",
+            "algoId": 202,
+            "algoType": "CONDITIONAL",
+            "clientAlgoId": external_client_order_id(stop_client_id),
+            "algoStatus": "NEW",
+            "orderType": "STOP_MARKET",
+            "workingType": "MARK_PRICE",
+            "positionSide": "BOTH",
+            "side": "SELL" if Decimal(qty) > 0 else "BUY",
+            "closePosition": True,
+            "triggerPrice": "90",
+            "reduceOnly": False,
+            "quantity": "0",
+        }
+        stop_readback = verify_binance_protection(
+            raw_stop,
+            symbol="SOLUSDT",
+            client_order_id=stop_client_id,
+            stop=Decimal("90"),
+            signed_position=Decimal(qty),
+            now_ns=T0 + 1,
+            received_at_ns=T0 + 1,
+        )
+        protection_fact = {
+            "command_id": stop.command_id,
+            "verified": stop_readback.verified,
+            "reason": stop_readback.reason,
+            "observed_at_ns": stop_readback.observed_at_ns,
+            "position_epoch": intent.position_epoch,
+            "signed_position": qty,
+            "algo_order_id": stop_readback.algo_order_id,
+            "stop": "90",
+        }
+    else:
+        protection_fact = None
     journal.create_reconciliation_run(
-        ReconciliationRun("s48-run", identity.account_scope_ref, "SOLUSDT", "writer", 1, "runtime", T0, None)
+        ReconciliationRun(run_id, identity.account_scope_ref, "SOLUSDT", "writer", 1, "runtime", T0, None)
     )
     for kind in DEFAULT_EXECUTION_RISK_QUERIES:
         facts = {
@@ -48,13 +111,13 @@ def capture(journal, *, qty="0", contingent=0, fault=None, unknown=False):
             "receipt_source": "SIGNED_BINANCE_DEMO_READER",
             "response_hashes": ["a" * 64],
         }
-        records = contingent if kind == QueryType.CONDITIONAL_ORDERS else 0
+        records = (1 if verified_stop else contingent) if kind == QueryType.CONDITIONAL_ORDERS else 0
         if kind == QueryType.POSITIONS:
             facts.update(signed_qty=qty, position_epoch=0)
             if fault == "contradictory":
                 facts["signed_qty"] = "NaN"
         if kind == QueryType.TRADING_STOP:
-            facts["protection_readbacks"] = []
+            facts["protection_readbacks"] = [protection_fact] if protection_fact else []
         if fault == "venue":
             facts["execution_key"] = replace(p.key, contract_revision="wrong").to_dict()
         e = q(
@@ -68,18 +131,18 @@ def capture(journal, *, qty="0", contingent=0, fault=None, unknown=False):
             receipt_time_ns=T0 + 1,
         )
         journal.append_reconciliation_query_evidence(e)
-        journal.bind_query_to_run("s48-run", e.query_id)
+        journal.bind_query_to_run(run_id, e.query_id)
     if fault != "incomplete":
-        journal.complete_reconciliation_run("s48-run", T0 + 10)
+        journal.complete_reconciliation_run(run_id, T0 + 10)
     quote = ExecutableQuote(p.key, Decimal("119"), Decimal("120"), T0, T0, "fixture-quote")
     return intent, p, identity, quote
 
 
-def project(journal, inputs, **changes):
+def project(journal, inputs, *, reconciliation_run_id="s48-run", **changes):
     intent, p, identity, quote = inputs
     args = {
         "journal": journal,
-        "reconciliation_run_id": "s48-run",
+        "reconciliation_run_id": reconciliation_run_id,
         "intent_id": intent.intent_id,
         "identity": identity,
         "product": p,
@@ -90,6 +153,48 @@ def project(journal, inputs, **changes):
         "funding_schedule_ref": p.funding_schedule_ref,
     }
     return project_position_lifecycle(**(args | changes))
+
+
+def test_latest_complete_absent_stop_downgrades_previously_verified_protection(journal):
+    inputs = capture(journal, qty="1", run_id="s49-protected", verified_stop=True)
+    protected = project(journal, inputs, reconciliation_run_id="s49-protected")
+    assert protected.state == "OPEN_PROTECTED" and protected.protection_verified
+
+    intent, p, identity, _quote = inputs
+    run_id = "s49-latest-stop-absent"
+    journal.create_reconciliation_run(
+        ReconciliationRun(run_id, identity.account_scope_ref, "SOLUSDT", "writer", 1, "runtime", T0 + 20, None)
+    )
+    for kind in DEFAULT_EXECUTION_RISK_QUERIES:
+        facts = {
+            "execution_key": p.key.to_dict(),
+            "instrument_ref": p.content_hash,
+            "venue_identity_hash": identity.content_hash,
+            "environment": "DEMO",
+            "receipt_source": "SIGNED_BINANCE_DEMO_READER",
+            "response_hashes": ["b" * 64],
+        }
+        if kind == QueryType.POSITIONS:
+            facts.update(signed_qty="1", position_epoch=intent.position_epoch)
+        elif kind == QueryType.TRADING_STOP:
+            facts["protection_readbacks"] = []
+        evidence = q(
+            kind,
+            f"latest-{kind.value}",
+            account=identity.account_scope_ref,
+            instrument="SOLUSDT",
+            facts=facts,
+            records=0,
+            complete=True,
+            receipt_time_ns=T0 + 21,
+        )
+        journal.append_reconciliation_query_evidence(evidence)
+        journal.bind_query_to_run(run_id, evidence.query_id)
+    journal.complete_reconciliation_run(run_id, T0 + 22)
+
+    latest = project(journal, inputs, reconciliation_run_id=run_id, now_ns=T0 + 23)
+    assert latest.state == "OPEN_UNPROTECTED"
+    assert not latest.protection_verified
 
 
 def test_flat_risk_evidence_is_not_mature_economic_evidence(journal):

@@ -1081,6 +1081,26 @@ def _project_statuses(
         DesktopStatusV2("data_health", "UNAVAILABLE", "SOURCE_HEALTH_NOT_REPORTED"),
         DesktopStatusV2("capital_state", "BLOCKED", "CAPITAL_DISABLED", reason_code="CAPITAL_AUTHORITY_DISABLED"),
         DesktopStatusV2("protection_recovery", "UNAVAILABLE", "RECOVERY_HEALTH_NOT_INDEXED"),
+        DesktopStatusV2(
+            "decision_brief", "UNAVAILABLE", "NOT_CONNECTED_TO_PRODUCTION", reason_code="S47_BRIEF_NOT_INDEXED"
+        ),
+        DesktopStatusV2(
+            "research_agent", "DISABLED", "PRODUCTION_AGENT_MODE_DISABLED", reason_code="S47_AGENT_DISPATCH_DISABLED"
+        ),
+        DesktopStatusV2(
+            "model_provider", "UNAVAILABLE", "NO_EXTERNAL_PROVIDER_CALL", reason_code="PROVIDER_QUALIFICATION_TEST_GATE"
+        ),
+        DesktopStatusV2(
+            "position_lifecycle",
+            "UNAVAILABLE",
+            "EXECUTION_JOURNAL_NOT_CONNECTED",
+            reason_code="LIFECYCLE_PROJECTION_NOT_INDEXED",
+        ),
+        DesktopStatusV2(
+            "due_work", "UNAVAILABLE", "DUE_TASKS_NOT_PROJECTED", reason_code="DUE_WORK_PROJECTION_NOT_INDEXED"
+        ),
+        DesktopStatusV2("decision_calendar", "UNAVAILABLE", "NOT_REPORTED"),
+        DesktopStatusV2("matured_outcomes", "UNAVAILABLE", "NOT_REPORTED"),
     ]
     unavailable = {
         "process",
@@ -1094,7 +1114,22 @@ def _project_statuses(
         "research_health",
         "data_health",
         "protection_recovery",
+        "decision_brief",
+        "model_provider",
+        "position_lifecycle",
+        "due_work",
+        "decision_calendar",
+        "matured_outcomes",
     }
+
+    calendar_count = sum(item.artifact_type == "DecisionCalendarEntryV2" for item in entries)
+    if calendar_count:
+        status[-2] = DesktopStatusV2("decision_calendar", "AVAILABLE", str(calendar_count))
+        unavailable.discard("decision_calendar")
+    matured_count = sum(item.artifact_type == "MaturedOutcomeV2" for item in entries)
+    if matured_count:
+        status[-1] = DesktopStatusV2("matured_outcomes", "AVAILABLE", str(matured_count))
+        unavailable.discard("matured_outcomes")
 
     observation_times = [
         item.available_at_ns

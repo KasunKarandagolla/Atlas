@@ -9,7 +9,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from atlas.v2._serialization import canonical_json, sha256_json
+from atlas.v2.data.binance import SOURCE_ID as BINANCE_HTTP_SOURCE_ID
 from atlas.v2.data.broad_public_source import BroadPublicSnapshotV2, PublicInputRecordV2
+from atlas.v2.data.bybit import SOURCE_ID as BYBIT_HTTP_SOURCE_ID
 from atlas.v2.data.collector import PublicCollectorV2
 from atlas.v2.data.history import ParquetObservationArchiveV2
 from atlas.v2.data.raw import RawObservationV2
@@ -24,11 +26,14 @@ from atlas.v2.instruments import (
 )
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.runtime.broad_universe import full_universe, latest_workset, publish_broad_workset
-from atlas.v2.runtime.production import ProductionOpsCyclePortV1
+from atlas.v2.runtime.production import (
+    BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1,
+    ProductionOpsCyclePortV1,
+)
 
 NOW = 1_800_000_000_000_000_000
 STEP = 10_000_000_000
-SOURCES = ("BINANCE_USDM_PUBLIC_V2", "BYBIT_PUBLIC_V2")
+SOURCES = (BINANCE_HTTP_SOURCE_ID, BYBIT_HTTP_SOURCE_ID)
 
 
 def _products(per_venue):
@@ -55,7 +60,7 @@ def _records(products, at, *, future=False):
                 "ask1Size": "162.125", "turnover24h": "20000000", "volume24h": "200000",
                 "openInterest": "42000", "openInterestValue": "4200000",
                 "fundingRate": "0.0001", "nextFundingTime": "1800007200000"}),)
-            source = "BYBIT_PUBLIC_V2"
+            source = BYBIT_HTTP_SOURCE_ID
         else:
             rows = (("BOOK_TICKER", {"symbol": symbol, "bidPrice": "99.99", "bidQty": "142.250",
                     "askPrice": "100.01", "askQty": "162.125", "time": at // 1_000_000}),
@@ -68,7 +73,7 @@ def _records(products, at, *, future=False):
                     "highPrice": "101", "lowPrice": "98", "volume": "200000",
                     "quoteVolume": "20000000", "openTime": 1799913600000,
                     "closeTime": at // 1_000_000, "firstId": 120000, "lastId": 125000, "count": 5001}))
-            source = "BINANCE_USDM_PUBLIC_V2"
+            source = BINANCE_HTTP_SOURCE_ID
         for event, row in rows:
             payload = canonical_json(row).encode()
             raw = RawObservationV2.build(instrument_revision=product.key.contract_revision,
@@ -123,7 +128,8 @@ def measure_bounded_cycles(root: Path, *, per_venue=128, cycles=2):
                 phase_service["max_gap"], time.perf_counter() - phase_service["last_at"])}
 
         port = SimpleNamespace(_collector_recovery=SimpleNamespace(collector=collector),
-            public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES),
+            public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES,
+                current_products=products),
             clock_ns=lambda: at[0], service_public_stream=lambda _repo: service())
         def db_bytes():
             return (repo._connection.execute("PRAGMA page_count").fetchone()[0]
@@ -271,7 +277,12 @@ def test_two_representative_bulk_cycles_retain_all_receipts_and_cutoffs(tmp_path
     print("SESSION041_SCALE_METRICS=" + json.dumps(metrics, sort_keys=True))
     assert metrics["population"] == 256
     assert all(sample["record_count"] == 512 for sample in metrics["samples"])
-    assert metrics["archive_file_count"] == 2
+    expected_archive_pages = sum(
+        (sample["record_count"] + BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1 - 1)
+        // BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1
+        for sample in metrics["samples"]
+    )
+    assert metrics["archive_file_count"] == expected_archive_pages
     assert metrics["samples"][1]["db_growth_bytes"] > 0
 
 
@@ -284,7 +295,8 @@ def test_future_row_rejection_keeps_exact_rejection_identity(tmp_path):
         collector = PublicCollectorV2(repository=repo, registry=registry, clock_ns=lambda: NOW,
             archive=ParquetObservationArchiveV2(tmp_path / "ops-observations"))
         port = SimpleNamespace(_collector_recovery=SimpleNamespace(collector=collector),
-            public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES),
+            public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES,
+                current_products=products),
             clock_ns=lambda: NOW, service_public_stream=lambda _repo: None)
         records = _records(products, NOW, future=True)
         assert not ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo,

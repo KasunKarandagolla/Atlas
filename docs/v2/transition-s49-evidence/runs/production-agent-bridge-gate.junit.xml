@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="633.015" timestamp="2026-10-12T22:19:07.278673+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session027_production" name="test_default_production_composes_public_to_risk_action_and_economics_after_restart" time="625.072"><failure message="AssertionError: ATLAS_S49_AGENT_INTEGRATION_GATE: actual production event receipt keeps the S47 research agent disabled; Decision Brief/agent/memory are not connected to this runtime workflow&#10;assert 'DISABLED' != 'DISABLED'&#10; +  where 'DISABLED' = OpsSupervisorReceiptV1(runtime_version='ATLAS_OPS_SUPERVISOR_V2_V1', cycle_id='94731ad5ea48250b4f5a4e95bcb18c1247e7e1f...SS_UNESTIMABLE'), created_at_ns=2610900000000013, agent_mode='DISABLED', capital_enabled=False, assisted_enabled=False).agent_mode">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-184/test_default_production_compos0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7faef7645130&gt;
+
+    def test_default_production_composes_public_to_risk_action_and_economics_after_restart(tmp_path, monkeypatch):
+        path = tmp_path / "ops.sqlite"
+        archive_root = tmp_path / "ops-observations"
+        with OpsRepository(path) as repository:
+            cutoff_ns, product = _seed_default_public_evidence(repository, archive_root=archive_root)
+            assert repository.artifact_entries("CandidateActionV2") == ()
+            # The live product warms an exact retained prefix in bounded pages.
+            # This decision/restart fixture starts with that prior maintenance
+            # complete, preserving its original full-source indicator seeds.
+            from atlas.v2.runtime.active_history import maintain_history
+            for interval in (BarIntervalV2.M15,BarIntervalV2.H1,BarIntervalV2.H4):
+                ready = False
+                for step in range(32):
+                    warm_cutoff = cutoff_ns - 10_000 + step*100
+                    page = maintain_history(repository,archive_root,key=product.key,interval=interval,
+                        cutoff_ns=warm_cutoff,clock_ns=lambda at=warm_cutoff:at+1,deadline_ns=warm_cutoff+10)
+                    if page.ready:
+                        ready = True
+                        break
+                assert ready
+            for _ in range(24):
+                discovered = repository.m15_origin_observation_page(product.key,
+                    available_from_ns=0,available_through_ns=cutoff_ns+1,limit=4)
+                if discovered.entries:
+                    break
+            assert discovered.entries
+    
+        def forbid_network(*args, **kwargs):
+            raise AssertionError("default production composition attempted a network request")
+    
+        monkeypatch.setattr(socket, "create_connection", forbid_network)
+        monkeypatch.setattr(urllib.request, "urlopen", forbid_network)
+    
+        coordinator_calls = []
+        coordinator_methods = (
+            (production.S1ShadowCoordinator, "create_watch", "S1"),
+            (production.S1ShadowCoordinator, "on_bar", "S1"),
+            (production.S2ShadowCoordinator, "on_trigger_close", "S2"),
+            (production.S3ShadowCoordinator, "evaluate_setup", "S3"),
+        )
+        for coordinator, method_name, label in coordinator_methods:
+            original = getattr(coordinator, method_name)
+    
+            def counted(self, *args, _original=original, _label=label, **kwargs):
+                coordinator_calls.append(_label)
+                return _original(self, *args, **kwargs)
+    
+            monkeypatch.setattr(coordinator, method_name, counted)
+    
+        clock = FakeClock(cutoff_ns + 1)
+        port = production.create_production_port()
+        assert type(port.public_source) is production.IndexedPublicCycleSourceV1
+        assert type(port.inputs_provider) is production.IndexedProductionEventInputsV1
+        injected = []
+    
+        def crash_after_selection(stage):
+            if stage == PipelineStageV1.SELECTION and not injected:
+                injected.append(stage)
+                raise RuntimeError("deterministic composition restart boundary")
+    
+        port.crash_after_checkpoint = crash_after_selection
+        with OpsSupervisorV2(path, port, clock_ns=clock) as supervisor:
+            waiting = supervisor.run_once()
+            assert not waiting.event_receipts
+            assert not waiting.cycle.event_ids
+            assert port._collector_recovery is not None
+            assert port._collector_recovery.collector.health.latest("fixture-public").state == (
+                PublicSourceStateV2.INCOMPLETE_SNAPSHOT
+            )
+            prior_reconciliations = supervisor.repository.artifact_entries("OpsPublicSourceReconciliationV1")
+            assert any(
+                item.metadata["reconciliation"].get("recovery_epoch_ref") != port._collector_recovery.recovery_epoch_ref
+                for item in prior_reconciliations
+            )
+            clock.now_ns += 1
+            assert supervisor.repository is not None
+            _index_reconnect_reconciliation(
+                supervisor.repository, source_id="fixture-public",
+                epoch_ref=port._collector_recovery.recovery_epoch_ref, at_ns=clock.now_ns,
+            )
+            interrupted = supervisor.run_once()
+            assert not interrupted.event_receipts
+            assert interrupted.cycle.event_ids
+            assert interrupted.cycle.failure_types == ("RuntimeError",)
+            assert supervisor.repository is not None
+            repository = supervisor.repository
+            assert port._collector_recovery is not None
+            assert port._collector_recovery.collector.repository is repository
+            assert not repository.read_only
+            assert interrupted.cycle.source_health_state == "HEALTHY_CURRENT"
+            event_entry, = repository.artifact_entries("OpsDecisionEventSourceV1")
+            event = production.decision_event_from_dict(event_entry.metadata["event"])
+            assert event.information_cutoff_ns == cutoff_ns
+            assert event.source_event_at_ns == cutoff_ns
+            assert event.available_at_ns == cutoff_ns
+            assert event.deadline_ns &gt; interrupted.cycle.started_at_ns
+            assert "OpsPublicSourceReconciliationV1" in {
+                entry.artifact_type for entry in repository.artifact_entries("OpsPublicSourceReconciliationV1")
+            }
+            feature_entries = repository.artifact_entries("FeatureArtifactV2")
+            assert feature_entries
+            from atlas.v2.chronology import causal_artifact
+            assert all(event.information_cutoff_ns &lt; entry.available_at_ns &lt;= event.deadline_ns
+                       for entry in feature_entries)
+            assert all(causal_artifact(repository, entry.artifact_ref,
+                       cutoff_ns=event.information_cutoff_ns, consumer_at_ns=event.deadline_ns,
+                       deadline_ns=event.deadline_ns) for entry in feature_entries)
+            candidate_set_checkpoint = repository.get_artifact(
+                OpsSupervisorV2._checkpoint_ref(event.event_id, PipelineStageV1.CANDIDATE_SET)
+            )
+            selection_checkpoint = repository.get_artifact(
+                OpsSupervisorV2._checkpoint_ref(event.event_id, PipelineStageV1.SELECTION)
+            )
+            assert candidate_set_checkpoint is not None and selection_checkpoint is not None
+            candidate_set_ref = candidate_set_checkpoint.metadata["stage_result"]["artifact_refs"][0]
+            candidate_set_entry = repository.get_artifact(candidate_set_ref)
+            assert candidate_set_entry is not None
+            candidate_set = CandidateSetV2.from_dict(json_value(candidate_set_entry.metadata["candidate_set"]))
+            # All S1/S2 exact prefixes were warmed above. M1 is deliberately absent
+            # and belongs to S3's separate native event, so it must not block this
+            # M15 decision or bypass the remaining restart/economic assertions.
+            generation = repository.artifact_entries("OpsCandidateGenerationEvidenceV1")
+            assert generation and not generation[0].metadata["generation"]["missing_reasons"]
+            assert candidate_set.selected_candidate_id is not None
+            assert candidate_set.candidates
+            candidate_ref = next(iter(candidate_set_entry.metadata["identity"]["candidate_refs"]))
+            candidate_entry = repository.get_artifact(candidate_ref)
+            assert candidate_entry is not None
+            candidate = CandidateActionV2.from_dict(json_value(candidate_entry.metadata["candidate"]))
+            assert candidate.candidate_id == candidate_set.selected_candidate_id
+            assert candidate.policy_hash == S2_POLICY.policy_hash
+            assert candidate.quantity is None
+            assert any(
+                entry.artifact_type == "FeatureArtifactV2" and entry.artifact_ref == candidate.snapshot_hash
+                for entry in feature_entries
+            )
+            # S3 has moved to its native one-minute event. The M15 decision must
+            # continue to invoke only the unchanged S1/S2 production sleeves.
+            assert {"S1", "S2"}.issubset(set(coordinator_calls))
+            assert "S3" not in coordinator_calls
+            indexed_candidates = tuple(repository.artifact_entries("CandidateActionV2"))
+            assert {entry.artifact_ref for entry in indexed_candidates} == set(
+                candidate_set_entry.metadata["identity"]["candidate_refs"]
+            )
+            s3_states = [entry for entry in repository.artifact_entries("S3MeanReversionStateV2")
+                         if entry.available_at_ns &lt;= event.information_cutoff_ns]
+            assert not s3_states
+            assert not any(
+                CandidateActionV2.from_dict(json_value(entry.metadata["candidate"])).policy_hash == S3_POLICY.policy_hash
+                for entry in repository.artifact_entries("CandidateActionV2")
+            )
+            assert repository.artifact_entries("OpsSupervisorReceiptIdentityV1") == ()
+    
+        # The exact typed evidence is indexed only after the production coordinator
+        # has generated and selected the candidate.
+        with OpsRepository(path) as repository:
+            _seed_default_risk_and_economic_evidence(
+                repository, event=event, candidate=candidate, product=product, candidate_set=candidate_set,
+            )
+            assert repository.get_artifact(candidate.content_hash) is not None
+    
+        port.crash_after_checkpoint = None
+        clock.now_ns += 1
+        with OpsSupervisorV2(path, port, clock_ns=clock) as restarted:
+            waiting = restarted.run_once()
+            assert not waiting.event_receipts
+            assert port._collector_recovery is not None
+            assert port._collector_recovery.collector.health.latest("fixture-public").state == (
+                PublicSourceStateV2.INCOMPLETE_SNAPSHOT
+            )
+            clock.now_ns += 10
+            assert restarted.repository is not None
+            _index_reconnect_reconciliation(
+                restarted.repository, source_id="fixture-public",
+                epoch_ref=port._collector_recovery.recovery_epoch_ref, at_ns=clock.now_ns,
+            )
+            completed = restarted.run_once()
+            assert len(completed.event_receipts) == 1
+            receipt = completed.event_receipts[0]
+            assert receipt.event.event_id == event.event_id
+            assert receipt.candidate_set_ref == candidate_set.content_hash
+            assert receipt.result.terminal_status == OpsTerminalStatusV1.NOT_ESTIMABLE
+            assert receipt.agent_mode == "DISABLED"
+            assert not receipt.capital_enabled and not receipt.assisted_enabled
+            assert receipt.sizing_ref and receipt.action_ref and receipt.evaluation_ref and receipt.calendar_refs
+            assert receipt.to_dict()["action_hash"]
+            repository = restarted.repository
+            assert repository is not None
+            assert len(repository.artifact_entries("CandidateActionV2")) == 1
+            assert len(repository.artifact_entries("CandidateSetV2")) == 1
+            assert len(repository.artifact_entries("SizingDecisionV2")) == 1
+            assert len(repository.artifact_entries("ActionArtifactV2")) == 1
+            assert len(repository.artifact_entries("EvaluationArtifactV2")) == 1
+            assert len(repository.artifact_entries("DecisionCalendarEntryV2")) == 1
+            assert len(repository.artifact_entries("OpsRiskEvidenceResolutionV1")) == 1
+            assert len(repository.artifact_entries("OpsEconomicEvidenceResolutionV1")) == 1
+            sizing = repository.get_artifact(receipt.sizing_ref)
+            action = repository.get_artifact(receipt.action_ref)
+            evaluation = repository.get_artifact(receipt.evaluation_ref)
+            assert sizing is not None and action is not None and evaluation is not None
+            sizing_body = sizing.metadata["sizing"]
+            action_identity = action.metadata["action_identity"]
+            assert sizing_body["status"] == "SIZED"
+            assert sizing_body["quantity"] is not None
+            assert action_identity["quantity"] == sizing_body["quantity"]
+            assert action.metadata["action_artifact"]["action_hash"] == receipt.to_dict()["action_hash"]
+            assert evaluation.metadata["evaluation"]["decision"] == "NOT_ESTIMABLE"
+            calendar = repository.get_artifact(receipt.calendar_refs[0])
+            assert calendar is not None and calendar.artifact_type == "DecisionCalendarEntryV2"
+            assert calendar.metadata["decision_entry"]["source_stage"] == "ECONOMIC_EVALUATION"
+            assert calendar.metadata["decision_entry"]["action_artifact_ref"] == receipt.action_ref
+            assert repository.artifact_entries("TradePlanEnvelopeV2") == ()
+            assert repository.artifact_entries("OrderIntentV2") == ()
+            assert repository.artifact_entries("Approval") == ()
+            assert repository.artifact_entries("ReservationSnapshotV2") == ()
+            for stage in (PipelineStageV1.M1_DIAGNOSTIC, PipelineStageV1.ANALOGUE_DIAGNOSTIC):
+                stage_result = next(item for item in receipt.result.stages if item.stage == stage)
+                assert stage_result.bound_action_hash == receipt.to_dict()["action_hash"]
+                assert stage_result.authority == "ZERO"
+                diagnostic_entry = repository.get_artifact(stage_result.artifact_refs[0])
+                assert diagnostic_entry is not None
+                if diagnostic_entry.artifact_type == "OpsZeroAuthorityDiagnosticV1":
+                    assert diagnostic_entry.metadata["diagnostic"]["action_hash"] == receipt.to_dict()["action_hash"]
+                    assert diagnostic_entry.metadata["diagnostic"]["authority"] == "ZERO"
+                elif diagnostic_entry.artifact_type == "AnalogueActionValueV2":
+                    assert diagnostic_entry.metadata["analogue"]["query_action_hash"] == receipt.to_dict()["action_hash"]
+                else:
+                    assert diagnostic_entry.metadata["prediction"]["action_hash"] == receipt.to_dict()["action_hash"]
+            before_restart = {
+                artifact_type: tuple(entry.artifact_ref for entry in repository.artifact_entries(artifact_type))
+                for artifact_type in (
+                    "OpsDecisionEventSourceV1", "OpsSupervisorReceiptIdentityV1", "CandidateSetV2",
+                    "SizingDecisionV2", "ActionArtifactV2", "EvaluationArtifactV2", "DecisionCalendarEntryV2",
+                )
+            }
+    
+        clock.now_ns += 1
+        with OpsSupervisorV2(path, production.create_production_port(), clock_ns=clock) as replayed:
+            replayed.run_once()
+            assert replayed.repository is not None
+            after_restart = {
+                artifact_type: tuple(entry.artifact_ref for entry in replayed.repository.artifact_entries(artifact_type))
+                for artifact_type in before_restart
+            }
+        assert after_restart == before_restart
+    
+        if os.environ.get("ATLAS_S49_REQUIRE_AGENT_BRIDGE") == "1":
+&gt;           assert receipt.agent_mode != "DISABLED", (
+                "ATLAS_S49_AGENT_INTEGRATION_GATE: actual production event receipt keeps the S47 research agent disabled; "
+                "Decision Brief/agent/memory are not connected to this runtime workflow"
+            )
+E           AssertionError: ATLAS_S49_AGENT_INTEGRATION_GATE: actual production event receipt keeps the S47 research agent disabled; Decision Brief/agent/memory are not connected to this runtime workflow
+E           assert 'DISABLED' != 'DISABLED'
+E            +  where 'DISABLED' = OpsSupervisorReceiptV1(runtime_version='ATLAS_OPS_SUPERVISOR_V2_V1', cycle_id='94731ad5ea48250b4f5a4e95bcb18c1247e7e1f...SS_UNESTIMABLE'), created_at_ns=2610900000000013, agent_mode='DISABLED', capital_enabled=False, assisted_enabled=False).agent_mode
+
+tests/v2/test_session027_production.py:1094: AssertionError</failure></testcase></testsuite></testsuites>

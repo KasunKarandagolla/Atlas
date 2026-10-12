@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="3" time="4.478" timestamp="2026-10-13T02:10:16.339047+05:30" hostname="Kasun"><testcase classname="tests.v2.test_model_runtime" name="test_local_worker_allowlisted_environment_success_crash_timeout_and_no_runtime_authority" time="0.015"><failure message="atlas.v2.models.worker_protocol.ModelProviderError: Bubblewrap executable is not a trusted system binary">def test_local_worker_allowlisted_environment_success_crash_timeout_and_no_runtime_authority() -&gt; None:
+        model = manifest()
+        now = time.time_ns()
+        req = request(model, now_ns=now, cutoff=now - 1, deadline=now + 10 * NS)
+        env = LocalProcessProvider.allowlisted_environment({
+            "PATH": os.environ.get("PATH", "/usr/bin"),
+            "BYBIT_API_KEY": "redacted-test-value", "BINANCE_API_SECRET": "redacted-test-value",
+            "ATLAS_LIVE_CONTROL_DB": "/tmp/v1.sqlite", "ATLAS_ACCOUNT_ID": "test-account",
+            "FUTURE_PRIVATE_TOKEN": "redacted-test-value",
+        })
+        assert set(env) &lt;= {"PATH", "LANG", "LC_ALL", "TZ", "SYSTEMROOT", "WINDIR", "TMPDIR", "TEMP", "TMP", "PYTHONIOENCODING"}
+&gt;       probe = LocalProcessProvider.probe_environment_keys({
+            "PATH": os.environ.get("PATH", "/usr/bin"), "BYBIT_API_KEY": "should-not-pass",
+            "ATLAS_LIVE_CONTROL_DB": "/tmp/v1.sqlite", "ATLAS_ACCOUNT_ID": "should-not-pass",
+        })
+
+tests/v2/test_model_runtime.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/models/local_process.py:70: in probe_environment_keys
+    sandbox = BubblewrapSandboxV2()
+              ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;atlas.v2.models.sandbox.BubblewrapSandboxV2 object at 0x7f6c3f0adb80&gt;
+approved_read_only_paths = ()
+
+    def __init__(self, approved_read_only_paths: tuple[str | Path, ...] = ()) -&gt; None:
+        if sys.platform != "linux":
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "Bubblewrap worker isolation requires Linux")
+        binary = shutil.which("bwrap") or shutil.which("bubblewrap")
+        if binary is None:
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "Bubblewrap executable is unavailable")
+        try:
+            resolved_binary = Path(binary).resolve(strict=True)
+            info = resolved_binary.stat()
+            runtime = Path(sys.base_prefix).resolve(strict=True)
+            executable = Path(sys.executable).resolve(strict=True)
+        except OSError as exc:
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "Bubblewrap or Python runtime is unavailable") from exc
+        if info.st_uid != 0 or info.st_mode &amp; (stat.S_IWGRP | stat.S_IWOTH):
+&gt;           raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "Bubblewrap executable is not a trusted system binary")
+E           atlas.v2.models.worker_protocol.ModelProviderError: Bubblewrap executable is not a trusted system binary
+
+src/atlas/v2/models/sandbox.py:95: ModelProviderError</failure></testcase><testcase classname="tests.v2.test_phase1_data_model_integration" name="test_phase1_public_to_restart_to_isolated_forecast_plumbing" time="1.965"><failure message="atlas.v2.models.worker_protocol.ModelProviderError: Bubblewrap executable is not a trusted system binary">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-206/test_phase1_public_to_restart_0')
+
+    def test_phase1_public_to_restart_to_isolated_forecast_plumbing(tmp_path) -&gt; None:
+        now = time.time_ns()
+        metadata_fixture = {"retCode": 0, "result": {"list": [{
+            "symbol": "BTCUSDT", "baseCoin": "BTC", "quoteCoin": "USDT", "settleCoin": "USDT",
+            "contractType": "LinearPerpetual", "status": "Trading", "priceFilter": {"tickSize": "0.1"},
+            "lotSizeFilter": {"qtyStep": "0.001", "minOrderQty": "0.001"},
+        }]}}
+        contract = translate_instrument_info(
+            metadata_fixture, environment=EnvironmentV2.MAINNET, observed_at_ns=now, available_at_ns=now
+        )[0]
+        registry = InstrumentRegistryV2()
+        registry.register(contract)
+    
+        repository_path = tmp_path / "ops.sqlite"
+        repository = OpsRepository(repository_path)
+        archive = ParquetObservationArchiveV2(tmp_path / "public-observations")
+        collector = PublicCollectorV2(repository=repository, registry=registry, clock_ns=lambda: now + 1, archive=archive)
+        metadata = RawObservationV2.build(
+            instrument_revision=contract.key.contract_revision,
+            source_id="BYBIT_PUBLIC_HTTP",
+            event_type="INSTRUMENT_INFO",
+            event_at_ns=now,
+            received_at_ns=now,
+            ingested_at_ns=now,
+            available_at_ns=now,
+            translation_version="bybit-public-v1",
+            payload=metadata_fixture,
+        )
+        collector.ingest(metadata, raw_payload=canonical_json(metadata_fixture))
+    
+        close_ns = now - now % BarIntervalV2.M15.duration_ns
+        bar_open_ns = close_ns - BarIntervalV2.M15.duration_ns
+        bar_raw = RawObservationV2.build(
+            instrument_revision=contract.key.contract_revision,
+            source_id="BYBIT_PUBLIC_HTTP",
+            event_type="BAR_15M",
+            event_at_ns=close_ns,
+            received_at_ns=now,
+            ingested_at_ns=now,
+            available_at_ns=now,
+            translation_version="bybit-public-v1",
+            sequence=str(bar_open_ns),
+            payload=[str(bar_open_ns // 1_000_000), "100", "102", "99", "101", "5", "500"],
+        )
+        bar = translate_final_bar(
+            raw=bar_raw,
+            interval=BarIntervalV2.M15,
+            open_at_ns=bar_open_ns,
+            values={"open": "100", "high": "102", "low": "99", "close": "101", "volume": "5"},
+            final=True,
+        )
+        assert bar is not None
+        raw_bar_payload = [str(bar_open_ns // 1_000_000), "100", "102", "99", "101", "5", "500"]
+        collector.ingest(bar_raw, raw_payload=canonical_json(raw_bar_payload), bar=bar)
+        bars = CausalBarStoreV2()
+        assert bars.append(bar)
+        source_health = collector.health.latest("BYBIT_PUBLIC_HTTP")
+        assert source_health is not None and source_health.state == PublicSourceStateV2.HEALTHY_CURRENT
+    
+        universe_runtime = DynamicUniverseRuntimeV2()
+        universe = universe_runtime.build_snapshot(
+            (UniverseObservationV2(
+                contract, 35, True, Decimal("25000000"), Decimal("2"),
+                PublicSourceStateV2.HEALTHY_CURRENT, now,
+                {"engineering-fixture": 30}, active_watch=True,
+            ),),
+            decision_slot_ns=now,
+            information_cutoff_ns=now,
+            created_at_ns=now,
+            selection_policy_hash=HASH_A,
+        )
+        entry = universe.universe.entries[0]
+        assert entry.scanner_eligible and not entry.capital_eligible
+    
+        watch = OpportunityWatchV2(
+            "active-watch", contract.key, "phase1-fixture", "1", HASH_A, WatchStateV2.DETECTED,
+            0, now, now, HASH_B, (), "BAR_CLOSE_15M", now + 3_600 * NS, now,
+        )
+        repository.create_watch(watch)
+        first_plan = restore_subscription_plan(repository, universe.tiers, now_ns=now + 2)[1]
+        assert collector.flush_archive() is not None
+        collector.checkpoint_cursors(at_ns=now + 3)
+        repository.close()
+        reopened = OpsRepository(repository_path)
+        restarted = PublicCollectorV2(repository=reopened, registry=registry, clock_ns=lambda: now + 4, archive=archive)
+        restart = restarted.restore_subscriptions(universe.tiers, now_ns=now + 4)
+        assert restart.watches.active_watches == (watch,)
+        assert restart.subscriptions.plan_id == first_plan.plan_id
+        restart_health = restarted.health.latest("BYBIT_PUBLIC_HTTP")
+        assert restart_health is not None and restart_health.state == PublicSourceStateV2.INCOMPLETE_SNAPSHOT
+        assert restarted.ingest(bar_raw, raw_payload=canonical_json(raw_bar_payload), bar=bar).append.status.value == "DUPLICATE"
+        restarted.reconcile_after_reconnect(
+            "BYBIT_PUBLIC_HTTP", at_ns=now + 5, complete_snapshot=True, missed_interval_repaired=True
+        )
+    
+        manifest = ModelManifestV2(
+            "isolated-fixture", "fixture://test", "commit", "checkpoint", "revision", (HASH_D,),
+            "code-license", "weights-license", "RESEARCH_ONLY", HASH_B, HASH_C, HASH_A,
+            "cpu", "fp32", ("causal-bars.v1",), ("log-return.v1",), 100, "UNKNOWN",
+            PromotionStatusV2.ENGINEERING_PASS,
+        )
+        inputs = {"bar": bar.to_dict(), "universe_hash": universe.universe.content_hash}
+        input_hash = sha256_json(inputs)
+        request = ModelRequestV2.build(
+            input_artifact_refs=tuple(sorted((bar.content_hash, universe.universe.content_hash))),
+            input_hash=input_hash,
+            instrument_key=contract.key,
+            policy_context_ref="phase1-engineering-context",
+            model_manifest_hash=manifest.manifest_hash,
+            information_cutoff_ns=now,
+            requested_targets=("log_return",),
+            requested_horizons=(BarIntervalV2.M15.duration_ns,),
+            requested_quantiles=(Decimal("0.5"),),
+            deadline_ns=now + 20 * NS,
+            seed=123,
+            resource_budget={"latency_ms": 1000, "memory_mb": 128},
+        )
+        arena = ModelArenaV2(max_queue_size=2, clock_ns=lambda: time.time_ns())
+        arena.enqueue(request, manifest, inputs, provider_key="local-isolated")
+&gt;       usable = arena.run_next(LocalProcessProvider(), provider_key="local-isolated")
+                                ^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_phase1_data_model_integration.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/models/local_process.py:60: in __init__
+    self.sandbox = BubblewrapSandboxV2(approved_read_only_paths)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;atlas.v2.models.sandbox.BubblewrapSandboxV2 object at 0x7f6c3ed243e0&gt;
+approved_read_only_paths = ()
+
+    def __init__(self, approved_read_only_paths: tuple[str | Path, ...] = ()) -&gt; None:
+        if sys.platform != "linux":
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "Bubblewrap worker isolation requires Linux")
+        binary = shutil.which("bwrap") or shutil.which("bubblewrap")
+        if binary is None:
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "Bubblewrap executable is unavailable")
+        try:
+            resolved_binary = Path(binary).resolve(strict=True)
+            info = resolved_binary.stat()
+            runtime = Path(sys.base_prefix).resolve(strict=True)
+            executable = Path(sys.executable).resolve(strict=True)
+        except OSError as exc:
+            raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "Bubblewrap or Python runtime is unavailable") from exc
+        if info.st_uid != 0 or info.st_mode &amp; (stat.S_IWGRP | stat.S_IWOTH):
+&gt;           raise ModelProviderError("WORKER_SANDBOX_UNAVAILABLE", "Bubblewrap executable is not a trusted system binary")
+E           atlas.v2.models.worker_protocol.ModelProviderError: Bubblewrap executable is not a trusted system binary
+
+src/atlas/v2/models/sandbox.py:95: ModelProviderError</failure></testcase><testcase classname="tests.v2.test_session026_agent_broker_ownership" name="test_broker_entry_runs_without_ops_database_path" time="0.007"><failure message="SystemExit: PROVIDER_PROFILE_UNSUPPORTED">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f6c3ef25460&gt;
+tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-206/test_broker_entry_runs_without0')
+
+    def test_broker_entry_runs_without_ops_database_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -&gt; None:
+        created: dict[str, Any] = {}
+    
+        class FakeProvider:
+            def __init__(self, api_key: str, *, model_id: str) -&gt; None:
+                created["provider_config"] = (api_key, model_id)
+    
+            def propose(self, *_args: Any) -&gt; None:
+                raise AssertionError("broker entry test does not dispatch inference")
+    
+        class FakeServer:
+            def __init__(self, socket_path: str, broker: Any) -&gt; None:
+                created["socket_path"] = socket_path
+                created["broker"] = broker
+    
+            def start(self) -&gt; None:
+                raise KeyboardInterrupt
+    
+            def close(self) -&gt; None:
+                created["closed"] = True
+    
+        def forbidden_sqlite_open(*_args: Any, **_kwargs: Any) -&gt; None:
+            raise AssertionError("inference broker attempted to open SQLite")
+    
+        monkeypatch.setattr(provider_module, "PydanticAIResearchProposalProvider", FakeProvider)
+        monkeypatch.setattr(broker_module, "InferenceBrokerServer", FakeServer)
+        monkeypatch.setattr(sqlite3, "connect", forbidden_sqlite_open)
+        monkeypatch.delenv("ATLAS_OPS_DB", raising=False)
+        monkeypatch.setenv("ATLAS_AGENT_BROKER_SOCKET", str(tmp_path / "broker.sock"))
+        monkeypatch.setenv("ATLAS_AGENT_CAPABILITY_KEY", "42" * 32)
+        monkeypatch.setenv("OPENAI_API_KEY", "offline-test-placeholder-not-a-provider-key")
+        monkeypatch.setattr(sys, "argv", ["atlas-agent-broker"])
+    
+&gt;       assert broker_module.broker_main() == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session026_agent_broker_ownership.py:84: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def broker_main() -&gt; int:
+        """Opt-in credential-owning service entry; no key is accepted on argv or logged."""
+        import argparse
+        from pathlib import Path
+    
+        from atlas.v2.agent_intelligence.budget import DeepSeekPriceScheduleV1
+        from atlas.v2.agent_intelligence.profile import (
+            deepseek_v41_flash_action_critic_profile,
+            deepseek_v41_flash_model_profile,
+        )
+        from atlas.v2.agent_intelligence.provider import (
+            DeepSeekResponsesActionAssessmentProvider,
+            DeepSeekResponsesResearchProposalProvider,
+            PydanticAIResearchProposalProvider,
+        )
+    
+        parser = argparse.ArgumentParser(prog="atlas-agent-broker")
+        parser.add_argument("--socket", default=os.environ.get("ATLAS_AGENT_BROKER_SOCKET"))
+        args = parser.parse_args()
+        if not isinstance(args.socket, str) or not args.socket:
+            raise SystemExit("ATLAS_AGENT_BROKER_SOCKET is required")
+        signing_text = os.environ.get("ATLAS_AGENT_CAPABILITY_KEY", "")
+        try:
+            signing_key = bytes.fromhex(signing_text)
+        except ValueError as exc:
+            raise SystemExit("ATLAS_AGENT_CAPABILITY_KEY must be 64 or more hex characters") from exc
+        if len(signing_key) &lt; 32:
+            raise SystemExit("ATLAS_AGENT_CAPABILITY_KEY must be at least 256 bits")
+        provider_profile = os.environ.get("ATLAS_AGENT_PROVIDER_PROFILE", "openai-astra-v1")
+        provider: PydanticAIResearchProposalProvider | DeepSeekResponsesResearchProposalProvider | DeepSeekResponsesActionAssessmentProvider
+        if provider_profile == "openai-astra-v1":
+            api_key = os.environ.get("OPENAI_API_KEY", "")
+            if not api_key:
+                raise SystemExit("PROVIDER_CREDENTIAL_UNAVAILABLE")
+            provider = PydanticAIResearchProposalProvider(api_key, model_id=ALLOWED_MODEL_ID)
+            broker = InferenceBroker(provider, signing_key=signing_key)
+        elif provider_profile == "deepseek-v41-flash-v1":
+            api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+            if not api_key:
+                raise SystemExit("PROVIDER_CREDENTIAL_UNAVAILABLE")
+            repo_root = Path(__file__).resolve().parents[4]
+            price_schedule = DeepSeekPriceScheduleV1.load(
+                repo_root / "configs/agent_intelligence/provider_pricing_deepseek_v41_flash_v1.json")
+            profile = deepseek_v41_flash_model_profile(price_schedule=price_schedule,
+                agent_lock_path=repo_root / "requirements-agent-lock.txt")
+            provider = DeepSeekResponsesResearchProposalProvider(api_key)
+            broker = InferenceBroker(provider, signing_key=signing_key, model_profile=profile,
+                                     price_schedule_hash=price_schedule.content_hash)
+        elif provider_profile == "deepseek-v41-action-critic-v1":
+            api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+            if not api_key:
+                raise SystemExit("PROVIDER_CREDENTIAL_UNAVAILABLE")
+            repo_root = Path(__file__).resolve().parents[4]
+            price_schedule = DeepSeekPriceScheduleV1.load(
+                repo_root / "configs/agent_intelligence/provider_pricing_deepseek_v41_flash_v1.json")
+            critic_profile = deepseek_v41_flash_action_critic_profile(price_schedule=price_schedule,
+                agent_lock_path=repo_root / "requirements-agent-lock.txt")
+            provider = DeepSeekResponsesActionAssessmentProvider(api_key)
+            broker = InferenceBroker(provider, signing_key=signing_key, model_profile=critic_profile,
+                                     price_schedule_hash=price_schedule.content_hash)
+        else:
+&gt;           raise SystemExit("PROVIDER_PROFILE_UNSUPPORTED")
+E           SystemExit: PROVIDER_PROFILE_UNSUPPORTED
+
+src/atlas/v2/agent_intelligence/broker.py:890: SystemExit</failure></testcase></testsuite></testsuites>

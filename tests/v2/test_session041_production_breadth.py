@@ -38,11 +38,14 @@ def product(index: int, venue: VenueV2 = VenueV2.BYBIT) -> ProductContractV2:
         Decimal("0.001"), Decimal("0.001"), TradingStatusV2.TRADING, revision)
 
 
-def quote(p: ProductContractV2, at: int, *, event: str = "TICKER_24H", values=None) -> PublicInputRecordV2:
+def quote(p: ProductContractV2, at: int, *, event: str = "TICKER_24H", values=None,
+          source_id: str | None = None) -> PublicInputRecordV2:
     row = {"symbol": p.key.native_symbol, "bidPrice": "99.99", "askPrice": "100.01",
            "quoteVolume": "20000000"} if values is None else values
     payload = canonical_json(row).encode()
-    source = "BYBIT_PUBLIC_V2" if p.key.venue == VenueV2.BYBIT else "BINANCE_USDM_PUBLIC_V2"
+    source = source_id or (
+        "BYBIT_PUBLIC_V2" if p.key.venue == VenueV2.BYBIT else "BINANCE_USDM_PUBLIC_V2"
+    )
     raw = RawObservationV2.build(instrument_revision=p.key.contract_revision, source_id=source,
         event_type=event, event_at_ns=at, published_at_ns=None, received_at_ns=at,
         ingested_at_ns=at, available_at_ns=at, payload=payload,
@@ -272,6 +275,42 @@ def test_runtime_recovery_preserves_nonbenchmark_dual_venue_inventory(tmp_path):
     port.close()
 
 
+def test_conserve_effort_records_optional_deferral_without_pausing_outcomes(tmp_path, monkeypatch):
+    source = InventorySource((product(3),))
+    port = BroadProductionOpsCyclePortV2(
+        public_source=source,
+        broad_runtime=FakeBroadRuntime(),
+        clock_ns=lambda: NOW,
+        discovery_effort="CONSERVE",
+    )
+    outcome_calls = []
+    monkeypatch.setattr(
+        port._s8_outcome_producer,
+        "run_cycle",
+        lambda repository, **kwargs: outcome_calls.append(kwargs),
+    )
+    snapshot_ref = sha256_json({"prepared_snapshot": "for-effort-test"})
+    with OpsRepository(tmp_path / "effort.sqlite") as repo:
+        repo.enqueue_due_work(
+            lane="BROAD_RESEARCH",
+            work_id="effort-slot-1",
+            source_ref=snapshot_ref,
+            created_at_ns=NOW - 1,
+            due_at_ns=NOW - 1,
+            payload={"snapshot_ref": snapshot_ref},
+        )
+        first = port.run_research_maintenance(repo, cutoff_ns=NOW)
+        second = port.run_research_maintenance(repo, cutoff_ns=NOW)
+        pending = repo.due_work_items("BROAD_RESEARCH", as_of_ns=NOW, limit=1)
+        records = repo.artifact_entries("BroadResearchDeferredV1")
+        assert first == second == records[0].artifact_ref
+        assert len(records) == 1
+        assert records[0].metadata["deferred"]["reason"] == "OWNER_DISCOVERY_EFFORT_CONSERVE"
+        assert len(pending) == 1 and pending[0].work_id == "effort-slot-1"
+        assert len(outcome_calls) == 2
+    port.close()
+
+
 def test_collection_path_services_stream_and_commits_broad_workset(tmp_path):
     products = [product(1, VenueV2.BYBIT), product(1, VenueV2.BINANCE)]
     runtime = FakeBroadRuntime()
@@ -343,22 +382,27 @@ def test_same_venue_research_cohort_has_twenty_keys_within_global_history_bound(
 def test_adoption_waits_for_durable_archive_before_proving_current_source_health(tmp_path):
     from atlas.v2.runtime.production import ProductionOpsCyclePortV1
 
+    class HttpInventorySource(InventorySource):
+        required_source_ids = ("BINANCE_USDM_PUBLIC_HTTP", "BYBIT_PUBLIC_HTTP")
+
     p = product(2)
     runtime = FakeBroadRuntime()
-    port = BroadProductionOpsCyclePortV2(public_source=InventorySource((p,)),
+    port = BroadProductionOpsCyclePortV2(public_source=HttpInventorySource((p,)),
                                        broad_runtime=runtime, clock_ns=lambda: NOW)
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
         port.recover(repo, now_ns=NOW)
-        acquired = replace(snapshot((p,), (quote(p, NOW),)), source_snapshot={
+        # BroadPublicCycleSourceV2 publishes the HTTP adapter source identities,
+        # so this adoption fixture must use the same production identity.
+        acquired = replace(snapshot((p,), (quote(p, NOW, source_id="BYBIT_PUBLIC_HTTP"),)), source_snapshot={
             "metadata": {"BYBIT": {"market_status": "BULK_MARKET_COMPLETE"},
                          "BINANCE": {"market_status": "BULK_MARKET_COMPLETE"}}})
         assert not ProductionOpsCyclePortV1._persist_broad_public_snapshot(port, repo, acquired, now_ns=NOW)
         receipt = repo.latest_artifact_entries("BroadPublicAcquisitionReceiptV2", as_of_ns=NOW, limit=1).entries[0]
-        refs = receipt.metadata["receipt"]["source_observation_refs"]["BYBIT_PUBLIC_V2"]
+        refs = receipt.metadata["receipt"]["source_observation_refs"]["BYBIT_PUBLIC_HTTP"]
         assert len(refs) == 1
         assert repo.get_artifact(refs[0]).metadata["archive_chunk_id"]
-        assert repo.latest_source_health_at("BYBIT_PUBLIC_V2", as_of_ns=NOW).status == "HEALTHY_CURRENT"
-        assert repo.latest_source_health_at("BINANCE_USDM_PUBLIC_V2", as_of_ns=NOW).status == "INCOMPLETE_SNAPSHOT"
+        assert repo.latest_source_health_at("BYBIT_PUBLIC_HTTP", as_of_ns=NOW).status == "HEALTHY_CURRENT"
+        assert repo.latest_source_health_at("BINANCE_USDM_PUBLIC_HTTP", as_of_ns=NOW).status == "INCOMPLETE_SNAPSHOT"
     port.close()
 
 

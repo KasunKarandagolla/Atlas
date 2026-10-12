@@ -145,6 +145,38 @@ def _defer_if_occupied(repository: OpsRepository, *, event: OpsDecisionEventV1,
             "RESEARCH_SLOT_CAPACITY")
 
 
+def record_owner_effort_deferral(repository: OpsRepository, *, work_id: str, source_ref: str,
+                                 observed_at_ns: int) -> str:
+    """Record a stable optional-work deferral without consuming its durable task."""
+    timestamp(observed_at_ns, field="observed_at_ns")
+    if not isinstance(work_id, str) or not work_id:
+        raise ValueError("BROAD_RESEARCH_WORK_ID_INVALID")
+    _ref(source_ref, name="source_ref")
+    with repository.atomic_composition():
+        matches = [item for item in repository.due_work_items(
+            LANE_BROAD_RESEARCH_V1, as_of_ns=observed_at_ns, limit=64) if item.work_id == work_id]
+        if len(matches) != 1 or matches[0].source_ref != source_ref:
+            raise ValueError("BROAD_RESEARCH_DEFERRAL_TASK_IDENTITY_INVALID")
+        body = {
+            "version": DEFERRED_TYPE_V1,
+            "work_id": work_id,
+            "snapshot_ref": source_ref,
+            "reason": "OWNER_DISCOVERY_EFFORT_CONSERVE",
+            "authority": "ZERO",
+            "capital_enabled": False,
+            "assisted_enabled": False,
+        }
+        ref = sha256_json(body)
+        old = repository.get_artifact(ref)
+        if old is None:
+            repository.register_artifact(ArtifactIndexEntryV2(
+                ref, DEFERRED_TYPE_V1, ref, observed_at_ns, observed_at_ns, {"deferred": body}))
+        elif (old.artifact_type != DEFERRED_TYPE_V1 or old.content_hash != ref
+              or old.artifact_ref != ref or sha256_json(old.metadata.get("deferred")) != ref):
+            raise ValueError("BROAD_RESEARCH_DEFERRAL_IDENTITY_CONFLICT")
+        return ref
+
+
 def _validated_s4_feature(repository: OpsRepository, *, key: InstrumentKeyV2, ref: str,
                           cutoff_ns: int, as_of_ns: int) -> Any:
     from ..chronology import VERSION as CHRONOLOGY_VERSION

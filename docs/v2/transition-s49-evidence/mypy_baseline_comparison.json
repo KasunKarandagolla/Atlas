@@ -1,0 +1,9 @@
+{
+  "added_diagnostics": [],
+  "baseline_errors": 52,
+  "baseline_head": "52d9c149cfa1a1bc3f9a955ad94629300d00a7a7",
+  "current_errors": 52,
+  "removed_diagnostics": [],
+  "result": "ZERO_ADDITIVE_DIAGNOSTICS",
+  "schema": "ATLAS_S49_BASELINE_AWARE_MYPY_V1"
+}

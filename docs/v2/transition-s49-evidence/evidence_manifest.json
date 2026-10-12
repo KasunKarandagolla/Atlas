@@ -1,0 +1,565 @@
+{
+  "accepted_s48_base_sha": "52d9c149cfa1a1bc3f9a955ad94629300d00a7a7",
+  "artifacts": [
+    {
+      "bytes": 17844,
+      "path": "docs/v2/transition-s49-evidence/full-repository/failure-followup/runs/full-repository-interrupted-failure-followup.junit.xml",
+      "sha256": "a52d8d438b101264c3d81a14218e39f6df23ee3f62fb337c7c3318635e4c3c2d"
+    },
+    {
+      "bytes": 17560,
+      "path": "docs/v2/transition-s49-evidence/full-repository/failure-followup/runs/full-repository-interrupted-failure-followup.log",
+      "sha256": "1eeddf5f33fdc18c364ae4f15824462f93d304edc9aae1ed0f4b9ca622cae0a7"
+    },
+    {
+      "bytes": 1330,
+      "path": "docs/v2/transition-s49-evidence/full-repository/failure-followup/runs/full-repository-interrupted-failure-followup.time.txt",
+      "sha256": "f6a765c3ad845b014e3cef822e350c8d37b7dbe46455d0d6a0c85796e34fd80e"
+    },
+    {
+      "bytes": 3047,
+      "path": "docs/v2/transition-s49-evidence/full-repository/full_repository_report.json",
+      "sha256": "8bb40d4c12720e170e0c744154ce9a0e9ab4a89d7729c8bdc782ede79b9a495f"
+    },
+    {
+      "bytes": 3500,
+      "path": "docs/v2/transition-s49-evidence/full-repository/partial_failure_mapping.json",
+      "sha256": "be9b66ba5d462cba1a8095b1be0d37cfa13affb64374ab7bd74a2a09c6110f0a"
+    },
+    {
+      "bytes": 1324,
+      "path": "docs/v2/transition-s49-evidence/full-repository/runs/full-repository-pytest.log",
+      "sha256": "7e80ad44b6f4d6398aca91488e79602c261b1a9a433810c3ad5b4c95dda4957d"
+    },
+    {
+      "bytes": 981,
+      "path": "docs/v2/transition-s49-evidence/full-repository/runs/full-repository-pytest.time.txt",
+      "sha256": "e460c4d14bddca8aded2f3e669aab62eb37c4847ba64494954c66a259fe1c554"
+    },
+    {
+      "bytes": 324,
+      "path": "docs/v2/transition-s49-evidence/full-repository-collection.json",
+      "sha256": "99242735d563c686f5876789e9ffcd11ac03cc4a416811bf311a9ecd2a8ae5ab"
+    },
+    {
+      "bytes": 13167,
+      "path": "docs/v2/transition-s49-evidence/full-repository-collection.log",
+      "sha256": "19cce5ca019b9f17c15a5901b1821bb06e2a2c716618230684cac80d8fc6e4cf"
+    },
+    {
+      "bytes": 220600,
+      "path": "docs/v2/transition-s49-evidence/linux_package_verification.json",
+      "sha256": "36de9963d757db7c3fa490134778dfa37844d95e92f2c4721b3ab3750aabfc6d"
+    },
+    {
+      "bytes": 260,
+      "path": "docs/v2/transition-s49-evidence/mypy_baseline_comparison.json",
+      "sha256": "173a590120d1a8992ac6af0c1b5913a793a5db76e8ac489d97fc02eabf321330"
+    },
+    {
+      "bytes": 9626,
+      "path": "docs/v2/transition-s49-evidence/mypy_current.log",
+      "sha256": "f4b80c60953b5b609d9cf8311ff50131c1e8de515430d56b910c7921735033fc"
+    },
+    {
+      "bytes": 9626,
+      "path": "docs/v2/transition-s49-evidence/mypy_s48_baseline.log",
+      "sha256": "d22f27a42af52f785999bf9a35c395c16a0eef02abec0de86440a1e88c4fe1bf"
+    },
+    {
+      "bytes": 28618,
+      "path": "docs/v2/transition-s49-evidence/offline_integration_initial_full.json",
+      "sha256": "7a07d6f2d87f79cc10f713064a389b2fe2ca9f1421bdb2350873f63774f66f10"
+    },
+    {
+      "bytes": 909,
+      "path": "docs/v2/transition-s49-evidence/offline_integration_initial_full.md",
+      "sha256": "1e5f26640ee5d85e49137974492f7e5a644cf687c8025d930ba30de1c88161f8"
+    },
+    {
+      "bytes": 31023,
+      "path": "docs/v2/transition-s49-evidence/offline_integration_report.json",
+      "sha256": "3976ddc643b24fc331de718dcff8fb04a654ab6d30732c539c55ebc7cd7bdec4"
+    },
+    {
+      "bytes": 1340,
+      "path": "docs/v2/transition-s49-evidence/offline_integration_report.md",
+      "sha256": "492e5b2b4e65ccb7dfbcfc35314c3e902ca4eb3d3ca2dc13f0206161e05681ff"
+    },
+    {
+      "bytes": 5260,
+      "path": "docs/v2/transition-s49-evidence/readiness-isolation/offline_integration_report.json",
+      "sha256": "1fd09e3acf3a9334dbec069a4b6a22a67ddbb824372f418a84ad8c05bb28f700"
+    },
+    {
+      "bytes": 389,
+      "path": "docs/v2/transition-s49-evidence/readiness-isolation/offline_integration_report.md",
+      "sha256": "193ec59d11597b933cc9953d1e90053e5f792192b0253115d25c1e9f69b9ad7b"
+    },
+    {
+      "bytes": 13115,
+      "path": "docs/v2/transition-s49-evidence/readiness-isolation/runs/known-inherited-readiness-tests.junit.xml",
+      "sha256": "bc752ea2abc4050a169bab1fa2a0d83f3ade03c050a5667f496b8129dc15c20e"
+    },
+    {
+      "bytes": 8107,
+      "path": "docs/v2/transition-s49-evidence/readiness-isolation/runs/known-inherited-readiness-tests.log",
+      "sha256": "1db90141899c00921e305337c5eac6a024813b23b302669ea7ab6e309f1ca25c"
+    },
+    {
+      "bytes": 1084,
+      "path": "docs/v2/transition-s49-evidence/readiness-isolation/runs/known-inherited-readiness-tests.time.txt",
+      "sha256": "e21ea268b768862f6b5b053cbbaeec04968b11058d2a7df38c27d8353779d286"
+    },
+    {
+      "bytes": 1855,
+      "path": "docs/v2/transition-s49-evidence/red_owner_update.json",
+      "sha256": "fd018fc9c801b5dd33b198339545a075d723a4137508a1061f64cd3a9e21df5d"
+    },
+    {
+      "bytes": 2850,
+      "path": "docs/v2/transition-s49-evidence/red_owner_update.patch",
+      "sha256": "3559059d8ccf9fd20f38fee37a24aa9f999370347391c2fdd223cbde8736d0d7"
+    },
+    {
+      "bytes": 3207,
+      "path": "docs/v2/transition-s49-evidence/ruff_format_baseline.json",
+      "sha256": "3196421f64edbc65386dfcf7fd41a47f0f124fffaf825b69e03d67fee609ee31"
+    },
+    {
+      "bytes": 37693,
+      "path": "docs/v2/transition-s49-evidence/runs/brief-agent-memory-events-outcomes.junit.xml",
+      "sha256": "3c3534c9000c54c34cc676e4442f50d915eb0a68eefcbdf201dd6e0217cd6640"
+    },
+    {
+      "bytes": 320,
+      "path": "docs/v2/transition-s49-evidence/runs/brief-agent-memory-events-outcomes.log",
+      "sha256": "60f779c13530bc308134bed747f82e5f55a3e992dd45b72303e8e18c426a0708"
+    },
+    {
+      "bytes": 1790,
+      "path": "docs/v2/transition-s49-evidence/runs/brief-agent-memory-events-outcomes.time.txt",
+      "sha256": "8da81fc56d72495e44118a518f4d3ad3599edcfc3354752ac58bc119c8721d2d"
+    },
+    {
+      "bytes": 12192,
+      "path": "docs/v2/transition-s49-evidence/runs/candidate-risk-economics-calendar.junit.xml",
+      "sha256": "01d0fa1018e9c331fba0d539d89ea04c8bf15e92c1a664d55cdd22b29e335a6a"
+    },
+    {
+      "bytes": 160,
+      "path": "docs/v2/transition-s49-evidence/runs/candidate-risk-economics-calendar.log",
+      "sha256": "ac495f87c93297f7a6b6576302f0c026457a444008c68b065caf82d3eed780d0"
+    },
+    {
+      "bytes": 1456,
+      "path": "docs/v2/transition-s49-evidence/runs/candidate-risk-economics-calendar.time.txt",
+      "sha256": "a1c363cc754b9174fc8282ccfea927861a304be768931094469cf3532acd3287"
+    },
+    {
+      "bytes": 549,
+      "path": "docs/v2/transition-s49-evidence/runs/desktop-smoke.log",
+      "sha256": "f250ff44b07f1bdde539decf809211faaca927728044d5404348777ce4d73174"
+    },
+    {
+      "bytes": 929,
+      "path": "docs/v2/transition-s49-evidence/runs/desktop-smoke.time.txt",
+      "sha256": "8bd1f2a8e5a3db693b7af029da92bbe82d046f494b06a7ad7a438f05198634fb"
+    },
+    {
+      "bytes": 25114,
+      "path": "docs/v2/transition-s49-evidence/runs/ipc-desktop-brokers-workers-and-capture.junit.xml",
+      "sha256": "08071ab085c1c61ade56b2add9e46fb929eb90ad491ef8c0a0b74f7bca795dc8"
+    },
+    {
+      "bytes": 240,
+      "path": "docs/v2/transition-s49-evidence/runs/ipc-desktop-brokers-workers-and-capture.log",
+      "sha256": "867e78f2d7392f5f4855c3960137b3f7f129d32c028a4612210025ccb338eb1b"
+    },
+    {
+      "bytes": 1447,
+      "path": "docs/v2/transition-s49-evidence/runs/ipc-desktop-brokers-workers-and-capture.time.txt",
+      "sha256": "eeba8f2fc1c5b5a7b03b9dc11cf98ad5f384902eb8572ab207b4d7e0f6301ab1"
+    },
+    {
+      "bytes": 1671,
+      "path": "docs/v2/transition-s49-evidence/runs/known-inherited-readiness-tests.junit.xml",
+      "sha256": "4ae33c2dcf878184da43f9544c289a93f43f2b3df91b205270e48a088f27e783"
+    },
+    {
+      "bytes": 80,
+      "path": "docs/v2/transition-s49-evidence/runs/known-inherited-readiness-tests.log",
+      "sha256": "585ba42829657b9e2d56f8614be6c3365a8405474eed008559511ab50f2ffcfb"
+    },
+    {
+      "bytes": 995,
+      "path": "docs/v2/transition-s49-evidence/runs/known-inherited-readiness-tests.time.txt",
+      "sha256": "9cff9cedf526a49d22c4d0655db3259d609faea336fd60660369365d0deb229c"
+    },
+    {
+      "bytes": 394,
+      "path": "docs/v2/transition-s49-evidence/runs/known-inherited-s6-ops-contract-test.junit.xml",
+      "sha256": "fb762afa6c174d696d5477ae25ead10ad3829a9771323aa7420c48976f5f6965"
+    },
+    {
+      "bytes": 80,
+      "path": "docs/v2/transition-s49-evidence/runs/known-inherited-s6-ops-contract-test.log",
+      "sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d"
+    },
+    {
+      "bytes": 1057,
+      "path": "docs/v2/transition-s49-evidence/runs/known-inherited-s6-ops-contract-test.time.txt",
+      "sha256": "674090af7a7b60adb5a2b6fa775c4b866a087381be271a74f5acc458b101207b"
+    },
+    {
+      "bytes": 4153,
+      "path": "docs/v2/transition-s49-evidence/runs/lifecycle-projection-final.junit.xml",
+      "sha256": "ac8537a32801e808b2bdf4365d8e722162bb0bf3d43248bf5ece9d7e8c0cc639"
+    },
+    {
+      "bytes": 26297,
+      "path": "docs/v2/transition-s49-evidence/runs/lifecycle-protection-recovery-bybit-v1.junit.xml",
+      "sha256": "8377f6f9c19d825ca4026d462eb267fb3668c5d8599eae16f0d0c42a40fb4cf8"
+    },
+    {
+      "bytes": 240,
+      "path": "docs/v2/transition-s49-evidence/runs/lifecycle-protection-recovery-bybit-v1.log",
+      "sha256": "867e78f2d7392f5f4855c3960137b3f7f129d32c028a4612210025ccb338eb1b"
+    },
+    {
+      "bytes": 1458,
+      "path": "docs/v2/transition-s49-evidence/runs/lifecycle-protection-recovery-bybit-v1.time.txt",
+      "sha256": "a28395316738a8c868096383d7854e304da0065940ab2914dd7dd00c841f1d43"
+    },
+    {
+      "bytes": 0,
+      "path": "docs/v2/transition-s49-evidence/runs/mypy-baseline.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 1776,
+      "path": "docs/v2/transition-s49-evidence/runs/mypy-current.txt",
+      "sha256": "703d0662e94171de359ab92bc98ba02e5f9b6319c430d6dec91b41fd875c18cb"
+    },
+    {
+      "bytes": 17253,
+      "path": "docs/v2/transition-s49-evidence/runs/production-agent-bridge-gate.junit.xml",
+      "sha256": "311960761283eeb90dd1fdb6bb9b6df010e43d7ee91563997989ebf14e01914d"
+    },
+    {
+      "bytes": 16740,
+      "path": "docs/v2/transition-s49-evidence/runs/production-agent-bridge-gate.log",
+      "sha256": "6ec1472eab99e4cffd28ca89bcca4fe5f3a02e24aebe4e587d9c4d85a255b1b5"
+    },
+    {
+      "bytes": 1113,
+      "path": "docs/v2/transition-s49-evidence/runs/production-agent-bridge-gate.time.txt",
+      "sha256": "9bfc6d0baf4ef1d1ce135036ea12762aed521a06ab3eab98b47842aee069282a"
+    },
+    {
+      "bytes": 393,
+      "path": "docs/v2/transition-s49-evidence/runs/s27-ops-s6-stale-assertion-green.junit.xml",
+      "sha256": "bae30dba4ece0861e1d854b5e78cb74da11627915146c43f857d20f83ba2b68c"
+    },
+    {
+      "bytes": 399,
+      "path": "docs/v2/transition-s49-evidence/runs/s44-hash-contract-red-green.junit.xml",
+      "sha256": "aa35475af16df59e9c642e9b1d392c218f9850541aa7d64f369a0c0f40c236ce"
+    },
+    {
+      "bytes": 30642,
+      "path": "docs/v2/transition-s49-evidence/runs/sources-features-strategies-universe.junit.xml",
+      "sha256": "e26005f20b03d3772c785bf2ffc8190df24c76463d4103c3a4112ddeac1e206d"
+    },
+    {
+      "bytes": 1444,
+      "path": "docs/v2/transition-s49-evidence/runs/sources-features-strategies-universe.log",
+      "sha256": "fc6194558e8738582eefd3dc34d2071e86a354f962a362fa5e81710c20d90d52"
+    },
+    {
+      "bytes": 1750,
+      "path": "docs/v2/transition-s49-evidence/runs/sources-features-strategies-universe.time.txt",
+      "sha256": "21619f75db02ac8c9f28890b358b5b830c6297cdc876420c8fff9bf2592a8ec3"
+    },
+    {
+      "bytes": 301,
+      "path": "docs/v2/transition-s49-evidence/secret_scan.json",
+      "sha256": "92d8875f45f2a28c68facc13f63e38d9922cc37348c1b9a9aa7b43915af9fa3f"
+    },
+    {
+      "bytes": 993,
+      "path": "docs/v2/transition-s49-evidence/session026-provider-test-repair/runs/session026-explicit-fake-provider-profile.junit.xml",
+      "sha256": "c24f6cede202f767084cd92d45db7656af9c901ccc7eb5c3669bef6526d6bc1e"
+    },
+    {
+      "bytes": 80,
+      "path": "docs/v2/transition-s49-evidence/session026-provider-test-repair/runs/session026-explicit-fake-provider-profile.log",
+      "sha256": "4d2df7a96ce4a667da3ccf295f2d16c728a65ed0e861a3baa919f7bb469b02b5"
+    },
+    {
+      "bytes": 1004,
+      "path": "docs/v2/transition-s49-evidence/session026-provider-test-repair/runs/session026-explicit-fake-provider-profile.time.txt",
+      "sha256": "242036bf6f0e445784d6bb1d535d83c482bb38df66ce1943fd6f18ee5558d0f9"
+    },
+    {
+      "bytes": 6866,
+      "path": "docs/v2/transition-s49-evidence/source-suite-final/offline_integration_report.json",
+      "sha256": "013cc0e3b3be94d71e8f62d6f427347facdc4d9c4246b18f7413500f676d4ad6"
+    },
+    {
+      "bytes": 387,
+      "path": "docs/v2/transition-s49-evidence/source-suite-final/offline_integration_report.md",
+      "sha256": "a81d26effd1e04d4cf1734ac8181829f186dbabd275ca36b6e49c558739856eb"
+    },
+    {
+      "bytes": 24612,
+      "path": "docs/v2/transition-s49-evidence/source-suite-final/runs/mixed-capacity-isolated.junit.xml",
+      "sha256": "65606fe4773a1cbdbaee1ee650d2cb6b2c676b70fa9b99db1f1acf6eec3d5b7b"
+    },
+    {
+      "bytes": 1059,
+      "path": "docs/v2/transition-s49-evidence/source-suite-final/runs/mixed-capacity-isolated.time.txt",
+      "sha256": "e8b7a98bc8da8f7672590b74b40dabf21138f5442e0a1f12d10fab17b8cf97e8"
+    },
+    {
+      "bytes": 61945,
+      "path": "docs/v2/transition-s49-evidence/source-suite-final/runs/sources-features-strategies-universe.junit.xml",
+      "sha256": "dfc4f6165e0314f103ba73f5d8fd6a37f1ecc9e91ff94bead4aa36cbe64a4e97"
+    },
+    {
+      "bytes": 24355,
+      "path": "docs/v2/transition-s49-evidence/source-suite-final/runs/sources-features-strategies-universe.log",
+      "sha256": "cd2a07fdbe3a333a426e4950bfc2c58e1af3f78c38286b338d346064472abe39"
+    },
+    {
+      "bytes": 2043,
+      "path": "docs/v2/transition-s49-evidence/source-suite-final/runs/sources-features-strategies-universe.time.txt",
+      "sha256": "12a59cbbabda269d4d45d608fe75bdca7607b8415ab85d111c6cafb11c690a64"
+    },
+    {
+      "bytes": 6864,
+      "path": "docs/v2/transition-s49-evidence/source-suite-rerun/offline_integration_report.json",
+      "sha256": "42dfdc3ea9114775634e67b284efce749d88ea1d95b914bae61e24615d83ef94"
+    },
+    {
+      "bytes": 386,
+      "path": "docs/v2/transition-s49-evidence/source-suite-rerun/offline_integration_report.md",
+      "sha256": "ee6fa39d8a2407dd90f89360cd03eb298861946f9a4462fb2b15f5ad9a588d9d"
+    },
+    {
+      "bytes": 78263,
+      "path": "docs/v2/transition-s49-evidence/source-suite-rerun/runs/sources-features-strategies-universe.junit.xml",
+      "sha256": "bc1328ffdcb5619c4238dc7d70a01218d9d8691d913b4c9c2f9815a9d8dabf54"
+    },
+    {
+      "bytes": 42140,
+      "path": "docs/v2/transition-s49-evidence/source-suite-rerun/runs/sources-features-strategies-universe.log",
+      "sha256": "6a69ea3e25012d6618d2edfa145f045038ea70edc4e46537f59af12c2a9c5bcd"
+    },
+    {
+      "bytes": 2042,
+      "path": "docs/v2/transition-s49-evidence/source-suite-rerun/runs/sources-features-strategies-universe.time.txt",
+      "sha256": "d419ce6de47a532551f1c2f4be59a1c0d776f5674f4b39d8897721b25d5d8291"
+    }
+  ],
+  "branch": "impl/session-049-final-integration-release",
+  "changed_python_files": [
+    {
+      "bytes": 3621,
+      "path": "scripts/atlas_s49_full_repository.py",
+      "sha256": "c5ae844e9ef60ac68ca40f288438926bdf71ab1d430a071ff65eb41f0aa11f53"
+    },
+    {
+      "bytes": 2569,
+      "path": "scripts/atlas_s49_offline_guard.py",
+      "sha256": "df9f54e074b187a14c9fdd71d54fae717d1190cb77f36c33ea350a8bedd4da2b"
+    },
+    {
+      "bytes": 20752,
+      "path": "scripts/atlas_s49_offline_integration.py",
+      "sha256": "78b2b01db50aa24d1ac62fb12d06659433763836c7c9ba2f55538dfac326f7e3"
+    },
+    {
+      "bytes": 146,
+      "path": "scripts/sitecustomize.py",
+      "sha256": "e516d9c038560746ffa066bf2c1addd7f030b9fbd449d75fb32d799224e6ae50"
+    },
+    {
+      "bytes": 14021,
+      "path": "src/atlas/desktop/app.py",
+      "sha256": "215f3f3247e9f18a17254221b29f09225062748d1b7def3327495331ffff4c3c"
+    },
+    {
+      "bytes": 62757,
+      "path": "src/atlas/v2/desktop/projection.py",
+      "sha256": "4a46764cd5cd9154ee5bee391ca1cbeae66e142e680e153af210ed48e87b7577"
+    },
+    {
+      "bytes": 138654,
+      "path": "src/atlas/v2/product.py",
+      "sha256": "2db28588d6782fc0207dd5de3be242d1c9ba92719c296ecc8f5c37b1e34b3a80"
+    },
+    {
+      "bytes": 35263,
+      "path": "src/atlas/v2/runtime/broad_research_queue.py",
+      "sha256": "80fee72e8095df5ee39bd2e2c39710af86e655217954f7e7d5b30fbc3abe233d"
+    },
+    {
+      "bytes": 389812,
+      "path": "src/atlas/v2/runtime/production.py",
+      "sha256": "507bfbaf4e3fd389c4671fd1aa7a6983e658b6d7cf65719ca0ff6fc470541ba7"
+    },
+    {
+      "bytes": 15717,
+      "path": "tests/runtime/test_session048_lifecycle_projection.py",
+      "sha256": "48f2331c2dc27a0bdd08115b2898d01192a76b9b4974811f15284a0dae79c3de"
+    },
+    {
+      "bytes": 11332,
+      "path": "tests/v2/test_session020_desktop_ipc.py",
+      "sha256": "520f3a355e611b7f9ab7d33823c61ee68f627f1afe385302166b93623d49c481"
+    },
+    {
+      "bytes": 5205,
+      "path": "tests/v2/test_session026_agent_broker_ownership.py",
+      "sha256": "8870e9da087a6e3c3c5886b750f6dc62011b9d1c46d660ccdd26eb78948c92c3"
+    },
+    {
+      "bytes": 20269,
+      "path": "tests/v2/test_session027_ops_supervisor.py",
+      "sha256": "5a4a8ad202c134024d6af4767a8e4f6950c9fba6fd048e8a2aad372161e745af"
+    },
+    {
+      "bytes": 96451,
+      "path": "tests/v2/test_session027_production.py",
+      "sha256": "d1e0cb85d1c07972266fac5195e9776e2aa19eddda672d0bf515d38452d26b5a"
+    },
+    {
+      "bytes": 16296,
+      "path": "tests/v2/test_session041_product_configuration.py",
+      "sha256": "94d32033c0c8d1e405e9d85a2065875ccef1093e4cae1803debc95125804b4c9"
+    },
+    {
+      "bytes": 22016,
+      "path": "tests/v2/test_session041_production_breadth.py",
+      "sha256": "fbe76f1e8dc5ba747546eb1d18d5cf0897658463ca5d93ef5d2dfad162296296"
+    },
+    {
+      "bytes": 18344,
+      "path": "tests/v2/test_session041_scale_review.py",
+      "sha256": "4cd32057fef745c39718aeabfb3a382cff2a311b26b2f61d522c9c6bfe5501d3"
+    },
+    {
+      "bytes": 27702,
+      "path": "tests/v2/test_session044_close_driven_m15.py",
+      "sha256": "8534e614e905e88fc60756af55c8a82ab028c5ac770229eef42b6db0cdc577f1"
+    }
+  ],
+  "deliverables": [
+    {
+      "bytes": 10601,
+      "path": "docs/v2/ATLAS_S49_IMPLEMENTATION_HANDOFF.md",
+      "sha256": "8e6fbffd919398d5d692cc712094d568884fb598f294c441ec9f8e9d4ba87615"
+    },
+    {
+      "bytes": 11644,
+      "path": "docs/v2/ATLAS_S49_END_TO_END_INTEGRATION_REPORT.md",
+      "sha256": "203e08d51f2729b08e764bcd4c27adfef27a019f2d1f6eb4fdffee710c70a14a"
+    },
+    {
+      "bytes": 23150,
+      "path": "docs/v2/ATLAS_S49_TARGET_IMPLEMENTATION_AUDIT.md",
+      "sha256": "675f9db37af57e9b3ad89dcf95f1e386cd9731b93b64f0b899c122522a39d45b"
+    },
+    {
+      "bytes": 8945,
+      "path": "README.md",
+      "sha256": "2a97bfa5c41bbbdb50f97a041f9661fcff23d281450fa061e2ad0b0b0dc5d648"
+    },
+    {
+      "bytes": 10141,
+      "path": "docs/INDEX.md",
+      "sha256": "f93c4dcfb4a896552c54afe0d938d72dc159b04cfadea05b519512b7829119de"
+    },
+    {
+      "bytes": 60865,
+      "path": "log.md",
+      "sha256": "bdb72a5a6cd9f2d8b0f9658b10b03e3e8973a370079a4652440eef5b2262f097"
+    },
+    {
+      "bytes": 89986,
+      "path": "translog.md",
+      "sha256": "8689541435c0aeb466de7711d38e05cf5b4fde7987833f70e2fd6d14bac7faf9"
+    }
+  ],
+  "final_remote_head_sha": "reported after git ls-remote; not self-embedded",
+  "frozen_authorities_sha256": {
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+  },
+  "full_repository_run": {
+    "collected_tests": 2783,
+    "details": "docs/v2/transition-s49-evidence/full-repository/partial_failure_mapping.json",
+    "duration_seconds": 3684.629,
+    "no_complete_junit_summary": true,
+    "partial_failures": 6,
+    "partial_passed": 1185,
+    "partial_skips": 5,
+    "peak_rss_kib": 996196,
+    "reached_percent": 43.0,
+    "status": "INCOMPLETE",
+    "system_cpu_seconds": 110.81,
+    "tests_reached": 1196,
+    "user_cpu_seconds": 1934.34
+  },
+  "implementation_sha": "recorded in post-commit handoff update",
+  "manifest_hashing_note": "This file intentionally does not include its own digest; its Git commit identity is supplied by the final push report.",
+  "model": "GPT-6 Luna; owner confirmed active model for S49",
+  "offline_integration": {
+    "authenticated_exchange_calls": 0,
+    "configured_test_cases": 910,
+    "failed_or_gated": 5,
+    "passed": 905,
+    "provider_calls": 0,
+    "runner": "scripts/atlas_s49_offline_integration.py",
+    "status": "FAIL: connected workflow tested; full target integration retains gates"
+  },
+  "owner_red_update": {
+    "diff_artifact": "docs/v2/transition-s49-evidence/red_owner_update.patch",
+    "owner_document_original_sha256": "082776b57f74300f63745cad84840e50a881e4de18511024a052de960f3b7d6d",
+    "owner_document_path": "/home/kasun/Music/atlas/Red/ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md",
+    "owner_document_updated_sha256": "d323030cebc6d8d17d6401765ed49c250548e2fa9ab57e074933cf364bcb8c92",
+    "owner_manifest_original_sha256": "7052fabcdbb3b5ece8d4a58ef8a0b56865e76be1defcc1ea626216cecd2051f9",
+    "owner_manifest_path": "/home/kasun/Music/atlas/Red/MANIFEST.json",
+    "owner_manifest_updated_sha256": "447dbfc8219b943c693b141767e14f494272f73380b9acbc4a99c1a121e668b1",
+    "record_validation": "PASS",
+    "scope": "owner-authorized decision addendum and MANIFEST hash/byte update only; not Git-tracked",
+    "source_count_preserved": 25
+  },
+  "release_gates": {
+    "assisted_execution_enabled": false,
+    "authenticated_exchange": "UNVERIFIED; no authenticated calls or orders",
+    "capital_enabled": false,
+    "economics": "NOT ESTIMABLE",
+    "fair_no_money_competition": "TEST GATE: paired immutable corpus parity not proven",
+    "mixed_load_source_delivery": "TEST GATE: one frame rejected at 480/512 queue high-water",
+    "production_agent": "TEST GATE: production receipt remains agent_mode=DISABLED",
+    "provider_qualification": "UNVERIFIED; no paid provider call",
+    "windows": "BLOCKED BY ENVIRONMENT"
+  },
+  "static_checks": {
+    "compileall": "PASS using pinned Python 3.12.13",
+    "frozen_hashes": "PASS",
+    "mypy": "BASELINE MATCH; 52 existing diagnostics in S48 and S49, zero normalized delta",
+    "pip_check": "PASS using pinned Python 3.12.13 environment",
+    "red_manifest": "PASS; 24 records/25 source count",
+    "ruff": "PASS",
+    "secret_scan": "PASS; 80 changed paths, 0 findings, values not emitted",
+    "uv_lock_check": "PASS; 39 locked packages; no dependency/license manifest change"
+  },
+  "status": "RESEARCH_SHADOW_NOT_READY",
+  "subagents": [],
+  "version": "ATLAS_S49_EVIDENCE_MANIFEST_V1",
+  "worktree": "/home/kasun/Music/atlas-s49"
+}

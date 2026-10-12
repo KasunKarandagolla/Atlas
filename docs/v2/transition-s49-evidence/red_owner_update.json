@@ -1,0 +1,30 @@
+{
+  "diff_artifact": "docs/v2/transition-s49-evidence/red_owner_update.patch",
+  "frozen_authority_sha256": {
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+  },
+  "git_tracked_in_s49_branch": false,
+  "listed_source_file_records": 24,
+  "manifest_original_sha256": "7052fabcdbb3b5ece8d4a58ef8a0b56865e76be1defcc1ea626216cecd2051f9",
+  "manifest_record_changed": {
+    "new_bytes": 17182,
+    "new_sha256": "d323030cebc6d8d17d6401765ed49c250548e2fa9ab57e074933cf364bcb8c92",
+    "old_bytes": 15611,
+    "old_sha256": "082776b57f74300f63745cad84840e50a881e4de18511024a052de960f3b7d6d",
+    "path": "ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md"
+  },
+  "manifest_updated_sha256": "447dbfc8219b943c693b141767e14f494272f73380b9acbc4a99c1a121e668b1",
+  "owner_document": "ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md",
+  "owner_document_original_bytes": 15611,
+  "owner_document_original_sha256": "082776b57f74300f63745cad84840e50a881e4de18511024a052de960f3b7d6d",
+  "owner_document_updated_bytes": 17182,
+  "owner_document_updated_sha256": "d323030cebc6d8d17d6401765ed49c250548e2fa9ab57e074933cf364bcb8c92",
+  "record_validation": "PASS",
+  "red_directory": "/home/kasun/Music/atlas/Red",
+  "scope": "authorized S49 local owner-document addendum only",
+  "source_count_preserved": 25,
+  "source_package_files_including_manifest": 25,
+  "unrelated_source_records": "preserved; all 24 listed documents match byte counts and SHA-256"
+}

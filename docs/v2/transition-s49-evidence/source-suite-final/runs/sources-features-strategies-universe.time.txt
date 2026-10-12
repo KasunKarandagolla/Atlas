@@ -1,0 +1,24 @@
+Command exited with non-zero status 1
+	Command being timed: "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q --disable-warnings tests/v2/test_session020_archive_remediation.py tests/v2/test_session021_universe.py tests/v2/test_session037_active_history.py tests/v2/test_session037_chronology.py tests/v2/test_session037_due_work.py tests/v2/test_session037_economic_binding.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_product_refresh.py tests/v2/test_session037_research_prerequisites.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session041_capacity_max_breadth.py tests/v2/test_session041_capture_pressure_reserve.py tests/v2/test_session041_dynamic_universe.py tests/v2/test_session041_production_breadth.py tests/v2/test_session041_public_runtime_integration.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_strategy_surface.py tests/v2/test_session041_mixed_broad_capacity.py tests/v2/test_session041_broad_stream_source.py tests/v2/test_session041_stream_service_paging.py tests/v2/test_session041_binance_qualification.py tests/v2/test_session044_close_driven_m15.py tests/v2/test_session046_peer_context.py --junitxml=/home/kasun/Music/atlas-s49/docs/v2/transition-s49-evidence/source-suite-final/runs/sources-features-strategies-universe.junit.xml"
+	User time (seconds): 925.30
+	System time (seconds): 60.34
+	Percent of CPU this job got: 43%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 38:02.78
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 789296
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 3161
+	Minor (reclaiming a frame) page faults: 753708
+	Voluntary context switches: 69109
+	Involuntary context switches: 608454
+	Swaps: 0
+	File system inputs: 224248
+	File system outputs: 7037568
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

@@ -244,6 +244,8 @@ def test_new_profile_is_versioned_opt_in_and_leaves_v1_hash_shape_unchanged(tmp_
     old_v2 = ResearchRunConfigV2(data_root=canonical_data_root(tmp_path))
     old_body = asdict(old_v2)
     old_body.pop("public_acquisition_profile")
+    # Unset S49 discovery effort is omitted from the immutable legacy identity.
+    old_body.pop("discovery_effort")
     assert old_v2.content_hash == sha256_json(old_body)
     assert _run_config(asdict(old_v2)).content_hash == old_v2.content_hash
 

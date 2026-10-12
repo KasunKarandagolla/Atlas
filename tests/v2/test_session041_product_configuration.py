@@ -50,6 +50,47 @@ def test_v2_manifest_freezes_registered_selection_and_zero_authority(tmp_path, b
     assert "api_secret" not in json.dumps(manifest).casefold()
 
 
+def test_discovery_effort_is_frozen_without_changing_legacy_config_identity(tmp_path, build):
+    assert product._discovery_effort_for_slider(0) == "CONSERVE"
+    assert product._discovery_effort_for_slider(1) == "STANDARD"
+    with pytest.raises(ValueError, match="slider value"):
+        product._discovery_effort_for_slider(2)
+
+    standard = v2_config(tmp_path)
+    old_wire = product.asdict(standard)
+    old_wire.pop("discovery_effort")
+    legacy = product.ResearchRunConfigV2(**old_wire)
+    assert legacy.content_hash == standard.content_hash
+
+    conserve = v2_config(tmp_path, discovery_effort="CONSERVE")
+    assert conserve.content_hash != standard.content_hash
+    run = product.create_run(tmp_path, conserve)
+    manifest = product.load_run(run)
+    assert manifest["configuration"]["discovery_effort"] == "CONSERVE"
+    assert manifest["config_hash"] == conserve.content_hash
+
+
+def test_launcher_blocks_preconfigured_provider_and_authenticated_execution_profiles(tmp_path, build, monkeypatch):
+    calls = []
+    monkeypatch.setattr(product.subprocess, "Popen", lambda *args, **kwargs: calls.append((args, kwargs)))
+
+    provider_run = product.create_run(
+        tmp_path,
+        v2_config(tmp_path, provider_profile="deepseek-v41-action-critic-v1"),
+    )
+    with pytest.raises(RuntimeError, match="EXTERNAL_PROVIDER_CALL_REQUIRES_SEPARATE_AUTHORIZATION"):
+        product.launch_run(provider_run)
+
+    execution_run = product.create_run(
+        tmp_path,
+        v2_config(tmp_path, execution_profile="DEMO_READ_ONLY_QUALIFICATION"),
+    )
+    with pytest.raises(RuntimeError, match="AUTHENTICATED_EXCHANGE_ACCESS_REQUIRES_SEPARATE_AUTHORIZATION"):
+        product.launch_run(execution_run)
+
+    assert calls == []
+
+
 def test_selected_run_summary_shows_immutable_venue_identity_without_secrets(tmp_path):
     config = v2_config(tmp_path, execution_profile="DEMO_NATIVE_OMS_QUALIFICATION",
         execution_instrument_symbol="ETHUSDT")

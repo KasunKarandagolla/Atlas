@@ -394,8 +394,12 @@ def test_non_action_sleeve_contracts_and_s8_basket_role_remain_explicit(tmp_path
 
     audit = research_sleeve_audit(CUTOFF)
     roles = {name: (status, reason) for name, status, reason in audit.sleeves}
-    for name in ("S4", "S5", "S6", "S7"):
+    for name in ("S4", "S5", "S7"):
         assert roles[name] == ("EXCLUDED", "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT")
+    assert roles["S6"] == (
+        "EXCLUDED",
+        "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT / S6_ACTION_APPROVAL_PENDING",
+    )
     assert roles["S8"] == ("EXCLUDED", "RESEARCH_BASKET_ONLY_NO_SINGLE_ACTION_CONTRACT")
     pair, prices_a, prices_b, seed = basket_fixture()
     basket = build_research_basket_forecast(

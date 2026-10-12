@@ -6068,8 +6068,12 @@ class BroadProductionOpsCyclePortV2(ProductionOpsCyclePortV1):
     _serviced_acquisition: Any
 
     def __init__(self, *, public_source: Any, clock_ns: Callable[[], int] = time.time_ns,
-                 broad_runtime: Any | None = None, capture_payload_metrics: bool = False) -> None:
+                 broad_runtime: Any | None = None, capture_payload_metrics: bool = False,
+                 discovery_effort: str | None = None) -> None:
         super().__init__(public_source=public_source, clock_ns=clock_ns)
+        if discovery_effort not in (None, "CONSERVE", "STANDARD"):
+            raise ValueError("unsupported optional discovery effort")
+        self.discovery_effort = discovery_effort or "STANDARD"
         from ..data.universe import ComputeTierV2
         from .broad_public_runtime import BroadPublicRuntimeV2
         from .broad_serviced_acquisition import BroadServicedPublicAcquisitionV2
@@ -6156,6 +6160,15 @@ class BroadProductionOpsCyclePortV2(ProductionOpsCyclePortV1):
         pending = repository.due_work_items(LANE_BROAD_RESEARCH_V1, as_of_ns=now, limit=1)
         if not pending:
             return None
+        if self.discovery_effort == "CONSERVE":
+            from .broad_research_queue import record_owner_effort_deferral
+
+            return record_owner_effort_deferral(
+                repository,
+                work_id=pending[0].work_id,
+                source_ref=pending[0].source_ref,
+                observed_at_ns=now,
+            )
         try:
             prepared, = load_due_prepared_history_snapshot(repository, as_of_ns=now)
             universe_entry = _required_artifact(repository, prepared.universe_ref)
@@ -6483,7 +6496,8 @@ def create_broad_public_port(*, enabled_venues: tuple[VenueV2, ...], public_sour
                              clock_ns: Callable[[], int] = time.time_ns,
                              broad_runtime: Any | None = None,
                              capture_payload_metrics: bool = False,
-                             close_driven_m15_profile: bool = False) -> BroadProductionOpsCyclePortV2:
+                             close_driven_m15_profile: bool = False,
+                             discovery_effort: str | None = None) -> BroadProductionOpsCyclePortV2:
     from ..data.broad_public_source import BroadPublicCycleSourceV2
 
     source = public_source or BroadPublicCycleSourceV2(enabled_venues=enabled_venues, clock_ns=clock_ns,
@@ -6493,7 +6507,7 @@ def create_broad_public_port(*, enabled_venues: tuple[VenueV2, ...], public_sour
     if bool(getattr(source, "close_driven_m15_profile", False)) != close_driven_m15_profile:
         raise ValueError("broad source acquisition profile configuration mismatch")
     return BroadProductionOpsCyclePortV2(public_source=source, clock_ns=clock_ns, broad_runtime=broad_runtime,
-        capture_payload_metrics=capture_payload_metrics)
+        capture_payload_metrics=capture_payload_metrics, discovery_effort=discovery_effort)
 
 
 def _l2_raw_frame_from_archive_row(row: Mapping[str, Any]) -> L2RawFrameV2:

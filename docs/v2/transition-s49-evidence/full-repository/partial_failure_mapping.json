@@ -1,0 +1,66 @@
+{
+  "schema": "ATLAS_S49_FULL_REPOSITORY_PARTIAL_FAILURES_V1",
+  "run_status": "INCOMPLETE",
+  "collected_tests": 2783,
+  "collected_files": 279,
+  "collection_errors": 0,
+  "tests_reached_before_interrupt": 1196,
+  "reached_percent": 43.0,
+  "partial_markers": {
+    "passed": 1185,
+    "failures": 6,
+    "errors": 0,
+    "skipped": 5
+  },
+  "last_observed_test": "tests/v2/test_session027_production.py::test_default_production_native_m1_s3_stays_closed_without_trade_completeness",
+  "duration_seconds": 3684.629,
+  "resource_usage": {
+    "user_cpu_seconds": 1934.34,
+    "system_cpu_seconds": 110.81,
+    "cpu_percent": 55,
+    "max_rss_kib": 996196,
+    "file_system_input_blocks": 465408,
+    "file_system_output_blocks": 3222856,
+    "socket_messages_sent": 0,
+    "socket_messages_received": 0
+  },
+  "partial_failures": [
+    {
+      "collection_index": 389,
+      "node_id": "tests/runtime/test_session041_execution_final_review.py::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[None-dispatch_persisted_demo_command]",
+      "disposition": "TEST GATE",
+      "reason": "Inherited fixture omits signed current Binance command-readiness context. Reproduced in the separate readiness suite."
+    },
+    {
+      "collection_index": 391,
+      "node_id": "tests/runtime/test_session041_execution_final_review.py::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[TimeoutError-dispatch_persisted_demo_command]",
+      "disposition": "TEST GATE",
+      "reason": "Inherited fixture omits signed current Binance command-readiness context. Reproduced in the separate readiness suite."
+    },
+    {
+      "collection_index": 393,
+      "node_id": "tests/runtime/test_session041_execution_final_review.py::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[ValueError-dispatch_persisted_demo_command]",
+      "disposition": "TEST GATE",
+      "reason": "Inherited fixture omits signed current Binance command-readiness context. Reproduced in the separate readiness suite."
+    },
+    {
+      "collection_index": 767,
+      "node_id": "tests/v2/test_model_runtime.py::test_local_worker_allowlisted_environment_success_crash_timeout_and_no_runtime_authority",
+      "disposition": "BLOCKED BY ENVIRONMENT",
+      "reason": "The outer offline Bubblewrap user namespace remaps the root owner of /usr/bin/bwrap to UID 65534; Atlas correctly rejects the nested worker sandbox binary as untrusted."
+    },
+    {
+      "collection_index": 772,
+      "node_id": "tests/v2/test_phase1_data_model_integration.py::test_phase1_public_to_restart_to_isolated_forecast_plumbing",
+      "disposition": "BLOCKED BY ENVIRONMENT",
+      "reason": "The test invokes the nested local worker sandbox and encounters the same outer-user-namespace ownership remap."
+    },
+    {
+      "collection_index": 1134,
+      "node_id": "tests/v2/test_session026_agent_broker_ownership.py::test_broker_entry_runs_without_ops_database_path",
+      "disposition": "REPAIRED TEST ASSUMPTION; PASS ON FOLLOW-UP",
+      "reason": "The test monkeypatched a fake provider but inherited the offline runner's DISABLED profile. It now explicitly selects openai-astra-v1, which resolves to the monkeypatched fake, and the full Session-026 file passes 5/5. No provider request was made."
+    }
+  ],
+  "summary": "Pytest was stopped after one hour while still executing the native S3 long-history test. No complete JUnit summary or repository-wide pass/fail total is available."
+}

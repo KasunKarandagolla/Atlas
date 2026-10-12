@@ -1,0 +1,28 @@
+--- a/Red/ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md
++++ b/Red/ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md
+@@ -59,3 +59,12 @@
+ ## 8. What was revised
+ 
+ This note *supersedes conflicting proposed-product language* in ADR-001/002/003/004/006/007/008/009 and the master design, where earlier text positioned the agent as a merely optional critic/preselector, treated altcoin capital as an incidental future option, or did not express the effort-slider and resource-retention requirements. It does **not supersede accepted freeze content**. All referenced ADRs now point to this controlling clarification; prior decisions remain valid unless explicitly contradicted above. Owner acceptance of target design is not authority to enable capital, pay providers or override current frozen contracts.
++
++
++## 9. Dated owner clarification — Binance Skills Hub reference and fair comparison (12 October 2026)
++
++Atlas remains the owner’s original product; this clarification does not redesign it or amend any frozen operational contract. Binance Skills Hub is an optional, read-only information and documentation reference for Atlas’s existing Binance adapters. Atlas’s existing data and quantitative models remain primary. Do not add a signal already covered sufficiently by Atlas. Any additional public-market information must have verified timestamps and provenance, pass causal validation, and show measured incremental usefulness before it is exposed in the existing Decision Brief or bounded read-only research gateway.
++
++AI receives no unrestricted exchange execution authority. Information observed from one venue may inform research about another venue, but prices, fees, funding, product rules, margin, position evidence, and protection assumptions for a trade must come from that trade’s actual execution venue.
++
++A future Atlas-versus-Binance-Skills comparison begins with paired offline and prospective no-money evaluation using the same eligible instruments, available data, decision windows, execution-venue costs, risk limits, and outcome maturity. Preserve all no-trade, skipped, late, and rejected decisions. Profitability, model suitability, and readiness for real capital remain unproven until the applicable evidence and independent gates are met. This target clarification grants no operational, provider-spending, demo-order, or capital authority.
+--- a/Red/MANIFEST.json
++++ b/Red/MANIFEST.json
+@@ -120,8 +120,8 @@
+     },
+     {
+       "path": "ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md",
+-      "bytes": 15611,
+-      "sha256": "082776b57f74300f63745cad84840e50a881e4de18511024a052de960f3b7d6d",
++      "bytes": 17182,
++      "sha256": "d323030cebc6d8d17d6401765ed49c250548e2fa9ab57e074933cf364bcb8c92",
+       "kind": "md"
+     },
+     {

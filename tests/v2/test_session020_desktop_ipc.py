@@ -184,6 +184,14 @@ window = AtlasDesktop(ProjectionClient(os.environ['ATLAS_TEST_HOST'], int(os.env
 window.refresh()
 names = [window.tabs.tabText(i) for i in range(window.tabs.count())]
 assert names == ['Overview', 'Scanner', 'Chart', 'Watches', 'Evidence'], names
+assert 'RESEARCH/SHADOW TEST GATE' in window.banner.text(), window.banner.text()
+assert 'RESEARCH/SHADOW TEST GATE' in window.overview_summary.text(), window.overview_summary.text()
+projected_statuses = {item.name: (item.state, item.value) for item in window.snapshot.overview.statuses}
+assert projected_statuses['research_agent'] == ('DISABLED', 'PRODUCTION_AGENT_MODE_DISABLED')
+assert projected_statuses['decision_brief'][0] == 'UNAVAILABLE'
+assert projected_statuses['position_lifecycle'][0] == 'UNAVAILABLE'
+assert projected_statuses['due_work'][0] == 'UNAVAILABLE'
+assert projected_statuses['model_provider'][0] == 'UNAVAILABLE'
 os.write(1, b'READ_ONLY_VIEWS_READY\\n')
 os._exit(37)
 """

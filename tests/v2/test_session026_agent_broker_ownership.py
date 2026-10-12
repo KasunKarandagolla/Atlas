@@ -78,6 +78,7 @@ def test_broker_entry_runs_without_ops_database_path(monkeypatch: pytest.MonkeyP
     monkeypatch.delenv("ATLAS_OPS_DB", raising=False)
     monkeypatch.setenv("ATLAS_AGENT_BROKER_SOCKET", str(tmp_path / "broker.sock"))
     monkeypatch.setenv("ATLAS_AGENT_CAPABILITY_KEY", "42" * 32)
+    monkeypatch.setenv("ATLAS_AGENT_PROVIDER_PROFILE", "openai-astra-v1")
     monkeypatch.setenv("OPENAI_API_KEY", "offline-test-placeholder-not-a-provider-key")
     monkeypatch.setattr(sys, "argv", ["atlas-agent-broker"])
 

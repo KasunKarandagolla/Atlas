@@ -1,12 +1,18 @@
 # ATLAS — current project status
 
-**Updated 2026-10-12.** S48 continues the independently reviewed S47 checkpoint `b0db7d0527e68c737eefd564a87f740f5929c5f6`: source-bound Decision Brief repairs, bounded saturation rejection, expiring protection supervision and a read-only position lifecycle projection. See the [S48 handoff](docs/v2/ATLAS_S48_IMPLEMENTATION_HANDOFF.md), [evidence](docs/v2/transition-s48-evidence/evidence_manifest.json), [Binance contract audit](docs/v2/ATLAS_S48_BINANCE_SKILLS_HUB_CONTRACT_COMPARISON.md), [`log.md`](log.md) and [`docs/INDEX.md`](docs/INDEX.md). Independent acceptance remains pending.
+**Updated 2026-10-13.** S49 continues the verified S48 head `52d9c149cfa1a1bc3f9a955ad94629300d00a7a7` on `impl/session-049-final-integration-release`. See the [S49 handoff](docs/v2/ATLAS_S49_IMPLEMENTATION_HANDOFF.md), [end-to-end integration report](docs/v2/ATLAS_S49_END_TO_END_INTEGRATION_REPORT.md), [target implementation audit](docs/v2/ATLAS_S49_TARGET_IMPLEMENTATION_AUDIT.md), [machine-readable evidence](docs/v2/transition-s49-evidence/evidence_manifest.json), [`log.md`](log.md), and [`docs/INDEX.md`](docs/INDEX.md). S49 adds the single optional discovery-effort setting, explicit observer gates, an offline integration runner, and a current-stop lifecycle regression. The deterministic market-to-calendar path is tested, but production still sets `agent_mode=DISABLED`; full integration remains **TEST GATE**. The bounded mixed-load queue also reproduced a one-frame rejection. No provider call, exchange order, or capital authority is claimed.
 
 ## Current operating boundary
 
 ATLAS is a capital-disabled public-market research and shadow system. The initial owner profile is Binance USD-M USDT perpetuals; Bybit remains inactive in that profile. Public research capability and capital execution are separate. Trading and assisted execution remain disabled. S48 does not amend the frozen V1, V2 or Agent contracts. The [comparative decision amendment](docs/v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md) remains **PROPOSED**, awaiting independent acceptance.
 
-## S48 implementation status
+## S49 current scope
+
+The existing deterministic research pipeline reaches candidate selection, independent hard-risk sizing, available economics, the decision calendar, and durable restart. S47 Decision Brief/research-agent/memory and S48 position lifecycle remain unconnected to that production caller and GUI; the offline runner makes this failure explicit. The desktop is read-only, displays `RESEARCH/SHADOW TEST GATE`, accepts no credential secret, and freezes the one `CONSERVE`/`STANDARD` discovery-effort control into a new run. Conserving effort records optional broad-research deferrals while required observations and S8 outcomes continue.
+
+Reproduce the offline integration report with `python scripts/atlas_s49_offline_integration.py` in the pinned environment. The full offline repository run collected 2,783 tests but was stopped after 1:01:24 at 1,196 reached (43%) while a long S3 history fixture remained active; the partial log contains six failures and is not a full-suite verdict. A strict agent bridge assertion remains a gate until an accepted amendment defines its production caller. The bounded mixed-load capture rejection also remains open. Economic value remains **NOT ESTIMABLE**; Linux packaging does not qualify Windows, and capital remains disabled.
+
+## Previous S48 implementation status
 
 Facts entering COMPLETE briefs require registered typed source readback, exact product/cutoff/availability and reproducible values. External-venue context is explicit. The two stale Ops schema assertions now match v3, retaining migration checks. The socket listener drains one bounded request frame before definite saturation rejection; uncertain delivery remains UNKNOWN. Protection confirmation expires or becomes recovery-required on contradictory evidence. Conditional algo readback requires exact identity and closing semantics.
 

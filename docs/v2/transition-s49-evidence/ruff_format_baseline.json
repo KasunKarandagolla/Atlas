@@ -1,0 +1,109 @@
+{
+  "files": [
+    {
+      "baseline_formatted": true,
+      "current_formatted": true,
+      "introduced_format_regression": false,
+      "path": "src/atlas/desktop/app.py"
+    },
+    {
+      "baseline_formatted": true,
+      "current_formatted": true,
+      "introduced_format_regression": false,
+      "path": "src/atlas/v2/desktop/projection.py"
+    },
+    {
+      "baseline_formatted": false,
+      "current_formatted": false,
+      "introduced_format_regression": false,
+      "path": "src/atlas/v2/product.py"
+    },
+    {
+      "baseline_formatted": false,
+      "current_formatted": false,
+      "introduced_format_regression": false,
+      "path": "src/atlas/v2/runtime/broad_research_queue.py"
+    },
+    {
+      "baseline_formatted": false,
+      "current_formatted": false,
+      "introduced_format_regression": false,
+      "path": "src/atlas/v2/runtime/production.py"
+    },
+    {
+      "baseline_formatted": true,
+      "current_formatted": true,
+      "introduced_format_regression": false,
+      "path": "tests/runtime/test_session048_lifecycle_projection.py"
+    },
+    {
+      "baseline_formatted": false,
+      "current_formatted": false,
+      "introduced_format_regression": false,
+      "path": "tests/v2/test_session020_desktop_ipc.py"
+    },
+    {
+      "baseline_formatted": true,
+      "current_formatted": true,
+      "introduced_format_regression": false,
+      "path": "tests/v2/test_session027_ops_supervisor.py"
+    },
+    {
+      "baseline_formatted": false,
+      "current_formatted": false,
+      "introduced_format_regression": false,
+      "path": "tests/v2/test_session027_production.py"
+    },
+    {
+      "baseline_formatted": false,
+      "current_formatted": false,
+      "introduced_format_regression": false,
+      "path": "tests/v2/test_session041_product_configuration.py"
+    },
+    {
+      "baseline_formatted": false,
+      "current_formatted": false,
+      "introduced_format_regression": false,
+      "path": "tests/v2/test_session041_production_breadth.py"
+    },
+    {
+      "baseline_formatted": false,
+      "current_formatted": false,
+      "introduced_format_regression": false,
+      "path": "tests/v2/test_session041_scale_review.py"
+    },
+    {
+      "baseline_formatted": false,
+      "current_formatted": false,
+      "introduced_format_regression": false,
+      "path": "tests/v2/test_session044_close_driven_m15.py"
+    },
+    {
+      "baseline_formatted": null,
+      "current_formatted": true,
+      "introduced_format_regression": false,
+      "path": "scripts/atlas_s49_offline_guard.py"
+    },
+    {
+      "baseline_formatted": null,
+      "current_formatted": true,
+      "introduced_format_regression": false,
+      "path": "scripts/atlas_s49_offline_integration.py"
+    },
+    {
+      "baseline_formatted": null,
+      "current_formatted": true,
+      "introduced_format_regression": false,
+      "path": "scripts/atlas_s49_full_repository.py"
+    },
+    {
+      "baseline_formatted": null,
+      "current_formatted": true,
+      "introduced_format_regression": false,
+      "path": "scripts/sitecustomize.py"
+    }
+  ],
+  "new_files_unformatted": [],
+  "new_format_regressions": 0,
+  "schema": "ATLAS_S49_RUFF_FORMAT_BASELINE_V1"
+}

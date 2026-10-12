@@ -1,0 +1,8 @@
+{
+  "collected_tests": 2783,
+  "collection_errors": 0,
+  "command": "bwrap --unshare-net ... python -m pytest --collect-only -q --disable-warnings tests",
+  "files_with_collected_tests": 279,
+  "network": "disabled at OS namespace; Python non-loopback guard enabled",
+  "schema": "ATLAS_S49_FULL_REPOSITORY_COLLECTION_V1"
+}

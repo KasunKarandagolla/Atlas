@@ -172,7 +172,7 @@ class AtlasDesktop(QMainWindow):
                 f"ATLAS desktop {ATLAS_VERSION} · {diagnostics.get('service')} "
                 f"{diagnostics.get('service_version')} · IPC {diagnostics.get('protocol_version')} · "
                 f"uptime {diagnostics.get('uptime_seconds')}s · "
-                f"{diagnostics.get('release_classification')} · snapshot {freshness.lower()} · observer only"
+                f"RESEARCH/SHADOW TEST GATE · snapshot {freshness.lower()} · observer only"
             )
             self._render_snapshot()
         except (OSError, IPCProtocolError, ValueError, KeyError, TypeError) as exc:
@@ -190,7 +190,7 @@ class AtlasDesktop(QMainWindow):
             f"Universe {snap.overview.universe_instruments} · observed {snap.overview.observed_instruments} · "
             f"scanner eligible {snap.overview.scanner_eligible_instruments}\nDecisions: {counts}\n"
             f"Unavailable evidence: {', '.join(snap.overview.unavailable_fields) or 'none'}\n"
-            "Release: SHADOW_RELEASED · economic value: NOT ESTIMABLE · "
+            "Release: RESEARCH/SHADOW TEST GATE · economic value: NOT ESTIMABLE · "
             "venue qualification: UNVERIFIED / TEST GATE · capital disabled"
         )
         self._fill(

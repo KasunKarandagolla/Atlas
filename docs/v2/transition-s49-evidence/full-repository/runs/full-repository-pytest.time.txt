@@ -1,0 +1,24 @@
+Command terminated by signal 9
+	Command being timed: "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q --disable-warnings tests --junitxml=/home/kasun/Music/atlas-s49/docs/v2/transition-s49-evidence/full-repository/runs/full-repository-pytest.junit.xml"
+	User time (seconds): 1934.34
+	System time (seconds): 110.81
+	Percent of CPU this job got: 55%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:01:24
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 996196
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 6607
+	Minor (reclaiming a frame) page faults: 455937
+	Voluntary context switches: 51139
+	Involuntary context switches: 1287862
+	Swaps: 0
+	File system inputs: 465408
+	File system outputs: 3222856
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
