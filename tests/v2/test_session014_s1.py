@@ -147,7 +147,7 @@ def test_s1_watch_restart_candidate_and_handoff(tmp_path, side: str) -> None:
         receipt = repository.get_artifact(handed.handoff_receipt)
         assert receipt is not None and receipt.metadata["candidate_ref"] == candidate.content_hash
         assert receipt.metadata["feature_hash"] == candidate.snapshot_hash
-        assert repository.schema_version == 1
+        assert repository.schema_version == 3
         for forbidden_type in ("CandidateSetV2", "TradePlanEnvelopeV2", "EvaluationArtifactV2", "Approval", "Reservation", "Order"):
             assert repository.artifact_entries(forbidden_type) == ()
         assert not hasattr(coordinator, "submit_order") and not hasattr(coordinator, "reserve_capital")

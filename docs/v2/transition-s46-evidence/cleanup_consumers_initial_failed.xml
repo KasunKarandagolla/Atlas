@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="42" time="140.966" timestamp="2026-10-12T13:39:02.568803+05:30" hostname="Kasun"><properties><property name="hypothesis-statistics-tests/v2/test_session014_core.py::test_arbitrary_future_tail_does_not_relabel_prefix" value="dGVzdHMvdjIvdGVzdF9zZXNzaW9uMDE0X2NvcmUucHk6OnRlc3RfYXJiaXRyYXJ5X2Z1dHVyZV90YWlsX2RvZXNfbm90X3JlbGFiZWxfcHJlZml4OgoKICAtIGR1cmluZyBnZW5lcmF0ZSBwaGFzZSAoMS45NyBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiAxNTMtNTMwIG1zLCBvZiB3aGljaCB+IDAtMyBtcyBpbiBkYXRhIGdlbmVyYXRpb24KICAgIC0gOCBwYXNzaW5nLCAwIGZhaWxpbmcsIGFuZCAwIGludmFsaWQgdGVzdCBjYXNlcwoKICAtIFN0b3BwZWQgYmVjYXVzZSBzZXR0aW5ncy5tYXhfZXhhbXBsZXM9OA==" /></properties><testcase classname="tests.contract.test_v1_golden_baseline" name="test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures" time="5.088" /><testcase classname="tests.v2.test_session014_core" name="test_hand_calculated_math" time="0.033" /><testcase classname="tests.v2.test_session014_core" name="test_prefix_future_tail_all_standard_features" time="0.240" /><testcase classname="tests.v2.test_session014_core" name="test_vwap_and_regime_missingness" time="0.004" /><testcase classname="tests.v2.test_session014_core" name="test_smc_confirmation_and_prefix" time="0.020" /><testcase classname="tests.v2.test_session014_core" name="test_bos_choch_fvg_sweep_orderblock_timing" time="0.015" /><testcase classname="tests.v2.test_session014_core" name="test_arbitrary_future_tail_does_not_relabel_prefix" time="2.003" /><testcase classname="tests.v2.test_session014_s1" name="test_s1_watch_restart_candidate_and_handoff[LONG]" time="1.597"><failure message="assert 3 == 1&#10; +  where 3 = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f41dbfa7e00&gt;.schema_version">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-104/test_s1_watch_restart_candidat0')
+side = 'LONG'
+
+    @pytest.mark.parametrize("side", ["LONG", "SHORT"])
+    def test_s1_watch_restart_candidate_and_handoff(tmp_path, side: str) -&gt; None:
+        store = store_for_side(side)
+        assert KEY.contract_revision != KEY.content_hash
+        assert all(item.instrument_revision == KEY.contract_revision for item in store.all_versions())
+        joined = asof_join(store, KEY, cutoff_ns=SETUP)
+        assert joined.status == "AVAILABLE"
+        feature = feature_snapshot(joined)
+        assert feature.content_hash == feature_snapshot(joined).content_hash
+        assert feature.values["m15.atr14"].value is not None
+        path = tmp_path / "ops.sqlite"
+        with OpsRepository(path) as repository:
+            coordinator = S1ShadowCoordinator(repository)
+            decision = coordinator.create_watch(joined, feature, event_gate=clear(SETUP), universe=universe_at(SETUP))
+            assert decision.status == "WATCH", decision.reason
+            assert decision.watch is not None
+            watch_id = decision.watch.watch_id
+            assert decision.watch.state == WatchStateV2.WAITING_FOR_EVENT
+            assert coordinator.create_watch(joined, feature, event_gate=clear(SETUP), universe=universe_at(SETUP)).watch == decision.watch
+            assert coordinator.on_bar(watch_id, joined, feature, event_gate=clear(SETUP), bbo=None, mark_index=None).reason == "PRE_WATCH_OR_UNCONFIRMED_BAR"
+        with OpsRepository(path) as repository:
+            coordinator = S1ShadowCoordinator(repository)
+            recovered = repository.recover_active_watches(now_ns=SETUP)
+            assert (watch_id, "CANDLE_CLOSED_15M") in recovered.required_events
+            assert coordinator.on_bar(watch_id, joined, feature, event_gate=clear(SETUP),
+                                      bbo=None, mark_index=None).reason == "PRE_WATCH_OR_UNCONFIRMED_BAR"
+            trigger_price = "105.55" if side == "LONG" else "94.45"
+            trigger = bar(800, close=trigger_price)
+            store.append(trigger)
+            cutoff = trigger.close_at_ns
+            triggered = asof_join(store, KEY, cutoff_ns=cutoff, trigger_ref=trigger.content_hash)
+            triggered_feature = feature_snapshot(triggered)
+            quote_price = Decimal(trigger_price)
+            bbo = ExecutableQuote(KEY, quote_price - Decimal("0.01"), quote_price + Decimal("0.01"), cutoff, cutoff,
+                                  sha256_json({"bbo": cutoff}))
+            mark = MarkIndexEvidence(KEY, quote_price, quote_price, cutoff, sha256_json({"mark": cutoff}))
+            result = coordinator.on_bar(watch_id, triggered, triggered_feature, event_gate=clear(cutoff), bbo=bbo, mark_index=mark)
+            assert result.status == "CANDIDATE", result.reason
+            assert result.candidate is not None and result.watch is not None
+            candidate = result.candidate
+            assert candidate.quantity is None and candidate.policy_hash == S1_POLICY.policy_hash
+            assert candidate.snapshot_hash == triggered_feature.content_hash
+            assert candidate.side.value == side
+            expected_reference = bbo.ask if side == "LONG" else bbo.bid
+            assert candidate.entry_reference == expected_reference
+            assert candidate.entry_collar == expected_reference * (Decimal("1.0005") if side == "LONG" else Decimal("0.9995"))
+            setup = repository.get_artifact(result.watch.thesis_hash)
+            assert setup is not None
+            extreme = Decimal(str(setup.metadata["setup_window_extreme"]))
+            atr = Decimal(str(triggered_feature.values["m15.atr14"].value))
+            assert candidate.stop_price == extreme + (Decimal("-0.25") if side == "LONG" else Decimal("0.25")) * atr
+            index = repository.get_artifact(candidate.content_hash)
+            assert index is not None and index.metadata["candidate"]["candidate_id"] == candidate.candidate_id
+            assert index.metadata["bbo_ref"] == bbo.evidence_ref and index.metadata["bbo_observed_at_ns"] == cutoff
+            assert coordinator.on_bar(watch_id, triggered, triggered_feature, event_gate=clear(cutoff), bbo=bbo, mark_index=mark).candidate is None
+            acceptance_body = {"status": "ACCEPTED", "watch_id": watch_id, "candidate_ref": candidate.content_hash,
+                               "feature_hash": candidate.snapshot_hash, "pipeline_version": "research-only-v1"}
+            acceptance_ref = sha256_json(acceptance_body)
+            with pytest.raises(ValueError, match="indexed research-pipeline acceptance"):
+                coordinator.accept_handoff(watch_id, candidate.content_hash,
+                    pipeline_acceptance_ref=acceptance_ref, accepted_at_ns=cutoff)
+            repository.register_artifact(ArtifactIndexEntryV2(acceptance_ref, "ResearchCandidateAcceptanceV1",
+                acceptance_ref, cutoff, cutoff, acceptance_body))
+            handed = coordinator.accept_handoff(watch_id, candidate.content_hash,
+                pipeline_acceptance_ref=acceptance_ref, accepted_at_ns=cutoff)
+            assert handed.state == WatchStateV2.HANDED_OFF and handed.handoff_receipt is not None
+            receipt = repository.get_artifact(handed.handoff_receipt)
+            assert receipt is not None and receipt.metadata["candidate_ref"] == candidate.content_hash
+            assert receipt.metadata["feature_hash"] == candidate.snapshot_hash
+&gt;           assert repository.schema_version == 1
+E           assert 3 == 1
+E            +  where 3 = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f41dbfa7e00&gt;.schema_version
+
+tests/v2/test_session014_s1.py:150: AssertionError</failure></testcase><testcase classname="tests.v2.test_session014_s1" name="test_s1_watch_restart_candidate_and_handoff[SHORT]" time="1.426"><failure message="assert 3 == 1&#10; +  where 3 = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f41db9a6ab0&gt;.schema_version">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-104/test_s1_watch_restart_candidat1')
+side = 'SHORT'
+
+    @pytest.mark.parametrize("side", ["LONG", "SHORT"])
+    def test_s1_watch_restart_candidate_and_handoff(tmp_path, side: str) -&gt; None:
+        store = store_for_side(side)
+        assert KEY.contract_revision != KEY.content_hash
+        assert all(item.instrument_revision == KEY.contract_revision for item in store.all_versions())
+        joined = asof_join(store, KEY, cutoff_ns=SETUP)
+        assert joined.status == "AVAILABLE"
+        feature = feature_snapshot(joined)
+        assert feature.content_hash == feature_snapshot(joined).content_hash
+        assert feature.values["m15.atr14"].value is not None
+        path = tmp_path / "ops.sqlite"
+        with OpsRepository(path) as repository:
+            coordinator = S1ShadowCoordinator(repository)
+            decision = coordinator.create_watch(joined, feature, event_gate=clear(SETUP), universe=universe_at(SETUP))
+            assert decision.status == "WATCH", decision.reason
+            assert decision.watch is not None
+            watch_id = decision.watch.watch_id
+            assert decision.watch.state == WatchStateV2.WAITING_FOR_EVENT
+            assert coordinator.create_watch(joined, feature, event_gate=clear(SETUP), universe=universe_at(SETUP)).watch == decision.watch
+            assert coordinator.on_bar(watch_id, joined, feature, event_gate=clear(SETUP), bbo=None, mark_index=None).reason == "PRE_WATCH_OR_UNCONFIRMED_BAR"
+        with OpsRepository(path) as repository:
+            coordinator = S1ShadowCoordinator(repository)
+            recovered = repository.recover_active_watches(now_ns=SETUP)
+            assert (watch_id, "CANDLE_CLOSED_15M") in recovered.required_events
+            assert coordinator.on_bar(watch_id, joined, feature, event_gate=clear(SETUP),
+                                      bbo=None, mark_index=None).reason == "PRE_WATCH_OR_UNCONFIRMED_BAR"
+            trigger_price = "105.55" if side == "LONG" else "94.45"
+            trigger = bar(800, close=trigger_price)
+            store.append(trigger)
+            cutoff = trigger.close_at_ns
+            triggered = asof_join(store, KEY, cutoff_ns=cutoff, trigger_ref=trigger.content_hash)
+            triggered_feature = feature_snapshot(triggered)
+            quote_price = Decimal(trigger_price)
+            bbo = ExecutableQuote(KEY, quote_price - Decimal("0.01"), quote_price + Decimal("0.01"), cutoff, cutoff,
+                                  sha256_json({"bbo": cutoff}))
+            mark = MarkIndexEvidence(KEY, quote_price, quote_price, cutoff, sha256_json({"mark": cutoff}))
+            result = coordinator.on_bar(watch_id, triggered, triggered_feature, event_gate=clear(cutoff), bbo=bbo, mark_index=mark)
+            assert result.status == "CANDIDATE", result.reason
+            assert result.candidate is not None and result.watch is not None
+            candidate = result.candidate
+            assert candidate.quantity is None and candidate.policy_hash == S1_POLICY.policy_hash
+            assert candidate.snapshot_hash == triggered_feature.content_hash
+            assert candidate.side.value == side
+            expected_reference = bbo.ask if side == "LONG" else bbo.bid
+            assert candidate.entry_reference == expected_reference
+            assert candidate.entry_collar == expected_reference * (Decimal("1.0005") if side == "LONG" else Decimal("0.9995"))
+            setup = repository.get_artifact(result.watch.thesis_hash)
+            assert setup is not None
+            extreme = Decimal(str(setup.metadata["setup_window_extreme"]))
+            atr = Decimal(str(triggered_feature.values["m15.atr14"].value))
+            assert candidate.stop_price == extreme + (Decimal("-0.25") if side == "LONG" else Decimal("0.25")) * atr
+            index = repository.get_artifact(candidate.content_hash)
+            assert index is not None and index.metadata["candidate"]["candidate_id"] == candidate.candidate_id
+            assert index.metadata["bbo_ref"] == bbo.evidence_ref and index.metadata["bbo_observed_at_ns"] == cutoff
+            assert coordinator.on_bar(watch_id, triggered, triggered_feature, event_gate=clear(cutoff), bbo=bbo, mark_index=mark).candidate is None
+            acceptance_body = {"status": "ACCEPTED", "watch_id": watch_id, "candidate_ref": candidate.content_hash,
+                               "feature_hash": candidate.snapshot_hash, "pipeline_version": "research-only-v1"}
+            acceptance_ref = sha256_json(acceptance_body)
+            with pytest.raises(ValueError, match="indexed research-pipeline acceptance"):
+                coordinator.accept_handoff(watch_id, candidate.content_hash,
+                    pipeline_acceptance_ref=acceptance_ref, accepted_at_ns=cutoff)
+            repository.register_artifact(ArtifactIndexEntryV2(acceptance_ref, "ResearchCandidateAcceptanceV1",
+                acceptance_ref, cutoff, cutoff, acceptance_body))
+            handed = coordinator.accept_handoff(watch_id, candidate.content_hash,
+                pipeline_acceptance_ref=acceptance_ref, accepted_at_ns=cutoff)
+            assert handed.state == WatchStateV2.HANDED_OFF and handed.handoff_receipt is not None
+            receipt = repository.get_artifact(handed.handoff_receipt)
+            assert receipt is not None and receipt.metadata["candidate_ref"] == candidate.content_hash
+            assert receipt.metadata["feature_hash"] == candidate.snapshot_hash
+&gt;           assert repository.schema_version == 1
+E           assert 3 == 1
+E            +  where 3 = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f41db9a6ab0&gt;.schema_version
+
+tests/v2/test_session014_s1.py:150: AssertionError</failure></testcase><testcase classname="tests.v2.test_session014_s1" name="test_s1_blocked_unknown_missing_and_variants" time="0.700" /><testcase classname="tests.v2.test_session014_s1" name="test_four_bar_expiry_and_stale_evidence" time="1.363" /><testcase classname="tests.v2.test_session014_s1" name="test_join_boundaries_missing_and_revision" time="1.005" /><testcase classname="tests.v2.test_session014_s1" name="test_setup_rule_failures_and_missing_timeframe" time="1.534" /><testcase classname="tests.v2.test_session014_s1" name="test_trigger_rejection_evidence" time="1.097" /><testcase classname="tests.v2.test_session014_s1" name="test_contrary_confirmed_four_hour_invalidates" time="1.369" /><testcase classname="tests.v2.test_session016_s2" name="test_exact_history_long_candidate_and_frozen_evidence" time="4.133" /><testcase classname="tests.v2.test_session016_s2" name="test_warmup_bar_changes_statistics_and_is_bound_to_setup" time="4.334" /><testcase classname="tests.v2.test_session016_s2" name="test_insufficient_history_and_missing_context_fail_closed" time="6.263" /><testcase classname="tests.v2.test_session016_s2" name="test_s2_variants_and_quantile_identity" time="0.020" /><testcase classname="tests.v2.test_session016_s2" name="test_strict_predicates_and_inclusive_width_boundaries" time="0.005" /><testcase classname="tests.v2.test_session016_s2" name="test_short_volume_and_future_tail" time="3.677" /><testcase classname="tests.v2.test_session016_s2" name="test_inside_or_subthreshold_close_has_no_candidate[100]" time="2.084" /><testcase classname="tests.v2.test_session016_s2" name="test_inside_or_subthreshold_close_has_no_candidate[100.35]" time="2.375" /><testcase classname="tests.v2.test_session021_s6" name="test_s6_requires_20_point_in_time_strategy_eligible_instruments" time="0.337" /><testcase classname="tests.v2.test_session021_s6" name="test_s6_market_availability_view_excludes_reconstructed_bars_from_actual_system" time="0.007" /><testcase classname="tests.v2.test_session021_s6" name="test_s6_20_instruments_calculate_ranked_betas_scores_and_deciles" time="17.698" /><testcase classname="tests.v2.test_session021_s6" name="test_s6_exact_hourly_intersection_missing_peer_btc_and_zero_variance_are_named" time="5.703" /><testcase classname="tests.v2.test_session021_s6" name="test_s6_late_appends_do_not_change_earlier_cutoff_state_or_full_key_rank" time="9.281" /><testcase classname="tests.v2.test_session021_s6" name="test_s6_subsequent_trigger_stops_at_unfrozen_stop_contract" time="0.422" /><testcase classname="tests.v2.test_session037_feature_prefix" name="test_policy_features_use_exact_prefix_indicators_and_bound_checkpoint_refs" time="4.141" /><testcase classname="tests.v2.test_session037_feature_prefix" name="test_exact_prefix_feature_context_refuses_mismatched_tail_or_incomplete_manifest" time="2.390" /><testcase classname="tests.v2.test_session041_s6_cohort" name="test_mixed_environment_peer_cannot_pollute_s6_proxy_cohort" time="4.739" /><testcase classname="tests.v2.test_session041_s6_cohort" name="test_s6_proxy_cohort_matches_full_venue_environment_product_identity" time="0.004" /><testcase classname="tests.v2.test_session041_s6_cohort" name="test_full_strategy_surface_keeps_bybit_and_binance_s6_cohorts_distinct" time="1.080" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_new_profile_is_versioned_opt_in_and_leaves_v1_hash_shape_unchanged" time="0.040" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_reuses_bulk_quotes_publishes_one_exact_final_m15_and_restores" time="0.040"><properties><property name="source_acquisition_duration_ns" value="29139354" /><property name="close_attempt_duration_ns" value="18901686" /></properties></testcase><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_rejects_eligible_population_overflow_without_truncating" time="0.025" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_rejects_incompatible_venue_before_inactive_client_construction" time="0.015" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_marks_late_final_bar_instead_of_calling_it_complete" time="0.096" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_close_profile_broad_workset_uses_internal_interval_and_rest_health_identity" time="0.581" /><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_timely_profile_origin_reaches_durable_candidate_set_and_restart_is_idempotent" time="14.389"><properties><property name="supervisor_collection_elapsed_ns" value="2455061905" /><property name="source_acquisition_duration_ns" value="6314608" /></properties></testcase><testcase classname="tests.v2.test_session044_close_driven_m15" name="test_late_close_profile_is_durably_missing_without_event_after_restart" time="5.142" /></testsuite></testsuites>

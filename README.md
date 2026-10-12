@@ -1,34 +1,40 @@
 # ATLAS — current project status
 
-**Updated 2026-10-11.** This is the current status entry point. The latest checkpoint and detailed test evidence are in [`log.md`](log.md); historical S41 ledgers retain their original scope, results and hashes.
+**Updated 2026-10-12.** S46 implements bounded, read-only H1 peer relationship context on the S45 foundation. The [S46 handoff](docs/v2/ATLAS_S46_IMPLEMENTATION_HANDOFF.md) records tests and open qualifications. See [`log.md`](log.md) for the coordinator checkpoint and [`docs/INDEX.md`](docs/INDEX.md) for the document map.
 
-## Where the project stands
+## Current operating boundary
 
-ATLAS is a capital-disabled public-market research and shadow system. The first owner operating profile is **one active public venue: Binance USD-M USDT perpetuals**. Bybit must remain inactive in that profile. Trading and assisted execution are disabled; no exchange credentials are needed for public-data research.
+ATLAS is a capital-disabled public-market research and shadow system. The initial owner profile is Binance USD-M USDT perpetuals; Bybit remains inactive in that profile. Public research capability and capital execution are separate. Trading and assisted execution remain disabled. S46 does not amend the frozen V1, V2 or Agent contracts.
 
-The V2 freeze also permits simultaneous **public research** on Bybit and Binance as a product capability. That capability does not require both venues to run in the first-test profile. Simultaneous multi-venue capital, automatic cross-venue routing and arbitrage remain deferred unless separately versioned and accepted.
+## S46 implementation status
 
-| Area | Current status |
-| --- | --- |
-| Binance-only close-driven M15 acquisition profile | **IMPLEMENTED** as a versioned opt-in; disabled by default pending independent acceptance |
-| Deterministic timely S1 opportunity path | **TESTED** with local production components: final M15, supporting evidence, durable causal publication, CandidateSet and deterministic selection |
-| Existing S2 candidate/selector contract | **TESTED** in its focused deterministic regression suite; the new close-driven production fixture exercises S1, not a live S2 opportunity |
-| Late or unavailable M15 evidence | **TESTED** to remain explicitly missing/late and produce no actionable event, including after restart |
-| Real Binance delivery speed and opportunity coverage | **UNVERIFIED**; local fixtures do not measure exchange or network latency |
-| Ordinary long-run storage admission / A2 capacity | **TEST GATE**; no accepted capacity certificate exists and `S41_MAX_BREADTH_BYTES_PER_CYCLE_V2` remains `None` |
-| Capital and assisted execution | Disabled |
-| Economic value | **NOT ESTIMABLE** |
+The peer seam uses exact instrument and universe revisions, existing S6 H1 return selection and BTC betas, explicit common timestamps and evidence refs, null states for unavailable estimates, and a process-local cache bounded to 32 entries and one H1 TTL. It does not feed selector, risk, plan or trading decisions. `TECHNICAL_V1`, S6 calculations and policy hashes remain unchanged. Cleanup disposition is **DELETE NONE**.
 
-The close-driven addition preserves continuous stream evidence, the ten-second broad-market scan, deterministic tiers, exploration, mandatory watches, final 1H/4H evidence, venue-final bar confirmation and the frozen five-second decision window. It does not establish that a real exchange response will meet that window or qualify a long-running shadow deployment.
+**TESTED:** peer tests 10/10; peer/S6/feature consumers 42/42; production outcome and maturity group 76/76; durable capture/recovery 27/27; V1 golden, persistence/recovery and S44 M15 group 26/26; S1/S2/selection/migration group 53/53. Calendar and event suites passed 35/35 when run independently. Two combined runs each had the existing saturation assertion observe `CALL_OUTCOME_UNKNOWN` instead of `BROKER_SATURATED`; the fail-closed result and isolated passing reports are retained in the S46 evidence directory. Library comparison did not establish full warmup/seed parity, so no dependency was added.
 
-## What remains before a useful shadow run
+## Open qualifications
 
-The immediate step is independent review of the bounded S44 source and offline evidence, followed by explicit acceptance of the opt-in profile. After that, a separately authorized, public-only Binance diagnostic must measure actual source latency, evidence completeness and resource use. Ordinary research startup remains fail-closed until its matching A2 storage/capacity admission is available. Native Windows, longer endurance, authenticated venue protection and prospective economic evidence are separate qualifications.
+- Fake Bybit source/supervisor fixture: **TEST GATE**; `INCOMPLETE_SNAPSHOT` and noncausal dependency `ValueError` remain unresolved.
+- TQ-01 injected stream stall: **TEST GATE**; 480/512 queue occupancy and one rejected frame; S45 80/120 frames/s attempts produced no valid sustained drain metrics.
+- Real Binance final-M15 delivery within close+5s: **UNVERIFIED**.
+- Linux F1/A2 sustained capacity: **TEST GATE**.
+- Authenticated/native Binance protection and capital remain unqualified; capital and assisted execution stay disabled.
+- Combined calendar/event saturation assertion: **TEST GATE**; isolated suites pass, while both combined runs fail closed with an unexpected outcome classification.
+- Existing `TECHNICAL_V1` on sparse bars: **TEST GATE** for future gap-sensitive use; current calculations accept sparse input without a gap label.
+- Economic value: **NOT ESTIMABLE**.
 
-Do not start an ordinary run or treat the profile's presence in the UI/configuration as approval. S44 did not run an authorized Binance diagnostic, F1/F4/A2 capacity campaign, installer, merge or capital action. One unintended Binance public WebSocket connection during an early test-fixture attempt is disclosed in [`log.md`](log.md); it was terminated and no credential, account or trading path was used.
+Do not infer source latency, capacity or economics from deterministic fixtures. S46 makes no live diagnostic, credential, capital, or promotion-ladder change.
 
-## Historical records
+## Previous completed implementation — S45
 
-The [S41 handoff](SESSION041_HANDOFF.md), [live-test readiness record](SESSION041_FINAL_LIVE_TEST_READINESS.md), [engineering closure](SESSION041_FULL_V2_ENGINEERING_CLOSURE.md), [blocker report](SESSION041_REVIEW_BLOCKERS_AND_ISSUES.md), capability matrix and validation/requirement ledgers are historical evidence. Their S41 findings and failed dual-venue capacity reports remain unchanged. The machine-readable ledgers retain their original schemas and checkpoint claims; they are not current S44 acceptance records.
+S45 fixed immutable `content_hash` selection in due-work discovery. Its production outcome batch passed 61/61, S33 maturity passed 15/15, durable capture passed 25/25, combined event/calendar passed 35/35, and V1 golden and S44 compatibility each passed 1/1. These are historical results. See the [S45 factual handoff](docs/v2/ATLAS_TRANSITION_S45_FACTUAL_HANDOFF.md) and its [evidence manifest](docs/v2/transition-s45-evidence/evidence_manifest.json).
 
-The file `ATLAS_CHATGPT_PROJECT_CURRENT_STATE_2026-10-04.md` was not present in this checkout. This README and the latest `log.md` entry provide replacement current-state text; no external ChatGPT Project attachment was edited.
+## Active entrypoints
+
+Package scripts are declared in [`pyproject.toml`](pyproject.toml): `atlas-product`, `atlas-v2-projection`, `atlas-desktop`, `atlas-v2-public-qualification`, `atlas-v2-public-soak`, `atlas-ops`, `atlas-agent-worker`, and `atlas-agent-broker`. Runtime modules and their boundaries are listed in [`docs/INDEX.md`](docs/INDEX.md). Their presence does not authorize capital or assisted execution.
+
+## Historical evidence
+
+S41 recovery, TQ-01 qualification, S44 close-driven M15 and S45 outcomes remain discoverable in [`docs/INDEX.md`](docs/INDEX.md), `docs/v2/`, root logs, and the retained evidence directories. Historical failures and frozen V1 comparator artifacts are preserved with their original scope and identities.
+
+`requirements-lock.txt` is the installation lock used by the recorded S45/S46 environment; it pins DuckDB 1.5.5. `uv.lock` resolves DuckDB 1.5.6. S46 records this discrepancy without regenerating either lock.

@@ -1,0 +1,329 @@
+{
+  "authorities": {
+    "agent_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "v1_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "v2_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+  },
+  "branch": "impl/session-046-causal-features-peer-context",
+  "current_dependency_facts": {
+    "installed_project_venv_duckdb": "1.5.5",
+    "pip_check": "passed",
+    "requirements_lock_duckdb": "1.5.5",
+    "uv_lock_check": "passed; 39 resolved packages",
+    "uv_lock_duckdb": "1.5.6"
+  },
+  "dependency_changes": false,
+  "junit_reports": [
+    {
+      "bytes": 10080,
+      "command_scope": "tests/v2/test_session041_official_calendar.py tests/v2/test_session041_event_extraction_transport.py (combined initial run)",
+      "duration_seconds": 12.426,
+      "errors": 0,
+      "failures": 1,
+      "path": "docs/v2/transition-s46-evidence/calendar_events_initial.xml",
+      "sha256": "bce373cfe4eab9b15e0542e22abef1f29e452cb0ebe9a3fed5b90a310ca11d72",
+      "skipped": 0,
+      "tests": 35
+    },
+    {
+      "bytes": 10080,
+      "command_scope": "tests/v2/test_session041_official_calendar.py tests/v2/test_session041_event_extraction_transport.py (combined retry)",
+      "duration_seconds": 10.802,
+      "errors": 0,
+      "failures": 1,
+      "path": "docs/v2/transition-s46-evidence/calendar_events_retry_failed.xml",
+      "sha256": "b2c22230a68e8abaa3eb710120c72ce6a5179ebb487aa9b7571ec0c6292ce877",
+      "skipped": 0,
+      "tests": 35
+    },
+    {
+      "bytes": 10037,
+      "command_scope": "tests/contract/test_v1_golden_baseline.py tests/v2/test_session014_core.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session014_s1.py tests/v2/test_session016_s2.py tests/v2/test_session021_s6.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session044_close_driven_m15.py tests/v2/test_memory.py",
+      "duration_seconds": 94.485,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/cleanup_consumers_corrected.xml",
+      "sha256": "5574b23770e6a2d92e1a9c5daef1bdea3e65c011e53ae3eeb7f9217b7ec6d4fa",
+      "skipped": 0,
+      "tests": 48
+    },
+    {
+      "bytes": 18609,
+      "command_scope": "initial cleanup consumer run with stale schema-v1 assertions",
+      "duration_seconds": 140.966,
+      "errors": 0,
+      "failures": 2,
+      "path": "docs/v2/transition-s46-evidence/cleanup_consumers_initial_failed.xml",
+      "sha256": "9c45e05f3e1013174b311052462a4894539dba6608b4eae0a7e0f3ff21e9e1c2",
+      "skipped": 0,
+      "tests": 42
+    },
+    {
+      "bytes": 5229,
+      "command_scope": "tests/persistence/test_journal.py tests/v2/test_session040_durable_capture.py",
+      "duration_seconds": 97.1,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/durable_capture.xml",
+      "sha256": "190b8c51ee1e4ea500b818c593c2c5df5ed5b16aab52e8f2ea50fe5aafe39435",
+      "skipped": 0,
+      "tests": 27
+    },
+    {
+      "bytes": 465,
+      "command_scope": "tests/v2/test_session041_event_extraction_transport.py::test_saturation_and_deadline_fail_closed_without_retry",
+      "duration_seconds": 1.371,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/event_saturation_isolated_retry.xml",
+      "sha256": "e154bfc539a48563813193ef2ef98ded9558cd4594d4017d85017e69558889d7",
+      "skipped": 0,
+      "tests": 1
+    },
+    {
+      "bytes": 2077,
+      "command_scope": "tests/v2/test_session041_event_extraction_transport.py",
+      "duration_seconds": 3.17,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/event_transport_isolated.xml",
+      "sha256": "3e652bb433261cc2632eff3799f23ac299050bd18a4f6452476690eb467c1b07",
+      "skipped": 0,
+      "tests": 8
+    },
+    {
+      "bytes": 6546,
+      "command_scope": "tests/v2/test_session041_official_calendar.py",
+      "duration_seconds": 5.952,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/official_calendar_isolated.xml",
+      "sha256": "806eef4b75d0bad85fc104ff9dad18a39720dbd520ab9a0906570efd85b837ac",
+      "skipped": 0,
+      "tests": 27
+    },
+    {
+      "bytes": 2119,
+      "command_scope": "retained JUnit report; see handoff narrative",
+      "duration_seconds": 31.222,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/peer_context_corrected.xml",
+      "sha256": "555a01600cf01539ed81c01db17d1af76e27b62f3e7448952e89921487d33c3d",
+      "skipped": 0,
+      "tests": 9
+    },
+    {
+      "bytes": 2330,
+      "command_scope": "tests/v2/test_session046_peer_context.py",
+      "duration_seconds": 32.292,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/peer_context_final.xml",
+      "sha256": "132bbde155aa45edd693ede7aa19de9ffade7966bb0cd1f06e0d4c9022b1570f",
+      "skipped": 0,
+      "tests": 10
+    },
+    {
+      "bytes": 5784,
+      "command_scope": "first peer fixture/assertion draft; retained JUnit, trailing whitespace normalized only",
+      "duration_seconds": 29.412,
+      "errors": 0,
+      "failures": 2,
+      "path": "docs/v2/transition-s46-evidence/peer_context_initial_failed.xml",
+      "sha256": "551e9075b1cc137976036390272b6f8e7187c75e9e902a948f6bb00267e25e5a",
+      "skipped": 0,
+      "tests": 9
+    },
+    {
+      "bytes": 1020,
+      "command_scope": "red collection check before module creation",
+      "duration_seconds": 0.854,
+      "errors": 1,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/peer_context_red_before_implementation.xml",
+      "sha256": "53b648bdbce7bb1a9a08ed34b600c0f998a7e476d639173daafffb587654b5f5",
+      "skipped": 0,
+      "tests": 1
+    },
+    {
+      "bytes": 9561,
+      "command_scope": "initial peer plus S6/feature consumer run before final focused case",
+      "duration_seconds": 142.684,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/peer_s6_feature_consumers.xml",
+      "sha256": "e2d82d28fa5afea80a0f02c070d75ec8b9901d2aedf9ed3004ae19ada5b01e51",
+      "skipped": 0,
+      "tests": 41
+    },
+    {
+      "bytes": 9771,
+      "command_scope": "tests/v2/test_session046_peer_context.py tests/v2/test_session021_s6.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_s6_action_contract.py tests/v2/test_session014_core.py tests/v2/test_session037_feature_prefix.py",
+      "duration_seconds": 144.188,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/peer_s6_feature_consumers_final.xml",
+      "sha256": "ccf7b5b6f597fc2972ec98925163e6c774752a128317b2046e02d4a769bc2356",
+      "skipped": 0,
+      "tests": 42
+    },
+    {
+      "bytes": 16614,
+      "command_scope": "tests/v2/test_session033_outcome_resolution.py tests/v2/test_session033_outcome_runtime.py tests/v2/test_session037_action_outcome_producer.py tests/v2/test_session037_due_work.py tests/v2/test_session033_outcome_maturity.py",
+      "duration_seconds": 123.44,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/production_outcomes.xml",
+      "sha256": "cb3fae4f4486b7f399bb280e524786fa846d0cf04a20be14950bf8660441a2cc",
+      "skipped": 0,
+      "tests": 76
+    },
+    {
+      "bytes": 11402,
+      "command_scope": "tests/v2/test_session014_s1.py tests/v2/test_session016_s2.py tests/v2/test_session016_candidate_selection.py tests/v2/test_session023_selection_audits.py tests/v2/test_session041_recovery_adoption.py::test_writable_open_migrates_schema_v1_to_additive_v3",
+      "duration_seconds": 62.537,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/selection_migration.xml",
+      "sha256": "96bd60991adab236be47f8d5f29c0890aec5b524403378332bd5ca5c4b92aa3a",
+      "skipped": 0,
+      "tests": 53
+    },
+    {
+      "bytes": 5509,
+      "command_scope": "tests/contract/test_v1_golden_baseline.py tests/persistence/test_journal.py tests/persistence/test_recovery_persistence.py tests/v2/test_session044_close_driven_m15.py",
+      "duration_seconds": 30.434,
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-s46-evidence/v1_s44.xml",
+      "sha256": "b51813d8e7e4e995e5ebb27d2a0b3e4aaf57eb8299df7a934e20d01b601ed359",
+      "skipped": 0,
+      "tests": 26
+    }
+  ],
+  "model_gate": "Owner confirmed GPT-6 Luna selected; no subagents used.",
+  "non_junit_artifacts": [
+    {
+      "bytes": 10080,
+      "path": "docs/v2/transition-s46-evidence/calendar_events_initial.xml",
+      "sha256": "bce373cfe4eab9b15e0542e22abef1f29e452cb0ebe9a3fed5b90a310ca11d72"
+    },
+    {
+      "bytes": 10080,
+      "path": "docs/v2/transition-s46-evidence/calendar_events_retry_failed.xml",
+      "sha256": "b2c22230a68e8abaa3eb710120c72ce6a5179ebb487aa9b7571ec0c6292ce877"
+    },
+    {
+      "bytes": 10037,
+      "path": "docs/v2/transition-s46-evidence/cleanup_consumers_corrected.xml",
+      "sha256": "5574b23770e6a2d92e1a9c5daef1bdea3e65c011e53ae3eeb7f9217b7ec6d4fa"
+    },
+    {
+      "bytes": 18609,
+      "path": "docs/v2/transition-s46-evidence/cleanup_consumers_initial_failed.xml",
+      "sha256": "9c45e05f3e1013174b311052462a4894539dba6608b4eae0a7e0f3ff21e9e1c2"
+    },
+    {
+      "bytes": 5229,
+      "path": "docs/v2/transition-s46-evidence/durable_capture.xml",
+      "sha256": "190b8c51ee1e4ea500b818c593c2c5df5ed5b16aab52e8f2ea50fe5aafe39435"
+    },
+    {
+      "bytes": 465,
+      "path": "docs/v2/transition-s46-evidence/event_saturation_isolated_retry.xml",
+      "sha256": "e154bfc539a48563813193ef2ef98ded9558cd4594d4017d85017e69558889d7"
+    },
+    {
+      "bytes": 2077,
+      "path": "docs/v2/transition-s46-evidence/event_transport_isolated.xml",
+      "sha256": "3e652bb433261cc2632eff3799f23ac299050bd18a4f6452476690eb467c1b07"
+    },
+    {
+      "bytes": 6546,
+      "path": "docs/v2/transition-s46-evidence/official_calendar_isolated.xml",
+      "sha256": "806eef4b75d0bad85fc104ff9dad18a39720dbd520ab9a0906570efd85b837ac"
+    },
+    {
+      "bytes": 2119,
+      "path": "docs/v2/transition-s46-evidence/peer_context_corrected.xml",
+      "sha256": "555a01600cf01539ed81c01db17d1af76e27b62f3e7448952e89921487d33c3d"
+    },
+    {
+      "bytes": 2330,
+      "path": "docs/v2/transition-s46-evidence/peer_context_final.xml",
+      "sha256": "132bbde155aa45edd693ede7aa19de9ffade7966bb0cd1f06e0d4c9022b1570f"
+    },
+    {
+      "bytes": 5784,
+      "path": "docs/v2/transition-s46-evidence/peer_context_initial_failed.xml",
+      "sha256": "551e9075b1cc137976036390272b6f8e7187c75e9e902a948f6bb00267e25e5a"
+    },
+    {
+      "bytes": 1665,
+      "path": "docs/v2/transition-s46-evidence/peer_context_initial_failed_raw.xml.gz",
+      "sha256": "d80ff691f02520a5d742b4735c1e6712df1f941ef9e74dc2949f93cd1672aaf5"
+    },
+    {
+      "bytes": 1020,
+      "path": "docs/v2/transition-s46-evidence/peer_context_red_before_implementation.xml",
+      "sha256": "53b648bdbce7bb1a9a08ed34b600c0f998a7e476d639173daafffb587654b5f5"
+    },
+    {
+      "bytes": 9561,
+      "path": "docs/v2/transition-s46-evidence/peer_s6_feature_consumers.xml",
+      "sha256": "e2d82d28fa5afea80a0f02c070d75ec8b9901d2aedf9ed3004ae19ada5b01e51"
+    },
+    {
+      "bytes": 9771,
+      "path": "docs/v2/transition-s46-evidence/peer_s6_feature_consumers_final.xml",
+      "sha256": "ccf7b5b6f597fc2972ec98925163e6c774752a128317b2046e02d4a769bc2356"
+    },
+    {
+      "bytes": 16614,
+      "path": "docs/v2/transition-s46-evidence/production_outcomes.xml",
+      "sha256": "cb3fae4f4486b7f399bb280e524786fa846d0cf04a20be14950bf8660441a2cc"
+    },
+    {
+      "bytes": 11402,
+      "path": "docs/v2/transition-s46-evidence/selection_migration.xml",
+      "sha256": "96bd60991adab236be47f8d5f29c0890aec5b524403378332bd5ca5c4b92aa3a"
+    },
+    {
+      "bytes": 2236,
+      "path": "docs/v2/transition-s46-evidence/technical_parity_s46.json",
+      "sha256": "cb2add3d02ae32894d43c21ea7e1373859c7c6d1a1a095917cf10d9090ee8aba"
+    },
+    {
+      "bytes": 8718,
+      "path": "docs/v2/transition-s46-evidence/technical_parity_s46.py",
+      "sha256": "08667b8d3998f8e6890523833bfb258ddb8d21fe26e91427a3f15f56cc63804e"
+    },
+    {
+      "bytes": 1986,
+      "path": "docs/v2/transition-s46-evidence/technical_parity_talib_reference_s46.json",
+      "sha256": "d4f05d5e321c136c255e88de9734a287a7b5475a145e781bb29ec1d851dd0f91"
+    },
+    {
+      "bytes": 5509,
+      "path": "docs/v2/transition-s46-evidence/v1_s44.xml",
+      "sha256": "b51813d8e7e4e995e5ebb27d2a0b3e4aaf57eb8299df7a934e20d01b601ed359"
+    }
+  ],
+  "normalizations": [
+    {
+      "change": "removed trailing spaces from line endings only; XML test/failure content preserved",
+      "committed_sha256": "551e9075b1cc137976036390272b6f8e7187c75e9e902a948f6bb00267e25e5a",
+      "original_raw_sha256": "c864ba610e93481ed9ff136765d8aa1a779313b7196c0f396c9c645cd998d519",
+      "path": "docs/v2/transition-s46-evidence/peer_context_initial_failed.xml"
+    }
+  ],
+  "peer_policy_identity": "a8ec8cf56a06de32ebc7f92beb9f895dce6229dac87860b23528cca49069c029",
+  "performance_measurement": "none; no valid matched performance workload was available",
+  "recorded_at": "2026-10-12",
+  "schema_version": 1,
+  "session": "ATLAS RED S46",
+  "starting_sha": "ce5f67031e7c5184da91aff416ec4aca18b14bbb",
+  "status": "IMPLEMENTED; TESTED; push verification pending",
+  "worktree": "/home/kasun/Music/atlas-s46"
+}

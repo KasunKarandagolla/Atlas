@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="9" time="29.412" timestamp="2026-10-12T13:58:03.314996+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session046_peer_context" name="test_pair_context_uses_exact_common_h1_returns_and_existing_s6_betas" file="tests/v2/test_session046_peer_context.py" line="117" time="12.245" /><testcase classname="tests.v2.test_session046_peer_context" name="test_future_tail_and_late_revision_do_not_change_point_in_time_identity" file="tests/v2/test_session046_peer_context.py" line="142" time="0.281"><failure message="assert (179741160000...00000000, ...) == (179741160000...00000000, ...)&#10;  &#10;  Right contains one more item: 1800000000000000000&#10;  Use -v to get more diff">peer_fixture = {'keys': (InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;, environment=&lt;EnvironmentV2.MAINNET: 'MAINNET'&gt;, product=&lt;Pro...cimal('100.99749498660405'), close=Decimal('100.99749498660405'), volume=Decimal('10.0'), final=True), ...), ...}, ...}
+
+    def test_future_tail_and_late_revision_do_not_change_point_in_time_identity(peer_fixture) -&gt; None:
+        base = _request(peer_fixture)
+        baseline = build_peer_relationship(base)
+        anchor = list(base.anchor_bars)
+        peer = list(base.peer_bars)
+        btc = list(base.btc_bars)
+        anchor.append(_bar(base.anchor_key, BarIntervalV2.H1, CUTOFF, 999.0))
+        peer.append(_bar(base.peer_key, BarIntervalV2.H1, CUTOFF, 1.0))
+        btc.append(_bar(base.btc_proxy_key, BarIntervalV2.H1, CUTOFF, 500.0))
+        anchor[-2] = _late_revision(anchor[-2])
+        future_and_late = build_peer_relationship(_request(
+            peer_fixture, anchor_bars=anchor, peer_bars=peer, btc_bars=btc,
+        ))
+
+&gt;       assert future_and_late.common_timestamps_ns == baseline.common_timestamps_ns
+E       assert (179741160000...00000000, ...) == (179741160000...00000000, ...)
+E
+E         Right contains one more item: 1800000000000000000
+E         Use -v to get more diff
+
+tests/v2/test_session046_peer_context.py:157: AssertionError</failure></testcase><testcase classname="tests.v2.test_session046_peer_context" name="test_missing_misaligned_and_gapped_inputs_are_explicitly_unavailable" file="tests/v2/test_session046_peer_context.py" line="161" time="0.218" /><testcase classname="tests.v2.test_session046_peer_context" name="test_zero_variance_and_btc_collinearity_never_emit_numeric_zero" file="tests/v2/test_session046_peer_context.py" line="175" time="0.546"><failure message="AssertionError: assert 0.6044283489578554 &gt; 0.9&#10; +  where 0.6044283489578554 = abs(0.6044283489578554)&#10; +    where 0.6044283489578554 = PeerRelationshipV1(method_version='PEER_RELATIONSHIP_H1_V1', anchor_key=InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;...b871a5eeea612a48c03d448460daf6ad84f9186', cache_key='8788b2d214b2d6b05440f9fd2cbe8bd07fa3859b2b23b9e1619db9628d9405c5').correlation">peer_fixture = {'keys': (InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;, environment=&lt;EnvironmentV2.MAINNET: 'MAINNET'&gt;, product=&lt;Pro...cimal('100.99749498660405'), close=Decimal('100.99749498660405'), volume=Decimal('10.0'), final=True), ...), ...}, ...}
+
+    def test_zero_variance_and_btc_collinearity_never_emit_numeric_zero(peer_fixture) -&gt; None:
+        flat_anchor = tuple(_bar(peer_fixture["keys"][1], BarIntervalV2.H1, item.open_at_ns,
+                                 100.0) for item in peer_fixture["hourly"][peer_fixture["keys"][1]])
+        zero_variance = build_peer_relationship(_request(peer_fixture, anchor_bars=flat_anchor))
+        btc_pair = build_peer_relationship(_request(peer_fixture, anchor_index=0, peer_index=1))
+
+        assert zero_variance.status == "NOT_ESTIMABLE"
+        assert zero_variance.reason == "ZERO_VARIANCE_ANCHOR"
+        assert zero_variance.covariance is None and zero_variance.correlation is None
+        assert zero_variance.beta_peer_on_anchor is None
+        assert btc_pair.btc_adjusted_correlation is None
+        assert btc_pair.btc_adjustment_reason == "ZERO_VARIANCE_ANCHOR_RESIDUAL"
+&gt;       assert abs(btc_pair.correlation) &gt; 0.9
+E       AssertionError: assert 0.6044283489578554 &gt; 0.9
+E        +  where 0.6044283489578554 = abs(0.6044283489578554)
+E        +    where 0.6044283489578554 = PeerRelationshipV1(method_version='PEER_RELATIONSHIP_H1_V1', anchor_key=InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;...b871a5eeea612a48c03d448460daf6ad84f9186', cache_key='8788b2d214b2d6b05440f9fd2cbe8bd07fa3859b2b23b9e1619db9628d9405c5').correlation
+
+tests/v2/test_session046_peer_context.py:188: AssertionError</failure></testcase><testcase classname="tests.v2.test_session046_peer_context" name="test_reconstructed_view_is_explicit_and_never_mixed_with_actual_s6_state" file="tests/v2/test_session046_peer_context.py" line="190" time="13.923" /><testcase classname="tests.v2.test_session046_peer_context" name="test_cache_rebuilds_after_restart_and_invalidates_on_source_change" file="tests/v2/test_session046_peer_context.py" line="215" time="0.288" /><testcase classname="tests.v2.test_session046_peer_context" name="test_cache_cutoff_ttl_and_h1_revision_invalidation" file="tests/v2/test_session046_peer_context.py" line="237" time="0.292" /><testcase classname="tests.v2.test_session046_peer_context" name="test_new_product_revision_is_not_eligible_for_old_universe_cache" file="tests/v2/test_session046_peer_context.py" line="251" time="0.060" /><testcase classname="tests.v2.test_session046_peer_context" name="test_cache_eviction_is_bounded_fifo_and_pair_only_has_no_venue_side_effects" file="tests/v2/test_session046_peer_context.py" line="263" time="0.355" /></testsuite></testsuites>

@@ -145,7 +145,7 @@ def test_future_unknown_schema_and_non_ops_db_fail_closed(tmp_path) -> None:
 
 def test_ops_schema_is_separate_versioned_wal_and_foreign_keys_enabled(tmp_path) -> None:
     repository = OpsRepository(tmp_path / "separate-ops.sqlite")
-    assert repository.schema_version == 1
+    assert repository.schema_version == 3
     assert repository.schema_namespace == "atlas-ops"
     assert repository._connection.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
     assert repository._connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
