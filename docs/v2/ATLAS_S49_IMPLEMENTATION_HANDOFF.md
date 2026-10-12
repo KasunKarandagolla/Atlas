@@ -1,6 +1,6 @@
 # ATLAS S49 implementation handoff
 
-S49 continues the independently reviewed S48 remote head `52d9c149cfa1a1bc3f9a955ad94629300d00a7a7` on `impl/session-049-final-integration-release`. The final implementation SHA and exact remote HEAD are recorded after the push below. This handoff is an engineering report, not independent acceptance; nothing is merged, deployed, or enabled for capital.
+S49 continues the independently reviewed S48 remote head `52d9c149cfa1a1bc3f9a955ad94629300d00a7a7` on `impl/session-049-final-integration-release`. The implementation commit is `00ed85fb61c0941f045472319aa19b795577168e`; the exact final remote HEAD will be verified after push and returned in the final delivery message. This handoff is an engineering report, not independent acceptance; nothing is merged, deployed, or enabled for capital.
 
 **Release disposition: not release-ready.** Atlas has a real deterministic research-to-decision production path through source adoption, candidates, frozen selection, independent sizing, available economics, decision calendar, and restart. Full owner-target integration remains `TEST GATE`: the S47 agent/brief/memory consumers are not connected to production, and the current mixed-load source handoff rejects a frame under a bounded workload. Linux packaging works; Windows is `BLOCKED BY ENVIRONMENT`. Economic value is `NOT ESTIMABLE`.
 
@@ -53,6 +53,6 @@ Engineering promotion remains `INTEGRATED → ENGINEERING_PASS → HISTORICAL_DI
 
 The smallest next corrective action is to reproduce and repair the one-frame rejection in the existing bounded public capture/drain path under the exact concurrent stream/report workload, without increasing queue limits or weakening preventive stops. Then rerun the isolated case and complete source/capacity group. Separately, production use of the S47 chooser still requires an accepted versioned amendment; until then the full research-agent workflow remains gated.
 
-**Implementation SHA:** pending final commit.
+**Implementation SHA:** `00ed85fb61c0941f045472319aa19b795577168e`.
 
-**Remote final HEAD:** pending `git ls-remote origin refs/heads/impl/session-049-final-integration-release` verification.
+**Remote final HEAD:** verified after push with `git ls-remote origin refs/heads/impl/session-049-final-integration-release` and supplied in the final delivery message; a commit cannot embed its own final remote SHA.

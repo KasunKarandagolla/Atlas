@@ -457,9 +457,9 @@
   ],
   "deliverables": [
     {
-      "bytes": 10601,
+      "bytes": 10805,
       "path": "docs/v2/ATLAS_S49_IMPLEMENTATION_HANDOFF.md",
-      "sha256": "8e6fbffd919398d5d692cc712094d568884fb598f294c441ec9f8e9d4ba87615"
+      "sha256": "2441bdbea028ff203c5cecf544b0ff5b79b35ae9100a93ae8e6f249fc5245ae3"
     },
     {
       "bytes": 11644,
@@ -482,14 +482,14 @@
       "sha256": "f93c4dcfb4a896552c54afe0d938d72dc159b04cfadea05b519512b7829119de"
     },
     {
-      "bytes": 60865,
+      "bytes": 61294,
       "path": "log.md",
-      "sha256": "bdb72a5a6cd9f2d8b0f9658b10b03e3e8973a370079a4652440eef5b2262f097"
+      "sha256": "7656e047a78e83afc84b8d3b4ab345244c8548afe728a37bf01148b68ccf77ad"
     },
     {
-      "bytes": 89986,
+      "bytes": 90451,
       "path": "translog.md",
-      "sha256": "8689541435c0aeb466de7711d38e05cf5b4fde7987833f70e2fd6d14bac7faf9"
+      "sha256": "e1abea13c7e306cc659ea9a7e659db59f641e2cff3a80f51f5ee8c8036e6aef3"
     }
   ],
   "final_remote_head_sha": "reported after git ls-remote; not self-embedded",
@@ -513,7 +513,7 @@
     "tests_reached": 1196,
     "user_cpu_seconds": 1934.34
   },
-  "implementation_sha": "recorded in post-commit handoff update",
+  "implementation_sha": "00ed85fb61c0941f045472319aa19b795577168e",
   "manifest_hashing_note": "This file intentionally does not include its own digest; its Git commit identity is supplied by the final push report.",
   "model": "GPT-6 Luna; owner confirmed active model for S49",
   "offline_integration": {
