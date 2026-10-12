@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="20" time="7.765" timestamp="2026-10-12T20:32:47.302606+05:30" hostname="Kasun"><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_opening_cannot_mark_send_or_reach_effect[dispatch_persisted_demo_command-opening_gate_reason]" file="tests/runtime/test_session041_execution_final_review.py" line="41" time="0.291" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_opening_cannot_mark_send_or_reach_effect[dispatch_persisted_bybit_command-opening_gate_reason]" file="tests/runtime/test_session041_execution_final_review.py" line="41" time="0.307" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[None-dispatch_persisted_demo_command]" file="tests/runtime/test_session041_execution_final_review.py" line="62" time="0.284"><failure message="atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7f44c5698500&gt;
+dispatcher = &lt;function dispatch_persisted_demo_command at 0x7f44c5547ec0&gt;
+failure = None
+
+    @pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
+    @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+    def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+        intent = add_intent(journal)
+        before = journal.load_reservation(intent.intent_id)
+        command = journal.prepare_dispatch(
+            intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
+            command_id="review-close", command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id}, created_at_ns=T0,
+        )
+        seen = []
+
+        def effect(command, *, now_ns):
+            durable = journal.load_command(command.command_id)
+            assert durable.outcome == CommandOutcome.UNKNOWN
+            assert durable.send_started_at_ns == now_ns
+            seen.append(command.command_id)
+            if failure:
+                raise failure("fixture sensitive transport detail")
+
+        args = {"journal": journal, "command_id": command.command_id,
+                "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
+                "writer_epoch": 1, "assert_writer": lambda: None}
+&gt;       assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+               ^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_execution_final_review.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/runtime/binance_demo.py:617: in dispatch_persisted_demo_command
+    fence(send_started=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+send_started = False
+
+    def fence(*, send_started: bool) -&gt; None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+&gt;           raise PersistenceError("Binance command readiness context missing")
+E           atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing
+
+src/atlas/runtime/binance_demo.py:610: PersistenceError</failure></testcase><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[None-dispatch_persisted_bybit_command]" file="tests/runtime/test_session041_execution_final_review.py" line="62" time="0.285" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[TimeoutError-dispatch_persisted_demo_command]" file="tests/runtime/test_session041_execution_final_review.py" line="62" time="0.280"><failure message="atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7f44c5698830&gt;
+dispatcher = &lt;function dispatch_persisted_demo_command at 0x7f44c5547ec0&gt;
+failure = &lt;class 'TimeoutError'&gt;
+
+    @pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
+    @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+    def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+        intent = add_intent(journal)
+        before = journal.load_reservation(intent.intent_id)
+        command = journal.prepare_dispatch(
+            intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
+            command_id="review-close", command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id}, created_at_ns=T0,
+        )
+        seen = []
+
+        def effect(command, *, now_ns):
+            durable = journal.load_command(command.command_id)
+            assert durable.outcome == CommandOutcome.UNKNOWN
+            assert durable.send_started_at_ns == now_ns
+            seen.append(command.command_id)
+            if failure:
+                raise failure("fixture sensitive transport detail")
+
+        args = {"journal": journal, "command_id": command.command_id,
+                "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
+                "writer_epoch": 1, "assert_writer": lambda: None}
+&gt;       assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+               ^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_execution_final_review.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/runtime/binance_demo.py:617: in dispatch_persisted_demo_command
+    fence(send_started=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+send_started = False
+
+    def fence(*, send_started: bool) -&gt; None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+&gt;           raise PersistenceError("Binance command readiness context missing")
+E           atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing
+
+src/atlas/runtime/binance_demo.py:610: PersistenceError</failure></testcase><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[TimeoutError-dispatch_persisted_bybit_command]" file="tests/runtime/test_session041_execution_final_review.py" line="62" time="0.277" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[ValueError-dispatch_persisted_demo_command]" file="tests/runtime/test_session041_execution_final_review.py" line="62" time="0.401"><failure message="atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7f44c569ec90&gt;
+dispatcher = &lt;function dispatch_persisted_demo_command at 0x7f44c5547ec0&gt;
+failure = &lt;class 'ValueError'&gt;
+
+    @pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
+    @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+    def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+        intent = add_intent(journal)
+        before = journal.load_reservation(intent.intent_id)
+        command = journal.prepare_dispatch(
+            intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
+            command_id="review-close", command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id}, created_at_ns=T0,
+        )
+        seen = []
+
+        def effect(command, *, now_ns):
+            durable = journal.load_command(command.command_id)
+            assert durable.outcome == CommandOutcome.UNKNOWN
+            assert durable.send_started_at_ns == now_ns
+            seen.append(command.command_id)
+            if failure:
+                raise failure("fixture sensitive transport detail")
+
+        args = {"journal": journal, "command_id": command.command_id,
+                "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
+                "writer_epoch": 1, "assert_writer": lambda: None}
+&gt;       assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+               ^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_execution_final_review.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/runtime/binance_demo.py:617: in dispatch_persisted_demo_command
+    fence(send_started=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+send_started = False
+
+    def fence(*, send_started: bool) -&gt; None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+&gt;           raise PersistenceError("Binance command readiness context missing")
+E           atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing
+
+src/atlas/runtime/binance_demo.py:610: PersistenceError</failure></testcase><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[ValueError-dispatch_persisted_bybit_command]" file="tests/runtime/test_session041_execution_final_review.py" line="62" time="0.404" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_bybit_current_profile_rejects_receipts_from_foreign_scope[identity]" file="tests/runtime/test_session041_execution_final_review.py" line="98" time="0.011" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_bybit_current_profile_rejects_receipts_from_foreign_scope[endpoint]" file="tests/runtime/test_session041_execution_final_review.py" line="98" time="0.040" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_native_fill_rejects_foreign_durable_account_or_product[identity_hash]" file="tests/runtime/test_session041_execution_final_review.py" line="127" time="0.284" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_native_fill_rejects_foreign_durable_account_or_product[instrument_ref]" file="tests/runtime/test_session041_execution_final_review.py" line="127" time="0.335" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_rest_fill_rejects_foreign_durable_account" file="tests/runtime/test_session041_execution_final_review.py" line="161" time="0.275" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_rest_batch_validates_all_accounts_before_first_write[False]" file="tests/runtime/test_session041_execution_final_review.py" line="182" time="0.343" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_rest_batch_validates_all_accounts_before_first_write[True]" file="tests/runtime/test_session041_execution_final_review.py" line="182" time="0.466" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_rest_order_status_rejects_foreign_durable_account_before_write" file="tests/runtime/test_session041_execution_final_review.py" line="211" time="0.538" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_authenticated_reader_uses_get_exact_environment_and_redacts_server_echo[DEMO-BinanceDemoReader-BinanceDemoIdentity-DemoReadError-/fapi/v1/order]" file="tests/runtime/test_session041_execution_final_review.py" line="229" time="0.016" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_authenticated_reader_uses_get_exact_environment_and_redacts_server_echo[DEMO-BybitDemoReader-BybitDemoIdentity-BybitDemoReadError-/v5/account/info]" file="tests/runtime/test_session041_execution_final_review.py" line="229" time="0.056" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_authenticated_reader_uses_get_exact_environment_and_redacts_server_echo[TESTNET-BinanceDemoReader-BinanceDemoIdentity-DemoReadError-/fapi/v1/order]" file="tests/runtime/test_session041_execution_final_review.py" line="229" time="0.037" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_authenticated_reader_uses_get_exact_environment_and_redacts_server_echo[TESTNET-BybitDemoReader-BybitDemoIdentity-BybitDemoReadError-/v5/account/info]" file="tests/runtime/test_session041_execution_final_review.py" line="229" time="0.011" /></testsuite></testsuites>

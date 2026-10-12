@@ -1,0 +1,65 @@
+{
+  "dependency_change": "NONE",
+  "new_installation": "NONE",
+  "review": "No dependency/license file changed; installed metadata audit only, not a new legal qualification",
+  "installed": [
+    {
+      "name": "nautilus_trader",
+      "version": "2.0.0rc5",
+      "license_expression": "LGPL-3.0-only",
+      "license": null,
+      "classifiers": []
+    },
+    {
+      "name": "duckdb",
+      "version": "1.5.5",
+      "license_expression": null,
+      "license": null,
+      "classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ]
+    },
+    {
+      "name": "pyarrow",
+      "version": "25.0.1",
+      "license_expression": "Apache-2.0",
+      "license": null,
+      "classifiers": []
+    },
+    {
+      "name": "numpy",
+      "version": "2.5.3",
+      "license_expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+      "license": null,
+      "classifiers": []
+    },
+    {
+      "name": "pytest",
+      "version": "9.1.1",
+      "license_expression": "MIT",
+      "license": null,
+      "classifiers": []
+    },
+    {
+      "name": "mypy",
+      "version": "2.3.1",
+      "license_expression": "MIT",
+      "license": null,
+      "classifiers": []
+    },
+    {
+      "name": "ruff",
+      "version": "0.16.8",
+      "license_expression": "MIT",
+      "license": null,
+      "classifiers": []
+    },
+    {
+      "name": "websockets",
+      "version": "17.0.1",
+      "license_expression": "BSD-3-Clause",
+      "license": null,
+      "classifiers": []
+    }
+  ]
+}

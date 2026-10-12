@@ -1,8 +1,10 @@
 # ATLAS documentation and evidence index
 
-Updated 2026-10-12. S47 continues accepted S46 `95efa393e50f5e71646c409a3b4ff83cf5acb6a2` on `impl/session-047-economics-agent-decision-brief`. See the [S47 handoff](v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md), [S47 evidence](v2/transition-s47-evidence/evidence_manifest.json), root [README](../README.md) and [coordinator log](../log.md).
+Current S48: [implementation handoff](v2/ATLAS_S48_IMPLEMENTATION_HANDOFF.md), [evidence manifest](v2/transition-s48-evidence/evidence_manifest.json), [Binance reference comparison](v2/ATLAS_S48_BINANCE_SKILLS_HUB_CONTRACT_COMPARISON.md), [PROPOSED management amendment](v2/ATLAS_S48_MANAGEMENT_RESEARCH_AMENDMENT_PROPOSED_V1.md). Continue the accepted S47 base; no capital or discretionary management authority. ADR-003 in the read-only owner source set is the primary lifecycle target. Research source/execution venue identity is explicit; future exchanges require their own qualified local evidence and accepted authority. The single selected credential writer and existing Bybit comparator remain.
 
-## S47 research scope and authority gate
+Historical S47 checkpoint (2026-10-12). S47 continues accepted S46 `95efa393e50f5e71646c409a3b4ff83cf5acb6a2` on `impl/session-047-economics-agent-decision-brief`. See the [S47 handoff](v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md), [S47 evidence](v2/transition-s47-evidence/evidence_manifest.json), root [README](../README.md) and [coordinator log](../log.md).
+
+## Previous S47 research scope and authority gate
 
 - [Proposed comparative decision amendment](v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md): owner authorized review; independently accepted amendment **NONE**.
 - [Preserved owner implementation request](v2/ATLAS_S47_OWNER_IMPLEMENTATION_REQUEST.md).

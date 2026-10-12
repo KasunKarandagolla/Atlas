@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from enum import StrEnum
 
@@ -11,6 +11,7 @@ from atlas.domain.execution import CommandType, ProtectionObservation, make_comm
 from atlas.persistence.sqlite import PersistenceError, SQLiteJournal
 
 from .fill_dedup import FillRecord
+from .protection_evidence import verify_protection
 
 
 class ProtectionDeadlineState(StrEnum):
@@ -24,6 +25,13 @@ class ProtectionDeadlineConfig:
     unconfirmed_threshold_ns: int = 2_000_000_000
     repair_interval_ns: int = 2_000_000_000
     max_repair_attempts: int = 3
+
+    def __post_init__(self) -> None:
+        if any(
+            type(v) is not int or v <= 0
+            for v in (self.unconfirmed_threshold_ns, self.repair_interval_ns, self.max_repair_attempts)
+        ):
+            raise ValueError("positive bounded protection supervision configuration required")
 
 
 @dataclass(frozen=True)
@@ -97,18 +105,19 @@ class ProtectionDeadlineMachine:
         self, intent_id: str, o: ProtectionObservation, now_ns: int
     ) -> ProtectionDeadlineSnapshot:
         c = self._s[intent_id]
-        sem = o.semantics.lower()
         valid = (
-            o.position_epoch == c.position_epoch
-            and o.desired_stop_version == c.desired_stop_version
-            and o.qty == c.observed_signed_qty
-            and o.stop_price == self._stop[intent_id]
-            and o.trigger_basis == "MarkPrice"
-            and "full" in sem
-            and "market" in sem
-            and ("reduce" in sem or "close" in sem)
-            and bool(o.evidence_ids)
-            and 0 <= now_ns - o.observed_at_ns <= self.config.unconfirmed_threshold_ns
+            o.desired_stop_version == c.desired_stop_version
+            and verify_protection(
+                o,
+                c.position_epoch,
+                c.observed_signed_qty,
+                self._stop[intent_id],
+                "MarkPrice",
+                now_ns,
+                self.config.unconfirmed_threshold_ns,
+                account_ref="deadline-local",
+                instrument=intent_id,
+            ).verified
         )
         if valid:
             snap = ProtectionDeadlineSnapshot(
@@ -126,16 +135,28 @@ class ProtectionDeadlineMachine:
             )
             self._s[intent_id] = snap
             return snap
+        if c.state == ProtectionDeadlineState.CONFIRMED:
+            # A contradictory/unavailable readback invalidates coverage, never
+            # authorizes cancellation of the last native stop.
+            snap = replace(
+                c,
+                state=ProtectionDeadlineState.RECOVERY_REQUIRED,
+                next_repair_at_ns=now_ns,
+                cancel_scheduled=True,
+                flatten_eligible=True,
+            )
+            self._s[intent_id] = snap
+            return snap
         return c
 
     def tick(self, now_ns: int) -> dict[str, ProtectionDeadlineSnapshot]:
         out = {}
         for k, c in list(self._s.items()):
-            if (
-                c.state == ProtectionDeadlineState.CONFIRMED
-                or c.next_repair_at_ns is None
-                or now_ns < c.next_repair_at_ns
-            ):
+            if c.state == ProtectionDeadlineState.CONFIRMED:
+                if 0 <= now_ns - c.last_observation_ns < self.config.unconfirmed_threshold_ns:
+                    continue
+                c = replace(c, state=ProtectionDeadlineState.RECOVERY_REQUIRED, next_repair_at_ns=now_ns)
+            if c.next_repair_at_ns is None or now_ns < c.next_repair_at_ns:
                 continue
             # Monotonic: after breach, recovery remains required until positive protection/flat evidence resolves externally.
             attempts = min(c.repair_attempts + 1, self.config.max_repair_attempts)

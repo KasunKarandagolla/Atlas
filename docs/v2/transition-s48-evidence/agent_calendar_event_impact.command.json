@@ -1,0 +1,32 @@
+{
+  "command": [
+    "/home/kasun/Music/atlas/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-p",
+    "s47_offline_guard",
+    "-q",
+    "-o",
+    "junit_family=legacy",
+    "tests/v2/test_session041_official_calendar.py",
+    "tests/v2/test_session041_event_extraction_transport.py",
+    "tests/v2/test_session047_decision_brief.py",
+    "tests/v2/test_session047_research_agent.py",
+    "tests/v2/test_session047_research_memory.py",
+    "tests/v2/test_session047_event_classification.py",
+    "tests/v2/test_session048_s47_repairs.py",
+    "tests/v2/test_session048_management_shadow.py",
+    "tests/v2/test_session026_agent_intelligence.py",
+    "tests/v2/test_session026_agent_broker_ownership.py",
+    "tests/science/test_decision_calendar.py",
+    "tests/scanner/test_scanner_calendar.py",
+    "tests/v2/test_session034_scientific_calendar_closure.py",
+    "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/agent_calendar_event_impact.xml"
+  ],
+  "cwd": "/home/kasun/Music/atlas-s48",
+  "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+  "exit_code": 0,
+  "wall_seconds": 99.54362774699985,
+  "source_test_tree_sha256_at_start": "07ea50d9badefbbd06549d326ef17ce21bf30b81bfced9ea7ba36fa33184ae2c",
+  "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+}

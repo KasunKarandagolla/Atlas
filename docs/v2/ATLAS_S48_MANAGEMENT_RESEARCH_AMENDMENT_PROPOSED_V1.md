@@ -1,0 +1,14 @@
+# S48 management research amendment V1
+
+Identity: `ATLAS_S48_MANAGEMENT_RESEARCH_AMENDMENT_PROPOSED_V1`.
+State: **PROPOSED**. Independent acceptance: **NONE**. Operative management: **TEST GATE**.
+
+The frozen control remains IOC entry with qualified attached full native MarkPrice stop, fixed time exit, no TP, adds, pyramiding or stop adjustment. No code in this proposal changes an opening identity, selection, risk, critic or execution authority. The earlier S47 comparative amendment is also PROPOSED. Searches of the repository amendment register found no independently accepted discretionary management extension.
+
+The sole registered research comparator is `ATLAS_PARTIAL_TP_2R_HALF_SHADOW_V1`: after a positively ordered 2R research trigger, hypothetically close half the current signed exposure, rounding quantity down to the execution product's increment. Below-minimum quantity means no action. Retain the complete original stop and time horizon. A single-bar stop/TP collision without ordering is NOT ESTIMABLE. A stop first, flatness, UNKNOWN exposure, stale protection, wrong product, expired review, unsupported request or optional model outage blocks TP research. The implemented function has no transport, journal mutation or agent registration; its result always forbids execution and protection cancellation.
+
+Before any operative amendment is accepted, separately version exact trigger/side, local execution quote/depth, slippage/fill distributions, fee tier, funding calendar, contract basis, collateral/margin/leverage and liquidation assumptions. Demonstrate native closing-only partial quantity after stop/TP/cancel races; obtain fresh actual signed exposure after each fill, preserve the last verified stop, handle minimum size/dust and UNKNOWN effects without retrying an opening. Capture durable exact approved action/reservation/command and writer epoch before every effect through the existing authority journal and Nautilus normal OMS. Sequential stop replacement ACKs cannot qualify atomic protection.
+
+Breakeven, trailing, selective hold/close and scaling remain outside this variant. Any eventual breakeven threshold must cover entry and exit fees, actual funding, venue basis and expected slippage. Never widen a stop, increase exposure or create an opening through an agent command. An LLM never supersedes mandatory local supervision. No protective trigger price guarantees its fill price.
+
+Acceptance requires reproducible fault/readback qualification, independently accepted authority, complete final cash/fee/funding evidence and prospective economic comparison with at least eight genuine weeks and 200 matured opportunities, including regime and dependence coverage. These are a floor, not an automatic pass. Profitability is NOT ESTIMABLE. Rollback disables the research comparator and retains the frozen control; unresolved effects and native stops must survive rollback. S49 is not authorized by this proposal.

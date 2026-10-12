@@ -1,0 +1,8 @@
+{
+  "baseline_errors": 52,
+  "current_errors": 52,
+  "added": [],
+  "removed": [],
+  "scope": "Full src, uncached; line shifts normalized, messages/counts compared",
+  "changed_target_check": "mypy_changed_final.txt: imports skipped; not a repository pass"
+}

@@ -741,8 +741,12 @@ class EventExtractionUnixServer:
             if not self._slots.acquire(blocking=False):
                 try:
                     channel.settimeout(0.1)
+                    # Consume one bounded frame before rejecting. Closing with unread
+                    # request bytes can reset the local stream during client send,
+                    # obscuring a definite saturation receipt as transport UNKNOWN.
+                    _read_socket_frame(channel)
                     _write_socket_frame(channel, _error_wire(None, "BROKER_SATURATED"))
-                except OSError:
+                except (OSError, EventExtractionTransportError):
                     pass
                 finally:
                     channel.close()

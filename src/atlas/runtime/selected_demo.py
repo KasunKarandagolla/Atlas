@@ -533,7 +533,24 @@ class SelectedDemoQualification:
             writer_id=self.ownership.writer_id, writer_epoch=self.ownership.writer_epoch,
             runtime_instance_id=self.ownership.writer_id, position_epoch=self.ownership.writer_epoch,
             history_start_ns=history_start_ns, expected_account_fingerprint=self._fingerprint,
-            assert_writer=self.assert_writer, assert_quiescent=assert_quiescent)
+            assert_writer=self.assert_writer, assert_quiescent=assert_quiescent, product=self.product)
+
+    def project_lifecycle(self, *, reconciliation_run_id: str, intent_id: str, now_ns: int,
+                          quote: Any = None, funding_schedule_ref: str | None = None) -> Any:
+        """Read-only deterministic review of a captured, execution-specific run."""
+        from .position_lifecycle import project_position_lifecycle
+
+        self.assert_writer()
+        if (not isinstance(self.identity, BinanceDemoIdentity) or self.product is None
+                or self.journal is None or self.ownership is None):
+            raise PersistenceError("Binance lifecycle context unavailable")
+        result = project_position_lifecycle(journal=self.journal,
+            reconciliation_run_id=reconciliation_run_id, intent_id=intent_id,
+            identity=self.identity, product=self.product, writer_id=self.ownership.writer_id,
+            writer_epoch=self.ownership.writer_epoch, now_ns=now_ns, quote=quote,
+            funding_schedule_ref=funding_schedule_ref)
+        self.assert_writer()
+        return result
 
     def close(self) -> None:
         # A live native host must stop and join before releasing this lease.

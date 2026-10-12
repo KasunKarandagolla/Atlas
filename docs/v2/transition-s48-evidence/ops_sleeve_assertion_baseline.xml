@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="10.215" timestamp="2026-10-12T20:42:53.759234+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session027_ops_supervisor" name="test_non_action_sleeve_contracts_and_s8_basket_role_remain_explicit" file="tests/v2/test_session027_ops_supervisor.py" line="388" time="0.562"><failure message="AssertionError: assert ('EXCLUDED', ...OVAL_PENDING') == ('EXCLUDED', ...ION_CONTRACT')&#10;  &#10;  At index 1 diff: 'NOT_ESTIMABLE_EXACT_ACTION_CONTRACT / S6_ACTION_APPROVAL_PENDING' != 'NOT_ESTIMABLE_EXACT_ACTION_CONTRACT'&#10;  Use -v to get more diff">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-172/test_non_action_sleeve_contrac0')
+
+    def test_non_action_sleeve_contracts_and_s8_basket_role_remain_explicit(tmp_path):
+        from atlas.v2.science.research_selection import SLEEVE_AVAILABILITY, research_sleeve_audit
+        from atlas.v2.strategies.s8_pairs import build_research_basket_forecast
+
+        from .test_session023_discovery_s8 import basket_fixture
+
+        audit = research_sleeve_audit(CUTOFF)
+        roles = {name: (status, reason) for name, status, reason in audit.sleeves}
+        for name in ("S4", "S5", "S6", "S7"):
+&gt;           assert roles[name] == ("EXCLUDED", "NOT_ESTIMABLE_EXACT_ACTION_CONTRACT")
+E           AssertionError: assert ('EXCLUDED', ...OVAL_PENDING') == ('EXCLUDED', ...ION_CONTRACT')
+E
+E             At index 1 diff: 'NOT_ESTIMABLE_EXACT_ACTION_CONTRACT / S6_ACTION_APPROVAL_PENDING' != 'NOT_ESTIMABLE_EXACT_ACTION_CONTRACT'
+E             Use -v to get more diff
+
+tests/v2/test_session027_ops_supervisor.py:398: AssertionError</failure></testcase></testsuite></testsuites>

@@ -40,6 +40,7 @@ from atlas.runtime.reconciliation_evidence import (
     build_reconciliation_bundle,
     make_query_evidence,
 )
+from atlas.v2.instruments import ProductContractV2
 
 
 def _canonical_hash(value: Any) -> str:
@@ -830,6 +831,7 @@ def capture_binance_recovery_cycle(
     page_limit: int = 100,
     assert_writer: Callable[[], None],
     assert_quiescent: Callable[[], None],
+    product: ProductContractV2 | None = None,
 ) -> BinanceRecoveryCycleV1:
     """Capture a bounded Binance recovery run using the frozen generic evidence model.
 
@@ -840,6 +842,10 @@ def capture_binance_recovery_cycle(
     capability evidence cannot provide it. No commands or reservations change.
     """
     symbol = _symbol(symbol)
+    if product is not None and (product.key.venue.value != "BINANCE"
+            or product.key.environment.value != reader.identity.environment
+            or product.key.native_symbol != symbol):
+        raise ValueError("Binance lifecycle execution product mismatch")
     deadline = time.monotonic_ns() + 30_000_000_000
     started_ns = ensure_utc_ns(reader.clock_ns(), field="recovery_started_ns")
     ensure_utc_ns(history_start_ns, field="history_start_ns")
@@ -917,6 +923,8 @@ def capture_binance_recovery_cycle(
             facts={"venue_identity_hash": identity.content_hash, "environment": identity.environment,
                    "receipt_source": "SIGNED_BINANCE_DEMO_READER", "account_wide_current_view": current_view,
                    "source_capability_refs": list(refs), "response_hashes": [receipt.raw_payload_hash for receipt in receipts],
+                   **({"execution_key": product.key.to_dict(), "instrument_ref": product.content_hash}
+                      if product is not None else {}),
                    **dict(facts or {})}, error_message=failure,
         )
         journal.append_reconciliation_query_evidence(evidence)
@@ -1115,6 +1123,9 @@ def capture_binance_recovery_cycle(
                                   "side", "quantity", "price", "stop", "reduce_only"}
                   or payload.get("identity_hash") != identity.content_hash
                   or payload.get("symbol") != symbol or payload.get("reduce_only") is not True
+                  or (product is not None and payload.get("instrument_ref") != product.content_hash)
+                  or journal.load_intent(command.intent_id).position_epoch != position_epoch
+                  or journal.load_intent(command.intent_id).writer_epoch != writer_epoch
                   or snapshot is None or not snapshot.eligible or selected_positions is None
                   or len(selected_positions) != 1 or selected_position_rows is None
                   or len(selected_position_rows) != 1 or conditional is None or conditional_receipt is None):
@@ -1151,6 +1162,7 @@ def capture_binance_recovery_cycle(
                         result["verified"] = verified.verified
                         result["reason"] = verified.reason
                         result["algo_order_id"] = verified.algo_order_id
+                        result["position_epoch"] = position_epoch
                         result["signed_position"] = str(signed_position)
                         result["stop"] = str(stop)
         except (TypeError, ValueError, InvalidOperation):

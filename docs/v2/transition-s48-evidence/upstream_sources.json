@@ -1,0 +1,63 @@
+{
+  "skills_hub": [
+    {
+      "url": "https://raw.githubusercontent.com/binance/binance-skills-hub/9960c675387bd27f8866645b83693c1fa87242f6/skills/binance/binance/SKILL.md",
+      "revision": "9960c675387bd27f8866645b83693c1fa87242f6",
+      "sha256": "8d86d861b28527766298686c8d43ce1ab35f743f6f6c61a5bb7fc0727b25c034",
+      "bytes": 4408
+    },
+    {
+      "url": "https://raw.githubusercontent.com/binance/binance-skills-hub/9960c675387bd27f8866645b83693c1fa87242f6/skills/binance/binance/references/futures-usds.md",
+      "revision": "9960c675387bd27f8866645b83693c1fa87242f6",
+      "sha256": "63ef4794c7f78e39c00bde5cf33ef83d0ad312b760bc093772e1ab921cdf6e63",
+      "bytes": 10588
+    }
+  ],
+  "nautilus_version": "2.0.0rc5",
+  "installed_files": [
+    {
+      "path": "/home/kasun/Music/atlas/.venv/lib/python3.12/site-packages/nautilus_trader-2.0.0rc5.dist-info/WHEEL",
+      "sha256": "e0e4491603fb19c3e99102899bbcf9ea57c4113133ea1398220fdb57b09f57a6",
+      "bytes": 109
+    },
+    {
+      "path": "/home/kasun/Music/atlas/.venv/lib/python3.12/site-packages/nautilus_trader/_libnautilus.cpython-312-x86_64-linux-gnu.so",
+      "sha256": "a53dd5a24fe77f4c66169af84ee9c7e292018010922e3dce9a8b6c9f7f3b7021",
+      "bytes": 187825160
+    },
+    {
+      "path": "/home/kasun/Music/atlas/.venv/lib/python3.12/site-packages/nautilus_trader/adapters/binance/__init__.py",
+      "sha256": "b2323ee537df48c00a0c1a039c8a9933c481d830e49a6441a0af26ba109fedb6",
+      "bytes": 2137
+    },
+    {
+      "path": "/home/kasun/Music/atlas/.venv/lib/python3.12/site-packages/nautilus_trader/adapters/binance/__init__.pyi",
+      "sha256": "f9dc108e1a772abb74a7517b65d474f59705afa070302e527596088e3cc01d1f",
+      "bytes": 13462
+    },
+    {
+      "path": "/home/kasun/Music/atlas/.venv/lib/python3.12/site-packages/nautilus_trader/adapters/binance/__pycache__/__init__.cpython-312.pyc",
+      "sha256": "005faa7b0ec5046470651aa034f279e0e04e560badf08e02234a7af1063c1e77",
+      "bytes": 1275
+    },
+    {
+      "path": "/home/kasun/Music/atlas/.venv/lib/python3.12/site-packages/nautilus_trader/adapters/binance/__pycache__/instruments.cpython-312.pyc",
+      "sha256": "590cb90ecfbf25b3630aae0feee07675905906ce84f08718ab827ab97b363b98",
+      "bytes": 1080
+    },
+    {
+      "path": "/home/kasun/Music/atlas/.venv/lib/python3.12/site-packages/nautilus_trader/adapters/binance/instruments.py",
+      "sha256": "5cb3ffdcef518bcaf0ea866124bf55e55baf252735d620d1c5d35bad5a82ddb4",
+      "bytes": 1576
+    }
+  ],
+  "official_api": [
+    {
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/trade",
+      "retrieved_utc": "2026-10-12T14:49:08.781584+00:00",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "revision_status": "UNVERIFIED: mutable official page, response pinned by SHA-256"
+    }
+  ]
+}

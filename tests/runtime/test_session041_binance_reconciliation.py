@@ -592,7 +592,8 @@ def test_recovery_binds_repair_stop_readback_to_current_position_and_command(jou
     identity = BinanceDemoIdentity("scope-a", "cred-a")
     client_id = _persist_repair_stop(journal, identity, now)
     _simulated_source_qualification(journal, identity, now)
-    row = {"symbol": "BTCUSDT", "algoId": 909, "clientAlgoId": external_client_order_id(client_id),
+    # Match the documented conditional response identity; not live qualification.
+    row = {"symbol": "BTCUSDT", "algoId": 909, "algoType": "CONDITIONAL", "clientAlgoId": external_client_order_id(client_id),
            "algoStatus": "NEW", "orderType": "STOP_MARKET", "workingType": "MARK_PRICE",
            "positionSide": "BOTH", "side": "SELL", "closePosition": True,
            "triggerPrice": trigger}

@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from atlas.v2._serialization import FrozenMap, canonical_json, nonblank, sha256_json, sha256_ref, timestamp
-from atlas.v2.contracts import CandidateActionV2, CandidateSetV2, EligibilityStatusV2
+from atlas.v2.contracts import CandidateActionV2, CandidateSetV2, EligibilityStatusV2, FeatureArtifactV2, ReplayViewV2
 from atlas.v2.data.bars import CausalBarV2
 from atlas.v2.features.peer_context import PeerRelationshipV1
 from atlas.v2.instruments import InstrumentKeyV2, UniverseContractV2
@@ -17,7 +17,7 @@ from atlas.v2.science.analogue import AnalogueActionValueV2
 from atlas.v2.science.evaluation_service import Phase2EvaluationResultV2
 from atlas.v2.science.m1 import M1RunV2
 
-BRIEF_VERSION = "ATLAS_DECISION_BRIEF_RESEARCH_V1"
+BRIEF_VERSION = "ATLAS_DECISION_BRIEF_RESEARCH_V2"
 SCHEMA_HASH = sha256_json(
     {
         "version": BRIEF_VERSION,
@@ -67,6 +67,26 @@ class BriefLimitsV1:
 
 
 @dataclass(frozen=True)
+class FactProvenanceV1:
+    """Closed source-to-fact projection registry; no caller-defined transformations."""
+
+    source_type: str
+    transformation: str
+    source_cutoff_ns: int
+    feature_set_version: str
+    feature_ids: tuple[str, ...]
+    execution_key: InstrumentKeyV2
+    role: str
+    version: str = "ATLAS_BRIEF_FACT_PROVENANCE_V1"
+
+    def __post_init__(self) -> None:
+        timestamp(self.source_cutoff_ns, field="source_cutoff_ns")
+        object.__setattr__(self, "feature_ids", tuple(self.feature_ids))
+        if not self.feature_ids or len(set(self.feature_ids)) != len(self.feature_ids):
+            raise ValueError("fact projection requires unique feature IDs")
+
+
+@dataclass(frozen=True)
 class BriefFactV1:
     section: str
     source_ref: str
@@ -77,6 +97,7 @@ class BriefFactV1:
     status: str
     values: FrozenMap
     missingness: tuple[str, ...]
+    provenance: FactProvenanceV1 | None = None
 
     def __post_init__(self) -> None:
         if self.section not in SECTIONS or self.status not in ("AVAILABLE", "MISSING", "NOT_ESTIMABLE", "STALE"):
@@ -102,6 +123,11 @@ class BriefFactV1:
             "status": self.status,
             "values": self.values.to_dict(),
             "missingness": list(self.missingness),
+            "provenance": (
+                {**asdict(self.provenance), "execution_key": self.provenance.execution_key.to_dict()}
+                if self.provenance
+                else None
+            ),
         }
 
 
@@ -194,6 +220,59 @@ def _indexed(repo: OpsRepository | None, ref: str, at_ns: int) -> bool:
         and repo.effective_available_at_ns(ref) is not None
         and (repo.effective_available_at_ns(ref) <= at_ns)
     )
+
+
+def _fact_source_verified(fact: BriefFactV1, request: BriefRequestV1, repo: OpsRepository | None) -> bool:
+    """Read the independently indexed typed source and reproduce its exact projection.
+
+    Existing unbound generic/technical facts remain diagnostic objects; they cannot
+    enter a complete brief. New source types require an explicit registered reader.
+    """
+    p = fact.provenance
+    if repo is None or p is None or not _indexed(repo, fact.source_ref, request.cutoff_ns):
+        return False
+    if (
+        p.version != "ATLAS_BRIEF_FACT_PROVENANCE_V1"
+        or p.source_type != "FeatureArtifactV2"
+        or p.transformation != "FEATURE_VALUES_V1"
+        or fact.section not in ("technical", "structure", "btc_eth")
+        or p.role not in ("LOCAL_MARKET", "EXTERNAL_CONTEXT")
+        or p.execution_key not in {e.key for e in request.universe.entries}
+    ):
+        return False
+    try:
+        row = repo.get_artifact(fact.source_ref)
+        if row is None or row.artifact_type != p.source_type:
+            return False
+        source = FeatureArtifactV2.from_dict(FrozenMap(row.metadata).to_dict()["feature"])
+        expected_role = "LOCAL_MARKET" if source.key == p.execution_key else "EXTERNAL_CONTEXT"
+        if (
+            source.content_hash != fact.source_ref
+            or row.content_hash != source.content_hash
+            or row.created_at_ns != source.envelope.created_at_ns
+            or row.available_at_ns != source.envelope.available_at_ns
+            or fact.key != source.key
+            or p.role != expected_role
+            or p.source_cutoff_ns != source.information_cutoff_ns
+            or p.source_cutoff_ns > request.cutoff_ns
+            or source.replay_view != ReplayViewV2.ACTUAL_SYSTEM
+            or p.feature_set_version != source.feature_set_version
+            or fact.observed_at_ns != source.confirmed_at_ns
+            or fact.available_at_ns != source.envelope.available_at_ns
+            or fact.valid_until_ns > source.envelope.available_at_ns + 3_600_000_000_000
+            or any(not _indexed(repo, ref, p.source_cutoff_ns) for ref in source.envelope.input_refs)
+        ):
+            return False
+        selected = {name: source.values[name].to_dict() for name in p.feature_ids}
+        missing = tuple(sorted({value["missing_reason"] for value in selected.values() if value["missing_reason"]}))
+        status = "NOT_ESTIMABLE" if missing else "AVAILABLE"
+        return (
+            canonical_json(fact.values.to_dict()) == canonical_json(selected)
+            and fact.status == status
+            and fact.missingness == missing
+        )
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return False
 
 
 def _economic_row(e: EconomicsEvidenceV1, request: BriefRequestV1, repo: OpsRepository | None) -> dict[str, Any]:
@@ -505,6 +584,25 @@ def build_decision_brief(request: BriefRequestV1, *, repository: OpsRepository |
         reasons.append("PRODUCT_REVISION")
     if any(not _indexed(repository, f.source_ref, r.cutoff_ns) for f in r.facts):
         reasons.append("FACT_PROVENANCE_MISSING")
+    if any(not _fact_source_verified(f, r, repository) for f in r.facts):
+        reasons.append("FACT_SOURCE_BINDING_INVALID")
+    fact_claims: dict[str, str] = {}
+    for fact in r.facts:
+        if fact.provenance:
+            for name, value in fact.values.items():
+                identity = canonical_json(
+                    [
+                        fact.key.to_dict() if fact.key else None,
+                        fact.section,
+                        name,
+                        fact.provenance.source_cutoff_ns,
+                        fact.provenance.feature_set_version,
+                    ]
+                )
+                encoded = canonical_json(value)
+                if identity in fact_claims and fact_claims[identity] != encoded:
+                    reasons.append("CONTRADICTORY_FACTS")
+                fact_claims[identity] = encoded
     if any(not _indexed(repository, ref, r.cutoff_ns) for ref in r.image_refs):
         reasons.append("IMAGE_PROVENANCE_MISSING")
     peer = None

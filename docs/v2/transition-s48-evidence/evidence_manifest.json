@@ -1,0 +1,1515 @@
+{
+  "version": "ATLAS_S48_EVIDENCE_MANIFEST_V1",
+  "status": "IMPLEMENTED",
+  "base_sha": "b0db7d0527e68c737eefd564a87f740f5929c5f6",
+  "s47_source_sha": "e1f0c17b68f9add063e9d6a78b5c8ddbfee3dede",
+  "branch": "impl/session-048-position-lifecycle-protection",
+  "implementation_push": null,
+  "final_head_identity": "Git commit containing final handoff; exact final remote SHA returned after final ls-remote verification (cannot self-embed)",
+  "model": "gpt-6.1-sol",
+  "subagents": [],
+  "source_test_tree_sha256": "58edc94822879eede6ab47c4cc9f77477237ab2703f9e945db377e1e7ce2d147",
+  "changed_source_tests": {
+    "src/atlas/runtime/binance_demo.py": "9a5e8427172adc79b4eea409515e7750e5b33e23dda4a07442f3f82fc3fd13c5",
+    "src/atlas/runtime/binance_reconciliation.py": "a622f01392fc98af980d09cd7499b4f1a26564e5aca4dde18f1fd352b7efd274",
+    "src/atlas/runtime/position_lifecycle.py": "bc9fc8aed3c6842192c03bf9c3b95f5c7adfb5a7805486413dcb2e5bf8957965",
+    "src/atlas/runtime/protection_deadline.py": "500d11a069e779c34a82490b841324110f0f92f861dc37999d1b581498b90b43",
+    "src/atlas/runtime/selected_demo.py": "d7e4791c5680151586e2a8d460db6dbddc5c6841663991536ba02ed9b0892944",
+    "src/atlas/v2/agent_intelligence/event_extraction_transport.py": "67d6dd5b98d42341a74f2cd143eef87dac67a63f8c9a786c254fd95a703db806",
+    "src/atlas/v2/research/decision_brief.py": "624f88f83218a66ea2ae8690433affa710b542748769b5c2e57f5d3f8e7d1bd8",
+    "src/atlas/v2/research/management_shadow.py": "6ebce18948105ae91e14010c25141ceb1ad3b4081cd8cf7773ded7a11270682c",
+    "tests/runtime/test_session041_binance_demo.py": "e6c372a4b43d2df846d7a925a6b2ca0086baed393c206b91d9184a26c0c6ef25",
+    "tests/runtime/test_session041_binance_reconciliation.py": "1ab59a5fbc93bec16d1602eae53aa80957de56125f2ecbb1163af0671f129be0",
+    "tests/runtime/test_session048_lifecycle_projection.py": "a5a547297c21e5738e37421995b625c51f82486223875baf8dc362d5522ea200",
+    "tests/runtime/test_session048_position_protection.py": "65317507df41992c0c23c88d880abdcdb2af8e48090c7c9b58183b16685b6430",
+    "tests/v2/test_session026_agent_intelligence.py": "4438b9555d0b39501be278eb17e4f8c1e336ec07ea8b6efa20e45f83b3d04a12",
+    "tests/v2/test_session048_management_shadow.py": "315fce8f8d9e91bf36ee35126d12e0c67dfd03c692e63479672ca9efb6b2fdad",
+    "tests/v2/test_session048_s47_repairs.py": "e9fb0a785c317986654c4ce8a27fc40c8048fe6eb7a6c9b73666f997d4b2b14e"
+  },
+  "frozen_hashes": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+  },
+  "reports": [
+    {
+      "path": "docs/v2/transition-s48-evidence/agent_calendar_event_impact.xml",
+      "counts": {
+        "tests": 184,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 184
+      },
+      "status": "TESTED",
+      "wall_seconds_junit": 92.76,
+      "normalized_sha256": "b2101d3c01b51864f616ec2b97db550c1f53ea89f9462ad0675ea5a399d0def8",
+      "raw_sha256": "899f787f801fae1ccaf57c6722fbb92b8275bccd02fbf9b7caa2c3810f4fa62f",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_session041_official_calendar.py",
+          "tests/v2/test_session041_event_extraction_transport.py",
+          "tests/v2/test_session047_decision_brief.py",
+          "tests/v2/test_session047_research_agent.py",
+          "tests/v2/test_session047_research_memory.py",
+          "tests/v2/test_session047_event_classification.py",
+          "tests/v2/test_session048_s47_repairs.py",
+          "tests/v2/test_session048_management_shadow.py",
+          "tests/v2/test_session026_agent_intelligence.py",
+          "tests/v2/test_session026_agent_broker_ownership.py",
+          "tests/science/test_decision_calendar.py",
+          "tests/scanner/test_scanner_calendar.py",
+          "tests/v2/test_session034_scientific_calendar_closure.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/agent_calendar_event_impact.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 0,
+        "wall_seconds": 99.54362774699985,
+        "source_test_tree_sha256_at_start": "07ea50d9badefbbd06549d326ef17ce21bf30b81bfced9ea7ba36fa33184ae2c",
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": []
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/broker_worker_outbox_impact.xml",
+      "counts": {
+        "tests": 57,
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "passed": 56
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 48.041,
+      "normalized_sha256": "fe6e73618444e7eae2dc6a027b293182b2d53329576772c214c188335067e0e1",
+      "raw_sha256": "1dcb8bfc86fdc945dac7b8b3951f1ec6e158487a559946f58eeb2f7dbf088171",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_worker_isolation.py",
+          "tests/v2/test_session027_ops_supervisor.py",
+          "tests/v2/test_session041_event_extraction.py",
+          "tests/v2/test_session036_writer_broker_bounds.py",
+          "tests/v2/test_session038_report_worker.py",
+          "tests/v2/test_memory.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/broker_worker_outbox_impact.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 1,
+        "wall_seconds": 51.567012621002505,
+        "source_test_tree_sha256_at_start": "bfcc91d8d7acbece6968d46d1086a73be375471a927148d63b63d67f4d19b721",
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "tests.v2.test_session027_ops_supervisor::test_non_action_sleeve_contracts_and_s8_basket_role_remain_explicit",
+          "kind": "failure",
+          "message": "AssertionError: assert ('EXCLUDED', ...OVAL_PENDING') == ('EXCLUDED', ...ION_CONTRACT')\n  \n  At index 1 diff: 'NOT_ESTIMABLE_EXACT_ACTION_CONTRACT / S6_ACTION_APPROVAL_PENDING' != 'NOT_ESTIMABLE_EXACT_ACTION_CONTRACT'\n  Use -v to get more diff"
+        }
+      ]
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/delivery_focused.xml",
+      "counts": {
+        "tests": 175,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 175
+      },
+      "status": "TESTED",
+      "wall_seconds_junit": 62.09,
+      "normalized_sha256": "aefa0e8a19fd9f8a6169c34ad95bced8566573125bbed735365d2655ff56d378",
+      "raw_sha256": "7337c069f41d6f263484e1fa751c9fad8b89d5aa8ae51113a5378475f799b57c",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_session048_s47_repairs.py",
+          "tests/runtime/test_session048_position_protection.py",
+          "tests/runtime/test_session048_lifecycle_projection.py",
+          "tests/v2/test_session048_management_shadow.py",
+          "tests/v2/test_session047_decision_brief.py",
+          "tests/v2/test_session047_research_agent.py",
+          "tests/v2/test_session047_research_memory.py",
+          "tests/runtime/test_session041_binance_reconciliation.py",
+          "tests/runtime/test_session041_selected_demo.py",
+          "tests/runtime/test_protection_deadline.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/delivery_focused.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 0,
+        "wall_seconds": 65.08387727900117,
+        "source_test_tree_sha256_at_start": "58edc94822879eede6ab47c4cc9f77477237ab2703f9e945db377e1e7ce2d147",
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": []
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/execution_final_review_baseline.xml",
+      "counts": {
+        "tests": 20,
+        "errors": 0,
+        "failures": 3,
+        "skipped": 0,
+        "passed": 17
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 7.765,
+      "normalized_sha256": "8948f3a1d8bfe52cb0008679f02ef6b2233598cad31829874311cc50ad55171d",
+      "raw_sha256": "b1d197de3da01a9915ffa44b15dfbf2d74df94a4c83850e45d7b59ecacb1ad9a",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/runtime/test_session041_execution_final_review.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/execution_final_review_baseline.xml"
+        ],
+        "cwd": "/tmp/atlas-s48-accepted-baseline",
+        "PYTHONPATH": "/tmp/atlas-s48-accepted-baseline/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 1,
+        "wall_seconds": 16.317556580994278,
+        "source_test_tree_sha256_at_start": "9233193e884b094c96d76aee4d38ae617752e64051d814d0f8e03973e04563d9",
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "tests.runtime.test_session041_execution_final_review::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[None-dispatch_persisted_demo_command]",
+          "kind": "failure",
+          "message": "atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing"
+        },
+        {
+          "test": "tests.runtime.test_session041_execution_final_review::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[TimeoutError-dispatch_persisted_demo_command]",
+          "kind": "failure",
+          "message": "atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing"
+        },
+        {
+          "test": "tests.runtime.test_session041_execution_final_review::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[ValueError-dispatch_persisted_demo_command]",
+          "kind": "failure",
+          "message": "atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing"
+        }
+      ]
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_first.xml",
+      "counts": {
+        "tests": 101,
+        "errors": 0,
+        "failures": 5,
+        "skipped": 0,
+        "passed": 96
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 36.596,
+      "normalized_sha256": "8a43de713788f2cbb05c5cc9e5a533a3fa680ed39e473af51247cd0d2f00d8b1",
+      "raw_sha256": "81b42f42f42a040fff1761a875812cf5335f34e2a62196cd227ae6aa37b75b8c",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/runtime/test_session048_lifecycle_projection.py",
+          "tests/runtime/test_session048_position_protection.py",
+          "tests/runtime/test_session041_binance_demo.py",
+          "tests/runtime/test_session041_binance_reconciliation.py",
+          "tests/runtime/test_session041_binance_readiness.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/lifecycle_consumers_first.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 1,
+        "wall_seconds": 40.55896902100358,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "tests.runtime.test_session048_lifecycle_projection::test_unknown_send_and_late_exposure_remain_unknown_without_duplicate_opening",
+          "kind": "failure",
+          "message": "ValueError: illegal command outcome transition RECONCILED -> UNKNOWN"
+        },
+        {
+          "test": "tests.runtime.test_session048_lifecycle_projection::test_projection_restarts_and_never_invents_stop_or_cash_evidence",
+          "kind": "failure",
+          "message": "TypeError: 'SQLiteJournal' object does not support the context manager protocol"
+        },
+        {
+          "test": "tests.runtime.test_session041_binance_demo::test_conditional_protection_readback_is_exact_and_fresh",
+          "kind": "failure",
+          "message": "AssertionError: assert False\n +  where False = BinanceProtectionReadback(verified=False, reason='PROTECTION_UNCONFIRMED', observed_at_ns=1800000000000000000, algo_order_id=None).verified\n +    where BinanceProtectionReadback(verified=False, reason='PROTECTION_UNCONFIRMED', observed_at_ns=1800000000000000000, algo_order_id=None) = verify_binance_protection({'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'orderType': 'STOP_MARKET', ...}, **{'symbol': 'SOLUSDT', 'client_order_id': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'stop': Decimal('120'), 'signed_position': Decimal('1'), ...})"
+        },
+        {
+          "test": "tests.runtime.test_session041_binance_reconciliation::test_recovery_binds_repair_stop_readback_to_current_position_and_command[50000-True]",
+          "kind": "failure",
+          "message": "assert False is True"
+        },
+        {
+          "test": "tests.runtime.test_session041_binance_readiness::test_native_timer_carries_readiness_proof_through_to_real_order_port",
+          "kind": "failure",
+          "message": "RuntimeError: Invalid state trigger READY -> DEGRADE"
+        }
+      ]
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_green.xml",
+      "counts": {
+        "tests": 101,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 101
+      },
+      "status": "TESTED",
+      "wall_seconds_junit": 46.152,
+      "normalized_sha256": "d66dfc2ff01edec76af314e3899c45bc1b4ac120344947a1508ecaf0feee3a77",
+      "raw_sha256": "7027e65072c2ea9c8983bb0e67a68c8addea714def3ed64211f21bb94be6f5fd",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/runtime/test_session048_lifecycle_projection.py",
+          "tests/runtime/test_session048_position_protection.py",
+          "tests/runtime/test_session041_binance_demo.py",
+          "tests/runtime/test_session041_binance_reconciliation.py",
+          "tests/runtime/test_session041_binance_readiness.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/lifecycle_consumers_green.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 0,
+        "wall_seconds": 49.059205247001955,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": []
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_final_focused.xml",
+      "counts": {
+        "tests": 83,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 83
+      },
+      "status": "TESTED",
+      "wall_seconds_junit": 58.696,
+      "normalized_sha256": "4dc560bed952262afd875ccd9ca8a45f5542cdba7adf80f74a603ad88b938743",
+      "raw_sha256": "baa30b50a02c034d9248421eb186e383e6191306e94883dabe0581d6db62325b",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/runtime/test_session048_lifecycle_projection.py",
+          "tests/runtime/test_session048_position_protection.py",
+          "tests/v2/test_session048_management_shadow.py",
+          "tests/runtime/test_session041_binance_reconciliation.py",
+          "tests/runtime/test_protection_deadline.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/lifecycle_final_focused.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 0,
+        "wall_seconds": 62.38704813900404,
+        "source_test_tree_sha256_at_start": "e1321b16b0b7425a05544ab1ff1cebb4f9e1bdac62343832c678d92b2494ddfe",
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": []
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_projection_red.xml",
+      "counts": {
+        "tests": 1,
+        "errors": 1,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 0
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 1.926,
+      "normalized_sha256": "41bf67a9865d6f059b0c0ca5d2b1959e04d7d5acf06281536ee6384dfedc5eb3",
+      "raw_sha256": "35a38679d30d5277312edfb60135adc8a2832ef60f0105f5cbfb6003de0ee869",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/runtime/test_session048_lifecycle_projection.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/lifecycle_projection_red.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 2,
+        "wall_seconds": 4.204698922010721,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "::tests.runtime.test_session048_lifecycle_projection",
+          "kind": "error",
+          "message": "collection failure"
+        }
+      ]
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_first_green.xml",
+      "counts": {
+        "tests": 37,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 37
+      },
+      "status": "TESTED",
+      "wall_seconds_junit": 7.657,
+      "normalized_sha256": "594ab1c5268864707c09f2eb28c4e759495f59eccd8c6fdb441cb1b9041c718c",
+      "raw_sha256": "4f3f811554a62afb3f66b5385a0c041586819c6d4528ac6ae3e302a33113c7bf",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/runtime/test_session048_position_protection.py",
+          "tests/runtime/test_protection_deadline.py",
+          "tests/runtime/test_protection_evidence.py",
+          "tests/runtime/test_protection_evidence_v5.py",
+          "tests/runtime/test_phase2_repairs.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/lifecycle_protection_first_green.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 0,
+        "wall_seconds": 13.652099764003651,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": []
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_red.xml",
+      "counts": {
+        "tests": 17,
+        "errors": 0,
+        "failures": 12,
+        "skipped": 0,
+        "passed": 5
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 4.118,
+      "normalized_sha256": "09562e360ac6863f907aa096671fa41a50698b8da25328bf42e06b960a37ba43",
+      "raw_sha256": "ec2d5c40095bfe43f3158a3b03a7ae9be4c52087955c4264d7dd06c19917bd89",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/runtime/test_session048_position_protection.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/lifecycle_protection_red.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 1,
+        "wall_seconds": 8.634017097007018,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_confirmed_readback_expires_without_an_llm_or_stream_event",
+          "kind": "failure",
+          "message": "KeyError: 'intent-1'"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_contradictory_current_readback_invalidates_confirmation[quantity]",
+          "kind": "failure",
+          "message": "AssertionError: assert <ProtectionDe...: 'CONFIRMED'> == <ProtectionDe...ERY_REQUIRED'>\n  \n  - RECOVERY_REQUIRED\n  + CONFIRMED"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_contradictory_current_readback_invalidates_confirmation[epoch]",
+          "kind": "failure",
+          "message": "AssertionError: assert <ProtectionDe...: 'CONFIRMED'> == <ProtectionDe...ERY_REQUIRED'>\n  \n  - RECOVERY_REQUIRED\n  + CONFIRMED"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_contradictory_current_readback_invalidates_confirmation[basis]",
+          "kind": "failure",
+          "message": "AssertionError: assert <ProtectionDe...: 'CONFIRMED'> == <ProtectionDe...ERY_REQUIRED'>\n  \n  - RECOVERY_REQUIRED\n  + CONFIRMED"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_contradictory_current_readback_invalidates_confirmation[missing_refs]",
+          "kind": "failure",
+          "message": "AssertionError: assert <ProtectionDe...: 'CONFIRMED'> == <ProtectionDe...ERY_REQUIRED'>\n  \n  - RECOVERY_REQUIRED\n  + CONFIRMED"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_contradictory_current_readback_invalidates_confirmation[future]",
+          "kind": "failure",
+          "message": "AssertionError: assert <ProtectionDe...: 'CONFIRMED'> == <ProtectionDe...ERY_REQUIRED'>\n  \n  - RECOVERY_REQUIRED\n  + CONFIRMED"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_placeholder_refs_do_not_verify_native_protection",
+          "kind": "failure",
+          "message": "AssertionError: assert <ProtectionDe...: 'CONFIRMED'> == <ProtectionDe...ERY_REQUIRED'>\n  \n  - RECOVERY_REQUIRED\n  + CONFIRMED"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_normal_order_and_inconsistent_conditional_identity_cannot_certify_stop[change0]",
+          "kind": "failure",
+          "message": "AssertionError: assert not True\n +  where True = BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='123').verified\n +    where BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='123') = readback(({'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} | {'algoType': 'NORMAL'}))\n +      where {'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} = algo_row()"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_normal_order_and_inconsistent_conditional_identity_cannot_certify_stop[change1]",
+          "kind": "failure",
+          "message": "AssertionError: assert not True\n +  where True = BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='123').verified\n +    where BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='123') = readback(({'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} | {'algoType': None}))\n +      where {'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} = algo_row()"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_normal_order_and_inconsistent_conditional_identity_cannot_certify_stop[change2]",
+          "kind": "failure",
+          "message": "AssertionError: assert not True\n +  where True = BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='').verified\n +    where BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='') = readback(({'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} | {'algoId': ''}))\n +      where {'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} = algo_row()"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_normal_order_and_inconsistent_conditional_identity_cannot_certify_stop[change7]",
+          "kind": "failure",
+          "message": "AssertionError: assert not True\n +  where True = BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='123').verified\n +    where BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='123') = readback(({'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} | {'reduceOnly': True}))\n +      where {'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} = algo_row()"
+        },
+        {
+          "test": "tests.runtime.test_session048_position_protection::test_normal_order_and_inconsistent_conditional_identity_cannot_certify_stop[change8]",
+          "kind": "failure",
+          "message": "AssertionError: assert not True\n +  where True = BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='123').verified\n +    where BinanceProtectionReadback(verified=True, reason='VERIFIED_CURRENT_CONDITIONAL', observed_at_ns=1700000000000000000, algo_order_id='123') = readback(({'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} | {'quantity': '1'}))\n +      where {'symbol': 'SOLUSDT', 'clientAlgoId': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'algoId': 123, 'algoType': 'CONDITIONAL', ...} = algo_row()"
+        }
+      ]
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_shadow_fault_consumers.xml",
+      "counts": {
+        "tests": 83,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 83
+      },
+      "status": "TESTED",
+      "wall_seconds_junit": 69.993,
+      "normalized_sha256": "95a9f0347b76b92042bbf7f3f769eb3eef84d594bf549f249d94f2d10f5af469",
+      "raw_sha256": "f8773cf97f571a39afe7d7ef123b150202e3cbd827538ec12938fb413407cfd3",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/runtime/test_session048_lifecycle_projection.py",
+          "tests/runtime/test_session048_position_protection.py",
+          "tests/v2/test_session048_management_shadow.py",
+          "tests/runtime/test_protection_deadline.py",
+          "tests/runtime/test_protection_evidence.py",
+          "tests/runtime/test_protection_evidence_v5.py",
+          "tests/runtime/test_assisted_control_protection.py",
+          "tests/runtime/test_assisted_control_risk_reduction.py",
+          "tests/runtime/test_fault_injection.py",
+          "tests/runtime/test_phase2_repairs.py",
+          "tests/runtime/test_flat_certificate.py",
+          "tests/runtime/test_flat_contradiction.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/lifecycle_shadow_fault_consumers.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 0,
+        "wall_seconds": 73.3425007879996,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": []
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/ops_sleeve_assertion_baseline.xml",
+      "counts": {
+        "tests": 1,
+        "errors": 0,
+        "failures": 1,
+        "skipped": 0,
+        "passed": 0
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 10.215,
+      "normalized_sha256": "5a8b6321add69bdf30a834a255f1671b6f8dce6a4f8be53f249e9bf2925ddbac",
+      "raw_sha256": "ba79c5020341b84a363673a44926e13b6522ed10d73ffe34fb7b56d62c4dcb51",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_session027_ops_supervisor.py::test_non_action_sleeve_contracts_and_s8_basket_role_remain_explicit",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/ops_sleeve_assertion_baseline.xml"
+        ],
+        "cwd": "/tmp/atlas-s48-accepted-baseline",
+        "PYTHONPATH": "/tmp/atlas-s48-accepted-baseline/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 1,
+        "wall_seconds": 13.553119792995858,
+        "source_test_tree_sha256_at_start": "9233193e884b094c96d76aee4d38ae617752e64051d814d0f8e03973e04563d9",
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "tests.v2.test_session027_ops_supervisor::test_non_action_sleeve_contracts_and_s8_basket_role_remain_explicit",
+          "kind": "failure",
+          "message": "AssertionError: assert ('EXCLUDED', ...OVAL_PENDING') == ('EXCLUDED', ...ION_CONTRACT')\n  \n  At index 1 diff: 'NOT_ESTIMABLE_EXACT_ACTION_CONTRACT / S6_ACTION_APPROVAL_PENDING' != 'NOT_ESTIMABLE_EXACT_ACTION_CONTRACT'\n  Use -v to get more diff"
+        }
+      ]
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/peer_due_outcome_capture_m15_impact.xml",
+      "counts": {
+        "tests": 141,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 141
+      },
+      "status": "TESTED",
+      "wall_seconds_junit": 362.944,
+      "normalized_sha256": "6dbebe6d89c5499aa89cb14d65a22fb2429fef5b1ccc633be8b935e41b50194c",
+      "raw_sha256": "8bdbbbb914bc44ff0b9503cbae98de7d80aca96408687ec43f55df7d86131758",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_session046_peer_context.py",
+          "tests/v2/test_session047_peer_chronology.py",
+          "tests/v2/test_session037_feature_prefix.py",
+          "tests/v2/test_session021_s6.py",
+          "tests/v2/test_session041_s6_cohort.py",
+          "tests/v2/test_session037_due_work.py",
+          "tests/v2/test_session037_action_outcome_producer.py",
+          "tests/v2/test_session033_outcome_resolution.py",
+          "tests/v2/test_session033_outcome_maturity.py",
+          "tests/v2/test_session033_outcome_runtime.py",
+          "tests/v2/test_session040_durable_capture.py",
+          "tests/v2/test_session040_capture_receipts.py",
+          "tests/v2/test_session044_close_driven_m15.py",
+          "tests/v2/test_session017_replay.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/peer_due_outcome_capture_m15_impact.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 0,
+        "wall_seconds": 370.69445347400324,
+        "source_test_tree_sha256_at_start": "8d291624d7639e87b91c6aeb2f73482387f1404fda6a52b225ad7e6a8afc6427",
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": []
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers.xml",
+      "counts": {
+        "tests": 154,
+        "errors": 0,
+        "failures": 2,
+        "skipped": 0,
+        "passed": 152
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 73.931,
+      "normalized_sha256": "47968e5df0990ff782710c3368349ace63501e98b2256cfedc07a98b5203b2b0",
+      "raw_sha256": "927069fc80b8e1a26cb37f87984644d79aa61523e3d67c574eab1451f69cffbb",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_session048_s47_repairs.py",
+          "tests/v2/test_session047_decision_brief.py",
+          "tests/v2/test_session047_research_agent.py",
+          "tests/v2/test_session047_research_memory.py",
+          "tests/v2/test_session047_event_classification.py",
+          "tests/v2/test_session041_official_calendar.py",
+          "tests/v2/test_session041_event_extraction_transport.py",
+          "tests/v2/test_session026_agent_intelligence.py",
+          "tests/v2/test_memory.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/s47_repair_consumers.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 1,
+        "wall_seconds": 76.65996539899788,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "tests.v2.test_session048_s47_repairs::test_verified_facts_restart_and_contradiction",
+          "kind": "failure",
+          "message": "AssertionError: assert 'BLOCKED' == 'COMPLETE'\n  \n  - COMPLETE\n  + BLOCKED"
+        },
+        {
+          "test": "tests.v2.test_session048_s47_repairs::test_foreign_venue_feature_is_explicit_external_context_and_stale_is_blocked",
+          "kind": "failure",
+          "message": "AssertionError: assert 'BLOCKED' == 'COMPLETE'\n  \n  - COMPLETE\n  + BLOCKED"
+        }
+      ]
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers_green.xml",
+      "counts": {
+        "tests": 154,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 154
+      },
+      "status": "TESTED",
+      "wall_seconds_junit": 91.882,
+      "normalized_sha256": "a3b5ed67b1fce83cf71b0bbd63d776464453bc14723e8f40251f42f4d86082f4",
+      "raw_sha256": "35e84870430e551617e5ef89c259f75a156be35f5a1615b889d372cbbf24d979",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_session048_s47_repairs.py",
+          "tests/v2/test_session047_decision_brief.py",
+          "tests/v2/test_session047_research_agent.py",
+          "tests/v2/test_session047_research_memory.py",
+          "tests/v2/test_session047_event_classification.py",
+          "tests/v2/test_session041_official_calendar.py",
+          "tests/v2/test_session041_event_extraction_transport.py",
+          "tests/v2/test_session026_agent_intelligence.py",
+          "tests/v2/test_memory.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/s47_repair_consumers_green.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 0,
+        "wall_seconds": 96.48077680899587,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": []
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_initial_green.xml",
+      "counts": {
+        "tests": 60,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "passed": 60
+      },
+      "status": "TESTED",
+      "wall_seconds_junit": 28.988,
+      "normalized_sha256": "4e11c8384455a3edb2f96189d2fc8700897c7331856f6c9ebd31a22a457a1c67",
+      "raw_sha256": "3dc09bab938e8bdda2ace61d81aaf437877a15d43511304b41a8271c6b76eeaf",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_session048_s47_repairs.py",
+          "tests/v2/test_session047_decision_brief.py",
+          "tests/v2/test_session047_research_agent.py",
+          "tests/v2/test_session047_research_memory.py",
+          "tests/v2/test_session047_event_classification.py",
+          "tests/v2/test_session026_agent_intelligence.py::test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_outbox_writes",
+          "tests/v2/test_session026_agent_intelligence.py::test_dispatch_authorization_schema_v1_migrates_and_reopens_without_ops_schema_change",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/s47_repairs_initial_green.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 0,
+        "wall_seconds": 32.59670865899534,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": []
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_red.xml",
+      "counts": {
+        "tests": 2,
+        "errors": 0,
+        "failures": 2,
+        "skipped": 0,
+        "passed": 0
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 3.67,
+      "normalized_sha256": "31dc6bee5adf660dac339e3dd691d8b1f52ce138a74037783961626a1d87fb77",
+      "raw_sha256": "706407f60004382ccebf18097c03744b224a4e66f78d86251d5bee83a83bdd74",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_session048_s47_repairs.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/s47_repairs_red.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 1,
+        "wall_seconds": 6.049237528000958,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "tests.v2.test_session048_s47_repairs::test_timely_unrelated_artifact_cannot_certify_fabricated_market_fact",
+          "kind": "failure",
+          "message": "AssertionError: assert 'COMPLETE' == 'BLOCKED'\n  \n  - BLOCKED\n  + COMPLETE"
+        },
+        {
+          "test": "tests.v2.test_session048_s47_repairs::test_saturation_receipt_waits_for_bounded_request_read_before_connection_close",
+          "kind": "failure",
+          "message": "Failed: DID NOT RAISE TimeoutError"
+        }
+      ]
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_schema_baseline.xml",
+      "counts": {
+        "tests": 2,
+        "errors": 0,
+        "failures": 2,
+        "skipped": 0,
+        "passed": 0
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 15.071,
+      "normalized_sha256": "d154e1c11e69544eb78d0efd06a3128b5d0aaeb4d3f2597ea72bdfa85907aa8e",
+      "raw_sha256": "7f64a8d5e2aff3355b6b49fd4b45f80e13b1777b2fde228fdf14796f45d20e81",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/v2/test_session026_agent_intelligence.py::test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_outbox_writes",
+          "tests/v2/test_session026_agent_intelligence.py::test_dispatch_authorization_schema_v1_migrates_and_reopens_without_ops_schema_change",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/s47_schema_baseline.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 1,
+        "wall_seconds": 20.372005334997084,
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "tests.v2.test_session026_agent_intelligence::test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_outbox_writes",
+          "kind": "failure",
+          "message": "assert 3 == 1"
+        },
+        {
+          "test": "tests.v2.test_session026_agent_intelligence::test_dispatch_authorization_schema_v1_migrates_and_reopens_without_ops_schema_change",
+          "kind": "failure",
+          "message": "assert 3 == 1"
+        }
+      ]
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/v1_runtime_recovery_impact.xml",
+      "counts": {
+        "tests": 460,
+        "errors": 0,
+        "failures": 3,
+        "skipped": 1,
+        "passed": 456
+      },
+      "status": "TEST GATE",
+      "wall_seconds_junit": 250.947,
+      "normalized_sha256": "a7956eb18db9177ba8336548a20d36147444139de9f4a79504f0d985919d5598",
+      "raw_sha256": "690a7d0949d4db324929fdb81f5a6ce162b38a76c954978afd464425010ad0de",
+      "command": {
+        "command": [
+          "/home/kasun/Music/atlas/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-p",
+          "s47_offline_guard",
+          "-q",
+          "-o",
+          "junit_family=legacy",
+          "tests/runtime",
+          "tests/persistence",
+          "tests/contract/test_v1_golden_baseline.py",
+          "tests/unit/test_risk.py",
+          "tests/unit/test_writer_health.py",
+          "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/v1_runtime_recovery_impact.xml"
+        ],
+        "cwd": "/home/kasun/Music/atlas-s48",
+        "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+        "exit_code": 1,
+        "wall_seconds": 259.1668051209999,
+        "source_test_tree_sha256_at_start": "e1321b16b0b7425a05544ab1ff1cebb4f9e1bdac62343832c678d92b2494ddfe",
+        "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+      },
+      "failures_errors_skips": [
+        {
+          "test": "tests.runtime.test_safe_runtime::test_public_testnet_connectivity_opt_in",
+          "kind": "skipped",
+          "message": "opt-in public testnet check; no credentials, network not required"
+        },
+        {
+          "test": "tests.runtime.test_session041_execution_final_review::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[None-dispatch_persisted_demo_command]",
+          "kind": "failure",
+          "message": "atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing"
+        },
+        {
+          "test": "tests.runtime.test_session041_execution_final_review::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[TimeoutError-dispatch_persisted_demo_command]",
+          "kind": "failure",
+          "message": "atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing"
+        },
+        {
+          "test": "tests.runtime.test_session041_execution_final_review::test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[ValueError-dispatch_persisted_demo_command]",
+          "kind": "failure",
+          "message": "atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing"
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "docs/v2/transition-s48-evidence/agent_calendar_event_impact.command.json",
+      "sha256": "be4a1dd277cf0e48c00591e66d0535047732c28d370be12cfe6a3298732a79bc",
+      "bytes": 1387
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/agent_calendar_event_impact.output.txt.gz",
+      "sha256": "9d9a1a83a0eee6d2477ef3b4dd427d8ab30af7f7fd550e6f34d54d555b5c0c76",
+      "bytes": 88
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/agent_calendar_event_impact.xml",
+      "sha256": "b2101d3c01b51864f616ec2b97db550c1f53ea89f9462ad0675ea5a399d0def8",
+      "bytes": 41176
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/agent_calendar_event_impact.xml.gz",
+      "sha256": "7e2f18c00af982f8c56ab70d8255908ac26d9711a3074e82f2be81c107ac240e",
+      "bytes": 6341
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/authority_isolation.json",
+      "sha256": "fb35194384d4e18d679f943b449d2f9c7490ee79ad96fa93092bc79b51d60cd3",
+      "bytes": 6908
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/broker_worker_outbox_impact.command.json",
+      "sha256": "b979aabba974201e2941f9091b5159a75130ac3cd54da7f546ab9611505728d4",
+      "bytes": 977
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/broker_worker_outbox_impact.output.txt.gz",
+      "sha256": "ecf8fa5f91eadbfadecb1bc4fdf096bae828fd01dd965776603afe30c72e764a",
+      "bytes": 653
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/broker_worker_outbox_impact.xml",
+      "sha256": "fe6e73618444e7eae2dc6a027b293182b2d53329576772c214c188335067e0e1",
+      "bytes": 13348
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/broker_worker_outbox_impact.xml.gz",
+      "sha256": "b8faf569d3f82ec427cd62dca4e51aebb0f495fecc2cafc344cb3fea5fcf1160",
+      "bytes": 2919
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/build_manifest.py",
+      "sha256": "acb34cc1ed452b2fa8d7e6441fd89bd5f2c6c638e4d9d3ddc305b0671711d281",
+      "bytes": 4865
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/compileall.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/compileall_delivery.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/delivery_focused.command.json",
+      "sha256": "dd2946f28286b835fde260f5898739cacefd6e13040997dc094a2a56babef1f5",
+      "bytes": 1224
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/delivery_focused.output.txt.gz",
+      "sha256": "d47d4a0b848b81f0a52d0bcdd9d7bb59d3e8f01ea9590488bca8f440f6984dd5",
+      "bytes": 77
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/delivery_focused.xml",
+      "sha256": "aefa0e8a19fd9f8a6169c34ad95bced8566573125bbed735365d2655ff56d378",
+      "bytes": 39247
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/delivery_focused.xml.gz",
+      "sha256": "23c7b84efc6cc3c82439453ae6d212732eadba560e4d71a792e55b09f7866c50",
+      "bytes": 5306
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/dependency_license_review.json",
+      "sha256": "618fb7aab5b1cdd53c57ce9d6c1b3594d27758315747e161fe65130e43e6078a",
+      "bytes": 1500
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/diff_check.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/diff_delivery.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/execution_final_review_baseline.command.json",
+      "sha256": "8a6325ff9c67620514357ad1756afc0d036a51e7ced60ff0c4ab04387403160a",
+      "bytes": 775
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/execution_final_review_baseline.output.txt.gz",
+      "sha256": "b89cf3aa35f24faa834342bd8dd46b94b48f1c16ac453c48459b8a700a130f11",
+      "bytes": 1139
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/execution_final_review_baseline.xml",
+      "sha256": "8948f3a1d8bfe52cb0008679f02ef6b2233598cad31829874311cc50ad55171d",
+      "bytes": 13122
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/execution_final_review_baseline.xml.gz",
+      "sha256": "dc25838799857b25b3fc48936b5ee9600e87b365e0db45ef141d98f3a82fc366",
+      "bytes": 1702
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/format_additive.txt",
+      "sha256": "0321fffcb91606a42c0a19d8c1121d5c544379d663821fce616c71a7bb62f6b5",
+      "bytes": 26
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_first.command.json",
+      "sha256": "d38d18eab9096c08e378adc0c74592781b006a6d800c21a46998ecc1f02e0922",
+      "bytes": 884
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_first.output.txt.gz",
+      "sha256": "9df6d12c6061bb5e0a8e511051d5391b44ce9dab9a0ed3318f58a554cbe3350e",
+      "bytes": 4736
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_first.xml",
+      "sha256": "8a43de713788f2cbb05c5cc9e5a533a3fa680ed39e473af51247cd0d2f00d8b1",
+      "bytes": 32381
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_first.xml.gz",
+      "sha256": "1610978f782d0ac0f36a3f503d56e4577d331bf73cf3044652b1d9cd69de3c4c",
+      "bytes": 5508
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_green.command.json",
+      "sha256": "c30d7c3e5daa821c01f610155486971fa4a0f22a206681947afd43f11e5e5070",
+      "bytes": 885
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_green.output.txt.gz",
+      "sha256": "eb790d35916df96bf139980047068529fb60db90a58db7ed921d8b19c292cc29",
+      "bytes": 79
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_green.xml",
+      "sha256": "d66dfc2ff01edec76af314e3899c45bc1b4ac120344947a1508ecaf0feee3a77",
+      "bytes": 23632
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_green.xml.gz",
+      "sha256": "3470dd11b3bd120c2f04d92144a1a3ba524f6759da7090a1985efcb0308d1c33",
+      "bytes": 3037
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_final_focused.command.json",
+      "sha256": "54fdbffb839c03d3aa5d5b935048814edb5efbb1ba4589f59864cf9623ded669",
+      "bytes": 979
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_final_focused.output.txt.gz",
+      "sha256": "31f57738dd2946a9d2f994a29351c0eed866125da19a671de708272c5b6e6e7d",
+      "bytes": 77
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_final_focused.xml",
+      "sha256": "4dc560bed952262afd875ccd9ca8a45f5542cdba7adf80f74a603ad88b938743",
+      "bytes": 19814
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_final_focused.xml.gz",
+      "sha256": "910c73edf67975d4c30516987edeafb9b1596e07f414db7c129617bd42f664bc",
+      "bytes": 2653
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_projection_red.command.json",
+      "sha256": "9ed9650be537a06880aba24adafea03d5ad6e00d23714a91684b932843452caa",
+      "bytes": 649
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_projection_red.output.txt.gz",
+      "sha256": "e94685bcd68a5055229999553a514b2238795abbbca9cbf3c55454cd9cf81f5f",
+      "bytes": 499
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_projection_red.xml",
+      "sha256": "41bf67a9865d6f059b0c0ca5d2b1959e04d7d5acf06281536ee6384dfedc5eb3",
+      "bytes": 1150
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_projection_red.xml.gz",
+      "sha256": "b0442d3f7004ff50bcf1202dfa6bfaeb5ba3ba0136ed23197f29ef20992c105b",
+      "bytes": 602
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_first_green.command.json",
+      "sha256": "e5e0ec4d8ef013aa61514761b146c8ac2d1d033472067b71e70e0e462c432869",
+      "bytes": 851
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_first_green.output.txt.gz",
+      "sha256": "7b07ae5a5df08663dafa5ca3f2ea2b527277e7060925791c75ab7c7ec37457b1",
+      "bytes": 77
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_first_green.xml",
+      "sha256": "594ab1c5268864707c09f2eb28c4e759495f59eccd8c6fdb441cb1b9041c718c",
+      "bytes": 8332
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_first_green.xml.gz",
+      "sha256": "6eb526654aef5dde85018330608eefcfc1e2767e3c2a663682f2ebca9f81e6f4",
+      "bytes": 1205
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_red.command.json",
+      "sha256": "5bf7acc62d3113a6bccc1079652bed379cf4efae440f77bc7230824c0c5e584b",
+      "bytes": 648
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_red.output.txt.gz",
+      "sha256": "37fbdc4c69849132c9641492fb4c0dc27cd2f113de3c261a045dc3cae1b01bdc",
+      "bytes": 1428
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_red.xml",
+      "sha256": "09562e360ac6863f907aa096671fa41a50698b8da25328bf42e06b960a37ba43",
+      "bytes": 21322
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_protection_red.xml.gz",
+      "sha256": "89d8e8952238a71683f3fadd67000fc0e279c94d84cc67fbe5930e2989c5d4f7",
+      "bytes": 1724
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_requirement_map.json",
+      "sha256": "3c4c64b916eda58299045e9b04efbb2ec14571f84a0ca9ca9e8e7ec18198dda4",
+      "bytes": 5699
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_shadow_fault_consumers.command.json",
+      "sha256": "0f2775424584b6a453c7f187928546fe8a02d77e1841e65ab40864f00671c3e9",
+      "bytes": 1220
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_shadow_fault_consumers.output.txt.gz",
+      "sha256": "6f0f8fb6b220e2ff1c06fd600a780b5644eb9cc694d560e23b3e4eba8b3fe166",
+      "bytes": 86
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_shadow_fault_consumers.xml",
+      "sha256": "95a9f0347b76b92042bbf7f3f769eb3eef84d594bf549f249d94f2d10f5af469",
+      "bytes": 18596
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/lifecycle_shadow_fault_consumers.xml.gz",
+      "sha256": "9563d14f9aaef834361581425ddace456381f0e5f238081f59580421d400c0bf",
+      "bytes": 2513
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/mypy_baseline_comparison.json",
+      "sha256": "53a4c6c8ec6c51c5de1cea5fa4a67f65e4b619a526509c43677fa6d71c36453c",
+      "bytes": 259
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/mypy_changed_delivery.txt",
+      "sha256": "61bb88be17ade9f773b3174ef60354c651257c1ff7ea8cef465915615338aa2c",
+      "bytes": 105
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/mypy_changed_final.txt",
+      "sha256": "61bb88be17ade9f773b3174ef60354c651257c1ff7ea8cef465915615338aa2c",
+      "bytes": 105
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/mypy_changed_silent.txt",
+      "sha256": "f323ff7005d781b7c45090389c2b49e83fed9b632aabae0d46bd3a3ac9cfc533",
+      "bytes": 4049
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/mypy_repository_baseline.txt",
+      "sha256": "e402baa169caa19554a54568dee850810199a807ac6df06748c97e52adce8779",
+      "bytes": 9626
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/mypy_repository_current.txt",
+      "sha256": "4aa7026b40963f395f2846c983a5206e466edc36d8b2d6a76904c5e3bfe00992",
+      "bytes": 9626
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/mypy_targeted_initial.txt",
+      "sha256": "0adcdf4549192a4b504ecf0151f025c4b77772fee5c9e45bd01ca512064fbeca",
+      "bytes": 5650
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/ops_sleeve_assertion_baseline.command.json",
+      "sha256": "96727bc58e6b6b09fd6033e0bc866e68846e48fd2ce815097c21833555515194",
+      "bytes": 829
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/ops_sleeve_assertion_baseline.output.txt.gz",
+      "sha256": "e6ae8408033f4b9ef7664dde0d3bfdaa1ee4160af7ede89ee7a9978c47a889f8",
+      "bytes": 651
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/ops_sleeve_assertion_baseline.xml",
+      "sha256": "5a8b6321add69bdf30a834a255f1671b6f8dce6a4f8be53f249e9bf2925ddbac",
+      "bytes": 1778
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/ops_sleeve_assertion_baseline.xml.gz",
+      "sha256": "3f827bb976e7d9a46415a08146aee184eb1b6f7202d446db802b73ae9b63330f",
+      "bytes": 806
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/peer_due_outcome_capture_m15_impact.command.json",
+      "sha256": "03d271d4a34b9a125c7481dc9a4ff46b76ed22dedddb1d1ca42c829b89b8440a",
+      "bytes": 1395
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/peer_due_outcome_capture_m15_impact.output.txt.gz",
+      "sha256": "1c3aa99ba168e8fe9b5199ff8d455342e82bd593e4e70a2823f69fedb1104789",
+      "bytes": 89
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/peer_due_outcome_capture_m15_impact.xml",
+      "sha256": "6dbebe6d89c5499aa89cb14d65a22fb2429fef5b1ccc633be8b935e41b50194c",
+      "bytes": 30726
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/peer_due_outcome_capture_m15_impact.xml.gz",
+      "sha256": "22716352120ebf14464e346842fe058d53300efa6a58c14122f0011b46789672",
+      "bytes": 5294
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/peer_format_base.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/peer_format_baseline.txt",
+      "sha256": "793740a809c8843c6813d29813e03f402122670912e88b3bfcd7045eaaf332c4",
+      "bytes": 19095
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/peer_format_current.txt",
+      "sha256": "4c1010311644d3a9da255be0b6f31edd275d3926317c41cce71e56f84a757d7b",
+      "bytes": 19088
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/pip_check.txt",
+      "sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+      "bytes": 30
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/preflight.json",
+      "sha256": "1e558d8a36c11614feaefe4957f2ad7ce68097ca7e4ef776da302b6c95cf5629",
+      "bytes": 3880
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/remote_heads_preflight.txt",
+      "sha256": "ec2b2ecdf9edbb83c9755251c6911672349f0abca19973991eb3ad3c02aa7f16",
+      "bytes": 5574
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/ruff.txt",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/ruff_delivery.txt",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/ruff_final.txt",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/run_checks.py",
+      "sha256": "0552047927b9f679bd87a1a07dec5eaceac88676cfadc7c5e9159bb8e9cb7de0",
+      "bytes": 2335
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers.command.json",
+      "sha256": "b198b65c8fcbf667d3d7b0dd2111cbc420fe993bca91cb2a161c0601b319affb",
+      "bytes": 1038
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers.output.txt.gz",
+      "sha256": "41f456d398aad17256a7efb0ab9e91284dc483a53ee1e170bd83553662fcfaca",
+      "bytes": 740
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers.xml",
+      "sha256": "47968e5df0990ff782710c3368349ace63501e98b2256cfedc07a98b5203b2b0",
+      "bytes": 36272
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers.xml.gz",
+      "sha256": "43df54c8f60f60992465baa08fb6687fa1b1a464003e6c7bc54c23733c140f36",
+      "bytes": 5930
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers_green.command.json",
+      "sha256": "d1e546bb38f433166fb16ea77709ff691497cfe317425d30cae4a15913facd1e",
+      "bytes": 1044
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers_green.output.txt.gz",
+      "sha256": "3b7509eaab32664e24cbd34a47ff9d40fcc7c32eaf2cee405406133fb0ea71b8",
+      "bytes": 87
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers_green.xml",
+      "sha256": "a3b5ed67b1fce83cf71b0bbd63d776464453bc14723e8f40251f42f4d86082f4",
+      "bytes": 34387
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repair_consumers_green.xml.gz",
+      "sha256": "17087b6e2ffa817426d327746acd7ce30038f6c867ff1eafc5d938fc3e05bba2",
+      "bytes": 5475
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_initial_green.command.json",
+      "sha256": "3625fcaa810bbc2e6992eeaec6bf8485e9e0512c38c330e8d93841ea88fd0bab",
+      "bytes": 1128
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_initial_green.output.txt.gz",
+      "sha256": "956432561b74be67c209433339b33d9ccd00bc572c7791fed903d1fb05de106f",
+      "bytes": 70
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_initial_green.xml",
+      "sha256": "4e11c8384455a3edb2f96189d2fc8700897c7331856f6c9ebd31a22a457a1c67",
+      "bytes": 12913
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_initial_green.xml.gz",
+      "sha256": "00ca3ffa128e914f2760037cb51b0d7ee46fbd8cbfc1b56faa89a00249ff577f",
+      "bytes": 2350
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_red.command.json",
+      "sha256": "c6f8ea101ce0e348aa736c21f0aed00a301efd786164fdf96ee87b170acb433d",
+      "bytes": 626
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_red.output.txt.gz",
+      "sha256": "3b46a064b1017f7dac4211f3d2ff1d9b1e5a24d52689fc4e18d97f0e182beb7c",
+      "bytes": 1137
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_red.xml",
+      "sha256": "31dc6bee5adf660dac339e3dd691d8b1f52ce138a74037783961626a1d87fb77",
+      "bytes": 3223
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_repairs_red.xml.gz",
+      "sha256": "f76220159d96d2c072d120e54e40d34d8ce565fcaf0da874477ca93c7ce15766",
+      "bytes": 1297
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_schema_baseline.command.json",
+      "sha256": "aae675e509703083224c1d02080eec4d43af58178eb1e0a5acf2fc607bfe41fa",
+      "bytes": 869
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_schema_baseline.output.txt.gz",
+      "sha256": "3709b056d62583dbc36bc85997f026ca45241be426c6576ee0d0b25c273700ea",
+      "bytes": 1486
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_schema_baseline.xml",
+      "sha256": "d154e1c11e69544eb78d0efd06a3128b5d0aaeb4d3f2597ea72bdfa85907aa8e",
+      "bytes": 5448
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/s47_schema_baseline.xml.gz",
+      "sha256": "69524c734f9ba2181cd7f6a65270ec4744147d5d12bd4f2fb08c63a9b9c1c935",
+      "bytes": 1628
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/secret_scan_delivery.json",
+      "sha256": "7e4f4538e6884e4091e3e5b99c2372c8ec4501d9782d223e1d87818437f7f38c",
+      "bytes": 8647
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/staged_review.json",
+      "sha256": "dc1aa2cdbc77d361c3fdbab18f38088190fa349ae1c3322672558fbfa4a96f5f",
+      "bytes": 8847
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/static_delivery.json",
+      "sha256": "600499951a38997c9e5e56afe51705876dce8fa59121e968a4cc7f88d49dab50",
+      "bytes": 1937
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/static_initial.json",
+      "sha256": "1e1e7baa0288c9384d52c08bafc18fdd3c01b14d99838d854a3577b66f91ea5b",
+      "bytes": 2774
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/upstream_sources.json",
+      "sha256": "cbf66fe7379d2e23962f71f0ea18ff7814d522d9083e3d44b65309301571eb7a",
+      "bytes": 2921
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/uv_lock_check.txt",
+      "sha256": "08bf1b13b587100e0484a4c0ce424a081a3b4c574aeeea99afcf9d83089789b6",
+      "bytes": 109
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/v1_runtime_recovery_impact.command.json",
+      "sha256": "f7471da8fa963e3d6b3bbe5ffb3c253b93cf03f08445b4cb8dec9f42b05db78c",
+      "bytes": 862
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/v1_runtime_recovery_impact.output.txt.gz",
+      "sha256": "7778fe86541d09850520e1efdcb6c79b045bdf330e344d62801c255704afa90a",
+      "bytes": 1536
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/v1_runtime_recovery_impact.xml",
+      "sha256": "a7956eb18db9177ba8336548a20d36147444139de9f4a79504f0d985919d5598",
+      "bytes": 109172
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/v1_runtime_recovery_impact.xml.gz",
+      "sha256": "16804f5881e90312f776e7dd02c2e360530295d1f40e64e4639a1326d3b6d886",
+      "bytes": 14592
+    }
+  ],
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "management_amendment": "PROPOSED",
+  "dependency_changes": [],
+  "full_repository_suite_ran": false,
+  "resource_qualification": "NOT ESTIMABLE: no Atlas CPU/RSS/latency/bandwidth/token probe; test wall times only",
+  "limitations": [
+    "Overlapping reports do not add opportunities; red/intermediate and baseline failures remain retained",
+    "Four inherited assertion failures reproduced on accepted base; no production readiness/selector weakening",
+    "Native Binance wire/protection, final economic completeness, liquidation/ADL and sustained capacity remain TEST GATE",
+    "Projection/context checks and half-TP shadow cannot admit execution, release reservations or mature outcomes",
+    "Full-source mypy retains 52 baseline diagnostics; zero added normalized messages",
+    "Context7 plugin installed, callable MCP unavailable; no installation",
+    "Eight genuine weeks/200 matured opportunities with regime/dependence coverage is a floor, not a pass"
+  ]
+}

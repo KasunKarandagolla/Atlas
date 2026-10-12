@@ -183,7 +183,8 @@ def test_negative_lookup_does_not_release_uncertain_send(sent, found, complete, 
 
 
 def test_conditional_protection_readback_is_exact_and_fresh():
-    row = {"symbol": "SOLUSDT", "clientAlgoId": "a" * 32, "algoId": 123,
+    # Official Query Algo Order response discriminator; still simulation only.
+    row = {"symbol": "SOLUSDT", "clientAlgoId": "a" * 32, "algoId": 123, "algoType": "CONDITIONAL",
                "orderType": "STOP_MARKET", "workingType": "MARK_PRICE", "positionSide": "BOTH",
                "side": "SELL", "closePosition": True, "algoStatus": "NEW", "triggerPrice": "120.00"}
     kwargs = {"symbol": "SOLUSDT", "client_order_id": "a" * 32, "stop": Decimal("120"),

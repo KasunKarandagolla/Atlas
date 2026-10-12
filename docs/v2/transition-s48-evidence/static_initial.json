@@ -1,0 +1,95 @@
+{
+  "ruff": {
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/ruff",
+      "check",
+      "src/atlas/runtime/binance_demo.py",
+      "src/atlas/runtime/binance_reconciliation.py",
+      "src/atlas/runtime/position_lifecycle.py",
+      "src/atlas/runtime/protection_deadline.py",
+      "src/atlas/runtime/selected_demo.py",
+      "src/atlas/v2/agent_intelligence/event_extraction_transport.py",
+      "src/atlas/v2/research/decision_brief.py",
+      "src/atlas/v2/research/management_shadow.py",
+      "tests/runtime/test_session041_binance_demo.py",
+      "tests/runtime/test_session041_binance_reconciliation.py",
+      "tests/runtime/test_session048_lifecycle_projection.py",
+      "tests/runtime/test_session048_position_protection.py",
+      "tests/v2/test_session026_agent_intelligence.py",
+      "tests/v2/test_session048_management_shadow.py",
+      "tests/v2/test_session048_s47_repairs.py"
+    ],
+    "exit_code": 0
+  },
+  "compileall": {
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "compileall",
+      "-q",
+      "src",
+      "tests"
+    ],
+    "exit_code": 0
+  },
+  "pip_check": {
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "pip",
+      "check"
+    ],
+    "exit_code": 0
+  },
+  "diff_check": {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0
+  },
+  "peer_format_base": {
+    "exit_code": 1,
+    "source_sha256": "f0a03fbe1a084fa11c697b6541d00e7eff2012eeab5f37b74a5f86f3cb7360e6"
+  },
+  "peer_format_current": {
+    "exit_code": 1,
+    "source_sha256": "f0a03fbe1a084fa11c697b6541d00e7eff2012eeab5f37b74a5f86f3cb7360e6"
+  },
+  "dependencies": {
+    "requirements-agent-lock.txt": {
+      "sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "unchanged": true
+    },
+    "requirements-windows-lock.txt": {
+      "sha256": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5",
+      "unchanged": true
+    },
+    "requirements-lock.txt": {
+      "sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "unchanged": true
+    },
+    "requirements-stream-test-lock.txt": {
+      "sha256": "1b9bec8a6e1c19748a962a45f4f91984bb0bf26bdd3e08d4c20bb26d89b82ba7",
+      "unchanged": true
+    },
+    "uv.lock": {
+      "sha256": "8a3a1d14b7c4774b7189f18c7cc1c9086496135a34f86a7021ba7ff726898d61",
+      "unchanged": true
+    },
+    "pyproject.toml": {
+      "sha256": "1027697c586b9a8a39ca7b482057d3187e48e643902f05518ecfd141d8ed7933",
+      "unchanged": true
+    }
+  },
+  "installed_versions": {
+    "nautilus_trader": "2.0.0rc5",
+    "duckdb": "1.5.5",
+    "pyarrow": "25.0.1",
+    "numpy": "2.5.3",
+    "pytest": "9.1.1",
+    "mypy": "2.3.1",
+    "ruff": "0.16.8"
+  }
+}

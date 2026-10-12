@@ -1,0 +1,24 @@
+{
+  "command": [
+    "/home/kasun/Music/atlas/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-p",
+    "s47_offline_guard",
+    "-q",
+    "-o",
+    "junit_family=legacy",
+    "tests/runtime/test_session048_lifecycle_projection.py",
+    "tests/runtime/test_session048_position_protection.py",
+    "tests/v2/test_session048_management_shadow.py",
+    "tests/runtime/test_session041_binance_reconciliation.py",
+    "tests/runtime/test_protection_deadline.py",
+    "--junitxml=/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/lifecycle_final_focused.xml"
+  ],
+  "cwd": "/home/kasun/Music/atlas-s48",
+  "PYTHONPATH": "/home/kasun/Music/atlas-s48/src:/home/kasun/Music/atlas-s48/docs/v2/transition-s47-evidence",
+  "exit_code": 0,
+  "wall_seconds": 62.38704813900404,
+  "source_test_tree_sha256_at_start": "e1321b16b0b7425a05544ab1ff1cebb4f9e1bdac62343832c678d92b2494ddfe",
+  "scope": "offline fixtures; parent IP effects blocked; subprocess fixtures use fake transports"
+}

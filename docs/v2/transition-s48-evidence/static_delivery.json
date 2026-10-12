@@ -1,0 +1,60 @@
+{
+  "ruff_delivery": {
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/ruff",
+      "check",
+      "src/atlas/runtime/binance_demo.py",
+      "src/atlas/runtime/binance_reconciliation.py",
+      "src/atlas/runtime/position_lifecycle.py",
+      "src/atlas/runtime/protection_deadline.py",
+      "src/atlas/runtime/selected_demo.py",
+      "src/atlas/v2/agent_intelligence/event_extraction_transport.py",
+      "src/atlas/v2/research/decision_brief.py",
+      "src/atlas/v2/research/management_shadow.py",
+      "tests/runtime/test_session041_binance_demo.py",
+      "tests/runtime/test_session041_binance_reconciliation.py",
+      "tests/runtime/test_session048_lifecycle_projection.py",
+      "tests/runtime/test_session048_position_protection.py",
+      "tests/v2/test_session026_agent_intelligence.py",
+      "tests/v2/test_session048_management_shadow.py",
+      "tests/v2/test_session048_s47_repairs.py",
+      "/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/run_checks.py"
+    ],
+    "exit_code": 0
+  },
+  "format_additive": {
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/ruff",
+      "format",
+      "--check",
+      "src/atlas/runtime/position_lifecycle.py",
+      "src/atlas/v2/research/management_shadow.py",
+      "tests/runtime/test_session048_lifecycle_projection.py",
+      "tests/runtime/test_session048_position_protection.py",
+      "tests/v2/test_session048_management_shadow.py",
+      "tests/v2/test_session048_s47_repairs.py",
+      "/home/kasun/Music/atlas-s48/docs/v2/transition-s48-evidence/run_checks.py"
+    ],
+    "exit_code": 0
+  },
+  "compileall_delivery": {
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "compileall",
+      "-q",
+      "src",
+      "tests"
+    ],
+    "exit_code": 0
+  },
+  "diff_delivery": {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0
+  },
+  "translog_append_only": true
+}

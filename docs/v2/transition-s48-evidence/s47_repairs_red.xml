@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="3.670" timestamp="2026-10-12T20:04:46.098714+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session048_s47_repairs" name="test_timely_unrelated_artifact_cannot_certify_fabricated_market_fact" file="tests/v2/test_session048_s47_repairs.py" line="18" time="0.341"><failure message="AssertionError: assert 'COMPLETE' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + COMPLETE">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-158/test_timely_unrelated_artifact0')
+
+    def test_timely_unrelated_artifact_cannot_certify_fabricated_market_fact(tmp_path):
+        r = request()
+        source = {"unrelated": "real archived event"}
+        ref = sha256_json(source)
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            repo.register_artifact(ArtifactIndexEntryV2(ref, "ResearchEventFixtureV1", ref,
+                                                     r.cutoff_ns, r.cutoff_ns, source))
+            fabricated = BriefFactV1("technical", ref, KEY, r.cutoff_ns, r.cutoff_ns,
+                                     r.deadline_ns, "AVAILABLE", FrozenMap({"rsi14": 99}), ())
+            brief = build_decision_brief(replace(r, facts=(fabricated,)), repository=repo)
+&gt;           assert brief.status == "BLOCKED"
+E           AssertionError: assert 'COMPLETE' == 'BLOCKED'
+E
+E             - BLOCKED
+E             + COMPLETE
+
+tests/v2/test_session048_s47_repairs.py:29: AssertionError</failure></testcase><testcase classname="tests.v2.test_session048_s47_repairs" name="test_saturation_receipt_waits_for_bounded_request_read_before_connection_close" file="tests/v2/test_session048_s47_repairs.py" line="32" time="0.218"><failure message="Failed: DID NOT RAISE TimeoutError">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-158/test_saturation_receipt_waits_0')
+
+    def test_saturation_receipt_waits_for_bounded_request_read_before_connection_close(tmp_path):
+        broker = transport.EventExtractionBroker(FakeProvider(), signing_key=SIGNING_KEY, max_active=1,
+                                                clock_ns=lambda: 100)
+        with transport.EventExtractionUnixServer(tmp_path / "reject.sock", broker) as server:
+            # Hold the sole handler slot deterministically; no model invocation.
+            assert server._slots.acquire(blocking=False)
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
+                    channel.settimeout(1)
+                    channel.connect(str(server.socket_path))
+                    raw = canonical_json({"request_id": "saturation-repro"}).encode()
+                    frame = struct.pack("&gt;I", len(raw)) + raw
+                    channel.sendall(frame[:4])
+                    channel.settimeout(0.02)
+                    # The old implementation rejects/closes with request bytes unread.
+&gt;                   with pytest.raises(TimeoutError):
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   Failed: DID NOT RAISE TimeoutError
+
+tests/v2/test_session048_s47_repairs.py:48: Failed</failure></testcase></testsuite></testsuites>

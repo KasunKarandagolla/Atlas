@@ -1,0 +1,102 @@
+{
+  "version": "ATLAS_S48_LIFECYCLE_REQUIREMENT_MAP_V1",
+  "scope": "reuse existing maturity/OMS/journal; no live capital qualification; overlapping tests are not additive opportunities",
+  "rows": [
+    {
+      "requirement": "durable action/reservation/command before effect",
+      "evidence": "tests/runtime/test_session041_binance_readiness.py::test_real_dispatch_persists_unknown_before_effect_and_never_retries",
+      "status": "TESTED",
+      "qualification_detail": "TESTED"
+    },
+    {
+      "requirement": "IOC ACK lost/no-fill/late fill, duplicate opening, crash/restart",
+      "evidence": "tests/runtime/test_fault_injection.py; tests/runtime/test_session041_execution_final_review.py; tests/runtime/test_session048_lifecycle_projection.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED; inherited readiness cases TEST GATE"
+    },
+    {
+      "requirement": "partial-fill changing obligation, exact signed exposure",
+      "evidence": "tests/runtime/test_session048_position_protection.py::test_additional_fill_invalidates_old_quantity_stop_obligation; tests/runtime/test_protection_deadline.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED"
+    },
+    {
+      "requirement": "MarkPrice/full/closing-only stop and conditional-vs-normal identity",
+      "evidence": "tests/runtime/test_session048_position_protection.py; tests/runtime/test_session041_binance_demo.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED; native wire UNVERIFIED"
+    },
+    {
+      "requirement": "request closePosition/reduceOnly/quantity combinations",
+      "evidence": "official trade API audit; fake response contradiction tests; installed compiled adapter inspected",
+      "status": "UNVERIFIED",
+      "qualification_detail": "UNVERIFIED; TEST GATE for actual adapter parameter omission"
+    },
+    {
+      "requirement": "stop/TP race and reversal",
+      "evidence": "tests/v2/test_session048_management_shadow.py; tests/runtime/test_assisted_control_risk_reduction.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED shadow/closing-only fixtures; operative TP TEST GATE"
+    },
+    {
+      "requirement": "failed replacement preserves existing stop",
+      "evidence": "tests/runtime/test_session048_position_protection.py::test_failed_repair_keeps_existing_native_stop_and_unknown_command",
+      "status": "TESTED",
+      "qualification_detail": "TESTED; no new native replacement qualification"
+    },
+    {
+      "requirement": "orphan/foreign/manual orders, stale writer",
+      "evidence": "tests/runtime/test_session041_binance_reconciliation.py; tests/runtime/test_session048_lifecycle_projection.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED"
+    },
+    {
+      "requirement": "stale stream, incomplete REST, contradictory position",
+      "evidence": "tests/runtime/test_fault_injection.py; tests/runtime/test_session048_lifecycle_projection.py; tests/runtime/test_session048_position_protection.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED"
+    },
+    {
+      "requirement": "margin/collateral, liquidation/ADL, write failure",
+      "evidence": "tests/runtime/test_session048_lifecycle_projection.py::test_external_economic_incident_does_not_make_flat_exposure_mature; tests/runtime/test_session048_lifecycle_projection.py::test_disk_write_failure_preserves_uncertain_intent_and_prevents_effect",
+      "status": "TESTED",
+      "qualification_detail": "TESTED typed offline incident retention/fail-closed maturity; native liquidation/ADL delivery UNVERIFIED"
+    },
+    {
+      "requirement": "wrong venue/source, product revision, funding, unavailable local quote",
+      "evidence": "tests/v2/test_session048_s47_repairs.py; tests/runtime/test_session048_lifecycle_projection.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED scope guards; executable pricing/economics UNVERIFIED"
+    },
+    {
+      "requirement": "historical same-bar stop/TP ambiguity",
+      "evidence": "tests/v2/test_session048_management_shadow.py::test_same_bar_stop_and_tp_is_not_an_estimated_profitable_fill",
+      "status": "TESTED",
+      "qualification_detail": "TESTED shadow NOT ESTIMABLE"
+    },
+    {
+      "requirement": "LLM outage, unsupported request, expired review",
+      "evidence": "tests/v2/test_session048_management_shadow.py; tests/v2/test_session047_research_agent.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED fake-only; mandatory supervisor independent"
+    },
+    {
+      "requirement": "flat with outstanding contingent orders",
+      "evidence": "tests/runtime/test_session048_lifecycle_projection.py::test_flatness_with_orphan_conditional_order_is_not_terminal; tests/runtime/test_flat_certificate.py; tests/runtime/test_flat_contradiction.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED"
+    },
+    {
+      "requirement": "cash/fees/funding before maturity",
+      "evidence": "tests/v2/test_session033_outcome_resolution.py; tests/v2/test_session033_outcome_maturity.py; tests/v2/test_session037_action_outcome_producer.py; tests/runtime/test_session048_lifecycle_projection.py",
+      "status": "TESTED",
+      "qualification_detail": "TESTED existing offline economic contracts; actual cash completeness TEST GATE"
+    },
+    {
+      "requirement": "cheap mandatory local review, no LLM",
+      "evidence": "src/atlas/runtime/protection_deadline.py; src/atlas/runtime/position_lifecycle.py; tests/runtime/test_session048_position_protection.py",
+      "status": "IMPLEMENTED",
+      "qualification_detail": "IMPLEMENTED / TESTED local components; no CPU/RSS savings measured"
+    }
+  ]
+}

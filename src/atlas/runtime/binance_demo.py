@@ -329,13 +329,19 @@ def verify_binance_protection(row: Mapping[str, Any], *, symbol: str, client_ord
     try:
         valid = (
             row.get("symbol") == symbol and local_client_order_id(str(row.get("clientAlgoId"))) == client_order_id
-            and row.get("orderType", row.get("type")) == "STOP_MARKET"
+            and row.get("algoType") == "CONDITIONAL"
+            and row.get("orderType") == "STOP_MARKET"
             and row.get("workingType") == "MARK_PRICE" and row.get("positionSide") == "BOTH"
             and row.get("side") == ("SELL" if signed_position > 0 else "BUY")
             and row.get("closePosition") in (True, "true")
-            and row.get("algoStatus", row.get("status")) == "NEW"
-            and Decimal(str(row.get("triggerPrice", row.get("stopPrice")))) == stop
-            and row.get("algoId") is not None
+            and row.get("algoStatus") == "NEW"
+            and Decimal(str(row.get("triggerPrice"))) == stop
+            and not isinstance(row.get("algoId"), bool)
+            and str(row.get("algoId", "")).isdigit() and int(str(row["algoId"])) > 0
+            # Responses may echo zero quantity/false reduceOnly. Positive
+            # quantity or reduceOnly=true contradict this close-all profile.
+            and row.get("reduceOnly", False) in (False, "false")
+            and Decimal(str(row.get("quantity", "0"))) == 0
         )
     except (InvalidOperation, ValueError, TypeError):
         valid = False

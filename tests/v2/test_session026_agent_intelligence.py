@@ -233,7 +233,7 @@ def test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_
     with sqlite3.connect(env.path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM ops_outbox").fetchone()[0] == 0
         ops_version = connection.execute("SELECT schema_version FROM schema_meta").fetchone()[0]
-        assert ops_version == 1
+        assert ops_version == 3
         assert connection.execute("SELECT schema_version FROM agent_intelligence_meta").fetchone()[0] == 2
         assert connection.execute("SELECT COUNT(*) FROM agent_authorities").fetchone()[0] == 1
     request_key = request.request_key
@@ -772,7 +772,7 @@ def test_dispatch_authorization_schema_v1_migrates_and_reopens_without_ops_schem
     env.jobs = AgentJobRepository(env.path, env.schedule)
     with sqlite3.connect(env.path) as connection:
         assert connection.execute("SELECT schema_version FROM agent_intelligence_meta").fetchone()[0] == 2
-        assert connection.execute("SELECT schema_version FROM schema_meta").fetchone()[0] == ops_version == 1
+        assert connection.execute("SELECT schema_version FROM schema_meta").fetchone()[0] == ops_version == 3
         columns = {row[1] for row in connection.execute("PRAGMA table_info(agent_broker_dispatches)")}
         assert {"job_id", "request_hash", "attempt_index", "authorization_id", "evidence_hash",
             "model_profile_hash", "deadline_ns", "authorized_at_ns", "expires_at_ns",

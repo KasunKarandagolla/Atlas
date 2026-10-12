@@ -1,0 +1,343 @@
+unformatted: File would be reformatted
+   --> src/atlas/v2/features/peer_context.py:29:24
+    |
+28  | MIN_RETURN_VARIANCE = 1e-20
+    - COMMON_FACTOR_CAVEAT = (
+    -     "RAW_PAIR_METRICS_INCLUDE_SHARED_BTC_FACTOR; "
+    -     "BTC_ADJUSTED_CORRELATION_USES_EXISTING_S6_BETAS"
+    - )
+29  + COMMON_FACTOR_CAVEAT = "RAW_PAIR_METRICS_INCLUDE_SHARED_BTC_FACTOR; BTC_ADJUSTED_CORRELATION_USES_EXISTING_S6_BETAS"
+30  |
+--------------------------------------------------------------------------------
+65  |     def __post_init__(self) -> None:
+    -         if any(not isinstance(key, InstrumentKeyV2) for key in (
+    -             self.anchor_key, self.peer_key, self.btc_proxy_key,
+    -         )):
+66  +         if any(
+67  +             not isinstance(key, InstrumentKeyV2)
+68  +             for key in (
+69  +                 self.anchor_key,
+70  +                 self.peer_key,
+71  +                 self.btc_proxy_key,
+72  +             )
+73  +         ):
+74  |             raise ValueError("peer context requires exact InstrumentKeyV2 identities")
+--------------------------------------------------------------------------------
+84  |             raise ValueError("peer context computation and availability must follow its data cutoff")
+    -         if type(self.lookback_returns) is not int or not MIN_COMMON_RETURNS <= self.lookback_returns <= MAX_LOOKBACK_RETURNS:
+85  +         if (
+86  +             type(self.lookback_returns) is not int
+87  +             or not MIN_COMMON_RETURNS <= self.lookback_returns <= MAX_LOOKBACK_RETURNS
+88  +         ):
+89  |             raise ValueError("peer context lookback must be 24..720 completed H1 returns")
+--------------------------------------------------------------------------------
+105 |             raise ValueError("peer context cannot precede availability of its S6 beta state")
+    -         if not all(_same_btc_proxy_cohort(key, self.btc_proxy_key)
+    -                    for key in (self.anchor_key, self.peer_key)):
+106 +         if not all(_same_btc_proxy_cohort(key, self.btc_proxy_key) for key in (self.anchor_key, self.peer_key)):
+107 |             raise ValueError("peer context requires exact venue/environment/product cohort")
+--------------------------------------------------------------------------------
+120 |         object.__setattr__(self, "btc_bars", _bar_group(self.btc_bars, self.btc_proxy_key, name="BTC proxy"))
+    -         for name, key, evidence in (("anchor", self.anchor_key, self.anchor_evidence),
+    -                                     ("peer", self.peer_key, self.peer_evidence)):
+121 +         for name, key, evidence in (
+122 +             ("anchor", self.anchor_key, self.anchor_evidence),
+123 +             ("peer", self.peer_key, self.peer_evidence),
+124 +         ):
+125 |             if evidence is not None and (
+    -                 evidence.key != key or evidence.observed_at_ns > self.cutoff_ns
+126 +                 evidence.key != key
+127 +                 or evidence.observed_at_ns > self.cutoff_ns
+128 |                 or evidence.available_at_ns > self.cutoff_ns
+--------------------------------------------------------------------------------
+187 |             raise ValueError("available peer metrics must be complete")
+    -         for value in (self.covariance, self.correlation, self.beta_peer_on_anchor,
+    -                       self.beta_anchor_btc, self.beta_peer_btc, self.btc_adjusted_correlation):
+188 +         for value in (
+189 +             self.covariance,
+190 +             self.correlation,
+191 +             self.beta_peer_on_anchor,
+192 +             self.beta_anchor_btc,
+193 +             self.beta_peer_btc,
+194 +             self.btc_adjusted_correlation,
+195 +         ):
+196 |             if value is not None and not math.isfinite(value):
+197 |                 raise ValueError("peer relationship metrics must be finite or null")
+    -         for ref in (*self.source_evidence_refs, self.source_hash, self.cache_key,
+    -                     self.universe_ref, self.s6_state_ref, self.s6_policy_hash):
+198 +         for ref in (
+199 +             *self.source_evidence_refs,
+200 +             self.source_hash,
+201 +             self.cache_key,
+202 +             self.universe_ref,
+203 +             self.s6_state_ref,
+204 +             self.s6_policy_hash,
+205 +         ):
+206 |             sha256_ref(ref, field="peer_relationship_ref")
+--------------------------------------------------------------------------------
+291 |
+    - def _clip_returns(values: dict[int, tuple[float, str, str]], *, cutoff_ns: int, lookback: int
+    -                   ) -> dict[int, tuple[float, str, str]]:
+292 + def _clip_returns(
+293 +     values: dict[int, tuple[float, str, str]], *, cutoff_ns: int, lookback: int
+294 + ) -> dict[int, tuple[float, str, str]]:
+295 |     end_ns = cutoff_ns - cutoff_ns % HOUR_NS
+--------------------------------------------------------------------------------
+301 |     view = request.replay_view
+    -     anchor_all = _hourly_returns(request.anchor_bars, key=request.anchor_key,
+    -                                  cutoff_ns=request.cutoff_ns, replay_view=view)
+    -     peer_all = _hourly_returns(request.peer_bars, key=request.peer_key,
+    -                                cutoff_ns=request.cutoff_ns, replay_view=view)
+    -     btc_all = _hourly_returns(request.btc_bars, key=request.btc_proxy_key,
+    -                               cutoff_ns=request.cutoff_ns, replay_view=view)
+    -     anchor_state_returns = _clip_returns(anchor_all, cutoff_ns=request.cutoff_ns,
+    -                                          lookback=MAX_LOOKBACK_RETURNS)
+    -     peer_state_returns = _clip_returns(peer_all, cutoff_ns=request.cutoff_ns,
+    -                                        lookback=MAX_LOOKBACK_RETURNS)
+    -     btc_state_returns = _clip_returns(btc_all, cutoff_ns=request.cutoff_ns,
+    -                                       lookback=MAX_LOOKBACK_RETURNS)
+302 +     anchor_all = _hourly_returns(
+303 +         request.anchor_bars, key=request.anchor_key, cutoff_ns=request.cutoff_ns, replay_view=view
+304 +     )
+305 +     peer_all = _hourly_returns(request.peer_bars, key=request.peer_key, cutoff_ns=request.cutoff_ns, replay_view=view)
+306 +     btc_all = _hourly_returns(
+307 +         request.btc_bars, key=request.btc_proxy_key, cutoff_ns=request.cutoff_ns, replay_view=view
+308 +     )
+309 +     anchor_state_returns = _clip_returns(anchor_all, cutoff_ns=request.cutoff_ns, lookback=MAX_LOOKBACK_RETURNS)
+310 +     peer_state_returns = _clip_returns(peer_all, cutoff_ns=request.cutoff_ns, lookback=MAX_LOOKBACK_RETURNS)
+311 +     btc_state_returns = _clip_returns(btc_all, cutoff_ns=request.cutoff_ns, lookback=MAX_LOOKBACK_RETURNS)
+312 |     anchor_returns = _clip_returns(anchor_all, cutoff_ns=request.cutoff_ns, lookback=request.lookback_returns)
+--------------------------------------------------------------------------------
+322 |         request.s6_state.content_hash,
+    -         *(entry.product_ref for entry in request.universe.entries
+    -           if entry.key in (request.anchor_key, request.peer_key, request.btc_proxy_key)),
+323 +         *(
+324 +             entry.product_ref
+325 +             for entry in request.universe.entries
+326 +             if entry.key in (request.anchor_key, request.peer_key, request.btc_proxy_key)
+327 +         ),
+328 |     }
+--------------------------------------------------------------------------------
+334 |         if evidence is not None:
+    -             source_refs.update((evidence.content_hash, evidence.liquidity_ref, evidence.funding_ref,
+    -                                 evidence.source_health_ref))
+335 +             source_refs.update(
+336 +                 (evidence.content_hash, evidence.liquidity_ref, evidence.funding_ref, evidence.source_health_ref)
+337 +             )
+338 |             if evidence.turnover_ref is not None:
+339 |                 source_refs.add(evidence.turnover_ref)
+340 |     refs = tuple(sorted(source_refs))
+341 |     source_hash = sha256_json(list(refs))
+    -     cache_key = sha256_json({
+    -         "method_version": METHOD_VERSION,
+    -         "anchor_key": request.anchor_key.to_dict(),
+    -         "peer_key": request.peer_key.to_dict(),
+    -         "btc_proxy_key": request.btc_proxy_key.to_dict(),
+    -         "universe_ref": request.universe.content_hash,
+    -         "s6_state_ref": request.s6_state.content_hash,
+    -         "cutoff_ns": request.cutoff_ns,
+    -         "lookback_returns": request.lookback_returns,
+    -         "replay_view": request.replay_view,
+    -         "source_hash": source_hash,
+    -     })
+    -     return _PreparedPeerInputs(anchor_returns, peer_returns, btc_returns, common_times, btc_times,
+    -                                refs, source_hash, cache_key, anchor_state_row, peer_state_row,
+    -                                anchor_state_returns, peer_state_returns, btc_state_returns,
+    -                                request.anchor_evidence, request.peer_evidence)
+342 +     cache_key = sha256_json(
+343 +         {
+344 +             "method_version": METHOD_VERSION,
+345 +             "anchor_key": request.anchor_key.to_dict(),
+346 +             "peer_key": request.peer_key.to_dict(),
+347 +             "btc_proxy_key": request.btc_proxy_key.to_dict(),
+348 +             "universe_ref": request.universe.content_hash,
+349 +             "s6_state_ref": request.s6_state.content_hash,
+350 +             "cutoff_ns": request.cutoff_ns,
+351 +             "lookback_returns": request.lookback_returns,
+352 +             "replay_view": request.replay_view,
+353 +             "source_hash": source_hash,
+354 +         }
+355 +     )
+356 +     return _PreparedPeerInputs(
+357 +         anchor_returns,
+358 +         peer_returns,
+359 +         btc_returns,
+360 +         common_times,
+361 +         btc_times,
+362 +         refs,
+363 +         source_hash,
+364 +         cache_key,
+365 +         anchor_state_row,
+366 +         peer_state_row,
+367 +         anchor_state_returns,
+368 +         peer_state_returns,
+369 +         btc_state_returns,
+370 +         request.anchor_evidence,
+371 +         request.peer_evidence,
+372 +     )
+373 |
+--------------------------------------------------------------------------------
+386 |
+    - def _s6_beta_matches(row: S6RankRowV2, asset_returns: dict[int, tuple[float, str, str]],
+    -                      btc_returns: dict[int, tuple[float, str, str]],
+    -                      evidence: LiquidityFundingEvidenceV2 | None) -> bool:
+    -     available_refs = {ref for returns in (asset_returns, btc_returns)
+    -                       for value in returns.values() for ref in value[1:]}
+387 + def _s6_beta_matches(
+388 +     row: S6RankRowV2,
+389 +     asset_returns: dict[int, tuple[float, str, str]],
+390 +     btc_returns: dict[int, tuple[float, str, str]],
+391 +     evidence: LiquidityFundingEvidenceV2 | None,
+392 + ) -> bool:
+393 +     available_refs = {
+394 +         ref for returns in (asset_returns, btc_returns) for value in returns.values() for ref in value[1:]
+395 +     }
+396 |     evidence_refs: set[str] = set()
+397 |     if evidence is not None:
+398 |         if row.evidence_ref != evidence.content_hash:
+399 |             return False
+    -         evidence_refs.update((evidence.content_hash, evidence.liquidity_ref, evidence.funding_ref,
+    -                               evidence.source_health_ref))
+400 +         evidence_refs.update(
+401 +             (evidence.content_hash, evidence.liquidity_ref, evidence.funding_ref, evidence.source_health_ref)
+402 +         )
+403 |         if evidence.turnover_ref is not None:
+--------------------------------------------------------------------------------
+445 |         else:
+    -             covariance_value = math.fsum((a - anchor_mean) * (b - peer_mean)
+    -                                          for a, b in zip(anchor, peer, strict=True)) / (len(times) - 1)
+446 +             covariance_value = math.fsum(
+447 +                 (a - anchor_mean) * (b - peer_mean) for a, b in zip(anchor, peer, strict=True)
+448 +             ) / (len(times) - 1)
+449 |             correlation_value = covariance_value / math.sqrt(anchor_variance * peer_variance)
+--------------------------------------------------------------------------------
+473 |         btc_adjustment_reason = "S6_BTC_BETA_UNAVAILABLE"
+    -     elif not _s6_beta_matches(prepared.anchor_state_row, prepared.anchor_state_returns,
+    -                               prepared.btc_state_returns, prepared.anchor_evidence):
+474 +     elif not _s6_beta_matches(
+475 +         prepared.anchor_state_row, prepared.anchor_state_returns, prepared.btc_state_returns, prepared.anchor_evidence
+476 +     ):
+477 |         btc_adjustment_reason = "S6_ANCHOR_BETA_SOURCE_MISMATCH"
+    -     elif not _s6_beta_matches(prepared.peer_state_row, prepared.peer_state_returns,
+    -                               prepared.btc_state_returns, prepared.peer_evidence):
+478 +     elif not _s6_beta_matches(
+479 +         prepared.peer_state_row, prepared.peer_state_returns, prepared.btc_state_returns, prepared.peer_evidence
+480 +     ):
+481 |         btc_adjustment_reason = "S6_PEER_BETA_SOURCE_MISMATCH"
+--------------------------------------------------------------------------------
+498 |         else:
+    -             residual_covariance = math.fsum((a - residual_anchor_mean) * (p - residual_peer_mean)
+    -                                             for a, p in zip(residual_anchor, residual_peer, strict=True)) / (
+    -                                                 len(btc_times) - 1)
+499 +             residual_covariance = math.fsum(
+500 +                 (a - residual_anchor_mean) * (p - residual_peer_mean)
+501 +                 for a, p in zip(residual_anchor, residual_peer, strict=True)
+502 +             ) / (len(btc_times) - 1)
+503 |             value = residual_covariance / math.sqrt(residual_anchor_variance * residual_peer_variance)
+--------------------------------------------------------------------------------
+514 |     return PeerRelationshipV1(
+    -         METHOD_VERSION, request.anchor_key, request.peer_key, request.btc_proxy_key,
+    -         request.universe.content_hash, request.s6_state.content_hash, S6_POLICY.policy_hash,
+    -         "1H", request.lookback_returns, MIN_COMMON_RETURNS,
+    -         request.cutoff_ns, request.computed_at_ns, request.available_at_ns, valid_until_ns,
+    -         request.replay_view, "AVAILABLE" if reason is None else "NOT_ESTIMABLE", reason,
+    -         tuple(sorted(flags)), times, len(times), covariance, correlation, beta_peer_on_anchor,
+    -         btc_times, len(btc_times), beta_anchor_btc, beta_peer_btc, btc_adjusted_correlation,
+    -         btc_adjustment_reason, COMMON_FACTOR_CAVEAT, prepared.source_refs,
+    -         prepared.source_hash, prepared.cache_key,
+515 +         METHOD_VERSION,
+516 +         request.anchor_key,
+517 +         request.peer_key,
+518 +         request.btc_proxy_key,
+519 +         request.universe.content_hash,
+520 +         request.s6_state.content_hash,
+521 +         S6_POLICY.policy_hash,
+522 +         "1H",
+523 +         request.lookback_returns,
+524 +         MIN_COMMON_RETURNS,
+525 +         request.cutoff_ns,
+526 +         request.computed_at_ns,
+527 +         request.available_at_ns,
+528 +         valid_until_ns,
+529 +         request.replay_view,
+530 +         "AVAILABLE" if reason is None else "NOT_ESTIMABLE",
+531 +         reason,
+532 +         tuple(sorted(flags)),
+533 +         times,
+534 +         len(times),
+535 +         covariance,
+536 +         correlation,
+537 +         beta_peer_on_anchor,
+538 +         btc_times,
+539 +         len(btc_times),
+540 +         beta_anchor_btc,
+541 +         beta_peer_btc,
+542 +         btc_adjusted_correlation,
+543 +         btc_adjustment_reason,
+544 +         COMMON_FACTOR_CAVEAT,
+545 +         prepared.source_refs,
+546 +         prepared.source_hash,
+547 +         prepared.cache_key,
+548 |     )
+--------------------------------------------------------------------------------
+600 |     def invalidate_product_revision(self, old_key: InstrumentKeyV2, new_key: InstrumentKeyV2) -> int:
+    -         old_identity = (old_key.venue, old_key.environment, old_key.product, old_key.native_symbol,
+    -                         old_key.base_asset_id, old_key.quote_asset, old_key.settlement_asset)
+    -         new_identity = (new_key.venue, new_key.environment, new_key.product, new_key.native_symbol,
+    -                         new_key.base_asset_id, new_key.quote_asset, new_key.settlement_asset)
+601 +         old_identity = (
+602 +             old_key.venue,
+603 +             old_key.environment,
+604 +             old_key.product,
+605 +             old_key.native_symbol,
+606 +             old_key.base_asset_id,
+607 +             old_key.quote_asset,
+608 +             old_key.settlement_asset,
+609 +         )
+610 +         new_identity = (
+611 +             new_key.venue,
+612 +             new_key.environment,
+613 +             new_key.product,
+614 +             new_key.native_symbol,
+615 +             new_key.base_asset_id,
+616 +             new_key.quote_asset,
+617 +             new_key.settlement_asset,
+618 +         )
+619 |         if old_identity != new_identity or old_key.contract_revision == new_key.contract_revision:
+--------------------------------------------------------------------------------
+623 |     def _invalidate_matching(self, key: InstrumentKeyV2, *, identity_wide: bool) -> int:
+    -         target = (key.venue, key.environment, key.product, key.native_symbol,
+    -                   key.base_asset_id, key.quote_asset, key.settlement_asset)
+624 +         target = (
+625 +             key.venue,
+626 +             key.environment,
+627 +             key.product,
+628 +             key.native_symbol,
+629 +             key.base_asset_id,
+630 +             key.quote_asset,
+631 +             key.settlement_asset,
+632 +         )
+633 |         remove = []
+--------------------------------------------------------------------------------
+637 |                 exact = candidate == key
+    -                 broad = identity_wide and (
+    -                     candidate.venue, candidate.environment, candidate.product, candidate.native_symbol,
+    -                     candidate.base_asset_id, candidate.quote_asset, candidate.settlement_asset,
+    -                 ) == target
+638 +                 broad = (
+639 +                     identity_wide
+640 +                     and (
+641 +                         candidate.venue,
+642 +                         candidate.environment,
+643 +                         candidate.product,
+644 +                         candidate.native_symbol,
+645 +                         candidate.base_asset_id,
+646 +                         candidate.quote_asset,
+647 +                         candidate.settlement_asset,
+648 +                     )
+649 +                     == target
+650 +                 )
+651 |                 if exact or broad:
+    |
+
+1 file would be reformatted
