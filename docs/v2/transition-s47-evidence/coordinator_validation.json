@@ -1,0 +1,22 @@
+{
+  "checked_at": "2026-10-12T18:59:27.510714+05:30",
+  "implementation_sha": "e1f0c17b68f9add063e9d6a78b5c8ddbfee3dede",
+  "tested_source_hashes_unchanged": true,
+  "report_artifact_hashes_verified": true,
+  "freeze_hashes_verified": true,
+  "translog_implementation_is_exact_prefix": true,
+  "coordinator_mutations": [
+    "docs/v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md",
+    "docs/v2/transition-s47-evidence/evidence_manifest.json",
+    "log.md",
+    "translog.md"
+  ],
+  "new_evidence": [
+    "implementation_push_verification.json",
+    "test_scope_inventory.json"
+  ],
+  "authority_acceptance": "NONE",
+  "note": "Documentation-only post-push verification; no source/test/dependency/database changes.",
+  "coordinator_secret_pattern_hits": 0,
+  "coordinator_diff_check_exit": 0
+}

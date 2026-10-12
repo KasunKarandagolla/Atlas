@@ -1,0 +1,16 @@
+{
+  "verified_at": "2026-10-12T18:57:47.768305+05:30",
+  "command": [
+    "git",
+    "ls-remote",
+    "origin",
+    "refs/heads/impl/session-047-economics-agent-decision-brief"
+  ],
+  "ref": "refs/heads/impl/session-047-economics-agent-decision-brief",
+  "implementation_sha": "e1f0c17b68f9add063e9d6a78b5c8ddbfee3dede",
+  "remote_sha": "e1f0c17b68f9add063e9d6a78b5c8ddbfee3dede",
+  "exact_match": true,
+  "accepted_s46_base": "95efa393e50f5e71646c409a3b4ff83cf5acb6a2",
+  "base_is_ancestor": true,
+  "note": "Verified source/evidence implementation push; a documentation-only coordinator record follows. Its own final remote SHA is returned after the final push."
+}

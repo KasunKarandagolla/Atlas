@@ -1,6 +1,6 @@
 # ATLAS S47 implementation handoff
 
-**Status:** scoped implementation validated and staged review complete; push verification pending. Independent acceptance pending.
+**Status:** tested implementation pushed and exact remote source head verified. Independent acceptance pending.
 **Branch:** `impl/session-047-economics-agent-decision-brief`. **Worktree:** `/home/kasun/Music/atlas-s47`.
 
 ## Base, model and authorities
@@ -74,7 +74,7 @@ Reports overlap; these counts must not be added as unique coverage. Final S47 te
 
 The agent/event skips are the existing missing `httpx2` mock dependency and the explicit native actual-wall timeout/stream-isolation gate. No dependency was installed to hide skips. Two existing S44 `record_property`/xunit2 warnings occurred in the recovery group and are recorded; later S47 reports used the legacy JUnit format. The last staged-review budget test failed in two cases before repair (omitted receipt overhead/provider context); the focused consumers then passed 85/85, with refreshed lint/format/compile/type checks. Calendar denominator tags identify original slots; aliases and repeated reports must never be summed into additional opportunities.
 
-No full repository-suite claim: tests outside the exact retained command groups were not run.
+No full repository-suite claim: the exact filesystem list of tests outside the retained command groups is in `test_scope_inventory.json`; no total-case count is inferred from file counts.
 
 Delivery Ruff lint, compileall, targeted uncached mypy (five source files), `pip check`, Python-3.12 `uv lock --check` (39 packages), freeze hashes, all eight callable entrypoint targets and authority-isolation checks passed. All eleven additive Python files pass Ruff formatting; both accepted S46 and current peer files retain the same existing formatting discrepancy. This is recorded as a baseline failure, not a formatting pass. Final links, secret scan and staged-diff records are retained with delivery evidence. Failed-report trailing whitespace normalization retains exact original report bytes in `.xml.gz`, with both raw and normalized SHA-256 identities. The retained owner request has three Markdown trailing hard-break spaces normalized; exact original bytes/hash are preserved in `owner_request_raw.md.gz` and its retention record.
 
@@ -90,10 +90,12 @@ Retain TEST GATE: legacy fake Bybit chronology/supervisor fixture; TQ-01 sustain
 
 ## Rollback, review and S48 boundaries
 
-Revert S47 implementation commits. The new research package is additive and not wired to admission; immutable research receipts should be retained if used. Reverting the peer guard restores the identified chronology defect and requires explicit review, rather than silently restoring invalid behavior. No database migration rollback is needed.
+Revert implementation commit `e1f0c17b68f9add063e9d6a78b5c8ddbfee3dede` and the following coordinator documentation record. The new research package is additive and not wired to admission; immutable research receipts should be retained if used. Reverting the peer guard restores the identified chronology defect and requires explicit review, rather than silently restoring invalid behavior. No database migration rollback is needed.
 
 Independent review must inspect the exact pushed head, full diff, evidence manifest, freeze/source identities, authority isolation and known failing gate. S48 requires that review and its own authority checks; no automatic launch or merge. Discretionary comparative selection, real providers, spending limits, source/capacity qualification, management options and altcoin capital remain separately gated.
 
 ## Final checkpoint and push verification
 
-Final regression/static checks, 74 local links, zero high-confidence secret-pattern hits and staged diff review passed. Exact remote push verification follows. The implementation commit SHA and verified remote ref will be recorded after the implementation push. The final coordinator head is returned separately because a document cannot contain its own commit hash.
+Implementation commit **`e1f0c17b68f9add063e9d6a78b5c8ddbfee3dede`** was pushed to `origin/impl/session-047-economics-agent-decision-brief`. Fresh `git ls-remote origin refs/heads/impl/session-047-economics-agent-decision-brief` returned exactly the same SHA. The accepted S46 base is an ancestor. Machine-readable verification is retained in `implementation_push_verification.json`.
+
+Final regression/static checks, 74 local links, zero high-confidence secret-pattern hits and staged diff review passed. The final source/test hashes are bound in the manifest; following coordinator changes only record this verified push, scope and review status. The final coordinator remote SHA is returned separately after its push because a document cannot contain its own commit hash. No merge, self-acceptance or S48 launch.

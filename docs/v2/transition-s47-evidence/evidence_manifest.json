@@ -5,8 +5,8 @@
   "base_sha": "95efa393e50f5e71646c409a3b4ff83cf5acb6a2",
   "model": "gpt-6.1-sol",
   "subagents": [],
-  "implementation_commit_sha": null,
-  "verified_implementation_remote_sha": null,
+  "implementation_commit_sha": "e1f0c17b68f9add063e9d6a78b5c8ddbfee3dede",
+  "verified_implementation_remote_sha": "e1f0c17b68f9add063e9d6a78b5c8ddbfee3dede",
   "accepted_discretionary_amendments": [],
   "proposed_amendment": {
     "identity": "ATLAS_COMPARATIVE_DECISION_RESEARCH_V1",
@@ -1382,6 +1382,11 @@
       "bytes": 0
     },
     {
+      "path": "docs/v2/transition-s47-evidence/coordinator_validation.json",
+      "sha256": "ac7dc898b417c5c014d000cbf60914c1ec9f8333e257535e51c1ce8d22ff0e57",
+      "bytes": 784
+    },
+    {
       "path": "docs/v2/transition-s47-evidence/current_mypy_repository.txt",
       "sha256": "2fd025218ea9f34d860a5a1a86fdac29c611ef1b5ed1a7e237ac32d02ff9eca1",
       "bytes": 809
@@ -1445,6 +1450,11 @@
       "path": "docs/v2/transition-s47-evidence/history_preservation_delivery.json",
       "sha256": "16d1996d297cfdb4c3171108429e88666be7fb91395a692a86707181d131a486",
       "bytes": 434
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/implementation_push_verification.json",
+      "sha256": "aea7e0fa4a5b674538f257751d56b6f883bc3b6dd1a63eca79891786a973ce23",
+      "bytes": 667
     },
     {
       "path": "docs/v2/transition-s47-evidence/late_receipt_red_raw.xml.gz",
@@ -1637,6 +1647,11 @@
       "bytes": 13057
     },
     {
+      "path": "docs/v2/transition-s47-evidence/test_scope_inventory.json",
+      "sha256": "2f9b5b7e14b0696173209a15222a9ecf5f190bf64b22bf6287caf9bbe6c0746f",
+      "bytes": 14354
+    },
+    {
       "path": "docs/v2/transition-s47-evidence/tool_verification_delivery.json",
       "sha256": "e0d2873e5533394350f017ec43dad2720de0768dc1c95fd17178266ec14a99f0",
       "bytes": 983
@@ -1778,7 +1793,8 @@
     "warnings": [
       "Two existing S44 record_property/xunit2 incompatibility warnings in memory_capture_v1_s44_regression.xml; later delivery reports use legacy JUnit format."
     ],
-    "synthetic_qualification": "Fake/offline fixtures are not venue/capacity/provider/economic qualification."
+    "synthetic_qualification": "Fake/offline fixtures are not venue/capacity/provider/economic qualification.",
+    "unrun_inventory": "docs/v2/transition-s47-evidence/test_scope_inventory.json"
   },
   "retained_gates": {
     "event_saturation": "TEST GATE; unmodified combined runs fail CALL_OUTCOME_UNKNOWN instead of BROKER_SATURATED; two instrumented repeats pass; no proved production repair.",
@@ -1806,7 +1822,7 @@
   "shadow_only": true,
   "authority": "ZERO",
   "final_coordinator_sha": "Returned separately after final push; manifest cannot contain its own commit SHA.",
-  "updated_at": "2026-10-12T18:55:35.873775+05:30",
+  "updated_at": "2026-10-12T18:57:47.875713+05:30",
   "delivery_report": "docs/v2/transition-s47-evidence/s47_delivery_after_budget_review.xml",
   "history_note": "Earlier red/green reports describe development checkpoints. Source/test hashes bind the final 85-case delivery report. Historical static snapshots and staged review retain their recorded checkpoint scope."
 }
