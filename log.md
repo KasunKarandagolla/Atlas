@@ -22,7 +22,7 @@
 
 **Open TEST GATE / UNVERIFIED / NOT ESTIMABLE:** fake Bybit supervisor `INCOMPLETE_SNAPSHOT` and noncausal dependency `ValueError` remain unresolved; TQ-01 injected stall reached 480/512 with one frame rejection and S45 80/120 frames/s attempts supplied no valid sustained drain; Binance final-M15 close+5s remains `UNVERIFIED`; Linux F1/A2 capacity remains `TEST GATE`; existing `TECHNICAL_V1` accepts sparse bars without a gap label, so future gap-sensitive use remains `TEST GATE`; authenticated/native protection/capital remain unqualified and capital stays disabled; economic value remains `NOT ESTIMABLE`. No performance optimization was justified or made.
 
-**Push status:** S46 implementation is tested and staged diff review/secret scan are being completed. Remote push and `git ls-remote` verification are pending. Next action after push is independent review of exact SHA, ancestry, diff, tests, hashes and gates; do not self-merge or start S47.
+**CONFIRMED push:** S46 implementation ending SHA `e2828d41f0942184f0b75a001ebf19d77561a6b6` was pushed to `origin/impl/session-046-causal-features-peer-context`; `git ls-remote` matched local HEAD exactly. The S46 source/test/evidence commit is an ancestor of the remote branch. Staged diff review and sanitized secret scan passed before commit. This coordinator/history update is a separate documentation commit. Next action is independent review of the pushed branch’s exact head, ancestry, diff, tests, hashes and gates; do not self-merge or start S47.
 
 ## Previous checkpoint — S44 practical trading delivery — 2026-10-11
 

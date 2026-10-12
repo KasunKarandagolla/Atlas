@@ -1,12 +1,13 @@
 # ATLAS S46 implementation handoff
 
-**Status:** `IMPLEMENTED`; branch push and independent review are the remaining session steps. **Date:** 2026-10-12.
+**Status:** `IMPLEMENTED`; implementation commit `e2828d41f0942184f0b75a001ebf19d77561a6b6` was pushed and independently matched by `git ls-remote`. Independent review remains. **Date:** 2026-10-12.
 
 ## Source and authority
 
 - Starting commit and verified remote S45 tip: `ce5f67031e7c5184da91aff416ec4aca18b14bbb`.
 - Worktree: `/home/kasun/Music/atlas-s46`.
 - Branch: `impl/session-046-causal-features-peer-context`.
+- Implementation ending SHA pushed to that branch: `e2828d41f0942184f0b75a001ebf19d77561a6b6`.
 - The original checkout and its pre-existing dirty/untracked owner files were left untouched.
 - Remote heads were rediscovered immediately before worktree creation; no newer suitable session tip was present.
 - V1 freeze SHA-256: `c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c`.
@@ -113,4 +114,4 @@ Next action: independent review of the pushed S46 SHA, ancestry, full diff, repo
 
 ## Push evidence
 
-Implementation commit and verified remote branch SHA will be recorded here after push. Final remote SHA: pending.
+The implementation commit `e2828d41f0942184f0b75a001ebf19d77561a6b6` was pushed to `origin/impl/session-046-causal-features-peer-context`. `git ls-remote origin refs/heads/impl/session-046-causal-features-peer-context` returned that exact SHA, matching local `HEAD`. The root coordinator record and evidence manifest retain this verified implementation SHA. The coordinator checkpoint itself is pushed as a separate documentation commit.

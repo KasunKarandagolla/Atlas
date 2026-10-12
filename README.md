@@ -1,6 +1,6 @@
 # ATLAS — current project status
 
-**Updated 2026-10-12.** S46 implements bounded, read-only H1 peer relationship context on the S45 foundation. The [S46 handoff](docs/v2/ATLAS_S46_IMPLEMENTATION_HANDOFF.md) records tests and open qualifications. See [`log.md`](log.md) for the coordinator checkpoint and [`docs/INDEX.md`](docs/INDEX.md) for the document map.
+**Updated 2026-10-12.** S46 implements bounded, read-only H1 peer relationship context on the S45 foundation (implementation commit `e2828d41f0942184f0b75a001ebf19d77561a6b6`). The [S46 handoff](docs/v2/ATLAS_S46_IMPLEMENTATION_HANDOFF.md) records tests and open qualifications. See [`log.md`](log.md) for the coordinator checkpoint and [`docs/INDEX.md`](docs/INDEX.md) for the document map.
 
 ## Current operating boundary
 

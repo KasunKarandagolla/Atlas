@@ -320,10 +320,18 @@
   ],
   "peer_policy_identity": "a8ec8cf56a06de32ebc7f92beb9f895dce6229dac87860b23528cca49069c029",
   "performance_measurement": "none; no valid matched performance workload was available",
+  "push_verification": {
+    "branch": "impl/session-046-causal-features-peer-context",
+    "implementation_commit_sha": "e2828d41f0942184f0b75a001ebf19d77561a6b6",
+    "local_head_matched_remote": true,
+    "remote_ref": "refs/heads/impl/session-046-causal-features-peer-context",
+    "remote_sha": "e2828d41f0942184f0b75a001ebf19d77561a6b6",
+    "verification_command": "git ls-remote origin refs/heads/impl/session-046-causal-features-peer-context"
+  },
   "recorded_at": "2026-10-12",
   "schema_version": 1,
   "session": "ATLAS RED S46",
   "starting_sha": "ce5f67031e7c5184da91aff416ec4aca18b14bbb",
-  "status": "IMPLEMENTED; TESTED; push verification pending",
+  "status": "IMPLEMENTED; TESTED; implementation commit pushed and remote-verified; coordinator checkpoint commit pending",
   "worktree": "/home/kasun/Music/atlas-s46"
 }
