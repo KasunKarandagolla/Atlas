@@ -103,4 +103,4 @@ All commands ran in `/home/kasun/Music/atlas-s45-worktree`, using `/home/kasun/M
 
 **One next bounded action:** independently review the pushed S45 branch diff, decision register and factual report against the three accepted freeze hashes. Do not start implementation of the future agent authority or position-management changes until the reviewer accepts a separate versioned amendment. Any public venue diagnostic also needs a separate bounded authorization and existing A2/source preflight.
 
-The final report/evidence commit and final branch-tip SHA are recorded in the root S45 handoff after push; this report does not claim its own commit hash.
+The report/evidence commit and its independently verified remote SHA are recorded in the root S45 coordinator handoff. The final branch-tip SHA after the coordinator handoff commit is supplied separately to the owner; this report does not claim its own commit hash.
