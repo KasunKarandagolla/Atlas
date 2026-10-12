@@ -4,7 +4,23 @@
   "base_sha": "b0db7d0527e68c737eefd564a87f740f5929c5f6",
   "s47_source_sha": "e1f0c17b68f9add063e9d6a78b5c8ddbfee3dede",
   "branch": "impl/session-048-position-lifecycle-protection",
-  "implementation_push": null,
+  "implementation_push": {
+    "status": "TESTED",
+    "implementation_sha": "9a48489b2f6939f1586ee6e11923ee3426937342",
+    "verified_remote_sha": "9a48489b2f6939f1586ee6e11923ee3426937342",
+    "base_sha": "b0db7d0527e68c737eefd564a87f740f5929c5f6",
+    "remote": "origin",
+    "ref": "refs/heads/impl/session-048-position-lifecycle-protection",
+    "command": [
+      "git",
+      "ls-remote",
+      "origin",
+      "refs/heads/impl/session-048-position-lifecycle-protection"
+    ],
+    "exact_response": "9a48489b2f6939f1586ee6e11923ee3426937342\trefs/heads/impl/session-048-position-lifecycle-protection",
+    "verified_at_utc": "2026-10-12T15:24:10.853987+00:00",
+    "followup": "Documentation-only commit follows; its exact final remote SHA is returned after independent ls-remote verification"
+  },
   "final_head_identity": "Git commit containing final handoff; exact final remote SHA returned after final ls-remote verification (cannot self-embed)",
   "model": "gpt-6.1-sol",
   "subagents": [],
@@ -1075,6 +1091,11 @@
       "path": "docs/v2/transition-s48-evidence/format_additive.txt",
       "sha256": "0321fffcb91606a42c0a19d8c1121d5c544379d663821fce616c71a7bb62f6b5",
       "bytes": 26
+    },
+    {
+      "path": "docs/v2/transition-s48-evidence/implementation_push.json",
+      "sha256": "be616e7790d8103ce836a87f9cf094448daa8843d943493a9c8f340e8074cc22",
+      "bytes": 750
     },
     {
       "path": "docs/v2/transition-s48-evidence/lifecycle_consumers_first.command.json",

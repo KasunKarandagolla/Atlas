@@ -1,0 +1,17 @@
+{
+  "status": "TESTED",
+  "implementation_sha": "9a48489b2f6939f1586ee6e11923ee3426937342",
+  "verified_remote_sha": "9a48489b2f6939f1586ee6e11923ee3426937342",
+  "base_sha": "b0db7d0527e68c737eefd564a87f740f5929c5f6",
+  "remote": "origin",
+  "ref": "refs/heads/impl/session-048-position-lifecycle-protection",
+  "command": [
+    "git",
+    "ls-remote",
+    "origin",
+    "refs/heads/impl/session-048-position-lifecycle-protection"
+  ],
+  "exact_response": "9a48489b2f6939f1586ee6e11923ee3426937342\trefs/heads/impl/session-048-position-lifecycle-protection",
+  "verified_at_utc": "2026-10-12T15:24:10.853987+00:00",
+  "followup": "Documentation-only commit follows; its exact final remote SHA is returned after independent ls-remote verification"
+}
