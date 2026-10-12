@@ -1,0 +1,24 @@
+Command exited with non-zero status 1
+	Command being timed: "env PYTHONPATH=/home/kasun/Music/atlas-s45-worktree/src:/home/kasun/Music/atlas-s45-worktree /home/kasun/Music/atlas/.venv/bin/python -m pytest -q -o junit_family=legacy tests/v2/test_s45_capacity_probe.py --junitxml=docs/v2/transition-s45-evidence/capacity_small_medium.junit.xml"
+	User time (seconds): 90.02
+	System time (seconds): 6.57
+	Percent of CPU this job got: 57%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:49.41
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 185800
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 54
+	Minor (reclaiming a frame) page faults: 84951
+	Voluntary context switches: 51116
+	Involuntary context switches: 73187
+	Swaps: 0
+	File system inputs: 1656
+	File system outputs: 830720
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

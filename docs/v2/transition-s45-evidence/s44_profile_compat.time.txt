@@ -1,0 +1,23 @@
+	Command being timed: "env PYTHONPATH=/home/kasun/Music/atlas-s45-worktree/src:/home/kasun/Music/atlas-s45-worktree/tests /home/kasun/Music/atlas/.venv/bin/python -m pytest -q -o junit_family=legacy tests/v2/test_session044_close_driven_m15.py::test_timely_profile_origin_reaches_durable_candidate_set_and_restart_is_idempotent --junitxml=docs/v2/transition-s45-evidence/s44_profile_compat.junit.xml"
+	User time (seconds): 8.72
+	System time (seconds): 0.89
+	Percent of CPU this job got: 42%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:22.42
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 127312
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 282
+	Minor (reclaiming a frame) page faults: 36595
+	Voluntary context switches: 1980
+	Involuntary context switches: 7693
+	Swaps: 0
+	File system inputs: 50072
+	File system outputs: 11672
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

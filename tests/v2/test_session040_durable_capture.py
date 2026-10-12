@@ -7,6 +7,7 @@ import time
 
 import pytest
 
+from atlas.v2.data.capture_receipts import read_capture_receipt, read_last_capture_receipt
 from atlas.v2.data.durable_public_capture import DurablePublicCaptureV1
 from atlas.v2.data.public_archive_extents import PublicArchiveSegmentWriterV1
 from atlas.v2.memory.repository import OpsRepository
@@ -23,6 +24,15 @@ def wait_for(predicate, *, timeout=8):
             return
         time.sleep(.01)
     raise AssertionError("bounded capture wait expired")
+
+
+def last_capture_receipt(root):
+    try:
+        return read_last_capture_receipt(
+            root, expected_run_id="standalone-capture-fixture", expected_configuration_hash="0" * 64
+        )
+    except ValueError:
+        return None
 
 
 @pytest.mark.parametrize("stall", [.1, .5, 1, 3, 5])
@@ -116,7 +126,12 @@ def test_capture_failure_preserves_raw_receipts_and_is_terminal(tmp_path, monkey
     workload = MixedWorkload()
     first = workload.frame(time.time_ns())
     assert source.handoff.offer(first)
-    wait_for(lambda: capture.status().pending_frames == 1)
+    wait_for(lambda: capture.status().capture["captured_frames"] == 1
+        and capture.status().capture["pending_batches"] == 1
+        and capture.status().capture["capture_in_progress_frames"] == 0
+        and source.status().handoff.queue_items == 0)
+    first_receipt = last_capture_receipt(tmp_path / "ops-public-capture")
+    assert first_receipt is not None and first_receipt.receipt["version"] == "SEALED_PUBLIC_TRANSPORT_V1"
 
     def failed_seal(*args, **kwargs):
         raise OSError("offline injected storage failure")
@@ -124,11 +139,22 @@ def test_capture_failure_preserves_raw_receipts_and_is_terminal(tmp_path, monkey
     monkeypatch.setattr(PublicArchiveSegmentWriterV1, "seal", failed_seal)
     assert source.handoff.offer(workload.frame(time.time_ns()))
     wait_for(lambda: capture.status().state == "FAILED")
-    assert capture.status().capture["terminal_error"] == "RAW_CAPTURE_FAILED_OSERROR"
+    wait_for(lambda: (receipt := last_capture_receipt(tmp_path / "ops-public-capture")) is not None
+        and receipt.receipt["version"] == "PUBLIC_RAW_CAPTURE_FAILURE_V1")
+    failed = capture.status()
+    assert failed.capture["terminal_error"] == "RAW_CAPTURE_FAILED_OSERROR"
     assert list((tmp_path / "ops-public-capture").glob("capture-*.bin"))
-    assert capture.status().pending_frames == 1
+    assert failed.capture["pending_batches"] == 1
+    assert failed.capture["capture_in_progress_frames"] == 1
+    assert failed.pending_frames == 2
+    terminal_receipt = last_capture_receipt(tmp_path / "ops-public-capture")
+    assert terminal_receipt is not None
+    assert terminal_receipt.receipt["version"] == "PUBLIC_RAW_CAPTURE_FAILURE_V1"
+    assert read_capture_receipt(tmp_path / "ops-public-capture", first_receipt.location,
+        expected_binding=first_receipt.binding).receipt == first_receipt.receipt
     capture.close()
     assert capture.status().state == "FAILED"
+    assert capture.status().pending_frames == 2
 
 
 def test_no_direct_drain_or_unbound_start_can_compete_with_capture(tmp_path):
@@ -252,7 +278,26 @@ def test_capture_cannot_raise_availability_floor_to_hide_a_regressed_clock(tmp_p
     capture.start()
     assert source.handoff.offer(MixedWorkload().frame(now))
     wait_for(lambda: capture.status().state == "FAILED")
-    assert capture.status().capture["terminal_error"] == "RAW_CAPTURE_FAILED_VALUEERROR"
-    assert capture.status().pending_frames == 0
+    wait_for(lambda: (receipt := last_capture_receipt(tmp_path / "ops-public-capture")) is not None
+        and receipt.receipt["version"] == "PUBLIC_RAW_CAPTURE_FAILURE_V1")
+    failed = capture.status()
+    assert failed.capture["terminal_error"] == "RAW_CAPTURE_FAILED_VALUEERROR"
+    assert failed.capture["captured_frames"] == 0
+    assert failed.capture["capture_in_progress_frames"] == failed.pending_frames == 1
     assert list((tmp_path / "ops-public-extents").glob("*.arrow"))  # orphan bytes retained
+    terminal_receipt = last_capture_receipt(tmp_path / "ops-public-capture")
+    assert terminal_receipt is not None
+    assert terminal_receipt.receipt["version"] == "PUBLIC_RAW_CAPTURE_FAILURE_V1"
+    assert terminal_receipt.receipt["captured_frames"] == 0
     capture.close()
+    assert capture.status().pending_frames == 1
+    restarted = DurablePublicCaptureV1(QueueStream(time.time_ns))
+    restarted.configure_capture(tmp_path)
+    with (
+        OpsRepository(tmp_path / "ops.sqlite") as repository,
+        pytest.raises(
+            ValueError,
+            match="previous capture ended with terminal failure",
+        ),
+    ):
+        restarted.recover_controller_capture(repository)

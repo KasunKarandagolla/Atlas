@@ -1,0 +1,61 @@
+diff --git a/tests/v2/test_session041_mixed_broad_capacity.py b/tests/v2/test_s45_capacity_probe.py
+index d8d4243..17e821c 100644
+--- a/tests/v2/test_session041_mixed_broad_capacity.py
++++ b/tests/v2/test_s45_capacity_probe.py
+@@ -9,6 +9,7 @@ import time
+ from decimal import Decimal
+ 
+ import pyarrow.parquet as pq
++import pytest
+ 
+ from atlas.v2._serialization import canonical_json, sha256_json
+ from atlas.v2.contracts import OpportunityWatchV2, WatchStateV2
+@@ -70,7 +71,8 @@ def _frame_identity(frame: CapturedPublicFrameV2) -> tuple:
+             frame.connection_epoch)
+ 
+ 
+-def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, record_property):
++@pytest.mark.parametrize("rate_fps", [80, 120])
++def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, record_property, rate_fps):
+     products = _contracts()
+     clock = [NOW]
+     path = tmp_path / "mixed-ops.sqlite"
+@@ -339,7 +341,7 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
+                                 "bounded public handoff rejected a frame: " + json.dumps(detail, sort_keys=True))
+                         offered.append(frame)
+                         index += 1
+-                        next_due += 1 / 160
++                        next_due += 1 / rate_fps
+                         producer_stop.wait(max(0.0, next_due - time.monotonic()))
+                 except BaseException as exc:
+                     producer_error.append(exc)
+@@ -617,7 +619,7 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
+                 "durable_watch_keys": len(watch_keys),
+                 "stream_frames": len(offered),
+                 "stream_frame_venues": {"BYBIT": len(offered), "BINANCE": 0},
+-                "global_paced_base_target_fps": 160,
++                "global_paced_base_target_fps": rate_fps,
+                 "bounded_burst_target_fps": 320,
+                 "commit_stall_seconds": commit_observation["stall_seconds"],
+                 "frames_captured_during_commit_stall": commit_observation["captured_during_stall"],
+@@ -635,8 +637,8 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
+                 "runtime_service_gap_topology": service_gap_topology,
+                 "service_gap_budget_ns": 1_500_000_000,
+                 "service_gap_budget_basis": (
+-                    "At the declared 160-frame/s sustained input rate, 1.5 seconds is 240 frames; "
+-                    "the 512-frame handoff retains 272 slots for burst and scheduling variance."
++                    f"At the declared {rate_fps}-frame/s sustained input rate, 1.5 seconds is "
++                    f"the 512-frame handoff retains {512 - rate_fps * 1.5} slots for burst and scheduling variance."
+                 ),
+                 "read_only_snapshot_universe_rows": reader_snapshots[0][0],
+                 "wal_bytes_at_stop": wal_bytes,
+@@ -678,8 +680,7 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
+             assert metrics["assisted_enabled"] is False
+             assert metrics["capture_batch_frame_limit"] == 16
+             assert metrics["max_interpreted_frames_per_batch"] <= 64
+-            # The SLO preserves at least 272 of 512 queue slots at the declared
+-            # 160-frame/s sustained rate for bursts and scheduling variance.
++            # The existing 512-item bound is measured at this controlled producer rate.
+             assert final.max_service_gap_ns <= 1_500_000_000, json.dumps(metrics, sort_keys=True)
+             assert metrics["report_worker_status"] == "IMPLEMENTED", json.dumps(metrics, sort_keys=True)
+             assert metrics["report_worker_error_type"] is None

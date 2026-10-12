@@ -1,0 +1,7 @@
+2026-10-12 07:49:16 +0530
+ 07:49:16 up 19:30,  1 user,  load average: 3.10, 2.78, 2.21
+               total        used        free      shared  buff/cache   available
+Mem:           3.7Gi       1.6Gi       297Mi        73Mi       1.8Gi       1.8Gi
+Swap:          4.0Gi       684Mi       3.3Gi
+some avg10=6.91 avg60=9.79 avg300=10.66 total=3304370596
+full avg10=2.09 avg60=3.69 avg300=4.37 total=1513018187

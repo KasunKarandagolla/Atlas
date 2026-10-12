@@ -1,0 +1,295 @@
+{
+  "date": "2026-10-12",
+  "files": [
+    {
+      "bytes": 1921,
+      "path": "bybit_fixture_diagnostic.py",
+      "sha256": "7d2cc86a87243d5276889cd5c6881121e2da97e6b3e1fa556e76a271ae1f6253"
+    },
+    {
+      "bytes": 2221,
+      "path": "bybit_fixture_diagnostic.stdout.txt",
+      "sha256": "b15f9fc593df9fdc0cac10879edd3bb34ea7f7882c002c0021ee379711a55e79"
+    },
+    {
+      "bytes": 919,
+      "path": "bybit_fixture_diagnostic.time.txt",
+      "sha256": "df4dae54dfa43194332a4fa3fb18a284cef0f551a840508a81d2a58363176340"
+    },
+    {
+      "bytes": 58401,
+      "junit": {
+        "cases": 2,
+        "errors": 0,
+        "failures": 2,
+        "skips": 0
+      },
+      "path": "capacity_small_medium.junit.xml",
+      "sha256": "d80da95a5d04492b1f0b705f59ec85c17e63b2c78cae5438b3d39d8f663d91a4"
+    },
+    {
+      "bytes": 3762,
+      "path": "capacity_small_medium.patch",
+      "sha256": "e285a069482f426959e4903326db73605c5624c985319d6c669b85b4405e5bf4"
+    },
+    {
+      "bytes": 1053,
+      "path": "capacity_small_medium.time.txt",
+      "sha256": "e25e3e9897555ee4700991eb8ae89d819ca66ceb10512d7f7094f7bb2c6c7af4"
+    },
+    {
+      "bytes": 5812,
+      "junit": {
+        "cases": 25,
+        "errors": 0,
+        "failures": 0,
+        "skips": 0
+      },
+      "path": "capture_fault_suite.junit.xml",
+      "sha256": "f24a402a2a1f842e41844a79f70f924f0fc857ef4419bf9d7def97578cfacc19"
+    },
+    {
+      "bytes": 80,
+      "path": "capture_fault_suite.stdout.txt",
+      "sha256": "c6ce8518a2cc113cc5560b3731e234ed6d559e746221ae903ce01599dfe7e797"
+    },
+    {
+      "bytes": 1070,
+      "path": "capture_fault_suite.time.txt",
+      "sha256": "932bccd0467350df155559dd729319c65e1cf9a3cfa9b4d136426bf68ac2c13a"
+    },
+    {
+      "bytes": 666,
+      "junit": {
+        "cases": 2,
+        "errors": 0,
+        "failures": 0,
+        "skips": 0
+      },
+      "path": "capture_fault_targets.junit.xml",
+      "sha256": "632d5cf194e4eb5c0feb4b126d6e22123e4bae9215eb255089364e2b5a5a28ca"
+    },
+    {
+      "bytes": 80,
+      "path": "capture_fault_targets.stdout.txt",
+      "sha256": "99db33d5c94c6f7da021687c7391181685cc33299c5435b1c861e2db3be3ec87"
+    },
+    {
+      "bytes": 1197,
+      "path": "capture_fault_targets.time.txt",
+      "sha256": "61dd72a423753e914ca13c465730f65b07835f229c060d836bc17dfdc366a4bf"
+    },
+    {
+      "bytes": 8383,
+      "junit": {
+        "cases": 35,
+        "errors": 0,
+        "failures": 0,
+        "skips": 0
+      },
+      "path": "event_combined.junit.xml",
+      "sha256": "18f885c8159654041cb3e52f0ac498d3bace5da75b4ed09746fe22d7f5a3b21b"
+    },
+    {
+      "bytes": 80,
+      "path": "event_combined.stdout.txt",
+      "sha256": "23814bd54c3f40e10907bbb3fbbf634b818152cf7afb3d0013ebceb07460326b"
+    },
+    {
+      "bytes": 1073,
+      "path": "event_combined.time.txt",
+      "sha256": "a2f42f1a7faee623b5745bc2bbffe4bd74609453b2a63bece2039135ffe794ff"
+    },
+    {
+      "bytes": 465,
+      "junit": {
+        "cases": 1,
+        "errors": 0,
+        "failures": 0,
+        "skips": 0
+      },
+      "path": "event_isolated.junit.xml",
+      "sha256": "244285d9b418039442ec463c741084648350fb020b32fac7b1adfb4fb6aaad87"
+    },
+    {
+      "bytes": 80,
+      "path": "event_isolated.stdout.txt",
+      "sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d"
+    },
+    {
+      "bytes": 1074,
+      "path": "event_isolated.time.txt",
+      "sha256": "ab38f4902745956fde3a579216fb9524f7f5f92dd6ddcf45e52eb4344d65fb9d"
+    },
+    {
+      "bytes": 407,
+      "path": "event_isolated_post_context.txt",
+      "sha256": "c7fe3a764f09f599c2ec085b1833ca0ddf6364d93baf81253069a8781657fa18"
+    },
+    {
+      "bytes": 408,
+      "path": "event_isolated_pre_context.txt",
+      "sha256": "b6fec09912e6c7edf93dd66cee57a7913240c396f3fa909109dbf56ee282afa2"
+    },
+    {
+      "bytes": 409,
+      "path": "event_transport_post_context.txt",
+      "sha256": "fdc1199f191a159fbef48b9c8d43bbb6dd20151b1f0e2455ab866b92b43be678"
+    },
+    {
+      "bytes": 408,
+      "path": "event_transport_pre_context.txt",
+      "sha256": "b92d5f59be73d9e6d5a27f28907cb48cca077eb9f7f56a08304d7bbdb7fb70a7"
+    },
+    {
+      "bytes": 2293,
+      "junit": {
+        "cases": 1,
+        "errors": 0,
+        "failures": 1,
+        "skips": 0
+      },
+      "path": "p0_due_work_before.junit.xml",
+      "sha256": "09c1ae5b2e5bd3eefb8e8cb91e613151528066519296dc7200a9993f18fb76d7"
+    },
+    {
+      "bytes": 2196,
+      "path": "p0_due_work_before.stdout.txt",
+      "sha256": "d7bab2af1b55f91600b1b827c887443d9eea05e45ac6cffd1ff9579c25c5f8d4"
+    },
+    {
+      "bytes": 1123,
+      "path": "p0_due_work_before.time.txt",
+      "sha256": "324354a9aa253541397a9f726294aba311151794b6409b7aec15752a8294b6fe"
+    },
+    {
+      "bytes": 1291,
+      "junit": {
+        "cases": 5,
+        "errors": 0,
+        "failures": 0,
+        "skips": 0
+      },
+      "path": "p0_due_work_focused.junit.xml",
+      "sha256": "6e7f33b57952a3bef3d5c29b0b58ec2b50f16d0f4b0a8fb4f42b5aa5a18bfea7"
+    },
+    {
+      "bytes": 80,
+      "path": "p0_due_work_focused.stdout.txt",
+      "sha256": "4d2df7a96ce4a667da3ccf295f2d16c728a65ed0e861a3baa919f7bb469b02b5"
+    },
+    {
+      "bytes": 1545,
+      "path": "p0_due_work_focused.time.txt",
+      "sha256": "516d65ce227c7d873a05bb7a85fe2f7394040c8810ea45ca06d8ab77d3bc1e88"
+    },
+    {
+      "bytes": 13351,
+      "junit": {
+        "cases": 61,
+        "errors": 0,
+        "failures": 0,
+        "skips": 0
+      },
+      "path": "p0_production_batch.junit.xml",
+      "sha256": "5484bf64291a58889a80d350f97ce9dbc8b010b4676f201e40cf7cb0313a32e8"
+    },
+    {
+      "bytes": 80,
+      "path": "p0_production_batch.stdout.txt",
+      "sha256": "1c296f620adc850f9ed88d75c847738d725f60f1de7a89002059c40eff811d9a"
+    },
+    {
+      "bytes": 1163,
+      "path": "p0_production_batch.time.txt",
+      "sha256": "d8cae8917ed74f05e53af8462584b9b6b9678caf120a31c51cc6d2cbae86946c"
+    },
+    {
+      "bytes": 3505,
+      "junit": {
+        "cases": 15,
+        "errors": 0,
+        "failures": 0,
+        "skips": 0
+      },
+      "path": "s33_maturity.junit.xml",
+      "sha256": "00630bcdeed239e70eb84a79ccdd3969569586badf1971ca64541d25fa29125a"
+    },
+    {
+      "bytes": 80,
+      "path": "s33_maturity.stdout.txt",
+      "sha256": "511fb971caf59261241ec2a3919d9d10c7dcb9ec044ee07d50b2db465184f057"
+    },
+    {
+      "bytes": 1014,
+      "path": "s33_maturity.time.txt",
+      "sha256": "ab78d1fcb317b9f5104008d17918e858c31791318de313bed3d48c576ea12a2a"
+    },
+    {
+      "bytes": 647,
+      "junit": {
+        "cases": 1,
+        "errors": 0,
+        "failures": 0,
+        "skips": 0
+      },
+      "path": "s44_profile_compat.junit.xml",
+      "sha256": "bb7da6f330177463b637b293175e270196923a5e458b8117d777bf6cd69816e9"
+    },
+    {
+      "bytes": 80,
+      "path": "s44_profile_compat.stdout.txt",
+      "sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d"
+    },
+    {
+      "bytes": 1109,
+      "path": "s44_profile_compat.time.txt",
+      "sha256": "27eaf538e48fb4ffaa364e7ed4644abe84a9fee49a7d660ef65c3b6e9d8c0294"
+    },
+    {
+      "bytes": 601,
+      "path": "s6_covariance_parity.json",
+      "sha256": "3e2ccec7bbefee9a62a751b75236c3695c481f4f0becf5e5b4facd7635866beb"
+    },
+    {
+      "bytes": 2134,
+      "path": "s6_covariance_parity.py",
+      "sha256": "79db725aecadfe7d7393cdc79c445525505797905cd8feb9b6ff719784ecd6a3"
+    },
+    {
+      "bytes": 911,
+      "path": "s6_covariance_parity.time.txt",
+      "sha256": "f268a5098eaa1b2fbdca4c44079ae970f94272185ab58f0bfe68746a40b9d899"
+    },
+    {
+      "bytes": 449,
+      "junit": {
+        "cases": 1,
+        "errors": 0,
+        "failures": 0,
+        "skips": 0
+      },
+      "path": "v1_golden.junit.xml",
+      "sha256": "bbbbcf68db21e78588597bda002af49a752b18b828acaf6b3e14f06fe1cfe93f"
+    },
+    {
+      "bytes": 80,
+      "path": "v1_golden.stdout.txt",
+      "sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d"
+    },
+    {
+      "bytes": 1075,
+      "path": "v1_golden.time.txt",
+      "sha256": "ff3db91895032327f04bc00c1bfc1c1f4b60b0007456b7ab14c1461a73f01a59"
+    },
+    {
+      "bytes": 3660,
+      "path": "verify_s45_evidence.py",
+      "sha256": "0c0b1e04d96073cbd765ca5149220c1902711b029c737be129841f6b6f0092c1"
+    }
+  ],
+  "scope": "offline synthetic/fake/local tests only; no authenticated venue, market API, account, order, paid provider, trading flag or dependency install",
+  "session": "ATLAS S45 targeted repairs and pre-implementation design closure",
+  "source_base": "46eb72d2611475d1e38444db287557c8154c5216",
+  "working_branch": "fix/session-045-outcome-and-design-closure"
+}

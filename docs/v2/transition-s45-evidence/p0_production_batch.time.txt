@@ -1,0 +1,23 @@
+	Command being timed: "env PYTHONPATH=/home/kasun/Music/atlas-s45-worktree/src:/home/kasun/Music/atlas-s45-worktree/tests /home/kasun/Music/atlas/.venv/bin/python -m pytest -q -o junit_family=legacy tests/v2/test_session033_outcome_resolution.py tests/v2/test_session033_outcome_runtime.py tests/v2/test_session037_action_outcome_producer.py tests/v2/test_session037_due_work.py --junitxml=docs/v2/transition-s45-evidence/p0_production_batch.junit.xml"
+	User time (seconds): 23.21
+	System time (seconds): 3.50
+	Percent of CPU this job got: 27%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:37.77
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 109068
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 658
+	Minor (reclaiming a frame) page faults: 20981
+	Voluntary context switches: 5860
+	Involuntary context switches: 17466
+	Swaps: 0
+	File system inputs: 1088
+	File system outputs: 340672
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

@@ -2598,26 +2598,32 @@ class OpsRepository:
             ).fetchone()
             cursor = int(previous[0]) if previous else 0
             rows = connection.execute(
-                "SELECT rowid AS origin_rowid,artifact_ref,artifact_type,created_at_ns,available_at_ns,metadata_json "
-                "FROM artifact_index WHERE rowid>? ORDER BY rowid LIMIT ?", (cursor, limit),
+                "SELECT rowid AS origin_rowid,artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json "
+                "FROM artifact_index WHERE rowid>? ORDER BY rowid LIMIT ?",
+                (cursor, limit),
             ).fetchall()
             for row in rows:
                 lane = _DUE_SOURCE_LANES.get(row["artifact_type"])
                 if lane is not None:
-                    metadata: Mapping[str, Any] = {}
+                    entry: ArtifactIndexEntryV2 | None = None
                     try:
-                        parsed = self.artifact_entry_from_storage_row(row).metadata
-                        if isinstance(parsed, Mapping):
-                            metadata = parsed
-                            resolved_lane = _due_source_lane(row["artifact_type"], metadata)
-                            if resolved_lane is None:
-                                continue
-                            lane = resolved_lane
+                        entry = self.artifact_entry_from_storage_row(row)
+                        resolved_lane = _due_source_lane(row["artifact_type"], entry.metadata)
+                        if resolved_lane is None:
+                            continue
+                        lane = resolved_lane
                     except (TypeError, ValueError):
                         pass  # Keep malformed origins reachable for quarantine.
                     try:
-                        entry = ArtifactIndexEntryV2(row["artifact_ref"], row["artifact_type"],
-                            row["artifact_ref"], row["created_at_ns"], row["available_at_ns"], metadata)
+                        if entry is None:
+                            entry = ArtifactIndexEntryV2(
+                                row["artifact_ref"],
+                                row["artifact_type"],
+                                row["content_hash"],
+                                row["created_at_ns"],
+                                row["available_at_ns"],
+                                {},
+                            )
                         self._schedule_artifact_origin(connection, entry, lane)
                     except (TypeError, ValueError):
                         self._enqueue_due_work(connection, lane=lane, work_id=row["artifact_ref"],

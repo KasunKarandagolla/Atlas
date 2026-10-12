@@ -3,7 +3,7 @@
 
 import pytest
 
-from atlas.v2._serialization import sha256_json
+from atlas.v2._serialization import canonical_json, sha256_json
 from atlas.v2.contracts import WatchStateV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository, prediction_due_lane_v1
 from atlas.v2.runtime import outcome_maturity as coordinator
@@ -163,6 +163,98 @@ def test_existing_schema_migration_discovers_sources_and_never_reenqueues_retire
         repo.retire_due_work("ACTION_OUTCOME", decision.content_hash, reason_code="UNSUPPORTED")
         assert repo.discover_due_work(limit=1)["rows_inspected"] == 0
         assert repo.due_work_items("ACTION_OUTCOME", as_of_ns=decision.available_at_ns) == ()
+
+
+def test_due_work_projection_preserves_immutable_origin_and_cursor_across_replay_and_restart(tmp_path):
+    path = tmp_path / "ops.sqlite"
+    legacy = ArtifactIndexEntryV2(
+        sha256_json({"calendar_ref": "legacy"}),
+        "DecisionCalendarEntryV2",
+        sha256_json({"calendar_content": "legacy"}),
+        10,
+        10,
+        {"decision_entry": {}},
+    )
+    current = ArtifactIndexEntryV2(
+        sha256_json({"calendar_ref": "current"}),
+        "DecisionCalendarEntryV2",
+        sha256_json({"calendar_content": "current"}),
+        20,
+        20,
+        {"decision_entry": {}},
+    )
+    with OpsRepository(path) as repo:
+        # A pre-projection row has immutable index fields but no due_work row.
+        repo._connection.execute(
+            "INSERT INTO artifact_index(artifact_ref,artifact_type,content_hash,created_at_ns,"
+            "available_at_ns,metadata_json) VALUES(?,?,?,?,?,?)",
+            (
+                legacy.artifact_ref,
+                legacy.artifact_type,
+                legacy.content_hash,
+                legacy.created_at_ns,
+                legacy.available_at_ns,
+                canonical_json(legacy.metadata),
+            ),
+        )
+        first = repo.discover_due_work(limit=64)
+        assert first == {"rows_inspected": 1, "last_rowid": 1, "has_more": False}
+        assert repo.get_artifact(legacy.artifact_ref) == legacy
+        assert [item.source_ref for item in repo.due_work_items("ACTION_OUTCOME", as_of_ns=10)] == [legacy.artifact_ref]
+
+        replay = repo.discover_due_work(limit=64)
+        assert replay == {"rows_inspected": 0, "last_rowid": first["last_rowid"], "has_more": False}
+        repo.register_artifact(current)  # New origins enter the queue atomically.
+        assert [item.source_ref for item in repo.due_work_items("ACTION_OUTCOME", as_of_ns=20)] == [
+            legacy.artifact_ref,
+            current.artifact_ref,
+        ]
+        catch_up = repo.discover_due_work(limit=64)  # Replaying the new row is idempotent.
+        assert catch_up == {"rows_inspected": 1, "last_rowid": 2, "has_more": False}
+        assert len(repo.due_work_items("ACTION_OUTCOME", as_of_ns=20)) == 2
+
+    with OpsRepository(path) as repo:
+        after_restart = repo.discover_due_work(limit=64)
+        assert after_restart == {"rows_inspected": 0, "last_rowid": 2, "has_more": False}
+        assert [item.source_ref for item in repo.due_work_items("ACTION_OUTCOME", as_of_ns=20)] == [
+            legacy.artifact_ref,
+            current.artifact_ref,
+        ]
+
+
+def test_due_work_discovery_keeps_incomplete_and_malformed_origins_quarantinable(tmp_path):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        incomplete_ref = sha256_json({"calendar": "incomplete"})
+        malformed_ref = sha256_json({"calendar": "malformed"})
+        for artifact_ref, content_hash, metadata_json in (
+            (incomplete_ref, sha256_json({"content": "incomplete"}), "{}"),
+            (malformed_ref, sha256_json({"content": "malformed"}), "{invalid-json"),
+        ):
+            repo._connection.execute(
+                "INSERT INTO artifact_index(artifact_ref,artifact_type,content_hash,created_at_ns,"
+                "available_at_ns,metadata_json) VALUES(?,?,?,?,?,?)",
+                (artifact_ref, "DecisionCalendarEntryV2", content_hash, 1, 1, metadata_json),
+            )
+
+        discovered = repo.discover_due_work(limit=64)
+        assert discovered["rows_inspected"] == 2 and discovered["has_more"] is False
+        assert {item.source_ref for item in repo.due_work_items("ACTION_OUTCOME", as_of_ns=100)} == {
+            incomplete_ref,
+            malformed_ref,
+        }
+
+        report = _cycle(repo, 100)
+        assert report.invalid_calendar_entries == 2
+        assert report.failure_code == "MALFORMED_CALENDAR_INDEX_ROWS"
+        pressure = repo.due_work_pressure("ACTION_OUTCOME", as_of_ns=100)
+        assert pressure["pending_count"] == 0
+        assert pressure["quarantined_count"] == 2
+        reasons = {row["work_id"]: row["reason_code"] for row in repo._connection.execute(
+            "SELECT work_id,reason_code FROM due_work WHERE lane='ACTION_OUTCOME'")}
+        assert reasons == {
+            incomplete_ref: "MALFORMED_CALENDAR_ENTRY",
+            malformed_ref: "MALFORMED_CALENDAR_INDEX_ROWS",
+        }
 
 
 def test_quarantine_preserves_exact_identity_reason_and_restart_pressure(tmp_path):

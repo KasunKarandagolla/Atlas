@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "/home/kasun/Music/atlas-s45-worktree/docs/v2/transition-s45-evidence/bybit_fixture_diagnostic.py", line 31, in <module>
+    port.collect(repository, now_ns=CUTOFF, recovery=supervisor.recovery)
+  File "/home/kasun/Music/atlas-s45-worktree/src/atlas/v2/runtime/production.py", line 1761, in collect
+    minimum_m15_origin_close_at_ns=self.minimum_m15_origin_close_at_ns).collect(
+                                                                        ^^^^^^^^
+  File "/home/kasun/Music/atlas-s45-worktree/src/atlas/v2/runtime/production.py", line 545, in collect
+    m15_events = self._account_m15_origins(repository, collector, now_ns=now_ns, allow_events=events_allowed)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kasun/Music/atlas-s45-worktree/src/atlas/v2/runtime/production.py", line 441, in _account_m15_origins
+    stream_service=self.stream_service).resolve(repository, base)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kasun/Music/atlas-s45-worktree/src/atlas/v2/runtime/production.py", line 4080, in resolve
+    inputs = _compose_public_event_inputs(repository, event, trigger_body, clock_ns=self.clock_ns,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kasun/Music/atlas-s45-worktree/src/atlas/v2/runtime/production.py", line 5526, in _compose_public_event_inputs
+    record_computation(repository, artifact_ref=feature.content_hash,
+  File "/home/kasun/Music/atlas-s45-worktree/src/atlas/v2/chronology.py", line 147, in record_computation
+    raise ValueError("derived computation has unavailable or noncausal dependency")
+ValueError: derived computation has unavailable or noncausal dependency
+{'cycle_health': 'INCOMPLETE_SNAPSHOT', 'cycle_failures': ('ValueError',), 'cycle_event_count': 0, 'event_receipt_count': 0, 'products': 2, 'observations': 22, 'reconciliations': [None], 'supervisor_receipts': 0, 'decision_calendar': 0, 'source_health': [('HEALTHY_CURRENT', 1800000000000000, 1800000000000000)], 'reader_calls': 14, 'tradeoff': 'offline fake reader; no live connection'}

@@ -1,0 +1,23 @@
+	Command being timed: "env PYTHONPATH=/home/kasun/Music/atlas-s45-worktree/src:/home/kasun/Music/atlas-s45-worktree /home/kasun/Music/atlas/.venv/bin/python -m pytest -q -o junit_family=legacy tests/v2/test_session037_due_work.py::test_terminal_history_is_retired_and_new_opportunity_is_immediately_due tests/v2/test_session037_due_work.py::test_due_work_projection_preserves_immutable_origin_and_cursor_across_replay_and_restart tests/v2/test_session037_due_work.py::test_due_work_discovery_keeps_incomplete_and_malformed_origins_quarantinable tests/v2/test_session037_due_work.py::test_existing_schema_migration_discovers_sources_and_never_reenqueues_retired tests/v2/test_session037_due_work.py::test_quarantine_preserves_exact_identity_reason_and_restart_pressure --junitxml=docs/v2/transition-s45-evidence/p0_due_work_focused.junit.xml"
+	User time (seconds): 6.24
+	System time (seconds): 0.56
+	Percent of CPU this job got: 42%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:15.95
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 100604
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 68
+	Minor (reclaiming a frame) page faults: 17655
+	Voluntary context switches: 672
+	Involuntary context switches: 3655
+	Swaps: 0
+	File system inputs: 64
+	File system outputs: 32960
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
