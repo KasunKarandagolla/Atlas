@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="2.993" timestamp="2026-10-12T16:08:13.801102+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session047_research_memory" name="test_future_persisted_terminal_is_not_replayed_as_available" time="0.455"><failure message="AssertionError: assert 'VALID_SHADOW' == 'UNKNOWN'&#10;  &#10;  - UNKNOWN&#10;  + VALID_SHADOW">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-147/test_future_persisted_terminal0')
+
+    def test_future_persisted_terminal_is_not_replayed_as_available(tmp_path):
+        with OpsRepository(tmp_path/'ops.sqlite') as repo:
+            memory = ResearchMemoryV1(repo)
+            j = job()
+            memory.schedule(j, event_ref=seed(repo), now_ns=11)
+            memory.run_fake(j, FakeResearchProvider([output()]), clock_ns=lambda: 20)
+            fake = FakeResearchProvider([output()])
+            early = memory.run_fake(j, fake, clock_ns=lambda: 19)
+&gt;           assert early['status'] == 'UNKNOWN'
+E           AssertionError: assert 'VALID_SHADOW' == 'UNKNOWN'
+E
+E             - UNKNOWN
+E             + VALID_SHADOW
+
+tests/v2/test_session047_research_memory.py:235: AssertionError</failure></testcase></testsuite></testsuites>

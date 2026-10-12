@@ -96,7 +96,7 @@ class PeerRelationshipRequestV1:
             raise ValueError("peer context S6 state availability view does not match request availability view")
         if self.s6_state.btc_proxy != self.btc_proxy_key:
             raise ValueError("peer context BTC proxy does not match the existing S6 state")
-        if self.s6_state.envelope.available_at_ns > self.available_at_ns:
+        if self.s6_state.envelope.available_at_ns > self.computed_at_ns:
             raise ValueError("peer context cannot precede availability of its S6 beta state")
         if not all(_same_btc_proxy_cohort(key, self.btc_proxy_key)
                    for key in (self.anchor_key, self.peer_key)):

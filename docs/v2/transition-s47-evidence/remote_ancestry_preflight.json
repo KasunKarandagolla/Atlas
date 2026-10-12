@@ -1,0 +1,277 @@
+[
+  {
+    "sha": "efd75ca4e0cb432c79e0a090b363ca09b87e9099",
+    "ref": "refs/heads/fix/session-038-public-stream-reliability",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "c0a290ec89f66507d155f2975976ba49132cab18",
+    "ref": "refs/heads/fix/session-039-long-run-evidence-reliability",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393",
+    "ref": "refs/heads/fix/session-040-owner-runtime-resilience-preflight-health",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "dcb5d9dbe6ec58ee337b29accb48f96ef174ec1d",
+    "ref": "refs/heads/fix/session-041-final-v2-recovery",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "82a6f6e7df03889bd044991c4e47bd7339e03536",
+    "ref": "refs/heads/fix/session-041-linux-binance-commissioning",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "a6475ee9f629b0cb86a4a8a670e2813a540ace6e",
+    "ref": "refs/heads/fix/session-043-first-trading-value",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "8961b032b108376bfbcd15e2ed8dc8fcbd48a645",
+    "ref": "refs/heads/fix/session-044-practical-trading-delivery",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "ce5f67031e7c5184da91aff416ec4aca18b14bbb",
+    "ref": "refs/heads/fix/session-045-outcome-and-design-closure",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "bac8b16e767e7a253cc41c4e73f16ac1c6658319",
+    "ref": "refs/heads/impl/session-001-foundation",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "64ff1793841905dced0632968540175bbd21484b",
+    "ref": "refs/heads/impl/session-002-safe-runtime",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "94fb52a393d908a6eede6f4da9ac0fbc428003c5",
+    "ref": "refs/heads/impl/session-003-phase2-offline-qualification",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "3ca43f7ff270d617cb1a4dd98863e0a6e7cd3a57",
+    "ref": "refs/heads/impl/session-004-phase2-completion",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "055b2f7e790af0f01e80260e5ed5ec2dac685809",
+    "ref": "refs/heads/impl/session-005-phase3-causal-data-foundation",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "f4f082fa5be50db4f770027a33aec1be1ab34087",
+    "ref": "refs/heads/impl/session-006-phase4-baseline-science-risk",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "248879b60d81877aa5dba295e1d8243637609a7c",
+    "ref": "refs/heads/impl/session-007-phase5-continuous-scanner-alert",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "9e36f9870bebe82f4f59e5c16efac5f327f03602",
+    "ref": "refs/heads/impl/session-008-phase6-assisted-control-shell",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "146bae0a2f10e2f794cbed3441123071c55a2baf",
+    "ref": "refs/heads/impl/session-009-v1-phase0-6-stabilization",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "729b6413d0dfc63dba888f7bff98ad8daa9edf1f",
+    "ref": "refs/heads/impl/session-010-v2-transition-audit",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "a2d79569b57004dcfb63215e1babd1a9962c62c1",
+    "ref": "refs/heads/impl/session-011-v2-foundation-contracts-memory",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "6d7d966842390cefdc4ec0782f1820d9a68044e8",
+    "ref": "refs/heads/impl/session-012-v2-phase1-data-model-core",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "3490eed6ab3911059548eb7fceb21162577bc56e",
+    "ref": "refs/heads/impl/session-013-v2-phase1-worker-isolation-gate",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "eed9f0e2581a06ec09eab3c0fec7b4d232cba8f9",
+    "ref": "refs/heads/impl/session-014-v2-core-intelligence-s1",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "110518b4989f1d672d04e1b3431f3a142734e3ff",
+    "ref": "refs/heads/impl/session-015-v2-phase2a-instrument-identity-fix",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "cf4ac5a6d4c71495d5a925aea4d42aa69101c89e",
+    "ref": "refs/heads/impl/session-016-v2-s2-candidateset-selection",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "f0833199d444f23b90336a3fdeff389e41ff1a42",
+    "ref": "refs/heads/impl/session-017-v2-risk-action-replay",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "8c2686f346d3b97e194a0b29050afe8689f2c296",
+    "ref": "refs/heads/impl/session-018-v2-evidence-outcomes-pretrade-contracts",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "3d491d5fa4ed2fee1bd575c893d16b33994d60cf",
+    "ref": "refs/heads/impl/session-019-v2-m0-scenario-evaluator-shadow-plan",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "9dc828f061584372702fd94236b1d3a733709846",
+    "ref": "refs/heads/impl/session-020-v2-desktop-ipc-phase2-gate",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "266ef1fe88da2bc4e37cda44c9a9c089c01883b7",
+    "ref": "refs/heads/impl/session-021-v2-s3-s6-s7-context-alerts",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "09efb89ff99e156fb39c7c0a89c5a86f639ccf47",
+    "ref": "refs/heads/impl/session-022-v2-s4-s5-microstructure-crowding-context",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "665f44e3ecd99f7228cb5736b15f00f6ff6d1985",
+    "ref": "refs/heads/impl/session-023-v2-m1-analogue-discovery-selection-gate",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "f7e0cb7de3f7cfcdee51c4d42842f6d06094467f",
+    "ref": "refs/heads/impl/session-024-v2-venue-qualification-capital-bridge-hardening",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "21055dcb5496665aaf165bde1e4f7e73db773192",
+    "ref": "refs/heads/impl/session-025-v2-release-engineering-shadow-closure",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "8f915f85798ff5777592e7f187641ad5684699ff",
+    "ref": "refs/heads/impl/session-026-agent-intelligence-offline-infrastructure",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "81ee4c1edbe0156691863b90daf3174168fa387b",
+    "ref": "refs/heads/impl/session-027-v2-continuous-ops-supervisor",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "20ee0ae92def34103facfeb464c976b15b92a85c",
+    "ref": "refs/heads/impl/session-028-agent-provider-deepseek-v41-amendment",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "a875401615612f4354fbe8afbf69acb4fa8d4bda",
+    "ref": "refs/heads/impl/session-029-agent-hidden-shadow-action-critic",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57",
+    "ref": "refs/heads/impl/session-030-agent-prospective-shadow-runtime-readiness",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "cd0cf72fa1dedca765c298a281633ee1b7056614",
+    "ref": "refs/heads/impl/session-031-public-shadow-campaign-readiness-evidence-controls",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "ccc5a42b30bd43a9ebad05ef2eba9d28c528f135",
+    "ref": "refs/heads/impl/session-032-public-stream-continuity-recovery",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "486a513dd873d53ac2bfef0e710f0b6332650537",
+    "ref": "refs/heads/impl/session-033-continuous-matured-outcome-production",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "e13994752f165ad8b42f7f7c441076078d4388cc",
+    "ref": "refs/heads/impl/session-034-native-s3-m1-warmup-readiness",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "702325b44ad487e699c60e682ad06031f4ecdb86",
+    "ref": "refs/heads/impl/session-035-public-host-source-qualification",
+    "ancestor_of_s46": false
+  },
+  {
+    "sha": "b3e9f0f2b19bdb6c1f4e0f7a49d7b383b6cbd9b7",
+    "ref": "refs/heads/impl/session-036-final-development-closure-windows-tune-ready",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "a51a302e09bda84449ab3867d28df545d39445f2",
+    "ref": "refs/heads/impl/session-037-final-engineering-intelligence-closure",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "95efa393e50f5e71646c409a3b4ff83cf5acb6a2",
+    "ref": "refs/heads/impl/session-046-causal-features-peer-context",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "46eb72d2611475d1e38444db287557c8154c5216",
+    "ref": "refs/heads/qualification/tq01-linux-2026-10-11",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "be8abff16c631f8ccea3df96c2a200fa4d0d590e",
+    "ref": "refs/heads/review/session-041-accelerated-stability-closure",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "dfe6bd4e21698454982f0e5e04ad93c2ef6f51ef",
+    "ref": "refs/heads/review/session-041-binance-final-reconciliation",
+    "ancestor_of_s46": false
+  },
+  {
+    "sha": "eed7f849da5c8ff418c52fbc8cb0f0fd583d6422",
+    "ref": "refs/heads/review/session-041-binance-linux-qualification-proposal",
+    "ancestor_of_s46": false
+  },
+  {
+    "sha": "1ed578f503aca1d5e61eeab5439f7b606d7fb15a",
+    "ref": "refs/heads/review/session-041-f1-throughput-correction",
+    "ancestor_of_s46": false
+  },
+  {
+    "sha": "1184ae1c613c6f191d94a28015f1f5259e9dcc0e",
+    "ref": "refs/heads/review/session-041-offline-commissioning-gate",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "9bfcfa5ea45388cecf2081e753930e3287828871",
+    "ref": "refs/heads/review/session-041-paused-v2-2026-10-09",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "eaf51d367dea1e13be544f7de23a6626279f7ad9",
+    "ref": "refs/heads/review/session-041-recovery-architecture",
+    "ancestor_of_s46": true
+  },
+  {
+    "sha": "6e69ef07afb0743f3505d92ad1ccb487555fe84c",
+    "ref": "refs/heads/review/session-042-trading-workload-value",
+    "ancestor_of_s46": true
+  }
+]

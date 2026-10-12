@@ -1,0 +1,8 @@
+{
+  "path": "docs/v2/ATLAS_S47_OWNER_IMPLEMENTATION_REQUEST.md",
+  "normalization": "three Markdown hard-break trailing spaces only; exact original bytes retained compressed",
+  "raw_archive": "docs/v2/transition-s47-evidence/owner_request_raw.md.gz",
+  "raw_sha256": "b6d15510a733f02e0628742d9883e05127c57b622d1e6cabc199f09b37434ab6",
+  "raw_bytes": 24025,
+  "normalized_sha256": "3af892eef25daf17767846e973f31fe80964dcb087852e3c194041e0dc7c8d2c"
+}

@@ -1,0 +1,45 @@
+[
+  {
+    "name": "baseline_mypy_repository",
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "mypy",
+      "--follow-imports=skip",
+      "--ignore-missing-imports",
+      "--config-file",
+      "pyproject.toml",
+      "/tmp/atlas-s47-type-baseline/atlas/v2/memory/repository.py"
+    ],
+    "exit_code": 1
+  },
+  {
+    "name": "current_mypy_repository",
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "mypy",
+      "--follow-imports=skip",
+      "--ignore-missing-imports",
+      "--config-file",
+      "pyproject.toml",
+      "src/atlas/v2/memory/repository.py"
+    ],
+    "exit_code": 1
+  },
+  {
+    "name": "mypy_final",
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "mypy",
+      "--follow-imports=skip",
+      "--ignore-missing-imports",
+      "--config-file",
+      "pyproject.toml",
+      "src/atlas/v2/research",
+      "src/atlas/v2/features/peer_context.py"
+    ],
+    "exit_code": 0
+  }
+]

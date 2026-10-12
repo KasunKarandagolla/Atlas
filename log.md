@@ -1,6 +1,24 @@
 # ATLAS engineering log
 
-## Current checkpoint — S46 causal features and peer context — 2026-10-12
+## Current checkpoint — S47 bounded research implementation — 2026-10-12
+
+**CONFIRMED:** GPT-6.1 Sol explicitly verified; no subagents. Accepted S46 base `95efa393e50f5e71646c409a3b4ff83cf5acb6a2`, isolated `impl/session-047-economics-agent-decision-brief` at `/home/kasun/Music/atlas-s47`. Original dirty checkout and read-only Red preserved. All three immutable freeze hashes match. Serena 1.7.0 and Context7 1.0.1 are connected and used; no measured token savings or Repomix.
+
+**IMPLEMENTED:** minimal peer S6 availability guard repair; bounded typed Decision Brief with complete original slots, causal provenance and explicit NOT_ESTIMABLE; sparse-feature exclusion in the new read model; provider-neutral contracts with fake-only strict response/tool gateway; ops-writer durable research artifacts and separate existing due-work lane, scope dedupe, memo invalidation and restart/UNKNOWN handling. No new dependency/table/schema, action sizing/valuation engine or operational dispatch integration. Frozen A0/hidden critic/risk/execution source unchanged. Comparative discretionary amendment V1 remains **PROPOSED**, independent acceptance **NONE**.
+
+**TESTED:** final S47/due-work 85/85; economics 145/145; peer/features/S6 113/113; memory/outcomes/capture/V1/S44 132/132. Broad agent/event: 128 pass, one retained saturation failure, two existing skips. Additional broker/worker/outbox: 63 pass, two unchanged S26 schema-v1 assertions fail; both reproduced against accepted S46 schema v3. Earlier combined calendar/event: 34/35; two instrumented repeats: 35/35 each. Reports overlap and all draft failures are retained. Root cause unproved; ambiguous transport remains UNKNOWN. Final static/package/lock/hash/entrypoint checks pass; peer formatting discrepancy exists in S46 and S47, additive files formatted. Repository mypy retains its unchanged line-2124 baseline diagnostic. Exact reports/commands/hashes: [evidence manifest](docs/v2/transition-s47-evidence/evidence_manifest.json).
+
+**GATES:** independent amendment review, fake Bybit chronology, sustained drain, Linux F1/A2 capacity, real Binance final-M15 close+5s, native authenticated protection/capital and general sparse-feature eligibility remain unqualified. Prospective economic value **NOT ESTIMABLE**; eight genuine weeks/200 matured opportunities is a floor. No paid/live/private venue/provider/capital action. No merge, self-acceptance or automatic S48. [Handoff](docs/v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md) records implementation, review, rollback and remote verification.
+
+## Previous checkpoint — S47 tool setup; implementation pending — 2026-10-12
+
+**CONFIRMED:** active Codex turn metadata records `gpt-6.1-sol`; no subagents used. Owner authorized missing Serena/Context7 setup. Refreshed remote inventory retains accepted S46 `95efa393e50f5e71646c409a3b4ff83cf5acb6a2` as the newest tip. Created isolated `/home/kasun/Music/atlas-s47`, branch `impl/session-047-economics-agent-decision-brief`; original dirty checkout and `Red` remain untouched. All three freeze hashes match owner and worktree copies.
+
+**CONFIRMED tooling:** Serena 1.7.0 installed separately, activated only for S47, MCP initialization and peer symbol discovery passed. Context7 plugin 1.0.1 installed; initial OAuth redirect mismatch retained, supported registration retry succeeded. A fresh GPT-6.1 Sol CLI `/mcp` check showed Serena/Context7 connected. An unintended CLI update download from an early interface-input race was interrupted; CLI remains 0.161.0. Current implementation thread lacks newly installed callable tools and needs reload.
+
+**PENDING:** full authority reading, all code/test work and final commit/push. Agent freeze read fully; truncated earlier V1/log output is not a completed read. No ATLAS dependency, frozen path, capital or authority change. Owner request and precise same-S47 continuation are preserved in [setup continuation](docs/v2/ATLAS_S47_SETUP_CONTINUATION.md). Resume GPT-6.1 Sol, finish preflight, then perform the requested scoped implementation and tests; no self-acceptance or S48.
+
+## Previous checkpoint — S46 causal features and peer context — 2026-10-12
 
 **CONFIRMED source baseline:** isolated branch `impl/session-046-causal-features-peer-context`, worktree `/home/kasun/Music/atlas-s46`, starting and verified remote S45 SHA `ce5f67031e7c5184da91aff416ec4aca18b14bbb`. Remote discovery immediately before worktree creation found no newer suitable tip. Original dirty checkout and owner files remain untouched. Owner confirmed GPT-6 Luna selected; no subagents were used.
 

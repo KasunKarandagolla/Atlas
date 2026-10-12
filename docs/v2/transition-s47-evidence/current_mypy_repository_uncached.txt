@@ -1,0 +1,6 @@
+src/atlas/v2/memory/repository.py:2124: error: Incompatible return value type (got "dict[tuple[str, str], dict[str, Any]]", expected "dict[tuple[str, str], Mapping[str, Any]]")  [return-value]
+src/atlas/v2/memory/repository.py:2124: note: "dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+src/atlas/v2/memory/repository.py:2124: note: Consider using "Mapping" instead, which is covariant in the value type
+src/atlas/v2/memory/repository.py:2124: note: Perhaps you need a type annotation for "result"? Suggestion: "dict[tuple[str, str], Mapping[str, Any]]"
+pyproject.toml: note: unused section(s): module = ['tests.*']
+Found 1 error in 1 file (checked 1 source file)

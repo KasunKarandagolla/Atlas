@@ -1,0 +1,11 @@
+{
+  "base_sha": "95efa393e50f5e71646c409a3b4ff83cf5acb6a2",
+  "tracked_v2_source_files_compared": 169,
+  "changed_existing_source": [
+    "src/atlas/v2/features/peer_context.py"
+  ],
+  "frozen_source_imports_of_research": [],
+  "schema_migration_changed": false,
+  "operative_dispatch_integration": false,
+  "accepted_discretionary_amendments": []
+}

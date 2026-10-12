@@ -1,0 +1,45 @@
+{
+  "version": "S47_NEW_ROLE_CAPABILITIES_V1",
+  "future_preference": "deepseek",
+  "records": [
+    {
+      "version": "UNVERIFIED_RESEARCH_PROVIDER_V1",
+      "provider_id": "deepseek",
+      "model_id": "UNQUALIFIED_FUTURE_MODEL",
+      "structured_output": false,
+      "bounded_tools": false,
+      "returned_identity_verified": false,
+      "cancellation_verified": false,
+      "token_accounting_verified": false,
+      "pricing_verified": false,
+      "context_limit": null,
+      "images": false,
+      "rate_constraints": "UNVERIFIED",
+      "retention_constraints": "UNVERIFIED",
+      "verification_ref": null,
+      "fallback": false
+    },
+    {
+      "version": "UNVERIFIED_RESEARCH_PROVIDER_V1",
+      "provider_id": "openai",
+      "model_id": "UNQUALIFIED_FUTURE_MODEL",
+      "structured_output": false,
+      "bounded_tools": false,
+      "returned_identity_verified": false,
+      "cancellation_verified": false,
+      "token_accounting_verified": false,
+      "pricing_verified": false,
+      "context_limit": null,
+      "images": false,
+      "rate_constraints": "UNVERIFIED",
+      "retention_constraints": "UNVERIFIED",
+      "verification_ref": null,
+      "fallback": false
+    }
+  ],
+  "live_adapters": 0,
+  "real_provider_calls": 0,
+  "price_assumptions": 0,
+  "existing_frozen_provider_profiles": "UNCHANGED",
+  "fixture_records": "Only local scripted capabilities in test_session047_research_agent.py are verified."
+}

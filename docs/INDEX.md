@@ -1,6 +1,15 @@
 # ATLAS documentation and evidence index
 
-Updated 2026-10-12. S46 implements additive read-only H1 peer relationship context on S45 commit `ce5f67031e7c5184da91aff416ec4aca18b14bbb`, on branch `impl/session-046-causal-features-peer-context`. See the [S46 implementation handoff](v2/ATLAS_S46_IMPLEMENTATION_HANDOFF.md), root [README](../README.md) and [coordinator log](../log.md).
+Updated 2026-10-12. S47 continues accepted S46 `95efa393e50f5e71646c409a3b4ff83cf5acb6a2` on `impl/session-047-economics-agent-decision-brief`. See the [S47 handoff](v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md), [S47 evidence](v2/transition-s47-evidence/evidence_manifest.json), root [README](../README.md) and [coordinator log](../log.md).
+
+## S47 research scope and authority gate
+
+- [Proposed comparative decision amendment](v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md): owner authorized review; independently accepted amendment **NONE**.
+- [Preserved owner implementation request](v2/ATLAS_S47_OWNER_IMPLEMENTATION_REQUEST.md).
+- [Setup continuation history](v2/ATLAS_S47_SETUP_CONTINUATION.md): tooling setup completed; implementation status is now in the handoff.
+- Additive source: `src/atlas/v2/research/{decision_brief,agent,memory}.py`; fake-only, zero authority, disconnected from admission/capital.
+- [S46 handoff](v2/ATLAS_S46_IMPLEMENTATION_HANDOFF.md) and its original [evidence](v2/transition-s46-evidence/evidence_manifest.json) remain historical proof.
+
 
 ## Current authority
 
@@ -14,7 +23,7 @@ The immutable authorities and verified SHA-256 values are:
 | V2 intraday intelligence freeze | `e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78` |
 | Agent intelligence extension freeze | `d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d` |
 
-Relevant owner architecture decisions in the read-only source set are `Red/ADR-001_Binance_Causal_Market_Data_Linux.md`, `Red/ADR-004_Mature_Libraries_Pretrained_ML.md`, and `Red/ADR-010_Cached_Cross_Coin_Relationships_And_Peer_Context.md`. The tracked Agent freeze is [here](v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md). Freeze hashes are rechecked in the S46 handoff.
+Relevant owner architecture decisions in the read-only source set are `Red/ADR-001_Binance_Causal_Market_Data_Linux.md`, `Red/ADR-004_Mature_Libraries_Pretrained_ML.md`, and `Red/ADR-010_Cached_Cross_Coin_Relationships_And_Peer_Context.md`. The tracked Agent freeze is [here](v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md). Freeze hashes are rechecked in the S47 handoff. S47 also reads ADR-002/005/006/007/008, with ADR-009/010 for effort and peer boundaries.
 
 ## Active implementation and test entrypoints
 
@@ -41,7 +50,7 @@ Source seams used by the S46 work:
 
 Root `log.md` is the rolling coordinator record; `translog.md` is append-only chronological evidence. Installation routes currently disagree on DuckDB: `requirements-lock.txt` pins 1.5.5, while `uv.lock` resolves 1.5.6. S45 records the `requirements-lock.txt` environment; S46 leaves both files unchanged absent an approved dependency review.
 
-## Latest completed checkpoint — S46
+## Previous completed checkpoint — S46
 
 The [S46 implementation handoff](v2/ATLAS_S46_IMPLEMENTATION_HANDOFF.md) records cleanup disposition, technical-library parity, peer-cache contracts and negative cases, retained test results, dependencies and remaining qualification gates. Machine-readable report hashes and JUnit summaries are in [`transition-s46-evidence/evidence_manifest.json`](v2/transition-s46-evidence/evidence_manifest.json).
 

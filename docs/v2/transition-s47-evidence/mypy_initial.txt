@@ -1,0 +1,4 @@
+src/atlas/v2/research/agent.py:474: error: Incompatible types in assignment (expression has type "str | None", variable has type "str")  [assignment]
+src/atlas/v2/research/memory.py:299: error: Generator has incompatible item type "Mapping[str, Any] | None"; expected "Mapping[str, Any]"  [misc]
+pyproject.toml: note: unused section(s): module = ['tests.*']
+Found 2 errors in 2 files (checked 5 source files)

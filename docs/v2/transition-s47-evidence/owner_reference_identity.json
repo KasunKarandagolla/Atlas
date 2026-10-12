@@ -1,0 +1,62 @@
+[
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/00_START_HERE.md",
+    "sha256": "1901f20a0f7b3f229b114b316ea83f32e78d7bcab681cf126fcd6be9ea44dff7",
+    "bytes": 4860
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ATLAS_FINAL_TARGET_DESIGN_LOCK_2026-10-12.md",
+    "sha256": "debe11c6cb0763eaed7e7d628e3dd6260635e6edaaa4a9cab39a4273be5b3265",
+    "bytes": 4322
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ATLAS_TRANSITION_ARCHITECTURE_DESIGN_V1.md",
+    "sha256": "2a5735ee29c73c079744f96504a0fe7e5cff86c81a8a2de7766b5974d75e1dfe",
+    "bytes": 52277
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md",
+    "sha256": "082776b57f74300f63745cad84840e50a881e4de18511024a052de960f3b7d6d",
+    "bytes": 15611
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/04_ATLAS_ENGINEERING_EXECUTION_RUNBOOK.md",
+    "sha256": "8be2363d39f91fe796ac6d84bc066dcc0dfc3e70cdb628d6630bac4e321535b6",
+    "bytes": 61469
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ADR-002_Agent_Opportunity_Decision.md",
+    "sha256": "2d80ac6dd939f8dfb92ea3da6b547bc92fdd840ab069aabceacbbda100156bb5",
+    "bytes": 23444
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ADR-005_Independent_Quantitative_Trade_Assessment.md",
+    "sha256": "1f7a33f5cebec5310941a4ff0637232586bf6bef15ba4f6ec213ed78d79e22ca",
+    "bytes": 12653
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ADR-006_Agent_Initiated_Trading_Analysis_Tools.md",
+    "sha256": "900a81459448fea2883097d4f650cf231e6fe863d92d5cefad13e3f34912b53d",
+    "bytes": 17401
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ADR-007_Durable_Trading_Opportunity_And_Analysis_Memory.md",
+    "sha256": "747a8ec425efa445771b46faddc0b118f237626bcc2c2a094dc422ac478a09b4",
+    "bytes": 18982
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ADR-008_Event_Driven_LLM_Vision_Cost_And_Bandwidth.md",
+    "sha256": "6206c23e038bd9f8f1273be6e8ea4f7823fbcf65f331fa04a62eb2560cfeb2ae",
+    "bytes": 25631
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ADR-009_Capital_Aware_Discovery_And_Manual_Control.md",
+    "sha256": "1adff9b89b91f3f4e625622395ac42a0b5e9194ebe9c0728e8d026b942f4dc83",
+    "bytes": 6980
+  },
+  {
+    "readonly_path": "/home/kasun/Music/atlas/Red/ADR-010_Cached_Cross_Coin_Relationships_And_Peer_Context.md",
+    "sha256": "b47474f750bc6b03571f799a7fd819e1cb31249ce840306d05d139ae3501bca8",
+    "bytes": 5691
+  }
+]

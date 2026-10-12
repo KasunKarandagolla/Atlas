@@ -1,0 +1,17 @@
+{
+  "version": "S47_MEMORY_REUSE_MAP_V1",
+  "new_tables": 0,
+  "new_dependencies": 0,
+  "new_lane": "ANALYSIS_RESEARCH_FAKE_V1",
+  "map": {
+    "watch": "OpsRepository.create_watch/transition_watch; unchanged optimistic versions and restart recovery",
+    "ops_outbox": "watch-specific effects only; unchanged, unused by new research service",
+    "agent_job_attempt": "AgentJobRepository / ActionAssessmentRepository; existing frozen task/profile scope preserved; new fake role does not masquerade as old job type",
+    "due_work": "OpsRepository.enqueue_due_work/due_work_items/retire_due_work in a separate analysis lane; S45 discover_due_work content_hash preserved",
+    "artifacts": "OpsRepository.register_artifact + atomic_composition; immutable request/origins/intent/terminal/memo/invalidation/late audit",
+    "outcome_maturity": "existing outcome producer and maturity; original calendar refs and prior-label availability retained; no changes",
+    "public_evidence": "existing durable capture, effective_available_at_ns and artifact content identities",
+    "restart": "persisted intent without terminal -> UNKNOWN, no redispatch; terminal result/memo exact identity reuse",
+    "retention": "no deletion/compaction; unresolved watches, UNKNOWN, labels, source/evidence and V1 goldens preserved"
+  }
+}

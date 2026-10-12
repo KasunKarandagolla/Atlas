@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="2.824" timestamp="2026-10-12T16:10:54.030771+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session047_research_memory" name="test_distinct_invalidators_keep_each_origin_without_refreshing_sentinel" time="0.384"><failure message="assert 0 == 2&#10; +  where 0 = len(())">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-149/test_distinct_invalidators_kee0')
+
+    def test_distinct_invalidators_keep_each_origin_without_refreshing_sentinel(tmp_path):
+        with OpsRepository(tmp_path/'ops.sqlite') as repo:
+            memory = ResearchMemoryV1(repo)
+            j = job()
+            event = seed(repo)
+            first = memory.invalidate(j, source_ref=event, cause='SOURCE_GAP', now_ns=20)
+            before = repo.get_artifact(first)
+            assert memory.invalidate(j, source_ref=event, cause='WATCH_INVALIDATED', now_ns=21) == first
+            memory.invalidate(j, source_ref=event, cause='WATCH_INVALIDATED', now_ns=22)
+            assert repo.get_artifact(first) == before
+            origins = repo.artifact_entries('AnalysisResearchInvalidationEventV1')
+&gt;           assert len(origins) == 2
+E           assert 0 == 2
+E            +  where 0 = len(())
+
+tests/v2/test_session047_research_memory.py:252: AssertionError</failure></testcase></testsuite></testsuites>

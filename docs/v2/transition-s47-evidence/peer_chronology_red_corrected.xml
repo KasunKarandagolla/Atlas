@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="21.943" timestamp="2026-10-12T15:17:49.357515+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session047_peer_chronology" name="test_s6_must_be_available_before_peer_computation" time="19.678"><failure message="Failed: DID NOT RAISE ValueError">peer_fixture = {'keys': (InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;, environment=&lt;EnvironmentV2.MAINNET: 'MAINNET'&gt;, product=&lt;Pro...cimal('100.99749498660405'), close=Decimal('100.99749498660405'), volume=Decimal('10.0'), final=True), ...), ...}, ...}
+
+    def test_s6_must_be_available_before_peer_computation(peer_fixture):
+        state = peer_fixture["state"]
+        late = replace(state, envelope=replace(state.envelope, available_at_ns=CUTOFF + 5, content_hash=""))
+&gt;       with pytest.raises(ValueError, match="S6 beta state"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/v2/test_session047_peer_chronology.py:14: Failed</failure></testcase><testcase classname="tests.v2.test_session047_peer_chronology" name="test_s6_available_at_computation_boundary_is_valid" time="0.326" /></testsuite></testsuites>

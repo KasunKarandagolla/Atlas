@@ -1,0 +1,1812 @@
+{
+  "schema_version": "S47_EVIDENCE_MANIFEST_V1",
+  "created_at": "2026-10-12T18:48:36.363633+05:30",
+  "branch": "impl/session-047-economics-agent-decision-brief",
+  "base_sha": "95efa393e50f5e71646c409a3b4ff83cf5acb6a2",
+  "model": "gpt-6.1-sol",
+  "subagents": [],
+  "implementation_commit_sha": null,
+  "verified_implementation_remote_sha": null,
+  "accepted_discretionary_amendments": [],
+  "proposed_amendment": {
+    "identity": "ATLAS_COMPARATIVE_DECISION_RESEARCH_V1",
+    "status": "PROPOSED",
+    "path": "docs/v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md",
+    "sha256": "4928312614a3ef4c5b07ac8e5626be67dbd8db7e4955e0076a21b556c3ead8f4"
+  },
+  "freeze_identities": [
+    {
+      "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+      "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "expected_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "matches": true
+    },
+    {
+      "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "expected_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "matches": true
+    },
+    {
+      "path": "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "expected_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "matches": true
+    }
+  ],
+  "tested_source_and_tests": [
+    {
+      "path": "src/atlas/v2/features/peer_context.py",
+      "sha256": "f0a03fbe1a084fa11c697b6541d00e7eff2012eeab5f37b74a5f86f3cb7360e6",
+      "bytes": 28765
+    },
+    {
+      "path": "src/atlas/v2/research/__init__.py",
+      "sha256": "4760dfd6ea989d916d323bbae174685aaede28680c3209bf664d4d9c518235df",
+      "bytes": 86
+    },
+    {
+      "path": "src/atlas/v2/research/agent.py",
+      "sha256": "0877f86cccc030de037995437553a2dcfab525db423282c65e573865c411c9d3",
+      "bytes": 21350
+    },
+    {
+      "path": "src/atlas/v2/research/decision_brief.py",
+      "sha256": "7b771f6182cb4c1d21e6751c253d6037371510aecd0e1ce5a52385e37f015e5b",
+      "bytes": 28275
+    },
+    {
+      "path": "src/atlas/v2/research/memory.py",
+      "sha256": "9f4d0aba47328255a08b5822ef432af79dcf764a53a745551bdffdab94fbef3a",
+      "bytes": 19207
+    },
+    {
+      "path": "tests/v2/test_session047_decision_brief.py",
+      "sha256": "db72ddbe02ce597f4fbb9053901a233b6ea7a2eddc9e2a2fbc9a35fd15e28e84",
+      "bytes": 10446
+    },
+    {
+      "path": "tests/v2/test_session047_event_classification.py",
+      "sha256": "a6c04227bf1de826dc99d5b63d05727c8d1f4e5d75865a5b752899afc0046129",
+      "bytes": 1975
+    },
+    {
+      "path": "tests/v2/test_session047_peer_chronology.py",
+      "sha256": "e779cc22f90a048b205f492eb29a9b6f34ff140795d65784f160ffe77cbe6c7f",
+      "bytes": 2429
+    },
+    {
+      "path": "tests/v2/test_session047_research_agent.py",
+      "sha256": "b9fb7d890252bd93474ef5eddb6fe33b9b721f1c601a81806adaf4b5406934af",
+      "bytes": 10066
+    },
+    {
+      "path": "tests/v2/test_session047_research_memory.py",
+      "sha256": "b626cfd6833cdef6c63e00bd9a8a714e1222f1660dbe0347406d85ccd37eb285",
+      "bytes": 13552
+    }
+  ],
+  "reports": [
+    {
+      "path": "docs/v2/transition-s47-evidence/agent_event_regression.xml",
+      "sha256": "e6d270e45662aff2c856a8c3bae4d5bf7b839c76692dd5df33ab7ab0a6f20895",
+      "bytes": 24829,
+      "status": "FAIL",
+      "counts": {
+        "tests": 131,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 2,
+        "passed": 128,
+        "junit_seconds": 102.848
+      },
+      "test_files": [
+        "tests/v2/test_session029_action_critic.py",
+        "tests/v2/test_session030_action_critic_runtime.py",
+        "tests/v2/test_session040_provider_isolation.py",
+        "tests/v2/test_session041_event_extraction.py",
+        "tests/v2/test_session041_event_extraction_transport.py",
+        "tests/v2/test_session041_official_calendar.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session029_action_critic.py tests/v2/test_session030_action_critic_runtime.py tests/v2/test_session040_provider_isolation.py tests/v2/test_session041_event_extraction.py tests/v2/test_session041_official_calendar.py tests/v2/test_session041_event_extraction_transport.py --junitxml=docs/v2/transition-s47-evidence/agent_event_regression.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session029_action_critic",
+          "name": "test_action_critic_provider_uses_local_mock_transport_and_discards_reasoning",
+          "kind": "skipped",
+          "message": "could not import 'httpx2': No module named 'httpx2'"
+        },
+        {
+          "classname": "tests.v2.test_session040_provider_isolation",
+          "name": "test_blocked_critic_public_capture_writer_heartbeats_and_read_only_export_progress[35]",
+          "kind": "skipped",
+          "message": "Explicit native actual-wall provider timeout/stream isolation gate"
+        },
+        {
+          "classname": "tests.v2.test_session041_event_extraction_transport",
+          "name": "test_saturation_and_deadline_fail_closed_without_retry",
+          "kind": "failure",
+          "message": "AssertionError: Regex pattern did not match.\n  Expected regex: 'BROKER_SATURATED'\n  Actual message: 'CALL_OUTCOME_UNKNOWN'"
+        }
+      ],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/brief_compact_final.xml",
+      "sha256": "729b724f3a8730227071602b6f90c759eb98a1b4f7e58067655a4f3e9f540111",
+      "bytes": 1647,
+      "status": "PASS",
+      "counts": {
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 10,
+        "junit_seconds": 8.89
+      },
+      "test_files": [
+        "tests/v2/test_session047_decision_brief.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session047_decision_brief.py --junitxml=docs/v2/transition-s47-evidence/brief_compact_final.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/brief_consumers.xml",
+      "sha256": "ff205389c28756a191914bb2830137e9d6fc13a9070a890b747fabb56b3f62f9",
+      "bytes": 5675,
+      "status": "FAIL",
+      "counts": {
+        "tests": 27,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 26,
+        "junit_seconds": 43.523
+      },
+      "test_files": [
+        "tests/v2/test_session016_candidate_selection.py",
+        "tests/v2/test_session019_evaluation_integration.py",
+        "tests/v2/test_session037_feature_prefix.py",
+        "tests/v2/test_session047_decision_brief.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_decision_brief.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session016_candidate_selection.py tests/v2/test_session037_feature_prefix.py --junitxml=docs/v2/transition-s47-evidence/brief_consumers.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_decision_brief",
+          "name": "test_sparse_technical_and_future_tail_do_not_qualify_gap_sensitive_values",
+          "kind": "failure",
+          "message": "assert FrozenMap(_items=()) == {}\n  \n  Use -v to get more diff"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "brief_consumers.xml",
+        "raw_archive": "brief_consumers_raw.xml.gz",
+        "raw_sha256": "bc4450b3902671d5311e3b23011cc299bb670505d202e715c4549ad58f5a8cd5",
+        "raw_bytes": 5684,
+        "normalized_sha256": "ff205389c28756a191914bb2830137e9d6fc13a9070a890b747fabb56b3f62f9",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/brief_focused_consumers_green.xml",
+      "sha256": "00d7d7226cac850b7d184025de439e35d35e9eb0972bbacbf1c1cf5c5fc08485",
+      "bytes": 1532,
+      "status": "PASS",
+      "counts": {
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 9,
+        "junit_seconds": 15.734
+      },
+      "test_files": [
+        "tests/v2/test_session019_evaluation_integration.py",
+        "tests/v2/test_session047_decision_brief.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_decision_brief.py tests/v2/test_session019_evaluation_integration.py --junitxml=docs/v2/transition-s47-evidence/brief_focused_consumers_green.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/brief_initial_green.xml",
+      "sha256": "58fb79a4b972da21e773a67251281d1be877dec9c4647d7a5e10e4d3d0277bd9",
+      "bytes": 611,
+      "status": "PASS",
+      "counts": {
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 3,
+        "junit_seconds": 4.827
+      },
+      "test_files": [
+        "tests/v2/test_session047_decision_brief.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_decision_brief.py --junitxml=docs/v2/transition-s47-evidence/brief_initial_green.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/brief_negatives_initial.xml",
+      "sha256": "92ae7f87448ec74f2cc516483a9fdae11c614ab2270c1a34cfa014c9a935b464",
+      "bytes": 6344,
+      "status": "FAIL",
+      "counts": {
+        "tests": 8,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 6,
+        "junit_seconds": 5.601
+      },
+      "test_files": [
+        "tests/v2/test_session047_decision_brief.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_decision_brief.py --junitxml=docs/v2/transition-s47-evidence/brief_negatives_initial.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_decision_brief",
+          "name": "test_sparse_technical_and_future_tail_do_not_qualify_gap_sensitive_values",
+          "kind": "failure",
+          "message": "TypeError: bar() takes 1 positional argument but 2 positional arguments (and 1 keyword-only argument) were given"
+        },
+        {
+          "classname": "tests.v2.test_session047_decision_brief",
+          "name": "test_actual_evaluator_unestimable_result_is_projected_without_rerunning_or_rescue",
+          "kind": "failure",
+          "message": "AttributeError: 'CandidateActionV2' object has no attribute 'absolute_deadline_ns'"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "brief_negatives_initial.xml",
+        "raw_archive": "brief_negatives_initial_raw.xml.gz",
+        "raw_sha256": "c62ce68768382de98a6ae6eb8cc577ec17b4f134cf9bb68847f771a5d89699b6",
+        "raw_bytes": 6357,
+        "normalized_sha256": "92ae7f87448ec74f2cc516483a9fdae11c614ab2270c1a34cfa014c9a935b464",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/brief_red.xml",
+      "sha256": "199e6c0e5efa6682e5ff6ce44a76f7f2ddc3ef6016829bd32998f4daa2697717",
+      "bytes": 1064,
+      "status": "FAIL",
+      "counts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 1,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 1.023
+      },
+      "test_files": [
+        ".py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_decision_brief.py --junitxml=docs/v2/transition-s47-evidence/brief_red.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "",
+          "name": "tests.v2.test_session047_decision_brief",
+          "kind": "error",
+          "message": "collection failure"
+        }
+      ],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/brief_supplemental_green.xml",
+      "sha256": "b2ba610c7be589b2cc3e042427f3969012f2e98de2f5db161982d491423ed3d0",
+      "bytes": 2681,
+      "status": "PASS",
+      "counts": {
+        "tests": 18,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 18,
+        "junit_seconds": 11.297
+      },
+      "test_files": [
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_research_agent.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_decision_brief.py tests/v2/test_session047_research_agent.py --junitxml=docs/v2/transition-s47-evidence/brief_supplemental_green.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/broker_worker_outbox_regression.xml",
+      "sha256": "c60a9ff9c56755a1947eda4abccd03d1bca0d2d26e9ae44fe0512d97c7b7bf3c",
+      "bytes": 20253,
+      "status": "FAIL",
+      "counts": {
+        "tests": 65,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 63,
+        "junit_seconds": 161.849
+      },
+      "test_files": [
+        "tests/v2/test_session026_agent_broker_ownership.py",
+        "tests/v2/test_session026_agent_intelligence.py",
+        "tests/v2/test_session036_writer_broker_bounds.py",
+        "tests/v2/test_session037_remaining_query_bounds.py",
+        "tests/v2/test_worker_isolation.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard -o junit_family=legacy tests/v2/test_session026_agent_intelligence.py tests/v2/test_session026_agent_broker_ownership.py tests/v2/test_worker_isolation.py tests/v2/test_session036_writer_broker_bounds.py tests/v2/test_session037_remaining_query_bounds.py --junitxml=docs/v2/transition-s47-evidence/broker_worker_outbox_regression.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session026_agent_intelligence",
+          "name": "test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_outbox_writes",
+          "kind": "failure",
+          "message": "assert 3 == 1"
+        },
+        {
+          "classname": "tests.v2.test_session026_agent_intelligence",
+          "name": "test_dispatch_authorization_schema_v1_migrates_and_reopens_without_ops_schema_change",
+          "kind": "failure",
+          "message": "assert 3 == 1"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "broker_worker_outbox_regression.xml",
+        "raw_archive": "broker_worker_outbox_regression_raw.xml.gz",
+        "raw_sha256": "011c64b5187479cd8cf1dda7ae3752d1c4bd186038c81e25fb9c0d952f73e551",
+        "raw_bytes": 20265,
+        "normalized_sha256": "c60a9ff9c56755a1947eda4abccd03d1bca0d2d26e9ae44fe0512d97c7b7bf3c",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/calendar_events_instrumented_first.xml",
+      "sha256": "febac61258ed6e5bfad7e2103ab89e451d7bc3b374d322ffca3d8ab02b5acf88",
+      "bytes": 6076,
+      "status": "PASS",
+      "counts": {
+        "tests": 35,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 35,
+        "junit_seconds": 6.833
+      },
+      "test_files": [
+        "tests/v2/test_session041_event_extraction_transport.py",
+        "tests/v2/test_session041_official_calendar.py"
+      ],
+      "commands": [],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/calendar_events_instrumented_second.xml",
+      "sha256": "d2da16e65e67aef193c7ef48d50b62c3d16d79dc328d63be5f77c06d95dbfe0b",
+      "bytes": 6076,
+      "status": "PASS",
+      "counts": {
+        "tests": 35,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 35,
+        "junit_seconds": 8.084
+      },
+      "test_files": [
+        "tests/v2/test_session041_event_extraction_transport.py",
+        "tests/v2/test_session041_official_calendar.py"
+      ],
+      "commands": [],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/calendar_events_repeat1.xml",
+      "sha256": "8a0ad4b2742cd195dffd3f67438a6564f6e67febe614d5c66288db684d5795a8",
+      "bytes": 7774,
+      "status": "FAIL",
+      "counts": {
+        "tests": 35,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 34,
+        "junit_seconds": 11.935
+      },
+      "test_files": [
+        "tests/v2/test_session041_event_extraction_transport.py",
+        "tests/v2/test_session041_official_calendar.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session041_official_calendar.py tests/v2/test_session041_event_extraction_transport.py --junitxml=docs/v2/transition-s47-evidence/calendar_events_repeat1.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session041_event_extraction_transport",
+          "name": "test_saturation_and_deadline_fail_closed_without_retry",
+          "kind": "failure",
+          "message": "AssertionError: Regex pattern did not match.\n  Expected regex: 'BROKER_SATURATED'\n  Actual message: 'CALL_OUTCOME_UNKNOWN'"
+        }
+      ],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/economics_selection_regression.xml",
+      "sha256": "f604778d06f448f5737b95efc07408c7fe85f862209810def9f99b25d2150840",
+      "bytes": 23956,
+      "status": "PASS",
+      "counts": {
+        "tests": 145,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 145,
+        "junit_seconds": 228.422
+      },
+      "test_files": [
+        "tests/v2/test_session016_candidate_selection.py",
+        "tests/v2/test_session019_admission.py",
+        "tests/v2/test_session019_evaluation_integration.py",
+        "tests/v2/test_session019_m0.py",
+        "tests/v2/test_session019_remediation.py",
+        "tests/v2/test_session019_scenarios.py",
+        "tests/v2/test_session023_analogue.py",
+        "tests/v2/test_session023_integration.py",
+        "tests/v2/test_session023_m1.py",
+        "tests/v2/test_session023_selection_audits.py",
+        "tests/v2/test_session037_installed_economics.py",
+        "tests/v2/test_session041_frozen_action_comparison.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session019_m0.py tests/v2/test_session019_scenarios.py tests/v2/test_session019_admission.py tests/v2/test_session019_remediation.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session023_m1.py tests/v2/test_session023_analogue.py tests/v2/test_session023_integration.py tests/v2/test_session023_selection_audits.py tests/v2/test_session037_installed_economics.py tests/v2/test_session041_frozen_action_comparison.py tests/v2/test_session016_candidate_selection.py --junitxml=docs/v2/transition-s47-evidence/economics_selection_regression.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/event_classification_proof.xml",
+      "sha256": "9121b53203e4d1992633c8e8fa6083799e8885cffb7828b30c71f6542a84df11",
+      "bytes": 2572,
+      "status": "FAIL",
+      "counts": {
+        "tests": 2,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 1,
+        "junit_seconds": 1.284
+      },
+      "test_files": [
+        "tests/v2/test_session047_event_classification.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session047_event_classification.py --junitxml=docs/v2/transition-s47-evidence/event_classification_proof.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_event_classification",
+          "name": "test_only_a_received_saturation_frame_proves_broker_rejection[False]",
+          "kind": "failure",
+          "message": "AssertionError: Regex pattern did not match.\n  Expected regex: 'BROKER_SATURATED'\n  Actual message: 'WIRE_JSON_INVALID'"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "event_classification_proof.xml",
+        "raw_archive": "event_classification_proof_raw.xml.gz",
+        "raw_sha256": "6837fd0255016cbad6162dfeb7cc60f548a800ec561bb19962c7b614c5719774",
+        "raw_bytes": 2596,
+        "normalized_sha256": "9121b53203e4d1992633c8e8fa6083799e8885cffb7828b30c71f6542a84df11",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/future_seams.xml",
+      "sha256": "f47f518908ea81cd45bcc0190e1087e38059e12a7c1bc783994604cbb5e339ca",
+      "bytes": 534,
+      "status": "PASS",
+      "counts": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 2,
+        "junit_seconds": 1.865
+      },
+      "test_files": [
+        "tests/v2/test_session047_research_agent.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session047_research_agent.py::test_future_provider_capabilities_are_explicitly_unverified_without_fallback tests/v2/test_session047_research_agent.py::test_news_lead_is_only_a_future_screen_proposal --junitxml=docs/v2/transition-s47-evidence/future_seams.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/invalidation_origins_red.xml",
+      "sha256": "6513b43d36575a456d9ee098c155c45dc9ad9782c9a2b21b47353d080b7f19f0",
+      "bytes": 1443,
+      "status": "FAIL",
+      "counts": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 2.824
+      },
+      "test_files": [
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session047_research_memory.py::test_distinct_invalidators_keep_each_origin_without_refreshing_sentinel --junitxml=docs/v2/transition-s47-evidence/invalidation_origins_red.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_research_memory",
+          "name": "test_distinct_invalidators_keep_each_origin_without_refreshing_sentinel",
+          "kind": "failure",
+          "message": "assert 0 == 2\n +  where 0 = len(())"
+        }
+      ],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/late_receipt_red.xml",
+      "sha256": "199feab16332c311cf96bf419f434d6e87e417fe34bca89f89d423a7f0f10b1b",
+      "bytes": 969,
+      "status": "FAIL",
+      "counts": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 4.145
+      },
+      "test_files": [
+        "tests/v2/test_session047_research_agent.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_research_agent.py::test_receipt_clock_cannot_promote_a_late_answer --junitxml=docs/v2/transition-s47-evidence/late_receipt_red.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_research_agent",
+          "name": "test_receipt_clock_cannot_promote_a_late_answer",
+          "kind": "failure",
+          "message": "AssertionError: assert 'VALID_SHADOW' == 'EXPIRED'\n  \n  - EXPIRED\n  + VALID_SHADOW"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "late_receipt_red.xml",
+        "raw_archive": "late_receipt_red_raw.xml.gz",
+        "raw_sha256": "7d41dfd7cb54f688fdb6badc270775f4b7b25c3c1bf6e7de5c5068f74d861456",
+        "raw_bytes": 978,
+        "normalized_sha256": "199feab16332c311cf96bf419f434d6e87e417fe34bca89f89d423a7f0f10b1b",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/memory_capture_v1_s44_regression.xml",
+      "sha256": "3a8be032e48f45ceab342751814e72032b0a772703cd324f4b7c4bdf9481e9f0",
+      "bytes": 19982,
+      "status": "PASS",
+      "counts": {
+        "tests": 132,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 132,
+        "junit_seconds": 271.814
+      },
+      "test_files": [
+        "tests/contract/test_v1_golden_baseline.py",
+        "tests/persistence/test_journal.py",
+        "tests/persistence/test_recovery_persistence.py",
+        "tests/v2/test_memory.py",
+        "tests/v2/test_session033_outcome_maturity.py",
+        "tests/v2/test_session033_outcome_resolution.py",
+        "tests/v2/test_session033_outcome_runtime.py",
+        "tests/v2/test_session037_action_outcome_producer.py",
+        "tests/v2/test_session037_due_work.py",
+        "tests/v2/test_session040_durable_capture.py",
+        "tests/v2/test_session044_close_driven_m15.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session047_research_memory.py tests/v2/test_memory.py tests/v2/test_session037_due_work.py tests/v2/test_session033_outcome_resolution.py tests/v2/test_session033_outcome_runtime.py tests/v2/test_session037_action_outcome_producer.py tests/v2/test_session033_outcome_maturity.py tests/v2/test_session040_durable_capture.py tests/persistence/test_journal.py tests/persistence/test_recovery_persistence.py tests/contract/test_v1_golden_baseline.py tests/v2/test_session044_close_driven_m15.py --junitxml=docs/v2/transition-s47-evidence/memory_capture_v1_s44_regression.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/memory_future_receipt_red.xml",
+      "sha256": "450856d71ea69322ebe032cef588dcaab8f92b76920374e55aec02deab88c08c",
+      "bytes": 1313,
+      "status": "FAIL",
+      "counts": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 2.993
+      },
+      "test_files": [
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session047_research_memory.py::test_future_persisted_terminal_is_not_replayed_as_available --junitxml=docs/v2/transition-s47-evidence/memory_future_receipt_red.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_research_memory",
+          "name": "test_future_persisted_terminal_is_not_replayed_as_available",
+          "kind": "failure",
+          "message": "AssertionError: assert 'VALID_SHADOW' == 'UNKNOWN'\n  \n  - UNKNOWN\n  + VALID_SHADOW"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "memory_future_receipt_red.xml",
+        "raw_archive": "memory_future_receipt_red_raw.xml.gz",
+        "raw_sha256": "d23c55e2e5aba3b757db94f51e536b9799b6a9fea04d18aa00e1b81474c2513f",
+        "raw_bytes": 1326,
+        "normalized_sha256": "450856d71ea69322ebe032cef588dcaab8f92b76920374e55aec02deab88c08c",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/peer_chronology_consumers_green.xml",
+      "sha256": "da4abc1382d702f59a0fa446d1e690602cab51bc7cf10d10f53dab6f4b84a5b7",
+      "bytes": 3299,
+      "status": "PASS",
+      "counts": {
+        "tests": 21,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 21,
+        "junit_seconds": 89.34
+      },
+      "test_files": [
+        "tests/v2/test_session021_s6.py",
+        "tests/v2/test_session041_s6_cohort.py",
+        "tests/v2/test_session046_peer_context.py",
+        "tests/v2/test_session047_peer_chronology.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_peer_chronology.py tests/v2/test_session046_peer_context.py tests/v2/test_session021_s6.py tests/v2/test_session041_s6_cohort.py --junitxml=docs/v2/transition-s47-evidence/peer_chronology_consumers_green.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/peer_chronology_red.xml",
+      "sha256": "70632106b515c915d1e1323812d174218bd13eb6bced81c7b50c06b19e5b0c74",
+      "bytes": 5735,
+      "status": "FAIL",
+      "counts": {
+        "tests": 2,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 22.279
+      },
+      "test_files": [
+        "tests/v2/test_session047_peer_chronology.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_peer_chronology.py --junitxml=docs/v2/transition-s47-evidence/peer_chronology_red.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_peer_chronology",
+          "name": "test_s6_must_be_available_before_peer_computation",
+          "kind": "failure",
+          "message": "ValueError: S6CrossSectionStateV2 content_hash mismatch"
+        },
+        {
+          "classname": "tests.v2.test_session047_peer_chronology",
+          "name": "test_s6_available_at_computation_boundary_is_valid",
+          "kind": "failure",
+          "message": "ValueError: S6CrossSectionStateV2 content_hash mismatch"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "peer_chronology_red.xml",
+        "raw_archive": "peer_chronology_red_raw.xml.gz",
+        "raw_sha256": "2fc8d784c2a1cb1f6313af59ee3089dc4536005bd6d7979015f5a29366d8ac25",
+        "raw_bytes": 5749,
+        "normalized_sha256": "70632106b515c915d1e1323812d174218bd13eb6bced81c7b50c06b19e5b0c74",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/peer_chronology_red_corrected.xml",
+      "sha256": "73b2915ad233b7449e3074de050bd61ae8e2bd2b52bfe7446c5a309bb5e75212",
+      "bytes": 1301,
+      "status": "FAIL",
+      "counts": {
+        "tests": 2,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 1,
+        "junit_seconds": 21.943
+      },
+      "test_files": [
+        "tests/v2/test_session047_peer_chronology.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_peer_chronology.py --junitxml=docs/v2/transition-s47-evidence/peer_chronology_red_corrected.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_peer_chronology",
+          "name": "test_s6_must_be_available_before_peer_computation",
+          "kind": "failure",
+          "message": "Failed: DID NOT RAISE ValueError"
+        }
+      ],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/peer_features_s47_final_regression.xml",
+      "sha256": "5a4b38cf06abf3e6c193ea4721d70cff5122d305b619a39264c5adc171d39594",
+      "bytes": 23976,
+      "status": "PASS",
+      "counts": {
+        "tests": 113,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 113,
+        "junit_seconds": 345.961
+      },
+      "test_files": [
+        "tests/v2/test_session014_core.py",
+        "tests/v2/test_session014_s1.py",
+        "tests/v2/test_session016_s2.py",
+        "tests/v2/test_session021_s6.py",
+        "tests/v2/test_session037_feature_prefix.py",
+        "tests/v2/test_session037_strategy_prefix.py",
+        "tests/v2/test_session041_s6_action_contract.py",
+        "tests/v2/test_session041_s6_cohort.py",
+        "tests/v2/test_session046_peer_context.py",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard -o junit_family=legacy tests/v2/test_session047_peer_chronology.py tests/v2/test_session047_decision_brief.py tests/v2/test_session047_research_agent.py tests/v2/test_session047_research_memory.py tests/v2/test_session046_peer_context.py tests/v2/test_session021_s6.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_s6_action_contract.py tests/v2/test_session014_core.py tests/v2/test_session014_s1.py tests/v2/test_session016_s2.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py --junitxml=docs/v2/transition-s47-evidence/peer_features_s47_final_regression.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/research_agent_initial_green.xml",
+      "sha256": "a38585fd8c6dd89843b2e1d6b5bd61b5246849ce86c3baf0c4441dff74e8a502",
+      "bytes": 2681,
+      "status": "PASS",
+      "counts": {
+        "tests": 18,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 18,
+        "junit_seconds": 11.338
+      },
+      "test_files": [
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_research_agent.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_research_agent.py tests/v2/test_session047_decision_brief.py --junitxml=docs/v2/transition-s47-evidence/research_agent_initial_green.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/research_agent_red.xml",
+      "sha256": "cad75169cbade98a7f4ecf455c2e6ae5c0026595990882c07b044f72d76093ca",
+      "bytes": 1011,
+      "status": "FAIL",
+      "counts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 1,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 1.99
+      },
+      "test_files": [
+        ".py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_research_agent.py --junitxml=docs/v2/transition-s47-evidence/research_agent_red.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "",
+          "name": "tests.v2.test_session047_research_agent",
+          "kind": "error",
+          "message": "collection failure"
+        }
+      ],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/research_memory_consumers_green.xml",
+      "sha256": "73ee7cb965b702993e1c6d1d93c0e8f5377130466495a5b099dccdca09ea7b9c",
+      "bytes": 5876,
+      "status": "PASS",
+      "counts": {
+        "tests": 40,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 40,
+        "junit_seconds": 55.928
+      },
+      "test_files": [
+        "tests/v2/test_memory.py",
+        "tests/v2/test_session037_due_work.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_research_memory.py tests/v2/test_session047_research_agent.py tests/v2/test_session037_due_work.py tests/v2/test_memory.py --junitxml=docs/v2/transition-s47-evidence/research_memory_consumers_green.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/research_memory_initial_green.xml",
+      "sha256": "d48efbef7c6ec35f8f8f03de5c6662c966fe1b37e660976b10ae1f6d9ca172cf",
+      "bytes": 25315,
+      "status": "FAIL",
+      "counts": {
+        "tests": 14,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 12,
+        "junit_seconds": 12.72
+      },
+      "test_files": [
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_research_memory.py tests/v2/test_session047_research_agent.py --junitxml=docs/v2/transition-s47-evidence/research_memory_initial_green.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_research_memory",
+          "name": "test_atomic_trigger_rollback_and_future_source",
+          "kind": "failure",
+          "message": "ValueError: artifact_ref already indexes different immutable content"
+        },
+        {
+          "classname": "tests.v2.test_session047_research_memory",
+          "name": "test_memo_exact_identity_invalidation_and_changed_snapshot",
+          "kind": "failure",
+          "message": "ValueError: artifact_ref already indexes different immutable content"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "research_memory_initial_green.xml",
+        "raw_archive": "research_memory_initial_green_raw.xml.gz",
+        "raw_sha256": "5619aa376a9e9c594f852961afc42b763c3206861552f29af16e6d418aefb40a",
+        "raw_bytes": 25353,
+        "normalized_sha256": "d48efbef7c6ec35f8f8f03de5c6662c966fe1b37e660976b10ae1f6d9ca172cf",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/research_memory_red.xml",
+      "sha256": "9ce690cd434a300826340ae5fbe5761dad448b304b97587c5876312b86757d48",
+      "bytes": 1046,
+      "status": "FAIL",
+      "counts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 1,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 9.105
+      },
+      "test_files": [
+        ".py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_research_memory.py --junitxml=docs/v2/transition-s47-evidence/research_memory_red.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "",
+          "name": "tests.v2.test_session047_research_memory",
+          "kind": "error",
+          "message": "collection failure"
+        }
+      ],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/research_restart_faults.xml",
+      "sha256": "6b9a50e5ae10c8c0b0ca85354e5ebe218342a59802322d9fe5db80ad6a0b2af1",
+      "bytes": 3062,
+      "status": "PASS",
+      "counts": {
+        "tests": 20,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 20,
+        "junit_seconds": 10.939
+      },
+      "test_files": [
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047_research_memory.py tests/v2/test_session047_research_agent.py --junitxml=docs/v2/transition-s47-evidence/research_restart_faults.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s46_broker_schema_baseline.xml",
+      "sha256": "9a506da78d31d6f45119c44186038de697c3ba77cc786719c692fe500918d195",
+      "bytes": 5472,
+      "status": "FAIL",
+      "counts": {
+        "tests": 2,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 9.718
+      },
+      "test_files": [
+        "tests/v2/test_session026_agent_intelligence.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"/home/kasun/Music/atlas-s46/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard -o junit_family=legacy /home/kasun/Music/atlas-s46/tests/v2/test_session026_agent_intelligence.py::test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_outbox_writes /home/kasun/Music/atlas-s46/tests/v2/test_session026_agent_intelligence.py::test_dispatch_authorization_schema_v1_migrates_and_reopens_without_ops_schema_change --junitxml=docs/v2/transition-s47-evidence/s46_broker_schema_baseline.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session026_agent_intelligence",
+          "name": "test_success_is_quarantined_through_sandbox_and_broker_without_discovery_or_outbox_writes",
+          "kind": "failure",
+          "message": "assert 3 == 1"
+        },
+        {
+          "classname": "tests.v2.test_session026_agent_intelligence",
+          "name": "test_dispatch_authorization_schema_v1_migrates_and_reopens_without_ops_schema_change",
+          "kind": "failure",
+          "message": "assert 3 == 1"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "s46_broker_schema_baseline.xml",
+        "raw_archive": "s46_broker_schema_baseline_raw.xml.gz",
+        "raw_sha256": "3c3eeec69b6ea978e66a792d864b20868d9b57b30bf534d44ff481c95088b7c0",
+        "raw_bytes": 5484,
+        "normalized_sha256": "9a506da78d31d6f45119c44186038de697c3ba77cc786719c692fe500918d195",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s47_binding_restart_final.xml",
+      "sha256": "e9c8d10ded3ec5a5659f554392d1ec679444989c415f7a0decd453da27d81fbc",
+      "bytes": 6717,
+      "status": "PASS",
+      "counts": {
+        "tests": 44,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 44,
+        "junit_seconds": 32.623
+      },
+      "test_files": [
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047* --junitxml=docs/v2/transition-s47-evidence/s47_binding_restart_final.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s47_delivery_after_budget_review.xml",
+      "sha256": "04e69cbff29a6db3f87cae2c57d639a3d5e9bcbaa89d5389fce8c6742c18b7dd",
+      "bytes": 17701,
+      "status": "PASS",
+      "counts": {
+        "tests": 85,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 85,
+        "junit_seconds": 57.217
+      },
+      "test_files": [
+        "tests/v2/test_memory.py",
+        "tests/v2/test_session037_due_work.py",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_event_classification.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard -o junit_family=legacy tests/v2/test_session047* tests/v2/test_session037_due_work.py tests/v2/test_memory.py --junitxml=docs/v2/transition-s47-evidence/s47_delivery_after_budget_review.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s47_delivery_regression.xml",
+      "sha256": "4352824b45c944b421b26e871cb257b09e490d535509234d7f8836963acbe5e2",
+      "bytes": 17234,
+      "status": "PASS",
+      "counts": {
+        "tests": 83,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 83,
+        "junit_seconds": 58.105
+      },
+      "test_files": [
+        "tests/v2/test_memory.py",
+        "tests/v2/test_session037_due_work.py",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_event_classification.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard -o junit_family=legacy tests/v2/test_session047* tests/v2/test_session037_due_work.py tests/v2/test_memory.py --junitxml=docs/v2/transition-s47-evidence/s47_delivery_regression.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s47_final_all_and_duework.xml",
+      "sha256": "2323180b49e60ad91a609e6f2093d6ee6f547519020244a4ec029f43d557d1f5",
+      "bytes": 16173,
+      "status": "PASS",
+      "counts": {
+        "tests": 78,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 78,
+        "junit_seconds": 55.166
+      },
+      "test_files": [
+        "tests/v2/test_memory.py",
+        "tests/v2/test_session037_due_work.py",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_event_classification.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard -o junit_family=legacy tests/v2/test_session047* tests/v2/test_session037_due_work.py tests/v2/test_memory.py --junitxml=docs/v2/transition-s47-evidence/s47_final_all_and_duework.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s47_final_focused.xml",
+      "sha256": "4c876faeae70df2f7203e4747378fa5acbd348a8caf3fedf4c32a8a3c647b60a",
+      "bytes": 6849,
+      "status": "PASS",
+      "counts": {
+        "tests": 45,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 45,
+        "junit_seconds": 45.92
+      },
+      "test_files": [
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047* --junitxml=docs/v2/transition-s47-evidence/s47_final_focused.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s47_final_validated.xml",
+      "sha256": "ecb64686fa01f7a0d1fbfd08374179d1cf1d47feb329871a58831c3d7f271d8c",
+      "bytes": 16392,
+      "status": "PASS",
+      "counts": {
+        "tests": 79,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 79,
+        "junit_seconds": 54.563
+      },
+      "test_files": [
+        "tests/v2/test_memory.py",
+        "tests/v2/test_session037_due_work.py",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_event_classification.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard -o junit_family=legacy tests/v2/test_session047* tests/v2/test_session037_due_work.py tests/v2/test_memory.py --junitxml=docs/v2/transition-s47-evidence/s47_final_validated.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s47_focused_extended.xml",
+      "sha256": "f7e7f81313ba593a51e7e69a2b877a173ba5a7e2fbb9a69c6313656f4a9a6ce4",
+      "bytes": 3023,
+      "status": "FAIL",
+      "counts": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 2,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 12.025
+      },
+      "test_files": [
+        ".py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047* --junitxml=docs/v2/transition-s47-evidence/s47_focused_extended.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "",
+          "name": "tests.v2.test_session047_research_agent",
+          "kind": "error",
+          "message": "collection failure"
+        },
+        {
+          "classname": "",
+          "name": "tests.v2.test_session047_research_memory",
+          "kind": "error",
+          "message": "collection failure"
+        }
+      ],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s47_focused_extended_corrected.xml",
+      "sha256": "45f782dddc0620aa86d413238e8dd0f24b1e3bf9d69a30c552ede048d1a04e63",
+      "bytes": 6400,
+      "status": "PASS",
+      "counts": {
+        "tests": 42,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 42,
+        "junit_seconds": 36.527
+      },
+      "test_files": [
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src\" /home/kasun/Music/atlas/.venv/bin/python -m pytest tests/v2/test_session047* --junitxml=docs/v2/transition-s47-evidence/s47_focused_extended_corrected.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/scoped_dispatch_consumers.xml",
+      "sha256": "ccb08248c56eedc86f46e862ad2f9fba9f6ed7f71313d0de0bac9118d8d35372",
+      "bytes": 9059,
+      "status": "PASS",
+      "counts": {
+        "tests": 59,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 59,
+        "junit_seconds": 33.8
+      },
+      "test_files": [
+        "tests/v2/test_session037_due_work.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session047_research_memory.py tests/v2/test_session047_research_agent.py tests/v2/test_session037_due_work.py --junitxml=docs/v2/transition-s47-evidence/scoped_dispatch_consumers.xml"
+      ],
+      "failures_errors_skips": [],
+      "exact_raw_retention": null
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/scoped_dispatch_red.xml",
+      "sha256": "17e937e4550aacc2205858747afce3752c78feac7cbe8d474e05f1da38c53f4c",
+      "bytes": 1504,
+      "status": "FAIL",
+      "counts": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 2.93
+      },
+      "test_files": [
+        "tests/v2/test_session047_research_memory.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session047_research_memory.py::test_uncertain_dispatch_cannot_be_retried_under_a_new_job_id --junitxml=docs/v2/transition-s47-evidence/scoped_dispatch_red.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_research_memory",
+          "name": "test_uncertain_dispatch_cannot_be_retried_under_a_new_job_id",
+          "kind": "failure",
+          "message": "AssertionError: assert 'VALID_SHADOW' == 'UNKNOWN'\n  \n  - UNKNOWN\n  + VALID_SHADOW"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "scoped_dispatch_red.xml",
+        "raw_archive": "scoped_dispatch_red_raw.xml.gz",
+        "raw_sha256": "66d1df34629b83ea6d284a588da845a2e9731fd27dd9ff40bc9319b9e728d3ef",
+        "raw_bytes": 1517,
+        "normalized_sha256": "17e937e4550aacc2205858747afce3752c78feac7cbe8d474e05f1da38c53f4c",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/supplementary_projection_red.xml",
+      "sha256": "cbfc9aafa2a37536df28823cdd849990d8b57c0342b5e65e02377309b64998b3",
+      "bytes": 3323,
+      "status": "FAIL",
+      "counts": {
+        "tests": 2,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 0,
+        "junit_seconds": 1.804
+      },
+      "test_files": [
+        "tests/v2/test_session047_research_agent.py"
+      ],
+      "commands": [
+        "PYTHONPATH=\"$PWD/src:$PWD/docs/v2/transition-s47-evidence\" /home/kasun/Music/atlas/.venv/bin/python -m pytest -p s47_offline_guard tests/v2/test_session047_research_agent.py::test_supplementary_request_projects_full_receipts_and_provider_context --junitxml=docs/v2/transition-s47-evidence/supplementary_projection_red.xml"
+      ],
+      "failures_errors_skips": [
+        {
+          "classname": "tests.v2.test_session047_research_agent",
+          "name": "test_supplementary_request_projects_full_receipts_and_provider_context[provider_context]",
+          "kind": "failure",
+          "message": "AssertionError: assert 'VALID_SHADOW' == 'BUDGET_DENIED'\n  \n  - BUDGET_DENIED\n  + VALID_SHADOW"
+        },
+        {
+          "classname": "tests.v2.test_session047_research_agent",
+          "name": "test_supplementary_request_projects_full_receipts_and_provider_context[receipt_wrapper]",
+          "kind": "failure",
+          "message": "AssertionError: assert 'VALID_SHADOW' == 'BUDGET_DENIED'\n  \n  - BUDGET_DENIED\n  + VALID_SHADOW"
+        }
+      ],
+      "exact_raw_retention": {
+        "report": "supplementary_projection_red.xml",
+        "raw_archive": "supplementary_projection_red_raw.xml.gz",
+        "raw_sha256": "cef4432f6032b1836bff4570b2a9757986af47884fef6a65698e2212026ec017",
+        "raw_bytes": 3349,
+        "normalized_sha256": "cbfc9aafa2a37536df28823cdd849990d8b57c0342b5e65e02377309b64998b3",
+        "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "docs/v2/transition-s47-evidence/authority_isolation_delivery.json",
+      "sha256": "979f22e3c38ba6dec770ce5b01892ed7cdf052c8870ff282f45ebd93b0e7dea1",
+      "bytes": 350
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/baseline_broker_schema_identity.json",
+      "sha256": "3b928d366e932f0df7b1ee44d49866d1f7982f6afce322dd3152a65c9ca5d63b",
+      "bytes": 522
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/baseline_mypy_repository.txt",
+      "sha256": "2fd025218ea9f34d860a5a1a86fdac29c611ef1b5ed1a7e237ac32d02ff9eca1",
+      "bytes": 809
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/brief_consumers_raw.xml.gz",
+      "sha256": "f82727e541e56f412a851428f5cbc33c3594c50d7feeee67915d557ac50f9b9d",
+      "bytes": 1654
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/brief_negatives_initial_raw.xml.gz",
+      "sha256": "2dd359f26b666217c395a120ffdd1a14317296a10e304cf2d37bb48c08dc97ef",
+      "bytes": 1913
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/broker_worker_outbox_regression_raw.xml.gz",
+      "sha256": "53acbae9143d3fb22584f84ae9944f9ac6adf658aee5f30fe49b50c15614c73a",
+      "bytes": 4226
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/compileall_delivery.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/current_mypy_repository.txt",
+      "sha256": "2fd025218ea9f34d860a5a1a86fdac29c611ef1b5ed1a7e237ac32d02ff9eca1",
+      "bytes": 809
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/current_mypy_repository_uncached.txt",
+      "sha256": "5fdd660ea717a21cc1a00d553cab312edeb3e913b6e071ee37e18fd4c22d9aeb",
+      "bytes": 709
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/delivery_check_commands.json",
+      "sha256": "3b93ba43648218d07ea97188f719046e6ecc52a575bbd3a6fad4f008eb053bba",
+      "bytes": 3471
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/dependency_review.json",
+      "sha256": "9ee48a388776168906c1fd141d8add32d32e2ae4ab4169cb6a65a662f727f50a",
+      "bytes": 1580
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/diff_check_delivery.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/entrypoint_delivery.json",
+      "sha256": "95950e97cebf2b81426b143b161c34086bdd9a59e910652cb40ba2439f780f74",
+      "bytes": 905
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/event_classification_proof_raw.xml.gz",
+      "sha256": "4b29cd99da46ffb57715da3d6b2891ec80db5bf6bec30f1445ee460a487e4570",
+      "bytes": 1037
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/event_saturation_probe.py",
+      "sha256": "f2fe21bcfe457e4af44eeef5498a2b6014e90d0999a153efed671fa96912f6f4",
+      "bytes": 1163
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/event_transport_causes_first.json",
+      "sha256": "5c02f490965a931d967de4674193a77a59684d284e9c6e1939f6ee80de5d6e86",
+      "bytes": 149
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/event_transport_causes_second.json",
+      "sha256": "5c02f490965a931d967de4674193a77a59684d284e9c6e1939f6ee80de5d6e86",
+      "bytes": 149
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/format_baseline_comparison.json",
+      "sha256": "8e8031c15bb3b175026782d3ecfd0e730705a21d9514032b5087c75c6a135172",
+      "bytes": 1039
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/freeze_identity_delivery.json",
+      "sha256": "64a536c021ed92ba5c1efeb7bf244ae1898ebab1df3e1addab4e933b26f0f4d4",
+      "bytes": 859
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/history_preservation_delivery.json",
+      "sha256": "16d1996d297cfdb4c3171108429e88666be7fb91395a692a86707181d131a486",
+      "bytes": 434
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/late_receipt_red_raw.xml.gz",
+      "sha256": "34848f43ff04f600556d65c55b8264aa97a3f8b04b46a3d18a215f3122ded0ab",
+      "bytes": 499
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/link_review_delivery.json",
+      "sha256": "14740bd3014d43df1701887fdeecb2bc1c94db5e2b2dd63827fb25ac7b603df4",
+      "bytes": 10303
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/lock_check.txt",
+      "sha256": "a4aaeedd03a98d4bb6ca57894387b522fe6563417661c7a45720b074c4dfa1e8",
+      "bytes": 52
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/lock_check_python312.txt",
+      "sha256": "7ac0214d72b34c4514ac2b6ea034f9bdb7066777aac757c62eef4f5bcf0577cc",
+      "bytes": 108
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/lock_delivery.txt",
+      "sha256": "87f710473211986d2948cd6e614585aed71b9e23e4dbfb9325f784f21b28c57a",
+      "bytes": 107
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/memory_future_receipt_red_raw.xml.gz",
+      "sha256": "91891d382e440fd477c1b20d3ac9daf38c7ac25bb71b3deb6166f224e8ae7e1b",
+      "bytes": 621
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/memory_reuse_map.json",
+      "sha256": "7b0925bcf55ce2e89cdab497a92b04f22171bfb1d4c4f03e54ca431c407fb3ae",
+      "bytes": 1315
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/mypy_corrected.txt",
+      "sha256": "31b943d7f28069334d221f5eaf9e5b2b51e64441d4857ec5e5a0ae3ab503447d",
+      "bytes": 105
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/mypy_delivery.txt",
+      "sha256": "31b943d7f28069334d221f5eaf9e5b2b51e64441d4857ec5e5a0ae3ab503447d",
+      "bytes": 105
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/mypy_final.txt",
+      "sha256": "31b943d7f28069334d221f5eaf9e5b2b51e64441d4857ec5e5a0ae3ab503447d",
+      "bytes": 105
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/mypy_final_uncached.txt",
+      "sha256": "31b943d7f28069334d221f5eaf9e5b2b51e64441d4857ec5e5a0ae3ab503447d",
+      "bytes": 105
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/mypy_initial.txt",
+      "sha256": "9b9f01fea7db97f21510c3f9fd569e3ce337eb4fd9a295107b64d3e7dfc42e2f",
+      "bytes": 409
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/owner_reference_identity.json",
+      "sha256": "ec8f8bb16d841766310f91e6b5212d31589ea30b51ba1de424f91346281bf233",
+      "bytes": 2529
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/owner_request_raw.md.gz",
+      "sha256": "7be73893746ab9ccb0fd396a0f961e17ec38811952eac91a6dd0281aec233551",
+      "bytes": 10317
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/owner_request_retention.json",
+      "sha256": "d650d1ebc4c4523cd61786c31d47ffb92d99d372f8d5a008f3eb141bedd52391",
+      "bytes": 450
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/peer_chronology_red_raw.xml.gz",
+      "sha256": "308215ad0d3858ef184971d17f1bc4548a8badb0fe54852e2ce89cfe5f2f9ef5",
+      "bytes": 1411
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/pip_check.txt",
+      "sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+      "bytes": 30
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/pip_check_delivery.txt",
+      "sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+      "bytes": 30
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/provider_capability_matrix.json",
+      "sha256": "62f447e219484f1ebeead7c5333ac21fe7bf83ed18d1b6d1978f920de578d08b",
+      "bytes": 1450
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/remote_ancestry_preflight.json",
+      "sha256": "c7fab8ca0821774ca0d3e317b378a34cf7f3d31da0a8d1f5391a3ee5b342ffa7",
+      "bytes": 9056
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/remote_heads_delivery.txt",
+      "sha256": "954afc71ed980e4e00ee58db4bb67c161022c59d75fb4bba2b0a1ecc2ab3138b",
+      "bytes": 5474
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/remote_heads_preflight.txt",
+      "sha256": "954afc71ed980e4e00ee58db4bb67c161022c59d75fb4bba2b0a1ecc2ab3138b",
+      "bytes": 5474
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/report_whitespace_retention.json",
+      "sha256": "ebc666e9af142d538cd23aeabdf5262b73f0c7052f3d43cd565a97922ca51e8c",
+      "bytes": 4335
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/research_memory_initial_green_raw.xml.gz",
+      "sha256": "b90eef1923abc8fafdf390436084f100556bfa5d19fea626a4cece33252390ca",
+      "bytes": 3926
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/ruff_check.txt",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/ruff_delivery.txt",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/ruff_format.txt",
+      "sha256": "5b9f70ad96522f492ef846065642c069b5627379aff2ab3f74acd2e3b9ecfe34",
+      "bytes": 27
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/ruff_format_delivery.txt",
+      "sha256": "55acd1b05fb133ffa594ca103c567e125f42b624067779bcc63a4ce788f350cc",
+      "bytes": 19116
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/ruff_format_new_delivery.txt",
+      "sha256": "75b7030be9d7de96bf4e76e79b1f03f14af8899d169fd8d79564d59167d1ab80",
+      "bytes": 27
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/ruff_format_peer_baseline.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s46_broker_schema_baseline_raw.xml.gz",
+      "sha256": "db777c746adf5ce95cfa99b57264509ca3e02f367dd149d7017a82225e552f15",
+      "bytes": 1615
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+      "sha256": "4dd533cde8a97ce2621afd1379def6b7d1c986f282e9865696688098cbfb1cd4",
+      "bytes": 1880
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/scoped_dispatch_red_raw.xml.gz",
+      "sha256": "ca1005b34670d2e7a756f013f4c454e0002abea813312671742877e9d533e4b1",
+      "bytes": 665
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/secret_scan_delivery.json",
+      "sha256": "73401f9f39c9cd963bf11fc91fab347398b9d0b3d42e0183262dde17d230dae5",
+      "bytes": 345
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/staged_diff_check_delivery.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/staged_review_delivery.json",
+      "sha256": "030a4786ad2616e408825782d3620dabb62e2c6ed84ff2a5d0a29ba4f8af1cdd",
+      "bytes": 8665
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/supplementary_projection_red_raw.xml.gz",
+      "sha256": "d999631c685f64d22bdcc57ea64b1313b6593d7a4287d4e04642c1053eb159cc",
+      "bytes": 844
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/test_execution_commands.json",
+      "sha256": "475885c9303c45d5d83d103fb2c5da2cd5ab11421dd65509f003a5d2cf50a2f7",
+      "bytes": 13057
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/tool_verification_delivery.json",
+      "sha256": "e0d2873e5533394350f017ec43dad2720de0768dc1c95fd17178266ec14a99f0",
+      "bytes": 983
+    },
+    {
+      "path": "docs/v2/transition-s47-evidence/type_check_commands.json",
+      "sha256": "e9b340d8565f4adabd5043bab270711018f0817da9f7f8f198fd21c4c4f725e4",
+      "bytes": 1014
+    }
+  ],
+  "static_checks": [
+    {
+      "name": "ruff_format_delivery",
+      "command": [
+        "/home/kasun/Music/atlas/.venv/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "src/atlas/v2/research",
+        "src/atlas/v2/features/peer_context.py",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_event_classification.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py",
+        "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+        "docs/v2/transition-s47-evidence/event_saturation_probe.py"
+      ],
+      "exit_code": 1
+    },
+    {
+      "name": "pip_check_delivery",
+      "command": [
+        "/home/kasun/Music/atlas/.venv/bin/python",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "lock_delivery",
+      "command": [
+        "uv",
+        "lock",
+        "--check",
+        "--python",
+        "/home/kasun/Music/atlas/.venv/bin/python"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "diff_check_delivery",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "ruff_delivery",
+      "command": [
+        "/home/kasun/Music/atlas/.venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "src/atlas/v2/research",
+        "src/atlas/v2/features/peer_context.py",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_event_classification.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py",
+        "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+        "docs/v2/transition-s47-evidence/event_saturation_probe.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "ruff_format_new_delivery",
+      "command": [
+        "/home/kasun/Music/atlas/.venv/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "src/atlas/v2/research",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_event_classification.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py",
+        "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+        "docs/v2/transition-s47-evidence/event_saturation_probe.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "compileall_delivery",
+      "command": [
+        "/home/kasun/Music/atlas/.venv/bin/python",
+        "-m",
+        "compileall",
+        "-q",
+        "src/atlas/v2/research",
+        "src/atlas/v2/features/peer_context.py",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/v2/test_session047_event_classification.py",
+        "tests/v2/test_session047_peer_chronology.py",
+        "tests/v2/test_session047_research_agent.py",
+        "tests/v2/test_session047_research_memory.py",
+        "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+        "docs/v2/transition-s47-evidence/event_saturation_probe.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "mypy_delivery",
+      "command": [
+        "/home/kasun/Music/atlas/.venv/bin/python",
+        "-m",
+        "mypy",
+        "--no-incremental",
+        "--follow-imports=skip",
+        "--ignore-missing-imports",
+        "--config-file",
+        "pyproject.toml",
+        "src/atlas/v2/research",
+        "src/atlas/v2/features/peer_context.py"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "test_scope": {
+    "whole_repository_suite_run": false,
+    "unrun": "Tests outside the exact command lines/report test-file groups were not run. Repeated reports overlap; counts must not be added as unique coverage.",
+    "warnings": [
+      "Two existing S44 record_property/xunit2 incompatibility warnings in memory_capture_v1_s44_regression.xml; later delivery reports use legacy JUnit format."
+    ],
+    "synthetic_qualification": "Fake/offline fixtures are not venue/capacity/provider/economic qualification."
+  },
+  "retained_gates": {
+    "event_saturation": "TEST GATE; unmodified combined runs fail CALL_OUTCOME_UNKNOWN instead of BROKER_SATURATED; two instrumented repeats pass; no proved production repair.",
+    "s26_schema_assertions": "Two unchanged assertions expect ops v1 instead of accepted v3, reproduced with accepted S46 source/tests.",
+    "formatting": "Existing S46 and S47 peer formatting fails; all additive Python files pass.",
+    "mypy_repository": "Unchanged line-2124 baseline diagnostic remains; new sources pass targeted uncached checks.",
+    "live_source_capacity_capital": [
+      "fake Bybit chronology/supervisor",
+      "TQ-01 sustained drain",
+      "Linux F1/A2 genuine capacity",
+      "real Binance final-M15 close+5s",
+      "native authenticated Binance protection and capital",
+      "general sparse-feature eligibility"
+    ],
+    "incremental_prospective_economic_value": "NOT ESTIMABLE",
+    "prospective_floor": "8 genuine weeks and 200 matured opportunities with regime/dependence support; never automatic promotion."
+  },
+  "measurements": {
+    "reported": "JUnit durations, evidence bytes/hashes, individual read-tool receipt local latency/bytes",
+    "cpu_rss_network_provider_tokens_cost": null,
+    "token_projection": "UTF-8 byte upper bound; no measured token or savings claim"
+  },
+  "no_new_atlas_dependencies": true,
+  "new_database_tables": 0,
+  "shadow_only": true,
+  "authority": "ZERO",
+  "final_coordinator_sha": "Returned separately after final push; manifest cannot contain its own commit SHA.",
+  "updated_at": "2026-10-12T18:55:35.873775+05:30",
+  "delivery_report": "docs/v2/transition-s47-evidence/s47_delivery_after_budget_review.xml",
+  "history_note": "Earlier red/green reports describe development checkpoints. Source/test hashes bind the final 85-case delivery report. Historical static snapshots and staged review retain their recorded checkpoint scope."
+}

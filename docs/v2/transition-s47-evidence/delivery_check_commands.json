@@ -1,0 +1,125 @@
+[
+  {
+    "name": "ruff_format_delivery",
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "ruff",
+      "format",
+      "--check",
+      "src/atlas/v2/research",
+      "src/atlas/v2/features/peer_context.py",
+      "tests/v2/test_session047_decision_brief.py",
+      "tests/v2/test_session047_event_classification.py",
+      "tests/v2/test_session047_peer_chronology.py",
+      "tests/v2/test_session047_research_agent.py",
+      "tests/v2/test_session047_research_memory.py",
+      "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+      "docs/v2/transition-s47-evidence/event_saturation_probe.py"
+    ],
+    "exit_code": 1
+  },
+  {
+    "name": "pip_check_delivery",
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "pip",
+      "check"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "lock_delivery",
+    "command": [
+      "uv",
+      "lock",
+      "--check",
+      "--python",
+      "/home/kasun/Music/atlas/.venv/bin/python"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "diff_check_delivery",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "ruff_delivery",
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "ruff",
+      "check",
+      "src/atlas/v2/research",
+      "src/atlas/v2/features/peer_context.py",
+      "tests/v2/test_session047_decision_brief.py",
+      "tests/v2/test_session047_event_classification.py",
+      "tests/v2/test_session047_peer_chronology.py",
+      "tests/v2/test_session047_research_agent.py",
+      "tests/v2/test_session047_research_memory.py",
+      "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+      "docs/v2/transition-s47-evidence/event_saturation_probe.py"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "ruff_format_new_delivery",
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "ruff",
+      "format",
+      "--check",
+      "src/atlas/v2/research",
+      "tests/v2/test_session047_decision_brief.py",
+      "tests/v2/test_session047_event_classification.py",
+      "tests/v2/test_session047_peer_chronology.py",
+      "tests/v2/test_session047_research_agent.py",
+      "tests/v2/test_session047_research_memory.py",
+      "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+      "docs/v2/transition-s47-evidence/event_saturation_probe.py"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "compileall_delivery",
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "compileall",
+      "-q",
+      "src/atlas/v2/research",
+      "src/atlas/v2/features/peer_context.py",
+      "tests/v2/test_session047_decision_brief.py",
+      "tests/v2/test_session047_event_classification.py",
+      "tests/v2/test_session047_peer_chronology.py",
+      "tests/v2/test_session047_research_agent.py",
+      "tests/v2/test_session047_research_memory.py",
+      "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+      "docs/v2/transition-s47-evidence/event_saturation_probe.py"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "mypy_delivery",
+    "command": [
+      "/home/kasun/Music/atlas/.venv/bin/python",
+      "-m",
+      "mypy",
+      "--no-incremental",
+      "--follow-imports=skip",
+      "--ignore-missing-imports",
+      "--config-file",
+      "pyproject.toml",
+      "src/atlas/v2/research",
+      "src/atlas/v2/features/peer_context.py"
+    ],
+    "exit_code": 0
+  }
+]

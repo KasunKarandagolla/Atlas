@@ -1,0 +1,9 @@
+{
+  "translog_base_sha256": "9c7c2688e441a692b8fe0bf97d8c4e6ef5e74119ae3725da56d16076e45b752c",
+  "translog_base_is_exact_prefix": true,
+  "all_preexisting_log_checkpoint_bodies_retained": true,
+  "remote_heads_preflight_and_delivery_identical": true,
+  "remote_heads_checked": 55,
+  "original_checkout_status": "matches previously retained dirty S35 status; no writes made",
+  "owner_Red": "read-only; retained identities checked"
+}

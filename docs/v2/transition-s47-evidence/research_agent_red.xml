@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="1.990" timestamp="2026-10-12T15:31:27.817884+05:30" hostname="Kasun"><testcase classname="" name="tests.v2.test_session047_research_agent" time="0.000"><error message="collection failure">ImportError while importing test module '/home/kasun/Music/atlas-s47/tests/v2/test_session047_research_agent.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../Downloads/workshop/gate5-openhands/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/v2/test_session047_research_agent.py:7: in &lt;module&gt;
+    from atlas.v2.research.agent import (
+E   ModuleNotFoundError: No module named 'atlas.v2.research.agent'</error></testcase></testsuite></testsuites>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="8" time="5.601" timestamp="2026-10-12T15:28:11.633398+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session047_decision_brief" name="test_empty_slot_preserves_a0_and_calendar" time="0.007" /><testcase classname="tests.v2.test_session047_decision_brief" name="test_no_quiet_truncation_and_deadline" time="0.004" /><testcase classname="tests.v2.test_session047_decision_brief" name="test_revised_universe_is_not_accepted" time="0.005" /><testcase classname="tests.v2.test_session047_decision_brief" name="test_all_screened_rows_remain_without_invented_economics" time="0.009" /><testcase classname="tests.v2.test_session047_decision_brief" name="test_future_fact_stale_context_and_revision_are_blocked" time="0.005" /><testcase classname="tests.v2.test_session047_decision_brief" name="test_sparse_technical_and_future_tail_do_not_qualify_gap_sensitive_values" time="0.002"><failure message="TypeError: bar() takes 1 positional argument but 2 positional arguments (and 1 keyword-only argument) were given">def test_sparse_technical_and_future_tail_do_not_qualify_gap_sensitive_values():
+        from atlas.v2.data.bars import BarIntervalV2
+        from atlas.v2.research.decision_brief import technical_fact
+        from .test_session014_core import KEY, bar
+        # Existing core fixture supplies point-in-time completed M15 bars.
+&gt;       bars = tuple(bar(i, 100+i, interval=BarIntervalV2.M15) for i in range(4))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session047_decision_brief.py:85:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+.0 = &lt;range_iterator object at 0x7fc6ed0d4360&gt;
+
+&gt;   bars = tuple(bar(i, 100+i, interval=BarIntervalV2.M15) for i in range(4))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: bar() takes 1 positional argument but 2 positional arguments (and 1 keyword-only argument) were given
+
+tests/v2/test_session047_decision_brief.py:85: TypeError</failure></testcase><testcase classname="tests.v2.test_session047_decision_brief" name="test_optional_ml_wrong_horizon_missing_checkpoint_no_value" time="0.004" /><testcase classname="tests.v2.test_session047_decision_brief" name="test_actual_evaluator_unestimable_result_is_projected_without_rerunning_or_rescue" time="2.022"><failure message="AttributeError: 'CandidateActionV2' object has no attribute 'absolute_deadline_ns'">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-130/test_actual_evaluator_unestima0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7fc6ed096390&gt;
+
+    def test_actual_evaluator_unestimable_result_is_projected_without_rerunning_or_rescue(tmp_path, monkeypatch):
+        from atlas.v2.research.decision_brief import EconomicsEvidenceV1
+        from . import test_session019_evaluation_integration as consumer
+        original = consumer.run_phase2_economic_evaluation
+        captured = []
+
+        def observe(repo, **kwargs):
+            result = original(repo, **kwargs)
+            cs, candidate = kwargs['candidate_set'], kwargs['candidate']
+            r = BriefRequestV1(cs.decision_event_id, candidate.decision_at_ns,
+                candidate.absolute_deadline_ns, result.evaluation.available_at_ns, cs,
+                # The existing risk fixture retains its original universe.
+                __import__('tests.v2.test_session017_risk', fromlist=['universe']).universe((candidate.key,)),
+                candidate.snapshot_hash, sha256_json('research'),
+                BriefLimitsV1('FIXTURE_V1', 20, 100000, 10, 0, 100000), (),
+                (EconomicsEvidenceV1(candidate, kwargs['action'], result),), ())
+            # Resolve the exact universe from the indexed original instead of constructing a new identity.
+            from atlas.v2.instruments import UniverseContractV2
+            row = repo.get_artifact(cs.universe_ref)
+            r = replace(r, universe=UniverseContractV2.from_dict(row.metadata['universe'].to_dict()))
+            brief = build_decision_brief(r, repository=repo)
+            captured.append(brief)
+            assert brief.body['shortlist'] == ()
+            assert brief.body['economics'][0]['status'] == 'NOT_ESTIMABLE'
+            assert brief.body['economics'][0]['evaluation'] is None
+            return result
+
+        monkeypatch.setattr(consumer, 'run_phase2_economic_evaluation', observe)
+&gt;       consumer.test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calendar(tmp_path, monkeypatch)
+
+tests/v2/test_session047_decision_brief.py:138:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/v2/test_session019_evaluation_integration.py:133: in test_unestimable_exact_action_persists_amended_evaluation_and_terminal_calendar
+    evaluated = run_phase2_economic_evaluation(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+repo = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fc6ed460710&gt;
+kwargs = {'action': ActionArtifactV2(action=FrozenActionV2(key=InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;, environment=&lt;Env..._consumed=Decimal('29.3755'), status=&lt;SizingStatus.SIZED: 'SIZED'&gt;, reasons=(), available_at_ns=1800000000000000), ...}
+
+    def observe(repo, **kwargs):
+        result = original(repo, **kwargs)
+        cs, candidate = kwargs['candidate_set'], kwargs['candidate']
+        r = BriefRequestV1(cs.decision_event_id, candidate.decision_at_ns,
+&gt;           candidate.absolute_deadline_ns, result.evaluation.available_at_ns, cs,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            # The existing risk fixture retains its original universe.
+            __import__('tests.v2.test_session017_risk', fromlist=['universe']).universe((candidate.key,)),
+            candidate.snapshot_hash, sha256_json('research'),
+            BriefLimitsV1('FIXTURE_V1', 20, 100000, 10, 0, 100000), (),
+            (EconomicsEvidenceV1(candidate, kwargs['action'], result),), ())
+E       AttributeError: 'CandidateActionV2' object has no attribute 'absolute_deadline_ns'
+
+tests/v2/test_session047_decision_brief.py:120: AttributeError</failure></testcase></testsuite></testsuites>

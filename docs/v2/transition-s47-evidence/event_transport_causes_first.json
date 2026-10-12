@@ -1,0 +1,10 @@
+{
+  "exit_code": 0,
+  "observed_errors": [
+    {
+      "status": "BROKER_SATURATED",
+      "cause_type": "NoneType",
+      "errno": null
+    }
+  ]
+}

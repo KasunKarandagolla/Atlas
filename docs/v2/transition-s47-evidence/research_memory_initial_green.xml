@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="14" time="12.720" timestamp="2026-10-12T15:36:06.848621+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session047_research_memory" name="test_duplicate_triggers_restart_and_no_duplicate_dispatch" time="1.101" /><testcase classname="tests.v2.test_session047_research_memory" name="test_crash_after_intent_is_unknown_and_never_retried" time="0.990" /><testcase classname="tests.v2.test_session047_research_memory" name="test_atomic_trigger_rollback_and_future_source" time="0.717"><failure message="ValueError: artifact_ref already indexes different immutable content">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-134/test_atomic_trigger_rollback_a0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7fecd4103200&gt;
+
+    def test_atomic_trigger_rollback_and_future_source(tmp_path, monkeypatch):
+        with OpsRepository(tmp_path/'ops.sqlite') as repo:
+            memory = ResearchMemoryV1(repo)
+            j = job()
+            event = seed(repo)
+            original = repo.enqueue_due_work
+            def fail(**kwargs):
+                raise RuntimeError('crash before persistence')
+            with monkeypatch.context() as patch:
+                patch.setattr(repo, 'enqueue_due_work', fail)
+                with pytest.raises(RuntimeError):
+                    memory.schedule(j, event_ref=event, now_ns=11)
+            assert memory.request(j.job_id) is None
+            monkeypatch.setattr(repo, 'enqueue_due_work', original)
+            memory.schedule(j, event_ref=event, now_ns=11)
+            other = replace(j, job_id='future')
+&gt;           denied = memory.schedule(other, event_ref=seed(repo, at=12), now_ns=13)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session047_research_memory.py:74:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/v2/research/memory.py:88: in schedule
+    self._persist(job.brief.content_hash, 'DecisionBriefResearchV1',
+src/atlas/v2/research/memory.py:54: in _persist
+    self.repository.register_artifact(ArtifactIndexEntryV2(ref, kind, sha256_json(body),
+src/atlas/v2/memory/repository.py:1496: in register_artifact
+    return self.register_artifacts((entry,))[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fecd4102e40&gt;
+entries = (ArtifactIndexEntryV2(artifact_ref='d1046a1e2daa5d0b75720648b5911b5bf5112002b490d7e166f3d4630e29c85b', artifact_type='...'inspect_memory_v1'))))), ('reasons', ()), ('status', 'COMPLETE'), ('version', 'ATLAS_DECISION_BRIEF_RESEARCH_V1')))),)
+
+    def register_artifacts(self, entries: Sequence[ArtifactIndexEntryV2]) -&gt; tuple[ArtifactIndexEntryV2, ...]:
+        """Atomically register a deterministic batch of immutable artifact rows."""
+        batch = tuple(entries)
+        if any(not isinstance(entry, ArtifactIndexEntryV2) for entry in batch):
+            raise ValueError("artifact batch must contain ArtifactIndexEntryV2 entries")
+        from ..data.public_archive_extents import extent_ref
+
+        compact = tuple(entry for entry in batch
+            if entry.artifact_type in ("PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1")
+            and isinstance(entry.metadata.get("archive_chunk_id"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", str(entry.metadata["archive_chunk_id"])) is not None
+            and self.get_artifact(extent_ref("ops-l2-frames" if entry.artifact_type == "PublicStreamFrameIndexV1"
+                else "ops-observations", str(entry.metadata["archive_chunk_id"]))) is not None)
+        if compact:
+            selected = {entry.artifact_ref for entry in compact}
+            with self.atomic_composition():
+                self.register_public_archive_entries(compact)
+                self.register_artifacts(tuple(entry for entry in batch if entry.artifact_ref not in selected))
+            return batch
+        original_batch = batch
+        if self._public_locator_enabled and batch:
+            known = self.get_artifact_metadata_by_refs(tuple(entry.artifact_ref for entry in batch))
+            aliases = set()
+            for entry in batch:
+                # A compact locator must never be shadowed by a generic row
+                # with the same ref and different immutable domain content.
+                prior = known.get(entry.artifact_ref)
+                if prior is not None and prior["artifact_type"] in (
+                        "PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1",
+                        "PublicStreamSourceHealthV1"):
+                    exact = self.get_artifact(entry.artifact_ref)
+                    if exact != entry:
+                        raise ValueError("artifact identity conflicts with immutable public evidence")
+                    with self._lock:
+                        alias = self._connection.execute(
+                            "SELECT 1 FROM public_stream_archive_locator_v1 WHERE artifact_ref=?",
+                            (bytes.fromhex(entry.artifact_ref),)).fetchone()
+                    if alias is not None:
+                        aliases.add(entry.artifact_ref)
+            batch = tuple(entry for entry in batch if entry.artifact_ref not in aliases)
+        compact_public: dict[str, tuple[str, str, str]] = {}
+        from ..data.compact_observation_index import compact_projection
+
+        encoded: dict[str, tuple[ArtifactIndexEntryV2, str, str]] = {}
+        for entry in batch:
+            metadata_json = canonical_json(entry.metadata)
+            storage_json = metadata_json
+            if entry.artifact_type == "PublicObservationIndexV2":
+                if "instrument_key_ref" in entry.metadata:
+                    raise ValueError("public observation metadata uses a reserved compact identity field")
+                # Legacy callers may use a different valid artifact identity.
+                # Keep those rows plain rather than imposing a new domain rule.
+                prepared = (compact_projection(entry.metadata) if entry.artifact_ref == sha256_json(
+                    {"artifact_type": "PublicObservationIndexV2",
+                     "record_id": entry.metadata.get("record_id")}) else None)
+                if prepared is not None:
+                    storage_json, key_ref = prepared
+                    compact_public[entry.artifact_ref] = (
+                        storage_json, key_ref, str(entry.metadata["instrument_key_json"]))
+            previous = encoded.get(entry.artifact_ref)
+            if previous is not None:
+                prior_entry, prior_json, prior_storage = previous
+                if (
+                    prior_entry.artifact_type,
+                    prior_entry.content_hash,
+                    prior_entry.created_at_ns,
+                    prior_entry.available_at_ns,
+                    prior_json,
+                    prior_storage,
+                ) != (
+                    entry.artifact_type,
+                    entry.content_hash,
+                    entry.created_at_ns,
+                    entry.available_at_ns,
+                    metadata_json,
+                    storage_json,
+                ):
+                    raise ValueError("artifact batch repeats an identity with different immutable content")
+            else:
+                encoded[entry.artifact_ref] = (entry, metadata_json, storage_json)
+        with self._transaction() as connection:
+            existing: dict[str, sqlite3.Row] = {}
+            refs = tuple(encoded)
+            for offset in range(0, len(refs), 500):
+                ref_batch = refs[offset : offset + 500]
+                if not ref_batch:
+                    continue
+                marks = ",".join("?" for _ in ref_batch)
+                rows = connection.execute(
+                    f"SELECT artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json "
+                    f"FROM artifact_index WHERE artifact_ref IN ({marks})",
+                    ref_batch,
+                ).fetchall()
+                existing.update((row["artifact_ref"], row) for row in rows)
+            from ..data.compact_observation_index import encode_blocks, register_identity
+
+            new_public = [(entry.artifact_ref, entry.metadata)
+                          for entry, _domain, _storage in encoded.values()
+                          if entry.artifact_ref not in existing and entry.artifact_ref in compact_public]
+            for block in encode_blocks(new_public):
+                prior = connection.execute(
+                    "SELECT entry_count,uncompressed_bytes,codec,compressed_metadata "
+                    "FROM public_observation_metadata_block_v1 WHERE block_ref=?", (block["block_ref"],),
+                ).fetchone()
+                candidate = (block["entry_count"], block["uncompressed_bytes"], "zlib-v1",
+                             block["compressed_metadata"])
+                if prior is None:
+                    connection.execute(
+                        "INSERT INTO public_observation_metadata_block_v1 "
+                        "(block_ref,entry_count,uncompressed_bytes,codec,compressed_metadata) VALUES(?,?,?,?,?)",
+                        (block["block_ref"], *candidate),
+                    )
+                elif (prior["entry_count"], prior["uncompressed_bytes"], prior["codec"],
+                      bytes(prior["compressed_metadata"])) != candidate:
+                    raise ValueError("public metadata block identity conflicts with stored content")
+                locators = block["locators"]
+                marks = ",".join("?" for _ in locators)
+                prior_locators = {bytes(row["artifact_ref"]): row for row in connection.execute(
+                    "SELECT artifact_ref,block_ref,ordinal FROM public_observation_metadata_locator_v1 "
+                    f"WHERE artifact_ref IN ({marks})", tuple(row[0] for row in locators))}
+                missing_locators = []
+                identities: dict[str, str] = {}
+                for artifact_ref, block_ref, ordinal in locators:
+                    prior_locator = prior_locators.get(artifact_ref)
+                    if prior_locator is not None:
+                        if (bytes(prior_locator["block_ref"]) != block_ref
+                                or prior_locator["ordinal"] != ordinal):
+                            raise ValueError("public observation metadata locator identity conflicts")
+                    else:
+                        missing_locators.append((artifact_ref, block_ref, ordinal))
+                    key_ref, identity_json = compact_public[artifact_ref.hex()][1:]
+                    previous_key = identities.setdefault(key_ref, identity_json)
+                    if previous_key != identity_json:
+                        raise ValueError("public instrument identity reference collision")
+                connection.executemany(
+                    "INSERT INTO public_observation_metadata_locator_v1 VALUES(?,?,?)", missing_locators)
+                for key_ref, identity_json in identities.items():
+                    register_identity(connection, key_ref=key_ref, canonical_key_json=identity_json)
+
+            for entry, metadata_json, storage_json in encoded.values():
+                row = existing.get(entry.artifact_ref)
+                if row is not None:
+                    stored_tuple = (
+                        row["artifact_type"],
+                        row["content_hash"],
+                        row["created_at_ns"],
+                        row["available_at_ns"],
+                        canonical_json(self.artifact_entry_from_storage_row(row).metadata),
+                    )
+                    requested_tuple = (
+                        entry.artifact_type,
+                        entry.content_hash,
+                        entry.created_at_ns,
+                        entry.available_at_ns,
+                        metadata_json,
+                    )
+                    if stored_tuple != requested_tuple:
+&gt;                       raise ValueError("artifact_ref already indexes different immutable content")
+E                       ValueError: artifact_ref already indexes different immutable content
+
+src/atlas/v2/memory/repository.py:1655: ValueError</failure></testcase><testcase classname="tests.v2.test_session047_research_memory" name="test_memo_exact_identity_invalidation_and_changed_snapshot" time="0.670"><failure message="ValueError: artifact_ref already indexes different immutable content">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-134/test_memo_exact_identity_inval0')
+
+    def test_memo_exact_identity_invalidation_and_changed_snapshot(tmp_path):
+        with OpsRepository(tmp_path/'ops.sqlite') as repo:
+            memory = ResearchMemoryV1(repo)
+            j = job()
+            event = seed(repo)
+            memory.schedule(j, event_ref=event, now_ns=11)
+            memory.run_fake(j, FakeResearchProvider([output()]), clock_ns=lambda: 20)
+            next_job = replace(j, job_id='next')
+&gt;           memory.schedule(next_job, event_ref=event, now_ns=21)
+
+tests/v2/test_session047_research_memory.py:87:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/v2/research/memory.py:88: in schedule
+    self._persist(job.brief.content_hash, 'DecisionBriefResearchV1',
+src/atlas/v2/research/memory.py:54: in _persist
+    self.repository.register_artifact(ArtifactIndexEntryV2(ref, kind, sha256_json(body),
+src/atlas/v2/memory/repository.py:1496: in register_artifact
+    return self.register_artifacts((entry,))[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7fecd3f516a0&gt;
+entries = (ArtifactIndexEntryV2(artifact_ref='d1046a1e2daa5d0b75720648b5911b5bf5112002b490d7e166f3d4630e29c85b', artifact_type='...'inspect_memory_v1'))))), ('reasons', ()), ('status', 'COMPLETE'), ('version', 'ATLAS_DECISION_BRIEF_RESEARCH_V1')))),)
+
+    def register_artifacts(self, entries: Sequence[ArtifactIndexEntryV2]) -&gt; tuple[ArtifactIndexEntryV2, ...]:
+        """Atomically register a deterministic batch of immutable artifact rows."""
+        batch = tuple(entries)
+        if any(not isinstance(entry, ArtifactIndexEntryV2) for entry in batch):
+            raise ValueError("artifact batch must contain ArtifactIndexEntryV2 entries")
+        from ..data.public_archive_extents import extent_ref
+
+        compact = tuple(entry for entry in batch
+            if entry.artifact_type in ("PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1")
+            and isinstance(entry.metadata.get("archive_chunk_id"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", str(entry.metadata["archive_chunk_id"])) is not None
+            and self.get_artifact(extent_ref("ops-l2-frames" if entry.artifact_type == "PublicStreamFrameIndexV1"
+                else "ops-observations", str(entry.metadata["archive_chunk_id"]))) is not None)
+        if compact:
+            selected = {entry.artifact_ref for entry in compact}
+            with self.atomic_composition():
+                self.register_public_archive_entries(compact)
+                self.register_artifacts(tuple(entry for entry in batch if entry.artifact_ref not in selected))
+            return batch
+        original_batch = batch
+        if self._public_locator_enabled and batch:
+            known = self.get_artifact_metadata_by_refs(tuple(entry.artifact_ref for entry in batch))
+            aliases = set()
+            for entry in batch:
+                # A compact locator must never be shadowed by a generic row
+                # with the same ref and different immutable domain content.
+                prior = known.get(entry.artifact_ref)
+                if prior is not None and prior["artifact_type"] in (
+                        "PublicStreamFrameIndexV1", "PublicStreamTradeObservationIndexV1",
+                        "PublicStreamSourceHealthV1"):
+                    exact = self.get_artifact(entry.artifact_ref)
+                    if exact != entry:
+                        raise ValueError("artifact identity conflicts with immutable public evidence")
+                    with self._lock:
+                        alias = self._connection.execute(
+                            "SELECT 1 FROM public_stream_archive_locator_v1 WHERE artifact_ref=?",
+                            (bytes.fromhex(entry.artifact_ref),)).fetchone()
+                    if alias is not None:
+                        aliases.add(entry.artifact_ref)
+            batch = tuple(entry for entry in batch if entry.artifact_ref not in aliases)
+        compact_public: dict[str, tuple[str, str, str]] = {}
+        from ..data.compact_observation_index import compact_projection
+
+        encoded: dict[str, tuple[ArtifactIndexEntryV2, str, str]] = {}
+        for entry in batch:
+            metadata_json = canonical_json(entry.metadata)
+            storage_json = metadata_json
+            if entry.artifact_type == "PublicObservationIndexV2":
+                if "instrument_key_ref" in entry.metadata:
+                    raise ValueError("public observation metadata uses a reserved compact identity field")
+                # Legacy callers may use a different valid artifact identity.
+                # Keep those rows plain rather than imposing a new domain rule.
+                prepared = (compact_projection(entry.metadata) if entry.artifact_ref == sha256_json(
+                    {"artifact_type": "PublicObservationIndexV2",
+                     "record_id": entry.metadata.get("record_id")}) else None)
+                if prepared is not None:
+                    storage_json, key_ref = prepared
+                    compact_public[entry.artifact_ref] = (
+                        storage_json, key_ref, str(entry.metadata["instrument_key_json"]))
+            previous = encoded.get(entry.artifact_ref)
+            if previous is not None:
+                prior_entry, prior_json, prior_storage = previous
+                if (
+                    prior_entry.artifact_type,
+                    prior_entry.content_hash,
+                    prior_entry.created_at_ns,
+                    prior_entry.available_at_ns,
+                    prior_json,
+                    prior_storage,
+                ) != (
+                    entry.artifact_type,
+                    entry.content_hash,
+                    entry.created_at_ns,
+                    entry.available_at_ns,
+                    metadata_json,
+                    storage_json,
+                ):
+                    raise ValueError("artifact batch repeats an identity with different immutable content")
+            else:
+                encoded[entry.artifact_ref] = (entry, metadata_json, storage_json)
+        with self._transaction() as connection:
+            existing: dict[str, sqlite3.Row] = {}
+            refs = tuple(encoded)
+            for offset in range(0, len(refs), 500):
+                ref_batch = refs[offset : offset + 500]
+                if not ref_batch:
+                    continue
+                marks = ",".join("?" for _ in ref_batch)
+                rows = connection.execute(
+                    f"SELECT artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json "
+                    f"FROM artifact_index WHERE artifact_ref IN ({marks})",
+                    ref_batch,
+                ).fetchall()
+                existing.update((row["artifact_ref"], row) for row in rows)
+            from ..data.compact_observation_index import encode_blocks, register_identity
+
+            new_public = [(entry.artifact_ref, entry.metadata)
+                          for entry, _domain, _storage in encoded.values()
+                          if entry.artifact_ref not in existing and entry.artifact_ref in compact_public]
+            for block in encode_blocks(new_public):
+                prior = connection.execute(
+                    "SELECT entry_count,uncompressed_bytes,codec,compressed_metadata "
+                    "FROM public_observation_metadata_block_v1 WHERE block_ref=?", (block["block_ref"],),
+                ).fetchone()
+                candidate = (block["entry_count"], block["uncompressed_bytes"], "zlib-v1",
+                             block["compressed_metadata"])
+                if prior is None:
+                    connection.execute(
+                        "INSERT INTO public_observation_metadata_block_v1 "
+                        "(block_ref,entry_count,uncompressed_bytes,codec,compressed_metadata) VALUES(?,?,?,?,?)",
+                        (block["block_ref"], *candidate),
+                    )
+                elif (prior["entry_count"], prior["uncompressed_bytes"], prior["codec"],
+                      bytes(prior["compressed_metadata"])) != candidate:
+                    raise ValueError("public metadata block identity conflicts with stored content")
+                locators = block["locators"]
+                marks = ",".join("?" for _ in locators)
+                prior_locators = {bytes(row["artifact_ref"]): row for row in connection.execute(
+                    "SELECT artifact_ref,block_ref,ordinal FROM public_observation_metadata_locator_v1 "
+                    f"WHERE artifact_ref IN ({marks})", tuple(row[0] for row in locators))}
+                missing_locators = []
+                identities: dict[str, str] = {}
+                for artifact_ref, block_ref, ordinal in locators:
+                    prior_locator = prior_locators.get(artifact_ref)
+                    if prior_locator is not None:
+                        if (bytes(prior_locator["block_ref"]) != block_ref
+                                or prior_locator["ordinal"] != ordinal):
+                            raise ValueError("public observation metadata locator identity conflicts")
+                    else:
+                        missing_locators.append((artifact_ref, block_ref, ordinal))
+                    key_ref, identity_json = compact_public[artifact_ref.hex()][1:]
+                    previous_key = identities.setdefault(key_ref, identity_json)
+                    if previous_key != identity_json:
+                        raise ValueError("public instrument identity reference collision")
+                connection.executemany(
+                    "INSERT INTO public_observation_metadata_locator_v1 VALUES(?,?,?)", missing_locators)
+                for key_ref, identity_json in identities.items():
+                    register_identity(connection, key_ref=key_ref, canonical_key_json=identity_json)
+
+            for entry, metadata_json, storage_json in encoded.values():
+                row = existing.get(entry.artifact_ref)
+                if row is not None:
+                    stored_tuple = (
+                        row["artifact_type"],
+                        row["content_hash"],
+                        row["created_at_ns"],
+                        row["available_at_ns"],
+                        canonical_json(self.artifact_entry_from_storage_row(row).metadata),
+                    )
+                    requested_tuple = (
+                        entry.artifact_type,
+                        entry.content_hash,
+                        entry.created_at_ns,
+                        entry.available_at_ns,
+                        metadata_json,
+                    )
+                    if stored_tuple != requested_tuple:
+&gt;                       raise ValueError("artifact_ref already indexes different immutable content")
+E                       ValueError: artifact_ref already indexes different immutable content
+
+src/atlas/v2/memory/repository.py:1655: ValueError</failure></testcase><testcase classname="tests.v2.test_session047_research_agent" name="test_allowed_shadow_responses[SELECT_ONE]" time="0.003" /><testcase classname="tests.v2.test_session047_research_agent" name="test_allowed_shadow_responses[REJECT_ALL]" time="0.007" /><testcase classname="tests.v2.test_session047_research_agent" name="test_allowed_shadow_responses[ABSTAIN]" time="0.007" /><testcase classname="tests.v2.test_session047_research_agent" name="test_invalid_results[payload0-CANDIDATE_ACTION_SCOPE]" time="0.006" /><testcase classname="tests.v2.test_session047_research_agent" name="test_invalid_results[payload1-CANDIDATE_ACTION_SCOPE]" time="0.004" /><testcase classname="tests.v2.test_session047_research_agent" name="test_invalid_results[payload2-MALFORMED_RESULT]" time="0.011" /><testcase classname="tests.v2.test_session047_research_agent" name="test_invalid_results[payload3-STALE_SNAPSHOT]" time="0.009" /><testcase classname="tests.v2.test_session047_research_agent" name="test_invalid_results[payload4-MALFORMED_RESULT]" time="0.008" /><testcase classname="tests.v2.test_session047_research_agent" name="test_late_failure_unknown_price_capability_and_budget" time="0.022" /><testcase classname="tests.v2.test_session047_research_agent" name="test_one_supplementary_round_and_no_unsupported_tool" time="0.019" /></testsuite></testsuites>

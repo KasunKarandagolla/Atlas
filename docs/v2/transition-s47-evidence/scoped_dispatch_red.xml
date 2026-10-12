@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="2.930" timestamp="2026-10-12T16:16:32.548018+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session047_research_memory" name="test_uncertain_dispatch_cannot_be_retried_under_a_new_job_id" time="0.523"><failure message="AssertionError: assert 'VALID_SHADOW' == 'UNKNOWN'&#10;  &#10;  - UNKNOWN&#10;  + VALID_SHADOW">tmp_path = PosixPath('/tmp/pytest-of-kasun/pytest-151/test_uncertain_dispatch_cannot0')
+
+    def test_uncertain_dispatch_cannot_be_retried_under_a_new_job_id(tmp_path):
+        with OpsRepository(tmp_path/'ops.sqlite') as repo:
+            memory = ResearchMemoryV1(repo)
+            j = job()
+            event = seed(repo)
+            memory.schedule(j, event_ref=event, now_ns=11)
+            assert memory.run_fake(j, FakeResearchProvider([RuntimeError('uncertain')]),
+                clock_ns=lambda:20)['status'] == 'UNKNOWN'
+            alias = replace(j, job_id='alias')
+            memory.schedule(alias, event_ref=event, now_ns=21)
+            fake = FakeResearchProvider([output(job_id='alias')])
+&gt;           assert memory.run_fake(alias, fake, clock_ns=lambda:22)['status'] == 'UNKNOWN'
+E           AssertionError: assert 'VALID_SHADOW' == 'UNKNOWN'
+E
+E             - UNKNOWN
+E             + VALID_SHADOW
+
+tests/v2/test_session047_research_memory.py:267: AssertionError</failure></testcase></testsuite></testsuites>

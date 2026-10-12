@@ -1,0 +1,2 @@
+Using CPython 3.12.13 interpreter at: /home/kasun/Music/atlas/.venv/bin/python
+Resolved 39 packages in 3ms

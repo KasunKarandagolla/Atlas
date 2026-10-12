@@ -1,0 +1,32 @@
+{
+  "base_sha": "95efa393e50f5e71646c409a3b4ff83cf5acb6a2",
+  "baseline_peer_format_exit": 1,
+  "current_peer_format_exit": 1,
+  "new_files_format_exit": 0,
+  "baseline_command": [
+    "/home/kasun/Music/atlas/.venv/bin/python",
+    "-m",
+    "ruff",
+    "format",
+    "--check",
+    "--stdin-filename",
+    "src/atlas/v2/features/peer_context.py",
+    "-"
+  ],
+  "new_files_command": [
+    "/home/kasun/Music/atlas/.venv/bin/python",
+    "-m",
+    "ruff",
+    "format",
+    "--check",
+    "src/atlas/v2/research",
+    "tests/v2/test_session047_decision_brief.py",
+    "tests/v2/test_session047_event_classification.py",
+    "tests/v2/test_session047_peer_chronology.py",
+    "tests/v2/test_session047_research_agent.py",
+    "tests/v2/test_session047_research_memory.py",
+    "docs/v2/transition-s47-evidence/s47_offline_guard.py",
+    "docs/v2/transition-s47-evidence/event_saturation_probe.py"
+  ],
+  "note": "Existing peer formatting discrepancy retained to preserve one-guard surgical diff; all 11 additive Python files formatted."
+}

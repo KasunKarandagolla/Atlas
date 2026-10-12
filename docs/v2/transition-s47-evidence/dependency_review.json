@@ -1,0 +1,51 @@
+{
+  "project_python": "3.12.13",
+  "atlas_dependency_changes": false,
+  "lock_changes": false,
+  "license_changes": false,
+  "new_source_uses": "stdlib and already-installed ATLAS contracts only",
+  "installed_versions": {
+    "numpy": "2.5.3",
+    "duckdb": "1.5.5",
+    "pyarrow": "25.0.1",
+    "lightgbm": "4.7.0",
+    "nautilus-trader": "2.0.0rc5",
+    "websockets": "17.0.1",
+    "pytest": "9.1.1",
+    "ruff": "0.16.8",
+    "mypy": "2.3.1"
+  },
+  "known_lock_difference": "requirements-lock DuckDB 1.5.5 vs uv.lock 1.5.6, retained",
+  "artifacts": [
+    {
+      "path": "pyproject.toml",
+      "sha256": "1027697c586b9a8a39ca7b482057d3187e48e643902f05518ecfd141d8ed7933",
+      "unchanged_from_s46": true
+    },
+    {
+      "path": "requirements-lock.txt",
+      "sha256": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+      "unchanged_from_s46": true
+    },
+    {
+      "path": "requirements-agent-lock.txt",
+      "sha256": "47184aa3a8ba6045e527d47f274093c4821157ba208996659329872e7892f4e3",
+      "unchanged_from_s46": true
+    },
+    {
+      "path": "requirements-windows-lock.txt",
+      "sha256": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5",
+      "unchanged_from_s46": true
+    },
+    {
+      "path": "requirements-stream-test-lock.txt",
+      "sha256": "1b9bec8a6e1c19748a962a45f4f91984bb0bf26bdd3e08d4c20bb26d89b82ba7",
+      "unchanged_from_s46": true
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "8a3a1d14b7c4774b7189f18c7cc1c9086496135a34f86a7021ba7ff726898d61",
+      "unchanged_from_s46": true
+    }
+  ]
+}

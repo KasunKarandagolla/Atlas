@@ -1,0 +1,42 @@
+[
+  {
+    "name": "atlas-product",
+    "target": "atlas.v2.product:main",
+    "callable": true
+  },
+  {
+    "name": "atlas-v2-projection",
+    "target": "atlas.v2.desktop.ipc:main",
+    "callable": true
+  },
+  {
+    "name": "atlas-desktop",
+    "target": "atlas.desktop.app:main",
+    "callable": true
+  },
+  {
+    "name": "atlas-v2-public-qualification",
+    "target": "atlas.v2.data.qualification:main",
+    "callable": true
+  },
+  {
+    "name": "atlas-v2-public-soak",
+    "target": "atlas.v2.data.soak:main",
+    "callable": true
+  },
+  {
+    "name": "atlas-ops",
+    "target": "atlas.v2.runtime.ops_supervisor:main",
+    "callable": true
+  },
+  {
+    "name": "atlas-agent-worker",
+    "target": "atlas.v2.agent_intelligence.worker:worker_main",
+    "callable": true
+  },
+  {
+    "name": "atlas-agent-broker",
+    "target": "atlas.v2.agent_intelligence.broker:broker_main",
+    "callable": true
+  }
+]

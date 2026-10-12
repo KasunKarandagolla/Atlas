@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="22.279" timestamp="2026-10-12T15:17:02.896766+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session047_peer_chronology" name="test_s6_must_be_available_before_peer_computation" time="18.846"><failure message="ValueError: S6CrossSectionStateV2 content_hash mismatch">peer_fixture = {'keys': (InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;, environment=&lt;EnvironmentV2.MAINNET: 'MAINNET'&gt;, product=&lt;Pro...cimal('100.99749498660405'), close=Decimal('100.99749498660405'), volume=Decimal('10.0'), final=True), ...), ...}, ...}
+
+    def test_s6_must_be_available_before_peer_computation(peer_fixture):
+        state = peer_fixture["state"]
+&gt;       late = replace(state, envelope=replace(state.envelope, available_at_ns=CUTOFF + 5))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session047_peer_chronology.py:13:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../../Downloads/workshop/gate5-openhands/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/dataclasses.py:1588: in replace
+    return obj.__class__(**changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;string&gt;:14: in __init__
+    ???
+src/atlas/v2/strategies/s6_cross_section.py:338: in __post_init__
+    object.__setattr__(self, "envelope", seal_envelope(self.envelope, self._body(), artifact_type=self.ARTIFACT_TYPE))
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+envelope = ArtifactEnvelope(schema_version=1, artifact_id='778c4c3bc61e98a50494cad4d65c531022529d358fc4327aef4b6ec1bcb41ba3', cre...f6ccca8d9f3ac2e8e022889748aded58a59'), content_hash='18537f234aa3b1520f3e1deaf714871a11049ec6a495392f29f546f2943d5647')
+body = {'policy_hash': 'a8ec8cf56a06de32ebc7f92beb9f895dce6229dac87860b23528cca49069c029', 'cutoff_ns': 1800000000000000000, ...btc_proxy': {'schema_version': 1, 'venue': 'BYBIT', 'environment': 'MAINNET', 'product': 'LINEAR_PERPETUAL', ...}, ...}
+artifact_type = 'S6CrossSectionStateV2'
+
+    def seal_envelope(envelope: Any, body: Mapping[str, Any], *, artifact_type: str) -&gt; Any:
+        from dataclasses import replace
+
+        preimage = {"artifact_type": artifact_type, "artifact": artifact_wire(envelope, body, artifact_type=artifact_type, include_hash=False)}
+        digest = sha256_json(preimage)
+        if not envelope.content_hash:
+            return replace(envelope, content_hash=digest)
+        if envelope.content_hash != digest:
+&gt;           raise ValueError(f"{artifact_type} content_hash mismatch")
+E           ValueError: S6CrossSectionStateV2 content_hash mismatch
+
+src/atlas/v2/_serialization.py:190: ValueError</failure></testcase><testcase classname="tests.v2.test_session047_peer_chronology" name="test_s6_available_at_computation_boundary_is_valid" time="0.380"><failure message="ValueError: S6CrossSectionStateV2 content_hash mismatch">peer_fixture = {'keys': (InstrumentKeyV2(venue=&lt;VenueV2.BYBIT: 'BYBIT'&gt;, environment=&lt;EnvironmentV2.MAINNET: 'MAINNET'&gt;, product=&lt;Pro...cimal('100.99749498660405'), close=Decimal('100.99749498660405'), volume=Decimal('10.0'), final=True), ...), ...}, ...}
+
+    def test_s6_available_at_computation_boundary_is_valid(peer_fixture):
+        state = peer_fixture["state"]
+&gt;       boundary = replace(state, envelope=replace(state.envelope, available_at_ns=CUTOFF + 5))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session047_peer_chronology.py:20:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../../Downloads/workshop/gate5-openhands/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/dataclasses.py:1588: in replace
+    return obj.__class__(**changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;string&gt;:14: in __init__
+    ???
+src/atlas/v2/strategies/s6_cross_section.py:338: in __post_init__
+    object.__setattr__(self, "envelope", seal_envelope(self.envelope, self._body(), artifact_type=self.ARTIFACT_TYPE))
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+envelope = ArtifactEnvelope(schema_version=1, artifact_id='778c4c3bc61e98a50494cad4d65c531022529d358fc4327aef4b6ec1bcb41ba3', cre...f6ccca8d9f3ac2e8e022889748aded58a59'), content_hash='18537f234aa3b1520f3e1deaf714871a11049ec6a495392f29f546f2943d5647')
+body = {'policy_hash': 'a8ec8cf56a06de32ebc7f92beb9f895dce6229dac87860b23528cca49069c029', 'cutoff_ns': 1800000000000000000, ...btc_proxy': {'schema_version': 1, 'venue': 'BYBIT', 'environment': 'MAINNET', 'product': 'LINEAR_PERPETUAL', ...}, ...}
+artifact_type = 'S6CrossSectionStateV2'
+
+    def seal_envelope(envelope: Any, body: Mapping[str, Any], *, artifact_type: str) -&gt; Any:
+        from dataclasses import replace
+
+        preimage = {"artifact_type": artifact_type, "artifact": artifact_wire(envelope, body, artifact_type=artifact_type, include_hash=False)}
+        digest = sha256_json(preimage)
+        if not envelope.content_hash:
+            return replace(envelope, content_hash=digest)
+        if envelope.content_hash != digest:
+&gt;           raise ValueError(f"{artifact_type} content_hash mismatch")
+E           ValueError: S6CrossSectionStateV2 content_hash mismatch
+
+src/atlas/v2/_serialization.py:190: ValueError</failure></testcase></testsuite></testsuites>

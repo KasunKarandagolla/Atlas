@@ -1,0 +1,376 @@
+{
+  "links_checked": 74,
+  "missing": [],
+  "links": [
+    {
+      "document": "README.md",
+      "target": "docs/v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "README.md",
+      "target": "docs/v2/transition-s47-evidence/evidence_manifest.json",
+      "exists": true
+    },
+    {
+      "document": "README.md",
+      "target": "log.md",
+      "exists": true
+    },
+    {
+      "document": "README.md",
+      "target": "docs/INDEX.md",
+      "exists": true
+    },
+    {
+      "document": "README.md",
+      "target": "docs/v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md",
+      "exists": true
+    },
+    {
+      "document": "README.md",
+      "target": "docs/v2/ATLAS_TRANSITION_S45_FACTUAL_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "README.md",
+      "target": "docs/v2/transition-s45-evidence/evidence_manifest.json",
+      "exists": true
+    },
+    {
+      "document": "README.md",
+      "target": "pyproject.toml",
+      "exists": true
+    },
+    {
+      "document": "README.md",
+      "target": "docs/INDEX.md",
+      "exists": true
+    },
+    {
+      "document": "README.md",
+      "target": "docs/INDEX.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/transition-s47-evidence/evidence_manifest.json",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../README.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../log.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_S47_OWNER_IMPLEMENTATION_REQUEST.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_S47_SETUP_CONTINUATION.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_S46_IMPLEMENTATION_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/transition-s46-evidence/evidence_manifest.json",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../pyproject.toml",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../src/atlas/v2/features/technical.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../tests/v2/test_session014_core.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../tests/v2/test_session037_feature_prefix.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../src/atlas/v2/features/structure.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../src/atlas/v2/features/pipeline.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../src/atlas/v2/strategies/s6_cross_section.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../tests/v2/test_session021_s6.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../tests/v2/test_session041_s6_cohort.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../src/atlas/v2/data/bars.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../src/atlas/v2/instruments.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../src/atlas/v2/memory/repository.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_S46_IMPLEMENTATION_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/transition-s46-evidence/evidence_manifest.json",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_TRANSITION_S45_FACTUAL_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_TRANSITION_S45_DESIGN_DECISION_REGISTER.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_TRANSITION_S45_DOC_FINALIZATION_READINESS.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/transition-s45-evidence/",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/transition-s45-evidence/evidence_manifest.json",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_TRANSITION_TQ01_LINUX_QUALIFICATION.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "v2/ATLAS_TRANSITION_TQ01_VERSIONED_AMENDMENT_DRAFT.md",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../tests/v2/test_session044_close_driven_m15.py",
+      "exists": true
+    },
+    {
+      "document": "docs/INDEX.md",
+      "target": "../tests/contract/test_v1_golden_baseline.py",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/transition-s47-evidence/evidence_manifest.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/ATLAS_S47_SETUP_CONTINUATION.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/S42_TRADING_WORKLOAD_VALUE_AUDIT.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/S41_F1_THROUGHPUT_ARCHITECTURE_CORRECTION.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/2e5f73a07660f6ec95fd29907074df99253359bc7d4bfab5e6feeb53cb0a8489.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/13e099c597a41e4405b376380625bad3b455abdc02134bbccd886c3aefaf1606.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/f07b357446b555130fd30d53e1a76b8254b016ac56cc96dcc9a75c647f3ff892.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/f869afb6a25492617717c2725c09d9d9dec9c159ed33a7c67c879dd8748ff4b8.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/ec0793add3345bd8dcf3d9f050b8343d2af73a27e73fd52cbc3875179ea4deb3.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/2e5f73a07660f6ec95fd29907074df99253359bc7d4bfab5e6feeb53cb0a8489.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "SESSION041_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/7bde94433bf3f5bea6482cd82075d32ddbc786f6fb04b1a02c53822491f719d8.xml",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/7a9970f8b745a06112abcb5cac08f2ea66a2ffbd152260867ee6ede364686b3e.xml",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/c4c9ac0bc3287d073f9f118619457102f2faf3a07366389b1f6146f6a2319cff.xml",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/s41-r2-p2-probe-6fff106c46aacd948d61ebecf4443a2bb52d4f293f45a819360346874dc34165.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/s41-r2-p2-probe-bc4c7d899adc62fd88a83e410a35ed7a4c69fe5d7ce8519e0714d252ce94feb2.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/7b3b491c311503441599e42f6471c1dc50081c5693e4f497e4d491d60fc82cba.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/9fa9c8c9ca3767ee3fb7933b988433b880068ee6ada3ca1ad68bf68e614f7f79.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/session041-evidence/fe16a575a1491df675e63d14c5fb929bf0a980b5d5149710001b80d0fc230a42.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/ATLAS_TRANSITION_TQ01_LINUX_QUALIFICATION.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/ATLAS_TRANSITION_TQ01_VERSIONED_AMENDMENT_DRAFT.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/transition-tq01-evidence/evidence_manifest.json",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "translog.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/ATLAS_TRANSITION_S45_DESIGN_DECISION_REGISTER.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/ATLAS_TRANSITION_S45_DOC_FINALIZATION_READINESS.md",
+      "exists": true
+    },
+    {
+      "document": "log.md",
+      "target": "docs/v2/ATLAS_TRANSITION_S45_FACTUAL_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "docs/v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md",
+      "target": "ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md",
+      "exists": true
+    },
+    {
+      "document": "docs/v2/ATLAS_S47_IMPLEMENTATION_HANDOFF.md",
+      "target": "transition-s47-evidence/evidence_manifest.json",
+      "exists": true
+    },
+    {
+      "document": "docs/v2/ATLAS_S47_SETUP_CONTINUATION.md",
+      "target": "ATLAS_S47_IMPLEMENTATION_HANDOFF.md",
+      "exists": true
+    },
+    {
+      "document": "docs/v2/ATLAS_S47_SETUP_CONTINUATION.md",
+      "target": "ATLAS_S47_OWNER_IMPLEMENTATION_REQUEST.md",
+      "exists": true
+    }
+  ]
+}

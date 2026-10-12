@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="4.145" timestamp="2026-10-12T15:45:13.011478+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session047_research_agent" name="test_receipt_clock_cannot_promote_a_late_answer" time="0.019"><failure message="AssertionError: assert 'VALID_SHADOW' == 'EXPIRED'&#10;  &#10;  - EXPIRED&#10;  + VALID_SHADOW">def test_receipt_clock_cannot_promote_a_late_answer():
+        times = iter((20, 20, 20, 101))
+        result = run_fake_research_job(job(), FakeResearchProvider([output()]), clock_ns=lambda: next(times))
+        assert result.received_at_ns == 101
+&gt;       assert result.status == 'EXPIRED'
+E       AssertionError: assert 'VALID_SHADOW' == 'EXPIRED'
+E
+E         - EXPIRED
+E         + VALID_SHADOW
+
+tests/v2/test_session047_research_agent.py:224: AssertionError</failure></testcase></testsuite></testsuites>

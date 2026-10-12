@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="1.804" timestamp="2026-10-12T18:51:21.429094+05:30" hostname="Kasun"><testcase classname="tests.v2.test_session047_research_agent" name="test_supplementary_request_projects_full_receipts_and_provider_context[provider_context]" time="0.010"><failure message="AssertionError: assert 'VALID_SHADOW' == 'BUDGET_DENIED'&#10;  &#10;  - BUDGET_DENIED&#10;  + VALID_SHADOW">limiter = 'provider_context'
+
+    @pytest.mark.parametrize('limiter', ['provider_context', 'receipt_wrapper'])
+    def test_supplementary_request_projects_full_receipts_and_provider_context(limiter):
+        from atlas.v2._serialization import canonical_json
+        from atlas.v2.research.agent import ReadOnlyResearchGatewayV1
+
+        j = job()
+        brief_bytes = len(canonical_json(j.brief.to_dict()).encode('utf-8'))
+        receipt = ReadOnlyResearchGatewayV1(j).inspect(tool(), now_ns=20)
+        if limiter == 'provider_context':
+            j = replace(j, capabilities=replace(j.capabilities, context_limit=brief_bytes + 1))
+        else:
+            j = replace(j, budget=replace(j.budget,
+                max_projected_tokens=brief_bytes + receipt.bytes_returned + 1))
+        request = replace(tool(), resource_budget=sha256_json(j.budget.to_dict()))
+        fake = FakeResearchProvider([request, output()])
+        result = run_fake_research_job(j, fake, clock_ns=lambda: 20)
+&gt;       assert result.status == 'BUDGET_DENIED'
+E       AssertionError: assert 'VALID_SHADOW' == 'BUDGET_DENIED'
+E
+E         - BUDGET_DENIED
+E         + VALID_SHADOW
+
+tests/v2/test_session047_research_agent.py:271: AssertionError</failure></testcase><testcase classname="tests.v2.test_session047_research_agent" name="test_supplementary_request_projects_full_receipts_and_provider_context[receipt_wrapper]" time="0.009"><failure message="AssertionError: assert 'VALID_SHADOW' == 'BUDGET_DENIED'&#10;  &#10;  - BUDGET_DENIED&#10;  + VALID_SHADOW">limiter = 'receipt_wrapper'
+
+    @pytest.mark.parametrize('limiter', ['provider_context', 'receipt_wrapper'])
+    def test_supplementary_request_projects_full_receipts_and_provider_context(limiter):
+        from atlas.v2._serialization import canonical_json
+        from atlas.v2.research.agent import ReadOnlyResearchGatewayV1
+
+        j = job()
+        brief_bytes = len(canonical_json(j.brief.to_dict()).encode('utf-8'))
+        receipt = ReadOnlyResearchGatewayV1(j).inspect(tool(), now_ns=20)
+        if limiter == 'provider_context':
+            j = replace(j, capabilities=replace(j.capabilities, context_limit=brief_bytes + 1))
+        else:
+            j = replace(j, budget=replace(j.budget,
+                max_projected_tokens=brief_bytes + receipt.bytes_returned + 1))
+        request = replace(tool(), resource_budget=sha256_json(j.budget.to_dict()))
+        fake = FakeResearchProvider([request, output()])
+        result = run_fake_research_job(j, fake, clock_ns=lambda: 20)
+&gt;       assert result.status == 'BUDGET_DENIED'
+E       AssertionError: assert 'VALID_SHADOW' == 'BUDGET_DENIED'
+E
+E         - BUDGET_DENIED
+E         + VALID_SHADOW
+
+tests/v2/test_session047_research_agent.py:271: AssertionError</failure></testcase></testsuite></testsuites>

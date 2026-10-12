@@ -1,0 +1,90 @@
+[
+  {
+    "report": "brief_consumers.xml",
+    "raw_archive": "brief_consumers_raw.xml.gz",
+    "raw_sha256": "bc4450b3902671d5311e3b23011cc299bb670505d202e715c4549ad58f5a8cd5",
+    "raw_bytes": 5684,
+    "normalized_sha256": "ff205389c28756a191914bb2830137e9d6fc13a9070a890b747fabb56b3f62f9",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "brief_negatives_initial.xml",
+    "raw_archive": "brief_negatives_initial_raw.xml.gz",
+    "raw_sha256": "c62ce68768382de98a6ae6eb8cc577ec17b4f134cf9bb68847f771a5d89699b6",
+    "raw_bytes": 6357,
+    "normalized_sha256": "92ae7f87448ec74f2cc516483a9fdae11c614ab2270c1a34cfa014c9a935b464",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "broker_worker_outbox_regression.xml",
+    "raw_archive": "broker_worker_outbox_regression_raw.xml.gz",
+    "raw_sha256": "011c64b5187479cd8cf1dda7ae3752d1c4bd186038c81e25fb9c0d952f73e551",
+    "raw_bytes": 20265,
+    "normalized_sha256": "c60a9ff9c56755a1947eda4abccd03d1bca0d2d26e9ae44fe0512d97c7b7bf3c",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "event_classification_proof.xml",
+    "raw_archive": "event_classification_proof_raw.xml.gz",
+    "raw_sha256": "6837fd0255016cbad6162dfeb7cc60f548a800ec561bb19962c7b614c5719774",
+    "raw_bytes": 2596,
+    "normalized_sha256": "9121b53203e4d1992633c8e8fa6083799e8885cffb7828b30c71f6542a84df11",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "late_receipt_red.xml",
+    "raw_archive": "late_receipt_red_raw.xml.gz",
+    "raw_sha256": "7d41dfd7cb54f688fdb6badc270775f4b7b25c3c1bf6e7de5c5068f74d861456",
+    "raw_bytes": 978,
+    "normalized_sha256": "199feab16332c311cf96bf419f434d6e87e417fe34bca89f89d423a7f0f10b1b",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "memory_future_receipt_red.xml",
+    "raw_archive": "memory_future_receipt_red_raw.xml.gz",
+    "raw_sha256": "d23c55e2e5aba3b757db94f51e536b9799b6a9fea04d18aa00e1b81474c2513f",
+    "raw_bytes": 1326,
+    "normalized_sha256": "450856d71ea69322ebe032cef588dcaab8f92b76920374e55aec02deab88c08c",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "peer_chronology_red.xml",
+    "raw_archive": "peer_chronology_red_raw.xml.gz",
+    "raw_sha256": "2fc8d784c2a1cb1f6313af59ee3089dc4536005bd6d7979015f5a29366d8ac25",
+    "raw_bytes": 5749,
+    "normalized_sha256": "70632106b515c915d1e1323812d174218bd13eb6bced81c7b50c06b19e5b0c74",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "research_memory_initial_green.xml",
+    "raw_archive": "research_memory_initial_green_raw.xml.gz",
+    "raw_sha256": "5619aa376a9e9c594f852961afc42b763c3206861552f29af16e6d418aefb40a",
+    "raw_bytes": 25353,
+    "normalized_sha256": "d48efbef7c6ec35f8f8f03de5c6662c966fe1b37e660976b10ae1f6d9ca172cf",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "s46_broker_schema_baseline.xml",
+    "raw_archive": "s46_broker_schema_baseline_raw.xml.gz",
+    "raw_sha256": "3c3eeec69b6ea978e66a792d864b20868d9b57b30bf534d44ff481c95088b7c0",
+    "raw_bytes": 5484,
+    "normalized_sha256": "9a506da78d31d6f45119c44186038de697c3ba77cc786719c692fe500918d195",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "scoped_dispatch_red.xml",
+    "raw_archive": "scoped_dispatch_red_raw.xml.gz",
+    "raw_sha256": "66d1df34629b83ea6d284a588da845a2e9731fd27dd9ff40bc9319b9e728d3ef",
+    "raw_bytes": 1517,
+    "normalized_sha256": "17e937e4550aacc2205858747afce3752c78feac7cbe8d474e05f1da38c53f4c",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  },
+  {
+    "report": "supplementary_projection_red.xml",
+    "raw_archive": "supplementary_projection_red_raw.xml.gz",
+    "raw_sha256": "cef4432f6032b1836bff4570b2a9757986af47884fef6a65698e2212026ec017",
+    "raw_bytes": 3349,
+    "normalized_sha256": "cbfc9aafa2a37536df28823cdd849990d8b57c0342b5e65e02377309b64998b3",
+    "change": "trailing line whitespace only; exact raw bytes retained in gzip"
+  }
+]
