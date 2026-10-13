@@ -1,0 +1,501 @@
+{
+  "artifacts": [
+    {
+      "bytes": 2266,
+      "path": "AGENTS.md",
+      "role": "handoff_or_work_log",
+      "sha256": "f26c2d48a372dee9f56e4af2629a1f755e86a1f2bf30f76e77e6ecf8a3a987c6"
+    },
+    {
+      "bytes": 100689,
+      "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+      "role": "frozen_or_proposed_policy",
+      "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c"
+    },
+    {
+      "bytes": 88134,
+      "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "role": "frozen_or_proposed_policy",
+      "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+    },
+    {
+      "bytes": 11288,
+      "path": "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "role": "frozen_or_proposed_policy",
+      "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    {
+      "bytes": 16555,
+      "path": "docs/v2/ATLAS_RED_R3A_PRODUCTION_INTELLIGENCE_HANDOFF.md",
+      "role": "handoff_or_work_log",
+      "sha256": "420a3c4a31e71f78659442169d96d188808fe6b5d9f3f315bc7d61e8329dde44"
+    },
+    {
+      "bytes": 3060,
+      "path": "docs/v2/ATLAS_RED_R3B_AMENDMENT_ACCEPTANCE_DELTA.md",
+      "role": "handoff_or_work_log",
+      "sha256": "091a00c1f4e6f06a6ae20ba01ac19132d4f091f6d4ad1f66abad4744efde7c6a"
+    },
+    {
+      "bytes": 5336,
+      "path": "docs/v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md",
+      "role": "frozen_or_proposed_policy",
+      "sha256": "4928312614a3ef4c5b07ac8e5626be67dbd8db7e4955e0076a21b556c3ead8f4"
+    },
+    {
+      "bytes": 837,
+      "path": "docs/v2/transition-r3a-evidence/a0-baseline-compatibility.json",
+      "role": "test_or_validation_evidence",
+      "sha256": "764824d9cf9b970c22e5fc52469e451938d49bd4048fea49c1b2ff12decb3543"
+    },
+    {
+      "bytes": 5697,
+      "path": "docs/v2/transition-r3a-evidence/a0-r2.json",
+      "role": "test_or_validation_evidence",
+      "sha256": "5980950ae02bb6fac813e797978e6cbece6b4070c2d0a4908c3d235424526e7e"
+    },
+    {
+      "bytes": 5697,
+      "path": "docs/v2/transition-r3a-evidence/a0-r3a.json",
+      "role": "test_or_validation_evidence",
+      "sha256": "5980950ae02bb6fac813e797978e6cbece6b4070c2d0a4908c3d235424526e7e"
+    },
+    {
+      "bytes": 7531,
+      "path": "docs/v2/transition-r3a-evidence/junit-report-index.json",
+      "role": "test_or_validation_evidence",
+      "sha256": "a498d8e9e47ca9b06ea63d5cd1d96ea0f933a293cb75d1e588bf39d5442fe816"
+    },
+    {
+      "bytes": 536,
+      "path": "docs/v2/transition-r3a-evidence/production-brief-green-final.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "ca51a61882dcd297825b1cb8cd9ba95fd881fce56f78a6ac65bf62548b30f52d"
+    },
+    {
+      "bytes": 537,
+      "path": "docs/v2/transition-r3a-evidence/production-brief-green-measured.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "1d29db203f7251e4109fd987b12b225054ab112afbc04e72f4ccdeafaa628cb3"
+    },
+    {
+      "bytes": 359,
+      "path": "docs/v2/transition-r3a-evidence/production-brief-green.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "11620fb60aed402a495c2fff0f38f5c131deb5d831a3dab36c871db56ef6b361"
+    },
+    {
+      "bytes": 907,
+      "path": "docs/v2/transition-r3a-evidence/production-brief-red.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "539e0b5cc0e0af66f4632f36e5f4828d82684f22709f8c7d46affa95f2c0109b"
+    },
+    {
+      "bytes": 635,
+      "path": "docs/v2/transition-r3a-evidence/production-brief-resource-observations.json",
+      "role": "test_or_validation_evidence",
+      "sha256": "9fd44c905699fca82b6469872d4f444dc5c0e9ed31dc04b02d0242512dd8cd36"
+    },
+    {
+      "bytes": 6879,
+      "path": "docs/v2/transition-r3a-evidence/production-calendar-regression.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "334cedc40b39a1f8fe5dfe04491f1e1d858e4352427ba405eade69d56e311eec"
+    },
+    {
+      "bytes": 3333,
+      "path": "docs/v2/transition-r3a-evidence/r1-source-golden-regression.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "6ef9bef217f66095c908ff85e8797df5db52981e8e1ea089ee1e9bdaf03681b0"
+    },
+    {
+      "bytes": 3075,
+      "path": "docs/v2/transition-r3a-evidence/r2-capture-matrix.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "45feee3c3d7011aae25160e539bd60bf2fd7bba23b7d2ad1ff1023ed5f3b6dff"
+    },
+    {
+      "bytes": 1086,
+      "path": "docs/v2/transition-r3a-evidence/r2-capture-timing-rerun.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "43e781d60a86ba02f9add68a340a0471b0bc8883d26fa0daa0b4ee0e3ca08a91"
+    },
+    {
+      "bytes": 6912,
+      "path": "docs/v2/transition-r3a-evidence/r2-mixed-1024-rerun.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "3e94fcf36c66b0ba3dc5a90428c2c6184e812012603198fcf3b841aa16e2ec1c"
+    },
+    {
+      "bytes": 23858,
+      "path": "docs/v2/transition-r3a-evidence/r2-mixed-1024.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "9d66fbbe361a21511f476fb52986c616809a979f5f9cbf2cfd17f097096b9233"
+    },
+    {
+      "bytes": 286,
+      "path": "docs/v2/transition-r3a-evidence/r2-public-runtime-failed-case-rerun.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "68f5c6708788f860cd17afea54ad87cfc40f7cba7f50194d466bd001071282fd"
+    },
+    {
+      "bytes": 4747,
+      "path": "docs/v2/transition-r3a-evidence/r2-public-runtime-qualification-final.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "e071b8fe0b8dd6fb763dd2aa7aa86425ee5d1bd54815127649d3a4fe10a26745"
+    },
+    {
+      "bytes": 397,
+      "path": "docs/v2/transition-r3a-evidence/s44-missing-extra-rerun.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "439e14a0905f95d5d79f3a8c601a054aa7ba0260fa707e4080c99671dd8ebb07"
+    },
+    {
+      "bytes": 2364,
+      "path": "docs/v2/transition-r3a-evidence/s47-regression-final.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "50f3866c9b1a4386a9bec3673e7bd842c252f77a421c50c33e7a08618f43e12b"
+    },
+    {
+      "bytes": 2370,
+      "path": "docs/v2/transition-r3a-evidence/s47-regression.junit.xml.gz",
+      "role": "test_or_validation_evidence",
+      "sha256": "c7f05757d5c4e6321edf4b2fcc546742225f8f6547f4094b27d9e128a014dcff"
+    },
+    {
+      "bytes": 2441,
+      "path": "docs/v2/transition-r3a-evidence/security-scan.json",
+      "role": "test_or_validation_evidence",
+      "sha256": "aa560ba57c4c0c996e522032d9e6005c427bd24cfdd9598f9b78e500127d4d93"
+    },
+    {
+      "bytes": 2529,
+      "path": "docs/v2/transition-r3a-evidence/static-validation.json",
+      "role": "test_or_validation_evidence",
+      "sha256": "988e3361b848d6885994bbfa1cd5dc6c0ab11137be34ef8e63a30b37213992d3"
+    },
+    {
+      "bytes": 75437,
+      "path": "log.md",
+      "role": "handoff_or_work_log",
+      "sha256": "9e459d860b188719e8fa07cd3a8dc5332abc89592ab12eff671edc1d0ae69ef8"
+    },
+    {
+      "bytes": 65740,
+      "path": "src/atlas/v2/desktop/projection.py",
+      "role": "source_or_test",
+      "sha256": "94c6eb8aaa617ac18476446aaf1980518be594bf5d1d9e41bdfe2b19ba0ff0e7"
+    },
+    {
+      "bytes": 24274,
+      "path": "src/atlas/v2/research/memory.py",
+      "role": "source_or_test",
+      "sha256": "2726dbccf13a828099ae16cdbd78a01fdd5bcefb7b4bff341125a9e80fbd42c1"
+    },
+    {
+      "bytes": 61221,
+      "path": "src/atlas/v2/runtime/ops_supervisor.py",
+      "role": "source_or_test",
+      "sha256": "224aef8589cf8360e3df72ce2d9078ccb2e26cd4be367990bb51ec613b9ab910"
+    },
+    {
+      "bytes": 40514,
+      "path": "src/atlas/v2/runtime/production_intelligence.py",
+      "role": "source_or_test",
+      "sha256": "4b5382ae0aafa9391ba30b3209e061f636d28db2d5add93eb588d1c49247d1b0"
+    },
+    {
+      "bytes": 18335,
+      "path": "tests/v2/test_session052_production_intelligence.py",
+      "role": "source_or_test",
+      "sha256": "590e826f2933c56113766fd79a56e6c9a4a786c0a40dda016dac17a185cec46c"
+    },
+    {
+      "bytes": 98261,
+      "path": "translog.md",
+      "role": "handoff_or_work_log",
+      "sha256": "15b570ca887286c8575a48922d570d04551d228929afa6caf58b97c3a4a4a730"
+    }
+  ],
+  "branch": "impl/red-r3a-production-brief-memory-2026-10-13",
+  "frozen_authorities": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+  },
+  "implementation_commit_sha": "7a425ba410ab246ab1ce2b5136768b88594b74b8",
+  "junit_reports": [
+    {
+      "compressed_bytes": 536,
+      "compressed_sha256": "ca51a61882dcd297825b1cb8cd9ba95fd881fce56f78a6ac65bf62548b30f52d",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 0,
+      "original_bytes": 2083,
+      "original_filename": "production-brief-green-final.junit.xml",
+      "original_sha256": "58101f7dab08e6dfb2432acb4de881968be33e963e1b8924754f3edf3ca57b46",
+      "report": "production-brief-green-final.junit.xml.gz",
+      "skipped": 0,
+      "tests": 11
+    },
+    {
+      "compressed_bytes": 537,
+      "compressed_sha256": "1d29db203f7251e4109fd987b12b225054ab112afbc04e72f4ccdeafaa628cb3",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 0,
+      "original_bytes": 2084,
+      "original_filename": "production-brief-green-measured.junit.xml",
+      "original_sha256": "ffd9dcaefaf7fce312562e7a0fca9a63ac5d7e00ae11a98e9ae961793a0eb8e9",
+      "report": "production-brief-green-measured.junit.xml.gz",
+      "skipped": 0,
+      "tests": 11
+    },
+    {
+      "compressed_bytes": 359,
+      "compressed_sha256": "11620fb60aed402a495c2fff0f38f5c131deb5d831a3dab36c871db56ef6b361",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 0,
+      "original_bytes": 741,
+      "original_filename": "production-brief-green.junit.xml",
+      "original_sha256": "d041322198ed42ab3c57b677965ef0ee1fc7f1fd6a07e11bdb546e9b1d19533c",
+      "report": "production-brief-green.junit.xml.gz",
+      "skipped": 0,
+      "tests": 3
+    },
+    {
+      "compressed_bytes": 907,
+      "compressed_sha256": "539e0b5cc0e0af66f4632f36e5f4828d82684f22709f8c7d46affa95f2c0109b",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 1,
+      "original_bytes": 2204,
+      "original_filename": "production-brief-red.junit.xml",
+      "original_sha256": "0ea0a9358290a365c90e60b4195c4560a3ebeb29c249f3c6df107510c0851921",
+      "report": "production-brief-red.junit.xml.gz",
+      "skipped": 0,
+      "tests": 1
+    },
+    {
+      "compressed_bytes": 6879,
+      "compressed_sha256": "334cedc40b39a1f8fe5dfe04491f1e1d858e4352427ba405eade69d56e311eec",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 2,
+      "original_bytes": 36599,
+      "original_filename": "production-calendar-regression.junit.xml",
+      "original_sha256": "f0bbbff4e11ed23e4049ed33eaeea11a32b1f29ac658422da519d3704388258e",
+      "report": "production-calendar-regression.junit.xml.gz",
+      "skipped": 0,
+      "tests": 177
+    },
+    {
+      "compressed_bytes": 3333,
+      "compressed_sha256": "6ef9bef217f66095c908ff85e8797df5db52981e8e1ea089ee1e9bdaf03681b0",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 0,
+      "original_bytes": 17048,
+      "original_filename": "r1-source-golden-regression.junit.xml",
+      "original_sha256": "51f99f1e4d4b8dc9ffff9c7645cd65cb20a4a01c8a6277b8b7d046eb630c3674",
+      "report": "r1-source-golden-regression.junit.xml.gz",
+      "skipped": 0,
+      "tests": 112
+    },
+    {
+      "compressed_bytes": 3075,
+      "compressed_sha256": "45feee3c3d7011aae25160e539bd60bf2fd7bba23b7d2ad1ff1023ed5f3b6dff",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 2,
+      "original_bytes": 15027,
+      "original_filename": "r2-capture-matrix.junit.xml",
+      "original_sha256": "8618fc54aeaaa9121bfa9373603ace2403c5aa2096f0173f125057cda1aa59ab",
+      "report": "r2-capture-matrix.junit.xml.gz",
+      "skipped": 0,
+      "tests": 63
+    },
+    {
+      "compressed_bytes": 1086,
+      "compressed_sha256": "43e781d60a86ba02f9add68a340a0471b0bc8883d26fa0daa0b4ee0e3ca08a91",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 1,
+      "original_bytes": 2949,
+      "original_filename": "r2-capture-timing-rerun.junit.xml",
+      "original_sha256": "e90aef6e52d78d0c08c48b7cb86057e51aa1a35b7d35ddecb6f8e5dc774e3094",
+      "report": "r2-capture-timing-rerun.junit.xml.gz",
+      "skipped": 0,
+      "tests": 2
+    },
+    {
+      "compressed_bytes": 6912,
+      "compressed_sha256": "3e94fcf36c66b0ba3dc5a90428c2c6184e812012603198fcf3b841aa16e2ec1c",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 0,
+      "original_bytes": 30608,
+      "original_filename": "r2-mixed-1024-rerun.junit.xml",
+      "original_sha256": "d9df22df2138e155b75756dc64ae3d29425b7b79663755cae9fa6974d35930e8",
+      "report": "r2-mixed-1024-rerun.junit.xml.gz",
+      "skipped": 0,
+      "tests": 1
+    },
+    {
+      "compressed_bytes": 23858,
+      "compressed_sha256": "9d66fbbe361a21511f476fb52986c616809a979f5f9cbf2cfd17f097096b9233",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 1,
+      "original_bytes": 132426,
+      "original_filename": "r2-mixed-1024.junit.xml",
+      "original_sha256": "d6a9d3133ff4e67949f90bc8fefa56be2c56d8e0cccfe6eb01f43581c3451dc9",
+      "report": "r2-mixed-1024.junit.xml.gz",
+      "skipped": 0,
+      "tests": 1
+    },
+    {
+      "compressed_bytes": 286,
+      "compressed_sha256": "68f5c6708788f860cd17afea54ad87cfc40f7cba7f50194d466bd001071282fd",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 0,
+      "original_bytes": 428,
+      "original_filename": "r2-public-runtime-failed-case-rerun.junit.xml",
+      "original_sha256": "3ddda5a7b12dcea87e25ebafebe98c8f5d3aae999e903f101f05f39e094bfd66",
+      "report": "r2-public-runtime-failed-case-rerun.junit.xml.gz",
+      "skipped": 0,
+      "tests": 1
+    },
+    {
+      "compressed_bytes": 4747,
+      "compressed_sha256": "e071b8fe0b8dd6fb763dd2aa7aa86425ee5d1bd54815127649d3a4fe10a26745",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 1,
+      "original_bytes": 19209,
+      "original_filename": "r2-public-runtime-qualification-final.junit.xml",
+      "original_sha256": "a96d4f098063039642954b32365b8aa2e4436ba95b438e79d6bee6d89c9d0f66",
+      "report": "r2-public-runtime-qualification-final.junit.xml.gz",
+      "skipped": 0,
+      "tests": 40
+    },
+    {
+      "compressed_bytes": 397,
+      "compressed_sha256": "439e14a0905f95d5d79f3a8c601a054aa7ba0260fa707e4080c99671dd8ebb07",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 0,
+      "original_bytes": 744,
+      "original_filename": "s44-missing-extra-rerun.junit.xml",
+      "original_sha256": "3887a5b7b868e6518f75ad23d087fd4410ed641e5f61507af1e5609cc1bdbfe0",
+      "report": "s44-missing-extra-rerun.junit.xml.gz",
+      "skipped": 0,
+      "tests": 2
+    },
+    {
+      "compressed_bytes": 2364,
+      "compressed_sha256": "50f3866c9b1a4386a9bec3673e7bd842c252f77a421c50c33e7a08618f43e12b",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 0,
+      "original_bytes": 12486,
+      "original_filename": "s47-regression-final.junit.xml",
+      "original_sha256": "393f71de5e756528c7738bc98765dc3ef931ff611e93af834ad22c13fd88c261",
+      "report": "s47-regression-final.junit.xml.gz",
+      "skipped": 0,
+      "tests": 83
+    },
+    {
+      "compressed_bytes": 2370,
+      "compressed_sha256": "c7f05757d5c4e6321edf4b2fcc546742225f8f6547f4094b27d9e128a014dcff",
+      "decompression_verified": true,
+      "errors": 0,
+      "failures": 0,
+      "original_bytes": 12487,
+      "original_filename": "s47-regression.junit.xml",
+      "original_sha256": "deda03b9ab87c9e85c0ec3a0cda63a030207e7b25289cf3894280406c2247909",
+      "report": "s47-regression.junit.xml.gz",
+      "skipped": 0,
+      "tests": 83
+    }
+  ],
+  "manifest_payload_sha256": "03b922cfaf1c014c47b893b362bbd676fa71eea08e8c517ed69d6fe8463e4dc0",
+  "record": "ATLAS_RED_R3A_EVIDENCE_MANIFEST",
+  "repository": "KasunKarandagolla/Atlas",
+  "s47_proposal": {
+    "effective_policy_identity": "NONE",
+    "path": "docs/v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md",
+    "sha256": "4928312614a3ef4c5b07ac8e5626be67dbd8db7e4955e0076a21b556c3ead8f4",
+    "status": "PROPOSED — NOT ACCEPTED"
+  },
+  "safety_state": {
+    "agent_mode": "DISABLED",
+    "assisted_execution_enabled": false,
+    "capital_enabled": false,
+    "discretionary_selection": false,
+    "exchange_orders": false,
+    "provider_dispatch": false
+  },
+  "schema_version": 1,
+  "starting_remote_branch": "fix/red-r2-mixed-source-delivery-2026-10-13",
+  "starting_remote_sha": "67442118d5ffef818541e1b6f83d7fa6bae45293",
+  "starting_sha_is_ancestor_of_implementation_commit": true,
+  "status": {
+    "complete_production_typed_brief": "UNVERIFIED",
+    "economic_value": "NOT ESTIMABLE",
+    "focused_tests": "TESTED",
+    "full_repository": "TEST GATE",
+    "implementation": "IMPLEMENTED",
+    "owner_rolling_24h_write_total": "NOT ESTIMABLE",
+    "owner_source_package": "BLOCKED BY ENVIRONMENT",
+    "runtime_gpt_6_luna_label": "UNVERIFIED"
+  },
+  "tests": {
+    "full_repository": "TEST GATE_NOT_RUN",
+    "production_calendar_due_work_m15_peer_protection": {
+      "initial_passed": 175,
+      "optional_extra_rerun_passed": 2,
+      "report": "docs/v2/transition-r3a-evidence/production-calendar-regression.junit.xml.gz",
+      "unique_cases": 177
+    },
+    "production_intelligence_integration": {
+      "failed": 0,
+      "passed": 11,
+      "report": "docs/v2/transition-r3a-evidence/production-brief-green-measured.junit.xml.gz",
+      "tests": 11
+    },
+    "r1_source_chronology_golden": {
+      "failed": 0,
+      "passed": 112,
+      "report": "docs/v2/transition-r3a-evidence/r1-source-golden-regression.junit.xml.gz",
+      "tests": 112
+    },
+    "r2_capture_matrix": {
+      "initial_passed": 61,
+      "report": "docs/v2/transition-r3a-evidence/r2-capture-matrix.junit.xml.gz",
+      "rerun_failed": 1,
+      "rerun_passed": 1,
+      "rerun_report": "docs/v2/transition-r3a-evidence/r2-capture-timing-rerun.junit.xml.gz",
+      "unique_cases": 63
+    },
+    "r2_mixed_1024_contract": {
+      "first_run_failed_timing_gate": true,
+      "report": "docs/v2/transition-r3a-evidence/r2-mixed-1024-rerun.junit.xml.gz",
+      "rerun_passed": 1
+    },
+    "r2_public_runtime_and_qualification": {
+      "initial_passed": 39,
+      "one_exact_rerun_passed": 1,
+      "report": "docs/v2/transition-r3a-evidence/r2-public-runtime-qualification-final.junit.xml.gz",
+      "unique_cases": 40
+    },
+    "s47_brief_memory_agent_peer": {
+      "failed": 0,
+      "passed": 83,
+      "report": "docs/v2/transition-r3a-evidence/s47-regression-final.junit.xml.gz",
+      "tests": 83
+    }
+  }
+}

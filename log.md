@@ -270,3 +270,10 @@ Pushed implementation commit `9930fc834022ce3e8f5bc2239bd60867a251f46e` to `fix/
 **RECOVERED:** committed deterministic gzip representations for 33 pytest/mypy logs and the secret-scan JSON under `docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/`. Each record in `docs/v2/ATLAS_RED_R2_EVIDENCE_MANIFEST.json` links original path/size/SHA-256 to representation path/size/SHA-256 and confirms byte-exact decompression. Sensitive-content pattern review found no matches in the 34 originals; no sanitization or evidence alteration was needed. No claims lose independent verification from this reconciliation.
 
 **SCOPE:** only the evidence manifest, new lossless recovery artifacts, and this append-only documentation record changed. Production, tests, frozen authority, and prior evidence remain untouched.
+
+
+## ATLAS RED R3A production intelligence integration — 2026-10-13
+
+**CONFIRMED:** isolated branch `impl/red-r3a-production-brief-memory-2026-10-13` starts at accepted R2 `67442118d5ffef818541e1b6f83d7fa6bae45293`; implementation commit is `7a425ba410ab246ab1ce2b5136768b88594b74b8`. Connected the V1 production receipt to an additive, zero-authority Brief and memory projection through the existing ops writer. Real production lifecycle tests pass 11/11; the R2 red run produced no Brief. Receipt and six A0 artifact ref/hash sets match the accepted R2 fixture when projection is disabled. S47 83/83 and R1 source/golden 112/112 pass. Compressed JUnit and resource evidence are in `docs/v2/transition-r3a-evidence/`.
+
+**TEST GATE:** full 2,783-case repository suite not run (the previous attempt stopped at 1,196); one R2 capture timing case still fails on rerun. Whole-schedule/paired A0 denominator, production typed facts, due-work invalidation after restart, instrument/image overflow integration, owner-source review, and exact GPT-6 Luna label remain unavailable or unverified. The S47 amendment remains PROPOSED — NOT ACCEPTED, effective policy NONE. No provider, capital, order, merge, deployment, or self-acceptance. Push and independent review remain pending.

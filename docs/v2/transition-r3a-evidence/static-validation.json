@@ -1,5 +1,5 @@
 {
-  "artifact_manifest_consistency": "PENDING_FINAL_MANIFEST_GENERATION",
+  "artifact_manifest_consistency": "PASS_FINAL_MACHINE_VALIDATION",
   "changed_python_files": [
     "src/atlas/v2/runtime/production_intelligence.py",
     "src/atlas/v2/runtime/ops_supervisor.py",
@@ -43,10 +43,12 @@
       "status": "PASS"
     }
   },
+  "owner_source_package": "BLOCKED_BY_ENVIRONMENT_NOT_FOUND_AT_DOCUMENTED_PATHS",
   "ruff_lint": {
     "command": ".venv/bin/ruff check <five changed Python files>",
     "status": "PASS"
   },
+  "runtime_model_label": "UNVERIFIED_GPT_6_LUNA_REQUIREMENT_NOT_CONFIRMABLE_FROM_RUNTIME",
   "secret_scan": "see security-scan.json; local pattern scan found no matches; external scanner unavailable",
   "starting_source_sha": "67442118d5ffef818541e1b6f83d7fa6bae45293"
 }
