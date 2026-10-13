@@ -225,3 +225,8 @@ After the final strict VWAP feature-key correction, reran the full affected V2 g
 ## R1 final source-reference identity guard — 2026-10-13
 
 Code review found that one source reference could be rebound to a different native trade ID while keeping the same observed values. `utc_day_vwap` now rejects that conflicting identity, with a focused regression. The final affected V2 group passes **199/199 in 32.27s**. The S27 default production module had passed 16/16 after the complete-day VWAP correction; after this final identity guard, its restart composition test also passes **1/1 in 36.99s**. Scoped Ruff, compileall, lock/package checks, manifest JSON validation, whitespace check, and mypy comparison were rerun; mypy remains at 52 baseline diagnostics with zero normalized delta. These results supersede the earlier R1 V2 count of 198. Push verification remains pending.
+
+
+## R1 implementation push verified — 2026-10-13
+
+**CONFIRMED:** committed the implementation and evidence as `b7f3f17ef885781d9e8efa8dbd2254ee92b0433d` on `impl/red-r1-surgical-correctness-2026-10-13` and pushed to `origin/impl/red-r1-surgical-correctness-2026-10-13`. `git ls-remote origin refs/heads/impl/red-r1-surgical-correctness-2026-10-13` returned the exact same SHA; the accepted S49 base `a73c92d83ca8b2fe5163e636b2c9732361b35e23` is an ancestor. A documentation-only coordinator receipt follows. No merge, deployment, provider enablement, capital, order, or trading authority change.
