@@ -3045,6 +3045,64 @@ class ProductionOpsCyclePortV1:
         finally:
             collector.clock_ns = prior_clock
 
+        # A product's metadata_ref identifies the exact raw exchange row, but
+        # unlike a ProductContractV2 it is also consumed directly by causal
+        # feature diagnostics. Publish that row as a typed dependency only once
+        # its source observation has crossed the archive/index boundary.
+        products_by_key = {
+            product.key: product for product in getattr(self.public_source, "current_products", ())
+        }
+        for record in snapshot.records:
+            observation = record.observation
+            if observation.event_type != "PRODUCT_METADATA":
+                continue
+            product = products_by_key.get(record.instrument_key)
+            try:
+                metadata_row = json.loads(record.raw_payload)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                ingestion_complete = False
+                continue
+            observation_ref = sha256_json({
+                "artifact_type": "PublicObservationIndexV2",
+                "record_id": observation.record_id,
+            })
+            indexed = repository.get_artifact(observation_ref)
+            if (
+                product is None
+                or not isinstance(metadata_row, Mapping)
+                or product.metadata_ref != observation.raw_payload_hash
+                or sha256_json(metadata_row) != product.metadata_ref
+                or indexed is None
+                or indexed.artifact_type != "PublicObservationIndexV2"
+                or indexed.available_at_ns > reconciliation_at_ns
+                or indexed.metadata.get("source_id") != SOURCE_ID
+                or indexed.metadata.get("raw_payload_hash") != product.metadata_ref
+            ):
+                ingestion_complete = False
+                continue
+            metadata_body = {
+                "metadata": dict(metadata_row),
+                "input_refs": (observation_ref,),
+                "source_id": SOURCE_ID,
+                "source_observation_ref": observation_ref,
+            }
+            prior_metadata = repository.get_artifact(product.metadata_ref)
+            if prior_metadata is None:
+                repository.register_artifact(ArtifactIndexEntryV2(
+                    product.metadata_ref,
+                    "ProductMetadataEvidenceV1",
+                    product.metadata_ref,
+                    indexed.available_at_ns,
+                    indexed.available_at_ns,
+                    metadata_body,
+                ))
+            elif (
+                prior_metadata.artifact_type != "ProductMetadataEvidenceV1"
+                or prior_metadata.content_hash != product.metadata_ref
+                or canonical_json(prior_metadata.metadata.get("metadata")) != canonical_json(metadata_row)
+            ):
+                raise ValueError("PRODUCT_METADATA_REF_CONFLICT")
+
         by_symbol_events: dict[str, set[str]] = {symbol: set() for symbol in ("BTCUSDT", "ETHUSDT")}
         eligible_refs: set[str] = set()
         reconciled_snapshot_refs: set[str] = set()

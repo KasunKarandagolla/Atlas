@@ -1,0 +1,133 @@
+"""Safety checks for the approved read-only Demo connectivity probe."""
+
+from __future__ import annotations
+
+import io
+import json
+import urllib.error
+import urllib.request
+from types import SimpleNamespace
+from urllib.parse import urlsplit
+
+from scripts import atlas_red_demo_read_probe as probe
+
+
+def test_blocked_demo_clock_read_is_sanitized_and_stops_before_account_get(monkeypatch, capsys):
+    monkeypatch.setenv("ATLAS_BINANCE_DEMO_READ_ONLY_APPROVED", "YES")
+    monkeypatch.setenv("ATLAS_BINANCE_FUTURES_ENV", "DEMO_ONLY")
+    monkeypatch.setattr(
+        probe.DemoOnlyCredentials, "from_environment",
+        classmethod(lambda cls, env: object()),
+    )
+    monkeypatch.setattr(probe, "DemoOnlyAdapter", lambda **kwargs: _NeverSignedAdapter())
+
+    expected_proxy = {"https": "http://managed-proxy.invalid:8080"}
+    monkeypatch.setattr(probe.urllib.request, "getproxies", lambda: expected_proxy)
+
+    class BlockedOpener:
+        def open(self, request, timeout):
+            assert request.full_url == probe.BINANCE_FUTURES_DEMO_REST + "/fapi/v1/time"
+            assert timeout == 5.0
+            raise urllib.error.HTTPError(request.full_url, 451, "Unknown", {}, io.BytesIO())
+
+    def build_opener(*handlers):
+        proxy_handlers = [handler for handler in handlers
+                          if isinstance(handler, urllib.request.ProxyHandler)]
+        assert len(proxy_handlers) == 1
+        assert proxy_handlers[0].proxies == expected_proxy
+        return BlockedOpener()
+
+    monkeypatch.setattr(probe.urllib.request, "build_opener", build_opener)
+
+    assert probe.main() == 2
+    observed = json.loads(capsys.readouterr().out)
+    assert {key: value for key, value in observed.items()
+            if key not in {"request_started_at_utc", "response_observed_at_utc"}} == {
+        "environment": "DEMO_ONLY",
+        "endpoint": "demo-fapi.binance.com",
+        "operation": "PUBLIC_SERVER_TIME_GET",
+        "status": "HTTP_FAILURE",
+        "http_status": 451,
+        "account_payload_printed": False,
+        "credentials_printed": False,
+        "state_persisted": False,
+        "orders_submitted": False,
+        "signed_account_get_attempted": False,
+    }
+    assert observed["request_started_at_utc"].endswith("Z")
+    assert observed["response_observed_at_utc"].endswith("Z")
+    assert observed["request_started_at_utc"] <= observed["response_observed_at_utc"]
+
+
+def test_successful_probe_reads_demo_clock_account_and_public_instrument_info(monkeypatch, capsys):
+    monkeypatch.setenv("ATLAS_BINANCE_DEMO_READ_ONLY_APPROVED", "YES")
+    monkeypatch.setenv("ATLAS_BINANCE_FUTURES_ENV", "DEMO_ONLY")
+    monkeypatch.setattr(
+        probe.DemoOnlyCredentials, "from_environment",
+        classmethod(lambda cls, env: object()),
+    )
+    monkeypatch.setattr(probe.time, "time_ns", lambda: 1_800_000_000_000_000_000)
+    monkeypatch.setattr(probe, "DemoOnlyAdapter", lambda **kwargs: _FixtureSignedAdapter())
+    responses = {
+        "/fapi/v1/time": {"serverTime": 1_800_000_000_000},
+        "/fapi/v3/account": {"assets": []},
+        "/fapi/v1/exchangeInfo": {"symbols": [{"symbol": "BTCUSDT", "status": "TRADING"}]},
+    }
+
+    class Response:
+        status = 200
+
+        def __init__(self, path):
+            self.path = path
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def geturl(self):
+            return "https://demo-fapi.binance.com" + self.path
+
+        def read(self, limit):
+            return json.dumps(responses[self.path]).encode()
+
+    class SuccessfulOpener:
+        requests = []
+
+        def open(self, request, timeout):
+            assert timeout == 5.0
+            self.requests.append(request)
+            return Response(urlsplit(request.full_url).path)
+
+    opener = SuccessfulOpener()
+    monkeypatch.setattr(probe.urllib.request, "build_opener", lambda *handlers: opener)
+
+    assert probe.main() == 0
+    record = json.loads(capsys.readouterr().out)
+    assert [item.get_header("X-mbx-apikey") for item in opener.requests] == [None, "fixture-demo-key", None]
+    assert [urlsplit(item.full_url).path for item in opener.requests] == [
+        "/fapi/v1/time", "/fapi/v3/account", "/fapi/v1/exchangeInfo",
+    ]
+    assert record["request_count"] == 3
+    assert record["instrument_symbol_count"] == 1
+    assert record["orders_submitted"] is False
+    assert "assets" not in json.dumps(record)
+    assert "fixture-demo-key" not in json.dumps(record)
+    assert all(item["request_started_at_utc"].endswith("Z")
+               and item["response_observed_at_utc"].endswith("Z") for item in record["requests"])
+
+
+class _NeverSignedAdapter:
+    def build_signed_read(self, *args, **kwargs):
+        raise AssertionError("account GET must not follow a denied server-time request")
+
+
+class _FixtureSignedAdapter:
+    def build_signed_read(self, path, params):
+        assert path == "/fapi/v3/account"
+        assert params == {"recvWindow": 5000}
+        return SimpleNamespace(
+            full_url="https://demo-fapi.binance.com/fapi/v3/account?timestamp=1800000000000&signature=fixture",
+            api_key="fixture-demo-key",
+        )

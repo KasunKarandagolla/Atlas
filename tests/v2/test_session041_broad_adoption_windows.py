@@ -44,7 +44,8 @@ def test_adoption_retains_all_rows_and_reconciles_identity_published_by_stream_s
             collector.flush_archive()
 
         port = SimpleNamespace(_collector_recovery=SimpleNamespace(collector=collector),
-            public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES),
+            public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES,
+                current_products=tuple(products)),
             clock_ns=lambda: NOW, service_public_stream=service)
         ready = ProductionOpsCyclePortV1._persist_broad_public_snapshot(
             port, repo, _snapshot(records, NOW), now_ns=NOW)

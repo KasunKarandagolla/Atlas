@@ -174,7 +174,8 @@ def test_typed_readiness_binds_approved_action_and_restarts_writer(journal):
     )
 
 
-def test_real_dispatch_persists_unknown_before_effect_and_never_retries(journal):
+@pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+def test_real_dispatch_persists_unknown_before_effect_and_never_retries(journal, failure):
     from unittest.mock import Mock
 
     from nautilus_trader.common import Clock, OrderFactory
@@ -200,7 +201,8 @@ def test_real_dispatch_persists_unknown_before_effect_and_never_retries(journal)
 
     def effect(_order, **_kwargs):
         assert journal.load_command(command.command_id).outcome.value == "UNKNOWN"
-        raise TimeoutError("transport detail must stay private")
+        if failure is not None:
+            raise failure("transport detail must stay private")
 
     host.submit_order.side_effect = effect
     kwargs = {

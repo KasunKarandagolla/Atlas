@@ -153,6 +153,9 @@ def test_installed_public_run_connects_context_to_writer_and_closes(tmp_path, bu
     owner_thread = threading.get_ident()
 
     class Context:
+        def __init__(self, **kwargs):
+            assert kwargs == {"event_extraction_provider": None}
+
         def run_cycle(self, repo, *, information_cutoff_ns):
             nonlocal stopped
             assert not repo.read_only and threading.get_ident() == owner_thread

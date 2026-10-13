@@ -178,8 +178,12 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
     for diagnostic in (anchored, profile):
         if diagnostic is not None:
             location_refs.update(diagnostic.input_refs)
-            if diagnostic.input_identity is not None:
-                location_refs.add(diagnostic.input_identity)
+            # input_identity is a deterministic digest of the diagnostic
+            # result, not an indexed artifact. The feature computation binds
+            # that result itself; only source artifacts belong in its causal
+            # dependency manifest. Production also binds the typed
+            # TradeLocationInputReceiptV1 that seals the configuration and
+            # observed trade inputs.
     state_ref = None
     if join.m15:
         atr_series = tuple(row["atr14"] for row in technical_by_frame["m15"])

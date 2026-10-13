@@ -117,7 +117,7 @@ def _universe(repository: OpsRepository, entry: ArtifactIndexEntryV2) -> Univers
         indexed = resolved_refs[item.product_ref]
         if (indexed["available_at_ns"] > universe.decision_slot_ns
                 or indexed["artifact_type"] != "ProductContractV2"):
-            raise ValueError("universe requires typed product metadata")
+            raise ValueError("universe product metadata is unavailable by the decision slot or has an invalid type")
         product = ProductContractV2.from_dict(json_value(indexed["metadata"]["product"]))
         if (product.content_hash != item.product_ref or indexed["content_hash"] != item.product_ref
                 or product.key != item.key or product.effective_at_ns > universe.decision_slot_ns):

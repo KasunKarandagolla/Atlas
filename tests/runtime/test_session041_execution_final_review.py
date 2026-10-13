@@ -60,9 +60,8 @@ def test_opening_cannot_mark_send_or_reach_effect(journal, dispatcher, gate):
     port.dispatch.assert_not_called()
 
 
-@pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
 @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
-def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+def test_bybit_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, failure):
     intent = add_intent(journal)
     before = journal.load_reservation(intent.intent_id)
     command = journal.prepare_dispatch(
@@ -83,9 +82,9 @@ def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journ
     args = {"journal": journal, "command_id": command.command_id,
             "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
             "writer_epoch": 1, "assert_writer": lambda: None}
-    assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+    assert dispatch_persisted_bybit_command(**args).outcome == CommandOutcome.UNKNOWN
     with pytest.raises(PersistenceError):
-        dispatcher(**args)
+        dispatch_persisted_bybit_command(**args)
     assert seen == [command.command_id]
     assert journal.load_reservation(intent.intent_id).remaining_open_qty == before.remaining_open_qty
 

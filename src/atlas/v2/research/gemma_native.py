@@ -34,6 +34,8 @@ GEMINI_API_HOST = "generativelanguage.googleapis.com"
 GEMMA_MODEL_ID = "gemma-4-31b-it"
 MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024
 MAX_PROVIDER_TEXT_BYTES = 16 * 1024
+DEFAULT_REQUEST_TIMEOUT_SECONDS = 60.0
+MAX_REQUEST_TIMEOUT_SECONDS = 120.0
 
 RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "OBJECT",
@@ -189,6 +191,7 @@ class GeminiNativeClient:
         opener: Any = None,
         clock_ns: Any = time.time_ns,
         monotonic_ns: Any = time.monotonic_ns,
+        request_timeout_seconds: float = DEFAULT_REQUEST_TIMEOUT_SECONDS,
     ) -> None:
         if host != GEMINI_API_HOST:
             raise ValueError("Gemini host is outside the pinned allowlist")
@@ -198,12 +201,17 @@ class GeminiNativeClient:
             raise GeminiProviderError("PROVIDER_CREDENTIAL_UNAVAILABLE")
         if not isinstance(permit, (GeminiSmokePermitV1, GeminiJobDispatchPermitV1)):
             raise ValueError("Gemini calls require a smoke or durable job dispatch permit")
+        if (isinstance(request_timeout_seconds, bool)
+                or not isinstance(request_timeout_seconds, (int, float))
+                or not 0.1 <= request_timeout_seconds <= MAX_REQUEST_TIMEOUT_SECONDS):
+            raise ValueError("Gemini request timeout must be between 0.1 and 120 seconds")
         self.host = host
         self.model_id = model_id
         self.__api_key = api_key
         self.__permit = permit
         self._clock_ns = clock_ns
         self._monotonic_ns = monotonic_ns
+        self._request_timeout_seconds = float(request_timeout_seconds)
         self._opener = opener or urllib.request.build_opener(
             urllib.request.ProxyHandler(), _GeminiNoRedirect()
         )
@@ -227,7 +235,17 @@ class GeminiNativeClient:
         key = os.environ.get("GEMINI_API_KEY")
         if not key:
             raise GeminiProviderError("PROVIDER_CREDENTIAL_UNAVAILABLE")
-        return cls(api_key=key, permit=permit, opener=opener, clock_ns=clock_ns, monotonic_ns=monotonic_ns)
+        configured_timeout = os.environ.get("ATLAS_GEMINI_REQUEST_TIMEOUT_SECONDS")
+        try:
+            request_timeout = (DEFAULT_REQUEST_TIMEOUT_SECONDS if configured_timeout is None
+                               else float(configured_timeout))
+        except ValueError:
+            raise GeminiProviderError("CONFIGURED_TIMEOUT_INVALID") from None
+        try:
+            return cls(api_key=key, permit=permit, opener=opener, clock_ns=clock_ns,
+                       monotonic_ns=monotonic_ns, request_timeout_seconds=request_timeout)
+        except ValueError:
+            raise GeminiProviderError("CONFIGURED_TIMEOUT_INVALID") from None
 
     @property
     def requests_made(self) -> int:
@@ -275,7 +293,10 @@ class GeminiNativeClient:
         remaining_ns = deadline_ns - self._clock_ns()
         if remaining_ns <= 0:
             raise GeminiProviderError("DEADLINE_EXPIRED")
-        timeout = min(15.0, remaining_ns / 1_000_000_000)
+        # Cap the configured socket timeout with the caller's remaining
+        # absolute deadline. Late responses are rejected by the monotonic
+        # post-read check below.
+        timeout = min(self._request_timeout_seconds, remaining_ns / 1_000_000_000)
         started = self._monotonic_ns()
         monotonic_deadline = started + remaining_ns
         try:

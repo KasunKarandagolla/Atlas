@@ -10,6 +10,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import UTC, datetime
 
 from atlas.runtime.binance_futures_demo_r4 import (
     BINANCE_FUTURES_DEMO_REST,
@@ -25,6 +26,34 @@ MAX_CLOCK_SKEW_MS = 2_000
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+
+def _utc_timestamp() -> str:
+    return datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def _failure(operation: str, status: str, *, request_started_at_utc: str,
+             http_status: int | None = None, response_body_bytes: int | None = None) -> int:
+    record = {
+        "environment": "DEMO_ONLY",
+        "endpoint": "demo-fapi.binance.com",
+        "operation": operation,
+        "status": status,
+        "request_started_at_utc": request_started_at_utc,
+        "response_observed_at_utc": _utc_timestamp(),
+        "account_payload_printed": False,
+        "credentials_printed": False,
+        "state_persisted": False,
+        "orders_submitted": False,
+    }
+    if http_status is not None:
+        record["http_status"] = http_status
+    if response_body_bytes is not None:
+        record["response_body_bytes_read"] = response_body_bytes
+    if operation == "PUBLIC_SERVER_TIME_GET":
+        record["signed_account_get_attempted"] = False
+    print(json.dumps(record, sort_keys=True))
+    return 2
 
 
 def _read(opener, request: urllib.request.Request) -> tuple[int, bytes, str]:
@@ -51,19 +80,39 @@ def main() -> int:
         credentials=credentials,
         clock_ms=lambda: time.time_ns() // 1_000_000,
     )
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+    # Preserve the managed environment's configured proxy policy. An empty
+    # ProxyHandler would bypass it and make this probe fail closed by policy.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler(), _NoRedirect())
 
     time_request = urllib.request.Request(
         BINANCE_FUTURES_DEMO_REST + "/fapi/v1/time", method="GET"
     )
-    status, time_body, _ = _read(opener, time_request)
+    time_request_started_at = _utc_timestamp()
+    try:
+        status, time_body, _ = _read(opener, time_request)
+    except urllib.error.HTTPError as error:
+        return _failure("PUBLIC_SERVER_TIME_GET", "HTTP_FAILURE",
+                        request_started_at_utc=time_request_started_at, http_status=error.code)
+    except (urllib.error.URLError, TimeoutError):
+        return _failure("PUBLIC_SERVER_TIME_GET", "NETWORK_FAILURE",
+                        request_started_at_utc=time_request_started_at)
+    time_response_observed_at = _utc_timestamp()
     if status != 200:
-        raise RuntimeError("DEMO_ONLY_EXCHANGE_CLOCK_UNAVAILABLE")
-    time_payload = json.loads(time_body)
+        return _failure("PUBLIC_SERVER_TIME_GET", "HTTP_FAILURE",
+                        request_started_at_utc=time_request_started_at, http_status=status,
+                        response_body_bytes=len(time_body))
+    try:
+        time_payload = json.loads(time_body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return _failure("PUBLIC_SERVER_TIME_GET", "INVALID_RESPONSE",
+                        request_started_at_utc=time_request_started_at,
+                        response_body_bytes=len(time_body))
     server_time_ms = time_payload.get("serverTime") if isinstance(time_payload, dict) else None
     local_time_ms = time.time_ns() // 1_000_000
     if type(server_time_ms) is not int or abs(local_time_ms - server_time_ms) > MAX_CLOCK_SKEW_MS:
-        raise RuntimeError("DEMO_ONLY_EXCHANGE_CLOCK_SKEW")
+        return _failure("PUBLIC_SERVER_TIME_GET", "CLOCK_VALIDATION_FAILED",
+                        request_started_at_utc=time_request_started_at,
+                        response_body_bytes=len(time_body))
 
     signed = adapter.build_signed_read("/fapi/v3/account", {"recvWindow": 5000})
     signed_url = urllib.parse.urlsplit(signed.full_url)
@@ -75,25 +124,85 @@ def main() -> int:
         headers={"X-MBX-APIKEY": signed.api_key, "Accept": "application/json"},
         method="GET",
     )
+    account_request_started_at = _utc_timestamp()
     try:
         status, body, _ = _read(opener, request)
     except urllib.error.HTTPError as error:
-        print(json.dumps({"environment": "DEMO_ONLY", "status": "HTTP_FAILURE", "http_status": error.code}))
-        return 2
+        return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "HTTP_FAILURE",
+                        request_started_at_utc=account_request_started_at, http_status=error.code)
+    except (urllib.error.URLError, TimeoutError):
+        return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "NETWORK_FAILURE",
+                        request_started_at_utc=account_request_started_at)
+    account_response_observed_at = _utc_timestamp()
     if status != 200:
-        print(json.dumps({"environment": "DEMO_ONLY", "status": "HTTP_FAILURE", "http_status": status}))
-        return 2
-    payload = json.loads(body)
+        return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "HTTP_FAILURE",
+                        request_started_at_utc=account_request_started_at, http_status=status,
+                        response_body_bytes=len(body))
+    try:
+        payload = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "INVALID_RESPONSE",
+                        request_started_at_utc=account_request_started_at,
+                        response_body_bytes=len(body))
     if not isinstance(payload, dict):
-        raise RuntimeError("DEMO_ONLY_ACCOUNT_RESPONSE_INVALID")
+        return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "INVALID_RESPONSE",
+                        request_started_at_utc=account_request_started_at,
+                        response_body_bytes=len(body))
+
+    instrument_request = urllib.request.Request(
+        BINANCE_FUTURES_DEMO_REST + "/fapi/v1/exchangeInfo", method="GET",
+        headers={"Accept": "application/json"},
+    )
+    instrument_request_started_at = _utc_timestamp()
+    try:
+        instrument_status, instrument_body, _ = _read(opener, instrument_request)
+    except urllib.error.HTTPError as error:
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "HTTP_FAILURE",
+                        request_started_at_utc=instrument_request_started_at,
+                        http_status=error.code)
+    except (urllib.error.URLError, TimeoutError):
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "NETWORK_FAILURE",
+                        request_started_at_utc=instrument_request_started_at)
+    instrument_response_observed_at = _utc_timestamp()
+    if instrument_status != 200:
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "HTTP_FAILURE",
+                        request_started_at_utc=instrument_request_started_at,
+                        http_status=instrument_status, response_body_bytes=len(instrument_body))
+    try:
+        instrument_payload = json.loads(instrument_body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "INVALID_RESPONSE",
+                        request_started_at_utc=instrument_request_started_at,
+                        response_body_bytes=len(instrument_body))
+    symbols = instrument_payload.get("symbols") if isinstance(instrument_payload, dict) else None
+    if not isinstance(symbols, list) or any(
+        not isinstance(item, dict) or not isinstance(item.get("symbol"), str) for item in symbols
+    ):
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "INVALID_RESPONSE",
+                        request_started_at_utc=instrument_request_started_at,
+                        response_body_bytes=len(instrument_body))
     print(json.dumps({
         "environment": "DEMO_ONLY",
         "endpoint": "demo-fapi.binance.com",
-        "operation": "SIGNED_READ_ONLY_ACCOUNT_GET",
+        "operation": "BOUNDED_READ_ONLY_CONNECTIVITY_SEQUENCE",
+        "authorization_reference": "owner-authorized Demo read-only sequence; process-local approval marker",
+        "trade_plan_identity_sha256": None,
+        "request_count": 3,
+        "requests": [
+            {"operation": "PUBLIC_SERVER_TIME_GET", "request_started_at_utc": time_request_started_at,
+             "response_observed_at_utc": time_response_observed_at},
+            {"operation": "SIGNED_READ_ONLY_ACCOUNT_GET", "request_started_at_utc": account_request_started_at,
+             "response_observed_at_utc": account_response_observed_at},
+            {"operation": "PUBLIC_INSTRUMENT_INFO_GET", "request_started_at_utc": instrument_request_started_at,
+             "response_observed_at_utc": instrument_response_observed_at},
+        ],
         "status": "READ_OK",
         "exchange_clock_skew_ms": local_time_ms - server_time_ms,
-        "response_bytes": len(body),
-        "response_sha256": hashlib.sha256(body).hexdigest(),
+        "account_response_bytes": len(body),
+        "account_response_sha256": hashlib.sha256(body).hexdigest(),
+        "instrument_response_bytes": len(instrument_body),
+        "instrument_response_sha256": hashlib.sha256(instrument_body).hexdigest(),
+        "instrument_symbol_count": len(symbols),
         "account_payload_printed": False,
         "credentials_printed": False,
         "state_persisted": False,

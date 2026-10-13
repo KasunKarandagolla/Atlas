@@ -156,6 +156,43 @@ def test_native_client_is_pinned_and_redacts_credentials():
                            host="generativelanguage.google.internal")
 
 
+@pytest.mark.parametrize(
+    ("request_timeout_seconds", "remaining_seconds", "expected_timeout"),
+    [(60.0, 60.0, 60.0), (35.0, 60.0, 35.0), (35.0, 8.0, 8.0)],
+)
+def test_request_timeout_is_configurable_and_capped_by_absolute_deadline(
+    request_timeout_seconds, remaining_seconds, expected_timeout
+):
+    opener = Mock()
+    opener.open.return_value = Response(generated_payload(output()))
+    now_ns = 1_000_000_000
+    client = GeminiNativeClient(
+        api_key="fixture-secret", permit=permit(), opener=opener,
+        clock_ns=lambda: now_ns, monotonic_ns=lambda: 0,
+        request_timeout_seconds=request_timeout_seconds,
+    )
+
+    client.generate_json("synthetic prompt", deadline_ns=now_ns + int(remaining_seconds * 1e9))
+
+    assert opener.open.call_args.kwargs["timeout"] == expected_timeout
+    assert opener.open.call_count == 1
+
+
+def test_request_timeout_configuration_is_bounded_and_environment_driven(monkeypatch):
+    with pytest.raises(ValueError, match="between 0.1 and 120"):
+        GeminiNativeClient(api_key="fixture-secret", permit=permit(), opener=Mock(),
+                           request_timeout_seconds=120.1)
+    monkeypatch.setenv("GEMINI_API_KEY", "fixture-secret")
+    monkeypatch.setenv("GEMMA_MODEL", GEMMA_MODEL_ID)
+    monkeypatch.setenv("ATLAS_GEMINI_FREE_TIER_VERIFIED", "true")
+    monkeypatch.setenv("ATLAS_GEMINI_REQUEST_TIMEOUT_SECONDS", "9.5")
+    client = GeminiNativeClient.from_environment(permit=permit(), opener=Mock())
+    assert client._request_timeout_seconds == 9.5
+    monkeypatch.setenv("ATLAS_GEMINI_REQUEST_TIMEOUT_SECONDS", "invalid")
+    with pytest.raises(GeminiProviderError, match="CONFIGURED_TIMEOUT_INVALID"):
+        GeminiNativeClient.from_environment(permit=permit(), opener=Mock())
+
+
 def test_model_and_structured_output_probes_use_native_api_and_hide_payloads():
     opener = Mock()
     opener.open.side_effect = [Response(model_payload()), Response(generated_payload(output()))]

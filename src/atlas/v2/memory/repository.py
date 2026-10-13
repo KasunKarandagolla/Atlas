@@ -2288,7 +2288,17 @@ class OpsRepository:
                 "ON p.publication_id=l.publication_id WHERE a.artifact_ref=?", (artifact_ref,),
             ).fetchone()
         if row is None:
-            return None
+            if not self._public_locator_enabled:
+                return None
+            # Compact stream locators live outside artifact_index. Their
+            # registration already requires a verified durable archive extent,
+            # so their stored availability is the effective publication time.
+            with self._lock:
+                compact = self._connection.execute(
+                    "SELECT available_at_ns FROM public_stream_archive_locator_v1 WHERE artifact_ref=?",
+                    (bytes.fromhex(artifact_ref),),
+                ).fetchone()
+            return int(compact["available_at_ns"]) if compact is not None else None
         if row["publication_id"] is None:
             return int(row["available_at_ns"])
         if row["observed_at_ns"] is None or row["logical_ready_at_ns"] is None:
