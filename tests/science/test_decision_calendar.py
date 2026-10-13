@@ -17,7 +17,7 @@ from atlas.science.decision_calendar import (
     record_from_evaluation,
 )
 from atlas.science.evaluation import DecisionStatus
-from atlas.science.phase4_engine import evaluate_phase4
+from atlas.science.phase4_engine import evaluate_phase4, evaluate_phase4_qualified, phase4_action_hash
 from atlas.science.research_archive import ResearchArtifactArchive
 
 FOUR_HOURS = 4 * 3_600_000_000_000
@@ -155,3 +155,21 @@ def test_complete_interval_api_requires_every_slot_and_instrument():
     assert len(missing) == 4 and all(slot % DAY_NS == 20 * HOUR_NS for slot, _ in missing)
     with pytest.raises(ValueError, match="incomplete decision calendar"):
         partial.assert_complete(start, start + 2 * DAY_NS)
+
+
+def test_historical_phase4_hashes_remain_frozen_without_qualification_receipt():
+    value = decision_input(snapshot_evidence=None)
+    evaluation = evaluate_phase4(value)
+    assert value.snapshot is not None and value.policy is not None
+    record = record_from_evaluation(slot_id="s", strategy_version="1.0", availability_cutoff_ns=SLOT + 1,
+                                    evaluation=evaluation, slot_at_ns=SLOT, instrument="BTCUSDT",
+                                    feature_snapshot_hash="snap", signal="LONG")
+
+    assert value.snapshot.snapshot_hash() == "32f96ead8b7a9cc6226032bb4dd1381f6ffd1da4f83be1828ae4d057b3b8bf30"
+    assert phase4_action_hash(value.policy, value.snapshot, evaluation.quantity) == (
+        "ed3d7eca6b60f758a333a3183bf0d0e1a637819cf5d5b0666039244e1b766e2a"
+    )
+    assert evaluation.trade_plan is not None
+    assert evaluation.trade_plan.plan_hash() == "ec8e89ac4a7750c9cc2f968e526bf4f5b70233def3bea91fc90708f600e86856"
+    assert record.hash() == "d0b8e7798e653d6a348cb56f2c81c7847201fbdb4f13969d09b8b04065bb3dee"
+    assert evaluate_phase4_qualified(value, None).status is DecisionStatus.NOT_ESTIMABLE

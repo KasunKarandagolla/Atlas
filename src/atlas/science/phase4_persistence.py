@@ -24,6 +24,7 @@ STRESS_RESULT = "stress_result"
 EVALUATION = "b0_a0_evaluation"
 TRADE_PLAN_EVIDENCE = "trade_plan_evaluation_evidence"
 FEATURE_SNAPSHOT_AVAILABILITY = "feature_snapshot_availability_v1"
+FEATURE_SNAPSHOT_SOURCE_PROOF = "feature_snapshot_source_proof_v1"
 DECISION_CALENDAR = "decision_calendar_record"
 EXPERIMENT_VARIANT = "experiment_variant"
 
@@ -61,6 +62,7 @@ class Phase4ArtifactSet:
     decision_calendar_record: Any | None = None
     variants: tuple[ExperimentVariant, ...] = ()
     snapshot_availability_evidence: Any | None = None
+    snapshot_source_proof: Any | None = None
 
 
 def persist_phase4_artifacts(archive: ResearchArtifactArchive, artifacts: Phase4ArtifactSet) -> dict[str, tuple[Path, ...]]:
@@ -90,6 +92,8 @@ def persist_phase4_artifacts(archive: ResearchArtifactArchive, artifacts: Phase4
         record(TRADE_PLAN_EVIDENCE, (artifacts.trade_plan_evidence,))
     if artifacts.snapshot_availability_evidence is not None:
         record(FEATURE_SNAPSHOT_AVAILABILITY, (artifacts.snapshot_availability_evidence,))
+    if artifacts.snapshot_source_proof is not None:
+        record(FEATURE_SNAPSHOT_SOURCE_PROOF, (artifacts.snapshot_source_proof.to_dict(),))
     if artifacts.decision_calendar_record is not None:
         record(DECISION_CALENDAR, (artifacts.decision_calendar_record,))
     record(EXPERIMENT_VARIANT, artifacts.variants)

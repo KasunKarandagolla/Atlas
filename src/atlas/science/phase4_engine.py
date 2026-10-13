@@ -48,6 +48,12 @@ from atlas.science.trade_plan_mapping import candidate_trade_plan
 from atlas.science.uncertainty import OuterBootstrapResult
 from atlas.strategy.crypto_trend_24h_v1 import FeatureSnapshot, FeatureSnapshotEvidenceV1, Signal
 from atlas.strategy.policy import FixedPolicy
+from atlas.strategy.source_proof import (
+    FeatureSnapshotSourceProofV1,
+    ParquetFeatureSourceStore,
+    SourceAvailabilityMode,
+    verify_snapshot_source_proof,
+)
 
 UNIT_QUANTITY = Decimal("1")
 
@@ -201,6 +207,7 @@ class Phase4DecisionInput:
     availability_cutoff_ns: int
     not_estimable_reasons: tuple[str, ...] = ()
     snapshot_evidence: FeatureSnapshotEvidenceV1 | None = None
+    snapshot_source_proof: FeatureSnapshotSourceProofV1 | None = None
 
 
 @dataclass(frozen=True)
@@ -264,7 +271,12 @@ def _final_risk_vector(*, per_unit: PerUnitRisk, quantity: Decimal, actual_stres
 
 
 def evaluate_phase4(value: Phase4DecisionInput) -> Phase4Evaluation:
-    """Evaluate one already-frozen action once; never search direction or size."""
+    """Reproduce the frozen historical V1 Phase-4 calculation.
+
+    This diagnostic path preserves pre-receipt semantics. Its result and any
+    old diagnostic TradePlan do not grant new qualification or execution
+    authority. New candidate generation must use evaluate_phase4_qualified().
+    """
     not_estimable = list(value.not_estimable_reasons)
     if value.market_inputs is None:
         market_status, market_reason = GateStatus.NOT_ESTIMABLE, "missing market gate inputs"
@@ -299,8 +311,6 @@ def evaluate_phase4(value: Phase4DecisionInput) -> Phase4Evaluation:
 
     if value.snapshot is None or value.policy is None:
         return finish(DecisionStatus.SKIP_DATA, "missing causal snapshot/policy for the decision slot")
-    if value.snapshot_evidence is None or not value.snapshot_evidence.validates(value.snapshot):
-        return finish(DecisionStatus.NOT_ESTIMABLE, "missing or mismatched snapshot availability evidence")
     if market_status in {GateStatus.NOT_ESTIMABLE, GateStatus.GATE_DISABLED_DIAGNOSTIC}:
         not_estimable.append(market_reason or "market gate not estimable")
     if event_status in {GateStatus.NOT_ESTIMABLE, GateStatus.GATE_DISABLED_DIAGNOSTIC}:
@@ -422,3 +432,74 @@ def evaluate_phase4(value: Phase4DecisionInput) -> Phase4Evaluation:
                                   support.paths, scenario.bootstrap, portfolio, sized_stress, rejection, (),
                                   risk_decision.reasons, action_hash, quantity, actual_stress_loss)
     return Phase4Evaluation(status, b0, a0, evidence, plan, quantity, final_risk, risk_decision, reason)
+
+
+def evaluate_phase4_historical(value: Phase4DecisionInput) -> Phase4Evaluation:
+    """Named entry point for frozen historical diagnostic replay."""
+    return evaluate_phase4(value)
+
+
+def _unqualified_phase4_result(value: Phase4DecisionInput, reason: str) -> Phase4Evaluation:
+    signal = value.snapshot.signal if value.snapshot is not None else Signal.FLAT
+    b0 = EvaluationResult("B0", DecisionStatus.NOT_ESTIMABLE, reason, signal)
+    a0 = EvaluationResult("A0", DecisionStatus.NOT_ESTIMABLE, reason, signal)
+    evidence = EvaluationEvidence(
+        market_gate_status=GateStatus.NOT_ESTIMABLE,
+        market_gate_reasons=(reason,),
+        event_gate_status=GateStatus.NOT_ESTIMABLE,
+        event_gate_reasons=(reason,),
+        model_manifest_hash=value.model_manifest_hash,
+        block_manifest_hash=value.block_manifest_hash,
+        scenario_config_hash=value.scenario_config_hash,
+        selected_block=value.scenario.scenario_support.selected_block if value.scenario else None,
+        scenario_paths=value.scenario.scenario_support.paths if value.scenario else 0,
+        bootstrap=value.scenario.bootstrap if value.scenario else None,
+        portfolio=None,
+        stress_results=(),
+        rejection_reasons=(reason,),
+        not_estimable_reasons=(reason,),
+        risk_reasons=(),
+        action_hash="",
+        quantity=Decimal("0"),
+        stress_loss=Decimal("0"),
+    )
+    return Phase4Evaluation(DecisionStatus.NOT_ESTIMABLE, b0, a0, evidence, None, None, None, None, reason)
+
+
+def evaluate_phase4_qualified(
+    value: Phase4DecisionInput,
+    source_store: ParquetFeatureSourceStore | None,
+    *,
+    expected_instrument: str | None = None,
+    expected_slot_at_ns: int | None = None,
+    expected_cutoff_ns: int | None = None,
+) -> Phase4Evaluation:
+    """Qualify a new Phase-4 candidate only after point-in-time source replay.
+
+    The legacy five-field snapshot hash remains the action identity. The
+    separately versioned source receipt is reopened against the configured
+    content-addressed archive and all feature values are reconstructed.
+    """
+    snapshot = value.snapshot
+    proof = value.snapshot_source_proof
+    if snapshot is None or proof is None:
+        return _unqualified_phase4_result(value, "missing source proof for new Phase-4 qualification")
+    if type(proof) is not FeatureSnapshotSourceProofV1:
+        return _unqualified_phase4_result(value, "NOT_ESTIMABLE: unsupported source proof contract")
+    if source_store is None:
+        return _unqualified_phase4_result(value, "NOT_ESTIMABLE: source archive is unavailable")
+    if (
+        (expected_instrument is not None and snapshot.instrument != expected_instrument)
+        or (expected_slot_at_ns is not None and snapshot.slot_at_ns != expected_slot_at_ns)
+        or (expected_cutoff_ns is not None and value.availability_cutoff_ns != expected_cutoff_ns)
+    ):
+        return _unqualified_phase4_result(value, "NOT_ESTIMABLE: source proof does not match scanner request identity/cutoff")
+    if not snapshot.slot_at_ns <= snapshot.computed_at_ns <= value.availability_cutoff_ns:
+        return _unqualified_phase4_result(value, "NOT_ESTIMABLE: information cutoff precedes snapshot computation")
+    if value.availability_cutoff_ns > snapshot.snapshot_deadline_ns:
+        return _unqualified_phase4_result(value, "NOT_ESTIMABLE: information cutoff exceeds the T+30 deadline")
+    if proof.availability_mode is not SourceAvailabilityMode.ACTUAL_SYSTEM:
+        return _unqualified_phase4_result(value, "NOT_ESTIMABLE: reconstructed replay availability cannot qualify a new decision")
+    if not verify_snapshot_source_proof(snapshot, proof, source_store):
+        return _unqualified_phase4_result(value, "NOT_ESTIMABLE: archived source proof or complete features failed verification")
+    return evaluate_phase4(value)

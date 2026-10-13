@@ -10,7 +10,13 @@ from .blindspots import BlindSpotObservation, blindspot_metrics, observations_fr
 from .calendar import ScannerCalendar
 from .cheap_scan import CHEAP_SCANNER_VERSION, SCANNER_PRIORITY_LABEL, cheap_scan
 from .engine import ScanSlotResult, run_scan_slot
-from .handoff import Phase4HandoffRequest, Phase4ScannerResult, evaluator_from_phase4, result_from_evaluation
+from .handoff import (
+    Phase4HandoffRequest,
+    Phase4ScannerResult,
+    evaluator_from_phase4,
+    historical_evaluator_from_phase4,
+    result_from_evaluation,
+)
 from .health import scanner_health
 from .models import (
     SLOT_NS,
@@ -108,6 +114,7 @@ __all__ = [
     "cheap_scan",
     "compare_scanner_revisions",
     "evaluator_from_phase4",
+    "historical_evaluator_from_phase4",
     "evaluate_warmup",
     "due_slot",
     "observations_from_matured",

@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "task": "ATLAS RED — Final R1 Correctness Closeout",
+  "repository": "KasunKarandagolla/Atlas",
+  "status": {
+    "implementation": "IMPLEMENTED",
+    "focused_validation": "TESTED",
+    "production_archive_data": "UNVERIFIED",
+    "missing_trusted_archive_result": "NOT ESTIMABLE",
+    "full_repository_suite": "TEST GATE",
+    "independent_acceptance": "PENDING"
+  },
+  "git": {
+    "branch": "fix/red-r1-final-correctness-2026-10-13",
+    "baseline_branch": "fix/red-r1-v1-snapshot-compat-2026-10-13",
+    "baseline_remote_head": "8b77c76b2ef0581cc453bc4f806693884e763cb4",
+    "compatibility_implementation": "96b34ed48fca976e5da293248b5e682827cb4d32",
+    "original_r1_implementation": "b7f3f17ef885781d9e8efa8dbd2254ee92b0433d",
+    "s49_baseline": "a73c92d83ca8b2fe5163e636b2c9732361b35e23",
+    "implementation_commit_sha": null,
+    "push_verification": "PENDING",
+    "final_remote_head": null,
+    "preflight_remote_refs": {
+      "compatibility": "8b77c76b2ef0581cc453bc4f806693884e763cb4",
+      "r1_implementation": "85a4174cd5d373f0217c46c9944f6ed35f4c0a2b",
+      "audit_branch": "e2d3451a071c124375fa2a8869a4217273686652",
+      "s49_baseline": "a73c92d83ca8b2fe5163e636b2c9732361b35e23"
+    },
+    "isolated_worktree": "/workspace/Atlas-r1-final"
+  },
+  "model": {
+    "requested": "GPT-6 Luna",
+    "owner_confirmation": "Model selected continue",
+    "coordinator": "GPT-6 Luna",
+    "read_only_subagents": [
+      {
+        "name": "audit_evidence",
+        "model": "GPT-6 Luna",
+        "changes_made": false
+      },
+      {
+        "name": "audit_history",
+        "model": "GPT-6 Luna",
+        "changes_made": false
+      }
+    ]
+  },
+  "authority": {
+    "owner_package": "/workspace/attachments/85db8a4a-4697-4a9a-8ba2-08e987046400/Red.zip",
+    "owner_package_sha256": "8be29d4486a061e7d70a6e3d36fdd49caacef371faa617d12887db12e17f008b",
+    "owner_sources_and_runbook": "Required owner package located; required sources read, including 00_START_HERE.md and runbook sections 2, 3, 4, 5, and 7",
+    "frozen_authority_sha256": {
+      "v1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "v2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "agent_v1": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "all_hashes_match": true,
+    "frozen_files_changed": false
+  },
+  "source_proof": {
+    "contract": "FEATURE_SNAPSHOT_SOURCE_PROOF_V1",
+    "source_store": "ParquetFeatureSourceStore over the configured existing content-addressed ParquetArchive",
+    "window_close_count": 721,
+    "return_count": 720,
+    "availability_for_new_qualification": "ACTUAL_SYSTEM only; reconstructed replay mode remains verifiable for diagnostics but is not eligible for a new decision",
+    "feature_payload_bound": [
+      "returns",
+      "variance",
+      "sigma",
+      "z",
+      "end_at_ns"
+    ],
+    "durable_bound_identities": [
+      "ordered record IDs",
+      "source content hashes",
+      "record fingerprints",
+      "source IDs and revisions",
+      "actual/replay/effective availability times",
+      "chronology hash",
+      "legacy five-field snapshot hash"
+    ],
+    "verification": "Reopen the archive, recompute chunk identity, reconstruct MarketRecords, independently select the exact point-in-time window, recompute frozen FeatureValues, and compare the complete versioned proof",
+    "trust_boundary": "Owner-configured existing archive root and trusted source-ingestion/archive boundary; no venue-signature framework added",
+    "missing_or_unverified_source": "NOT ESTIMABLE; no new TradePlan"
+  },
+  "historical_v1": {
+    "feature_snapshot_fields": [
+      "instrument",
+      "slot_at_ns",
+      "computed_at_ns",
+      "values",
+      "source_record_ids"
+    ],
+    "snapshot_hash_algorithm_changed": false,
+    "feature_formula_changed": false,
+    "historical_entrypoint": "evaluate_phase4_historical / evaluate_phase4",
+    "new_qualified_entrypoint": "evaluate_phase4_qualified",
+    "historical_fixture_hashes": {
+      "snapshot": "32f96ead8b7a9cc6226032bb4dd1381f6ffd1da4f83be1828ae4d057b3b8bf30",
+      "action": "ed3d7eca6b60f758a333a3183bf0d0e1a637819cf5d5b0666039244e1b766e2a",
+      "trade_plan": "ec8e89ac4a7750c9cc2f968e526bf4f5b70233def3bea91fc90708f600e86856",
+      "decision_calendar": "d0b8e7798e653d6a348cb56f2c81c7847201fbdb4f13969d09b8b04065bb3dee"
+    },
+    "old_diagnostic_candidate_grants_new_execution_authority": false
+  },
+  "red_green": {
+    "red": {
+      "result": "7 failed, 1 passed before production changes",
+      "raw_output": "docs/v2/ATLAS_R1_FINAL_RED_OUTPUT.txt.gz",
+      "raw_output_sha256": "36b738b1b37c1f37831bdcf76a99ce925ca3e11e18c1a735b5bb3f32a797d380",
+      "compressed_file_sha256": "987abf80ece043192e182db85648c5ec9963af26517f05cc484a38384e9e2aab",
+      "original_shell_invocation_retained": false
+    },
+    "green_groups": [
+      {
+        "name": "Source proof and scanner request binding",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/.venvs/atlas/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=/workspace/atlas-r1-final-source-identity tests/science/test_r1_source_qualification.py tests/scanner/test_phase5_end_to_end.py",
+        "result": "36 passed in 29.32s"
+      },
+      {
+        "name": "V1, historical Phase 4, archive, recovery and scanner consumers",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/.venvs/atlas/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=/workspace/atlas-r1-final-v1-identity tests/contract/test_v1_golden_baseline.py tests/science/test_r1_source_qualification.py tests/science/test_r1_v1_chronology_identity.py tests/science/test_r1_v1_snapshot_compatibility.py tests/science/test_phase4_baseline.py tests/science/test_phase4_engine_decisions.py tests/science/test_phase4_end_to_end.py tests/science/test_phase4_persistence.py tests/science/test_phase4_artifacts_and_controls.py tests/science/test_prefix_invariance_phase4.py tests/science/test_decision_calendar.py tests/scanner/test_phase5_end_to_end.py tests/data/test_archive_runtime.py tests/data/test_prefix_and_archive.py tests/persistence/test_recovery_persistence.py tests/integration/test_v1_phase0_6_acceptance.py",
+        "result": "112 passed in 40.74s"
+      },
+      {
+        "name": "Affected R1 V2 consumers",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/.venvs/atlas/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=/workspace/atlas-r1-final-v2-final tests/v2/test_r1_surgical_correctness.py tests/v2/test_session017_risk.py tests/v2/test_session014_core.py tests/v2/test_session014_s1.py tests/v2/test_session016_s2.py tests/v2/test_session037_active_history.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session041_s6_action_contract.py tests/v2/test_session041_trade_location.py tests/v2/test_session041_trade_location_runtime.py tests/v2/test_session037_chronology.py tests/v2/test_session037_installed_economics.py tests/v2/test_session027_ops_supervisor.py tests/v2/test_session019_m0.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session021_data_s3.py",
+        "result": "199 passed in 27.62s"
+      },
+      {
+        "name": "S45 outcome/content-hash and maturity consumers",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/.venvs/atlas/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=/workspace/atlas-r1-final-s45-outcomes tests/v2/test_session033_outcome_resolution.py tests/v2/test_session033_outcome_runtime.py tests/v2/test_session037_action_outcome_producer.py tests/v2/test_session037_due_work.py tests/v2/test_session033_outcome_maturity.py",
+        "result": "76 passed in 5.08s"
+      },
+      {
+        "name": "S27 production",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/.venvs/atlas/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=/workspace/atlas-r1-final-s27-production tests/v2/test_session027_production.py",
+        "result": "16 passed in 226.58s"
+      },
+      {
+        "name": "S27 restart composition",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/.venvs/atlas/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=/workspace/atlas-r1-final-s27-restart tests/v2/test_session027_production.py::test_default_production_composes_public_to_risk_action_and_economics_after_restart",
+        "result": "1 passed in 34.35s"
+      }
+    ]
+  },
+  "static_checks": {
+    "ruff_changed_python": "pass",
+    "ruff_format_new_files": "pass",
+    "ruff_format_baseline_comparison": "same nine changed legacy files fail at baseline and current; no broad reformat",
+    "compileall": "pass",
+    "full_source_mypy": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 MYPY_CACHE_DIR=/workspace/atlas-r1-mypy-current-cache PYTHONPATH=src /workspace/.venvs/atlas/bin/mypy --no-incremental src/atlas",
+      "current": "52 diagnostics / 279 files",
+      "accepted_baseline": "52 diagnostics / 278 files",
+      "normalized_delta": "+0/-0"
+    },
+    "uv_lock_check": "pass: uv lock --check --python 3.12",
+    "installed_package_consistency": "pass: 20 packages compatible",
+    "git_diff_check": "pass",
+    "dependency_or_license_changes": false,
+    "secret_or_execution_gate_changes_found": false,
+    "frozen_authority_hashes_match": true
+  },
+  "resources": {
+    "owner_rolling_limit_bytes": 5000000000,
+    "instrumented_process_write_subtotal_bytes": 1534853120,
+    "instrumented_subtotal_components": {
+      "locked_uv_environment_sync": 244002816,
+      "v1_focused_tests": 20111360,
+      "affected_v2_tests": 545185792,
+      "s27_production": 523386880,
+      "s27_restart": 202166272
+    },
+    "selected_retained_test_temp_artifact_bytes": 572362202,
+    "final_s27_retained_temp_bytes": 162096478,
+    "final_s27_restart_retained_temp_bytes": 28980956,
+    "workspace_filesystem_used_bytes_at_last_sample": 1735708672,
+    "workspace_filesystem_available_bytes_at_last_sample": 30299721728,
+    "global_rolling_24h_total": "UNVERIFIED; package download/install and all host writes were not globally instrumented",
+    "full_suite_write_budget": "not bounded; full suite not run"
+  },
+  "known_gates": [
+    "Full repository suite remains TEST GATE; retained S49 run stopped after 1,196/2,783 tests in 1:01:24 with six failures and five skips.",
+    "S49 mixed 1,024-contract delivery retains a queue high-water 480/512 and one rejected-frame failure.",
+    "No production market archive was available for this session; source qualification without an owner-configured trusted root is NOT ESTIMABLE."
+  ],
+  "amendment_gated": [
+    "AUD-01 adverse funding bounds in hard sizing and durable reservation",
+    "AUD-02 historical cadence proof beyond the active-history retained tail",
+    "AUD-06 complete V1/V2 snapshot identity migration"
+  ],
+  "operational_scope": {
+    "capital_enabled": false,
+    "assisted_orders_enabled": false,
+    "authenticated_binance_or_bybit_endpoint_used": false,
+    "paid_model_call_used": false,
+    "live_execution_enabled": false,
+    "merge_or_deployment": false,
+    "r2_started": false
+  }
+}

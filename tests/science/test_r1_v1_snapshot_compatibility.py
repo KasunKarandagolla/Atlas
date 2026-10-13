@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from atlas.domain.enums import Side
-from atlas.science.phase4_engine import DecisionStatus, evaluate_phase4, phase4_action_hash
+from atlas.science.phase4_engine import DecisionStatus, evaluate_phase4_qualified, phase4_action_hash
 from atlas.science.trade_plan_mapping import candidate_trade_plan
 from atlas.strategy import crypto_trend_24h_v1 as v1
 from atlas.strategy.crypto_trend_24h_v1 import FeatureSnapshot
@@ -93,6 +93,7 @@ def test_historical_snapshot_hash_tradeplan_reference_and_action_identity_are_un
 
     assert snapshot.snapshot_hash() == LEGACY_SNAPSHOT_HASH
     assert plan.snapshot_hash == LEGACY_SNAPSHOT_HASH
+    assert plan.plan_hash() == "3413023fbbbc1b2ad77347c2ed54c838aa3885bb2aaf04909e4b5141e5ab2c1e"
     assert phase4_action_hash(fixed_policy, snapshot, Decimal("1")) == LEGACY_ACTION_HASH
 
 
@@ -126,7 +127,8 @@ def test_qualified_snapshot_builder_returns_separate_availability_receipt() -> N
     snapshot, receipt = builder("BTCUSDT", HISTORICAL_SLOT, HISTORICAL_SLOT, closes)
 
     assert snapshot.snapshot_hash() == LEGACY_SNAPSHOT_HASH
-    assert receipt.validates(snapshot)
+    assert receipt.matches_declarations(snapshot)
+    assert not receipt.validates(snapshot)
     assert receipt.source_record_ids == snapshot.source_record_ids
     assert len(receipt.source_available_at_ns) == 721
 
@@ -138,9 +140,9 @@ def test_qualified_builder_uses_actual_computation_time_and_deadline_boundaries(
 
     at_slot, at_slot_evidence = builder("BTCUSDT", HISTORICAL_SLOT, HISTORICAL_SLOT, closes)
     at_deadline, at_deadline_evidence = builder("BTCUSDT", HISTORICAL_SLOT, HISTORICAL_SLOT + 30_000_000_000, closes)
-    assert at_slot.computed_at_ns == HISTORICAL_SLOT and at_slot_evidence.validates(at_slot)
+    assert at_slot.computed_at_ns == HISTORICAL_SLOT and at_slot_evidence.matches_declarations(at_slot)
     assert at_deadline.computed_at_ns == HISTORICAL_SLOT + 30_000_000_000
-    assert at_deadline_evidence.validates(at_deadline)
+    assert at_deadline_evidence.matches_declarations(at_deadline)
 
     with pytest.raises(ValueError, match=r"T\+30|deadline"):
         builder("BTCUSDT", HISTORICAL_SLOT, HISTORICAL_SLOT + 30_000_000_001, closes)
@@ -172,8 +174,8 @@ def test_qualified_builder_preserves_finality_and_rejects_conflicting_source_ide
 def test_unproven_legacy_snapshot_does_not_qualify_a_new_phase4_decision() -> None:
     case = decision_input(snapshot_evidence=None)
 
-    result = evaluate_phase4(case)
+    result = evaluate_phase4_qualified(case, None)
 
     assert result.status is DecisionStatus.NOT_ESTIMABLE
     assert result.trade_plan is None
-    assert "availability evidence" in result.reason
+    assert "source proof" in result.reason

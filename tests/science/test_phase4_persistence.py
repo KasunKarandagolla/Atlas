@@ -13,7 +13,6 @@ from atlas.science.phase4_persistence import (
     DECISION_CALENDAR,
     EVALUATION,
     EXPERIMENT_VARIANT,
-    FEATURE_SNAPSHOT_AVAILABILITY,
     JOINT_RESIDUAL_BLOCK,
     MATURED_RESIDUAL,
     OOF_FORECAST,
@@ -60,7 +59,7 @@ def test_every_phase4_artifact_kind_is_persisted_append_only(tmp_path) -> None:
     written = persist_phase4_artifacts(archive, artifact_set())
     assert set(written) >= {WEEKLY_FIT, OOF_FORECAST, MATURED_RESIDUAL, JOINT_RESIDUAL_BLOCK, BLOCK_SELECTION,
                             SCENARIO_CONFIG, BOOTSTRAP_RESULT, STRESS_RESULT, EVALUATION, TRADE_PLAN_EVIDENCE,
-                            FEATURE_SNAPSHOT_AVAILABILITY, DECISION_CALENDAR, EXPERIMENT_VARIANT}
+                            DECISION_CALENDAR, EXPERIMENT_VARIANT}
     for kind, paths in written.items():
         assert paths and all(path.exists() for path in paths), kind
         assert all(path.parent.name == kind for path in paths)

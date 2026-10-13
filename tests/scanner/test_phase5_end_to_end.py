@@ -16,6 +16,7 @@ from atlas.scanner import (
     blindspot_metrics,
     build_universe_snapshot,
     evaluator_from_phase4,
+    historical_evaluator_from_phase4,
     run_scan_slot,
 )
 from atlas.science.evaluation import DecisionStatus
@@ -112,11 +113,22 @@ def test_future_slots_and_sequence_order_do_not_change_an_earlier_scan():
 def test_phase4_handoff_adapter_reuses_the_existing_evaluator():
     request = Phase4HandoffRequest(SLOT, "BTCUSDT", SLOT + 1, "universe", "cheap",
                                    WarmupState.WARM_AVAILABLE)
-    result = evaluator_from_phase4(lambda _: decision_input())(request)
+    result = historical_evaluator_from_phase4(lambda _: decision_input())(request)
     baseline = evaluate_phase4(decision_input())
     assert result.status is DecisionStatus.TRADE_CANDIDATE
     assert result.trade_plan is not None
     assert result.evaluation_ref == baseline.evidence.artifact_hash()
+
+
+def test_new_phase4_handoff_fails_closed_when_no_source_archive_is_configured():
+    request = Phase4HandoffRequest(SLOT, "BTCUSDT", SLOT + 1, "universe", "cheap",
+                                   WarmupState.WARM_AVAILABLE)
+
+    result = evaluator_from_phase4(lambda _: decision_input())(request)
+
+    assert result.status is DecisionStatus.NOT_ESTIMABLE
+    assert result.trade_plan is None
+    assert any("source proof" in reason for reason in result.reasons)
 
 
 def test_exploration_candidate_has_no_phase4_capital_authority():

@@ -31,7 +31,13 @@ from atlas.runtime.assisted_control import (
     DispatchAck,
     _dispatch_with_port,
 )
-from atlas.scanner import Phase4HandoffRequest, WarmupState, evaluator_from_phase4, run_scan_slot
+from atlas.scanner import (
+    Phase4HandoffRequest,
+    WarmupState,
+    evaluator_from_phase4,
+    historical_evaluator_from_phase4,
+    run_scan_slot,
+)
 from atlas.science.evaluation import DecisionStatus
 from atlas.science.phase4_engine import evaluate_phase4
 from atlas.strategy.crypto_trend_24h_v1 import Signal
@@ -65,7 +71,7 @@ def test_research_scanner_alert_handoff_preserves_phase4_identity_without_capita
         cheap_inputs=cheap_inputs_for(slot),
         policy=fixture.policy,
         warmup_evidence=warmup_for(slot),
-        evaluator=evaluator_from_phase4(build),
+        evaluator=historical_evaluator_from_phase4(build),
         persist=False,
     )
     assert [instrument for _, instrument in calls] == ["BTCUSDT", "ETHUSDT"]
@@ -80,6 +86,18 @@ def test_research_scanner_alert_handoff_preserves_phase4_identity_without_capita
     assert eth.plan_status == DecisionStatus.NO_SIGNAL.value
     assert any(alert.alert_type.value == "TRADE_CANDIDATE"
                and alert.evidence_refs and btc.trade_plan_hash in alert.evidence_refs for alert in result.alerts)
+    unqualified = run_scan_slot(
+        slot_at_ns=slot,
+        universe=universe_for(slot),
+        cheap_inputs=cheap_inputs_for(slot),
+        policy=fixture.policy,
+        warmup_evidence=warmup_for(slot),
+        evaluator=evaluator_from_phase4(build),
+        persist=False,
+    )
+    assert next(row for row in unqualified.calendar_rows if row.instrument == "BTCUSDT").plan_status == \
+        DecisionStatus.NOT_ESTIMABLE.value
+    assert all(row.trade_plan_hash is None for row in unqualified.calendar_rows)
     journal = SQLiteJournal(tmp_path / "acceptance.db")
     assert (journal.count("approvals"), journal.count("intents"), journal.count("reservations"),
             journal.count("commands")) == (0, 0, 0, 0)

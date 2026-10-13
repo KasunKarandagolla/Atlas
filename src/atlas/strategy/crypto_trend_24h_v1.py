@@ -78,7 +78,11 @@ class FeatureSnapshot:
 
 @dataclass(frozen=True)
 class FeatureSnapshotEvidenceV1:
-    """Versioned availability receipt kept outside the frozen V1 snapshot."""
+    """Untrusted availability declaration kept outside the frozen snapshot.
+
+    This legacy receipt is not source proof. New qualification uses
+    FeatureSnapshotSourceProofV1 and reopens the indexed archive.
+    """
 
     snapshot_hash: str
     instrument: str
@@ -118,7 +122,7 @@ class FeatureSnapshotEvidenceV1:
             or len(self.source_end_at_ns) != len(self.source_record_ids)
             or len(self.source_available_at_ns) != len(self.source_record_ids)
         ):
-            raise ValueError("availability evidence requires one receipt per hourly close")
+            raise ValueError("availability declaration requires one timestamp per declared source")
         previous_end: int | None = None
         for end_at_ns, available_at_ns in zip(self.source_end_at_ns, self.source_available_at_ns, strict=True):
             if (
@@ -137,7 +141,11 @@ class FeatureSnapshotEvidenceV1:
             raise ValueError("availability evidence source window must end at the decision slot")
 
     def validates(self, snapshot: FeatureSnapshot) -> bool:
-        """Return whether this separate receipt qualifies the exact legacy snapshot."""
+        """Legacy API: declarations alone are not evidence and cannot validate."""
+        return False
+
+    def matches_declarations(self, snapshot: FeatureSnapshot) -> bool:
+        """Compare the serialized declaration fields without granting proof."""
         return (
             self.instrument == snapshot.instrument
             and self.slot_at_ns == snapshot.slot_at_ns
@@ -202,5 +210,10 @@ def build_snapshot(
 def build_snapshot_with_evidence(
     instrument: str, slot_at_ns: int, computed_at_ns: int, closes: tuple[HourlyClose, ...]
 ) -> tuple[FeatureSnapshot, FeatureSnapshotEvidenceV1]:
-    """Build a legacy snapshot plus a separate V1-qualified availability receipt."""
+    """Build a legacy snapshot plus an untrusted, self-consistency declaration.
+
+    The returned declaration is useful for diagnostics only. It cannot qualify
+    Phase-4 decisions; use build_snapshot_with_source_proof with the immutable
+    source archive for that purpose.
+    """
     return _build_snapshot_with_evidence(instrument, slot_at_ns, computed_at_ns, closes)

@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from atlas.science.phase4_engine import Phase4DecisionInput, Phase4Evaluation, canonical_hash, evaluate_phase4
+from atlas.science.phase4_engine import (
+    Phase4DecisionInput,
+    Phase4Evaluation,
+    canonical_hash,
+    evaluate_phase4_historical,
+    evaluate_phase4_qualified,
+)
+from atlas.strategy.source_proof import ParquetFeatureSourceStore
 
 from .models import DecisionStatus, Phase4HandoffRequest, Phase4ScannerResult
 
@@ -37,12 +44,38 @@ def not_applicable_result(*, request: Phase4HandoffRequest, reason: str) -> Phas
                                None, (reason,), (), reference)
 
 
-def evaluator_from_phase4(build_input: Callable[[Phase4HandoffRequest], Phase4DecisionInput],
-                          ) -> Callable[[Phase4HandoffRequest], Phase4ScannerResult]:
-    """Bind the scanner port to the existing frozen Phase-4 evaluation pipeline."""
+def evaluator_from_phase4(
+    build_input: Callable[[Phase4HandoffRequest], Phase4DecisionInput],
+    *,
+    source_store: ParquetFeatureSourceStore | Callable[[Phase4HandoffRequest], ParquetFeatureSourceStore | None] | None = None,
+) -> Callable[[Phase4HandoffRequest], Phase4ScannerResult]:
+    """Bind new scanner decisions to the source-verified qualified evaluator.
+
+    Omitting the configured archive fails closed with NOT_ESTIMABLE.
+    """
 
     def evaluate(request: Phase4HandoffRequest) -> Phase4ScannerResult:
-        evaluation = evaluate_phase4(build_input(request))
+        value = build_input(request)
+        store = source_store(request) if callable(source_store) else source_store
+        evaluation = evaluate_phase4_qualified(
+            value,
+            store,
+            expected_instrument=request.instrument,
+            expected_slot_at_ns=request.slot_at_ns,
+            expected_cutoff_ns=request.availability_cutoff_ns,
+        )
+        return result_from_evaluation(evaluation, slot_at_ns=request.slot_at_ns, instrument=request.instrument)
+
+    return evaluate
+
+
+def historical_evaluator_from_phase4(
+    build_input: Callable[[Phase4HandoffRequest], Phase4DecisionInput],
+) -> Callable[[Phase4HandoffRequest], Phase4ScannerResult]:
+    """Bind diagnostic replay to the pre-receipt V1 Phase-4 interpretation."""
+
+    def evaluate(request: Phase4HandoffRequest) -> Phase4ScannerResult:
+        evaluation = evaluate_phase4_historical(build_input(request))
         return result_from_evaluation(evaluation, slot_at_ns=request.slot_at_ns, instrument=request.instrument)
 
     return evaluate
