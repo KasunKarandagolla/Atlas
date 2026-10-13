@@ -1,0 +1,1 @@
+["/workspace/Atlas_R2/.venv/bin/python", "-m", "pytest", "-q", "-s", "-p", "no:cacheprovider", "tests/v2/test_session041_capture_delivery_batching.py", "--basetemp=/tmp/atlas-r2-group-adversarial-run4", "--junitxml=docs/v2/transition-r2-evidence/final-grouped-adversarial-run4/grouped-adversarial.junit.xml"]

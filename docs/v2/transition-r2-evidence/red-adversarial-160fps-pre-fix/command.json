@@ -1,0 +1,9 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "tests/v2/test_session041_capture_delivery_batching.py",
+  "--junitxml=docs/v2/transition-r2-evidence/red-adversarial-160fps-pre-fix/capture-delivery.junit.xml"
+]

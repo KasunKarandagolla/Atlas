@@ -1,0 +1,166 @@
+{
+  "completed_utc": "2026-10-13T07:02:19.361016+00:00",
+  "commands": {
+    "ruff_check": {
+      "command": [
+        "/workspace/Atlas_R2/.venv/bin/ruff",
+        "check",
+        "src/atlas/v2/data/broad_stream_source.py",
+        "src/atlas/v2/data/capture_receipts.py",
+        "src/atlas/v2/data/durable_public_capture.py",
+        "tests/v2/test_session040_capture_receipts.py",
+        "tests/v2/test_session041_capture_delivery_batching.py",
+        "tests/v2/test_session041_mixed_broad_capacity.py"
+      ],
+      "exit_status": 0,
+      "output": "All checks passed!\n"
+    },
+    "compileall": {
+      "command": [
+        "/workspace/Atlas_R2/.venv/bin/python",
+        "-m",
+        "compileall",
+        "-q",
+        "src"
+      ],
+      "exit_status": 0,
+      "output": ""
+    },
+    "uv_lock_check": {
+      "command": [
+        "uv",
+        "lock",
+        "--check",
+        "--python",
+        "3.12"
+      ],
+      "exit_status": 0,
+      "output": "Resolved 39 packages in 5ms\n"
+    },
+    "uv_pip_check": {
+      "command": [
+        "uv",
+        "pip",
+        "check"
+      ],
+      "exit_status": 0,
+      "output": "Checked 23 packages in 1ms\nAll installed packages are compatible\n"
+    },
+    "uv_sync_dry_run": {
+      "command": [
+        "uv",
+        "sync",
+        "--locked",
+        "--offline",
+        "--dry-run",
+        "--extra",
+        "dev",
+        "--extra",
+        "offline-research",
+        "--no-install-project"
+      ],
+      "exit_status": 0,
+      "output": "Would use project environment at: .venv\nResolved 39 packages in 4ms\nChecked 23 packages in 0.51ms\nWould make no changes\n"
+    },
+    "git_diff_check": {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_status": 0,
+      "output": ""
+    }
+  },
+  "ruff_format_baseline_comparison": {
+    "src/atlas/v2/data/broad_stream_source.py": {
+      "baseline": {
+        "exit_status": 1,
+        "output": ""
+      },
+      "working": {
+        "exit_status": 1,
+        "output": ""
+      }
+    },
+    "src/atlas/v2/data/capture_receipts.py": {
+      "baseline": {
+        "exit_status": 1,
+        "output": ""
+      },
+      "working": {
+        "exit_status": 1,
+        "output": ""
+      }
+    },
+    "src/atlas/v2/data/durable_public_capture.py": {
+      "baseline": {
+        "exit_status": 1,
+        "output": ""
+      },
+      "working": {
+        "exit_status": 1,
+        "output": ""
+      }
+    },
+    "tests/v2/test_session040_capture_receipts.py": {
+      "baseline": {
+        "exit_status": 1,
+        "output": ""
+      },
+      "working": {
+        "exit_status": 1,
+        "output": ""
+      }
+    },
+    "tests/v2/test_session041_capture_delivery_batching.py": {
+      "baseline": {
+        "exit_status": 128,
+        "output": "fatal: path 'tests/v2/test_session041_capture_delivery_batching.py' exists on disk, but not in 'HEAD'\n"
+      },
+      "working": {
+        "exit_status": 0,
+        "output": ""
+      }
+    },
+    "tests/v2/test_session041_mixed_broad_capacity.py": {
+      "baseline": {
+        "exit_status": 1,
+        "output": ""
+      },
+      "working": {
+        "exit_status": 1,
+        "output": ""
+      }
+    }
+  },
+  "secret_scan": {
+    "method": "Local pattern scan; scans changed source/tests, R2 handoff/logs, and all retained R2 evidence text.",
+    "external_scanner": null,
+    "files_scanned": 148,
+    "patterns": [
+      "aws_access_key",
+      "github_token",
+      "private_key_pem",
+      "openai_key",
+      "bearer_token",
+      "credential_assignment"
+    ],
+    "matches": [],
+    "result": "clean"
+  },
+  "frozen_authority_hashes": {
+    "verified_at_final_source_revision": "910d4001323f4a6136af886df618b99a6c8fb8aa",
+    "required_and_preflight_values": {
+      "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "after_implementation_values": {
+      "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "all_match": true
+  }
+}

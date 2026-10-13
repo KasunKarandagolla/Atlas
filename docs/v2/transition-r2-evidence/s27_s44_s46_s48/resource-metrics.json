@@ -1,0 +1,31 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "tests/v2/test_session027_ops_supervisor.py",
+    "tests/v2/test_session027_production.py",
+    "tests/science/test_decision_calendar.py",
+    "tests/v2/test_session044_close_driven_m15.py",
+    "tests/v2/test_session046_peer_context.py",
+    "tests/runtime/test_session048_lifecycle_projection.py",
+    "tests/runtime/test_session048_position_protection.py",
+    "tests/v2/test_session048_management_shadow.py",
+    "tests/v2/test_session048_s47_repairs.py",
+    "tests/v2/test_session041_dynamic_universe.py",
+    "--basetemp=/tmp/atlas-r2-s27-s48",
+    "--junitxml=docs/v2/transition-r2-evidence/s27_s44_s46_s48/s27-s48.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:51:55.514354+00:00",
+  "wall_seconds": 254.253330855,
+  "exit_status": 0,
+  "peak_sampled_child_rss_bytes": 454565888,
+  "child_user_cpu_seconds": 248.484694,
+  "child_system_cpu_seconds": 6.400113,
+  "process_filesystem_output_bytes": 13742080,
+  "resource_note": "Linux ru_oublock is in 512-byte blocks for this sole child process."
+}

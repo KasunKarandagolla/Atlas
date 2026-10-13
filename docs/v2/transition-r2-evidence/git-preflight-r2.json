@@ -1,0 +1,520 @@
+{
+  "remote_heads": {
+    "command": [
+      "git",
+      "ls-remote",
+      "--heads",
+      "origin"
+    ],
+    "exit_status": 0,
+    "output": "e2d3451a071c124375fa2a8869a4217273686652\trefs/heads/audit/red-six-reviewer-2026-10-13\n81ebc2ae67d9e52a79557e01a96517a4956daa64\trefs/heads/fix/red-r1-final-correctness-2026-10-13\n8b77c76b2ef0581cc453bc4f806693884e763cb4\trefs/heads/fix/red-r1-v1-snapshot-compat-2026-10-13\nefd75ca4e0cb432c79e0a090b363ca09b87e9099\trefs/heads/fix/session-038-public-stream-reliability\nc0a290ec89f66507d155f2975976ba49132cab18\trefs/heads/fix/session-039-long-run-evidence-reliability\n55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393\trefs/heads/fix/session-040-owner-runtime-resilience-preflight-health\ndcb5d9dbe6ec58ee337b29accb48f96ef174ec1d\trefs/heads/fix/session-041-final-v2-recovery\n82a6f6e7df03889bd044991c4e47bd7339e03536\trefs/heads/fix/session-041-linux-binance-commissioning\na6475ee9f629b0cb86a4a8a670e2813a540ace6e\trefs/heads/fix/session-043-first-trading-value\n8961b032b108376bfbcd15e2ed8dc8fcbd48a645\trefs/heads/fix/session-044-practical-trading-delivery\nce5f67031e7c5184da91aff416ec4aca18b14bbb\trefs/heads/fix/session-045-outcome-and-design-closure\n85a4174cd5d373f0217c46c9944f6ed35f4c0a2b\trefs/heads/impl/red-r1-surgical-correctness-2026-10-13\nbac8b16e767e7a253cc41c4e73f16ac1c6658319\trefs/heads/impl/session-001-foundation\n64ff1793841905dced0632968540175bbd21484b\trefs/heads/impl/session-002-safe-runtime\n94fb52a393d908a6eede6f4da9ac0fbc428003c5\trefs/heads/impl/session-003-phase2-offline-qualification\n3ca43f7ff270d617cb1a4dd98863e0a6e7cd3a57\trefs/heads/impl/session-004-phase2-completion\n055b2f7e790af0f01e80260e5ed5ec2dac685809\trefs/heads/impl/session-005-phase3-causal-data-foundation\nf4f082fa5be50db4f770027a33aec1be1ab34087\trefs/heads/impl/session-006-phase4-baseline-science-risk\n248879b60d81877aa5dba295e1d8243637609a7c\trefs/heads/impl/session-007-phase5-continuous-scanner-alert\n9e36f9870bebe82f4f59e5c16efac5f327f03602\trefs/heads/impl/session-008-phase6-assisted-control-shell\n146bae0a2f10e2f794cbed3441123071c55a2baf\trefs/heads/impl/session-009-v1-phase0-6-stabilization\n729b6413d0dfc63dba888f7bff98ad8daa9edf1f\trefs/heads/impl/session-010-v2-transition-audit\na2d79569b57004dcfb63215e1babd1a9962c62c1\trefs/heads/impl/session-011-v2-foundation-contracts-memory\n6d7d966842390cefdc4ec0782f1820d9a68044e8\trefs/heads/impl/session-012-v2-phase1-data-model-core\n3490eed6ab3911059548eb7fceb21162577bc56e\trefs/heads/impl/session-013-v2-phase1-worker-isolation-gate\need9f0e2581a06ec09eab3c0fec7b4d232cba8f9\trefs/heads/impl/session-014-v2-core-intelligence-s1\n110518b4989f1d672d04e1b3431f3a142734e3ff\trefs/heads/impl/session-015-v2-phase2a-instrument-identity-fix\ncf4ac5a6d4c71495d5a925aea4d42aa69101c89e\trefs/heads/impl/session-016-v2-s2-candidateset-selection\nf0833199d444f23b90336a3fdeff389e41ff1a42\trefs/heads/impl/session-017-v2-risk-action-replay\n8c2686f346d3b97e194a0b29050afe8689f2c296\trefs/heads/impl/session-018-v2-evidence-outcomes-pretrade-contracts\n3d491d5fa4ed2fee1bd575c893d16b33994d60cf\trefs/heads/impl/session-019-v2-m0-scenario-evaluator-shadow-plan\n9dc828f061584372702fd94236b1d3a733709846\trefs/heads/impl/session-020-v2-desktop-ipc-phase2-gate\n266ef1fe88da2bc4e37cda44c9a9c089c01883b7\trefs/heads/impl/session-021-v2-s3-s6-s7-context-alerts\n09efb89ff99e156fb39c7c0a89c5a86f639ccf47\trefs/heads/impl/session-022-v2-s4-s5-microstructure-crowding-context\n665f44e3ecd99f7228cb5736b15f00f6ff6d1985\trefs/heads/impl/session-023-v2-m1-analogue-discovery-selection-gate\nf7e0cb7de3f7cfcdee51c4d42842f6d06094467f\trefs/heads/impl/session-024-v2-venue-qualification-capital-bridge-hardening\n21055dcb5496665aaf165bde1e4f7e73db773192\trefs/heads/impl/session-025-v2-release-engineering-shadow-closure\n8f915f85798ff5777592e7f187641ad5684699ff\trefs/heads/impl/session-026-agent-intelligence-offline-infrastructure\n81ee4c1edbe0156691863b90daf3174168fa387b\trefs/heads/impl/session-027-v2-continuous-ops-supervisor\n20ee0ae92def34103facfeb464c976b15b92a85c\trefs/heads/impl/session-028-agent-provider-deepseek-v41-amendment\na875401615612f4354fbe8afbf69acb4fa8d4bda\trefs/heads/impl/session-029-agent-hidden-shadow-action-critic\n8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57\trefs/heads/impl/session-030-agent-prospective-shadow-runtime-readiness\ncd0cf72fa1dedca765c298a281633ee1b7056614\trefs/heads/impl/session-031-public-shadow-campaign-readiness-evidence-controls\nccc5a42b30bd43a9ebad05ef2eba9d28c528f135\trefs/heads/impl/session-032-public-stream-continuity-recovery\n486a513dd873d53ac2bfef0e710f0b6332650537\trefs/heads/impl/session-033-continuous-matured-outcome-production\ne13994752f165ad8b42f7f7c441076078d4388cc\trefs/heads/impl/session-034-native-s3-m1-warmup-readiness\n702325b44ad487e699c60e682ad06031f4ecdb86\trefs/heads/impl/session-035-public-host-source-qualification\nb3e9f0f2b19bdb6c1f4e0f7a49d7b383b6cbd9b7\trefs/heads/impl/session-036-final-development-closure-windows-tune-ready\na51a302e09bda84449ab3867d28df545d39445f2\trefs/heads/impl/session-037-final-engineering-intelligence-closure\n95efa393e50f5e71646c409a3b4ff83cf5acb6a2\trefs/heads/impl/session-046-causal-features-peer-context\nb0db7d0527e68c737eefd564a87f740f5929c5f6\trefs/heads/impl/session-047-economics-agent-decision-brief\n52d9c149cfa1a1bc3f9a955ad94629300d00a7a7\trefs/heads/impl/session-048-position-lifecycle-protection\na73c92d83ca8b2fe5163e636b2c9732361b35e23\trefs/heads/impl/session-049-final-integration-release\n46eb72d2611475d1e38444db287557c8154c5216\trefs/heads/qualification/tq01-linux-2026-10-11\nbe8abff16c631f8ccea3df96c2a200fa4d0d590e\trefs/heads/review/session-041-accelerated-stability-closure\ndfe6bd4e21698454982f0e5e04ad93c2ef6f51ef\trefs/heads/review/session-041-binance-final-reconciliation\need7f849da5c8ff418c52fbc8cb0f0fd583d6422\trefs/heads/review/session-041-binance-linux-qualification-proposal\n1ed578f503aca1d5e61eeab5439f7b606d7fb15a\trefs/heads/review/session-041-f1-throughput-correction\n1184ae1c613c6f191d94a28015f1f5259e9dcc0e\trefs/heads/review/session-041-offline-commissioning-gate\n9bfcfa5ea45388cecf2081e753930e3287828871\trefs/heads/review/session-041-paused-v2-2026-10-09\neaf51d367dea1e13be544f7de23a6626279f7ad9\trefs/heads/review/session-041-recovery-architecture\n6e69ef07afb0743f3505d92ad1ccb487555fe84c\trefs/heads/review/session-042-trading-workload-value\n"
+  },
+  "remote_tracking_refs": {
+    "command": [
+      "git",
+      "for-each-ref",
+      "--format=%(objectname) %(refname)",
+      "refs/remotes/origin"
+    ],
+    "exit_status": 0,
+    "output": "e2d3451a071c124375fa2a8869a4217273686652 refs/remotes/origin/audit/red-six-reviewer-2026-10-13\n81ebc2ae67d9e52a79557e01a96517a4956daa64 refs/remotes/origin/fix/red-r1-final-correctness-2026-10-13\n8b77c76b2ef0581cc453bc4f806693884e763cb4 refs/remotes/origin/fix/red-r1-v1-snapshot-compat-2026-10-13\nefd75ca4e0cb432c79e0a090b363ca09b87e9099 refs/remotes/origin/fix/session-038-public-stream-reliability\nc0a290ec89f66507d155f2975976ba49132cab18 refs/remotes/origin/fix/session-039-long-run-evidence-reliability\n55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393 refs/remotes/origin/fix/session-040-owner-runtime-resilience-preflight-health\ndcb5d9dbe6ec58ee337b29accb48f96ef174ec1d refs/remotes/origin/fix/session-041-final-v2-recovery\n82a6f6e7df03889bd044991c4e47bd7339e03536 refs/remotes/origin/fix/session-041-linux-binance-commissioning\na6475ee9f629b0cb86a4a8a670e2813a540ace6e refs/remotes/origin/fix/session-043-first-trading-value\n8961b032b108376bfbcd15e2ed8dc8fcbd48a645 refs/remotes/origin/fix/session-044-practical-trading-delivery\nce5f67031e7c5184da91aff416ec4aca18b14bbb refs/remotes/origin/fix/session-045-outcome-and-design-closure\n85a4174cd5d373f0217c46c9944f6ed35f4c0a2b refs/remotes/origin/impl/red-r1-surgical-correctness-2026-10-13\nbac8b16e767e7a253cc41c4e73f16ac1c6658319 refs/remotes/origin/impl/session-001-foundation\n64ff1793841905dced0632968540175bbd21484b refs/remotes/origin/impl/session-002-safe-runtime\n94fb52a393d908a6eede6f4da9ac0fbc428003c5 refs/remotes/origin/impl/session-003-phase2-offline-qualification\n3ca43f7ff270d617cb1a4dd98863e0a6e7cd3a57 refs/remotes/origin/impl/session-004-phase2-completion\n055b2f7e790af0f01e80260e5ed5ec2dac685809 refs/remotes/origin/impl/session-005-phase3-causal-data-foundation\nf4f082fa5be50db4f770027a33aec1be1ab34087 refs/remotes/origin/impl/session-006-phase4-baseline-science-risk\n248879b60d81877aa5dba295e1d8243637609a7c refs/remotes/origin/impl/session-007-phase5-continuous-scanner-alert\n9e36f9870bebe82f4f59e5c16efac5f327f03602 refs/remotes/origin/impl/session-008-phase6-assisted-control-shell\n146bae0a2f10e2f794cbed3441123071c55a2baf refs/remotes/origin/impl/session-009-v1-phase0-6-stabilization\n729b6413d0dfc63dba888f7bff98ad8daa9edf1f refs/remotes/origin/impl/session-010-v2-transition-audit\na2d79569b57004dcfb63215e1babd1a9962c62c1 refs/remotes/origin/impl/session-011-v2-foundation-contracts-memory\n6d7d966842390cefdc4ec0782f1820d9a68044e8 refs/remotes/origin/impl/session-012-v2-phase1-data-model-core\n3490eed6ab3911059548eb7fceb21162577bc56e refs/remotes/origin/impl/session-013-v2-phase1-worker-isolation-gate\need9f0e2581a06ec09eab3c0fec7b4d232cba8f9 refs/remotes/origin/impl/session-014-v2-core-intelligence-s1\n110518b4989f1d672d04e1b3431f3a142734e3ff refs/remotes/origin/impl/session-015-v2-phase2a-instrument-identity-fix\ncf4ac5a6d4c71495d5a925aea4d42aa69101c89e refs/remotes/origin/impl/session-016-v2-s2-candidateset-selection\nf0833199d444f23b90336a3fdeff389e41ff1a42 refs/remotes/origin/impl/session-017-v2-risk-action-replay\n8c2686f346d3b97e194a0b29050afe8689f2c296 refs/remotes/origin/impl/session-018-v2-evidence-outcomes-pretrade-contracts\n3d491d5fa4ed2fee1bd575c893d16b33994d60cf refs/remotes/origin/impl/session-019-v2-m0-scenario-evaluator-shadow-plan\n9dc828f061584372702fd94236b1d3a733709846 refs/remotes/origin/impl/session-020-v2-desktop-ipc-phase2-gate\n266ef1fe88da2bc4e37cda44c9a9c089c01883b7 refs/remotes/origin/impl/session-021-v2-s3-s6-s7-context-alerts\n09efb89ff99e156fb39c7c0a89c5a86f639ccf47 refs/remotes/origin/impl/session-022-v2-s4-s5-microstructure-crowding-context\n665f44e3ecd99f7228cb5736b15f00f6ff6d1985 refs/remotes/origin/impl/session-023-v2-m1-analogue-discovery-selection-gate\nf7e0cb7de3f7cfcdee51c4d42842f6d06094467f refs/remotes/origin/impl/session-024-v2-venue-qualification-capital-bridge-hardening\n21055dcb5496665aaf165bde1e4f7e73db773192 refs/remotes/origin/impl/session-025-v2-release-engineering-shadow-closure\n8f915f85798ff5777592e7f187641ad5684699ff refs/remotes/origin/impl/session-026-agent-intelligence-offline-infrastructure\n81ee4c1edbe0156691863b90daf3174168fa387b refs/remotes/origin/impl/session-027-v2-continuous-ops-supervisor\n20ee0ae92def34103facfeb464c976b15b92a85c refs/remotes/origin/impl/session-028-agent-provider-deepseek-v41-amendment\na875401615612f4354fbe8afbf69acb4fa8d4bda refs/remotes/origin/impl/session-029-agent-hidden-shadow-action-critic\n8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57 refs/remotes/origin/impl/session-030-agent-prospective-shadow-runtime-readiness\ncd0cf72fa1dedca765c298a281633ee1b7056614 refs/remotes/origin/impl/session-031-public-shadow-campaign-readiness-evidence-controls\nccc5a42b30bd43a9ebad05ef2eba9d28c528f135 refs/remotes/origin/impl/session-032-public-stream-continuity-recovery\n486a513dd873d53ac2bfef0e710f0b6332650537 refs/remotes/origin/impl/session-033-continuous-matured-outcome-production\ne13994752f165ad8b42f7f7c441076078d4388cc refs/remotes/origin/impl/session-034-native-s3-m1-warmup-readiness\n702325b44ad487e699c60e682ad06031f4ecdb86 refs/remotes/origin/impl/session-035-public-host-source-qualification\nb3e9f0f2b19bdb6c1f4e0f7a49d7b383b6cbd9b7 refs/remotes/origin/impl/session-036-final-development-closure-windows-tune-ready\na51a302e09bda84449ab3867d28df545d39445f2 refs/remotes/origin/impl/session-037-final-engineering-intelligence-closure\n95efa393e50f5e71646c409a3b4ff83cf5acb6a2 refs/remotes/origin/impl/session-046-causal-features-peer-context\nb0db7d0527e68c737eefd564a87f740f5929c5f6 refs/remotes/origin/impl/session-047-economics-agent-decision-brief\n52d9c149cfa1a1bc3f9a955ad94629300d00a7a7 refs/remotes/origin/impl/session-048-position-lifecycle-protection\na73c92d83ca8b2fe5163e636b2c9732361b35e23 refs/remotes/origin/impl/session-049-final-integration-release\n46eb72d2611475d1e38444db287557c8154c5216 refs/remotes/origin/qualification/tq01-linux-2026-10-11\nbe8abff16c631f8ccea3df96c2a200fa4d0d590e refs/remotes/origin/review/session-041-accelerated-stability-closure\ndfe6bd4e21698454982f0e5e04ad93c2ef6f51ef refs/remotes/origin/review/session-041-binance-final-reconciliation\need7f849da5c8ff418c52fbc8cb0f0fd583d6422 refs/remotes/origin/review/session-041-binance-linux-qualification-proposal\n1ed578f503aca1d5e61eeab5439f7b606d7fb15a refs/remotes/origin/review/session-041-f1-throughput-correction\n1184ae1c613c6f191d94a28015f1f5259e9dcc0e refs/remotes/origin/review/session-041-offline-commissioning-gate\n9bfcfa5ea45388cecf2081e753930e3287828871 refs/remotes/origin/review/session-041-paused-v2-2026-10-09\neaf51d367dea1e13be544f7de23a6626279f7ad9 refs/remotes/origin/review/session-041-recovery-architecture\n6e69ef07afb0743f3505d92ad1ccb487555fe84c refs/remotes/origin/review/session-042-trading-workload-value\n"
+  },
+  "implementation_branch_log": {
+    "command": [
+      "git",
+      "log",
+      "--graph",
+      "--decorate",
+      "--oneline",
+      "--all",
+      "-n",
+      "80"
+    ],
+    "exit_status": 0,
+    "output": "* 81ebc2a (HEAD -> fix/red-r2-mixed-source-delivery-2026-10-13, origin/fix/red-r1-final-correctness-2026-10-13) docs: record R1 correctness closeout push\n* 9930fc8 fix: verify V1 source evidence for new phase4 decisions\n* 8b77c76 (origin/fix/red-r1-v1-snapshot-compat-2026-10-13) docs: finalize R1 compatibility delivery evidence\n* 575ec9c docs: record R1 compatibility push verification\n* 96b34ed fix: restore frozen V1 snapshot compatibility\n* 85a4174 (origin/impl/red-r1-surgical-correctness-2026-10-13) Record ATLAS RED R1 push verification\n* b7f3f17 Implement ATLAS RED R1 surgical correctness\n| * e2d3451 (origin/audit/red-six-reviewer-2026-10-13) Add Atlas RED audit report bundle\n|/  \n* a73c92d (origin/impl/session-049-final-integration-release) docs: record S49 implementation identity\n* 00ed85f S49: finish offline integration evidence and desktop gates\n* 52d9c14 (origin/impl/session-048-position-lifecycle-protection) Record S48 implementation push and independent review handoff\n* 9a48489 S48 repair fact provenance and deterministic position protection review\n* b0db7d0 (origin/impl/session-047-economics-agent-decision-brief) docs: record verified S47 implementation push and review scope\n* e1f0c17 feat: add bounded S47 research briefs and durable fake analysis\n* 95efa39 (origin/impl/session-046-causal-features-peer-context) Record S46 push verification\n* e2828d4 S46 add causal peer relationship context\n* ce5f670 (origin/fix/session-045-outcome-and-design-closure) docs: record S45 push verification and handoff\n* 4b678e8 fix: repair due-work outcomes and close S45 design review\n* 46eb72d (origin/qualification/tq01-linux-2026-10-11) Finalize TQ-01 five-hour translog\n* f61f40b Record TQ-01 push verification\n* 9064e08 Add ATLAS TQ-01 Linux qualification evidence\n* 8961b03 (origin/fix/session-044-practical-trading-delivery) docs: record S44 tested source checkpoint\n* a8be15c feat(v2): add opt-in close-driven Binance M15 path\n* a6475ee (origin/fix/session-043-first-trading-value) Bind V2 public context to selected venues\n* 6e69ef0 (origin/review/session-042-trading-workload-value) docs: review S42 trading workload value and lean operating choices\n* be8abff (origin/review/session-041-accelerated-stability-closure) docs: specify bounded S41 stability comparison\n* b18b4d4 docs: record S41 stability gate environment block\n* 347fd93 test(v2): synchronize preparation worker crash fixture\n* 1184ae1 (origin/review/session-041-offline-commissioning-gate) docs: record offline commissioning gate evidence\n* 385d6c5 fix(v2): handle empty qualification trade geometry\n* 82a6f6e (origin/fix/session-041-linux-binance-commissioning) docs: record S41 telemetry qualification checkpoint\n* 30c103b feat(v2): complete Binance diagnostic telemetry\n* f69cd90 test: correct Binance qualification stream fixture\n* e873e28 docs: record restored commissioning fixture blocker\n* 71f19e6 Record commissioning type-check limitation\n* 19d7e64 Log S41 Binance commissioning checkpoint\n* 829ab95 Add S41 Binance diagnostic commissioning path\n| * dfe6bd4 (origin/review/session-041-binance-final-reconciliation) docs: reconcile S41 Binance qualification amendment\n| * eed7f84 (origin/review/session-041-binance-linux-qualification-proposal) docs: propose S41 Binance Linux qualification profile\n|/  \n* dcb5d9d (origin/fix/session-041-final-v2-recovery) docs: record Binance-only Linux workload investigation\n* 34cbf82 docs: record S41 F1 feasibility stop\n* ac9770b fix(v2): implement accepted S41 F1 recovery slice\n* 1038cec docs(v2): specify focused F1 throughput correction\n| * 1ed578f (origin/review/session-041-f1-throughput-correction) docs(v2): specify focused F1 throughput correction\n|/  \n* 42e87fd docs: finalize S41 F1 recovery checkpoint log\n* 2408d0b fix(v2): prototype nonblocking F1 preparation pipeline\n* 16a7438 docs: add permanent ATLAS engineering log protocol\n* a3de879 docs(v2): record S41 R2 F1 capacity stop\n* 3bd112a fix(v2): bound public stream adoption work\n* eaf51d3 (origin/review/session-041-recovery-architecture) docs: apply final S41 R1 coordinating review corrections\n* 6947574 docs: define S41 recovery architecture and implementation gates\n* 9bfcfa5 (origin/review/session-041-paused-v2-2026-10-09) docs(session-041): preserve paused V2 review snapshot and blockers\n* a01f343 docs(session-041): preserve attributable validation and open scale findings\n* c903e4c feat(session-041): discover dual venue universes and bound public acquisition\n* 492f319 fix(session-041): preserve V1 duplicate economic append contract\n* 6aa255b feat(session-041): add selected demo venue OMS and account-bound recovery\n* 657ea9e fix(session-041): bound demo journal reads and fence native writers\n* d247d91 docs: establish S41 authority and exhaustive requirement inventory\n* 55ccd6f (origin/fix/session-040-owner-runtime-resilience-preflight-health) docs(session-040): close runtime resilience evidence\n* fdec6aa test: make Windows desktop regressions platform safe\n* 3efc924 test: qualify native Windows socket and storage stall measurements\n* 11d3343 fix(preflight): qualify durable capture receipts on the selected path\n* 8d5e63b ci: allow isolated supplementary qualification beside full native suite\n* 3721396 fix(ci): dispatch supplementary export through registered workflow\n* 1a3b9c9 test(runtime): qualify complete cold owner-scale native export\n* f572016 fix(ci): isolate S40 native engineering gates from packaging\n* 4a85895 test: derive scaled report envelope from owner channel cadence\n* 34b6bf2 ci: gate Windows package on 48-hour scaled report geometry\n* 11ea124 ci: execute pinned provider wire regressions before Windows package\n* a00be37 test: bind desktop diagnostics to packaged version\n* 69da5b5 test: require sustained provider timeout isolation before Windows packaging\n* 6cfd27c fix: isolate durable public capture and qualify owner runtime health\n* c0a290e (origin/fix/session-039-long-run-evidence-reliability) docs(v2): record S39 native package and scoped reliability evidence\n* 1afe8de test(windows): measure FULL commits on declared evidence volume\n* f9a59e8 test(v2): exercise WAL maintenance and readers during stream load\n* 9ef3b40 fix(v2): publish raw transport with one durable commit\n* 5340cf7 fix(v2): distribute public-stream WAL checkpoint work\n* b853220 test(v2): keep GC stall diagnostics free of handoff locks\n* f19839b test(v2): trace native stream durability and service stalls\n* 81ba98b fix(v2): isolate causal continuity projection from S4 flow analytics\n"
+  },
+  "starting_ancestry": {
+    "command": [
+      "git",
+      "merge-base",
+      "--is-ancestor",
+      "81ebc2ae67d9e52a79557e01a96517a4956daa64",
+      "HEAD"
+    ],
+    "exit_status": 0,
+    "output": ""
+  },
+  "base_commit": {
+    "command": [
+      "git",
+      "show",
+      "-s",
+      "--format=%H%n%P%n%ci%n%s",
+      "81ebc2ae67d9e52a79557e01a96517a4956daa64"
+    ],
+    "exit_status": 0,
+    "output": "81ebc2ae67d9e52a79557e01a96517a4956daa64\n9930fc834022ce3e8f5bc2239bd60867a251f46e\n2026-10-13 05:44:56 +0000\ndocs: record R1 correctness closeout push\n"
+  },
+  "impl_commit": {
+    "command": [
+      "git",
+      "show",
+      "-s",
+      "--format=%H%n%P%n%ci%n%s",
+      "9930fc834022ce3e8f5bc2239bd60867a251f46e"
+    ],
+    "exit_status": 0,
+    "output": "9930fc834022ce3e8f5bc2239bd60867a251f46e\n8b77c76b2ef0581cc453bc4f806693884e763cb4\n2026-10-13 05:44:18 +0000\nfix: verify V1 source evidence for new phase4 decisions\n"
+  },
+  "s49_ancestor": {
+    "command": [
+      "git",
+      "show",
+      "-s",
+      "--format=%H%n%P%n%ci%n%s",
+      "a73c92d83ca8b2fe5163e636b2c9732361b35e23"
+    ],
+    "exit_status": 0,
+    "output": "a73c92d83ca8b2fe5163e636b2c9732361b35e23\n00ed85f9dae78b29989e442dfb0d70576671ff48\n2026-10-13 02:23:23 +0530\ndocs: record S49 implementation identity\n"
+  },
+  "remote_branch_ancestry_scan": {
+    "starting_sha": "81ebc2ae67d9e52a79557e01a96517a4956daa64",
+    "remote_tracking_refs_examined": 62,
+    "refs": [
+      {
+        "ref": "refs/remotes/origin/audit/red-six-reviewer-2026-10-13",
+        "sha": "e2d3451a071c124375fa2a8869a4217273686652",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-13 01:36:16 +0000\tAdd Atlas RED audit report bundle"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/red-r1-final-correctness-2026-10-13",
+        "sha": "81ebc2ae67d9e52a79557e01a96517a4956daa64",
+        "descends_from_reviewed_r1_head": true,
+        "commits_after_reviewed_r1_head": 0,
+        "tip": "2026-10-13 05:44:56 +0000\tdocs: record R1 correctness closeout push"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/red-r1-v1-snapshot-compat-2026-10-13",
+        "sha": "8b77c76b2ef0581cc453bc4f806693884e763cb4",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-13 04:29:58 +0000\tdocs: finalize R1 compatibility delivery evidence"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/session-038-public-stream-reliability",
+        "sha": "efd75ca4e0cb432c79e0a090b363ca09b87e9099",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-04 23:20:44 +0530\tdocs: close S38 offline and native public stream remediation gates"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/session-039-long-run-evidence-reliability",
+        "sha": "c0a290ec89f66507d155f2975976ba49132cab18",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-05 15:25:34 +0530\tdocs(v2): record S39 native package and scoped reliability evidence"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/session-040-owner-runtime-resilience-preflight-health",
+        "sha": "55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-06 22:29:47 +0530\tdocs(session-040): close runtime resilience evidence"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/session-041-final-v2-recovery",
+        "sha": "dcb5d9dbe6ec58ee337b29accb48f96ef174ec1d",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-10 22:05:49 +0530\tdocs: record Binance-only Linux workload investigation"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/session-041-linux-binance-commissioning",
+        "sha": "82a6f6e7df03889bd044991c4e47bd7339e03536",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-11 08:56:51 +0530\tdocs: record S41 telemetry qualification checkpoint"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/session-043-first-trading-value",
+        "sha": "a6475ee9f629b0cb86a4a8a670e2813a540ace6e",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-11 15:31:49 +0530\tBind V2 public context to selected venues"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/session-044-practical-trading-delivery",
+        "sha": "8961b032b108376bfbcd15e2ed8dc8fcbd48a645",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-11 18:47:25 +0530\tdocs: record S44 tested source checkpoint"
+      },
+      {
+        "ref": "refs/remotes/origin/fix/session-045-outcome-and-design-closure",
+        "sha": "ce5f67031e7c5184da91aff416ec4aca18b14bbb",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-12 08:24:16 +0530\tdocs: record S45 push verification and handoff"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/red-r1-surgical-correctness-2026-10-13",
+        "sha": "85a4174cd5d373f0217c46c9944f6ed35f4c0a2b",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-13 03:32:49 +0000\tRecord ATLAS RED R1 push verification"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-001-foundation",
+        "sha": "bac8b16e767e7a253cc41c4e73f16ac1c6658319",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-21 22:45:00 +0530\tfix: session 001 review repairs (dispatch UNKNOWN, versions, transitions, atomicity, placeholders, decimals, composite keys, pragmas, py312)"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-002-safe-runtime",
+        "sha": "64ff1793841905dced0632968540175bbd21484b",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-22 00:30:19 +0530\tfix: close phase 1 runtime recovery gates"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-003-phase2-offline-qualification",
+        "sha": "94fb52a393d908a6eede6f4da9ac0fbc428003c5",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-22 02:10:32 +0530\tdocs: record truthful phase 2 repair handoff"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-004-phase2-completion",
+        "sha": "3ca43f7ff270d617cb1a4dd98863e0a6e7cd3a57",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-22 02:17:28 +0530\tdocs: record phase 2 integration handoff"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-005-phase3-causal-data-foundation",
+        "sha": "055b2f7e790af0f01e80260e5ed5ec2dac685809",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-22 13:43:18 +0530\tdocs: record schema v6 migration validation"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-006-phase4-baseline-science-risk",
+        "sha": "f4f082fa5be50db4f770027a33aec1be1ab34087",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-22 22:39:24 +0530\tfix: make bootstrap oof lookup timestamp causal"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-007-phase5-continuous-scanner-alert",
+        "sha": "248879b60d81877aa5dba295e1d8243637609a7c",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-22 23:56:09 +0530\tfix: finalize phase 5 scanner runner semantics"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-008-phase6-assisted-control-shell",
+        "sha": "9e36f9870bebe82f4f59e5c16efac5f327f03602",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-23 00:39:57 +0530\tdocs: record final phase 6 control invariant handoff"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-009-v1-phase0-6-stabilization",
+        "sha": "146bae0a2f10e2f794cbed3441123071c55a2baf",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-23 01:03:25 +0530\tdocs: record session 009 v1 acceptance handoff"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-010-v2-transition-audit",
+        "sha": "729b6413d0dfc63dba888f7bff98ad8daa9edf1f",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-24 20:47:24 +0530\tdocs: record session 010 v1 exit audit"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-011-v2-foundation-contracts-memory",
+        "sha": "a2d79569b57004dcfb63215e1babd1a9962c62c1",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-24 21:57:23 +0530\tdocs: record session 011 contract fix"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-012-v2-phase1-data-model-core",
+        "sha": "6d7d966842390cefdc4ec0782f1820d9a68044e8",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-25 01:00:20 +0530\tImplement V2 Phase 1B data and model core"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-013-v2-phase1-worker-isolation-gate",
+        "sha": "3490eed6ab3911059548eb7fceb21162577bc56e",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-25 01:53:44 +0530\tEnforce Bubblewrap isolation for V2 local model workers"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-014-v2-core-intelligence-s1",
+        "sha": "eed9f0e2581a06ec09eab3c0fec7b4d232cba8f9",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-25 02:57:18 +0530\tImplement V2 causal intraday core and S1 shadow policy"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-015-v2-phase2a-instrument-identity-fix",
+        "sha": "110518b4989f1d672d04e1b3431f3a142734e3ff",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-25 08:37:02 +0530\tCorrect V2 public-bar instrument revision joins"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-016-v2-s2-candidateset-selection",
+        "sha": "cf4ac5a6d4c71495d5a925aea4d42aa69101c89e",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-25 10:15:45 +0530\tBind S2 warmup and scanner selection source evidence"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-017-v2-risk-action-replay",
+        "sha": "f0833199d444f23b90336a3fdeff389e41ff1a42",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-25 18:38:48 +0530\tClose Session 017 risk and replay correctness gaps"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-018-v2-evidence-outcomes-pretrade-contracts",
+        "sha": "8c2686f346d3b97e194a0b29050afe8689f2c296",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-26 08:43:00 +0530\tfix(v2): bind decision state and joint scenario paths"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-019-v2-m0-scenario-evaluator-shadow-plan",
+        "sha": "3d491d5fa4ed2fee1bd575c893d16b33994d60cf",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-26 15:49:00 +0530\tRemediate Session 019 evidence binding"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-020-v2-desktop-ipc-phase2-gate",
+        "sha": "9dc828f061584372702fd94236b1d3a733709846",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-26 23:57:36 +0530\tfix(v2): make causal archive reconstruction deterministic"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-021-v2-s3-s6-s7-context-alerts",
+        "sha": "266ef1fe88da2bc4e37cda44c9a9c089c01883b7",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-27 05:05:13 +0530\tfix: close Session-021 S3 and S7 evidence gaps"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-022-v2-s4-s5-microstructure-crowding-context",
+        "sha": "09efb89ff99e156fb39c7c0a89c5a86f639ccf47",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-27 14:39:11 +0530\tCorrect S4 policy identity for Binance snapshot sync"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-023-v2-m1-analogue-discovery-selection-gate",
+        "sha": "665f44e3ecd99f7228cb5736b15f00f6ff6d1985",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-27 22:08:10 +0530\tfix(science): bind discovery holdout population from evidence"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-024-v2-venue-qualification-capital-bridge-hardening",
+        "sha": "f7e0cb7de3f7cfcdee51c4d42842f6d06094467f",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-28 02:21:42 +0530\tFix V2 live evidence source lookup"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-025-v2-release-engineering-shadow-closure",
+        "sha": "21055dcb5496665aaf165bde1e4f7e73db773192",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-28 03:44:58 +0530\tdocs: close Atlas V2 Session 025 release gate"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-026-agent-intelligence-offline-infrastructure",
+        "sha": "8f915f85798ff5777592e7f187641ad5684699ff",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-28 13:21:18 +0530\tdocs(session-026): record single-writer validation"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-027-v2-continuous-ops-supervisor",
+        "sha": "81ee4c1edbe0156691863b90daf3174168fa387b",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-29 16:23:26 +0530\tDocument final Session-027 remediation"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-028-agent-provider-deepseek-v41-amendment",
+        "sha": "20ee0ae92def34103facfeb464c976b15b92a85c",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-29 18:15:49 +0530\tdocs(session-028): qualify direct smoke credential boundary"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-029-agent-hidden-shadow-action-critic",
+        "sha": "a875401615612f4354fbe8afbf69acb4fa8d4bda",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-29 22:59:15 +0530\tRecord Session 029 hidden critic validation and gate"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-030-agent-prospective-shadow-runtime-readiness",
+        "sha": "8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-30 02:24:58 +0530\tRecord Session 030 prospective shadow runtime gate"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-031-public-shadow-campaign-readiness-evidence-controls",
+        "sha": "cd0cf72fa1dedca765c298a281633ee1b7056614",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-30 20:55:06 +0530\tRecord S31 independent review remediation"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-032-public-stream-continuity-recovery",
+        "sha": "ccc5a42b30bd43a9ebad05ef2eba9d28c528f135",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-09-30 22:48:08 +0530\tDocument public stream continuity engineering gate"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-033-continuous-matured-outcome-production",
+        "sha": "486a513dd873d53ac2bfef0e710f0b6332650537",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-01 09:17:08 +0530\tdocs: record session 033 independent review remediation"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-034-native-s3-m1-warmup-readiness",
+        "sha": "e13994752f165ad8b42f7f7c441076078d4388cc",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-01 17:47:35 +0530\tdocs: record S34 scientific calendar closure"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-035-public-host-source-qualification",
+        "sha": "702325b44ad487e699c60e682ad06031f4ecdb86",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-01 19:45:25 +0530\tRecord Session 035 public qualification evidence"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-036-final-development-closure-windows-tune-ready",
+        "sha": "b3e9f0f2b19bdb6c1f4e0f7a49d7b383b6cbd9b7",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-03 07:10:11 +0530\tdocs: record final offline and native Windows evidence with open engineering blockers"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-037-final-engineering-intelligence-closure",
+        "sha": "a51a302e09bda84449ab3867d28df545d39445f2",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-04 13:00:13 +0530\tdocs: record independently verified ready-ledger Windows package"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-046-causal-features-peer-context",
+        "sha": "95efa393e50f5e71646c409a3b4ff83cf5acb6a2",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-12 14:32:04 +0530\tRecord S46 push verification"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-047-economics-agent-decision-brief",
+        "sha": "b0db7d0527e68c737eefd564a87f740f5929c5f6",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-12 18:59:51 +0530\tdocs: record verified S47 implementation push and review scope"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-048-position-lifecycle-protection",
+        "sha": "52d9c149cfa1a1bc3f9a955ad94629300d00a7a7",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-12 20:54:11 +0530\tRecord S48 implementation push and independent review handoff"
+      },
+      {
+        "ref": "refs/remotes/origin/impl/session-049-final-integration-release",
+        "sha": "a73c92d83ca8b2fe5163e636b2c9732361b35e23",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-13 02:23:23 +0530\tdocs: record S49 implementation identity"
+      },
+      {
+        "ref": "refs/remotes/origin/qualification/tq01-linux-2026-10-11",
+        "sha": "46eb72d2611475d1e38444db287557c8154c5216",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-12 04:43:18 +0530\tFinalize TQ-01 five-hour translog"
+      },
+      {
+        "ref": "refs/remotes/origin/review/session-041-accelerated-stability-closure",
+        "sha": "be8abff16c631f8ccea3df96c2a200fa4d0d590e",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-11 12:53:05 +0530\tdocs: specify bounded S41 stability comparison"
+      },
+      {
+        "ref": "refs/remotes/origin/review/session-041-binance-final-reconciliation",
+        "sha": "dfe6bd4e21698454982f0e5e04ad93c2ef6f51ef",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-10 22:59:46 +0530\tdocs: reconcile S41 Binance qualification amendment"
+      },
+      {
+        "ref": "refs/remotes/origin/review/session-041-binance-linux-qualification-proposal",
+        "sha": "eed7f849da5c8ff418c52fbc8cb0f0fd583d6422",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-10 22:31:52 +0530\tdocs: propose S41 Binance Linux qualification profile"
+      },
+      {
+        "ref": "refs/remotes/origin/review/session-041-f1-throughput-correction",
+        "sha": "1ed578f503aca1d5e61eeab5439f7b606d7fb15a",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-10 16:15:58 +0530\tdocs(v2): specify focused F1 throughput correction"
+      },
+      {
+        "ref": "refs/remotes/origin/review/session-041-offline-commissioning-gate",
+        "sha": "1184ae1c613c6f191d94a28015f1f5259e9dcc0e",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-11 09:34:53 +0530\tdocs: record offline commissioning gate evidence"
+      },
+      {
+        "ref": "refs/remotes/origin/review/session-041-paused-v2-2026-10-09",
+        "sha": "9bfcfa5ea45388cecf2081e753930e3287828871",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-09 15:05:01 +0530\tdocs(session-041): preserve paused V2 review snapshot and blockers"
+      },
+      {
+        "ref": "refs/remotes/origin/review/session-041-recovery-architecture",
+        "sha": "eaf51d367dea1e13be544f7de23a6626279f7ad9",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-10 06:10:03 +0530\tdocs: apply final S41 R1 coordinating review corrections"
+      },
+      {
+        "ref": "refs/remotes/origin/review/session-042-trading-workload-value",
+        "sha": "6e69ef07afb0743f3505d92ad1ccb487555fe84c",
+        "descends_from_reviewed_r1_head": false,
+        "commits_after_reviewed_r1_head": null,
+        "tip": "2026-10-11 14:39:11 +0530\tdocs: review S42 trading workload value and lean operating choices"
+      }
+    ]
+  }
+}

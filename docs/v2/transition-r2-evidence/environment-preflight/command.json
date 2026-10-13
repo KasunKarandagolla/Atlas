@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "/workspace/.venvs/atlas/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "--disable-warnings",
+    "--basetemp=/tmp/atlas-r2-red-baseline",
+    "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/red-baseline/mixed-capacity.junit.xml",
+    "tests/v2/test_session041_mixed_broad_capacity.py::test_mixed_1024_contract_public_workload_under_bounded_stalls"
+  ],
+  "cwd": "/workspace/Atlas_R2",
+  "environment": {
+    "ATLAS_AGENT_PROVIDER_PROFILE": "DISABLED",
+    "ATLAS_OFFLINE_SIMULATION": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONHASHSEED": "0",
+    "PYTHONPATH": "/workspace/Atlas_R2/src"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "tests/v2/test_session041_public_runtime_integration.py",
+    "tests/v2/test_session041_binance_qualification.py",
+    "--basetemp=/tmp/atlas-r2-public-runtime-r2",
+    "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/public-runtime-qualification-r2/public-runtime.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:59:21.476195+00:00",
+  "wall_seconds": 10.379283167000267,
+  "exit_status": 0,
+  "peak_child_rss_bytes": 154599424,
+  "child_user_cpu_seconds": 5.711652,
+  "child_system_cpu_seconds": 0.339733,
+  "process_filesystem_output_bytes": 2502656,
+  "resource_note": "Linux ru_oublock is in 512-byte blocks for the sole pytest child; not net retained disk growth."
+}

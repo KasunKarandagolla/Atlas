@@ -1,0 +1,28 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "tests/v2/test_session040_capture_receipts.py",
+    "tests/v2/test_session040_durable_capture.py",
+    "tests/v2/test_session041_capture_delivery_batching.py",
+    "tests/v2/test_session041_capture_pressure_reserve.py",
+    "tests/v2/test_session041_broad_stream_source.py",
+    "tests/v2/test_session041_stream_service_paging.py",
+    "tests/v2/test_session041_recovery_queue.py",
+    "--basetemp=/tmp/atlas-r2-focused-final-run3",
+    "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/final-capture-matrix-run3/capture-matrix.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:57:49.560291+00:00",
+  "wall_seconds": 37.4843439010001,
+  "exit_status": 0,
+  "peak_child_rss_bytes": 151027712,
+  "child_user_cpu_seconds": 6.496862,
+  "child_system_cpu_seconds": 0.5076109999999999,
+  "process_filesystem_output_bytes": 2809856,
+  "resource_note": "Linux ru_oublock is in 512-byte blocks for the sole pytest child; not net retained disk growth."
+}

@@ -1,0 +1,15 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "-p",
+  "no:cacheprovider",
+  "tests/v2/test_session040_live_health.py",
+  "tests/v2/test_session040_native_resilience.py",
+  "tests/v2/test_session040_owner_runtime.py",
+  "tests/v2/test_session041_recovery_adoption.py",
+  "--basetemp=/tmp/atlas-r2-health-recovery-r2",
+  "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/final-health-recovery-r2/health-recovery.junit.xml"
+]

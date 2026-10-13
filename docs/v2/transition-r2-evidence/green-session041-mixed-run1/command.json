@@ -1,0 +1,9 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "tests/v2/test_session041_mixed_broad_capacity.py",
+  "--junitxml=docs/v2/transition-r2-evidence/green-session041-mixed-run1/mixed-capacity.junit.xml"
+]

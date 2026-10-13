@@ -1,0 +1,23 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "tests/v2/test_session041_public_runtime_integration.py",
+    "tests/v2/test_session041_binance_qualification.py",
+    "--basetemp=/tmp/atlas-r2-public-runtime",
+    "--junitxml=docs/v2/transition-r2-evidence/public-runtime-qualification/public-runtime.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:52:16.280234+00:00",
+  "wall_seconds": 10.411378868,
+  "exit_status": 0,
+  "peak_sampled_child_rss_bytes": 154279936,
+  "child_user_cpu_seconds": 5.534236,
+  "child_system_cpu_seconds": 0.48963199999999996,
+  "process_filesystem_output_bytes": 1720320,
+  "resource_note": "Linux ru_oublock is in 512-byte blocks for this sole child process."
+}

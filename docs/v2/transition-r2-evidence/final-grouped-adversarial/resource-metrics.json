@@ -1,0 +1,21 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "tests/v2/test_session041_capture_delivery_batching.py",
+    "--basetemp=/tmp/atlas-r2-group-adversarial",
+    "--junitxml=docs/v2/transition-r2-evidence/final-grouped-adversarial/grouped-adversarial.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:54:21.927073+00:00",
+  "wall_seconds": 8.665367891,
+  "exit_status": 1,
+  "peak_sampled_child_rss_bytes": 109174784,
+  "child_user_cpu_seconds": 1.136032,
+  "child_system_cpu_seconds": 0.13444,
+  "process_filesystem_output_bytes": 12288
+}

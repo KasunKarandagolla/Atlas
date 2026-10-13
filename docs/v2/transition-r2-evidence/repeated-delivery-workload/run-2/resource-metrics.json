@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "tests/v2/test_session041_capture_delivery_batching.py::test_broad_capture_keeps_160_fps_delivery_under_bounded_sync_latency",
+    "--basetemp=/tmp/atlas-r2-delivery-repeat-2",
+    "--junitxml=docs/v2/transition-r2-evidence/repeated-delivery-workload/run-2/delivery.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:46:07.161643+00:00",
+  "wall_seconds": 8.604144829,
+  "exit_status": 0,
+  "peak_sampled_child_rss_bytes": 110108672,
+  "child_user_cpu_seconds": 1.1880120000000003,
+  "child_system_cpu_seconds": 0.08803,
+  "process_filesystem_output_bytes": 8192,
+  "resource_note": "Linux child output counter is 512-byte blocks; temp workload data is under its bounded /tmp basetemp."
+}

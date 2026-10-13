@@ -1,0 +1,12 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "-p",
+  "no:cacheprovider",
+  "tests/v2/test_session041_capture_delivery_batching.py::test_broad_capture_keeps_160_fps_delivery_under_bounded_sync_latency",
+  "--basetemp=/tmp/atlas-r2-delivery-repeat-2",
+  "--junitxml=docs/v2/transition-r2-evidence/repeated-delivery-workload/run-2/delivery.junit.xml"
+]

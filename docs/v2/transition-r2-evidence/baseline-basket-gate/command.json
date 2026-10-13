@@ -1,0 +1,12 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "-p",
+  "no:cacheprovider",
+  "tests/v2/test_session041_basket_outcomes.py::test_complete_observed_path_keeps_economic_result_not_estimable",
+  "--basetemp=/tmp/atlas-r2-baseline-basket",
+  "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/baseline-basket-gate/baseline-basket.junit.xml"
+]

@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "--disable-warnings",
+    "-p",
+    "no:cacheprovider",
+    "--basetemp=/tmp/atlas-r2-red-adversarial",
+    "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/red-adversarial/adversarial.junit.xml",
+    "tests/v2/test_session040_capture_receipts.py::test_batched_receipts_keep_individual_framing_with_one_durability_sync",
+    "tests/v2/test_session040_capture_receipts.py::test_interrupted_batched_append_is_terminal_and_keeps_prior_receipt",
+    "tests/v2/test_session041_capture_delivery_batching.py::test_broad_capture_keeps_160_fps_delivery_under_bounded_sync_latency"
+  ],
+  "cwd": "/workspace/Atlas_R2",
+  "environment": {
+    "ATLAS_AGENT_PROVIDER_PROFILE": "DISABLED",
+    "ATLAS_OFFLINE_SIMULATION": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONHASHSEED": "0",
+    "PYTHONPATH": "/workspace/Atlas_R2/src:/workspace/Atlas_R2/tests"
+  }
+}

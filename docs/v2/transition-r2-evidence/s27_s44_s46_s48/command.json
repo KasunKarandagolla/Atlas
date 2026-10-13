@@ -1,0 +1,21 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "-p",
+  "no:cacheprovider",
+  "tests/v2/test_session027_ops_supervisor.py",
+  "tests/v2/test_session027_production.py",
+  "tests/science/test_decision_calendar.py",
+  "tests/v2/test_session044_close_driven_m15.py",
+  "tests/v2/test_session046_peer_context.py",
+  "tests/runtime/test_session048_lifecycle_projection.py",
+  "tests/runtime/test_session048_position_protection.py",
+  "tests/v2/test_session048_management_shadow.py",
+  "tests/v2/test_session048_s47_repairs.py",
+  "tests/v2/test_session041_dynamic_universe.py",
+  "--basetemp=/tmp/atlas-r2-s27-s48",
+  "--junitxml=docs/v2/transition-r2-evidence/s27_s44_s46_s48/s27-s48.junit.xml"
+]

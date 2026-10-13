@@ -1,0 +1,17 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "tests/v2/test_session041_capture_delivery_batching.py",
+    "--junitxml=docs/v2/transition-r2-evidence/red-adversarial-160fps-pre-fix/capture-delivery.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:29:59.631476+00:00",
+  "wall_seconds": 9.124328194,
+  "exit_status": 1,
+  "peak_sampled_child_rss_bytes": 117194752,
+  "process_filesystem_output_bytes": 7671808,
+  "note": "Linux child output counter includes all exited children in this supervisor process; baseline environment invocations were collected earlier, so value is an upper bound for this command."
+}

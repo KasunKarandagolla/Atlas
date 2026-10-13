@@ -1,0 +1,57 @@
+{
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "uname": {
+    "system": "Linux",
+    "node": "796648a09714",
+    "release": "6.18.44",
+    "version": "#1 SMP Sat Sep 26 20:02:31 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "logical_cpu_count": 3,
+  "workspace_disk_snapshot_bytes": {
+    "total": 33770192896,
+    "used": 829870080,
+    "free": 31205560320
+  },
+  "tmp_disk_snapshot_bytes": {
+    "total": 5226246144,
+    "used": 871968768,
+    "free": 4354277376
+  },
+  "retained_named_test_temp_roots_bytes": {
+    "/tmp/atlas-r2-baseline-basket": 7867848,
+    "/tmp/atlas-r2-compile-cache": 9196249,
+    "/tmp/atlas-r2-consumer-compat": 171568900,
+    "/tmp/atlas-r2-consumer-compat-r2": 171568900,
+    "/tmp/atlas-r2-delivery-repeat-1": 246621,
+    "/tmp/atlas-r2-delivery-repeat-2": 246621,
+    "/tmp/atlas-r2-final-mixed": 17507697,
+    "/tmp/atlas-r2-final-mixed-r2": 17245375,
+    "/tmp/atlas-r2-focused-final": 27333782,
+    "/tmp/atlas-r2-focused-final-run2": 27313545,
+    "/tmp/atlas-r2-focused-final-run3": 27258824,
+    "/tmp/atlas-r2-group-adversarial": 254640,
+    "/tmp/atlas-r2-group-adversarial-run3": 254640,
+    "/tmp/atlas-r2-group-adversarial-run4": 254640,
+    "/tmp/atlas-r2-group-diagnostic": 1082,
+    "/tmp/atlas-r2-group-diagnostic2": 1082,
+    "/tmp/atlas-r2-health-recovery-r2": 14068637,
+    "/tmp/atlas-r2-mypy-baseline": 25116896,
+    "/tmp/atlas-r2-mypy-working": 25125088,
+    "/tmp/atlas-r2-public-runtime": 11857540,
+    "/tmp/atlas-r2-public-runtime-r2": 11857579,
+    "/tmp/atlas-r2-red-adversarial": 5174,
+    "/tmp/atlas-r2-red-baseline": 17038702,
+    "/tmp/atlas-r2-red-capture-rate": 2814,
+    "/tmp/atlas-r2-s27-s48": 200464714,
+    "/tmp/atlas-r2-starting-baseline": 35711554
+  },
+  "retained_r2_evidence_bytes": 503860,
+  "retained_local_mixed_artifact_excluded_from_commit": {
+    ".r2-temporary-workload": 17009236
+  },
+  "rolling_24h_write_usage": "NOT ESTIMABLE; prior usage is not fully available in this environment",
+  "captured_after_junit_compression": true
+}

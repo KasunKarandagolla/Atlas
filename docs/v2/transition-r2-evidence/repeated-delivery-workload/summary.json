@@ -1,0 +1,32 @@
+[
+  {
+    "run": 1,
+    "offered": 1280,
+    "accepted": 1280,
+    "drained": 1280,
+    "sealed": 1280,
+    "durable_read": 1280,
+    "offer_rate_fps": 159.99968861733782,
+    "queue_high_water": 28,
+    "queue_bytes_high_water": 4368,
+    "archive_syncs": 40,
+    "receipt_syncs": 40,
+    "loss_latched": false,
+    "rejections": 0
+  },
+  {
+    "run": 2,
+    "offered": 1280,
+    "accepted": 1280,
+    "drained": 1280,
+    "sealed": 1280,
+    "durable_read": 1280,
+    "offer_rate_fps": 159.9987353619895,
+    "queue_high_water": 27,
+    "queue_bytes_high_water": 4212,
+    "archive_syncs": 40,
+    "receipt_syncs": 40,
+    "loss_latched": false,
+    "rejections": 0
+  }
+]

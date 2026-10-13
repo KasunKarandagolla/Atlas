@@ -1,0 +1,16 @@
+{
+  "child_filesystem_input_blocks_512b": 0,
+  "child_filesystem_output_blocks_512b": 328008,
+  "child_max_rss_kib": 248044,
+  "child_system_cpu_seconds": 0.323881,
+  "child_user_cpu_seconds": 8.414581,
+  "elapsed_seconds": 15.583943,
+  "exit_code": 1,
+  "filesystem_output_bytes_from_blocks": 167940096,
+  "resource_counter_note": "resource.RUSAGE_CHILDREN counters for the sole pytest child; Linux ru_oublock units are 512-byte blocks; VmHWM is a process peak, not evidence of a leak.",
+  "sampled_process_peak_hwm_kib": 248140,
+  "sampled_process_peak_rss_kib": 248140,
+  "test_sha256_after": "3b54b1898623be2d1f9f9ffd016eb114c8f699c7ab43da2c8083a960d0cb5eef",
+  "test_sha256_before": "3b54b1898623be2d1f9f9ffd016eb114c8f699c7ab43da2c8083a960d0cb5eef",
+  "test_unchanged": true
+}

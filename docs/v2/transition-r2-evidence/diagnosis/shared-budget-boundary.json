@@ -1,0 +1,32 @@
+{
+  "accepted_by_bybit": 480,
+  "bytes_at_rejection": 63360,
+  "bytes_max": 16000000,
+  "diagnostic": "exact shared budget policy with payload bytes matching the test frame shape; no producer/capture threads or database",
+  "frame_payload_bytes": 132,
+  "lane_reservation_floor_bytes": {
+    "BINANCE_MARKET": 1000000,
+    "BYBIT": 1000000
+  },
+  "lane_reservation_floor_items": {
+    "BINANCE_MARKET": 32,
+    "BYBIT": 32
+  },
+  "lane_reserved_bytes": {
+    "BINANCE_MARKET": 0,
+    "BYBIT": 63360
+  },
+  "lane_reserved_items": {
+    "BINANCE_MARKET": 0,
+    "BYBIT": 480
+  },
+  "loss_latched": true,
+  "loss_reasons": [
+    "SHARED_LIMIT"
+  ],
+  "rejection_counts": {
+    "APPEND_FAILURE": 0,
+    "LOCAL_LIMIT": 0,
+    "SHARED_LIMIT": 1
+  }
+}

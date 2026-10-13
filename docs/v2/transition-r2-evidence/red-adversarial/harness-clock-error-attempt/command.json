@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "--disable-warnings",
+    "-p",
+    "no:cacheprovider",
+    "--basetemp=/tmp/atlas-r2-red-capture-rate",
+    "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/red-adversarial-capture-rate/capture-rate.junit.xml",
+    "tests/v2/test_session041_capture_delivery_batching.py::test_broad_capture_keeps_160_fps_delivery_under_bounded_sync_latency"
+  ],
+  "cwd": "/workspace/Atlas_R2",
+  "environment": {
+    "ATLAS_AGENT_PROVIDER_PROFILE": "DISABLED",
+    "ATLAS_OFFLINE_SIMULATION": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONHASHSEED": "0",
+    "PYTHONPATH": "/workspace/Atlas_R2/src:/workspace/Atlas_R2/tests"
+  }
+}

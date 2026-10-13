@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "tests/v2/test_session040_capture_receipts.py",
+    "tests/v2/test_session041_capture_delivery_batching.py",
+    "--junitxml=docs/v2/transition-r2-evidence/green-focused-first/focused.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:34:20.860568+00:00",
+  "wall_seconds": 8.608178933,
+  "exit_status": 0,
+  "peak_sampled_child_rss_bytes": 108908544,
+  "process_filesystem_output_bytes": 229376,
+  "resource_note": "Linux RUSAGE_CHILDREN ru_oublock counted in 512-byte blocks; no other child was launched by this measurement process."
+}

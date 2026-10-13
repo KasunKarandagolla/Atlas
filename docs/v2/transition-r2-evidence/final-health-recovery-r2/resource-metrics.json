@@ -1,0 +1,25 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "tests/v2/test_session040_live_health.py",
+    "tests/v2/test_session040_native_resilience.py",
+    "tests/v2/test_session040_owner_runtime.py",
+    "tests/v2/test_session041_recovery_adoption.py",
+    "--basetemp=/tmp/atlas-r2-health-recovery-r2",
+    "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/final-health-recovery-r2/health-recovery.junit.xml"
+  ],
+  "started_utc": "2026-10-13T07:00:14.412017+00:00",
+  "wall_seconds": 36.01715238299994,
+  "exit_status": 1,
+  "peak_child_rss_bytes": 156639232,
+  "child_user_cpu_seconds": 4.442813,
+  "child_system_cpu_seconds": 0.389677,
+  "process_filesystem_output_bytes": 622592,
+  "resource_note": "Linux ru_oublock is in 512-byte blocks for the sole pytest child; not net retained disk growth."
+}

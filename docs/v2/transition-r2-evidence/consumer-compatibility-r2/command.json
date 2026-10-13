@@ -1,0 +1,23 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "-p",
+  "no:cacheprovider",
+  "tests/contract/test_v1_golden_baseline.py",
+  "tests/science/test_r1_source_qualification.py",
+  "tests/science/test_r1_v1_chronology_identity.py",
+  "tests/science/test_r1_v1_snapshot_compatibility.py",
+  "tests/v2/test_r1_surgical_correctness.py",
+  "tests/v2/test_session017_risk.py",
+  "tests/v2/test_session034_causal_timing.py",
+  "tests/v2/test_session033_outcome_maturity.py",
+  "tests/v2/test_session033_outcome_resolution.py",
+  "tests/v2/test_session033_outcome_runtime.py",
+  "tests/v2/test_session036_prediction_outcomes.py",
+  "tests/v2/test_session041_basket_outcomes.py",
+  "--basetemp=/tmp/atlas-r2-consumer-compat-r2",
+  "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/consumer-compatibility-r2/consumer-compat.junit.xml"
+]

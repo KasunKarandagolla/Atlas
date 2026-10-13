@@ -1,0 +1,19 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "tests/v2/test_session041_mixed_broad_capacity.py",
+    "--junitxml=docs/v2/transition-r2-evidence/green-session041-mixed-run1/mixed-capacity.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:36:03.919690+00:00",
+  "wall_seconds": 14.522940221,
+  "exit_status": 1,
+  "peak_sampled_child_rss_bytes": 256507904,
+  "child_user_cpu_seconds": 5.454204,
+  "child_system_cpu_seconds": 0.220071,
+  "process_filesystem_output_bytes": 12517376,
+  "resource_note": "Linux ru_oublock reported in 512-byte blocks for this sole child process."
+}

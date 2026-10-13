@@ -1,0 +1,275 @@
+{
+  "method": "gzip with mtime=0; each XML decompresses byte for byte to original output",
+  "reports": [
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/baseline-basket-gate/baseline-basket.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/baseline-basket-gate/baseline-basket.junit.xml.gz",
+      "uncompressed_bytes": 5058,
+      "uncompressed_sha256": "aa9ea42d34a5dbcd321f64067ac6844edcd8cd66cdc19737312e7a0407957908",
+      "compressed_bytes": 1535,
+      "compressed_sha256": "d49119c5eece54dbf955402e02ec587eb790ce086cd093b08f7ad80ef03b9942",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/consumer-compatibility/consumer-compat.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/consumer-compatibility/consumer-compat.junit.xml.gz",
+      "uncompressed_bytes": 27202,
+      "uncompressed_sha256": "ebee879714b6c24122a4a03e00a533c59c79e6f35f80d7d788b1470df950d8e8",
+      "compressed_bytes": 5195,
+      "compressed_sha256": "d1f8470ff40095ad601f3679afcaeb28e9c69705006b0dee9b4deaa4f07b86c9",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/consumer-compatibility-r2/consumer-compat.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/consumer-compatibility-r2/consumer-compat.junit.xml.gz",
+      "uncompressed_bytes": 27205,
+      "uncompressed_sha256": "0d577bec2df045fd0f4bc32a5299410a4dfaca12f5479a1af68d4486b23086e2",
+      "compressed_bytes": 5167,
+      "compressed_sha256": "e6a067ca9116367b38373099ad0ff4ae20fc717df92f37ea413085b8eb9d1e01",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/environment-preflight/missing-offline-research/mixed-capacity.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/environment-preflight/missing-offline-research/mixed-capacity.junit.xml.gz",
+      "uncompressed_bytes": 2557,
+      "uncompressed_sha256": "c37f5bb702f0353194917f784d055802bfc1cba648a3f599945683025fd1122f",
+      "compressed_bytes": 1215,
+      "compressed_sha256": "0f9d25d58b6c5ff5b3bb07903bbf158f839d855eb196a77c79f910262a3c2f36",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/environment-preflight/mixed-capacity.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/environment-preflight/mixed-capacity.junit.xml.gz",
+      "uncompressed_bytes": 985,
+      "uncompressed_sha256": "8d597ca97adf7913311e6a04cb364679bfce8ebccea216c80401ee6314668946",
+      "compressed_bytes": 540,
+      "compressed_sha256": "9b6494ab85ee1853ef0cfb3d92bf88a7a92d5cf75eefe0e724ab3fdf4f3d51fa",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/final-capture-matrix/capture-matrix.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/final-capture-matrix/capture-matrix.junit.xml.gz",
+      "uncompressed_bytes": 13082,
+      "uncompressed_sha256": "089e7aba39055f8b69095629c5c419b6daad7ac87345477b432b997b33dabe18",
+      "compressed_bytes": 3057,
+      "compressed_sha256": "828b49aa92fa3620c6b0323097c75ba8d0dcd9c6e50b0220935a38cf758cb260",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/final-capture-matrix-run2/capture-matrix.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/final-capture-matrix-run2/capture-matrix.junit.xml.gz",
+      "uncompressed_bytes": 9989,
+      "uncompressed_sha256": "a2a6b510429b02d54ea44a9323e658051b250184124e6f61b817b22ee8a7c720",
+      "compressed_bytes": 2000,
+      "compressed_sha256": "512eeedee929f16c78274e59bde64085d157aa64c3343005c035f5fbb3fcf88c",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/final-capture-matrix-run3/capture-matrix.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/final-capture-matrix-run3/capture-matrix.junit.xml.gz",
+      "uncompressed_bytes": 10320,
+      "uncompressed_sha256": "ec3997cd849f082f2a015dec1e95954a694993e12cd96f4ad2d820daaf713ab0",
+      "compressed_bytes": 2058,
+      "compressed_sha256": "e9f75b78b15cc122b6d63551e05414518d4bd360db26ebb478ef4f2f9ceb626a",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial/grouped-adversarial.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial/grouped-adversarial.junit.xml.gz",
+      "uncompressed_bytes": 2389,
+      "uncompressed_sha256": "74fd8887ed3b09300bf42e05b9ddce39bd6069d6e56c12c8cb64a70ead71d335",
+      "compressed_bytes": 1005,
+      "compressed_sha256": "2c2869aa4c52ebdb3f8bca73c915abd7561287c2fcab8a4aed8f7b25c24e71ba",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run3/grouped-adversarial.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run3/grouped-adversarial.junit.xml.gz",
+      "uncompressed_bytes": 2576,
+      "uncompressed_sha256": "37909a5515db3fcf13977189fc16ff67eebab8ad29f2786edc9a43ab889e6741",
+      "compressed_bytes": 1074,
+      "compressed_sha256": "0ec60bb6608a315c059cc582bc47a1819b94866aa09c952a525ebf600914eee3",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run4/grouped-adversarial.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run4/grouped-adversarial.junit.xml.gz",
+      "uncompressed_bytes": 1058,
+      "uncompressed_sha256": "a5fafcacc95c6b94b23612a3840b4dd6632ffec82e22de9d658d91ea8b250c57",
+      "compressed_bytes": 426,
+      "compressed_sha256": "b027de5d186655f3b45ef93119aab0f36951cd3c338ba02888a7672c3bf90721",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/final-health-recovery-r2/health-recovery.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/final-health-recovery-r2/health-recovery.junit.xml.gz",
+      "uncompressed_bytes": 27477,
+      "uncompressed_sha256": "e75d74f3a426dc96d182e6975ea7bbee8d23ef60dffc1f3708e2098cd7e5b81e",
+      "compressed_bytes": 4194,
+      "compressed_sha256": "0ae3f2e7700a8de2faec539bb560d44f24b39772f8fc77f0c957b85959235f42",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/final-session041-mixed/mixed-capacity.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/final-session041-mixed/mixed-capacity.junit.xml.gz",
+      "uncompressed_bytes": 25095,
+      "uncompressed_sha256": "b70cf0786e01596297c72ee59078dc77c29f700e4f40d19615e2f64f2fbe4f22",
+      "compressed_bytes": 5936,
+      "compressed_sha256": "fa53f9c3b25eef44b13dbb79993dc4b83cd7ff9ddf6a9a738e670b5faf4b8bda",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/final-session041-mixed-r2/mixed-capacity.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/final-session041-mixed-r2/mixed-capacity.junit.xml.gz",
+      "uncompressed_bytes": 24322,
+      "uncompressed_sha256": "423b9167e7ecaeec60f68890c9a2a905b44b0e9bb570a232c80c23785cfcb87e",
+      "compressed_bytes": 5844,
+      "compressed_sha256": "048ec29881a69bd392dd9df13aef6b7b64c1430fc56b3e89c0d1cc516db0a8e2",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/green-focused-first/focused.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/green-focused-first/focused.junit.xml.gz",
+      "uncompressed_bytes": 2818,
+      "uncompressed_sha256": "a10e3d924d27a47a693cacf5017cfcdbf27f11a0524abf827dc107a50c63518e",
+      "compressed_bytes": 694,
+      "compressed_sha256": "c0524e3cb5710b5345006acef42f5160ce454578bb0421fc04e012d1a669883e",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/green-session041-mixed-run1/mixed-capacity.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/green-session041-mixed-run1/mixed-capacity.junit.xml.gz",
+      "uncompressed_bytes": 29408,
+      "uncompressed_sha256": "aace5d087284783a31af1e0c4a51b53660b1f2dcabd2236886d77d36ce30e336",
+      "compressed_bytes": 6350,
+      "compressed_sha256": "0a1a12e7818a49c2030255f2a28b30f49a8b1f0754d096f8eadf434316aaa344",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/green-session041-mixed-run2/mixed-capacity.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/green-session041-mixed-run2/mixed-capacity.junit.xml.gz",
+      "uncompressed_bytes": 29674,
+      "uncompressed_sha256": "64fff9a7bde32be0457e8952088b686ba1ede28ec6cd16a02fabc2fde050b723",
+      "compressed_bytes": 6366,
+      "compressed_sha256": "e8b3bcdbf0589b12096bd387c7408266d014f7a2df169916c799b0b4f35689ce",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/green-session041-mixed-run3/mixed-capacity.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/green-session041-mixed-run3/mixed-capacity.junit.xml.gz",
+      "uncompressed_bytes": 23945,
+      "uncompressed_sha256": "bca2b33b2b01efb51599164cfa8124e9b978761b909a32cd3a83d6da8285253a",
+      "compressed_bytes": 5800,
+      "compressed_sha256": "755ac079d93f934de5057ae4f6c564ba6b77bd2419b50e4545f3d1bc0289be3c",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic/grouped-failure.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic/grouped-failure.junit.xml.gz",
+      "uncompressed_bytes": 2199,
+      "uncompressed_sha256": "0df5ef560e6d713d3fb201544f0127286d97847960f176214e3ed529fc9b4fcf",
+      "compressed_bytes": 994,
+      "compressed_sha256": "5d60808ee39360c09efad295e6d18d799d4f3a0382dccbe43ae98908c1f80336",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic-run2/grouped-failure.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic-run2/grouped-failure.junit.xml.gz",
+      "uncompressed_bytes": 2026,
+      "uncompressed_sha256": "16e2ef582455f3bd0c7ceb69c17bcba40d28776a00c25901d190b4daefebc237",
+      "compressed_bytes": 952,
+      "compressed_sha256": "86e5d65655c60a4f5d0be112dd54691338824b869b4319b1963c794f7f3cb110",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/public-runtime-qualification/public-runtime.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/public-runtime-qualification/public-runtime.junit.xml.gz",
+      "uncompressed_bytes": 6548,
+      "uncompressed_sha256": "290cf1d2911c0eaa85f5b1f3e2ab2c47c2fbbc0e66c274b8b9b01ba4db776c87",
+      "compressed_bytes": 1464,
+      "compressed_sha256": "07b4f997e5d48e556b50af53559746edd67f34e4f97db3e318b1f360f543b77c",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/public-runtime-qualification-r2/public-runtime.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/public-runtime-qualification-r2/public-runtime.junit.xml.gz",
+      "uncompressed_bytes": 6548,
+      "uncompressed_sha256": "0db6f743439ed6b78e66ad45e3c7a14a441b3d3b6f156672f41b4109f178100e",
+      "compressed_bytes": 1461,
+      "compressed_sha256": "3bfe38ff9460ddd4a54b9f83fc0c5883147c3f59efc3341b1dbb0868c50360a2",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/red-adversarial/harness-clock-error-attempt/capture-rate.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/red-adversarial/harness-clock-error-attempt/capture-rate.junit.xml.gz",
+      "uncompressed_bytes": 15855,
+      "uncompressed_sha256": "bc280c0e0142a5ff925865cdaaa6488851c55ab31eb732d4ddede8681104d3aa",
+      "compressed_bytes": 3438,
+      "compressed_sha256": "dba91ffd808caba2c038d5652d2cb53e04ab4ed970d78af08914f01ee8141ebb",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/red-adversarial/harness-error-attempt/adversarial.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/red-adversarial/harness-error-attempt/adversarial.junit.xml.gz",
+      "uncompressed_bytes": 12747,
+      "uncompressed_sha256": "6d8ae12f2cdbf93bebeb0a4ee12922e01f9d8c1e250db1128958f08a068d811c",
+      "compressed_bytes": 3364,
+      "compressed_sha256": "a2f5a119785e7541b9123a49ad72e478b1f4ade773018a8fddaae0a0b626bfad",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/red-adversarial-160fps-pre-fix/capture-delivery.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/red-adversarial-160fps-pre-fix/capture-delivery.junit.xml.gz",
+      "uncompressed_bytes": 20089,
+      "uncompressed_sha256": "9c82869b3b897f1dceec90bd320fb609c0c542ca4f3573aec6988ba0665d6f12",
+      "compressed_bytes": 4264,
+      "compressed_sha256": "a3eea1db494881741aa1528859b811b33db735c0ddeee5cebeeca1a82c8414b1",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/red-baseline/mixed-capacity.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/red-baseline/mixed-capacity.junit.xml.gz",
+      "uncompressed_bytes": 27885,
+      "uncompressed_sha256": "552016dcc7b98db747e99b81992bc9df2777bf2f7a783aa431aed962de4016ab",
+      "compressed_bytes": 6228,
+      "compressed_sha256": "19b15c3c64be5614f7c977feab295c32a44ba22b28f28c0cbe1df019a034244a",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/red-baseline-overlay/mixed-capacity.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/red-baseline-overlay/mixed-capacity.junit.xml.gz",
+      "uncompressed_bytes": 27901,
+      "uncompressed_sha256": "bd4d00c7c8d88e1b6d2722d127e634ef946b0eb722b93cdc3520ed442a6916e6",
+      "compressed_bytes": 6236,
+      "compressed_sha256": "d30fbd563941beb3ba156d9adcda17fb506776f17696a67586a8d4cf30abf8b5",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-1/delivery.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-1/delivery.junit.xml.gz",
+      "uncompressed_bytes": 412,
+      "uncompressed_sha256": "83b044ad094a3d2395b71a2822688d8624cb42cd0532a16c899c2b487e76a9f2",
+      "compressed_bytes": 269,
+      "compressed_sha256": "fcb2d15a1ce8d8e55aa82edcf645684ebeb48c1c04988df7f74e5e4fb1087b0a",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-2/delivery.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-2/delivery.junit.xml.gz",
+      "uncompressed_bytes": 412,
+      "uncompressed_sha256": "61ef53ee8c5eeee6b706d26690b2799deca0896c1e6d66d54e06c32618e6fe3a",
+      "compressed_bytes": 269,
+      "compressed_sha256": "6ee5fa0435671715f8d2d78ae8c80b462d3d914b259071906e8610d5bc794e09",
+      "decompressed_byte_match": true
+    },
+    {
+      "uncompressed_path": "docs/v2/transition-r2-evidence/s27_s44_s46_s48/s27-s48.junit.xml",
+      "compressed_path": "docs/v2/transition-r2-evidence/s27_s44_s46_s48/s27-s48.junit.xml.gz",
+      "uncompressed_bytes": 22016,
+      "uncompressed_sha256": "3efb5613bf7ac530a597391a38c8b2d220c25e8447fda14710184b1317e62ae3",
+      "compressed_bytes": 3862,
+      "compressed_sha256": "a2f7e396dbca4e9e85326b89e0f2725a2780b93c30161b04ff64165eff5a4932",
+      "decompressed_byte_match": true
+    }
+  ]
+}

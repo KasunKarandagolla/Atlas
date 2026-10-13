@@ -252,3 +252,12 @@ The user confirmed GPT-6 Luna; coordinator and two read-only audits used GPT-6 L
 ## ATLAS RED R1 final correctness closeout implementation push — 2026-10-13
 
 Pushed implementation commit `9930fc834022ce3e8f5bc2239bd60867a251f46e` to `fix/red-r1-final-correctness-2026-10-13`. `git ls-remote origin refs/heads/fix/red-r1-final-correctness-2026-10-13` returned the same SHA. The manifest records this verified implementation tip; the final documentation receipt follows. Independent review remains pending.
+
+
+## ATLAS RED R2 bounded public-delivery correction — 2026-10-13
+
+**CONFIRMED:** isolated `fix/red-r2-mixed-source-delivery-2026-10-13` starts at verified R1 remote HEAD `81ebc2ae67d9e52a79557e01a96517a4956daa64`; R1 implementation `9930fc834022ce3e8f5bc2239bd60867a251f46e` and S49 ancestor `a73c92d83ca8b2fe5163e636b2c9732361b35e23` are ancestors. The causal failure is serialized archive-plus-receipt sync service under bounded stalls: the controlled pre-fix 160-frame/s workload reproduced `SHARED_LIMIT` at 480/512 with a protected idle-lane reserve. Bounded two-descriptor archive/receipt grouping restored delivery without changing queue, drain, batch, pending, or pressure limits. The wrapper now also exposes terminal capture failure state correctly.
+
+**IMPLEMENTED / TESTED:** implementation commit `910d4001323f4a6136af886df618b99a6c8fb8aa` pushed and independently verified at the exact remote ref. Final-code capture group 63/63, mixed 1/1, runtime/qualification 40/40, S27/S44/S46/S48/dynamic 137/137. Two 1,280-frame, 160-frame/s, 80-ms-per-sync runs conserved all frames with zero rejects. Health/recovery was 149/150 because optional `PySide6` is absent; consumer compatibility was 145/146 with one basket case reproduced at the starting SHA. The unchanged mixed test did not recreate the original queue rejection on this host; the controlled pre-fix reproduction and current green integration are retained.
+
+**OPEN / NOT QUALIFIED:** full repository remains TEST GATE (prior 2,783-test collection stopped at 1,196); Windows and Qt desktop smoke are environment-blocked; sustained Binance capture, native execution, and rolling 24-hour disk usage remain UNVERIFIED / NOT ESTIMABLE. The production agent remains disabled; three readiness-context gates and AUD-01/02/06 remain open. No trading, capital, provider, venue, merge, or deployment action. Detailed handoff and raw evidence: `docs/v2/ATLAS_RED_R2_DELIVERY_CORRECTION_HANDOFF.md` and `docs/v2/transition-r2-evidence/`.

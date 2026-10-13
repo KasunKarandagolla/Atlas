@@ -1,0 +1,62 @@
+{
+  "src/atlas/v2/data/broad_stream_source.py": {
+    "baseline": {
+      "exit_status": 1,
+      "output": ""
+    },
+    "working": {
+      "exit_status": 1,
+      "output": ""
+    }
+  },
+  "src/atlas/v2/data/capture_receipts.py": {
+    "baseline": {
+      "exit_status": 1,
+      "output": ""
+    },
+    "working": {
+      "exit_status": 1,
+      "output": ""
+    }
+  },
+  "src/atlas/v2/data/durable_public_capture.py": {
+    "baseline": {
+      "exit_status": 1,
+      "output": ""
+    },
+    "working": {
+      "exit_status": 1,
+      "output": ""
+    }
+  },
+  "tests/v2/test_session040_capture_receipts.py": {
+    "baseline": {
+      "exit_status": 1,
+      "output": ""
+    },
+    "working": {
+      "exit_status": 1,
+      "output": ""
+    }
+  },
+  "tests/v2/test_session041_capture_delivery_batching.py": {
+    "baseline": {
+      "exit_status": 128,
+      "output": "fatal: path 'tests/v2/test_session041_capture_delivery_batching.py' exists on disk, but not in 'HEAD'\n"
+    },
+    "working": {
+      "exit_status": 0,
+      "output": ""
+    }
+  },
+  "tests/v2/test_session041_mixed_broad_capacity.py": {
+    "baseline": {
+      "exit_status": 1,
+      "output": ""
+    },
+    "working": {
+      "exit_status": 1,
+      "output": ""
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "tests/contract/test_v1_golden_baseline.py",
+    "tests/science/test_r1_source_qualification.py",
+    "tests/science/test_r1_v1_chronology_identity.py",
+    "tests/science/test_r1_v1_snapshot_compatibility.py",
+    "tests/v2/test_r1_surgical_correctness.py",
+    "tests/v2/test_session017_risk.py",
+    "tests/v2/test_session034_causal_timing.py",
+    "tests/v2/test_session033_outcome_maturity.py",
+    "tests/v2/test_session033_outcome_resolution.py",
+    "tests/v2/test_session033_outcome_runtime.py",
+    "tests/v2/test_session036_prediction_outcomes.py",
+    "tests/v2/test_session041_basket_outcomes.py",
+    "--basetemp=/tmp/atlas-r2-consumer-compat",
+    "--junitxml=docs/v2/transition-r2-evidence/consumer-compatibility/consumer-compat.junit.xml"
+  ],
+  "started_utc": "2026-10-13T06:47:07.930367+00:00",
+  "wall_seconds": 39.559474972,
+  "exit_status": 1,
+  "peak_sampled_child_rss_bytes": 325554176,
+  "child_user_cpu_seconds": 47.94803,
+  "child_system_cpu_seconds": 2.846488,
+  "process_filesystem_output_bytes": 57344,
+  "resource_note": "Linux ru_oublock is in 512-byte blocks for this sole child process."
+}

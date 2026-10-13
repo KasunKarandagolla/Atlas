@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "tests/v2/test_session041_basket_outcomes.py::test_complete_observed_path_keeps_economic_result_not_estimable",
+    "--basetemp=/tmp/atlas-r2-baseline-basket",
+    "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/baseline-basket-gate/baseline-basket.junit.xml"
+  ],
+  "starting_sha": "81ebc2ae67d9e52a79557e01a96517a4956daa64",
+  "started_utc": "2026-10-13T06:47:31.532131+00:00",
+  "wall_seconds": 1.920043379,
+  "exit_status": 1,
+  "peak_sampled_child_rss_bytes": 208052224,
+  "child_user_cpu_seconds": 1.99145,
+  "child_system_cpu_seconds": 0.149093,
+  "process_filesystem_output_bytes": 16384
+}

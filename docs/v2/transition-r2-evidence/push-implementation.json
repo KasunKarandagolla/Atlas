@@ -1,0 +1,42 @@
+{
+  "verified_utc": "2026-10-13T07:10:59.085275+00:00",
+  "branch": "fix/red-r2-mixed-source-delivery-2026-10-13",
+  "checks": {
+    "remote_tip": {
+      "command": [
+        "git",
+        "ls-remote",
+        "origin",
+        "refs/heads/fix/red-r2-mixed-source-delivery-2026-10-13"
+      ],
+      "exit_status": 0,
+      "output": "910d4001323f4a6136af886df618b99a6c8fb8aa\trefs/heads/fix/red-r2-mixed-source-delivery-2026-10-13"
+    },
+    "local_tip": {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_status": 0,
+      "output": "910d4001323f4a6136af886df618b99a6c8fb8aa"
+    },
+    "starting_ancestor": {
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "81ebc2ae67d9e52a79557e01a96517a4956daa64",
+        "HEAD"
+      ],
+      "exit_status": 0,
+      "output": ""
+    },
+    "verification": {
+      "local_implementation_sha": "910d4001323f4a6136af886df618b99a6c8fb8aa",
+      "remote_implementation_sha": "910d4001323f4a6136af886df618b99a6c8fb8aa",
+      "exact_match": true,
+      "starting_sha_is_ancestor": true
+    }
+  }
+}

@@ -1,0 +1,13 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "-p",
+  "no:cacheprovider",
+  "tests/v2/test_session041_public_runtime_integration.py",
+  "tests/v2/test_session041_binance_qualification.py",
+  "--basetemp=/tmp/atlas-r2-public-runtime-r2",
+  "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/public-runtime-qualification-r2/public-runtime.junit.xml"
+]

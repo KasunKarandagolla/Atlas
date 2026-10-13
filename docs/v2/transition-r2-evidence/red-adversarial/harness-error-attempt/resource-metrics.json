@@ -1,0 +1,13 @@
+{
+  "child_fs_input_blocks_512b": 0,
+  "child_fs_output_blocks_512b": 64,
+  "child_fs_output_bytes": 32768,
+  "child_max_rss_kib": 109728,
+  "child_system_cpu_seconds": 0.057469,
+  "child_user_cpu_seconds": 1.453561,
+  "elapsed_seconds": 1.5858,
+  "exit_code": 1,
+  "resource_note": "RUSAGE_CHILDREN for the sole pytest process; Linux output blocks are 512 bytes; VmHWM is a process peak, not leak evidence.",
+  "sampled_peak_hwm_kib": 109564,
+  "sampled_peak_rss_kib": 109564
+}

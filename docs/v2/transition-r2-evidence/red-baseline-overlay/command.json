@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "/workspace/Atlas_R2/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "--disable-warnings",
+    "--basetemp=/workspace/Atlas_R2/.r2-temporary-workload",
+    "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/red-baseline-overlay/mixed-capacity.junit.xml",
+    "tests/v2/test_session041_mixed_broad_capacity.py::test_mixed_1024_contract_public_workload_under_bounded_stalls"
+  ],
+  "cwd": "/workspace/Atlas_R2",
+  "environment": {
+    "ATLAS_AGENT_PROVIDER_PROFILE": "DISABLED",
+    "ATLAS_OFFLINE_SIMULATION": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONHASHSEED": "0",
+    "PYTHONPATH": "/workspace/Atlas_R2/src:/workspace/Atlas_R2/tests"
+  },
+  "storage_type": "overlay for /workspace; tmpfs for /tmp",
+  "test_file": "tests/v2/test_session041_mixed_broad_capacity.py",
+  "test_sha256_before": "3b54b1898623be2d1f9f9ffd016eb114c8f699c7ab43da2c8083a960d0cb5eef"
+}

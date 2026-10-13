@@ -1,0 +1,12 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "-p",
+  "no:cacheprovider",
+  "tests/v2/test_session041_mixed_broad_capacity.py",
+  "--basetemp=/tmp/atlas-r2-final-mixed-r2",
+  "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/final-session041-mixed-r2/mixed-capacity.junit.xml"
+]

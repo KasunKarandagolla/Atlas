@@ -1,0 +1,18 @@
+[
+  "/workspace/Atlas_R2/.venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-s",
+  "-p",
+  "no:cacheprovider",
+  "tests/v2/test_session040_capture_receipts.py",
+  "tests/v2/test_session040_durable_capture.py",
+  "tests/v2/test_session041_capture_delivery_batching.py",
+  "tests/v2/test_session041_capture_pressure_reserve.py",
+  "tests/v2/test_session041_broad_stream_source.py",
+  "tests/v2/test_session041_stream_service_paging.py",
+  "tests/v2/test_session041_recovery_queue.py",
+  "--basetemp=/tmp/atlas-r2-focused-final-run3",
+  "--junitxml=/workspace/Atlas_R2/docs/v2/transition-r2-evidence/final-capture-matrix-run3/capture-matrix.junit.xml"
+]
