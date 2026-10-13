@@ -1,6 +1,17 @@
 # ATLAS engineering log
 
-## Current checkpoint — S48 implemented; independent review pending — 2026-10-12
+## Current checkpoint — R4 Gemma and Futures Demo boundaries — 2026-10-13
+
+**CONFIRMED:** Owner verified GPT-6 Luna. Branch `impl/red-r4-gemma-demo-integration-2026-10-13` starts at remote R3A tip `4faf9a065eb00df705694bc107401c41c0b322b2`; freeze hashes and requested owner sources match.
+
+**IMPLEMENTED:** Native Gemini adapter for `gemma-4-31b-it`, bounded permits and strict S47 validation; durable zero-authority shadow dispatch from only a persisted complete production Brief; hardcoded `DEMO_ONLY` Futures identity, guards, signed read-only request generation and typed fake-response contracts. Existing A0, risk, lifecycle and protection engines are unchanged.
+
+**TESTED:** Fake-only Brief → S47 job → provider → durable restart fixture and typed Demo contracts passed manually. Compileall, offline lock check, installed dependency check, freeze hashes and diff checks passed. R3A A0 equivalence is historical; R4 comparison is a TEST GATE.
+
+**BLOCKED BY ENVIRONMENT / TEST GATE:** pytest, Hypothesis, Ruff, mypy, Nautilus, DuckDB and PyArrow are unavailable; relevant suites did not run. No real Gemma calls, Binance public observations, authenticated Demo reads or orders occurred. Smoke was withheld because free-tier/no-billing evidence was unavailable. Rolling 24-hour writes are NOT ESTIMABLE. Production Brief is blocked on missing typed facts/economics; full composition remains a test gate.
+
+See the [R4 handoff](docs/v2/ATLAS_RED_R4_INTEGRATION_HANDOFF.md) and [evidence manifest](docs/v2/ATLAS_RED_R4_EVIDENCE_MANIFEST.json). Next: independent review, then explicit approval for signed read-only Demo reads in a trusted runtime. No merge, deployment or orders.
+## Previous checkpoint — S48 implemented; independent review pending — 2026-10-12
 
 **CONFIRMED:** GPT-6.1 Sol, no subagents; exact accepted S47 base `b0db7d0527e68c737eefd564a87f740f5929c5f6`. Isolated S48 branch/worktree; original dirty checkout/Red preserved, all frozen hashes and risk/selector/critic/journal/Bybit execution identities match. Serena 1.7.0 active; Context7 plugin installed but callable MCP unavailable. No installation/dependency change.
 

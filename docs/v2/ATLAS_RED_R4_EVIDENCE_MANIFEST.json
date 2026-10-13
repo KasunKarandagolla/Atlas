@@ -1,0 +1,406 @@
+{
+  "manifest_version": "ATLAS_RED_R4_EVIDENCE_MANIFEST_V1",
+  "as_of_utc": "2026-10-13",
+  "coordinator": {
+    "required_model": "GPT-6 Luna",
+    "verification": "Owner confirmed this session model in conversation.",
+    "subagents_used": false
+  },
+  "source_and_ancestry": {
+    "starting_commit": "4faf9a065eb00df705694bc107401c41c0b322b2",
+    "starting_remote_branch": "fix/red-r3a-completion-2026-10-13",
+    "starting_remote_tip_sha": "4faf9a065eb00df705694bc107401c41c0b322b2",
+    "starting_branch_tip_verified": true,
+    "r4_branch": "impl/red-r4-gemma-demo-integration-2026-10-13",
+    "r4_branch_created_from_starting_commit": true,
+    "r4_target_remote_ref_existed_before_push": false,
+    "starting_worktree_was_clean": true,
+    "requested_design_rewrite_performed": false,
+    "pre_change_commit_diff_summary": "R3A completion handoff/evidence and coordinator logs only; working tree was clean."
+  },
+  "frozen_authorities": [
+    {
+      "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+      "expected_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "actual_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "verified": true
+    },
+    {
+      "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "expected_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "actual_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "verified": true
+    },
+    {
+      "path": "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "expected_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "actual_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "verified": true
+    }
+  ],
+  "owner_source_bundle": {
+    "filename": "1-ATLAS_RED_R3A_completion_owner_source_bundle_2026-10-13.zip",
+    "sha256": "bd3e258007ab6cc8ceee7d8b564320e4acc0ed86066fc6a6c65e0947fad8b825",
+    "archive_manifest_declared_source_count": 25,
+    "archive_manifest_source_file_entries": 24,
+    "archive_source_members_present": 22,
+    "all_present_member_sizes_and_hashes_match_manifest": true,
+    "required_sources_present": true,
+    "requested_sources_read_in_full": [
+      "00_START_HERE.md",
+      "ATLAS_FINAL_TARGET_DESIGN_LOCK_2026-10-12.md",
+      "ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md",
+      "ATLAS_TRANSITION_ARCHITECTURE_DESIGN_V1.md",
+      "ADR-001_Binance_Causal_Market_Data_Linux.md",
+      "ADR-002_Agent_Opportunity_Decision.md",
+      "ADR-003_Position_Protection_Lifecycle.md",
+      "ADR-005_Independent_Quantitative_Trade_Assessment.md",
+      "ADR-006_Agent_Initiated_Trading_Analysis_Tools.md",
+      "ADR-007_Durable_Trading_Opportunity_And_Analysis_Memory.md",
+      "ADR-008_Event_Driven_LLM_Vision_Cost_And_Bandwidth.md",
+      "04_ATLAS_ENGINEERING_EXECUTION_RUNBOOK.md (sections 2, 3, 4, 5, 7)"
+    ],
+    "missing_optional_consolidated_sources": [
+      "01_CHATGPT_PROJECT_INSTRUCTIONS_COPY_PASTE.md",
+      "02_NEW_PROJECT_FIRST_CHAT_KICKOFF.md"
+    ],
+    "manifest_mismatches": []
+  },
+  "accepted_r3a_reference_evidence": {
+    "handoff_path": "docs/v2/ATLAS_RED_R3A_COMPLETION_HANDOFF.md",
+    "handoff_sha256": "930e1616d0692fe7a5b2bc21cfe5081f26c527add0e7d41d84ec3c7efd79e8c1",
+    "manifest_path": "docs/v2/ATLAS_RED_R3A_COMPLETION_EVIDENCE_MANIFEST.json",
+    "manifest_sha256": "1e1509b569d2c5f571865bcbddb58dc4f2b8e22561dd5d61b4e3210f320e8d6f",
+    "a0_equivalence_path": "docs/v2/transition-r3a-completion-evidence/final-a0-cross-commit-equivalence.json",
+    "a0_equivalence_sha256": "2c2ce4c547bec79c7675cee1ef7bfcd973f3f4035a19a32da4cce48af5f4a1ad",
+    "historical_a0_equality_status": "TESTED",
+    "historical_equality_flags": {
+      "accepted_r2_vs_completion_enabled": true,
+      "accepted_r2_vs_r3a_disabled": true,
+      "r3a_disabled_vs_completion_enabled": true
+    },
+    "artifact_counts": {
+      "accepted_r2": {
+        "ActionArtifactV2": 1,
+        "CandidateSetV2": 3,
+        "DecisionCalendarEntryV2": 1,
+        "DecisionCalendarV2": 0,
+        "EvaluationArtifactV2": 1,
+        "OpsSupervisorReceiptV1": 1,
+        "SizingDecisionV2": 1
+      },
+      "accepted_r3a_disabled": {
+        "ActionArtifactV2": 1,
+        "CandidateSetV2": 3,
+        "DecisionCalendarEntryV2": 1,
+        "DecisionCalendarV2": 0,
+        "EvaluationArtifactV2": 1,
+        "OpsSupervisorReceiptV1": 1,
+        "SizingDecisionV2": 1
+      },
+      "completion_enabled": {
+        "ActionArtifactV2": 1,
+        "CandidateSetV2": 3,
+        "DecisionCalendarEntryV2": 1,
+        "DecisionCalendarV2": 0,
+        "EvaluationArtifactV2": 1,
+        "OpsSupervisorReceiptV1": 1,
+        "SizingDecisionV2": 1
+      }
+    },
+    "r4_full_a0_identity_equivalence_status": "TEST GATE"
+  },
+  "implementation": {
+    "gemini_native_transport": "IMPLEMENTED",
+    "s47_production_brief_job_compiler_and_durable_shadow_memory": "IMPLEMENTED",
+    "binance_futures_demo_only_request_boundary_and_typed_contracts": "IMPLEMENTED",
+    "test_only_order_request_generation": "IMPLEMENTED",
+    "production_risk_protection_reconciliation_engines_modified": false,
+    "deepseek_production_preference_unchanged": true,
+    "agent_authority": "ZERO",
+    "result_authority_tag": "ZERO_AUTHORITY_SHADOW",
+    "current_production_brief_domain_status": "BLOCKED",
+    "current_production_brief_dispatch_result": "No S47 job is compiled from the current blocked Brief.",
+    "comparative_selection_amendment_status": "PROPOSED — NOT ACCEPTED",
+    "comparative_selection_effective_identity": "NONE"
+  },
+  "gemini_provider": {
+    "provider": "Google Gemini API",
+    "transport": "Google native generateContent REST API",
+    "model_id": "gemma-4-31b-it",
+    "allowed_host": "generativelanguage.googleapis.com",
+    "credential_variable": "GEMINI_API_KEY",
+    "secret_binding_state": "ready; value not read",
+    "actual_model_api_calls": 0,
+    "actual_model_identity_and_capabilities_status": "UNVERIFIED",
+    "actual_provider_usage_and_pricing_status": "UNVERIFIED",
+    "smoke_authorization_status": "BLOCKED BY ENVIRONMENT",
+    "smoke_block_reason": "Owner free-tier/no-billing configuration evidence was not available.",
+    "configured_smoke_ceiling": {
+      "max_requests": 2,
+      "max_input_bytes_each": 4096,
+      "max_output_tokens_each": 256
+    },
+    "fake_capability_probe": {
+      "status": "TESTED",
+      "mocked_requests": 2,
+      "actual_provider_calls": 0,
+      "request_body_bytes": 761,
+      "response_body_bytes": 515,
+      "text_and_schema_fixture_supported": true,
+      "usage_metadata_fixture_present": true,
+      "read_only_tools": false,
+      "cancellation": false,
+      "pricing_verified": false,
+      "invalid_schema_fixture_response_body_bytes": 315
+    },
+    "actual_read_only_tools": "UNVERIFIED",
+    "actual_cancellation": "UNVERIFIED",
+    "actual_supported_revision": "UNVERIFIED",
+    "fallback_enabled": false,
+    "secret_value_read": false,
+    "public_discovery_document_fetches": 2,
+    "discovery_get_used_api_credential": false
+  },
+  "binance_futures_demo": {
+    "environment": "DEMO_ONLY",
+    "rest_endpoint": "https://demo-fapi.binance.com",
+    "websocket_endpoint": "wss://demo-fstream.binance.com",
+    "endpoint_override_accepted": false,
+    "live_or_testnet_environment_accepted": false,
+    "credential_environment": "BINANCE_FUTURES_DEMO_API_KEY / BINANCE_FUTURES_DEMO_API_SECRET",
+    "unapproved_binance_key_secret_aliases_rejected": true,
+    "read_paths_are_hardcoded_and_allowlisted": true,
+    "adapter_network_sender_present": false,
+    "order_submit_or_cancel_sender_present": false,
+    "state_root": "DEMO_ONLY/binance-futures",
+    "typed_fake_read_contracts": [
+      "account",
+      "instrument",
+      "margin",
+      "order",
+      "fill",
+      "protective-stop"
+    ],
+    "transport_error_normalization": "IMPLEMENTED",
+    "public_market_data_observations": 0,
+    "authenticated_demo_reads": 0,
+    "demo_order_requests_submitted": 0,
+    "live_order_requests_submitted": 0,
+    "live_hostname_literal_in_new_demo_adapter": false,
+    "session_network_policy": "enforced; only generativelanguage.googleapis.com allowed for this task",
+    "binance_live_and_demo_hosts_reachable_in_session": false,
+    "reachability_status": "BLOCKED BY ENVIRONMENT",
+    "demo_credentials_configured": false
+  },
+  "composition_and_test_evidence": {
+    "manual_fake_composition_status": "TESTED",
+    "manual_fake_provider_responses": 1,
+    "manual_public_or_venue_network_calls": 0,
+    "manual_order_side_effects": 0,
+    "manual_composition_coverage": [
+      "persisted COMPLETE synthetic Brief to S47 job",
+      "fake Gemma response validation",
+      "durable shadow intent/result and restart readback",
+      "A0 population/calendar references retained",
+      "offline DEMO_ONLY signed read request and order request generation",
+      "typed fake account/instrument/margin/order/fill/protection normalization",
+      "simulated CANCELED and PARTIALLY_FILLED observations",
+      "durable duplicate-fill detection after SQLite restart"
+    ],
+    "pytest_suites_status": "TEST GATE",
+    "pytest_blocker": "pytest module/executable unavailable; Hypothesis, Nautilus Trader, DuckDB, and PyArrow are also absent.",
+    "ruff_status": "TEST GATE",
+    "mypy_baseline_comparison_status": "TEST GATE",
+    "production_brief_gate_fixture_status": "TEST GATE",
+    "full_ten_stage_production_e2e_status": "TEST GATE",
+    "r4_full_a0_hash_comparison_status": "TEST GATE",
+    "historical_r3a_563_of_563_result_is_new_r4_pass": false,
+    "production_gate_manual_invocation_status": "BLOCKED BY ENVIRONMENT",
+    "production_gate_manual_invocation_reason": "Missing Hypothesis prevented import of the existing R3A production fixture.",
+    "protective_verifier_fake_test_status": "TEST GATE",
+    "protective_verifier_fake_test_reason": "Test fixture depends on unavailable pytest and Nautilus Trader."
+  },
+  "available_checks": {
+    "whole_src_scripts_tests_compileall": "TESTED",
+    "uv_lock_check_offline": "TESTED",
+    "uv_locked_package_check": "TESTED",
+    "git_diff_check": "TESTED",
+    "freeze_hashes": "TESTED",
+    "custom_secret_pattern_scan": {
+      "status": "TESTED",
+      "files": 12,
+      "findings": 0,
+      "dedicated_gitleaks_available": false
+    },
+    "dependency_install_performed": false
+  },
+  "resource_and_network_observations": {
+    "compileall_cpu_seconds": 0.01,
+    "compileall_wall_seconds": 0.01,
+    "compileall_peak_rss_kib": 8960,
+    "manual_fixture_cpu_seconds": 0.354,
+    "manual_fixture_peak_rss_kib": 33380,
+    "gemini_fake_request_body_bytes": 761,
+    "gemini_fake_response_body_bytes": 515,
+    "actual_gemini_usage_tokens": "UNVERIFIED",
+    "api_discovery_document_gets": 2,
+    "api_discovery_response_body_bytes_each": 384161,
+    "api_discovery_total_response_body_bytes": 768322,
+    "api_discovery_calls_are_model_calls": false,
+    "total_wire_bytes": "NOT ESTIMABLE",
+    "service_impact_under_live_load": "NOT ESTIMABLE",
+    "rolling_24_hour_filesystem_write_total": "NOT ESTIMABLE",
+    "rolling_write_ceiling_compliance_claimed": false,
+    "gemini_fake_invalid_schema_response_body_bytes": 315
+  },
+  "remaining_gates": [
+    {
+      "name": "whole-schedule opportunity denominator and missing-slot accounting",
+      "status": "NOT ESTIMABLE"
+    },
+    {
+      "name": "current production Brief typed evidence and exact supported economics",
+      "status": "TEST GATE"
+    },
+    {
+      "name": "complete production-composition path and R4 exact A0 equivalence",
+      "status": "TEST GATE"
+    },
+    {
+      "name": "Gemma real capability and free-tier/no-billing verification",
+      "status": "BLOCKED BY ENVIRONMENT"
+    },
+    {
+      "name": "durable shadow analysis invalidation and replay",
+      "status": "TEST GATE"
+    },
+    {
+      "name": "optional synchronous projection source-impact qualification at existing 80 ms",
+      "status": "TEST GATE"
+    },
+    {
+      "name": "historical R2 cadence failure qualification",
+      "status": "TEST GATE"
+    },
+    {
+      "name": "full repository promotion suite and Ruff/baseline-aware mypy",
+      "status": "TEST GATE"
+    },
+    {
+      "name": "authenticated Futures Demo read-only qualification",
+      "status": "BLOCKED BY ENVIRONMENT"
+    },
+    {
+      "name": "demo order, protection, kill-switch and recovery qualification",
+      "status": "TEST GATE"
+    }
+  ],
+  "next_step": {
+    "status": "TEST GATE",
+    "action": "After independent review and explicit owner approval, use a trusted runtime bound only to DEMO_ONLY credentials, allowlist only demo-fapi.binance.com and demo-fstream.binance.com, verify key scope, and make signed read-only /fapi/v3/account and /fapi/v1/exchangeInfo requests with bounded receipts. Keep order submission unavailable."
+  },
+  "inventory": {
+    "scope": "SHA-256 and byte-size inventory for authorities, accepted R3A evidence, R4 sources/tests/handoff, safe environment example and root logs; this manifest excludes its own hash. Entries refreshed after final source and handoff edits.",
+    "entries": [
+      {
+        "path": "AGENTS.md",
+        "size_bytes": 2266,
+        "sha256": "f26c2d48a372dee9f56e4af2629a1f755e86a1f2bf30f76e77e6ecf8a3a987c6"
+      },
+      {
+        "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+        "size_bytes": 100689,
+        "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c"
+      },
+      {
+        "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+        "size_bytes": 88134,
+        "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+      },
+      {
+        "path": "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+        "size_bytes": 11288,
+        "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+      },
+      {
+        "path": "docs/v2/ATLAS_RED_R3A_COMPLETION_HANDOFF.md",
+        "size_bytes": 20872,
+        "sha256": "930e1616d0692fe7a5b2bc21cfe5081f26c527add0e7d41d84ec3c7efd79e8c1"
+      },
+      {
+        "path": "docs/v2/ATLAS_RED_R3A_COMPLETION_EVIDENCE_MANIFEST.json",
+        "size_bytes": 56256,
+        "sha256": "1e1509b569d2c5f571865bcbddb58dc4f2b8e22561dd5d61b4e3210f320e8d6f"
+      },
+      {
+        "path": "docs/v2/transition-r3a-completion-evidence/final-a0-cross-commit-equivalence.json",
+        "size_bytes": 102448,
+        "sha256": "2c2ce4c547bec79c7675cee1ef7bfcd973f3f4035a19a32da4cce48af5f4a1ad"
+      },
+      {
+        "path": ".env.example",
+        "size_bytes": 1431,
+        "sha256": "7f746f90eba430270508326f7a6c19916ca31b69d05c80131d8c615663c4a0b7"
+      },
+      {
+        "path": "docs/v2/ATLAS_RED_R4_INTEGRATION_HANDOFF.md",
+        "size_bytes": 16845,
+        "sha256": "e672daf93c45a646c374d377e551fff5af2912b4c031804af82811e312dc3329"
+      },
+      {
+        "path": "src/atlas/runtime/binance_futures_demo_r4.py",
+        "size_bytes": 27350,
+        "sha256": "77d9218d19aca1aa704e56a98a62c26bf972481f6a4bac207a5f5d469bfb5003"
+      },
+      {
+        "path": "src/atlas/v2/research/gemma_native.py",
+        "size_bytes": 24039,
+        "sha256": "d0ddcaf7e72f7c2cdd364b8d85c1476b7c7da980f1b68c5ae3e3c8df6e66330f"
+      },
+      {
+        "path": "src/atlas/v2/research/memory.py",
+        "size_bytes": 41810,
+        "sha256": "27c45507086f59e4046d7fd8c8d0770409f48aa312dfcc2b90056c99db473e4c"
+      },
+      {
+        "path": "tests/runtime/test_session055_binance_demo_only.py",
+        "size_bytes": 13006,
+        "sha256": "e15534b2c4c829ec75226231ec7bd475a4681629f6b1e679caf04c0d482c3931"
+      },
+      {
+        "path": "tests/v2/test_session055_gemma_native.py",
+        "size_bytes": 17385,
+        "sha256": "b45409b86e49f2c08d46a594b0b4f91edb6691f86d8c29f4de2eea239a9377f6"
+      },
+      {
+        "path": "tests/v2/test_session055_r4_production_gate.py",
+        "size_bytes": 3135,
+        "sha256": "339c99d048b886925c2d03bdf0d15e39452d81ef549257f7b412e5125d2bc313"
+      },
+      {
+        "path": "tests/v2/test_session055_r4_synthetic_e2e.py",
+        "size_bytes": 6895,
+        "sha256": "4b7d55e656fa19bd3c6293d054821d4e45e7ad3e2b32e1cc58bb7ef4f0d61b4c"
+      },
+      {
+        "path": "log.md",
+        "size_bytes": 80184,
+        "sha256": "a769b4657643d80499a775215550c8a10be2bf6f2c85f012dea4a38927a3013a"
+      },
+      {
+        "path": "translog.md",
+        "size_bytes": 101628,
+        "sha256": "88bf1e7e742ad57d9d5b35630eadb7af97d177f5267cc2e848dea57ad28c60ae"
+      }
+    ]
+  },
+  "provider_network_observations": {
+    "actual_model_requests": 0,
+    "public_api_discovery_gets": 2,
+    "response_body_bytes_each": 384161,
+    "total_response_body_bytes": 768322,
+    "authenticated_discovery_requests": 0,
+    "total_wire_bytes": "NOT ESTIMABLE"
+  }
+}

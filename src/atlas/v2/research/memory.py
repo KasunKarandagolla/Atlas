@@ -12,9 +12,18 @@ import time
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from atlas.v2._serialization import FrozenMap, json_value, sha256_json, sha256_ref, timestamp
+from atlas.v2._serialization import FrozenMap, canonical_json, json_value, sha256_json, sha256_ref, timestamp
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
-from atlas.v2.research.agent import FakeResearchProvider, ResearchJobV1, preflight_reason, run_fake_research_job
+from atlas.v2.research.agent import (
+    FakeResearchProvider,
+    ProviderCapabilitiesV1,
+    ResearchBudgetV1,
+    ResearchJobV1,
+    preflight_reason,
+    run_fake_research_job,
+    validate_response,
+)
+from atlas.v2.research.decision_brief import DecisionBriefV1
 
 RESEARCH_LANE = "ANALYSIS_RESEARCH_FAKE_V1"
 INVALIDATORS = frozenset(
@@ -200,6 +209,298 @@ class ResearchMemoryV1:
             if precommit_check is not None:
                 precommit_check()
         return brief_ref, memory_ref
+
+    @staticmethod
+    def production_gemma_intent_identity(receipt_ref: str, job_ref: str) -> str:
+        sha256_ref(receipt_ref, field="receipt_ref")
+        sha256_ref(job_ref, field="job_ref")
+        return sha256_json({"version": "PRODUCTION_GEMMA_SHADOW_INTENT_IDENTITY_V1",
+                            "receipt_ref": receipt_ref, "job_ref": job_ref})
+
+    @staticmethod
+    def production_gemma_result_identity(receipt_ref: str, job_ref: str) -> str:
+        sha256_ref(receipt_ref, field="receipt_ref")
+        sha256_ref(job_ref, field="job_ref")
+        return sha256_json({"version": "PRODUCTION_GEMMA_SHADOW_RESULT_IDENTITY_V1",
+                            "receipt_ref": receipt_ref, "job_ref": job_ref})
+
+    def build_production_gemma_job(
+        self,
+        receipt_ref: str,
+        *,
+        capabilities: ProviderCapabilitiesV1,
+        budget: ResearchBudgetV1,
+        now_ns: int,
+    ) -> ResearchJobV1 | None:
+        """Compile a persisted complete production Brief into an S47 shadow job.
+
+        This is writer-side preparation only. A missing/blocked/expired Brief
+        returns no job; the method never creates a Brief, provider intent, or
+        dispatch. Provider capability and budget claims remain caller evidence
+        and are rechecked by the S47 preflight before a worker can call out.
+        """
+        self._writer()
+        from atlas.v2.research.gemma_native import GEMMA_MODEL_ID
+
+        sha256_ref(receipt_ref, field="receipt_ref")
+        timestamp(now_ns, field="gemma_shadow.now_ns")
+        if (capabilities.provider_id != "gemini" or capabilities.model_id != GEMMA_MODEL_ID
+                or capabilities.fallback is not False):
+            raise ValueError("production Gemma job provider identity is fixed")
+        if (budget.max_model_calls != 1 or budget.max_tool_rounds != 0
+                or budget.max_tool_rows != 0 or budget.max_tool_bytes != 0):
+            raise ValueError("production Gemma job permits one call and no tool budget")
+        projection_identity_ref = self.production_projection_identity(receipt_ref)
+        projection_identity = self._read(projection_identity_ref)
+        if projection_identity is None or projection_identity.get("receipt_ref") != receipt_ref:
+            return None
+        brief_ref, memory_ref = projection_identity.get("brief_ref"), projection_identity.get("memory_ref")
+        if (brief_ref != self.production_brief_identity(receipt_ref)
+                or memory_ref != self.production_memory_identity(receipt_ref)):
+            return None
+        projection = self._read(brief_ref)
+        memory = self._read(memory_ref)
+        if (projection is None or memory is None or projection.get("receipt_ref") != receipt_ref
+                or memory.get("receipt_ref") != receipt_ref or memory.get("brief_ref") != brief_ref
+                or memory.get("brief_status") != projection.get("status")
+                or memory.get("source_refs") != projection.get("source_refs")
+                or memory.get("source_population_ref") != projection.get("source_population_ref")):
+            return None
+        for artifact_ref in (projection_identity_ref, brief_ref, memory_ref):
+            artifact = self.repository.get_artifact(artifact_ref)
+            if artifact is None or artifact.available_at_ns > now_ns:
+                return None
+        receipt = self.repository.get_artifact(receipt_ref)
+        if (receipt is None or receipt.artifact_type != "OpsSupervisorReceiptV1"
+                or receipt.available_at_ns > now_ns or projection.get("status") != "COMPLETE"):
+            return None
+        value = projection.get("brief")
+        if (not isinstance(value, Mapping) or value.get("status") != "COMPLETE"
+                or not isinstance(value.get("reasons", ()), (list, tuple))
+                or any(not isinstance(reason, str) for reason in value.get("reasons", ()))):
+            return None
+        body = value.get("body")
+        if (not isinstance(body, Mapping) or body.get("authority") != "ZERO"
+                or body.get("shadow_only") is not True or not body.get("shortlist")
+                or not {"slot_id", "snapshot_ref", "cutoff_ns", "deadline_ns", "economics", "facts",
+                        "tool_allowlist"}.issubset(body)
+                or type(body.get("cutoff_ns")) is not int or type(body.get("deadline_ns")) is not int):
+            return None
+        brief = DecisionBriefV1("COMPLETE", tuple(value.get("reasons", ())), FrozenMap(body))
+        job_id = sha256_json({"version": "PRODUCTION_GEMMA_SHADOW_JOB_ID_V1",
+                              "receipt_ref": receipt_ref, "brief_ref": brief_ref})
+        return ResearchJobV1(job_id, brief, capabilities, budget, now_ns)
+
+    def _production_gemma_binding(self, receipt_ref: str, job: ResearchJobV1,
+                                  *, now_ns: int) -> tuple[Mapping[str, Any] | None, str | None]:
+        """Bind a provider job to the immutable, production-composed Brief."""
+        sha256_ref(receipt_ref, field="receipt_ref")
+        timestamp(now_ns, field="gemma_shadow.now_ns")
+        identity = self._read(self.production_projection_identity(receipt_ref))
+        if identity is None or identity.get("receipt_ref") != receipt_ref:
+            return None, "PRODUCTION_BRIEF_UNAVAILABLE"
+        brief_ref, memory_ref = identity.get("brief_ref"), identity.get("memory_ref")
+        if (not isinstance(brief_ref, str) or not isinstance(memory_ref, str)
+                or brief_ref != self.production_brief_identity(receipt_ref)
+                or memory_ref != self.production_memory_identity(receipt_ref)):
+            return None, "PRODUCTION_BRIEF_BINDING"
+        projection = self._read(brief_ref)
+        memory = self._read(memory_ref)
+        if (projection is None or memory is None or projection.get("receipt_ref") != receipt_ref
+                or memory.get("receipt_ref") != receipt_ref or memory.get("brief_ref") != brief_ref
+                or memory.get("brief_status") != projection.get("status")):
+            return None, "PRODUCTION_BRIEF_BINDING"
+        stored_brief = projection.get("brief")
+        if not isinstance(stored_brief, Mapping) or stored_brief.get("status") != projection.get("status"):
+            return None, "PRODUCTION_BRIEF_BINDING"
+        if canonical_json(stored_brief) != canonical_json(job.brief.to_dict()):
+            return None, "PRODUCTION_BRIEF_MISMATCH"
+        receipt = self.repository.get_artifact(receipt_ref)
+        if (receipt is None or receipt.artifact_type != "OpsSupervisorReceiptV1"
+                or receipt.available_at_ns > now_ns):
+            return None, "PRODUCTION_RECEIPT_UNAVAILABLE"
+        if projection.get("status") != "COMPLETE" or job.brief.status != "COMPLETE":
+            return None, "PRODUCTION_BRIEF_NOT_COMPLETE"
+        if (job.brief.body.get("authority") != "ZERO" or job.brief.body.get("shadow_only") is not True
+                or not job.brief.body.get("shortlist")):
+            return None, "PRODUCTION_BRIEF_NOT_SHADOW_ELIGIBLE"
+        return projection, None
+
+    def prepare_gemma_shadow_dispatch(
+        self, job: ResearchJobV1, *, receipt_ref: str, now_ns: int,
+    ) -> Mapping[str, Any]:
+        """Persist a no-retry intent for a separate Gemma worker; never calls a provider.
+
+        The ops writer uses this method before handing the immutable job to an
+        isolated provider worker. That worker must return through
+        ``record_gemma_shadow_result`` on the writer thread. No due-work item,
+        A0 artifact, calendar row, order, or economic field is changed here.
+        """
+        self._writer()
+        from atlas.v2.research.gemma_native import GEMMA_MODEL_ID
+
+        if (job.capabilities.provider_id != "gemini" or job.capabilities.model_id != GEMMA_MODEL_ID
+                or job.budget.max_model_calls != 1 or job.budget.max_tool_rounds != 0):
+            raise ValueError("Gemma shadow request is outside the R4 test provider binding")
+        projection, binding_error = self._production_gemma_binding(receipt_ref, job, now_ns=now_ns)
+        if binding_error:
+            return FrozenMap({"status": "LLM_NOT_CALLED", "reason": binding_error,
+                              "authority_tag": "ZERO_AUTHORITY_SHADOW", "paid_dispatch": False})
+        denied = preflight_reason(job, now_ns)
+        if denied:
+            return FrozenMap({"status": denied[0], "reason": denied[1],
+                              "authority_tag": "ZERO_AUTHORITY_SHADOW", "paid_dispatch": False})
+        assert projection is not None
+        job_ref = job.request_hash
+        intent_ref = self.production_gemma_intent_identity(receipt_ref, job_ref)
+        result_ref = self.production_gemma_result_identity(receipt_ref, job_ref)
+        existing = self._read(intent_ref)
+        terminal = self._read(result_ref)
+        if terminal is not None:
+            return FrozenMap({"status": terminal["status"], "reason": terminal.get("reason"),
+                              "intent_ref": intent_ref, "result_ref": result_ref,
+                              "authority_tag": "ZERO_AUTHORITY_SHADOW", "audit_only": True})
+        if existing is not None:
+            return FrozenMap({"status": "UNKNOWN", "reason": "UNCERTAIN_DISPATCH_NO_RETRY",
+                              "intent_ref": intent_ref, "authority_tag": "ZERO_AUTHORITY_SHADOW",
+                              "audit_only": True})
+        body = {
+            "version": "PRODUCTION_GEMMA_SHADOW_INTENT_V1",
+            "authority": "ZERO",
+            "authority_tag": "ZERO_AUTHORITY_SHADOW",
+            "receipt_ref": receipt_ref,
+            "brief_ref": self.production_brief_identity(receipt_ref),
+            "a0_population_ref": projection.get("source_population_ref"),
+            "a0_evidence_refs": list(projection.get("source_refs", ())),
+            "job_ref": job_ref,
+            "provider_id": "gemini",
+            "requested_model_id": GEMMA_MODEL_ID,
+            "model_capability_ref": job.capabilities.content_hash,
+            "calendar_slot_id": job.brief.body["slot_id"],
+            "decision_calendar_refs": list(job.brief.body.get("calendar_refs", ())),
+            "created_at_ns": now_ns,
+            "paid_dispatch": False,
+        }
+        with self.repository.atomic_composition():
+            self._persist(intent_ref, "ProductionGemmaShadowIntentV1", body, now_ns=now_ns)
+        return FrozenMap({"status": "READY_TO_DISPATCH", "intent_ref": intent_ref,
+                          "job_ref": job_ref, "request_hash": job.request_hash,
+                          "authority_tag": "ZERO_AUTHORITY_SHADOW", "max_model_calls": 1,
+                          "paid_dispatch": False})
+
+    def record_gemma_shadow_result(
+        self,
+        job: ResearchJobV1,
+        *,
+        receipt_ref: str,
+        response: Mapping[str, Any] | None,
+        returned_model: str | None,
+        usage_metadata: tuple[int | None, int | None, int | None] | None,
+        transport_bytes: tuple[int | None, int | None] | None = None,
+        now_ns: int,
+        failure_code: str | None = None,
+    ) -> Mapping[str, Any]:
+        """Persist only the validated proposal and sanitized provider evidence."""
+        self._writer()
+        from atlas.v2.research.gemma_native import GEMMA_MODEL_ID
+
+        projection, binding_error = self._production_gemma_binding(receipt_ref, job, now_ns=now_ns)
+        if binding_error:
+            raise ValueError("Gemma result production binding failed")
+        assert projection is not None
+        job_ref = job.request_hash
+        intent_ref = self.production_gemma_intent_identity(receipt_ref, job_ref)
+        result_ref = self.production_gemma_result_identity(receipt_ref, job_ref)
+        intent = self._read(intent_ref)
+        if intent is None or intent.get("job_ref") != job_ref:
+            raise ValueError("durable Gemma intent is required before result persistence")
+        prior = self._read(result_ref)
+        if prior is not None:
+            return FrozenMap(prior)
+
+        status, reason, decision = "UNKNOWN", "PROVIDER_RESULT_UNAVAILABLE", None
+        if failure_code is not None:
+            validation_failures = {"MALFORMED_RESULT", "STALE_SNAPSHOT", "JOB_BINDING", "EVIDENCE_SCOPE",
+                                   "CANDIDATE_ACTION_SCOPE"}
+            allowed_failures = {
+                "DEADLINE_EXPIRED", "PROVIDER_TIMEOUT", "RATE_LIMITED", "PROVIDER_UNAVAILABLE",
+                "PROVIDER_AUTHENTICATION_FAILED", "PROVIDER_REQUEST_REJECTED", "PROVIDER_ERROR",
+                "PROVIDER_REFUSAL", "MALFORMED_STRUCTURED_OUTPUT", "RETURNED_MODEL_IDENTITY",
+                "MISSING_PROVIDER_RESPONSE", "INCOMPLETE_PROVIDER_RESPONSE", "OUTPUT_SIZE_LIMIT",
+                "UNSUPPORTED_PROVIDER_CAPABILITY", "INPUT_BUDGET_EXCEEDED", "OUTPUT_BUDGET_EXCEEDED",
+                "REQUEST_BUDGET_EXCEEDED", "RESPONSE_SIZE_LIMIT", "INVALID_PROVIDER_JSON",
+                "INVALID_PROVIDER_RESPONSE", "UNSAFE_REDIRECT", "CONFIGURED_MODEL_MISMATCH",
+                "NO_SUPPORTED_CHOICE", "PROVIDER_MODEL_BINDING", *validation_failures,
+                "PROVIDER_AUTHORIZATION", "JOB_BUDGET_BINDING", "PROBE_REQUIRES_SMOKE_PERMIT",
+            }
+            prefixed_validation_failure = (failure_code.startswith("INVALID_RESPONSE_")
+                                           and failure_code.removeprefix("INVALID_RESPONSE_") in validation_failures)
+            preflight_failures = {"JOB_NOT_YET_AVAILABLE", "DEADLINE_EXPIRED", "NO_SUPPORTED_CHOICE",
+                                  "UNKNOWN_PRICE", "UNVERIFIED_CAPABILITY", "UNVERIFIED_IMAGE_CAPABILITY",
+                                  "BUDGET_EXHAUSTED"}
+            prefixed_preflight_failure = (failure_code.startswith("PREFLIGHT_")
+                                          and failure_code.removeprefix("PREFLIGHT_") in preflight_failures)
+            if failure_code not in allowed_failures and not prefixed_validation_failure and not prefixed_preflight_failure:
+                raise ValueError("unregistered sanitized Gemma failure code")
+            if failure_code in validation_failures or prefixed_validation_failure:
+                status = "INVALID"
+            elif failure_code == "PREFLIGHT_DEADLINE_EXPIRED":
+                status = "EXPIRED"
+            reason = failure_code
+        elif now_ns >= job.brief.body["deadline_ns"]:
+            status, reason = "EXPIRED", "LATE_RESPONSE"
+        elif returned_model not in {GEMMA_MODEL_ID, f"models/{GEMMA_MODEL_ID}"}:
+            status, reason = "INVALID", "RETURNED_MODEL_IDENTITY"
+        elif response is None:
+            status, reason = "UNKNOWN", "MISSING_PROVIDER_RESPONSE"
+        else:
+            validation_reason = validate_response(job, response)
+            if validation_reason:
+                status, reason = "INVALID", validation_reason
+            else:
+                status, reason, decision = "VALID_SHADOW", None, dict(response)
+
+        usage: dict[str, int | None] | None = None
+        if usage_metadata is not None:
+            if (not isinstance(usage_metadata, tuple) or len(usage_metadata) != 3
+                    or any(value is not None and (type(value) is not int or value < 0)
+                           for value in usage_metadata)):
+                raise ValueError("invalid Gemini usage metadata")
+            usage = {"prompt_tokens": usage_metadata[0], "candidate_tokens": usage_metadata[1],
+                     "total_tokens": usage_metadata[2]}
+        byte_counts: dict[str, int | None] | None = None
+        if transport_bytes is not None:
+            if (not isinstance(transport_bytes, tuple) or len(transport_bytes) != 2
+                    or any(value is not None and (type(value) is not int or value < 0)
+                           for value in transport_bytes)):
+                raise ValueError("invalid Gemini transport byte metadata")
+            byte_counts = {"request_body_bytes": transport_bytes[0], "response_body_bytes": transport_bytes[1]}
+        body = {
+            "version": "PRODUCTION_GEMMA_SHADOW_RESULT_V1",
+            "authority": "ZERO",
+            "authority_tag": "ZERO_AUTHORITY_SHADOW",
+            "receipt_ref": receipt_ref,
+            "brief_ref": self.production_brief_identity(receipt_ref),
+            "a0_population_ref": projection.get("source_population_ref"),
+            "a0_evidence_refs": list(projection.get("source_refs", ())),
+            "job_ref": job_ref,
+            "intent_ref": intent_ref,
+            "status": status,
+            "reason": reason,
+            "provider_id": "gemini",
+            "requested_model_id": GEMMA_MODEL_ID,
+            "returned_model_id": returned_model,
+            "decision": decision,
+            "usage_metadata": usage,
+            "transport_bytes": byte_counts,
+            "calendar_slot_id": job.brief.body["slot_id"],
+            "decision_calendar_refs": list(job.brief.body.get("calendar_refs", ())),
+            "recorded_at_ns": now_ns,
+            "paid_dispatch": False,
+        }
+        with self.repository.atomic_composition():
+            self._persist(result_ref, "ProductionGemmaShadowResultV1", body, now_ns=now_ns)
+        return FrozenMap(body)
 
     def request(self, job_id: str) -> Mapping[str, Any] | None:
         return self._read(_identity(job_id, "request"))
