@@ -306,7 +306,7 @@ def _production_projection(
         event, inputs, *_ = _production_event(repository)
         if late_revision and persist_feature:
             source = next(
-                repository.get_artifact(ref)
+                item
                 for ref in feature.envelope.input_refs
                 if (item := repository.get_artifact(ref)) is not None
                 and item.artifact_type == "CausalBarV2"
@@ -314,6 +314,7 @@ def _production_projection(
             )
             old = source.metadata["bar"]
             old_index = repository.get_artifact(source.metadata["source_observation_ref"])
+            assert old_index is not None
             raw = RawObservationV2.build(
                 instrument_revision=KEY.contract_revision,
                 source_id=old_index.metadata["source_id"],
@@ -428,9 +429,7 @@ def test_genuine_indexed_feature_enters_production_brief_without_changing_a0(tmp
     assert body["authority"] == "ZERO"
     assert status == "BLOCKED"
     assert body["full_screening_denominator"]["whole_schedule_denominator_status"] == "UNAVAILABLE"
-    assert body["full_screening_denominator"]["schedule_population_source"] == (
-        "CURRENT_OPS_SUPERVISOR_RECEIPT_ONLY"
-    )
+    assert body["full_screening_denominator"]["schedule_population_source"] == ("CURRENT_OPS_SUPERVISOR_RECEIPT_ONLY")
     assert body["full_screening_denominator"]["missing_expected_slots"] == "NOT_ESTIMABLE"
     assert body["memory_status"]["prior_analysis_qualification"]["status"] == "NO_QUALIFIED_PRIOR_ANALYSIS"
 
