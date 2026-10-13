@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="2.202" timestamp="2026-10-13T15:55:52.352654+00:00" hostname="3109dab57b81"><testcase classname="tests.v2.test_session036_product" name="test_installed_public_run_connects_context_to_writer_and_closes" time="0.797"><failure message="AssertionError: assert 2 == 0&#10; +  where 2 = &lt;function run_component at 0x7f22e00f82c0&gt;(PosixPath('/tmp/pytest-of-agent/pytest-21/test_installed_public_run_conn0/runs/660d65c1f38a40f0b146744bae68d89e'), stop_requested=&lt;function test_installed_public_run_connects_context_to_writer_and_closes.&lt;locals&gt;.&lt;lambda&gt; at 0x7f22df9ab2e0&gt;)&#10; +    where &lt;function run_component at 0x7f22e00f82c0&gt; = product.run_component">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-21/test_installed_public_run_conn0')
+build = {'source_sha': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'version': '2.0.0.36', 'runtime_lock_sha256': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'}
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f22e0675490&gt;
+
+    def test_installed_public_run_connects_context_to_writer_and_closes(tmp_path, build, monkeypatch):
+        import threading
+
+        from atlas.v2.runtime import production, public_context
+
+        run = product.create_run(tmp_path, product.ResearchRunConfigV1())
+        calls = []
+        stopped = False
+        owner_thread = threading.get_ident()
+
+        class Context:
+            def run_cycle(self, repo, *, information_cutoff_ns):
+                nonlocal stopped
+                assert not repo.read_only and threading.get_ident() == owner_thread
+                calls.append(("cycle", information_cutoff_ns))
+                stopped = True
+
+            def close(self):
+                calls.append(("close", None))
+
+        monkeypatch.setattr(public_context, "PublicContextMaintenanceV1", Context)
+        monkeypatch.setattr(production, "create_bybit_public_ws_port", production.create_production_port)
+        monkeypatch.setattr(product.time, "sleep", lambda _: None)
+&gt;       assert product.run_component(run, stop_requested=lambda: stopped) == 0
+E       AssertionError: assert 2 == 0
+E        +  where 2 = &lt;function run_component at 0x7f22e00f82c0&gt;(PosixPath('/tmp/pytest-of-agent/pytest-21/test_installed_public_run_conn0/runs/660d65c1f38a40f0b146744bae68d89e'), stop_requested=&lt;function test_installed_public_run_connects_context_to_writer_and_closes.&lt;locals&gt;.&lt;lambda&gt; at 0x7f22df9ab2e0&gt;)
+E        +    where &lt;function run_component at 0x7f22e00f82c0&gt; = product.run_component
+
+tests/v2/test_session036_product.py:168: AssertionError</failure></testcase><testcase classname="tests.v2.test_worker_isolation" name="test_provider_retains_os_limits_and_timeout_cleanup" time="1.122"><failure message="assert b'atlas-worker-timeout-4103-1791906953535429101' not in b'/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12\x00-I\x00-S\x00-c\x00import subprocess,... time; time.sleep(30) # atlas-worker-timeout-4103-1791906953535429101&quot;], start_new_session=True)\ntime.sleep(30)\n\x00'&#10; +  where b'atlas-worker-timeout-4103-1791906953535429101' = &lt;built-in method encode of str object at 0x7f22d82c5230&gt;()&#10; +    where &lt;built-in method encode of str object at 0x7f22d82c5230&gt; = 'atlas-worker-timeout-4103-1791906953535429101'.encode">def test_provider_retains_os_limits_and_timeout_cleanup() -&gt; None:
+        # The worker checks its actual inherited kernel limits, then emits the valid fixture response.
+        prelude = '''import resource
+    assert resource.getrlimit(resource.RLIMIT_AS)[0] &lt;= 256 * 1024 * 1024
+    assert resource.getrlimit(resource.RLIMIT_FSIZE)[0] &lt;= 65_537
+    assert resource.getrlimit(resource.RLIMIT_CPU)[0] &lt;= 5
+    '''
+        from tests.v2.test_model_runtime import manifest, request
+
+        model = manifest()
+        now = time.time_ns()
+        req = request(model, now_ns=now, cutoff=now - 1, deadline=now + 10_000_000_000)
+        artifact = LocalProcessProvider(max_memory_mb=256, timeout_s=3, worker_program=prelude + _WORKER_PROGRAM).infer(
+            req, model, {"features": [1]}, started_at_ns=now,
+        )
+        assert artifact.request_id == req.request_id
+        marker = f"atlas-worker-timeout-{os.getpid()}-{time.time_ns()}"
+        sleeper = f'''import subprocess, sys, time
+    subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30) # {marker}"], start_new_session=True)
+    time.sleep(30)
+    '''
+        with pytest.raises(ModelProviderError) as error:
+            LocalProcessProvider(timeout_s=1.0, worker_program=sleeper).infer(req, model, {}, started_at_ns=now)
+        assert error.value.code == "WORKER_TIMEOUT"
+        for pid in Path("/proc").iterdir():
+            if not pid.name.isdigit():
+                continue
+            try:
+                command = (pid / "cmdline").read_bytes()
+            except OSError:
+                continue
+&gt;           assert marker.encode() not in command
+E           assert b'atlas-worker-timeout-4103-1791906953535429101' not in b'/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12\x00-I\x00-S\x00-c\x00import subprocess,... time; time.sleep(30) # atlas-worker-timeout-4103-1791906953535429101"], start_new_session=True)\ntime.sleep(30)\n\x00'
+E            +  where b'atlas-worker-timeout-4103-1791906953535429101' = &lt;built-in method encode of str object at 0x7f22d82c5230&gt;()
+E            +    where &lt;built-in method encode of str object at 0x7f22d82c5230&gt; = 'atlas-worker-timeout-4103-1791906953535429101'.encode
+
+tests/v2/test_worker_isolation.py:217: AssertionError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="21" time="6.799" timestamp="2026-10-13T14:40:19.359303+00:00" hostname="3109dab57b81"><testcase classname="tests.v2.test_session055_gemma_native" name="test_native_client_is_pinned_and_redacts_credentials" time="0.001" /><testcase classname="tests.v2.test_session055_gemma_native" name="test_model_and_structured_output_probes_use_native_api_and_hide_payloads" time="0.002" /><testcase classname="tests.v2.test_session055_gemma_native" name="test_capability_probe_does_not_claim_schema_support_for_invalid_json_shape" time="0.001" /><testcase classname="tests.v2.test_session055_gemma_native" name="test_research_provider_returns_only_validated_contract_shape_and_never_tools" time="0.002"><failure message="AssertionError: assert 'gemma-4-31b-it' == 'models/gemma-4-31b-it'&#10;  &#10;  - models/gemma-4-31b-it&#10;  ? -------&#10;  + gemma-4-31b-it">def test_research_provider_returns_only_validated_contract_shape_and_never_tools():
+        opener = Mock()
+        opener.open.return_value = Response(generated_payload(output()))
+        job = research_job(capabilities=verified_capabilities())
+        client = GeminiNativeClient(api_key="fixture-secret", permit=job_permit(job), opener=opener,
+                                    clock_ns=lambda: 20, monotonic_ns=lambda: 0)
+        provider = GemmaResearchProviderV1(client)
+        response = provider.respond(job, ())
+        assert validate_response(job, response) is None
+&gt;       assert provider.returned_model == f"models/{GEMMA_MODEL_ID}"
+E       AssertionError: assert 'gemma-4-31b-it' == 'models/gemma-4-31b-it'
+E
+E         - models/gemma-4-31b-it
+E         ? -------
+E         + gemma-4-31b-it
+
+tests/v2/test_session055_gemma_native.py:205: AssertionError</failure></testcase><testcase classname="tests.v2.test_session055_gemma_native" name="test_invalid_identity_missing_text_prompt_injection_and_tool_parts_fail_closed" time="0.004"><failure message="AssertionError: Regex pattern did not match.&#10;  Expected regex: 'CAPABILITY'&#10;  Actual message: 'INCOMPLETE_PROVIDER_RESPONSE'">def test_invalid_identity_missing_text_prompt_injection_and_tool_parts_fail_closed():
+        for payload, reason in [
+            ({"modelVersion": "models/other", "candidates": [{"content": {"parts": [{"text": json.dumps(output())}]}}]},
+             "IDENTITY"),
+            ({"modelVersion": GEMMA_MODEL_ID, "candidates": []}, "RESPONSE"),
+            ({"modelVersion": GEMMA_MODEL_ID, "candidates": [{"content": {"parts": [{"functionCall": {"name": "inspect_snapshot_v1"}}]}}]},
+             "CAPABILITY"),
+        ]:
+            opener = Mock()
+            opener.open.return_value = Response(payload)
+            client = GeminiNativeClient(api_key="fixture-secret", permit=permit(), opener=opener,
+                                        clock_ns=lambda: 20, monotonic_ns=lambda: 0)
+&gt;           with pytest.raises(GeminiProviderError, match=reason):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Regex pattern did not match.
+E             Expected regex: 'CAPABILITY'
+E             Actual message: 'INCOMPLETE_PROVIDER_RESPONSE'
+
+tests/v2/test_session055_gemma_native.py:224: AssertionError</failure></testcase><testcase classname="tests.v2.test_session055_gemma_native" name="test_request_size_deadline_and_rate_limit_errors_are_bounded_and_sanitized" time="0.002" /><testcase classname="tests.v2.test_session055_gemma_native" name="test_free_tier_and_billing_gate_are_mandatory_for_any_real_transport_object" time="0.000" /><testcase classname="tests.v2.test_session055_gemma_native" name="test_environment_loader_requires_explicit_free_tier_flag_and_exact_model" time="0.001" /><testcase classname="tests.v2.test_session055_gemma_native" name="test_production_memory_gemmas_shadow_is_tagged_and_cannot_touch_original_brief" time="0.001"><failure message="AttributeError: 'types.SimpleNamespace' object has no attribute 'artifact_type'">def test_production_memory_gemmas_shadow_is_tagged_and_cannot_touch_original_brief():
+        capabilities = ProviderCapabilitiesV1(
+            "GEMINI_FAKE_CAPABILITY_FIXTURE_V1", "gemini", GEMMA_MODEL_ID, True, False, True, True,
+            True, True, 4000, False, "FIXTURE_ONLY", "NOT_PROBED", sha256_json("fixture capability evidence"),
+        )
+        job = research_job(capabilities=capabilities)
+        repo, receipt_ref, a0_population_ref = production_memory(job)
+        original_brief_hash = job.brief.content_hash
+        memory = ResearchMemoryV1(repo)
+&gt;       intent = memory.prepare_gemma_shadow_dispatch(job, receipt_ref=receipt_ref, now_ns=20)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session055_gemma_native.py:312:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/v2/research/memory.py:345: in prepare_gemma_shadow_dispatch
+    projection, binding_error = self._production_gemma_binding(receipt_ref, job, now_ns=now_ns)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;atlas.v2.research.memory.ResearchMemoryV1 object at 0x7fdf2313df10&gt;
+receipt_ref = '9f7c143cbe72a07585cf64108ca07ff94e33fe734f0ea66b57c6dee901c50b4d'
+job = ResearchJobV1(job_id='fixture-gemma-job', brief=DecisionBriefV1(status='COMPLETE', reasons=(), body=FrozenMap(_items=(... max_model_calls=1, max_tool_rounds=0, max_tool_rows=0, max_tool_bytes=0, max_projected_tokens=4000), created_at_ns=11)
+now_ns = 20
+
+    def _production_gemma_binding(self, receipt_ref: str, job: ResearchJobV1,
+                                  *, now_ns: int) -&gt; tuple[Mapping[str, Any] | None, str | None]:
+        """Bind a provider job to the immutable, production-composed Brief."""
+        sha256_ref(receipt_ref, field="receipt_ref")
+        timestamp(now_ns, field="gemma_shadow.now_ns")
+        identity = self._read(self.production_projection_identity(receipt_ref))
+        if identity is None or identity.get("receipt_ref") != receipt_ref:
+            return None, "PRODUCTION_BRIEF_UNAVAILABLE"
+        brief_ref, memory_ref = identity.get("brief_ref"), identity.get("memory_ref")
+        if (not isinstance(brief_ref, str) or not isinstance(memory_ref, str)
+                or brief_ref != self.production_brief_identity(receipt_ref)
+                or memory_ref != self.production_memory_identity(receipt_ref)):
+            return None, "PRODUCTION_BRIEF_BINDING"
+        projection = self._read(brief_ref)
+        memory = self._read(memory_ref)
+        if (projection is None or memory is None or projection.get("receipt_ref") != receipt_ref
+                or memory.get("receipt_ref") != receipt_ref or memory.get("brief_ref") != brief_ref
+                or memory.get("brief_status") != projection.get("status")):
+            return None, "PRODUCTION_BRIEF_BINDING"
+        stored_brief = projection.get("brief")
+        if not isinstance(stored_brief, Mapping) or stored_brief.get("status") != projection.get("status"):
+            return None, "PRODUCTION_BRIEF_BINDING"
+        if canonical_json(stored_brief) != canonical_json(job.brief.to_dict()):
+            return None, "PRODUCTION_BRIEF_MISMATCH"
+        receipt = self.repository.get_artifact(receipt_ref)
+&gt;       if (receipt is None or receipt.artifact_type != "OpsSupervisorReceiptV1"
+                               ^^^^^^^^^^^^^^^^^^^^^
+                or receipt.available_at_ns &gt; now_ns):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'artifact_type'
+
+src/atlas/v2/research/memory.py:319: AttributeError</failure></testcase><testcase classname="tests.v2.test_session055_gemma_native" name="test_blocked_production_brief_and_unverified_gemma_capabilities_never_dispatch" time="0.002"><failure message="AttributeError: 'types.SimpleNamespace' object has no attribute 'artifact_type'">def test_blocked_production_brief_and_unverified_gemma_capabilities_never_dispatch():
+        blocked = research_job(status="BLOCKED")
+        repo, receipt_ref, _ = production_memory(blocked)
+&gt;       result = ResearchMemoryV1(repo).prepare_gemma_shadow_dispatch(blocked, receipt_ref=receipt_ref, now_ns=20)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v2/test_session055_gemma_native.py:332:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/v2/research/memory.py:345: in prepare_gemma_shadow_dispatch
+    projection, binding_error = self._production_gemma_binding(receipt_ref, job, now_ns=now_ns)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;atlas.v2.research.memory.ResearchMemoryV1 object at 0x7fdf22fff290&gt;
+receipt_ref = '9f7c143cbe72a07585cf64108ca07ff94e33fe734f0ea66b57c6dee901c50b4d'
+job = ResearchJobV1(job_id='fixture-gemma-job', brief=DecisionBriefV1(status='BLOCKED', reasons=(), body=FrozenMap(_items=((... max_model_calls=1, max_tool_rounds=0, max_tool_rows=0, max_tool_bytes=0, max_projected_tokens=4000), created_at_ns=11)
+now_ns = 20
+
+    def _production_gemma_binding(self, receipt_ref: str, job: ResearchJobV1,
+                                  *, now_ns: int) -&gt; tuple[Mapping[str, Any] | None, str | None]:
+        """Bind a provider job to the immutable, production-composed Brief."""
+        sha256_ref(receipt_ref, field="receipt_ref")
+        timestamp(now_ns, field="gemma_shadow.now_ns")
+        identity = self._read(self.production_projection_identity(receipt_ref))
+        if identity is None or identity.get("receipt_ref") != receipt_ref:
+            return None, "PRODUCTION_BRIEF_UNAVAILABLE"
+        brief_ref, memory_ref = identity.get("brief_ref"), identity.get("memory_ref")
+        if (not isinstance(brief_ref, str) or not isinstance(memory_ref, str)
+                or brief_ref != self.production_brief_identity(receipt_ref)
+                or memory_ref != self.production_memory_identity(receipt_ref)):
+            return None, "PRODUCTION_BRIEF_BINDING"
+        projection = self._read(brief_ref)
+        memory = self._read(memory_ref)
+        if (projection is None or memory is None or projection.get("receipt_ref") != receipt_ref
+                or memory.get("receipt_ref") != receipt_ref or memory.get("brief_ref") != brief_ref
+                or memory.get("brief_status") != projection.get("status")):
+            return None, "PRODUCTION_BRIEF_BINDING"
+        stored_brief = projection.get("brief")
+        if not isinstance(stored_brief, Mapping) or stored_brief.get("status") != projection.get("status"):
+            return None, "PRODUCTION_BRIEF_BINDING"
+        if canonical_json(stored_brief) != canonical_json(job.brief.to_dict()):
+            return None, "PRODUCTION_BRIEF_MISMATCH"
+        receipt = self.repository.get_artifact(receipt_ref)
+&gt;       if (receipt is None or receipt.artifact_type != "OpsSupervisorReceiptV1"
+                               ^^^^^^^^^^^^^^^^^^^^^
+                or receipt.available_at_ns &gt; now_ns):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'artifact_type'
+
+src/atlas/v2/research/memory.py:319: AttributeError</failure></testcase><testcase classname="tests.v2.test_session055_r4_synthetic_e2e" name="test_fake_gemma_memory_and_demo_request_keep_original_economics_unchanged" time="0.062" /><testcase classname="tests.v2.test_session055_r4_production_gate" name="test_actual_production_brief_gate_preserves_a0_and_refuses_blocked_gemma" time="1.328" /><testcase classname="tests.runtime.test_session055_binance_demo_only" name="test_demo_only_endpoint_identity_and_state_paths_are_distinct_and_fixed" time="0.005"><failure message="AssertionError: Regex pattern did not match.&#10;  Expected regex: 'environment'&#10;  Actual message: 'unsupported DEMO_ONLY identity'">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-0/test_demo_only_endpoint_identi0')
+
+    def test_demo_only_endpoint_identity_and_state_paths_are_distinct_and_fixed(tmp_path):
+        identity = DemoOnlyIdentity("owner-demo", "demo-key-ref")
+        adapter = DemoOnlyAdapter(identity=identity, credentials=credentials(), clock_ms=lambda: 1_800_000_000_123,
+                                  allow_fixture_credentials=True)
+        assert identity.environment == "DEMO_ONLY"
+        assert adapter.base_url == BINANCE_FUTURES_DEMO_REST
+        assert adapter.websocket_url == BINANCE_FUTURES_DEMO_WS
+        with pytest.raises(AttributeError):
+            adapter.base_url = "https://fapi.binance.com"
+        with pytest.raises(ValueError, match="DEMO_ONLY"):
+            DemoOnlyAdapter(identity=identity, credentials=credentials(), base_url="https://fapi.binance.com",
+                            clock_ms=lambda: 1_800_000_000_123, allow_fixture_credentials=True)
+        for other_environment in ("LIVE", "TESTNET", "SHADOW"):
+&gt;           with pytest.raises(ValueError, match="environment"):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Regex pattern did not match.
+E             Expected regex: 'environment'
+E             Actual message: 'unsupported DEMO_ONLY identity'
+
+tests/runtime/test_session055_binance_demo_only.py:54: AssertionError</failure></testcase><testcase classname="tests.runtime.test_session055_binance_demo_only" name="test_demo_environment_loader_rejects_live_credential_aliases" time="0.002" /><testcase classname="tests.runtime.test_session055_binance_demo_only" name="test_demo_error_normalization_discards_exchange_text_and_rejects_bad_statuses" time="0.000" /><testcase classname="tests.runtime.test_session055_binance_demo_only" name="test_test_fixture_credentials_are_rejected_by_default_runner_constructor" time="0.004" /><testcase classname="tests.runtime.test_session055_binance_demo_only" name="test_signed_read_uses_exact_timestamp_signature_and_fixed_demo_host" time="0.000" /><testcase classname="tests.runtime.test_session055_binance_demo_only" name="test_demo_order_is_typed_offline_and_unknown_exchange_status_is_not_success" time="0.000" /><testcase classname="tests.runtime.test_session055_binance_demo_only" name="test_fake_account_instrument_margin_order_fill_cancel_and_protection_contracts" time="0.000"><failure message="ValueError: invalid Demo maximum notional">def test_fake_account_instrument_margin_order_fill_cancel_and_protection_contracts():
+        identity = DemoOnlyIdentity("fixture-account", "fixture-credential")
+        account = normalize_demo_account(identity, {
+            "canTrade": True,
+            "assets": [{"asset": "USDT", "walletBalance": "1000.00", "availableBalance": "900.00"}],
+            "positions": [{"symbol": "BTCUSDT", "positionAmt": "0.001", "entryPrice": "50000",
+                           "unRealizedProfit": "1.25"}],
+        }, captured_at_ns=1_800_000_000_123_000_000)
+        assert account.environment == "DEMO_ONLY"
+        assert account.balances[0].wallet_balance == Decimal("1000.00")
+        assert account.positions[0].position_amount == Decimal("0.001")
+
+        instrument = normalize_demo_instrument(identity, {
+            "symbol": "BTCUSDT", "status": "TRADING", "contractType": "PERPETUAL", "quoteAsset": "USDT",
+            "filters": [{"filterType": "MARKET_LOT_SIZE", "minQty": "0.001", "maxQty": "100",
+                         "stepSize": "0.001"}],
+        })
+        assert instrument.market_min_quantity == Decimal("0.001")
+&gt;       margin = normalize_demo_margin(identity, {"multiAssetsMargin": False}, [
+            {"symbol": "BTCUSDT", "marginType": "isolated", "isAutoAddMargin": False, "leverage": 2},
+        ])
+
+tests/runtime/test_session055_binance_demo_only.py:159:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/runtime/binance_futures_demo_r4.py:391: in normalize_demo_margin
+    _demo_decimal(row.get("maxNotionalValue"), "maximum notional", positive=True),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = None, field_name = 'maximum notional', positive = True
+nonnegative = False
+
+    def _demo_decimal(value: Any, field_name: str, *, positive: bool = False,
+                      nonnegative: bool = False) -&gt; Decimal:
+        if not isinstance(value, (str, int, Decimal)) or isinstance(value, bool):
+&gt;           raise ValueError(f"invalid Demo {field_name}")
+E           ValueError: invalid Demo maximum notional
+
+src/atlas/runtime/binance_futures_demo_r4.py:238: ValueError</failure></testcase><testcase classname="tests.runtime.test_session055_binance_demo_only" name="test_demo_only_restart_reconciliation_deduplicates_exchange_execution_events" time="0.009" /><testcase classname="tests.runtime.test_session055_binance_demo_only" name="test_adapter_has_no_order_submission_and_fake_response_normalization_is_sanitized" time="0.000" /></testsuite></testsuites>

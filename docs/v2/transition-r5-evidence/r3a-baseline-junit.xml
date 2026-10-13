@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="36" time="8.369" timestamp="2026-10-13T15:36:16.093844+00:00" hostname="3109dab57b81"><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_advancing_receipts_are_deferred_to_the_next_causal_cycle" time="0.781"><failure message="AssertionError: assert 'INCOMPLETE_SNAPSHOT' == 'HEALTHY_CURRENT'&#10;  &#10;  - HEALTHY_CURRENT&#10;  + INCOMPLETE_SNAPSHOT">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-17/test_advancing_receipts_are_de0')
+
+    def test_advancing_receipts_are_deferred_to_the_next_causal_cycle(tmp_path):
+        clock = AdvancingClock()
+        reader = AdvancingBybitReader(clock)
+        port = _port(clock, reader)
+        with OpsSupervisorV2(tmp_path / "advancing.sqlite", port, clock_ns=clock) as supervisor:
+            first = supervisor.run_once()
+            assert supervisor.repository is not None
+            repository = supervisor.repository
+            indexed = repository.artifact_entries("PublicObservationIndexV2")
+            assert indexed
+            first_start = START_NS
+            assert min(entry.available_at_ns for entry in indexed) &gt; first_start
+            # The receipt, controller ingestion, and availability boundaries remain distinct.
+            assert reader.request_starts_ns[1] &gt; first_start
+            assert reader.response_receipts_ns[0] &gt; reader.request_starts_ns[0]
+            first_receipt = reader.response_receipts_ns[-1]
+            first_available = min(entry.available_at_ns for entry in indexed)
+            assert first_receipt &lt; first_available
+            for entry in indexed:
+                raw = port._collector_recovery.collector.store.get(entry.metadata["record_id"])
+                assert raw is not None
+                assert raw.available_at_ns &gt;= raw.received_at_ns
+                assert raw.available_at_ns &gt; first_start
+                assert raw.ingested_at_ns == raw.available_at_ns
+                assert entry.available_at_ns == raw.available_at_ns
+            assert first.cycle.source_health_state != "HEALTHY_CURRENT"
+            assert not first.cycle.event_receipt_refs
+            assert not first.cycle.failure_types
+
+            second_start = clock.now_ns
+            second = supervisor.run_once()
+&gt;           assert second.cycle.source_health_state == "HEALTHY_CURRENT"
+E           AssertionError: assert 'INCOMPLETE_SNAPSHOT' == 'HEALTHY_CURRENT'
+E
+E             - HEALTHY_CURRENT
+E             + INCOMPLETE_SNAPSHOT
+
+tests/v2/test_session031_acquisition_recovery_remediation.py:190: AssertionError</failure></testcase><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_bounded_request_profile_and_acquisition_deadline_are_deterministic" time="0.006" /><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_malformed_and_partial_snapshots_remain_bounded_and_fail_closed" time="0.005" /><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_repeated_transport_timeouts_do_not_retry_or_expand_request_budget" time="0.008" /><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_rate_limit_and_disconnect_fail_closed_and_recovery_does_not_claim_trade_repair" time="1.384"><failure message="AssertionError: assert ('ValueError',) == ()&#10;  &#10;  Left contains one more item: 'ValueError'&#10;  Use -v to get more diff">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-17/test_rate_limit_and_disconnect0')
+
+    def test_rate_limit_and_disconnect_fail_closed_and_recovery_does_not_claim_trade_repair(tmp_path):
+        for failure_mode in ("rate_limit_next", "disconnect_next"):
+            path = tmp_path / f"{failure_mode}.sqlite"
+            clock = AdvancingClock()
+            reader = AdvancingBybitReader(clock, trades_per_symbol=MAX_TRADE_ROWS)
+            port = _port(clock, reader)
+            with OpsSupervisorV2(path, port, clock_ns=clock) as supervisor:
+                first = supervisor.run_once()
+                assert first.cycle.source_health_state != "HEALTHY_CURRENT"
+                failure = supervisor.run_once()
+                assert supervisor.repository is not None
+                setattr(reader, failure_mode, True)
+                failed_call = supervisor.run_once()
+                states = [item.status for item in supervisor.repository.source_health_history("BYBIT_PUBLIC_HTTP")]
+                expected = "DEGRADED_RATE_LIMITED" if failure_mode == "rate_limit_next" else "DISCONNECTED"
+                assert expected in states
+                assert failed_call.cycle.source_health_state != "HEALTHY_CURRENT"
+                assert failed_call.cycle.event_receipt_refs == ()
+                current_receipts = len(supervisor.repository.artifact_entries("OpsSupervisorReceiptV1"))
+&gt;               assert failed_call.cycle.failure_types == ()
+E               AssertionError: assert ('ValueError',) == ()
+E
+E                 Left contains one more item: 'ValueError'
+E                 Use -v to get more diff
+
+tests/v2/test_session031_acquisition_recovery_remediation.py:293: AssertionError</failure></testcase><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_stale_market_observation_is_not_replayed_as_timely" time="0.300" /><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_final_m15_bar_that_expires_during_acquisition_never_becomes_a_handoff" time="0.110" /><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_restart_keeps_epoch_bound_and_does_not_duplicate_event_or_receipt" time="0.345"><failure message="AssertionError: assert ()&#10; +  where () = OpsCycleReceiptV1(cycle_id='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105', started_at_ns=180000145...types=('ValueError',), recovered=True, content_hash='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105').event_receipt_refs&#10; +    where OpsCycleReceiptV1(cycle_id='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105', started_at_ns=180000145...types=('ValueError',), recovered=True, content_hash='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105') = OpsRunResultV1(cycle=OpsCycleReceiptV1(cycle_id='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105', st...), recovered=True, content_hash='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105'), event_receipts=()).cycle">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-17/test_restart_keeps_epoch_bound0')
+
+    def test_restart_keeps_epoch_bound_and_does_not_duplicate_event_or_receipt(tmp_path):
+        path = tmp_path / "restart.sqlite"
+        clock = AdvancingClock()
+        reader = AdvancingBybitReader(clock)
+        first_port = _port(clock, reader)
+        with OpsSupervisorV2(path, first_port, clock_ns=clock) as supervisor:
+            waiting = supervisor.run_once()
+            assert not waiting.cycle.event_receipt_refs
+            ready = supervisor.run_once()
+&gt;           assert ready.cycle.event_receipt_refs
+E           AssertionError: assert ()
+E            +  where () = OpsCycleReceiptV1(cycle_id='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105', started_at_ns=180000145...types=('ValueError',), recovered=True, content_hash='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105').event_receipt_refs
+E            +    where OpsCycleReceiptV1(cycle_id='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105', started_at_ns=180000145...types=('ValueError',), recovered=True, content_hash='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105') = OpsRunResultV1(cycle=OpsCycleReceiptV1(cycle_id='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105', st...), recovered=True, content_hash='42bb3d3b66d89024cbd4074e5892249db99003fc46f476f356dbcde67f524105'), event_receipts=()).cycle
+
+tests/v2/test_session031_acquisition_recovery_remediation.py:363: AssertionError</failure></testcase><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_elapsed_decision_deadline_produces_expired_receipt" time="0.029" /><testcase classname="tests.v2.test_session031_acquisition_recovery_remediation" name="test_deadline_crossed_during_acquisition_is_deferred_then_recorded_expired" time="0.242"><failure message="assert False&#10; +  where False = any(&lt;generator object test_deadline_crossed_during_acquisition_is_deferred_then_recorded_expired.&lt;locals&gt;.&lt;genexpr&gt; at 0x7f5843d109e0&gt;)">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-17/test_deadline_crossed_during_a0')
+
+    def test_deadline_crossed_during_acquisition_is_deferred_then_recorded_expired(tmp_path):
+        clock = AdvancingClock()
+        reader = AdvancingBybitReader(clock)
+        port = _port(clock, reader)
+        with OpsSupervisorV2(tmp_path / "acquisition-deadline.sqlite", port, clock_ns=clock) as supervisor:
+            supervisor.run_once()
+            assert supervisor.repository is not None
+            repository = supervisor.repository
+            eligible_at = clock.now_ns
+            trigger_ref = sha256_json("immutable-preexisting-trigger")
+            repository.register_artifact(ArtifactIndexEntryV2(
+                trigger_ref, "FixtureTriggerV1", trigger_ref,
+                eligible_at, eligible_at, {"trigger": "persisted-before-acquisition"},
+            ))
+            event = OpsDecisionEventV1(
+                sha256_json("decision-whose-deadline-is-during-acquisition"),
+                "CONFIRMED_15M_CLOSE", SOURCE_ID, trigger_ref,
+                eligible_at, eligible_at, eligible_at, eligible_at, eligible_at,
+                eligible_at + 500_000_000, (trigger_ref,),
+            )
+            repository.register_artifact(ArtifactIndexEntryV2(
+                event.content_hash, "OpsDecisionEventSourceV1", event.content_hash,
+                eligible_at, eligible_at, {"event": event.to_dict(), "trigger_record_id": "fixture"},
+            ))
+
+            crossing = supervisor.run_once()
+            assert clock.now_ns &gt; event.deadline_ns
+            assert all(item.event.event_id != event.event_id for item in crossing.event_receipts)
+            gates = repository.artifact_entries("OpsPublicAcquisitionDeadlineGateV1")
+&gt;           assert any(event.event_id in item.metadata["deadline_gate"]["event_ids"] for item in gates)
+E           assert False
+E            +  where False = any(&lt;generator object test_deadline_crossed_during_acquisition_is_deferred_then_recorded_expired.&lt;locals&gt;.&lt;genexpr&gt; at 0x7f5843d109e0&gt;)
+
+tests/v2/test_session031_acquisition_recovery_remediation.py:465: AssertionError</failure></testcase><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_default_production_remains_archive_only_and_network_free" time="0.001" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_fake_bybit_source_flows_through_collector_archive_index_supervisor_and_calendar" time="0.484"><failure message="AssertionError: assert ()&#10; +  where () = artifact_entries('OpsSupervisorReceiptV1')&#10; +    where artifact_entries = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f583c571640&gt;.artifact_entries">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-17/test_fake_bybit_source_flows_t0')
+
+    def test_fake_bybit_source_flows_through_collector_archive_index_supervisor_and_calendar(tmp_path):
+        reader = _FakeBybitReader(CUTOFF)
+        source = BybitPublicCycleSourceV1(reader, clock_ns=_FakeClock(CUTOFF))
+        port = production.ProductionOpsCyclePortV1(public_source=source)
+        db = tmp_path / "ops.sqlite"
+        with OpsSupervisorV2(db, port, clock_ns=_FakeClock(CUTOFF)) as supervisor:
+            result = supervisor.run_once()
+            assert supervisor.repository is not None
+            repository = supervisor.repository
+            assert repository.artifact_entries("ProductContractV2")
+            assert repository.artifact_entries("PublicObservationIndexV2")
+            assert repository.artifact_entries("OpsPublicSourceReconciliationV1")
+&gt;           assert repository.artifact_entries("OpsSupervisorReceiptV1")
+E           AssertionError: assert ()
+E            +  where () = artifact_entries('OpsSupervisorReceiptV1')
+E            +    where artifact_entries = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f583c571640&gt;.artifact_entries
+
+tests/v2/test_session031_public_shadow_readiness.py:165: AssertionError</failure></testcase><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_source_health_reconciliation_cannot_precede_public_receipts" time="0.154" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_metadata_bootstrap_failure_keeps_supervisor_cycle_fail_closed" time="0.070" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_incomplete_bybit_snapshot_cannot_qualify_source_or_create_a_handoff" time="0.127" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_bybit_request_budget_is_bounded_and_intervals_match_frozen_inputs" time="0.003" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_real_receipt_time_cannot_be_backdated" time="0.001" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_unconfirmed_bar_is_not_constructed_as_final" time="0.000" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_readiness_fails_closed_on_missing_s1_context_and_required_health" time="0.006" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_s2_requires_2901_contiguous_comparison_bars_and_context" time="0.001" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_s2_fragmented_history_is_not_silently_shrunk" time="0.001" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_s3_missing_trade_vwap_residual_and_one_second_bbo_stays_not_estimable" time="0.000" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_s3_can_be_ready_from_complete_causal_m1_and_trade_vwap_evidence" time="1.574" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_s3_cadence_report_keeps_m1_origins_separate_from_m15_handoffs" time="0.000" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_campaign_manifest_and_lane_provenance_are_immutable_zero_authority" time="0.001" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_read_only_preflight_has_stable_identity_and_non_authoritative_statuses" time="0.064" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_preflight_does_not_count_science_evidence_unavailable_at_cutoff" time="0.028" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_disconnect_reconnect_requires_exact_snapshot_refs_and_gap_repair" time="0.040" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_restart_replay_is_idempotent_for_persisted_public_observation" time="0.054" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_read_only_wal_reader_coexists_with_baseline_writer" time="0.041" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_preflight_rejects_writable_repository_and_missing_values_stay_unavailable" time="0.030" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_future_available_observation_is_not_admitted_at_cutoff" time="0.001" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_campaign_lane_provenance_rejects_final_holdout_access" time="0.000" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_campaign_identity_cannot_change_the_frozen_s30_start" time="0.002" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_current_bybit_source_never_constructs_repository_or_makes_mutating_calls" time="0.000" /><testcase classname="tests.v2.test_session031_public_shadow_readiness" name="test_offline_fault_identity_rejects_conflicting_duplicate_payload" time="0.065" /></testsuite></testsuites>

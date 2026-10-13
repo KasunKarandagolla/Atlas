@@ -1,0 +1,57 @@
+{
+  "checks": {
+    "base_environment_dependencies": {
+      "command": "uv pip check",
+      "installed_packages": 24,
+      "status": "PASS"
+    },
+    "compileall": {
+      "command": "uv run --frozen python -m compileall -q src tests scripts",
+      "status": "PASS"
+    },
+    "desktop_environment_dependencies": {
+      "command": "uv pip check --python work/r5-desktop-env/bin/python",
+      "installed_packages": 36,
+      "status": "PASS"
+    },
+    "frozen_authorities": {
+      "sha256": {
+        "Agent": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+        "V1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+        "V2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+      },
+      "status": "PASS"
+    },
+    "frozen_lock": {
+      "command": "uv lock --check --offline",
+      "lockfile_changed": false,
+      "status": "PASS"
+    },
+    "license_inventory": {
+      "file": "license_metadata_inventory.json",
+      "pip_licenses_tool_available": false,
+      "policy_decision": "NOT MADE",
+      "status": "INVENTORY_ONLY"
+    },
+    "mypy_baseline_comparison": {
+      "baseline_errors": 53,
+      "baseline_files": 17,
+      "current_errors": 53,
+      "current_files": 17,
+      "normalized_message_delta": 0,
+      "source_files_checked": 286,
+      "status": "PASS_ZERO_DELTA"
+    },
+    "ruff": {
+      "command": "uv run --frozen ruff check src tests scripts",
+      "status": "PASS"
+    },
+    "secret_scan": {
+      "file": "secret_scan.json",
+      "scanned_files": 39,
+      "status": "PASS_ZERO_MATCHES"
+    }
+  },
+  "source_commit": "1b4daaecc0ccd804e0d62baaacde4d324aa39133",
+  "version": "ATLAS_RED_R5_STATIC_CHECKS_V1"
+}

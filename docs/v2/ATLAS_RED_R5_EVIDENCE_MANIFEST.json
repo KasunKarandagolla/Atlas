@@ -1,0 +1,279 @@
+{
+  "artifacts": [
+    {
+      "path": "docs/v2/ATLAS_RED_R5_INTEGRATED_COMPLETION_HANDOFF.md",
+      "sha256": "660b1c8fe06bb962d0c55a4f7945666b69f3d1836854d11992b1e20946998396",
+      "size_bytes": 9523
+    },
+    {
+      "path": "docs/v2/ATLAS_RED_R5_UNRESOLVED_GATE_REGISTER.md",
+      "sha256": "4a8aecd295de0bacac7393e2c98f309f5eaa67fc5a2be2ad597f29f76c3a26de",
+      "size_bytes": 8392
+    },
+    {
+      "path": "docs/v2/ATLAS_RED_R5_TEST_AND_DEMO_GUIDE.md",
+      "sha256": "02ae9e7de2f79c9dc09978e71c7dbb36d61b075e952459ca2a5462bfe7f065d1",
+      "size_bytes": 3776
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/desktop-core-junit.xml",
+      "sha256": "1992e14b927d57f185f6342939acc5775a839d410334a2e30b5286841e1d53fc",
+      "size_bytes": 13704
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/extra-baseline-2-junit.xml",
+      "sha256": "64a72b2fed2bda0d927bf7d579a0412b2f7a90c3a42e42101ca1bf555b724867",
+      "size_bytes": 5857
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/extra-baseline-junit.xml",
+      "sha256": "398a49fcc464b42051ee99f402153b75ef912b02818e35d4e2756a3e9f63edff",
+      "size_bytes": 32513
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/full-suite-desktop-junit.xml",
+      "sha256": "9b541209f020b5c90cf758dc29fd9996b32bcf4208e7af3124a7a647625d0f15",
+      "size_bytes": 521721
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/gemma-real-probe.json",
+      "sha256": "50e0de6078950a223516079b23b2af072531bb322a72979ef4c003ede493e97d",
+      "size_bytes": 1744
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/license_metadata_inventory.json",
+      "sha256": "f21db940bf9e0c29008c63a2c5aca1cc1b77d1e2b790a3c1cc2edc925c51884c",
+      "size_bytes": 110209
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/mypy-baseline.log",
+      "sha256": "ef0d8c623b506a0a6ea1012396a9b52faf9762abdfa4e3d842caaa3a78e7bd64",
+      "size_bytes": 9771
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/mypy-current.log",
+      "sha256": "ef0d8c623b506a0a6ea1012396a9b52faf9762abdfa4e3d842caaa3a78e7bd64",
+      "size_bytes": 9771
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/projection_timing_samples.json",
+      "sha256": "8523e104122cccd5fad97e3b07f8a4a09fbe6da060432394835422b42c69768d",
+      "size_bytes": 1022
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/r3a-baseline-junit.xml",
+      "sha256": "55ece34d42429f295247edac87e0a836aca70a210114c3f1d00b09a38d9ebb36",
+      "size_bytes": 16591
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/r4-baseline-junit.xml",
+      "sha256": "9e78c97f5dcac59d923e83f1dfaa28de2dbdc06d6b1cef270470b7a03b1a5f0a",
+      "size_bytes": 17330
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/r4-baseline.log",
+      "sha256": "2b1a56ddbd6f3b96bebfc2c4182548bdc46822a727d6dbd97273bb913b865a2a",
+      "size_bytes": 14379
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/r4-repaired-junit.xml",
+      "sha256": "d3891069990bcf93bbe360725cb763927c25f4949f3428412f1115cbc9f4abfc",
+      "size_bytes": 3624
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/r4-repaired.log",
+      "sha256": "32faef56d0289369b1ac111e68ee0bb7b2ed1bcf92d3f33b75313bd0556c3e6f",
+      "size_bytes": 80
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/r5-core-final3-junit.xml",
+      "sha256": "29e2d2925cda27b7a52c37dba422ec3e60d5b823ca83bf82ff3fc94ee41d2e5f",
+      "size_bytes": 9121
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/required-regressions-junit.xml",
+      "sha256": "5b32930340a29e369a104e9706262f8b0ef9ed0d869ff09f65faec2bf62ef6ac",
+      "size_bytes": 104859
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/resource_accounting.json",
+      "sha256": "65aa0380b1c8e96bf106bdcc91d5503b87ceaa2a507c2c727bbaee10e8dd8b18",
+      "size_bytes": 1771
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/secret_scan.json",
+      "sha256": "7f1b5791159acc1f784df93e38313de52a02bee58f2fc381f6975fc23903a373",
+      "size_bytes": 848
+    },
+    {
+      "path": "docs/v2/transition-r5-evidence/static_checks.json",
+      "sha256": "ce8444c83a567806463b06b416c68340592d532a3afd4b7196460b3baf9c45ff",
+      "size_bytes": 1722
+    },
+    {
+      "path": "log.md",
+      "sha256": "9387e64f64a8756fe8320d32702698e06d0be5c8efaffec0c1968b3dcd9c3ada",
+      "size_bytes": 82325
+    },
+    {
+      "path": "translog.md",
+      "sha256": "c91f1b373ef0c75bb45fcd614ae6cdc2ea459b316290c6cc4d7580e78fdf723f",
+      "size_bytes": 102710
+    }
+  ],
+  "base_commit": "4e9df8f93ee317232171158751fde2c144360ca4",
+  "branch": "impl/red-r5-integrated-engineering-completion-2026-10-13",
+  "created_at_utc": "2026-10-13",
+  "delivery_push_status": "PENDING_AT_MANIFEST_CREATION",
+  "evidence_normalizations": [
+    "Trailing whitespace removed from delivered JUnit XML for clean diff checks; XML was reparsed and test result elements were not edited.",
+    "One synthetic key-shaped pytest parameter was redacted from the delivered full-suite JUnit XML."
+  ],
+  "frozen_authorities": {
+    "Agent": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "V1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "V2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+  },
+  "gemma_probe": "docs/v2/transition-r5-evidence/gemma-real-probe.json",
+  "implementation_commit": "1b4daaecc0ccd804e0d62baaacde4d324aa39133",
+  "implemented_source_files": [
+    {
+      "path": "scripts/atlas_red_demo_read_probe.py",
+      "sha256": "b3be56def202f700a255226840dcdb3a519d3ccc0d1630e37693798d504de341",
+      "size_bytes": 4113
+    },
+    {
+      "path": "scripts/atlas_red_gemma_smoke.py",
+      "sha256": "b8cd3e56c0545221a7105ebc96f959a4f59f92beff3bb5e48ce7502e0be46c2c",
+      "size_bytes": 1607
+    },
+    {
+      "path": "src/atlas/runtime/binance_futures_demo_r4.py",
+      "sha256": "fe5f922bf93717a977177a5ac76f51b534cdd32a2a20116c8b93937e22f423ac",
+      "size_bytes": 27507
+    },
+    {
+      "path": "src/atlas/v2/desktop/projection.py",
+      "sha256": "bd95aad7b432d1ef9dd861676ca8254a0c32bbef728e0a2ddb29fec012b97c3d",
+      "size_bytes": 68713
+    },
+    {
+      "path": "src/atlas/v2/memory/repository.py",
+      "sha256": "99599c78ec1c690a80eb8a5f79230dfa1e335fdb6a57f0d56dd3f66cdd718c21",
+      "size_bytes": 240393
+    },
+    {
+      "path": "src/atlas/v2/research/gemma_native.py",
+      "sha256": "86249c92a4ab4b49c7d17f94b40a0593679f0fde5522016f6c2f1fad551b75cd",
+      "size_bytes": 25311
+    },
+    {
+      "path": "src/atlas/v2/research/production_facts.py",
+      "sha256": "d455f4eab631aafa8d02164b5d5e4067dbf8a85104afc851d1ecc26ae0c56373",
+      "size_bytes": 24123
+    },
+    {
+      "path": "src/atlas/v2/runtime/production_intelligence.py",
+      "sha256": "baa15e0dca84f24eae019215cc4cbc654bb32f785740e4d8b9102084d70b1fc6",
+      "size_bytes": 49342
+    },
+    {
+      "path": "tests/runtime/test_session055_binance_demo_only.py",
+      "sha256": "3108d65226a99d2ad1e54638361476f47fd7288cd0868057189ad1fd39c00f9b",
+      "size_bytes": 13033
+    },
+    {
+      "path": "tests/v2/test_session052_production_intelligence.py",
+      "sha256": "d4e3b15f1cd1a8c6d922349e004e2a59dc5e7f9e61235e9f0df0dd7b0bcacd38",
+      "size_bytes": 19573
+    },
+    {
+      "path": "tests/v2/test_session053_production_completion.py",
+      "sha256": "6b6a1381f6afdf33811c1627cd0a6d6bb4cc41b7d8f1508348267b7961837427",
+      "size_bytes": 31485
+    },
+    {
+      "path": "tests/v2/test_session055_gemma_native.py",
+      "sha256": "e73dc2b346e9773d869146ead3acd41e8b47bcf864f6aa5ee1cab981d1b5c2c7",
+      "size_bytes": 17603
+    },
+    {
+      "path": "tests/v2/test_session055_r4_production_gate.py",
+      "sha256": "9d98b63be959e0fadb6079cdc7bb5f7cc86f61e9a969015469edfa8ce866706d",
+      "size_bytes": 3339
+    },
+    {
+      "path": "tests/v2/test_session055_r4_synthetic_e2e.py",
+      "sha256": "c46f4a3d9016c894d16977e7b7aafa3132c51f7588c91797ea73f337b67ea19a",
+      "size_bytes": 7304
+    }
+  ],
+  "manifest_self_reference": "The manifest is excluded from its own artifact hash list.",
+  "model_identity": "GPT-6 Luna runtime label not independently verifiable in this session; no substitute claimed.",
+  "projection_timing": "docs/v2/transition-r5-evidence/projection_timing_samples.json",
+  "repository": "KasunKarandagolla/Atlas",
+  "resource_accounting": "docs/v2/transition-r5-evidence/resource_accounting.json",
+  "s47_amendment": {
+    "effective_policy_identity": "NONE",
+    "path": "docs/v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md",
+    "sha256": "4928312614a3ef4c5b07ac8e5626be67dbd8db7e4955e0076a21b556c3ead8f4",
+    "status": "PROPOSED \u2014 NOT ACCEPTED"
+  },
+  "schema": "ATLAS_RED_R5_EVIDENCE_MANIFEST_V1",
+  "secret_scan": "docs/v2/transition-r5-evidence/secret_scan.json",
+  "static_checks": "docs/v2/transition-r5-evidence/static_checks.json",
+  "test_results": [
+    {
+      "command": "uv run --frozen pytest -q tests/v2/test_session052_production_intelligence.py tests/v2/test_session053_production_completion.py tests/v2/test_session037_receipt_query_bounds.py tests/v2/test_session055_gemma_native.py tests/v2/test_session055_r4_synthetic_e2e.py tests/v2/test_session055_r4_production_gate.py tests/runtime/test_session055_binance_demo_only.py --junitxml=work/r5-evidence/r5-core-final3-junit.xml",
+      "id": "r5_core",
+      "junit": "docs/v2/transition-r5-evidence/r5-core-final3-junit.xml",
+      "result": "55 passed",
+      "returncode": 0
+    },
+    {
+      "command": "QT_QPA_PLATFORM=offscreen UV_PROJECT_ENVIRONMENT=/workspace/Atlas/work/r5-desktop-env uv run --frozen pytest -q tests/v2/test_session020_desktop_ipc.py tests/v2/test_session020_phase2_e2e.py tests/v2/test_session040_owner_runtime.py tests/v2/test_session040_storage_preflight.py --junitxml=work/r5-evidence/desktop-core-junit.xml",
+      "id": "desktop_core",
+      "junit": "docs/v2/transition-r5-evidence/desktop-core-junit.xml",
+      "result": "83 passed",
+      "returncode": 0
+    },
+    {
+      "id": "required_legacy_regressions",
+      "junit": "docs/v2/transition-r5-evidence/required-regressions-junit.xml",
+      "result": "601 total; 596 passed; 5 failed; all five reproduced on R4 base",
+      "returncode": 1
+    },
+    {
+      "id": "r4_red_to_green",
+      "junit": [
+        "docs/v2/transition-r5-evidence/r4-baseline-junit.xml",
+        "docs/v2/transition-r5-evidence/r4-repaired-junit.xml"
+      ],
+      "raw_logs": [
+        "docs/v2/transition-r5-evidence/r4-baseline.log",
+        "docs/v2/transition-r5-evidence/r4-repaired.log"
+      ],
+      "result": "baseline 21 total/6 failed; repaired 21 passed",
+      "returncodes": [
+        1,
+        0
+      ]
+    },
+    {
+      "id": "full_repository_desktop",
+      "junit": "docs/v2/transition-r5-evidence/full-suite-desktop-junit.xml",
+      "result": "2908 total; 2886 passed; 14 failed; 8 skipped; one timing-sensitive case subsequently fixed in test clock; full suite not rerun",
+      "returncode": 1
+    },
+    {
+      "id": "baseline_reproductions",
+      "junit": [
+        "docs/v2/transition-r5-evidence/r3a-baseline-junit.xml",
+        "docs/v2/transition-r5-evidence/extra-baseline-junit.xml",
+        "docs/v2/transition-r5-evidence/extra-baseline-2-junit.xml"
+      ],
+      "result": "R3A 36 total/5 failed; additional R4-base suite 57 total/7 failed; additional 2 total/2 failed",
+      "returncode": 1
+    }
+  ]
+}

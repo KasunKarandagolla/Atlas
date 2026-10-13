@@ -1,0 +1,39 @@
+{
+  "cpu": {
+    "cgroup_cpu_usage_usec_at_sample": 2631199014,
+    "limitation": "No paired pre/post CPU samples were retained for individual test groups; these cumulative counters do not establish per-test CPU cost.",
+    "nr_throttled": 137,
+    "system_usec": 150420739,
+    "task_interval_delta_measured": false,
+    "throttled_usec": 5414039,
+    "user_usec": 2480778274
+  },
+  "filesystem": {
+    "overlay_available_bytes": 30446940160,
+    "overlay_total_bytes": 33770192896,
+    "overlay_used_bytes": 1588490240,
+    "sampled_at_utc": "2026-10-13T16:10:27Z"
+  },
+  "filesystem_writes": {
+    "final_wbytes": 1774059520,
+    "fraction_of_limit_percent": 34.44752384,
+    "initial_wbytes": 51683328,
+    "limitation": "The cgroup counter is cumulative and has no independently recorded 24-hour window boundary; the observed session delta is below the ceiling but does not prove total rolling-24-hour usage.",
+    "observed_delta_bytes": 1722376192,
+    "observed_delta_decimal_gb": 1.722376192,
+    "observed_delta_gib": 1.6040878295898438,
+    "rolling_24h_total_verified": false,
+    "scope": "Linux cgroup io.stat, block device 254:0; cumulative counter observed in this execution environment"
+  },
+  "memory": {
+    "cgroup_memory_current_bytes_at_sample": 1901383680,
+    "cgroup_memory_peak_bytes_at_sample": 5752643584,
+    "limitation": "Cgroup peak is environment-wide for the counter lifetime and cannot be attributed to a particular test command or process.",
+    "peak_is_process_rss": false
+  },
+  "observed_at_utc": "2026-10-13T16:10:27Z",
+  "rolling_write_limit_bytes": 5000000000,
+  "source_cadence_and_burst_overlap_qualified": false,
+  "sqlite_write_volume_or_queue_pressure_measured": false,
+  "version": "ATLAS_RED_R5_RESOURCE_ACCOUNTING_V1"
+}

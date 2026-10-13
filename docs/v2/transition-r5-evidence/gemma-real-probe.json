@@ -1,0 +1,39 @@
+{
+  "api_host": "generativelanguage.googleapis.com",
+  "credential_exposed": false,
+  "duration_ms": 15265.936,
+  "gemma_native_source_sha256_at_probe": "b0ef84e0b9709ae24fe175d87980338efd06e2841e45390096d9858d3edf7f41",
+  "generation_response_received": false,
+  "generation_status": "PROVIDER_TIMEOUT",
+  "limits": {
+    "account_or_trading_data": false,
+    "deadline_ms": 60000,
+    "images": false,
+    "max_input_bytes": 4096,
+    "max_output_tokens": 256,
+    "max_requests": 2,
+    "response_max_bytes_per_request": 65536,
+    "tools": false
+  },
+  "model_available": true,
+  "notes": [
+    "The model listing returned the pinned model and listed generateContent; the subsequent generation request timed out.",
+    "The probe's initial request-body counter only counted completed requests; the 1,034-byte generation payload length was reconstructed offline from the same synthetic prompt and source schema.",
+    "The timeout leaves generation completion, response-schema support, provider usage, and the provider-reported pricing state unverified. The configured process was used under the owner's explicit free-tier/no-charge authorization."
+  ],
+  "observed_at_ns": 1791902689317327183,
+  "pricing_verified_by_probe": false,
+  "raw_prompt_or_provider_payload_saved": false,
+  "repository_head_at_probe": "4e9df8f93ee317232171158751fde2c144360ca4",
+  "request_body_bytes_materialized": 1034,
+  "requested_model_id": "gemma-4-31b-it",
+  "requests_made": 2,
+  "response_body_bytes_received": 359,
+  "retry_performed": false,
+  "returned_model_id": "models/gemma-4-31b-it",
+  "structured_json": false,
+  "synthetic_prompt_bytes": 288,
+  "text_response": false,
+  "usage_metadata": null,
+  "version": "ATLAS_RED_R5_GEMMA_REAL_PROBE_V1"
+}

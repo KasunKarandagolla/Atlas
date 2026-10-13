@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="7" skipped="0" tests="57" time="20.613" timestamp="2026-10-13T15:36:38.830994+00:00" hostname="3109dab57b81"><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_opening_cannot_mark_send_or_reach_effect[dispatch_persisted_demo_command-opening_gate_reason]" time="0.039" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_opening_cannot_mark_send_or_reach_effect[dispatch_persisted_bybit_command-opening_gate_reason]" time="0.016" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[None-dispatch_persisted_demo_command]" time="0.026"><failure message="atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7f3ff44c8fe0&gt;
+dispatcher = &lt;function dispatch_persisted_demo_command at 0x7f3ff4095580&gt;
+failure = None
+
+    @pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
+    @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+    def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+        intent = add_intent(journal)
+        before = journal.load_reservation(intent.intent_id)
+        command = journal.prepare_dispatch(
+            intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
+            command_id="review-close", command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id}, created_at_ns=T0,
+        )
+        seen = []
+
+        def effect(command, *, now_ns):
+            durable = journal.load_command(command.command_id)
+            assert durable.outcome == CommandOutcome.UNKNOWN
+            assert durable.send_started_at_ns == now_ns
+            seen.append(command.command_id)
+            if failure:
+                raise failure("fixture sensitive transport detail")
+
+        args = {"journal": journal, "command_id": command.command_id,
+                "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
+                "writer_epoch": 1, "assert_writer": lambda: None}
+&gt;       assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+               ^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_execution_final_review.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/runtime/binance_demo.py:623: in dispatch_persisted_demo_command
+    fence(send_started=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+send_started = False
+
+    def fence(*, send_started: bool) -&gt; None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+&gt;           raise PersistenceError("Binance command readiness context missing")
+E           atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing
+
+src/atlas/runtime/binance_demo.py:616: PersistenceError</failure></testcase><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[None-dispatch_persisted_bybit_command]" time="0.022" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[TimeoutError-dispatch_persisted_demo_command]" time="0.025"><failure message="atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7f3fdf824290&gt;
+dispatcher = &lt;function dispatch_persisted_demo_command at 0x7f3ff4095580&gt;
+failure = &lt;class 'TimeoutError'&gt;
+
+    @pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
+    @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+    def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+        intent = add_intent(journal)
+        before = journal.load_reservation(intent.intent_id)
+        command = journal.prepare_dispatch(
+            intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
+            command_id="review-close", command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id}, created_at_ns=T0,
+        )
+        seen = []
+
+        def effect(command, *, now_ns):
+            durable = journal.load_command(command.command_id)
+            assert durable.outcome == CommandOutcome.UNKNOWN
+            assert durable.send_started_at_ns == now_ns
+            seen.append(command.command_id)
+            if failure:
+                raise failure("fixture sensitive transport detail")
+
+        args = {"journal": journal, "command_id": command.command_id,
+                "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
+                "writer_epoch": 1, "assert_writer": lambda: None}
+&gt;       assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+               ^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_execution_final_review.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/runtime/binance_demo.py:623: in dispatch_persisted_demo_command
+    fence(send_started=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+send_started = False
+
+    def fence(*, send_started: bool) -&gt; None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+&gt;           raise PersistenceError("Binance command readiness context missing")
+E           atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing
+
+src/atlas/runtime/binance_demo.py:616: PersistenceError</failure></testcase><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[TimeoutError-dispatch_persisted_bybit_command]" time="0.030" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[ValueError-dispatch_persisted_demo_command]" time="0.024"><failure message="atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing">journal = &lt;atlas.persistence.sqlite.SQLiteJournal object at 0x7f3fdf8242f0&gt;
+dispatcher = &lt;function dispatch_persisted_demo_command at 0x7f3ff4095580&gt;
+failure = &lt;class 'ValueError'&gt;
+
+    @pytest.mark.parametrize("dispatcher", [dispatch_persisted_demo_command, dispatch_persisted_bybit_command])
+    @pytest.mark.parametrize("failure", [None, TimeoutError, ValueError])
+    def test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend(journal, dispatcher, failure):
+        intent = add_intent(journal)
+        before = journal.load_reservation(intent.intent_id)
+        command = journal.prepare_dispatch(
+            intent_id=intent.intent_id, expected_state_version=0, expected_reservation_version=1,
+            command_id="review-close", command_type=CommandType.SUBMIT_EXIT,
+            payload_dict={"client_order_id": intent.client_order_id}, created_at_ns=T0,
+        )
+        seen = []
+
+        def effect(command, *, now_ns):
+            durable = journal.load_command(command.command_id)
+            assert durable.outcome == CommandOutcome.UNKNOWN
+            assert durable.send_started_at_ns == now_ns
+            seen.append(command.command_id)
+            if failure:
+                raise failure("fixture sensitive transport detail")
+
+        args = {"journal": journal, "command_id": command.command_id,
+                "port": SimpleNamespace(dispatch=effect), "now_ns": T0 + 1,
+                "writer_epoch": 1, "assert_writer": lambda: None}
+&gt;       assert dispatcher(**args).outcome == CommandOutcome.UNKNOWN
+               ^^^^^^^^^^^^^^^^^^
+
+tests/runtime/test_session041_execution_final_review.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/runtime/binance_demo.py:623: in dispatch_persisted_demo_command
+    fence(send_started=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+send_started = False
+
+    def fence(*, send_started: bool) -&gt; None:
+        assert_writer()
+        if snapshot_getter is None or generation_getter is None or clock_ns is None:
+&gt;           raise PersistenceError("Binance command readiness context missing")
+E           atlas.persistence.sqlite.PersistenceError: Binance command readiness context missing
+
+src/atlas/runtime/binance_demo.py:616: PersistenceError</failure></testcase><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_ack_loss_duplicate_error_and_local_enqueue_never_authorize_resend[ValueError-dispatch_persisted_bybit_command]" time="0.013" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_bybit_current_profile_rejects_receipts_from_foreign_scope[identity]" time="0.001" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_bybit_current_profile_rejects_receipts_from_foreign_scope[endpoint]" time="0.000" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_native_fill_rejects_foreign_durable_account_or_product[identity_hash]" time="0.025" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_native_fill_rejects_foreign_durable_account_or_product[instrument_ref]" time="0.017" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_rest_fill_rejects_foreign_durable_account" time="0.022" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_rest_batch_validates_all_accounts_before_first_write[False]" time="0.042" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_rest_batch_validates_all_accounts_before_first_write[True]" time="0.027" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_binance_rest_order_status_rejects_foreign_durable_account_before_write" time="0.202" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_authenticated_reader_uses_get_exact_environment_and_redacts_server_echo[DEMO-BinanceDemoReader-BinanceDemoIdentity-DemoReadError-/fapi/v1/order]" time="0.007" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_authenticated_reader_uses_get_exact_environment_and_redacts_server_echo[DEMO-BybitDemoReader-BybitDemoIdentity-BybitDemoReadError-/v5/account/info]" time="0.001" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_authenticated_reader_uses_get_exact_environment_and_redacts_server_echo[TESTNET-BinanceDemoReader-BinanceDemoIdentity-DemoReadError-/fapi/v1/order]" time="0.004" /><testcase classname="tests.runtime.test_session041_execution_final_review" name="test_authenticated_reader_uses_get_exact_environment_and_redacts_server_echo[TESTNET-BybitDemoReader-BybitDemoIdentity-BybitDemoReadError-/v5/account/info]" time="0.001" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_residual_diagnostics_are_bound_to_frozen_cutoff_and_zero_authority" time="1.136" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_residual_diagnostics_export_preserves_all_synchronized_lineage" time="1.353" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_due_outcome_without_after_cutoff_evidence_is_explicit_not_estimable" time="1.330" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_complete_observed_path_keeps_economic_result_not_estimable" time="1.755"><failure message="AssertionError: [{'work_id': '65a5d94e7ffb645320ac47a7dcfbec8cbb326b2a83e88edb2d2ea8f80898ef60', 'reason': 'derived computation has unavailable or noncausal dependency'}]&#10;assert 0 == 1">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-18/test_complete_observed_path_ke0')
+
+    def test_complete_observed_path_keeps_economic_result_not_estimable(tmp_path):
+        from atlas.v2.science.broad_export import project_broad_evidence
+
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            _, forecast, ref, a, b = _case(repo)
+            enqueue_s8_basket_outcome(repo, forecast, forecast_ref=ref,
+                published_at_ns=forecast.information_cutoff_ns)
+            cutoff = forecast.decision_at_ns + 4 * HOUR_NS
+            future_a, future_b = [a[-1]], [b[-1]]
+            values_a, values_b = [], []
+            for i in range(1, 5):
+                at = forecast.decision_at_ns + i * HOUR_NS
+                values_a.append((at, a[-1].close * Decimal("1.001")))
+                values_b.append((at, b[-1].close * Decimal("1.0005")))
+                quote_a = _stream_quote_index(repo, a[-1].instrument_key, forecast.decision_at_ns + 1)
+                quote_b = _quote_index(repo, b[-1].instrument_key, forecast.decision_at_ns + 2, "bid-ask-b")
+                book_a = _typed_artifact(repo, "S8BasketBookExecutionEvidenceV1", "book_execution",
+                    {"instrument_key": a[-1].instrument_key.to_dict(), "observed_at_ns": forecast.decision_at_ns + 1,
+                     "quote_source_refs": [quote_a], "simulated_fill_state": "FULL_FILL"},
+                    forecast.decision_at_ns + 1)
+                book_b = _typed_artifact(repo, "S8BasketBookExecutionEvidenceV1", "book_execution",
+                    {"instrument_key": b[-1].instrument_key.to_dict(), "observed_at_ns": forecast.decision_at_ns + 2,
+                     "quote_source_refs": [quote_b], "simulated_fill_state": "FULL_FILL"},
+                    forecast.decision_at_ns + 2)
+                fund_a = _typed_artifact(repo, "S8BasketFundingEvidenceV1", "funding",
+                    {"instrument_key": a[-1].instrument_key.to_dict(), "at_ns": cutoff,
+                     "available_at_ns": cutoff, "cashflow": "0"}, cutoff)
+                fund_b = _typed_artifact(repo, "S8BasketFundingEvidenceV1", "funding",
+                    {"instrument_key": b[-1].instrument_key.to_dict(), "at_ns": cutoff,
+                     "available_at_ns": cutoff, "cashflow": "0"}, cutoff)
+                fee_a = _typed_artifact(repo, "S8BasketFeeEvidenceV1", "fee",
+                    {"instrument_key": a[-1].instrument_key.to_dict(), "available_at_ns": forecast.decision_at_ns + 1,
+                     "fee_policy": {"paid": "0.01"}}, forecast.decision_at_ns + 1)
+                fee_b = _typed_artifact(repo, "S8BasketFeeEvidenceV1", "fee",
+                    {"instrument_key": b[-1].instrument_key.to_dict(), "available_at_ns": forecast.decision_at_ns + 2,
+                     "fee_policy": {"paid": "0.02"}}, forecast.decision_at_ns + 2)
+            future_a.extend(_archive_price_rows(repo, a[-1].instrument_key, values_a))
+            future_b.extend(_archive_price_rows(repo, b[-1].instrument_key, values_b))
+            evidence = S8BasketOutcomeEvidenceV1(ref, tuple(future_a), tuple(future_b), (book_a,), (book_b,),
+                fee_a, fee_b, Decimal("0.01"), Decimal("0.02"), (fund_a,), (fund_b,),
+                Decimal("0.00"), Decimal("0.00"), "FULL_FILL", "FULL_FILL", (1_000_000, 2_000_000),
+                "BOTH_LEGS_FILLED", cutoff)
+            for altered, message in (
+                (replace(evidence, leg_a_fill_state="NO_FILL"), "fill state conflicts"),
+                (replace(evidence, leg_a_fee_value=Decimal("9")), "fee value conflicts"),
+                (replace(evidence, leg_a_funding_cashflow=Decimal("0.5")), "funding cashflow conflicts"),
+            ):
+                with pytest.raises(ValueError, match=message):
+                    _make_outcome(repo, forecast, ref, altered, cutoff, lambda: cutoff + 10)
+            producer = S8ResearchBasketOutcomeProducerV1(clock_ns=lambda: cutoff + 10)
+            result = producer.run_cycle(repo, evidence_cutoff_ns=cutoff,
+                evidence_loader=lambda *_: evidence)
+&gt;           assert result["outcomes_written"] == 1, result["diagnostics"]
+E           AssertionError: [{'work_id': '65a5d94e7ffb645320ac47a7dcfbec8cbb326b2a83e88edb2d2ea8f80898ef60', 'reason': 'derived computation has unavailable or noncausal dependency'}]
+E           assert 0 == 1
+
+tests/v2/test_session041_basket_outcomes.py:354: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_book_quote_received_after_book_observation_is_rejected" time="1.264" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_unrelated_public_observation_cannot_substitute_for_book_quote" time="0.948" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_typed_evidence_body_cannot_postdate_its_index_availability[book]" time="0.639" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_typed_evidence_body_cannot_postdate_its_index_availability[funding]" time="0.716" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_typed_evidence_body_cannot_postdate_its_index_availability[fee]" time="0.880" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_s8_typed_source_reference_cannot_fill_multiple_evidence_roles" time="1.422" /><testcase classname="tests.v2.test_session041_basket_outcomes" name="test_matured_price_path_without_entry_threshold_is_durable_no_entry" time="1.794" /><testcase classname="tests.v2.test_session041_broad_adoption_windows" name="test_adoption_retains_all_rows_and_reconciles_identity_published_by_stream_service[False]" time="0.105"><failure message="AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-18/test_adoption_retains_all_rows0')
+conflict = False
+
+    @pytest.mark.parametrize("conflict", [False, True])
+    def test_adoption_retains_all_rows_and_reconciles_identity_published_by_stream_service(tmp_path, conflict):
+        products = _products(160)
+        records = _records(products, NOW)
+        registry = InstrumentRegistryV2()
+        for product in products:
+            registry.register(product)
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            collector = PublicCollectorV2(repository=repo, registry=registry, clock_ns=lambda: NOW,
+                archive=ParquetObservationArchiveV2(tmp_path / "observations"))
+            collector.publish_indexes_after_archive = True
+            service_calls = []
+
+            def service(_repo):
+                service_calls.append(len(service_calls))
+                if len(service_calls) != 1:
+                    return
+                incoming = records[100]
+                payload = incoming.raw_payload + b" " if conflict else incoming.raw_payload
+                raw = replace(incoming.observation,
+                    raw_payload_hash=hashlib.sha256(payload).hexdigest())
+                collector.ingest(raw, raw_payload=payload, instrument_key=incoming.instrument_key,
+                    retain_in_memory=False, update_source_health=False)
+                collector.flush_archive()
+
+            port = SimpleNamespace(_collector_recovery=SimpleNamespace(collector=collector),
+                public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES),
+                clock_ns=lambda: NOW, service_public_stream=service)
+&gt;           ready = ProductionOpsCyclePortV1._persist_broad_public_snapshot(
+                port, repo, _snapshot(records, NOW), now_ns=NOW)
+
+tests/v2/test_session041_broad_adoption_windows.py:49:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7f3ff4434680&gt;...test_adoption_retains_all_rows_and_reconciles_identity_published_by_stream_service.&lt;locals&gt;.service at 0x7f3fd88abb00&gt;)
+repository = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f3fd909b8f0&gt;
+snapshot = BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='f014dec2c274b2c7d3293de4936...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32)
+now_ns = 1800000000000000000
+
+    def _persist_broad_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -&gt; bool:
+        """Adopt both venues on the sole writer without inventing history completeness."""
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        publication = sample(self.clock_ns, floor_ns=now_ns)
+        if max(snapshot.observed_at_ns, snapshot.latest_received_at_ns) &gt; publication:
+            raise ValueError("BROAD_PUBLIC_SNAPSHOT_FUTURE_RECEIPT")
+        prior_clock = collector.clock_ns
+        rejected_indexes: list[int] = []
+        refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
+        pending_refs: dict[str, str] = {}
+        manifest = snapshot.source_snapshot.get("metadata", {})
+        source_by_venue = {
+            VenueV2.BYBIT: BYBIT_HTTP_SOURCE_ID,
+            VenueV2.BINANCE: BINANCE_HTTP_SOURCE_ID,
+        }
+        accepted_by_source = {
+            source_by_venue[venue]: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
+            and venue.value not in snapshot.source_snapshot.get("metadata_stale", ())
+            for venue in cast(Any, self.public_source).enabled_venues
+        }
+        accepted = all(accepted_by_source.values())
+        current_products_by_key = {
+&gt;           product.key: product for product in cast(Any, self.public_source).current_products
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        }
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'
+
+src/atlas/v2/runtime/production.py:3170: AttributeError</failure></testcase><testcase classname="tests.v2.test_session041_broad_adoption_windows" name="test_adoption_retains_all_rows_and_reconciles_identity_published_by_stream_service[True]" time="0.122"><failure message="AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-18/test_adoption_retains_all_rows1')
+conflict = True
+
+    @pytest.mark.parametrize("conflict", [False, True])
+    def test_adoption_retains_all_rows_and_reconciles_identity_published_by_stream_service(tmp_path, conflict):
+        products = _products(160)
+        records = _records(products, NOW)
+        registry = InstrumentRegistryV2()
+        for product in products:
+            registry.register(product)
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            collector = PublicCollectorV2(repository=repo, registry=registry, clock_ns=lambda: NOW,
+                archive=ParquetObservationArchiveV2(tmp_path / "observations"))
+            collector.publish_indexes_after_archive = True
+            service_calls = []
+
+            def service(_repo):
+                service_calls.append(len(service_calls))
+                if len(service_calls) != 1:
+                    return
+                incoming = records[100]
+                payload = incoming.raw_payload + b" " if conflict else incoming.raw_payload
+                raw = replace(incoming.observation,
+                    raw_payload_hash=hashlib.sha256(payload).hexdigest())
+                collector.ingest(raw, raw_payload=payload, instrument_key=incoming.instrument_key,
+                    retain_in_memory=False, update_source_health=False)
+                collector.flush_archive()
+
+            port = SimpleNamespace(_collector_recovery=SimpleNamespace(collector=collector),
+                public_source=SimpleNamespace(enabled_venues=tuple(VenueV2), required_source_ids=SOURCES),
+                clock_ns=lambda: NOW, service_public_stream=service)
+&gt;           ready = ProductionOpsCyclePortV1._persist_broad_public_snapshot(
+                port, repo, _snapshot(records, NOW), now_ns=NOW)
+
+tests/v2/test_session041_broad_adoption_windows.py:49:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = namespace(_collector_recovery=namespace(collector=&lt;atlas.v2.data.collector.PublicCollectorV2 object at 0x7f3fd8a6e390&gt;...test_adoption_retains_all_rows_and_reconciles_identity_published_by_stream_service.&lt;locals&gt;.service at 0x7f3fd87a7ba0&gt;)
+repository = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f3fd8a7e720&gt;
+snapshot = BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='f014dec2c274b2c7d3293de4936...e': True, 'source_snapshot_id': 'd433a26cefc4f44e204d1d7568dbb2d19ee3adb07946db459a5112a97b10eac1'}), request_limit=32)
+now_ns = 1800000000000000000
+
+    def _persist_broad_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -&gt; bool:
+        """Adopt both venues on the sole writer without inventing history completeness."""
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        publication = sample(self.clock_ns, floor_ns=now_ns)
+        if max(snapshot.observed_at_ns, snapshot.latest_received_at_ns) &gt; publication:
+            raise ValueError("BROAD_PUBLIC_SNAPSHOT_FUTURE_RECEIPT")
+        prior_clock = collector.clock_ns
+        rejected_indexes: list[int] = []
+        refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
+        pending_refs: dict[str, str] = {}
+        manifest = snapshot.source_snapshot.get("metadata", {})
+        source_by_venue = {
+            VenueV2.BYBIT: BYBIT_HTTP_SOURCE_ID,
+            VenueV2.BINANCE: BINANCE_HTTP_SOURCE_ID,
+        }
+        accepted_by_source = {
+            source_by_venue[venue]: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
+            and venue.value not in snapshot.source_snapshot.get("metadata_stale", ())
+            for venue in cast(Any, self.public_source).enabled_venues
+        }
+        accepted = all(accepted_by_source.values())
+        current_products_by_key = {
+&gt;           product.key: product for product in cast(Any, self.public_source).current_products
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        }
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'current_products'
+
+src/atlas/v2/runtime/production.py:3170: AttributeError</failure></testcase><testcase classname="tests.v2.test_session041_broad_export" name="test_export_retains_complete_broad_universe_and_workset_read_only" time="0.495" /><testcase classname="tests.v2.test_session041_broad_export" name="test_broad_workset_resolves_product_metadata_once_from_validated_universe" time="0.572" /><testcase classname="tests.v2.test_session041_broad_export" name="test_broad_universe_union_lookup_keeps_future_product_cutoff" time="0.049"><failure message="AssertionError: Regex pattern did not match.&#10;  Expected regex: 'unavailable'&#10;  Actual message: 'universe requires typed product metadata'">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-18/test_broad_universe_union_look0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f3fd8fe7a40&gt;
+
+    def test_broad_universe_union_lookup_keeps_future_product_cutoff(tmp_path, monkeypatch):
+        with OpsRepository(tmp_path / "ops.sqlite") as repo:
+            body = publish(repo, [product(0)])
+            universe_entry = repo.get_artifact(body["universe_ref"])
+            assert universe_entry is not None
+            original = repo.get_artifact_metadata_by_refs
+            product_ref = body["product_refs"][0]
+
+            def future_product(refs):
+                entries = original(refs)
+                if product_ref in entries:
+                    entries[product_ref] = {**entries[product_ref], "available_at_ns": NOW + 1}
+                return entries
+
+            monkeypatch.setattr(repo, "get_artifact_metadata_by_refs", future_product)
+&gt;           with pytest.raises(ValueError, match="unavailable"):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Regex pattern did not match.
+E             Expected regex: 'unavailable'
+E             Actual message: 'universe requires typed product metadata'
+
+tests/v2/test_session041_broad_export.py:71: AssertionError</failure></testcase><testcase classname="tests.v2.test_session041_broad_export" name="test_broad_export_rejects_corrupt_or_private_research_evidence[missing_product]" time="0.053" /><testcase classname="tests.v2.test_session041_broad_export" name="test_broad_export_rejects_corrupt_or_private_research_evidence[capital]" time="0.056" /><testcase classname="tests.v2.test_session041_broad_export" name="test_broad_export_rejects_corrupt_or_private_research_evidence[membership]" time="0.069" /><testcase classname="tests.v2.test_session041_broad_export" name="test_broad_export_rejects_corrupt_or_private_research_evidence[secret]" time="0.057" /><testcase classname="tests.v2.test_session041_broad_export" name="test_export_accepts_actual_full_strategy_and_prepared_s5_producers" time="1.445" /><testcase classname="tests.v2.test_session041_broad_export" name="test_export_s4_feature_preserves_exact_wrapper_hash_and_legacy_metadata[legacy]" time="0.013" /><testcase classname="tests.v2.test_session041_broad_export" name="test_export_s4_feature_preserves_exact_wrapper_hash_and_legacy_metadata[indexed]" time="0.012" /><testcase classname="tests.v2.test_session041_broad_export" name="test_export_s4_feature_preserves_exact_wrapper_hash_and_legacy_metadata[current]" time="0.013" /><testcase classname="tests.v2.test_session041_broad_export" name="test_export_s4_prior_baseline_requires_exact_hash_and_receipt[False]" time="0.012" /><testcase classname="tests.v2.test_session041_broad_export" name="test_export_s4_prior_baseline_requires_exact_hash_and_receipt[True]" time="0.023" /><testcase classname="tests.v2.test_session041_broad_export" name="test_export_accepts_every_actual_official_calendar_type_and_omits_raw_bytes" time="0.298" /><testcase classname="tests.v2.test_session041_broad_export" name="test_calendar_export_retains_first_event_receipt_on_repeated_source_revision" time="0.040" /><testcase classname="tests.v2.test_session041_broad_export" name="test_calendar_export_rejects_corrupt_source_and_forged_calendar_claims[raw_hash]" time="0.021" /><testcase classname="tests.v2.test_session041_broad_export" name="test_calendar_export_rejects_corrupt_source_and_forged_calendar_claims[publication]" time="0.020" /><testcase classname="tests.v2.test_session041_broad_export" name="test_calendar_export_rejects_corrupt_source_and_forged_calendar_claims[schedule]" time="0.020" /><testcase classname="tests.v2.test_session041_broad_export" name="test_calendar_export_rejects_corrupt_source_and_forged_calendar_claims[completeness]" time="0.019" /><testcase classname="tests.v2.test_session041_broad_export" name="test_calendar_export_rejects_corrupt_source_and_forged_calendar_claims[dedup]" time="0.014" /><testcase classname="tests.v2.test_session041_broad_export" name="test_calendar_export_rejects_corrupt_source_and_forged_calendar_claims[coverage_interval]" time="0.015" /><testcase classname="tests.v2.test_session041_broad_export" name="test_calendar_export_rejects_corrupt_source_and_forged_calendar_claims[source_coverage]" time="0.012" /><testcase classname="tests.v2.test_session041_broad_export" name="test_s5_prepared_export_requires_receipt_for_its_exact_market_cutoff" time="0.102" /><testcase classname="tests.v2.test_session041_broad_export" name="test_s5_context_export_rejects_future_raw_even_with_late_consumer" time="0.040" /></testsuite></testsuites>

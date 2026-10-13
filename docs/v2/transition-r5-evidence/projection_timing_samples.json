@@ -1,0 +1,32 @@
+{
+  "default_projection_budget_ms": 80,
+  "interpretation": "Bounded synthetic samples only. The 80 ms production default is unchanged; the over-budget default sample deferred safely. These samples do not qualify tail latency, sustained service cadence, burst overlap, CPU/RSS attribution, queue pressure, or production performance.",
+  "samples": [
+    {
+      "duration_ms": 88.669,
+      "fixture": "default synthetic production projection",
+      "result": "DEFERRED"
+    },
+    {
+      "duration_ms": 43.586,
+      "fixture": "gapped synthetic production projection",
+      "result": "PERSISTED"
+    },
+    {
+      "duration_ms": 2.864,
+      "fixture": "gapped fixture replay",
+      "result": "PERSISTED"
+    },
+    {
+      "duration_ms": 54.315,
+      "fixture": "warmup synthetic production projection",
+      "result": "PERSISTED"
+    },
+    {
+      "duration_ms": 2.491,
+      "fixture": "warmup fixture replay",
+      "result": "PERSISTED"
+    }
+  ],
+  "version": "ATLAS_RED_R5_PROJECTION_TIMING_SAMPLES_V1"
+}
