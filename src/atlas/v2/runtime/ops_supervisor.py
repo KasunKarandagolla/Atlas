@@ -26,6 +26,8 @@ from ..memory.repository import ArtifactIndexEntryV2, OpsRepository
 
 OPS_SUPERVISOR_VERSION = "ATLAS_OPS_SUPERVISOR_V2_V1"
 _MAX_REFS_PER_STAGE = 256
+PRODUCTION_INTELLIGENCE_PROJECTION_BUDGET_NS = 80_000_000
+_MAX_PRODUCTION_INTELLIGENCE_FAILURE_ATTEMPTS = 2
 
 
 class PipelineStageV1(StrEnum):
@@ -495,6 +497,7 @@ class OpsSupervisorV2:
         max_events_per_cycle: int = 64,
         post_receipt_shadow: Callable[[OpsSupervisorReceiptV1, str, OpsRepository], None] | None = None,
         production_intelligence_enabled: bool = True,
+        production_intelligence_budget_ns: int = PRODUCTION_INTELLIGENCE_PROJECTION_BUDGET_NS,
         post_cycle_maintenance: Callable[[OpsRepository, int], object] | None = None,
         outcome_maintenance_budget_ns: int | None = None,
     ) -> None:
@@ -512,6 +515,9 @@ class OpsSupervisorV2:
         self.monotonic_ns = monotonic_ns
         self.sleep_fn = sleep_fn
         self.max_events_per_cycle = max_events_per_cycle
+        if type(production_intelligence_budget_ns) is not int or not 1 <= production_intelligence_budget_ns <= 100_000_000:
+            raise ValueError("production intelligence projection budget must be between 1 ns and 100 ms")
+        self.production_intelligence_budget_ns = production_intelligence_budget_ns
         self.post_receipt_shadow = post_receipt_shadow
         self.post_receipt_projection: Callable[[OpsSupervisorReceiptV1, str, OpsRepository], None] | None = None
         if production_intelligence_enabled:
@@ -535,6 +541,8 @@ class OpsSupervisorV2:
                         receipt_ref,
                         now_ns=now_ns,
                         clock_ns=self.clock_ns,
+                        monotonic_ns=self.monotonic_ns,
+                        budget_ns=self.production_intelligence_budget_ns,
                     )
 
                 self.post_receipt_projection = project_intelligence
@@ -1122,13 +1130,68 @@ class OpsSupervisorV2:
                     # Downstream failure persistence must not alter the sealed cycle receipt.
                     pass
         if self.post_receipt_projection is not None:
+            # One optional projection per cycle keeps its finite work out of the
+            # capture/decision batch. Unfinished receipts are reconsidered only
+            # when the source replays them; this controller owns no AI work queue.
             for receipt, receipt_ref in pending_intelligence_projections:
-                try:
-                    self.post_receipt_projection(receipt, receipt_ref, repository)
-                except Exception:
-                    # Read-only intelligence runs only after cycle decision and maintenance work.
-                    pass
+                attempted = self._run_production_intelligence_projection(receipt, receipt_ref, repository)
+                if attempted is not None:
+                    break
         return OpsRunResultV1(cycle, tuple(receipts))
+
+    @staticmethod
+    def _production_intelligence_failure_ref(receipt_ref: str, attempt: int) -> str:
+        return sha256_json({
+            "artifact_type": "OpsProductionIntelligenceProjectionFailureV1",
+            "receipt_ref": receipt_ref,
+            "attempt": attempt,
+        })
+
+    def _run_production_intelligence_projection(
+        self,
+        receipt: OpsSupervisorReceiptV1,
+        receipt_ref: str,
+        repository: OpsRepository,
+    ) -> bool | None:
+        for attempt in range(1, _MAX_PRODUCTION_INTELLIGENCE_FAILURE_ATTEMPTS + 1):
+            if repository.get_artifact(self._production_intelligence_failure_ref(receipt_ref, attempt)) is None:
+                break
+        else:
+            return None
+        try:
+            self.post_receipt_projection(receipt, receipt_ref, repository)  # type: ignore[misc]
+            return True
+        except Exception as error:
+            failure_type = type(error).__name__
+            if not failure_type.isascii() or not failure_type.isidentifier() or len(failure_type) > 64:
+                failure_type = "Exception"
+            observed_at_ns = max(
+                receipt.created_at_ns,
+                timestamp(self.clock_ns(), field="production intelligence projection failure time"),
+            )
+            body = {
+                "version": "OPS_PRODUCTION_INTELLIGENCE_PROJECTION_FAILURE_V1",
+                "receipt_ref": receipt_ref,
+                "attempt": attempt,
+                "observed_at_ns": observed_at_ns,
+                "failure_type": failure_type,
+                "reason_code": "OPTIONAL_PROJECTION_FAILED_OR_BUDGET_EXPIRED",
+                "authority": "ZERO",
+            }
+            artifact_ref = self._production_intelligence_failure_ref(receipt_ref, attempt)
+            try:
+                repository.register_artifact(ArtifactIndexEntryV2(
+                    artifact_ref,
+                    "OpsProductionIntelligenceProjectionFailureV1",
+                    sha256_json(body),
+                    observed_at_ns,
+                    observed_at_ns,
+                    body,
+                ))
+            except Exception:
+                # The exception text and source payload stay outside the receipt.
+                pass
+            return False
 
     def service_public_stream(self) -> None:
         """Cooperative source service on this same writer, without a new cycle."""

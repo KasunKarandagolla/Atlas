@@ -320,6 +320,8 @@ def _due_source_lane(artifact_type: str, metadata: Mapping[str, Any]) -> str | N
 
 
 _ARTIFACT_METADATA_IDENTITY_EXPRESSIONS: dict[tuple[str, tuple[str, ...]], str] = {
+    ("FeatureArtifactV2", ("feature", "key")):
+        "CASE WHEN json_valid(metadata_json) THEN json(json_extract(metadata_json, '$.feature.key')) END",
     ("CandidateSetDecisionIndexV1", ("decision_event_id",)):
         "CASE WHEN json_valid(metadata_json) THEN json_extract(metadata_json, '$.decision_event_id') END",
     ("CandidateSetV2", ("candidate_set", "decision_event_id")):
@@ -3227,6 +3229,101 @@ class OpsRepository:
         if len(rows) > limit:
             raise ValueError("exact bar source revision lookup exceeded its explicit bound")
         return tuple(self.artifact_entry_from_storage_row(row) for row in rows)
+
+    def confirmed_bar_observations_for_closes(
+        self,
+        instrument_key: InstrumentKeyV2,
+        *,
+        event_type: str,
+        close_times_ns: Sequence[int],
+        as_of_ns: int,
+        limit_per_close: int = 128,
+    ) -> dict[int, tuple[ArtifactIndexEntryV2, ...]]:
+        """Read all bounded actual revisions for an exact set of bar closes.
+
+        This is the batch equivalent of ``confirmed_bar_observation_entries``:
+        each requested close returns revisions in availability/record order and
+        fails if any close exceeds its explicit revision bound.
+        """
+        from ..instruments import InstrumentKeyV2
+
+        if not isinstance(instrument_key, InstrumentKeyV2):
+            raise ValueError("exact bar lookup requires full InstrumentKeyV2")
+        interval_ns = {"BAR_1M": 60_000_000_000, "BAR_15M": 900_000_000_000}.get(event_type)
+        if interval_ns is None:
+            raise ValueError("batched exact bar lookup only supports M1 and M15 sources")
+        closes = tuple(sorted(set(close_times_ns)))
+        if not closes or len(closes) > 256 or any(type(value) is not int for value in closes):
+            raise ValueError("batched bar close population must contain 1 to 256 integer timestamps")
+        if any(value < 0 or value % interval_ns for value in closes):
+            raise ValueError("exact bar lookup close does not align to its interval")
+        cutoff = timestamp(as_of_ns, field="as_of_ns")
+        if type(limit_per_close) is not int or not 1 <= limit_per_close <= 128:
+            raise ValueError("bar revision bound must be between 1 and 128")
+        key_expr = _public_metadata_query_expression(self._public_metadata_enabled, "instrument_key_json")
+        revision_expr = _archive_json_expression("instrument_revision")
+        kind_expr = _archive_json_expression("event_type")
+        availability_expr = _archive_json_expression("availability_class")
+        close_expr = _archive_json_expression("event_at_ns")
+        record_expr = _archive_json_expression("record_id")
+        effective_expr = (
+            "CASE WHEN l.artifact_ref IS NULL THEN a.available_at_ns "
+            "WHEN o.observed_at_ns IS NULL OR p.logical_ready_at_ns IS NULL THEN NULL "
+            "ELSE MAX(a.available_at_ns,p.logical_ready_at_ns,o.observed_at_ns) END"
+        )
+        lookup_index = (
+            "public_exact_receipt_key_actual_lookup_v2"
+            if self._public_metadata_enabled
+            else "public_exact_receipt_key_actual_lookup"
+        )
+        marks = ",".join("?" for _ in closes)
+        query = (
+            "WITH revisions AS (SELECT a.*, ROW_NUMBER() OVER (PARTITION BY "
+            + close_expr
+            + " ORDER BY a.available_at_ns, "
+            + record_expr
+            + ", a.artifact_ref) AS __revision_rank FROM artifact_index AS a INDEXED BY "
+            + lookup_index
+            + " LEFT JOIN public_evidence_locator_v2 AS l ON l.artifact_ref=a.artifact_ref "
+            + " LEFT JOIN public_evidence_publication_observation_v2 AS o ON o.publication_id=l.publication_id "
+            + " LEFT JOIN public_evidence_publication_v2 AS p ON p.publication_id=l.publication_id "
+            + " WHERE a.artifact_type='PublicObservationIndexV2' AND "
+            + key_expr
+            + "=? AND "
+            + revision_expr
+            + "=? AND "
+            + kind_expr
+            + "=? AND "
+            + availability_expr
+            + "='ACTUAL_SYSTEM' AND "
+            + close_expr
+            + " IN ("
+            + marks
+            + ") AND "
+            + effective_expr
+            + "<=?) SELECT * FROM revisions WHERE __revision_rank<=? "
+            "ORDER BY __revision_rank"
+        )
+        params = (
+            _public_metadata_query_key(self._public_metadata_enabled, instrument_key.to_canonical_json()),
+            instrument_key.contract_revision,
+            event_type,
+            *closes,
+            cutoff,
+            limit_per_close + 1,
+        )
+        with self._lock:
+            rows = self._connection.execute(query, params).fetchall()
+        result: dict[int, list[ArtifactIndexEntryV2]] = {close: [] for close in closes}
+        for row in rows:
+            entry = self.artifact_entry_from_storage_row(row)
+            close = entry.metadata.get("event_at_ns")
+            if type(close) is not int or close not in result:
+                raise RuntimeError("batched exact bar query returned an unrequested close")
+            result[close].append(entry)
+            if len(result[close]) > limit_per_close:
+                raise ValueError("exact bar source revision lookup exceeded its explicit bound")
+        return {close: tuple(items) for close, items in result.items()}
 
     def public_stream_trade_entries(
         self, instrument_key: InstrumentKeyV2, *, source_id: str,

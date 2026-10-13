@@ -118,6 +118,7 @@ class ResearchMemoryV1:
         due_work_status: str = "UNAVAILABLE",
         due_work_reason: str = "NO_CAUSAL_DUE_WORK_JOIN_READER",
         due_work_refs: tuple[str, ...] = (),
+        precommit_check: Callable[[], None] | None = None,
     ) -> tuple[str, str]:
         """Persist one zero-authority brief and memory pointer through the ops writer.
 
@@ -196,6 +197,8 @@ class ResearchMemoryV1:
             self._persist(brief_ref, "ProductionDecisionBriefProjectionV1", brief_body, now_ns=now_ns)
             self._persist(memory_ref, "ProductionIntelligenceMemoryProjectionV1", memory_body, now_ns=now_ns)
             self._persist(identity_ref, "ProductionIntelligenceMemoryIdentityV1", identity_body, now_ns=now_ns)
+            if precommit_check is not None:
+                precommit_check()
         return brief_ref, memory_ref
 
     def request(self, job_id: str) -> Mapping[str, Any] | None:

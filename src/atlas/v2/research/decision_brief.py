@@ -222,15 +222,45 @@ def _indexed(repo: OpsRepository | None, ref: str, at_ns: int) -> bool:
     )
 
 
-def _fact_source_verified(fact: BriefFactV1, request: BriefRequestV1, repo: OpsRepository | None) -> bool:
+def _fact_source_verified(
+    fact: BriefFactV1,
+    request: BriefRequestV1,
+    repo: OpsRepository | None,
+    *,
+    verified_production_facts: object | None = None,
+) -> bool:
     """Read the independently indexed typed source and reproduce its exact projection.
 
     Existing unbound generic/technical facts remain diagnostic objects; they cannot
     enter a complete brief. New source types require an explicit registered reader.
     """
+    if repo is not None and verified_production_facts is not None:
+        from atlas.v2.research.production_facts import VerifiedProductionFeatureFactsV1
+
+        if isinstance(verified_production_facts, VerifiedProductionFeatureFactsV1) and (
+            verified_production_facts.verifies(
+                fact,
+                repository=repo,
+                cutoff_ns=request.cutoff_ns,
+            )
+        ):
+            return True
     p = fact.provenance
     if repo is None or p is None or not _indexed(repo, fact.source_ref, request.cutoff_ns):
         return False
+    # Production adapter facts use a closed, fully reconstructed source graph.
+    # Keep the earlier fixture-only contract for the existing S47 research
+    # harness; production projection never emits that legacy compact shape.
+    from atlas.v2.research.production_facts import TECHNICAL_FEATURES, verify_feature_fact_source
+
+    if fact.section == "technical" and p.feature_ids == TECHNICAL_FEATURES:
+        return verify_feature_fact_source(
+            fact,
+            request_cutoff_ns=request.cutoff_ns,
+            candidate_set=request.candidate_set,
+            universe=request.universe,
+            repo=repo,
+        )
     if (
         p.version != "ATLAS_BRIEF_FACT_PROVENANCE_V1"
         or p.source_type != "FeatureArtifactV2"
@@ -545,7 +575,12 @@ class DecisionBriefV1:
         }
 
 
-def build_decision_brief(request: BriefRequestV1, *, repository: OpsRepository | None = None) -> DecisionBriefV1:
+def build_decision_brief(
+    request: BriefRequestV1,
+    *,
+    repository: OpsRepository | None = None,
+    verified_production_facts: object | None = None,
+) -> DecisionBriefV1:
     r, cs = request, request.candidate_set
     binding = {
         "slot_id": r.slot_id,
@@ -584,7 +619,15 @@ def build_decision_brief(request: BriefRequestV1, *, repository: OpsRepository |
         reasons.append("PRODUCT_REVISION")
     if any(not _indexed(repository, f.source_ref, r.cutoff_ns) for f in r.facts):
         reasons.append("FACT_PROVENANCE_MISSING")
-    if any(not _fact_source_verified(f, r, repository) for f in r.facts):
+    if any(
+        not _fact_source_verified(
+            f,
+            r,
+            repository,
+            verified_production_facts=verified_production_facts,
+        )
+        for f in r.facts
+    ):
         reasons.append("FACT_SOURCE_BINDING_INVALID")
     fact_claims: dict[str, str] = {}
     for fact in r.facts:

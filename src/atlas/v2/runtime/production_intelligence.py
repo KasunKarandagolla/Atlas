@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections import Counter
 from collections.abc import Callable, Mapping
 from decimal import Decimal
@@ -12,12 +13,14 @@ from atlas.v2.contracts import CandidateActionV2, CandidateSetV2
 from atlas.v2.instruments import UniverseContractV2
 from atlas.v2.memory.repository import OpsRepository
 from atlas.v2.research.decision_brief import (
+    BriefFactV1,
     BriefLimitsV1,
     BriefRequestV1,
     DecisionBriefV1,
     build_decision_brief,
 )
 from atlas.v2.research.memory import RESEARCH_LANE, ResearchMemoryV1
+from atlas.v2.research.production_facts import read_production_feature_facts
 from atlas.v2.runtime.ops_supervisor import OpsSupervisorReceiptV1
 from atlas.v2.science.action import ActionArtifactV2, FrozenActionV2
 
@@ -32,12 +35,13 @@ BRIEF_LIMITS = BriefLimitsV1(
     max_image_refs=0,
     max_projected_tokens=MAX_PROJECTION_BYTES,
 )
+DEFAULT_PROJECTION_BUDGET_NS = 80_000_000
 RESEARCH_POLICY_HASH = sha256_json(
     {
         "version": PRODUCTION_PROJECTION_VERSION,
         "authority": "ZERO",
         "provider_dispatch": "DISABLED",
-        "fact_adapters": [],
+        "fact_adapters": ["PRODUCTION_FEATURE_FACT_READER_V1"],
     }
 )
 
@@ -407,6 +411,100 @@ def _relevant_due_work(
     return "NONE", "NO_MATCHING_PERSISTED_RESEARCH_DUE_WORK", (), ()
 
 
+def _qualified_prior_analysis(
+    repo: OpsRepository,
+    *,
+    receipt_ref: str,
+    cutoff_ns: int,
+    slot_id: str,
+    snapshot_ref: str,
+    candidate_set_ref: str | None,
+    universe_ref: str | None,
+    selected_candidate_id: str | None,
+    action_ref: str | None,
+    research_policy_hash: str,
+    schema_hash: str,
+) -> dict[str, Any]:
+    """Read only a complete, exact-scope prior projection as historical context."""
+    page = repo.latest_artifact_entries(
+        "ProductionDecisionBriefProjectionV1",
+        as_of_ns=cutoff_ns,
+        limit=32,
+    )
+    if page.invalid_entry_count:
+        return {"status": "NO_QUALIFIED_PRIOR_ANALYSIS", "reason": "PRIOR_ANALYSIS_INDEX_INVALID"}
+    for entry in page.entries:
+        projection = entry.metadata
+        prior_receipt_ref = projection.get("receipt_ref")
+        if (
+            entry.content_hash != sha256_json(projection)
+            or projection.get("authority") != "ZERO"
+            or not isinstance(prior_receipt_ref, str)
+            or prior_receipt_ref == receipt_ref
+            or entry.available_at_ns > cutoff_ns
+        ):
+            continue
+        identity = repo.get_artifact(ResearchMemoryV1.production_projection_identity(prior_receipt_ref))
+        brief = projection.get("brief")
+        body = brief.get("body") if isinstance(brief, Mapping) else None
+        prior_memory_ref = identity.metadata.get("memory_ref") if identity is not None else None
+        memory = repo.get_artifact(prior_memory_ref) if isinstance(prior_memory_ref, str) else None
+        if (
+            identity is None
+            or identity.metadata.get("receipt_ref") != prior_receipt_ref
+            or identity.metadata.get("brief_ref") != entry.artifact_ref
+            or memory is None
+            or memory.artifact_type != "ProductionIntelligenceMemoryProjectionV1"
+            or memory.content_hash != sha256_json(memory.metadata)
+            or memory.metadata.get("receipt_ref") != prior_receipt_ref
+            or memory.metadata.get("brief_ref") != entry.artifact_ref
+            or not isinstance(brief, Mapping)
+            or not isinstance(body, Mapping)
+            or projection.get("status") != "COMPLETE"
+            or brief.get("status") != "COMPLETE"
+        ):
+            continue
+        if (
+            body.get("slot_id") != slot_id
+            or body.get("snapshot_ref") != snapshot_ref
+            or body.get("cutoff_ns") != cutoff_ns
+            or body.get("candidate_set_ref") != candidate_set_ref
+            or body.get("universe_ref") != universe_ref
+            or body.get("a0_selected_candidate_id") != selected_candidate_id
+            or body.get("research_policy_hash") != research_policy_hash
+            or body.get("schema_hash") != schema_hash
+        ):
+            continue
+        action = body.get("candidate_action_qualification")
+        if not isinstance(action, Mapping) or action.get("action_ref") != action_ref:
+            continue
+        refs = projection.get("source_refs")
+        if not isinstance(refs, (list, tuple)) or len(refs) > MAX_PROJECTION_REFS:
+            continue
+        indexed = repo.get_artifact_metadata_by_refs(refs)
+        if len(indexed) != len(set(refs)) or any(
+            item.get("available_at_ns", cutoff_ns + 1) > cutoff_ns
+            or item.get("effective_available_at_ns") is None
+            or item.get("effective_available_at_ns", cutoff_ns + 1) > cutoff_ns
+            for item in indexed.values()
+        ):
+            continue
+        return {
+            "status": "QUALIFIED_HISTORICAL_CONTEXT",
+            "prior_projection_ref": entry.artifact_ref,
+            "receipt_ref": prior_receipt_ref,
+            "action_ref": action_ref,
+            "source_refs": list(refs),
+            "historical_only": True,
+            "current_advice": False,
+        }
+    return {
+        "status": "NO_QUALIFIED_PRIOR_ANALYSIS",
+        "reason": "NO_EXACT_SCOPE_COMPLETE_PRIOR_PROJECTION",
+        "historical_only": True,
+    }
+
+
 def project_production_receipt(
     repo: OpsRepository,
     receipt: OpsSupervisorReceiptV1,
@@ -414,12 +512,23 @@ def project_production_receipt(
     *,
     now_ns: int,
     clock_ns: Callable[[], int] | None = None,
+    monotonic_ns: Callable[[], int] = time.monotonic_ns,
+    budget_ns: int = DEFAULT_PROJECTION_BUDGET_NS,
 ) -> tuple[str, str]:
     """Persist one bounded read-only brief and memory view for an A0 receipt."""
+    if type(budget_ns) is not int or not 1 <= budget_ns <= 100_000_000:
+        raise ValueError("production projection budget must be between 1 ns and 100 ms")
+    projection_started_ns = monotonic_ns()
+
+    def check_budget() -> None:
+        elapsed_ns = monotonic_ns() - projection_started_ns
+        if elapsed_ns < 0 or elapsed_ns > budget_ns:
+            raise TimeoutError("production intelligence projection time budget exhausted")
+
     prior_identity = repo.get_artifact(ResearchMemoryV1.production_projection_identity(receipt_ref))
     if prior_identity is not None:
         # The memory service validates both immutable pointers and returns their original refs.
-        return ResearchMemoryV1(repo).persist_production_projection(
+        result = ResearchMemoryV1(repo).persist_production_projection(
             receipt_ref=receipt_ref,
             brief={},
             brief_status="BLOCKED",
@@ -427,6 +536,8 @@ def project_production_receipt(
             source_population_ref=receipt_ref,
             now_ns=now_ns,
         )
+        check_budget()
+        return result
 
     reasons: list[str] = []
     candidate_set: CandidateSetV2 | None = None
@@ -484,6 +595,8 @@ def project_production_receipt(
         else:
             reasons.append("PERSISTED_PRODUCTION_EVIDENCE_INVALID_OR_UNAVAILABLE")
 
+    check_budget()
+
     built_at_ns = max(now_ns, receipt.created_at_ns)
     try:
         due_work_status, due_work_reason, due_work_refs, due_work_rows = _relevant_due_work(
@@ -496,14 +609,31 @@ def project_production_receipt(
             (),
             (),
         )
+    check_budget()
     if len(set(source_refs) | set(due_work_refs)) <= MAX_PROJECTION_REFS:
         source_refs = tuple(sorted(set(source_refs) | set(due_work_refs)))
     elif due_work_refs:
         due_work_status = "PAGE_LIMIT_REACHED"
         due_work_reason = "PROJECTION_REFERENCE_LIMIT"
         due_work_refs = ()
+    facts: tuple[BriefFactV1, ...] = ()
+    verified_feature_facts = None
     if candidate_set is not None and universe is not None:
         try:
+            facts, fact_reasons, fact_refs, verified_feature_facts = read_production_feature_facts(
+                repo,
+                candidate_set,
+                universe,
+                cutoff_ns=receipt.event.information_cutoff_ns,
+                check_budget=check_budget,
+            )
+            if fact_reasons:
+                reasons.extend(fact_reasons)
+            if len(set(source_refs) | set(fact_refs)) <= MAX_PROJECTION_REFS:
+                source_refs = tuple(sorted(set(source_refs) | set(fact_refs)))
+            elif fact_refs:
+                facts = ()
+                reasons.append("PROJECTION_REFERENCE_LIMIT")
             compiled = build_decision_brief(
                 BriefRequestV1(
                     slot_id=receipt.event.event_id,
@@ -515,11 +645,12 @@ def project_production_receipt(
                     snapshot_ref=receipt.event.trigger_ref,
                     research_policy_hash=RESEARCH_POLICY_HASH,
                     limits=BRIEF_LIMITS,
-                    facts=(),
+                    facts=facts,
                     economics=(),
                     forecasts=(),
                 ),
                 repository=repo,
+                verified_production_facts=verified_feature_facts,
             )
             if compiled.status == "COMPLETE":
                 reasons.append("PRODUCTION_TYPED_SECTIONS_NOT_RECONSTRUCTED")
@@ -556,6 +687,7 @@ def project_production_receipt(
                 universe_ref=universe.content_hash,
                 original_candidate_count=candidate_count,
             )
+        check_budget()
     else:
         brief = _blocked_brief(
             receipt=receipt,
@@ -582,7 +714,7 @@ def project_production_receipt(
         "evaluation_ref": receipt.evaluation_ref,
         "calendar_refs": list(receipt.calendar_refs),
     }
-    if candidate_set is not None:
+    if candidate_set is not None and universe is not None:
         try:
             candidate, selected_action = _read_selected_action(repo, receipt, candidate_set, universe, built_at_ns)
             if candidate is not None and selected_action.get("status") == "QUALIFIED_PERSISTED_A0_EXACT_ACTION":
@@ -636,6 +768,8 @@ def project_production_receipt(
             }
             economics["missingness"] = ["EXACT_ACTION_ECONOMIC_ARCHIVE_CHECK_FAILED"]
 
+    check_budget()
+
     candidate_rows = candidate_set.candidates if candidate_set is not None else ()
     screening_counts = Counter(item.eligibility_status.value for item in candidate_rows)
     if economics.get("status") == "QUALIFIED_EXACT_ACTION_AFTER_COST_EVALUATION":
@@ -674,6 +808,20 @@ def project_production_receipt(
             "due_work",
             "outcomes",
         ]
+    prior_analysis = _qualified_prior_analysis(
+        repo,
+        receipt_ref=receipt_ref,
+        cutoff_ns=receipt.event.information_cutoff_ns,
+        slot_id=receipt.event.event_id,
+        snapshot_ref=receipt.event.trigger_ref,
+        candidate_set_ref=candidate_set.content_hash if candidate_set is not None else None,
+        universe_ref=universe.content_hash if universe is not None else None,
+        selected_candidate_id=candidate_set.selected_candidate_id if candidate_set is not None else None,
+        action_ref=receipt.action_ref,
+        research_policy_hash=RESEARCH_POLICY_HASH,
+        schema_hash=str(body.get("schema_hash", "")),
+    )
+    check_budget()
     body.update(
         {
             "production_projection_version": PRODUCTION_PROJECTION_VERSION,
@@ -710,7 +858,12 @@ def project_production_receipt(
             "full_screening_denominator": {
                 "scope": "ONE_OPS_DECISION_EVENT",
                 "whole_schedule_denominator_status": "UNAVAILABLE",
-                "whole_schedule_reason": "PRODUCTION_RECEIPT_IS_SLOT_SCOPED",
+                "whole_schedule_reason": "NO_REGISTERED_SCANNER_SCHEDULE_POPULATION",
+                "schedule_population_status": "UNAVAILABLE",
+                "schedule_population_source": "CURRENT_OPS_SUPERVISOR_RECEIPT_ONLY",
+                "schedule_population_ref": None,
+                "missing_expected_slots": "NOT_ESTIMABLE",
+                "coverage_status": "UNKNOWN_NO_REGISTERED_COMPLETE_SCANNER_SCHEDULE",
                 "decision_slots_in_this_receipt": 1,
                 "candidate_rows": len(candidate_rows),
                 "candidate_status_counts": dict(sorted(screening_counts.items())),
@@ -774,6 +927,7 @@ def project_production_receipt(
             },
             "memory_status": {
                 "prior_analysis": "NOT_REUSED_NO_EXACT_ANALYSIS_MATCH",
+                "prior_analysis_qualification": prior_analysis,
                 "due_work_status": due_work_status,
                 "due_work_reason": due_work_reason,
                 "due_work": list(due_work_rows),
@@ -864,8 +1018,9 @@ def project_production_receipt(
         projection_meta["brief"] = brief.to_dict()
         projection_meta["status"] = "BLOCKED"
 
+    check_budget()
     memory = ResearchMemoryV1(repo)
-    return memory.persist_production_projection(
+    result = memory.persist_production_projection(
         receipt_ref=receipt_ref,
         brief=brief.to_dict(),
         brief_status=brief.status,
@@ -875,7 +1030,9 @@ def project_production_receipt(
         due_work_status=due_work_status,
         due_work_reason=due_work_reason,
         due_work_refs=due_work_refs,
+        precommit_check=check_budget,
     )
+    return result
 
 
 def production_recover_economic_evaluation(
