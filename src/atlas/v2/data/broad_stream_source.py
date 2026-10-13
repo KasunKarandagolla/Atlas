@@ -400,7 +400,8 @@ class BroadDurablePublicCaptureV2:
         capture = dict(capture_status.capture)
         capture["version"] = "BROAD_DURABLE_PUBLIC_CAPTURE_V2"
         capture["lanes"] = source_status.lanes
-        return SimpleNamespace(**vars(source_status), capture=capture,
+        return SimpleNamespace(**{**vars(source_status), "state": capture_status.state,
+                               "last_error_code": capture_status.last_error_code}, capture=capture,
                                pending_frames=capture_status.pending_frames)
 
     def captured_frames_at_monotonic_ns(self, cutoff_ns: int) -> int:

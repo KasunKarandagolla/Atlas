@@ -48,6 +48,46 @@ def test_many_receipts_amortize_files_and_keep_exact_immutable_prefixes(tmp_path
     assert evidence.location == locations[-1] and evidence.receipt == receipt(199)
 
 
+def test_batched_receipts_keep_individual_framing_with_one_durability_sync(tmp_path, monkeypatch):
+    journal = CaptureReceiptJournalV1(tmp_path, binding=BINDING)
+    first = journal.append(receipt(0))
+    fsync_calls = []
+    original_fsync = module.os.fsync
+
+    def observe_fsync(descriptor):
+        fsync_calls.append(descriptor)
+        return original_fsync(descriptor)
+
+    monkeypatch.setattr(module.os, "fsync", observe_fsync)
+    locations = journal.append_many((receipt(1), receipt(2)))
+
+    assert len(fsync_calls) == 1
+    assert len(locations) == 2
+    assert locations[0].journal_name == locations[1].journal_name == first.journal_name
+    assert locations[0].offset == first.offset + first.record_length
+    assert locations[1].offset == locations[0].offset + locations[0].record_length
+    assert [read_capture_receipt(tmp_path, item, expected_binding=BINDING).receipt
+            for item in locations] == [receipt(1), receipt(2)]
+    assert latest(tmp_path).location == locations[-1]
+
+
+def test_interrupted_batched_append_is_terminal_and_keeps_prior_receipt(tmp_path, monkeypatch):
+    journal = CaptureReceiptJournalV1(tmp_path, binding=BINDING)
+    previous = journal.append(receipt(0))
+    previous_bytes = (tmp_path / previous.journal_name).read_bytes()
+
+    def fail_sync(_descriptor):
+        raise OSError("injected batched receipt durability failure")
+
+    monkeypatch.setattr(module.os, "fsync", fail_sync)
+    with pytest.raises(OSError, match="batched receipt durability"):
+        journal.append_many((receipt(1), receipt(2)))
+    with pytest.raises(RuntimeError, match="terminal"):
+        journal.append_many((receipt(3),))
+    assert (tmp_path / previous.journal_name).read_bytes().startswith(previous_bytes)
+    assert read_capture_receipt(tmp_path, previous, expected_binding=BINDING).receipt == receipt(0)
+
+
 def test_latest_pointer_changes_only_at_rotation_and_reopen_uses_a_new_epoch(tmp_path):
     journal = CaptureReceiptJournalV1(tmp_path, binding=BINDING)
     first = journal.append(receipt(1))

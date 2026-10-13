@@ -31,6 +31,7 @@ from .qualification_telemetry import QualificationTrafficWindowV1
 
 MAX_PENDING_CAPTURE_BATCHES = 64
 MAX_CAPTURE_BATCH_FRAMES = 256
+MAX_CAPTURE_SEAL_GROUP_BATCHES = 2
 CAPTURE_ACCUMULATION_SECONDS = 0.2
 _PAYLOAD_SIZE_BUCKETS = (64, 128, 256, 512, 1_024, 2_048, 4_096, 8_192,
                          16_384, 32_768, 65_536, 131_072, 262_144, 524_288,
@@ -492,20 +493,23 @@ class DurablePublicCaptureV1:
             if self._thread.is_alive():
                 raise TimeoutError("raw capture did not stop within bounded shutdown")
 
-    def _seal(self, writer: PublicArchiveSegmentWriterV1,
-              frames: tuple[CapturedPublicFrameV2, ...]) -> SealedPublicTransportV1:
-        import pyarrow as pa
-
-        headers = [{"venue": f.venue.value, "source_id": f.source_id, "channel": f.channel,
-            "raw_payload_hash": f.raw_payload_hash, "received_at_ns": f.received_at_ns,
-            "available_at_ns": f.available_at_ns, "connection_epoch": f.connection_epoch,
-            "fifo_index": index} for index, f in enumerate(frames)]
+    @staticmethod
+    def _transport_headers(
+        frames: tuple[CapturedPublicFrameV2, ...],
+    ) -> tuple[list[dict[str, Any]], str]:
+        headers = [{"venue": frame.venue.value, "source_id": frame.source_id, "channel": frame.channel,
+            "raw_payload_hash": frame.raw_payload_hash, "received_at_ns": frame.received_at_ns,
+            "available_at_ns": frame.available_at_ns, "connection_epoch": frame.connection_epoch,
+            "fifo_index": index} for index, frame in enumerate(frames)]
         chunk_id = sha256_json({"version": "PublicStreamTransportBatchV1", "frames": headers})
-        floor = max(f.available_at_ns for f in frames)
-        extent = writer.seal(pa.Table.from_pylist([
-            {**header, "raw_payload_bytes": frame.raw_payload_bytes}
-            for header, frame in zip(headers, frames, strict=True)]), namespace="ops-public-transport",
-            chunk_id=chunk_id, clock_ns=self.clock_ns, floor_ns=floor)
+        return headers, chunk_id
+
+    def _transport_descriptor(
+        self,
+        extent: ArtifactIndexEntryV2,
+        frames: tuple[CapturedPublicFrameV2, ...],
+        chunk_id: str,
+    ) -> tuple[SealedPublicTransportV1, dict[str, Any]]:
         from ..chronology import sample
 
         available = sample(self.clock_ns, floor_ns=extent.available_at_ns)
@@ -520,16 +524,115 @@ class DurablePublicCaptureV1:
         # This immutable receipt permits reconstructing captured-but-unindexed
         # raw after a controller crash. It confers no source qualification.
         assert self._root is not None
-        manifests = self._root / "ops-public-capture"
-        manifests.mkdir(exist_ok=True)
+        (self._root / "ops-public-capture").mkdir(exist_ok=True)
         receipt = {"version": "SEALED_PUBLIC_TRANSPORT_V1", "authority": "ZERO",
             "extent": {"artifact_ref": extent.artifact_ref, "artifact_type": extent.artifact_type,
                 "content_hash": extent.content_hash, "created_at_ns": extent.created_at_ns,
                 "available_at_ns": extent.available_at_ns, "metadata": json_value(extent.metadata)},
             "batch": body, "batch_ref": ref}
+        return SealedPublicTransportV1(extent, batch, len(frames)), receipt
+
+    def _seal(self, writer: PublicArchiveSegmentWriterV1,
+              frames: tuple[CapturedPublicFrameV2, ...]) -> SealedPublicTransportV1:
+        import pyarrow as pa
+
+        headers, chunk_id = self._transport_headers(frames)
+        floor = max(frame.available_at_ns for frame in frames)
+        extent = writer.seal(pa.Table.from_pylist([
+            {**header, "raw_payload_bytes": frame.raw_payload_bytes}
+            for header, frame in zip(headers, frames, strict=True)]), namespace="ops-public-transport",
+            chunk_id=chunk_id, clock_ns=self.clock_ns, floor_ns=floor)
+        batch, receipt = self._transport_descriptor(extent, frames, chunk_id)
         assert self._journal is not None
         self._journal.append(receipt)
-        return SealedPublicTransportV1(extent, batch, len(frames))
+        return batch
+
+    def _seal_group(
+        self,
+        writer: PublicArchiveSegmentWriterV1,
+        frame_batches: tuple[tuple[CapturedPublicFrameV2, ...], ...],
+    ) -> tuple[SealedPublicTransportV1, ...]:
+        """Durably append a small FIFO group while keeping each descriptor ≤16 frames."""
+        import pyarrow as pa
+
+        if not 2 <= len(frame_batches) <= MAX_CAPTURE_SEAL_GROUP_BATCHES:
+            raise ValueError("capture seal group item bound exceeded")
+        chunks = []
+        identities: set[str] = set()
+        for frames in frame_batches:
+            if not 1 <= len(frames) <= self.capture_batch_frames:
+                raise ValueError("capture seal group descriptor frame bound exceeded")
+            headers, chunk_id = self._transport_headers(frames)
+            if chunk_id in identities:
+                raise ValueError("capture seal group repeats an immutable identity")
+            identities.add(chunk_id)
+            floor = max(frame.available_at_ns for frame in frames)
+            table = pa.Table.from_pylist([
+                {**header, "raw_payload_bytes": frame.raw_payload_bytes}
+                for header, frame in zip(headers, frames, strict=True)])
+            chunks.append((table, "ops-public-transport", chunk_id, self.clock_ns, floor))
+
+        extents = writer.seal_many(tuple(chunks))
+        descriptors: list[SealedPublicTransportV1] = []
+        receipts: list[dict[str, Any]] = []
+        for extent, frames, chunk in zip(extents, frame_batches, chunks, strict=True):
+            descriptor, receipt = self._transport_descriptor(extent, frames, chunk[2])
+            descriptors.append(descriptor)
+            receipts.append(receipt)
+        assert self._journal is not None
+        self._journal.append_many(tuple(receipts))
+        return tuple(descriptors)
+
+    def _record_captured_batch(
+        self,
+        batch: SealedPublicTransportV1,
+        frames: tuple[CapturedPublicFrameV2, ...],
+        *,
+        started: int,
+        record_archive_metrics: bool,
+    ) -> None:
+        sizes = (tuple(len(frame.raw_payload_bytes) for frame in frames)
+                 if self._capture_payload_metrics else ())
+        with self._lock:
+            self._pending.append(batch)
+            self._captured_frames += len(frames)
+            self._capture_in_progress_frames = max(0, self._capture_in_progress_frames - len(frames))
+            completed_at_ns = time.monotonic_ns()
+            if self._qualification_traffic is not None:
+                for frame in frames:
+                    self._qualification_traffic.record(at_ns=completed_at_ns,
+                        lane=frame.source_id.removesuffix("_PUBLIC_WS_BROAD_V2"),
+                        channel=frame.channel, payload_bytes=len(frame.raw_payload_bytes))
+                if record_archive_metrics:
+                    self._record_qualification_archive_locked(completed_at_ns=completed_at_ns)
+            if (self._capture_payload_metrics
+                    and len(self._capture_seal_timeline) == self._capture_seal_timeline.maxlen):
+                self._capture_timeline_truncated_before_ns = self._capture_seal_timeline[0][0]
+            self._capture_seal_timeline.append((completed_at_ns, self._captured_frames))
+            if self._capture_payload_metrics:
+                payload_bytes = sum(sizes)
+                self._payload_bytes_written += payload_bytes
+                self._payload_size_min = min(sizes) if self._payload_size_min is None else min(
+                    self._payload_size_min, *sizes)
+                self._payload_size_max = max(sizes)
+                batch_histogram = [0] * (len(_PAYLOAD_SIZE_BUCKETS) + 1)
+                for size in sizes:
+                    matched = False
+                    for index, bound in enumerate(_PAYLOAD_SIZE_BUCKETS):
+                        if size <= bound:
+                            self._payload_size_histogram[index] += 1
+                            batch_histogram[index] += 1
+                            matched = True
+                            break
+                    if not matched:
+                        self._payload_size_histogram[-1] += 1
+                        batch_histogram[-1] += 1
+                self._payload_bytes_timeline.append((completed_at_ns, self._payload_bytes_written))
+                self._payload_size_batch_timeline.append((completed_at_ns, tuple(batch_histogram)))
+            self._high_water_batches = max(self._high_water_batches, len(self._pending))
+            self._last_capture_ns = self.clock_ns()
+            self._max_capture_duration_ns = max(self._max_capture_duration_ns,
+                                                 time.monotonic_ns() - started)
 
     def _run(self) -> None:
         assert self._root is not None
@@ -582,48 +685,54 @@ class DurablePublicCaptureV1:
                 if not frames:
                     self._capture_started_monotonic_ns = None
                     continue
-                batch = self._seal(writer, frames)
-                sizes = (tuple(len(frame.raw_payload_bytes) for frame in frames)
-                    if self._capture_payload_metrics else ())
-                with self._lock:
-                    self._pending.append(batch)
-                    self._captured_frames += len(frames)
-                    self._capture_in_progress_frames = 0
-                    completed_at_ns = time.monotonic_ns()
-                    if self._qualification_traffic is not None:
-                        for frame in frames:
-                            self._qualification_traffic.record(at_ns=completed_at_ns,
-                                lane=frame.source_id.removesuffix("_PUBLIC_WS_BROAD_V2"),
-                                channel=frame.channel, payload_bytes=len(frame.raw_payload_bytes))
-                        self._record_qualification_archive_locked(completed_at_ns=completed_at_ns)
-                    if (self._capture_payload_metrics
-                            and len(self._capture_seal_timeline) == self._capture_seal_timeline.maxlen):
-                        self._capture_timeline_truncated_before_ns = self._capture_seal_timeline[0][0]
-                    self._capture_seal_timeline.append((completed_at_ns, self._captured_frames))
-                    if self._capture_payload_metrics:
-                        payload_bytes = sum(sizes)
-                        self._payload_bytes_written += payload_bytes
-                        self._payload_size_min = min(sizes) if self._payload_size_min is None else min(
-                            self._payload_size_min, *sizes)
-                        self._payload_size_max = max(self._payload_size_max, *sizes)
-                        batch_histogram = [0] * (len(_PAYLOAD_SIZE_BUCKETS) + 1)
-                        for size in sizes:
-                            matched = False
-                            for index, bound in enumerate(_PAYLOAD_SIZE_BUCKETS):
-                                if size <= bound:
-                                    self._payload_size_histogram[index] += 1
-                                    batch_histogram[index] += 1
-                                    matched = True
-                                    break
-                            if not matched:
-                                self._payload_size_histogram[-1] += 1
-                                batch_histogram[-1] += 1
-                        self._payload_bytes_timeline.append((completed_at_ns, self._payload_bytes_written))
-                        self._payload_size_batch_timeline.append((completed_at_ns, tuple(batch_histogram)))
-                    self._high_water_batches = max(self._high_water_batches, len(self._pending))
-                    self._last_capture_ns = self.clock_ns()
-                    self._max_capture_duration_ns = max(self._max_capture_duration_ns,
-                                                         time.monotonic_ns() - started)
+                frame_batches = [frames]
+                broad_batching = (not pressure_stopped and self.capture_batch_frames == 16
+                                  and hasattr(self.source, "lane_names"))
+                group_slots = min(MAX_CAPTURE_SEAL_GROUP_BATCHES,
+                                  max(1, threshold - pending_batches)) if broad_batching else 1
+                # Reuse the existing accumulation window to fill one more
+                # descriptor. The group adds no descriptor pressure and keeps
+                # each independently indexed transport extent at 16 frames.
+                if group_slots > 1:
+                    group_deadline = last + CAPTURE_ACCUMULATION_SECONDS
+                    while True:
+                        group_status = self.source.status()
+                        group_queued = group_status.handoff.queue_items
+                        if group_queued >= self.capture_batch_frames or self._stop.is_set():
+                            break
+                        remaining = group_deadline - time.monotonic()
+                        if remaining <= 0:
+                            break
+                        self._stop.wait(min(0.01, remaining))
+                    group_status = self.source.status()
+                    group_queued = group_status.handoff.queue_items
+                    if group_queued:
+                        with self._lock:
+                            extra = self.source.drain(
+                                max_items=min(self.capture_batch_frames, group_queued))
+                            self._capture_in_progress_frames += len(extra)
+                        if extra:
+                            frame_batches.append(extra)
+
+                if len(frame_batches) == 1:
+                    batch = self._seal(writer, frame_batches[0])
+                    self._record_captured_batch(batch, frame_batches[0], started=started,
+                                                record_archive_metrics=True)
+                else:
+                    chunk_ids = tuple(self._transport_headers(group)[1] for group in frame_batches)
+                    if len(set(chunk_ids)) == len(chunk_ids):
+                        batches = self._seal_group(writer, tuple(frame_batches))
+                        for index, (batch, group) in enumerate(zip(batches, frame_batches, strict=True)):
+                            self._record_captured_batch(batch, group, started=started,
+                                record_archive_metrics=index == len(batches) - 1)
+                    else:
+                        # Preserve the prior one-at-a-time failure boundary for
+                        # repeated immutable identities; the bounded batch
+                        # archive deliberately rejects duplicate chunk refs.
+                        for group in frame_batches:
+                            batch = self._seal(writer, group)
+                            self._record_captured_batch(batch, group, started=started,
+                                                        record_archive_metrics=True)
                 last = time.monotonic()
                 self._capture_started_monotonic_ns = None
         except Exception as exc:

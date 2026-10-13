@@ -14,7 +14,7 @@ import re
 import struct
 import threading
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,6 +25,7 @@ MAX_JOURNAL_BYTES = 32 * 1024 * 1024
 MAX_RECEIPT_BYTES = 128 * 1024
 MAX_POINTER_BYTES = 4096
 MAX_HEADER_BYTES = 4096
+MAX_RECEIPT_BATCH_ITEMS = 4
 LATEST_POINTER_NAME = "latest.json"
 _HEADER = struct.Struct(">8sI")
 _RECORD = struct.Struct(">8sI")
@@ -217,8 +218,9 @@ class CaptureReceiptJournalV1:
     """One thread owns append/rotation; prior journal bodies are never rewritten.
 
     A new instance validates the previous tail and starts its own new UUID file.
-    Per-record fsync remains mandatory. Pointer updates are amortized by bounded
-    file rotation. Any append/rotation failure terminates this writer instance.
+    Every append call durably syncs all of its bounded, individually framed
+    records before returning. Pointer updates are amortized by bounded file
+    rotation. Any append/rotation failure terminates this writer instance.
     """
 
     def __init__(self, root: Path, *, binding: CaptureReceiptBindingV1) -> None:
@@ -294,6 +296,63 @@ class CaptureReceiptJournalV1:
             if self.path.stat().st_size != self.offset:
                 raise OSError("capture receipt journal size mismatch")
             return location
+        except Exception:
+            self._failed = True
+            raise
+
+    def append_many(self, receipts: Sequence[Mapping[str, Any]]) -> tuple[CaptureReceiptLocationV1, ...]:
+        """Append a small FIFO receipt group with one file sync.
+
+        Record framing and checksums stay independent. A failed or partial
+        group is terminal and will be rejected by the existing strict tail
+        reader; this method does not repair an interrupted append.
+        """
+        if self._failed:
+            raise RuntimeError("capture receipt journal writer is terminal")
+        if self._owner_thread is None:
+            self._owner_thread = threading.get_ident()
+        elif self._owner_thread != threading.get_ident():
+            raise RuntimeError("capture receipt journal has one owning thread")
+        if not isinstance(receipts, Sequence) or isinstance(receipts, (str, bytes)):
+            raise ValueError("capture receipt batch must be a bounded sequence")
+        if not 1 <= len(receipts) <= MAX_RECEIPT_BATCH_ITEMS:
+            raise ValueError("capture receipt batch item bound exceeded")
+
+        records: list[tuple[bytes, bytes, int]] = []
+        for receipt in receipts:
+            payload = canonical_json(json_value(dict(receipt))).encode("utf-8")
+            if not 1 <= len(payload) <= MAX_RECEIPT_BYTES or receipt.get("authority") != "ZERO":
+                raise ValueError("capture receipt body exceeds its bound or authority")
+            digest = hashlib.sha256(payload).digest()
+            length = _RECORD.size + len(payload) + _FOOTER.size
+            record = _RECORD.pack(_RECORD_MAGIC, len(payload)) + payload + _FOOTER.pack(
+                digest, length, _FOOTER_MAGIC)
+            records.append((record, digest, length))
+
+        batch = b"".join(item[0] for item in records)
+        if len(batch) + _HEADER.size + MAX_HEADER_BYTES + 32 > MAX_JOURNAL_BYTES:
+            raise ValueError("capture receipt batch exceeds its journal file bound")
+        try:
+            if self.path is None or self.offset + len(batch) > MAX_JOURNAL_BYTES:
+                self._rotate()
+            assert self.path is not None
+            if self.path.is_symlink() or self.path.stat().st_size != self.offset:
+                raise ValueError("capture receipt journal prefix changed")
+            locations: list[CaptureReceiptLocationV1] = []
+            offset = self.offset
+            for _, digest, length in records:
+                locations.append(CaptureReceiptLocationV1(self.path.name, offset, length, digest.hex()))
+                offset += length
+            with self.path.open("ab") as handle:
+                if handle.write(batch) != len(batch):
+                    raise OSError("capture receipt batch write incomplete")
+                handle.flush()
+                os.fsync(handle.fileno())
+            self.offset = offset
+            self.bytes_written += len(batch)
+            if self.path.stat().st_size != self.offset:
+                raise OSError("capture receipt journal size mismatch")
+            return tuple(locations)
         except Exception:
             self._failed = True
             raise

@@ -59,6 +59,17 @@ def _frame(index: int, key: InstrumentKeyV2) -> CapturedPublicFrameV2:
         at_ns, at_ns, 1)
 
 
+def _orderbook_frame(index: int, key: InstrumentKeyV2) -> CapturedPublicFrameV2:
+    at_ns = NOW - 1_000_000_000 + index + 1
+    channel = f"orderbook.50.{key.native_symbol}"
+    body = {"topic": channel, "type": "snapshot", "ts": at_ns // 1_000_000,
+        "data": {"s": key.native_symbol, "b": [["100", "1"]],
+                 "a": [["101", "1"]], "u": index + 1, "seq": index + 1}}
+    raw = json.dumps(body, separators=(",", ":")).encode()
+    return CapturedPublicFrameV2(VenueV2.BYBIT, "BYBIT_PUBLIC_WS_BROAD_V2",
+        channel, raw, hashlib.sha256(raw).hexdigest(), at_ns, at_ns, 1)
+
+
 def _wal_size(path) -> int:
     wal = path.with_name(path.name + "-wal")
     return wal.stat().st_size if wal.exists() else 0
@@ -282,6 +293,9 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
             stream_key = next(identity.key for identity in runtime.plan.identities
                               if identity.venue == VenueV2.BYBIT
                               and identity.channel.startswith("publicTrade."))
+            orderbook_key = next(identity.key for identity in runtime.plan.identities
+                                 if identity.venue == VenueV2.BYBIT
+                                 and identity.channel.startswith("orderbook.50."))
 
             # A real read-only report worker runs alongside ingestion; its output
             # is polled while capture continues, then the exact same export is
@@ -446,18 +460,18 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
             # Continue the same real collector, metadata and workset path after
             # the commit/export overlap while stream capture is still active.
             assert runtime._archive is not None
-            original_write_chunks = runtime._archive.write_chunks
+            original_prepare_frame_views = runtime._archive.prepare_frame_views
             archive_started = threading.Event()
             during_archive: list[tuple[int, int]] = []
 
-            # Keep one captured trade queued until the snapshot-adoption loop
-            # services the stream. That service is what reaches the archive
-            # writer; the following burst then measures capture during its stall.
-            archive_seed = _frame(2_000_000, stream_key)
+            # Keep one valid book snapshot queued until the sole writer reaches
+            # the production frame-view archive path; the burst measures
+            # capture during that bounded archive preparation stall.
+            archive_seed = _orderbook_frame(2_000_000, orderbook_key)
             assert handoff.offer(archive_seed)
             offered.append(archive_seed)
 
-            def stalled_archive_write(chunks):
+            def stalled_archive_prepare(frame_groups, **kwargs):
                 before = time.monotonic()
                 assert runtime.capture is not None
                 frames_before = int(runtime.capture.status().capture["captured_frames"])
@@ -466,7 +480,7 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
                 archive_stall_seconds.append(time.monotonic() - before)
                 frames_after = int(runtime.capture.status().capture["captured_frames"])
                 during_archive.append((frames_before, frames_after))
-                return original_write_chunks(chunks)
+                return original_prepare_frame_views(frame_groups, **kwargs)
 
             burst_errors: list[BaseException] = []
 
@@ -484,10 +498,22 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
 
             burst_thread = threading.Thread(target=archive_stall_burst, name="s41-mixed-archive-burst")
             burst_thread.start()
-            runtime._archive.write_chunks = stalled_archive_write
-            service_phase[0] = "REFRESHED_BROAD_SNAPSHOT_AND_WORKSET"
+            runtime._archive.prepare_frame_views = stalled_archive_prepare
+            service_phase[0] = "ARCHIVE_STALL_SERVICING"
             clock[0] = NOW + 10_000_000_000
             source.at_ns = clock[0]
+            # This deterministic fixture's acquisition may complete from its
+            # local snapshot without polling the service callback. Drive the
+            # production sole-writer path until the seed reaches the injected
+            # archive stall. The archive-burst wait remains bounded at 10s.
+            archive_service_deadline = time.monotonic() + 10.0
+            while not archive_started.is_set() and time.monotonic() < archive_service_deadline:
+                port.service_public_stream(repository)
+                if not archive_started.wait(min(0.01,
+                        max(0.0, archive_service_deadline - time.monotonic()))):
+                    continue
+            assert archive_started.is_set()
+            service_phase[0] = "REFRESHED_BROAD_SNAPSHOT_AND_WORKSET"
             # Exercise the production bounded acquisition worker: the sole
             # writer must continue servicing the stream while REST work builds
             # the immutable broad snapshot in its isolated worker.
@@ -497,7 +523,7 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
             try:
                 port._persist_broad_public_snapshot(repository, mixed_snapshot, now_ns=clock[0])
             finally:
-                runtime._archive.write_chunks = original_write_chunks
+                runtime._archive.prepare_frame_views = original_prepare_frame_views
             burst_thread.join(timeout=2.0)
             assert not burst_thread.is_alive() and not burst_errors
             assert archive_started.is_set()
@@ -521,17 +547,43 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
                 time.sleep(0.01)
             port.finish_public_capture(repository)
             final = runtime.status()
+            stream_product = runtime._products[stream_key]
+            feed_ref = sha256_json({"instrument": stream_key.to_dict(),
+                "source_id": "BYBIT_PUBLIC_WS_BROAD_V2", "channel": f"publicTrade.{stream_key.native_symbol}",
+                "metadata_ref": stream_product.metadata_ref})
+            expected_trade_rows = {}
+            for frame in offered:
+                if frame.channel.startswith("publicTrade."):
+                    row = json.loads(frame.raw_payload_bytes)["data"][0]
+                    expected_trade_rows[row["i"]] = sha256_json(row)
+            persisted_trade_rows = repository._connection.execute(
+                "SELECT trade_id,first_payload_hash,first_artifact_ref FROM public_trade_identity_v2 "
+                "WHERE feed_ref=?", (feed_ref,)).fetchall()
+            persisted_trade_hashes = {row["trade_id"]: row["first_payload_hash"]
+                                      for row in persisted_trade_rows}
+            persisted_refs_verified = all(
+                (entry := repository.get_artifact(row["first_artifact_ref"])) is not None
+                and entry.artifact_type == "BroadPublicStreamContinuityV3"
+                for row in persisted_trade_rows)
             assert final.capture["pending_frames"] == 0
             assert final.capture["pending_batches"] == 0
+            assert final.capture["captured_frames"] == len(offered)
+            assert final.capture["delivered_frames"] == len(offered)
             assert final.handoff.frames_received == len(offered)
             assert final.handoff.frames_drained == len(offered)
             assert final.handoff.frames_rejected == 0
             assert not final.handoff.overflowed
+            assert final.handoff.max_queue_items == 512
+            assert final.handoff.max_queue_bytes == 16_000_000
+            assert final.handoff.max_drain_items == 64
             assert final.handoff.high_water_items <= final.handoff.max_queue_items
             assert final.handoff.high_water_bytes <= final.handoff.max_queue_bytes
             assert len(interpreted) == len(offered)
             assert [_frame_identity(item) for item in interpreted] == [
                 _frame_identity(item) for item in offered]
+            assert persisted_trade_hashes == expected_trade_rows
+            assert len(persisted_trade_rows) == len(expected_trade_rows)
+            assert persisted_refs_verified
             assert final.capture["terminal_error"] is None
 
             receipt = repository.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
@@ -616,6 +668,16 @@ def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, reco
                 "runtime_tier3_keys_from_workset": len(tier3_keys),
                 "durable_watch_keys": len(watch_keys),
                 "stream_frames": len(offered),
+                "offered_frames": len(offered),
+                "accepted_frames": final.handoff.frames_received,
+                "drained_frames": final.handoff.frames_drained,
+                "sealed_frames": final.capture["captured_frames"],
+                "delivered_frames": final.capture["delivered_frames"],
+                "interpreted_frames": len(interpreted),
+                "persisted_trade_identity_frames": len(persisted_trade_rows),
+                "persisted_trade_payload_hashes_verified": True,
+                "persisted_trade_artifact_refs_verified": persisted_refs_verified,
+                "rejected_frames": final.handoff.frames_rejected,
                 "stream_frame_venues": {"BYBIT": len(offered), "BINANCE": 0},
                 "global_paced_base_target_fps": 160,
                 "bounded_burst_target_fps": 320,
