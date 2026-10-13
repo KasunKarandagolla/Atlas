@@ -1,0 +1,122 @@
+{
+  "acceptance": "UNRESOLVED \u2014 repeated controlled trials pass, reported historical red not reproduced; cause cannot be identified from unavailable original raw failure",
+  "groups": {
+    "r2": {
+      "exitstatuses": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "measurements": {
+        "archive.write_chunks": {
+          "count": 5,
+          "max_ns": 30610775,
+          "median_ns": 22561814,
+          "p99_ns": 29340570
+        },
+        "runtime.service": {
+          "count": 2482,
+          "max_ns": 1878995,
+          "median_ns": 12955,
+          "p99_ns": 79499
+        },
+        "snapshot.future.result": {
+          "count": 10,
+          "max_ns": 267070,
+          "median_ns": 60726,
+          "p99_ns": 257215
+        },
+        "snapshot.future.set_result": {
+          "count": 5,
+          "max_ns": 31617,
+          "median_ns": 22153,
+          "p99_ns": 22223
+        },
+        "snapshot.poll_adopt": {
+          "count": 2487,
+          "max_ns": 46159,
+          "median_ns": 1321,
+          "p99_ns": 13521
+        },
+        "snapshot.poll_wall": {
+          "count": 2487,
+          "max_ns": 51357,
+          "median_ns": 3465,
+          "p99_ns": 22143
+        },
+        "sqlite.register_artifacts": {
+          "count": 10,
+          "max_ns": 1008018,
+          "median_ns": 463389,
+          "p99_ns": 645647
+        }
+      },
+      "test_nodeids": [
+        "tests/v2/test_session041_broad_stream_source.py::test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[5.0]"
+      ],
+      "trial_count": 5
+    },
+    "r3a": {
+      "exitstatuses": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "measurements": {
+        "archive.write_chunks": {
+          "count": 5,
+          "max_ns": 22302756,
+          "median_ns": 20173946,
+          "p99_ns": 22065080
+        },
+        "runtime.service": {
+          "count": 2482,
+          "max_ns": 1517724,
+          "median_ns": 13806,
+          "p99_ns": 88232
+        },
+        "snapshot.future.result": {
+          "count": 10,
+          "max_ns": 197846,
+          "median_ns": 61637,
+          "p99_ns": 172399
+        },
+        "snapshot.future.set_result": {
+          "count": 5,
+          "max_ns": 42573,
+          "median_ns": 22284,
+          "p99_ns": 22854
+        },
+        "snapshot.poll_adopt": {
+          "count": 2487,
+          "max_ns": 74111,
+          "median_ns": 1412,
+          "p99_ns": 12198
+        },
+        "snapshot.poll_wall": {
+          "count": 2487,
+          "max_ns": 78628,
+          "median_ns": 3715,
+          "p99_ns": 20781
+        },
+        "sqlite.register_artifacts": {
+          "count": 10,
+          "max_ns": 790304,
+          "median_ns": 474421,
+          "p99_ns": 596654
+        }
+      },
+      "test_nodeids": [
+        "tests/v2/test_session041_broad_stream_source.py::test_snapshot_stall_preserves_actual_service_cadence_and_causal_adoption[5.0]"
+      ],
+      "trial_count": 5
+    }
+  },
+  "optional_projection_enabled_flag": "NOT APPLICABLE: test is direct BroadPublicRuntimeV2, outside OpsSupervisorV2 projection call path",
+  "reported_failure_raw_available": false,
+  "reported_prior_failure_ms_approx": 463
+}

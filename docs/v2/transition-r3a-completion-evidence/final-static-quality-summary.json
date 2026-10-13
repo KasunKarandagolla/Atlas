@@ -1,0 +1,72 @@
+{
+  "compileall": {
+    "command": "/workspace/Atlas-r3a-completion-2026-10-13/.venv/bin/python -m compileall -q src/atlas/v2/memory/repository.py src/atlas/v2/research/decision_brief.py src/atlas/v2/research/memory.py src/atlas/v2/research/production_facts.py src/atlas/v2/runtime/ops_supervisor.py src/atlas/v2/runtime/production_intelligence.py tests/v2/test_session053_production_completion.py",
+    "exit_code": 0,
+    "output_bytes": 0,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "mypy_baseline": {
+    "command": "/workspace/Atlas-r3a-completion-2026-10-13/.venv/bin/mypy --follow-imports=silent src/atlas/v2/memory/repository.py src/atlas/v2/research/decision_brief.py src/atlas/v2/research/memory.py src/atlas/v2/runtime/ops_supervisor.py src/atlas/v2/runtime/production_intelligence.py",
+    "exit_code": 1,
+    "output_bytes": 1801,
+    "output_sha256": "0fd578404ef8db6025fafb126b14b47c18d55aac15c8d1ab120d58f0cca0384b"
+  },
+  "mypy_current": {
+    "command": "/workspace/Atlas-r3a-completion-2026-10-13/.venv/bin/mypy --follow-imports=silent src/atlas/v2/memory/repository.py src/atlas/v2/research/decision_brief.py src/atlas/v2/research/memory.py src/atlas/v2/research/production_facts.py src/atlas/v2/runtime/ops_supervisor.py src/atlas/v2/runtime/production_intelligence.py tests/v2/test_session053_production_completion.py",
+    "exit_code": 1,
+    "output_bytes": 1729,
+    "output_sha256": "11d4fb629e15c0eb993945f4f17aa060233862885e3f7eebea37bf45126daad9"
+  },
+  "mypy_delta": {
+    "baseline_distinct_diagnostics": 7,
+    "baseline_error_count": 8,
+    "current_distinct_diagnostics": 6,
+    "current_error_count": 7,
+    "new_diagnostics": [],
+    "resolved_baseline_diagnostics": [
+      [
+        "src/atlas/v2/runtime/production_intelligence.py",
+        "Argument 4 to \"_read_selected_action\" has incompatible type \"UniverseContractV2 | None\"; expected \"UniverseContractV2\"",
+        "arg-type",
+        1
+      ]
+    ],
+    "status": "NO_NEW_DIAGNOSTICS"
+  },
+  "ruff_check": {
+    "command": "/workspace/Atlas-r3a-completion-2026-10-13/.venv/bin/ruff check src/atlas/v2/memory/repository.py src/atlas/v2/research/decision_brief.py src/atlas/v2/research/memory.py src/atlas/v2/research/production_facts.py src/atlas/v2/runtime/ops_supervisor.py src/atlas/v2/runtime/production_intelligence.py tests/v2/test_session053_production_completion.py",
+    "exit_code": 0,
+    "output_bytes": 19,
+    "output_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  },
+  "ruff_format_baseline": {
+    "command": "/workspace/Atlas-r3a-completion-2026-10-13/.venv/bin/ruff format --check src/atlas/v2/memory/repository.py src/atlas/v2/runtime/ops_supervisor.py",
+    "exit_code": 1,
+    "output_bytes": 211372,
+    "output_sha256": "630dded0f98a62fa0a75addb6b08b4761aa2bfd35ac8926b8d2aa7f5fef0e7b7"
+  },
+  "ruff_format_current_all": {
+    "command": "/workspace/Atlas-r3a-completion-2026-10-13/.venv/bin/ruff format --check src/atlas/v2/memory/repository.py src/atlas/v2/research/decision_brief.py src/atlas/v2/research/memory.py src/atlas/v2/research/production_facts.py src/atlas/v2/runtime/ops_supervisor.py src/atlas/v2/runtime/production_intelligence.py tests/v2/test_session053_production_completion.py",
+    "exit_code": 1,
+    "output_bytes": 214005,
+    "output_sha256": "e888deac9f95022935c628cb5f25ba3844ebaeca2bcbe9c8fb40e7952f38804f"
+  },
+  "ruff_format_new": {
+    "command": "/workspace/Atlas-r3a-completion-2026-10-13/.venv/bin/ruff format --check src/atlas/v2/research/production_facts.py tests/v2/test_session053_production_completion.py",
+    "exit_code": 0,
+    "output_bytes": 26,
+    "output_sha256": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938"
+  },
+  "uv_lock_check": {
+    "command": "uv lock --check --python 3.12",
+    "exit_code": 0,
+    "output_bytes": 28,
+    "output_sha256": "321f0b607da3e9134cfcf1529e067a07da87a9737f26f661d4b9d2228950f006"
+  },
+  "uv_pip_check": {
+    "command": "uv pip check --python .venv/bin/python",
+    "exit_code": 0,
+    "output_bytes": 68,
+    "output_sha256": "d06e5b7a8a5093a0d4aabca23e6a48897e17acd5be22fe364b5f251702bf41d0"
+  }
+}

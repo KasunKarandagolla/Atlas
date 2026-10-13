@@ -1,0 +1,110 @@
+[
+  {
+    "child_system_seconds": 0.040048,
+    "child_user_seconds": 0.5024129999999999,
+    "exit_status": 0,
+    "junit": "/tmp/atlas-cadence-matrix/r2-674421-trial1.junit.xml",
+    "label": "r2-674421",
+    "log": "/tmp/atlas-cadence-matrix/r2-674421-trial1.log",
+    "metrics": "/tmp/atlas-cadence-matrix/r2-674421-trial1.json",
+    "trial": 1,
+    "wall_ns": 5536321645,
+    "worktree_sha": "67442118d5ffef818541e1b6f83d7fa6bae45293"
+  },
+  {
+    "child_system_seconds": 0.020508,
+    "child_user_seconds": 0.492011,
+    "exit_status": 0,
+    "junit": "/tmp/atlas-cadence-matrix/r2-674421-trial2.junit.xml",
+    "label": "r2-674421",
+    "log": "/tmp/atlas-cadence-matrix/r2-674421-trial2.log",
+    "metrics": "/tmp/atlas-cadence-matrix/r2-674421-trial2.json",
+    "trial": 2,
+    "wall_ns": 5506741176,
+    "worktree_sha": "67442118d5ffef818541e1b6f83d7fa6bae45293"
+  },
+  {
+    "child_system_seconds": 0.03649899999999999,
+    "child_user_seconds": 0.5139940000000001,
+    "exit_status": 0,
+    "junit": "/tmp/atlas-cadence-matrix/r2-674421-trial3.junit.xml",
+    "label": "r2-674421",
+    "log": "/tmp/atlas-cadence-matrix/r2-674421-trial3.log",
+    "metrics": "/tmp/atlas-cadence-matrix/r2-674421-trial3.json",
+    "trial": 3,
+    "wall_ns": 5535061259,
+    "worktree_sha": "67442118d5ffef818541e1b6f83d7fa6bae45293"
+  },
+  {
+    "child_system_seconds": 0.03302300000000001,
+    "child_user_seconds": 0.4778039999999999,
+    "exit_status": 0,
+    "junit": "/tmp/atlas-cadence-matrix/r2-674421-trial4.junit.xml",
+    "label": "r2-674421",
+    "log": "/tmp/atlas-cadence-matrix/r2-674421-trial4.log",
+    "metrics": "/tmp/atlas-cadence-matrix/r2-674421-trial4.json",
+    "trial": 4,
+    "wall_ns": 5494665558,
+    "worktree_sha": "67442118d5ffef818541e1b6f83d7fa6bae45293"
+  },
+  {
+    "child_system_seconds": 0.059164999999999995,
+    "child_user_seconds": 0.8854010000000001,
+    "exit_status": 0,
+    "junit": "/tmp/atlas-cadence-matrix/r3a-3f675-trial1.junit.xml",
+    "label": "r3a-3f675",
+    "log": "/tmp/atlas-cadence-matrix/r3a-3f675-trial1.log",
+    "metrics": "/tmp/atlas-cadence-matrix/r3a-3f675-trial1.json",
+    "trial": 1,
+    "wall_ns": 5932331867,
+    "worktree_sha": "3f675572797e88850997d32bdcb96226360ff174"
+  },
+  {
+    "child_system_seconds": 0.049618999999999996,
+    "child_user_seconds": 0.5203119999999997,
+    "exit_status": 0,
+    "junit": "/tmp/atlas-cadence-matrix/r3a-3f675-trial2.junit.xml",
+    "label": "r3a-3f675",
+    "log": "/tmp/atlas-cadence-matrix/r3a-3f675-trial2.log",
+    "metrics": "/tmp/atlas-cadence-matrix/r3a-3f675-trial2.json",
+    "trial": 2,
+    "wall_ns": 5564094481,
+    "worktree_sha": "3f675572797e88850997d32bdcb96226360ff174"
+  },
+  {
+    "child_system_seconds": 0.02379299999999998,
+    "child_user_seconds": 0.5080849999999999,
+    "exit_status": 0,
+    "junit": "/tmp/atlas-cadence-matrix/r3a-3f675-trial3.junit.xml",
+    "label": "r3a-3f675",
+    "log": "/tmp/atlas-cadence-matrix/r3a-3f675-trial3.log",
+    "metrics": "/tmp/atlas-cadence-matrix/r3a-3f675-trial3.json",
+    "trial": 3,
+    "wall_ns": 5516310455,
+    "worktree_sha": "3f675572797e88850997d32bdcb96226360ff174"
+  },
+  {
+    "child_system_seconds": 0.03226000000000001,
+    "child_user_seconds": 0.4688449999999995,
+    "exit_status": 0,
+    "junit": "/tmp/atlas-cadence-matrix/r3a-3f675-trial4.junit.xml",
+    "label": "r3a-3f675",
+    "log": "/tmp/atlas-cadence-matrix/r3a-3f675-trial4.log",
+    "metrics": "/tmp/atlas-cadence-matrix/r3a-3f675-trial4.json",
+    "trial": 4,
+    "wall_ns": 5494152267,
+    "worktree_sha": "3f675572797e88850997d32bdcb96226360ff174"
+  },
+  {
+    "child_system_seconds": 0.020351000000000008,
+    "child_user_seconds": 0.5043240000000004,
+    "exit_status": 0,
+    "junit": "/tmp/atlas-cadence-matrix/r3a-3f675-trial5.junit.xml",
+    "label": "r3a-3f675",
+    "log": "/tmp/atlas-cadence-matrix/r3a-3f675-trial5.log",
+    "metrics": "/tmp/atlas-cadence-matrix/r3a-3f675-trial5.json",
+    "trial": 5,
+    "wall_ns": 5509544933,
+    "worktree_sha": "3f675572797e88850997d32bdcb96226360ff174"
+  }
+]

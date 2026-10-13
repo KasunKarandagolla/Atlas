@@ -1,0 +1,82 @@
+{
+  "baseline_comparison": {
+    "mypy": {
+      "baseline_error_lines": 8,
+      "current_error_lines": 7,
+      "new_normalized_diagnostics": [],
+      "resolved_normalized_diagnostics": [
+        "src/atlas/v2/runtime/production_intelligence.py:LINE: error: Argument 4 to \"_read_selected_action\" has incompatible type \"UniverseContractV2 | None\"; expected \"UniverseContractV2\"  [arg-type]"
+      ],
+      "status": "NO_NEW_DIAGNOSTICS"
+    },
+    "new_file_format_check_exit_code": 0,
+    "ruff_format": {
+      "baseline_unformatted_files": [
+        "src/atlas/v2/memory/repository.py",
+        "src/atlas/v2/runtime/ops_supervisor.py"
+      ],
+      "current_unformatted_files": [
+        "src/atlas/v2/memory/repository.py",
+        "src/atlas/v2/runtime/ops_supervisor.py"
+      ],
+      "same_baseline_paths": true
+    }
+  },
+  "compileall": {
+    "command": ".venv/bin/python -m compileall -q src/atlas/v2/memory/repository.py src/atlas/v2/research/decision_brief.py src/atlas/v2/research/memory.py src/atlas/v2/research/production_facts.py src/atlas/v2/runtime/ops_supervisor.py src/atlas/v2/runtime/production_intelligence.py tests/v2/test_session053_production_completion.py",
+    "exit_code": 0,
+    "log_path": "docs/v2/transition-r3a-completion-evidence/final-static-compileall.log",
+    "output": "",
+    "output_bytes": 0,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "mypy_current": {
+    "command": ".venv/bin/mypy --follow-imports=silent src/atlas/v2/memory/repository.py src/atlas/v2/research/decision_brief.py src/atlas/v2/research/memory.py src/atlas/v2/research/production_facts.py src/atlas/v2/runtime/ops_supervisor.py src/atlas/v2/runtime/production_intelligence.py tests/v2/test_session053_production_completion.py",
+    "diagnostic_lines": 7,
+    "exit_code": 1,
+    "log_path": "docs/v2/transition-r3a-completion-evidence/final-static-mypy_current.log",
+    "output": "src/atlas/v2/memory/repository.py:2126: error: Incompatible return value type (got \"dict[tuple[str, str], dict[str, Any]]\", expected \"dict[tuple[str, str], Mapping[str, Any]]\")  [return-value]\nsrc/atlas/v2/memory/repository.py:2126: note: \"dict\" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance\nsrc/atlas/v2/memory/repository.py:2126: note: Consider using \"Mapping\" instead, which is covariant in the value type\nsrc/atlas/v2/memory/repository.py:2126: note: Perhaps you need a type annotation for \"result\"? Suggestion: \"dict[tuple[str, str], Mapping[str, Any]]\"\nsrc/atlas/v2/research/decision_brief.py:221: error: Unsupported operand types for >= (\"int\" and \"None\")  [operator]\nsrc/atlas/v2/research/decision_brief.py:221: note: Left operand is of type \"int | Non\n[truncated; full output retained in log]",
+    "output_bytes": 1729,
+    "output_sha256": "be757717f0d8cd2f493a103f1634b2f5b01399d3ae45081173d1123b27e229d4"
+  },
+  "ruff_check": {
+    "command": ".venv/bin/ruff check src/atlas/v2/memory/repository.py src/atlas/v2/research/decision_brief.py src/atlas/v2/research/memory.py src/atlas/v2/research/production_facts.py src/atlas/v2/runtime/ops_supervisor.py src/atlas/v2/runtime/production_intelligence.py tests/v2/test_session053_production_completion.py",
+    "exit_code": 0,
+    "log_path": "docs/v2/transition-r3a-completion-evidence/final-static-ruff_check.log",
+    "output": "All checks passed!\n",
+    "output_bytes": 19,
+    "output_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  },
+  "ruff_format_changed": {
+    "command": ".venv/bin/ruff format --check src/atlas/v2/memory/repository.py src/atlas/v2/research/decision_brief.py src/atlas/v2/research/memory.py src/atlas/v2/research/production_facts.py src/atlas/v2/runtime/ops_supervisor.py src/atlas/v2/runtime/production_intelligence.py tests/v2/test_session053_production_completion.py",
+    "exit_code": 1,
+    "log_path": "docs/v2/transition-r3a-completion-evidence/final-static-ruff_format_changed.log",
+    "output": "unformatted: File would be reformatted\n    --> src/atlas/v2/memory/repository.py:78:22\n     |\n77   |             sha256_ref(value, field=\"product_hash\")\n     -         for name in (\"frame_ordinal\", \"trade_ordinal_start\", \"trade_ordinal_end\", \"next_frame_ordinal\",\n     -                      \"next_trade_ordinal\", \"logical_started_at_ns\", \"logical_finished_at_ns\", \"cursor_generation\"):\n78   +         for name in (\n79   +             \"frame_ordinal\",\n80   +             \"trade_ordinal_start\",\n81   +             \"trade_ordinal_end\",\n82   +             \"next_frame_ordinal\",\n83   +             \"next_trade_ordinal\",\n84   +             \"logical_started_at_ns\",\n85   +             \"logical_finished_at_ns\",\n86   +             \"cursor_generation\",\n87   +         ):\n88   |             value = getattr(se\n[truncated; full output retained in log]",
+    "output_bytes": 214005,
+    "output_sha256": "e888deac9f95022935c628cb5f25ba3844ebaeca2bcbe9c8fb40e7952f38804f"
+  },
+  "ruff_format_new": {
+    "command": ".venv/bin/ruff format --check src/atlas/v2/research/production_facts.py tests/v2/test_session053_production_completion.py",
+    "exit_code": 0,
+    "log_path": "docs/v2/transition-r3a-completion-evidence/final-static-ruff_format_new.log",
+    "output": "2 files already formatted\n",
+    "output_bytes": 26,
+    "output_sha256": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938"
+  },
+  "uv_lock_check": {
+    "command": "uv lock --check --python 3.12",
+    "exit_code": 0,
+    "log_path": "docs/v2/transition-r3a-completion-evidence/final-static-uv_lock_check.log",
+    "output": "Resolved 39 packages in 1ms\n",
+    "output_bytes": 28,
+    "output_sha256": "321f0b607da3e9134cfcf1529e067a07da87a9737f26f661d4b9d2228950f006"
+  },
+  "uv_pip_check": {
+    "command": "uv pip check --python .venv/bin/python",
+    "exit_code": 0,
+    "log_path": "docs/v2/transition-r3a-completion-evidence/final-static-uv_pip_check.log",
+    "output": "Checked 23 packages in 0.44ms\nAll installed packages are compatible\n",
+    "output_bytes": 68,
+    "output_sha256": "c67cbba325be5466d5cf12ce88e65577b8d513300261a1777262c7a53a0541e4"
+  }
+}

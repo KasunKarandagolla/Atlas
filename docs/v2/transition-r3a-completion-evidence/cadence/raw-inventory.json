@@ -1,0 +1,252 @@
+[
+  {
+    "bytes": 72180,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial1.json",
+    "source_sha256": "e65b36d5ef6faeb8f1db07899f89bca63665c166918d123fda966062f0b8a9b8",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-1.json",
+    "stored_sha256": "e65b36d5ef6faeb8f1db07899f89bca63665c166918d123fda966062f0b8a9b8"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial1.junit.xml",
+    "source_sha256": "69f255b2866eb5e48e9482593c1501d4d0c4ac557cd8a1d10316526f917743cd",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-1.junit.xml",
+    "stored_sha256": "69f255b2866eb5e48e9482593c1501d4d0c4ac557cd8a1d10316526f917743cd"
+  },
+  {
+    "compressed_bytes": 31,
+    "compressed_sha256": "2e4dd573c61c2d3a550a9c51f0bfbf5226c0b7c3fe997ff3adee35c461114379",
+    "decompression_verified": true,
+    "kind": "gzip-lossless-log",
+    "original_bytes": 80,
+    "original_sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial1.log",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-1.log.gz"
+  },
+  {
+    "bytes": 72072,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial2.json",
+    "source_sha256": "10ac98acff378df32e82464b24c9269e035bb2ff2af654aa77374a3f75cf0521",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-2.json",
+    "stored_sha256": "10ac98acff378df32e82464b24c9269e035bb2ff2af654aa77374a3f75cf0521"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial2.junit.xml",
+    "source_sha256": "a7a8ba949c5e6f48a81ab670e03659f941f3a7d77768b95df834c7d04d003ffd",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-2.junit.xml",
+    "stored_sha256": "a7a8ba949c5e6f48a81ab670e03659f941f3a7d77768b95df834c7d04d003ffd"
+  },
+  {
+    "compressed_bytes": 31,
+    "compressed_sha256": "2e4dd573c61c2d3a550a9c51f0bfbf5226c0b7c3fe997ff3adee35c461114379",
+    "decompression_verified": true,
+    "kind": "gzip-lossless-log",
+    "original_bytes": 80,
+    "original_sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial2.log",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-2.log.gz"
+  },
+  {
+    "bytes": 72359,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial3.json",
+    "source_sha256": "3e048b9e2efb5687ac73ba63fb63eacb21b20757e63ea3e0d5fc8c07d512a709",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-3.json",
+    "stored_sha256": "3e048b9e2efb5687ac73ba63fb63eacb21b20757e63ea3e0d5fc8c07d512a709"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial3.junit.xml",
+    "source_sha256": "eb7ea7c19d5fb6282021f3571cd497bcccd24c908d08688223b123516aecd812",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-3.junit.xml",
+    "stored_sha256": "eb7ea7c19d5fb6282021f3571cd497bcccd24c908d08688223b123516aecd812"
+  },
+  {
+    "compressed_bytes": 31,
+    "compressed_sha256": "2e4dd573c61c2d3a550a9c51f0bfbf5226c0b7c3fe997ff3adee35c461114379",
+    "decompression_verified": true,
+    "kind": "gzip-lossless-log",
+    "original_bytes": 80,
+    "original_sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial3.log",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-3.log.gz"
+  },
+  {
+    "bytes": 72157,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial4.json",
+    "source_sha256": "5c712234bc3964420a39388321f4cf15f2ca331e97e1f091b0b237731da0180e",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-4.json",
+    "stored_sha256": "5c712234bc3964420a39388321f4cf15f2ca331e97e1f091b0b237731da0180e"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial4.junit.xml",
+    "source_sha256": "8ddd7b15b0a019852bcda330cf649e0ceaf39049dd2d55dbb240150e5c0c21c1",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-4.junit.xml",
+    "stored_sha256": "8ddd7b15b0a019852bcda330cf649e0ceaf39049dd2d55dbb240150e5c0c21c1"
+  },
+  {
+    "compressed_bytes": 31,
+    "compressed_sha256": "2e4dd573c61c2d3a550a9c51f0bfbf5226c0b7c3fe997ff3adee35c461114379",
+    "decompression_verified": true,
+    "kind": "gzip-lossless-log",
+    "original_bytes": 80,
+    "original_sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+    "source_path": "/tmp/atlas-cadence-matrix/r2-674421-trial4.log",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-4.log.gz"
+  },
+  {
+    "bytes": 72368,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial1.json",
+    "source_sha256": "7edabdc447df806c38718b7e03d1599e43e47cbc74330c4a2dd980c5669c47a6",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-1.json",
+    "stored_sha256": "7edabdc447df806c38718b7e03d1599e43e47cbc74330c4a2dd980c5669c47a6"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial1.junit.xml",
+    "source_sha256": "3be064c2c34b67f3ef5688a2487572897139697980311ef576d81fe01d83a49b",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-1.junit.xml",
+    "stored_sha256": "3be064c2c34b67f3ef5688a2487572897139697980311ef576d81fe01d83a49b"
+  },
+  {
+    "compressed_bytes": 31,
+    "compressed_sha256": "2e4dd573c61c2d3a550a9c51f0bfbf5226c0b7c3fe997ff3adee35c461114379",
+    "decompression_verified": true,
+    "kind": "gzip-lossless-log",
+    "original_bytes": 80,
+    "original_sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial1.log",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-1.log.gz"
+  },
+  {
+    "bytes": 72178,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial2.json",
+    "source_sha256": "917e6e11da2910522a65e01a4e5c1e265e219b520b7dc79f27679d4a42bb598d",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-2.json",
+    "stored_sha256": "917e6e11da2910522a65e01a4e5c1e265e219b520b7dc79f27679d4a42bb598d"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial2.junit.xml",
+    "source_sha256": "d03661b5f8e6f5c6f6534939982fa3cb308cb258da7695b3a2ee017b3d338cc9",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-2.junit.xml",
+    "stored_sha256": "d03661b5f8e6f5c6f6534939982fa3cb308cb258da7695b3a2ee017b3d338cc9"
+  },
+  {
+    "compressed_bytes": 31,
+    "compressed_sha256": "2e4dd573c61c2d3a550a9c51f0bfbf5226c0b7c3fe997ff3adee35c461114379",
+    "decompression_verified": true,
+    "kind": "gzip-lossless-log",
+    "original_bytes": 80,
+    "original_sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial2.log",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-2.log.gz"
+  },
+  {
+    "bytes": 72339,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial3.json",
+    "source_sha256": "3085d831664948cf8d3180d6bf9e7940d193e1954b89b2eb24a15236e249acc2",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-3.json",
+    "stored_sha256": "3085d831664948cf8d3180d6bf9e7940d193e1954b89b2eb24a15236e249acc2"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial3.junit.xml",
+    "source_sha256": "36d78f6f72c9645866fd63d9c3544361fee6471f5b2f9740935ca96601c3007d",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-3.junit.xml",
+    "stored_sha256": "36d78f6f72c9645866fd63d9c3544361fee6471f5b2f9740935ca96601c3007d"
+  },
+  {
+    "compressed_bytes": 31,
+    "compressed_sha256": "2e4dd573c61c2d3a550a9c51f0bfbf5226c0b7c3fe997ff3adee35c461114379",
+    "decompression_verified": true,
+    "kind": "gzip-lossless-log",
+    "original_bytes": 80,
+    "original_sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial3.log",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-3.log.gz"
+  },
+  {
+    "bytes": 71975,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial4.json",
+    "source_sha256": "6e91ea5b052dbffd52c82093437e1a014efd5c4d2ecb23855cf46b2e87f93e5a",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-4.json",
+    "stored_sha256": "6e91ea5b052dbffd52c82093437e1a014efd5c4d2ecb23855cf46b2e87f93e5a"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial4.junit.xml",
+    "source_sha256": "3f445687a7815403d6a5dbe2fa4bebb1b6cfb08669b5c6c189dbf97454890d7e",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-4.junit.xml",
+    "stored_sha256": "3f445687a7815403d6a5dbe2fa4bebb1b6cfb08669b5c6c189dbf97454890d7e"
+  },
+  {
+    "compressed_bytes": 31,
+    "compressed_sha256": "2e4dd573c61c2d3a550a9c51f0bfbf5226c0b7c3fe997ff3adee35c461114379",
+    "decompression_verified": true,
+    "kind": "gzip-lossless-log",
+    "original_bytes": 80,
+    "original_sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial4.log",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-4.log.gz"
+  },
+  {
+    "bytes": 72361,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial5.json",
+    "source_sha256": "dcf280d7567b863da7b9addf5e22df0b5ed2068549526e9375deb21f75d448df",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-5.json",
+    "stored_sha256": "dcf280d7567b863da7b9addf5e22df0b5ed2068549526e9375deb21f75d448df"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial5.junit.xml",
+    "source_sha256": "d59a88ccdf2c33c0c4dd5820d2822a09b4a33e8ad53f00d17c5fd3aa1998cf6b",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-5.junit.xml",
+    "stored_sha256": "d59a88ccdf2c33c0c4dd5820d2822a09b4a33e8ad53f00d17c5fd3aa1998cf6b"
+  },
+  {
+    "compressed_bytes": 31,
+    "compressed_sha256": "2e4dd573c61c2d3a550a9c51f0bfbf5226c0b7c3fe997ff3adee35c461114379",
+    "decompression_verified": true,
+    "kind": "gzip-lossless-log",
+    "original_bytes": 80,
+    "original_sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d",
+    "source_path": "/tmp/atlas-cadence-matrix/r3a-3f675-trial5.log",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-5.log.gz"
+  },
+  {
+    "bytes": 72174,
+    "kind": "raw-json",
+    "source_path": "/tmp/atlas-cadence-r2-trial1.json",
+    "source_sha256": "ab25027e7e2ce0edadf533238050354b40d6a584cf20376608c2b397b38d8b3d",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-pre-matrix-trial.json",
+    "stored_sha256": "ab25027e7e2ce0edadf533238050354b40d6a584cf20376608c2b397b38d8b3d"
+  },
+  {
+    "bytes": 415,
+    "kind": "raw-junit",
+    "source_path": "/tmp/atlas-cadence-r2-trial1.junit.xml",
+    "source_sha256": "7528f49b30f7615ccbd0cab1d4e9a5d626b42089b775e5225b8461f76c6eba14",
+    "stored_path": "docs/v2/transition-r3a-completion-evidence/cadence/r2-pre-matrix-trial.junit.xml",
+    "stored_sha256": "7528f49b30f7615ccbd0cab1d4e9a5d626b42089b775e5225b8461f76c6eba14"
+  }
+]

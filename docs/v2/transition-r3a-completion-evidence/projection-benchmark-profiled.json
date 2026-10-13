@@ -1,0 +1,21 @@
+{
+  "a0_event_receipts": 1,
+  "auxiliary_feature_refs": 64,
+  "brief_body_bytes": 186429,
+  "budget_ns": 100000000,
+  "database_bytes_after_close": 4186112,
+  "database_bytes_open": 3809280,
+  "database_directory_bytes_open": 6466520,
+  "failure_receipts": 0,
+  "feature_input_refs": 457,
+  "filesystem_write_delta_bytes_during_cycle": 0,
+  "process_peak_rss_kib": 56564,
+  "projection_cpu_ns": 84293578,
+  "projection_status": "PERSISTED_BLOCKED",
+  "projection_wall_ns": 84405796,
+  "source_refs": 486,
+  "source_sha": "52720b4522fc3aa2a04d233f23edd7fec7532461",
+  "synthetic_h1_bars": 100,
+  "synthetic_h4_bars": 100,
+  "synthetic_m15_bars": 192
+}

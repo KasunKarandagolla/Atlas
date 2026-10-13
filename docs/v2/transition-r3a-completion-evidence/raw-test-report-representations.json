@@ -1,0 +1,24 @@
+[
+  {
+    "decompression_sha256": "1834d178ab782470352de2d31ee55a80d82da7ad10e053b2211783d3e92bbe42",
+    "deterministic_gzip_mtime": 0,
+    "lossless_verified": true,
+    "original_path": "docs/v2/transition-r3a-completion-evidence/initial-long-basetemp-calendar.junit.xml",
+    "original_sha256": "1834d178ab782470352de2d31ee55a80d82da7ad10e053b2211783d3e92bbe42",
+    "original_size_bytes": 29884,
+    "representation_path": "docs/v2/transition-r3a-completion-evidence/initial-long-basetemp-calendar.junit.xml.gz",
+    "representation_sha256": "dc03bace6c8edb8cd6a5ad282fef5ff4f6c0362da7b2e26f698996075d164fb9",
+    "representation_size_bytes": 5386
+  },
+  {
+    "decompression_sha256": "765bebc1339ce138ff6f11631479393eec4e8172f5d99d52e774f566054b721f",
+    "deterministic_gzip_mtime": 0,
+    "lossless_verified": true,
+    "original_path": "docs/v2/transition-r3a-completion-evidence/red-feature-baseline.junit.xml",
+    "original_sha256": "765bebc1339ce138ff6f11631479393eec4e8172f5d99d52e774f566054b721f",
+    "original_size_bytes": 858,
+    "representation_path": "docs/v2/transition-r3a-completion-evidence/red-feature-baseline.junit.xml.gz",
+    "representation_sha256": "90f76b0cdafe139c474293ceb3e654465e4932f4bb95c2de0f1b5f926ab61eda",
+    "representation_size_bytes": 459
+  }
+]

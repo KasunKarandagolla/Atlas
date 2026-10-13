@@ -1,0 +1,77 @@
+{
+  "container_limits": {
+    "cpu_quota_cores": 2,
+    "memory_max_bytes": 8589934592
+  },
+  "current_after_evidence_packaging": {
+    "cgroup_io_wbytes_cumulative": 960024576,
+    "cgroup_memory_current_bytes": 1734062080,
+    "rolling_24h_write_history": "UNVERIFIED",
+    "tmp_free_bytes": 4537548800,
+    "workspace_free_bytes": 31112048640
+  },
+  "final3_groups": 7,
+  "final3_totals": {
+    "duration_seconds": 258.854,
+    "filesystem_write_delta_bytes": 1806336,
+    "max_children_peak_rss_kib": 475420,
+    "system_cpu_seconds": 8.97,
+    "tests": 563,
+    "user_cpu_seconds": 218.874
+  },
+  "limits": {
+    "full_suite": "NOT RUN \u2014 TEST GATE",
+    "rolling_24h_budget_bytes": 5000000000,
+    "rolling_24h_budget_status": "UNVERIFIED"
+  },
+  "post_suite_free_bytes": {
+    "tmp": 4537548800,
+    "workspace": 31112272512
+  },
+  "post_test_observation": {
+    "cgroup_io_wbytes_cumulative": 958930944,
+    "cgroup_io_wbytes_is_rolling_24h_ledger": false,
+    "cgroup_memory_current_bytes": 1735294976,
+    "rolling_24h_filesystem_write_total": "UNVERIFIED"
+  },
+  "preflight_free_bytes_approx": {
+    "tmp": 5077000000,
+    "workspace": 31100000000
+  },
+  "projection_benchmarks": {
+    "100ms_budget_trials_ns": [
+      87914000,
+      100201000,
+      83117000
+    ],
+    "100ms_result": "two blocked briefs persisted; one deferred",
+    "80ms_budget_trials_ns": [
+      83439000,
+      92584000,
+      85026000
+    ],
+    "80ms_result": "all deferred and failure receipt recorded",
+    "maximum_permitted_effort": "TEST GATE",
+    "profiled_trial": {
+      "peak_rss_kib": 56564,
+      "process_cpu_ns": 84294000,
+      "wall_ns": 84406000
+    },
+    "sqlite_size_deferred_after_close_bytes": 3932160,
+    "sqlite_size_success_after_close_bytes": 4186112,
+    "synthetic_inputs": {
+      "auxiliary": 64,
+      "candidate_count": 3,
+      "h1": 100,
+      "h4": 100,
+      "indexed_feature_records": 457,
+      "m15": 192,
+      "persisted_body_bytes": 186429,
+      "qualified_fact_count": 1,
+      "source_refs": 486
+    }
+  },
+  "source_sha": "8fbf1ec31588a1c315acce048176066b4c6bbecc",
+  "test_temp_peak_retained_or_in_use_bytes_approx": 1150000000,
+  "test_temp_roots_removed": true
+}

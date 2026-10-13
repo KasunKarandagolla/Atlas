@@ -1,0 +1,62 @@
+{
+  "measurements": [
+    {
+      "auxiliary_feature_refs": 64,
+      "brief_body_bytes": 186429,
+      "budget_ns": 100000000,
+      "candidate_rows": 3,
+      "event_receipts": 1,
+      "fact_rows": 1,
+      "failure_receipts": 0,
+      "feature_input_refs": 457,
+      "peak_rss_kib": 56416,
+      "projection_duration_ns": 87913687,
+      "projection_status": "PERSISTED_BLOCKED",
+      "shortlist_rows": 0,
+      "source_refs": 486,
+      "sqlite_bytes": 3809280,
+      "synthetic_h1_bars": 100,
+      "synthetic_h4_bars": 100,
+      "synthetic_m15_bars": 192,
+      "trial": 1
+    },
+    {
+      "auxiliary_feature_refs": 64,
+      "budget_ns": 100000000,
+      "event_receipts": 1,
+      "failure_receipts": 1,
+      "feature_input_refs": 457,
+      "peak_rss_kib": 57400,
+      "projection_duration_ns": 100200737,
+      "projection_status": "DEFERRED",
+      "sqlite_bytes": 3809280,
+      "synthetic_h1_bars": 100,
+      "synthetic_h4_bars": 100,
+      "synthetic_m15_bars": 192,
+      "trial": 2
+    },
+    {
+      "auxiliary_feature_refs": 64,
+      "brief_body_bytes": 186429,
+      "budget_ns": 100000000,
+      "candidate_rows": 3,
+      "event_receipts": 1,
+      "fact_rows": 1,
+      "failure_receipts": 0,
+      "feature_input_refs": 457,
+      "peak_rss_kib": 57400,
+      "projection_duration_ns": 83117400,
+      "projection_status": "PERSISTED_BLOCKED",
+      "shortlist_rows": 0,
+      "source_refs": 486,
+      "sqlite_bytes": 3809280,
+      "synthetic_h1_bars": 100,
+      "synthetic_h4_bars": 100,
+      "synthetic_m15_bars": 192,
+      "trial": 3
+    }
+  ],
+  "method": "OpsSupervisorV2 production adapter with indexed M15/H1/H4 and auxiliary evidence",
+  "qualification": "TEST GATE: finite synthetic active-source overlap measured; max rows/candidate population/1MB payload and sustained cadence not qualified",
+  "source_sha": "52720b4522fc3aa2a04d233f23edd7fec7532461"
+}

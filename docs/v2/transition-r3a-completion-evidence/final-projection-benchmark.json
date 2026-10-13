@@ -1,0 +1,58 @@
+{
+  "measurements": [
+    {
+      "a0_receipt_hash": "59cf161df6bc793afc90c1460998786434a635845673d008ce26899279e5adc7",
+      "auxiliary_feature_refs": 64,
+      "budget_ns": 80000000,
+      "candidate_rows": null,
+      "event_receipts": 1,
+      "failure_receipts": 1,
+      "feature_input_refs": 457,
+      "peak_rss_kib": 56444,
+      "projection_duration_ns": 83439271,
+      "projection_status": "DEFERRED",
+      "sqlite_bytes": 3809280,
+      "synthetic_h1_bars": 100,
+      "synthetic_h4_bars": 100,
+      "synthetic_m15_bars": 192,
+      "trial": 1
+    },
+    {
+      "a0_receipt_hash": "59cf161df6bc793afc90c1460998786434a635845673d008ce26899279e5adc7",
+      "auxiliary_feature_refs": 64,
+      "budget_ns": 80000000,
+      "candidate_rows": null,
+      "event_receipts": 1,
+      "failure_receipts": 1,
+      "feature_input_refs": 457,
+      "peak_rss_kib": 56916,
+      "projection_duration_ns": 92583693,
+      "projection_status": "DEFERRED",
+      "sqlite_bytes": 3809280,
+      "synthetic_h1_bars": 100,
+      "synthetic_h4_bars": 100,
+      "synthetic_m15_bars": 192,
+      "trial": 2
+    },
+    {
+      "a0_receipt_hash": "59cf161df6bc793afc90c1460998786434a635845673d008ce26899279e5adc7",
+      "auxiliary_feature_refs": 64,
+      "budget_ns": 80000000,
+      "candidate_rows": null,
+      "event_receipts": 1,
+      "failure_receipts": 1,
+      "feature_input_refs": 457,
+      "peak_rss_kib": 56916,
+      "projection_duration_ns": 85025779,
+      "projection_status": "DEFERRED",
+      "sqlite_bytes": 3809280,
+      "synthetic_h1_bars": 100,
+      "synthetic_h4_bars": 100,
+      "synthetic_m15_bars": 192,
+      "trial": 3
+    }
+  ],
+  "method": "OpsSupervisorV2 production adapter with indexed M15/H1/H4 and auxiliary evidence",
+  "qualification": "TEST GATE: finite synthetic active-source overlap measured; maximum candidate/row/1MB payload and sustained cadence not qualified",
+  "source_sha": "52720b4522fc3aa2a04d233f23edd7fec7532461"
+}

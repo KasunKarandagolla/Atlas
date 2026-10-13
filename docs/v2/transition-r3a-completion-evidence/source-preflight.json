@@ -1,0 +1,197 @@
+{
+  "additional_required_repository_sources_read": [
+    "docs/v2/ATLAS_RED_R3A_PRODUCTION_INTELLIGENCE_HANDOFF.md",
+    "docs/v2/ATLAS_RED_R3A_EVIDENCE_MANIFEST.json",
+    "docs/v2/ATLAS_RED_R3B_AMENDMENT_ACCEPTANCE_DELTA.md",
+    "docs/v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md"
+  ],
+  "all_frozen_hashes_match": true,
+  "frozen_hashes_actual": {
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+  },
+  "frozen_hashes_expected": {
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+  },
+  "missing_admin_files": [
+    "01_CHATGPT_PROJECT_INSTRUCTIONS_COPY_PASTE.md",
+    "02_NEW_PROJECT_FIRST_CHAT_KICKOFF.md"
+  ],
+  "owner_zip_file_count": 23,
+  "owner_zip_inventory": [
+    {
+      "path": "00_START_HERE.md",
+      "sha256": "1901f20a0f7b3f229b114b316ea83f32e78d7bcab681cf126fcd6be9ea44dff7",
+      "size_bytes": 4860
+    },
+    {
+      "path": "04_ATLAS_ENGINEERING_EXECUTION_RUNBOOK.md",
+      "sha256": "8be2363d39f91fe796ac6d84bc066dcc0dfc3e70cdb628d6630bac4e321535b6",
+      "size_bytes": 61469
+    },
+    {
+      "path": "ADR-001_Binance_Causal_Market_Data_Linux.md",
+      "sha256": "23718723d44c2f4211a21078e848a09934a09d01857fb4922d945024dfa6972b",
+      "size_bytes": 12263
+    },
+    {
+      "path": "ADR-002_Agent_Opportunity_Decision.md",
+      "sha256": "2d80ac6dd939f8dfb92ea3da6b547bc92fdd840ab069aabceacbbda100156bb5",
+      "size_bytes": 23444
+    },
+    {
+      "path": "ADR-003_Position_Protection_Lifecycle.md",
+      "sha256": "17150dd4f3b3fb85a056aa2600597bcdd317fc4338adeff90bfbb8d4f6d2715f",
+      "size_bytes": 18276
+    },
+    {
+      "path": "ADR-004_Mature_Libraries_Pretrained_ML.md",
+      "sha256": "2fb5b4c78e8d6ab843daffccaa728eb253a1918070e41234e58ed9a84683036a",
+      "size_bytes": 17495
+    },
+    {
+      "path": "ADR-005_Independent_Quantitative_Trade_Assessment.md",
+      "sha256": "1f7a33f5cebec5310941a4ff0637232586bf6bef15ba4f6ec213ed78d79e22ca",
+      "size_bytes": 12653
+    },
+    {
+      "path": "ADR-006_Agent_Initiated_Trading_Analysis_Tools.md",
+      "sha256": "900a81459448fea2883097d4f650cf231e6fe863d92d5cefad13e3f34912b53d",
+      "size_bytes": 17401
+    },
+    {
+      "path": "ADR-007_Durable_Trading_Opportunity_And_Analysis_Memory.md",
+      "sha256": "747a8ec425efa445771b46faddc0b118f237626bcc2c2a094dc422ac478a09b4",
+      "size_bytes": 18982
+    },
+    {
+      "path": "ADR-008_Event_Driven_LLM_Vision_Cost_And_Bandwidth.md",
+      "sha256": "6206c23e038bd9f8f1273be6e8ea4f7823fbcf65f331fa04a62eb2560cfeb2ae",
+      "size_bytes": 25631
+    },
+    {
+      "path": "ADR-009_Capital_Aware_Discovery_And_Manual_Control.md",
+      "sha256": "1adff9b89b91f3f4e625622395ac42a0b5e9194ebe9c0728e8d026b942f4dc83",
+      "size_bytes": 6980
+    },
+    {
+      "path": "ADR-010_Cached_Cross_Coin_Relationships_And_Peer_Context.md",
+      "sha256": "b47474f750bc6b03571f799a7fd819e1cb31249ce840306d05d139ae3501bca8",
+      "size_bytes": 5691
+    },
+    {
+      "path": "ADR-011_Chart_Vision_Provider_And_Artifact_Contract.md",
+      "sha256": "90c5f143b477372aef34ecd51d363a2268ee3e28b246734b6d09a030972ae7ad",
+      "size_bytes": 6084
+    },
+    {
+      "path": "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "size_bytes": 11288
+    },
+    {
+      "path": "ATLAS_DESIGN_SIGNOFF_AND_OPEN_GATES.md",
+      "sha256": "65d277ff2640b6d4ac0e5fbb688356d1cd7632c5bbc880624be71547f84b36b8",
+      "size_bytes": 11071
+    },
+    {
+      "path": "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+      "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "size_bytes": 100689
+    },
+    {
+      "path": "ATLAS_FINAL_TARGET_DESIGN_LOCK_2026-10-12.md",
+      "sha256": "debe11c6cb0763eaed7e7d628e3dd6260635e6edaaa4a9cab39a4273be5b3265",
+      "size_bytes": 4322
+    },
+    {
+      "path": "ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md",
+      "sha256": "082776b57f74300f63745cad84840e50a881e4de18511024a052de960f3b7d6d",
+      "size_bytes": 15611
+    },
+    {
+      "path": "ATLAS_TRANSITION_ADVERSARIAL_DESIGN_REVIEW.md",
+      "sha256": "8c1400e5972a75612e6586ddd338f0a8eceab7ac8ec65ab6eb359916627b08f8",
+      "size_bytes": 24602
+    },
+    {
+      "path": "ATLAS_TRANSITION_ARCHITECTURE_DESIGN_V1.md",
+      "sha256": "2a5735ee29c73c079744f96504a0fe7e5cff86c81a8a2de7766b5974d75e1dfe",
+      "size_bytes": 52277
+    },
+    {
+      "path": "ATLAS_TRANSITION_FREEZE_TRACE_AND_APPROVAL.md",
+      "sha256": "21fdbfe8b076209cc3eb1bdc7f1f9863c416157662350ff2d6ed81b4291c9448",
+      "size_bytes": 15606
+    },
+    {
+      "path": "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "size_bytes": 88134
+    },
+    {
+      "path": "MANIFEST.json",
+      "sha256": "7052fabcdbb3b5ece8d4a58ef8a0b56865e76be1defcc1ea626216cecd2051f9",
+      "size_bytes": 7665
+    }
+  ],
+  "owner_zip_inventory_count": 23,
+  "owner_zip_path": "/tmp/codex-remote-attachments/01a134aa-3784-734b-93c9-5da4b873c0a1/a22d7527-33bc-478c-af7c-f1aa0bee42c8/1-ATLAS_RED_R3A_completion_owner_source_bundle_2026-10-13.zip",
+  "owner_zip_sha256": "bd3e258007ab6cc8ceee7d8b564320e4acc0ed86066fc6a6c65e0947fad8b825",
+  "owner_zip_sha256_verified": "bd3e258007ab6cc8ceee7d8b564320e4acc0ed86066fc6a6c65e0947fad8b825",
+  "post_implementation_authority_check": {
+    "frozen_hashes_match": {
+      "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+    },
+    "zip_sha256": "bd3e258007ab6cc8ceee7d8b564320e4acc0ed86066fc6a6c65e0947fad8b825"
+  },
+  "required_owner_sources_read": [
+    "00_START_HERE.md",
+    "ATLAS_FINAL_TARGET_DESIGN_LOCK_2026-10-12.md",
+    "ATLAS_TRANSITION_ARCHITECTURE_DESIGN_V1.md",
+    "ATLAS_OWNER_DECISIONS_AGENT_AUTHORITY_DISCOVERY_ALTCOINS_2026-10-12.md",
+    "ADR-001_Binance_Causal_Market_Data_Linux.md",
+    "ADR-002_Agent_Opportunity_Decision.md",
+    "ADR-005_Independent_Quantitative_Trade_Assessment.md",
+    "ADR-006_Agent_Initiated_Trading_Analysis_Tools.md",
+    "ADR-007_Durable_Trading_Opportunity_And_Analysis_Memory.md",
+    "ADR-008_Event_Driven_LLM_Vision_Cost_And_Bandwidth.md"
+  ],
+  "required_repository_source_inventory": [
+    {
+      "path": "docs/v2/ATLAS_RED_R3A_PRODUCTION_INTELLIGENCE_HANDOFF.md",
+      "sha256": "420a3c4a31e71f78659442169d96d188808fe6b5d9f3f315bc7d61e8329dde44",
+      "size_bytes": 16555
+    },
+    {
+      "path": "docs/v2/ATLAS_RED_R3A_EVIDENCE_MANIFEST.json",
+      "sha256": "23174a17d8ea5bf2757e6bfa5f9a1649fffeda31ce3a1781f09fcd60dda60881",
+      "size_bytes": 19614
+    },
+    {
+      "path": "docs/v2/ATLAS_RED_R3B_AMENDMENT_ACCEPTANCE_DELTA.md",
+      "sha256": "091a00c1f4e6f06a6ae20ba01ac19132d4f091f6d4ad1f66abad4744efde7c6a",
+      "size_bytes": 3060
+    },
+    {
+      "path": "docs/v2/ATLAS_S47_COMPARATIVE_DECISION_AMENDMENT_PROPOSED_V1.md",
+      "sha256": "4928312614a3ef4c5b07ac8e5626be67dbd8db7e4955e0076a21b556c3ead8f4",
+      "size_bytes": 5336
+    }
+  ],
+  "runbook_sections_read": [
+    2,
+    3,
+    4,
+    5,
+    7
+  ],
+  "runtime_model": "UNVERIFIED \u2014 owner selected GPT-6 Luna; tool runtime exposes no independently verifiable exact model identity",
+  "s47_amendment_status": "PROPOSED \u2014 NOT ACCEPTED; effective policy identity NONE",
+  "subagents": "None used"
+}

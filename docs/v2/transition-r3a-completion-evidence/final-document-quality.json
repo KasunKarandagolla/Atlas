@@ -1,0 +1,58 @@
+{
+  "evidence_serialization": {
+    "all_log_and_red_junit_gzip_mtime_zero": true,
+    "all_valid": true,
+    "gzip_count": 39,
+    "json_count": 27,
+    "junit_xml_count": 22
+  },
+  "git_diff_check": {
+    "exit_code": 0,
+    "output": "",
+    "status": "PASS"
+  },
+  "handoff": {
+    "ends_with_newline": true,
+    "status": "PASS",
+    "trailing_whitespace_lines": []
+  },
+  "junit_reports": {
+    "all_xml_valid": true,
+    "count": 22,
+    "paths": [
+      "docs/v2/transition-r3a-completion-evidence/cadence/r2-pre-matrix-trial.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-1.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-2.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-3.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-4.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-1.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-2.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-3.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-4.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-5.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/final3-focused-s47.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/final3-production-calendar-s27-s33-s37-s44-s46-s48.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/final3-r1-source-golden.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/final3-r2-capture-matrix.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/final3-r2-mixed-1024.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/final3-r2-public-runtime.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/final3-s45-content-hash-outcomes.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/initial-long-basetemp-calendar.junit.xml.gz",
+      "docs/v2/transition-r3a-completion-evidence/production-calendar-numpy-rerun.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/production-calendar-regression.junit.xml",
+      "docs/v2/transition-r3a-completion-evidence/red-feature-baseline.junit.xml.gz",
+      "docs/v2/transition-r3a-completion-evidence/short-basetemp-socket-rerun.junit.xml"
+    ]
+  },
+  "log": {
+    "ends_with_newline": true,
+    "status": "PASS",
+    "trailing_whitespace_lines": []
+  },
+  "source_sha": "8fbf1ec31588a1c315acce048176066b4c6bbecc",
+  "translog": {
+    "ends_with_newline": true,
+    "status": "PASS",
+    "trailing_whitespace_lines": []
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "a0_equality": {
+    "r2_vs_completion_enabled_equal": true,
+    "r2_vs_r3a_disabled_equal": true,
+    "r3a_disabled_vs_enabled_equal": true
+  },
+  "accepted_r2_ancestor_exit": 0,
+  "accepted_r3a_ancestor_exit": 0,
+  "branch": "fix/red-r3a-completion-2026-10-13",
+  "deterministic_gzip_logs_lossless": true,
+  "final3_junit": [
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-r3a-completion-evidence/final3-focused-s47.junit.xml",
+      "skipped": 0,
+      "tests": 109
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-r3a-completion-evidence/final3-production-calendar-s27-s33-s37-s44-s46-s48.junit.xml",
+      "skipped": 0,
+      "tests": 177
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-r3a-completion-evidence/final3-r1-source-golden.junit.xml",
+      "skipped": 0,
+      "tests": 112
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-r3a-completion-evidence/final3-r2-capture-matrix.junit.xml",
+      "skipped": 0,
+      "tests": 63
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-r3a-completion-evidence/final3-r2-mixed-1024.junit.xml",
+      "skipped": 0,
+      "tests": 1
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-r3a-completion-evidence/final3-r2-public-runtime.junit.xml",
+      "skipped": 0,
+      "tests": 40
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/v2/transition-r3a-completion-evidence/final3-s45-content-hash-outcomes.junit.xml",
+      "skipped": 0,
+      "tests": 61
+    }
+  ],
+  "final3_test_count": 563,
+  "frozen_hashes": {
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+  },
+  "gzip_files_decompressed": 39,
+  "ignored_raw_logs_absent": true,
+  "json_files_validated": 27,
+  "junit_files_validated": 22,
+  "junit_paths": [
+    "docs/v2/transition-r3a-completion-evidence/cadence/r2-pre-matrix-trial.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-1.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-2.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-3.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/cadence/r2-trial-4.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-1.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-2.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-3.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-4.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/cadence/r3a-trial-5.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/final3-focused-s47.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/final3-production-calendar-s27-s33-s37-s44-s46-s48.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/final3-r1-source-golden.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/final3-r2-capture-matrix.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/final3-r2-mixed-1024.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/final3-r2-public-runtime.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/final3-s45-content-hash-outcomes.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/initial-long-basetemp-calendar.junit.xml.gz",
+    "docs/v2/transition-r3a-completion-evidence/production-calendar-numpy-rerun.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/production-calendar-regression.junit.xml",
+    "docs/v2/transition-r3a-completion-evidence/red-feature-baseline.junit.xml.gz",
+    "docs/v2/transition-r3a-completion-evidence/short-basetemp-socket-rerun.junit.xml"
+  ],
+  "local_head": "8fbf1ec31588a1c315acce048176066b4c6bbecc",
+  "raw_red_junit_gzip_representations_verified": 2,
+  "remote_code_branch": "8fbf1ec31588a1c315acce048176066b4c6bbecc",
+  "secret_scan_status": "PASS",
+  "source_sha": "8fbf1ec31588a1c315acce048176066b4c6bbecc",
+  "zip_file_count": 23,
+  "zip_sha256": "bd3e258007ab6cc8ceee7d8b564320e4acc0ed86066fc6a6c65e0947fad8b825"
+}
