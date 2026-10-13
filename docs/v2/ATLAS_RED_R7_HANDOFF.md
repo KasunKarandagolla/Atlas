@@ -27,3 +27,7 @@
 - No merge, deployment, or trading was performed.
 
 Separate sanitized provider results are in [Binance results](ATLAS_RED_R7_BINANCE_RESULTS.md) and [Google results](ATLAS_RED_R7_GOOGLE_RESULTS.md). Machine-readable records are under `transition-r7-evidence/`.
+
+## Delivery
+
+Implementation and evidence commit `4bbde011dd80e81ccfcc019aed2e907d90f6f73c` was pushed to `fix/red-r7-api-adapter-corrections-2026-10-14`. `git ls-remote` returned the same SHA, and the R6 base is an ancestor. No merge or deployment was performed.

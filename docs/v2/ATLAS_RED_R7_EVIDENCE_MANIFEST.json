@@ -63,8 +63,11 @@
     "Authenticated Binance execution lifecycle, protection, recovery, and capital qualification remain separate unverified gates."
   ],
   "delivery": {
-    "commit_sha": null,
-    "push_verified": false,
-    "remote_tip_sha": null
+    "commit_sha": "4bbde011dd80e81ccfcc019aed2e907d90f6f73c",
+    "remote_ref": "refs/heads/fix/red-r7-api-adapter-corrections-2026-10-14",
+    "push_verified": true,
+    "remote_tip_sha": "4bbde011dd80e81ccfcc019aed2e907d90f6f73c",
+    "r6_base_is_ancestor": true,
+    "merge_or_deployment": false
   }
 }

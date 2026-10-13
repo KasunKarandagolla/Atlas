@@ -10,6 +10,8 @@
 
 **TESTED:** focused Session 055 group 19/19; Ruff, targeted Gemma-adapter mypy, and `git diff --check` pass. Google publishes Gemma 4 input/output as free on its free tier and lists Sri Lanka as available, but project-specific billing status remains UNVERIFIED; no-charge authorization was not established. Generation smoke remains unrun. Details: [R7 handoff](docs/v2/ATLAS_RED_R7_HANDOFF.md), separate [Binance](docs/v2/ATLAS_RED_R7_BINANCE_RESULTS.md) and [Google](docs/v2/ATLAS_RED_R7_GOOGLE_RESULTS.md) reports, and sanitized [evidence](docs/v2/transition-r7-evidence/).
 
+**CONFIRMED PUSH:** implementation/evidence commit `4bbde011dd80e81ccfcc019aed2e907d90f6f73c` is on the R7 branch; `git ls-remote` matched the exact SHA, and the R6 base is an ancestor. The final documentation receipt is committed and verified separately below.
+
 ## Previous checkpoint — R4 Gemma and Futures Demo boundaries — 2026-10-13
 
 **CONFIRMED:** Owner verified GPT-6 Luna. Branch `impl/red-r4-gemma-demo-integration-2026-10-13` starts at remote R3A tip `4faf9a065eb00df705694bc107401c41c0b322b2`; freeze hashes and requested owner sources match.
@@ -341,3 +343,7 @@ Final focused selection: 150/150 pass. Final repository suite: 2,914 total, 2,90
 ## ATLAS RED R6 evidence push verified — 2026-10-13
 
 **CONFIRMED:** documentation/evidence commit `4fede7afbd141732a5bab661c68db3b0fee3b793` was pushed to `origin/fix/red-r6-full-workflow-demo-qualification-2026-10-13`; `git ls-remote` returned the same SHA. The implementation commit `ee9038ade842b3a23bc77679dccbc6fb6e04fa51` and required R5 base `9c92aad2331e138e165553497f511c562a6ebcf5` remain ancestors. All eight separate reports, the machine evidence manifest, sanitized test and runtime evidence, secret scan, run ledger and issue register are present. The current branch tip is the documentation/evidence commit; the final receipt commit follows. No merge, deployment, capital, provider, or order authority was added.
+
+## ATLAS RED R7 push verification — 2026-10-14
+
+**CONFIRMED:** implementation/evidence commit `4bbde011dd80e81ccfcc019aed2e907d90f6f73c` was pushed to `origin/fix/red-r7-api-adapter-corrections-2026-10-14`; `git ls-remote` returned the same SHA. The latest fetched R6 base `e402e4e81d1d6983d5065a816934f70f66e2c9c0` is an ancestor. This is a push receipt only; no merge, deployment, or order action occurred. A final documentation receipt follows.
