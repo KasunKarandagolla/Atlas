@@ -1,0 +1,70 @@
+{
+  "version": "ATLAS_RED_R6_STATIC_CHECKS_V1",
+  "source_base_commit": "9c92aad2331e138e165553497f511c562a6ebcf5",
+  "tested_implementation_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+  "checks": {
+    "ruff": {
+      "command": "uv run ruff check src tests scripts",
+      "status": "PASS"
+    },
+    "compileall": {
+      "command": "uv run python -m compileall -q src tests scripts",
+      "status": "PASS"
+    },
+    "frozen_dependency_lock": {
+      "command": "uv lock --check",
+      "status": "PASS",
+      "lockfile_changed": false
+    },
+    "environment_dependency_consistency": {
+      "command": "uv pip check",
+      "status": "PASS",
+      "installed_packages_checked": 36
+    },
+    "mypy_baseline_comparison": {
+      "command": "mypy src against R5 base 9c92aad and R6 working tree",
+      "baseline_errors": 53,
+      "baseline_files": 17,
+      "current_errors": 53,
+      "current_files": 17,
+      "source_files_checked": 286,
+      "normalized_message_delta": 0,
+      "status": "PASS_ZERO_DELTA"
+    },
+    "frozen_authorities": {
+      "status": "PASS",
+      "sha256": {
+        "V1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+        "V2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+        "Agent": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+      },
+      "modified": false
+    },
+    "diff_whitespace": {
+      "command": "git diff --check",
+      "status": "PASS"
+    },
+    "secret_scan": {
+      "status": "PASS_ZERO_MATCHES",
+      "scanned_file_count": 38,
+      "scan_artifact": "secret-scan.json"
+    },
+    "pinned_dependency_license_inventory": {
+      "status": "INVENTORY_ONLY",
+      "prior_evidence": "docs/v2/transition-r5-evidence/license_metadata_inventory.json",
+      "current_tool_availability": "pip-licenses was unavailable in R5; no new license policy decision was made"
+    },
+    "evidence_manifest_integrity": {
+      "status": "PASS",
+      "manifest": "docs/v2/ATLAS_RED_R6_EVIDENCE_MANIFEST.json",
+      "manifest_self_hash": "OMITTED; every other R6 changed/added file is inventoried"
+    },
+    "commit_ancestry_and_remote_push": {
+      "status": "IMPLEMENTATION_PUSH_VERIFIED; EVIDENCE_PUSH_VERIFICATION_FOLLOWS",
+      "base_commit": "9c92aad2331e138e165553497f511c562a6ebcf5",
+      "implementation_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "implementation_remote_branch_sha": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "base_is_ancestor": true
+    }
+  }
+}

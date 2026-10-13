@@ -1,0 +1,338 @@
+{
+  "base_commit": "9c92aad2331e138e165553497f511c562a6ebcf5",
+  "branch": "fix/red-r6-full-workflow-demo-qualification-2026-10-13",
+  "commands": [
+    "uv run pytest -q tests/v2/test_session031_acquisition_recovery_remediation.py tests/v2/test_session031_public_shadow_readiness.py --junitxml=/workspace/work/r6/baseline-session031.xml",
+    "uv run pytest -q tests/v2/test_session031_acquisition_recovery_remediation.py tests/v2/test_session031_public_shadow_readiness.py tests/runtime/test_session041_execution_final_review.py tests/runtime/test_session041_binance_readiness.py tests/v2/test_session036_product.py tests/v2/test_session041_basket_outcomes.py tests/v2/test_session041_broad_adoption_windows.py tests/v2/test_session041_broad_export.py tests/v2/test_session055_gemma_native.py tests/runtime/test_session055_binance_demo_only.py tests/runtime/test_session055_demo_read_probe.py --junitxml=/workspace/work/r6/focused-final-final.xml",
+    "uv run pytest -q --junitxml=/workspace/work/r6/full-suite-final-final.xml",
+    "uv run ruff check src tests scripts",
+    "uv run python -m compileall -q src tests scripts",
+    "uv lock --check",
+    "uv pip check",
+    "mypy src against R5 base and R6 implementation worktree; normalized diagnostics compared by file and message",
+    "uv run pytest -q -s -o junit_family=legacy tests/v2/test_session041_mixed_broad_capacity.py::test_mixed_1024_contract_public_workload_under_bounded_stalls tests/v2/test_session041_compressed_metadata.py::test_actual_broad_workset_universe_hashes_membership_and_all_row_storage_reduction --junitxml=/workspace/work/r6/performance-selected.xml"
+  ],
+  "date": "2026-10-13",
+  "evidence_status_summary": {
+    "BLOCKED BY ENVIRONMENT": "Production Binance market hosts denied by enforced policy; Demo clock GET returned HTTP 451.",
+    "IMPLEMENTED": "Typed metadata/causal-dependency, compact locator availability, bounded Gemma timeout, proxy-aware timestamped Demo probe, and regression fixture corrections.",
+    "NOT ESTIMABLE": "Genuine after-cost and prospective economics.",
+    "TEST GATE": "Complete scanner denominator, genuine production Brief, complete Demo lifecycle/protection/reconciliation, and eight skipped environment/integration checks.",
+    "TESTED": "150 focused tests, full repository suite, static and synthetic performance checks.",
+    "UNVERIFIED": "Gemini no-billing/provider result and selected runtime model identity."
+  },
+  "external_requests": {
+    "binance_demo_order_or_other_write": {
+      "count": 0,
+      "status": "ZERO ORDERS"
+    },
+    "binance_demo_public_instrument_info_get": {
+      "count": 0,
+      "status": "NOT ATTEMPTED; server-time/account sequence gate failed"
+    },
+    "binance_demo_server_time_get": {
+      "count": 2,
+      "first_attempt_timestamps": "NOT CAPTURED",
+      "second_attempt_request_started_utc": "2026-10-13T18:07:52.643759Z",
+      "second_attempt_response_observed_utc": "2026-10-13T18:07:53.402061Z",
+      "status": "HTTP 451 on both"
+    },
+    "binance_demo_signed_account_get": {
+      "count": 0,
+      "status": "NOT ATTEMPTED; server-time gate failed"
+    },
+    "gemini_api": {
+      "count": 0,
+      "status": "UNVERIFIED; no-billing evidence not established"
+    },
+    "production_binance_public_market": {
+      "count": 0,
+      "status": "BLOCKED BY ENVIRONMENT; production hosts excluded by policy"
+    }
+  },
+  "file_inventory": [
+    {
+      "bytes": 2522,
+      "evidence_status": "REPORT; OPEN EXTERNAL GATES EXPLICITLY MARKED",
+      "path": "docs/v2/ATLAS_RED_R6_BINANCE_DEMO_RESULTS.md",
+      "sha256": "cbf58efb40e88ffc8986ec3d776932e1eb7742e273bd260758f1c4d759eaaa83"
+    },
+    {
+      "bytes": 2067,
+      "evidence_status": "REPORT; OPEN EXTERNAL GATES EXPLICITLY MARKED",
+      "path": "docs/v2/ATLAS_RED_R6_GEMMA_AGENT_RESULTS.md",
+      "sha256": "203c90ec3ede01b8231450af75bc98adf8116e579a2daab07f5726f85e13368d"
+    },
+    {
+      "bytes": 3464,
+      "evidence_status": "REPORT; OPEN EXTERNAL GATES EXPLICITLY MARKED",
+      "path": "docs/v2/ATLAS_RED_R6_HANDOFF.md",
+      "sha256": "f71582a64f7e0f8dde326858848a78e7f201363c422297744ad9cb9e7628c5f2"
+    },
+    {
+      "bytes": 3397,
+      "evidence_status": "REPORT; OPEN EXTERNAL GATES EXPLICITLY MARKED",
+      "path": "docs/v2/ATLAS_RED_R6_ISSUES_AND_NEXT_ACTIONS.md",
+      "sha256": "f67f2ff9bac0b57244bd24370ff1746ec2300fed00cea9f22c1cbc50bd2d012e"
+    },
+    {
+      "bytes": 1943,
+      "evidence_status": "REPORT; OPEN EXTERNAL GATES EXPLICITLY MARKED",
+      "path": "docs/v2/ATLAS_RED_R6_PERFORMANCE.md",
+      "sha256": "8f825f1135b2922626588d110103e1b189f4a517e0c492f562626d259447302c"
+    },
+    {
+      "bytes": 4756,
+      "evidence_status": "REPORT; OPEN EXTERNAL GATES EXPLICITLY MARKED",
+      "path": "docs/v2/ATLAS_RED_R6_REGRESSION_RESULTS.md",
+      "sha256": "70258717134ba7790ca5799784c71905b08c75b76ca68ac6478cffe960fcdc1a"
+    },
+    {
+      "bytes": 1598,
+      "evidence_status": "REPORT; OPEN EXTERNAL GATES EXPLICITLY MARKED",
+      "path": "docs/v2/ATLAS_RED_R6_SUPERVISION_AND_RECOVERY.md",
+      "sha256": "ef7a339f418a21dd9cddda670121fd8839bffe2e74034e9b4de9a9e47fc21d7f"
+    },
+    {
+      "bytes": 4976,
+      "evidence_status": "REPORT; OPEN EXTERNAL GATES EXPLICITLY MARKED",
+      "path": "docs/v2/ATLAS_RED_R6_WORKFLOW_CHECKLIST.md",
+      "sha256": "22ea9d0c968314a5d77ee89a91e6e28e0616a452c4283883b2e8cefa2457ad73"
+    },
+    {
+      "bytes": 2518,
+      "evidence_status": "BLOCKED BY ENVIRONMENT",
+      "path": "docs/v2/transition-r6-evidence/demo-read-probe.json",
+      "sha256": "b27c695e8cd8c826f1a7951d3ad435a76e343640b0632b51b5b8da469ce3f785"
+    },
+    {
+      "bytes": 1248,
+      "evidence_status": "EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/environment-status.json",
+      "sha256": "013b04bdead3cac80c58a92ce58f93246221dcd2e9cd955382cd1965ff0d761a"
+    },
+    {
+      "bytes": 24601,
+      "evidence_status": "TESTED EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/focused-final.junit.xml",
+      "sha256": "3389c6554f1b942db97d6a2849ef2934d2e003c2e170591693afabe18e2e6f5f"
+    },
+    {
+      "bytes": 485899,
+      "evidence_status": "TESTED EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/full-suite-final.junit.xml",
+      "sha256": "bf2183c3ff182a2b25aea954c3e200f257ba68649feef4cfe6e34eb838edd3e6"
+    },
+    {
+      "bytes": 6574,
+      "evidence_status": "OPEN GATES RECORDED",
+      "path": "docs/v2/transition-r6-evidence/issue-register.json",
+      "sha256": "ef76a5d75540a19e2f2a290345375f23e4c4b0c1656b521123b9c620194ac299"
+    },
+    {
+      "bytes": 9804,
+      "evidence_status": "TESTED EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/mypy-r5-source.txt",
+      "sha256": "78ed7dcdda4e8059964703448220c940a915a4d5054118d5982b35c805e105f7"
+    },
+    {
+      "bytes": 9796,
+      "evidence_status": "TESTED EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/mypy-r6-source.txt",
+      "sha256": "d192dcd92254c24e01df3bd20c63ba5d4b7cfe3e1248052f3cb976eb487c1ddb"
+    },
+    {
+      "bytes": 4151,
+      "evidence_status": "TESTED SYNTHETIC ONLY",
+      "path": "docs/v2/transition-r6-evidence/performance-results.json",
+      "sha256": "7aa8b717795c52fd3f53884d9fa5de903cee7fb7da4fa9c22975e5de0dbd17d8"
+    },
+    {
+      "bytes": 153,
+      "evidence_status": "TESTED EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/resource-accounting.json",
+      "sha256": "00b6ad08207fbb1d4be0f74f0d3f7345ecbd53490e508e97744e73821f750af2"
+    },
+    {
+      "bytes": 8290,
+      "evidence_status": "TESTED EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/run-ledger.json",
+      "sha256": "50f3887152cb76a58135c1ae50eda47f7e7df3fd090ec3389948854ec705f309"
+    },
+    {
+      "bytes": 1234,
+      "evidence_status": "PASS_ZERO_MATCHES",
+      "path": "docs/v2/transition-r6-evidence/secret-scan.json",
+      "sha256": "756e9acf93b0737ad9ffa98191f726f5f6420ced1203bb59b64a79f6914630ad"
+    },
+    {
+      "bytes": 16586,
+      "evidence_status": "TESTED EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/session031-red-baseline.junit.xml",
+      "sha256": "b5481e8c1de156ed042d76a19d2be661558dc5fc1d88abb9c86eeb6e4621ca73"
+    },
+    {
+      "bytes": 2530,
+      "evidence_status": "PASS WITH BASELINE / INVENTORY LIMITATIONS",
+      "path": "docs/v2/transition-r6-evidence/static-checks.json",
+      "sha256": "c56e6b55986726e71d60c41d9f5b3932c9a229877902d0c040e8622ee3d846a7"
+    },
+    {
+      "bytes": 25528,
+      "evidence_status": "TESTED EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/synthetic-performance.junit.xml",
+      "sha256": "d81989e3322abac2c33a031fb133e55705bd6516f94a6cc0d1cf027ccc59cae4"
+    },
+    {
+      "bytes": 13603,
+      "evidence_status": "TESTED EVIDENCE",
+      "path": "docs/v2/transition-r6-evidence/synthetic-performance.txt",
+      "sha256": "917833030c7b3ef492109ecac3ec34b30af648a1e7d697708ae411ebdd60bbc7"
+    },
+    {
+      "bytes": 85506,
+      "evidence_status": "UPDATED",
+      "path": "log.md",
+      "sha256": "f4d5b92b76b7696f5460a5d8ee7a05d4c4d840fc097b32e8edacbade2fac79d3"
+    },
+    {
+      "bytes": 10165,
+      "evidence_status": "TESTED",
+      "path": "scripts/atlas_red_demo_read_probe.py",
+      "sha256": "b59f9487402a4e4876a427435a2399c90648926917cdb43f832f9a6793bfe640"
+    },
+    {
+      "bytes": 14716,
+      "evidence_status": "IMPLEMENTED / TESTED",
+      "path": "src/atlas/v2/features/pipeline.py",
+      "sha256": "232b8bb7fcdf57c599a2461b8f23530ff2a2318d3bde5939ba0fb4a2dfe495a5"
+    },
+    {
+      "bytes": 241027,
+      "evidence_status": "IMPLEMENTED / TESTED",
+      "path": "src/atlas/v2/memory/repository.py",
+      "sha256": "71bac49b19b29bb4dc4abee21cfda01d41523c24f48054f60f78e42357e10027"
+    },
+    {
+      "bytes": 26584,
+      "evidence_status": "IMPLEMENTED / TESTED",
+      "path": "src/atlas/v2/research/gemma_native.py",
+      "sha256": "6dfb898aeb5e399a85480d67ae59728022bb15d4ec04c8b843506c74fa4d3398"
+    },
+    {
+      "bytes": 392644,
+      "evidence_status": "IMPLEMENTED / TESTED",
+      "path": "src/atlas/v2/runtime/production.py",
+      "sha256": "5da29b436bfb8f78c2a45678919ba118b88f5a496d15069477a18004f32c77e2"
+    },
+    {
+      "bytes": 74063,
+      "evidence_status": "IMPLEMENTED / TESTED",
+      "path": "src/atlas/v2/science/broad_export.py",
+      "sha256": "0f81a883f8c7eaea69d5372f2c2460a6a516ae99b51e595597014fe0e2a506f0"
+    },
+    {
+      "bytes": 22827,
+      "evidence_status": "TESTED",
+      "path": "tests/runtime/test_session041_binance_readiness.py",
+      "sha256": "935c40393b73c181ea7f57c63491a64e7d4711f83a0fbaa025617159d86fc984"
+    },
+    {
+      "bytes": 12142,
+      "evidence_status": "TESTED",
+      "path": "tests/runtime/test_session041_execution_final_review.py",
+      "sha256": "fa82290f1f9d2f65845ac745c478b0f5a3b285468849a6b95030730cbc644afe"
+    },
+    {
+      "bytes": 5183,
+      "evidence_status": "TESTED",
+      "path": "tests/runtime/test_session055_demo_read_probe.py",
+      "sha256": "f3a4b0079bc1f3387bc9de5be914a90bf620df2626e0755e67761627de706278"
+    },
+    {
+      "bytes": 19884,
+      "evidence_status": "TESTED",
+      "path": "tests/v2/test_session036_product.py",
+      "sha256": "bbcae2c986d2d68e4ca91565cfb61327676036c3b1dbf62c2651a833ed9cfaf3"
+    },
+    {
+      "bytes": 3305,
+      "evidence_status": "TESTED",
+      "path": "tests/v2/test_session041_broad_adoption_windows.py",
+      "sha256": "1cbd50932c5b1f05d6cf53087272aa67f6501d8e3df69f146a7a53e94ad51602"
+    },
+    {
+      "bytes": 19364,
+      "evidence_status": "TESTED",
+      "path": "tests/v2/test_session055_gemma_native.py",
+      "sha256": "042c9bb9c8499efb25a88c30e806ef92b7afb5260f15cad42437d17d35993f1b"
+    },
+    {
+      "bytes": 104579,
+      "evidence_status": "UPDATED",
+      "path": "translog.md",
+      "sha256": "9c1627954ca248ee1b5c151ab4a5b5785c10b02a7d80f3a4145c5c4cf24184ab"
+    }
+  ],
+  "final_evidence_branch_tip": "Verified after pushing the evidence receipt; exact current remote ref is returned in the completion response. This manifest omits its containing-commit hash.",
+  "frozen_authorities": {
+    "modified": false,
+    "sha256": {
+      "Agent": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "V1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "V2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+    }
+  },
+  "implementation_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+  "implementation_commit_remote_sha_verified": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+  "inventory_self_hash": "OMITTED; the manifest cannot hash itself",
+  "reports": [
+    "docs/v2/ATLAS_RED_R6_HANDOFF.md",
+    "docs/v2/ATLAS_RED_R6_WORKFLOW_CHECKLIST.md",
+    "docs/v2/ATLAS_RED_R6_REGRESSION_RESULTS.md",
+    "docs/v2/ATLAS_RED_R6_GEMMA_AGENT_RESULTS.md",
+    "docs/v2/ATLAS_RED_R6_BINANCE_DEMO_RESULTS.md",
+    "docs/v2/ATLAS_RED_R6_SUPERVISION_AND_RECOVERY.md",
+    "docs/v2/ATLAS_RED_R6_PERFORMANCE.md",
+    "docs/v2/ATLAS_RED_R6_ISSUES_AND_NEXT_ACTIONS.md"
+  ],
+  "required_base_is_ancestor": true,
+  "test_results": {
+    "baseline_session031": {
+      "evidence": "docs/v2/transition-r6-evidence/session031-red-baseline.junit.xml",
+      "failed_before_fix": 5,
+      "tests": 36
+    },
+    "compileall": "PASS",
+    "dependency_consistency": "PASS; 36 packages",
+    "focused": {
+      "evidence": "docs/v2/transition-r6-evidence/focused-final.junit.xml",
+      "failed": 0,
+      "junit_case_seconds": 16.664,
+      "passed": 150,
+      "skipped": 0,
+      "tests": 150
+    },
+    "full_repository": {
+      "errors": 0,
+      "evidence": "docs/v2/transition-r6-evidence/full-suite-final.junit.xml",
+      "failed": 0,
+      "passed": 2906,
+      "peak_child_rss_kib": 1728376,
+      "skipped": 8,
+      "system_cpu_seconds": 34.68,
+      "tests": 2914,
+      "user_cpu_seconds": 729.44,
+      "wall_seconds": 821.494
+    },
+    "license_inventory": "INVENTORY_ONLY; no new license-policy decision",
+    "lock_check": "PASS",
+    "mypy": "PASS_ZERO_DELTA; baseline 53 errors/17 files, current 53 errors/17 files, 286 source files checked",
+    "ruff": "PASS"
+  },
+  "tested_source_tree": {
+    "file_count": 615,
+    "sha256": "3ba94e90bd1a65bd56cce28e43b7d1f262e17e72a9028389e9ae6c5e9681c429"
+  },
+  "version": "ATLAS_RED_R6_EVIDENCE_MANIFEST_V1"
+}

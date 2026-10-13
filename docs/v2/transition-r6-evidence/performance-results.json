@@ -1,0 +1,99 @@
+{
+  "version": "ATLAS_RED_R6_PERFORMANCE_RESULTS_V1",
+  "source_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+  "full_repository_suite": {
+    "input_kind": "repository fixtures and synthetic workloads; no external market feed or provider",
+    "tests": 2914,
+    "passed": 2906,
+    "failed": 0,
+    "skipped": 8,
+    "wall_seconds": 821.494,
+    "junit_case_seconds": 818.736,
+    "user_cpu_seconds": 729.44,
+    "system_cpu_seconds": 34.68,
+    "peak_child_rss_kib": 1728376,
+    "peak_child_rss_mib": 1687.867,
+    "peak_child_rss_gib": 1.648
+  },
+  "slowest_full_suite_cases_seconds": [
+    {
+      "seconds": 249.785,
+      "test": "tests.v2.test_session027_production::test_default_production_native_m1_s3_stays_closed_without_trade_completeness",
+      "input_kind": "synthetic repository fixture"
+    },
+    {
+      "seconds": 110.573,
+      "test": "tests.v2.test_session041_capacity_max_breadth::test_three_full_bulk_cycles_at_maximum_synthetic_breadth",
+      "input_kind": "synthetic workload"
+    },
+    {
+      "seconds": 44.687,
+      "test": "tests.v2.test_session039_long_run_public_evidence::test_sustained_archived_stream_keeps_compact_lineage_and_linear_operational_growth[40fps-614seconds]",
+      "input_kind": "synthetic archived stream"
+    },
+    {
+      "seconds": 37.874,
+      "test": "tests.v2.test_session039_long_run_public_evidence::test_sustained_archived_stream_keeps_compact_lineage_and_linear_operational_growth[160fps-128seconds]",
+      "input_kind": "synthetic archived stream"
+    },
+    {
+      "seconds": 37.698,
+      "test": "tests.v2.test_session027_production::test_default_production_composes_public_to_risk_action_and_economics_after_restart",
+      "input_kind": "synthetic repository fixture"
+    },
+    {
+      "seconds": 13.186,
+      "test": "tests.v2.test_session041_mixed_broad_capacity::test_mixed_1024_contract_public_workload_under_bounded_stalls",
+      "input_kind": "synthetic workload"
+    }
+  ],
+  "mixed_broad_capacity_probe": {
+    "test": "tests.v2.test_session041_mixed_broad_capacity::test_mixed_1024_contract_public_workload_under_bounded_stalls",
+    "status": "TESTED_SYNTHETIC_ONLY_NOT_CAPACITY_QUALIFIED",
+    "universe_contracts": 1024,
+    "target_fps": 160,
+    "offered_frames": 157,
+    "accepted_frames": 157,
+    "drained_frames": 157,
+    "delivered_frames": 157,
+    "rejected_frames": 0,
+    "handoff_queue_high_water_items": 27,
+    "handoff_queue_limit_items": 512,
+    "capture_high_water_batches": 6,
+    "capture_pending_batch_limit": 64,
+    "capture_batch_frame_limit": 16,
+    "maximum_runtime_service_gap_seconds": 1.047067146,
+    "service_gap_budget_seconds": 1.5,
+    "commit_stall_seconds": 0.505230355,
+    "frames_captured_during_commit_stall": 34,
+    "archive_stall_seconds": 1.000182755,
+    "maximum_archive_flush_rows": 64,
+    "wal_bytes_at_stop": 6377792,
+    "report_worker_export_seconds": 0.90392652,
+    "stopped_export_pages": 1,
+    "stream_service_calls_during_report_export": 10,
+    "venue_network_used": false,
+    "actual_binance_stream_frames": 0
+  },
+  "synthetic_storage_probe": {
+    "test": "tests.v2.test_session041_compressed_metadata::test_actual_broad_workset_universe_hashes_membership_and_all_row_storage_reduction",
+    "status": "TESTED_SYNTHETIC_ONLY",
+    "artifact_rows": 403,
+    "compressed_rows": 2,
+    "plain_metadata_bytes": 807696,
+    "stored_metadata_bytes": 395508,
+    "metadata_reduction_fraction": 0.5103256670826648,
+    "plain_sqlite_bytes": 1937408,
+    "stored_sqlite_bytes": 1527808,
+    "sqlite_reduction_fraction": 0.21141649048625788
+  },
+  "unmeasured_or_unavailable": [
+    "Production-market network latency and bytes",
+    "Real Binance capture queues and reconnect recovery",
+    "72-hour source continuity and rolling 24-hour storage growth",
+    "Real Gemma latency, tokens, pricing, and provider cost",
+    "Authenticated Demo account/execution latency",
+    "Windows resource behavior"
+  ],
+  "dominant_observed_bottleneck": "The slowest cases are CPU-bound synthetic production and maximum-breadth fixtures; the suite does not show a production network or provider bottleneck."
+}

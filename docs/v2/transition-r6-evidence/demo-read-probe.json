@@ -1,0 +1,69 @@
+{
+  "version": "ATLAS_RED_R6_DEMO_READ_PROBE_V1",
+  "source_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+  "authorization": {
+    "reference": "User R6 request, section 10.3: bounded read-only Demo connectivity sequence",
+    "process_local_approval_marker_used": true,
+    "write_or_order_authority": false,
+    "trade_plan_identity_sha256": null,
+    "trade_plan_identity_status": "NOT_APPLICABLE_READ_ONLY_PROBE"
+  },
+  "environment": {
+    "name": "DEMO_ONLY",
+    "configured_value_verified_without_printing": true,
+    "credential_presence_verified_without_printing": true,
+    "endpoint": "demo-fapi.binance.com",
+    "cloud_policy_state": "enforced",
+    "demo_host_allowed_by_policy": true,
+    "production_rest_host_allowed_by_policy": false,
+    "proxy_used": true,
+    "proxy_configuration": "environment-managed ProxyHandler()"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "operation": "GET /fapi/v1/time",
+      "category": "PUBLIC_READ_ONLY_DEMO_SERVER_TIME",
+      "request_started_at_utc": null,
+      "response_observed_at_utc": null,
+      "timestamp_status": "NOT_CAPTURED_BY_PREVIOUS_PROBE_VERSION",
+      "status": "HTTP_FAILURE",
+      "http_status": 451,
+      "reason_text": "Unknown",
+      "response_body_bytes_read": 0,
+      "response_body_persisted": false
+    },
+    {
+      "attempt": 2,
+      "operation": "GET /fapi/v1/time",
+      "category": "PUBLIC_READ_ONLY_DEMO_SERVER_TIME",
+      "request_started_at_utc": "2026-10-13T18:07:52.643759Z",
+      "response_observed_at_utc": "2026-10-13T18:07:53.402061Z",
+      "status": "HTTP_FAILURE",
+      "http_status": 451,
+      "reason_text": "Unknown",
+      "response_body_bytes_read": 0,
+      "response_body_persisted": false
+    }
+  ],
+  "operation_counts": {
+    "public_server_time_get": 2,
+    "signed_account_get": 0,
+    "public_instrument_info_get": 0,
+    "position_or_open_order_get": 0,
+    "order_or_other_write": 0
+  },
+  "result": {
+    "signed_account_read": "NOT_ATTEMPTED_CLOCK_GATE_FAILED",
+    "account_and_exposure_state": "UNKNOWN",
+    "instrument_metadata": "NOT_OBSERVED",
+    "orders": "ZERO ORDERS",
+    "fills": "NONE OBSERVED",
+    "protection": "NOT APPLICABLE; NO POSITION CREATED",
+    "terminal_reconciliation": "NOT RUN",
+    "state_persisted": false,
+    "credentials_printed": false,
+    "account_payload_printed": false,
+    "blocker_cause": "HTTP 451 was returned by the configured network path. The response does not identify whether the proxy or upstream service issued it."
+  }
+}

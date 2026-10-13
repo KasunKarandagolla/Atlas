@@ -1,0 +1,128 @@
+{
+  "version": "ATLAS_RED_R6_RUN_LEDGER_V1",
+  "date": "2026-10-13",
+  "source_base_commit": "9c92aad2331e138e165553497f511c562a6ebcf5",
+  "tested_implementation_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+  "tested_source_tree_sha256": "3ba94e90bd1a65bd56cce28e43b7d1f262e17e72a9028389e9ae6c5e9681c429",
+  "tested_source_file_count": 615,
+  "implementation_remote_sha_verified": true,
+  "branch": "fix/red-r6-full-workflow-demo-qualification-2026-10-13",
+  "runtime_model_selection": {
+    "owner_selected_label": "GPT-6 Luna",
+    "runtime_identity_independently_attestable": false,
+    "status": "UNVERIFIED"
+  },
+  "stages": [
+    {
+      "name": "R5 starting point and frozen authority preflight",
+      "source_commit": "9c92aad2331e138e165553497f511c562a6ebcf5",
+      "environment": "isolated R6 worktree; frozen source bundle and three authority files reviewed",
+      "input_kind": "actual repository files and remote ancestry",
+      "expected": "exact R5 base, unchanged frozen authorities, no authority expansion",
+      "observed": "base matched; all three authority hashes matched; S47 amendment remains PROPOSED — NOT ACCEPTED",
+      "status": "PASS",
+      "evidence": ["../ATLAS_RED_R6_HANDOFF.md", "static-checks.json"],
+      "safety_effect": "No authority, capital, or execution scope was added"
+    },
+    {
+      "name": "Inherited Session031 red reproduction",
+      "source_commit": "9c92aad2331e138e165553497f511c562a6ebcf5 before fixes",
+      "environment": "isolated R6 worktree",
+      "input_kind": "synthetic deterministic test fixtures",
+      "expected": "reproduce five inherited failures before correction",
+      "observed": "36 tests; 5 failures; 0 skips",
+      "status": "PASS_REPRODUCTION",
+      "command": "uv run pytest -q tests/v2/test_session031_acquisition_recovery_remediation.py tests/v2/test_session031_public_shadow_readiness.py --junitxml=/workspace/work/r6/baseline-session031.xml",
+      "evidence": ["session031-red-baseline.junit.xml"],
+      "root_cause": "Bybit product metadata archive rows were not published as typed causal artifacts; derived input identity was incorrectly treated as an artifact dependency",
+      "safety_effect": "Existing fail-closed contracts retained"
+    },
+    {
+      "name": "Focused R6 final regression set",
+      "source_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "environment": "Python 3.12 isolated uv environment",
+      "input_kind": "synthetic fixtures and deterministic offline contracts",
+      "expected": "all selected inherited and downstream regressions pass",
+      "observed": "150 tests; 150 passed; 0 failed; 0 skipped",
+      "status": "TESTED",
+      "command": "uv run pytest -q tests/v2/test_session031_acquisition_recovery_remediation.py tests/v2/test_session031_public_shadow_readiness.py tests/runtime/test_session041_execution_final_review.py tests/runtime/test_session041_binance_readiness.py tests/v2/test_session036_product.py tests/v2/test_session041_basket_outcomes.py tests/v2/test_session041_broad_adoption_windows.py tests/v2/test_session041_broad_export.py tests/v2/test_session055_gemma_native.py tests/runtime/test_session055_binance_demo_only.py tests/runtime/test_session055_demo_read_probe.py --junitxml=/workspace/work/r6/focused-final-final.xml",
+      "evidence": ["focused-final.junit.xml"],
+      "timing_resources": "16.664 seconds JUnit case time; final selection includes the two-path Demo probe tests",
+      "safety_effect": "No live market, model, or order actions were part of this suite"
+    },
+    {
+      "name": "Full repository test suite",
+      "source_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "environment": "Python 3.12 isolated uv environment on Linux",
+      "input_kind": "repository fixtures and deterministic synthetic workloads",
+      "expected": "complete configured repository suite, with all failures visible",
+      "observed": "2914 collected; 2906 passed; 0 failed; 0 errors; 8 skipped",
+      "status": "TESTED",
+      "command": "uv run pytest -q --junitxml=/workspace/work/r6/full-suite-final-final.xml",
+      "evidence": ["full-suite-final.junit.xml", "resource-accounting.json"],
+      "timing_resources": {
+        "wall_seconds": 821.494,
+        "user_cpu_seconds": 729.44,
+        "system_cpu_seconds": 34.68,
+        "peak_child_rss_kib": 1728376
+      },
+      "safety_effect": "The suite does not qualify real exchange delivery, provider billing, or real capital"
+    },
+    {
+      "name": "Static and dependency integrity",
+      "source_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "environment": "Python 3.12 isolated uv environment",
+      "input_kind": "actual source and lock files",
+      "expected": "ruff, compileall, frozen lock, dependency consistency, and unchanged baseline mypy",
+      "observed": "Ruff PASS; compileall PASS; uv lock --check PASS; uv pip check PASS (36 packages); mypy 53 errors on R5 and R6 source, normalized delta 0",
+      "status": "TESTED",
+      "evidence": ["static-checks.json", "mypy-r5-source.txt", "mypy-r6-source.txt"],
+      "safety_effect": "No frozen-authority or lockfile changes"
+    },
+    {
+      "name": "Production Binance market observation",
+      "source_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "environment": "restricted Codex Cloud policy, enforced and current",
+      "input_kind": "no external request",
+      "expected": "use production public endpoints only if allowed",
+      "observed": "production Binance REST and stream hosts are absent from the effective allowlist; zero market-data requests and zero observations",
+      "status": "BLOCKED BY ENVIRONMENT",
+      "evidence": ["../ATLAS_RED_R6_BINANCE_DEMO_RESULTS.md", "demo-read-probe.json"],
+      "safety_effect": "No live endpoint, credential, or alternate-host fallback used"
+    },
+    {
+      "name": "Gemma provider and genuine research round",
+      "source_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "environment": "Gemini host allowed; API key readiness reported; free-tier/no-billing evidence absent",
+      "input_kind": "no new external provider request; offline fake-provider tests only",
+      "expected": "call at most once only with verified no-billing evidence and authorization",
+      "observed": "0 R6 provider requests; no real generated response; no genuine full research round; read-only tool capability remains unverified",
+      "status": "UNVERIFIED",
+      "evidence": ["../ATLAS_RED_R6_GEMMA_AGENT_RESULTS.md", "static-checks.json"],
+      "safety_effect": "No provider cost, no market data supplied, no model authority"
+    },
+    {
+      "name": "Binance Demo read-only connectivity",
+      "source_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "environment": "restricted Codex Cloud policy; Demo host allowed; process-local read-only marker; proxy preserved",
+      "input_kind": "two actual public GET requests to Demo server time",
+      "expected": "time GET, one signed account GET, then public instrument information if clock validation succeeds",
+      "observed": "both GET /fapi/v1/time requests returned HTTP 451; the second was timestamped; no signed account or instrument request was attempted",
+      "status": "BLOCKED BY ENVIRONMENT",
+      "evidence": ["demo-read-probe.json"],
+      "timing_resources": "Attempt 2 started 2026-10-13T18:07:52.643759Z; HTTP 451 observed at 2026-10-13T18:07:53.402061Z",
+      "safety_effect": "No account data, orders, or persisted state"
+    },
+    {
+      "name": "Secret scan, commit, and remote push",
+      "source_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "environment": "isolated R6 worktree and origin remote",
+      "input_kind": "staged files and evidence",
+      "expected": "zero credential leakage, exact ancestry, pushed SHA verified remotely",
+      "observed": "zero-match code/test scan; implementation commit ee9038ade842b3a23bc77679dccbc6fb6e04fa51 is verified at the remote branch ref; final evidence commit push verification is recorded after delivery",
+      "status": "PENDING_EVIDENCE_REMOTE_VERIFICATION",
+      "evidence": ["secret-scan.json", "../ATLAS_RED_R6_EVIDENCE_MANIFEST.json"],
+      "safety_effect": "No secrets may be staged or published"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "version": "ATLAS_RED_R6_ISSUE_REGISTER_V1",
+  "base_commit": "9c92aad2331e138e165553497f511c562a6ebcf5",
+  "implementation_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+  "issues": [
+    {
+      "id": "R6-EXT-001",
+      "severity": "BLOCKER",
+      "topic": "Production Binance market observations",
+      "status": "BLOCKED BY ENVIRONMENT",
+      "root_cause": "The enforced restricted network policy does not allow production Binance REST or stream hosts.",
+      "safety_effect": "No production market request was attempted; source health, breadth, freshness, and replay remain unqualified.",
+      "required_action": "Obtain an approved policy path for documented public market endpoints and rerun source qualification without credentials or live-endpoint substitution.",
+      "evidence": ["../ATLAS_RED_R6_BINANCE_DEMO_RESULTS.md"]
+    },
+    {
+      "id": "R6-EXT-002",
+      "severity": "BLOCKER",
+      "topic": "Demo server-time connectivity",
+      "status": "BLOCKED BY ENVIRONMENT",
+      "root_cause": "Two public Demo server-time GETs returned HTTP 451; the response did not identify whether the proxy or upstream service issued it.",
+      "safety_effect": "No signed account GET, instrument-info GET, or account reconciliation was attempted; account/exposure state is UNKNOWN.",
+      "required_action": "Resolve the response through the approved network path; after the clock succeeds, perform the authorized bounded account and instrument reads.",
+      "evidence": ["demo-read-probe.json"]
+    },
+    {
+      "id": "R6-PROD-001",
+      "severity": "HIGH",
+      "topic": "Genuine source-to-Brief and after-cost assessment",
+      "status": "NOT ESTIMABLE",
+      "root_cause": "No genuine causal market archive, exact action economics, or qualified prospective evidence was available.",
+      "safety_effect": "No actual production Brief is COMPLETE; no economic performance claim or model dispatch is justified.",
+      "required_action": "Qualify real source evidence, spread/liquidity/fee/funding assumptions, action-specific economics, risk context, and the complete typed Brief.",
+      "evidence": ["../ATLAS_RED_R6_WORKFLOW_CHECKLIST.md"]
+    },
+    {
+      "id": "R6-CAL-001",
+      "severity": "HIGH",
+      "topic": "Expected scanner-slot denominator",
+      "status": "TEST GATE",
+      "root_cause": "The R5 gate remains open: expected future slots are not independently pre-registered and terminally reconciled under scheduler and policy identity.",
+      "safety_effect": "Receipts cannot prove missed, empty, rejected, or expired schedule coverage.",
+      "required_action": "Register each expected future slot before execution; persist every outcome and verify restart, outage, deadline, duplicate, and policy-change behavior.",
+      "evidence": ["../ATLAS_RED_R6_WORKFLOW_CHECKLIST.md"]
+    },
+    {
+      "id": "R6-AI-001",
+      "severity": "HIGH",
+      "topic": "Gemma no-billing evidence and genuine research round",
+      "status": "UNVERIFIED",
+      "root_cause": "Gemini credential readiness does not prove free-tier/no-billing configuration, and no qualifying owner evidence was available.",
+      "safety_effect": "Zero R6 provider requests; no real generated response, tool capability, or genuine research trajectory.",
+      "required_action": "Verify the no-billing configuration and authorize the bounded request; dispatch a research round only from a genuinely COMPLETE production Brief.",
+      "evidence": ["../ATLAS_RED_R6_GEMMA_AGENT_RESULTS.md"]
+    },
+    {
+      "id": "R6-EXE-001",
+      "severity": "HIGH",
+      "topic": "Full Demo lifecycle and one-trade approval",
+      "status": "TEST GATE",
+      "root_cause": "The full durable exchange intent/fill/protection/restart/UNKNOWN lifecycle is not qualified, and the read-only account gate did not complete.",
+      "safety_effect": "No trade plan or independent order-changing approval was used; ZERO ORDERS; actual protection and terminal reconciliation are not observed.",
+      "required_action": "Implement and fixture-test the full Demo lifecycle; then, only after all risk and account gates, prepare an immutable plan and obtain independent approval before an order-changing call.",
+      "evidence": ["../ATLAS_RED_R6_BINANCE_DEMO_RESULTS.md", "../ATLAS_RED_R6_SUPERVISION_AND_RECOVERY.md"]
+    },
+    {
+      "id": "R6-SCI-001",
+      "severity": "HIGH",
+      "topic": "Prospective economics sample",
+      "status": "NOT ESTIMABLE",
+      "root_cause": "No real prospective sample was collected.",
+      "safety_effect": "The frozen floor of eight prospective weeks and 200 matured opportunities is unmet.",
+      "required_action": "Collect and independently qualify the prospective sample; this evidence alone does not authorize trading.",
+      "evidence": ["../ATLAS_RED_R6_ISSUES_AND_NEXT_ACTIONS.md"]
+    },
+    {
+      "id": "R6-TEST-001",
+      "severity": "MEDIUM",
+      "topic": "Eight explicit full-suite skips",
+      "status": "TEST GATE",
+      "root_cause": "Opt-in testnet checks, native-Windows and actual-wall checks, and two optional provider imports were skipped by their declared conditions.",
+      "safety_effect": "The configured Linux repository suite is green, but the skipped platform and integration gates remain unverified.",
+      "required_action": "Run applicable gates in the intended platform, opt-in, and dependency environments.",
+      "evidence": ["full-suite-final.junit.xml"]
+    },
+    {
+      "id": "R6-MODEL-001",
+      "severity": "MEDIUM",
+      "topic": "Runtime model identity attestation",
+      "status": "UNVERIFIED",
+      "root_cause": "The owner selected Luna, but the environment does not independently attest the active runtime model label.",
+      "safety_effect": "No model-identity verification claim is made; no subagents were used.",
+      "required_action": "Use trusted runtime metadata if it becomes available; do not infer identity from the chat selection.",
+      "evidence": ["../ATLAS_RED_R6_HANDOFF.md"]
+    },
+    {
+      "id": "R6-EVID-001",
+      "severity": "LOW",
+      "topic": "First Demo attempt timestamp",
+      "status": "UNVERIFIED",
+      "root_cause": "The first probe version did not capture request and response timestamps.",
+      "safety_effect": "The first 451 is documented with timestamps explicitly null; attempt 2 is fully timestamped; no response body was read.",
+      "required_action": "Preserve the evidence gap; future probe runs record timestamps before and after each request.",
+      "evidence": ["demo-read-probe.json"]
+    }
+  ]
+}

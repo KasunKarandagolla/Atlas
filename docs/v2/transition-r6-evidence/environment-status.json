@@ -1,0 +1,45 @@
+{
+  "version": "ATLAS_RED_R6_ENVIRONMENT_STATUS_V1",
+  "observation_date": "2026-10-13",
+  "provider": "Codex Cloud",
+  "connectivity": "connected",
+  "observations_current": true,
+  "network_policy": {
+    "mode": "restricted",
+    "state": "enforced",
+    "allowed_hosts_relevant_to_r6": [
+      "demo-fapi.binance.com",
+      "demo-fstream.binance.com",
+      "generativelanguage.googleapis.com"
+    ],
+    "production_binance_rest_allowed": false,
+    "production_binance_stream_allowed": false
+  },
+  "credential_and_runtime_readiness": {
+    "ATLAS_BINANCE_FUTURES_ENV": {
+      "state": "ready",
+      "configured_value_checked_without_printing": "DEMO_ONLY"
+    },
+    "BINANCE_FUTURES_DEMO_API_KEY": {
+      "state": "ready",
+      "value_read_or_logged": false
+    },
+    "BINANCE_FUTURES_DEMO_API_SECRET": {
+      "state": "ready",
+      "value_read_or_logged": false
+    },
+    "GEMMA_MODEL": {
+      "state": "ready",
+      "value_read_or_logged": false
+    },
+    "GEMINI_API_KEY": {
+      "state": "ready",
+      "value_read_or_logged": false
+    },
+    "Gemini free-tier/no-billing evidence": "NOT VERIFIED"
+  },
+  "model_identity": {
+    "owner_selected": "GPT-6 Luna",
+    "runtime_identity_independently_attestable": false
+  }
+}
