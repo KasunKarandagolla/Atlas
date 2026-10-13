@@ -46,7 +46,7 @@ from atlas.science.stresses import (
 )
 from atlas.science.trade_plan_mapping import candidate_trade_plan
 from atlas.science.uncertainty import OuterBootstrapResult
-from atlas.strategy.crypto_trend_24h_v1 import FeatureSnapshot, Signal
+from atlas.strategy.crypto_trend_24h_v1 import FeatureSnapshot, FeatureSnapshotEvidenceV1, Signal
 from atlas.strategy.policy import FixedPolicy
 
 UNIT_QUANTITY = Decimal("1")
@@ -200,6 +200,7 @@ class Phase4DecisionInput:
     plan_id: str
     availability_cutoff_ns: int
     not_estimable_reasons: tuple[str, ...] = ()
+    snapshot_evidence: FeatureSnapshotEvidenceV1 | None = None
 
 
 @dataclass(frozen=True)
@@ -298,6 +299,8 @@ def evaluate_phase4(value: Phase4DecisionInput) -> Phase4Evaluation:
 
     if value.snapshot is None or value.policy is None:
         return finish(DecisionStatus.SKIP_DATA, "missing causal snapshot/policy for the decision slot")
+    if value.snapshot_evidence is None or not value.snapshot_evidence.validates(value.snapshot):
+        return finish(DecisionStatus.NOT_ESTIMABLE, "missing or mismatched snapshot availability evidence")
     if market_status in {GateStatus.NOT_ESTIMABLE, GateStatus.GATE_DISABLED_DIAGNOSTIC}:
         not_estimable.append(market_reason or "market gate not estimable")
     if event_status in {GateStatus.NOT_ESTIMABLE, GateStatus.GATE_DISABLED_DIAGNOSTIC}:

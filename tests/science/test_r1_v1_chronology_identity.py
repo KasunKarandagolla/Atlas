@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from decimal import Decimal
 
 import pytest
 
 from atlas.strategy.crypto_trend_24h_v1 import FeatureSnapshot, build_snapshot
-from atlas.strategy.features import HOUR_NS, FeatureWindowError, HourlyClose, feature_values, validate_closes
+from atlas.strategy.features import HOUR_NS, FeatureWindowError, HourlyClose
 
 SLOT = 720 * HOUR_NS
 
@@ -42,26 +41,33 @@ def test_snapshot_rejects_future_source_receipt_and_accepts_deadline_boundaries(
     at_deadline = build_snapshot("BTCUSDT", SLOT, SLOT + 30_000_000_000, closes)
     assert at_slot.computed_at_ns == SLOT
     assert at_deadline.computed_at_ns == SLOT + 30_000_000_000
-    with pytest.raises(ValueError, match="available by snapshot computation"):
-        replace(at_slot, source_available_at_ns=(SLOT + 1, *at_slot.source_available_at_ns[1:]))
+    with pytest.raises(FeatureWindowError, match="future/unavailable close"):
+        build_snapshot("BTCUSDT", SLOT, SLOT, _closes(late_last_by_ns=1))
 
 
 def test_hourly_close_availability_must_follow_final_close_boundary() -> None:
     closes = list(_closes())
+    closes[-1] = HourlyClose(SLOT, closes[-1].close, SLOT - 1, closes[-1].record_id)
     with pytest.raises(FeatureWindowError, match="availability precedes final close"):
-        closes[-1] = replace(closes[-1], available_at_ns=SLOT - 1)
-        feature_values(closes, decision_at_ns=SLOT + 30_000_000_000)
+        build_snapshot("BTCUSDT", SLOT, SLOT + 1, tuple(closes))
 
 
 @pytest.mark.parametrize("bad_id", ("", "  "))
 def test_v1_close_source_ids_must_be_nonblank_and_unique(bad_id: str) -> None:
     with pytest.raises(FeatureWindowError, match="source record identity"):
-        validate_closes(_closes(id_transform=lambda index: bad_id if index == 20 else f"close-{index}"))
+        build_snapshot(
+            "BTCUSDT", SLOT, SLOT + 1, _closes(id_transform=lambda index: bad_id if index == 20 else f"close-{index}")
+        )
 
 
 def test_v1_close_source_ids_must_be_unique() -> None:
     with pytest.raises(FeatureWindowError, match="source record identity"):
-        validate_closes(_closes(id_transform=lambda index: "duplicate" if index in (20, 21) else f"close-{index}"))
+        build_snapshot(
+            "BTCUSDT",
+            SLOT,
+            SLOT + 1,
+            _closes(id_transform=lambda index: "duplicate" if index in (20, 21) else f"close-{index}"),
+        )
 
 
 def test_legacy_v1_snapshot_hash_remains_the_existing_legacy_digest() -> None:
@@ -77,7 +83,6 @@ def test_legacy_v1_snapshot_hash_remains_the_existing_legacy_digest() -> None:
             snapshot.computed_at_ns,
             snapshot.values,
             snapshot.source_record_ids,
-            snapshot.source_available_at_ns,
         ).snapshot_hash()
         == snapshot.snapshot_hash()
     )

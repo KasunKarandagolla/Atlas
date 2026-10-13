@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "task": "ATLAS RED R1 Compatibility Correction",
+  "repository": "KasunKarandagolla/Atlas",
+  "git": {
+    "baseline_branch": "impl/red-r1-surgical-correctness-2026-10-13",
+    "baseline_remote_head": "85a4174cd5d373f0217c46c9944f6ed35f4c0a2b",
+    "r1_implementation_ancestor": "b7f3f17ef885781d9e8efa8dbd2254ee92b0433d",
+    "fix_branch": "fix/red-r1-v1-snapshot-compat-2026-10-13",
+    "implementation_commit_sha": null,
+    "remote_tip_verification": "pending push"
+  },
+  "preflight": {
+    "owner_package": "/workspace/attachments/85db8a4a-4697-4a9a-8ba2-08e987046400/Red.zip",
+    "owner_start_here_and_runbook_sections": "read; runbook sections 2, 3, 4, 5 and 7 read in full",
+    "r1_absence_claim": "superseded: supplied source package was located and required sources were read",
+    "frozen_authorities_sha256": {
+      "v1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "v2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "agent_v1": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "authority_hashes_match": true
+  },
+  "runtime": {
+    "requested_model": "GPT-6 Luna",
+    "model_identity_verified": false,
+    "model_limitation": "runtime did not expose independently verifiable model identity",
+    "subagents_used": false
+  },
+  "compatibility": {
+    "legacy_schema_fields": [
+      "instrument",
+      "slot_at_ns",
+      "computed_at_ns",
+      "values",
+      "source_record_ids"
+    ],
+    "r1_added_field": "source_available_at_ns",
+    "corrected_serialized_snapshot_fields": [
+      "instrument",
+      "slot_at_ns",
+      "computed_at_ns",
+      "values",
+      "source_record_ids"
+    ],
+    "snapshot_hash_algorithm_changed": false,
+    "historical_fixture": "tests/fixtures/legacy_feature_snapshot_v1_pre_r1.json",
+    "historical_snapshot_hash": "c86086000f333ba7d372f81a1a14945a53eaef7693647483ddc74f745df5bc25",
+    "historical_phase4_action_hash": "6ff8ec0c3bf5cc545e5c72509a173af711331e9da8f3fd1321bbdf6528686ecb",
+    "historical_tradeplan_snapshot_reference_matches": true,
+    "legacy_read_grants_new_decision_qualification": false,
+    "availability_proof": "separate FEATURE_SNAPSHOT_AVAILABILITY_V1 receipt"
+  },
+  "red_green": {
+    "red_command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/Atlas-r1/work/r1-test-venv/bin/pytest -q -p no:cacheprovider --basetemp=work/pytest-compat-red tests/science/test_r1_v1_snapshot_compatibility.py",
+    "red_result": "7 failed before production edit",
+    "green_groups": [
+      {
+        "name": "V1 chronology, legacy compatibility, golden, prefix invariance, phase-4 persistence and end-to-end",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/Atlas-r1/work/r1-test-venv/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=work/pytest-v1-compat-final4 tests/science/test_r1_v1_chronology_identity.py tests/science/test_r1_v1_snapshot_compatibility.py tests/science/test_phase4_baseline.py tests/contract/test_v1_golden_baseline.py tests/science/test_prefix_invariance_phase4.py tests/science/test_phase4_persistence.py tests/science/test_phase4_end_to_end.py",
+        "result": "36 passed in 11.19s"
+      },
+      {
+        "name": "affected R1 V2 consumers",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/Atlas-r1/work/r1-test-venv/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=work/pytest-v2-compat-final tests/v2/test_r1_surgical_correctness.py tests/v2/test_session017_risk.py tests/v2/test_session014_core.py tests/v2/test_session014_s1.py tests/v2/test_session016_s2.py tests/v2/test_session037_active_history.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session041_s6_action_contract.py tests/v2/test_session041_trade_location.py tests/v2/test_session041_trade_location_runtime.py tests/v2/test_session037_chronology.py tests/v2/test_session037_installed_economics.py tests/v2/test_session027_ops_supervisor.py tests/v2/test_session019_m0.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session021_data_s3.py",
+        "result": "199 passed in 39.75s"
+      },
+      {
+        "name": "S27 production",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/Atlas-r1/work/r1-test-venv/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=work/pytest-production-v1-compat tests/v2/test_session027_production.py",
+        "result": "16 passed in 290.46s"
+      },
+      {
+        "name": "S27 restart composition path",
+        "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /workspace/Atlas-r1/work/r1-test-venv/bin/pytest -o addopts='' -q -p no:cacheprovider --basetemp=work/pytest-r1-restart-v1-compat tests/v2/test_session027_production.py::test_default_production_composes_public_to_risk_action_and_economics_after_restart",
+        "result": "1 passed in 38.71s"
+      }
+    ],
+    "full_repository_suite": "TEST GATE: not run; full-suite rolling write budget not safely bounded"
+  },
+  "static_checks": {
+    "ruff_check_changed_python": "pass",
+    "ruff_format_baseline_aware": {
+      "pass": [
+        "src/atlas/strategy/__init__.py",
+        "src/atlas/strategy/features.py",
+        "tests/science/test_r1_v1_chronology_identity.py",
+        "tests/science/test_r1_v1_snapshot_compatibility.py"
+      ],
+      "baseline_and_current_fail": [
+        "src/atlas/science/phase4_engine.py",
+        "src/atlas/science/phase4_persistence.py",
+        "src/atlas/strategy/crypto_trend_24h_v1.py",
+        "tests/science/test_phase4_persistence.py",
+        "tests/support/phase4_factory.py"
+      ]
+    },
+    "compileall": "pass: PYTHONPYCACHEPREFIX=work/compile-pycache /workspace/Atlas-r1/work/r1-test-venv/bin/python -m compileall -q src tests",
+    "uv_lock_check": "pass: uv lock --check --python 3.12",
+    "package_consistency": "pass: uv pip check --python /workspace/Atlas-r1/work/r1-test-venv/bin/python; 20 packages",
+    "mypy": "52 baseline diagnostics; normalized baseline delta +0/-0",
+    "git_diff_check": "pass",
+    "secret_credentials_and_execution_review": "pass: changed source, tests and handoff scanned; no credentials or request/order/submission code introduced; historical translog was excluded from changed-file scan"
+  },
+  "resource_measurement": {
+    "owner_limit_bytes_rolling_24h": 5000000000,
+    "r1_work_tree_bytes": 2238843131,
+    "correction_work_tree_bytes": 427896821,
+    "combined_retained_work_tree_bytes": 2666749952,
+    "workspace_filesystem_used_bytes_at_measurement": 2810417152,
+    "workspace_filesystem_available_bytes_at_measurement": 29225013248,
+    "full_suite_write_budget": "not bounded; full suite not run"
+  },
+  "not_in_scope_or_open": [
+    "AUD-01 funding-aware sizing remains open",
+    "AUD-02 historical-prefix coverage migration remains open",
+    "AUD-06 full-payload V2 identity migration remains open",
+    "full repository suite remains a promotion TEST GATE",
+    "no R2 work was started"
+  ],
+  "operational_scope": {
+    "authenticated_venue_requests": false,
+    "exchange_orders": false,
+    "paid_model_calls": false,
+    "capital_enablement": false,
+    "deployment_or_merge": false
+  }
+}

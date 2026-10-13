@@ -13,6 +13,7 @@ from atlas.science.phase4_persistence import (
     DECISION_CALENDAR,
     EVALUATION,
     EXPERIMENT_VARIANT,
+    FEATURE_SNAPSHOT_AVAILABILITY,
     JOINT_RESIDUAL_BLOCK,
     MATURED_RESIDUAL,
     OOF_FORECAST,
@@ -29,7 +30,8 @@ from atlas.science.stresses import evaluate_stress_suite
 
 
 def artifact_set() -> Phase4ArtifactSet:
-    evaluation = evaluate_phase4(decision_input())
+    decision = decision_input()
+    evaluation = evaluate_phase4(decision)
     stress = evaluate_stress_suite(complete_stress_input())
     record = record_from_evaluation(slot_id="slot-1", strategy_version="1.0", availability_cutoff_ns=SLOT + 1,
                                     evaluation=evaluation, slot_at_ns=SLOT, instrument="BTCUSDT",
@@ -46,6 +48,7 @@ def artifact_set() -> Phase4ArtifactSet:
         stress_results=tuple({"case": result.case.name.value, "status": result.status.value} for result in stress),
         evaluation=evaluation,
         trade_plan_evidence=evaluation.evidence if evaluation.trade_plan else None,
+        snapshot_availability_evidence=decision.snapshot_evidence,
         decision_calendar_record=record,
         variants=(ExperimentVariant("exp-1", "FAILED", "ridge selection refused", ("insufficient OOF support",),
                                     {"ridge": 10.0}),),
@@ -57,7 +60,7 @@ def test_every_phase4_artifact_kind_is_persisted_append_only(tmp_path) -> None:
     written = persist_phase4_artifacts(archive, artifact_set())
     assert set(written) >= {WEEKLY_FIT, OOF_FORECAST, MATURED_RESIDUAL, JOINT_RESIDUAL_BLOCK, BLOCK_SELECTION,
                             SCENARIO_CONFIG, BOOTSTRAP_RESULT, STRESS_RESULT, EVALUATION, TRADE_PLAN_EVIDENCE,
-                            DECISION_CALENDAR, EXPERIMENT_VARIANT}
+                            FEATURE_SNAPSHOT_AVAILABILITY, DECISION_CALENDAR, EXPERIMENT_VARIANT}
     for kind, paths in written.items():
         assert paths and all(path.exists() for path in paths), kind
         assert all(path.parent.name == kind for path in paths)

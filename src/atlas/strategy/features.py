@@ -27,23 +27,12 @@ class HourlyClose:
     record_id: str = ""
 
     def __post_init__(self) -> None:
-        if (
-            type(self.end_at_ns) is not int
-            or type(self.available_at_ns) is not int
-            or self.end_at_ns < 0
-            or self.available_at_ns < 0
-        ):
+        # Keep the frozen legacy record reader permissive.  New qualified
+        # snapshots apply the stricter checks in validate_qualified_closes().
+        if self.end_at_ns < 0 or self.available_at_ns < 0:
             raise FeatureWindowError("timestamps must be UTC nanoseconds")
         if self.end_at_ns % HOUR_NS:
             raise FeatureWindowError("hourly close must end on an UTC hour")
-        if self.available_at_ns < self.end_at_ns:
-            raise FeatureWindowError("source availability precedes final close")
-        if (
-            not isinstance(self.record_id, str)
-            or not self.record_id.strip()
-            or self.record_id != self.record_id.strip()
-        ):
-            raise FeatureWindowError("source record identity must be nonblank and canonical")
         if self.close <= 0:
             raise FeatureWindowError("non-positive close")
 
@@ -58,18 +47,16 @@ class FeatureValues:
 
 
 def validate_closes(closes: Iterable[HourlyClose], *, decision_at_ns: int | None = None) -> tuple[HourlyClose, ...]:
-    """Validate exactly one causal, contiguous 721-close window.
+    """Read one contiguous 721-close window with legacy identity semantics.
 
-    Conflicting duplicate timestamps are rejected rather than silently choosing a
-    revised record.  An identical duplicate is also rejected: it makes source
-    identity ambiguous and is not a 721-record window.
+    Conflicting/duplicate timestamps are rejected rather than silently choosing
+    a revised record.  ``decision_at_ns`` applies the causal availability cutoff
+    when a caller explicitly requests one.  Historical readers that omit it
+    retain the pre-R1 behavior, including acceptance of legacy record IDs.
     """
     result = tuple(sorted(closes, key=lambda x: x.end_at_ns))
     if len(result) != WINDOW_CLOSES:
         raise FeatureWindowError(f"requires exactly {WINDOW_CLOSES} closes")
-    record_ids = tuple(item.record_id for item in result)
-    if len(set(record_ids)) != len(record_ids):
-        raise FeatureWindowError("source record identity must be nonblank and unique")
     previous: HourlyClose | None = None
     for item in result:
         if decision_at_ns is not None and item.available_at_ns > decision_at_ns:
@@ -80,6 +67,30 @@ def validate_closes(closes: Iterable[HourlyClose], *, decision_at_ns: int | None
             if item.end_at_ns != previous.end_at_ns + HOUR_NS:
                 raise FeatureWindowError("missing hourly close")
         previous = item
+    return result
+
+
+def validate_qualified_closes(closes: Iterable[HourlyClose], *, decision_at_ns: int) -> tuple[HourlyClose, ...]:
+    """Validate source finality and identity for a newly qualified V1 build.
+
+    The stricter rules live on this builder path so historical ``HourlyClose``
+    instances remain readable and replayable under the frozen V1 contract.
+    """
+    result = validate_closes(closes, decision_at_ns=decision_at_ns)
+    record_ids = tuple(item.record_id for item in result)
+    if any(
+        type(item.end_at_ns) is not int
+        or type(item.available_at_ns) is not int
+        or item.end_at_ns < 0
+        or item.available_at_ns < item.end_at_ns
+        for item in result
+    ):
+        raise FeatureWindowError("source availability precedes final close or timestamp is invalid")
+    if any(
+        not isinstance(record_id, str) or not record_id.strip() or record_id != record_id.strip()
+        for record_id in record_ids
+    ) or len(set(record_ids)) != len(record_ids):
+        raise FeatureWindowError("source record identity must be nonblank, canonical, and unique")
     return result
 
 

@@ -31,11 +31,16 @@ from atlas.science.stresses import (
 )
 from atlas.science.trade_plan_mapping import candidate_trade_plan  # noqa: F401  (re-exported for tests)
 from atlas.science.uncertainty import OuterBootstrapResult
-from atlas.strategy.crypto_trend_24h_v1 import SNAPSHOT_DEADLINE_NS, FeatureSnapshot, Signal
-from atlas.strategy.features import FeatureValues
+from atlas.strategy.crypto_trend_24h_v1 import (
+    SNAPSHOT_DEADLINE_NS,
+    FeatureSnapshot,
+    FeatureSnapshotEvidenceV1,
+    Signal,
+)
+from atlas.strategy.features import HOUR_NS, FeatureValues
 from atlas.strategy.policy import FixedPolicy, VenueFilters, fixed_policy
 
-SLOT = 4 * 3_600_000_000_000
+SLOT = 4 * HOUR_NS
 TICK = Decimal("0.1")
 LOT = Decimal("0.01")
 MINUTE_NS = MINUTE_NS
@@ -50,7 +55,23 @@ def snapshot(*, instrument: str = "BTCUSDT", slot_at_ns: int = SLOT, z: float = 
     values = FeatureValues(end_at_ns=slot_at_ns, returns=tuple([0.0] * 720), variance=sigma**2, sigma=sigma, z=z)
     computed = computed_at_ns if computed_at_ns is not None else slot_at_ns + 1_000_000
     source_ids = ("r1", "r2")
-    return FeatureSnapshot(instrument, slot_at_ns, computed, values, source_ids, (slot_at_ns, slot_at_ns))
+    return FeatureSnapshot(instrument, slot_at_ns, computed, values, source_ids)
+
+
+def _snapshot_evidence(snapshot_value: FeatureSnapshot) -> FeatureSnapshotEvidenceV1:
+    source_ends = tuple(
+        snapshot_value.slot_at_ns - (len(snapshot_value.source_record_ids) - 1 - index) * HOUR_NS
+        for index in range(len(snapshot_value.source_record_ids))
+    )
+    return FeatureSnapshotEvidenceV1(
+        snapshot_hash=snapshot_value.snapshot_hash(),
+        instrument=snapshot_value.instrument,
+        slot_at_ns=snapshot_value.slot_at_ns,
+        computed_at_ns=snapshot_value.computed_at_ns,
+        source_record_ids=snapshot_value.source_record_ids,
+        source_end_at_ns=source_ends,
+        source_available_at_ns=source_ends,
+    )
 
 
 def signal_snapshot(signal: Signal, *, instrument: str = "BTCUSDT", slot_at_ns: int = SLOT) -> FeatureSnapshot:
@@ -185,6 +206,9 @@ def scenario_evaluation(*, snapshot: FeatureSnapshot, policy: FixedPolicy, risk_
 
 def decision_input(**overrides: object) -> Phase4DecisionInput:
     snapshot_value: FeatureSnapshot | None = overrides.pop("snapshot", signal_snapshot(Signal.LONG))  # type: ignore[assignment]
+    snapshot_evidence = overrides.pop(
+        "snapshot_evidence", _snapshot_evidence(snapshot_value) if snapshot_value is not None else None
+    )
     policy_value: FixedPolicy | None = overrides.pop("policy", policy())  # type: ignore[assignment]
     risk_policy_value: RiskPolicy = overrides.pop("risk_policy", risk_policy())  # type: ignore[assignment]
     account_value = overrides.pop("account", account())
@@ -213,6 +237,7 @@ def decision_input(**overrides: object) -> Phase4DecisionInput:
     base: dict[str, object] = {
         "now_ns": SLOT + 1_000_000,
         "snapshot": snapshot_value,
+        "snapshot_evidence": snapshot_evidence,
         "policy": policy_value,
         "risk_policy": risk_policy_value,
         "account": account_value,
