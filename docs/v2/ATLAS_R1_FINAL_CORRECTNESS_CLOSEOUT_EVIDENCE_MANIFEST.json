@@ -17,9 +17,10 @@
     "compatibility_implementation": "96b34ed48fca976e5da293248b5e682827cb4d32",
     "original_r1_implementation": "b7f3f17ef885781d9e8efa8dbd2254ee92b0433d",
     "s49_baseline": "a73c92d83ca8b2fe5163e636b2c9732361b35e23",
-    "implementation_commit_sha": null,
-    "push_verification": "PENDING",
-    "final_remote_head": null,
+    "implementation_commit_sha": "9930fc834022ce3e8f5bc2239bd60867a251f46e",
+    "push_verification": "git push created the branch; git ls-remote returned exact implementation SHA 9930fc834022ce3e8f5bc2239bd60867a251f46e",
+    "remote_tip_after_implementation_push": "9930fc834022ce3e8f5bc2239bd60867a251f46e",
+    "final_remote_head": "Evidence-receipt commit follows; exact final branch head is stated in the coordinator delivery response",
     "preflight_remote_refs": {
       "compatibility": "8b77c76b2ef0581cc453bc4f806693884e763cb4",
       "r1_implementation": "85a4174cd5d373f0217c46c9944f6ed35f4c0a2b",
