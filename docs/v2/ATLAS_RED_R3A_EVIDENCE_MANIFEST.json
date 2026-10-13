@@ -175,10 +175,10 @@
       "sha256": "988e3361b848d6885994bbfa1cd5dc6c0ab11137be34ef8e63a30b37213992d3"
     },
     {
-      "bytes": 75437,
+      "bytes": 76032,
       "path": "log.md",
       "role": "handoff_or_work_log",
-      "sha256": "9e459d860b188719e8fa07cd3a8dc5332abc89592ab12eff671edc1d0ae69ef8"
+      "sha256": "896085a6f608da6b76b9da28adc7d4b3b1cf8fc77918b087c1e9ed1e9157ac8a"
     },
     {
       "bytes": 65740,
@@ -211,10 +211,10 @@
       "sha256": "590e826f2933c56113766fd79a56e6c9a4a786c0a40dda016dac17a185cec46c"
     },
     {
-      "bytes": 98261,
+      "bytes": 98780,
       "path": "translog.md",
       "role": "handoff_or_work_log",
-      "sha256": "15b570ca887286c8575a48922d570d04551d228929afa6caf58b97c3a4a4a730"
+      "sha256": "0bd56ee02d6467973028c4923a55cfe4c538e80f4910ffd0ba45cd5408ac1aec"
     }
   ],
   "branch": "impl/red-r3a-production-brief-memory-2026-10-13",
@@ -224,6 +224,8 @@
     "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
   },
   "implementation_commit_sha": "7a425ba410ab246ab1ce2b5136768b88594b74b8",
+  "initial_documentation_receipt_commit_sha": "90662b4299d9c3c30241b6c96a189199ab14e055",
+  "initial_documentation_receipt_remote_verified": true,
   "junit_reports": [
     {
       "compressed_bytes": 536,
@@ -421,7 +423,7 @@
       "tests": 83
     }
   ],
-  "manifest_payload_sha256": "03b922cfaf1c014c47b893b362bbd676fa71eea08e8c517ed69d6fe8463e4dc0",
+  "manifest_payload_sha256": "ff434be8a31e543e850f2bf35c9a63d214119d3de83c62dc71e38e2bfc15b231",
   "record": "ATLAS_RED_R3A_EVIDENCE_MANIFEST",
   "repository": "KasunKarandagolla/Atlas",
   "s47_proposal": {
