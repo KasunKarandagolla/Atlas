@@ -1,0 +1,15 @@
+{
+  "cgroup_block_write_bytes_after": 791220224,
+  "cgroup_block_write_bytes_before": 791080960,
+  "cgroup_block_write_bytes_delta": 139264,
+  "child_peak_rss_kib": 55712,
+  "child_system_cpu_seconds": 2.30997,
+  "child_user_cpu_seconds": 15.439691,
+  "command": ".venv/bin/python -m pytest tests/v2/test_session052_production_intelligence.py -q --junitxml=docs/v2/transition-r3a-evidence/production-brief-green-measured.junit.xml",
+  "exit_code": 0,
+  "rolling_24h_owner_budget": "NOT_ESTIMABLE",
+  "tmp_used_bytes_after": 411926528,
+  "tmp_used_bytes_before": 411922432,
+  "tmp_used_bytes_delta": 4096,
+  "wall_seconds": 18.333438
+}

@@ -76,6 +76,8 @@ _EVIDENCE_TYPES = (
     "PortfolioESV2",
     "EvaluationArtifactV2",
     "DecisionCalendarEntryV2",
+    "ProductionDecisionBriefProjectionV1",
+    "ProductionIntelligenceMemoryProjectionV1",
     "TradePlanEnvelopeV2",
     "MaturedOutcomeV2",
     "ReplayPathV2",
@@ -1130,6 +1132,53 @@ def _project_statuses(
     if matured_count:
         status[-1] = DesktopStatusV2("matured_outcomes", "AVAILABLE", str(matured_count))
         unavailable.discard("matured_outcomes")
+
+    brief_entries = [item for item in entries if item.artifact_type == "ProductionDecisionBriefProjectionV1"]
+    if brief_entries:
+        latest_brief = max(brief_entries, key=lambda item: (item.created_at_ns, item.artifact_ref))
+        brief_wrapper = latest_brief.metadata.get("brief")
+        brief_body = brief_wrapper.get("body") if isinstance(brief_wrapper, Mapping) else None
+        brief_status = _text(brief_wrapper.get("status")) if isinstance(brief_wrapper, Mapping) else "UNAVAILABLE"
+        brief_body = brief_body if isinstance(brief_body, Mapping) else {}
+        action = brief_body.get("candidate_action_qualification")
+        economics = brief_body.get("economic_qualification")
+        action_status = _text(action.get("status")) if isinstance(action, Mapping) else "UNAVAILABLE"
+        economics_status = _text(economics.get("status")) if isinstance(economics, Mapping) else "UNAVAILABLE"
+        missing_sections = brief_body.get("missing_sections", ())
+        value = (
+            f"candidate={_text(brief_body.get('a0_selected_candidate_id'), default='NONE')};"
+            f"action={action_status};economics={economics_status};"
+            f"missing_sections={len(missing_sections) if isinstance(missing_sections, (list, tuple)) else 0}"
+        )
+        reasons = brief_wrapper.get("reasons", ()) if isinstance(brief_wrapper, Mapping) else ()
+        reason_code = _code(reasons[0]) if isinstance(reasons, (list, tuple)) and reasons else None
+        brief_status_index = next(index for index, item in enumerate(status) if item.name == "decision_brief")
+        status[brief_status_index] = DesktopStatusV2(
+            "decision_brief",
+            brief_status,
+            value,
+            latest_brief.available_at_ns,
+            latest_brief.artifact_ref,
+            reason_code,
+        )
+        unavailable.discard("decision_brief")
+
+    memory_entries = [item for item in entries if item.artifact_type == "ProductionIntelligenceMemoryProjectionV1"]
+    if memory_entries:
+        latest_memory = max(memory_entries, key=lambda item: (item.created_at_ns, item.artifact_ref))
+        due_status = _text(latest_memory.metadata.get("due_work_status"), default="UNAVAILABLE")
+        due_reason = _text(latest_memory.metadata.get("due_work_reason"), default="NO_CAUSAL_DUE_WORK_JOIN_READER")
+        provider_status = _text(latest_memory.metadata.get("provider_job_status"), default="NOT_CREATED_NO_AUTHORITY")
+        due_status_index = next(index for index, item in enumerate(status) if item.name == "due_work")
+        status[due_status_index] = DesktopStatusV2(
+            "due_work",
+            due_status,
+            f"due_work={due_status};provider_job={provider_status}",
+            latest_memory.available_at_ns,
+            latest_memory.artifact_ref,
+            _code(due_reason),
+        )
+        unavailable.discard("due_work")
 
     observation_times = [
         item.available_at_ns

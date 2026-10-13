@@ -91,6 +91,113 @@ class ResearchMemoryV1:
         timestamp(now_ns, field="memory.now_ns")
         self.repository.register_artifact(ArtifactIndexEntryV2(ref, kind, sha256_json(body), now_ns, now_ns, body))
 
+    @staticmethod
+    def production_projection_identity(receipt_ref: str) -> str:
+        sha256_ref(receipt_ref, field="receipt_ref")
+        return sha256_json({"version": "PRODUCTION_INTELLIGENCE_MEMORY_IDENTITY_V1", "receipt_ref": receipt_ref})
+
+    @staticmethod
+    def production_brief_identity(receipt_ref: str) -> str:
+        sha256_ref(receipt_ref, field="receipt_ref")
+        return sha256_json({"artifact_type": "ProductionDecisionBriefProjectionV1", "receipt_ref": receipt_ref})
+
+    @staticmethod
+    def production_memory_identity(receipt_ref: str) -> str:
+        sha256_ref(receipt_ref, field="receipt_ref")
+        return sha256_json({"artifact_type": "ProductionIntelligenceMemoryProjectionV1", "receipt_ref": receipt_ref})
+
+    def persist_production_projection(
+        self,
+        *,
+        receipt_ref: str,
+        brief: Mapping[str, Any],
+        brief_status: str,
+        source_refs: tuple[str, ...],
+        source_population_ref: str,
+        now_ns: int,
+        due_work_status: str = "UNAVAILABLE",
+        due_work_reason: str = "NO_CAUSAL_DUE_WORK_JOIN_READER",
+        due_work_refs: tuple[str, ...] = (),
+    ) -> tuple[str, str]:
+        """Persist one zero-authority brief and memory pointer through the ops writer.
+
+        This path records no provider request, due-work item, dispatch intent or
+        retry. The receipt identity is the idempotency key, so replay returns the
+        original immutable brief and memory artifacts.
+        """
+        self._writer()
+        sha256_ref(receipt_ref, field="receipt_ref")
+        sha256_ref(source_population_ref, field="source_population_ref")
+        timestamp(now_ns, field="production_projection.now_ns")
+        if brief_status not in {"COMPLETE", "BLOCKED", "EXPIRED"}:
+            raise ValueError("invalid production brief status")
+        sources = tuple(sorted(set(source_refs)))
+        for ref in sources:
+            sha256_ref(ref, field="source_ref")
+        due_refs = tuple(sorted(set(due_work_refs)))
+        for ref in due_refs:
+            sha256_ref(ref, field="due_work_ref")
+
+        identity_ref = self.production_projection_identity(receipt_ref)
+        prior = self._read(identity_ref)
+        if prior is not None:
+            brief_ref, memory_ref = prior.get("brief_ref"), prior.get("memory_ref")
+            if not isinstance(brief_ref, str) or not isinstance(memory_ref, str):
+                raise ValueError("production memory identity is incomplete")
+            brief_body = self._read(brief_ref)
+            memory_body = self._read(memory_ref)
+            if (
+                brief_body is None
+                or memory_body is None
+                or brief_ref != self.production_brief_identity(receipt_ref)
+                or memory_ref != self.production_memory_identity(receipt_ref)
+                or brief_body.get("receipt_ref") != receipt_ref
+                or memory_body.get("receipt_ref") != receipt_ref
+                or memory_body.get("brief_ref") != brief_ref
+                or brief_body.get("status") != memory_body.get("brief_status")
+                or brief_body.get("source_refs") != memory_body.get("source_refs")
+            ):
+                raise ValueError("production memory identity points to conflicting projection")
+            return brief_ref, memory_ref
+
+        brief_body = {
+            "version": "PRODUCTION_DECISION_BRIEF_PROJECTION_V1",
+            "authority": "ZERO",
+            "receipt_ref": receipt_ref,
+            "source_population_ref": source_population_ref,
+            "brief": dict(brief),
+            "status": brief_status,
+            "source_refs": list(sources),
+        }
+        brief_ref = self.production_brief_identity(receipt_ref)
+        memory_ref = self.production_memory_identity(receipt_ref)
+        memory_body = {
+            "version": "PRODUCTION_INTELLIGENCE_MEMORY_PROJECTION_V1",
+            "authority": "ZERO",
+            "receipt_ref": receipt_ref,
+            "brief_ref": brief_ref,
+            "brief_status": brief_status,
+            "source_population_ref": source_population_ref,
+            "source_refs": list(sources),
+            "created_at_ns": now_ns,
+            "due_work_status": due_work_status,
+            "due_work_reason": due_work_reason,
+            "due_work_refs": list(due_refs),
+            "provider_job_status": "NOT_CREATED_NO_AUTHORITY",
+        }
+        identity_body = {
+            "version": "PRODUCTION_INTELLIGENCE_MEMORY_IDENTITY_V1",
+            "authority": "ZERO",
+            "receipt_ref": receipt_ref,
+            "brief_ref": brief_ref,
+            "memory_ref": memory_ref,
+        }
+        with self.repository.atomic_composition():
+            self._persist(brief_ref, "ProductionDecisionBriefProjectionV1", brief_body, now_ns=now_ns)
+            self._persist(memory_ref, "ProductionIntelligenceMemoryProjectionV1", memory_body, now_ns=now_ns)
+            self._persist(identity_ref, "ProductionIntelligenceMemoryIdentityV1", identity_body, now_ns=now_ns)
+        return brief_ref, memory_ref
+
     def request(self, job_id: str) -> Mapping[str, Any] | None:
         return self._read(_identity(job_id, "request"))
 

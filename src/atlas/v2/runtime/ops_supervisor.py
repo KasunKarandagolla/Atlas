@@ -494,6 +494,7 @@ class OpsSupervisorV2:
         sleep_fn: Callable[[float], None] = time.sleep,
         max_events_per_cycle: int = 64,
         post_receipt_shadow: Callable[[OpsSupervisorReceiptV1, str, OpsRepository], None] | None = None,
+        production_intelligence_enabled: bool = True,
         post_cycle_maintenance: Callable[[OpsRepository, int], object] | None = None,
         outcome_maintenance_budget_ns: int | None = None,
     ) -> None:
@@ -512,6 +513,31 @@ class OpsSupervisorV2:
         self.sleep_fn = sleep_fn
         self.max_events_per_cycle = max_events_per_cycle
         self.post_receipt_shadow = post_receipt_shadow
+        self.post_receipt_projection: Callable[[OpsSupervisorReceiptV1, str, OpsRepository], None] | None = None
+        if production_intelligence_enabled:
+            from .production import ProductionOpsCyclePortV1
+
+            if isinstance(port, ProductionOpsCyclePortV1):
+                from .production_intelligence import project_production_receipt
+
+                def project_intelligence(
+                    receipt: OpsSupervisorReceiptV1,
+                    receipt_ref: str,
+                    repository: OpsRepository,
+                ) -> None:
+                    now_ns = max(
+                        receipt.created_at_ns,
+                        timestamp(self.clock_ns(), field="production intelligence projection time"),
+                    )
+                    project_production_receipt(
+                        repository,
+                        receipt,
+                        receipt_ref,
+                        now_ns=now_ns,
+                        clock_ns=self.clock_ns,
+                    )
+
+                self.post_receipt_projection = project_intelligence
         self._default_outcome_maturity: Callable[..., object] | None = None
         if post_cycle_maintenance is None:
             from .outcome_maturity import run_outcome_maturity_cycle
@@ -812,6 +838,7 @@ class OpsSupervisorV2:
                 pass
         failures: list[str] = []
         receipts: list[OpsSupervisorReceiptV1] = []
+        pending_intelligence_projections: list[tuple[OpsSupervisorReceiptV1, str]] = []
         batch: OpsCycleBatchV1 | None = None
 
         try:
@@ -871,6 +898,7 @@ class OpsSupervisorV2:
                             raise RuntimeError("durable receipt identity disappeared during replay")
                         prior_receipt_ref = str(identity_entry.metadata["receipt_ref"])
                         receipt_refs.append(prior_receipt_ref)
+                        pending_intelligence_projections.append((prior_receipt, prior_receipt_ref))
                         if self.post_receipt_shadow is not None:
                             try:
                                 self.post_receipt_shadow(prior_receipt, prior_receipt_ref, repository)
@@ -967,6 +995,7 @@ class OpsSupervisorV2:
                     receipt_ref = self._persist_final_receipt(repository, receipt)
                     receipts.append(receipt)
                     receipt_refs.append(receipt_ref)
+                    pending_intelligence_projections.append((receipt, receipt_ref))
                     if self.post_receipt_shadow is not None:
                         try:
                             self.post_receipt_shadow(receipt, receipt_ref, repository)
@@ -1091,6 +1120,13 @@ class OpsSupervisorV2:
                     ))
                 except Exception:
                     # Downstream failure persistence must not alter the sealed cycle receipt.
+                    pass
+        if self.post_receipt_projection is not None:
+            for receipt, receipt_ref in pending_intelligence_projections:
+                try:
+                    self.post_receipt_projection(receipt, receipt_ref, repository)
+                except Exception:
+                    # Read-only intelligence runs only after cycle decision and maintenance work.
                     pass
         return OpsRunResultV1(cycle, tuple(receipts))
 
@@ -1244,6 +1280,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--interval-seconds", type=float, default=1.0)
     parser.add_argument("--once", action="store_true", help="run one bounded cycle and exit")
+    parser.add_argument(
+        "--disable-production-intelligence",
+        action="store_true",
+        help="disable the additive read-only brief and memory projection",
+    )
     parser.add_argument("--action-critic-shadow", action="store_true",
         help="opt in to the post-receipt hidden zero-authority action critic")
     parser.add_argument("--broker-socket", default=os.environ.get("ATLAS_AGENT_BROKER_SOCKET"),
@@ -1257,7 +1298,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .action_critic_shadow import _LazyActionAssessmentShadow
 
         shadow = _LazyActionAssessmentShadow(args.db, args.broker_socket)
-    supervisor = OpsSupervisorV2(Path(args.db), port, post_receipt_shadow=shadow)
+    supervisor = OpsSupervisorV2(
+        Path(args.db),
+        port,
+        post_receipt_shadow=shadow,
+        production_intelligence_enabled=not args.disable_production_intelligence,
+    )
     try:
         if args.once:
             result = supervisor.run_once()

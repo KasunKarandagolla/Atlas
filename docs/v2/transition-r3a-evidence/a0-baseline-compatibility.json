@@ -1,0 +1,20 @@
+{
+  "a0_artifact_counts": {
+    "ActionArtifactV2": 1,
+    "CandidateSetV2": 3,
+    "DecisionCalendarEntryV2": 1,
+    "EvaluationArtifactV2": 1,
+    "OpsSupervisorReceiptV1": 1,
+    "SizingDecisionV2": 1
+  },
+  "accepted_r2_source_sha": "67442118d5ffef818541e1b6f83d7fa6bae45293",
+  "baseline_snapshot_sha256": "5980950ae02bb6fac813e797978e6cbece6b4070c2d0a4908c3d235424526e7e",
+  "comparison": "A0 artifact and calendar identity compatibility",
+  "current_branch": "impl/red-r3a-production-brief-memory-2026-10-13",
+  "current_projection_mode": "DISABLED_FOR_COMPARISON",
+  "current_snapshot_sha256": "5980950ae02bb6fac813e797978e6cbece6b4070c2d0a4908c3d235424526e7e",
+  "equal": true,
+  "equal_a0_artifact_sets": true,
+  "equal_receipt": true,
+  "fixture_event_id": "19dd9debb0c793b597e1db7312b219a46ea6b768451aea203b606641033c5917"
+}

@@ -1,0 +1,52 @@
+{
+  "artifact_manifest_consistency": "PENDING_FINAL_MANIFEST_GENERATION",
+  "changed_python_files": [
+    "src/atlas/v2/runtime/production_intelligence.py",
+    "src/atlas/v2/runtime/ops_supervisor.py",
+    "src/atlas/v2/research/memory.py",
+    "src/atlas/v2/desktop/projection.py",
+    "tests/v2/test_session052_production_intelligence.py"
+  ],
+  "compileall": {
+    "command": ".venv/bin/python -m compileall -q src/atlas/v2 tests/v2/test_session052_production_intelligence.py",
+    "status": "PASS"
+  },
+  "dependency_lock": {
+    "dependency_or_lock_changes": "NONE",
+    "license_check": "NOT_APPLICABLE_NO_DEPENDENCY_OR_LICENSE_CHANGES",
+    "uv_lock_check": "PASS",
+    "uv_locked_dry_run_dev_and_offline_research": "PASS_NO_CHANGES",
+    "uv_pip_check": "PASS"
+  },
+  "format": {
+    "existing_ops_supervisor": "BASELINE_FAILURE_REPRODUCED_CURRENT_FAILURE_UNCHANGED",
+    "existing_research_memory_and_desktop_projection": "PASS",
+    "new_adapter_and_test": "PASS",
+    "whole_file_churn": "NONE"
+  },
+  "frozen_authority_sha256": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "status": "PASS"
+  },
+  "full_repository_suite": "TEST GATE_NOT_RUN",
+  "mypy": {
+    "baseline_overlay_existing_modules": {
+      "command": "mypy --config-file pyproject.toml --follow-imports=skip --shadow-file <R2 ops_supervisor.py> --shadow-file <R2 research/memory.py> --shadow-file <R2 desktop/projection.py> <same module paths>",
+      "files": 3,
+      "status": "PASS"
+    },
+    "current_changed_sources_and_test": {
+      "command": ".venv/bin/mypy --config-file pyproject.toml --follow-imports=skip <five changed Python files>",
+      "files": 5,
+      "status": "PASS"
+    }
+  },
+  "ruff_lint": {
+    "command": ".venv/bin/ruff check <five changed Python files>",
+    "status": "PASS"
+  },
+  "secret_scan": "see security-scan.json; local pattern scan found no matches; external scanner unavailable",
+  "starting_source_sha": "67442118d5ffef818541e1b6f83d7fa6bae45293"
+}
