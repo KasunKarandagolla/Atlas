@@ -7,707 +7,1577 @@
       {
         "bytes": 1535,
         "path": "docs/v2/transition-r2-evidence/baseline-basket-gate/baseline-basket.junit.xml.gz",
-        "sha256": "d49119c5eece54dbf955402e02ec587eb790ce086cd093b08f7ad80ef03b9942"
+        "sha256": "d49119c5eece54dbf955402e02ec587eb790ce086cd093b08f7ad80ef03b9942",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 385,
         "path": "docs/v2/transition-r2-evidence/baseline-basket-gate/command.json",
-        "sha256": "ff7ec80667445df3db362c27dfc26f8e0de86f71825fa6c42799870d153ad8d5"
+        "sha256": "ff7ec80667445df3db362c27dfc26f8e0de86f71825fa6c42799870d153ad8d5",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 4794,
         "path": "docs/v2/transition-r2-evidence/baseline-basket-gate/pytest.log",
-        "sha256": "02b9a1d9451e488d77bccb96cfd6fa40676f0c4529da941e471e1b6fd61bdc36"
+        "sha256": "02b9a1d9451e488d77bccb96cfd6fa40676f0c4529da941e471e1b6fd61bdc36",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/baseline-basket-gate/pytest.log",
+          "original_bytes": 4794,
+          "original_sha256": "02b9a1d9451e488d77bccb96cfd6fa40676f0c4529da941e471e1b6fd61bdc36",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/baseline-basket-gate/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1388,
+          "representation_sha256": "753da850f6e9318b2124a22746a0b0b9fa9b22104cb198b14b97c09accde7533",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "02b9a1d9451e488d77bccb96cfd6fa40676f0c4529da941e471e1b6fd61bdc36"
+        }
       },
       {
         "bytes": 756,
         "path": "docs/v2/transition-r2-evidence/baseline-basket-gate/resource-metrics.json",
-        "sha256": "bad671deeda2b2186fe8ac1176df986d64f426990ea1e23cc527a0993cca0458"
+        "sha256": "bad671deeda2b2186fe8ac1176df986d64f426990ea1e23cc527a0993cca0458",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 844,
         "path": "docs/v2/transition-r2-evidence/consumer-compatibility/command.json",
-        "sha256": "49e5bde233abb25b7d55a4c863c75a36c92d13402e5e9064c26e5b48f360f21f"
+        "sha256": "49e5bde233abb25b7d55a4c863c75a36c92d13402e5e9064c26e5b48f360f21f",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 5195,
         "path": "docs/v2/transition-r2-evidence/consumer-compatibility/consumer-compat.junit.xml.gz",
-        "sha256": "d1f8470ff40095ad601f3679afcaeb28e9c69705006b0dee9b4deaa4f07b86c9"
+        "sha256": "d1f8470ff40095ad601f3679afcaeb28e9c69705006b0dee9b4deaa4f07b86c9",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 4939,
         "path": "docs/v2/transition-r2-evidence/consumer-compatibility/pytest.log",
-        "sha256": "4b1767ec0c5ff1a4777afd8796aed2b235cc09322cc1cf5466b06f9f611ca044"
+        "sha256": "4b1767ec0c5ff1a4777afd8796aed2b235cc09322cc1cf5466b06f9f611ca044",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/consumer-compatibility/pytest.log",
+          "original_bytes": 4939,
+          "original_sha256": "4b1767ec0c5ff1a4777afd8796aed2b235cc09322cc1cf5466b06f9f611ca044",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/consumer-compatibility/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1396,
+          "representation_sha256": "38bfbc57cf0a63358dcdb10f0b365b3fb89634cd8d7bc36ba76b7081f60aa70b",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "4b1767ec0c5ff1a4777afd8796aed2b235cc09322cc1cf5466b06f9f611ca044"
+        }
       },
       {
         "bytes": 1267,
         "path": "docs/v2/transition-r2-evidence/consumer-compatibility/resource-metrics.json",
-        "sha256": "fd5078a988cec5f9e066bc823fafd94ef7ad5f8991bf43aba554da0e15a7c964"
+        "sha256": "fd5078a988cec5f9e066bc823fafd94ef7ad5f8991bf43aba554da0e15a7c964",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 869,
         "path": "docs/v2/transition-r2-evidence/consumer-compatibility-r2/command.json",
-        "sha256": "be8c1f44a62119d665b7c189f86981cec236337a16fae77c378656371428981b"
+        "sha256": "be8c1f44a62119d665b7c189f86981cec236337a16fae77c378656371428981b",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 5167,
         "path": "docs/v2/transition-r2-evidence/consumer-compatibility-r2/consumer-compat.junit.xml.gz",
-        "sha256": "e6a067ca9116367b38373099ad0ff4ae20fc717df92f37ea413085b8eb9d1e01"
+        "sha256": "e6a067ca9116367b38373099ad0ff4ae20fc717df92f37ea413085b8eb9d1e01",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12,
         "path": "docs/v2/transition-r2-evidence/consumer-compatibility-r2/exit.txt",
-        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409"
+        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 4942,
         "path": "docs/v2/transition-r2-evidence/consumer-compatibility-r2/pytest.log",
-        "sha256": "043fc86f8b697c96d80d2da7b4c5b2bf19c5873da25ae20e67d3c0e934f5cd8e"
+        "sha256": "043fc86f8b697c96d80d2da7b4c5b2bf19c5873da25ae20e67d3c0e934f5cd8e",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/consumer-compatibility-r2/pytest.log",
+          "original_bytes": 4942,
+          "original_sha256": "043fc86f8b697c96d80d2da7b4c5b2bf19c5873da25ae20e67d3c0e934f5cd8e",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/consumer-compatibility-r2/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1397,
+          "representation_sha256": "2e040bc875c62836591271776ff210aaca20cde70e1cf2cdad8f154ffe2f984e",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "043fc86f8b697c96d80d2da7b4c5b2bf19c5873da25ae20e67d3c0e934f5cd8e"
+        }
       },
       {
         "bytes": 1320,
         "path": "docs/v2/transition-r2-evidence/consumer-compatibility-r2/resource-metrics.json",
-        "sha256": "2274e2da1fa5372b1070e119de246d92b4e9cb4d5dfbabd4ec3359b692586149"
+        "sha256": "2274e2da1fa5372b1070e119de246d92b4e9cb4d5dfbabd4ec3359b692586149",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 745,
         "path": "docs/v2/transition-r2-evidence/diagnosis/shared-budget-boundary.json",
-        "sha256": "1c12e469c65446a13e11142b256005eef0897da9900de56c74d928f9ca2d97ca"
+        "sha256": "1c12e469c65446a13e11142b256005eef0897da9900de56c74d928f9ca2d97ca",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 640,
         "path": "docs/v2/transition-r2-evidence/environment-preflight/command.json",
-        "sha256": "6d8f6dde350f7ac248f0342a400f2f68f73fa507cf4b9416694f84a5fd8ad45f"
+        "sha256": "6d8f6dde350f7ac248f0342a400f2f68f73fa507cf4b9416694f84a5fd8ad45f",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 827,
         "path": "docs/v2/transition-r2-evidence/environment-preflight/missing-offline-research/command.json",
-        "sha256": "8abc8a6c5367c6c90bbec44b2b2b15d9b253f8cabd52f94b20eea6469d800768"
+        "sha256": "8abc8a6c5367c6c90bbec44b2b2b15d9b253f8cabd52f94b20eea6469d800768",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1215,
         "path": "docs/v2/transition-r2-evidence/environment-preflight/missing-offline-research/mixed-capacity.junit.xml.gz",
-        "sha256": "0f9d25d58b6c5ff5b3bb07903bbf158f839d855eb196a77c79f910262a3c2f36"
+        "sha256": "0f9d25d58b6c5ff5b3bb07903bbf158f839d855eb196a77c79f910262a3c2f36",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 2516,
         "path": "docs/v2/transition-r2-evidence/environment-preflight/missing-offline-research/pytest.log",
-        "sha256": "eaa59df7afb294739ca3a645b5c11fb11f8b726e69ff1c4260755d08028d44ee"
+        "sha256": "eaa59df7afb294739ca3a645b5c11fb11f8b726e69ff1c4260755d08028d44ee",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/environment-preflight/missing-offline-research/pytest.log",
+          "original_bytes": 2516,
+          "original_sha256": "eaa59df7afb294739ca3a645b5c11fb11f8b726e69ff1c4260755d08028d44ee",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/environment-preflight/missing-offline-research/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1093,
+          "representation_sha256": "010fc8202abaa8c33f5e4d27f4e6c27f899f23dcbaadd7c1b9f6bc1b5d7087db",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "eaa59df7afb294739ca3a645b5c11fb11f8b726e69ff1c4260755d08028d44ee"
+        }
       },
       {
         "bytes": 774,
         "path": "docs/v2/transition-r2-evidence/environment-preflight/missing-offline-research/resource-metrics.json",
-        "sha256": "f090e055b61c66dca88229c54bfdaac8ff9408ecc758caf928ea305db5a064c5"
+        "sha256": "f090e055b61c66dca88229c54bfdaac8ff9408ecc758caf928ea305db5a064c5",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 540,
         "path": "docs/v2/transition-r2-evidence/environment-preflight/mixed-capacity.junit.xml.gz",
-        "sha256": "9b6494ab85ee1853ef0cfb3d92bf88a7a92d5cf75eefe0e724ab3fdf4f3d51fa"
+        "sha256": "9b6494ab85ee1853ef0cfb3d92bf88a7a92d5cf75eefe0e724ab3fdf4f3d51fa",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1073,
         "path": "docs/v2/transition-r2-evidence/environment-preflight/pytest.log",
-        "sha256": "9adc5fbf4460f404f067713012413ba2a34326eb5fec855f8f3639c9b7f29d31"
+        "sha256": "9adc5fbf4460f404f067713012413ba2a34326eb5fec855f8f3639c9b7f29d31",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/environment-preflight/pytest.log",
+          "original_bytes": 1073,
+          "original_sha256": "9adc5fbf4460f404f067713012413ba2a34326eb5fec855f8f3639c9b7f29d31",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/environment-preflight/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 465,
+          "representation_sha256": "1e5b651ca1e996f28ef4b5cd6e9504601beb09bcef3e934c3c78b42a74783757",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "9adc5fbf4460f404f067713012413ba2a34326eb5fec855f8f3639c9b7f29d31"
+        }
       },
       {
         "bytes": 578,
         "path": "docs/v2/transition-r2-evidence/environment-preflight/resource-metrics.json",
-        "sha256": "ccef111c410ea71265ee26d6e86c5965d983cddcd922e2e7f0a5216ed02a3f06"
+        "sha256": "ccef111c410ea71265ee26d6e86c5965d983cddcd922e2e7f0a5216ed02a3f06",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 3057,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix/capture-matrix.junit.xml.gz",
-        "sha256": "828b49aa92fa3620c6b0323097c75ba8d0dcd9c6e50b0220935a38cf758cb260"
+        "sha256": "828b49aa92fa3620c6b0323097c75ba8d0dcd9c6e50b0220935a38cf758cb260",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 620,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix/command.json",
-        "sha256": "dc6a7ec88d1de9d0ae59397314fcfeb82b8d982f55de07ad8807e0aa18f95015"
+        "sha256": "dc6a7ec88d1de9d0ae59397314fcfeb82b8d982f55de07ad8807e0aa18f95015",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 6116,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix/pytest.log",
-        "sha256": "862272c888172f80cbec9436119db725f60c175f75ec6484db2d18d586f28d5a"
+        "sha256": "862272c888172f80cbec9436119db725f60c175f75ec6484db2d18d586f28d5a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-capture-matrix/pytest.log",
+          "original_bytes": 6116,
+          "original_sha256": "862272c888172f80cbec9436119db725f60c175f75ec6484db2d18d586f28d5a",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-capture-matrix/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 2115,
+          "representation_sha256": "37f1877cb4e5719c3c1503e9b3358a08e9eb85d972677d18c8bed9af15190e87",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "862272c888172f80cbec9436119db725f60c175f75ec6484db2d18d586f28d5a"
+        }
       },
       {
         "bytes": 1052,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix/resource-metrics.json",
-        "sha256": "e41a7ded0fbed8f83fd93dcece015e8655e3847173674894582adcca783086d6"
+        "sha256": "e41a7ded0fbed8f83fd93dcece015e8655e3847173674894582adcca783086d6",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 2000,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix-run2/capture-matrix.junit.xml.gz",
-        "sha256": "512eeedee929f16c78274e59bde64085d157aa64c3343005c035f5fbb3fcf88c"
+        "sha256": "512eeedee929f16c78274e59bde64085d157aa64c3343005c035f5fbb3fcf88c",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 630,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix-run2/command.json",
-        "sha256": "50d2029477e9740aa6b9613bcc8a88c54b4c13131cd34fc114d40d8bf4b58604"
+        "sha256": "50d2029477e9740aa6b9613bcc8a88c54b4c13131cd34fc114d40d8bf4b58604",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 2790,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix-run2/pytest.log",
-        "sha256": "1e024e62dc34e8742f94f67ce3567483edc2f086464631cf7067c2c8dc1fc603"
+        "sha256": "1e024e62dc34e8742f94f67ce3567483edc2f086464631cf7067c2c8dc1fc603",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-capture-matrix-run2/pytest.log",
+          "original_bytes": 2790,
+          "original_sha256": "1e024e62dc34e8742f94f67ce3567483edc2f086464631cf7067c2c8dc1fc603",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-capture-matrix-run2/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1032,
+          "representation_sha256": "e032d3e27630b5badbace69cadbd4849fb18d4502c07a612745fde600a505d47",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "1e024e62dc34e8742f94f67ce3567483edc2f086464631cf7067c2c8dc1fc603"
+        }
       },
       {
         "bytes": 1049,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix-run2/resource-metrics.json",
-        "sha256": "8558c859841f54cf3399ba9f0c5f63445bee77b3db114c96625608f7f2090806"
+        "sha256": "8558c859841f54cf3399ba9f0c5f63445bee77b3db114c96625608f7f2090806",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 2058,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix-run3/capture-matrix.junit.xml.gz",
-        "sha256": "e9f75b78b15cc122b6d63551e05414518d4bd360db26ebb478ef4f2f9ceb626a"
+        "sha256": "e9f75b78b15cc122b6d63551e05414518d4bd360db26ebb478ef4f2f9ceb626a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 649,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix-run3/command.json",
-        "sha256": "46166180611b22f1f8980113469148074ea2809806e6d0633b92941ba7dd7d0e"
+        "sha256": "46166180611b22f1f8980113469148074ea2809806e6d0633b92941ba7dd7d0e",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix-run3/exit.txt",
-        "sha256": "bde294368bfed77c2cddf8cec271d398aee9cdbab3b26e1059281bd33adb0120"
+        "sha256": "bde294368bfed77c2cddf8cec271d398aee9cdbab3b26e1059281bd33adb0120",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 2793,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix-run3/pytest.log",
-        "sha256": "18e1aa6dcf041f06ebdb1e64a06979d37993c35b6ab9374c5576812e9aff299b"
+        "sha256": "18e1aa6dcf041f06ebdb1e64a06979d37993c35b6ab9374c5576812e9aff299b",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-capture-matrix-run3/pytest.log",
+          "original_bytes": 2793,
+          "original_sha256": "18e1aa6dcf041f06ebdb1e64a06979d37993c35b6ab9374c5576812e9aff299b",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-capture-matrix-run3/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1038,
+          "representation_sha256": "5dc253506f7a0dd335193566f94375fa6fb9d8786ed1c376c6a32b59188a389c",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "18e1aa6dcf041f06ebdb1e64a06979d37993c35b6ab9374c5576812e9aff299b"
+        }
       },
       {
         "bytes": 1098,
         "path": "docs/v2/transition-r2-evidence/final-capture-matrix-run3/resource-metrics.json",
-        "sha256": "88fcafdbd86d7f1a1ce01adecbb6fa86999098c3627ac113b0cd1557703ecc06"
+        "sha256": "88fcafdbd86d7f1a1ce01adecbb6fa86999098c3627ac113b0cd1557703ecc06",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 321,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial/command.json",
-        "sha256": "b6daeacd0803860f2bca9dda44e07d3e3320386fcaab1e5c8f81e98bfffcb70b"
+        "sha256": "b6daeacd0803860f2bca9dda44e07d3e3320386fcaab1e5c8f81e98bfffcb70b",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1005,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial/grouped-adversarial.junit.xml.gz",
-        "sha256": "2c2869aa4c52ebdb3f8bca73c915abd7561287c2fcab8a4aed8f7b25c24e71ba"
+        "sha256": "2c2869aa4c52ebdb3f8bca73c915abd7561287c2fcab8a4aed8f7b25c24e71ba",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 3446,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial/pytest.log",
-        "sha256": "8b7f70ebebff43c7bbea480260a3b0a6bc25715750963660725af2cfe33ee16a"
+        "sha256": "8b7f70ebebff43c7bbea480260a3b0a6bc25715750963660725af2cfe33ee16a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial/pytest.log",
+          "original_bytes": 3446,
+          "original_sha256": "8b7f70ebebff43c7bbea480260a3b0a6bc25715750963660725af2cfe33ee16a",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-grouped-adversarial/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1476,
+          "representation_sha256": "9e338150a5a4242bf0d07f43408902b9ce02ac634d353049d951800e34710407",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "8b7f70ebebff43c7bbea480260a3b0a6bc25715750963660725af2cfe33ee16a"
+        }
       },
       {
         "bytes": 630,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial/resource-metrics.json",
-        "sha256": "68e5187160d1401917be51b771274722ef0877bd1fe0d800e7e7870bde7400e9"
+        "sha256": "68e5187160d1401917be51b771274722ef0877bd1fe0d800e7e7870bde7400e9",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 309,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run2/command.json",
-        "sha256": "a56e1f51368bbfbd11503f8cabc64aa158d385a6561883967f7af54910ef6458"
+        "sha256": "a56e1f51368bbfbd11503f8cabc64aa158d385a6561883967f7af54910ef6458",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 14,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run2/exit.txt",
-        "sha256": "87acd7ca4c77097615b4d6bbd07a1cf3de014e3c184dd51ab495f5dfe3ebb02b"
+        "sha256": "87acd7ca4c77097615b4d6bbd07a1cf3de014e3c184dd51ab495f5dfe3ebb02b",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 0,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run2/pytest.log",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run2/pytest.log",
+          "original_bytes": 0,
+          "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-grouped-adversarial-run2/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 20,
+          "representation_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
       },
       {
         "bytes": 60,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run2/resource-metrics.txt",
-        "sha256": "d2b8980b0088552cc287e4be04f54ec94ea0599880d41e33f2d9b5f5cd98fb90"
+        "sha256": "d2b8980b0088552cc287e4be04f54ec94ea0599880d41e33f2d9b5f5cd98fb90",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 309,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run3/command.json",
-        "sha256": "beff44bba9febfa5ff1c70ad86640e437ea63992fddfbbd00069e1431e48c599"
+        "sha256": "beff44bba9febfa5ff1c70ad86640e437ea63992fddfbbd00069e1431e48c599",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run3/exit.txt",
-        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409"
+        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1074,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run3/grouped-adversarial.junit.xml.gz",
-        "sha256": "0ec60bb6608a315c059cc582bc47a1819b94866aa09c952a525ebf600914eee3"
+        "sha256": "0ec60bb6608a315c059cc582bc47a1819b94866aa09c952a525ebf600914eee3",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 3634,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run3/pytest.log",
-        "sha256": "75b37a615eb1afbee3549e306cf0d68b66cc5a25de6af2a3f97aaa81009da810"
+        "sha256": "75b37a615eb1afbee3549e306cf0d68b66cc5a25de6af2a3f97aaa81009da810",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run3/pytest.log",
+          "original_bytes": 3634,
+          "original_sha256": "75b37a615eb1afbee3549e306cf0d68b66cc5a25de6af2a3f97aaa81009da810",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-grouped-adversarial-run3/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1560,
+          "representation_sha256": "8069f8b77eec50421de051c87dc0890f38558ea99fb85763e673a823f6eb23d0",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "75b37a615eb1afbee3549e306cf0d68b66cc5a25de6af2a3f97aaa81009da810"
+        }
       },
       {
         "bytes": 309,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run4/command.json",
-        "sha256": "727cf3da26e26e400afa23ebfd2cf360ed821e8e8ce38515fb17c1be814017ac"
+        "sha256": "727cf3da26e26e400afa23ebfd2cf360ed821e8e8ce38515fb17c1be814017ac",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run4/exit.txt",
-        "sha256": "bde294368bfed77c2cddf8cec271d398aee9cdbab3b26e1059281bd33adb0120"
+        "sha256": "bde294368bfed77c2cddf8cec271d398aee9cdbab3b26e1059281bd33adb0120",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 426,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run4/grouped-adversarial.junit.xml.gz",
-        "sha256": "b027de5d186655f3b45ef93119aab0f36951cd3c338ba02888a7672c3bf90721"
+        "sha256": "b027de5d186655f3b45ef93119aab0f36951cd3c338ba02888a7672c3bf90721",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1868,
         "path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run4/pytest.log",
-        "sha256": "200a015d43ec6da209c791fa2969d3468e94147eefdeea3cad9b6a8543f73811"
+        "sha256": "200a015d43ec6da209c791fa2969d3468e94147eefdeea3cad9b6a8543f73811",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-grouped-adversarial-run4/pytest.log",
+          "original_bytes": 1868,
+          "original_sha256": "200a015d43ec6da209c791fa2969d3468e94147eefdeea3cad9b6a8543f73811",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-grouped-adversarial-run4/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 867,
+          "representation_sha256": "2d278538af0ab2584e67274568bb8e876bfd2ee4418771fee4a7b35df8208d9e",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "200a015d43ec6da209c791fa2969d3468e94147eefdeea3cad9b6a8543f73811"
+        }
       },
       {
         "bytes": 471,
         "path": "docs/v2/transition-r2-evidence/final-health-recovery-r2/command.json",
-        "sha256": "7c5dfdff4e57dc1782ee67ba3d8b003b8b21f3055ba33c23f2eba34ecdc56de7"
+        "sha256": "7c5dfdff4e57dc1782ee67ba3d8b003b8b21f3055ba33c23f2eba34ecdc56de7",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12,
         "path": "docs/v2/transition-r2-evidence/final-health-recovery-r2/exit.txt",
-        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409"
+        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 4194,
         "path": "docs/v2/transition-r2-evidence/final-health-recovery-r2/health-recovery.junit.xml.gz",
-        "sha256": "0ae3f2e7700a8de2faec539bb560d44f24b39772f8fc77f0c957b85959235f42"
+        "sha256": "0ae3f2e7700a8de2faec539bb560d44f24b39772f8fc77f0c957b85959235f42",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 2279,
         "path": "docs/v2/transition-r2-evidence/final-health-recovery-r2/pytest.log",
-        "sha256": "e1bcfb559efd3120cdabe3dbe8cc4559459168f4b47d173e32d7abc14b22e839"
+        "sha256": "e1bcfb559efd3120cdabe3dbe8cc4559459168f4b47d173e32d7abc14b22e839",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-health-recovery-r2/pytest.log",
+          "original_bytes": 2279,
+          "original_sha256": "e1bcfb559efd3120cdabe3dbe8cc4559459168f4b47d173e32d7abc14b22e839",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-health-recovery-r2/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 932,
+          "representation_sha256": "95ecb305b41dc2746aee51d6a65cbcc248e452a0724766adf17d74b8175ec185",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "e1bcfb559efd3120cdabe3dbe8cc4559459168f4b47d173e32d7abc14b22e839"
+        }
       },
       {
         "bytes": 904,
         "path": "docs/v2/transition-r2-evidence/final-health-recovery-r2/resource-metrics.json",
-        "sha256": "0d4393fe54348f46e538b44ffe0ce0dc0cdc12a56fb0665c986bb81be8714482"
+        "sha256": "0d4393fe54348f46e538b44ffe0ce0dc0cdc12a56fb0665c986bb81be8714482",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 302,
         "path": "docs/v2/transition-r2-evidence/final-session041-mixed/command.json",
-        "sha256": "b2af9f31aa0421a7d681f9f3c2a6eed2655895f4e7d62d62ec3180e101ca5490"
+        "sha256": "b2af9f31aa0421a7d681f9f3c2a6eed2655895f4e7d62d62ec3180e101ca5490",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 5936,
         "path": "docs/v2/transition-r2-evidence/final-session041-mixed/mixed-capacity.junit.xml.gz",
-        "sha256": "fa53f9c3b25eef44b13dbb79993dc4b83cd7ff9ddf6a9a738e670b5faf4b8bda"
+        "sha256": "fa53f9c3b25eef44b13dbb79993dc4b83cd7ff9ddf6a9a738e670b5faf4b8bda",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 14394,
         "path": "docs/v2/transition-r2-evidence/final-session041-mixed/pytest.log",
-        "sha256": "10c69d9f472af08ade9a3d5a4ccfc54c2d493e562a1bd30e36df4c8563817f97"
+        "sha256": "10c69d9f472af08ade9a3d5a4ccfc54c2d493e562a1bd30e36df4c8563817f97",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-session041-mixed/pytest.log",
+          "original_bytes": 14394,
+          "original_sha256": "10c69d9f472af08ade9a3d5a4ccfc54c2d493e562a1bd30e36df4c8563817f97",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-session041-mixed/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 5556,
+          "representation_sha256": "33368674b727c8e34e09318125e7fcb7aa23e4f64f91b7aee0ece7ba900c9d05",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "10c69d9f472af08ade9a3d5a4ccfc54c2d493e562a1bd30e36df4c8563817f97"
+        }
       },
       {
         "bytes": 711,
         "path": "docs/v2/transition-r2-evidence/final-session041-mixed/resource-metrics.json",
-        "sha256": "b72f08e7e67f173a113efbe04c0789fe90d2248cd53c773c40e68ee54f799505"
+        "sha256": "b72f08e7e67f173a113efbe04c0789fe90d2248cd53c773c40e68ee54f799505",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 327,
         "path": "docs/v2/transition-r2-evidence/final-session041-mixed-r2/command.json",
-        "sha256": "ec54d183e7c4435acfb85b29188f70f0a271a59856d1f210a32636c93622377a"
+        "sha256": "ec54d183e7c4435acfb85b29188f70f0a271a59856d1f210a32636c93622377a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12,
         "path": "docs/v2/transition-r2-evidence/final-session041-mixed-r2/exit.txt",
-        "sha256": "bde294368bfed77c2cddf8cec271d398aee9cdbab3b26e1059281bd33adb0120"
+        "sha256": "bde294368bfed77c2cddf8cec271d398aee9cdbab3b26e1059281bd33adb0120",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 5844,
         "path": "docs/v2/transition-r2-evidence/final-session041-mixed-r2/mixed-capacity.junit.xml.gz",
-        "sha256": "048ec29881a69bd392dd9df13aef6b7b64c1430fc56b3e89c0d1cc516db0a8e2"
+        "sha256": "048ec29881a69bd392dd9df13aef6b7b64c1430fc56b3e89c0d1cc516db0a8e2",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 13809,
         "path": "docs/v2/transition-r2-evidence/final-session041-mixed-r2/pytest.log",
-        "sha256": "494990e6f82935f6f0bb28c3b710c4e82b00866e56143c335cee4a1324cb9aa3"
+        "sha256": "494990e6f82935f6f0bb28c3b710c4e82b00866e56143c335cee4a1324cb9aa3",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/final-session041-mixed-r2/pytest.log",
+          "original_bytes": 13809,
+          "original_sha256": "494990e6f82935f6f0bb28c3b710c4e82b00866e56143c335cee4a1324cb9aa3",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/final-session041-mixed-r2/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 5470,
+          "representation_sha256": "288dfabf7e3a5eb100ed56f805ab9eed164d4a1761b17f77099969056eee9d66",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "494990e6f82935f6f0bb28c3b710c4e82b00866e56143c335cee4a1324cb9aa3"
+        }
       },
       {
         "bytes": 756,
         "path": "docs/v2/transition-r2-evidence/final-session041-mixed-r2/resource-metrics.json",
-        "sha256": "9aa759a7216a17055bc756b95b0e5584302edbc4c07b6e0dd8bcc99e87e381d8"
+        "sha256": "9aa759a7216a17055bc756b95b0e5584302edbc4c07b6e0dd8bcc99e87e381d8",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 43586,
         "path": "docs/v2/transition-r2-evidence/git-preflight-r2.json",
-        "sha256": "44714164ffbde8770b2d8f5631a9853fe0ab3a4974ebf38ac48a96c1080657fb"
+        "sha256": "44714164ffbde8770b2d8f5631a9853fe0ab3a4974ebf38ac48a96c1080657fb",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 275,
         "path": "docs/v2/transition-r2-evidence/green-focused-first/command.json",
-        "sha256": "a4b03d093befe3579616431c44512839fb4f3a41a6d253881b17333abb037b66"
+        "sha256": "a4b03d093befe3579616431c44512839fb4f3a41a6d253881b17333abb037b66",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 694,
         "path": "docs/v2/transition-r2-evidence/green-focused-first/focused.junit.xml.gz",
-        "sha256": "c0524e3cb5710b5345006acef42f5160ce454578bb0421fc04e012d1a669883e"
+        "sha256": "c0524e3cb5710b5345006acef42f5160ce454578bb0421fc04e012d1a669883e",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1723,
         "path": "docs/v2/transition-r2-evidence/green-focused-first/pytest.log",
-        "sha256": "1afafba1fd5bf70ebc399ce9075babff3bc00e3afc30501649fa8eb5db02cd36"
+        "sha256": "1afafba1fd5bf70ebc399ce9075babff3bc00e3afc30501649fa8eb5db02cd36",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/green-focused-first/pytest.log",
+          "original_bytes": 1723,
+          "original_sha256": "1afafba1fd5bf70ebc399ce9075babff3bc00e3afc30501649fa8eb5db02cd36",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/green-focused-first/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 844,
+          "representation_sha256": "d498c976e7d9c4187b9e896ff8346d48dc3ae8a16e1abeb35c16deb2a30a439e",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "1afafba1fd5bf70ebc399ce9075babff3bc00e3afc30501649fa8eb5db02cd36"
+        }
       },
       {
         "bytes": 644,
         "path": "docs/v2/transition-r2-evidence/green-focused-first/resource-metrics.json",
-        "sha256": "4d227c47a368a7ce3746d817f4db269fcee1f53aa1ea7a1dcf32402caf84ac94"
+        "sha256": "4d227c47a368a7ce3746d817f4db269fcee1f53aa1ea7a1dcf32402caf84ac94",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 235,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run1/command.json",
-        "sha256": "df1ad1f33828bf7451db715b1cc3eb464195458d876fb8ba21d16a4d81e8c610"
+        "sha256": "df1ad1f33828bf7451db715b1cc3eb464195458d876fb8ba21d16a4d81e8c610",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 6350,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run1/mixed-capacity.junit.xml.gz",
-        "sha256": "0a1a12e7818a49c2030255f2a28b30f49a8b1f0754d096f8eadf434316aaa344"
+        "sha256": "0a1a12e7818a49c2030255f2a28b30f49a8b1f0754d096f8eadf434316aaa344",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 29652,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run1/pytest.log",
-        "sha256": "6a32ae27402da168f5d4f0b7158dff4c19fd9d1af321379bbfdb1d039d9200e7"
+        "sha256": "6a32ae27402da168f5d4f0b7158dff4c19fd9d1af321379bbfdb1d039d9200e7",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/green-session041-mixed-run1/pytest.log",
+          "original_bytes": 29652,
+          "original_sha256": "6a32ae27402da168f5d4f0b7158dff4c19fd9d1af321379bbfdb1d039d9200e7",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/green-session041-mixed-run1/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 6315,
+          "representation_sha256": "a05c39902a18b1049ccad83c18eb4fbad54866e214a554202b26aaf59e803ade",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "6a32ae27402da168f5d4f0b7158dff4c19fd9d1af321379bbfdb1d039d9200e7"
+        }
       },
       {
         "bytes": 639,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run1/resource-metrics.json",
-        "sha256": "aeca2d582f436d72f85c50f5db73bb10fa5d40188a5f34538cf89211a911c03b"
+        "sha256": "aeca2d582f436d72f85c50f5db73bb10fa5d40188a5f34538cf89211a911c03b",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 235,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run2/command.json",
-        "sha256": "e3464b3ac1c051a0d8483627281d198d9e534ddaa66cf3e50edc7cb566388f04"
+        "sha256": "e3464b3ac1c051a0d8483627281d198d9e534ddaa66cf3e50edc7cb566388f04",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 6366,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run2/mixed-capacity.junit.xml.gz",
-        "sha256": "e8b3bcdbf0589b12096bd387c7408266d014f7a2df169916c799b0b4f35689ce"
+        "sha256": "e8b3bcdbf0589b12096bd387c7408266d014f7a2df169916c799b0b4f35689ce",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 29918,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run2/pytest.log",
-        "sha256": "acd77fb2e73ab92b345dcd45344377f08613110e6ff140bbdf2bff6a0e3253eb"
+        "sha256": "acd77fb2e73ab92b345dcd45344377f08613110e6ff140bbdf2bff6a0e3253eb",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/green-session041-mixed-run2/pytest.log",
+          "original_bytes": 29918,
+          "original_sha256": "acd77fb2e73ab92b345dcd45344377f08613110e6ff140bbdf2bff6a0e3253eb",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/green-session041-mixed-run2/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 6337,
+          "representation_sha256": "cc22043791b880006523ab3ebeb75c9a0345f15b4891c44a33b4fa853ba92c3b",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "acd77fb2e73ab92b345dcd45344377f08613110e6ff140bbdf2bff6a0e3253eb"
+        }
       },
       {
         "bytes": 637,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run2/resource-metrics.json",
-        "sha256": "4c67420951fd25d5d6b2c6e6dfcb95b874b3cde8be802ed6d58720ae8becc606"
+        "sha256": "4c67420951fd25d5d6b2c6e6dfcb95b874b3cde8be802ed6d58720ae8becc606",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 235,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run3/command.json",
-        "sha256": "21fa2b872e44a8fe915b5a9cc1ad3ab4b59700a4e727661acd7d6950228d71c1"
+        "sha256": "21fa2b872e44a8fe915b5a9cc1ad3ab4b59700a4e727661acd7d6950228d71c1",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 5800,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run3/mixed-capacity.junit.xml.gz",
-        "sha256": "755ac079d93f934de5057ae4f6c564ba6b77bd2419b50e4545f3d1bc0289be3c"
+        "sha256": "755ac079d93f934de5057ae4f6c564ba6b77bd2419b50e4545f3d1bc0289be3c",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 13853,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run3/pytest.log",
-        "sha256": "58a74242a3c08886cd6be3b865d520705d7bface50f73d3383a348df32b9abb8"
+        "sha256": "58a74242a3c08886cd6be3b865d520705d7bface50f73d3383a348df32b9abb8",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/green-session041-mixed-run3/pytest.log",
+          "original_bytes": 13853,
+          "original_sha256": "58a74242a3c08886cd6be3b865d520705d7bface50f73d3383a348df32b9abb8",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/green-session041-mixed-run3/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 5445,
+          "representation_sha256": "b0e9d3f581fe2cf29dccf6b140801dbfb0d715a9a1617906c6d566e76c5eb672",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "58a74242a3c08886cd6be3b865d520705d7bface50f73d3383a348df32b9abb8"
+        }
       },
       {
         "bytes": 648,
         "path": "docs/v2/transition-r2-evidence/green-session041-mixed-run3/resource-metrics.json",
-        "sha256": "ec7b6783c7c33fa78c8ffaeb084a225339e95d9b1b362d366d11b3b44aa94e5a"
+        "sha256": "ec7b6783c7c33fa78c8ffaeb084a225339e95d9b1b362d366d11b3b44aa94e5a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12,
         "path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic/exit.txt",
-        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409"
+        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 994,
         "path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic/grouped-failure.junit.xml.gz",
-        "sha256": "5d60808ee39360c09efad295e6d18d799d4f3a0382dccbe43ae98908c1f80336"
+        "sha256": "5d60808ee39360c09efad295e6d18d799d4f3a0382dccbe43ae98908c1f80336",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1910,
         "path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic/pytest.log",
-        "sha256": "a18f53d3e83bbd8283bca959fc785da09d2235ee558e85ac82f930dcf91b6d4a"
+        "sha256": "a18f53d3e83bbd8283bca959fc785da09d2235ee558e85ac82f930dcf91b6d4a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic/pytest.log",
+          "original_bytes": 1910,
+          "original_sha256": "a18f53d3e83bbd8283bca959fc785da09d2235ee558e85ac82f930dcf91b6d4a",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/grouped-failure-diagnostic/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 837,
+          "representation_sha256": "c3728585df3456422b0ee7535619be5bfd289635dc37b4e53a119af7b6ec0f3b",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "a18f53d3e83bbd8283bca959fc785da09d2235ee558e85ac82f930dcf91b6d4a"
+        }
       },
       {
         "bytes": 12,
         "path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic-run2/exit.txt",
-        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409"
+        "sha256": "85acfd2e79dd47df07d214334642196301332f72d792b52068cdfd8898755409",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 952,
         "path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic-run2/grouped-failure.junit.xml.gz",
-        "sha256": "86e5d65655c60a4f5d0be112dd54691338824b869b4319b1963c794f7f3cb110"
+        "sha256": "86e5d65655c60a4f5d0be112dd54691338824b869b4319b1963c794f7f3cb110",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1833,
         "path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic-run2/pytest.log",
-        "sha256": "cc6b0e85103b5aa1f6928b950f734152375e9cbeff95c403e2650f598311bb9e"
+        "sha256": "cc6b0e85103b5aa1f6928b950f734152375e9cbeff95c403e2650f598311bb9e",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/grouped-failure-diagnostic-run2/pytest.log",
+          "original_bytes": 1833,
+          "original_sha256": "cc6b0e85103b5aa1f6928b950f734152375e9cbeff95c403e2650f598311bb9e",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/grouped-failure-diagnostic-run2/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 787,
+          "representation_sha256": "653daf6c27e5356a4151fa7991079a1c3bebed7f632a18e48ba07987c0b7cdba",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "cc6b0e85103b5aa1f6928b950f734152375e9cbeff95c403e2650f598311bb9e"
+        }
       },
       {
         "bytes": 16215,
         "path": "docs/v2/transition-r2-evidence/junit-lossless-compression.json",
-        "sha256": "1fb6f9e1ca1f3b261abd7323256b413eb44bf571fdd160bbdc6852ed45ba2046"
+        "sha256": "1fb6f9e1ca1f3b261abd7323256b413eb44bf571fdd160bbdc6852ed45ba2046",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 619,
         "path": "docs/v2/transition-r2-evidence/package-list.txt",
-        "sha256": "8828c5fb759ff0ddc10e583cfb90912a926b4229c8e08d58208e89693a468441"
+        "sha256": "8828c5fb759ff0ddc10e583cfb90912a926b4229c8e08d58208e89693a468441",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 372,
         "path": "docs/v2/transition-r2-evidence/public-runtime-qualification/command.json",
-        "sha256": "8d882a98cd365134a0f90ba01fc42ca71d8b7dfc99dc5e38402b490f80aa790d"
+        "sha256": "8d882a98cd365134a0f90ba01fc42ca71d8b7dfc99dc5e38402b490f80aa790d",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1464,
         "path": "docs/v2/transition-r2-evidence/public-runtime-qualification/public-runtime.junit.xml.gz",
-        "sha256": "07b4f997e5d48e556b50af53559746edd67f34e4f97db3e318b1f360f543b77c"
+        "sha256": "07b4f997e5d48e556b50af53559746edd67f34e4f97db3e318b1f360f543b77c",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 3397,
         "path": "docs/v2/transition-r2-evidence/public-runtime-qualification/pytest.log",
-        "sha256": "4da39fdca6eb6a4733628e3380210dff721697bb92af439ffcc05f0b3b20b46e"
+        "sha256": "4da39fdca6eb6a4733628e3380210dff721697bb92af439ffcc05f0b3b20b46e",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/public-runtime-qualification/pytest.log",
+          "original_bytes": 3397,
+          "original_sha256": "4da39fdca6eb6a4733628e3380210dff721697bb92af439ffcc05f0b3b20b46e",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/public-runtime-qualification/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 884,
+          "representation_sha256": "8ffbd014f17f7f73f57b4d8675fef5883376b0b6098f8880b0453bb22896a933",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "4da39fdca6eb6a4733628e3380210dff721697bb92af439ffcc05f0b3b20b46e"
+        }
       },
       {
         "bytes": 788,
         "path": "docs/v2/transition-r2-evidence/public-runtime-qualification/resource-metrics.json",
-        "sha256": "a69894d8c53b714e479dba39b1474effc6d2d0c69029f138a7ecbfca92c0f903"
+        "sha256": "a69894d8c53b714e479dba39b1474effc6d2d0c69029f138a7ecbfca92c0f903",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 397,
         "path": "docs/v2/transition-r2-evidence/public-runtime-qualification-r2/command.json",
-        "sha256": "24cbf6f7b4d5b71ca7f1ea24bf1ca0109b16ccfe3f6565f95c4da74777dda730"
+        "sha256": "24cbf6f7b4d5b71ca7f1ea24bf1ca0109b16ccfe3f6565f95c4da74777dda730",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12,
         "path": "docs/v2/transition-r2-evidence/public-runtime-qualification-r2/exit.txt",
-        "sha256": "bde294368bfed77c2cddf8cec271d398aee9cdbab3b26e1059281bd33adb0120"
+        "sha256": "bde294368bfed77c2cddf8cec271d398aee9cdbab3b26e1059281bd33adb0120",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1461,
         "path": "docs/v2/transition-r2-evidence/public-runtime-qualification-r2/public-runtime.junit.xml.gz",
-        "sha256": "3bfe38ff9460ddd4a54b9f83fc0c5883147c3f59efc3341b1dbb0868c50360a2"
+        "sha256": "3bfe38ff9460ddd4a54b9f83fc0c5883147c3f59efc3341b1dbb0868c50360a2",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 3399,
         "path": "docs/v2/transition-r2-evidence/public-runtime-qualification-r2/pytest.log",
-        "sha256": "be495ee02e40b6ee9a4e6f9237ab5ffd1249f8793669a7e5fe38f8b8c8e3f344"
+        "sha256": "be495ee02e40b6ee9a4e6f9237ab5ffd1249f8793669a7e5fe38f8b8c8e3f344",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/public-runtime-qualification-r2/pytest.log",
+          "original_bytes": 3399,
+          "original_sha256": "be495ee02e40b6ee9a4e6f9237ab5ffd1249f8793669a7e5fe38f8b8c8e3f344",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/public-runtime-qualification-r2/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 884,
+          "representation_sha256": "3c13fbab5f6fca189c46ab8f3353de29c5b9db3c4d42d0b3a7389b46018f4597",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "be495ee02e40b6ee9a4e6f9237ab5ffd1249f8793669a7e5fe38f8b8c8e3f344"
+        }
       },
       {
         "bytes": 828,
         "path": "docs/v2/transition-r2-evidence/public-runtime-qualification-r2/resource-metrics.json",
-        "sha256": "49ab6662b28093949749eb85fa9cc6901421a0025ef9491c20e8b004ebccd298"
+        "sha256": "49ab6662b28093949749eb85fa9cc6901421a0025ef9491c20e8b004ebccd298",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1121,
         "path": "docs/v2/transition-r2-evidence/push-implementation.json",
-        "sha256": "1e464e36f3e4061164a814d6589725aa1e8742e971c1c2762c00f5acfc4b593d"
+        "sha256": "1e464e36f3e4061164a814d6589725aa1e8742e971c1c2762c00f5acfc4b593d",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 3438,
         "path": "docs/v2/transition-r2-evidence/red-adversarial/harness-clock-error-attempt/capture-rate.junit.xml.gz",
-        "sha256": "dba91ffd808caba2c038d5652d2cb53e04ab4ed970d78af08914f01ee8141ebb"
+        "sha256": "dba91ffd808caba2c038d5652d2cb53e04ab4ed970d78af08914f01ee8141ebb",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 732,
         "path": "docs/v2/transition-r2-evidence/red-adversarial/harness-clock-error-attempt/command.json",
-        "sha256": "2c90e874d278eed925a1f19309b7a082b59fb80b76acce574e303c8bfbd3d7b2"
+        "sha256": "2c90e874d278eed925a1f19309b7a082b59fb80b76acce574e303c8bfbd3d7b2",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12471,
         "path": "docs/v2/transition-r2-evidence/red-adversarial/harness-clock-error-attempt/pytest.log",
-        "sha256": "0bfdbb856b6264759a4ac59c180b16379142381babe91237f1925b3071693385"
+        "sha256": "0bfdbb856b6264759a4ac59c180b16379142381babe91237f1925b3071693385",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/red-adversarial/harness-clock-error-attempt/pytest.log",
+          "original_bytes": 12471,
+          "original_sha256": "0bfdbb856b6264759a4ac59c180b16379142381babe91237f1925b3071693385",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/red-adversarial/harness-clock-error-attempt/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 2877,
+          "representation_sha256": "dd21107cfb6707620ef6f12bc14ce2f977f4865eafad18874eea51d4dddb22c6",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "0bfdbb856b6264759a4ac59c180b16379142381babe91237f1925b3071693385"
+        }
       },
       {
         "bytes": 481,
         "path": "docs/v2/transition-r2-evidence/red-adversarial/harness-clock-error-attempt/resource-metrics.json",
-        "sha256": "17d14f0022191df222f75f0fb6f425cb7f7128893ff7aa0e98f2f570b9957a7b"
+        "sha256": "17d14f0022191df222f75f0fb6f425cb7f7128893ff7aa0e98f2f570b9957a7b",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 3364,
         "path": "docs/v2/transition-r2-evidence/red-adversarial/harness-error-attempt/adversarial.junit.xml.gz",
-        "sha256": "a2f5a119785e7541b9123a49ad72e478b1f4ade773018a8fddaae0a0b626bfad"
+        "sha256": "a2f5a119785e7541b9123a49ad72e478b1f4ade773018a8fddaae0a0b626bfad",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 962,
         "path": "docs/v2/transition-r2-evidence/red-adversarial/harness-error-attempt/command.json",
-        "sha256": "0f8476f58931a781f6fcc4dbb629fc2741ae0e2d71675f6a9e2d85d0520ae6ec"
+        "sha256": "0f8476f58931a781f6fcc4dbb629fc2741ae0e2d71675f6a9e2d85d0520ae6ec",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 12495,
         "path": "docs/v2/transition-r2-evidence/red-adversarial/harness-error-attempt/pytest.log",
-        "sha256": "883653e8c428828a027df56e41b91f5232b24d2cd74c1b114c3791b4ed306d40"
+        "sha256": "883653e8c428828a027df56e41b91f5232b24d2cd74c1b114c3791b4ed306d40",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/red-adversarial/harness-error-attempt/pytest.log",
+          "original_bytes": 12495,
+          "original_sha256": "883653e8c428828a027df56e41b91f5232b24d2cd74c1b114c3791b4ed306d40",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/red-adversarial/harness-error-attempt/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 3232,
+          "representation_sha256": "27b71aaf6ef38044b6d5b22f3c0f1acae5233568eb24c16ecff8155002afd188",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "883653e8c428828a027df56e41b91f5232b24d2cd74c1b114c3791b4ed306d40"
+        }
       },
       {
         "bytes": 479,
         "path": "docs/v2/transition-r2-evidence/red-adversarial/harness-error-attempt/resource-metrics.json",
-        "sha256": "46a629f501be0c37a6a2b6a8e6ccc8dad95b013a8bb045d04b6e7b17d9632432"
+        "sha256": "46a629f501be0c37a6a2b6a8e6ccc8dad95b013a8bb045d04b6e7b17d9632432",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 4264,
         "path": "docs/v2/transition-r2-evidence/red-adversarial-160fps-pre-fix/capture-delivery.junit.xml.gz",
-        "sha256": "a3eea1db494881741aa1528859b811b33db735c0ddeee5cebeeca1a82c8414b1"
+        "sha256": "a3eea1db494881741aa1528859b811b33db735c0ddeee5cebeeca1a82c8414b1",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 245,
         "path": "docs/v2/transition-r2-evidence/red-adversarial-160fps-pre-fix/command.json",
-        "sha256": "d47e69011b2931b036f78a37a01ea74633de180e8fad68bb9a2e2aba859bce7c"
+        "sha256": "d47e69011b2931b036f78a37a01ea74633de180e8fad68bb9a2e2aba859bce7c",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 15701,
         "path": "docs/v2/transition-r2-evidence/red-adversarial-160fps-pre-fix/pytest.log",
-        "sha256": "a260c00e049d53859435c94a6716259a0a1f24918f8a0d69db5a5321a46c6a65"
+        "sha256": "a260c00e049d53859435c94a6716259a0a1f24918f8a0d69db5a5321a46c6a65",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/red-adversarial-160fps-pre-fix/pytest.log",
+          "original_bytes": 15701,
+          "original_sha256": "a260c00e049d53859435c94a6716259a0a1f24918f8a0d69db5a5321a46c6a65",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/red-adversarial-160fps-pre-fix/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 3793,
+          "representation_sha256": "fc420e55c60d11bf2234f2269b9a4fb51180a0695d32fa4fde4ce634a1773ebc",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "a260c00e049d53859435c94a6716259a0a1f24918f8a0d69db5a5321a46c6a65"
+        }
       },
       {
         "bytes": 672,
         "path": "docs/v2/transition-r2-evidence/red-adversarial-160fps-pre-fix/resource-metrics.json",
-        "sha256": "3c199c05b70cd4bc49aa779694445f50179ff9bcef1d2de155c365583e07630a"
+        "sha256": "3c199c05b70cd4bc49aa779694445f50179ff9bcef1d2de155c365583e07630a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 899,
         "path": "docs/v2/transition-r2-evidence/red-baseline/command.json",
-        "sha256": "dbc4afdc1ea82d6de19bae36f06f06b5c3689d48570505fd590cde53230eb604"
+        "sha256": "dbc4afdc1ea82d6de19bae36f06f06b5c3689d48570505fd590cde53230eb604",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 6228,
         "path": "docs/v2/transition-r2-evidence/red-baseline/mixed-capacity.junit.xml.gz",
-        "sha256": "19b15c3c64be5614f7c977feab295c32a44ba22b28f28c0cbe1df019a034244a"
+        "sha256": "19b15c3c64be5614f7c977feab295c32a44ba22b28f28c0cbe1df019a034244a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 27687,
         "path": "docs/v2/transition-r2-evidence/red-baseline/pytest.log",
-        "sha256": "07fbcca0704378adabd0426c3034a30bea88460ae4a9e302a20d64bdb8ba3b13"
+        "sha256": "07fbcca0704378adabd0426c3034a30bea88460ae4a9e302a20d64bdb8ba3b13",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/red-baseline/pytest.log",
+          "original_bytes": 27687,
+          "original_sha256": "07fbcca0704378adabd0426c3034a30bea88460ae4a9e302a20d64bdb8ba3b13",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/red-baseline/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 6070,
+          "representation_sha256": "46641b2d4c7e0d5cb752aed50ddb9b6163f7f1590abca0c626387fd666796a40",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "07fbcca0704378adabd0426c3034a30bea88460ae4a9e302a20d64bdb8ba3b13"
+        }
       },
       {
         "bytes": 780,
         "path": "docs/v2/transition-r2-evidence/red-baseline/resource-metrics.json",
-        "sha256": "2c60cbe8ba3189d67fbe27863a7bef7ee6333504945e951ac9ea647b93e088a9"
+        "sha256": "2c60cbe8ba3189d67fbe27863a7bef7ee6333504945e951ac9ea647b93e088a9",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 911,
         "path": "docs/v2/transition-r2-evidence/red-baseline-overlay/command.json",
-        "sha256": "22bdbf0df01f7785a6517fad4adf24258344c9b4e50524ebaa19599d9209cd52"
+        "sha256": "22bdbf0df01f7785a6517fad4adf24258344c9b4e50524ebaa19599d9209cd52",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 6236,
         "path": "docs/v2/transition-r2-evidence/red-baseline-overlay/mixed-capacity.junit.xml.gz",
-        "sha256": "d30fbd563941beb3ba156d9adcda17fb506776f17696a67586a8d4cf30abf8b5"
+        "sha256": "d30fbd563941beb3ba156d9adcda17fb506776f17696a67586a8d4cf30abf8b5",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 27703,
         "path": "docs/v2/transition-r2-evidence/red-baseline-overlay/pytest.log",
-        "sha256": "cb17d185f4e405c464c0d50f18ba73a199b37d6bfe534630bfaee0d209509a26"
+        "sha256": "cb17d185f4e405c464c0d50f18ba73a199b37d6bfe534630bfaee0d209509a26",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/red-baseline-overlay/pytest.log",
+          "original_bytes": 27703,
+          "original_sha256": "cb17d185f4e405c464c0d50f18ba73a199b37d6bfe534630bfaee0d209509a26",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/red-baseline-overlay/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 6077,
+          "representation_sha256": "15c9af067a8845734a9e0a40503920caf63223bcf1b258fdb1ed9bf9da42576f",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "cb17d185f4e405c464c0d50f18ba73a199b37d6bfe534630bfaee0d209509a26"
+        }
       },
       {
         "bytes": 783,
         "path": "docs/v2/transition-r2-evidence/red-baseline-overlay/resource-metrics.json",
-        "sha256": "6483fb990daa6a6b0a1b2efb863ee55f7f6d515f3a2ffaa50f18f99e18c0d9b5"
+        "sha256": "6483fb990daa6a6b0a1b2efb863ee55f7f6d515f3a2ffaa50f18f99e18c0d9b5",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 387,
         "path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-1/command.json",
-        "sha256": "8c836bd12614b887af4a2dcb8f427e196ef320482f0ef455220905f3e4d91636"
+        "sha256": "8c836bd12614b887af4a2dcb8f427e196ef320482f0ef455220905f3e4d91636",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 269,
         "path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-1/delivery.junit.xml.gz",
-        "sha256": "fcb2d15a1ce8d8e55aa82edcf645684ebeb48c1c04988df7f74e5e4fb1087b0a"
+        "sha256": "fcb2d15a1ce8d8e55aa82edcf645684ebeb48c1c04988df7f74e5e4fb1087b0a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1864,
         "path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-1/pytest.log",
-        "sha256": "a1d979192a988c71bbb5280a38251e86356f91a3de1d51907cf5535b657a90e7"
+        "sha256": "a1d979192a988c71bbb5280a38251e86356f91a3de1d51907cf5535b657a90e7",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-1/pytest.log",
+          "original_bytes": 1864,
+          "original_sha256": "a1d979192a988c71bbb5280a38251e86356f91a3de1d51907cf5535b657a90e7",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/repeated-delivery-workload/run-1/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 859,
+          "representation_sha256": "18d468c1ec90dbf9758c39bb77259d32d0d65fa55cf6138b9fd490b4348ffc7a",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "a1d979192a988c71bbb5280a38251e86356f91a3de1d51907cf5535b657a90e7"
+        }
       },
       {
         "bytes": 830,
         "path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-1/resource-metrics.json",
-        "sha256": "7e546189f43fa44c01ee62de5fbe1a871ff350d479cbc55342040ae566d03c0b"
+        "sha256": "7e546189f43fa44c01ee62de5fbe1a871ff350d479cbc55342040ae566d03c0b",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 387,
         "path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-2/command.json",
-        "sha256": "ace61245f5422c07b0358d5d9a7bd673a5efa4f73d3b5c0292364022c62de8bb"
+        "sha256": "ace61245f5422c07b0358d5d9a7bd673a5efa4f73d3b5c0292364022c62de8bb",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 269,
         "path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-2/delivery.junit.xml.gz",
-        "sha256": "6ee5fa0435671715f8d2d78ae8c80b462d3d914b259071906e8610d5bc794e09"
+        "sha256": "6ee5fa0435671715f8d2d78ae8c80b462d3d914b259071906e8610d5bc794e09",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1862,
         "path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-2/pytest.log",
-        "sha256": "2573533c88648900c429d418964c3f6667c3e2feae627d6e4f8a5e5dd60bb626"
+        "sha256": "2573533c88648900c429d418964c3f6667c3e2feae627d6e4f8a5e5dd60bb626",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-2/pytest.log",
+          "original_bytes": 1862,
+          "original_sha256": "2573533c88648900c429d418964c3f6667c3e2feae627d6e4f8a5e5dd60bb626",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/repeated-delivery-workload/run-2/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 874,
+          "representation_sha256": "81f89c8442c79be36ca28cb4f8607cd9d797caf168a38132e0794a7a254d3dd8",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "2573533c88648900c429d418964c3f6667c3e2feae627d6e4f8a5e5dd60bb626"
+        }
       },
       {
         "bytes": 829,
         "path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/run-2/resource-metrics.json",
-        "sha256": "870ee854ce3a77a31914a7ac09bde77afdca06ff1cb88e3bd6c9b48ba19f0dbd"
+        "sha256": "870ee854ce3a77a31914a7ac09bde77afdca06ff1cb88e3bd6c9b48ba19f0dbd",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 674,
         "path": "docs/v2/transition-r2-evidence/repeated-delivery-workload/summary.json",
-        "sha256": "6c4fa132f5eeaaa6a7454d5b9824bd10b17b88746de6555542f5a248713d98be"
+        "sha256": "6c4fa132f5eeaaa6a7454d5b9824bd10b17b88746de6555542f5a248713d98be",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 726,
         "path": "docs/v2/transition-r2-evidence/s27_s44_s46_s48/command.json",
-        "sha256": "66d987ba8aaed2ab7ac114be67e67137da396deb930dbdaad452db6beccb8ae2"
+        "sha256": "66d987ba8aaed2ab7ac114be67e67137da396deb930dbdaad452db6beccb8ae2",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1037,
         "path": "docs/v2/transition-r2-evidence/s27_s44_s46_s48/pytest.log",
-        "sha256": "04b7580bb1abc328d2e91d34fa27278428c093772dd5edab6ae871303b69fa52"
+        "sha256": "04b7580bb1abc328d2e91d34fa27278428c093772dd5edab6ae871303b69fa52",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/s27_s44_s46_s48/pytest.log",
+          "original_bytes": 1037,
+          "original_sha256": "04b7580bb1abc328d2e91d34fa27278428c093772dd5edab6ae871303b69fa52",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/s27_s44_s46_s48/pytest.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 336,
+          "representation_sha256": "d299ef72caad9b83e39ecefafbb756cb68c1ef05937f3a450824ee7b28125885",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "04b7580bb1abc328d2e91d34fa27278428c093772dd5edab6ae871303b69fa52"
+        }
       },
       {
         "bytes": 1151,
         "path": "docs/v2/transition-r2-evidence/s27_s44_s46_s48/resource-metrics.json",
-        "sha256": "a6e8495567e198ba43f996e8f3942356094bd1d47df3a1e4a6eef028607e676a"
+        "sha256": "a6e8495567e198ba43f996e8f3942356094bd1d47df3a1e4a6eef028607e676a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 3862,
         "path": "docs/v2/transition-r2-evidence/s27_s44_s46_s48/s27-s48.junit.xml.gz",
-        "sha256": "a2f7e396dbca4e9e85326b89e0f2725a2780b93c30161b04ff64165eff5a4932"
+        "sha256": "a2f7e396dbca4e9e85326b89e0f2725a2780b93c30161b04ff64165eff5a4932",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 2114,
         "path": "docs/v2/transition-r2-evidence/static-final/environment.json",
-        "sha256": "58c81d1621413b1ef4dc33e0b48d5b1912e2852ed6c285a8433caf91f7100df6"
+        "sha256": "58c81d1621413b1ef4dc33e0b48d5b1912e2852ed6c285a8433caf91f7100df6",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 1047,
         "path": "docs/v2/transition-r2-evidence/static-final/frozen-authority-hashes.json",
-        "sha256": "203e7d556509a4f96318a7aae7bc7ce7fe86a6c860b0b1f8c2cec3c0b4cc5641"
+        "sha256": "203e7d556509a4f96318a7aae7bc7ce7fe86a6c860b0b1f8c2cec3c0b4cc5641",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 25476,
         "path": "docs/v2/transition-r2-evidence/static-final/mypy-baseline-comparison.json",
-        "sha256": "2b2d26f0e21763d07a6d3dd16bcfedf15853a44090ec737b186d091557479423"
+        "sha256": "2b2d26f0e21763d07a6d3dd16bcfedf15853a44090ec737b186d091557479423",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 10691,
         "path": "docs/v2/transition-r2-evidence/static-final/mypy-baseline.log",
-        "sha256": "39a5d259d6934b6455ea857834a738eea3b1997ab7d7381a2cbef17eb2a153d9"
+        "sha256": "39a5d259d6934b6455ea857834a738eea3b1997ab7d7381a2cbef17eb2a153d9",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/static-final/mypy-baseline.log",
+          "original_bytes": 10691,
+          "original_sha256": "39a5d259d6934b6455ea857834a738eea3b1997ab7d7381a2cbef17eb2a153d9",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/static-final/mypy-baseline.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1578,
+          "representation_sha256": "409005babaabe286283a1a3f12e594328142404c85a36c995927d153c2831021",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "39a5d259d6934b6455ea857834a738eea3b1997ab7d7381a2cbef17eb2a153d9"
+        }
       },
       {
         "bytes": 11989,
         "path": "docs/v2/transition-r2-evidence/static-final/mypy-working.log",
-        "sha256": "3d5427010e4da4e5b612ee8fdb07c89b8cc929f4a8a607f3e48305f76d67e43a"
+        "sha256": "3d5427010e4da4e5b612ee8fdb07c89b8cc929f4a8a607f3e48305f76d67e43a",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/static-final/mypy-working.log",
+          "original_bytes": 11989,
+          "original_sha256": "3d5427010e4da4e5b612ee8fdb07c89b8cc929f4a8a607f3e48305f76d67e43a",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/static-final/mypy-working.log.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 1635,
+          "representation_sha256": "ce34d46ab6eaff23257e1786ef204f63dfbb69f79e583f8a25d7a06826559d6b",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "3d5427010e4da4e5b612ee8fdb07c89b8cc929f4a8a607f3e48305f76d67e43a"
+        }
       },
       {
         "bytes": 1255,
         "path": "docs/v2/transition-r2-evidence/static-final/ruff-format-baseline-comparison.json",
-        "sha256": "e1c51b43279d15511585565ac6202df935755b783a55ee78d38295377c524217"
+        "sha256": "e1c51b43279d15511585565ac6202df935755b783a55ee78d38295377c524217",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       },
       {
         "bytes": 360,
         "path": "docs/v2/transition-r2-evidence/static-final/secret-scan.json",
-        "sha256": "a973ecbe30a4e58a15228c900b2c072362e04255f14fa77e3f8f064d425b27fd"
+        "sha256": "a973ecbe30a4e58a15228c900b2c072362e04255f14fa77e3f8f064d425b27fd",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "recovered_as_lossless_gzip",
+          "original_path": "docs/v2/transition-r2-evidence/static-final/secret-scan.json",
+          "original_bytes": 360,
+          "original_sha256": "a973ecbe30a4e58a15228c900b2c072362e04255f14fa77e3f8f064d425b27fd",
+          "representation_path": "docs/v2/transition-r2-evidence-correction-2026-10-13/recovered-originals/static-final/scan-report.json.gz",
+          "representation_format": "gzip, DEFLATE, level 9, deterministic mtime=0, no embedded filename",
+          "representation_bytes": 243,
+          "representation_sha256": "9e3baf2a9648ae1f4390e18d5d943b5ac1bea284136c96fdaeaee275718ad9a6",
+          "decompressed_byte_exact": true,
+          "decompressed_sha256": "a973ecbe30a4e58a15228c900b2c072362e04255f14fa77e3f8f064d425b27fd"
+        }
       },
       {
         "bytes": 4737,
         "path": "docs/v2/transition-r2-evidence/static-final/static-summary.json",
-        "sha256": "dcb9e64ca268281d30d99494f8e72e837f88f0c69f51eda72529821c9885c9fb"
+        "sha256": "dcb9e64ca268281d30d99494f8e72e837f88f0c69f51eda72529821c9885c9fb",
+        "pushed_commit_reconciliation": {
+          "base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+          "status": "present"
+        }
       }
     ],
     "handoff": {
@@ -999,7 +1869,7 @@
         "sha256": "cd5ed4efc5299c21cff82293e3553406418dcfd9a0049c09135663e9f891d722"
       }
     },
-    "self_hash_note": "This manifest does not contain its own hash; its Git commit records its content."
+    "self_hash_note": "This manifest does not contain its own hash; its Git commit records its content. This correction records the per-artifact presence/recovery mapping and original/compressed hashes."
   },
   "branch": "fix/red-r2-mixed-source-delivery-2026-10-13",
   "confirmed_cause": {
@@ -1436,5 +2306,34 @@
       "skipped": 0,
       "tests": 5
     }
+  },
+  "pushed_commit_reconciliation": {
+    "correction_date_utc": "2026-10-13",
+    "branch": "fix/red-r2-mixed-source-delivery-2026-10-13",
+    "reconciled_base_commit": "20d2b57cf6985392c28d7317ce56494f2d1ffb3c",
+    "entry_count": 141,
+    "present_at_base_commit": 107,
+    "absent_at_base_commit": 34,
+    "recovered_originals": 34,
+    "originals_unavailable": 0,
+    "claims_losing_independent_verification": [],
+    "sensitivity_review": {
+      "scope": "34 locally retained originals absent from the base commit",
+      "method": "Local pattern scan for credential assignments, private-key markers, AWS/GitHub/Slack tokens, URL userinfo, bearer credentials, and email addresses",
+      "matches_by_category": {
+        "credential_assignment": 0,
+        "private_key_marker": 0,
+        "aws_access_id": 0,
+        "github_token": 0,
+        "slack_token": 0,
+        "url_userinfo": 0,
+        "bearer_credential": 0,
+        "email_address": 0
+      },
+      "sanitization_performed": false,
+      "reason": "No sensitive-content pattern matches; originals were preserved byte-for-byte."
+    },
+    "original_bytes_total": 278938,
+    "compressed_bytes_total": 75712
   }
 }
