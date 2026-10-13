@@ -81,4 +81,4 @@ The complete list and closure evidence is in `docs/v2/ATLAS_RED_R5_UNRESOLVED_GA
 
 ## Delivery
 
-The implementation commit is `1b4daaecc0ccd804e0d62baaacde4d324aa39133` on the branch above, descended from the stated R4 base. Required handoff, gate register, guide, evidence manifest, and evidence files are included in this delivery. Push and exact remote-head verification are recorded in the final coordinator receipt after delivery.
+The implementation commit is `1b4daaecc0ccd804e0d62baaacde4d324aa39133` on the branch above, descended from the stated R4 base. Documentation/evidence commit `18591c9db6e0d8d4ee58e425895ca831b0d59415` was pushed and independently verified with `git ls-remote`; the remote tree includes the required handoff, gate register, guide, manifest, and evidence. The final receipt commit appends this push verification to the coordinator logs.

@@ -2,8 +2,8 @@
   "artifacts": [
     {
       "path": "docs/v2/ATLAS_RED_R5_INTEGRATED_COMPLETION_HANDOFF.md",
-      "sha256": "660b1c8fe06bb962d0c55a4f7945666b69f3d1836854d11992b1e20946998396",
-      "size_bytes": 9523
+      "sha256": "e926ecafd54f64654e00a7cf5f7566cbe31f93414025a910d955e6f7f6b1f1f3",
+      "size_bytes": 9619
     },
     {
       "path": "docs/v2/ATLAS_RED_R5_UNRESOLVED_GATE_REGISTER.md",
@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/v2/transition-r5-evidence/secret_scan.json",
-      "sha256": "7f1b5791159acc1f784df93e38313de52a02bee58f2fc381f6975fc23903a373",
-      "size_bytes": 848
+      "sha256": "1d725c6c29234994e763455a2dfac752bfe916552b6bcff72974126ed89a40ad",
+      "size_bytes": 855
     },
     {
       "path": "docs/v2/transition-r5-evidence/static_checks.json",
@@ -112,19 +112,28 @@
     },
     {
       "path": "log.md",
-      "sha256": "9387e64f64a8756fe8320d32702698e06d0be5c8efaffec0c1968b3dcd9c3ada",
-      "size_bytes": 82325
+      "sha256": "ca214889e1cbd22dcb884ad1ad3bdbae6754b7acafba8eab72d17d05fd2fe972",
+      "size_bytes": 82974
     },
     {
       "path": "translog.md",
-      "sha256": "c91f1b373ef0c75bb45fcd614ae6cdc2ea459b316290c6cc4d7580e78fdf723f",
-      "size_bytes": 102710
+      "sha256": "9f624cd6f9bf6292eb1c234d50dca2b59c3d9e670ee2d2b3c41fe3d717c337d8",
+      "size_bytes": 103313
     }
   ],
   "base_commit": "4e9df8f93ee317232171158751fde2c144360ca4",
   "branch": "impl/red-r5-integrated-engineering-completion-2026-10-13",
   "created_at_utc": "2026-10-13",
-  "delivery_push_status": "PENDING_AT_MANIFEST_CREATION",
+  "delivery_push": {
+    "base_commit_is_ancestor": true,
+    "fetched_tracking_ref_sha": "18591c9db6e0d8d4ee58e425895ca831b0d59415",
+    "final_receipt_commit": "pending",
+    "ls_remote_sha": "18591c9db6e0d8d4ee58e425895ca831b0d59415",
+    "remote_changed_files_checked": true,
+    "remote_ref": "refs/heads/impl/red-r5-integrated-engineering-completion-2026-10-13",
+    "verified_commit": "18591c9db6e0d8d4ee58e425895ca831b0d59415"
+  },
+  "delivery_push_status": "INITIAL_DOCUMENTATION_COMMIT_VERIFIED; FINAL_RECEIPT_PENDING",
   "evidence_normalizations": [
     "Trailing whitespace removed from delivered JUnit XML for clean diff checks; XML was reparsed and test result elements were not edited.",
     "One synthetic key-shaped pytest parameter was redacted from the delivered full-suite JUnit XML."
