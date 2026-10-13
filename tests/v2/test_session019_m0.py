@@ -9,6 +9,7 @@ import pytest
 
 from atlas.v2._serialization import sha256_json
 from atlas.v2.contracts import ArtifactEnvelope, FeatureArtifactV2, FeatureValueV2, ReplayViewV2
+from atlas.v2.features.pipeline import FEATURE_SET_VERSION
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.science.action import freeze_action
 from atlas.v2.science.m0 import (
@@ -178,11 +179,21 @@ def test_fit_m0_persists_cutoff_feature_schema_and_returns_not_estimable_without
     def candidate_with_feature(policy=S1_POLICY, key=KEY, **kwargs):
         item = original_candidate(policy, key, **kwargs)
         feature = FeatureArtifactV2(
-            ArtifactEnvelope(1, f"m0-feature-{item.candidate_id}", CUTOFF, CUTOFF, "m0-fixture", ()),
-            item.key, "M0_FIXTURE_FEATURES_V1", CUTOFF, CUTOFF,
+            ArtifactEnvelope(1, f"m0-feature-{item.candidate_id}", CUTOFF, CUTOFF, FEATURE_SET_VERSION, ()),
+            item.key, FEATURE_SET_VERSION, CUTOFF, CUTOFF,
             {"h4.ema20": FeatureValueV2(Decimal("100"), "PRICE"),
+             "h4.ema50": FeatureValueV2(Decimal("99"), "PRICE"),
              "h1.ema20": FeatureValueV2(Decimal("100"), "PRICE"),
-             "m15.ema20": FeatureValueV2(Decimal("100"), "PRICE")},
+             "h1.ema50": FeatureValueV2(Decimal("99"), "PRICE"),
+             "m15.atr14": FeatureValueV2(Decimal("1"), "PRICE"),
+             "m15.realized_variance20": FeatureValueV2(Decimal("0.01"), "LOG_RETURN_SQUARED"),
+             "m15.ema20": FeatureValueV2(Decimal("100"), "PRICE"),
+             "location.utc_day_trade_vwap": FeatureValueV2(
+                 None, "PRICE", "FULL_UTC_DAY_COVERAGE_UNVERIFIED"
+             ),
+             "location.utc_day_trade_vwap_partial_to_cutoff": FeatureValueV2(
+                 None, "PRICE", "CAUSAL_TRADES_UNAVAILABLE"
+             )},
             sha256_json("fixture-source-health"), ReplayViewV2.ACTUAL_SYSTEM)
         item = replace(item, snapshot_hash=feature.content_hash,
             envelope=replace(item.envelope, content_hash="", input_refs=(feature.content_hash,)))
@@ -191,7 +202,7 @@ def test_fit_m0_persists_cutoff_feature_schema_and_returns_not_estimable_without
 
     monkeypatch.setattr(risk_module, "candidate", candidate_with_feature)
     with OpsRepository(tmp_path / "ops.sqlite") as repo:
-        case = risk_case(repo)
+        case = risk_case(repo, index_s1_feature=False)
         for ref, feature in features.items():
             repo.register_artifact(ArtifactIndexEntryV2(ref, "FeatureArtifactV2", ref,
                 feature.envelope.created_at_ns, feature.envelope.available_at_ns, {"feature": feature.to_dict()}))

@@ -42,16 +42,27 @@ class FeatureSnapshot:
     computed_at_ns: int
     values: FeatureValues
     source_record_ids: tuple[str, ...]
+    source_available_at_ns: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if self.instrument not in {"BTCUSDT", "ETHUSDT"}:
             raise ValueError("frozen V1 universe is BTCUSDT/ETHUSDT")
         if not is_decision_slot(self.slot_at_ns):
             raise ValueError("four-hour decision slot required")
-        if self.computed_at_ns > self.snapshot_deadline_ns:
-            raise ValueError("snapshot missed T+30 deadline")
+        if not self.slot_at_ns <= self.computed_at_ns <= self.snapshot_deadline_ns:
+            raise ValueError("slot_at_ns <= computed_at_ns <= slot_at_ns + 30 seconds required")
         if self.values.end_at_ns != self.slot_at_ns:
             raise ValueError("feature must end at decision slot")
+        if (not isinstance(self.source_record_ids, tuple) or not self.source_record_ids
+                or any(not isinstance(ref, str) or not ref.strip() or ref != ref.strip()
+                       for ref in self.source_record_ids)
+                or len(set(self.source_record_ids)) != len(self.source_record_ids)):
+            raise ValueError("snapshot source record identity must be nonblank and unique")
+        if (not isinstance(self.source_available_at_ns, tuple)
+                or len(self.source_available_at_ns) != len(self.source_record_ids)
+                or any(type(at) is not int or at < 0 or at > self.computed_at_ns
+                       for at in self.source_available_at_ns)):
+            raise ValueError("all required source records must be available by snapshot computation")
 
     @property
     def snapshot_deadline_ns(self) -> int:
@@ -76,4 +87,9 @@ class FeatureSnapshot:
 
 
 def build_snapshot(instrument: str, slot_at_ns: int, computed_at_ns: int, closes: tuple[HourlyClose, ...]) -> FeatureSnapshot:
-    return FeatureSnapshot(instrument, slot_at_ns, computed_at_ns, feature_values(closes, decision_at_ns=slot_at_ns + SNAPSHOT_DEADLINE_NS), tuple(x.record_id for x in closes))
+    if not slot_at_ns <= computed_at_ns <= slot_at_ns + SNAPSHOT_DEADLINE_NS:
+        raise ValueError("slot_at_ns <= computed_at_ns <= slot_at_ns + 30 seconds required")
+    return FeatureSnapshot(instrument, slot_at_ns, computed_at_ns,
+                           feature_values(closes, decision_at_ns=computed_at_ns),
+                           tuple(x.record_id for x in closes),
+                           tuple(x.available_at_ns for x in closes))

@@ -48,7 +48,9 @@ def filters() -> VenueFilters:
 def snapshot(*, instrument: str = "BTCUSDT", slot_at_ns: int = SLOT, z: float = 1.0,
              sigma: float = 0.01, computed_at_ns: int | None = None) -> FeatureSnapshot:
     values = FeatureValues(end_at_ns=slot_at_ns, returns=tuple([0.0] * 720), variance=sigma**2, sigma=sigma, z=z)
-    return FeatureSnapshot(instrument, slot_at_ns, computed_at_ns or slot_at_ns + 1_000_000, values, ("r1", "r2"))
+    computed = computed_at_ns if computed_at_ns is not None else slot_at_ns + 1_000_000
+    source_ids = ("r1", "r2")
+    return FeatureSnapshot(instrument, slot_at_ns, computed, values, source_ids, (slot_at_ns, slot_at_ns))
 
 
 def signal_snapshot(signal: Signal, *, instrument: str = "BTCUSDT", slot_at_ns: int = SLOT) -> FeatureSnapshot:

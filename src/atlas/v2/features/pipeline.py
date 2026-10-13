@@ -12,6 +12,7 @@ from atlas.v2.data.active_history import ActiveCausalHistoryStateV1
 from atlas.v2.data.bars import BarIntervalV2
 
 from .candles import (
+    DAY_NS,
     CausalTrade,
     TradeLocationConfig,
     anchored_vwap,
@@ -22,12 +23,18 @@ from .candles import (
 )
 from .joins import JoinedBars
 from .structure import confirmed_legs, confirmed_swings, fibonacci, morphology, structure_events, support_resistance
-from .technical import technical_series
+from .technical import interval_coverage_complete, technical_series
 
-FEATURE_SET_VERSION = "INTRADAY_CORE_V1"
-EXACT_PREFIX_FEATURE_SET_VERSION = "INTRADAY_CORE_EXACT_PREFIX_EMA_ATR_V1"
-TRADE_LOCATION_FEATURE_SET_VERSION = "INTRADAY_CORE_TRADE_LOCATION_V1"
-EXACT_PREFIX_TRADE_LOCATION_FEATURE_SET_VERSION = "INTRADAY_CORE_EXACT_PREFIX_EMA_ATR_TRADE_LOCATION_V1"
+FEATURE_SET_VERSION = "INTRADAY_CORE_GAP_QUALIFIED_V1"
+EXACT_PREFIX_FEATURE_SET_VERSION = "INTRADAY_CORE_EXACT_PREFIX_EMA_ATR_GAP_QUALIFIED_V1"
+TRADE_LOCATION_FEATURE_SET_VERSION = "INTRADAY_CORE_TRADE_LOCATION_GAP_QUALIFIED_V1"
+EXACT_PREFIX_TRADE_LOCATION_FEATURE_SET_VERSION = "INTRADAY_CORE_EXACT_PREFIX_EMA_ATR_TRADE_LOCATION_GAP_QUALIFIED_V1"
+GAP_QUALIFIED_FEATURE_SET_VERSIONS = frozenset({
+    FEATURE_SET_VERSION,
+    EXACT_PREFIX_FEATURE_SET_VERSION,
+    TRADE_LOCATION_FEATURE_SET_VERSION,
+    EXACT_PREFIX_TRADE_LOCATION_FEATURE_SET_VERSION,
+})
 MAX_TRADE_LOCATION_INPUT_REFS = 64
 
 
@@ -62,7 +69,10 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
     technical_by_frame = {}
     history_refs: set[str] = set()
     for label, bars in (("h4", join.h4), ("h1", join.h1), ("m15", join.m15)):
+        coverage_complete = interval_coverage_complete(bars)
         series = technical_series(bars) if bars else ()
+        if bars and not coverage_complete:
+            series = tuple(dict.fromkeys(units) for _ in bars)
         frame = {"h4": BarIntervalV2.H4,"h1":BarIntervalV2.H1,"m15":BarIntervalV2.M15}[label]
         if exact_histories is not None and bars:
             history = exact_histories.get(frame)
@@ -72,12 +82,20 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
                     != tuple(bar.content_hash for bar in bars)):
                 raise ValueError("feature exact-prefix checkpoint does not match causal frame")
             history_refs.add(history.content_hash)
-            for row,history_item in zip(series,history.tail[-len(bars):],strict=True):
-                row.update({"ema20":history_item.ema20,"ema50":history_item.ema50,"atr14":history_item.atr14})
+            if not interval_coverage_complete(history.bars):
+                coverage_complete = False
+                series = tuple(dict.fromkeys(units) for _ in bars)
+            if coverage_complete:
+                for row,history_item in zip(series,history.tail[-len(bars):],strict=True):
+                    row.update({"ema20":history_item.ema20,"ema50":history_item.ema50,"atr14":history_item.atr14})
         technical_by_frame[label] = series
         technical = series[-1] if series else dict.fromkeys(units)
         for name, value in technical.items():
-            values[f"{label}.{name}"] = FeatureValueV2(value, units[name], None if value is not None else "INSUFFICIENT_HISTORY_OR_MISSING_TIMEFRAME")
+            missing_reason = None if value is not None else (
+                "INTERVAL_COVERAGE_GAP" if bars and not coverage_complete
+                else "INSUFFICIENT_HISTORY_OR_MISSING_TIMEFRAME"
+            )
+            values[f"{label}.{name}"] = FeatureValueV2(value, units[name], missing_reason)
     atr = values["m15.atr14"].value
     if join.m15:
         geometry = candle_geometry(join.m15[-1], atr=float(atr) if atr is not None else None,
@@ -88,10 +106,39 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
     for name, value in geometry.items():
         values[f"candle.{name}"] = FeatureValueV2(value, "ratio" if name != "gap" else "price", None if value is not None else "MISSING_DENOMINATOR_OR_HISTORY")
     prior_high, prior_low, _ = prior_utc_day_range(join.m15, cutoff_ns=join.cutoff_ns)
-    values["location.prior_day_high"] = FeatureValueV2(prior_high, "price", None if prior_high is not None else "PRIOR_DAY_UNAVAILABLE")
-    values["location.prior_day_low"] = FeatureValueV2(prior_low, "price", None if prior_low is not None else "PRIOR_DAY_UNAVAILABLE")
-    vwap, trade_refs = utc_day_vwap(trades, key=join.key, cutoff_ns=join.cutoff_ns)
-    values["location.utc_day_trade_vwap"] = FeatureValueV2(vwap, "price", None if vwap is not None else "CAUSAL_TRADES_UNAVAILABLE")
+    prior_start = join.cutoff_ns // DAY_NS * DAY_NS - DAY_NS
+    prior_end = prior_start + DAY_NS
+    partial_prior_day = any(prior_start <= bar.open_at_ns < prior_end for bar in join.m15)
+    prior_missing_reason = "PRIOR_DAY_INCOMPLETE_COVERAGE" if partial_prior_day else "PRIOR_DAY_UNAVAILABLE"
+    values["location.prior_day_high"] = FeatureValueV2(
+        prior_high, "price", None if prior_high is not None else prior_missing_reason
+    )
+    values["location.prior_day_low"] = FeatureValueV2(
+        prior_low, "price", None if prior_low is not None else prior_missing_reason
+    )
+    try:
+        vwap, trade_refs = utc_day_vwap(trades, key=join.key, cutoff_ns=join.cutoff_ns)
+        vwap_missing_reason = "CAUSAL_TRADES_UNAVAILABLE"
+    except ValueError as exc:
+        if str(exc) != "CONFLICTING_TRADE_IDENTITY":
+            raise
+        day_start = join.cutoff_ns // DAY_NS * DAY_NS
+        conflicting_rows = sorted(
+            (trade for trade in trades if trade.key == join.key and day_start <= trade.event_at_ns <= join.cutoff_ns
+             and trade.available_at_ns <= join.cutoff_ns),
+            key=lambda trade: (trade.event_at_ns, trade.ref),
+        )
+        vwap, vwap_missing_reason = None, "TRADE_IDENTITY_CONFLICT"
+        trade_refs = tuple(dict.fromkeys(trade.ref for trade in conflicting_rows))
+    values["location.utc_day_trade_vwap"] = FeatureValueV2(
+        None, "price", "FULL_UTC_DAY_COVERAGE_UNVERIFIED"
+    )
+    values["location.utc_day_trade_vwap_partial_to_cutoff"] = FeatureValueV2(
+        vwap, "price", None if vwap is not None else vwap_missing_reason
+    )
+    values["location.utc_day_trade_vwap_complete_day"] = FeatureValueV2(
+        None, "price", "FULL_UTC_DAY_COVERAGE_UNVERIFIED"
+    )
     location_refs: set[str] = set()
     # The production caller persists the exact configuration inside its
     # TradeLocationInputReceiptV1. Referencing the bare configuration hash here

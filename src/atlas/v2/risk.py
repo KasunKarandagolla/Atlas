@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import ROUND_FLOOR, Decimal
 from enum import StrEnum
@@ -13,8 +13,15 @@ from atlas.domain.money import canonical_decimal_str as _c
 from atlas.domain.risk import RiskPolicy
 from atlas.science.stresses import stress_path_is_coherent
 
-from ._serialization import canonical_json, decimal_value, sha256_json, sha256_ref, strict_fields
-from .contracts import CandidateActionV2, CandidateSelectionStatus, CandidateSetV2, PolicySpecV2, V2Side
+from ._serialization import canonical_json, decimal_value, json_value, sha256_json, sha256_ref, strict_fields
+from .contracts import (
+    CandidateActionV2,
+    CandidateSelectionStatus,
+    CandidateSetV2,
+    FeatureArtifactV2,
+    PolicySpecV2,
+    V2Side,
+)
 from .instruments import InstrumentKeyV2, ProductContractV2, TradingStatusV2, UniverseContractV2
 from .memory.repository import ArtifactIndexEntryV2, OpsRepository
 from .science.costs import FeeScheduleV2
@@ -520,12 +527,47 @@ def size_selected_candidate(repo: OpsRepository, *, candidate_set: CandidateSetV
     optional = (v1.policy_hash(), v2.policy_hash, account.content_hash, product.content_hash,
                 venue.content_hash, stress.content_hash, fee.content_hash)
     valid_refs = base_refs | {ref for ref in optional if _indexed(repo, ref, cutoff_ns) is not None}
-    computation_identity = sha256_json({"version": "SizingComputationIdentityV1",
+    computation_identity = sha256_json({"version": "SizingComputationIdentityV2",
         "candidate_set_ref": candidate_set.content_hash, "candidate_ref": candidate.content_hash,
+        "feature_ref": candidate.snapshot_hash,
         "risk_refs": list(optional), "exposures": [item.content_hash for item in exposures],
         "outcomes": [item.content_hash for item in outcomes], "cutoff_ns": cutoff_ns})
-    if clock_ns and (prior_identity := repo.get_artifact(computation_identity)) is not None:
-        if (prior_identity.artifact_type != "SizingComputationIdentityV1"
+    s1_feature_reason: str | None = None
+    if policy.policy_id == "S1_MTF_TREND_PULLBACK":
+        feature_entry = _indexed(repo, candidate.snapshot_hash, started, "FeatureArtifactV2")
+        if feature_entry is None or feature_entry.content_hash != candidate.snapshot_hash:
+            s1_feature_reason = "S1_FEATURE_EVIDENCE_UNAVAILABLE"
+        else:
+            try:
+                feature_body = json_value(feature_entry.metadata.get("feature"))
+                if not isinstance(feature_body, Mapping):
+                    raise ValueError("feature body unavailable")
+                feature = FeatureArtifactV2.from_dict(feature_body)
+            except (TypeError, ValueError, KeyError):
+                s1_feature_reason = "S1_FEATURE_EVIDENCE_INVALID"
+            else:
+                if (feature.content_hash != candidate.snapshot_hash or feature.key != candidate.key
+                        or feature.information_cutoff_ns != candidate.decision_at_ns
+                        or feature.envelope.available_at_ns > started
+                        or feature.envelope.available_at_ns > candidate.deadline_ns):
+                    s1_feature_reason = "S1_FEATURE_IDENTITY_MISMATCH"
+                else:
+                    from atlas.v2.chronology import causal_artifact
+                    from atlas.v2.features.pipeline import GAP_QUALIFIED_FEATURE_SET_VERSIONS
+                    if feature.feature_set_version not in GAP_QUALIFIED_FEATURE_SET_VERSIONS:
+                        s1_feature_reason = "S1_FEATURE_INTERVAL_COVERAGE_UNQUALIFIED"
+                    elif not causal_artifact(repo, feature.content_hash,
+                            cutoff_ns=candidate.decision_at_ns, consumer_at_ns=started,
+                            deadline_ns=candidate.deadline_ns):
+                        s1_feature_reason = "S1_FEATURE_CHRONOLOGY_UNQUALIFIED"
+                    elif any(name not in feature.values or feature.values[name].value is None for name in (
+                            "h4.ema20", "h4.ema50", "h1.ema20", "h1.ema50", "m15.atr14",
+                            "m15.realized_variance20")):
+                        s1_feature_reason = "S1_FEATURE_INTERVAL_COVERAGE_UNQUALIFIED"
+                    else:
+                        valid_refs.add(feature.content_hash)
+    if clock_ns and s1_feature_reason is None and (prior_identity := repo.get_artifact(computation_identity)) is not None:
+        if (prior_identity.artifact_type != "SizingComputationIdentityV2"
                 or prior_identity.content_hash != sha256_json(prior_identity.metadata)
                 or prior_identity.metadata.get("authority") != "ZERO"):
             raise ValueError("sealed sizing identity receipt conflicts")
@@ -573,9 +615,11 @@ def size_selected_candidate(repo: OpsRepository, *, candidate_set: CandidateSetV
                 started_ns=started, finished_ns=finished, available_ns=available,
                 input_refs=decision.risk_input_refs, deadline_ns=candidate.deadline_ns)
             body = {"sizing_ref": decision.content_hash, "authority": "ZERO"}
-            repo.register_artifact(ArtifactIndexEntryV2(computation_identity, "SizingComputationIdentityV1",
+            repo.register_artifact(ArtifactIndexEntryV2(computation_identity, "SizingComputationIdentityV2",
                 sha256_json(body), available, available, body))
         return decision
+    if s1_feature_reason is not None:
+        return not_est(s1_feature_reason)
     if (v1.policy_effective_at_ns > cutoff_ns or v2.effective_at_ns > cutoff_ns or
             account.available_at_ns > cutoff_ns or fee.available_at_ns > cutoff_ns or product.available_at_ns > cutoff_ns or
             product.effective_at_ns > cutoff_ns or venue.available_at_ns > cutoff_ns or

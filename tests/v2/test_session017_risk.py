@@ -11,7 +11,15 @@ import pytest
 from atlas.domain.money import canonical_decimal_str
 from atlas.domain.risk import engineering_default_policy
 from atlas.v2._serialization import FrozenMap, sha256_json
-from atlas.v2.contracts import ArtifactEnvelope, EligibilityStatusV2, V2Side
+from atlas.v2.contracts import (
+    ArtifactEnvelope,
+    EligibilityStatusV2,
+    FeatureArtifactV2,
+    FeatureValueV2,
+    ReplayViewV2,
+    V2Side,
+)
+from atlas.v2.features.pipeline import FEATURE_SET_VERSION
 from atlas.v2.instruments import (
     ProductContractV2,
     StrategyEligibilityV2,
@@ -19,7 +27,7 @@ from atlas.v2.instruments import (
     UniverseContractV2,
     UniverseEntryV2,
 )
-from atlas.v2.memory.repository import OpsRepository
+from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.risk import (
     ACTUAL_CLOSE_PROVENANCE,
     DAY_NS,
@@ -110,6 +118,9 @@ def risk_case(
     universe_available_at_ns=None,
     product_override=None,
     additional_candidates=(),
+    feature_version=FEATURE_SET_VERSION,
+    index_s1_feature=True,
+    feature_missing=(),
 ):
     cutoff = CUTOFF if cutoff_ns is None else cutoff_ns
     v1 = engineering_default_policy(policy_version="SESSION017_ENGINEERING_FIXTURE", policy_effective_at_ns=0)
@@ -173,6 +184,54 @@ def risk_case(
             stop_price=Decimal("101") if short else shadow.stop_price,
         )
     )
+    if index_s1_feature and item.policy_hash == S1_POLICY.policy_hash and repo.get_artifact(item.snapshot_hash) is None:
+        source_ref = source(repo, "s1-qualified-feature-health", cutoff)
+        values = {
+            "h4.ema20": FeatureValueV2(Decimal("100"), "price"),
+            "h4.ema50": FeatureValueV2(Decimal("99"), "price"),
+            "h1.ema20": FeatureValueV2(Decimal("100"), "price"),
+            "h1.ema50": FeatureValueV2(Decimal("99"), "price"),
+            "m15.atr14": FeatureValueV2(Decimal("1"), "price"),
+            "m15.realized_variance20": FeatureValueV2(Decimal("0.01"), "log_return_squared"),
+            "location.utc_day_trade_vwap": FeatureValueV2(None, "price", "FULL_UTC_DAY_COVERAGE_UNVERIFIED"),
+            "location.utc_day_trade_vwap_partial_to_cutoff": FeatureValueV2(None, "price", "CAUSAL_TRADES_UNAVAILABLE"),
+            "location.utc_day_trade_vwap_complete_day": FeatureValueV2(
+                None, "price", "FULL_UTC_DAY_COVERAGE_UNVERIFIED"
+            ),
+        }
+        for name in feature_missing:
+            values[name] = FeatureValueV2(None, "price", "INTERVAL_COVERAGE_GAP")
+        feature = FeatureArtifactV2(
+            ArtifactEnvelope(
+                1, sha256_json({"risk-feature": item.candidate_id}), cutoff, cutoff, feature_version, (source_ref,)
+            ),
+            key,
+            feature_version,
+            cutoff,
+            cutoff,
+            FrozenMap(values),
+            source_ref,
+            ReplayViewV2.ACTUAL_SYSTEM,
+        )
+        repo.register_artifact(
+            ArtifactIndexEntryV2(
+                feature.content_hash,
+                "FeatureArtifactV2",
+                feature.content_hash,
+                feature.envelope.created_at_ns,
+                feature.envelope.available_at_ns,
+                {"feature": feature.to_dict()},
+            )
+        )
+        item = replace(
+            item,
+            snapshot_hash=feature.content_hash,
+            envelope=replace(
+                item.envelope,
+                input_refs=tuple(sorted({*item.envelope.input_refs, feature.content_hash})),
+                content_hash="",
+            ),
+        )
     if repo.get_artifact(item.content_hash) is None:
         index(repo, item, universe_ref=universe.content_hash)
     generated = [item, *additional_candidates]
@@ -552,6 +611,23 @@ def test_initial_account_intent_cap_stays_one_even_if_fixture_policies_are_loose
             v2_overrides={"max_opening_intents_per_account": 2},
         )
         assert size(repo, case).reasons == ("MAX_OPENING_INTENTS",)
+
+
+@pytest.mark.parametrize(
+    ("fixture_kwargs", "reason"),
+    (
+        ({"index_s1_feature": False}, "S1_FEATURE_EVIDENCE_UNAVAILABLE"),
+        ({"feature_version": "LEGACY_S1_FEATURES_V1"}, "S1_FEATURE_INTERVAL_COVERAGE_UNQUALIFIED"),
+        ({"feature_missing": ("h4.ema50",)}, "S1_FEATURE_INTERVAL_COVERAGE_UNQUALIFIED"),
+        ({"feature_missing": ("m15.atr14",)}, "S1_FEATURE_INTERVAL_COVERAGE_UNQUALIFIED"),
+    ),
+)
+def test_s1_sizing_requires_indexed_gap_qualified_feature_evidence(tmp_path, fixture_kwargs, reason):
+    with OpsRepository(tmp_path / "ops.sqlite") as repo:
+        case = risk_case(repo, **fixture_kwargs)
+        decision = size(repo, case)
+        assert decision.status == SizingStatus.NOT_ESTIMABLE
+        assert decision.reasons == (reason,)
 
 
 @pytest.mark.parametrize("binding", ("gross", "instrument", "beta", "margin"))

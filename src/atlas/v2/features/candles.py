@@ -10,7 +10,7 @@ from typing import Any
 
 from atlas.domain.money import ensure_positive_decimal
 from atlas.v2._serialization import nonblank, sha256_json, sha256_ref, timestamp
-from atlas.v2.data.bars import CausalBarV2
+from atlas.v2.data.bars import BarIntervalV2, CausalBarV2
 from atlas.v2.instruments import InstrumentKeyV2, ProductContractV2
 
 DAY_NS = 86_400_000_000_000
@@ -75,18 +75,56 @@ def utc_day_vwap(trades: Sequence[CausalTrade], *, key: InstrumentKeyV2, cutoff_
     selected = sorted((trade for trade in trades if day_start <= trade.event_at_ns <= cutoff_ns and trade.available_at_ns <= cutoff_ns), key=lambda x: (x.event_at_ns, x.ref))
     if any(trade.price <= 0 or trade.quantity <= 0 for trade in selected):
         raise ValueError("trade VWAP needs positive price and quantity")
-    total = sum((trade.quantity for trade in selected), Decimal(0))
+    identities: dict[tuple[str, str], CausalTrade] = {}
+    refs: dict[str, CausalTrade] = {}
+    unique: list[CausalTrade] = []
+    for trade in selected:
+        body = (trade.event_at_ns, trade.available_at_ns, trade.price, trade.quantity)
+        if trade.ref in refs:
+            prior_ref = refs[trade.ref]
+            if ((prior_ref.event_at_ns, prior_ref.available_at_ns, prior_ref.price, prior_ref.quantity) != body
+                    or prior_ref.trade_id != trade.trade_id):
+                raise ValueError("CONFLICTING_TRADE_IDENTITY")
+        else:
+            refs[trade.ref] = trade
+        identity = ("native", trade.trade_id) if trade.trade_id is not None else ("ref", trade.ref)
+        prior_identity = identities.get(identity)
+        if prior_identity is not None:
+            if (prior_identity.event_at_ns, prior_identity.available_at_ns,
+                    prior_identity.price, prior_identity.quantity) != body:
+                raise ValueError("CONFLICTING_TRADE_IDENTITY")
+            continue
+        identities[identity] = trade
+        unique.append(trade)
+    total = sum((trade.quantity for trade in unique), Decimal(0))
     if not total:
         return None, ()
-    return sum((trade.price * trade.quantity for trade in selected), Decimal(0)) / total, tuple(trade.ref for trade in selected)
+    return (sum((trade.price * trade.quantity for trade in unique), Decimal(0)) / total,
+            tuple(sorted(refs, key=lambda ref: (refs[ref].event_at_ns, ref))))
 
 
 def prior_utc_day_range(bars: Sequence[CausalBarV2], *, cutoff_ns: int) -> tuple[Decimal | None, Decimal | None, tuple[str, ...]]:
     start = cutoff_ns // DAY_NS * DAY_NS - DAY_NS
-    selected = [bar for bar in bars if bar.final and start <= bar.open_at_ns and bar.close_at_ns <= start + DAY_NS and bar.raw.available_at_ns <= cutoff_ns]
-    if not selected:
+    end = start + DAY_NS
+    selected = [bar for bar in bars if bar.final and start <= bar.open_at_ns < end
+                and bar.close_at_ns <= end and bar.raw.available_at_ns <= cutoff_ns]
+    if not selected or any(bar.interval != BarIntervalV2.M15 for bar in selected):
         return None, None, ()
-    return max(bar.high for bar in selected), min(bar.low for bar in selected), tuple(bar.content_hash for bar in selected)
+    if len({bar.instrument_revision for bar in selected}) != 1:
+        return None, None, ()
+    duration = BarIntervalV2.M15.duration_ns
+    by_open: dict[int, CausalBarV2] = {}
+    for bar in selected:
+        prior = by_open.get(bar.open_at_ns)
+        if prior is not None and prior.content_hash != bar.content_hash:
+            return None, None, ()
+        by_open[bar.open_at_ns] = bar
+    expected = tuple(range(start, end, duration))
+    if tuple(sorted(by_open)) != expected:
+        return None, None, ()
+    complete = tuple(by_open[open_at_ns] for open_at_ns in expected)
+    return (max(bar.high for bar in complete), min(bar.low for bar in complete),
+            tuple(bar.content_hash for bar in complete))
 
 
 @dataclass(frozen=True)

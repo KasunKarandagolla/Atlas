@@ -23,6 +23,16 @@ def _bars(bars: Sequence[CausalBarV2]) -> None:
         raise ValueError("mixed bar intervals or instrument revisions")
 
 
+def interval_coverage_complete(bars: Sequence[CausalBarV2]) -> bool:
+    """Whether each observed bar follows the previous canonical interval."""
+    _bars(bars)
+    if not bars:
+        return False
+    duration = bars[0].interval.duration_ns
+    return all(current.open_at_ns == previous.open_at_ns + duration
+               for previous, current in zip(bars, bars[1:], strict=False))
+
+
 def ema(values: Sequence[float], period: int) -> tuple[float | None, ...]:
     if period <= 0:
         raise ValueError("EMA period must be positive")

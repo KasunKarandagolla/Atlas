@@ -222,7 +222,9 @@ def test_join_boundaries_missing_and_revision(tmp_path) -> None:
     trade = CausalTrade(KEY, Decimal("105"), Decimal("2"), SETUP - HOUR, SETUP, "trade-ref")
     future = CausalTrade(KEY, Decimal("999"), Decimal("1"), SETUP + 1, SETUP + 1, "future-trade")
     with_vwap = feature_snapshot(at_hour, trades=(trade,))
-    assert with_vwap.values["location.utc_day_trade_vwap"].value == Decimal("105")
+    assert with_vwap.values["location.utc_day_trade_vwap"].value is None
+    assert with_vwap.values["location.utc_day_trade_vwap"].missing_reason == "FULL_UTC_DAY_COVERAGE_UNVERIFIED"
+    assert with_vwap.values["location.utc_day_trade_vwap_partial_to_cutoff"].value == Decimal("105")
     assert "trade-ref" in with_vwap.envelope.input_refs
     assert feature_snapshot(at_hour, trades=(trade, future)).content_hash == with_vwap.content_hash
     with OpsRepository(tmp_path / "ops.sqlite") as repository:

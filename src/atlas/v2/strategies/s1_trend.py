@@ -25,7 +25,8 @@ from atlas.v2.contracts import (
 from atlas.v2.data.active_history import ALGORITHM_VERSION, ActiveCausalHistoryStateV1, HistoryTailItemV1
 from atlas.v2.data.bars import BarIntervalV2
 from atlas.v2.features.joins import JoinedBars
-from atlas.v2.features.technical import ema
+from atlas.v2.features.pipeline import GAP_QUALIFIED_FEATURE_SET_VERSIONS
+from atlas.v2.features.technical import ema, interval_coverage_complete
 from atlas.v2.instruments import InstrumentKeyV2, UniverseContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 
@@ -264,7 +265,17 @@ class S1ShadowCoordinator:
             universe.envelope.available_at_ns)) if self.clock_ns else join.cutoff_ns
         if join.status != "AVAILABLE" or join.key != feature.key or feature.information_cutoff_ns != join.cutoff_ns:
             return S1Decision("NOT_ESTIMABLE", join.reason or "FEATURE_OR_JOIN_MISMATCH")
-        if feature.values["location.utc_day_trade_vwap"].value is not None:
+        if any(bars and not interval_coverage_complete(bars) for bars in (join.h4, join.h1, join.m15)):
+            return S1Decision("NOT_ESTIMABLE", "BAR_INTERVAL_COVERAGE_GAP")
+        if any(history is not None and not interval_coverage_complete(history.bars)
+               for history in (h1_history, h4_history)):
+            return S1Decision("NOT_ESTIMABLE", "BAR_INTERVAL_COVERAGE_GAP")
+        if feature.feature_set_version not in GAP_QUALIFIED_FEATURE_SET_VERSIONS:
+            return S1Decision("NOT_ESTIMABLE", "FEATURE_INTERVAL_COVERAGE_UNQUALIFIED")
+        partial_vwap = feature.values["location.utc_day_trade_vwap_partial_to_cutoff"]
+        if partial_vwap.missing_reason == "TRADE_IDENTITY_CONFLICT":
+            return S1Decision("NOT_ESTIMABLE", "TRADE_IDENTITY_CONFLICT")
+        if partial_vwap.value is not None:
             return S1Decision("NOT_ESTIMABLE", "OPTIONAL_INPUT_REQUIRES_POLICY_VARIANT")
         gate_status, gate_reason = _gate(event_gate, started)
         if gate_status != "AVAILABLE":
@@ -349,7 +360,17 @@ class S1ShadowCoordinator:
         if (join.key != watch.key or feature.key != watch.key or join.status != "AVAILABLE"
                 or feature.information_cutoff_ns != join.cutoff_ns):
             return S1Decision("NOT_ESTIMABLE", join.reason or "REVISION_OR_JOIN_MISMATCH", watch)
-        if feature.values["location.utc_day_trade_vwap"].value is not None:
+        if any(bars and not interval_coverage_complete(bars) for bars in (join.h4, join.h1, join.m15)):
+            return S1Decision("NOT_ESTIMABLE", "BAR_INTERVAL_COVERAGE_GAP", watch)
+        if any(history is not None and not interval_coverage_complete(history.bars)
+               for history in (h1_history, h4_history)):
+            return S1Decision("NOT_ESTIMABLE", "BAR_INTERVAL_COVERAGE_GAP", watch)
+        if feature.feature_set_version not in GAP_QUALIFIED_FEATURE_SET_VERSIONS:
+            return S1Decision("NOT_ESTIMABLE", "FEATURE_INTERVAL_COVERAGE_UNQUALIFIED", watch)
+        partial_vwap = feature.values["location.utc_day_trade_vwap_partial_to_cutoff"]
+        if partial_vwap.missing_reason == "TRADE_IDENTITY_CONFLICT":
+            return S1Decision("NOT_ESTIMABLE", "TRADE_IDENTITY_CONFLICT", watch)
+        if partial_vwap.value is not None:
             return S1Decision("NOT_ESTIMABLE", "OPTIONAL_INPUT_REQUIRES_POLICY_VARIANT", watch)
         try:
             if h1_history is not None:

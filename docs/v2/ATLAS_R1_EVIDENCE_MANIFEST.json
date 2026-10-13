@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "task": "ATLAS RED \u2014 R1 Surgical Correctness Implementation",
+  "evidence_date_utc": "2026-10-13",
+  "checkpoint": {
+    "branch": "impl/red-r1-surgical-correctness-2026-10-13",
+    "accepted_s49_remote_tip": "a73c92d83ca8b2fe5163e636b2c9732361b35e23",
+    "verified_s49_implementation_ancestor": "00ed85f9dae78b29989e442dfb0d70576671ff48",
+    "historical_stale_identity_note": "Prior S49 coordinator entry recorded 00ed85fb61c0941f045472319aa19b795577168e; the accepted remote tip and actual ancestor above were verified from Git.",
+    "implementation_commit": "PENDING_COMMIT",
+    "push_verification": "PENDING"
+  },
+  "frozen_authorities": {
+    "v1_sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "v2_sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "agent_v1_sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "project_lock_modified": false
+  },
+  "dependency_files_sha256": {
+    "pyproject.toml": "1027697c586b9a8a39ca7b482057d3187e48e643902f05518ecfd141d8ed7933",
+    "uv.lock": "8a3a1d14b7c4774b7189f18c7cc1c9086496135a34f86a7021ba7ff726898d61"
+  },
+  "owner_source_gaps": [
+    "Canonical 00_START_HERE.md not present in the configured environment.",
+    "Required sections of 04_ATLAS_ENGINEERING_EXECUTION_RUNBOOK.md not present in the configured environment.",
+    "No absent owner decision or versioned artifact migration was inferred."
+  ],
+  "environment": {
+    "python": "CPython 3.12.14",
+    "provisioning": "uv sync --locked --extra dev --python 3.12 into work/r1-test-venv",
+    "locked_test_packages": {
+      "pyarrow": "25.0.1",
+      "duckdb": "1.5.6",
+      "nautilus-trader": "2.0.0rc5",
+      "pytest": "9.1.1",
+      "ruff": "0.16.10",
+      "mypy": "2.4.0"
+    },
+    "uv_lock_check": "PASS",
+    "uv_pip_check": "PASS \u2014 all 20 installed packages compatible"
+  },
+  "test_first_red": {
+    "v2_target_regressions": "7 target assertions failed before implementation",
+    "v1_chronology_identity_regressions": "6 target assertions failed before implementation",
+    "purpose": "Reproduced the missing interval, daily coverage/VWAP identity, and V1 chronology/source-identity safeguards before applying the fixes."
+  },
+  "tests": [
+    {
+      "name": "R1 and affected V2 consumers",
+      "status": "PASS",
+      "passed": 199,
+      "duration_seconds": 32.27,
+      "command": "pytest -o addopts='' -q -rA --basetemp=work/pytest-v2-vwap-identity-final tests/v2/test_r1_surgical_correctness.py tests/v2/test_session017_risk.py tests/v2/test_session014_core.py tests/v2/test_session014_s1.py tests/v2/test_session016_s2.py tests/v2/test_session037_active_history.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session041_s6_action_contract.py tests/v2/test_session041_trade_location.py tests/v2/test_session041_trade_location_runtime.py tests/v2/test_session037_chronology.py tests/v2/test_session037_installed_economics.py tests/v2/test_session027_ops_supervisor.py tests/v2/test_session019_m0.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session021_data_s3.py"
+    },
+    {
+      "name": "V1 chronology and phase-4 compatibility",
+      "status": "PASS",
+      "passed": 28,
+      "command": "pytest -o addopts='' -q -rA --basetemp=work/pytest-v1-all tests/science/test_r1_v1_chronology_identity.py tests/science/test_phase4_baseline.py tests/contract/test_v1_golden_baseline.py tests/science/test_prefix_invariance_phase4.py tests/science/test_phase4_persistence.py tests/science/test_phase4_end_to_end.py"
+    },
+    {
+      "name": "S27 default production composition",
+      "status": "PASS",
+      "passed": 16,
+      "duration_seconds": 308.45,
+      "command": "pytest -o addopts='' -q -rA --basetemp=work/pytest-production-final-vwap tests/v2/test_session027_production.py"
+    },
+    {
+      "name": "S27 default production restart path after final source-reference identity guard",
+      "status": "PASS",
+      "passed": 1,
+      "duration_seconds": 36.99,
+      "command": "pytest -o addopts='' -q -rA --basetemp=work/pytest-r1-restart-final tests/v2/test_session027_production.py::test_default_production_composes_public_to_risk_action_and_economics_after_restart"
+    }
+  ],
+  "static_checks": {
+    "scoped_ruff": "PASS",
+    "full_repository_ruff": "BASELINE FAILURE \u2014 16 diagnostics in six unchanged evidence scripts under docs/v2/transition-s45-evidence and docs/v2/transition-tq01-evidence",
+    "compileall_src_tests": "PASS",
+    "uv_lock_check_python_312": "PASS",
+    "uv_pip_check": "PASS",
+    "git_diff_check": "PASS",
+    "mypy_src_atlas": {
+      "status": "BASELINE MATCH",
+      "accepted_s49_base_errors": 52,
+      "current_errors": 52,
+      "normalized_delta": 0,
+      "exit_status": 1
+    },
+    "ruff_format": {
+      "baseline_and_current_fail": [
+        "src/atlas/strategy/crypto_trend_24h_v1.py",
+        "tests/v2/test_session014_s1.py",
+        "src/atlas/v2/features/candles.py",
+        "src/atlas/v2/features/pipeline.py",
+        "src/atlas/v2/features/technical.py",
+        "src/atlas/v2/risk.py",
+        "src/atlas/v2/strategies/s1_trend.py",
+        "tests/support/phase4_factory.py",
+        "tests/v2/session023_support.py",
+        "tests/v2/test_session019_m0.py"
+      ],
+      "baseline_and_current_pass": [
+        "src/atlas/strategy/features.py",
+        "tests/v2/test_session017_risk.py"
+      ],
+      "new_test_modules_pass": [
+        "tests/v2/test_r1_surgical_correctness.py",
+        "tests/science/test_r1_v1_chronology_identity.py"
+      ]
+    }
+  },
+  "open_gates": [
+    "AUD-01: conservative funding bound is not part of hard sizing or durable reservation; versioned migration proposal is pending owner review.",
+    "AUD-02: direct frames and gaps visible in the bounded exact-history tail fail closed; ActiveCausalHistoryStateV1 does not prove cadence gaps older than its retained tail.",
+    "AUD-06: V1 source identity/chronology is strengthened, but the frozen snapshot_hash does not yet bind the full payload; versioned migration proposal is pending owner review.",
+    "No repository-wide R1 test suite was run; only the documented affected regression groups are claimed.",
+    "No capital, exchange order, provider enablement, merge, deployment, or trading authority change was made."
+  ],
+  "files": [
+    "src/atlas/strategy/crypto_trend_24h_v1.py",
+    "src/atlas/strategy/features.py",
+    "src/atlas/v2/features/candles.py",
+    "src/atlas/v2/features/pipeline.py",
+    "src/atlas/v2/features/technical.py",
+    "src/atlas/v2/risk.py",
+    "src/atlas/v2/strategies/s1_trend.py",
+    "tests/support/phase4_factory.py",
+    "tests/v2/session023_support.py",
+    "tests/v2/test_session014_s1.py",
+    "tests/v2/test_session017_risk.py",
+    "tests/v2/test_session019_m0.py",
+    "tests/v2/test_r1_surgical_correctness.py",
+    "tests/science/test_r1_v1_chronology_identity.py",
+    "docs/v2/ATLAS_R1_IMPLEMENTATION_HANDOFF.md",
+    "docs/v2/ATLAS_R1_VERSIONED_AMENDMENT_PROPOSAL.md",
+    "docs/v2/ATLAS_R1_TEST_LOG.md",
+    "log.md",
+    "translog.md"
+  ],
+  "file_sha256": {
+    "src/atlas/strategy/crypto_trend_24h_v1.py": "4633108f3e75a7af1df1e25d6b4ca1a0de286af681a6d37ef67321c722987639",
+    "src/atlas/strategy/features.py": "7e2e5544c06a41dba50078e31cf4069271bea05aedac57d6c6f2861510aa1325",
+    "src/atlas/v2/features/candles.py": "54c14545dd5386bfae735adba1360ba94d64b96ad7a3afd6f82c3df40d3d2c2a",
+    "src/atlas/v2/features/pipeline.py": "ea3ef7e9c43442c1f9a995b7d66a4529ff9ff02ad4bd03d37cb0e0d6311da715",
+    "src/atlas/v2/features/technical.py": "82bfd6bcc5e13e0293d985990383584a269d6691633b00560f2da385f912e1d4",
+    "src/atlas/v2/risk.py": "e536ed67edc6fe2d0280376b0ae82c8a7007b47fe1e41fca63b0e98cb9e87eb9",
+    "src/atlas/v2/strategies/s1_trend.py": "e85c3f1fbfd08f4d01f185773203a7e6cf27522fcb7b9fdd2e2c0be35f58834b",
+    "tests/support/phase4_factory.py": "239db14b133cff281595e613443c00984af1fd08467419626da86ccd388a8c8c",
+    "tests/v2/session023_support.py": "36bf862d260f3aa6b1fe45c4daa27d77e7c68f8bc76c4e8f3286517064c439d0",
+    "tests/v2/test_session014_s1.py": "2f95dce2c46382230ee7122c2d2dfdd5052d9ef91c76770a53b67d1901abc985",
+    "tests/v2/test_session017_risk.py": "54749909856c3827010d373bafaa58104a64917f305ce7372916791a5a579ad1",
+    "tests/v2/test_session019_m0.py": "6e4bb9a1e81fca256c6b63c369eade93fbbb611fafa449b59c26b2fee6bf9a76",
+    "tests/v2/test_r1_surgical_correctness.py": "4b927d6cdaedd9e0873f08849a5c0d73005316964b0c73526c477dfd73fd0731",
+    "tests/science/test_r1_v1_chronology_identity.py": "ccdfba4c3a4d4f7fe9b71931df7683fcf006759c6464b2f4d103fb3f72cfd385",
+    "docs/v2/ATLAS_R1_IMPLEMENTATION_HANDOFF.md": "534847e2ebe431671d09288cb720e4e0e8673da50c3305b23219df434102e29e",
+    "docs/v2/ATLAS_R1_VERSIONED_AMENDMENT_PROPOSAL.md": "055820fa05d3b4c22d385dba059a49f72e669e8fdfd4e43c4f04f92785203139",
+    "docs/v2/ATLAS_R1_TEST_LOG.md": "5d5471a19bedf8d5cf85cdcac6060cb7591b70ac416fb4184962bf7869bcaded",
+    "log.md": "e56286b798fd38880f980cf1496282bc5fbcb99775abe3154193a7122fd004e3",
+    "translog.md": "855d100fc6f0f977be74bac6ae818ec5c5ae8b2ae7236c21c346cbdcae91b24e"
+  }
+}

@@ -203,3 +203,25 @@ Reports [`9fa9c8…f7f79`](docs/v2/session041-evidence/9fa9c8c9ca3767ee3fb7933b9
 ## S49 implementation commit recorded — 2026-10-13
 
 Implementation and evidence commit `00ed85fb61c0941f045472319aa19b795577168e` contains the S49 product/UI changes, corrected tests, audit, integration report, full-run partial evidence, owner Red patch/hashes, and test runners. A documentation-only receipt commit records this implementation identity; push and exact remote-head verification remain the final delivery step.
+
+## ATLAS RED R1 surgical correctness — 2026-10-13
+
+**CONFIRMED checkpoint:** isolated `impl/red-r1-surgical-correctness-2026-10-13` starts at accepted S49 remote tip `a73c92d83ca8b2fe5163e636b2c9732361b35e23`. Verified S49 implementation ancestor is `00ed85f9dae78b29989e442dfb0d70576671ff48` (`S49: finish offline integration evidence and desktop gates`). The prior S49 coordinator line recorded a stale `00ed85fb...` SHA; it remains in historical notes and is corrected here. Frozen V1/V2/Agent hashes are listed in the R1 evidence manifest. Required owner `00_START_HERE.md` and engineering execution-runbook sections are absent in this environment.
+
+**IMPLEMENTED:** V1 hourly close chronology and stable record identity guards; gap-qualified feature set versions; visible interval-gap withholding in direct frames and retained active-history tails; complete 96-slot prior-day range checks; generic UTC-day trade identity dedupe/conflict handling and partial/full-day distinction; S1 cadence/version checks; indexed qualified feature evidence at S1 hard sizing. `SizingComputationIdentityV2` prevents reuse of older sizing receipts without the evidence check. Frozen V1 `snapshot_hash`, `SizingDecisionV2`, risk policy contracts, project dependencies, and lockfile remain unchanged.
+
+**TESTED:** test-first regressions reproduced 7 target V2 failures and 6 target V1 chronology/identity failures before implementation. Final R1/affected V2 group passes 154/154; V1 chronology, golden, prefix, persistence and full phase-4 lifecycle group passes 28/28; S27 default production composition passes 16/16 including PyArrow-backed restart and native-M1 completeness. Scoped Ruff, compileall, `uv lock --check --python 3.12`, `uv pip check`, and `git diff --check` pass. Full-source mypy has 52 errors on both accepted S49 baseline and current source, with zero normalized delta. Full-repository Ruff retains 16 baseline diagnostics in six unchanged historical evidence scripts; eight legacy formatter failures are unchanged from baseline.
+
+**OPEN / NOT QUALIFIED:** AUD-01 conservative funding inside hard sizing requires a versioned policy/decision/reservation consumer migration; full AUD-06 payload identity requires a versioned V1-to-V2 migration. Both proposals are documented and pending owner review. AUD-02 coverage proof for gaps older than the bounded `ActiveCausalHistoryStateV1` tail remains open; direct frames and visible history gaps fail closed. No full repository suite is claimed. No provider, market, account, order, capital, merge, deploy, or trading authority was used or enabled.
+
+Detailed command results and source hashes are in `docs/v2/ATLAS_R1_TEST_LOG.md` and `docs/v2/ATLAS_R1_EVIDENCE_MANIFEST.json`. Implementation commit and push verification are pending and will be appended after remote verification.
+
+
+## R1 final verification correction — 2026-10-13
+
+After the final strict VWAP feature-key correction, reran the full affected V2 group (**198/198**), the full S27 production module (**16/16 in 308.45s**), and the V1/phase-4 group (**28/28**). The final production run includes restart and native-M1 trade-completeness coverage. Scoped Ruff, compileall, lock and package checks, JSON validation, and `git diff --check` pass. Full-source mypy again reports 52 existing diagnostics with zero normalized difference from the accepted S49 baseline. The ten modified legacy Python files listed in the test log already failed formatter checks at baseline; the earlier R1 checkpoint line's count of eight is superseded. The final VWAP key semantics and exact commands are recorded in the test log and manifest. Implementation commit and push verification remain pending.
+
+
+## R1 final source-reference identity guard — 2026-10-13
+
+Code review found that one source reference could be rebound to a different native trade ID while keeping the same observed values. `utc_day_vwap` now rejects that conflicting identity, with a focused regression. The final affected V2 group passes **199/199 in 32.27s**. The S27 default production module had passed 16/16 after the complete-day VWAP correction; after this final identity guard, its restart composition test also passes **1/1 in 36.99s**. Scoped Ruff, compileall, lock/package checks, manifest JSON validation, whitespace check, and mypy comparison were rerun; mypy remains at 52 baseline diagnostics with zero normalized delta. These results supersede the earlier R1 V2 count of 198. Push verification remains pending.

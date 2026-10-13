@@ -27,10 +27,23 @@ class HourlyClose:
     record_id: str = ""
 
     def __post_init__(self) -> None:
-        if self.end_at_ns < 0 or self.available_at_ns < 0:
+        if (
+            type(self.end_at_ns) is not int
+            or type(self.available_at_ns) is not int
+            or self.end_at_ns < 0
+            or self.available_at_ns < 0
+        ):
             raise FeatureWindowError("timestamps must be UTC nanoseconds")
         if self.end_at_ns % HOUR_NS:
             raise FeatureWindowError("hourly close must end on an UTC hour")
+        if self.available_at_ns < self.end_at_ns:
+            raise FeatureWindowError("source availability precedes final close")
+        if (
+            not isinstance(self.record_id, str)
+            or not self.record_id.strip()
+            or self.record_id != self.record_id.strip()
+        ):
+            raise FeatureWindowError("source record identity must be nonblank and canonical")
         if self.close <= 0:
             raise FeatureWindowError("non-positive close")
 
@@ -54,6 +67,9 @@ def validate_closes(closes: Iterable[HourlyClose], *, decision_at_ns: int | None
     result = tuple(sorted(closes, key=lambda x: x.end_at_ns))
     if len(result) != WINDOW_CLOSES:
         raise FeatureWindowError(f"requires exactly {WINDOW_CLOSES} closes")
+    record_ids = tuple(item.record_id for item in result)
+    if len(set(record_ids)) != len(record_ids):
+        raise FeatureWindowError("source record identity must be nonblank and unique")
     previous: HourlyClose | None = None
     for item in result:
         if decision_at_ns is not None and item.available_at_ns > decision_at_ns:
