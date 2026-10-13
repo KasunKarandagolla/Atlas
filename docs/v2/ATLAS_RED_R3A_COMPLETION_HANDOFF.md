@@ -38,6 +38,8 @@ The target design lock, transition architecture, owner decision record, ADR-001/
 
 The production implementation is in commit 0a47e0d971c3e785825c29bc9c9a29ad43b36121. Follow-up implementation-branch commits 52720b4522fc3aa2a04d233f23edd7fec7532461 and 8fbf1ec31588a1c315acce048176066b4c6bbecc add fixture typing/format and persisted-source restart verification. Tests and final equivalence were run against the branch tip 8fbf1ec31588a1c315acce048176066b4c6bbecc.
 
+The first documentation/evidence receipt commit, 60e9ce947aabdca35b788c2602415804c55ad5be, contains only documentation and evidence. GitHub returned that exact branch tip through git ls-remote. A final documentation-only receipt updates this verification record and the inventory; it does not change the tested implementation SHA.
+
 Changed files:
 
 - src/atlas/v2/research/production_facts.py — registered indexed M15 technical fact reader.

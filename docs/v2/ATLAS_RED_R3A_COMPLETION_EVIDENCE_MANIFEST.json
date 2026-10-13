@@ -70,9 +70,17 @@
     "accepted_r3a_and_r2_ancestry_verified": true,
     "accepted_r3a_implementation_ancestor": "7a425ba410ab246ab1ce2b5136768b88594b74b8",
     "branch": "fix/red-r3a-completion-2026-10-13",
-    "documentation_receipt_commits": [],
+    "documentation_receipt_commits": [
+      {
+        "git_ls_remote_verified": true,
+        "purpose": "initial documentation and evidence inventory receipt",
+        "remote_ref": "origin/fix/red-r3a-completion-2026-10-13",
+        "sha": "60e9ce947aabdca35b788c2602415804c55ad5be"
+      }
+    ],
     "final_tested_branch_tip": "8fbf1ec31588a1c315acce048176066b4c6bbecc",
     "implementation_commit": "0a47e0d971c3e785825c29bc9c9a29ad43b36121",
+    "initial_documentation_receipt_remote_tip": "60e9ce947aabdca35b788c2602415804c55ad5be",
     "merge_deployment_provider_or_capital_action": false,
     "remote_verified_at_first_receipt": "8fbf1ec31588a1c315acce048176066b4c6bbecc",
     "starting_remote_branch": "impl/red-r3a-production-brief-memory-2026-10-13",
@@ -80,12 +88,12 @@
   },
   "inventory": {
     "artifact_count": 89,
-    "canonical_path_size_hash_sha256": "ccc083792ba6bc7f4da2d3105b4e11f54e6d75e6f00c00ccee59a19b56f9cffc",
+    "canonical_path_size_hash_sha256": "ffd6863194f525a2f6b59fe0ad79b138404e2fc603378be556ff553c25fa5359",
     "entries": [
       {
         "path": "docs/v2/ATLAS_RED_R3A_COMPLETION_HANDOFF.md",
-        "sha256": "018e50a01d8407ff0e00b9e41bef9f85c72376f26b3aa644cb95b9ba55b7a50e",
-        "size_bytes": 20540
+        "sha256": "930e1616d0692fe7a5b2bc21cfe5081f26c527add0e7d41d84ec3c7efd79e8c1",
+        "size_bytes": 20872
       },
       {
         "path": "docs/v2/transition-r3a-completion-evidence/cadence-summary.json",
@@ -519,13 +527,13 @@
       },
       {
         "path": "log.md",
-        "sha256": "367134b9fbe2cec8628448f9053d465efc64a67be70a29ac88246d20c0e9edf1",
-        "size_bytes": 77631
+        "sha256": "8192ded147de9012a66db2983f0605953d55e2bcff0973a71a9b3ffc0023657c",
+        "size_bytes": 78493
       },
       {
         "path": "translog.md",
-        "sha256": "d0891149303678f8d002fdf4738f7cad8ee27888b6d7ec8f62d6a9da5fbe03ce",
-        "size_bytes": 99879
+        "sha256": "048889464e4fb3517a62c81b3cabc77d0002e7a3d79326dec06ba03cc11d3d3f",
+        "size_bytes": 100520
       }
     ],
     "ignored_log_representations": [
@@ -1038,7 +1046,7 @@
     "root": "docs/v2/transition-r3a-completion-evidence/",
     "self_manifest_hash": "EXCLUDED_TO_AVOID_SELF_REFERENCE",
     "self_manifest_path": "docs/v2/ATLAS_RED_R3A_COMPLETION_EVIDENCE_MANIFEST.json",
-    "total_bytes": 1375846
+    "total_bytes": 1377681
   },
   "memory_invalidation_status": "TEST GATE \u2014 explicit append-only invalidation and full replay transitions incomplete",
   "model": {
