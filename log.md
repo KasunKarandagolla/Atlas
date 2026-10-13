@@ -1,6 +1,16 @@
 # ATLAS engineering log
 
-## Current checkpoint — R4 Gemma and Futures Demo boundaries — 2026-10-13
+## Current checkpoint — R7 API adapter corrections — 2026-10-14
+
+**CONFIRMED:** verified the local repository root `/home/kasun/Music/atlas`, then fetched GitHub. Latest task branch was `fix/red-r6-full-workflow-demo-qualification-2026-10-13 @ e402e4e81d1d6983d5065a816934f70f66e2c9c0`; R7 is isolated at `fix/red-r7-api-adapter-corrections-2026-10-14`. The original checkout had unrelated uncommitted files; they were left untouched. All three frozen authority SHA-256 values match the accepted copies.
+
+**CONFIRMED environment/venue:** `ATLAS_BINANCE_FUTURES_ENV`, `BINANCE_FUTURES_DEMO_API_KEY`, `BINANCE_FUTURES_DEMO_API_SECRET`, and `GEMINI_API_KEY` are present; values were not recorded. Unauthenticated Demo `/fapi/v1/time` returned HTTP 200. The bounded read-only Demo sequence returned `READ_OK`: server time, signed account GET and public exchangeInfo GET; exchangeInfo was 902,495 bytes with 742 symbol entries, the account body was not recorded, and zero orders/state writes occurred.
+
+**IMPLEMENTED:** fixed the Demo probe's 65,536-byte all-endpoint ceiling by preserving that clock/account bound, adding an 8 MiB instrument bound, and normalizing over-limit failures. Added a distinct one-request Gemini metadata permit/probe that cannot generate, plus focused regressions. Live metadata GET confirmed `models/gemma-4-31b-it` and `generateContent`; no generation was attempted.
+
+**TESTED:** focused Session 055 group 19/19; Ruff, targeted Gemma-adapter mypy, and `git diff --check` pass. Google publishes Gemma 4 input/output as free on its free tier and lists Sri Lanka as available, but project-specific billing status remains UNVERIFIED; no-charge authorization was not established. Generation smoke remains unrun. Details: [R7 handoff](docs/v2/ATLAS_RED_R7_HANDOFF.md), separate [Binance](docs/v2/ATLAS_RED_R7_BINANCE_RESULTS.md) and [Google](docs/v2/ATLAS_RED_R7_GOOGLE_RESULTS.md) reports, and sanitized [evidence](docs/v2/transition-r7-evidence/).
+
+## Previous checkpoint — R4 Gemma and Futures Demo boundaries — 2026-10-13
 
 **CONFIRMED:** Owner verified GPT-6 Luna. Branch `impl/red-r4-gemma-demo-integration-2026-10-13` starts at remote R3A tip `4faf9a065eb00df705694bc107401c41c0b322b2`; freeze hashes and requested owner sources match.
 

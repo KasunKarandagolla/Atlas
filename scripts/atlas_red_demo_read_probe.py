@@ -20,7 +20,14 @@ from atlas.runtime.binance_futures_demo_r4 import (
 )
 
 MAX_RESPONSE_BYTES = 65_536
+MAX_INSTRUMENT_RESPONSE_BYTES = 8 * 1024 * 1024
 MAX_CLOCK_SKEW_MS = 2_000
+
+
+class _ResponseLimitExceeded(Exception):
+    def __init__(self, bytes_read: int) -> None:
+        self.bytes_read = bytes_read
+        super().__init__("DEMO_ONLY_RESPONSE_LIMIT")
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -56,14 +63,15 @@ def _failure(operation: str, status: str, *, request_started_at_utc: str,
     return 2
 
 
-def _read(opener, request: urllib.request.Request) -> tuple[int, bytes, str]:
+def _read(opener, request: urllib.request.Request, *, max_response_bytes: int = MAX_RESPONSE_BYTES
+          ) -> tuple[int, bytes, str]:
     with opener.open(request, timeout=5.0) as response:
         final = urllib.parse.urlsplit(response.geturl())
         if final.scheme != "https" or final.hostname != "demo-fapi.binance.com":
             raise RuntimeError("DEMO_ONLY_ENDPOINT_IDENTITY_FAILED")
-        body = response.read(MAX_RESPONSE_BYTES + 1)
-        if len(body) > MAX_RESPONSE_BYTES:
-            raise RuntimeError("DEMO_ONLY_RESPONSE_LIMIT")
+        body = response.read(max_response_bytes + 1)
+        if len(body) > max_response_bytes:
+            raise _ResponseLimitExceeded(len(body))
         return response.status, body, response.geturl()
 
 
@@ -93,6 +101,10 @@ def main() -> int:
     except urllib.error.HTTPError as error:
         return _failure("PUBLIC_SERVER_TIME_GET", "HTTP_FAILURE",
                         request_started_at_utc=time_request_started_at, http_status=error.code)
+    except _ResponseLimitExceeded as error:
+        return _failure("PUBLIC_SERVER_TIME_GET", "RESPONSE_LIMIT_EXCEEDED",
+                        request_started_at_utc=time_request_started_at,
+                        response_body_bytes=error.bytes_read)
     except (urllib.error.URLError, TimeoutError):
         return _failure("PUBLIC_SERVER_TIME_GET", "NETWORK_FAILURE",
                         request_started_at_utc=time_request_started_at)
@@ -130,6 +142,10 @@ def main() -> int:
     except urllib.error.HTTPError as error:
         return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "HTTP_FAILURE",
                         request_started_at_utc=account_request_started_at, http_status=error.code)
+    except _ResponseLimitExceeded as error:
+        return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "RESPONSE_LIMIT_EXCEEDED",
+                        request_started_at_utc=account_request_started_at,
+                        response_body_bytes=error.bytes_read)
     except (urllib.error.URLError, TimeoutError):
         return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "NETWORK_FAILURE",
                         request_started_at_utc=account_request_started_at)
@@ -155,11 +171,17 @@ def main() -> int:
     )
     instrument_request_started_at = _utc_timestamp()
     try:
-        instrument_status, instrument_body, _ = _read(opener, instrument_request)
+        instrument_status, instrument_body, _ = _read(
+            opener, instrument_request, max_response_bytes=MAX_INSTRUMENT_RESPONSE_BYTES,
+        )
     except urllib.error.HTTPError as error:
         return _failure("PUBLIC_INSTRUMENT_INFO_GET", "HTTP_FAILURE",
                         request_started_at_utc=instrument_request_started_at,
                         http_status=error.code)
+    except _ResponseLimitExceeded as error:
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "RESPONSE_LIMIT_EXCEEDED",
+                        request_started_at_utc=instrument_request_started_at,
+                        response_body_bytes=error.bytes_read)
     except (urllib.error.URLError, TimeoutError):
         return _failure("PUBLIC_INSTRUMENT_INFO_GET", "NETWORK_FAILURE",
                         request_started_at_utc=instrument_request_started_at)

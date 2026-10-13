@@ -1,0 +1,70 @@
+{
+  "version": "ATLAS_RED_R7_EVIDENCE_MANIFEST_V1",
+  "date": "2026-10-14",
+  "repository": "KasunKarandagolla/Atlas",
+  "repository_root_verified": "/home/kasun/Music/atlas",
+  "working_branch": "fix/red-r7-api-adapter-corrections-2026-10-14",
+  "source_branch": "fix/red-r6-full-workflow-demo-qualification-2026-10-13",
+  "source_sha": "e402e4e81d1d6983d5065a816934f70f66e2c9c0",
+  "remote_preflight": {
+    "latest_implementation_tip_used": "origin/fix/red-r6-full-workflow-demo-qualification-2026-10-13",
+    "latest_implementation_sha": "e402e4e81d1d6983d5065a816934f70f66e2c9c0",
+    "unrelated_local_worktree_changes_preserved": true
+  },
+  "frozen_authority_sha256": {
+    "v1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "v2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "agent": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+  },
+  "implementation": {
+    "binance_probe": "separate 8 MiB instrument-response ceiling; 64 KiB time/account ceilings preserved; sanitized response-limit failure handling",
+    "gemini_probe": "one-request model metadata permit with generation prohibited; existing generation permits unchanged",
+    "frozen_contracts_changed": false
+  },
+  "live_results": {
+    "binance_demo": {
+      "unauthenticated_server_time_http_status": 200,
+      "read_sequence": "READ_OK",
+      "account_read_http_status": 200,
+      "instrument_info_http_status": 200,
+      "instrument_info_bytes": 902495,
+      "instrument_symbol_count": 742,
+      "orders_submitted": 0,
+      "state_persisted": false,
+      "evidence": "transition-r7-evidence/binance-demo-read-probe.json",
+      "evidence_sha256": "7ece77ad80246eaf898c328293e71a566036f9e633f0e2fd0f80c7808e012a58"
+    },
+    "google_gemma": {
+      "metadata_status": "MODEL_AVAILABLE",
+      "model_id": "gemma-4-31b-it",
+      "generation_method_available": true,
+      "metadata_requests": 1,
+      "generation_requests": 0,
+      "project_free_tier_eligibility": "UNVERIFIED",
+      "no_charge_authorization": "NOT_ESTABLISHED",
+      "evidence": "transition-r7-evidence/gemma-model-metadata-probe.json",
+      "evidence_sha256": "c5b222fd8672c0c153495c5d25906f74accc3855c771d30123ade92028271bc1"
+    }
+  },
+  "validation": {
+    "focused_pytest": {
+      "command": "pytest -q tests/runtime/test_session055_demo_read_probe.py tests/v2/test_session055_gemma_native.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ruff_changed_python": "PASS",
+    "targeted_mypy_gemma_adapter": "PASS",
+    "git_diff_check": "PASS",
+    "evidence_json_parse": "PASS"
+  },
+  "remaining_blockers": [
+    "Google project-specific free-tier/no-billing authorization remains unverified; no generation test was run.",
+    "Authenticated Binance execution lifecycle, protection, recovery, and capital qualification remain separate unverified gates."
+  ],
+  "delivery": {
+    "commit_sha": null,
+    "push_verified": false,
+    "remote_tip_sha": null
+  }
+}

@@ -2,8 +2,9 @@
 
 This adapter deliberately uses Google's native ``generateContent`` API. It has
 no model fallback, tools, persistent response logging, or authority beyond the
-existing S47 response validator. Live calls require an explicit, short-lived
-free-tier smoke permit and remain capped at two requests per client instance.
+existing S47 response validator. Generation requires an explicit, short-lived
+free-tier/no-billing permit. Model metadata uses a distinct one-GET permit that
+cannot generate content.
 """
 
 from __future__ import annotations
@@ -91,6 +92,21 @@ class GeminiSmokePermitV1:
 
 
 @dataclass(frozen=True)
+class GeminiModelMetadataPermitV1:
+    """One model-info GET; it carries no authorization to generate content."""
+
+    test_id: str
+    max_requests: int = 1
+    version: str = "GEMINI_MODEL_METADATA_PERMIT_V1"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.test_id, str) or not self.test_id or len(self.test_id) > 96:
+            raise ValueError("invalid model-metadata probe identity")
+        if type(self.max_requests) is not int or self.max_requests != 1:
+            raise ValueError("model-metadata probe permits exactly one request")
+
+
+@dataclass(frozen=True)
 class GeminiJobDispatchPermitV1:
     """One no-billing-authorized research request bound to a durable S47 job."""
 
@@ -162,6 +178,33 @@ class GeminiCapabilityProbeV1:
         sha256_ref(self.evidence_ref, field="evidence_ref")
 
 
+@dataclass(frozen=True)
+class GeminiModelMetadataProbeV1:
+    requested_model_id: str
+    returned_model_id: str | None
+    supported_generation_methods: tuple[str, ...]
+    generate_content_available: bool
+    requests_made: int
+    response_body_bytes: int
+    failure_code: str | None
+    version: str = "GEMINI_MODEL_METADATA_PROBE_V1"
+
+    def __post_init__(self) -> None:
+        if self.requested_model_id != GEMMA_MODEL_ID:
+            raise ValueError("Gemini model probe identity is fixed")
+        if type(self.generate_content_available) is not bool:
+            raise ValueError("model availability must be an explicit boolean")
+        if type(self.requests_made) is not int or self.requests_made not in (0, 1):
+            raise ValueError("model metadata probe exceeded its one-request ceiling")
+        if type(self.response_body_bytes) is not int or self.response_body_bytes < 0:
+            raise ValueError("invalid model metadata response size")
+        if any(not isinstance(method, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9]{0,63}", method)
+               for method in self.supported_generation_methods):
+            raise ValueError("invalid model generation method")
+        if self.failure_code is not None and not re.fullmatch(r"[A-Z0-9_]{1,64}", self.failure_code):
+            raise ValueError("model probe failure code is not sanitized")
+
+
 @dataclass(frozen=True, repr=False)
 class GeminiGeneratedContentV1:
     text: str = field(repr=False)
@@ -185,7 +228,7 @@ class GeminiNativeClient:
         self,
         *,
         api_key: str,
-        permit: GeminiSmokePermitV1 | GeminiJobDispatchPermitV1,
+        permit: GeminiSmokePermitV1 | GeminiModelMetadataPermitV1 | GeminiJobDispatchPermitV1,
         host: str = GEMINI_API_HOST,
         model_id: str = GEMMA_MODEL_ID,
         opener: Any = None,
@@ -199,8 +242,9 @@ class GeminiNativeClient:
             raise ValueError("Gemma model fallback is disabled")
         if not isinstance(api_key, str) or not api_key.strip() or len(api_key) > 4096:
             raise GeminiProviderError("PROVIDER_CREDENTIAL_UNAVAILABLE")
-        if not isinstance(permit, (GeminiSmokePermitV1, GeminiJobDispatchPermitV1)):
-            raise ValueError("Gemini calls require a smoke or durable job dispatch permit")
+        if not isinstance(permit, (GeminiSmokePermitV1, GeminiModelMetadataPermitV1,
+                                   GeminiJobDispatchPermitV1)):
+            raise ValueError("Gemini calls require a metadata, smoke, or durable job dispatch permit")
         if (isinstance(request_timeout_seconds, bool)
                 or not isinstance(request_timeout_seconds, (int, float))
                 or not 0.1 <= request_timeout_seconds <= MAX_REQUEST_TIMEOUT_SECONDS):
@@ -225,12 +269,14 @@ class GeminiNativeClient:
 
     @classmethod
     def from_environment(
-        cls, *, permit: GeminiSmokePermitV1 | GeminiJobDispatchPermitV1, opener: Any = None,
+        cls, *, permit: GeminiSmokePermitV1 | GeminiModelMetadataPermitV1 | GeminiJobDispatchPermitV1,
+        opener: Any = None,
         clock_ns: Any = time.time_ns, monotonic_ns: Any = time.monotonic_ns,
     ) -> GeminiNativeClient:
         if os.environ.get("GEMMA_MODEL") != GEMMA_MODEL_ID:
             raise GeminiProviderError("CONFIGURED_MODEL_MISMATCH")
-        if os.environ.get("ATLAS_GEMINI_FREE_TIER_VERIFIED", "false").lower() != "true":
+        if (not isinstance(permit, GeminiModelMetadataPermitV1)
+                and os.environ.get("ATLAS_GEMINI_FREE_TIER_VERIFIED", "false").lower() != "true"):
             raise GeminiProviderError("FREE_TIER_CONFIGURATION_UNVERIFIED")
         key = os.environ.get("GEMINI_API_KEY")
         if not key:
@@ -279,12 +325,18 @@ class GeminiNativeClient:
         return self.__permit.intent_ref if isinstance(self.__permit, GeminiJobDispatchPermitV1) else None
 
     def _reserve(self, prompt_bytes: int, output_tokens: int) -> None:
-        if prompt_bytes > self.__permit.max_input_bytes:
-            raise GeminiProviderError("INPUT_BUDGET_EXCEEDED")
-        if type(output_tokens) is not int or not 1 <= output_tokens <= self.__permit.max_output_tokens:
-            raise GeminiProviderError("OUTPUT_BUDGET_EXCEEDED")
+        if isinstance(self.__permit, GeminiModelMetadataPermitV1):
+            if prompt_bytes != 0 or output_tokens != 1:
+                raise GeminiProviderError("GENERATION_NOT_AUTHORIZED")
+            call_limit = self.__permit.max_requests
+        else:
+            if prompt_bytes > self.__permit.max_input_bytes:
+                raise GeminiProviderError("INPUT_BUDGET_EXCEEDED")
+            if type(output_tokens) is not int or not 1 <= output_tokens <= self.__permit.max_output_tokens:
+                raise GeminiProviderError("OUTPUT_BUDGET_EXCEEDED")
+            call_limit = (self.__permit.max_requests if isinstance(self.__permit, GeminiSmokePermitV1)
+                          else self.__permit.max_model_calls)
         with self._lock:
-            call_limit = self.__permit.max_requests if isinstance(self.__permit, GeminiSmokePermitV1) else self.__permit.max_model_calls
             if self._calls >= call_limit:
                 raise GeminiProviderError("REQUEST_BUDGET_EXCEEDED")
             self._calls += 1
@@ -331,6 +383,9 @@ class GeminiNativeClient:
 
     def _request(self, *, method: str, body: Mapping[str, Any] | None, deadline_ns: int,
                  input_bytes: int = 0, output_tokens: int = 1) -> tuple[Mapping[str, Any], int]:
+        if (isinstance(self.__permit, GeminiModelMetadataPermitV1)
+                and (method != "GET" or body is not None)):
+            raise GeminiProviderError("GENERATION_NOT_AUTHORIZED")
         self._reserve(input_bytes, output_tokens)
         path = f"/v1beta/models/{self.model_id}"
         if method == "POST":
@@ -359,6 +414,8 @@ class GeminiNativeClient:
 
     def generate_json(self, prompt: str, *, deadline_ns: int,
                       schema: Mapping[str, Any] = RESEARCH_RESPONSE_SCHEMA) -> GeminiGeneratedContentV1:
+        if isinstance(self.__permit, GeminiModelMetadataPermitV1):
+            raise GeminiProviderError("GENERATION_NOT_AUTHORIZED")
         if not isinstance(prompt, str):
             raise GeminiProviderError("INVALID_INPUT")
         prompt_bytes = len(prompt.encode("utf-8"))
@@ -466,6 +523,34 @@ class GeminiNativeClient:
             usage_prompt_tokens=usage_prompt_tokens,
             usage_candidate_tokens=usage_candidate_tokens,
             usage_total_tokens=usage_total_tokens,
+        )
+
+    def probe_model_metadata(self, *, deadline_ns: int) -> GeminiModelMetadataProbeV1:
+        """Check the pinned model with one GET and no generation request."""
+        if not isinstance(self.__permit, GeminiModelMetadataPermitV1):
+            raise GeminiProviderError("MODEL_METADATA_PROBE_REQUIRES_METADATA_PERMIT")
+        returned_model_id: str | None = None
+        methods: tuple[str, ...] = ()
+        failure_code: str | None = None
+        try:
+            response, _ = self._request(method="GET", body=None, deadline_ns=deadline_ns)
+            returned = response.get("name")
+            returned_model_id = returned if isinstance(returned, str) else None
+            raw_methods = response.get("supportedGenerationMethods")
+            if isinstance(raw_methods, list):
+                methods = tuple(sorted({
+                    method for method in raw_methods
+                    if isinstance(method, str) and re.fullmatch(r"[A-Za-z][A-Za-z0-9]{0,63}", method)
+                }))
+            if returned_model_id != f"models/{self.model_id}":
+                failure_code = "MODEL_IDENTITY_MISMATCH"
+            elif "generateContent" not in methods:
+                failure_code = "MODEL_METHOD_UNAVAILABLE"
+        except GeminiProviderError as error:
+            failure_code = error.code
+        return GeminiModelMetadataProbeV1(
+            self.model_id, returned_model_id, methods, failure_code is None,
+            self.requests_made, self.response_body_bytes, failure_code,
         )
 
 

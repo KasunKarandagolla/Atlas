@@ -1,0 +1,38 @@
+{
+  "version": "ATLAS_RED_R7_GEMMA_MODEL_METADATA_PROBE_V1",
+  "observed_at_utc": "2026-10-13T20:16:32.851Z",
+  "repository_root_verified": "/home/kasun/Music/atlas",
+  "source_branch": "fix/red-r6-full-workflow-demo-qualification-2026-10-13",
+  "source_sha": "e402e4e81d1d6983d5065a816934f70f66e2c9c0",
+  "provider_host": "generativelanguage.googleapis.com",
+  "credential_presence": {
+    "GEMINI_API_KEY": "present",
+    "value_recorded": false
+  },
+  "metadata_probe": {
+    "status": "MODEL_AVAILABLE",
+    "request_count": 1,
+    "request_body_bytes": 0,
+    "response_body_bytes": 359,
+    "requested_model_id": "gemma-4-31b-it",
+    "returned_model_id": "models/gemma-4-31b-it",
+    "supported_generation_methods": [
+      "countTokens",
+      "generateContent"
+    ],
+    "generation_requests": 0,
+    "raw_provider_payload_saved": false,
+    "credential_exposed": false,
+    "duration_ms": 619.913
+  },
+  "free_tier_and_billing": {
+    "published_gemma_4_free_tier_price": "input and output are listed as free of charge",
+    "published_paid_tier": "not available for Gemma 4",
+    "supported_region": "Sri Lanka is listed by Google AI Studio and Gemini API",
+    "project_specific_free_tier_eligibility": "UNVERIFIED",
+    "no_charge_authorization": "NOT_ESTABLISHED",
+    "generation_test": "NOT_RUN"
+  },
+  "root_cause": "The existing capability probe couples model metadata lookup to an immediate generation call, so model availability could not be checked independently while free-tier/no-billing authorization remained unverified.",
+  "remaining_blocker": "The API key's Google project billing/free-tier status is not exposed by model metadata. The inherited ATLAS_GEMINI_FREE_TIER_VERIFIED marker was not verified, so the generation permit was not issued."
+}

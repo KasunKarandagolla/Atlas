@@ -71,7 +71,10 @@ def test_successful_probe_reads_demo_clock_account_and_public_instrument_info(mo
     responses = {
         "/fapi/v1/time": {"serverTime": 1_800_000_000_000},
         "/fapi/v3/account": {"assets": []},
-        "/fapi/v1/exchangeInfo": {"symbols": [{"symbol": "BTCUSDT", "status": "TRADING"}]},
+        "/fapi/v1/exchangeInfo": {"symbols": [
+            {"symbol": f"PAIR{index:03d}", "status": "TRADING", "detail": "x" * 900}
+            for index in range(100)
+        ]},
     }
 
     class Response:
@@ -90,7 +93,7 @@ def test_successful_probe_reads_demo_clock_account_and_public_instrument_info(mo
             return "https://demo-fapi.binance.com" + self.path
 
         def read(self, limit):
-            return json.dumps(responses[self.path]).encode()
+            return io.BytesIO(json.dumps(responses[self.path]).encode()).read(limit)
 
     class SuccessfulOpener:
         requests = []
@@ -110,12 +113,66 @@ def test_successful_probe_reads_demo_clock_account_and_public_instrument_info(mo
         "/fapi/v1/time", "/fapi/v3/account", "/fapi/v1/exchangeInfo",
     ]
     assert record["request_count"] == 3
-    assert record["instrument_symbol_count"] == 1
+    assert record["instrument_symbol_count"] == 100
     assert record["orders_submitted"] is False
     assert "assets" not in json.dumps(record)
     assert "fixture-demo-key" not in json.dumps(record)
     assert all(item["request_started_at_utc"].endswith("Z")
                and item["response_observed_at_utc"].endswith("Z") for item in record["requests"])
+
+
+def test_oversized_instrument_response_returns_sanitized_bounded_failure(monkeypatch, capsys):
+    monkeypatch.setenv("ATLAS_BINANCE_DEMO_READ_ONLY_APPROVED", "YES")
+    monkeypatch.setenv("ATLAS_BINANCE_FUTURES_ENV", "DEMO_ONLY")
+    monkeypatch.setattr(
+        probe.DemoOnlyCredentials, "from_environment",
+        classmethod(lambda cls, env: object()),
+    )
+    monkeypatch.setattr(probe.time, "time_ns", lambda: 1_800_000_000_000_000_000)
+    monkeypatch.setattr(probe, "DemoOnlyAdapter", lambda **kwargs: _FixtureSignedAdapter())
+
+    class Response:
+        status = 200
+
+        def __init__(self, path):
+            self.path = path
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def geturl(self):
+            return "https://demo-fapi.binance.com" + self.path
+
+        def read(self, limit):
+            if self.path == "/fapi/v1/time":
+                return json.dumps({"serverTime": 1_800_000_000_000}).encode()[:limit]
+            if self.path == "/fapi/v3/account":
+                return b'{"assets": []}'[:limit]
+            return b"x" * limit
+
+    class Opener:
+        requests = []
+
+        def open(self, request, timeout):
+            self.requests.append(request)
+            return Response(urlsplit(request.full_url).path)
+
+    opener = Opener()
+    monkeypatch.setattr(probe.urllib.request, "build_opener", lambda *handlers: opener)
+
+    assert probe.main() == 2
+    observed = json.loads(capsys.readouterr().out)
+    assert observed["operation"] == "PUBLIC_INSTRUMENT_INFO_GET"
+    assert observed["status"] == "RESPONSE_LIMIT_EXCEEDED"
+    assert observed["response_body_bytes_read"] == probe.MAX_INSTRUMENT_RESPONSE_BYTES + 1
+    assert observed["orders_submitted"] is False
+    assert observed["account_payload_printed"] is False
+    assert observed["credentials_printed"] is False
+    assert "xxxxxxxx" not in json.dumps(observed)
+    assert len(opener.requests) == 3
 
 
 class _NeverSignedAdapter:

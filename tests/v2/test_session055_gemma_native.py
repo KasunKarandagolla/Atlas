@@ -23,6 +23,7 @@ from atlas.v2.research.gemma_native import (
     GEMINI_API_HOST,
     GEMMA_MODEL_ID,
     GeminiJobDispatchPermitV1,
+    GeminiModelMetadataPermitV1,
     GeminiNativeClient,
     GeminiProviderError,
     GeminiSmokePermitV1,
@@ -219,6 +220,57 @@ def test_model_and_structured_output_probes_use_native_api_and_hide_payloads():
     assert request_body["generationConfig"]["maxOutputTokens"] == 256
     assert "tools" not in request_body
     assert opener.open.call_args_list[0].kwargs["timeout"] > 0
+
+
+def test_metadata_probe_checks_one_model_get_without_free_tier_marker_or_generation(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "fixture-secret")
+    monkeypatch.setenv("GEMMA_MODEL", GEMMA_MODEL_ID)
+    monkeypatch.delenv("ATLAS_GEMINI_FREE_TIER_VERIFIED", raising=False)
+    opener = Mock()
+    opener.open.return_value = Response(model_payload())
+    client = GeminiNativeClient.from_environment(
+        permit=GeminiModelMetadataPermitV1("metadata-only-fixture"), opener=opener,
+        clock_ns=lambda: 20, monotonic_ns=lambda: 0,
+    )
+
+    result = client.probe_model_metadata(deadline_ns=100)
+
+    assert result.requested_model_id == GEMMA_MODEL_ID
+    assert result.returned_model_id == f"models/{GEMMA_MODEL_ID}"
+    assert result.supported_generation_methods == ("generateContent",)
+    assert result.generate_content_available is True
+    assert result.requests_made == 1
+    assert result.response_body_bytes > 0
+    request = opener.open.call_args.args[0]
+    assert request.full_url == f"https://{GEMINI_API_HOST}/v1beta/models/{GEMMA_MODEL_ID}"
+    assert request.get_method() == "GET" and request.data is None
+    assert request.get_header("X-goog-api-key") == "fixture-secret"
+    assert "fixture-secret" not in request.full_url
+
+    with pytest.raises(GeminiProviderError, match="GENERATION_NOT_AUTHORIZED"):
+        client.generate_json("synthetic prompt", deadline_ns=100)
+    with pytest.raises(GeminiProviderError, match="GENERATION_NOT_AUTHORIZED"):
+        client._request(method="POST", body={"contents": []}, deadline_ns=100)
+    assert opener.open.call_count == 1
+    assert client.requests_made == 1
+
+
+def test_metadata_probe_fails_closed_when_generation_method_is_unavailable():
+    opener = Mock()
+    opener.open.return_value = Response({
+        "name": f"models/{GEMMA_MODEL_ID}", "supportedGenerationMethods": ["countTokens"],
+    })
+    client = GeminiNativeClient(
+        api_key="fixture-secret", permit=GeminiModelMetadataPermitV1("metadata-only-fixture"),
+        opener=opener, clock_ns=lambda: 20, monotonic_ns=lambda: 0,
+    )
+
+    result = client.probe_model_metadata(deadline_ns=100)
+
+    assert result.generate_content_available is False
+    assert result.failure_code == "MODEL_METHOD_UNAVAILABLE"
+    assert result.requests_made == 1
+    assert opener.open.call_count == 1
 
 
 def test_capability_probe_does_not_claim_schema_support_for_invalid_json_shape():

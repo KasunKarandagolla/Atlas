@@ -1,0 +1,65 @@
+{
+  "version": "ATLAS_RED_R7_BINANCE_READ_PROBE_V1",
+  "observed_at_utc": "2026-10-13T20:17:04.625031Z",
+  "repository_root_verified": "/home/kasun/Music/atlas",
+  "source_branch": "fix/red-r6-full-workflow-demo-qualification-2026-10-13",
+  "source_sha": "e402e4e81d1d6983d5065a816934f70f66e2c9c0",
+  "probe_environment": "DEMO_ONLY",
+  "endpoint_host": "demo-fapi.binance.com",
+  "credential_presence": {
+    "ATLAS_BINANCE_FUTURES_ENV": "present",
+    "BINANCE_FUTURES_DEMO_API_KEY": "present",
+    "BINANCE_FUTURES_DEMO_API_SECRET": "present",
+    "values_recorded": false
+  },
+  "unauthenticated_server_time": {
+    "operation": "GET /fapi/v1/time",
+    "http_status": 200,
+    "result": "reachable"
+  },
+  "read_only_sequence": {
+    "status": "READ_OK",
+    "request_count": 3,
+    "orders_submitted": 0,
+    "state_persisted": false,
+    "account_payload_printed": false,
+    "account_payload_persisted": false,
+    "account_response_sha256_persisted": false,
+    "exchange_clock_skew_ms": 122,
+    "requests": [
+      {
+        "operation": "PUBLIC_SERVER_TIME_GET",
+        "request_started_at_utc": "2026-10-13T20:17:01.275601Z",
+        "response_observed_at_utc": "2026-10-13T20:17:02.006090Z",
+        "http_status": 200
+      },
+      {
+        "operation": "SIGNED_READ_ONLY_ACCOUNT_GET",
+        "request_started_at_utc": "2026-10-13T20:17:02.007164Z",
+        "response_observed_at_utc": "2026-10-13T20:17:02.657578Z",
+        "http_status": 200,
+        "response_bytes": 3437,
+        "payload_recorded": false
+      },
+      {
+        "operation": "PUBLIC_INSTRUMENT_INFO_GET",
+        "request_started_at_utc": "2026-10-13T20:17:02.658494Z",
+        "response_observed_at_utc": "2026-10-13T20:17:04.625031Z",
+        "http_status": 200,
+        "response_bytes": 902495,
+        "symbols_array_entries": 742,
+        "validation": "all entries were objects with string symbol fields",
+        "response_sha256_persisted": false
+      }
+    ]
+  },
+  "root_cause": {
+    "failure": "The R6 probe used one 65536-byte response ceiling for every endpoint and raised an uncaught runtime error when exchangeInfo exceeded it.",
+    "observed_exchange_info_bytes": 902495,
+    "correction": "Retained the 65536-byte clock/account limit, added an 8388608-byte fixed instrument limit, and made oversize failures return sanitized records."
+  },
+  "remaining_read_only_gates": [],
+  "separate_execution_gates": [
+    "This read sequence does not qualify order lifecycle, protection, restart recovery, capital, or live trading."
+  ]
+}
