@@ -6,6 +6,8 @@ R6 was created in isolated branch `fix/red-r6-full-workflow-demo-qualification-2
 
 The implementation and test commit is `ee9038ade842b3a23bc77679dccbc6fb6e04fa51`; its pushed remote ref was independently checked against the exact SHA. Final handoff and evidence files follow in a documentation-only commit on the same branch.
 
+The reports and evidence were pushed as `4fede7afbd141732a5bab661c68db3b0fee3b793`; `git ls-remote` matched that commit exactly. A final append-only delivery receipt follows.
+
 ## Work completed
 
 - Reproduced the five inherited Session031 failures, corrected typed product-metadata publication and causal dependency handling, and verified the affected consumers.

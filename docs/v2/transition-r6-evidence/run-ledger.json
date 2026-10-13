@@ -119,8 +119,8 @@
       "environment": "isolated R6 worktree and origin remote",
       "input_kind": "staged files and evidence",
       "expected": "zero credential leakage, exact ancestry, pushed SHA verified remotely",
-      "observed": "zero-match code/test scan; implementation commit ee9038ade842b3a23bc77679dccbc6fb6e04fa51 is verified at the remote branch ref; final evidence commit push verification is recorded after delivery",
-      "status": "PENDING_EVIDENCE_REMOTE_VERIFICATION",
+      "observed": "zero-match full changed-file scan; implementation commit ee9038ade842b3a23bc77679dccbc6fb6e04fa51 and evidence commit 4fede7afbd141732a5bab661c68db3b0fee3b793 are each verified at the exact remote branch ref; required base remains an ancestor",
+      "status": "PASS",
       "evidence": ["secret-scan.json", "../ATLAS_RED_R6_EVIDENCE_MANIFEST.json"],
       "safety_effect": "No secrets may be staged or published"
     }

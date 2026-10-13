@@ -60,10 +60,12 @@
       "manifest_self_hash": "OMITTED; every other R6 changed/added file is inventoried"
     },
     "commit_ancestry_and_remote_push": {
-      "status": "IMPLEMENTATION_PUSH_VERIFIED; EVIDENCE_PUSH_VERIFICATION_FOLLOWS",
+      "status": "PASS; IMPLEMENTATION AND EVIDENCE COMMITS VERIFIED",
       "base_commit": "9c92aad2331e138e165553497f511c562a6ebcf5",
       "implementation_commit": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
       "implementation_remote_branch_sha": "ee9038ade842b3a23bc77679dccbc6fb6e04fa51",
+      "evidence_commit": "4fede7afbd141732a5bab661c68db3b0fee3b793",
+      "evidence_remote_branch_sha": "4fede7afbd141732a5bab661c68db3b0fee3b793",
       "base_is_ancestor": true
     }
   }

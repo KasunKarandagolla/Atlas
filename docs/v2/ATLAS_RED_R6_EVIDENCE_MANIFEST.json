@@ -13,6 +13,8 @@
     "uv run pytest -q -s -o junit_family=legacy tests/v2/test_session041_mixed_broad_capacity.py::test_mixed_1024_contract_public_workload_under_bounded_stalls tests/v2/test_session041_compressed_metadata.py::test_actual_broad_workset_universe_hashes_membership_and_all_row_storage_reduction --junitxml=/workspace/work/r6/performance-selected.xml"
   ],
   "date": "2026-10-13",
+  "evidence_commit": "4fede7afbd141732a5bab661c68db3b0fee3b793",
+  "evidence_commit_remote_sha_verified": "4fede7afbd141732a5bab661c68db3b0fee3b793",
   "evidence_status_summary": {
     "BLOCKED BY ENVIRONMENT": "Production Binance market hosts denied by enforced policy; Demo clock GET returned HTTP 451.",
     "IMPLEMENTED": "Typed metadata/causal-dependency, compact locator availability, bounded Gemma timeout, proxy-aware timestamped Demo probe, and regression fixture corrections.",
@@ -64,10 +66,10 @@
       "sha256": "203c90ec3ede01b8231450af75bc98adf8116e579a2daab07f5726f85e13368d"
     },
     {
-      "bytes": 3464,
+      "bytes": 3640,
       "evidence_status": "REPORT; OPEN EXTERNAL GATES EXPLICITLY MARKED",
       "path": "docs/v2/ATLAS_RED_R6_HANDOFF.md",
-      "sha256": "f71582a64f7e0f8dde326858848a78e7f201363c422297744ad9cb9e7628c5f2"
+      "sha256": "1805ceba050161e75fc455b7c8df451c799cd9b2e64c6435a54885e49adeb471"
     },
     {
       "bytes": 3397,
@@ -154,10 +156,10 @@
       "sha256": "00b6ad08207fbb1d4be0f74f0d3f7345ecbd53490e508e97744e73821f750af2"
     },
     {
-      "bytes": 8290,
+      "bytes": 8306,
       "evidence_status": "TESTED EVIDENCE",
       "path": "docs/v2/transition-r6-evidence/run-ledger.json",
-      "sha256": "50f3887152cb76a58135c1ae50eda47f7e7df3fd090ec3389948854ec705f309"
+      "sha256": "fe83cc8e2fbbc1ba25c22cfed8b547e7169f2d98641ef9446216c1d3c7120986"
     },
     {
       "bytes": 1234,
@@ -172,10 +174,10 @@
       "sha256": "b5481e8c1de156ed042d76a19d2be661558dc5fc1d88abb9c86eeb6e4621ca73"
     },
     {
-      "bytes": 2530,
-      "evidence_status": "PASS WITH BASELINE / INVENTORY LIMITATIONS",
+      "bytes": 2665,
+      "evidence_status": "PASS; BASELINE AND INVENTORY LIMITATIONS RECORDED",
       "path": "docs/v2/transition-r6-evidence/static-checks.json",
-      "sha256": "c56e6b55986726e71d60c41d9f5b3932c9a229877902d0c040e8622ee3d846a7"
+      "sha256": "40455e12b2be9c7a9d803cffbfe34b2e81c3aa2612878f2f3dd89a4719ad86f7"
     },
     {
       "bytes": 25528,
@@ -190,10 +192,10 @@
       "sha256": "917833030c7b3ef492109ecac3ec34b30af648a1e7d697708ae411ebdd60bbc7"
     },
     {
-      "bytes": 85506,
+      "bytes": 86237,
       "evidence_status": "UPDATED",
       "path": "log.md",
-      "sha256": "f4d5b92b76b7696f5460a5d8ee7a05d4c4d840fc097b32e8edacbade2fac79d3"
+      "sha256": "051ddd6fb3f957352a185edaa05fbc87cee484675aebb783509ec20b42870da1"
     },
     {
       "bytes": 10165,
@@ -268,13 +270,13 @@
       "sha256": "042c9bb9c8499efb25a88c30e806ef92b7afb5260f15cad42437d17d35993f1b"
     },
     {
-      "bytes": 104579,
+      "bytes": 105352,
       "evidence_status": "UPDATED",
       "path": "translog.md",
-      "sha256": "9c1627954ca248ee1b5c151ab4a5b5785c10b02a7d80f3a4145c5c4cf24184ab"
+      "sha256": "a25dcb0d71ee03d67df7590e5b5abcba6e4f1d3419915f407a24d495356ce515"
     }
   ],
-  "final_evidence_branch_tip": "Verified after pushing the evidence receipt; exact current remote ref is returned in the completion response. This manifest omits its containing-commit hash.",
+  "final_evidence_branch_tip": "The final append-only receipt commit is verified after push and returned in the completion response; implementation and evidence commits are independently recorded above.",
   "frozen_authorities": {
     "modified": false,
     "sha256": {
