@@ -8,7 +8,8 @@
     "r1_implementation_ancestor": "b7f3f17ef885781d9e8efa8dbd2254ee92b0433d",
     "fix_branch": "fix/red-r1-v1-snapshot-compat-2026-10-13",
     "implementation_commit_sha": "96b34ed48fca976e5da293248b5e682827cb4d32",
-    "remote_tip_verification": "implementation commit 96b34ed48fca976e5da293248b5e682827cb4d32 matched git ls-remote; final documentation receipt pending"
+    "remote_tip_verification": "git ls-remote matched implementation commit 96b34ed48fca976e5da293248b5e682827cb4d32 and documentation receipt commit 575ec9c448a260ccf49c88b837d98d341b0ac77b immediately after each push; the current final branch tip is reported in the delivery response",
+    "documentation_receipt_commit_sha": "575ec9c448a260ccf49c88b837d98d341b0ac77b"
   },
   "preflight": {
     "owner_package": "/workspace/attachments/85db8a4a-4697-4a9a-8ba2-08e987046400/Red.zip",

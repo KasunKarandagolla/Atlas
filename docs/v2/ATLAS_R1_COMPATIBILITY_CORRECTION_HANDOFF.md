@@ -1,12 +1,13 @@
 # ATLAS RED R1 Compatibility Correction Handoff
 
-**Status:** implementation commit pushed and its remote ref verified; final documentation receipt remains.
+**Status:** implementation and documentation receipt commits were pushed and each SHA matched the remote branch ref. The current final branch tip is reported in the delivery response.
 
 ## Baseline and authority
 
 - Repository: KasunKarandagolla/Atlas.
 - Fix branch: fix/red-r1-v1-snapshot-compat-2026-10-13.
-- Pushed implementation commit: 96b34ed48fca976e5da293248b5e682827cb4d32; initial remote ref verification matched exactly.
+- Pushed implementation commit: 96b34ed48fca976e5da293248b5e682827cb4d32; remote ref verification matched exactly.
+- Pushed documentation receipt commit: 575ec9c448a260ccf49c88b837d98d341b0ac77b; remote ref verification matched exactly.
 - Verified starting remote branch: impl/red-r1-surgical-correctness-2026-10-13 at 85a4174cd5d373f0217c46c9944f6ed35f4c0a2b.
 - R1 implementation ancestor: b7f3f17ef885781d9e8efa8dbd2254ee92b0433d.
 - The correction worktree was created from the verified remote R1 tip. The pre-existing R1 worktree and owner inputs were preserved.
