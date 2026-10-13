@@ -389,10 +389,20 @@ def _production_projection(
         inputs_provider=StaticInputsProvider(event.event_id, inputs),
         clock_ns=clock,
     )
+    # Keep feature-contract tests independent of host scheduling; a separate
+    # one-nanosecond case exercises the real budget-exhaustion disposition.
+    elapsed_ticks = 0
+
+    def deterministic_projection_clock() -> int:
+        nonlocal elapsed_ticks
+        elapsed_ticks += 1
+        return elapsed_ticks
+
     with OpsSupervisorV2(
         path,
         port,
         clock_ns=clock,
+        monotonic_ns=deterministic_projection_clock,
         production_intelligence_enabled=True,
         production_intelligence_budget_ns=projection_budget_ns,
     ) as supervisor:
@@ -420,7 +430,7 @@ def _production_projection(
 
 
 def test_genuine_indexed_feature_enters_production_brief_without_changing_a0(tmp_path):
-    body, feature, status = _production_projection(tmp_path)
+    body, feature, status = _production_projection(tmp_path, projection_budget_ns=100_000_000)
 
     technical = [item for item in body["facts"] if item["section"] == "technical"]
     assert technical
@@ -438,7 +448,11 @@ def test_genuine_indexed_feature_enters_production_brief_without_changing_a0(tmp
 
 
 def test_gapped_feature_is_preserved_as_not_estimable_not_as_a_value(tmp_path):
-    body, feature, status = _production_projection(tmp_path, gap_interval=BarIntervalV2.M15)
+    body, feature, status = _production_projection(
+        tmp_path,
+        gap_interval=BarIntervalV2.M15,
+        projection_budget_ns=100_000_000,
+    )
 
     technical = [item for item in body["facts"] if item["section"] == "technical"]
     assert technical
@@ -450,7 +464,9 @@ def test_gapped_feature_is_preserved_as_not_estimable_not_as_a_value(tmp_path):
 
 
 def test_unfinalized_bar_cannot_qualify_a_technical_value(tmp_path):
-    body, _feature, status = _production_projection(tmp_path, unfinalized_m15=True)
+    body, _feature, status = _production_projection(
+        tmp_path, unfinalized_m15=True, projection_budget_ns=100_000_000
+    )
 
     assert all(item["section"] != "technical" for item in body["facts"])
     assert "technical" in body["missing_sections"]
@@ -461,6 +477,7 @@ def test_source_health_failure_after_feature_cutoff_invalidates_fact(tmp_path):
     body, _feature, status = _production_projection(
         tmp_path,
         later_health_state=PublicSourceStateV2.STALE,
+        projection_budget_ns=100_000_000,
     )
 
     assert all(item["section"] != "technical" for item in body["facts"])
@@ -480,7 +497,7 @@ def test_source_health_failure_after_feature_cutoff_invalidates_fact(tmp_path):
     ids=("missing", "future", "wrong-hash", "late-revision", "wrong-product"),
 )
 def test_unqualified_indexed_feature_does_not_enter_brief(tmp_path, options):
-    body, _feature, status = _production_projection(tmp_path, **options)
+    body, _feature, status = _production_projection(tmp_path, projection_budget_ns=100_000_000, **options)
 
     assert status == "BLOCKED"
     assert not [item for item in body["facts"] if item["section"] == "technical"]
@@ -488,7 +505,7 @@ def test_unqualified_indexed_feature_does_not_enter_brief(tmp_path, options):
 
 
 def test_warmup_shortfall_keeps_typed_missingness_without_a_number(tmp_path):
-    body, feature, status = _production_projection(tmp_path, m15_count=10)
+    body, feature, status = _production_projection(tmp_path, m15_count=10, projection_budget_ns=100_000_000)
 
     (technical,) = [item for item in body["facts"] if item["section"] == "technical"]
     assert technical["source_ref"] == feature.content_hash
@@ -496,6 +513,14 @@ def test_warmup_shortfall_keeps_typed_missingness_without_a_number(tmp_path):
     assert "INSUFFICIENT_HISTORY_OR_MISSING_TIMEFRAME" in technical["missingness"]
     assert all(value["value"] is None for value in technical["values"]["features"].values())
     assert status == "BLOCKED"
+
+
+def test_projection_budget_exhaustion_defers_without_a_partial_brief(tmp_path):
+    _body, _feature, status = _production_projection(tmp_path, projection_budget_ns=1)
+    assert status == "DEFERRED"
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        assert repository.artifact_entries("ProductionDecisionBriefProjectionV1") == ()
+        assert repository.artifact_entries("ProductionIntelligenceMemoryProjectionV1") == ()
 
 
 def test_verified_feature_fact_is_reproducible_from_persisted_sources_after_restart(tmp_path):

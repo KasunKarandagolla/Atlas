@@ -14,6 +14,7 @@ from atlas.runtime.binance_futures_demo_r4 import (
     normalize_demo_order_state,
 )
 from atlas.v2._serialization import canonical_json, sha256_json
+from atlas.v2.desktop.projection import project_snapshot
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.research.agent import ProviderCapabilitiesV1
 from atlas.v2.research.gemma_native import (
@@ -102,6 +103,11 @@ def test_fake_gemma_memory_and_demo_request_keep_original_economics_unchanged(tm
         assert job.brief.content_hash == original_brief_hash
         assert tuple(job.brief.body.get("economics", ())) == original_economics
         assert opener.open.call_count == 1
+        desktop = project_snapshot(repository, now_ns=30)
+        desktop_status = {item.name: item for item in desktop.overview.statuses}
+        assert desktop_status["gemma_shadow"].state == "VALID_SHADOW"
+        assert "proposal=SELECT_ONE" in desktop_status["gemma_shadow"].value
+        assert desktop_status["demo_only"].state == "UNAVAILABLE"
 
         # Deterministic test order data comes from the A0 fixture; the Gemma
         # response is deliberately not an input to the request builder.

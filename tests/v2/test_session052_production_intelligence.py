@@ -82,12 +82,14 @@ def test_normal_production_run_persists_brief_and_memory_without_dispatch(tmp_pa
         assert supervisor.repository.artifact_entries("AnalysisResearchRequestV1") == ()
         assert supervisor.repository.artifact_entries("AnalysisResearchFakeIntentV1") == ()
         assert supervisor.repository.due_work_items(RESEARCH_LANE, as_of_ns=clock.now_ns, limit=64) == ()
-
         desktop = project_snapshot(supervisor.repository, now_ns=clock.now_ns)
         statuses = {row.name: row for row in desktop.overview.statuses}
         assert statuses["decision_brief"].state == "BLOCKED"
         assert statuses["decision_brief"].evidence_ref == briefs[0].artifact_ref
+        assert statuses["economic_qualification"].state == "NOT_ESTIMABLE"
         assert statuses["research_agent"].state == "DISABLED"
+        assert statuses["gemma_shadow"].state == "NOT_RUN"
+        assert statuses["demo_only"].state == "UNAVAILABLE"
         assert statuses["capital_state"].state == "BLOCKED"
         assert statuses["due_work"].state == "NONE"
 
@@ -109,6 +111,31 @@ def test_normal_production_run_persists_brief_and_memory_without_dispatch(tmp_pa
         assert replay_refs == (briefs[0].artifact_ref, memories[0].artifact_ref)
         assert len(restarted_repository.artifact_entries("ProductionDecisionBriefProjectionV1")) == 1
         assert len(restarted_repository.artifact_entries("ProductionIntelligenceMemoryProjectionV1")) == 1
+
+
+def test_availability_header_batch_matches_full_index_without_decoding_body(tmp_path):
+    reference = sha256_json("availability-header-fixture")
+    with OpsRepository(tmp_path / "headers.sqlite") as repository:
+        repository.register_artifact(ArtifactIndexEntryV2(
+            reference,
+            "AvailabilityHeaderFixtureV1",
+            reference,
+            5,
+            10,
+            {"fixture": "typed-body"},
+        ))
+        full = repository.get_artifact_metadata_by_refs((reference,))[reference]
+        header = repository.get_artifact_availability_by_refs((reference,))[reference]
+        absent = sha256_json("availability-header-missing")
+        assert repository.get_artifact_availability_by_refs((absent,)) == {}
+
+    assert header == {
+        "artifact_type": full["artifact_type"],
+        "content_hash": full["content_hash"],
+        "created_at_ns": full["created_at_ns"],
+        "available_at_ns": full["available_at_ns"],
+        "effective_available_at_ns": full["effective_available_at_ns"],
+    }
 
 
 def _a0_snapshot(repository):

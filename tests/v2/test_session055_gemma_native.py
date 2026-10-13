@@ -6,8 +6,8 @@ import io
 import json
 from contextlib import nullcontext
 from types import SimpleNamespace
-from urllib.error import HTTPError
 from unittest.mock import Mock
+from urllib.error import HTTPError
 
 import pytest
 
@@ -19,17 +19,16 @@ from atlas.v2.research.agent import (
     validate_response,
 )
 from atlas.v2.research.decision_brief import DecisionBriefV1
-from atlas.v2.research.memory import ResearchMemoryV1
 from atlas.v2.research.gemma_native import (
     GEMINI_API_HOST,
     GEMMA_MODEL_ID,
     GeminiJobDispatchPermitV1,
     GeminiNativeClient,
+    GeminiProviderError,
     GeminiSmokePermitV1,
     GemmaResearchProviderV1,
-    GeminiProviderError,
 )
-
+from atlas.v2.research.memory import ResearchMemoryV1
 
 JOB_ID = "fixture-gemma-job"
 SNAPSHOT = sha256_json("snapshot")
@@ -117,8 +116,9 @@ class MemoryRepository:
         return self.rows.get(ref)
 
     def register_artifact(self, entry):
-        self.rows[entry.artifact_ref] = SimpleNamespace(content_hash=entry.content_hash,
-            metadata=dict(entry.metadata), available_at_ns=entry.available_at_ns)
+        self.rows[entry.artifact_ref] = SimpleNamespace(artifact_type=entry.artifact_type,
+            content_hash=entry.content_hash, metadata=dict(entry.metadata),
+            available_at_ns=entry.available_at_ns)
 
     def atomic_composition(self):
         return nullcontext()
@@ -141,7 +141,8 @@ def production_memory(job: ResearchJobV1):
     pointer = {"version": "PRODUCTION_INTELLIGENCE_MEMORY_IDENTITY_V1", "authority": "ZERO",
                "receipt_ref": receipt_ref, "brief_ref": brief_ref, "memory_ref": memory_ref}
     repo = MemoryRepository({brief_ref: projection, memory_ref: memory, identity_ref: pointer})
-    repo.rows[receipt_ref] = SimpleNamespace(content_hash=receipt_ref, metadata={}, available_at_ns=1)
+    repo.rows[receipt_ref] = SimpleNamespace(artifact_type="OpsSupervisorReceiptV1",
+        content_hash=receipt_ref, metadata={}, available_at_ns=1)
     return repo, receipt_ref, source_population_ref
 
 
@@ -251,6 +252,7 @@ def test_request_size_deadline_and_rate_limit_errors_are_bounded_and_sanitized()
     assert "fixture-secret" not in str(raised.value)
     assert raised.value.code == "PROVIDER_ERROR"
     assert opener.open.call_count == 1
+    assert client.request_body_bytes == len(opener.open.call_args.args[0].data)
 
     opener = Mock()
     opener.open.side_effect = HTTPError("https://redacted", 429, "quota fixture-secret",
@@ -317,13 +319,15 @@ def test_production_memory_gemmas_shadow_is_tagged_and_cannot_touch_original_bri
     )
     assert result["status"] == "VALID_SHADOW"
     assert result["authority_tag"] == "ZERO_AUTHORITY_SHADOW"
-    assert result["decision"] == output()
+    assert result["decision"].to_dict() == output()
     assert result["a0_population_ref"] == a0_population_ref
     assert result["brief_ref"] == ResearchMemoryV1.production_brief_identity(receipt_ref)
     assert memory._read(result["brief_ref"])["brief"]["body"] == job.brief.body.to_dict()
     assert job.brief.content_hash == original_brief_hash
-    assert result["usage_metadata"] == {"prompt_tokens": 12, "candidate_tokens": 20, "total_tokens": 32}
-    assert result["transport_bytes"] == {"request_body_bytes": 300, "response_body_bytes": 450}
+    assert result["usage_metadata"].to_dict() == {
+        "prompt_tokens": 12, "candidate_tokens": 20, "total_tokens": 32,
+    }
+    assert result["transport_bytes"].to_dict() == {"request_body_bytes": 300, "response_body_bytes": 450}
 
 
 def test_blocked_production_brief_and_unverified_gemma_capabilities_never_dispatch():
@@ -336,5 +340,5 @@ def test_blocked_production_brief_and_unverified_gemma_capabilities_never_dispat
     eligible = research_job()
     repo, receipt_ref, _ = production_memory(eligible)
     result = ResearchMemoryV1(repo).prepare_gemma_shadow_dispatch(eligible, receipt_ref=receipt_ref, now_ns=20)
-    assert result["status"] == "LLM_NOT_CALLED"
+    assert result["status"] == "BUDGET_DENIED"
     assert result["reason"] == "UNKNOWN_PRICE"

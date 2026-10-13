@@ -157,25 +157,33 @@ def _read_universe(
     return universe
 
 
-def _candidate_by_id(repo: OpsRepository, candidate_set: CandidateSetV2, candidate_id: str) -> CandidateActionV2:
+def _candidate_by_id(
+    repo: OpsRepository,
+    candidate_set: CandidateSetV2,
+    candidate_id: str,
+    *,
+    indexed: Mapping[str, Mapping[str, Any]] | None = None,
+) -> CandidateActionV2:
     matches: list[CandidateActionV2] = []
-    for ref in candidate_set.envelope.input_refs:
-        entry = repo.get_artifact(ref)
-        raw = (
-            entry.metadata.get("candidate")
-            if entry is not None and entry.artifact_type == "CandidateActionV2"
-            else None
-        )
+    if indexed is None:
+        indexed = repo.get_artifact_metadata_by_refs(candidate_set.envelope.input_refs)
+    for ref, entry in indexed.items():
+        metadata = entry.get("metadata")
+        raw = metadata.get("candidate") if (
+            entry.get("artifact_type") == "CandidateActionV2" and isinstance(metadata, Mapping)
+        ) else None
         if not isinstance(raw, Mapping):
             continue
         candidate = CandidateActionV2.from_dict(json_value(raw))
-        if candidate.content_hash == ref and candidate.candidate_id == candidate_id:
+        if (candidate.content_hash == ref and entry.get("content_hash") == ref
+                and candidate.candidate_id == candidate_id):
             matches.append(candidate)
     if len(matches) != 1:
         raise ValueError("SELECTED_CANDIDATE_INDEX_PROOF_MISSING_OR_AMBIGUOUS")
     candidate = matches[0]
-    entry = repo.get_artifact(candidate.content_hash)
-    if entry is None or entry.available_at_ns > candidate.decision_at_ns:
+    candidate_index_entry = indexed.get(candidate.content_hash)
+    if (candidate_index_entry is None
+            or candidate_index_entry.get("available_at_ns", 0) > candidate.decision_at_ns):
         raise ValueError("SELECTED_CANDIDATE_CHRONOLOGY_UNAVAILABLE")
     return candidate
 
@@ -212,6 +220,7 @@ def _read_selected_action(
     candidate_set: CandidateSetV2,
     universe: UniverseContractV2,
     now_ns: int,
+    candidate_inputs: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> tuple[CandidateActionV2 | None, dict[str, Any]]:
     action_ref = receipt.action_ref
     sizing_ref = receipt.sizing_ref
@@ -223,7 +232,7 @@ def _read_selected_action(
             "action_ref": action_ref,
             "sizing_ref": sizing_ref,
         }
-    candidate = _candidate_by_id(repo, candidate_set, candidate_id)
+    candidate = _candidate_by_id(repo, candidate_set, candidate_id, indexed=candidate_inputs)
     sizing_entry = repo.get_artifact(sizing_ref)
     sizing = sizing_entry.metadata.get("sizing") if sizing_entry is not None else None
     risk_input_refs = sizing.get("risk_input_refs") if isinstance(sizing, Mapping) else None
@@ -354,7 +363,14 @@ def _validate_receipt(repo: OpsRepository, receipt: OpsSupervisorReceiptV1, rece
     }
     if len(refs) > MAX_PROJECTION_REFS:
         raise ValueError("PROJECTION_REFERENCE_LIMIT")
-    missing = tuple(sorted(ref for ref in refs if not _indexed(repo, ref, as_of_ns=receipt.created_at_ns)))
+    indexed = repo.get_artifact_metadata_by_refs(tuple(refs))
+    missing = tuple(sorted(
+        ref for ref in refs
+        if (item := indexed.get(ref)) is None
+        or item.get("available_at_ns", receipt.created_at_ns + 1) > receipt.created_at_ns
+        or item.get("effective_available_at_ns") is None
+        or item.get("effective_available_at_ns", receipt.created_at_ns + 1) > receipt.created_at_ns
+    ))
     return missing
 
 
@@ -541,6 +557,7 @@ def project_production_receipt(
 
     reasons: list[str] = []
     candidate_set: CandidateSetV2 | None = None
+    candidate_input_index: Mapping[str, Mapping[str, Any]] | None = None
     universe: UniverseContractV2 | None = None
     candidate_count: int | None = None
     source_refs: tuple[str, ...] = (receipt_ref,)
@@ -576,12 +593,16 @@ def project_production_receipt(
         }
         if candidate_set is not None:
             refs.update((candidate_set.content_hash, candidate_set.universe_ref, *candidate_set.envelope.input_refs))
-            missing_candidate_inputs = tuple(
-                ref
-                for ref in candidate_set.envelope.input_refs
-                if not _indexed(repo, ref, as_of_ns=receipt.created_at_ns)
+            candidate_input_index = repo.get_artifact_metadata_by_refs(candidate_set.envelope.input_refs)
+            candidate_refs = set(candidate_set.envelope.input_refs)
+            missing_candidate_inputs = candidate_refs - set(candidate_input_index)
+            future_candidate_inputs = any(
+                item.get("available_at_ns", receipt.created_at_ns + 1) > receipt.created_at_ns
+                or item.get("effective_available_at_ns") is None
+                or item.get("effective_available_at_ns", receipt.created_at_ns + 1) > receipt.created_at_ns
+                for item in candidate_input_index.values()
             )
-            if missing_candidate_inputs:
+            if missing_candidate_inputs or future_candidate_inputs:
                 reasons.append("CANDIDATE_SET_INPUT_PROOF_MISSING")
         if len(refs) > MAX_PROJECTION_REFS:
             reasons.append("PROJECTION_REFERENCE_LIMIT")
@@ -708,6 +729,11 @@ def project_production_receipt(
         "sizing_ref": receipt.sizing_ref,
     }
     candidate: CandidateActionV2 | None = None
+    economic_stage = next(
+        (stage for stage in receipt.result.stages if stage.stage.value == "ECONOMIC_EVALUATION"),
+        None,
+    )
+    economic_stage_qualified = economic_stage is not None and economic_stage.status.value == "COMPLETE"
     economics: dict[str, Any] = {
         "status": "NOT_ESTIMABLE",
         "missingness": ["EXACT_ACTION_ECONOMICS_NOT_RECONSTRUCTED"],
@@ -716,8 +742,20 @@ def project_production_receipt(
     }
     if candidate_set is not None and universe is not None:
         try:
-            candidate, selected_action = _read_selected_action(repo, receipt, candidate_set, universe, built_at_ns)
-            if candidate is not None and selected_action.get("status") == "QUALIFIED_PERSISTED_A0_EXACT_ACTION":
+            candidate, selected_action = _read_selected_action(
+                repo,
+                receipt,
+                candidate_set,
+                universe,
+                built_at_ns,
+                candidate_inputs=candidate_input_index,
+            )
+            if (
+                candidate is not None
+                and selected_action.get("status") == "QUALIFIED_PERSISTED_A0_EXACT_ACTION"
+                and receipt.evaluation_ref is not None
+                and economic_stage_qualified
+            ):
                 recovered = production_recover_economic_evaluation(
                     repo,
                     candidate,
@@ -725,7 +763,7 @@ def project_production_receipt(
                     candidate_set,
                     now_ns=built_at_ns,
                 )
-                if recovered is not None:
+                if recovered is not None and recovered.evaluation_ref == receipt.evaluation_ref:
                     evaluation = recovered.evaluation
                     qualified = (
                         evaluation.decision.value == "CANDIDATE"
@@ -822,6 +860,7 @@ def project_production_receipt(
         schema_hash=str(body.get("schema_hash", "")),
     )
     check_budget()
+    availability_by_ref = repo.get_artifact_availability_by_refs(source_refs)
     body.update(
         {
             "production_projection_version": PRODUCTION_PROJECTION_VERSION,
@@ -834,11 +873,11 @@ def project_production_receipt(
             "source_availability": [
                 {
                     "source_ref": ref,
-                    "index_status": "MISSING" if (entry := repo.get_artifact(ref)) is None else "INDEXED",
-                    "artifact_type": entry.artifact_type if entry is not None else None,
-                    "created_at_ns": entry.created_at_ns if entry is not None else None,
-                    "available_at_ns": entry.available_at_ns if entry is not None else None,
-                    "effective_available_at_ns": repo.effective_available_at_ns(ref),
+                    "index_status": "MISSING" if (entry := availability_by_ref.get(ref)) is None else "INDEXED",
+                    "artifact_type": entry.get("artifact_type") if entry is not None else None,
+                    "created_at_ns": entry.get("created_at_ns") if entry is not None else None,
+                    "available_at_ns": entry.get("available_at_ns") if entry is not None else None,
+                    "effective_available_at_ns": entry.get("effective_available_at_ns") if entry is not None else None,
                 }
                 for ref in source_refs
             ],

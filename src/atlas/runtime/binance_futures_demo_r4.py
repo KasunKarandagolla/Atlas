@@ -11,11 +11,12 @@ import hashlib
 import hmac
 import re
 import urllib.parse
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from atlas.v2._serialization import sha256_json
 
@@ -55,8 +56,9 @@ class DemoOnlyIdentity:
     margin_mode: str = "ISOLATED"
 
     def __post_init__(self) -> None:
-        if (self.environment != DEMO_ONLY_ENVIRONMENT or self.venue != "BINANCE"
-                or self.product != "USD_M_USDT_LINEAR_PERPETUAL"
+        if self.environment != DEMO_ONLY_ENVIRONMENT:
+            raise ValueError("unsupported DEMO_ONLY environment")
+        if (self.venue != "BINANCE" or self.product != "USD_M_USDT_LINEAR_PERPETUAL"
                 or self.position_mode != "ONE_WAY" or self.margin_mode != "ISOLATED"):
             raise ValueError("unsupported DEMO_ONLY identity")
         if (not isinstance(self.account_scope_ref, str) or not _OPAQUE_REF.fullmatch(self.account_scope_ref)
@@ -355,7 +357,7 @@ class DemoSymbolMarginV1:
     margin_type: str
     auto_add_margin: bool
     leverage: int
-    max_notional_value: Decimal
+    max_notional_value: Decimal | None
 
 
 @dataclass(frozen=True)
@@ -388,7 +390,8 @@ def normalize_demo_margin(identity: DemoOnlyIdentity, multi_assets: Mapping[str,
             raise ValueError("invalid Demo symbol margin identity")
         configs.append(DemoSymbolMarginV1(
             symbol, margin_type, auto_add, leverage,
-            _demo_decimal(row.get("maxNotionalValue"), "maximum notional", positive=True),
+            (_demo_decimal(row["maxNotionalValue"], "maximum notional", positive=True)
+             if row.get("maxNotionalValue") is not None else None),
         ))
     return DemoMarginSnapshotV1(DEMO_ONLY_ENVIRONMENT, identity.content_hash,
                                 multi_assets["multiAssetsMargin"], tuple(configs))

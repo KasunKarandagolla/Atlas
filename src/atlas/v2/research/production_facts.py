@@ -330,7 +330,7 @@ def _causal_feature_inputs(
     except ValueError:
         return (), ("FEATURE_BAR_ORDER_OR_INTERVAL_INVALID",)
 
-    revisions_by_close = repo.confirmed_bar_observations_for_closes(
+    revisions_by_close = repo.confirmed_bar_observation_refs_for_closes(
         feature.key,
         event_type="BAR_15M",
         close_times_ns=tuple(bar.close_at_ns for bar in bars),
@@ -344,16 +344,7 @@ def _causal_feature_inputs(
             check_budget()
         eligible_revisions = revisions_by_close[bar.close_at_ns]
         latest_ref = (
-            max(
-                eligible_revisions,
-                key=lambda item: (
-                    item.available_at_ns,
-                    str(item.metadata.get("record_id", "")),
-                    item.artifact_ref,
-                ),
-            ).artifact_ref
-            if eligible_revisions
-            else None
+            eligible_revisions[-1] if eligible_revisions else None
         )
         if latest_ref != obs_refs[bar.close_at_ns]:
             return (), ("FEATURE_BAR_REVISED_AFTER_SOURCE_SNAPSHOT",)

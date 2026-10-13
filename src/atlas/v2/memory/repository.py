@@ -2899,6 +2899,7 @@ class OpsRepository:
                 entries[row["artifact_ref"]] = {
                     "artifact_type": entry.artifact_type,
                     "content_hash": entry.content_hash,
+                    "created_at_ns": entry.created_at_ns,
                     "available_at_ns": entry.available_at_ns,
                     "effective_available_at_ns": effective_available,
                     "metadata": entry.metadata,
@@ -2916,9 +2917,98 @@ class OpsRepository:
                     for row in rows:
                         entry = self._decode_public_locator(row)
                         entries[entry.artifact_ref] = {"artifact_type": entry.artifact_type,
-                            "content_hash": entry.content_hash, "available_at_ns": entry.available_at_ns,
+                            "content_hash": entry.content_hash, "created_at_ns": entry.created_at_ns,
+                            "available_at_ns": entry.available_at_ns,
                             "effective_available_at_ns": self.effective_available_at_ns(entry.artifact_ref),
                             "metadata": entry.metadata}
+        return {ref: entries[ref] for ref in refs if ref in entries}
+
+    def get_artifact_availability_by_refs(self, artifact_refs: Sequence[str]) -> dict[str, Mapping[str, Any]]:
+        """Read immutable identity and availability headers without decoding evidence bodies.
+
+        This is for bounded projection and diagnostics only. Callers that use an
+        artifact as evidence must still validate its typed metadata through the
+        normal artifact readers.
+        """
+        requested = tuple(artifact_refs)
+        if any(not isinstance(ref, str) for ref in requested):
+            raise ValueError("artifact reference batch must contain strings")
+        refs = tuple(sorted(set(requested)))
+        if len(refs) > 100_000:
+            raise ValueError("artifact reference batch exceeds its bound")
+        for ref in refs:
+            sha256_ref(ref, field="artifact_ref")
+        entries: dict[str, Mapping[str, Any]] = {}
+        effective_expr = (
+            "CASE WHEN l.artifact_ref IS NULL THEN a.available_at_ns "
+            "WHEN o.observed_at_ns IS NULL OR p.logical_ready_at_ns IS NULL THEN NULL "
+            "ELSE MAX(a.available_at_ns,p.logical_ready_at_ns,o.observed_at_ns) END"
+        )
+        with self._lock:
+            for offset in range(0, len(refs), 500):
+                batch = refs[offset:offset + 500]
+                if not batch:
+                    continue
+                rows = self._connection.execute(
+                    "SELECT a.artifact_ref,a.artifact_type,a.content_hash,a.created_at_ns,a.available_at_ns,"
+                    + effective_expr
+                    + " AS effective_available_at_ns FROM artifact_index AS a "
+                    "LEFT JOIN public_evidence_locator_v2 AS l ON l.artifact_ref=a.artifact_ref "
+                    "LEFT JOIN public_evidence_publication_v2 AS p ON p.publication_id=l.publication_id "
+                    "LEFT JOIN public_evidence_publication_observation_v2 AS o ON o.publication_id=l.publication_id "
+                    "WHERE a.artifact_ref IN (" + ",".join("?" for _ in batch) + ")",
+                    batch,
+                ).fetchall()
+                for row in rows:
+                    ref = row["artifact_ref"]
+                    sha256_ref(ref, field="artifact_ref")
+                    sha256_ref(row["content_hash"], field="content_hash")
+                    if (type(row["created_at_ns"]) is not int or type(row["available_at_ns"]) is not int
+                            or row["available_at_ns"] < row["created_at_ns"]):
+                        raise ValueError("artifact index availability header is invalid")
+                    effective = row["effective_available_at_ns"]
+                    if effective is not None and type(effective) is not int:
+                        raise ValueError("artifact effective availability header is invalid")
+                    entries[ref] = {
+                        "artifact_type": row["artifact_type"],
+                        "content_hash": row["content_hash"],
+                        "created_at_ns": row["created_at_ns"],
+                        "available_at_ns": row["available_at_ns"],
+                        "effective_available_at_ns": effective,
+                    }
+        if self._public_locator_enabled:
+            missing = tuple(ref for ref in refs if ref not in entries)
+            with self._lock:
+                for offset in range(0, len(missing), 500):
+                    batch = missing[offset:offset + 500]
+                    if not batch:
+                        continue
+                    rows = self._connection.execute(
+                        "SELECT artifact_ref,kind,content_hash,created_at_ns,available_at_ns "
+                        "FROM public_stream_archive_locator_v1 WHERE artifact_ref IN ("
+                        + ",".join("?" for _ in batch) + ")",
+                        tuple(bytes.fromhex(ref) for ref in batch),
+                    ).fetchall()
+                    for row in rows:
+                        ref = bytes(row["artifact_ref"]).hex()
+                        content_hash = bytes(row["content_hash"]).hex()
+                        sha256_ref(ref, field="artifact_ref")
+                        sha256_ref(content_hash, field="content_hash")
+                        if (type(row["created_at_ns"]) is not int or type(row["available_at_ns"]) is not int
+                                or row["available_at_ns"] < row["created_at_ns"]):
+                            raise ValueError("compact public availability header is invalid")
+                        from ..data.compact_public_index import KINDS
+
+                        artifact_type = next((name for name, kind in KINDS.items() if kind == row["kind"]), None)
+                        if artifact_type is None:
+                            raise ValueError("compact public locator kind is invalid")
+                        entries[ref] = {
+                            "artifact_type": artifact_type,
+                            "content_hash": content_hash,
+                            "created_at_ns": row["created_at_ns"],
+                            "available_at_ns": row["available_at_ns"],
+                            "effective_available_at_ns": row["available_at_ns"],
+                        }
         return {ref: entries[ref] for ref in refs if ref in entries}
 
     def _storage_rows_in_decode_order(self, rows: Sequence[sqlite3.Row]) -> list[sqlite3.Row]:
@@ -3245,6 +3335,52 @@ class OpsRepository:
         each requested close returns revisions in availability/record order and
         fails if any close exceeds its explicit revision bound.
         """
+        result = self._confirmed_bar_observations_for_closes(
+            instrument_key,
+            event_type=event_type,
+            close_times_ns=close_times_ns,
+            as_of_ns=as_of_ns,
+            limit_per_close=limit_per_close,
+            refs_only=False,
+        )
+        return {close: tuple(entries) for close, entries in result.items()}
+
+    def confirmed_bar_observation_refs_for_closes(
+        self,
+        instrument_key: InstrumentKeyV2,
+        *,
+        event_type: str,
+        close_times_ns: Sequence[int],
+        as_of_ns: int,
+        limit_per_close: int = 128,
+    ) -> dict[int, tuple[str, ...]]:
+        """Return bounded exact revision refs for callers that already validated the selected rows.
+
+        The selected source observation must be fully decoded and verified by the
+        caller. Other rows only establish whether a later eligible revision
+        exists, so their immutable refs suffice and avoid rebuilding their full
+        typed metadata bodies.
+        """
+        result = self._confirmed_bar_observations_for_closes(
+            instrument_key,
+            event_type=event_type,
+            close_times_ns=close_times_ns,
+            as_of_ns=as_of_ns,
+            limit_per_close=limit_per_close,
+            refs_only=True,
+        )
+        return {close: tuple(refs) for close, refs in result.items()}
+
+    def _confirmed_bar_observations_for_closes(
+        self,
+        instrument_key: InstrumentKeyV2,
+        *,
+        event_type: str,
+        close_times_ns: Sequence[int],
+        as_of_ns: int,
+        limit_per_close: int,
+        refs_only: bool,
+    ) -> dict[int, list[Any]]:
         from ..instruments import InstrumentKeyV2
 
         if not isinstance(instrument_key, InstrumentKeyV2):
@@ -3278,7 +3414,7 @@ class OpsRepository:
         )
         marks = ",".join("?" for _ in closes)
         query = (
-            "WITH revisions AS (SELECT a.*, ROW_NUMBER() OVER (PARTITION BY "
+            "WITH revisions AS (SELECT a.*, " + close_expr + " AS __event_at_ns, ROW_NUMBER() OVER (PARTITION BY "
             + close_expr
             + " ORDER BY a.available_at_ns, "
             + record_expr
@@ -3314,16 +3450,23 @@ class OpsRepository:
         )
         with self._lock:
             rows = self._connection.execute(query, params).fetchall()
-        result: dict[int, list[ArtifactIndexEntryV2]] = {close: [] for close in closes}
+        result: dict[int, list[Any]] = {close: [] for close in closes}
         for row in rows:
-            entry = self.artifact_entry_from_storage_row(row)
-            close = entry.metadata.get("event_at_ns")
+            if refs_only:
+                ref = row["artifact_ref"]
+                sha256_ref(ref, field="artifact_ref")
+                close = row["__event_at_ns"]
+                item: Any = ref
+            else:
+                entry = self.artifact_entry_from_storage_row(row)
+                close = entry.metadata.get("event_at_ns")
+                item = entry
             if type(close) is not int or close not in result:
                 raise RuntimeError("batched exact bar query returned an unrequested close")
-            result[close].append(entry)
+            result[close].append(item)
             if len(result[close]) > limit_per_close:
                 raise ValueError("exact bar source revision lookup exceeded its explicit bound")
-        return {close: tuple(items) for close, items in result.items()}
+        return result
 
     def public_stream_trade_entries(
         self, instrument_key: InstrumentKeyV2, *, source_id: str,

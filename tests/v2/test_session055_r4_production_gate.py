@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from atlas.v2._serialization import FrozenMap, sha256_json
+from atlas.v2._serialization import FrozenMap
 from atlas.v2.memory.repository import OpsRepository
 from atlas.v2.research.agent import ProviderCapabilitiesV1, ResearchBudgetV1, ResearchJobV1
 from atlas.v2.research.decision_brief import DecisionBriefV1
@@ -14,7 +14,7 @@ from .test_session053_production_completion import _a0_snapshot, _production_pro
 
 
 def test_actual_production_brief_gate_preserves_a0_and_refuses_blocked_gemma(tmp_path):
-    body, feature, production_status = _production_projection(tmp_path)
+    body, feature, production_status = _production_projection(tmp_path, projection_budget_ns=100_000_000)
     if production_status == "DEFERRED":
         # The unchanged 80 ms projection budget may safely defer this synthetic
         # receipt; without a persisted Brief there is no Gemma dispatch input.
@@ -29,6 +29,9 @@ def test_actual_production_brief_gate_preserves_a0_and_refuses_blocked_gemma(tmp
         assert repository is not None
         (receipt_identity,) = repository.artifact_entries("OpsSupervisorReceiptIdentityV1")
         receipt_ref = receipt_identity.metadata["receipt_ref"]
+        receipt_entry = repository.get_artifact(receipt_ref)
+        assert receipt_entry is not None
+        available_now_ns = receipt_entry.available_at_ns + 1
         identity = repository.get_artifact(ResearchMemoryV1.production_projection_identity(receipt_ref))
         assert identity is not None
         (brief_entry,) = repository.artifact_entries("ProductionDecisionBriefProjectionV1")
@@ -41,7 +44,7 @@ def test_actual_production_brief_gate_preserves_a0_and_refuses_blocked_gemma(tmp
         budget = ResearchBudgetV1("R4_GATE", 1, 0, 0, 0, 4096)
         memory = ResearchMemoryV1(repository)
         unavailable_job = memory.build_production_gemma_job(
-            receipt_ref, capabilities=capabilities, budget=budget, now_ns=CUTOFF + 2,
+                receipt_ref, capabilities=capabilities, budget=budget, now_ns=available_now_ns,
         )
         assert unavailable_job is None
         job = ResearchJobV1(
@@ -49,7 +52,7 @@ def test_actual_production_brief_gate_preserves_a0_and_refuses_blocked_gemma(tmp
         )
         before = _a0_snapshot(repository)
         result = memory.prepare_gemma_shadow_dispatch(
-            job, receipt_ref=receipt_ref, now_ns=CUTOFF + 2,
+                job, receipt_ref=receipt_ref, now_ns=available_now_ns,
         )
         after = _a0_snapshot(repository)
         assert result["status"] == "LLM_NOT_CALLED"

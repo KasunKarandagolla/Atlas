@@ -27,9 +27,9 @@ from atlas.runtime.binance_futures_demo_r4 import (
     normalize_demo_instrument,
     normalize_demo_margin,
     normalize_demo_order,
+    normalize_demo_order_state,
     normalize_demo_protection,
     normalize_demo_transport_failure,
-    normalize_demo_order_state,
 )
 from atlas.runtime.fill_dedup import FillDeduplicator, FillRecord
 
@@ -184,7 +184,7 @@ def test_fake_account_instrument_margin_order_fill_cancel_and_protection_contrac
     assert fills[0].execution_id == "77" and fills[0].quantity == Decimal("0.001")
 
     protection_row = {
-        "algoId": 45, "symbol": "BTCUSDT", "side": "SELL", "algoStatus": "NEW",
+        "algoId": 45, "algoType": "CONDITIONAL", "symbol": "BTCUSDT", "side": "SELL", "algoStatus": "NEW",
         "orderType": "STOP_MARKET", "workingType": "MARK_PRICE", "triggerPrice": "49000",
         "positionSide": "BOTH", "clientAlgoId": external_client_order_id("a" * 32),
         "closePosition": True, "reduceOnly": False, "quantity": "0",

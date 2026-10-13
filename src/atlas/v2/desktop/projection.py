@@ -78,6 +78,8 @@ _EVIDENCE_TYPES = (
     "DecisionCalendarEntryV2",
     "ProductionDecisionBriefProjectionV1",
     "ProductionIntelligenceMemoryProjectionV1",
+    "ProductionGemmaShadowIntentV1",
+    "ProductionGemmaShadowResultV1",
     "TradePlanEnvelopeV2",
     "MaturedOutcomeV2",
     "ReplayPathV2",
@@ -1087,7 +1089,16 @@ def _project_statuses(
             "decision_brief", "UNAVAILABLE", "NOT_CONNECTED_TO_PRODUCTION", reason_code="S47_BRIEF_NOT_INDEXED"
         ),
         DesktopStatusV2(
+            "economic_qualification", "NOT_ESTIMABLE", "NO_PRODUCTION_BRIEF", reason_code="BRIEF_NOT_INDEXED"
+        ),
+        DesktopStatusV2(
             "research_agent", "DISABLED", "PRODUCTION_AGENT_MODE_DISABLED", reason_code="S47_AGENT_DISPATCH_DISABLED"
+        ),
+        DesktopStatusV2(
+            "gemma_shadow", "NOT_RUN", "ZERO_AUTHORITY_SHADOW_NO_RESULT", reason_code="NO_GEMMA_SHADOW_RESULT"
+        ),
+        DesktopStatusV2(
+            "demo_only", "UNAVAILABLE", "DEMO_ONLY_SNAPSHOT_NOT_INDEXED", reason_code="NO_DEMO_ONLY_SNAPSHOT"
         ),
         DesktopStatusV2(
             "model_provider", "UNAVAILABLE", "NO_EXTERNAL_PROVIDER_CALL", reason_code="PROVIDER_QUALIFICATION_TEST_GATE"
@@ -1117,6 +1128,9 @@ def _project_statuses(
         "data_health",
         "protection_recovery",
         "decision_brief",
+        "economic_qualification",
+        "gemma_shadow",
+        "demo_only",
         "model_provider",
         "position_lifecycle",
         "due_work",
@@ -1162,6 +1176,50 @@ def _project_statuses(
             reason_code,
         )
         unavailable.discard("decision_brief")
+        economic_index = next(index for index, item in enumerate(status)
+                              if item.name == "economic_qualification")
+        missingness = economics.get("missingness", ()) if isinstance(economics, Mapping) else ()
+        economic_reason = _code(missingness[0]) if isinstance(missingness, (list, tuple)) and missingness else None
+        status[economic_index] = DesktopStatusV2(
+            "economic_qualification",
+            economics_status,
+            f"{economics_status};missingness={len(missingness) if isinstance(missingness, (list, tuple)) else 0}",
+            latest_brief.available_at_ns,
+            latest_brief.artifact_ref,
+            economic_reason,
+        )
+        unavailable.discard("economic_qualification")
+
+    shadow_entries = [item for item in entries if item.artifact_type == "ProductionGemmaShadowResultV1"]
+    if shadow_entries:
+        latest_shadow = max(shadow_entries, key=lambda item: (item.created_at_ns, item.artifact_ref))
+        shadow = latest_shadow.metadata
+        decision = shadow.get("decision")
+        valid_shadow = (
+            latest_shadow.content_hash == sha256_json(shadow)
+            and shadow.get("authority") == "ZERO"
+            and shadow.get("authority_tag") == "ZERO_AUTHORITY_SHADOW"
+            and shadow.get("paid_dispatch") is False
+            and (decision is None or isinstance(decision, Mapping))
+        )
+        shadow_status = _code(shadow.get("status")) if valid_shadow else "UNVERIFIED"
+        if valid_shadow and isinstance(decision, Mapping):
+            proposal = _code(decision.get("kind"), default="UNAVAILABLE")
+            candidate_bound = isinstance(decision.get("candidate_id"), str)
+            value = (f"ZERO_AUTHORITY_SHADOW;proposal={proposal};"
+                     f"candidate={'REFERENCE_BOUND' if candidate_bound else 'NONE'}")
+        else:
+            value = "ZERO_AUTHORITY_SHADOW;proposal=UNAVAILABLE"
+        shadow_index = next(index for index, item in enumerate(status) if item.name == "gemma_shadow")
+        status[shadow_index] = DesktopStatusV2(
+            "gemma_shadow",
+            shadow_status,
+            value,
+            latest_shadow.available_at_ns,
+            latest_shadow.artifact_ref,
+            _code(shadow.get("reason")) if shadow.get("reason") else None,
+        )
+        unavailable.discard("gemma_shadow")
 
     memory_entries = [item for item in entries if item.artifact_type == "ProductionIntelligenceMemoryProjectionV1"]
     if memory_entries:

@@ -134,6 +134,9 @@ class GeminiCapabilityProbeV1:
     response_body_bytes: int
     failure_code: str | None
     evidence_ref: str
+    usage_prompt_tokens: int | None = None
+    usage_candidate_tokens: int | None = None
+    usage_total_tokens: int | None = None
     version: str = "GEMINI_CAPABILITY_PROBE_V1"
 
     def __post_init__(self) -> None:
@@ -148,6 +151,10 @@ class GeminiCapabilityProbeV1:
         for name in ("request_body_bytes", "response_body_bytes"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 0:
                 raise ValueError("invalid Gemini probe byte count")
+        for name in ("usage_prompt_tokens", "usage_candidate_tokens", "usage_total_tokens"):
+            value = getattr(self, name)
+            if value is not None and (type(value) is not int or value < 0):
+                raise ValueError("invalid Gemini usage metadata")
         if self.failure_code is not None and not re.fullmatch(r"[A-Z0-9_]{1,64}", self.failure_code):
             raise ValueError("Gemini probe failure code is not sanitized")
         sha256_ref(self.evidence_ref, field="evidence_ref")
@@ -314,9 +321,12 @@ class GeminiNativeClient:
         request.add_header("accept", "application/json")
         if encoded is not None:
             request.add_header("content-type", "application/json")
+            with self._lock:
+                # Include bounded attempted bodies even when the response times
+                # out; a dispatched request may have reached the provider.
+                self._request_body_bytes += len(encoded)
         raw, size = self._send(request, deadline_ns=deadline_ns)
         with self._lock:
-            self._request_body_bytes += len(encoded) if encoded is not None else 0
             self._response_body_bytes += size
         try:
             decoded = json.loads(raw.decode("utf-8"))
@@ -355,21 +365,24 @@ class GeminiNativeClient:
         if not isinstance(candidates, list) or len(candidates) != 1 or not isinstance(candidates[0], Mapping):
             raise GeminiProviderError("MISSING_PROVIDER_RESPONSE")
         candidate = candidates[0]
-        if candidate.get("finishReason") != "STOP":
-            raise GeminiProviderError("INCOMPLETE_PROVIDER_RESPONSE")
         content = candidate.get("content")
         parts = content.get("parts") if isinstance(content, Mapping) else None
-        if (not isinstance(content, Mapping) or content.get("role") != "model"
-                or not isinstance(parts, list) or not parts):
+        if not isinstance(parts, list) or not parts:
+            raise GeminiProviderError("MISSING_PROVIDER_RESPONSE")
+        if any(not isinstance(part, Mapping) or "functionCall" in part or "functionResponse" in part
+               for part in parts):
+            raise GeminiProviderError("UNSUPPORTED_PROVIDER_CAPABILITY")
+        if not isinstance(content, Mapping) or content.get("role") != "model":
             raise GeminiProviderError("MISSING_PROVIDER_RESPONSE")
         texts: list[str] = []
         for part in parts:
-            if not isinstance(part, Mapping) or "functionCall" in part or "functionResponse" in part:
-                raise GeminiProviderError("UNSUPPORTED_PROVIDER_CAPABILITY")
+            assert isinstance(part, Mapping)
             text = part.get("text")
             if not isinstance(text, str):
                 raise GeminiProviderError("MISSING_PROVIDER_RESPONSE")
             texts.append(text)
+        if candidate.get("finishReason") != "STOP":
+            raise GeminiProviderError("INCOMPLETE_PROVIDER_RESPONSE")
         output = "".join(texts)
         if not output or len(output.encode("utf-8")) > MAX_PROVIDER_TEXT_BYTES:
             raise GeminiProviderError("OUTPUT_SIZE_LIMIT" if output else "MISSING_PROVIDER_RESPONSE")
@@ -384,7 +397,7 @@ class GeminiNativeClient:
         candidate_tokens = _positive_or_zero_int(usage.get("candidatesTokenCount")) if isinstance(usage, Mapping) else None
         total_tokens = _positive_or_zero_int(usage.get("totalTokenCount")) if isinstance(usage, Mapping) else None
         return GeminiGeneratedContentV1(
-            output, returned, prompt_tokens, candidate_tokens, total_tokens,
+            output, f"models/{self.model_id}", prompt_tokens, candidate_tokens, total_tokens,
             str(candidate.get("finishReason") or "UNKNOWN"), request_body_bytes,
             response_bytes,
             hashlib.sha256(output.encode("utf-8")).hexdigest(),
@@ -399,6 +412,9 @@ class GeminiNativeClient:
         text_response = False
         structured_json = False
         usage_metadata = False
+        usage_prompt_tokens: int | None = None
+        usage_candidate_tokens: int | None = None
+        usage_total_tokens: int | None = None
         failure_code: str | None = None
         try:
             response, _ = self._request(method="GET", body=None, deadline_ns=deadline_ns)
@@ -414,13 +430,21 @@ class GeminiNativeClient:
                     structured_json = _matches_research_schema(decoded)
                 except json.JSONDecodeError:
                     structured_json = False
-                usage_metadata = generated.prompt_tokens is not None and generated.candidate_tokens is not None
+                usage_prompt_tokens = generated.prompt_tokens
+                usage_candidate_tokens = generated.candidate_tokens
+                usage_total_tokens = generated.total_tokens
+                usage_metadata = all(value is not None for value in (
+                    usage_prompt_tokens, usage_candidate_tokens, usage_total_tokens,
+                ))
         except GeminiProviderError as error:
             failure_code = error.code
         return GeminiCapabilityProbeV1(
             self.model_id, returned_model_id, model_available, text_response, structured_json,
             False, usage_metadata, False, False, self.requests_made, self.request_body_bytes,
             self.response_body_bytes, failure_code, evidence_ref,
+            usage_prompt_tokens=usage_prompt_tokens,
+            usage_candidate_tokens=usage_candidate_tokens,
+            usage_total_tokens=usage_total_tokens,
         )
 
 
