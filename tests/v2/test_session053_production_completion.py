@@ -7,14 +7,17 @@ from decimal import Decimal
 
 import pytest
 
-from atlas.v2._serialization import canonical_json, sha256_json
+from atlas.v2._serialization import canonical_json, json_value, sha256_json
+from atlas.v2.contracts import CandidateSetV2
 from atlas.v2.data.bars import BarIntervalV2, CausalBarV2
 from atlas.v2.data.health import PublicSourceHealthV2, PublicSourceStateV2
 from atlas.v2.data.raw import RawObservationV2
 from atlas.v2.features.joins import JoinedBars
 from atlas.v2.features.pipeline import feature_snapshot
+from atlas.v2.instruments import UniverseContractV2
 from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.research.memory import ResearchMemoryV1
+from atlas.v2.research.production_facts import read_production_feature_facts
 from atlas.v2.runtime import production, production_intelligence
 from atlas.v2.runtime.ops_supervisor import OpsSupervisorV2
 
@@ -493,6 +496,44 @@ def test_warmup_shortfall_keeps_typed_missingness_without_a_number(tmp_path):
     assert "INSUFFICIENT_HISTORY_OR_MISSING_TIMEFRAME" in technical["missingness"]
     assert all(value["value"] is None for value in technical["values"]["features"].values())
     assert status == "BLOCKED"
+
+
+def test_verified_feature_fact_is_reproducible_from_persisted_sources_after_restart(tmp_path):
+    path = tmp_path / "feature-restart.sqlite"
+    with OpsRepository(path) as repository:
+        feature = _register_feature_source(repository, cutoff_ns=CUTOFF - _M15)
+        event, inputs, _case, candidate_set, *_ = _production_event(repository)
+        universe = inputs.universe
+        first_facts, first_reasons, first_refs, _first_proof = read_production_feature_facts(
+            repository,
+            candidate_set,
+            universe,
+            cutoff_ns=event.information_cutoff_ns,
+        )
+        assert not first_reasons
+        assert first_refs
+        assert first_facts[0].source_ref == feature.content_hash
+        candidate_set_ref = candidate_set.content_hash
+        universe_ref = universe.content_hash
+
+    with OpsRepository(path) as restarted:
+        candidate_entry = restarted.get_artifact(candidate_set_ref)
+        universe_entry = restarted.get_artifact(universe_ref)
+        assert candidate_entry is not None
+        assert universe_entry is not None
+        replayed_candidate_set = CandidateSetV2.from_dict(json_value(candidate_entry.metadata["candidate_set"]))
+        replayed_universe = UniverseContractV2.from_dict(json_value(universe_entry.metadata["universe"]))
+        replayed_facts, replayed_reasons, replayed_refs, proof = read_production_feature_facts(
+            restarted,
+            replayed_candidate_set,
+            replayed_universe,
+            cutoff_ns=event.information_cutoff_ns,
+        )
+
+    assert not replayed_reasons
+    assert proof is not None
+    assert tuple(item.to_dict() for item in replayed_facts) == tuple(item.to_dict() for item in first_facts)
+    assert replayed_refs == first_refs
 
 
 _A0_TYPES = (
