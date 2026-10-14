@@ -1,0 +1,36 @@
+..............s......................................................... [ 10%]
+........................................................................ [ 20%]
+R8 batch 4 still running; elapsed=33s
+R8 batch 4 still running; elapsed=48s
+R8 batch 4 still running; elapsed=63s
+R8 batch 4 still running; elapsed=78s
+R8 batch 4 still running; elapsed=93s
+R8 batch 4 still running; elapsed=108s
+R8 batch 4 still running; elapsed=123s
+........................................................................ [ 30%]
+........................................................................ [ 40%]
+........................................................................ [ 50%]
+........................................................................ [ 61%]
+........................................................................ [ 71%]
+........................................................................ [ 81%]
+........................................................................ [ 91%]
+..........................................................               [100%]
+=============================== warnings summary ===============================
+tests/v2/test_session041_compressed_metadata.py::test_actual_broad_workset_universe_hashes_membership_and_all_row_storage_reduction
+  tests/v2/test_session041_compressed_metadata.py:228: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_actual_broad_workset_universe_hashes_membership_and_all_row_storage_reduction(tmp_path, record_property):
+
+tests/v2/test_session041_mixed_broad_capacity.py::test_mixed_1024_contract_public_workload_under_bounded_stalls
+  tests/v2/test_session041_mixed_broad_capacity.py:84: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_mixed_1024_contract_public_workload_under_bounded_stalls(tmp_path, record_property):
+
+tests/v2/test_session044_close_driven_m15.py::test_close_profile_reuses_bulk_quotes_publishes_one_exact_final_m15_and_restores
+  tests/v2/test_session044_close_driven_m15.py:279: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_close_profile_reuses_bulk_quotes_publishes_one_exact_final_m15_and_restores(
+
+tests/v2/test_session044_close_driven_m15.py::test_timely_profile_origin_reaches_durable_candidate_set_and_restart_is_idempotent
+  tests/v2/test_session044_close_driven_m15.py:401: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_timely_profile_origin_reaches_durable_candidate_set_and_restart_is_idempotent(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+R8 batch 4 still running; elapsed=192s

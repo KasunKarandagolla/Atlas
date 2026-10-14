@@ -1,0 +1,27 @@
+........................................................................ [  9%]
+...................................................ss................... [ 19%]
+........................................................................ [ 29%]
+........................................................................ [ 38%]
+........................................................................ [ 48%]
+........................................................................ [ 58%]
+........................................................................ [ 68%]
+R8 batch 2 still running; elapsed=47s
+R8 batch 2 still running; elapsed=62s
+R8 batch 2 still running; elapsed=77s
+R8 batch 2 still running; elapsed=92s
+R8 batch 2 still running; elapsed=107s
+R8 batch 2 still running; elapsed=122s
+R8 batch 2 still running; elapsed=137s
+R8 batch 2 still running; elapsed=152s
+R8 batch 2 still running; elapsed=167s
+R8 batch 2 still running; elapsed=182s
+R8 batch 2 still running; elapsed=197s
+R8 batch 2 still running; elapsed=212s
+R8 batch 2 still running; elapsed=227s
+R8 batch 2 still running; elapsed=242s
+R8 batch 2 still running; elapsed=257s
+..............................................................s......... [ 77%]
+........................................s............................... [ 87%]
+R8 batch 2 still running; elapsed=287s
+........................................................................ [ 97%]
+....................                                                     [100%]

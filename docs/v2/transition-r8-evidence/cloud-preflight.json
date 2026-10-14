@@ -1,0 +1,47 @@
+{
+  "version": "ATLAS_RED_R8_CLOUD_PREFLIGHT_V1",
+  "observed_at_utc": "2026-10-14T01:57:51.811757Z",
+  "network": {
+    "mode": "restricted",
+    "policy_state": "unknown",
+    "demo_host_in_allowed_hosts": true,
+    "production_public_host_in_allowed_hosts": false,
+    "managed_proxy_used": true
+  },
+  "binance_demo": {
+    "requests": [
+      {
+        "host": "demo-fapi.binance.com",
+        "path": "/fapi/v1/time",
+        "method": "GET",
+        "authenticated": false,
+        "http_status": 451,
+        "valid_server_time": false,
+        "account_read_attempted": false,
+        "exchange_info_read_attempted": false,
+        "orders_submitted": false,
+        "started_at_utc": "2026-10-14T01:57:50.419105Z",
+        "observed_at_utc": "2026-10-14T01:57:51.811757Z"
+      }
+    ],
+    "additional_requests_after_451": 0
+  },
+  "production_market_data": {
+    "host": "fapi.binance.com",
+    "host_allowed": false,
+    "requests": 0,
+    "status": "BLOCKED BY ENVIRONMENT"
+  },
+  "gemma": {
+    "model_id_configured": "gemma-4-31b-it",
+    "api_key_process_presence": "present_value_not_recorded",
+    "cloud_connector_secret_state": "unknown",
+    "owner_free_tier_attestation": "present_in_request",
+    "no_billing_environment_flag": "unset",
+    "project_association_independently_verified": false,
+    "generation_requests": 0,
+    "status": "TEST GATE"
+  },
+  "orders_submitted": 0,
+  "sensitive_values_recorded": false
+}

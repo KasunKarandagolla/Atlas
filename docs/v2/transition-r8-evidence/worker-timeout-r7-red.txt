@@ -1,0 +1,5 @@
+R7 baseline reproduction
+Base commit: beb69d242dad9f5103ad1bb6d8804a650b11d744
+Test: tests/v2/test_worker_isolation.py::test_provider_retains_os_limits_and_timeout_cleanup
+Result: 1 test failed. LocalProcessProvider raised the expected WORKER_TIMEOUT, then the test found its injected sleeper marker still present in /proc.
+Sanitization: the run-specific marker, PID, absolute runtime path and raw process command line are omitted. No credential, exchange request or order was involved.

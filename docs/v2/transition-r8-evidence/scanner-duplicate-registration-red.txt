@@ -1,0 +1,5 @@
+Scanner retry idempotency reproduction
+Test: tests/scanner/test_scanner_runner.py::test_due_slot_is_durably_registered_before_provider_and_recovered_after_failure
+Pre-fix result: 1 test failed. Two registration calls for the same due slot and policy, with distinct registered_at_ns values, returned different registration references.
+Post-fix result: the ledger reuses the original immutable registration; the test passes and the final scanner suite is 46/46.
+Sanitization: content hashes and temporary paths are omitted.

@@ -1,0 +1,95 @@
+{
+  "version": "ATLAS_RED_R8_FULL_SUITE_SUMMARY_V1",
+  "source_base_sha": "beb69d242dad9f5103ad1bb6d8804a650b11d744",
+  "source_commit_sha": "cd9458be61f7f52fbe739dd9f7ae4119e779ef30",
+  "status": "TESTED",
+  "collection": {
+    "tests": 2920,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 8,
+    "executed": 2912
+  },
+  "partitioned_runs": [
+    {
+      "batch": 1,
+      "tests": 733,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3,
+      "wall_seconds": 54.961,
+      "child_user_seconds": 57.768,
+      "child_system_seconds": 5.26,
+      "peak_child_rss_kib": 766880,
+      "junit_sha256": "b32648273711d2d3c7b1841f127d95e2aacda6c8785b9a114f8a903806217a5d",
+      "console_evidence": "final-suite-batch-1-console.txt",
+      "file_list_evidence": "final-suite-batch-1-files.txt"
+    },
+    {
+      "batch": 2,
+      "tests": 740,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 4,
+      "wall_seconds": 289.825,
+      "child_user_seconds": 273.142,
+      "child_system_seconds": 10.693,
+      "peak_child_rss_kib": 544764,
+      "junit_sha256": "a53c04320979a5ab7f054bf5f54ea3f021dbab80ac2c0c6b32acd9a0cefdfd70",
+      "console_evidence": "final-suite-batch-2-console.txt",
+      "file_list_evidence": "final-suite-batch-2-files.txt"
+    },
+    {
+      "batch": 3,
+      "tests": 741,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wall_seconds": 158.072,
+      "child_user_seconds": 97.176,
+      "child_system_seconds": 8.325,
+      "peak_child_rss_kib": 299104,
+      "junit_sha256": "9a6f0a85c2834f7e6acf1b6bbc900311dd1e3c3d746986e425f716b02478800e",
+      "console_evidence": "final-suite-batch-3-console.txt",
+      "file_list_evidence": "final-suite-batch-3-files.txt"
+    },
+    {
+      "batch": 4,
+      "tests": 706,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "wall_seconds": 191.502,
+      "child_user_seconds": 127.074,
+      "child_system_seconds": 9.763,
+      "peak_child_rss_kib": 1024304,
+      "junit_sha256": "d09532399aa687dc29badd0cb7a9e2f155889023e1c32b659762c440b2e6da81",
+      "console_evidence": "final-suite-batch-4-console.txt",
+      "file_list_evidence": "final-suite-batch-4-files.txt"
+    }
+  ],
+  "partition_wall_seconds_sum": 694.36,
+  "summed_child_user_seconds": 555.16,
+  "summed_child_system_seconds": 34.041,
+  "maximum_peak_child_rss_kib": 1024304,
+  "focused_tests": {
+    "scanner": {
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "worker_isolation": {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "warnings": {
+    "count": 4,
+    "source": "record_property with junit_family xunit2 in Session041 and Session044 tests"
+  },
+  "temporary_filesystem": "TMPDIR=/workspace/work; tests remained outside the source tree and avoided the constrained /tmp reserve",
+  "test_environment": "Gemini and Binance credential/config variables were removed from pytest subprocesses."
+}

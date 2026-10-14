@@ -1,0 +1,30 @@
+{
+  "version": "ATLAS_RED_R8_WORKER_TIMEOUT_REGRESSION_V1",
+  "test": "tests/v2/test_worker_isolation.py::test_provider_retains_os_limits_and_timeout_cleanup",
+  "baseline": {
+    "sha": "beb69d242dad9f5103ad1bb6d8804a650b11d744",
+    "status": "TESTED",
+    "result": "The R7 test failed because an injected worker subprocess remained visible after timeout."
+  },
+  "repair": {
+    "files": [
+      "src/atlas/v2/models/local_process.py",
+      "src/atlas/v2/models/sandbox.py"
+    ],
+    "change": "Direct Bubblewrap calls retain --new-session by default; LocalProcessProvider opts out of a nested session because its outer Popen owns the worker process group."
+  },
+  "regression": {
+    "status": "TESTED",
+    "worker_isolation_tests": {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0
+    },
+    "final_full_suite_batch_4": {
+      "tests": 706,
+      "failures": 0,
+      "errors": 0
+    }
+  },
+  "orders_or_external_api_requests": 0
+}

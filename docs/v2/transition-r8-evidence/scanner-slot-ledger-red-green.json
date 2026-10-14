@@ -1,0 +1,31 @@
+{
+  "version": "ATLAS_RED_R8_SCANNER_SLOT_REGRESSION_V1",
+  "baseline": {
+    "sha": "beb69d242dad9f5103ad1bb6d8804a650b11d744",
+    "status": "TESTED",
+    "result": "The first provider callback observed no durable scanner_slot_registration record."
+  },
+  "later_timestamp_reproducer": {
+    "status_before_repair": "TESTED",
+    "result_before_repair": "Retries at different registered_at_ns values returned different references."
+  },
+  "repair": {
+    "file": "src/atlas/scanner/slot_ledger.py",
+    "behavior": "Reuses the immutable first registration after validating scheduler, due/deadline, policy and scope."
+  },
+  "green": {
+    "status": "TESTED",
+    "scanner_tests": {
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "final_full_suite": {
+      "tests": 2920,
+      "failures": 0,
+      "errors": 0
+    }
+  },
+  "scope_limit": "The runner records the current due slot before providers; it does not pre-register a future horizon or synthesize offline missed slots."
+}

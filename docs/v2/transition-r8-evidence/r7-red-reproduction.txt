@@ -1,0 +1,4 @@
+R7 baseline commit: beb69d242dad9f5103ad1bb6d8804a650b11d744
+Behavioral reproduction: the first universe-provider callback asserted that scanner_slot_registration already existed. It failed with:
+  baseline defect reproduced: missing durable slot registration before provider call
+The baseline runner had called the provider before any slot registration was persisted.

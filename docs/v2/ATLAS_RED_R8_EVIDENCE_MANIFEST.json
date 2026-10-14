@@ -1,0 +1,387 @@
+{
+  "version": "ATLAS_RED_R8_EVIDENCE_MANIFEST_V1",
+  "date": "2026-10-14",
+  "repository": "KasunKarandagolla/Atlas",
+  "branch": "fix/red-r8-complete-integration-and-recovery-2026-10-14",
+  "starting_point": {
+    "branch": "fix/red-r7-api-adapter-corrections-2026-10-14",
+    "sha": "beb69d242dad9f5103ad1bb6d8804a650b11d744",
+    "remote_tip_verified": true,
+    "required_base_is_ancestor": true,
+    "original_checkout_untouched": true
+  },
+  "implementation": {
+    "commit_sha": "cd9458be61f7f52fbe739dd9f7ae4119e779ef30",
+    "remote_ref": "refs/heads/fix/red-r8-complete-integration-and-recovery-2026-10-14",
+    "pushed_and_verified": true,
+    "remote_tip_at_verification": "cd9458be61f7f52fbe739dd9f7ae4119e779ef30",
+    "files": [
+      {
+        "path": "src/atlas/scanner/runner.py",
+        "sha256": "1c57401728576d53a66bd5b8981b426d767f99c7c323e1bd5da7a868aa5f5edb",
+        "bytes": 11876
+      },
+      {
+        "path": "src/atlas/scanner/slot_ledger.py",
+        "sha256": "ec3b9b6360bfb663b364665ca18f54d691f66891150e91c4e80fb5060c69fdc6",
+        "bytes": 7379
+      },
+      {
+        "path": "src/atlas/v2/models/local_process.py",
+        "sha256": "8340550fea9d79c74d644e7161420dcfa17013aba8be83a3eba674e178f2d7f5",
+        "bytes": 9466
+      },
+      {
+        "path": "src/atlas/v2/models/sandbox.py",
+        "sha256": "276f251deba130845e142ac2849a3c7c5f50252d85a6f5769a355753af5ad8dd",
+        "bytes": 6543
+      },
+      {
+        "path": "tests/scanner/test_scanner_runner.py",
+        "sha256": "b432991399d14d9e8fe27a10cd5b4a7819aaca4ea1f6cb8bf7e07fdd99e0e2a2",
+        "bytes": 12184
+      },
+      {
+        "path": "tests/v2/test_worker_isolation.py",
+        "sha256": "2e046d5d2aa2e0b7db57b4f6de3cb4d004c3d4038f0d840c6db68a35b17bea94",
+        "bytes": 9750
+      }
+    ],
+    "frozen_authority_changed": false,
+    "dependencies_added": false
+  },
+  "runtime_model": {
+    "requested_label": "GPT-6 Luna",
+    "owner_reply": "Proceed under this runtime",
+    "exact_runtime_identity": "UNVERIFIED",
+    "subagents_used": false
+  },
+  "authority_preflight": {
+    "frozen_authority_sha256": {
+      "v1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "v2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "agent": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "s47_amendment": "PROPOSED — NOT ACCEPTED",
+    "effective_discretionary_policy": "NONE",
+    "owner_source_zip_available": false,
+    "00_start_here_and_requested_runbook_sections_available": false
+  },
+  "cloud_results": {
+    "managed_policy_mode": "restricted",
+    "managed_policy_state": "unknown",
+    "binance_demo_host_allowlisted": true,
+    "production_public_host_allowlisted": false,
+    "binance_demo_time_gets": 1,
+    "binance_demo_time_http_status": 451,
+    "binance_signed_account_gets": 0,
+    "binance_exchange_info_gets": 0,
+    "production_public_market_requests": 0,
+    "gemini_metadata_requests": 0,
+    "gemini_generation_requests": 0,
+    "orders_submitted": 0,
+    "evidence": "docs/v2/transition-r8-evidence/cloud-preflight.json"
+  },
+  "gemma": {
+    "status": "TEST GATE",
+    "model_configured": "gemma-4-31b-it",
+    "owner_free_tier_attestation": true,
+    "cloud_project_association_verified": false,
+    "explicit_no_billing_permit_set": false,
+    "actual_responses": 0
+  },
+  "workflow_qualification": {
+    "single_21_stage_production_composition": "TEST GATE",
+    "scanner_future_schedule_denominator": "TEST GATE",
+    "genuine_production_complete_brief": "NOT ESTIMABLE",
+    "genuine_after_cost_economics": "NOT ESTIMABLE",
+    "production_public_market_observations": "BLOCKED BY ENVIRONMENT",
+    "binance_demo_native_protection_lifecycle": "TEST GATE",
+    "agent_authority": "zero; S47 amendment remains unaccepted",
+    "synthetic_evidence_published_as_production": false
+  },
+  "test_results": {
+    "full_suite": {
+      "version": "ATLAS_RED_R8_FULL_SUITE_SUMMARY_V1",
+      "source_base_sha": "beb69d242dad9f5103ad1bb6d8804a650b11d744",
+      "source_commit_sha": "cd9458be61f7f52fbe739dd9f7ae4119e779ef30",
+      "status": "TESTED",
+      "collection": {
+        "tests": 2920,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 8,
+        "executed": 2912
+      },
+      "partitioned_runs": [
+        {
+          "batch": 1,
+          "tests": 733,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 3,
+          "wall_seconds": 54.961,
+          "child_user_seconds": 57.768,
+          "child_system_seconds": 5.26,
+          "peak_child_rss_kib": 766880,
+          "junit_sha256": "b32648273711d2d3c7b1841f127d95e2aacda6c8785b9a114f8a903806217a5d",
+          "console_evidence": "final-suite-batch-1-console.txt",
+          "file_list_evidence": "final-suite-batch-1-files.txt"
+        },
+        {
+          "batch": 2,
+          "tests": 740,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 4,
+          "wall_seconds": 289.825,
+          "child_user_seconds": 273.142,
+          "child_system_seconds": 10.693,
+          "peak_child_rss_kib": 544764,
+          "junit_sha256": "a53c04320979a5ab7f054bf5f54ea3f021dbab80ac2c0c6b32acd9a0cefdfd70",
+          "console_evidence": "final-suite-batch-2-console.txt",
+          "file_list_evidence": "final-suite-batch-2-files.txt"
+        },
+        {
+          "batch": 3,
+          "tests": 741,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "wall_seconds": 158.072,
+          "child_user_seconds": 97.176,
+          "child_system_seconds": 8.325,
+          "peak_child_rss_kib": 299104,
+          "junit_sha256": "9a6f0a85c2834f7e6acf1b6bbc900311dd1e3c3d746986e425f716b02478800e",
+          "console_evidence": "final-suite-batch-3-console.txt",
+          "file_list_evidence": "final-suite-batch-3-files.txt"
+        },
+        {
+          "batch": 4,
+          "tests": 706,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 1,
+          "wall_seconds": 191.502,
+          "child_user_seconds": 127.074,
+          "child_system_seconds": 9.763,
+          "peak_child_rss_kib": 1024304,
+          "junit_sha256": "d09532399aa687dc29badd0cb7a9e2f155889023e1c32b659762c440b2e6da81",
+          "console_evidence": "final-suite-batch-4-console.txt",
+          "file_list_evidence": "final-suite-batch-4-files.txt"
+        }
+      ],
+      "partition_wall_seconds_sum": 694.36,
+      "summed_child_user_seconds": 555.16,
+      "summed_child_system_seconds": 34.041,
+      "maximum_peak_child_rss_kib": 1024304,
+      "focused_tests": {
+        "scanner": {
+          "tests": 46,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "worker_isolation": {
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "warnings": {
+        "count": 4,
+        "source": "record_property with junit_family xunit2 in Session041 and Session044 tests"
+      },
+      "temporary_filesystem": "TMPDIR=/workspace/work; tests remained outside the source tree and avoided the constrained /tmp reserve",
+      "test_environment": "Gemini and Binance credential/config variables were removed from pytest subprocesses."
+    },
+    "static_checks": {
+      "version": "ATLAS_RED_R8_STATIC_CHECKS_V1",
+      "source_commit_sha": "cd9458be61f7f52fbe739dd9f7ae4119e779ef30",
+      "ruff": {
+        "status": "TESTED",
+        "command": ".venv/bin/ruff check src scripts tests",
+        "result": "All checks passed"
+      },
+      "compileall": {
+        "status": "TESTED",
+        "command": ".venv/bin/python -m compileall -q src scripts tests"
+      },
+      "locked_dependencies": {
+        "status": "TESTED",
+        "commands": [
+          "uv lock --check",
+          "uv pip check --python .venv/bin/python"
+        ],
+        "result": "39 packages resolved; 34 installed packages compatible; dependency files unchanged"
+      },
+      "mypy": {
+        "status": "TEST GATE",
+        "command": ".venv/bin/mypy src",
+        "r7_baseline_errors": 53,
+        "r8_errors": 53,
+        "normalized_new": 0,
+        "normalized_fixed": 0,
+        "diagnostics_file_sha256": "4be1f0f223be7d3e6d5ce8b230630825f36f6ac542f34524188dba1444448e6d",
+        "r7_baseline_diagnostic_files": 17,
+        "r8_diagnostic_files": 17
+      },
+      "git_diff_check": {
+        "status": "TESTED",
+        "result": "No whitespace errors"
+      },
+      "frozen_authority": {
+        "status": "TESTED",
+        "changed": false,
+        "sha256": {
+          "v1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+          "v2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+          "agent": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+        }
+      },
+      "third_party_dependencies_added": false
+    },
+    "commands": [
+      "TMPDIR=/workspace/work .venv/bin/python work/run_pytest_with_heartbeat.py 1",
+      "TMPDIR=/workspace/work .venv/bin/python work/run_pytest_with_heartbeat.py 2",
+      "TMPDIR=/workspace/work .venv/bin/python work/run_pytest_with_heartbeat.py 3",
+      "TMPDIR=/workspace/work .venv/bin/python work/run_pytest_with_heartbeat.py 4",
+      ".venv/bin/ruff check src scripts tests",
+      ".venv/bin/python -m compileall -q src scripts tests",
+      "uv lock --check",
+      "uv pip check --python .venv/bin/python",
+      ".venv/bin/mypy src"
+    ]
+  },
+  "evidence_inventory": {
+    "reports": [
+      {
+        "path": "docs/v2/ATLAS_RED_R8_HANDOFF.md",
+        "sha256": "9032d7d197a74b52e283605e70fa83a9ee46bb1c7cc63768931bb1f77acfbf18",
+        "bytes": 4874
+      },
+      {
+        "path": "docs/v2/ATLAS_RED_R8_END_TO_END_CHECKLIST.md",
+        "sha256": "991cee92d12cf0e03fdb60cd8831759e7a694a39ea3fd4b6690d606b6a28623a",
+        "bytes": 6716
+      },
+      {
+        "path": "docs/v2/ATLAS_RED_R8_GEMMA_RESULTS.md",
+        "sha256": "21f1994675012b3e4ac08799a8782aae73ac2228c331ca33c90a08ef28cb5c11",
+        "bytes": 1838
+      },
+      {
+        "path": "docs/v2/ATLAS_RED_R8_BINANCE_RESULTS.md",
+        "sha256": "40c995fc5730085643a556eb2c1c84dae67a2ca2bfb4413e7edc6f783a86b710",
+        "bytes": 2002
+      },
+      {
+        "path": "docs/v2/ATLAS_RED_R8_DEFECTS_AND_REPAIRS.md",
+        "sha256": "9723293e057e65b1d6efefd698e9cc90c868b906a77b5a3acd6a5b408cc88a65",
+        "bytes": 3134
+      },
+      {
+        "path": "docs/v2/ATLAS_RED_R8_TESTS_AND_PERFORMANCE.md",
+        "sha256": "465e07fd6888843634e102b341c45614d07f455f94239e69fec7ff46dd719d25",
+        "bytes": 2929
+      }
+    ],
+    "sanitized_evidence": [
+      {
+        "path": "docs/v2/transition-r8-evidence/cloud-preflight.json",
+        "sha256": "b3251846db42648a2e6bcc5b2c44217b5b6c22ed8a69ab78831c5f459aa9311e",
+        "bytes": 1443
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/final-suite-batch-1-console.txt",
+        "sha256": "9b35aa91be1107d4b84bf9999ba04c566979b10dc8f0b71d3ca1d8e3f51fcc04",
+        "bytes": 956
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/final-suite-batch-1-files.txt",
+        "sha256": "59856eb6f10f105788352b0b554b3a93547405291e654de35b56206a489952d9",
+        "bytes": 4137
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/final-suite-batch-2-console.txt",
+        "sha256": "37b0cb679fd5d00d4b802dda229968b58c0c8ed7f4c86b90d43cc977e5d9de45",
+        "bytes": 1500
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/final-suite-batch-2-files.txt",
+        "sha256": "0a0065f393af7da56f580895f203a084834f4b605c82b736cf8b2ed822e2ccd1",
+        "bytes": 2712
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/final-suite-batch-3-console.txt",
+        "sha256": "1d1f75a1ac9cd9223498424563b4f09d89ae89bcd2803f73556b24da50c18439",
+        "bytes": 1110
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/final-suite-batch-3-files.txt",
+        "sha256": "9e6c7835391220257bd1a49ab65fb1124b9b4f438b091db92999ce34f7b3f19f",
+        "bytes": 3132
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/final-suite-batch-4-console.txt",
+        "sha256": "6b6e185846752c2cfa3544f0dfacc6d21f000ea4e9ca9dfdffe4b241184362b4",
+        "bytes": 2781
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/final-suite-batch-4-files.txt",
+        "sha256": "aaa70da97df6f0de5d20dc07dea9cb51404f48060dbc2dbf3bc159f08b558d03",
+        "bytes": 2816
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/final-test-suite-summary.json",
+        "sha256": "b6a38ca7e65f8bd6dcdfb4a3ef122ecb1702bd5656ada6258cd2a3f5d4f7e9da",
+        "bytes": 2974
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/r7-red-reproduction.txt",
+        "sha256": "26dd87fe5b28594b9ff85f6304fec5a76d9faf831e7e725f13183ee093114da1",
+        "bytes": 369
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/scanner-duplicate-registration-red.txt",
+        "sha256": "81ffd0c3d599876b3a7e83fe5d048965e29cb39df7dc3157444b14e36417ef82",
+        "bytes": 522
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/scanner-slot-ledger-red-green.json",
+        "sha256": "967e0ca877f8efe2a72b4e14810925bf9ea30388cd4ee5ba53d6d26e6e947c0c",
+        "bytes": 1023
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/static-checks.json",
+        "sha256": "26b0a0b3d30a2e2ad7368a455960026fe7aaa2f63185c0c26da08f410d61d006",
+        "bytes": 1439
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/worker-timeout-r7-red.txt",
+        "sha256": "0c3fccb3dc1455565416a45073febbb8d71801f8c8a6c6a357f4f3b147faf3dd",
+        "bytes": 487
+      },
+      {
+        "path": "docs/v2/transition-r8-evidence/worker-timeout-red-green.json",
+        "sha256": "65bed7d88c3e153de4f5ec94d80e284f9f72cb31d7dbf88752fb827efb7c1022",
+        "bytes": 952
+      }
+    ],
+    "root_logs": [
+      {
+        "path": "log.md",
+        "sha256": "ae90778e240af90578ae9689c2217b1c3c6b60225ed6e6116766aa3a4c3f95a7",
+        "bytes": 91270
+      },
+      {
+        "path": "translog.md",
+        "sha256": "7e7de3194f45a7eb6732527dd1f1d3aca9f621bf3f8d4cb2bae7692535e4a84d",
+        "bytes": 106587
+      }
+    ],
+    "manifest_self_hash_excluded": true,
+    "manifest_path": "docs/v2/ATLAS_RED_R8_EVIDENCE_MANIFEST.json"
+  }
+}

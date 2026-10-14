@@ -1,0 +1,46 @@
+{
+  "version": "ATLAS_RED_R8_STATIC_CHECKS_V1",
+  "source_commit_sha": "cd9458be61f7f52fbe739dd9f7ae4119e779ef30",
+  "ruff": {
+    "status": "TESTED",
+    "command": ".venv/bin/ruff check src scripts tests",
+    "result": "All checks passed"
+  },
+  "compileall": {
+    "status": "TESTED",
+    "command": ".venv/bin/python -m compileall -q src scripts tests"
+  },
+  "locked_dependencies": {
+    "status": "TESTED",
+    "commands": [
+      "uv lock --check",
+      "uv pip check --python .venv/bin/python"
+    ],
+    "result": "39 packages resolved; 34 installed packages compatible; dependency files unchanged"
+  },
+  "mypy": {
+    "status": "TEST GATE",
+    "command": ".venv/bin/mypy src",
+    "r7_baseline_errors": 53,
+    "r8_errors": 53,
+    "normalized_new": 0,
+    "normalized_fixed": 0,
+    "diagnostics_file_sha256": "4be1f0f223be7d3e6d5ce8b230630825f36f6ac542f34524188dba1444448e6d",
+    "r7_baseline_diagnostic_files": 17,
+    "r8_diagnostic_files": 17
+  },
+  "git_diff_check": {
+    "status": "TESTED",
+    "result": "No whitespace errors"
+  },
+  "frozen_authority": {
+    "status": "TESTED",
+    "changed": false,
+    "sha256": {
+      "v1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "v2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "agent": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    }
+  },
+  "third_party_dependencies_added": false
+}
