@@ -6,6 +6,7 @@ import pytest
 from support.scanner_fixture import HOUR_NS, SLOT_NS, scanner_fixture
 
 from atlas.scanner import DeadlineStatus, RecordingAlertTransport, ScannerRunner, WarmupState
+from atlas.scanner.slot_ledger import ScannerSlotLedger
 from atlas.science.research_archive import ResearchArtifactArchive
 
 
@@ -30,10 +31,10 @@ def _runner(fixture, calls: dict[str, int], **kwargs) -> ScannerRunner:
                          warmup_evidence_provider=warmup_provider, evaluator=fixture.evaluator, **kwargs)
 
 
-def test_runner_processes_one_due_slot_once_through_existing_run_scan_slot():
+def test_runner_processes_one_due_slot_once_through_existing_run_scan_slot(tmp_path):
     fixture = scanner_fixture()
     calls = {"universe": 0, "cheap": 0, "warmup": 0}
-    runner = _runner(fixture, calls)
+    runner = _runner(fixture, calls, archive=ResearchArtifactArchive(tmp_path / "research"))
     now = fixture.slots[0] + HOUR_NS
     first = runner.run_due_slot(now_ns=now)
     assert first.status == "COMPLETED"
@@ -46,12 +47,67 @@ def test_runner_processes_one_due_slot_once_through_existing_run_scan_slot():
     assert calls == {"universe": 1, "cheap": 1, "warmup": 1}
 
 
-def test_runner_delegates_to_existing_run_scan_slot(monkeypatch):
+def test_due_slot_is_durably_registered_before_provider_and_recovered_after_failure(tmp_path):
+    fixture = scanner_fixture()
+    slot = fixture.slots[0]
+    now = slot + HOUR_NS
+    archive = ResearchArtifactArchive(tmp_path / "research")
+    calls = {"universe": 0, "cheap": 0, "warmup": 0}
+    runner = _runner(fixture, calls, archive=archive)
+
+    def unavailable_universe(slot_at_ns: int):
+        assert slot_at_ns == slot
+        # This assertion is the defect reproducer: durable expected-slot
+        # registration must already exist before the first provider runs.
+        assert len(ScannerSlotLedger(archive).registrations()) == 1
+        assert ScannerSlotLedger(archive).latest_progress(slot)["status"] == "STARTED"
+        raise OSError("fixture source outage")
+
+    runner.universe_provider = unavailable_universe
+    with pytest.raises(OSError, match="fixture source outage"):
+        runner.run_due_slot(now_ns=now)
+
+    ledger = ScannerSlotLedger(archive)
+    registrations = ledger.registrations()
+    assert len(registrations) == 1
+    assert registrations[0]["scan_slot_id"] == f"scan-{slot}"
+    assert registrations[0]["scanner_policy_hash"] == fixture.policy.hash()
+    assert registrations[0]["deadline_at_ns"] == slot + SLOT_NS
+    assert ledger.latest_progress(slot)["status"] == "SOURCE_UNAVAILABLE"
+    assert ledger.latest_progress(slot)["reason_code"] == "UNIVERSE_SOURCE_UNAVAILABLE"
+    registration_ref = ledger.register(slot_at_ns=slot, policy=fixture.policy, registered_at_ns=now + 1)
+    assert ledger.register(slot_at_ns=slot, policy=fixture.policy, registered_at_ns=now + 2) == registration_ref
+    assert len(ledger.registrations()) == 1
+
+    changed_policy = replace(fixture.policy, policy_version="SCANNER_CHANGED_POLICY_V1")
+    changed_runner = ScannerRunner(policy=changed_policy, universe_provider=runner.universe_provider,
+        cheap_input_provider=runner.cheap_input_provider,
+        warmup_evidence_provider=runner.warmup_evidence_provider,
+        archive=archive, evaluator=fixture.evaluator)
+    with pytest.raises(ValueError, match="registration conflicts"):
+        changed_runner.run_due_slot(now_ns=now)
+
+    recovered = _runner(fixture, calls, archive=archive)
+    recovered_receipt = recovered.run_due_slot(now_ns=now + 2)
+    assert recovered_receipt.status == "COMPLETED"
+    assert recovered_receipt.registration_ref == registration_ref
+    assert len(ledger.registrations()) == 1
+    assert ledger.latest_progress(slot)["status"] == "COMPLETED"
+
+    after_restart_calls = dict(calls)
+    restarted = _runner(fixture, calls, archive=archive)
+    restarted.universe_provider = lambda _slot: pytest.fail("completed slot must not be scanned twice")
+    duplicate = restarted.run_due_slot(now_ns=now)
+    assert duplicate.status == "ALREADY_COMPLETED"
+    assert calls == after_restart_calls
+
+
+def test_runner_delegates_to_existing_run_scan_slot(monkeypatch, tmp_path):
     import atlas.scanner.runner as runner_module
 
     fixture = scanner_fixture()
     calls = {"universe": 0, "cheap": 0, "warmup": 0}
-    runner = _runner(fixture, calls)
+    runner = _runner(fixture, calls, archive=ResearchArtifactArchive(tmp_path / "research"))
     original = runner_module.run_scan_slot
     seen: dict[str, object] = {}
 
@@ -106,10 +162,10 @@ def _post_slot_warmup(fixture, slot: int, finished_offset_ns: int):
                  for item in fixture.warmup_evidence[0])
 
 
-def test_post_slot_warmup_within_deadline_is_met():
+def test_post_slot_warmup_within_deadline_is_met(tmp_path):
     fixture = scanner_fixture()
     calls = {"universe": 0, "cheap": 0, "warmup": 0}
-    runner = _runner(fixture, calls)
+    runner = _runner(fixture, calls, archive=ResearchArtifactArchive(tmp_path / "research"))
     slot = fixture.slots[0]
     runner.warmup_evidence_provider = lambda slot_at_ns: _post_slot_warmup(fixture, slot, 20_000_000_000)
     receipt = runner.run_due_slot(now_ns=slot + 60_000_000_000)
@@ -120,10 +176,10 @@ def test_post_slot_warmup_within_deadline_is_met():
     assert btc.model_deadline_status is DeadlineStatus.MET
 
 
-def test_post_slot_warmup_after_deadline_is_visible_as_missed():
+def test_post_slot_warmup_after_deadline_is_visible_as_missed(tmp_path):
     fixture = scanner_fixture()
     calls = {"universe": 0, "cheap": 0, "warmup": 0}
-    runner = _runner(fixture, calls)
+    runner = _runner(fixture, calls, archive=ResearchArtifactArchive(tmp_path / "research"))
     slot = fixture.slots[0]
     runner.warmup_evidence_provider = lambda slot_at_ns: _post_slot_warmup(fixture, slot, 40_000_000_000)
     receipt = runner.run_due_slot(now_ns=slot + 60_000_000_000)
@@ -134,10 +190,10 @@ def test_post_slot_warmup_after_deadline_is_visible_as_missed():
     assert btc.model_deadline_status is DeadlineStatus.MISSED
 
 
-def test_missed_slot_diagnostics_never_reconstruct_with_later_provider_data():
+def test_missed_slot_diagnostics_never_reconstruct_with_later_provider_data(tmp_path):
     fixture = scanner_fixture()
     calls = {"universe": 0, "cheap": 0, "warmup": 0}
-    runner = _runner(fixture, calls)
+    runner = _runner(fixture, calls, archive=ResearchArtifactArchive(tmp_path / "research"))
     slot = fixture.slots[0]
     runner.run_slot(slot, mode="LIVE", now_ns=slot + HOUR_NS)
     assert runner.missed_slots(slot, now_ns=slot + 3 * SLOT_NS + HOUR_NS) == (slot + SLOT_NS,
@@ -149,16 +205,27 @@ def test_missed_slot_diagnostics_never_reconstruct_with_later_provider_data():
         runner.run_catch_up(slot + SLOT_NS)
 
 
-def test_runner_has_no_approval_reservation_or_execution_surface():
+def test_runner_has_no_approval_reservation_or_execution_surface(tmp_path):
     fixture = scanner_fixture()
     calls = {"universe": 0, "cheap": 0, "warmup": 0}
-    runner = _runner(fixture, calls)
+    runner = _runner(fixture, calls, archive=ResearchArtifactArchive(tmp_path / "research"))
     for forbidden in ("approve", "reserve", "submit_order", "place_order", "cancel", "flatten"):
         assert not hasattr(runner, forbidden)
     receipt = runner.run_due_slot(now_ns=fixture.slots[0] + HOUR_NS)
     assert receipt.result is not None
     assert all(row.approval_requested_at_ns is None and row.entry_attempted is None
                for row in receipt.result.calendar_rows)
+
+
+def test_live_slot_fails_closed_without_archive_before_calling_providers():
+    fixture = scanner_fixture()
+    calls = {"universe": 0, "cheap": 0, "warmup": 0}
+    runner = _runner(fixture, calls)
+
+    with pytest.raises(ValueError, match="requires an archive for durable slot registration"):
+        runner.run_due_slot(now_ns=fixture.slots[0] + HOUR_NS)
+
+    assert calls == {"universe": 0, "cheap": 0, "warmup": 0}
 
 
 def test_catch_up_is_diagnostic_only_and_does_not_touch_authoritative_state(tmp_path):

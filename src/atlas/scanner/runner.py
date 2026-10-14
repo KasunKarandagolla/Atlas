@@ -17,7 +17,9 @@ from .models import (
     ScannerPolicy,
     UniverseSnapshot,
     WarmupEvidence,
+    content_hash,
 )
+from .slot_ledger import ScannerSlotLedger
 
 
 class UniverseProvider(Protocol):
@@ -46,6 +48,7 @@ class RunnerReceipt:
     status: str
     result: ScanSlotResult | None = None
     reasons: tuple[str, ...] = ()
+    registration_ref: str | None = None
 
 
 def _assert_ordered(*, instrument: str, first: int | None, second: int | None, field: str) -> None:
@@ -95,6 +98,7 @@ class ScannerRunner:
         self.warmup_evidence_provider = warmup_evidence_provider
         self.archive = archive
         self.calendar = calendar or ScannerCalendar(archive)
+        self.slot_ledger = ScannerSlotLedger(archive) if archive is not None else None
         self.evaluator = evaluator
         self.alert_transport = alert_transport
         self.clock = clock or (lambda: 0)
@@ -110,23 +114,93 @@ class ScannerRunner:
         now = self._now(now_ns)
         if mode == "LIVE" and slot_at_ns != due_slot(now):
             raise ValueError("LIVE runner may only process the latest due slot; use CATCH_UP diagnostics")
-        if mode == "LIVE" and self.calendar.slot_rows(slot_at_ns):
+        if mode == "LIVE" and (self.calendar.slot_rows(slot_at_ns)
+                                or (self.slot_ledger is not None and self.slot_ledger.has_completed(slot_at_ns))):
             return RunnerReceipt(slot_at_ns, mode, "ALREADY_COMPLETED", None, ("SLOT_ALREADY_PERSISTED",))
-        universe = self.universe_provider(slot_at_ns)
-        cheap_inputs = tuple(self.cheap_input_provider(slot_at_ns))
-        warmup_evidence = tuple(self.warmup_evidence_provider(slot_at_ns))
-        _assert_causal_inputs(slot_at_ns=slot_at_ns, now_ns=now, universe=universe, cheap_inputs=cheap_inputs,
-                              warmup_evidence=warmup_evidence)
         diagnostic = mode == "CATCH_UP"
+        if not diagnostic and self.slot_ledger is None:
+            raise ValueError("LIVE scanner requires an archive for durable slot registration")
+        registration_ref = None
+        attempt = 1
+        if not diagnostic and self.slot_ledger is not None:
+            registration_ref = self.slot_ledger.register(slot_at_ns=slot_at_ns, policy=self.policy,
+                                                         registered_at_ns=now)
+            prior_progress = self.slot_ledger.latest_progress(slot_at_ns)
+            if prior_progress is not None:
+                attempt = int(prior_progress["attempt"]) + 1
+            assert registration_ref is not None
+            self.slot_ledger.record_progress(registration_ref=registration_ref, slot_at_ns=slot_at_ns,
+                attempt=attempt, status="STARTED", observed_at_ns=now)
+
+        failure_status = "SOURCE_UNAVAILABLE"
+        failure_reason = "UNIVERSE_SOURCE_UNAVAILABLE"
+        try:
+            # Registration and STARTED are durable before any provider can
+            # begin work. A crash or source failure therefore leaves an
+            # explicit expected slot in the archive.
+            universe = self.universe_provider(slot_at_ns)
+            failure_status = "FAILED"
+            failure_reason = "UNIVERSE_CHRONOLOGY_INVALID"
+            _assert_causal_inputs(slot_at_ns=slot_at_ns, now_ns=now, universe=universe, cheap_inputs=(),
+                                  warmup_evidence=())
+            if not diagnostic and self.slot_ledger is not None:
+                assert registration_ref is not None
+                self.slot_ledger.record_progress(registration_ref=registration_ref, slot_at_ns=slot_at_ns,
+                    attempt=attempt, status="UNIVERSE_AVAILABLE", observed_at_ns=max(now, universe.available_at_ns),
+                    universe_ref=universe.hash(), eligible_instruments=tuple(sorted(
+                        entry.instrument for entry in universe.eligible_entries())))
+            failure_status = "SOURCE_UNAVAILABLE"
+            failure_reason = "CHEAP_INPUT_SOURCE_UNAVAILABLE"
+            cheap_inputs = tuple(self.cheap_input_provider(slot_at_ns))
+            failure_reason = "WARMUP_SOURCE_UNAVAILABLE"
+            warmup_evidence = tuple(self.warmup_evidence_provider(slot_at_ns))
+            failure_status = "FAILED"
+            failure_reason = "INPUT_CHRONOLOGY_INVALID"
+            _assert_causal_inputs(slot_at_ns=slot_at_ns, now_ns=now, universe=universe, cheap_inputs=cheap_inputs,
+                                  warmup_evidence=warmup_evidence)
+        except Exception:
+            if not diagnostic and self.slot_ledger is not None:
+                try:
+                    assert registration_ref is not None
+                    self.slot_ledger.record_progress(registration_ref=registration_ref, slot_at_ns=slot_at_ns,
+                        attempt=attempt, status=failure_status, observed_at_ns=now,
+                        reason_code=failure_reason)
+                except Exception:
+                    # A durable STARTED record still preserves the unfinished
+                    # expected slot if recording the failure itself is blocked.
+                    pass
+            raise
         target_calendar = ScannerCalendar() if diagnostic else self.calendar
         target_archive = None if diagnostic else self.archive
         target_transport = RecordingAlertTransport() if diagnostic else self.alert_transport
-        result = run_scan_slot(slot_at_ns=slot_at_ns, universe=universe, cheap_inputs=cheap_inputs,
-                               policy=self.policy, warmup_evidence=warmup_evidence,
-                               evaluator=self.evaluator, alert_transport=target_transport,
-                               archive=target_archive, calendar=target_calendar, now_ns=now,
-                               persist=not diagnostic)
-        return RunnerReceipt(slot_at_ns, mode, "DIAGNOSTIC_ONLY" if diagnostic else "COMPLETED", result)
+        try:
+            result = run_scan_slot(slot_at_ns=slot_at_ns, universe=universe, cheap_inputs=cheap_inputs,
+                                   policy=self.policy, warmup_evidence=warmup_evidence,
+                                   evaluator=self.evaluator, alert_transport=target_transport,
+                                   archive=target_archive, calendar=target_calendar, now_ns=now,
+                                   persist=not diagnostic)
+        except Exception:
+            if not diagnostic and self.slot_ledger is not None:
+                try:
+                    assert registration_ref is not None
+                    self.slot_ledger.record_progress(registration_ref=registration_ref, slot_at_ns=slot_at_ns,
+                        attempt=attempt, status="FAILED", observed_at_ns=now,
+                        universe_ref=universe.hash(), eligible_instruments=tuple(sorted(
+                            entry.instrument for entry in universe.eligible_entries())),
+                        reason_code="SCAN_EXECUTION_FAILED")
+                except Exception:
+                    pass
+            raise
+        if not diagnostic and self.slot_ledger is not None:
+            assert registration_ref is not None
+            result_ref = content_hash({"universe_ref": universe.hash(),
+                "calendar_row_refs": [row.hash() for row in result.calendar_rows]})
+            self.slot_ledger.record_progress(registration_ref=registration_ref, slot_at_ns=slot_at_ns,
+                attempt=attempt, status="COMPLETED", observed_at_ns=now, universe_ref=universe.hash(),
+                eligible_instruments=tuple(sorted(entry.instrument for entry in universe.eligible_entries())),
+                result_ref=result_ref)
+        return RunnerReceipt(slot_at_ns, mode, "DIAGNOSTIC_ONLY" if diagnostic else "COMPLETED", result,
+                             registration_ref=registration_ref)
 
     def run_due_slot(self, now_ns: int | None = None) -> RunnerReceipt:
         now = self._now(now_ns)

@@ -109,7 +109,10 @@ class BubblewrapSandboxV2:
 
     def command(self, program: str) -> list[str]:
         args = [
-            self.binary, "--unshare-all", "--die-with-parent", "--new-session", "--clearenv",
+            # LocalProcessProvider creates the worker's process group so timeout cleanup
+            # can signal the whole sandbox. A second session here would let the payload
+            # escape that group while its bubblewrap monitor is being terminated.
+            self.binary, "--unshare-all", "--die-with-parent", "--clearenv",
             "--setenv", "PATH", "/usr/bin:/bin", "--setenv", "TMPDIR", "/tmp",
             "--ro-bind", "/usr", "/usr",
         ]
