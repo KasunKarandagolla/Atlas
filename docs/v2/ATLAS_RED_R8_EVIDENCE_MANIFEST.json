@@ -372,16 +372,23 @@
     "root_logs": [
       {
         "path": "log.md",
-        "sha256": "ae90778e240af90578ae9689c2217b1c3c6b60225ed6e6116766aa3a4c3f95a7",
-        "bytes": 91270
+        "sha256": "aaa27b20efc236208f33f77a80f0baac864a36dab40ba8f162f933c47450a6bd",
+        "bytes": 91841
       },
       {
         "path": "translog.md",
-        "sha256": "7e7de3194f45a7eb6732527dd1f1d3aca9f621bf3f8d4cb2bae7692535e4a84d",
-        "bytes": 106587
+        "sha256": "0c28e2b7578d1b615e62d71079bb33808977dcad5f041a4a3e4fb30b0257ead1",
+        "bytes": 107183
       }
     ],
     "manifest_self_hash_excluded": true,
     "manifest_path": "docs/v2/ATLAS_RED_R8_EVIDENCE_MANIFEST.json"
+  },
+  "report_delivery": {
+    "commit_sha": "242f0493642f82dea33a389e1b75b89861dfc127",
+    "pushed_and_verified": true,
+    "remote_ref": "refs/heads/fix/red-r8-complete-integration-and-recovery-2026-10-14",
+    "remote_tip_at_verification": "242f0493642f82dea33a389e1b75b89861dfc127",
+    "final_log_receipt_commit_follows": true
   }
 }
