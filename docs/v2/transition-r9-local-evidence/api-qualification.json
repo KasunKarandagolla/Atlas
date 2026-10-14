@@ -1,0 +1,151 @@
+{
+  "classification": "API_SETUP_PASS",
+  "observed_at_utc": "2026-10-14",
+  "source_branch_base": "ef40afb0bf7172f703ffd8016a3e0086396e845d",
+  "environment": {
+    "GEMINI_API_KEY": "PRESENT",
+    "GEMMA_MODEL": "gemma-4-26b-a4b-it",
+    "ATLAS_GEMINI_FREE_TIER_VERIFIED": "PRESENT_TRUE",
+    "BINANCE_FUTURES_DEMO_API_KEY": "PRESENT",
+    "BINANCE_FUTURES_DEMO_API_SECRET": "PRESENT",
+    "ATLAS_BINANCE_FUTURES_ENV": "DEMO_ONLY",
+    "ATLAS_BINANCE_DEMO_READ_ONLY_APPROVED": "YES",
+    "secret_values_or_lengths_recorded": false
+  },
+  "gemini": {
+    "host": "generativelanguage.googleapis.com",
+    "standalone_metadata": {
+      "http_status": 200,
+      "requested_model": "gemma-4-26b-a4b-it",
+      "returned_model": "models/gemma-4-26b-a4b-it",
+      "generateContent_supported": true,
+      "request_count": 1,
+      "response_bytes": 371,
+      "latency_ms": 896.019,
+      "generation_requests": 0
+    },
+    "smoke_metadata": {
+      "http_status": 200,
+      "returned_model": "models/gemma-4-26b-a4b-it",
+      "generateContent_supported": true,
+      "request_count": 1,
+      "response_bytes": 371,
+      "latency_ms": 6457.998
+    },
+    "generation": {
+      "http_status": 200,
+      "requested_model": "gemma-4-26b-a4b-it",
+      "returned_model": "models/gemma-4-26b-a4b-it",
+      "requests": 1,
+      "input_budget_bytes": 4096,
+      "request_body_bytes": 1001,
+      "response_body_bytes": 758,
+      "generated_text_available": true,
+      "json_parse_valid": true,
+      "schema_valid": true,
+      "synthetic_abstain_valid": true,
+      "finish_reason": "STOP",
+      "prompt_tokens": 117,
+      "candidate_tokens": 105,
+      "total_tokens": 222,
+      "latency_ms": 4752.69,
+      "response_text_saved": false,
+      "raw_response_saved": false,
+      "authority": "ZERO"
+    },
+    "free_tier_project_binding": "OWNER_ATTESTED_BY_INHERITED_MARKER; PROVIDER_RESPONSE_HAS_NO_PROJECT_ID",
+    "paid_fallback_or_retry": false,
+    "tools_used": false
+  },
+  "binance_demo": {
+    "host": "demo-fapi.binance.com",
+    "read_sequence": {
+      "status": "READ_OK",
+      "request_count": 3,
+      "http_statuses": [200, 200, 200],
+      "operations": ["GET /fapi/v1/time", "SIGNED GET /fapi/v3/account", "GET /fapi/v1/exchangeInfo"],
+      "clock_skew_ms": 625,
+      "account_payload_persisted_or_printed": false,
+      "orders_submitted": false
+    },
+    "exchange_info_assessment": {
+      "http_status": 200,
+      "response_bytes": 902495,
+      "rows_seen": 742,
+      "status_counts": {
+        "DELIVERING": 12,
+        "PENDING_TRADING": 64,
+        "PRE_SETTLE": 1,
+        "SETTLING": 61,
+        "TRADING": 604
+      },
+      "trading_usdt_perpetual_count": 528,
+      "with_positive_price_and_quantity_filters": 527,
+      "with_minimum_notional_filter": 528,
+      "sample_instruments": {
+        "BTCUSDT": {"status": "TRADING", "tick_size": "0.10", "quantity_step": "0.0001", "min_qty": "0.0001", "min_notional": "50", "observed_order_types": ["LIMIT", "MARKET", "STOP", "STOP_MARKET", "TAKE_PROFIT", "TAKE_PROFIT_MARKET", "TRAILING_STOP_MARKET"]},
+        "ETHUSDT": {"status": "TRADING", "tick_size": "0.01", "quantity_step": "0.001", "min_qty": "0.001", "min_notional": "20", "observed_order_types": ["LIMIT", "MARKET", "STOP", "STOP_MARKET", "TAKE_PROFIT", "TAKE_PROFIT_MARKET", "TRAILING_STOP_MARKET"]},
+        "0GUSDT": {"status": "TRADING", "tick_size": "0.0001000", "quantity_step": "1", "min_qty": "1", "min_notional": "5", "observed_order_types": ["LIMIT", "MARKET", "STOP", "STOP_MARKET", "TAKE_PROFIT", "TAKE_PROFIT_MARKET", "TRAILING_STOP_MARKET"]}
+      },
+      "raw_payload_saved": false,
+      "orders_submitted": false
+    },
+    "initial_time_probe_network_failure": {
+      "signed_account_get_attempted": false,
+      "raw_exception_was_logged_by_baseline_probe": false,
+      "dns_resolved": true,
+      "tls_handshake": "TLSv1.3",
+      "single_recheck_after_diagnosis": "ALL_THREE_GETS_HTTP_200"
+    }
+  },
+  "binance_production_public_rest": {
+    "host": "fapi.binance.com",
+    "source_path": "BroadPublicCycleSourceV2 / BinanceUsdMPublicReaderV2",
+    "credentials_used": false,
+    "server_time_http_status": 200,
+    "exchange_info_http_status": 200,
+    "exchange_info_rows": 927,
+    "exchange_info_status_counts": {"PENDING_TRADING": 1, "SETTLING": 133, "TRADING": 793},
+    "translated_usdt_linear_products": 658,
+    "translated_trading_products": 525,
+    "snapshot_complete": true,
+    "snapshot_records": 2366,
+    "snapshot_requests": 4,
+    "snapshot_successful_requests": 3,
+    "snapshot_duration_ms": 5185.917,
+    "declared_acquisition_budget_ms": 5000,
+    "duration_over_budget_ms": 185.917,
+    "snapshot_latest_receipt_age_ms": 2014.426,
+    "event_type_counts": {
+      "BOOK_TICKER": 525,
+      "MARK_INDEX_CURRENT_FUNDING": 658,
+      "PRODUCT_METADATA": 658,
+      "TICKER_24H": 525
+    },
+    "bar_and_history_enrichment": "DEFERRED_BY_ACQUISITION_BUDGET",
+    "raw_payload_saved": false,
+    "orders_submitted": false
+  },
+  "binance_production_public_websocket": {
+    "host": "fstream.binance.com",
+    "existing_source": "PublicStreamSourceV2 / capture_public_frames",
+    "observation_seconds": 12,
+    "attempts": 1,
+    "reconnects": 0,
+    "frames_received_and_drained": 265,
+    "frames_by_symbol": {"0GUSDT": 5, "BTCUSDT": 110, "ETHUSDT": 150},
+    "event_to_receipt_latency_ms_p50": 230.555,
+    "event_to_receipt_latency_ms_max": 445.884,
+    "queue_rejections": 0,
+    "loss_latched": false,
+    "source_closed": true,
+    "raw_frames_saved": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "focused_tests": {
+    "gemma_adapter": {"passed": 17, "failed": 0},
+    "demo_read_probe": {"passed": 5, "failed": 0},
+    "repository_suite_before_gate": "NOT_RUN"
+  }
+}

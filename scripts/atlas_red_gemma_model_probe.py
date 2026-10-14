@@ -18,6 +18,7 @@ def main() -> int:
     probe = client.probe_model_metadata(deadline_ns=started_ns + 15_000_000_000)
     result = dataclasses.asdict(probe)
     result.update(
+        http_status=client.last_http_status,
         observed_at_ns=time.time_ns(),
         duration_ms=round((time.time_ns() - started_ns) / 1_000_000, 3),
         credential_exposed=False,
@@ -25,7 +26,7 @@ def main() -> int:
         raw_provider_payload_saved=False,
     )
     print(json.dumps(result, sort_keys=True))
-    return 0 if probe.generate_content_available else 2
+    return 0 if probe.generate_content_available and client.last_http_status == 200 else 2
 
 
 if __name__ == "__main__":

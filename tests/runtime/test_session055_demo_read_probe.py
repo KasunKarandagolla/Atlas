@@ -59,6 +59,58 @@ def test_blocked_demo_clock_read_is_sanitized_and_stops_before_account_get(monke
     assert observed["request_started_at_utc"] <= observed["response_observed_at_utc"]
 
 
+def test_demo_network_failure_class_is_sanitized(monkeypatch, capsys):
+    monkeypatch.setenv("ATLAS_BINANCE_DEMO_READ_ONLY_APPROVED", "YES")
+    monkeypatch.setenv("ATLAS_BINANCE_FUTURES_ENV", "DEMO_ONLY")
+    monkeypatch.setattr(
+        probe.DemoOnlyCredentials, "from_environment",
+        classmethod(lambda cls, env: object()),
+    )
+    monkeypatch.setattr(probe, "DemoOnlyAdapter", lambda **kwargs: _NeverSignedAdapter())
+
+    class TimedOutOpener:
+        def open(self, request, timeout):
+            raise urllib.error.URLError(TimeoutError("sensitive-key-and-response"))
+
+    monkeypatch.setattr(probe.urllib.request, "build_opener", lambda *handlers: TimedOutOpener())
+
+    assert probe.main() == 2
+    observed = json.loads(capsys.readouterr().out)
+    assert observed["status"] == "NETWORK_FAILURE"
+    assert observed["network_failure_class"] == "TimeoutError"
+    assert observed["signed_account_get_attempted"] is False
+    assert "sensitive-key-and-response" not in json.dumps(observed)
+
+
+def test_exchange_info_summary_distinguishes_status_and_required_trade_filters():
+    rows = [
+        {"symbol": "BTCUSDT", "status": "TRADING", "contractType": "PERPETUAL",
+         "quoteAsset": "USDT", "marginAsset": "USDT", "orderTypes": ["LIMIT", "MARKET"],
+         "filters": [
+             {"filterType": "PRICE_FILTER", "tickSize": "0.10"},
+             {"filterType": "LOT_SIZE", "stepSize": "0.001", "minQty": "0.001"},
+             {"filterType": "MIN_NOTIONAL", "notional": "50"},
+         ]},
+        {"symbol": "ETHUSDT", "status": "SETTLING", "contractType": "PERPETUAL",
+         "quoteAsset": "USDT", "marginAsset": "USDT", "filters": []},
+        {"symbol": "ALTUSDT", "status": "TRADING", "contractType": "PERPETUAL",
+         "quoteAsset": "USDT", "marginAsset": "USDT", "filters": [
+             {"filterType": "PRICE_FILTER", "tickSize": "0.01"},
+         ]},
+        {"symbol": "BTCUSD", "status": "TRADING", "contractType": "PERPETUAL",
+         "quoteAsset": "USD", "marginAsset": "USD", "filters": []},
+    ]
+
+    result = probe._exchange_filter_summary(rows)
+
+    assert result["status_counts"] == {"SETTLING": 1, "TRADING": 3}
+    assert result["trading_usdt_perpetual_count"] == 2
+    assert result["trading_usdt_perpetual_with_price_and_quantity_filters"] == 1
+    assert result["trading_usdt_perpetual_with_minimum_notional_filter"] == 1
+    assert result["sample_instruments"]["BTCUSDT"]["minimum_notional"] == "50"
+    assert result["sample_instruments"]["ALTUSDT"]["quantity_filter_present"] is False
+
+
 def test_successful_probe_reads_demo_clock_account_and_public_instrument_info(monkeypatch, capsys):
     monkeypatch.setenv("ATLAS_BINANCE_DEMO_READ_ONLY_APPROVED", "YES")
     monkeypatch.setenv("ATLAS_BINANCE_FUTURES_ENV", "DEMO_ONLY")

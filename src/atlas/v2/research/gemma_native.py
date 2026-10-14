@@ -32,7 +32,8 @@ from atlas.v2.research.agent import (
 )
 
 GEMINI_API_HOST = "generativelanguage.googleapis.com"
-GEMMA_MODEL_ID = "gemma-4-31b-it"
+GEMMA_MODEL_ID = "gemma-4-26b-a4b-it"
+LEGACY_GEMMA_MODEL_IDS = frozenset({"gemma-4-31b-it"})
 MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024
 MAX_PROVIDER_TEXT_BYTES = 16 * 1024
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 60.0
@@ -262,6 +263,7 @@ class GeminiNativeClient:
         self._calls = 0
         self._request_body_bytes = 0
         self._response_body_bytes = 0
+        self._last_http_status: int | None = None
         self._lock = Lock()
 
     def __repr__(self) -> str:
@@ -309,6 +311,11 @@ class GeminiNativeClient:
             return self._response_body_bytes
 
     @property
+    def last_http_status(self) -> int | None:
+        with self._lock:
+            return self._last_http_status
+
+    @property
     def now_ns(self) -> int:
         return self._clock_ns()
 
@@ -353,6 +360,10 @@ class GeminiNativeClient:
         monotonic_deadline = started + remaining_ns
         try:
             with self._opener.open(request, timeout=timeout) as response:
+                status = getattr(response, "status", getattr(response, "code", 200))
+                if type(status) is int:
+                    with self._lock:
+                        self._last_http_status = status
                 final_url = urllib.parse.urlsplit(response.geturl())
                 if final_url.scheme != "https" or final_url.hostname != self.host:
                     raise GeminiProviderError("UNSAFE_REDIRECT")
@@ -361,6 +372,8 @@ class GeminiNativeClient:
             raise
         except urllib.error.HTTPError as error:
             code = error.code
+            with self._lock:
+                self._last_http_status = code
             normalized = ("RATE_LIMITED" if code == 429 else "PROVIDER_TIMEOUT" if code in {408, 504}
                           else "PROVIDER_UNAVAILABLE" if code in {500, 502, 503}
                           else "PROVIDER_AUTHENTICATION_FAILED" if code in {401, 403}

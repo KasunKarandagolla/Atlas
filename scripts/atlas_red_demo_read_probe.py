@@ -6,11 +6,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 
 from atlas.runtime.binance_futures_demo_r4 import (
     BINANCE_FUTURES_DEMO_REST,
@@ -40,7 +42,8 @@ def _utc_timestamp() -> str:
 
 
 def _failure(operation: str, status: str, *, request_started_at_utc: str,
-             http_status: int | None = None, response_body_bytes: int | None = None) -> int:
+             http_status: int | None = None, response_body_bytes: int | None = None,
+             network_failure_class: str | None = None) -> int:
     record = {
         "environment": "DEMO_ONLY",
         "endpoint": "demo-fapi.binance.com",
@@ -57,6 +60,8 @@ def _failure(operation: str, status: str, *, request_started_at_utc: str,
         record["http_status"] = http_status
     if response_body_bytes is not None:
         record["response_body_bytes_read"] = response_body_bytes
+    if network_failure_class is not None:
+        record["network_failure_class"] = network_failure_class
     if operation == "PUBLIC_SERVER_TIME_GET":
         record["signed_account_get_attempted"] = False
     print(json.dumps(record, sort_keys=True))
@@ -73,6 +78,117 @@ def _read(opener, request: urllib.request.Request, *, max_response_bytes: int = 
         if len(body) > max_response_bytes:
             raise _ResponseLimitExceeded(len(body))
         return response.status, body, response.geturl()
+
+
+def _positive_decimal(value: object) -> bool:
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return False
+    return parsed.is_finite() and parsed > 0
+
+
+def _exchange_filter_summary(symbols: list[dict[str, object]]) -> dict[str, object]:
+    status_counts: dict[str, int] = {}
+    trading_usdt_perpetual: list[dict[str, object]] = []
+    complete_filter_count = 0
+    min_notional_filter_count = 0
+    for row in symbols:
+        status = str(row.get("status", "UNKNOWN"))
+        status_counts[status] = status_counts.get(status, 0) + 1
+        if (status != "TRADING" or row.get("contractType") != "PERPETUAL"
+                or row.get("quoteAsset") != "USDT" or row.get("marginAsset", "USDT") != "USDT"):
+            continue
+        raw_filters = row.get("filters")
+        if not isinstance(raw_filters, list):
+            continue
+        filters = {str(item.get("filterType")): item for item in raw_filters if isinstance(item, dict)}
+        price = filters.get("PRICE_FILTER")
+        lot = filters.get("LOT_SIZE") or filters.get("MARKET_LOT_SIZE")
+        minimum = filters.get("MIN_NOTIONAL") or filters.get("NOTIONAL")
+        has_price = isinstance(price, dict) and _positive_decimal(price.get("tickSize"))
+        has_lot = (isinstance(lot, dict) and _positive_decimal(lot.get("stepSize"))
+                   and _positive_decimal(lot.get("minQty")))
+        has_notional = (isinstance(minimum, dict)
+                        and _positive_decimal(minimum.get("notional", minimum.get("minNotional"))))
+        complete_filter_count += int(has_price and has_lot)
+        min_notional_filter_count += int(has_notional)
+        trading_usdt_perpetual.append({
+            "symbol": str(row["symbol"]),
+            "price_filter_present": bool(has_price),
+            "quantity_filter_present": bool(has_lot),
+            "minimum_notional_filter_present": bool(has_notional),
+            "tick_size": str(price.get("tickSize")) if has_price and isinstance(price, dict) else None,
+            "quantity_step": str(lot.get("stepSize")) if has_lot and isinstance(lot, dict) else None,
+            "minimum_quantity": str(lot.get("minQty")) if has_lot and isinstance(lot, dict) else None,
+            "minimum_notional": (str(minimum.get("notional", minimum.get("minNotional")))
+                                 if has_notional and isinstance(minimum, dict) else None),
+            "order_types": sorted(item for item in row.get("orderTypes", ()) if isinstance(item, str))
+                if isinstance(row.get("orderTypes", ()), list) else [],
+        })
+    trading_usdt_perpetual.sort(key=lambda item: str(item["symbol"]))
+    sample_rows = {str(row["symbol"]): row for row in trading_usdt_perpetual
+                   if row["symbol"] in {"BTCUSDT", "ETHUSDT"}}
+    alt = next((row for row in trading_usdt_perpetual
+                if row["symbol"] not in {"BTCUSDT", "ETHUSDT"}), None)
+    if alt is not None:
+        sample_rows[str(alt["symbol"])] = alt
+    return {
+        "rows_seen": len(symbols),
+        "status_counts": dict(sorted(status_counts.items())),
+        "trading_usdt_perpetual_count": len(trading_usdt_perpetual),
+        "trading_usdt_perpetual_with_price_and_quantity_filters": complete_filter_count,
+        "trading_usdt_perpetual_with_minimum_notional_filter": min_notional_filter_count,
+        "sample_instruments": sample_rows,
+    }
+
+
+def _public_exchange_info_only() -> int:
+    if os.environ.get("ATLAS_BINANCE_DEMO_READ_ONLY_APPROVED") != "YES":
+        raise SystemExit("Set ATLAS_BINANCE_DEMO_READ_ONLY_APPROVED=YES after owner approval.")
+    if os.environ.get("ATLAS_BINANCE_FUTURES_ENV") != "DEMO_ONLY":
+        raise SystemExit("ATLAS_BINANCE_FUTURES_ENV must equal DEMO_ONLY.")
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler(), _NoRedirect())
+    request = urllib.request.Request(BINANCE_FUTURES_DEMO_REST + "/fapi/v1/exchangeInfo", method="GET")
+    started_at = _utc_timestamp()
+    try:
+        status, body, _ = _read(opener, request, max_response_bytes=MAX_INSTRUMENT_RESPONSE_BYTES)
+    except urllib.error.HTTPError as error:
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "HTTP_FAILURE",
+                        request_started_at_utc=started_at, http_status=error.code)
+    except _ResponseLimitExceeded as error:
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "RESPONSE_LIMIT_EXCEEDED",
+                        request_started_at_utc=started_at, response_body_bytes=error.bytes_read)
+    except (urllib.error.URLError, TimeoutError) as error:
+        reason = getattr(error, "reason", None)
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "NETWORK_FAILURE",
+                        request_started_at_utc=started_at,
+                        network_failure_class=type(reason if reason is not None else error).__name__)
+    observed_at = _utc_timestamp()
+    if status != 200:
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "HTTP_FAILURE",
+                        request_started_at_utc=started_at, http_status=status,
+                        response_body_bytes=len(body))
+    try:
+        payload = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "INVALID_RESPONSE",
+                        request_started_at_utc=started_at, response_body_bytes=len(body))
+    symbols = payload.get("symbols") if isinstance(payload, dict) else None
+    if not isinstance(symbols, list) or any(
+        not isinstance(item, dict) or not isinstance(item.get("symbol"), str) for item in symbols
+    ):
+        return _failure("PUBLIC_INSTRUMENT_INFO_GET", "INVALID_RESPONSE",
+                        request_started_at_utc=started_at, response_body_bytes=len(body))
+    print(json.dumps({
+        "environment": "DEMO_ONLY", "endpoint": "demo-fapi.binance.com",
+        "operation": "PUBLIC_INSTRUMENT_INFO_GET", "status": "READ_OK", "http_status": status,
+        "request_started_at_utc": started_at, "response_observed_at_utc": observed_at,
+        "response_body_bytes": len(body), "metadata": _exchange_filter_summary(symbols),
+        "account_payload_printed": False, "credentials_printed": False,
+        "state_persisted": False, "orders_submitted": False,
+    }, sort_keys=True))
+    return 0
 
 
 def main() -> int:
@@ -105,9 +221,11 @@ def main() -> int:
         return _failure("PUBLIC_SERVER_TIME_GET", "RESPONSE_LIMIT_EXCEEDED",
                         request_started_at_utc=time_request_started_at,
                         response_body_bytes=error.bytes_read)
-    except (urllib.error.URLError, TimeoutError):
+    except (urllib.error.URLError, TimeoutError) as error:
+        reason = getattr(error, "reason", None)
         return _failure("PUBLIC_SERVER_TIME_GET", "NETWORK_FAILURE",
-                        request_started_at_utc=time_request_started_at)
+                        request_started_at_utc=time_request_started_at,
+                        network_failure_class=type(reason if reason is not None else error).__name__)
     time_response_observed_at = _utc_timestamp()
     if status != 200:
         return _failure("PUBLIC_SERVER_TIME_GET", "HTTP_FAILURE",
@@ -146,9 +264,11 @@ def main() -> int:
         return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "RESPONSE_LIMIT_EXCEEDED",
                         request_started_at_utc=account_request_started_at,
                         response_body_bytes=error.bytes_read)
-    except (urllib.error.URLError, TimeoutError):
+    except (urllib.error.URLError, TimeoutError) as error:
+        reason = getattr(error, "reason", None)
         return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "NETWORK_FAILURE",
-                        request_started_at_utc=account_request_started_at)
+                        request_started_at_utc=account_request_started_at,
+                        network_failure_class=type(reason if reason is not None else error).__name__)
     account_response_observed_at = _utc_timestamp()
     if status != 200:
         return _failure("SIGNED_READ_ONLY_ACCOUNT_GET", "HTTP_FAILURE",
@@ -182,9 +302,11 @@ def main() -> int:
         return _failure("PUBLIC_INSTRUMENT_INFO_GET", "RESPONSE_LIMIT_EXCEEDED",
                         request_started_at_utc=instrument_request_started_at,
                         response_body_bytes=error.bytes_read)
-    except (urllib.error.URLError, TimeoutError):
+    except (urllib.error.URLError, TimeoutError) as error:
+        reason = getattr(error, "reason", None)
         return _failure("PUBLIC_INSTRUMENT_INFO_GET", "NETWORK_FAILURE",
-                        request_started_at_utc=instrument_request_started_at)
+                        request_started_at_utc=instrument_request_started_at,
+                        network_failure_class=type(reason if reason is not None else error).__name__)
     instrument_response_observed_at = _utc_timestamp()
     if instrument_status != 200:
         return _failure("PUBLIC_INSTRUMENT_INFO_GET", "HTTP_FAILURE",
@@ -225,6 +347,7 @@ def main() -> int:
         "instrument_response_bytes": len(instrument_body),
         "instrument_response_sha256": hashlib.sha256(instrument_body).hexdigest(),
         "instrument_symbol_count": len(symbols),
+        "instrument_metadata": _exchange_filter_summary(symbols),
         "account_payload_printed": False,
         "credentials_printed": False,
         "state_persisted": False,
@@ -234,4 +357,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--exchange-info-only"]:
+        raise SystemExit(_public_exchange_info_only())
+    if sys.argv[1:]:
+        raise SystemExit("Unsupported probe argument.")
     raise SystemExit(main())

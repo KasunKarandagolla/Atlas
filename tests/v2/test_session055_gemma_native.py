@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 from contextlib import nullcontext
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import Mock
 from urllib.error import HTTPError
@@ -22,6 +23,7 @@ from atlas.v2.research.decision_brief import DecisionBriefV1
 from atlas.v2.research.gemma_native import (
     GEMINI_API_HOST,
     GEMMA_MODEL_ID,
+    LEGACY_GEMMA_MODEL_IDS,
     GeminiJobDispatchPermitV1,
     GeminiModelMetadataPermitV1,
     GeminiNativeClient,
@@ -148,6 +150,8 @@ def production_memory(job: ResearchJobV1):
 
 
 def test_native_client_is_pinned_and_redacts_credentials():
+    assert GEMMA_MODEL_ID == "gemma-4-26b-a4b-it"
+    assert frozenset({"gemma-4-31b-it"}) == LEGACY_GEMMA_MODEL_IDS
     client = GeminiNativeClient(api_key="fixture-secret", permit=permit(), opener=Mock())
     assert client.host == GEMINI_API_HOST
     assert client.model_id == GEMMA_MODEL_ID
@@ -155,6 +159,20 @@ def test_native_client_is_pinned_and_redacts_credentials():
     with pytest.raises(ValueError, match="host"):
         GeminiNativeClient(api_key="fixture-secret", permit=permit(), opener=Mock(),
                            host="generativelanguage.google.internal")
+    with pytest.raises(ValueError, match="model fallback"):
+        GeminiNativeClient(api_key="fixture-secret", permit=permit(), opener=Mock(),
+                           model_id="gemma-4-31b-it")
+
+
+def test_model_revision_changes_job_identity_without_relabeling_31b_history():
+    current_capabilities = verified_capabilities()
+    old_capabilities = replace(current_capabilities, model_id="gemma-4-31b-it")
+    historical_job = research_job(capabilities=old_capabilities)
+    current_job = research_job(capabilities=current_capabilities)
+
+    assert historical_job.capabilities.model_id == "gemma-4-31b-it"
+    assert current_job.capabilities.model_id == "gemma-4-26b-a4b-it"
+    assert historical_job.request_hash != current_job.request_hash
 
 
 @pytest.mark.parametrize(
@@ -241,6 +259,7 @@ def test_metadata_probe_checks_one_model_get_without_free_tier_marker_or_generat
     assert result.generate_content_available is True
     assert result.requests_made == 1
     assert result.response_body_bytes > 0
+    assert client.last_http_status == 200
     request = opener.open.call_args.args[0]
     assert request.full_url == f"https://{GEMINI_API_HOST}/v1beta/models/{GEMMA_MODEL_ID}"
     assert request.get_method() == "GET" and request.data is None
@@ -302,6 +321,8 @@ def test_research_provider_returns_only_validated_contract_shape_and_never_tools
 def test_invalid_identity_missing_text_prompt_injection_and_tool_parts_fail_closed():
     for payload, reason in [
         ({"modelVersion": "models/other", "candidates": [{"content": {"parts": [{"text": json.dumps(output())}]}}]},
+         "IDENTITY"),
+        ({"modelVersion": "gemma-4-31b-it", "candidates": [{"content": {"parts": [{"text": json.dumps(output())}]}}]},
          "IDENTITY"),
         ({"modelVersion": GEMMA_MODEL_ID, "candidates": []}, "RESPONSE"),
         ({"modelVersion": GEMMA_MODEL_ID, "candidates": [{"content": {"parts": [{"functionCall": {"name": "inspect_snapshot_v1"}}]}}]},
@@ -387,6 +408,9 @@ def test_environment_loader_requires_explicit_free_tier_flag_and_exact_model(mon
     client = GeminiNativeClient.from_environment(permit=permit(), opener=Mock())
     assert "fixture-secret" not in repr(client)
     monkeypatch.setenv("GEMMA_MODEL", "another-model")
+    with pytest.raises(GeminiProviderError, match="CONFIGURED_MODEL_MISMATCH"):
+        GeminiNativeClient.from_environment(permit=permit(), opener=Mock())
+    monkeypatch.setenv("GEMMA_MODEL", "gemma-4-31b-it")
     with pytest.raises(GeminiProviderError, match="CONFIGURED_MODEL_MISMATCH"):
         GeminiNativeClient.from_environment(permit=permit(), opener=Mock())
 
