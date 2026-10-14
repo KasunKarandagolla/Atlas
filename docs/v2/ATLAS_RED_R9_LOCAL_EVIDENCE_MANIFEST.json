@@ -10,7 +10,8 @@
     "base_commit": "ef40afb0bf7172f703ffd8016a3e0086396e845d",
     "implementation_commits": [
       "4f68bf9ef0e3517430d270fa72e59c108a2e6f0b",
-      "9931f4cfcf18b2d99f20acf8c2494c7e35127c21"
+      "9931f4cfcf18b2d99f20acf8c2494c7e35127c21",
+      "5042b63733ba6a75b4abb9a7287063c5b5fd95de"
     ],
     "remote_push_verification": "PENDING"
   },
@@ -295,8 +296,8 @@
     },
     "credential_scrubbed_focused_runs": {
       "classification": "TESTED",
-      "total_across_runs": 80,
-      "note": "Counts overlap for scanner runner cases: 47 scanner-directory cases plus a 33-case combined scanner-runner/Gemma/Demo group.",
+      "total_across_runs": 82,
+      "note": "Counts overlap: scanner-directory tests and scanner-runner subset overlap; the R4 fixture is also in the full repository suite.",
       "runs": [
         {
           "name": "scanner suite, credential variables removed",
@@ -321,6 +322,29 @@
           "failures": 0,
           "errors": 0,
           "skipped": 0
+        },
+        {
+          "name": "R9 connected production fixture plus existing R4 fake Gemma memory/Demo request fixture; credential variables removed",
+          "classification": "PASS",
+          "command": "env -u GEMINI_API_KEY -u BINANCE_FUTURES_DEMO_API_KEY -u BINANCE_FUTURES_DEMO_API_SECRET PYTHONPATH=/home/kasun/Music/atlas-red-r9/src /home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/v2/test_session056_r9_connected_fixture.py tests/v2/test_session055_r4_synthetic_e2e.py --junitxml=docs/v2/transition-r9-local-evidence/focused-final/connected-fixture-junit.xml",
+          "path": "docs/v2/transition-r9-local-evidence/focused-final/connected-fixture-junit.xml",
+          "sha256": "4463911ea76098c463e5c18ce34b6daae08582a509e301288d6ddbf5960957ca",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            {
+              "classname": "tests.v2.test_session056_r9_connected_fixture",
+              "name": "test_r9_connected_production_fixture_fails_closed_before_agent_and_demo",
+              "result": "PASS"
+            },
+            {
+              "classname": "tests.v2.test_session055_r4_synthetic_e2e",
+              "name": "test_fake_gemma_memory_and_demo_request_keep_original_economics_unchanged",
+              "result": "PASS"
+            }
+          ]
         }
       ]
     },
@@ -337,7 +361,18 @@
     "desktop_smoke": {
       "classification": "TESTED",
       "evidence": "docs/v2/transition-r9-local-evidence/desktop-smoke.json"
-    }
+    },
+    "final_tree_aggregate_observed": {
+      "unique_cases": 2925,
+      "passed": 2914,
+      "skipped": 8,
+      "failed": 3,
+      "errors": 0,
+      "full_repository_suite_repeated_after_connected_test_addition": false,
+      "note": "Complete 2,924-case partitioned suite plus the one new connected test; all other tests unchanged."
+    },
+    "connected_fixture_evidence": "docs/v2/transition-r9-local-evidence/connected-fixture.json",
+    "connected_fixture_classification": "SYNTHETIC_INTEGRATION; fail-closed terminal path only"
   },
   "static_checks": {
     "evidence": "docs/v2/transition-r9-local-evidence/static-checks.json",
@@ -349,13 +384,17 @@
   },
   "secret_scan": {
     "evidence": "docs/v2/transition-r9-local-evidence/sensitive-pattern-scan.json",
-    "sha256": "2e303c8758d5f73bbb54b7d647e095fd01c97ba652646c4b09f7f854b663a45c",
+    "sha256": "83650aea861fb7763db6870a7683f73f118569ce1903e892456a12c90c9dd2ba",
     "actual_credential_or_signed_request_findings": 0,
     "synthetic_test_placeholders": 16,
     "private_account_payload_saved": false,
     "raw_public_market_payload_saved": false
   },
   "changed_source_files": [
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/env-isolated-replay/runner.py",
+      "sha256": "75ecea5a53595bcde7f50c7690e406b42fed5886167d3bea7ff53553f815f97e"
+    },
     {
       "path": "scripts/atlas_red_demo_read_probe.py",
       "sha256": "d57ded895a5d1b968f3926971dabe7d455325dba2982b47b5ea88509e2363e80"
@@ -391,6 +430,10 @@
     {
       "path": "tests/v2/test_session055_gemma_native.py",
       "sha256": "d7b2f0de7042dbf7997423c35104a3f3fa70b23c3243c52b5c7a18d556556a12"
+    },
+    {
+      "path": "tests/v2/test_session056_r9_connected_fixture.py",
+      "sha256": "b5da6ba70077aff4e3273c5f6c094d90aa4656cafddaa7e952d652e289f2938b"
     }
   ],
   "reports": [
@@ -401,13 +444,13 @@
     },
     {
       "path": "docs/v2/ATLAS_RED_R9_LOCAL_DEFECTS_AND_REPAIRS.md",
-      "sha256": "1acf52d013f03aa0d2c930865ecab9b99f120d5fcf7b5dc76cba209769e13c9b",
-      "bytes": 3791
+      "sha256": "a91729383ea515fa15c6de334f62bb524523e795ead061a27261485c33b9ced5",
+      "bytes": 4804
     },
     {
       "path": "docs/v2/ATLAS_RED_R9_LOCAL_END_TO_END.md",
-      "sha256": "00b27f501685777ad8cd15d1ef6a3fc42e48d11533dacd9952530bf475602d4b",
-      "bytes": 2772
+      "sha256": "9816c04c6ed3724ab271e35cd3ac0f02aa0352bd785ac7fa8fa2f96d7f552aa6",
+      "bytes": 3453
     },
     {
       "path": "docs/v2/ATLAS_RED_R9_LOCAL_EXECUTION_PROTECTION.md",
@@ -416,13 +459,13 @@
     },
     {
       "path": "docs/v2/ATLAS_RED_R9_LOCAL_HANDOFF.md",
-      "sha256": "d2381d9bebb7834c42391c3e6a1d4ebd17b36b096d7dffd5d8a32afa70623f84",
-      "bytes": 4203
+      "sha256": "e26dcb0fe2a973651fe91343358487f34156e8028552b08078c070a4b4e12fa5",
+      "bytes": 4666
     },
     {
       "path": "docs/v2/ATLAS_RED_R9_LOCAL_TESTS_PERFORMANCE.md",
-      "sha256": "a087abc322c92197627070e391ee1279e384fd135c5ae96f4cba987626e8d2c1",
-      "bytes": 5049
+      "sha256": "e2434f9eac9a67e3bcd6e95f8094f76b21dfff59760dc9b85b924a98605b773a",
+      "bytes": 5652
     }
   ],
   "evidence_files": [
@@ -430,6 +473,11 @@
       "path": "docs/v2/transition-r9-local-evidence/api-qualification.json",
       "sha256": "66a9118bd40f7a1f33450253fd08d4b8138667942e9d86ea46ea69f21d101736",
       "bytes": 5802
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/connected-fixture.json",
+      "sha256": "8bb372e1166296b80b835f8152d6f9d0543397ea26063b1af15dd05f0469c5d1",
+      "bytes": 1933
     },
     {
       "path": "docs/v2/transition-r9-local-evidence/desktop-smoke.json",
@@ -440,6 +488,16 @@
       "path": "docs/v2/transition-r9-local-evidence/evidence-sanitization.json",
       "sha256": "4f6f3c3a443d4497855443c0ad073778e2356eeb73e4b7931304a06de315ef78",
       "bytes": 4567
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/focused-final/connected-fixture-console.txt",
+      "sha256": "99db33d5c94c6f7da021687c7391181685cc33299c5435b1c861e2db3be3ec87",
+      "bytes": 80
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/focused-final/connected-fixture-junit.xml",
+      "sha256": "4463911ea76098c463e5c18ce34b6daae08582a509e301288d6ddbf5960957ca",
+      "bytes": 564
     },
     {
       "path": "docs/v2/transition-r9-local-evidence/focused-final/console.txt",
@@ -708,7 +766,7 @@
     },
     {
       "path": "docs/v2/transition-r9-local-evidence/sensitive-pattern-scan.json",
-      "sha256": "2e303c8758d5f73bbb54b7d647e095fd01c97ba652646c4b09f7f854b663a45c",
+      "sha256": "83650aea861fb7763db6870a7683f73f118569ce1903e892456a12c90c9dd2ba",
       "bytes": 968
     },
     {

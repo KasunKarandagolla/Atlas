@@ -2,13 +2,13 @@
 
 ## Regression result
 
-The four disjoint repository partitions exercised 2,924 cases: 2,913 passed, eight were skipped, and three failed. The failures are retained as **TEST GATE / BLOCKED BY ENVIRONMENT**, not waived:
+The four disjoint repository partitions exercised 2,924 cases: 2,913 passed, eight were skipped, and three failed. A later final-tree test addition contributed one unique passing connected fixture test; that test and the existing R4 synthetic end-to-end test passed 2/2 together. The final-tree aggregate is therefore 2,925 unique cases observed (2,914 passed, eight skipped, three failed), but the full repository suite was not repeated after that test-only addition. The failures are retained as **TEST GATE / BLOCKED BY ENVIRONMENT**, not waived:
 
 - The mixed 1,024-contract public workload hit `PREVENTIVE_CAPTURE_PRESSURE_STOP`. It reproduced on unchanged R8 source. The safety stop stayed active.
 - The normal production Brief/memory projection missed its existing 80 ms budget on both R9 and unchanged R8 source.
 - The projection deadline case failed twice and passed once across three R9 isolated runs; it passed once on R8. Its result is timing-sensitive.
 
-The exact-base control compared the same tests and owning modules at R8 `ef40afb0bf7172f703ffd8016a3e0086396e845d`. No queue, storage, or projection threshold was relaxed. The captured JUnit and timing records are in [`transition-r9-local-evidence/full-suite`](transition-r9-local-evidence/full-suite); the comparison is summarized in `failure-reproduction-summary.json`.
+The exact-base control compared the same tests and owning modules at R8 `ef40afb0bf7172f703ffd8016a3e0086396e845d`. No queue, storage, or projection threshold was relaxed. The captured JUnit and timing records are in [`transition-r9-local-evidence/full-suite`](transition-r9-local-evidence/full-suite); the comparison is summarized in [`failure-reproduction-summary.json`](transition-r9-local-evidence/full-suite/failure-reproduction-summary.json). The connected R9 test is `tests/v2/test_session056_r9_connected_fixture.py`; its result is [`connected-fixture.json`](transition-r9-local-evidence/connected-fixture.json).
 
 Scanner regressions pass **47/47** after the final source edit. This covers prospective registration, denominator semantics, missed-slot durability, deduplication, and restart reconstruction through the existing runner and archive.
 

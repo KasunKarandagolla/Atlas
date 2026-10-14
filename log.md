@@ -8,6 +8,8 @@
 
 **TEST GATE / BLOCKED BY ENVIRONMENT:** production runtime stopped at the owner storage preflight before source construction or writer/database opening: sustained/burst batch means exceeded the 200 ms limit, and maximum-breadth capacity remains unavailable. Thus no durable genuine source-to-Brief chain, connected 21-stage composition, live scanner denominator, or production Gemma research job was run. The partitioned repository suite recorded 2,924 cases: 2,913 pass, 8 skip, 3 timing/resource failures; two reproduce on exact R8 source. Binance native protection and restart with exposure remain offline-fixture qualified only. Economics are NOT ESTIMABLE; no Demo order or plan was issued. S47 remains PROPOSED — NOT ACCEPTED, effective discretionary policy NONE.
 
+**CONNECTED SYNTHETIC_INTEGRATION:** added and passed a composed source-fixture → production OpsSupervisor → blocked Brief/memory → no Gemma job/no Demo intent → restart replay test. The existing complete-Brief fake Gemma/memory/Demo request fixture passed in the same focused 2-case run. This verifies fail-closed integration and does not qualify the successful 21-stage path.
+
 **Additional test-environment gate:** scanner, Gemma, Demo-probe, and desktop focused checks passed with credential variables removed. A supplemental scrubbed full-suite run was stopped at 39% during sustained ext4 journal I/O wait and yielded no result; the complete partitioned suite above was run earlier without explicit credential-variable stripping.
 
 Reports and sanitized evidence: `docs/v2/ATLAS_RED_R9_LOCAL_*` and `docs/v2/transition-r9-local-evidence/`. Exact limitation and result classifications are in the handoff and machine evidence manifest.

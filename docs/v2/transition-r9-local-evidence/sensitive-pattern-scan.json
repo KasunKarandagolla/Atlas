@@ -1,7 +1,7 @@
 {
   "classification": "SANITIZED_EVIDENCE_SCAN",
   "scope": "all changed, staged, added, and modified files relative to exact R8 base",
-  "files_scanned": 77,
+  "files_scanned": 81,
   "pattern_counts": {
     "google_api_key": 0,
     "quoted_key_or_secret": 16,

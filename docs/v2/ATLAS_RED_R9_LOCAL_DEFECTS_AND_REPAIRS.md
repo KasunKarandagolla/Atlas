@@ -18,6 +18,12 @@ The first bounded Demo time read failed before an authenticated call. The probe 
 
 The provider was pinned to the old 31B identity. Focused tests failed against that source pin, then passed after the minimal 26B selection correction. The current adapter rejects 31B as a current configured/returned identity while preserving old job hashes and historical evidence; it does not relabel prior responses.
 
+### Connected production fixture stops at the typed-Brief safety gate
+
+Added `test_session056_r9_connected_fixture.py` against the existing `ProductionOpsCyclePortV1` and `OpsSupervisorV2`, using their documented source/input fixture ports. It carries a persisted candidate, exact action and evaluation through the production Brief/memory projection, asks the real `ResearchMemoryV1` job builder to compile the result, and reopens the repository. The production Brief is blocked because typed S47 sections are not reconstructed; the job builder returns no job, no provider intent or Demo order intent is persisted, and restart replay returns the same Brief/memory refs. The test and existing fake Gemma-to-memory-to-Demo request fixture pass 2/2 together under `SYNTHETIC_INTEGRATION` evidence.
+
+This verifies the connected fail-closed outcome. It does not repair the missing typed Brief source readers or create a successful production-bound Gemma job. That successful single composition remains **TEST GATE**.
+
 ## Open reproduced gates
 
 - The production runtime rejects the ext4 path because sustained and burst batch-service means exceed the registered threshold; maximum-breadth storage capacity is unmeasured. No guard was weakened.

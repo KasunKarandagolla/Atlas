@@ -1,0 +1,55 @@
+{
+  "classification": "SYNTHETIC_INTEGRATION",
+  "source": "ReconciledFixturePublicSource + StaticInputsProvider; no genuine market payloads",
+  "connected_r9_path": [
+    "ProductionOpsCyclePortV1",
+    "OpsSupervisorV2",
+    "candidate/action/evaluation artifacts",
+    "production Brief projection",
+    "ResearchMemoryV1 durable memory",
+    "production Gemma job gate",
+    "Demo availability projection",
+    "SQLite restart and projection replay"
+  ],
+  "r9_terminal_status": {
+    "brief": "BLOCKED",
+    "reason": "PRODUCTION_TYPED_SECTIONS_NOT_RECONSTRUCTED",
+    "economics": "NOT_ESTIMABLE",
+    "gemma_job_created": false,
+    "provider_intent_created": false,
+    "demo_status": "UNAVAILABLE",
+    "order_intent_created": false,
+    "capital_enabled": false,
+    "assisted_enabled": false
+  },
+  "restart_replay": "SAME_BRIEF_AND_MEMORY_REFS",
+  "separate_existing_fixture_path": [
+    "complete synthetic Decision Brief",
+    "fake Gemma schema response",
+    "durable zero-authority shadow memory",
+    "Demo request generation only"
+  ],
+  "orders_submitted": 0,
+  "tests": {
+    "path": "docs/v2/transition-r9-local-evidence/focused-final/connected-fixture-junit.xml",
+    "sha256": "4463911ea76098c463e5c18ce34b6daae08582a509e301288d6ddbf5960957ca",
+    "tests": 2,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "classname": "tests.v2.test_session056_r9_connected_fixture",
+        "name": "test_r9_connected_production_fixture_fails_closed_before_agent_and_demo",
+        "result": "PASS"
+      },
+      {
+        "classname": "tests.v2.test_session055_r4_synthetic_e2e",
+        "name": "test_fake_gemma_memory_and_demo_request_keep_original_economics_unchanged",
+        "result": "PASS"
+      }
+    ]
+  },
+  "successful_single_market_to_gemma_to_demo_lifecycle": "TEST GATE",
+  "classification_note": "Fixture records are synthetic, never genuine production evidence."
+}
