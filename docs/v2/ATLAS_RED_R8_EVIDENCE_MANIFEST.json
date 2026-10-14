@@ -389,6 +389,7 @@
     "pushed_and_verified": true,
     "remote_ref": "refs/heads/fix/red-r8-complete-integration-and-recovery-2026-10-14",
     "remote_tip_at_verification": "242f0493642f82dea33a389e1b75b89861dfc127",
-    "final_log_receipt_commit_follows": true
+    "final_log_receipt_commit_follows": false,
+    "log_receipt_commit_sha": "68bc6e1f9eb72668e7683487672cbe0d7b71a5ce"
   }
 }
