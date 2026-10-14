@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 
 import pytest
@@ -203,6 +204,57 @@ def test_missed_slot_diagnostics_never_reconstruct_with_later_provider_data(tmp_
                                                           available_at_ns=slot_at_ns + HOUR_NS)
     with pytest.raises(ValueError, match="future universe snapshot"):
         runner.run_catch_up(slot + SLOT_NS)
+
+
+def test_prospective_calendar_reconstructs_only_registered_slots_and_marks_overdue_after_restart(tmp_path):
+    fixture = scanner_fixture()
+    archive = ResearchArtifactArchive(tmp_path / "research")
+    calls = {"universe": 0, "cheap": 0, "warmup": 0}
+    runner = _runner(fixture, calls, archive=archive)
+    now = fixture.slots[0] + HOUR_NS
+
+    refs = runner.schedule_future_slots(now_ns=now, count=3)
+    expected = tuple(fixture.slots[0] + offset * SLOT_NS for offset in (1, 2, 3))
+    assert tuple(row["due_at_ns"] for row in runner.slot_ledger.registrations()) == expected
+    assert len(set(refs)) == 3
+    assert all(row["registered_at_ns"] == now for row in runner.slot_ledger.registrations())
+    assert calls == {"universe": 0, "cheap": 0, "warmup": 0}
+    with pytest.raises(ValueError, match="must be registered before its due time"):
+        runner.slot_ledger.register_prospective(slot_at_ns=expected[0], policy=fixture.policy,
+                                                registered_at_ns=expected[0])
+    with pytest.raises(ValueError, match="durable slot registration"):
+        runner.slot_ledger.record_progress(
+            registration_ref="unbound", slot_at_ns=expected[0], attempt=1, status="STARTED",
+            observed_at_ns=expected[0],
+        )
+
+    restarted = _runner(fixture, calls, archive=archive)
+    assert restarted.schedule_future_slots(now_ns=now + 1, count=3) == refs
+    assert len(ScannerSlotLedger(archive).registrations()) == 3
+
+    # Only the registered first slot is overdue at this cutoff. The second
+    # registered slot is due but inside its deadline; the third is future.
+    missed = restarted.reconcile_missed_slots(now_ns=expected[0] + SLOT_NS)
+    assert missed == (expected[0],)
+    ledger = ScannerSlotLedger(archive)
+    assert ledger.latest_progress(expected[0])["status"] == "MISSED"
+    assert ledger.latest_progress(expected[1]) is None
+    summary = ledger.expected_slot_summary(as_of_ns=expected[0] + SLOT_NS)
+    assert summary == {
+        "as_of_ns": expected[0] + SLOT_NS,
+        "expected_due_slots": 2,
+        "completed_slots": 0,
+        "missed_slots": 1,
+        "failed_slots": 0,
+        "source_unavailable_slots": 0,
+        "expired_slots": 0,
+        "incomplete_slots": 1,
+        "future_registered_slots": 1,
+    }
+    assert restarted.reconcile_missed_slots(now_ns=expected[0] + SLOT_NS) == ()
+    assert len(ledger.progress_records()) == len({
+        json.dumps(row, sort_keys=True) for row in ledger.progress_records()
+    })
 
 
 def test_runner_has_no_approval_reservation_or_execution_surface(tmp_path):

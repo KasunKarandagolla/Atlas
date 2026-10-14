@@ -206,8 +206,29 @@ class ScannerRunner:
         now = self._now(now_ns)
         return self.run_slot(due_slot(now), mode="LIVE", now_ns=now)
 
+    def schedule_future_slots(self, *, now_ns: int | None = None, count: int) -> tuple[str, ...]:
+        """Durably register the next `count` four-hour slots without starting scans."""
+        now = self._now(now_ns)
+        if now < 0:
+            raise ValueError("clock must be UTC nanoseconds")
+        if count < 1:
+            raise ValueError("future scanner schedule count must be positive")
+        if self.slot_ledger is None:
+            raise ValueError("prospective scanner scheduling requires an archive")
+        first_future = due_slot(now) + SLOT_NS
+        return tuple(self.slot_ledger.register_prospective(
+            slot_at_ns=first_future + index * SLOT_NS, policy=self.policy, registered_at_ns=now,
+        ) for index in range(count))
+
+    def reconcile_missed_slots(self, *, now_ns: int | None = None) -> tuple[int, ...]:
+        """Mark overdue incomplete registrations after restart; never infer old registrations."""
+        now = self._now(now_ns)
+        if self.slot_ledger is None:
+            raise ValueError("scanner slot reconciliation requires an archive")
+        return self.slot_ledger.mark_overdue_unfinished(now_ns=now)
+
     def missed_slots(self, since_ns: int, now_ns: int | None = None) -> tuple[int, ...]:
-        """Deterministic catch-up diagnostics; never supplies later data retroactively."""
+        """Non-durable gap diagnostics; use ledger reconciliation for the registered denominator."""
         now = self._now(now_ns)
         latest = due_slot(now)
         if since_ns > latest:
