@@ -1,0 +1,30 @@
+{
+  "classification": "SANITIZED_EVIDENCE_SCAN",
+  "scope": "all changed, staged, added, and modified files relative to exact R8 base",
+  "files_scanned": 77,
+  "pattern_counts": {
+    "google_api_key": 0,
+    "quoted_key_or_secret": 16,
+    "binance_signature": 0,
+    "header_key_value": 0
+  },
+  "pattern_hits_total": 16,
+  "actual_credential_or_signed_request_findings": 0,
+  "fixture_placeholders_verified_in_test_literals": 16,
+  "credential_shaped_junit_fixture": "REDACTED_BEFORE_COMMIT; no Google-key-pattern match remains",
+  "findings": [
+    {
+      "path": "tests/runtime/test_session055_demo_read_probe.py",
+      "pattern": "quoted_key_or_secret",
+      "count": 1,
+      "classification": "TEST_FIXTURE_PLACEHOLDER"
+    },
+    {
+      "path": "tests/v2/test_session055_gemma_native.py",
+      "pattern": "quoted_key_or_secret",
+      "count": 15,
+      "classification": "TEST_FIXTURE_PLACEHOLDER"
+    }
+  ],
+  "raw_matches_or_values_emitted": false
+}

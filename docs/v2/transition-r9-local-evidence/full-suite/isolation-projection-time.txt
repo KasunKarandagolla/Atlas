@@ -1,0 +1,24 @@
+Command exited with non-zero status 1
+	Command being timed: "/home/kasun/Music/atlas/.venv/bin/python -m pytest -vv --durations=10 tests/v2/test_session052_production_intelligence.py::test_normal_production_run_persists_brief_and_memory_without_dispatch tests/v2/test_session052_production_intelligence.py::test_deadline_reached_during_projection_expires_without_changing_receipt --junitxml=docs/v2/transition-r9-local-evidence/full-suite/isolation-projection-junit.xml"
+	User time (seconds): 7.48
+	System time (seconds): 0.45
+	Percent of CPU this job got: 73%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:10.73
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 65828
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 15247
+	Voluntary context switches: 16
+	Involuntary context switches: 3192
+	Swaps: 0
+	File system inputs: 552
+	File system outputs: 720
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

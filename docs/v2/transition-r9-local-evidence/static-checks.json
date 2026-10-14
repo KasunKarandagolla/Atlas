@@ -1,0 +1,49 @@
+{
+  "classification": "TESTED",
+  "python": {
+    "version": "3.12.13",
+    "interpreter": "/home/kasun/Music/atlas/.venv/bin/python"
+  },
+  "commands": [
+    {
+      "command": "/home/kasun/Music/atlas/.venv/bin/ruff check src scripts tests",
+      "result": "PASS"
+    },
+    {
+      "command": "/home/kasun/Music/atlas/.venv/bin/python -m compileall -q src scripts tests",
+      "result": "PASS"
+    },
+    {
+      "command": "uv lock --check",
+      "result": "PASS",
+      "locked_resolutions": 39
+    },
+    {
+      "command": "uv pip check --python /home/kasun/Music/atlas/.venv/bin/python",
+      "result": "PASS",
+      "installed_packages": 35
+    },
+    {
+      "command": "/home/kasun/Music/atlas/.venv/bin/mypy src",
+      "result": "BASELINE_DIAGNOSTICS",
+      "errors": 53,
+      "files": 17
+    }
+  ],
+  "mypy_baseline_comparison": {
+    "r8_commit": "ef40afb0bf7172f703ffd8016a3e0086396e845d",
+    "r8_errors": 53,
+    "r9_errors": 53,
+    "new_diagnostics": 0,
+    "fixed_diagnostics": 0,
+    "r8_output_sha256": "4be1f0f223be7d3e6d5ce8b230630825f36f6ac542f34524188dba1444448e6d",
+    "r9_output_sha256": "4be1f0f223be7d3e6d5ce8b230630825f36f6ac542f34524188dba1444448e6d",
+    "classification": "ZERO_DELTA"
+  },
+  "authority_sha256": {
+    "V1": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "V2": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "Agent_V1": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+  },
+  "dependency_or_license_file_changes": 0
+}

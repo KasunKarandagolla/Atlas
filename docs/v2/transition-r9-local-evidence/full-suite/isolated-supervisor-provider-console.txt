@@ -1,0 +1,58 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0 -- /home/kasun/Music/atlas/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/kasun/Music/atlas-red-r9
+configfile: pyproject.toml
+plugins: hypothesis-6.168.0
+collecting ... collected 36 items
+
+tests/v2/test_session027_ops_supervisor.py::test_run_once_is_bounded_and_continuous_loop_uses_injected_sleep PASSED [  2%]
+tests/v2/test_session027_ops_supervisor.py::test_absent_required_feed_is_unknown_and_recovery_precedes_collection PASSED [  5%]
+tests/v2/test_session027_ops_supervisor.py::test_restart_restores_subscriptions_and_health_stays_incomplete_until_reconciled PASSED [  8%]
+tests/v2/test_session027_ops_supervisor.py::test_same_immutable_event_is_idempotent_across_cycles_and_restart PASSED [ 11%]
+tests/v2/test_session027_ops_supervisor.py::test_stage_crash_checkpoints_resume_without_reordering_or_backdating[UNIVERSE] PASSED [ 13%]
+tests/v2/test_session027_ops_supervisor.py::test_stage_crash_checkpoints_resume_without_reordering_or_backdating[CANDIDATE_SET] PASSED [ 16%]
+tests/v2/test_session027_ops_supervisor.py::test_stage_crash_checkpoints_resume_without_reordering_or_backdating[HARD_RISK] PASSED [ 19%]
+tests/v2/test_session027_ops_supervisor.py::test_stage_crash_checkpoints_resume_without_reordering_or_backdating[ECONOMIC_EVALUATION] PASSED [ 22%]
+tests/v2/test_session027_ops_supervisor.py::test_future_or_unavailable_evidence_cannot_enter_earlier_event PASSED [ 25%]
+tests/v2/test_session027_ops_supervisor.py::test_hard_risk_api_terminates_future_account_or_fee_as_not_estimable PASSED [ 27%]
+tests/v2/test_session027_ops_supervisor.py::test_non_action_sleeve_contracts_and_s8_basket_role_remain_explicit PASSED [ 30%]
+tests/v2/test_session027_ops_supervisor.py::test_missing_risk_evidence_blocks_action_and_economic_progression PASSED [ 33%]
+tests/v2/test_session027_ops_supervisor.py::test_projection_and_runtime_import_boundaries_remain_read_only_and_non_capital PASSED [ 36%]
+tests/v2/test_session027_ops_supervisor.py::test_dependency_locks_and_frozen_identity_inputs_are_unchanged PASSED [ 38%]
+tests/v2/test_session027_ops_supervisor.py::test_foreground_supervisor_owns_one_database_writer_and_receipts_are_content_addressed PASSED [ 41%]
+tests/v2/test_session027_ops_supervisor.py::test_no_live_control_or_order_boundary_is_reachable_from_runtime_module PASSED [ 44%]
+tests/v2/test_session028_provider_amendment.py::test_deepseek_profile_wire_hash_endpoint_limits_and_peak_price PASSED [ 47%]
+tests/v2/test_session028_provider_amendment.py::test_unknown_deepseek_pricing_is_not_dispatchable PASSED [ 50%]
+tests/v2/test_session028_provider_amendment.py::test_openai_astra_v1_profile_and_price_artifact_remain_unchanged PASSED [ 52%]
+tests/v2/test_session028_provider_amendment.py::test_deepseek_responses_request_is_fixed_and_discards_reasoning PASSED [ 55%]
+tests/v2/test_session028_provider_amendment.py::test_deepseek_adapter_rejects_requests_above_exact_token_ceilings[limits0] PASSED [ 58%]
+tests/v2/test_session028_provider_amendment.py::test_deepseek_adapter_rejects_requests_above_exact_token_ceilings[limits1] PASSED [ 61%]
+tests/v2/test_session028_provider_amendment.py::test_locked_openai_sdk_uses_exact_deepseek_responses_wire_without_network SKIPPED [ 63%]
+tests/v2/test_session028_provider_amendment.py::test_refusal_truncation_model_drift_and_missing_output_fail_closed[<lambda>-refusal] PASSED [ 66%]
+tests/v2/test_session028_provider_amendment.py::test_refusal_truncation_model_drift_and_missing_output_fail_closed[<lambda>-truncated] PASSED [ 69%]
+tests/v2/test_session028_provider_amendment.py::test_refusal_truncation_model_drift_and_missing_output_fail_closed[<lambda>-drift] PASSED [ 72%]
+tests/v2/test_session028_provider_amendment.py::test_refusal_truncation_model_drift_and_missing_output_fail_closed[<lambda>-malformed] PASSED [ 75%]
+tests/v2/test_session028_provider_amendment.py::test_timeout_rate_limit_and_provider_failure_map_without_leaking_exception[exception0-PROVIDER_TIMEOUT-True] PASSED [ 77%]
+tests/v2/test_session028_provider_amendment.py::test_timeout_rate_limit_and_provider_failure_map_without_leaking_exception[exception1-RATE_LIMITED-True] PASSED [ 80%]
+tests/v2/test_session028_provider_amendment.py::test_timeout_rate_limit_and_provider_failure_map_without_leaking_exception[exception2-PROVIDER_UNAVAILABLE-True] PASSED [ 83%]
+tests/v2/test_session028_provider_amendment.py::test_controller_persists_v2_authorization_before_capability_and_validates_only_final_json PASSED [ 86%]
+tests/v2/test_session028_provider_amendment.py::test_malformed_final_json_remains_invalid PASSED [ 88%]
+tests/v2/test_session028_provider_amendment.py::test_v2_capability_cross_provider_and_cross_profile_replay_fail_closed PASSED [ 91%]
+tests/v2/test_session028_provider_amendment.py::test_deepseek_timeout_retries_only_deepseek_and_persists_three_authorized_attempts PASSED [ 94%]
+tests/v2/test_session028_provider_amendment.py::test_worker_and_broker_authority_boundaries_and_disabled_ops_runtime_remain_separate PASSED [ 97%]
+tests/v2/test_session028_provider_amendment.py::test_static_scope_contains_no_capital_or_venue_authority PASSED [100%]
+
+============================= slowest 10 durations =============================
+0.16s call     tests/v2/test_session028_provider_amendment.py::test_worker_and_broker_authority_boundaries_and_disabled_ops_runtime_remain_separate
+0.15s call     tests/v2/test_session027_ops_supervisor.py::test_non_action_sleeve_contracts_and_s8_basket_role_remain_explicit
+0.15s call     tests/v2/test_session027_ops_supervisor.py::test_run_once_is_bounded_and_continuous_loop_uses_injected_sleep
+0.13s call     tests/v2/test_session027_ops_supervisor.py::test_stage_crash_checkpoints_resume_without_reordering_or_backdating[UNIVERSE]
+0.13s call     tests/v2/test_session027_ops_supervisor.py::test_stage_crash_checkpoints_resume_without_reordering_or_backdating[ECONOMIC_EVALUATION]
+0.12s call     tests/v2/test_session027_ops_supervisor.py::test_same_immutable_event_is_idempotent_across_cycles_and_restart
+0.12s call     tests/v2/test_session027_ops_supervisor.py::test_stage_crash_checkpoints_resume_without_reordering_or_backdating[CANDIDATE_SET]
+0.12s call     tests/v2/test_session027_ops_supervisor.py::test_stage_crash_checkpoints_resume_without_reordering_or_backdating[HARD_RISK]
+0.12s call     tests/v2/test_session027_ops_supervisor.py::test_restart_restores_subscriptions_and_health_stays_incomplete_until_reconciled
+0.11s call     tests/v2/test_session027_ops_supervisor.py::test_missing_risk_evidence_blocks_action_and_economic_progression
+======================== 35 passed, 1 skipped in 7.52s =========================

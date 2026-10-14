@@ -1,0 +1,25 @@
+{
+  "classification": "TESTED",
+  "command": "QT_QPA_PLATFORM=offscreen env -u GEMINI_API_KEY -u BINANCE_FUTURES_DEMO_API_KEY -u BINANCE_FUTURES_DEMO_API_SECRET PYTHONPATH=/home/kasun/Music/atlas-red-r9/src /home/kasun/Music/atlas/.venv/bin/python -c 'import sys; from atlas.v2.product import main; sys.argv=[\"atlas-product\", \"--desktop-smoke\", \"--data-root\", \"/tmp/atlas-r9-desktop-smoke\"]; raise SystemExit(main())' > /tmp/atlas-r9-desktop-smoke/result.json",
+  "result": {
+    "status": "TESTED",
+    "check": "DESKTOP_STARTUP_AND_OWNER_GUIDANCE",
+    "window_visible": true,
+    "preflight_control_present": true,
+    "discovery_effort_control_present": true,
+    "discovery_effort_default": "STANDARD",
+    "external_provider_options_present": false,
+    "authenticated_execution_options_present": false,
+    "credential_inputs_present": false,
+    "exchange_execution_controls_present": false,
+    "health_indicator_present": true,
+    "live_run_started": false,
+    "capital_enabled": false,
+    "assisted_enabled": false
+  },
+  "credentials_recorded": false,
+  "live_run_started": false,
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "evidence": "/tmp/atlas-r9-desktop-smoke/result.json"
+}

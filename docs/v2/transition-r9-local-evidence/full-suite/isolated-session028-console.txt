@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0 -- /home/kasun/Music/atlas/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/kasun/Music/atlas-red-r9
+configfile: pyproject.toml
+plugins: hypothesis-6.168.0
+collecting ... collected 1 item
+
+tests/v2/test_session028_provider_amendment.py::test_openai_astra_v1_profile_and_price_artifact_remain_unchanged PASSED [100%]
+
+============================== 1 passed in 4.88s ===============================

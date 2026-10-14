@@ -1,0 +1,61 @@
+{
+  "classification": "TEST GATE",
+  "run_component_result": "OWNER_STORAGE_PREFLIGHT_REJECTED",
+  "production_source_constructed": false,
+  "production_writer_opened": false,
+  "production_database_opened": false,
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "orders_submitted": 0,
+  "filesystem": "ext4",
+  "free_disk_bytes_observed": [
+    94070140928,
+    94070853632
+  ],
+  "disk_headroom_was_rejection_reason": false,
+  "probe": {
+    "temporary_probe_only": true,
+    "probe_removed": true,
+    "generated_frames": 1536,
+    "capture_receipts": 24,
+    "archive_extents": 24,
+    "generated_index_rows": 1561,
+    "archive_replay_exact": true,
+    "sqlite_integrity": "ok",
+    "sole_writer_lease_enforced": true,
+    "maximum_mean_batch_service_ns": 200000000,
+    "maximum_operation_ns": 800000000,
+    "attempts": [
+      {
+        "sustained_batches": 16,
+        "sustained_mean_ns": 336992055,
+        "sustained_max_ns": 523773964,
+        "burst_batches": 8,
+        "burst_mean_ns": 308588706,
+        "burst_max_ns": 384500887,
+        "archive_write_fsync_mean_ns": 62110338,
+        "capture_receipt_fsync_mean_ns": 28393207
+      },
+      {
+        "sustained_batches": 16,
+        "sustained_mean_ns": 326775336,
+        "sustained_max_ns": 604073695,
+        "burst_batches": 8,
+        "burst_mean_ns": 327812066,
+        "burst_max_ns": 393207097,
+        "archive_write_fsync_mean_ns": 66032213,
+        "capture_receipt_fsync_mean_ns": 25199035
+      }
+    ],
+    "maximum_breadth_cycle_bytes": null,
+    "broad_workload_measurement": "UNAVAILABLE_FAIL_CLOSED",
+    "reasons": [
+      "SUSTAINED_BATCH_SERVICE_CANNOT_SUSTAIN_DECLARED_RATE",
+      "BURST_BATCH_SERVICE_CANNOT_SUSTAIN_DECLARED_RATE",
+      "BROAD_WORKLOAD_CAPACITY_MEASUREMENT_UNAVAILABLE"
+    ],
+    "result": "TEST GATE"
+  },
+  "probe_data_class": "SYNTHETIC_STORAGE_FIXTURE",
+  "no_threshold_or_guard_changed": true
+}

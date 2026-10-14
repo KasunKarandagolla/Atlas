@@ -1,0 +1,24 @@
+Command exited with non-zero status 1
+	Command being timed: "/home/kasun/Music/atlas/.venv/bin/mypy src"
+	User time (seconds): 220.67
+	System time (seconds): 4.71
+	Percent of CPU this job got: 78%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:45.59
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 587220
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 618
+	Minor (reclaiming a frame) page faults: 184605
+	Voluntary context switches: 653
+	Involuntary context switches: 105777
+	Swaps: 0
+	File system inputs: 27056
+	File system outputs: 199968
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

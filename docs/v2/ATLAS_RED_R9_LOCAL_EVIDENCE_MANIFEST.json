@@ -1,0 +1,745 @@
+{
+  "schema_version": "1.0",
+  "classification": "R9_LOCAL_EVIDENCE; ENGINEERING_PROMOTION_NOT_QUALIFIED",
+  "created_date": "2026-10-15",
+  "manifest_sha256_policy": "This manifest does not hash itself; each listed report and evidence artifact is SHA-256 hashed.",
+  "repository": {
+    "name": "KasunKarandagolla/Atlas",
+    "branch": "fix/red-r9-local-complete-cycle-2026-10-14",
+    "base_branch": "fix/red-r8-complete-integration-and-recovery-2026-10-14",
+    "base_commit": "ef40afb0bf7172f703ffd8016a3e0086396e845d",
+    "implementation_commits": [
+      "4f68bf9ef0e3517430d270fa72e59c108a2e6f0b",
+      "9931f4cfcf18b2d99f20acf8c2494c7e35127c21"
+    ],
+    "remote_push_verification": "PENDING"
+  },
+  "authority_sha256": {
+    "V1": {
+      "path": "/home/kasun/Music/atlas/Red/ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+      "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c"
+    },
+    "V2": {
+      "path": "/home/kasun/Music/atlas/Red/ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+      "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+    },
+    "Agent_V1": {
+      "path": "/home/kasun/Music/atlas/Red/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+      "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    }
+  },
+  "api_setup": {
+    "status": "API_SETUP_PASS",
+    "evidence": "docs/v2/transition-r9-local-evidence/api-qualification.json",
+    "environment_statuses": {
+      "GEMINI_API_KEY": "PRESENT",
+      "GEMMA_MODEL": "gemma-4-26b-a4b-it",
+      "ATLAS_GEMINI_FREE_TIER_VERIFIED": "PRESENT_TRUE",
+      "BINANCE_FUTURES_DEMO_API_KEY": "PRESENT",
+      "BINANCE_FUTURES_DEMO_API_SECRET": "PRESENT",
+      "ATLAS_BINANCE_FUTURES_ENV": "DEMO_ONLY",
+      "ATLAS_BINANCE_DEMO_READ_ONLY_APPROVED": "YES"
+    },
+    "gemini": {
+      "metadata_http": 200,
+      "exact_model": "models/gemma-4-26b-a4b-it",
+      "generateContent_supported": true,
+      "generation_count": 1,
+      "generation_http": 200,
+      "schema_valid_synthetic_abstain": true,
+      "finish_reason": "STOP",
+      "token_counts": {
+        "prompt": 117,
+        "candidate": 105,
+        "total": 222
+      },
+      "request_bytes": 1001,
+      "response_bytes": 758,
+      "latency_ms": 4752.69,
+      "free_tier_binding": "OWNER_ATTESTED_BY_INHERITED_MARKER; PROVIDER_RESPONSE_HAS_NO_PROJECT_ID",
+      "paid_fallback_or_retry": false,
+      "tools": false,
+      "raw_response_saved": false
+    },
+    "binance_demo": {
+      "host": "demo-fapi.binance.com",
+      "operations": [
+        "GET /fapi/v1/time",
+        "SIGNED GET /fapi/v3/account",
+        "GET /fapi/v1/exchangeInfo"
+      ],
+      "http_statuses": [
+        200,
+        200,
+        200
+      ],
+      "clock_skew_ms": 625,
+      "account_payload_saved": false,
+      "orders": 0
+    },
+    "binance_public": {
+      "REST_host": "fapi.binance.com",
+      "snapshot_records": 2366,
+      "snapshot_seconds": 5.185917,
+      "acquisition_budget_seconds": 5.0,
+      "enrichment": "DEFERRED_BY_ACQUISITION_BUDGET",
+      "WebSocket_host": "fstream.binance.com",
+      "observation_seconds": 12,
+      "frames": 265,
+      "reconnects": 0,
+      "queue_rejections": 0,
+      "p50_event_to_receipt_ms": 230.555,
+      "max_event_to_receipt_ms": 445.884,
+      "raw_payload_saved": false
+    },
+    "source_refs": [
+      "scripts/atlas_red_gemma_model_probe.py",
+      "scripts/atlas_red_gemma_smoke.py",
+      "scripts/atlas_red_demo_read_probe.py",
+      "src/atlas/v2/research/gemma_native.py",
+      "src/atlas/v2/data/broad_public_source.py",
+      "src/atlas/v2/data/public_stream_source.py"
+    ]
+  },
+  "engineering_gates": {
+    "durable_production_source_to_brief": "TEST GATE",
+    "reason": "run_component stopped at OWNER_STORAGE_PREFLIGHT_REJECTED before production source/writer/database construction",
+    "storage_preflight_evidence": "docs/v2/transition-r9-local-evidence/storage-preflight.json",
+    "connected_21_stage_composition": "TEST GATE",
+    "genuine_after_cost_economics": "NOT ESTIMABLE",
+    "scanner_calendar_component": "IMPLEMENTED_AND_TESTED",
+    "scanner_periodic_production_scheduler": "TEST GATE",
+    "gemma_production_research_job": "TEST GATE",
+    "demo_native_protection_and_restart_with_exposure": "TEST GATE",
+    "orders_submitted": 0,
+    "economic_floor": "NOT MET; 8 prospective weeks and 200 matured opportunities are not available",
+    "S47_discretionary_amendment": "PROPOSED \u2014 NOT ACCEPTED",
+    "effective_discretionary_policy": "NONE"
+  },
+  "tests": {
+    "complete_partitioned_repository_run": {
+      "classification": "TESTED_WITH_TEST_GATE",
+      "total": 2924,
+      "passed": 2913,
+      "skipped": 8,
+      "failed": 3,
+      "errors": 0,
+      "junit_classification": "Three failures are timing/resource gates; two reproduce on exact R8 source.",
+      "exact_runs": [
+        {
+          "name": "repository partition 1",
+          "classification": "PASS",
+          "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py tests/data/test_archive_runtime.py tests/data/test_causal_models.py tests/data/test_dependencies_revision.py tests/data/test_prefix_and_archive.py tests/data/test_public_bybit_translation.py tests/integration/test_phase4_testnet_qualification.py tests/integration/test_v1_phase0_6_acceptance.py tests/persistence/test_execution_evidence.py tests/persistence/test_journal.py tests/persistence/test_migration_v4_v5.py tests/persistence/test_migration_v5_v6.py tests/persistence/test_migration_v6_v2_authority.py tests/persistence/test_recovery_persistence.py tests/persistence/test_session001_repairs.py tests/runtime/test_assisted_control_approval.py tests/runtime/test_assisted_control_dispatch.py tests/runtime/test_assisted_control_protection.py tests/runtime/test_assisted_control_revalidation.py tests/runtime/test_assisted_control_risk_reduction.py tests/runtime/test_capability_gate.py tests/runtime/test_capital_control_authority.py tests/runtime/test_fault_injection.py tests/runtime/test_flat_certificate.py tests/runtime/test_flat_contradiction.py tests/runtime/test_nautilus_rc5_offline.py tests/runtime/test_phase2_repairs.py tests/runtime/test_phase4_authority_boundary.py tests/runtime/test_phase4_nautilus_rc5_capabilities.py tests/runtime/test_phase4_v1_boundary_failures.py tests/runtime/test_phase4_v2_bridge.py tests/runtime/test_phase4_v2_capital_authority.py tests/runtime/test_phase4_v2_live_risk.py tests/runtime/test_phase6_end_to_end.py tests/runtime/test_protection_deadline.py tests/runtime/test_protection_evidence.py tests/runtime/test_protection_evidence_v5.py tests/runtime/test_reconciliation_evidence.py tests/runtime/test_reconciliation_v5.py tests/runtime/test_recovery_gate.py tests/runtime/test_runtime_safety.py tests/runtime/test_safe_runtime.py tests/runtime/test_safe_runtime_lifetime.py tests/runtime/test_session041_binance_demo.py tests/runtime/test_session041_binance_native.py tests/runtime/test_session041_binance_readiness.py tests/runtime/test_session041_binance_reconciliation.py tests/runtime/test_session041_binance_unsent_recovery.py tests/runtime/test_session041_bybit_demo.py tests/runtime/test_session041_bybit_native.py tests/runtime/test_session041_bybit_recovery.py tests/runtime/test_session041_execution_final_review.py tests/runtime/test_session041_selected_demo.py tests/runtime/test_session048_lifecycle_projection.py tests/runtime/test_session048_position_protection.py tests/runtime/test_session055_binance_demo_only.py tests/runtime/test_session055_demo_read_probe.py tests/runtime/test_temporal_reconciliation.py tests/runtime/test_wire_contract.py tests/scanner/test_phase5_end_to_end.py tests/scanner/test_scanner_alerts.py tests/scanner/test_scanner_blindspots.py tests/scanner/test_scanner_calendar.py tests/scanner/test_scanner_exploration.py tests/scanner/test_scanner_health.py tests/scanner/test_scanner_ranking.py tests/scanner/test_scanner_revision_comparison.py tests/scanner/test_scanner_runner.py tests/scanner/test_scanner_selection.py tests/scanner/test_scanner_warmup.py tests/scanner/test_universe_snapshot.py tests/science/test_block_energy_selection.py tests/science/test_decision_calendar.py tests/science/test_funding_forecast_accounting.py tests/science/test_huber_oof_review.py tests/science/test_joint_residual_archive.py tests/science/test_minute_bridge.py tests/science/test_outer_bootstrap.py tests/science/test_phase4_artifacts_and_controls.py tests/science/test_phase4_baseline.py tests/science/test_phase4_end_to_end.py tests/science/test_phase4_engine_decisions.py tests/science/test_phase4_persistence.py tests/science/test_policy_execution_stress_review.py tests/science/test_policy_replay_pnl.py tests/science/test_portfolio_es_risk_sizing.py tests/science/test_prefix_invariance_phase4.py tests/science/test_r1_source_qualification.py tests/science/test_r1_v1_chronology_identity.py tests/science/test_r1_v1_snapshot_compatibility.py tests/science/test_stress_engine.py tests/test_manifest.py tests/unit/test_capability.py tests/unit/test_enums_money_time.py --junitxml=docs/v2/transition-r9-local-evidence/full-suite/batch-1-final-junit.xml",
+          "exit_status": 0,
+          "junit": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-1-final-junit.xml",
+            "sha256": "bd0e0213db549e875cb3102c37db456ad61aaf2a147eaa9ad49b02633d524c65",
+            "tests": 736,
+            "passed": 733,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 3
+          },
+          "time_file": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-1-final-time.txt",
+            "sha256": "5703997216d4035cea078ff4a8a93322ffb38171b4d5a1dd164ee7024302daca"
+          },
+          "wall_seconds": 533.67,
+          "user_seconds": 385.39,
+          "system_seconds": 25.77,
+          "peak_rss_kib": 714044
+        },
+        {
+          "name": "repository partition 2 completed prefix; command interrupted during next test",
+          "classification": "PREFIX_ONLY",
+          "command": "env -u GEMINI_API_KEY -u BINANCE_FUTURES_DEMO_API_KEY -u BINANCE_FUTURES_DEMO_API_SECRET TMPDIR=/dev/shm/atlas-r9-tests PYTHONPATH=/home/kasun/Music/atlas-red-r9/src /home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/unit/test_execution.py tests/unit/test_information.py tests/unit/test_manifest.py tests/unit/test_repairs_domain.py tests/unit/test_risk.py tests/unit/test_trade_plan.py tests/unit/test_writer_health.py tests/v2/test_contracts.py tests/v2/test_data_runtime.py tests/v2/test_instruments.py tests/v2/test_memory.py tests/v2/test_model_protocol.py tests/v2/test_model_runtime.py tests/v2/test_phase1_data_model_integration.py tests/v2/test_public_soak.py tests/v2/test_r1_surgical_correctness.py tests/v2/test_s38_sustained_public_stream.py tests/v2/test_session014_chronos.py tests/v2/test_session014_core.py tests/v2/test_session014_s1.py tests/v2/test_session015_instrument_identity.py tests/v2/test_session016_candidate_selection.py tests/v2/test_session016_integration.py tests/v2/test_session016_s2.py tests/v2/test_session017_action.py tests/v2/test_session017_integration.py tests/v2/test_session017_replay.py tests/v2/test_session017_risk.py tests/v2/test_session018_contracts.py tests/v2/test_session018_forward.py tests/v2/test_session018_remediation.py tests/v2/test_session019_admission.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session019_m0.py tests/v2/test_session019_remediation.py tests/v2/test_session019_scenarios.py tests/v2/test_session020_archive_remediation.py tests/v2/test_session020_desktop_ipc.py tests/v2/test_session020_phase2_e2e.py tests/v2/test_session020_remediation.py tests/v2/test_session021_data_s3.py tests/v2/test_session021_s6.py tests/v2/test_session021_s7.py tests/v2/test_session021_selection_boundary.py tests/v2/test_session021_universe.py tests/v2/test_session022_s4_microstructure.py tests/v2/test_session022_s5_context.py tests/v2/test_session023_analogue.py tests/v2/test_session023_discovery_s8.py tests/v2/test_session023_integration.py tests/v2/test_session023_m1.py tests/v2/test_session023_selection_audits.py tests/v2/test_session025_release.py tests/v2/test_session026_agent_broker_ownership.py tests/v2/test_session026_agent_intelligence.py tests/v2/test_session027_ops_supervisor.py tests/v2/test_session027_production.py tests/v2/test_session028_provider_amendment.py tests/v2/test_session029_action_critic.py tests/v2/test_session030_action_critic_runtime.py tests/v2/test_session031_acquisition_recovery_remediation.py tests/v2/test_session031_preflight_remediation.py tests/v2/test_session031_public_shadow_readiness.py tests/v2/test_session031_s3_persisted_lineage.py tests/v2/test_session032_public_stream_continuity.py tests/v2/test_session032_public_stream_integration.py tests/v2/test_session032_public_stream_source.py tests/v2/test_session032_public_ws_acquisition.py tests/v2/test_session033_outcome_maturity.py --junitxml=docs/v2/transition-r9-local-evidence/full-suite/batch-2-junit.xml",
+          "exit_status": 2,
+          "junit": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-junit.xml",
+            "sha256": "218ee12c51818fc730b285e7d8f24615e7dc4c72be6c3c9ba8364fc6f807c9b7",
+            "tests": 546,
+            "passed": 544,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 2
+          },
+          "time_file": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-time.txt",
+            "sha256": "3cfc84eaf458b27d89a4e582e2a0d90c27b96cbbd2121f8c607462f790c012ae"
+          },
+          "wall_seconds": 1308.43,
+          "user_seconds": 921.94,
+          "system_seconds": 72.36,
+          "peak_rss_kib": 477916
+        },
+        {
+          "name": "repository partition 2 provider amendment module",
+          "classification": "PASS",
+          "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/v2/test_session028_provider_amendment.py --junitxml=docs/v2/transition-r9-local-evidence/full-suite/batch-2-provider-junit.xml",
+          "exit_status": 0,
+          "junit": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-provider-junit.xml",
+            "sha256": "68fad67c249b3c1efea6adcdd98e3777f910192c7cc07bd75fd5d6a1004e4d2e",
+            "tests": 20,
+            "passed": 19,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 1
+          },
+          "time_file": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-provider-time.txt",
+            "sha256": "3abecbf5c73aa6f55e5e789314b6acaecb0386a47b72b5722ab194c908ee066a"
+          },
+          "wall_seconds": 8.51,
+          "user_seconds": 5.59,
+          "system_seconds": 0.46,
+          "peak_rss_kib": 65600
+        },
+        {
+          "name": "repository partition 2 suffix modules",
+          "classification": "PASS",
+          "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/v2/test_session029_action_critic.py tests/v2/test_session030_action_critic_runtime.py tests/v2/test_session031_acquisition_recovery_remediation.py tests/v2/test_session031_preflight_remediation.py tests/v2/test_session031_public_shadow_readiness.py tests/v2/test_session031_s3_persisted_lineage.py tests/v2/test_session032_public_stream_continuity.py tests/v2/test_session032_public_stream_integration.py tests/v2/test_session032_public_stream_source.py tests/v2/test_session032_public_ws_acquisition.py tests/v2/test_session033_outcome_maturity.py --junitxml=docs/v2/transition-r9-local-evidence/full-suite/batch-2-suffix-junit.xml",
+          "exit_status": 0,
+          "junit": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-suffix-junit.xml",
+            "sha256": "e0ea22a712f8c228c5167e31521fd803863f14ff7245e0e71a06de69e6e2057b",
+            "tests": 160,
+            "passed": 159,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 1
+          },
+          "time_file": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-suffix-time.txt",
+            "sha256": "c5b38f1ce0d3a0b70f0462f3b8219b984dfd12ea3b47e40f1707d5751c94bc50"
+          },
+          "wall_seconds": 235.43,
+          "user_seconds": 180.29,
+          "system_seconds": 4.26,
+          "peak_rss_kib": 256388
+        },
+        {
+          "name": "repository partition 2 production module remainder",
+          "classification": "PASS",
+          "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/v2/test_session027_production.py -k not test_builtin_atlas_ops_cli_imports_and_runs_without_external_adapter and not test_default_production_composes_public_to_risk_action_and_economics_after_restart --junitxml=docs/v2/transition-r9-local-evidence/full-suite/batch-2-production-remainder-junit.xml",
+          "exit_status": 0,
+          "junit": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-production-remainder-junit.xml",
+            "sha256": "a5500afe7f200d6a1a31c1300adf9d98df748cb7d53e78123f4a4f56ca6ffe6a",
+            "tests": 14,
+            "passed": 14,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0
+          },
+          "time_file": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-production-remainder-time.txt",
+            "sha256": "c2b6ad0390539841e74ae110ee6d3468850902efc8cc7b85b69cb02c3920b7f2"
+          },
+          "wall_seconds": 1926.32,
+          "user_seconds": 1494.25,
+          "system_seconds": 23.86,
+          "peak_rss_kib": 280572
+        },
+        {
+          "name": "repository partition 3",
+          "classification": "PASS",
+          "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/v2/test_session033_outcome_resolution.py tests/v2/test_session033_outcome_runtime.py tests/v2/test_session034_causal_timing.py tests/v2/test_session034_production_remediation.py tests/v2/test_session034_s3_forward_evidence.py tests/v2/test_session034_s3_native_cadence.py tests/v2/test_session034_s3_native_origin_accounting.py tests/v2/test_session034_scientific_calendar_closure.py tests/v2/test_session036_analogue_diagnostic.py tests/v2/test_session036_collector_resources.py tests/v2/test_session036_economic_chronology.py tests/v2/test_session036_inference_cache_bounds.py tests/v2/test_session036_m15_origin_accounting.py tests/v2/test_session036_m15_production_accounting.py tests/v2/test_session036_missing_generation.py tests/v2/test_session036_prediction_outcomes.py tests/v2/test_session036_product.py tests/v2/test_session036_repository_ports.py tests/v2/test_session036_research_model_routing.py tests/v2/test_session036_research_model_shadow.py tests/v2/test_session036_trade_completeness.py tests/v2/test_session036_tuning_export.py tests/v2/test_session036_windows_broker.py tests/v2/test_session036_writer_broker_bounds.py tests/v2/test_session037_action_outcome_producer.py tests/v2/test_session037_active_history.py tests/v2/test_session037_bar_repair.py tests/v2/test_session037_chronology.py tests/v2/test_session037_collector_restart.py tests/v2/test_session037_due_work.py tests/v2/test_session037_economic_binding.py tests/v2/test_session037_economic_sources.py tests/v2/test_session037_event_scope.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_history_runtime.py tests/v2/test_session037_installed_economics.py tests/v2/test_session037_lifecycle_interruption.py tests/v2/test_session037_metadata_query_bounds.py tests/v2/test_session037_origin_projection.py tests/v2/test_session037_product_refresh.py tests/v2/test_session037_public_composition.py tests/v2/test_session037_public_context.py tests/v2/test_session037_public_prerequisite_binding.py tests/v2/test_session037_receipt_query_bounds.py tests/v2/test_session037_remaining_query_bounds.py tests/v2/test_session037_research_prerequisites.py tests/v2/test_session037_source_inventory.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session037_training_bounds.py tests/v2/test_session037_tuning_analysis.py tests/v2/test_session038_history_service.py tests/v2/test_session038_public_http_session.py tests/v2/test_session038_report_worker.py tests/v2/test_session038_serviced_acquisition.py tests/v2/test_session038_stream_identity_cache.py tests/v2/test_session038_transport_archive.py tests/v2/test_session039_book_lineage_replay.py tests/v2/test_session039_long_run_public_evidence.py tests/v2/test_session039_public_archive_extents.py tests/v2/test_session039_stream_checkpoint_lookup.py tests/v2/test_session040_action_query_bounds.py tests/v2/test_session040_capture_receipts.py tests/v2/test_session040_durable_capture.py tests/v2/test_session040_export_snapshot_cache.py tests/v2/test_session040_live_health.py tests/v2/test_session040_native_resilience.py tests/v2/test_session040_owner_runtime.py --junitxml=docs/v2/transition-r9-local-evidence/full-suite/batch-3-junit.xml",
+          "exit_status": 0,
+          "junit": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-3-junit.xml",
+            "sha256": "a4d779310f09a392c0123704cbd5419d0c8bfba083557c8122ce31c3d2f74e4f",
+            "tests": 741,
+            "passed": 741,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0
+          },
+          "time_file": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-3-time.txt",
+            "sha256": "1dca1bb5a0832c83bec9e15af03cec9b072a54a1ecac04c939a56823cd5c24fb"
+          },
+          "wall_seconds": 1179.67,
+          "user_seconds": 847.57,
+          "system_seconds": 41.09,
+          "peak_rss_kib": 273148
+        },
+        {
+          "name": "repository partition 4",
+          "classification": "3_RESOURCE_OR_TIMING_FAILURES",
+          "command": "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/v2/test_session040_provider_isolation.py tests/v2/test_session040_storage_preflight.py tests/v2/test_session041_basket_outcomes.py tests/v2/test_session041_binance_qualification.py tests/v2/test_session041_block_cache_epochs.py tests/v2/test_session041_block_migration.py tests/v2/test_session041_broad_adoption_windows.py tests/v2/test_session041_broad_export.py tests/v2/test_session041_broad_public_source.py tests/v2/test_session041_broad_research_queue.py tests/v2/test_session041_broad_storage_preflight.py tests/v2/test_session041_broad_stream_source.py tests/v2/test_session041_capacity_max_breadth.py tests/v2/test_session041_capture_delivery_batching.py tests/v2/test_session041_capture_pressure_reserve.py tests/v2/test_session041_compact_public_observations.py tests/v2/test_session041_compressed_metadata.py tests/v2/test_session041_compression_review.py tests/v2/test_session041_demo_product.py tests/v2/test_session041_dynamic_universe.py tests/v2/test_session041_event_extraction.py tests/v2/test_session041_event_extraction_transport.py tests/v2/test_session041_frozen_action_comparison.py tests/v2/test_session041_frozen_map_bounds.py tests/v2/test_session041_mixed_broad_capacity.py tests/v2/test_session041_official_calendar.py tests/v2/test_session041_ownerpairs.py tests/v2/test_session041_product_configuration.py tests/v2/test_session041_production_breadth.py tests/v2/test_session041_public_context_extraction_async.py tests/v2/test_session041_public_runtime_integration.py tests/v2/test_session041_recovery_adoption.py tests/v2/test_session041_recovery_queue.py tests/v2/test_session041_relative_value.py tests/v2/test_session041_research_book_recovery.py tests/v2/test_session041_research_sidecar_recovery.py tests/v2/test_session041_s6_action_contract.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_scale_review.py tests/v2/test_session041_source_scope.py tests/v2/test_session041_strategy_surface.py tests/v2/test_session041_stream_service_paging.py tests/v2/test_session041_trade_location.py tests/v2/test_session041_trade_location_runtime.py tests/v2/test_session043_binance_context_isolation.py tests/v2/test_session044_close_driven_m15.py tests/v2/test_session046_peer_context.py tests/v2/test_session047_decision_brief.py tests/v2/test_session047_event_classification.py tests/v2/test_session047_peer_chronology.py tests/v2/test_session047_research_agent.py tests/v2/test_session047_research_memory.py tests/v2/test_session048_management_shadow.py tests/v2/test_session048_s47_repairs.py tests/v2/test_session052_production_intelligence.py tests/v2/test_session053_production_completion.py tests/v2/test_session055_gemma_native.py tests/v2/test_session055_r4_production_gate.py tests/v2/test_session055_r4_synthetic_e2e.py tests/v2/test_worker_isolation.py --junitxml=docs/v2/transition-r9-local-evidence/full-suite/batch-4-junit.xml",
+          "exit_status": 1,
+          "junit": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-4-junit.xml",
+            "sha256": "00defeed17f13bfb0152aeca1054e65569e27a0022eff334f13047bc7ac19721",
+            "tests": 707,
+            "passed": 703,
+            "failures": 3,
+            "errors": 0,
+            "skipped": 1
+          },
+          "time_file": {
+            "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-4-time.txt",
+            "sha256": "88d47ca6560334ae4c4b3e03a380785d9f73ea64010930f17669a3f2d6c783a0"
+          },
+          "wall_seconds": 1376.01,
+          "user_seconds": 999.56,
+          "system_seconds": 50.18,
+          "peak_rss_kib": 981900
+        }
+      ],
+      "credential_environment": {
+        "classification": "CREDENTIAL VARIABLES NOT EXPLICITLY STRIPPED IN ALL PARTITIONS",
+        "note": "Provider/Demo/scanner focused checks and desktop smoke were later rerun with the three credential variables removed."
+      }
+    },
+    "credential_scrubbed_focused_runs": {
+      "classification": "TESTED",
+      "total_across_runs": 80,
+      "note": "Counts overlap for scanner runner cases: 47 scanner-directory cases plus a 33-case combined scanner-runner/Gemma/Demo group.",
+      "runs": [
+        {
+          "name": "scanner suite, credential variables removed",
+          "classification": "PASS",
+          "command": "env -u GEMINI_API_KEY -u BINANCE_FUTURES_DEMO_API_KEY -u BINANCE_FUTURES_DEMO_API_SECRET PYTHONPATH=/home/kasun/Music/atlas-red-r9/src /home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/scanner --junitxml=docs/v2/transition-r9-local-evidence/focused-final/scanner-junit.xml",
+          "path": "docs/v2/transition-r9-local-evidence/focused-final/scanner-junit.xml",
+          "sha256": "f0e0542efc2c1278100ebe5ca4e366123341347c5a5a3258452165927738f1c6",
+          "tests": 47,
+          "passed": 47,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "changed scanner runner + Gemma native + Demo read probe, credential variables removed",
+          "classification": "PASS",
+          "command": "env -u GEMINI_API_KEY -u BINANCE_FUTURES_DEMO_API_KEY -u BINANCE_FUTURES_DEMO_API_SECRET PYTHONPATH=/home/kasun/Music/atlas-red-r9/src /home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/scanner/test_scanner_runner.py tests/v2/test_session055_gemma_native.py tests/runtime/test_session055_demo_read_probe.py --junitxml=docs/v2/transition-r9-local-evidence/focused-final/junit.xml",
+          "path": "docs/v2/transition-r9-local-evidence/focused-final/junit.xml",
+          "sha256": "57bc118e72d288466926b90d10d863ae73b8081dc013d038185c32bf033f437c",
+          "tests": 33,
+          "passed": 33,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "credential_scrubbed_full_suite_replay": {
+      "classification": "BLOCKED BY ENVIRONMENT",
+      "evidence": "docs/v2/transition-r9-local-evidence/full-suite/env-isolated-replay/replay-status.json",
+      "runner_path": "docs/v2/transition-r9-local-evidence/full-suite/env-isolated-replay/runner.py",
+      "runner_sha256": "75ecea5a53595bcde7f50c7690e406b42fed5886167d3bea7ff53553f815f97e",
+      "progress_percent": 39,
+      "completed_junit": false,
+      "counted_in_complete_repository_suite": false
+    },
+    "R8_baseline_failure_control": "docs/v2/transition-r9-local-evidence/full-suite/failure-reproduction-summary.json",
+    "desktop_smoke": {
+      "classification": "TESTED",
+      "evidence": "docs/v2/transition-r9-local-evidence/desktop-smoke.json"
+    }
+  },
+  "static_checks": {
+    "evidence": "docs/v2/transition-r9-local-evidence/static-checks.json",
+    "ruff": "PASS",
+    "compileall_python": "3.12.13 PASS",
+    "uv_lock_check": "PASS (39 resolutions)",
+    "uv_pip_check": "PASS (35 packages)",
+    "mypy": "53 diagnostics across 17 files, exact R8 baseline, zero delta"
+  },
+  "secret_scan": {
+    "evidence": "docs/v2/transition-r9-local-evidence/sensitive-pattern-scan.json",
+    "sha256": "2e303c8758d5f73bbb54b7d647e095fd01c97ba652646c4b09f7f854b663a45c",
+    "actual_credential_or_signed_request_findings": 0,
+    "synthetic_test_placeholders": 16,
+    "private_account_payload_saved": false,
+    "raw_public_market_payload_saved": false
+  },
+  "changed_source_files": [
+    {
+      "path": "scripts/atlas_red_demo_read_probe.py",
+      "sha256": "d57ded895a5d1b968f3926971dabe7d455325dba2982b47b5ea88509e2363e80"
+    },
+    {
+      "path": "scripts/atlas_red_gemma_model_probe.py",
+      "sha256": "bd4ee83cc24e55170136ee30d70a5c6dd2ee17740fecd24afae36e91e4c7e1fd"
+    },
+    {
+      "path": "scripts/atlas_red_gemma_smoke.py",
+      "sha256": "d2673df9bdb7349cbe7843e9bc7ec32474ae94299ce668c5889ed3a2277722f5"
+    },
+    {
+      "path": "src/atlas/scanner/runner.py",
+      "sha256": "1b6b25759f478edef87559b59e0468e01cfd0cc42d6d290c7bbf78b3c38a7619"
+    },
+    {
+      "path": "src/atlas/scanner/slot_ledger.py",
+      "sha256": "9545e1f3ddcbe9160c821642b68046f9812c67a7b62cbb75c598f2fb6ab8fba0"
+    },
+    {
+      "path": "src/atlas/v2/research/gemma_native.py",
+      "sha256": "58bf81945dad0e8ec73ce8a0e3877b1c4bbb98e089e4441c404595630f1afbb5"
+    },
+    {
+      "path": "tests/runtime/test_session055_demo_read_probe.py",
+      "sha256": "5eabf19936c06b6fc50226f5404e31e7bb88feceadbec1be61e0f897ff7fa302"
+    },
+    {
+      "path": "tests/scanner/test_scanner_runner.py",
+      "sha256": "5bb102604b5603f1444a7ca5ee88e9b2c353cc09ff064b74518d0d6fd5a3ba57"
+    },
+    {
+      "path": "tests/v2/test_session055_gemma_native.py",
+      "sha256": "d7b2f0de7042dbf7997423c35104a3f3fa70b23c3243c52b5c7a18d556556a12"
+    }
+  ],
+  "reports": [
+    {
+      "path": "docs/v2/ATLAS_RED_R9_LOCAL_API_QUALIFICATION.md",
+      "sha256": "073181572abb750cbe81006a0cf9653948965e389e32b4372f231c0055ebab47",
+      "bytes": 4737
+    },
+    {
+      "path": "docs/v2/ATLAS_RED_R9_LOCAL_DEFECTS_AND_REPAIRS.md",
+      "sha256": "1acf52d013f03aa0d2c930865ecab9b99f120d5fcf7b5dc76cba209769e13c9b",
+      "bytes": 3791
+    },
+    {
+      "path": "docs/v2/ATLAS_RED_R9_LOCAL_END_TO_END.md",
+      "sha256": "00b27f501685777ad8cd15d1ef6a3fc42e48d11533dacd9952530bf475602d4b",
+      "bytes": 2772
+    },
+    {
+      "path": "docs/v2/ATLAS_RED_R9_LOCAL_EXECUTION_PROTECTION.md",
+      "sha256": "cc4b7fcd15c5d550c1c6a5beea80a0b63499b0c14367b3a78b847dff027bd608",
+      "bytes": 2676
+    },
+    {
+      "path": "docs/v2/ATLAS_RED_R9_LOCAL_HANDOFF.md",
+      "sha256": "d2381d9bebb7834c42391c3e6a1d4ebd17b36b096d7dffd5d8a32afa70623f84",
+      "bytes": 4203
+    },
+    {
+      "path": "docs/v2/ATLAS_RED_R9_LOCAL_TESTS_PERFORMANCE.md",
+      "sha256": "a087abc322c92197627070e391ee1279e384fd135c5ae96f4cba987626e8d2c1",
+      "bytes": 5049
+    }
+  ],
+  "evidence_files": [
+    {
+      "path": "docs/v2/transition-r9-local-evidence/api-qualification.json",
+      "sha256": "66a9118bd40f7a1f33450253fd08d4b8138667942e9d86ea46ea69f21d101736",
+      "bytes": 5802
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/desktop-smoke.json",
+      "sha256": "dd16cd65d289c8ef179504852d487eb8e3ac57297a11d7bf156ff3d48ee59623",
+      "bytes": 1219
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/evidence-sanitization.json",
+      "sha256": "4f6f3c3a443d4497855443c0ad073778e2356eeb73e4b7931304a06de315ef78",
+      "bytes": 4567
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/focused-final/console.txt",
+      "sha256": "cb27fd7f42b6d224dfa05db3fc71777af0a383bcb32d6cfe1be44ebfcab22739",
+      "bytes": 80
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/focused-final/junit.xml",
+      "sha256": "57bc118e72d288466926b90d10d863ae73b8081dc013d038185c32bf033f437c",
+      "bytes": 5293
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/focused-final/scanner-console.txt",
+      "sha256": "325b7cf7b0d6ead544ebb7e833a08009fa10cf90ce29b8f9021e2ede461488f5",
+      "bytes": 80
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/focused-final/scanner-junit.xml",
+      "sha256": "f0e0542efc2c1278100ebe5ca4e366123341347c5a5a3258452165927738f1c6",
+      "bytes": 6975
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-1-console.txt",
+      "sha256": "4704667186c27c4e5c625fcd063705d51c8d85bcee61cc1021c7ebfa45dc409a",
+      "bytes": 880
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-1-final-console.txt",
+      "sha256": "a8804fac27bba1976137fa066f8315c31632e591f7db08c592472daeae12f2df",
+      "bytes": 2047
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-1-final-junit.xml",
+      "sha256": "bd0e0213db549e875cb3102c37db456ad61aaf2a147eaa9ad49b02633d524c65",
+      "bytes": 114232
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-1-final-time.txt",
+      "sha256": "5703997216d4035cea078ff4a8a93322ffb38171b4d5a1dd164ee7024302daca",
+      "bytes": 5014
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-1-junit.xml",
+      "sha256": "914aef069d0cc177cea747009a96362f57cef412645e079d4a71ea8aa182d0f0",
+      "bytes": 114234
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-1-time.txt",
+      "sha256": "7ec87ed0976a2f2efbb7787c7a277651801420d4e80c53a0aa218a6ad4e812d7",
+      "bytes": 5171
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-console.txt",
+      "sha256": "67fc5b5d221cd3c7c0d31fb4294d641c7bb7f7c14f6ab06fc2eee4756f802c15",
+      "bytes": 785
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-interrupted-console.txt",
+      "sha256": "5891c50569d78c0c25f89a819cfe4df2479ee8bb8b15b7037d5fe564d4a502d4",
+      "bytes": 602
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-junit-sanitization.json",
+      "sha256": "bdfe8b888a32719a0808b19d4db24cba7d2cba43614e83b1a64dea7f4adb3ae2",
+      "bytes": 661
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-junit.xml",
+      "sha256": "218ee12c51818fc730b285e7d8f24615e7dc4c72be6c3c9ba8364fc6f807c9b7",
+      "bytes": 84875
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-production-remainder-console.txt",
+      "sha256": "fe9dca0451129aaabdd76ea13e310b61a52091a146a1f9fe5b72b851eb33547f",
+      "bytes": 80
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-production-remainder-junit.xml",
+      "sha256": "a5500afe7f200d6a1a31c1300adf9d98df748cb7d53e78123f4a4f56ca6ffe6a",
+      "bytes": 2406
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-production-remainder-time.txt",
+      "sha256": "c2b6ad0390539841e74ae110ee6d3468850902efc8cc7b85b69cb02c3920b7f2",
+      "bytes": 1093
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-provider-console.txt",
+      "sha256": "cef06c6d8235b2b2faea3c6a92ca08fe52a658d5c8309ca07a97b1de6644667f",
+      "bytes": 80
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-provider-junit.xml",
+      "sha256": "68fad67c249b3c1efea6adcdd98e3777f910192c7cc07bd75fd5d6a1004e4d2e",
+      "bytes": 3832
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-provider-time.txt",
+      "sha256": "3abecbf5c73aa6f55e5e789314b6acaecb0386a47b72b5722ab194c908ee066a",
+      "bytes": 911
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-suffix-console.txt",
+      "sha256": "e863469bbd119526904f59c3201bfc8e70d457dc67523588200ca601fa8487f5",
+      "bytes": 240
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-suffix-junit.xml",
+      "sha256": "e0ea22a712f8c228c5167e31521fd803863f14ff7245e0e71a06de69e6e2057b",
+      "bytes": 26705
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-suffix-time.txt",
+      "sha256": "c5b38f1ce0d3a0b70f0462f3b8219b984dfd12ea3b47e40f1707d5751c94bc50",
+      "bytes": 1424
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-time.txt",
+      "sha256": "3cfc84eaf458b27d89a4e582e2a0d90c27b96cbbd2121f8c607462f790c012ae",
+      "bytes": 3786
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-3-console.txt",
+      "sha256": "636d9bb46c0ebd15c1c68c77bec37011a0c07351ed683d4071bbddbd003bd460",
+      "bytes": 880
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-3-junit.xml",
+      "sha256": "a4d779310f09a392c0123704cbd5419d0c8bfba083557c8122ce31c3d2f74e4f",
+      "bytes": 117637
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-3-time.txt",
+      "sha256": "1dca1bb5a0832c83bec9e15af03cec9b072a54a1ecac04c939a56823cd5c24fb",
+      "bytes": 4002
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-4-console.txt",
+      "sha256": "11117d1ee984b6a1de11c85ced5264a4a32655c72185de6802ba423ac49c9362",
+      "bytes": 55579
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-4-junit.xml",
+      "sha256": "da3ebe5706a3305f999463e8db46818b98832e99af27efb6d5522551eaa6212e",
+      "bytes": 168806
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-4-time.txt",
+      "sha256": "88d47ca6560334ae4c4b3e03a380785d9f73ea64010930f17669a3f2d6c783a0",
+      "bytes": 3725
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/env-isolated-replay/batch-1-final-console.txt",
+      "sha256": "89fbb8c6ba0123d9ff10617ec789301e1d2f489890a8c5624f42371ff028485a",
+      "bytes": 346
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/env-isolated-replay/replay-status.json",
+      "sha256": "c488ddfb5a918c2f47d1a9f009950a6c05893cbcd66d6058b4992da31d4c80fb",
+      "bytes": 916
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/env-isolated-replay/runner.py",
+      "sha256": "75ecea5a53595bcde7f50c7690e406b42fed5886167d3bea7ff53553f815f97e",
+      "bytes": 3615
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/failure-reproduction-summary.json",
+      "sha256": "f336fb6528bc290e5141faee5cc86624922b0bed28f06bdda1fdfc24e178a54c",
+      "bytes": 2433
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolated-deepseek-profile-console.txt",
+      "sha256": "acb5ff3d87c54bd981b0529919b4c5857286a8a5e4154244e54eda18b35df81f",
+      "bytes": 574
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolated-deepseek-profile-time.txt",
+      "sha256": "c7b6aa908b350183d636c5e1630e8c876a4ea88fa637a6722052b7f8cd926d6c",
+      "bytes": 1084
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolated-session028-console.txt",
+      "sha256": "ed1d1b3fb4644aab98f31263408aaffc004a4798e92c83ca5e46e40dac06340e",
+      "bytes": 576
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolated-session028-time.txt",
+      "sha256": "427f99d5a1bb0cd75217571cfeb4123e3df3f499d6243603ef751522d82ee4ca",
+      "bytes": 1089
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolated-supervisor-provider-console.txt",
+      "sha256": "d3b576a890e4f5cebb8cf5338ab29fcb48d5195192153d68aa59577d007dee04",
+      "bytes": 6804
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolated-supervisor-provider-time.txt",
+      "sha256": "67c0f1b0cde34fc887b17f1c4a59a73aedcbf7951146220e0c6b465fb9868432",
+      "bytes": 1047
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-mixed-capacity-console.txt",
+      "sha256": "ae0adc540dd95d2d7de4f7ec5ef26d8645be7be09a59da3069c3d91a5bcfa658",
+      "bytes": 50410
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-mixed-capacity-junit.xml",
+      "sha256": "3a9ae4529335814b16349c5c4244c2d927b4864d46cdf6e374d15a405bffd0e0",
+      "bytes": 51323
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-mixed-capacity-time.txt",
+      "sha256": "21ac3619a146b9289cd99df8d071af1d6f9328e78ee9c7c090f10d0d5a8db37f",
+      "bytes": 1045
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-projection-console.txt",
+      "sha256": "63d63b4d9a7a5ac58f825a3adaed51dfe38a650924aa7f7200561acc02f077cf",
+      "bytes": 5815
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-projection-junit.xml",
+      "sha256": "2a4bb57e81b7ac9194b42fba7163095f06c612de798e426605b4dfdcb21c68b9",
+      "bytes": 4574
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-projection-time.txt",
+      "sha256": "22aa2fa0c574c7ae411e86aa3d1ada9f6e0c5ee4300e8c3de0aa36ec96a71128",
+      "bytes": 1170
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/r8-baseline-failure-repro-console.txt",
+      "sha256": "3794e1c0be0e9bba9f9bcc5dea96c3bce0b1406c78c0bf885518fecf69b3c853",
+      "bytes": 52904
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/r8-baseline-failure-repro-junit.xml",
+      "sha256": "f4f36eeb83fa86ce38472b2560e42c982b5a743f46937c9a63294039bfc4f26e",
+      "bytes": 53461
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/r8-baseline-failure-repro-time.txt",
+      "sha256": "ec33666fdf7ce014afc7822ee88780a82ac81efcc5a322f1822063d7b7a324b2",
+      "bytes": 1325
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/mypy-r8-output.txt",
+      "sha256": "4be1f0f223be7d3e6d5ce8b230630825f36f6ac542f34524188dba1444448e6d",
+      "bytes": 9771
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/mypy-r8-time.txt",
+      "sha256": "12a462265d325de544cd9c57ccb72ba335ed32ae10e7ee00d5436c89acabac8b",
+      "bytes": 818
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/mypy-r9-output.txt",
+      "sha256": "4be1f0f223be7d3e6d5ce8b230630825f36f6ac542f34524188dba1444448e6d",
+      "bytes": 9771
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/mypy-r9-time.txt",
+      "sha256": "c1387e642f4322398f60a8afde871fa82c7947c13ebf12a02ee8f84d5fff9567",
+      "bytes": 810
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/sensitive-pattern-scan.json",
+      "sha256": "2e303c8758d5f73bbb54b7d647e095fd01c97ba652646c4b09f7f854b663a45c",
+      "bytes": 968
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/static-checks.json",
+      "sha256": "019413a03d9de9adc1f79b52e5c96eee8ff06a2d803c021a13797dbae4fc74ea",
+      "bytes": 1544
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/storage-preflight.json",
+      "sha256": "0b3e2cd922c660bd4bf61c9d9212e3059045ad75a7128c70b846cd59dc9fbe58",
+      "bytes": 1926
+    }
+  ],
+  "source_and_test_commands": {
+    "repository_test_commands_are_embedded_in_tests.exact_runs[].command": true,
+    "credential_scrubbed_focused_commands_are_embedded_in_tests.credential_scrubbed_focused_runs[].runs[].command": true,
+    "exact_external_operation_sequence": "Recorded as HTTP method and route under api_setup; shell invocation arguments are not retained in sanitized evidence.",
+    "static_command_refs": [
+      "/home/kasun/Music/atlas/.venv/bin/ruff check src scripts tests",
+      "/home/kasun/Music/atlas/.venv/bin/python -m compileall -q src scripts tests",
+      "uv lock --check",
+      "uv pip check --python /home/kasun/Music/atlas/.venv/bin/python",
+      "/home/kasun/Music/atlas/.venv/bin/mypy src"
+    ],
+    "credential_scrubbed_replay_runner": "python docs/v2/transition-r9-local-evidence/full-suite/env-isolated-replay/runner.py batch-1-final (interrupted; no test result counted)",
+    "staged_whitespace_check": "git diff --cached --check: PASS"
+  },
+  "evidence_sanitization": {
+    "path": "docs/v2/transition-r9-local-evidence/evidence-sanitization.json",
+    "sha256": "4f6f3c3a443d4497855443c0ad073778e2356eeb73e4b7931304a06de315ef78",
+    "junit_result_counts_unchanged": true,
+    "sensitive_pattern_scan": "docs/v2/transition-r9-local-evidence/sensitive-pattern-scan.json"
+  }
+}

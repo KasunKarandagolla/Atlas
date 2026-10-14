@@ -1,6 +1,18 @@
 # ATLAS engineering log
 
-## Current checkpoint — R7 API adapter corrections — 2026-10-14
+## Current checkpoint — R9 local API qualification and engineering gates — 2026-10-15
+
+**CONFIRMED:** isolated `fix/red-r9-local-complete-cycle-2026-10-14` from exact R8 `ef40afb0bf7172f703ffd8016a3e0086396e845d`; the original checkout and its dirty files remain untouched. All three frozen authorities match their required SHA-256 values. API_SETUP_PASS is established: one genuine bounded Gemma 26B ABSTAIN response, signed read-only Binance Demo account access, and bounded public Binance REST/WebSocket observations. No account payload or raw public frame was saved; zero orders occurred.
+
+**IMPLEMENTED / TESTED:** corrected Gemma identity compatibility and Demo error classification. Added prospective scanner registrations, restart reconstruction, missed-slot reconciliation and a registered expected-slot summary; focused scanner suite 47/47. Offscreen PySide6 startup/owner-guidance smoke passed with credential variables removed. Ruff, pinned-interpreter compileall, lock/dependency checks and frozen hashes pass; mypy remains at the exact R8 baseline of 53 diagnostics across 17 files.
+
+**TEST GATE / BLOCKED BY ENVIRONMENT:** production runtime stopped at the owner storage preflight before source construction or writer/database opening: sustained/burst batch means exceeded the 200 ms limit, and maximum-breadth capacity remains unavailable. Thus no durable genuine source-to-Brief chain, connected 21-stage composition, live scanner denominator, or production Gemma research job was run. The partitioned repository suite recorded 2,924 cases: 2,913 pass, 8 skip, 3 timing/resource failures; two reproduce on exact R8 source. Binance native protection and restart with exposure remain offline-fixture qualified only. Economics are NOT ESTIMABLE; no Demo order or plan was issued. S47 remains PROPOSED — NOT ACCEPTED, effective discretionary policy NONE.
+
+**Additional test-environment gate:** scanner, Gemma, Demo-probe, and desktop focused checks passed with credential variables removed. A supplemental scrubbed full-suite run was stopped at 39% during sustained ext4 journal I/O wait and yielded no result; the complete partitioned suite above was run earlier without explicit credential-variable stripping.
+
+Reports and sanitized evidence: `docs/v2/ATLAS_RED_R9_LOCAL_*` and `docs/v2/transition-r9-local-evidence/`. Exact limitation and result classifications are in the handoff and machine evidence manifest.
+
+## Previous checkpoint — R7 API adapter corrections — 2026-10-14
 
 **CONFIRMED:** verified the local repository root `/home/kasun/Music/atlas`, then fetched GitHub. Latest task branch was `fix/red-r6-full-workflow-demo-qualification-2026-10-13 @ e402e4e81d1d6983d5065a816934f70f66e2c9c0`; R7 is isolated at `fix/red-r7-api-adapter-corrections-2026-10-14`. The original checkout had unrelated uncommitted files; they were left untouched. All three frozen authority SHA-256 values match the accepted copies.
 

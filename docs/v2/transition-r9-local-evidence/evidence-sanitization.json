@@ -1,0 +1,114 @@
+{
+  "classification": "SANITIZED_EVIDENCE",
+  "operation": "Trailing spaces/tabs removed from captured text and report files; no source code or test assertions changed.",
+  "files": [
+    {
+      "path": "docs/v2/ATLAS_RED_R9_LOCAL_HANDOFF.md",
+      "pre_sanitization_index_sha256": "6951507993b81f9f91c8807e3f40b35f01d1acf822ec7e5c6ad0c8a67bb644ab",
+      "sanitized_sha256": "d2381d9bebb7834c42391c3e6a1d4ebd17b36b096d7dffd5d8a32afa70623f84",
+      "trailing_whitespace_removed": true
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-4-console.txt",
+      "pre_sanitization_index_sha256": "3f75b275ceb1eb9429009695b0f491094f6f7c98c6e00a80c6b2b3ea6e54c8b4",
+      "sanitized_sha256": "11117d1ee984b6a1de11c85ced5264a4a32655c72185de6802ba423ac49c9362",
+      "trailing_whitespace_removed": true
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/batch-4-junit.xml",
+      "pre_sanitization_index_sha256": "00defeed17f13bfb0152aeca1054e65569e27a0022eff334f13047bc7ac19721",
+      "sanitized_sha256": "da3ebe5706a3305f999463e8db46818b98832e99af27efb6d5522551eaa6212e",
+      "trailing_whitespace_removed": true,
+      "junit_counts_before": {
+        "tests": 707,
+        "failures": 3,
+        "errors": 0,
+        "skipped": 1
+      },
+      "junit_counts_after": {
+        "tests": 707,
+        "failures": 3,
+        "errors": 0,
+        "skipped": 1
+      },
+      "result_counts_unchanged": true
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-mixed-capacity-console.txt",
+      "pre_sanitization_index_sha256": "0d118c56465a58e1a22f1a9e9d4d0cc3b199fdf43b664a6607d0be13e0b38486",
+      "sanitized_sha256": "ae0adc540dd95d2d7de4f7ec5ef26d8645be7be09a59da3069c3d91a5bcfa658",
+      "trailing_whitespace_removed": true
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-mixed-capacity-junit.xml",
+      "pre_sanitization_index_sha256": "7a3db8fa551ef20dfa84ceb38f0b246208f7d00d24234dddf04c5e33afe8b165",
+      "sanitized_sha256": "3a9ae4529335814b16349c5c4244c2d927b4864d46cdf6e374d15a405bffd0e0",
+      "trailing_whitespace_removed": true,
+      "junit_counts_before": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "junit_counts_after": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "result_counts_unchanged": true
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-projection-console.txt",
+      "pre_sanitization_index_sha256": "0ebee78c650c7d7fa49ba22949ad82fe0a55af721a4f8d587b63708f465d3b18",
+      "sanitized_sha256": "63d63b4d9a7a5ac58f825a3adaed51dfe38a650924aa7f7200561acc02f077cf",
+      "trailing_whitespace_removed": true
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/isolation-projection-junit.xml",
+      "pre_sanitization_index_sha256": "ec686bff9189208db4745a6507d348a56c9f2eeaaecd7ae45f3a07a61e77cab1",
+      "sanitized_sha256": "2a4bb57e81b7ac9194b42fba7163095f06c612de798e426605b4dfdcb21c68b9",
+      "trailing_whitespace_removed": true,
+      "junit_counts_before": {
+        "tests": 2,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "junit_counts_after": {
+        "tests": 2,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "result_counts_unchanged": true
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/r8-baseline-failure-repro-console.txt",
+      "pre_sanitization_index_sha256": "a3999aec75f97bb3a2cc9f22126a7dc7be00ddf45388700eca9df8be937fa1ac",
+      "sanitized_sha256": "3794e1c0be0e9bba9f9bcc5dea96c3bce0b1406c78c0bf885518fecf69b3c853",
+      "trailing_whitespace_removed": true
+    },
+    {
+      "path": "docs/v2/transition-r9-local-evidence/full-suite/r8-baseline-failure-repro-junit.xml",
+      "pre_sanitization_index_sha256": "4c131a73cde285de414eb861d579e0bdba67763b7036885c08c32d1185e2fb96",
+      "sanitized_sha256": "f4f36eeb83fa86ce38472b2560e42c982b5a743f46937c9a63294039bfc4f26e",
+      "trailing_whitespace_removed": true,
+      "junit_counts_before": {
+        "tests": 3,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "junit_counts_after": {
+        "tests": 3,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "result_counts_unchanged": true
+    }
+  ],
+  "junit_result_counts_unchanged": true,
+  "raw_provider_or_account_payloads_included": false
+}

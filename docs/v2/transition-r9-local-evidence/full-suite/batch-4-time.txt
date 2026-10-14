@@ -1,0 +1,24 @@
+Command exited with non-zero status 1
+	Command being timed: "/home/kasun/Music/atlas/.venv/bin/python -m pytest -q tests/v2/test_session040_provider_isolation.py tests/v2/test_session040_storage_preflight.py tests/v2/test_session041_basket_outcomes.py tests/v2/test_session041_binance_qualification.py tests/v2/test_session041_block_cache_epochs.py tests/v2/test_session041_block_migration.py tests/v2/test_session041_broad_adoption_windows.py tests/v2/test_session041_broad_export.py tests/v2/test_session041_broad_public_source.py tests/v2/test_session041_broad_research_queue.py tests/v2/test_session041_broad_storage_preflight.py tests/v2/test_session041_broad_stream_source.py tests/v2/test_session041_capacity_max_breadth.py tests/v2/test_session041_capture_delivery_batching.py tests/v2/test_session041_capture_pressure_reserve.py tests/v2/test_session041_compact_public_observations.py tests/v2/test_session041_compressed_metadata.py tests/v2/test_session041_compression_review.py tests/v2/test_session041_demo_product.py tests/v2/test_session041_dynamic_universe.py tests/v2/test_session041_event_extraction.py tests/v2/test_session041_event_extraction_transport.py tests/v2/test_session041_frozen_action_comparison.py tests/v2/test_session041_frozen_map_bounds.py tests/v2/test_session041_mixed_broad_capacity.py tests/v2/test_session041_official_calendar.py tests/v2/test_session041_ownerpairs.py tests/v2/test_session041_product_configuration.py tests/v2/test_session041_production_breadth.py tests/v2/test_session041_public_context_extraction_async.py tests/v2/test_session041_public_runtime_integration.py tests/v2/test_session041_recovery_adoption.py tests/v2/test_session041_recovery_queue.py tests/v2/test_session041_relative_value.py tests/v2/test_session041_research_book_recovery.py tests/v2/test_session041_research_sidecar_recovery.py tests/v2/test_session041_s6_action_contract.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_scale_review.py tests/v2/test_session041_source_scope.py tests/v2/test_session041_strategy_surface.py tests/v2/test_session041_stream_service_paging.py tests/v2/test_session041_trade_location.py tests/v2/test_session041_trade_location_runtime.py tests/v2/test_session043_binance_context_isolation.py tests/v2/test_session044_close_driven_m15.py tests/v2/test_session046_peer_context.py tests/v2/test_session047_decision_brief.py tests/v2/test_session047_event_classification.py tests/v2/test_session047_peer_chronology.py tests/v2/test_session047_research_agent.py tests/v2/test_session047_research_memory.py tests/v2/test_session048_management_shadow.py tests/v2/test_session048_s47_repairs.py tests/v2/test_session052_production_intelligence.py tests/v2/test_session053_production_completion.py tests/v2/test_session055_gemma_native.py tests/v2/test_session055_r4_production_gate.py tests/v2/test_session055_r4_synthetic_e2e.py tests/v2/test_worker_isolation.py --junitxml=docs/v2/transition-r9-local-evidence/full-suite/batch-4-junit.xml"
+	User time (seconds): 999.56
+	System time (seconds): 50.18
+	Percent of CPU this job got: 76%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 22:56.01
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 981900
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 285
+	Minor (reclaiming a frame) page faults: 1050856
+	Voluntary context switches: 47641
+	Involuntary context switches: 557840
+	Swaps: 0
+	File system inputs: 60840
+	File system outputs: 1288
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

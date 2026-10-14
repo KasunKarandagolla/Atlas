@@ -1,0 +1,100 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0 -- /home/kasun/Music/atlas/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/kasun/Music/atlas-red-r9
+configfile: pyproject.toml
+plugins: hypothesis-6.168.0
+collecting ... collected 2 items
+
+tests/v2/test_session052_production_intelligence.py::test_normal_production_run_persists_brief_and_memory_without_dispatch FAILED [ 50%]
+tests/v2/test_session052_production_intelligence.py::test_deadline_reached_during_projection_expires_without_changing_receipt FAILED [100%]
+
+=================================== FAILURES ===================================
+____ test_normal_production_run_persists_brief_and_memory_without_dispatch _____
+
+tmp_path = PosixPath('/dev/shm/atlas-r9-tests/pytest-of-kasun/pytest-12/test_normal_production_run_per0')
+
+    def test_normal_production_run_persists_brief_and_memory_without_dispatch(tmp_path):
+        path = tmp_path / "ops.sqlite"
+        clock = FakeClock(CUTOFF + 100)
+
+        with production.OpsRepository(path) as repository:
+            event, inputs, _case, expected_set, selected, *_ = _production_event(repository)
+        port = production.ProductionOpsCyclePortV1(
+            public_source=ReconciledFixturePublicSource(event),
+            inputs_provider=StaticInputsProvider(event.event_id, inputs),
+            clock_ns=clock,
+        )
+        with OpsSupervisorV2(path, port, clock_ns=clock) as supervisor:
+            first = supervisor.run_once()
+            assert supervisor.repository is not None
+            (receipt,) = first.event_receipts
+            assert receipt.candidate_set_ref == expected_set.content_hash
+            assert receipt.result.stages[5].artifact_refs
+            assert receipt.result.stages[6].artifact_refs
+            assert receipt.action_ref is not None
+            assert receipt.evaluation_ref is not None
+            assert receipt.calendar_refs
+            assert receipt.agent_mode == "DISABLED"
+            assert not receipt.capital_enabled and not receipt.assisted_enabled
+
+            briefs = supervisor.repository.artifact_entries("ProductionDecisionBriefProjectionV1")
+            memories = supervisor.repository.artifact_entries("ProductionIntelligenceMemoryProjectionV1")
+>           assert len(briefs) == len(memories) == 1
+E           assert 0 == 1
+E            +  where 0 = len(())
+
+tests/v2/test_session052_production_intelligence.py:49: AssertionError
+___ test_deadline_reached_during_projection_expires_without_changing_receipt ___
+
+tmp_path = PosixPath('/dev/shm/atlas-r9-tests/pytest-of-kasun/pytest-12/test_deadline_reached_during_p0')
+
+    def test_deadline_reached_during_projection_expires_without_changing_receipt(tmp_path):
+        path = tmp_path / "deadline.sqlite"
+        clock = FakeClock(CUTOFF + 100)
+        with production.OpsRepository(path) as repository:
+            event, inputs, *_ = _production_event(repository)
+        port = production.ProductionOpsCyclePortV1(
+            public_source=ReconciledFixturePublicSource(event),
+            inputs_provider=StaticInputsProvider(event.event_id, inputs),
+            clock_ns=clock,
+        )
+        with OpsSupervisorV2(path, port, clock_ns=clock, production_intelligence_enabled=False) as supervisor:
+            (receipt,) = supervisor.run_once().event_receipts
+            assert supervisor.repository is not None
+            before = _a0_snapshot(supervisor.repository)
+            identity = supervisor.repository.get_artifact(OpsSupervisorV2._receipt_identity_ref(event.event_id))
+            assert identity is not None
+>           production_intelligence.project_production_receipt(
+                supervisor.repository,
+                receipt,
+                identity.metadata["receipt_ref"],
+                now_ns=receipt.created_at_ns,
+                clock_ns=lambda: receipt.event.deadline_ns,
+            )
+
+tests/v2/test_session052_production_intelligence.py:205:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/v2/runtime/production_intelligence.py:1060: in project_production_receipt
+    check_budget()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def check_budget() -> None:
+        elapsed_ns = monotonic_ns() - projection_started_ns
+        if elapsed_ns < 0 or elapsed_ns > budget_ns:
+>           raise TimeoutError("production intelligence projection time budget exhausted")
+E           TimeoutError: production intelligence projection time budget exhausted
+
+src/atlas/v2/runtime/production_intelligence.py:542: TimeoutError
+- generated xml file: /home/kasun/Music/atlas-red-r9/docs/v2/transition-r9-local-evidence/full-suite/isolation-projection-junit.xml -
+============================= slowest 10 durations =============================
+1.08s call     tests/v2/test_session052_production_intelligence.py::test_deadline_reached_during_projection_expires_without_changing_receipt
+1.05s call     tests/v2/test_session052_production_intelligence.py::test_normal_production_run_persists_brief_and_memory_without_dispatch
+0.01s setup    tests/v2/test_session052_production_intelligence.py::test_normal_production_run_persists_brief_and_memory_without_dispatch
+
+(3 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/v2/test_session052_production_intelligence.py::test_normal_production_run_persists_brief_and_memory_without_dispatch
+FAILED tests/v2/test_session052_production_intelligence.py::test_deadline_reached_during_projection_expires_without_changing_receipt
+============================== 2 failed in 7.26s ===============================

@@ -1,0 +1,10 @@
+{
+  "classification": "SANITIZED_TEST_EVIDENCE",
+  "source_path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-junit.xml",
+  "source_sha256": "711bef7a247f97d007c7d2401c303bd265368acefbd3d25813c4a80b037c4006",
+  "sanitized_path": "docs/v2/transition-r9-local-evidence/full-suite/batch-2-junit.xml",
+  "sanitized_sha256": "218ee12c51818fc730b285e7d8f24615e7dc4c72be6c3c9ba8364fc6f807c9b7",
+  "matches_redacted": 1,
+  "reason": "A synthetic credential-shaped string appeared only in a parametrized pytest case identifier; the case result/count are unchanged.",
+  "raw_copy_retained_outside_repository": "/tmp/atlas-r9-unsanitized/batch-2-junit.xml"
+}

@@ -1,0 +1,66 @@
+{
+  "classification": "TEST GATE / BLOCKED BY ENVIRONMENT",
+  "host": {
+    "os_family": "Linux",
+    "cpu_model": "Intel Celeron N3060",
+    "logical_cpus": 2,
+    "measurement_note": "Desktop session remained active; CPU pressure and contention were observed."
+  },
+  "r9_full_partition_4": {
+    "tests": 707,
+    "passed": 703,
+    "skipped": 1,
+    "failed": 3,
+    "wall_seconds": 1376.01,
+    "peak_rss_kib": 981900,
+    "failures": [
+      {
+        "test": "tests/v2/test_session041_mixed_broad_capacity.py::test_mixed_1024_contract_public_workload_under_bounded_stalls",
+        "result": "PREVENTIVE_CAPTURE_PRESSURE_STOP",
+        "captured_frames": 1086,
+        "delivered_frames": 97,
+        "pending_frames": 989,
+        "classification": "synthetic broad-workload capacity is not qualified on this host"
+      },
+      {
+        "test": "tests/v2/test_session052_production_intelligence.py::test_normal_production_run_persists_brief_and_memory_without_dispatch",
+        "result": "optional projection produced no Brief or memory within the 80 ms default budget",
+        "classification": "host timing gate"
+      },
+      {
+        "test": "tests/v2/test_session052_production_intelligence.py::test_deadline_reached_during_projection_expires_without_changing_receipt",
+        "result": "projection budget TimeoutError",
+        "classification": "timing-sensitive host gate"
+      }
+    ]
+  },
+  "r9_isolated_rechecks": {
+    "mixed_broad_capacity": "FAILED again after 34.73 seconds; preventive stop remained fail-closed",
+    "normal_projection": "FAILED in isolated two-test run",
+    "deadline_projection_three_runs": [
+      "FAILED",
+      "PASSED",
+      "FAILED"
+    ]
+  },
+  "r8_exact_base_control": {
+    "commit": "ef40afb0bf7172f703ffd8016a3e0086396e845d",
+    "tests": 3,
+    "passed": 1,
+    "failed": 2,
+    "results": {
+      "mixed_broad_capacity": "FAILED with the same preventive capture pressure stop",
+      "normal_projection": "FAILED to persist within the same 80 ms budget",
+      "deadline_projection": "PASSED"
+    }
+  },
+  "unchanged_from_r8": [
+    "src/atlas/v2/runtime/production_intelligence.py",
+    "src/atlas/v2/research/memory.py",
+    "src/atlas/v2/runtime/broad_public_runtime.py",
+    "tests/v2/test_session052_production_intelligence.py",
+    "tests/v2/test_session041_mixed_broad_capacity.py"
+  ],
+  "guards_relaxed": false,
+  "orders_or_provider_calls_from_tests": 0
+}

@@ -1,0 +1,18 @@
+{
+  "classification": "BLOCKED BY ENVIRONMENT",
+  "partition": "batch-1-final",
+  "expected_cases": 736,
+  "completed_test_report": false,
+  "progress_at_interruption_percent": 39,
+  "elapsed_at_interruption_seconds": null,
+  "credential_variables_removed": true,
+  "observed_wait_channel": "jbd2_log_wait_commit",
+  "result": "Interrupted after sustained ext4 journal-commit I/O waits to avoid further storage pressure; no pass/fail count is assigned.",
+  "console_path": "docs/v2/transition-r9-local-evidence/full-suite/env-isolated-replay/batch-1-final-console.txt",
+  "junit_path": null,
+  "counted_in_complete_repository_suite": false,
+  "secret_values_recorded": false,
+  "elapsed_at_interruption_text": "about 19 minutes",
+  "runner_path": "docs/v2/transition-r9-local-evidence/full-suite/env-isolated-replay/runner.py",
+  "runner_sha256": "75ecea5a53595bcde7f50c7690e406b42fed5886167d3bea7ff53553f815f97e"
+}
