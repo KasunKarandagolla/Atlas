@@ -122,7 +122,10 @@ class LocalProcessProvider(ModelProvider):
         try:
             with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
                 process = subprocess.Popen(
-                    self.sandbox.command(self._worker_program),
+                    # Popen's new session owns the worker process group. Do not
+                    # create another Bubblewrap session that could escape timeout
+                    # signaling when the provider kills that group.
+                    self.sandbox.command(self._worker_program, new_session=False),
                     stdin=subprocess.PIPE,
                     stdout=stdout_file,
                     stderr=stderr_file,

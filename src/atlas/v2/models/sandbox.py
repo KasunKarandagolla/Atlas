@@ -13,7 +13,7 @@ from .worker_protocol import ModelProviderError
 
 
 class WorkerSandboxV2(Protocol):
-    def command(self, program: str) -> list[str]: ...
+    def command(self, program: str, *, new_session: bool = True) -> list[str]: ...
 
 
 _SENSITIVE_NAMES = {".env", ".ssh", ".aws", ".config", "credentials", "secrets", "tokens"}
@@ -107,15 +107,17 @@ class BubblewrapSandboxV2:
                     raise ModelProviderError("WORKER_MOUNT_UNSAFE", "approved artifact mounts overlap")
         self.artifacts = artifacts
 
-    def command(self, program: str) -> list[str]:
+    def command(self, program: str, *, new_session: bool = True) -> list[str]:
         args = [
-            # LocalProcessProvider creates the worker's process group so timeout cleanup
-            # can signal the whole sandbox. A second session here would let the payload
-            # escape that group while its bubblewrap monitor is being terminated.
-            self.binary, "--unshare-all", "--die-with-parent", "--clearenv",
+            self.binary, "--unshare-all", "--die-with-parent",
+        ]
+        if new_session:
+            args.append("--new-session")
+        args.extend((
+            "--clearenv",
             "--setenv", "PATH", "/usr/bin:/bin", "--setenv", "TMPDIR", "/tmp",
             "--ro-bind", "/usr", "/usr",
-        ]
+        ))
         for system_dir in ("/lib", "/lib64"):
             if Path(system_dir).exists():
                 args.extend(("--ro-bind", system_dir, system_dir))

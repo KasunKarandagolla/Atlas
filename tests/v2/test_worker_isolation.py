@@ -183,6 +183,12 @@ def test_sandbox_mount_validation_and_missing_backend_fail_closed(
     assert error.value.code == "WORKER_SANDBOX_UNAVAILABLE"
 
 
+def test_direct_bubblewrap_session_default_is_preserved() -> None:
+    sandbox = BubblewrapSandboxV2()
+    assert "--new-session" in sandbox.command("pass")
+    assert "--new-session" not in sandbox.command("pass", new_session=False)
+
+
 def test_provider_retains_os_limits_and_timeout_cleanup() -> None:
     # The worker checks its actual inherited kernel limits, then emits the valid fixture response.
     prelude = '''import resource
