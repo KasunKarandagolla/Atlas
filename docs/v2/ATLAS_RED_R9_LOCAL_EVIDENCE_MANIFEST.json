@@ -13,7 +13,10 @@
       "9931f4cfcf18b2d99f20acf8c2494c7e35127c21",
       "5042b63733ba6a75b4abb9a7287063c5b5fd95de"
     ],
-    "remote_push_verification": "PENDING"
+    "report_and_evidence_commits_before_final_manifest_receipt": [
+      "5042b63733ba6a75b4abb9a7287063c5b5fd95de",
+      "bf5474a833a41998ea9154a3c7486190d523220e"
+    ]
   },
   "authority_sha256": {
     "V1": {
