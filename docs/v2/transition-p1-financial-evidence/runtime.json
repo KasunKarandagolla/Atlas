@@ -1,0 +1,18 @@
+{
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "packages": {
+    "lightgbm": "4.7.0",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "pytest": "9.1.1",
+    "ruff": "0.17.0",
+    "mypy": "2.4.0",
+    "PySide6": "6.11.2",
+    "nautilus-trader": "2.0.0rc5"
+  },
+  "model": "Owner-confirmed GPT-6.1 Sol; independent runtime attestation unavailable",
+  "subagents": false,
+  "source_build_hash": "581c44bfd2ee7e9322d890c828d21cb2d7420ea4a381ffb6a64d665af388443c",
+  "grade": "CLOUD_OFFLINE_NOT_TARGET_HOST_QUALIFICATION"
+}

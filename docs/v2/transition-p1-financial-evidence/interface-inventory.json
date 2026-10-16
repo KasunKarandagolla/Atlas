@@ -1,0 +1,801 @@
+{
+  "source_build_hash": "581c44bfd2ee7e9322d890c828d21cb2d7420ea4a381ffb6a64d665af388443c",
+  "serialization": "Existing OfflineArtifact strict exact versions/field sets/Decimal strings/canonical SHA256; subclass V2 includes all unchanged V1 base fields; no SQL migration",
+  "contracts": [
+    {
+      "module": "src/atlas/v2/science/mean_calibration.py",
+      "symbol": "MeanEvidenceScopeV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_MEAN_EVIDENCE_SCOPE_V1",
+      "fields": [
+        {
+          "name": "product_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "compatibility_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "feature_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "horizon_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "support_min",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "support_max",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "registered_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "provenance",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "evidence_grade",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_calibration.py",
+      "symbol": "MeanOriginEvidenceV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_MEAN_HISTORICAL_ORIGIN_EVIDENCE_V1",
+      "fields": [
+        {
+          "name": "scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "action_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "origin_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "features",
+          "type": "tuple[float, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_calibration.py",
+      "symbol": "MeanOutcomeEvidenceV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_MEAN_OUTCOME_EVIDENCE_V1",
+      "fields": [
+        {
+          "name": "scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "action_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "origin_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "label_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "features",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "target_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "execution_state",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_calibration.py",
+      "symbol": "MeanCalibrationProtocolV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_OOF_CALIBRATION_PROTOCOL_V1",
+      "fields": [
+        {
+          "name": "scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "holdout_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "registered_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "start_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "block_ns",
+          "type": "int",
+          "default": "7 * DAY_NS"
+        },
+        {
+          "name": "embargo_ns",
+          "type": "int",
+          "default": "DAY_NS"
+        },
+        {
+          "name": "minimum_blocks",
+          "type": "int",
+          "default": "20"
+        },
+        {
+          "name": "alpha",
+          "type": "float",
+          "default": "0.05"
+        },
+        {
+          "name": "resamples",
+          "type": "int",
+          "default": "10000"
+        },
+        {
+          "name": "estimator",
+          "type": "str",
+          "default": "'M0_MEAN_RIDGE_V1'"
+        },
+        {
+          "name": "ridge",
+          "type": "float",
+          "default": "1.0"
+        },
+        {
+          "name": "dependence_assumption",
+          "type": "str",
+          "default": "'INDEPENDENT_SYNTHETIC_CALENDAR_BLOCKS_V1'"
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_calibration.py",
+      "symbol": "MeanOOFPredictionV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_VERIFIABLE_OOF_PREDICTION_V1",
+      "fields": [
+        {
+          "name": "protocol_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "model_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "training_row_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "action_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "origin_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "features",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "prediction_cash",
+          "type": "Decimal",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_calibration.py",
+      "symbol": "SelectedPolicyResidualV2",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_SELECTED_POLICY_MEAN_RESIDUAL_V2",
+      "fields": [
+        {
+          "name": "prediction_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "target_row_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_calibration.py",
+      "symbol": "MeanDependenceQualificationV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_OOF_DEPENDENCE_QUALIFICATION_V1",
+      "fields": [
+        {
+          "name": "protocol_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "serving_model_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "residual_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "effective_blocks",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "lag_correlations",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "allowance_cash",
+          "type": "Decimal",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_calibration.py",
+      "symbol": "MeanSelectionCalibrationV2",
+      "bases": [
+        "MeanSelectionCalibrationV1"
+      ],
+      "version": "ATLAS_RED_SELECTED_POLICY_MEAN_CALIBRATION_V2",
+      "fields": [
+        {
+          "name": "qualification_ref",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_scenario_evidence.py",
+      "symbol": "ScenarioMarketEvidenceV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_SCENARIO_MARKET_EVIDENCE_V1",
+      "fields": [
+        {
+          "name": "scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "observed_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "mark",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "bid",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "ask",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "bid_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "ask_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "signed_funding_rate",
+          "type": "Decimal | None",
+          "default": "None"
+        },
+        {
+          "name": "closed_m15_price",
+          "type": "Decimal | None",
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_scenario_evidence.py",
+      "symbol": "ScenarioObservationV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_SCENARIO_CALIBRATION_OBSERVATION_V1",
+      "fields": [
+        {
+          "name": "scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "origin_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "label_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "path_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "entry_delay_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "exit_delay_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "loss_cash",
+          "type": "Decimal",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_scenario_evidence.py",
+      "symbol": "ScenarioSourceV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_CAUSAL_SCENARIO_SOURCE_V1",
+      "fields": [
+        {
+          "name": "scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "template_origins_ns",
+          "type": "tuple[int, ...]",
+          "default": null
+        },
+        {
+          "name": "templates",
+          "type": "tuple[MeanJointPathV1, ...]",
+          "default": null
+        },
+        {
+          "name": "stress_ids",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "stress_exit_prices",
+          "type": "tuple[Decimal, ...]",
+          "default": null
+        },
+        {
+          "name": "background_path_refs",
+          "type": "tuple[str, ...]",
+          "default": "()"
+        },
+        {
+          "name": "method",
+          "type": "str",
+          "default": "'SHIFTED_HISTORICAL_EMPIRICAL_PATHS_V1'"
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_scenario_evidence.py",
+      "symbol": "ScenarioProtocolV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_SCENARIO_QUALIFICATION_PROTOCOL_V1",
+      "fields": [
+        {
+          "name": "scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "holdout_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "registered_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "train_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "validation_start_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "validation_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "confidence",
+          "type": "Decimal",
+          "default": "Decimal('.975')"
+        },
+        {
+          "name": "embargo_ns",
+          "type": "int",
+          "default": "DAY_NS"
+        },
+        {
+          "name": "block_ns",
+          "type": "int",
+          "default": "7 * DAY_NS"
+        },
+        {
+          "name": "minimum_blocks",
+          "type": "int",
+          "default": "20"
+        },
+        {
+          "name": "minimum_tail_observations",
+          "type": "int",
+          "default": "5"
+        },
+        {
+          "name": "maximum_probability_error",
+          "type": "Decimal",
+          "default": "Decimal('.1')"
+        },
+        {
+          "name": "dependence_assumption",
+          "type": "str",
+          "default": "'INDEPENDENT_SYNTHETIC_CALENDAR_BLOCKS_V1'"
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_scenario_evidence.py",
+      "symbol": "ScenarioExecutionModelV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_SCENARIO_EXECUTION_MODEL_V1",
+      "fields": [
+        {
+          "name": "scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "protocol_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "observation_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "entry_delay_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "exit_delay_ns",
+          "type": "int",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_scenario_evidence.py",
+      "symbol": "ScenarioProbabilityCalibrationV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_SCENARIO_PROBABILITY_CALIBRATION_V1",
+      "fields": [
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "execution_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "protocol_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "training_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "validation_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "path_ids",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "probabilities",
+          "type": "tuple[Decimal, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_scenario_evidence.py",
+      "symbol": "ScenarioRiskSupportV1",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "version": "ATLAS_RED_SCENARIO_RISK_SUPPORT_V1",
+      "fields": [
+        {
+          "name": "scenario_binding_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "risk_policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "confidence",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "effective_blocks",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "tail_observations",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "validation_es_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "scenario_es_cash",
+          "type": "Decimal",
+          "default": null
+        }
+      ]
+    },
+    {
+      "module": "src/atlas/v2/science/mean_scenario_evidence.py",
+      "symbol": "MeanScenarioSetV2",
+      "bases": [
+        "MeanScenarioSetV1"
+      ],
+      "version": "ATLAS_RED_QUALIFIED_COMMON_SCENARIOS_V2",
+      "fields": [
+        {
+          "name": "qualification_ref",
+          "type": "str",
+          "default": null
+        }
+      ]
+    }
+  ]
+}

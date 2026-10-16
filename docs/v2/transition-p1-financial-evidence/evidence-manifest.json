@@ -1,0 +1,127 @@
+{
+  "version": "ATLAS_RED_P1_FINANCIAL_EVIDENCE_CORRECTION_MANIFEST_V1",
+  "parent_sha": "8fc2109cda6fea6a8bea0f07d8e43999e9cee1c9",
+  "accepted_design_sha": "f9f8ef083ba5bafcad9bab4d07227676200a948f",
+  "candidate_branch": "fix/atlas-red-p1-financial-evidence-2026-10-16",
+  "source_build_hash": "581c44bfd2ee7e9322d890c828d21cb2d7420ea4a381ffb6a64d665af388443c",
+  "grade": "SYNTHETIC_OFFLINE_QUALIFIED_CONTRACT",
+  "authority": "ZERO / OFFLINE_RESEARCH_ONLY",
+  "capital": "NO-GO",
+  "independent_acceptance": "PENDING; exact remote SHA returned in delivery",
+  "publication_normalization": "Only trailing whitespace and excess blank EOF lines normalized in published text/XML logs; results/diagnostics retained. Raw originals remain in session work area.",
+  "artifacts": {
+    "baseline-mypy.txt": {
+      "sha256": "e20f243afcb01b3b1ae9b0644d9d4d31646544b48614edc0b42688c6df60a41c",
+      "bytes": 9771
+    },
+    "capsule-final.txt": {
+      "sha256": "91f9fd463c6ef2007b5b729fa4ab4e4b9014cb3cee19dc3c8bc8d0e905f604aa",
+      "bytes": 438
+    },
+    "capsule-replay.json": {
+      "sha256": "bd123b52447ab8b51dec662114aa7fc380638cd7dc3dfec5f28da0a0d9301c03",
+      "bytes": 456
+    },
+    "compile-final.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "final-financial-tests.txt": {
+      "sha256": "f5c26714bb6e5fbd5594aaaece1459e440a75b8002a6f9c28ce72fc2cea516be",
+      "bytes": 595
+    },
+    "final-financial-tests.xml": {
+      "sha256": "826a3b8eb4348fef20994406707279f34e9441219e9ac786aab2efc230ba0bb0",
+      "bytes": 7970
+    },
+    "final-p1-tests.txt": {
+      "sha256": "4ad1ff347a1a2096be8742b47ca80a024def34e5438048c3bb3b6e0893ea1507",
+      "bytes": 756
+    },
+    "final-p1-tests.xml": {
+      "sha256": "8722c990fcd526967a582802875f7f6bcf30094b96b298c1aa6408cf2ee7f196",
+      "bytes": 27385
+    },
+    "final-positive.txt": {
+      "sha256": "a48be3b4947c13187f3875ce6d18c979d416b7abbf2b2bf6f1b9b62b6313e2c1",
+      "bytes": 583
+    },
+    "final-positive.xml": {
+      "sha256": "6b494fff577a356a1027c7110fb5ddbf7845273b5b70d28940f9fa548c574a27",
+      "bytes": 663
+    },
+    "final-tests.txt": {
+      "sha256": "33752cef2cca9c1a5da06fc1b88cc21359ffb3e13b4c1474683a18f5a416ed9b",
+      "bytes": 1888
+    },
+    "final-tests.xml": {
+      "sha256": "c8ede5d9d7aa15d81bd6ece3c9ac91ad4482f6b5e4fdb701c96d60b0de29eaf6",
+      "bytes": 181795
+    },
+    "interface-inventory.json": {
+      "sha256": "fc10829cfb6c9f2c37d97147fb2589fc3f6e1680ecf7f5beaa55c65dc6e12948",
+      "bytes": 18463
+    },
+    "lock-check.txt": {
+      "sha256": "d23a4db0787619b94aff9fca151fd9ecd9fff8ec7fb4bbbe39662882bb7c91af",
+      "bytes": 101
+    },
+    "mypy-final.txt": {
+      "sha256": "43fa27550e193bc0fe347296781c6ebd6a3ef99252f358098d33ace29f2eb75c",
+      "bytes": 9771
+    },
+    "pip-check.txt": {
+      "sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+      "bytes": 30
+    },
+    "protected-hashes.json": {
+      "sha256": "9d28eacff27a4c42dfb0777894f3ddb3921337792af1b1bc0071326c5f4a395a",
+      "bytes": 1075
+    },
+    "publication-checks.json": {
+      "sha256": "504417d7bba6bb13af35b9ddce610a184eee8334b27128482bc4773b21a7afda",
+      "bytes": 540
+    },
+    "qualified-capsule.json": {
+      "sha256": "a5a385b8ad1be300c6d26ebd0296969f39635971fbea4cb4fc50e5ef2d1fe141",
+      "bytes": 3401912
+    },
+    "red.txt": {
+      "sha256": "46969b8cd03f0749f5b3deb1c7f346fb543c557dea9a6ea13aed6579bbe1c6ce",
+      "bytes": 4122
+    },
+    "red.xml": {
+      "sha256": "7e3166d4cad25fff6ed929328bbae41e097aa6c636195b8f8f4d37535ac610f1",
+      "bytes": 5057
+    },
+    "reproduce.py": {
+      "sha256": "242153a198a4febec377cd5a6773613ac2a47af63340161675e537d8ee428c28",
+      "bytes": 6472
+    },
+    "ruff-final.txt": {
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    },
+    "runtime.json": {
+      "sha256": "d5457db7d680e74b742aa67ffa47a47751e3214d47e9a645eba7d8ffd3f1c6c4",
+      "bytes": 522
+    },
+    "source-build.json": {
+      "sha256": "08068b0c046fa296554b267570304c7f00914149f61dad80645bc176a58aca0a",
+      "bytes": 4375
+    },
+    "verification.json": {
+      "sha256": "3d8463fd99f5c56a04e3a3cb9258cc453dc8934576f93b36062c05baf7cad1db",
+      "bytes": 4705
+    }
+  },
+  "limits": [
+    "Independent exact-SHA acceptance",
+    "No actual market/calibration/venue/native/Windows/minimum-host/72h/economic qualification",
+    "Owner manual/adoption and operative policy approvals pending",
+    "P2 unstarted and unauthorized",
+    "Two exact long S3 cases remain TEST GATE / NOT RUN",
+    "Not a full repository suite",
+    "Mypy 53 pre-existing errors/17 files, zero normalized delta"
+  ]
+}

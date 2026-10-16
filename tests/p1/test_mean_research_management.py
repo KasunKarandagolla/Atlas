@@ -168,7 +168,9 @@ def test_selected_policy_mean_error_not_payoff_quantile_or_simulation_count():
         "resamples": 100,
     }
     calibration = calibrate_selected_policy(rows, dependence_qualified=True, **args)
-    assert calibration.allowance_cash == 5 and calibration.effective_blocks == 30
+    # Declared V1 residuals stay readable but cannot establish new support.
+    assert calibration.allowance_cash is None and calibration.effective_blocks == 30
+    assert calibration.status == "NOT ESTIMABLE"
     assert calibrate_selected_policy(rows[:19], dependence_qualified=True, **args).allowance_cash is None
     assert calibrate_selected_policy(rows, dependence_qualified=False, **args).status == "NOT ESTIMABLE"
     with pytest.raises(ValueError, match="chronological"):

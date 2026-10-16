@@ -203,8 +203,31 @@ def test_current_material_revision_projection_required(case):
 
 def test_prefit_model_expiry_is_revalidated_at_response_time(case):
     for ref, inp in tuple(case.inputs.items()):
+        from atlas.v2.science.mean_calibration import (
+            MeanCalibrationProtocolV1,
+            MeanDependenceQualificationV1,
+            SelectedPolicyResidualV2,
+            calibrate_verified_selected_policy,
+        )
+        from atlas.v2.science.mean_evaluation import read_mean_artifact
+
         model = replace(inp.model, expires_at_ns=T + 11)
-        calibration = replace(inp.calibration, model_ref=model.content_hash)
+        index_mean_artifact(case.repo, model, available_at_ns=model.available_at_ns)
+        proof = read_mean_artifact(
+            case.repo, inp.calibration.qualification_ref, MeanDependenceQualificationV1, consumer_ns=T
+        )
+        protocol = read_mean_artifact(case.repo, proof.protocol_ref, MeanCalibrationProtocolV1, consumer_ns=T)
+        residuals = tuple(
+            read_mean_artifact(case.repo, r, SelectedPolicyResidualV2, consumer_ns=T) for r in proof.residual_refs
+        )
+        calibration = calibrate_verified_selected_policy(
+            case.repo,
+            model=model,
+            protocol=protocol,
+            residuals=residuals,
+            cutoff_ns=inp.calibration.available_at_ns,
+            expires_at_ns=inp.calibration.expires_at_ns,
+        )
         allowances = {
             name: replace(getattr(inp, name), model_ref=model.content_hash)
             for name in ("execution_bias", "numerical", "incremental_programme")

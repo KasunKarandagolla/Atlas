@@ -1,5 +1,7 @@
 # ATLAS RED P1 — offline mean-action foundation handoff
 
+**Correction checkpoint:** independent acceptance of this original P1 candidate was withheld for calibration/scenario evidence. See the [Phase A correction addendum](ATLAS_RED_P1_FINANCIAL_EVIDENCE_CORRECTION.md). Original observations and source identities below are preserved as history; unverified V1 qualification no longer grants new-policy eligibility.
+
 Status: **IMPLEMENTED / TESTED OFFLINE; INDEPENDENT ACCEPTANCE PENDING**. Capital **NO-GO**. No operational policy activation. This report describes a review candidate, not an acceptance record.
 
 ## A. Model, authorization and source

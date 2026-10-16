@@ -16,6 +16,7 @@ from atlas.v2.memory.repository import ArtifactIndexEntryV2, OpsRepository
 from atlas.v2.research.mean_evidence import ChartEvidenceBundleV1, EvidenceClaimV1, verify_chart_claim
 from atlas.v2.risk import OfflineRiskSnapshotV1
 from atlas.v2.science.action import ExactActionV1
+from atlas.v2.science.mean_calibration import MeanSelectionCalibrationV2, verify_mean_calibration
 from atlas.v2.science.mean_common import OfflineArtifact, unique
 from atlas.v2.science.mean_evaluation import (
     CashAllowanceV1,
@@ -25,7 +26,7 @@ from atlas.v2.science.mean_evaluation import (
     read_mean_artifact,
 )
 from atlas.v2.science.mean_models import MeanModelV1
-from atlas.v2.science.mean_research import MeanSelectionCalibrationV1
+from atlas.v2.science.mean_scenario_evidence import MeanScenarioSetV2, verify_scenario_evidence
 
 
 @dataclass(frozen=True)
@@ -125,7 +126,37 @@ def validate_offline_b_selection(
                     raise ValueError("ACTION_SOURCE_FRESHNESS_EXPIRED")
         model = read_mean_artifact(repo, evaluated_member.model_ref, MeanModelV1, consumer_ns=now_ns)
         calibration = read_mean_artifact(
-            repo, evaluated_member.calibration_ref, MeanSelectionCalibrationV1, consumer_ns=now_ns
+            repo, evaluated_member.calibration_ref, MeanSelectionCalibrationV2, consumer_ns=now_ns
+        )
+        from atlas.v2.science.mean_evaluation import MeanEvaluationPolicyV1
+
+        policy = read_mean_artifact(
+            repo, eligible.population.evaluation_policy_ref, MeanEvaluationPolicyV1, consumer_ns=now_ns
+        )
+        scenarios = read_mean_artifact(repo, evaluated_member.scenario_ref, MeanScenarioSetV2, consumer_ns=now_ns)
+        verify_mean_calibration(
+            repo,
+            calibration,
+            model=model,
+            policy_ref=policy.content_hash,
+            product_ref=action.product_ref,
+            cutoff_ns=action.cutoff_ns,
+            now_ns=now_ns,
+        )
+        from atlas.v2.science.mean_scenario_evidence import ScenarioSourceV1
+
+        scenario_source = read_mean_artifact(repo, scenarios.source_ref, ScenarioSourceV1, consumer_ns=now_ns)
+        if scenario_source.scope_ref != calibration.source_ref:
+            raise ValueError("CALIBRATION_SCENARIO_SCOPE_MISMATCH")
+        verify_scenario_evidence(
+            repo,
+            scenarios,
+            product_ref=action.product_ref,
+            policy=policy,
+            snapshot=snapshot,
+            compatibility_ref=model.compatibility_ref,
+            cutoff_ns=action.cutoff_ns,
+            now_ns=now_ns,
         )
         if now_ns >= min(model.expires_at_ns, calibration.expires_at_ns):
             raise ValueError("MODEL_OR_CALIBRATION_EXPIRED")

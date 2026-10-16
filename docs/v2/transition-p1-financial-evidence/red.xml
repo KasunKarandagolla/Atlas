@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="0.239" timestamp="2026-10-16T16:15:08.242063+00:00" hostname="89954d0c42eb"><testcase classname="tests.p1.test_financial_evidence" name="test_a_neg_01_legacy_declared_zero_residuals_cannot_qualify" time="0.007"><failure message="AssertionError: assert ('SUPPORTED_OFFLINE' == 'NOT ESTIMABLE'&#10;  &#10;  - NOT ESTIMABLE&#10;  + SUPPORTED_OFFLINE)">def test_a_neg_01_legacy_declared_zero_residuals_cannot_qualify():
+        rows = tuple(SelectedPolicyResidualV1(H('model'), H('policy'), H('cell'), H(str(k)),
+            k*7*DAY_NS, (k*7+1)*DAY_NS, D('5'), D('5'), False) for k in range(30))
+        result = calibrate_selected_policy(rows, model_ref=H('model'), policy_ref=H('policy'),
+            compatibility_ref=H('cell'), source_ref=H('invented'), cutoff_ns=T, expires_at_ns=T+DAY_NS,
+            dependence_qualified=True, resamples=100)
+&gt;       assert result.status == 'NOT ESTIMABLE' and result.allowance_cash is None
+E       AssertionError: assert ('SUPPORTED_OFFLINE' == 'NOT ESTIMABLE'
+E
+E         - NOT ESTIMABLE
+E         + SUPPORTED_OFFLINE)
+
+tests/p1/test_financial_evidence.py:18: AssertionError</failure></testcase><testcase classname="tests.p1.test_financial_evidence" name="test_b_neg_01_boolean_scenarios_without_evidence_cannot_enter_e" time="0.155"><failure message="AssertionError: assert not (ActionEvaluationV1(population_ref='26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7', candidate_ref='..._increment_cash=Decimal('0'), j_cash=Decimal('9.0'), available_at_ns=34560000000000010, status='ELIGIBLE', reasons=()))&#10; +  where (ActionEvaluationV1(population_ref='26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7', candidate_ref='..._increment_cash=Decimal('0'), j_cash=Decimal('9.0'), available_at_ns=34560000000000010, status='ELIGIBLE', reasons=())) = EligibleSetV1(population=CandidateEvaluationSetV1(event_id='synthetic-slot', slot_ns=34560000000000000, cutoff_ns=3456...d0acadcaf149ebec80cfd5ed30', reasons=())), sealed_at_ns=34560000000000010, cpu_used_ns=45199421, wall_used_ns=45203156).members&#10; +    where EligibleSetV1(population=CandidateEvaluationSetV1(event_id='synthetic-slot', slot_ns=34560000000000000, cutoff_ns=3456...d0acadcaf149ebec80cfd5ed30', reasons=())), sealed_at_ns=34560000000000010, cpu_used_ns=45199421, wall_used_ns=45203156) = run(namespace(repo=&lt;atlas.v2.memory.repository.OpsRepository object at 0x7fe406cb7650&gt;, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=&lt;function case.&lt;locals&gt;.clock at 0x7fe406a8a520&gt;))">case = namespace(repo=&lt;atlas.v2.memory.repository.OpsRepository object at 0x7fe406cb7650&gt;, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=&lt;function case.&lt;locals&gt;.clock at 0x7fe406a8a520&gt;)
+
+    def test_b_neg_01_boolean_scenarios_without_evidence_cannot_enter_e(case):
+        for ref, inp in tuple(case.inputs.items()):
+            wire = inp.scenarios.to_dict()
+            wire.pop('qualification_ref', None)
+            wire['version'] = MeanScenarioSetV1.VERSION
+            scenarios = MeanScenarioSetV1.from_dict(wire)
+            scenarios = replace(scenarios, source_ref=H('invented-source'), probability_support=True, es_qualified=True)
+            index_mean_artifact(case.repo, scenarios, available_at_ns=T-1)
+            case.inputs[ref] = replace(inp, scenarios=scenarios)
+&gt;       assert not run(case).members
+E       AssertionError: assert not (ActionEvaluationV1(population_ref='26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7', candidate_ref='..._increment_cash=Decimal('0'), j_cash=Decimal('9.0'), available_at_ns=34560000000000010, status='ELIGIBLE', reasons=()))
+E        +  where (ActionEvaluationV1(population_ref='26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7', candidate_ref='..._increment_cash=Decimal('0'), j_cash=Decimal('9.0'), available_at_ns=34560000000000010, status='ELIGIBLE', reasons=())) = EligibleSetV1(population=CandidateEvaluationSetV1(event_id='synthetic-slot', slot_ns=34560000000000000, cutoff_ns=3456...d0acadcaf149ebec80cfd5ed30', reasons=())), sealed_at_ns=34560000000000010, cpu_used_ns=45199421, wall_used_ns=45203156).members
+E        +    where EligibleSetV1(population=CandidateEvaluationSetV1(event_id='synthetic-slot', slot_ns=34560000000000000, cutoff_ns=3456...d0acadcaf149ebec80cfd5ed30', reasons=())), sealed_at_ns=34560000000000010, cpu_used_ns=45199421, wall_used_ns=45203156) = run(namespace(repo=&lt;atlas.v2.memory.repository.OpsRepository object at 0x7fe406cb7650&gt;, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=&lt;function case.&lt;locals&gt;.clock at 0x7fe406a8a520&gt;))
+
+tests/p1/test_financial_evidence.py:30: AssertionError</failure></testcase></testsuite></testsuites>

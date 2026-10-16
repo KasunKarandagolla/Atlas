@@ -141,24 +141,9 @@ def calibrate_selected_policy(
         else ()
     )
     allowance = None
-    if dependence_qualified and len(blocks) >= 20:
-        # Resample complete calendar groups, then divide by the sampled row
-        # count. A mean of block means would change the per-action estimand
-        # when selected-action counts differ between calendar blocks.
-        if not 100 <= resamples <= 100_000 or not 0 < alpha < 1:
-            raise ValueError("invalid calibration bootstrap precision")
-        grouped: dict[int, list[Decimal]] = {}
-        for row in rows:
-            grouped.setdefault(row.origin_ns // block_ns, []).append(row.prediction_cash - row.target_cash)
-        groups = tuple((sum(group, ZERO), len(group)) for _, group in sorted(grouped.items()))
-        rng = random.Random(6101)
-        estimates = []
-        for _ in range(resamples):
-            sampled = [rng.choice(groups) for _ in groups]
-            estimates.append(sum((total for total, _ in sampled), ZERO) / sum(n for _, n in sampled))
-        estimates.sort()
-        upper = estimates[min(resamples - 1, math.ceil((1 - alpha) * resamples) - 1)]
-        allowance = max(ZERO, upper)
+    # V1 residuals do not prove OOF/dependence. Keep saved readers intact, but
+    # no new supported calibration can be produced from declarations alone.
+    # The V2 producer consumes verified chronological prediction receipts.
     return MeanSelectionCalibrationV1(
         model_ref,
         policy_ref,
@@ -459,6 +444,7 @@ def chronological_mean_oof(
     embargo_justification_ref: str | None = None,
     minimum_rows: int = 30,
     protected_outcome_refs: tuple[str, ...] = (),
+    on_prediction=None,
 ):
     from atlas.v2.science.mean_models import eligible_mean_rows, fit_m0_mean, predict_mean
 
@@ -487,6 +473,8 @@ def chronological_mean_oof(
             )
         except ValueError:
             continue  # unsupported future cell remains unavailable, never imputed
+        if on_prediction is not None:
+            on_prediction(row, model, earlier, value)
         result.append((row.outcome_ref, model.content_hash, model.training_refs, value, row.target_cash))
     return tuple(result)
 

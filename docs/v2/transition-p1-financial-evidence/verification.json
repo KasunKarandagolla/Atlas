@@ -1,0 +1,74 @@
+{
+  "source_build_hash": "581c44bfd2ee7e9322d890c828d21cb2d7420ea4a381ffb6a64d665af388443c",
+  "runs": [
+    {
+      "log": "final-tests.txt",
+      "junit": "final-tests.xml",
+      "cases": 1201,
+      "passed": 1200,
+      "skipped": 1,
+      "failures": 0,
+      "source_stage": "Before final serving-training membership and nonflat-background payoff guards; all final P1 source retested in final-p1-tests. Legacy source unchanged after this broad run."
+    },
+    {
+      "log": "final-financial-tests.txt",
+      "junit": "final-financial-tests.xml",
+      "cases": 51,
+      "passed": 51,
+      "skipped": 0,
+      "failures": 0,
+      "source_stage": "Before final serving-training membership guard; superseded for correction-case counts by final-p1-tests."
+    },
+    {
+      "log": "final-p1-tests.txt",
+      "junit": "final-p1-tests.xml",
+      "cases": 179,
+      "passed": 179,
+      "skipped": 0,
+      "failures": 0,
+      "source_stage": "Final source, complete tests/p1 including all A/B and 7 common-background/serving-training cases."
+    }
+  ],
+  "latest_deduplicated_observed_cases": {
+    "passed": 1207,
+    "failed": 0,
+    "skipped": 1
+  },
+  "commands": {
+    "red_on_parent": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/p1/test_financial_evidence.py --junitxml=/workspace/work/p1-correction/red.xml (original two tests before new contracts/source edits)",
+    "final-tests": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/p1 tests/science tests/contract tests/data tests/persistence tests/runtime tests/unit tests/scanner tests/v2/test_session016_candidate_selection.py tests/v2/test_session017_action.py tests/v2/test_session017_replay.py tests/v2/test_session017_risk.py tests/v2/test_session019_admission.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session019_m0.py tests/v2/test_session019_scenarios.py tests/v2/test_session023_analogue.py tests/v2/test_session023_m1.py tests/v2/test_session023_selection_audits.py tests/v2/test_session037_action_outcome_producer.py tests/v2/test_session037_economic_binding.py tests/v2/test_session037_economic_sources.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session037_training_bounds.py tests/v2/test_session041_frozen_action_comparison.py tests/v2/test_session047_decision_brief.py tests/v2/test_session048_management_shadow.py tests/v2/test_session020_desktop_ipc.py --junitxml=/workspace/work/p1-correction/final-tests.xml",
+    "final-financial-tests": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/p1/test_financial_portfolio_evidence.py tests/p1/test_financial_evidence.py --junitxml=/workspace/work/p1-correction/final-financial-tests.xml",
+    "final-p1-tests": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/p1 --junitxml=/workspace/work/p1-correction/final-p1-tests.xml",
+    "capsule": "/workspace/.venvs/atlas/bin/python docs/v2/transition-p1-financial-evidence/reproduce.py",
+    "checks": [
+      "ruff check src scripts tests",
+      "python -m compileall -q src scripts tests",
+      "mypy src",
+      "python -m pip check",
+      "uv lock --check --offline --python /workspace/.venvs/atlas/bin/python",
+      "git diff --check"
+    ]
+  },
+  "mypy": "53 errors /17 files, exact normalized pre-correction baseline, zero new diagnostics",
+  "not_a_full_repository_suite": true,
+  "long_S3_tests": [
+    {
+      "id": "tests/v2/test_session021_data_s3.py::test_s3_production_setup_consumes_causal_seven_day_prefix_and_fails_residual_tampering",
+      "status": "TEST GATE / NOT RUN",
+      "reason": "expensive full seven-day replay excluded from bounded affected verification; no passing claim"
+    },
+    {
+      "id": "tests/v2/test_session021_data_s3.py::test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_selector_zero",
+      "status": "TEST GATE / NOT RUN",
+      "reason": "expensive full seven-day replay excluded from bounded affected verification; no passing claim"
+    }
+  ],
+  "network": "Existing credential-scrubbed P1 socket/DNS guard, including Python child processes; loopback/Unix IPC allowed. Not an OS namespace fence. No provider/exchange request or order.",
+  "source_timing": "Final complete P1 run follows all source/fixture changes. Broad legacy coverage is separately observed; no inherited 1,420-pass certification.",
+  "retained_gates": [
+    "Independent exact-SHA acceptance",
+    "No actual market/calibration/venue/native/Windows/minimum-host/72h/economic qualification",
+    "Owner manual/adoption and operative policy approvals pending",
+    "P2 unstarted and unauthorized"
+  ]
+}

@@ -262,6 +262,7 @@ def independent_mean_features(
 
 
 def _evaluate_one(
+    repo,
     action: ExactActionV1,
     inp: CandidateMeanInputsV1,
     *,
@@ -274,6 +275,33 @@ def _evaluate_one(
     values: list[Decimal | None] = [None] * 8
     try:
         model, calibration, scenarios = inp.model, inp.calibration, inp.scenarios
+        from atlas.v2.science.mean_calibration import verify_mean_calibration
+        from atlas.v2.science.mean_scenario_evidence import verify_scenario_evidence
+
+        verify_mean_calibration(
+            repo,
+            calibration,
+            model=model,
+            policy_ref=policy.content_hash,
+            product_ref=action.product_ref,
+            cutoff_ns=action.cutoff_ns,
+            now_ns=now_ns,
+        )
+        from atlas.v2.science.mean_scenario_evidence import ScenarioSourceV1
+
+        scenario_source = read_mean_artifact(repo, scenarios.source_ref, ScenarioSourceV1, consumer_ns=now_ns)
+        if scenario_source.scope_ref != calibration.source_ref:
+            raise ValueError("CALIBRATION_SCENARIO_SCOPE_MISMATCH")
+        scenario_proof = verify_scenario_evidence(
+            repo,
+            scenarios,
+            product_ref=action.product_ref,
+            policy=policy,
+            snapshot=snapshot,
+            compatibility_ref=model.compatibility_ref,
+            cutoff_ns=action.cutoff_ns,
+            now_ns=now_ns,
+        )
         if (
             calibration.model_ref != model.content_hash
             or calibration.policy_ref != policy.content_hash
@@ -347,6 +375,18 @@ def _evaluate_one(
                 + inp.risk.liquidation_buffer_cash
             ):
                 reasons.append("STRESS_MAINTENANCE_OR_LIQUIDATION_FAILED")
+        from atlas.v2.science.portfolio import empirical_es_cash
+
+        bounded_es = empirical_es_cash(
+            tuple(
+                -p.background_pnl_cash - cast(Decimal, c.trading_cash)
+                for p, c in zip(scenarios.paths, cash, strict=True)
+            ),
+            tuple(p.probability for p in scenarios.paths),
+            scenario_proof.confidence,
+        )
+        if bounded_es > scenario_proof.scenario_es_cash:
+            raise ValueError("SCENARIO_ECONOMIC_LOSS_OUTSIDE_QUALIFIED_ENVELOPE")
         delta_risk = ZERO
         if policy.require_es:
             if not scenarios.probability_support or not scenarios.es_qualified:
@@ -543,7 +583,7 @@ def run_independent_mean_evaluation(
                 )
                 action_ref = index_mean_artifact(repo, action, available_at_ns=now)
                 evaluation = _evaluate_one(
-                    action, inp, rank=row.initial_rank, policy=policy, snapshot=snapshot, now_ns=now
+                    repo, action, inp, rank=row.initial_rank, policy=policy, snapshot=snapshot, now_ns=now
                 )
                 finished = clock_ns()
                 if (

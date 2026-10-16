@@ -92,10 +92,23 @@ def rebind_policy(case, policy):
     case.population = replace(case.population, evaluation_policy_ref=policy.content_hash)
     index_mean_artifact(case.repo, policy, available_at_ns=case.population.cutoff_ns)
     index_mean_artifact(case.repo, case.population, available_at_ns=case.population.cutoff_ns)
+    from .evidence_fixtures import verified_calibration, verified_scenarios
+
     for ref, inp in tuple(case.inputs.items()):
-        changes = {"calibration": replace(inp.calibration, policy_ref=policy.content_hash)}
+        model, calibration, scope, hold, _, _ = verified_calibration(
+            case.repo,
+            product=inp.product,
+            policy=policy,
+            compatibility_ref=inp.model.compatibility_ref,
+            cash=str(inp.model.parameters["coefficients"][0]),
+            now_ns=case.population.cutoff_ns,
+        )
+        scenarios = verified_scenarios(
+            case.repo, inp.scenarios, scope=scope, hold=hold, policy=policy, snapshot=case.snapshot
+        )
+        changes = {"model": model, "calibration": calibration, "scenarios": scenarios}
         for name in ("execution_bias", "numerical", "incremental_programme"):
-            changes[name] = replace(getattr(inp, name), policy_ref=policy.content_hash)
+            changes[name] = replace(getattr(inp, name), policy_ref=policy.content_hash, model_ref=model.content_hash)
         case.inputs[ref] = replace(inp, **changes)
         for obj in changes.values():
             index_mean_artifact(
@@ -108,7 +121,6 @@ def test_cash_allowances_are_distinct_and_charged_once(case):
     inp = case.inputs[ref]
     changed = replace(
         inp,
-        calibration=replace(inp.calibration, allowance_cash=D("1")),
         execution_bias=replace(inp.execution_bias, cash=D(".5")),
         numerical=replace(inp.numerical, cash=D(".25")),
         incremental_programme=replace(inp.incremental_programme, cash=D("1")),
@@ -117,7 +129,7 @@ def test_cash_allowances_are_distinct_and_charged_once(case):
     for obj in (changed.calibration, changed.execution_bias, changed.numerical, changed.incremental_programme):
         index_mean_artifact(case.repo, obj, available_at_ns=obj.available_at_ns)
     evaluation = next(e for e in run(case).evaluations if e.candidate_ref == ref)
-    assert evaluation.mean_cash == 5 and evaluation.score_cash == D("2.25")
+    assert evaluation.mean_cash == 5 and evaluation.score_cash == D("5") - inp.calibration.allowance_cash - D("1.75")
 
 
 def test_required_es_unsupported_refuses_then_common_cash_increment_works(case):
@@ -126,7 +138,7 @@ def test_required_es_unsupported_refuses_then_common_cash_increment_works(case):
         case.inputs[ref] = replace(inp, scenarios=replace(inp.scenarios, es_qualified=False))
         index_mean_artifact(case.repo, case.inputs[ref].scenarios, available_at_ns=case.population.cutoff_ns)
     result = run(case)
-    assert not result.members and all("ES_NOT_ESTIMABLE" in e.reasons for e in result.evaluations)
+    assert not result.members and all(any("SCENARIO" in reason for reason in e.reasons) for e in result.evaluations)
     for ref, inp in tuple(case.inputs.items()):
         case.inputs[ref] = replace(inp, scenarios=replace(inp.scenarios, es_qualified=True))
         index_mean_artifact(case.repo, case.inputs[ref].scenarios, available_at_ns=case.population.cutoff_ns)

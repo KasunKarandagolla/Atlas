@@ -1,0 +1,12 @@
+{
+  "source_build_hash": "581c44bfd2ee7e9322d890c828d21cb2d7420ea4a381ffb6a64d665af388443c",
+  "source_files": 37,
+  "old_P1_evidence": "byte-identical to parent",
+  "relative_handoff_links": "PASS",
+  "107_acceptance_IDs": "PASS",
+  "algorithm_manifest": "PASS",
+  "private_key_and_environment_credential_scan": "PASS",
+  "no_database_cache_checkpoints_or_private_source_packets": "PASS",
+  "working_phase": "A ONLY; P2 NOT AUTHORIZED",
+  "model": "Owner-confirmed GPT-6.1 Sol, independent runtime attestation unavailable, no subagents"
+}

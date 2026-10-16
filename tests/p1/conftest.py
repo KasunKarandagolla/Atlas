@@ -31,8 +31,7 @@ from atlas.v2.science.mean_evaluation import (
     assemble_mean_evaluation_population,
     index_mean_artifact,
 )
-from atlas.v2.science.mean_models import MeanTrainingRowV1, fit_m0_mean
-from atlas.v2.science.mean_research import SelectedPolicyResidualV1, calibrate_selected_policy
+from atlas.v2.science.mean_models import MeanTrainingRowV1
 from atlas.v2.science.mean_scenarios import MeanJointPathV1, MeanMarketPointV1, MeanScenarioSetV1
 from atlas.v2.strategies.s1_trend import S1_POLICY
 
@@ -172,39 +171,9 @@ def case(tmp_path):
             H("qualification"),
         )
         compat, execution = H(f"compat{i}"), H(f"execution{i}")
-        model = fit_m0_mean(
-            training_rows(compat, cash=D(target)),
-            compatibility_ref=compat,
-            cutoff_ns=T - 1000,
-            available_at_ns=T - 900,
-            expires_at_ns=T + DAY_NS,
-            provenance="CAUSAL_REPLAY",
-        )
-        residuals = tuple(
-            SelectedPolicyResidualV1(
-                model.content_hash,
-                policy.content_hash,
-                compat,
-                H(f"calibration-{i}-{k}"),
-                (100 + k * 7) * DAY_NS,
-                (101 + k * 7) * DAY_NS,
-                D("5"),
-                D("5"),
-                False,
-            )
-            for k in range(20)
-        )
-        calibration = calibrate_selected_policy(
-            residuals,
-            model_ref=model.content_hash,
-            policy_ref=policy.content_hash,
-            compatibility_ref=compat,
-            source_ref=H(f"calib-source{i}"),
-            cutoff_ns=T - 700,
-            expires_at_ns=T + DAY_NS,
-            dependence_qualified=True,
-            resamples=100,
-        )
+        from .evidence_fixtures import verified_calibration, verified_scenarios
+        model, calibration, scope, hold, _, _ = verified_calibration(repo, product=product, policy=policy,
+            compatibility_ref=compat, cash=target, now_ns=T)
         points = (
             MeanMarketPointV1(T + 1, D("100"), D("99.99"), D("100.01"), D("100"), D("100"), H("quote1")),
             MeanMarketPointV1(
@@ -230,6 +199,7 @@ def case(tmp_path):
             True,
             "CAUSAL_REPLAY",
         )
+        scenarios = verified_scenarios(repo,scenarios,scope=scope,hold=hold,policy=policy,snapshot=snapshot)
         allowances = tuple(
             CashAllowanceV1(
                 model.content_hash, policy.content_hash, compat, H(f"{kind}{i}"), 0, T + DAY_NS, kind, D("0")
