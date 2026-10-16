@@ -1,5 +1,14 @@
 # ATLAS engineering log
 
+## Current checkpoint — GitHub-live workflow migration — 2026-10-16
+
+**CONFIRMED:** The independently accepted final documentation/design publication is `f9f8ef083ba5bafcad9bab4d07227676200a948f`; underlying runtime remains R9 `96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd`. The acceptance record is published under `docs/project/` with explicit manual/adoption and operative-policy approval gates. Root `AGENTS.md` now routes substantive work to the verified live GitHub algorithm and separate historical freezes for replay. All three historic freeze SHA-256 values were rechecked against owner-source copies.
+
+**DOCUMENTATION-ONLY:** Adds `docs/project/CURRENT_STATE.md` and exact-SHA independent acceptance record; updates `AGENTS.md` and this root checkpoint. No trading runtime, tests, schemas, dependencies, frozen files, canonical algorithm or `translog.md` are changed. No runtime tests/provider/exchange actions were performed; engineering/environment/economic qualifications remain unpassed.
+
+**NEXT GATE:** Independently verify this remote documentation-only push, then ask owner for P1 GPT-6.1 Sol **offline-only** implementation authorization. Manual aggregate/adoption and the operative amendment remain pending; capital NO-GO.
+
+
 ## Current checkpoint - Source-reconciled final documentation - 2026-10-16
 
 **CONFIRMED:** refreshed documentation head/parent `3436dde4ca5169d0cdec6befe8a485c0c0e992b2` and R9 runtime `96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd`. The supplied original owner decisions, target, ADR-001-011, transition/runbook and full freezes are now read/reconciled; previous source availability limitation is closed. Exact sources/sections/hashes are in `algorithms/AUTHORITY_RECONCILIATION.md` and `SOURCE_AUTHORITY_MANIFEST.json`.
