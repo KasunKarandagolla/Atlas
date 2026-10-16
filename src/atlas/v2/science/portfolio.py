@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
@@ -128,3 +129,21 @@ def pair_common_path(repo: OpsRepository, existing: ExistingPortfolioPathV2,
     repo.register_artifact(ArtifactIndexEntryV2(result.content_hash, "PairedPortfolioPayoffV2",
         result.content_hash, available_at_ns, available_at_ns, result.to_dict()))
     return result
+
+
+def empirical_es_cash(losses: Sequence[Decimal], probabilities: Sequence[Decimal], confidence: Decimal) -> Decimal:
+    if not losses or len(losses) != len(probabilities) or sum(probabilities, Decimal(0)) != Decimal(1) or not Decimal(0) < confidence < Decimal(1):
+        raise ValueError("ES requires aligned common paths and confidence in (0,1)")
+    tail = Decimal(1) - confidence
+    rows = sorted(zip(losses, probabilities, strict=True), key=lambda item: item[0], reverse=True)
+    remaining = tail
+    weighted = Decimal(0)
+    for loss, probability in rows:
+        mass = min(probability, remaining)
+        weighted += mass * loss
+        remaining -= mass
+        if remaining <= Decimal(0):
+            break
+    if remaining != Decimal(0):
+        raise ValueError("ES probability mass does not cover requested tail")
+    return weighted / tail

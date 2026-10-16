@@ -1,0 +1,22 @@
+
+==================================== ERRORS ====================================
+_________________ ERROR collecting tests/p1/test_mean_gate.py __________________
+ImportError while importing test module '/workspace/Atlas/tests/p1/test_mean_gate.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/p1/test_mean_gate.py:1: in <module>
+    from atlas.v2.contracts import CandidateEvaluationSetV1, EligibleSetV1
+E   ImportError: cannot import name 'CandidateEvaluationSetV1' from 'atlas.v2.contracts' (/workspace/Atlas/src/atlas/v2/contracts.py)
+=============================== warnings summary ===============================
+../.venvs/atlas/lib/python3.12/site-packages/_pytest/config/__init__.py:864
+  /workspace/.venvs/atlas/lib/python3.12/site-packages/_pytest/config/__init__.py:864: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; atlas_s49_offline_guard
+    self.import_plugin(arg, consider_entry_points=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/p1/test_mean_gate.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 warning, 1 error in 0.10s

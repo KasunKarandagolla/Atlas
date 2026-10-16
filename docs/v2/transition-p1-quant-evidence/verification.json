@@ -1,0 +1,61 @@
+{
+  "version": "ATLAS_RED_P1_VERIFICATION_V1",
+  "source_build_hash": "81a268d4bbade5999b3057d9301411eacf4fa14752a2f09013bd918bc5e363a7",
+  "runs": [
+    {
+      "artifact": "final-tests.xml",
+      "cases": 1138,
+      "passed": 1137,
+      "skipped": 1,
+      "failures": 0,
+      "same_collected_selection_reproduction_command": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/contract/test_contracts.py tests/contract/test_v1_golden_baseline.py tests/data/test_archive_runtime.py tests/data/test_causal_models.py tests/data/test_dependencies_revision.py tests/data/test_prefix_and_archive.py tests/data/test_public_bybit_translation.py tests/p1/test_mean_downstream.py tests/p1/test_mean_evaluation.py tests/p1/test_mean_gate.py tests/p1/test_mean_models.py tests/p1/test_mean_policy_paths.py tests/p1/test_mean_research_management.py tests/p1/test_mean_risk_cash.py tests/p1/test_mean_selection.py tests/persistence/test_execution_evidence.py tests/persistence/test_journal.py tests/persistence/test_migration_v4_v5.py tests/persistence/test_migration_v5_v6.py tests/persistence/test_migration_v6_v2_authority.py tests/persistence/test_recovery_persistence.py tests/persistence/test_session001_repairs.py tests/runtime/test_assisted_control_approval.py tests/runtime/test_assisted_control_dispatch.py tests/runtime/test_assisted_control_protection.py tests/runtime/test_assisted_control_revalidation.py tests/runtime/test_assisted_control_risk_reduction.py tests/runtime/test_capability_gate.py tests/runtime/test_capital_control_authority.py tests/runtime/test_fault_injection.py tests/runtime/test_flat_certificate.py tests/runtime/test_flat_contradiction.py tests/runtime/test_nautilus_rc5_offline.py tests/runtime/test_phase2_repairs.py tests/runtime/test_phase4_authority_boundary.py tests/runtime/test_phase4_nautilus_rc5_capabilities.py tests/runtime/test_phase4_v1_boundary_failures.py tests/runtime/test_phase4_v2_bridge.py tests/runtime/test_phase4_v2_capital_authority.py tests/runtime/test_phase4_v2_live_risk.py tests/runtime/test_phase6_end_to_end.py tests/runtime/test_protection_deadline.py tests/runtime/test_protection_evidence.py tests/runtime/test_protection_evidence_v5.py tests/runtime/test_reconciliation_evidence.py tests/runtime/test_reconciliation_v5.py tests/runtime/test_recovery_gate.py tests/runtime/test_runtime_safety.py tests/runtime/test_safe_runtime.py tests/runtime/test_safe_runtime_lifetime.py tests/runtime/test_session041_binance_demo.py tests/runtime/test_session041_binance_native.py tests/runtime/test_session041_binance_readiness.py tests/runtime/test_session041_binance_reconciliation.py tests/runtime/test_session041_binance_unsent_recovery.py tests/runtime/test_session041_bybit_demo.py tests/runtime/test_session041_bybit_native.py tests/runtime/test_session041_bybit_recovery.py tests/runtime/test_session041_execution_final_review.py tests/runtime/test_session041_selected_demo.py tests/runtime/test_session048_lifecycle_projection.py tests/runtime/test_session048_position_protection.py tests/runtime/test_session055_binance_demo_only.py tests/runtime/test_session055_demo_read_probe.py tests/runtime/test_temporal_reconciliation.py tests/runtime/test_wire_contract.py tests/scanner/test_phase5_end_to_end.py tests/scanner/test_scanner_alerts.py tests/scanner/test_scanner_blindspots.py tests/scanner/test_scanner_calendar.py tests/scanner/test_scanner_exploration.py tests/scanner/test_scanner_health.py tests/scanner/test_scanner_ranking.py tests/scanner/test_scanner_revision_comparison.py tests/scanner/test_scanner_runner.py tests/scanner/test_scanner_selection.py tests/scanner/test_scanner_warmup.py tests/scanner/test_universe_snapshot.py tests/science/test_block_energy_selection.py tests/science/test_decision_calendar.py tests/science/test_funding_forecast_accounting.py tests/science/test_huber_oof_review.py tests/science/test_joint_residual_archive.py tests/science/test_minute_bridge.py tests/science/test_outer_bootstrap.py tests/science/test_phase4_artifacts_and_controls.py tests/science/test_phase4_baseline.py tests/science/test_phase4_end_to_end.py tests/science/test_phase4_engine_decisions.py tests/science/test_phase4_persistence.py tests/science/test_policy_execution_stress_review.py tests/science/test_policy_replay_pnl.py tests/science/test_portfolio_es_risk_sizing.py tests/science/test_prefix_invariance_phase4.py tests/science/test_r1_source_qualification.py tests/science/test_r1_v1_chronology_identity.py tests/science/test_r1_v1_snapshot_compatibility.py tests/science/test_stress_engine.py tests/unit/test_capability.py tests/unit/test_enums_money_time.py tests/unit/test_execution.py tests/unit/test_information.py tests/unit/test_manifest.py tests/unit/test_repairs_domain.py tests/unit/test_risk.py tests/unit/test_trade_plan.py tests/unit/test_writer_health.py tests/v2/test_session016_candidate_selection.py tests/v2/test_session017_action.py tests/v2/test_session017_replay.py tests/v2/test_session017_risk.py tests/v2/test_session019_admission.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session019_m0.py tests/v2/test_session019_scenarios.py tests/v2/test_session023_analogue.py tests/v2/test_session023_m1.py tests/v2/test_session023_selection_audits.py tests/v2/test_session037_action_outcome_producer.py tests/v2/test_session037_economic_binding.py tests/v2/test_session037_economic_sources.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session037_training_bounds.py tests/v2/test_session041_frozen_action_comparison.py tests/v2/test_session047_decision_brief.py tests/v2/test_session048_management_shadow.py --junitxml=work/final-tests.xml",
+      "source_timing": "before final additive P1 codec/chart/source-freshness/management-entry hardening; covered again by final-p1-tests"
+    },
+    {
+      "artifact": "preservation-tests.xml",
+      "cases": 272,
+      "passed": 272,
+      "skipped": 0,
+      "failures": 0,
+      "same_collected_selection_reproduction_command": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/v2/test_model_protocol.py tests/v2/test_model_runtime.py tests/v2/test_session014_s1.py tests/v2/test_session016_integration.py tests/v2/test_session016_s2.py tests/v2/test_session020_desktop_ipc.py tests/v2/test_session021_data_s3.py tests/v2/test_session021_s6.py tests/v2/test_session021_s7.py tests/v2/test_session022_s4_microstructure.py tests/v2/test_session022_s5_context.py tests/v2/test_session023_discovery_s8.py tests/v2/test_session023_integration.py tests/v2/test_session026_agent_broker_ownership.py tests/v2/test_session026_agent_intelligence.py tests/v2/test_session041_basket_outcomes.py tests/v2/test_session041_s6_action_contract.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session047_research_agent.py tests/v2/test_session047_research_memory.py tests/v2/test_worker_isolation.py -k 'not test_s3_production_setup_consumes_causal_seven_day_prefix_and_fails_residual_tampering and not test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_selector_zero' --junitxml=work/preservation-tests.xml",
+      "source_timing": "final source"
+    },
+    {
+      "artifact": "final-p1-tests.xml",
+      "cases": 132,
+      "passed": 132,
+      "skipped": 0,
+      "failures": 0,
+      "same_collected_selection_reproduction_command": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/p1/test_mean_downstream.py tests/p1/test_mean_evaluation.py tests/p1/test_mean_gate.py tests/p1/test_mean_models.py tests/p1/test_mean_policy_paths.py tests/p1/test_mean_research_management.py tests/p1/test_mean_risk_cash.py tests/p1/test_mean_selection.py tests/v2/test_session020_desktop_ipc.py --junitxml=work/final-p1-tests.xml",
+      "source_timing": "final source"
+    }
+  ],
+  "deduplicated_latest_observation": {
+    "passed": 1420,
+    "failed": 0,
+    "skipped": 1
+  },
+  "not_a_full_repository_suite": true,
+  "p1_final_cases": 126,
+  "desktop_final_cases": 6,
+  "baseline_mypy": "53 errors /17 files; exact normalized diagnostic match; line numbers excluded only",
+  "initial_preservation_failures": "Two missing-PySide6 failures; declared pinned Qt installed; final preservation group 272 pass, two deliberately excluded seven-day S3 tests. Initial failure evidence retained.",
+  "environment": "Credential scrub + existing S49 socket/DNS guard, including Python children; loopback/Unix IPC allowed; no OS namespace-fence claim. Declared locked test dependencies installed only.",
+  "actual_fits": "Real empirical/ridge/LightGBM L2 native fit and compact inference on explicitly synthetic cash; no pretrained weights or provider runners",
+  "checks": {
+    "ruff": "pass: ruff check src scripts tests",
+    "compile": "pass: python -m compileall -q src scripts tests",
+    "mypy": "baseline unchanged, not clean",
+    "pip": "pass: python -m pip check",
+    "uv": "pass: uv lock --check --offline --python /workspace/.venvs/atlas/bin/python",
+    "diff": "pass: git diff --check",
+    "freeze": "three exact historical SHA256 matches"
+  },
+  "retained_gates": [
+    "Full repository certification not rerun",
+    "Two seven-day S3 replay tests excluded",
+    "Windows/minimum-host/72h qualification unrun",
+    "No genuine market/account/provider outcomes",
+    "P1 independent exact-remote-SHA acceptance pending"
+  ]
+}

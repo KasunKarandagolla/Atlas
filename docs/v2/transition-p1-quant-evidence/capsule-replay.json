@@ -1,0 +1,6 @@
+{
+  "source_build_hash": "81a268d4bbade5999b3057d9301411eacf4fa14752a2f09013bd918bc5e363a7",
+  "strict_capsule_roundtrip": "PASS: population/snapshot/exact actions/E/B request/B response/selection",
+  "actual_model_reload_predictions": "PASS: empirical/ridge/native-trained compact LightGBM L2 all -1.01 on 99x1 plus 1x-200",
+  "capital_authority": "ZERO"
+}

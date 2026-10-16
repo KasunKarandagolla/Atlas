@@ -1,0 +1,2494 @@
+{
+  "version": "ATLAS_RED_P1_OFFLINE_REVIEW_CAPSULE_V1",
+  "evidence_grade": "SYNTHETIC_OFFLINE_INTEGRATION",
+  "fixture_source": "tests/p1/conftest.py::case",
+  "all_timestamps_are_hypothetical_fixture_clock": true,
+  "account_venue_provider_data": "NONE; fake COIN1..4 TESTNET identities and synthetic cash only",
+  "population": {
+    "version": "ATLAS_RED_MEAN_ACTION_EVALUATION_V1",
+    "event_id": "synthetic-slot",
+    "slot_ns": 34560000000000000,
+    "cutoff_ns": 34560000000000000,
+    "deadline_ns": 34560005000000000,
+    "universe_ref": "9445a89b70c55da09e9828d559939ffe8c953f42456301607bb2489d060551b6",
+    "instrument_revision_ref": "82c7b051c1d5bea6d84a68e881c2acbbfe95f91c533696cc25c221063c16e00b",
+    "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+    "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+    "evaluation_policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+    "candidates": [
+      {
+        "version": "ATLAS_RED_EVALUATION_CANDIDATE_V1",
+        "candidate_id": "2fd55236ad1e5a91b0352cd868007ed920995f8e857a658ae76e5e351c0f7499",
+        "candidate_ref": "44cd3da4c16fce8a5c34403f1a610e8ae63948992174c083904b0fd1fec0483b",
+        "initial_rank": 1,
+        "source_refs": [
+          "9c9cb10ff964542b06f8cd3d1234b8e46e09494e850ceda7ae07698e5ca16e91",
+          "0f0b9bf320f0ea43b1132021b4dabd40ccc68b8edbbf7d70710f488e81d61b46"
+        ],
+        "inclusion_probability": "1",
+        "exploration": false,
+        "usefulness": "1",
+        "information_gain": "1",
+        "freshness": "1",
+        "uncertainty": "1",
+        "estimated_cpu_ns": 1,
+        "missing_reasons": [],
+        "proxy_cash": null,
+        "proxy_support_ref": null
+      },
+      {
+        "version": "ATLAS_RED_EVALUATION_CANDIDATE_V1",
+        "candidate_id": "b17d75e60c336e9e2ae2406451462717b0e52f7be6e7746b369a97169e5c9bd7",
+        "candidate_ref": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001",
+        "initial_rank": 2,
+        "source_refs": [
+          "d08193701be8e6418824c1dacb4c47dd24f49324f9f9e9c3add0572b95cbf16d",
+          "3566592a025d2916a891974518cbdd0f8f6314544d731fdbcdc708b45b9139b0"
+        ],
+        "inclusion_probability": "1",
+        "exploration": false,
+        "usefulness": "1",
+        "information_gain": "1",
+        "freshness": "1",
+        "uncertainty": "1",
+        "estimated_cpu_ns": 1,
+        "missing_reasons": [],
+        "proxy_cash": null,
+        "proxy_support_ref": null
+      },
+      {
+        "version": "ATLAS_RED_EVALUATION_CANDIDATE_V1",
+        "candidate_id": "2b673811c1fd2e973530e9e7b9b549309be941efc87f9333140170e3b1e7239e",
+        "candidate_ref": "ecb4063c0d9e1377427fc58e9bf1fa1cb8b0c28389ac5faf05a7138edc8e505b",
+        "initial_rank": 3,
+        "source_refs": [
+          "61d70a7c720fbd4b8b7b594b2958c80a943efc2394d4c00e21340f781f185f0f",
+          "fe7c63c9f56d157fcc90da7726380921342749734098438fcd7fa4b3c0920bc7"
+        ],
+        "inclusion_probability": "1",
+        "exploration": false,
+        "usefulness": "1",
+        "information_gain": "1",
+        "freshness": "1",
+        "uncertainty": "1",
+        "estimated_cpu_ns": 1,
+        "missing_reasons": [
+          "UNSUPPORTED_SOURCE"
+        ],
+        "proxy_cash": null,
+        "proxy_support_ref": null
+      },
+      {
+        "version": "ATLAS_RED_EVALUATION_CANDIDATE_V1",
+        "candidate_id": "a5e3535c589f6553cc0342853f257955b487c3e2f8d6b462aa3664722ba6a985",
+        "candidate_ref": "7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4",
+        "initial_rank": 4,
+        "source_refs": [
+          "fb7021f80398da1d1477f003b5aac1fe6b2e865fa5d9c3583d44055094f43171",
+          "3709a71e1eb6c8b899d977b262278c44d2231b3815c5fa3435212f8f2d460a84"
+        ],
+        "inclusion_probability": "1",
+        "exploration": false,
+        "usefulness": "1",
+        "information_gain": "1",
+        "freshness": "1",
+        "uncertainty": "1",
+        "estimated_cpu_ns": 1,
+        "missing_reasons": [],
+        "proxy_cash": null,
+        "proxy_support_ref": null
+      }
+    ],
+    "cpu_budget_ns": 10000000000,
+    "wall_budget_ns": 20000000000
+  },
+  "snapshot": {
+    "version": "ATLAS_RED_OFFLINE_ACCOUNT_RISK_SNAPSHOT_V1",
+    "account_scope_ref": "55b09e970234a47eab2c75635e298f134229c490e86ad9907ad9af0e567c18ae",
+    "venue": "BINANCE",
+    "environment": "TESTNET",
+    "product": "LINEAR_PERPETUAL",
+    "account_revision": 1,
+    "position_revision": 1,
+    "order_revision": 1,
+    "ownership_revision": 1,
+    "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+    "risk_policy_ref": "bdc25b4ee606e3173269ef96f0310ec2456e3cc1e24fa2f7fc56df5a2d772bd6",
+    "observed_at_ns": 34559999999999990,
+    "available_at_ns": 34559999999999995,
+    "expires_at_ns": 34560060000000000,
+    "source_ref": "daefdf3847d217d337b43208e39686f0d2b7d050fa6ba3414ad8cd1ede0f4163",
+    "equity_cash": "1000",
+    "exchange_available_cash": "900",
+    "bot_allocation_cash": "800",
+    "manual_reserve_cash": "100",
+    "uncertainty_reserve_cash": "0",
+    "rolling_loss_cash": "0",
+    "exposures": [],
+    "stress_ids": [
+      "joint-gap"
+    ],
+    "complete": true,
+    "status": "CURRENT",
+    "mode": "OBSERVE"
+  },
+  "inputs": {
+    "44cd3da4c16fce8a5c34403f1a610e8ae63948992174c083904b0fd1fec0483b": {
+      "candidate": {
+        "envelope": {
+          "schema_version": 1,
+          "artifact_id": "2fd55236ad1e5a91b0352cd868007ed920995f8e857a658ae76e5e351c0f7499",
+          "created_at_ns": 34560000000000000,
+          "available_at_ns": 34560000000000000,
+          "producer_version": "P1_SYNTHETIC",
+          "input_refs": [
+            "0f0b9bf320f0ea43b1132021b4dabd40ccc68b8edbbf7d70710f488e81d61b46"
+          ],
+          "content_hash": "44cd3da4c16fce8a5c34403f1a610e8ae63948992174c083904b0fd1fec0483b"
+        },
+        "candidate_id": "2fd55236ad1e5a91b0352cd868007ed920995f8e857a658ae76e5e351c0f7499",
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN1USDT",
+          "base_asset_id": "coin1",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "13f0606462a27e5e989317a2b1ccf961aa5ca8dd0743399288d5bf8decc22af9"
+        },
+        "account_scope": null,
+        "policy_hash": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+        "snapshot_hash": "0f0b9bf320f0ea43b1132021b4dabd40ccc68b8edbbf7d70710f488e81d61b46",
+        "side": "LONG",
+        "decision_at_ns": 34560000000000000,
+        "deadline_ns": 34560005000000000,
+        "horizon_end_ns": 34574400000000000,
+        "entry_reference": "100",
+        "entry_collar": "100.05",
+        "stop_price": "99",
+        "quantity": null,
+        "state_version": 0,
+        "cost_model_ref": "UNESTIMATED"
+      },
+      "product": {
+        "schema_version": 1,
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN1USDT",
+          "base_asset_id": "coin1",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "13f0606462a27e5e989317a2b1ccf961aa5ca8dd0743399288d5bf8decc22af9"
+        },
+        "effective_at_ns": 0,
+        "observed_at_ns": 0,
+        "available_at_ns": 0,
+        "base_units_per_contract": "1",
+        "tick_size": "0.01",
+        "qty_step": "0.1",
+        "min_qty": "0.1",
+        "min_notional": "1",
+        "max_qty": "100",
+        "trading_status": "TRADING",
+        "listing_at_ns": null,
+        "delisting_at_ns": null,
+        "fee_schedule_ref": null,
+        "margin_tiers_ref": null,
+        "funding_schedule_ref": null,
+        "metadata_ref": "c1ade87f0f3c96c320056d665715cba81576f0210c781d335bc1ce0a5ab8e4e0"
+      },
+      "policy": {
+        "policy_id": "S1_MTF_TREND_PULLBACK",
+        "version": "1.0.0-shadow",
+        "strategy_family": "TREND_CONTINUATION_PULLBACK",
+        "capital_status": "SHADOW_ONLY",
+        "decision_event": "CONFIRMED_15M_CLOSE",
+        "required_features": [
+          "atr15m",
+          "event_gate",
+          "executable_bbo",
+          "final_15m_ohlcv",
+          "final_1h_ohlcv",
+          "final_4h_ohlcv",
+          "mark_index",
+          "realized_volatility"
+        ],
+        "optional_features": [],
+        "timeframe_rules": {
+          "regime": "latest_confirmed_4H",
+          "revision": "exact_full_InstrumentKeyV2",
+          "setup": "latest_three_closed_1H",
+          "trigger": "subsequent_confirmed_15M"
+        },
+        "setup_parameters": {
+          "event_gate_max_age_ns": 3600000000000,
+          "experiment_only": false,
+          "pullback_bars": 3,
+          "setup_window": "same_three_closed_1H_bars_used_for_pullback_test",
+          "variant": "BASELINE"
+        },
+        "direction_rule": {
+          "long": "4H_trend_plus_three_1H_pullback_and_reclaim",
+          "short": "exact_symmetric_of_4H_trend_plus_three_1H_pullback_and_reclaim"
+        },
+        "entry_rule": {
+          "bbo_max_age_ns": 5000000000,
+          "candidate_deadline_offset_ns": 5000000000,
+          "confirmed_bar_max_lag_ns": 5000000000,
+          "mark_index_max_age_ns": 5000000000,
+          "no_same_epoch_reprice": true,
+          "order_type": "LIMIT",
+          "shadow_only": true,
+          "time_in_force": "IOC",
+          "trigger": "15M_close_breaks_prior_confirmed_15M_high_or_low"
+        },
+        "collar_rule": {
+          "adverse_bps": 5,
+          "long_reference": "ask",
+          "short_reference": "bid"
+        },
+        "stop_rule": {
+          "atr15m_buffer": "0.25",
+          "maximum_distance_atr": "3",
+          "minimum_distance_atr": "0.5",
+          "setup_window": "same_three_closed_1H_bars"
+        },
+        "trigger_basis": "CONFIRMED_CLOSE",
+        "management_rule": {
+          "averaging": false,
+          "discretionary_trailing": false,
+          "fixed_stop": true,
+          "partial_tp": false,
+          "pyramiding": false,
+          "same_epoch_repricing": false
+        },
+        "time_exit_rule": {
+          "after_ns": 14400000000000,
+          "type": "TIME_EXIT"
+        },
+        "max_hold_ns": 14400000000000,
+        "expiry_rule": {
+          "contrary_confirmed_4h_regime": "INVALIDATE",
+          "fourth_bar_inclusive": true,
+          "subsequent_15m_bars": 4
+        },
+        "model_requirements": [],
+        "fallback_policy_id": null,
+        "policy_hash": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0"
+      },
+      "fees": {
+        "version": "V2_TAKER_FEES_V1",
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN1USDT",
+          "base_asset_id": "coin1",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "13f0606462a27e5e989317a2b1ccf961aa5ca8dd0743399288d5bf8decc22af9"
+        },
+        "available_at_ns": 0,
+        "entry_taker_rate": "0.001",
+        "exit_taker_rate": "0.001",
+        "source_ref": "31ee3b63082a92abb7addc7ce3c528c040200313c35cb53b72f7278a4a955abb"
+      },
+      "funding": {
+        "version": "V2_FUNDING_SCHEDULE_V1",
+        "available_at_ns": 0,
+        "expected_settlement_times_ns": [],
+        "explicit_zero_funding": true,
+        "source_ref": "0a1887bd329bb701f58d323c4159dc864796c1225b690eb6d9449dd391373989"
+      },
+      "risk": {
+        "version": "ATLAS_RED_INDEPENDENT_RISK_PROFILE_V1",
+        "source_ref": "b04d806288f20865d8c6761dd0e98241a5e641ce82b4a737c495d6b29e4ebac8",
+        "product_ref": "9ae0183105ed262b416ab07a050a416570913a8da3ca893691a40a79faa6ae0d",
+        "risk_policy_ref": "bdc25b4ee606e3173269ef96f0310ec2456e3cc1e24fa2f7fc56df5a2d772bd6",
+        "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+        "available_at_ns": 0,
+        "max_snapshot_age_ns": 86400000000000,
+        "normal_trade_limit_cash": "20",
+        "normal_total_limit_cash": "100",
+        "rolling_limit_cash": "100",
+        "stress_trade_limit_cash": "100",
+        "joint_stress_limit_cash": "200",
+        "gross_limit_cash": "2000",
+        "instrument_limit_cash": "1000",
+        "beta_limit_cash": "2000",
+        "allowed_leverages": [
+          "1",
+          "2"
+        ],
+        "tiers": [
+          {
+            "version": "ATLAS_RED_OFFLINE_MARGIN_TIER_V1",
+            "notional_ceiling_cash": "10000",
+            "initial_margin_fraction": "0.5",
+            "maintenance_fraction": "0.01",
+            "maintenance_deduction_cash": "0",
+            "leverage_limit": "2"
+          }
+        ],
+        "adverse_funding_per_unit_cash": "0",
+        "execution_loss_per_unit_cash": "0",
+        "impact_per_unit_squared_cash": "0",
+        "stress_exit_price": "90",
+        "liquidation_buffer_cash": "0",
+        "beta": "1",
+        "qualification_ref": "5c33a4a809272c9212e79450c1468ff0e86782ede528380322dc494195012373"
+      },
+      "model": {
+        "version": "ATLAS_RED_PREFIT_MEAN_MODEL_V1",
+        "estimator": "M0_MEAN_RIDGE_V1",
+        "compatibility_ref": "80531654d1fe2f0bea5f12a06e821aa507faaa8b56735530cc53f498911cd32e",
+        "training_cutoff_ns": 34559999999999000,
+        "available_at_ns": 34559999999999100,
+        "expires_at_ns": 34646400000000000,
+        "provenance": "CAUSAL_REPLAY",
+        "training_refs": [
+          "d8b1c49487a001b9abfa9eaccf5f03d2a5f3ab3e220ba7bd74af6486f18d7adc",
+          "36a3f405762ec19d6815c014db0d9067ab99cc738e41ae4e50081ba1db2cb891",
+          "f82e743a79dbdd388adb55c6431d3f6ece64507863fc9a65294726892c7dfd5f",
+          "4a29c2f78309543fc8d1f47fce67d346791d95966bf9187c522982a9e5c92a28",
+          "63bc23a02785ba39823df49dc2d42f7c23dcd259ccd7d23d958dbd62787466d2",
+          "eccebefc195bb043f39e2f24afe066c74a97cfed84f4c5d08cee778f6d4b4028",
+          "ba8f8fa5a81e37abc9c77b32f1624d9c74257e8077d49fd8730f176efa65d470",
+          "ce60c4c2b1a8962d66fa4d7712482a0d0e9165cdb741fa6fe670ef974093d03a",
+          "a7b955723207a25b59d4365eab645372ae5542c576176dd93f7102f09d578e97",
+          "a7302ea89dd3ab96659a1c7deb65ea22649954eb8df6699442879607bda199f6",
+          "16f2d77b43c738f1f16612781059a2cbf035f9382727b47d6fb97dd8fbac3e05",
+          "89f4fb19c077fd3bd66f29fb28af639353fb30d41d2056b8c552aaa5c3fe6f33",
+          "e138ba0eeec7507b93b26aa21a8af47879196ed8f23b6494ebc63af7e113e8bc",
+          "80263c4cb8da9f3ad111b019c200513d4d0e1609a43fa5298b5d9fd00f362d2a",
+          "585adc6a4ef12bd0751ec599e347ac3e46dc0b9ba51242f0893c5865e9b04d1a",
+          "9b89df86bfd9bf220a875fc53a2c7a0bda6d31183eab4cd8bb59aceb455647ee",
+          "c69b971aa0aea4abfefeb07b87da247b0c7b96164913317fc55c4ad11a24fb00",
+          "8fb851695fab5a65cbfde379196c8c4f1ad4731f8b6b013ee6a00582c272d33a",
+          "22e809027a50dac147cc95cbe0eece821dbd1fdf6abf33a1cbc375c5fdb8945d",
+          "c59ff4d4fe86a28f18bc000a8f8334b8201981756539446d88e3b717c03b1eb4",
+          "3060dabc2b9c64d5dbdf7b8bb824e9c3b3057c5ae4126ff261cdeda308bf90b8",
+          "2decd9bbd5b9f2101be5d9a48b4a2060f4df4e647f6222f5d482a200e09bbd0c",
+          "328c5f19719c71043921ea5f512da473b4896e72e40d00358e090a240dfbffdc",
+          "c933bfeef6bddee7aff4c7de8c4ad2a9efd92acb41e8e27d48caf819a31baa50",
+          "d06cf7bcb8aaf7c69dc1c58979afe70e092e469b0a9c984c7a0e073e4fd35243",
+          "aa345065993c58adc96d59aad21abbb8183ab3bf25f1f6acff923326063742a0",
+          "698db5061c67ac8fa73b406992739e9c1c028ca5ca06ce39320c0ca890f85cb3",
+          "3bdc2b5cbd49f0fac108c8f98fe901ef3cd0c3afb7be140e08c427c7cacb0f07",
+          "48c9bf91586cd56f280b9aa0cb48ea73ceeb563b2bd531c7665ec309e0e323de",
+          "ec96533638bc933dbc44847d88e850c5eeeeb775f56b15330667bb2c7d29ea8b",
+          "2cae9cbdcb05ee985c5185e031c84a781f3ccbca3ad2bf1d7f06e441afb0111e",
+          "96438c6fffe03d5c0d641a5bcd0248c5258a85818b2aada373885e378b3b6900",
+          "449066be3ac01a975dfaf9ae06f662877eedcf46efa046496209977c7dcff2d9",
+          "75380821222fe0b9ae4ab640ae9e669ffc0a06ed572c2a771b311959b4359f6e",
+          "be4290475e1ebf7798485d6493403ce7bb7575a0bd17ab6d1777be77bfd45de9",
+          "8a59c8017f9108077650b3321d99623e2e644e5ece86c812305842f07371988d",
+          "d83b29def9be74a9ab1d6bb8fd62461a16672f1605da57e3129480abe3dcdd25",
+          "99ea0c8505ffb9b3ae1d808a0e6626945181f0ed2c39612fa04c5ac9004e1203",
+          "d414cbbfe433b4ee19cc28960a9c569f44a9dfb3b28eecd27f4cd20e0b70bbb7",
+          "3407c64455323c56d3dbece26ba5b749bcdbf471832fad6c1958f7b643e6da36"
+        ],
+        "feature_order": [
+          "side_long",
+          "log_notional",
+          "stop_fraction",
+          "horizon_hours",
+          "origin_rank",
+          "market_state"
+        ],
+        "centers": [
+          1.0,
+          7.0,
+          0.02,
+          4.0,
+          3.0,
+          0.5
+        ],
+        "scales": [
+          1e-09,
+          1.0,
+          0.009999999999999998,
+          2.0,
+          2.0,
+          0.5
+        ],
+        "support_min": [
+          1.0,
+          6.0,
+          0.01,
+          2.0,
+          1.0,
+          0.0
+        ],
+        "support_max": [
+          1.0,
+          8.0,
+          0.03,
+          6.0,
+          5.0,
+          1.0
+        ],
+        "parameters": {
+          "coefficients": [
+            -2.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "objective": "squared_loss",
+          "ridge": 1.0
+        },
+        "library_identity": "stdlib-float64-pivoted-solver",
+        "target": "EXACT_ACTION_INCREMENTAL_TRADING_CASH_USDT_COMMON_24H_V1"
+      },
+      "calibration": {
+        "version": "ATLAS_RED_SELECTED_POLICY_MEAN_CALIBRATION_V1",
+        "model_ref": "40b1fddd1f290ea88dabcb8c0e6ca4074417d6d0ffda1b8af232a1170973c4fb",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "80531654d1fe2f0bea5f12a06e821aa507faaa8b56735530cc53f498911cd32e",
+        "source_ref": "3605e7b26e106be541ded1f1c936a24955500bf2feaf940b951d7a1881141a01",
+        "available_at_ns": 34559999999999300,
+        "expires_at_ns": 34646400000000000,
+        "block_ns": 604800000000000,
+        "effective_blocks": 20,
+        "calibration_refs": [
+          "96d132bf9f9ce3b39aa877b70f419076f9cbe1188ed80be1790b27cab8328818",
+          "d04333ebddee11279f69fb6aa5db55655a2500debbbcf265e50b7d12ed36faa1",
+          "77c926694d3d4cb4a131253f1c051b8646973f553a276b6ec28df1786daebad0",
+          "bcffc05fda40441c7465188bb27bcee0dbd1ae1199a7ed4f7704bffa19fa324f",
+          "2f4084c7890b46442e6fff08798107edc0dca1e7d2299a9f685cc60f2b9b5759",
+          "d5d59f2e602e8659b7cbc8a8d60fb4efe05b3afe40d6bf23f38b613c2bea319a",
+          "d07f09b2734f4557320f7ad1642dbb31882890c1d471ad586a67f61fbaec25a4",
+          "bf671c25be914c51af2423b79e294ea4c0704df668ec1cb1c8e7efe8d975ba2f",
+          "14267f19094b6d9761ba50462baa9461ff850b130ed6c939d8523759ca50a457",
+          "d5958112696c9871d6a3aadcccd503856f31683cf55942b0eda2842e3dc0b9a3",
+          "9f00ec10b33a669d792724f5b248cd0156d8c3a1d2e4bedaf2876df4f7ab1ecf",
+          "4f5dba8646b7ccdfbd98e360fb28be09fafec5a0ad95dba0037e7866e6871cec",
+          "ab06023091f5a72d0305ed954de075702c964bb6da07f376224e273b6da4fad5",
+          "aca7c4473c21b553fd1d5c3d21f42e570433d8965c5a09cffc7babd9e8730eb5",
+          "218e99d9dbc8f3c85aa794c31474010367c2001b40c956f0d41db068b92fc392",
+          "36a07c27e82c1016821b2cbc3b087c97d13b07fd018e902ed3dbec1bd1166016",
+          "e7ff35e35aaf57851624e7e0c410792e06e45afc3c38d291667df1cb10ab2fb1",
+          "6ec8c9aedc5d2c7a98fbf993cbee6d18a3aa4adf1e8cee22157e943f35cea284",
+          "0cc312a60d932c072b7aac2c03361ac81702733d26df105520f93d1329d7d573",
+          "701258c6bcc950279e434d75877365912623ea7015be97ceecf8576bade41e68"
+        ],
+        "allowance_cash": "0",
+        "status": "SUPPORTED_OFFLINE",
+        "conditional_scope": "REGISTERED_POLICY_COMPATIBLE_ACTION_SIZE_LIQUIDITY_CELL"
+      },
+      "scenarios": {
+        "version": "ATLAS_RED_QUALIFIED_COMMON_SCENARIOS_V1",
+        "product_ref": "9ae0183105ed262b416ab07a050a416570913a8da3ca893691a40a79faa6ae0d",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "compatibility_ref": "80531654d1fe2f0bea5f12a06e821aa507faaa8b56735530cc53f498911cd32e",
+        "source_ref": "7288ce233d52f8004f94176bdaa0823fa1699687341c0eff61bfe0313bde10c1",
+        "execution_ref": "75aec81e9f4a53523f8645413a0f828cab476c5aacebf8f58c73219f6a7d72fd",
+        "calibration_ref": "4a3ccc348a6b6af7ec8342ddbbd16148ee47adfeb9098bfe2e654e8992cc4d8b",
+        "cutoff_ns": 34560000000000000,
+        "terminal_ns": 34646400000000000,
+        "source_available_at_ns": 34559999999999900,
+        "entry_delay_ns": 0,
+        "exit_delay_ns": 0,
+        "paths": [
+          {
+            "version": "ATLAS_RED_COMMON_MARKET_PATH_V1",
+            "common_path_id": "b08a775231addcb479c5e812c47632befc34c3d882b9d901e3ee011a2eb70140",
+            "probability": "1",
+            "background_pnl_cash": "0",
+            "points": [
+              {
+                "version": "ATLAS_RED_COMMON_EXECUTION_POINT_V1",
+                "at_ns": 34560000000000001,
+                "mark": "100",
+                "bid": "99.99",
+                "ask": "100.01",
+                "bid_quantity": "100",
+                "ask_quantity": "100",
+                "source_ref": "f1957e9ab841eb1ee83a2e9a89079d47bf3760c2daa213921136a74c8024b046",
+                "closed_m15_price": null
+              },
+              {
+                "version": "ATLAS_RED_COMMON_EXECUTION_POINT_V1",
+                "at_ns": 34574400000000000,
+                "mark": "102",
+                "bid": "101.99",
+                "ask": "102.01",
+                "bid_quantity": "100",
+                "ask_quantity": "100",
+                "source_ref": "e8179fa42dea73e155a04943e2447207d96af9c3607a965f55ada208f4adae51",
+                "closed_m15_price": null
+              }
+            ],
+            "funding": []
+          }
+        ],
+        "stress_ids": [
+          "joint-gap"
+        ],
+        "stress_exit_prices": [
+          "90"
+        ],
+        "probability_support": true,
+        "es_qualified": true,
+        "provenance": "CAUSAL_REPLAY"
+      },
+      "execution_bias": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "40b1fddd1f290ea88dabcb8c0e6ca4074417d6d0ffda1b8af232a1170973c4fb",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "80531654d1fe2f0bea5f12a06e821aa507faaa8b56735530cc53f498911cd32e",
+        "source_ref": "29afa7c5acf4ce6d366dfee115435a0e22ef4d4b48aeecbd96b98f29e3a3d5b6",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "RESIDUAL_EXECUTION_BIAS",
+        "cash": "0"
+      },
+      "numerical": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "40b1fddd1f290ea88dabcb8c0e6ca4074417d6d0ffda1b8af232a1170973c4fb",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "80531654d1fe2f0bea5f12a06e821aa507faaa8b56735530cc53f498911cd32e",
+        "source_ref": "42c15f74d1c8b14667f19f05e35ba342404a4d89369912b58a2ce43a8a544720",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "NUMERICAL_APPROXIMATION",
+        "cash": "0"
+      },
+      "incremental_programme": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "40b1fddd1f290ea88dabcb8c0e6ca4074417d6d0ffda1b8af232a1170973c4fb",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "80531654d1fe2f0bea5f12a06e821aa507faaa8b56735530cc53f498911cd32e",
+        "source_ref": "a7faaf00874f2538823d3cae29db1540ba8490c7dbcfc3a2aaabeed4a8169dd8",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "INCREMENTAL_FUTURE_PROGRAMME",
+        "cash": "0"
+      },
+      "context": {
+        "version": "ATLAS_RED_ORIGIN_KNOWN_ACTION_CONTEXT_V1",
+        "candidate_ref": "44cd3da4c16fce8a5c34403f1a610e8ae63948992174c083904b0fd1fec0483b",
+        "available_at_ns": 34560000000000000,
+        "source_ref": "2a5a055c843c94eb5977b44cdcff457f918f504ae00ec6d20a55fdd12cb83731",
+        "compatibility_ref": "80531654d1fe2f0bea5f12a06e821aa507faaa8b56735530cc53f498911cd32e",
+        "market_state": 0.0,
+        "raw_source_available_at_ns": 34560000000000000,
+        "source_observed_at_ns": 34559999999999999,
+        "maximum_source_age_ns": 1000000000,
+        "setup_parameters": {},
+        "missing_reasons": []
+      }
+    },
+    "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001": {
+      "candidate": {
+        "envelope": {
+          "schema_version": 1,
+          "artifact_id": "b17d75e60c336e9e2ae2406451462717b0e52f7be6e7746b369a97169e5c9bd7",
+          "created_at_ns": 34560000000000000,
+          "available_at_ns": 34560000000000000,
+          "producer_version": "P1_SYNTHETIC",
+          "input_refs": [
+            "3566592a025d2916a891974518cbdd0f8f6314544d731fdbcdc708b45b9139b0"
+          ],
+          "content_hash": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001"
+        },
+        "candidate_id": "b17d75e60c336e9e2ae2406451462717b0e52f7be6e7746b369a97169e5c9bd7",
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN2USDT",
+          "base_asset_id": "coin2",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "3106fbee70cbe5d87e8991a3aac2ccf18d0cb759ded24f4cdb04eb66f68a1e6d"
+        },
+        "account_scope": null,
+        "policy_hash": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+        "snapshot_hash": "3566592a025d2916a891974518cbdd0f8f6314544d731fdbcdc708b45b9139b0",
+        "side": "LONG",
+        "decision_at_ns": 34560000000000000,
+        "deadline_ns": 34560005000000000,
+        "horizon_end_ns": 34574400000000000,
+        "entry_reference": "100",
+        "entry_collar": "100.05",
+        "stop_price": "99",
+        "quantity": null,
+        "state_version": 0,
+        "cost_model_ref": "UNESTIMATED"
+      },
+      "product": {
+        "schema_version": 1,
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN2USDT",
+          "base_asset_id": "coin2",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "3106fbee70cbe5d87e8991a3aac2ccf18d0cb759ded24f4cdb04eb66f68a1e6d"
+        },
+        "effective_at_ns": 0,
+        "observed_at_ns": 0,
+        "available_at_ns": 0,
+        "base_units_per_contract": "1",
+        "tick_size": "0.01",
+        "qty_step": "0.1",
+        "min_qty": "0.1",
+        "min_notional": "1",
+        "max_qty": "100",
+        "trading_status": "TRADING",
+        "listing_at_ns": null,
+        "delisting_at_ns": null,
+        "fee_schedule_ref": null,
+        "margin_tiers_ref": null,
+        "funding_schedule_ref": null,
+        "metadata_ref": "7e76889c02af4955b2cd3e66bae34d9b038f3206978802ad987cf6ee6091f974"
+      },
+      "policy": {
+        "policy_id": "S1_MTF_TREND_PULLBACK",
+        "version": "1.0.0-shadow",
+        "strategy_family": "TREND_CONTINUATION_PULLBACK",
+        "capital_status": "SHADOW_ONLY",
+        "decision_event": "CONFIRMED_15M_CLOSE",
+        "required_features": [
+          "atr15m",
+          "event_gate",
+          "executable_bbo",
+          "final_15m_ohlcv",
+          "final_1h_ohlcv",
+          "final_4h_ohlcv",
+          "mark_index",
+          "realized_volatility"
+        ],
+        "optional_features": [],
+        "timeframe_rules": {
+          "regime": "latest_confirmed_4H",
+          "revision": "exact_full_InstrumentKeyV2",
+          "setup": "latest_three_closed_1H",
+          "trigger": "subsequent_confirmed_15M"
+        },
+        "setup_parameters": {
+          "event_gate_max_age_ns": 3600000000000,
+          "experiment_only": false,
+          "pullback_bars": 3,
+          "setup_window": "same_three_closed_1H_bars_used_for_pullback_test",
+          "variant": "BASELINE"
+        },
+        "direction_rule": {
+          "long": "4H_trend_plus_three_1H_pullback_and_reclaim",
+          "short": "exact_symmetric_of_4H_trend_plus_three_1H_pullback_and_reclaim"
+        },
+        "entry_rule": {
+          "bbo_max_age_ns": 5000000000,
+          "candidate_deadline_offset_ns": 5000000000,
+          "confirmed_bar_max_lag_ns": 5000000000,
+          "mark_index_max_age_ns": 5000000000,
+          "no_same_epoch_reprice": true,
+          "order_type": "LIMIT",
+          "shadow_only": true,
+          "time_in_force": "IOC",
+          "trigger": "15M_close_breaks_prior_confirmed_15M_high_or_low"
+        },
+        "collar_rule": {
+          "adverse_bps": 5,
+          "long_reference": "ask",
+          "short_reference": "bid"
+        },
+        "stop_rule": {
+          "atr15m_buffer": "0.25",
+          "maximum_distance_atr": "3",
+          "minimum_distance_atr": "0.5",
+          "setup_window": "same_three_closed_1H_bars"
+        },
+        "trigger_basis": "CONFIRMED_CLOSE",
+        "management_rule": {
+          "averaging": false,
+          "discretionary_trailing": false,
+          "fixed_stop": true,
+          "partial_tp": false,
+          "pyramiding": false,
+          "same_epoch_repricing": false
+        },
+        "time_exit_rule": {
+          "after_ns": 14400000000000,
+          "type": "TIME_EXIT"
+        },
+        "max_hold_ns": 14400000000000,
+        "expiry_rule": {
+          "contrary_confirmed_4h_regime": "INVALIDATE",
+          "fourth_bar_inclusive": true,
+          "subsequent_15m_bars": 4
+        },
+        "model_requirements": [],
+        "fallback_policy_id": null,
+        "policy_hash": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0"
+      },
+      "fees": {
+        "version": "V2_TAKER_FEES_V1",
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN2USDT",
+          "base_asset_id": "coin2",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "3106fbee70cbe5d87e8991a3aac2ccf18d0cb759ded24f4cdb04eb66f68a1e6d"
+        },
+        "available_at_ns": 0,
+        "entry_taker_rate": "0.001",
+        "exit_taker_rate": "0.001",
+        "source_ref": "e34264de2b9826ba4a392ac9fc87a5ed0f8f63fb1384c96c958e4dcccb15e8e5"
+      },
+      "funding": {
+        "version": "V2_FUNDING_SCHEDULE_V1",
+        "available_at_ns": 0,
+        "expected_settlement_times_ns": [],
+        "explicit_zero_funding": true,
+        "source_ref": "5dde881f997be26c9f65b158ed5f0021ce58802b08bc418a68429283f603afb5"
+      },
+      "risk": {
+        "version": "ATLAS_RED_INDEPENDENT_RISK_PROFILE_V1",
+        "source_ref": "b04d806288f20865d8c6761dd0e98241a5e641ce82b4a737c495d6b29e4ebac8",
+        "product_ref": "6c8f337e605e3a5532ca453b33c1278395e1bd9e4cea4c1b531a2e3438a85c06",
+        "risk_policy_ref": "bdc25b4ee606e3173269ef96f0310ec2456e3cc1e24fa2f7fc56df5a2d772bd6",
+        "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+        "available_at_ns": 0,
+        "max_snapshot_age_ns": 86400000000000,
+        "normal_trade_limit_cash": "20",
+        "normal_total_limit_cash": "100",
+        "rolling_limit_cash": "100",
+        "stress_trade_limit_cash": "100",
+        "joint_stress_limit_cash": "200",
+        "gross_limit_cash": "2000",
+        "instrument_limit_cash": "1000",
+        "beta_limit_cash": "2000",
+        "allowed_leverages": [
+          "1",
+          "2"
+        ],
+        "tiers": [
+          {
+            "version": "ATLAS_RED_OFFLINE_MARGIN_TIER_V1",
+            "notional_ceiling_cash": "10000",
+            "initial_margin_fraction": "0.5",
+            "maintenance_fraction": "0.01",
+            "maintenance_deduction_cash": "0",
+            "leverage_limit": "2"
+          }
+        ],
+        "adverse_funding_per_unit_cash": "0",
+        "execution_loss_per_unit_cash": "0",
+        "impact_per_unit_squared_cash": "0",
+        "stress_exit_price": "90",
+        "liquidation_buffer_cash": "0",
+        "beta": "1",
+        "qualification_ref": "5c33a4a809272c9212e79450c1468ff0e86782ede528380322dc494195012373"
+      },
+      "model": {
+        "version": "ATLAS_RED_PREFIT_MEAN_MODEL_V1",
+        "estimator": "M0_MEAN_RIDGE_V1",
+        "compatibility_ref": "39cdfcea41a097b9ee2ec9232db500e270ad2d88099b7a0a1422cee0dd7d2f3a",
+        "training_cutoff_ns": 34559999999999000,
+        "available_at_ns": 34559999999999100,
+        "expires_at_ns": 34646400000000000,
+        "provenance": "CAUSAL_REPLAY",
+        "training_refs": [
+          "d351ec49ec74dacfe45786fa4dd4e461dc31d86c37399509b0b4f58b0f471c92",
+          "ce295f5ced3ea27e74e307b9d83419ffad626bd9131a4e50b7893e407c186fbe",
+          "b21a2cb7cb3f0231a1975cf6c94d557503855ba1dfdb6ca98b4f9b2f06888ae9",
+          "bd7f973ac731b6c2e2bd7c49cb1cd7960d660ed6e2daf688c89043a7c4641d60",
+          "22c1ba7895e53ba49c89156fce8ef2c7bd51aa451399b44e575c45c9fa30ca8d",
+          "1a251970032059b272c93a6e8843416e06f909d419c22c29afe03a0fa5348108",
+          "4c4a27926eebff886a0559d567a41259e14f83f41d3be6e349fc88c41ee23df6",
+          "a87bdda20da296310b2c9def5812b3eae9ed3eaf2eac4f93b9e97664533fdef6",
+          "36a2640b500056be9e07d1bcf561f17ace6b6da7767114f3350914133dbd7d12",
+          "f434054024e604d5be1138de1b4edd9edd2d6b65520d084a6c0c4c814bd60baa",
+          "121170dd356e82959e7540c670eab551006d926c1a66e313821338997a07d06a",
+          "0d510ed2b843006cb441ef041cb598236b662ded2853c3d54e6707448e472d7d",
+          "82f14b17dfcffca80e4e59274bc9cd1d5f948f6aef30e206fe679a80b5d63a5a",
+          "70bd7494a13f46ebd170a29bfe71a5cfc5c0373790b26ae949d02b28b2a1173b",
+          "f532216c695ac2596a3cf827f10e5b6f3d3eb67cf35dba45ae8019b95af3a552",
+          "d67a5a33113b134b93b1a65e734101f095f60d02058982810aa6c8d5fad74326",
+          "cffbb2353a32a22c6c3d379f90ac9134e0dd3ec90278f2c225c345fab3143f9f",
+          "f1fd4b9384bbd8bc9e51520e63ea464b87ecad758a7c2700a8c1e926c30ffd2b",
+          "c89d00b883504228c0418eca76fbf8b82f2b65ff1cff0b24b42d57e0507ac0e5",
+          "e2778609f1b9b617b63764a94dc1c9570acca2b102927c5ab44f857568376191",
+          "765b6fe840a7d15b0e05ef5c32d63eeed909dd6246a049d478e3a6f9f078be6b",
+          "db99822d5fd6b93a408976c45d33b80789350e943f50b12cca669c0b7a99a521",
+          "2be2114b0bbd063f8cff670bc4254cdd7f9c2a1b32ee4b373d2b9c59a5d2fb35",
+          "9b9d20f3693adb959a9343b62c74a97e5597b616e92854705ff9f05281718a76",
+          "dec95da417b1599df7e6d06e593ef8aac922727b01996e22db10dbead5da3a6a",
+          "54ec4d78697ec44c7b0f462082bb713ac3c1c7e9ed49cbf1e627f7518da7e684",
+          "dc93eff7bc8a597fc877ee183e26e92f32e2a9f25a6c16cd40d52c855f329ea7",
+          "81472fb8e06d17f40e46463a02c3b1a0443f64f4bcb62ba6cb655cca9250e9b5",
+          "d833ad2e930322e42d0ae16add030ae0018fad287d4fbbf2c149b0198a9468af",
+          "e39b8994280ce07312617e0fd908cc4c1aa5421c74ee04eafd2eab2e66ee812d",
+          "838f36d0705aaa6237b4743e922218d4ad85d957f3cb001fea9bf6a28b01322c",
+          "b4cb924fe362981e6e46c4f55f854ce90440e48348c033327e4a41528eee2efa",
+          "649370e807a80d1f2456da06ef5a8f51545fd51671b39f9f6a67923cd2a7cc81",
+          "4128dd298ee4479debb34a2562a95f6ddb700a2d71cef4dd96f569d5b4a93841",
+          "751c9cb5f1c37ce743bd07138a2358f0fdd836626561a6747df8e130c1006ff3",
+          "f86832a4a51d6dbed9152a1e3bbfc2d095b4470dcb7a797472539b1f0a316a83",
+          "740db75ce2a4424a7570c5f780b53d3f912e206484a66b055ef9ba6bdcee109f",
+          "e55c884d83d1887be42654e5fe8fa24522683b4910dc7c9ca355e072cc3853bf",
+          "da9ceb32bfa4f0f4bbcc9c7087b8d4d3ca1003a003133e5d72624c9c3c11813e",
+          "038ab35df544b9098a4a62914b415b88ab68c02ead82710432f09133f5bfbdc0"
+        ],
+        "feature_order": [
+          "side_long",
+          "log_notional",
+          "stop_fraction",
+          "horizon_hours",
+          "origin_rank",
+          "market_state"
+        ],
+        "centers": [
+          1.0,
+          7.0,
+          0.02,
+          4.0,
+          3.0,
+          0.5
+        ],
+        "scales": [
+          1e-09,
+          1.0,
+          0.009999999999999998,
+          2.0,
+          2.0,
+          0.5
+        ],
+        "support_min": [
+          1.0,
+          6.0,
+          0.01,
+          2.0,
+          1.0,
+          0.0
+        ],
+        "support_max": [
+          1.0,
+          8.0,
+          0.03,
+          6.0,
+          5.0,
+          1.0
+        ],
+        "parameters": {
+          "coefficients": [
+            5.0,
+            0.0,
+            -1.850371707708595e-17,
+            9.251858538542973e-17,
+            -1.8503717077085957e-17,
+            -1.8503717077085944e-17,
+            -1.850371707708595e-17
+          ],
+          "objective": "squared_loss",
+          "ridge": 1.0
+        },
+        "library_identity": "stdlib-float64-pivoted-solver",
+        "target": "EXACT_ACTION_INCREMENTAL_TRADING_CASH_USDT_COMMON_24H_V1"
+      },
+      "calibration": {
+        "version": "ATLAS_RED_SELECTED_POLICY_MEAN_CALIBRATION_V1",
+        "model_ref": "b86f70feadf38a796cd10199bd61014123a1fae862ac2af4bf3c112e721b8930",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "39cdfcea41a097b9ee2ec9232db500e270ad2d88099b7a0a1422cee0dd7d2f3a",
+        "source_ref": "eb7e4fe2c54aac43406d0974670dc122604290061c7786eb5fa0fc2246b1acf2",
+        "available_at_ns": 34559999999999300,
+        "expires_at_ns": 34646400000000000,
+        "block_ns": 604800000000000,
+        "effective_blocks": 20,
+        "calibration_refs": [
+          "586afd3b39cb8bd8fecd6dbe297349b4aca91ac2f41d09adcb46202cb5de8da1",
+          "f8550035b032e963ebfaaa7ee5cabbd2a810ea2b21b284bfc1233bd62f707501",
+          "f0e35f576aee1c81c353d7bb7b85ddd0baef86342c60a6501c5b4071aa2b1de3",
+          "3f38ea5dea3c3687f06c48d230db2afb663108f895886e02096c9d581a4b3f31",
+          "c0de8694785adceb38d4fdbc7645ce79c8312d0684345348edd2aba579d35c95",
+          "75969889d03348e5909fc91433b78abffce5ed076e1098728f7cc4cee0501aa5",
+          "467cca1dec6e947c496628993645dbfb4c8e4faf59a62c1b79c79aa6ae4fc0d9",
+          "00f3b22089d905225fac9c9192726a19fe1a00368df40f0b41843a4ae190e95d",
+          "4ee4506e5e179b3cff8418963e9f2d20e53b797b6124d847799848c6403b43e2",
+          "ad2fe89ae7432bba1bd418aa370647e63613a563e4c7dd6b1c431d38e2ab866d",
+          "34343d70aba58e5fb4f16a659e738f666f7c4e96c71d0155f8d682f628967035",
+          "5219956a406b6c0b9c291029bccd8f95dd0309099b4f2f965905a2457f079af6",
+          "92185bcb777ae20a714f4b4adea13956cb05ca5a4bc6b190b9d5c160e2e2dd55",
+          "0ba1bbd06af434bd32b7cb3b8497f59fe4d8d585e09bc14948501237136c82ad",
+          "9ffafb898a0ac7d27137dba8596c468fbdcf86e603c5fa2b48ba68dce10a4318",
+          "4303ac569defa7a02651c072474de811da815ec6476107d5dba158e5a684327e",
+          "f62039aa61cbeed0d52e8f54d847f82771a1ca3cc8325d70efd8de56fcd2b4ff",
+          "1c1086c89e971561d74c7cc06510f5928a7dbd0820b3af9d2b56dd3b1cf72d68",
+          "3d134e736dce8ce77de75c6b0b6b61fa4193f9af4af072a497deaf63967ae275",
+          "c6cf4c8320c7ec2bc18eb3d622a605f917cd31b138d25ff32694b22d02b44cb2"
+        ],
+        "allowance_cash": "0",
+        "status": "SUPPORTED_OFFLINE",
+        "conditional_scope": "REGISTERED_POLICY_COMPATIBLE_ACTION_SIZE_LIQUIDITY_CELL"
+      },
+      "scenarios": {
+        "version": "ATLAS_RED_QUALIFIED_COMMON_SCENARIOS_V1",
+        "product_ref": "6c8f337e605e3a5532ca453b33c1278395e1bd9e4cea4c1b531a2e3438a85c06",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "compatibility_ref": "39cdfcea41a097b9ee2ec9232db500e270ad2d88099b7a0a1422cee0dd7d2f3a",
+        "source_ref": "7288ce233d52f8004f94176bdaa0823fa1699687341c0eff61bfe0313bde10c1",
+        "execution_ref": "1eb96ceafe5c4fa79657f9f2457bb7673cf21277bb9b9ec7ce866872d8a6c313",
+        "calibration_ref": "4a3ccc348a6b6af7ec8342ddbbd16148ee47adfeb9098bfe2e654e8992cc4d8b",
+        "cutoff_ns": 34560000000000000,
+        "terminal_ns": 34646400000000000,
+        "source_available_at_ns": 34559999999999900,
+        "entry_delay_ns": 0,
+        "exit_delay_ns": 0,
+        "paths": [
+          {
+            "version": "ATLAS_RED_COMMON_MARKET_PATH_V1",
+            "common_path_id": "b08a775231addcb479c5e812c47632befc34c3d882b9d901e3ee011a2eb70140",
+            "probability": "1",
+            "background_pnl_cash": "0",
+            "points": [
+              {
+                "version": "ATLAS_RED_COMMON_EXECUTION_POINT_V1",
+                "at_ns": 34560000000000001,
+                "mark": "100",
+                "bid": "99.99",
+                "ask": "100.01",
+                "bid_quantity": "100",
+                "ask_quantity": "100",
+                "source_ref": "f1957e9ab841eb1ee83a2e9a89079d47bf3760c2daa213921136a74c8024b046",
+                "closed_m15_price": null
+              },
+              {
+                "version": "ATLAS_RED_COMMON_EXECUTION_POINT_V1",
+                "at_ns": 34574400000000000,
+                "mark": "102",
+                "bid": "101.99",
+                "ask": "102.01",
+                "bid_quantity": "100",
+                "ask_quantity": "100",
+                "source_ref": "e8179fa42dea73e155a04943e2447207d96af9c3607a965f55ada208f4adae51",
+                "closed_m15_price": null
+              }
+            ],
+            "funding": []
+          }
+        ],
+        "stress_ids": [
+          "joint-gap"
+        ],
+        "stress_exit_prices": [
+          "90"
+        ],
+        "probability_support": true,
+        "es_qualified": true,
+        "provenance": "CAUSAL_REPLAY"
+      },
+      "execution_bias": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "b86f70feadf38a796cd10199bd61014123a1fae862ac2af4bf3c112e721b8930",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "39cdfcea41a097b9ee2ec9232db500e270ad2d88099b7a0a1422cee0dd7d2f3a",
+        "source_ref": "b63a9ae77a0bea08a260cac8a4a585e57b5c159a993f2859551a6f2fc4049235",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "RESIDUAL_EXECUTION_BIAS",
+        "cash": "0"
+      },
+      "numerical": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "b86f70feadf38a796cd10199bd61014123a1fae862ac2af4bf3c112e721b8930",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "39cdfcea41a097b9ee2ec9232db500e270ad2d88099b7a0a1422cee0dd7d2f3a",
+        "source_ref": "5f6ca43d488785d912fa86796c2fbff752d8548f39260ba989fcbfcc375f1a69",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "NUMERICAL_APPROXIMATION",
+        "cash": "0"
+      },
+      "incremental_programme": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "b86f70feadf38a796cd10199bd61014123a1fae862ac2af4bf3c112e721b8930",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "39cdfcea41a097b9ee2ec9232db500e270ad2d88099b7a0a1422cee0dd7d2f3a",
+        "source_ref": "24f6276c20d02a68817be75299fe249552867cd6983b14f0a7af50093e748661",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "INCREMENTAL_FUTURE_PROGRAMME",
+        "cash": "0"
+      },
+      "context": {
+        "version": "ATLAS_RED_ORIGIN_KNOWN_ACTION_CONTEXT_V1",
+        "candidate_ref": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001",
+        "available_at_ns": 34560000000000000,
+        "source_ref": "5da20581e9417408282a4fa84c92a3d4f305a025a20260fb34f76e3e332ed94c",
+        "compatibility_ref": "39cdfcea41a097b9ee2ec9232db500e270ad2d88099b7a0a1422cee0dd7d2f3a",
+        "market_state": 0.0,
+        "raw_source_available_at_ns": 34560000000000000,
+        "source_observed_at_ns": 34559999999999999,
+        "maximum_source_age_ns": 1000000000,
+        "setup_parameters": {},
+        "missing_reasons": []
+      }
+    },
+    "ecb4063c0d9e1377427fc58e9bf1fa1cb8b0c28389ac5faf05a7138edc8e505b": {
+      "candidate": {
+        "envelope": {
+          "schema_version": 1,
+          "artifact_id": "2b673811c1fd2e973530e9e7b9b549309be941efc87f9333140170e3b1e7239e",
+          "created_at_ns": 34560000000000000,
+          "available_at_ns": 34560000000000000,
+          "producer_version": "P1_SYNTHETIC",
+          "input_refs": [
+            "fe7c63c9f56d157fcc90da7726380921342749734098438fcd7fa4b3c0920bc7"
+          ],
+          "content_hash": "ecb4063c0d9e1377427fc58e9bf1fa1cb8b0c28389ac5faf05a7138edc8e505b"
+        },
+        "candidate_id": "2b673811c1fd2e973530e9e7b9b549309be941efc87f9333140170e3b1e7239e",
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN3USDT",
+          "base_asset_id": "coin3",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "84ff13f943f93ecff1b006909873fc5fb71d8f0158db532e3040d9d1cc17a6ba"
+        },
+        "account_scope": null,
+        "policy_hash": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+        "snapshot_hash": "fe7c63c9f56d157fcc90da7726380921342749734098438fcd7fa4b3c0920bc7",
+        "side": "LONG",
+        "decision_at_ns": 34560000000000000,
+        "deadline_ns": 34560005000000000,
+        "horizon_end_ns": 34574400000000000,
+        "entry_reference": "100",
+        "entry_collar": "100.05",
+        "stop_price": "99",
+        "quantity": null,
+        "state_version": 0,
+        "cost_model_ref": "UNESTIMATED"
+      },
+      "product": {
+        "schema_version": 1,
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN3USDT",
+          "base_asset_id": "coin3",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "84ff13f943f93ecff1b006909873fc5fb71d8f0158db532e3040d9d1cc17a6ba"
+        },
+        "effective_at_ns": 0,
+        "observed_at_ns": 0,
+        "available_at_ns": 0,
+        "base_units_per_contract": "1",
+        "tick_size": "0.01",
+        "qty_step": "0.1",
+        "min_qty": "0.1",
+        "min_notional": "1",
+        "max_qty": "100",
+        "trading_status": "TRADING",
+        "listing_at_ns": null,
+        "delisting_at_ns": null,
+        "fee_schedule_ref": null,
+        "margin_tiers_ref": null,
+        "funding_schedule_ref": null,
+        "metadata_ref": "6a5053b97a37ad466c50238906af2c96e23d2ef0af79e075ca1aa0cfde434701"
+      },
+      "policy": {
+        "policy_id": "S1_MTF_TREND_PULLBACK",
+        "version": "1.0.0-shadow",
+        "strategy_family": "TREND_CONTINUATION_PULLBACK",
+        "capital_status": "SHADOW_ONLY",
+        "decision_event": "CONFIRMED_15M_CLOSE",
+        "required_features": [
+          "atr15m",
+          "event_gate",
+          "executable_bbo",
+          "final_15m_ohlcv",
+          "final_1h_ohlcv",
+          "final_4h_ohlcv",
+          "mark_index",
+          "realized_volatility"
+        ],
+        "optional_features": [],
+        "timeframe_rules": {
+          "regime": "latest_confirmed_4H",
+          "revision": "exact_full_InstrumentKeyV2",
+          "setup": "latest_three_closed_1H",
+          "trigger": "subsequent_confirmed_15M"
+        },
+        "setup_parameters": {
+          "event_gate_max_age_ns": 3600000000000,
+          "experiment_only": false,
+          "pullback_bars": 3,
+          "setup_window": "same_three_closed_1H_bars_used_for_pullback_test",
+          "variant": "BASELINE"
+        },
+        "direction_rule": {
+          "long": "4H_trend_plus_three_1H_pullback_and_reclaim",
+          "short": "exact_symmetric_of_4H_trend_plus_three_1H_pullback_and_reclaim"
+        },
+        "entry_rule": {
+          "bbo_max_age_ns": 5000000000,
+          "candidate_deadline_offset_ns": 5000000000,
+          "confirmed_bar_max_lag_ns": 5000000000,
+          "mark_index_max_age_ns": 5000000000,
+          "no_same_epoch_reprice": true,
+          "order_type": "LIMIT",
+          "shadow_only": true,
+          "time_in_force": "IOC",
+          "trigger": "15M_close_breaks_prior_confirmed_15M_high_or_low"
+        },
+        "collar_rule": {
+          "adverse_bps": 5,
+          "long_reference": "ask",
+          "short_reference": "bid"
+        },
+        "stop_rule": {
+          "atr15m_buffer": "0.25",
+          "maximum_distance_atr": "3",
+          "minimum_distance_atr": "0.5",
+          "setup_window": "same_three_closed_1H_bars"
+        },
+        "trigger_basis": "CONFIRMED_CLOSE",
+        "management_rule": {
+          "averaging": false,
+          "discretionary_trailing": false,
+          "fixed_stop": true,
+          "partial_tp": false,
+          "pyramiding": false,
+          "same_epoch_repricing": false
+        },
+        "time_exit_rule": {
+          "after_ns": 14400000000000,
+          "type": "TIME_EXIT"
+        },
+        "max_hold_ns": 14400000000000,
+        "expiry_rule": {
+          "contrary_confirmed_4h_regime": "INVALIDATE",
+          "fourth_bar_inclusive": true,
+          "subsequent_15m_bars": 4
+        },
+        "model_requirements": [],
+        "fallback_policy_id": null,
+        "policy_hash": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0"
+      },
+      "fees": {
+        "version": "V2_TAKER_FEES_V1",
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN3USDT",
+          "base_asset_id": "coin3",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "84ff13f943f93ecff1b006909873fc5fb71d8f0158db532e3040d9d1cc17a6ba"
+        },
+        "available_at_ns": 0,
+        "entry_taker_rate": "0.001",
+        "exit_taker_rate": "0.001",
+        "source_ref": "6f2867448ce7811daf5c3ce20d94f6100f47a6f8137d3c544b5bdb5ad4ca7b73"
+      },
+      "funding": {
+        "version": "V2_FUNDING_SCHEDULE_V1",
+        "available_at_ns": 0,
+        "expected_settlement_times_ns": [],
+        "explicit_zero_funding": true,
+        "source_ref": "b7d23a07bbefd14e5dc4dd2f80e6bf23b4790ce497a0b005915c726e8e0681b9"
+      },
+      "risk": {
+        "version": "ATLAS_RED_INDEPENDENT_RISK_PROFILE_V1",
+        "source_ref": "b04d806288f20865d8c6761dd0e98241a5e641ce82b4a737c495d6b29e4ebac8",
+        "product_ref": "3e8a679fcf2dfb68113d25135b971a5d2262b604d28521a09e7e06c80290d8ef",
+        "risk_policy_ref": "bdc25b4ee606e3173269ef96f0310ec2456e3cc1e24fa2f7fc56df5a2d772bd6",
+        "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+        "available_at_ns": 0,
+        "max_snapshot_age_ns": 86400000000000,
+        "normal_trade_limit_cash": "20",
+        "normal_total_limit_cash": "100",
+        "rolling_limit_cash": "100",
+        "stress_trade_limit_cash": "100",
+        "joint_stress_limit_cash": "200",
+        "gross_limit_cash": "2000",
+        "instrument_limit_cash": "1000",
+        "beta_limit_cash": "2000",
+        "allowed_leverages": [
+          "1",
+          "2"
+        ],
+        "tiers": [
+          {
+            "version": "ATLAS_RED_OFFLINE_MARGIN_TIER_V1",
+            "notional_ceiling_cash": "10000",
+            "initial_margin_fraction": "0.5",
+            "maintenance_fraction": "0.01",
+            "maintenance_deduction_cash": "0",
+            "leverage_limit": "2"
+          }
+        ],
+        "adverse_funding_per_unit_cash": "0",
+        "execution_loss_per_unit_cash": "0",
+        "impact_per_unit_squared_cash": "0",
+        "stress_exit_price": "90",
+        "liquidation_buffer_cash": "0",
+        "beta": "1",
+        "qualification_ref": "5c33a4a809272c9212e79450c1468ff0e86782ede528380322dc494195012373"
+      },
+      "model": {
+        "version": "ATLAS_RED_PREFIT_MEAN_MODEL_V1",
+        "estimator": "M0_MEAN_RIDGE_V1",
+        "compatibility_ref": "2f7de3ea347428a96f63b0677031f13f9fd00356006a5e8d691e01563076f1a2",
+        "training_cutoff_ns": 34559999999999000,
+        "available_at_ns": 34559999999999100,
+        "expires_at_ns": 34646400000000000,
+        "provenance": "CAUSAL_REPLAY",
+        "training_refs": [
+          "b1cfb25a8e57d52bbe50257650d7bc065b0332635535e92d26a7c8872e0dd314",
+          "3aed1daba3f1e1037807c3781a422aa469519e347316191c844b76a8d3bba283",
+          "9987b0a09d0f66578fb3be665981046401243d4dc7bf2e3da62ea9136b55cfd0",
+          "e262755b434162dc8ab4b2e8c434cd5ffe512205b7aec0e4b585c3cfb275175d",
+          "55e8ff569ba30539839880fc28323487d1fc73f84fda0cfd52006f4b50235df2",
+          "169f3b551711a253a9b114dbab50b967a04841ea92f2514341ad5a0e9a481205",
+          "f86a2df68ab127c0f913e90d6d17d8db25b72d54cda77d4bf32ba288ee559003",
+          "1567a52ba84eb751739352f2b6e1338ec1b19d3b29f458ed54f118158c88c17c",
+          "05538bb50270a424cb5ffc796f457995690c896f7703a515303f2167dc2bc74d",
+          "5491a482aaf002cee925f5cf887c5e15f82273009921d773a57c6a6a335c6dc1",
+          "5dac49ce42e7ae511f68f05ba4d36a91f8e0366d03e78d0d058b57108df55c43",
+          "9d3aba8300cd5dc2b86165c4f221ce57b4da87f2d3a617c9d67de84f7ad2d66b",
+          "f20f1cb9bae9d383653cae1e119e439ff8ae90487edf31b522f6d86b9189d1a0",
+          "e485c2c096979c8b8829b681fe6dfbfd874893521c17c1335304e0ca6e0adb6f",
+          "2e0e580b49f8dedd1e4005d21f334586a18fecd4489795642adca20a413443d6",
+          "9b74fca299f107ae6f2efbdb234731f58819f2c1943b7d4cd97dab149c81afa7",
+          "687137d6c5bf193dbc225b46c08388d6f4e57a3c2c5420067dcc2361a40ff253",
+          "476039d0060bcfff575bba4e99db9868715f1e93ae5480581af141171b7dd72e",
+          "601eda3f754425d5ba4b52d1b59813e24b204095341bdf8b1a1f56e5348f217a",
+          "20f4dd29cb01f997895fef66f399d7765c69fc13e596353ee4f34a4ec4afd368",
+          "b0f48394ad82fcefa217d57b58ea235f8128ca6639fd8345502076f3451975cb",
+          "ab59db5c4b4d565414181b15a6da6b685377cb2ed3ee05d0730cfe74b11c958f",
+          "630207cb480527bd8c2e36fbaba921f8c3a68285a03f6cac83328b373494a24f",
+          "5c80b78fb2ac32e931fb8403df9c855051072260418f6055d5b2905669eaff22",
+          "866536b5a63643f839943f570bde99b750fa2434b25721aab8e9a4ca33deeb52",
+          "f8e6ca5b091c47f0e2bb42de769161da73759aae3dbf5471a55140591aae8437",
+          "6b4911143568edae3b90f9bb37361167f07db30c9ad01d5b2fb05e56d64da2b7",
+          "19b14d7b795c834f8c95c5503f0dbe6f94cae638caba11f5fe8b815677ff0ecb",
+          "637b886ef1e89a10268a5e6621ca037114daf3f9d5f424d39deaf8e672fce2a1",
+          "1d6ee4c51388813a2b92e7f82819dd38e26c7308cba3d03163aa3a0d3cebbafe",
+          "0833b3d52f7afd12f357e57e07b33a888765625149e4103fe0db05815e279085",
+          "ac5e33b4da91d2f96ddd8623143b6c3d18b3439ad58e7a10e6ace608be6b4e4c",
+          "cb87164eb3997f74062d4eef8721e7836aa4f8d86ec9f0d4319b80dffcaec06d",
+          "baba6250622db7f0d1ab9a49383dcead2e927835afadcd2201764d0b7114575b",
+          "07dc3dc4fb57fd9a32e3a0f2daa6273a53e7b4eae97b91235134f3e6bd6fa492",
+          "d9410c8b90489ac3dc20f685ce6e2fa88f87e050cd42e4b2413549040e0ffbc7",
+          "1522955a4b6461015f66f49a453d63f88f5ed41a5698176bd745d9d14ab1b76c",
+          "b19b01a0e6c807efe44cd21565b0b2f1be92b2cb74bce8d6fd423365f44ab687",
+          "f375bc4821bc0313236270f522f8b8fbefc37a518b7a1ec45a1f90dfc8442650",
+          "e3b889cab3f26cfe4107bb25a36fb61781e1c8fe13c638d12f158db0faf77401"
+        ],
+        "feature_order": [
+          "side_long",
+          "log_notional",
+          "stop_fraction",
+          "horizon_hours",
+          "origin_rank",
+          "market_state"
+        ],
+        "centers": [
+          1.0,
+          7.0,
+          0.02,
+          4.0,
+          3.0,
+          0.5
+        ],
+        "scales": [
+          1e-09,
+          1.0,
+          0.009999999999999998,
+          2.0,
+          2.0,
+          0.5
+        ],
+        "support_min": [
+          1.0,
+          6.0,
+          0.01,
+          2.0,
+          1.0,
+          0.0
+        ],
+        "support_max": [
+          1.0,
+          8.0,
+          0.03,
+          6.0,
+          5.0,
+          1.0
+        ],
+        "parameters": {
+          "coefficients": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "objective": "squared_loss",
+          "ridge": 1.0
+        },
+        "library_identity": "stdlib-float64-pivoted-solver",
+        "target": "EXACT_ACTION_INCREMENTAL_TRADING_CASH_USDT_COMMON_24H_V1"
+      },
+      "calibration": {
+        "version": "ATLAS_RED_SELECTED_POLICY_MEAN_CALIBRATION_V1",
+        "model_ref": "24390c1c721c2bb863b82a301d3220c613c3bec601bb2dff94e9dfb25acf7e26",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "2f7de3ea347428a96f63b0677031f13f9fd00356006a5e8d691e01563076f1a2",
+        "source_ref": "1347e56f7646a53b982013200930f6eca063c0c1cfbaae9be9b817858e792572",
+        "available_at_ns": 34559999999999300,
+        "expires_at_ns": 34646400000000000,
+        "block_ns": 604800000000000,
+        "effective_blocks": 20,
+        "calibration_refs": [
+          "1f4dd7810add0e07f4c127367eef79e3dab1594a88dd2efbe7ce17dcb2cea1d3",
+          "206496e6ba4d4b1b345c517cfcd4598abf14c81e6489d90b5c5e2f6c2bd7e911",
+          "2863d0322dd30afb04614855e27d1cc37bf28717a04af9b86261ab1cc659207d",
+          "a7b0ecc9ed0e4e269d11878d3111a07a6684847227a284fc7a306b9fe0abc5a5",
+          "468b16245ff771922967e7594ce6d24bf9eced039a6f33d2750bff02dce5a02d",
+          "82924adb0ccf25216f03372f553f47fb74112c3e8c6cbe539ddba7b6ff1c2790",
+          "81fcea558b810e4970f96690e127929afeb960520f7ac211c0c2715d05ef3ec7",
+          "589109b71d5e798af378f2079d3d113293d77297abb6694c2d226eb1e314bae7",
+          "a1de6d1c91f927e8293e99269052ddeb3b8d010134647fd6dd83d08daeedec88",
+          "421b4b763200e8b4a0a31b1b3144834b867b13d87dbe5a9cc30cd867860a355a",
+          "082ae8ba8603dcf990b54168b6da5d2be5b31c366afc85908ffdce1fe27dafb8",
+          "d3f87dbb770a21b8308acbdae8767936ec5f6bc6cddd15d87294acf3ed334c63",
+          "ea29e0bc1d929c681356e5bf2ba1d0e7c9560c196b6b80739325397d08064d8e",
+          "af3ebf22b85537425693f35eebd927189fed447ec1a210d54e856f9015c670a7",
+          "c1c015d6c570a0ab3b2f697b6486c3158aca4a23881137b43207e5f600255a5d",
+          "30ac6a1e4c2343a2e4b93b15f097d42ff751de3aed1ab80add23f85fc87ffe22",
+          "905994ca5c287afa6b98a51fb7a847f864ad3afc1864280e1cef45f931821757",
+          "9bf469327edbba970b1d94c3c163a32b9b2657508f646797cec53d44d88e20f9",
+          "b6c6df9b930b96bce3edbae7acdb02d7c60c6be7cc9979933125c165058d6a65",
+          "581e871475b0e3c02b86214f7d9456e7abf9c602e1d6214288dab4f404ce784f"
+        ],
+        "allowance_cash": "0",
+        "status": "SUPPORTED_OFFLINE",
+        "conditional_scope": "REGISTERED_POLICY_COMPATIBLE_ACTION_SIZE_LIQUIDITY_CELL"
+      },
+      "scenarios": {
+        "version": "ATLAS_RED_QUALIFIED_COMMON_SCENARIOS_V1",
+        "product_ref": "3e8a679fcf2dfb68113d25135b971a5d2262b604d28521a09e7e06c80290d8ef",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "compatibility_ref": "2f7de3ea347428a96f63b0677031f13f9fd00356006a5e8d691e01563076f1a2",
+        "source_ref": "7288ce233d52f8004f94176bdaa0823fa1699687341c0eff61bfe0313bde10c1",
+        "execution_ref": "1803429f5f63dbd3f2315cfd6ac4f0872d2ca7dceb016b05e6dd336cd3139460",
+        "calibration_ref": "4a3ccc348a6b6af7ec8342ddbbd16148ee47adfeb9098bfe2e654e8992cc4d8b",
+        "cutoff_ns": 34560000000000000,
+        "terminal_ns": 34646400000000000,
+        "source_available_at_ns": 34559999999999900,
+        "entry_delay_ns": 0,
+        "exit_delay_ns": 0,
+        "paths": [
+          {
+            "version": "ATLAS_RED_COMMON_MARKET_PATH_V1",
+            "common_path_id": "b08a775231addcb479c5e812c47632befc34c3d882b9d901e3ee011a2eb70140",
+            "probability": "1",
+            "background_pnl_cash": "0",
+            "points": [
+              {
+                "version": "ATLAS_RED_COMMON_EXECUTION_POINT_V1",
+                "at_ns": 34560000000000001,
+                "mark": "100",
+                "bid": "99.99",
+                "ask": "100.01",
+                "bid_quantity": "100",
+                "ask_quantity": "100",
+                "source_ref": "f1957e9ab841eb1ee83a2e9a89079d47bf3760c2daa213921136a74c8024b046",
+                "closed_m15_price": null
+              },
+              {
+                "version": "ATLAS_RED_COMMON_EXECUTION_POINT_V1",
+                "at_ns": 34574400000000000,
+                "mark": "102",
+                "bid": "101.99",
+                "ask": "102.01",
+                "bid_quantity": "100",
+                "ask_quantity": "100",
+                "source_ref": "e8179fa42dea73e155a04943e2447207d96af9c3607a965f55ada208f4adae51",
+                "closed_m15_price": null
+              }
+            ],
+            "funding": []
+          }
+        ],
+        "stress_ids": [
+          "joint-gap"
+        ],
+        "stress_exit_prices": [
+          "90"
+        ],
+        "probability_support": true,
+        "es_qualified": true,
+        "provenance": "CAUSAL_REPLAY"
+      },
+      "execution_bias": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "24390c1c721c2bb863b82a301d3220c613c3bec601bb2dff94e9dfb25acf7e26",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "2f7de3ea347428a96f63b0677031f13f9fd00356006a5e8d691e01563076f1a2",
+        "source_ref": "2b642beeaeb7911d8f9c08c75cb65ede6fd02833a5ff2694b8f874eece7461bf",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "RESIDUAL_EXECUTION_BIAS",
+        "cash": "0"
+      },
+      "numerical": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "24390c1c721c2bb863b82a301d3220c613c3bec601bb2dff94e9dfb25acf7e26",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "2f7de3ea347428a96f63b0677031f13f9fd00356006a5e8d691e01563076f1a2",
+        "source_ref": "a4f369e512e507555e0df01bacf9da0c13fd6fe9e46d8f1730614502f6e203a1",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "NUMERICAL_APPROXIMATION",
+        "cash": "0"
+      },
+      "incremental_programme": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "24390c1c721c2bb863b82a301d3220c613c3bec601bb2dff94e9dfb25acf7e26",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "2f7de3ea347428a96f63b0677031f13f9fd00356006a5e8d691e01563076f1a2",
+        "source_ref": "55f36da02ed63e26e9251a365dc8ea9716d0cf6541c149070454ca8498191535",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "INCREMENTAL_FUTURE_PROGRAMME",
+        "cash": "0"
+      },
+      "context": {
+        "version": "ATLAS_RED_ORIGIN_KNOWN_ACTION_CONTEXT_V1",
+        "candidate_ref": "ecb4063c0d9e1377427fc58e9bf1fa1cb8b0c28389ac5faf05a7138edc8e505b",
+        "available_at_ns": 34560000000000000,
+        "source_ref": "aa47f825094313f83a0f054c001713a06d023319ac0ba2b84daa49dd631d5a28",
+        "compatibility_ref": "2f7de3ea347428a96f63b0677031f13f9fd00356006a5e8d691e01563076f1a2",
+        "market_state": 0.0,
+        "raw_source_available_at_ns": 34560000000000000,
+        "source_observed_at_ns": 34559999999999999,
+        "maximum_source_age_ns": 1000000000,
+        "setup_parameters": {},
+        "missing_reasons": []
+      }
+    },
+    "7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4": {
+      "candidate": {
+        "envelope": {
+          "schema_version": 1,
+          "artifact_id": "a5e3535c589f6553cc0342853f257955b487c3e2f8d6b462aa3664722ba6a985",
+          "created_at_ns": 34560000000000000,
+          "available_at_ns": 34560000000000000,
+          "producer_version": "P1_SYNTHETIC",
+          "input_refs": [
+            "3709a71e1eb6c8b899d977b262278c44d2231b3815c5fa3435212f8f2d460a84"
+          ],
+          "content_hash": "7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4"
+        },
+        "candidate_id": "a5e3535c589f6553cc0342853f257955b487c3e2f8d6b462aa3664722ba6a985",
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN4USDT",
+          "base_asset_id": "coin4",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "5f2a866bc8cd0dcda78999cc11e706beebe514e8a268ae8cc91309363d33994d"
+        },
+        "account_scope": null,
+        "policy_hash": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+        "snapshot_hash": "3709a71e1eb6c8b899d977b262278c44d2231b3815c5fa3435212f8f2d460a84",
+        "side": "LONG",
+        "decision_at_ns": 34560000000000000,
+        "deadline_ns": 34560005000000000,
+        "horizon_end_ns": 34574400000000000,
+        "entry_reference": "100",
+        "entry_collar": "100.05",
+        "stop_price": "99",
+        "quantity": null,
+        "state_version": 0,
+        "cost_model_ref": "UNESTIMATED"
+      },
+      "product": {
+        "schema_version": 1,
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN4USDT",
+          "base_asset_id": "coin4",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "5f2a866bc8cd0dcda78999cc11e706beebe514e8a268ae8cc91309363d33994d"
+        },
+        "effective_at_ns": 0,
+        "observed_at_ns": 0,
+        "available_at_ns": 0,
+        "base_units_per_contract": "1",
+        "tick_size": "0.01",
+        "qty_step": "0.1",
+        "min_qty": "0.1",
+        "min_notional": "1",
+        "max_qty": "100",
+        "trading_status": "TRADING",
+        "listing_at_ns": null,
+        "delisting_at_ns": null,
+        "fee_schedule_ref": null,
+        "margin_tiers_ref": null,
+        "funding_schedule_ref": null,
+        "metadata_ref": "311c0a810902260393b57017ef091af47843d1b14ddf07a942205e53e371445c"
+      },
+      "policy": {
+        "policy_id": "S1_MTF_TREND_PULLBACK",
+        "version": "1.0.0-shadow",
+        "strategy_family": "TREND_CONTINUATION_PULLBACK",
+        "capital_status": "SHADOW_ONLY",
+        "decision_event": "CONFIRMED_15M_CLOSE",
+        "required_features": [
+          "atr15m",
+          "event_gate",
+          "executable_bbo",
+          "final_15m_ohlcv",
+          "final_1h_ohlcv",
+          "final_4h_ohlcv",
+          "mark_index",
+          "realized_volatility"
+        ],
+        "optional_features": [],
+        "timeframe_rules": {
+          "regime": "latest_confirmed_4H",
+          "revision": "exact_full_InstrumentKeyV2",
+          "setup": "latest_three_closed_1H",
+          "trigger": "subsequent_confirmed_15M"
+        },
+        "setup_parameters": {
+          "event_gate_max_age_ns": 3600000000000,
+          "experiment_only": false,
+          "pullback_bars": 3,
+          "setup_window": "same_three_closed_1H_bars_used_for_pullback_test",
+          "variant": "BASELINE"
+        },
+        "direction_rule": {
+          "long": "4H_trend_plus_three_1H_pullback_and_reclaim",
+          "short": "exact_symmetric_of_4H_trend_plus_three_1H_pullback_and_reclaim"
+        },
+        "entry_rule": {
+          "bbo_max_age_ns": 5000000000,
+          "candidate_deadline_offset_ns": 5000000000,
+          "confirmed_bar_max_lag_ns": 5000000000,
+          "mark_index_max_age_ns": 5000000000,
+          "no_same_epoch_reprice": true,
+          "order_type": "LIMIT",
+          "shadow_only": true,
+          "time_in_force": "IOC",
+          "trigger": "15M_close_breaks_prior_confirmed_15M_high_or_low"
+        },
+        "collar_rule": {
+          "adverse_bps": 5,
+          "long_reference": "ask",
+          "short_reference": "bid"
+        },
+        "stop_rule": {
+          "atr15m_buffer": "0.25",
+          "maximum_distance_atr": "3",
+          "minimum_distance_atr": "0.5",
+          "setup_window": "same_three_closed_1H_bars"
+        },
+        "trigger_basis": "CONFIRMED_CLOSE",
+        "management_rule": {
+          "averaging": false,
+          "discretionary_trailing": false,
+          "fixed_stop": true,
+          "partial_tp": false,
+          "pyramiding": false,
+          "same_epoch_repricing": false
+        },
+        "time_exit_rule": {
+          "after_ns": 14400000000000,
+          "type": "TIME_EXIT"
+        },
+        "max_hold_ns": 14400000000000,
+        "expiry_rule": {
+          "contrary_confirmed_4h_regime": "INVALIDATE",
+          "fourth_bar_inclusive": true,
+          "subsequent_15m_bars": 4
+        },
+        "model_requirements": [],
+        "fallback_policy_id": null,
+        "policy_hash": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0"
+      },
+      "fees": {
+        "version": "V2_TAKER_FEES_V1",
+        "key": {
+          "schema_version": 1,
+          "venue": "BINANCE",
+          "environment": "TESTNET",
+          "product": "LINEAR_PERPETUAL",
+          "native_symbol": "COIN4USDT",
+          "base_asset_id": "coin4",
+          "quote_asset": "USDT",
+          "settlement_asset": "USDT",
+          "contract_revision": "5f2a866bc8cd0dcda78999cc11e706beebe514e8a268ae8cc91309363d33994d"
+        },
+        "available_at_ns": 0,
+        "entry_taker_rate": "0.001",
+        "exit_taker_rate": "0.001",
+        "source_ref": "594f78e24c01651fe7aaae532d14610b5ea297bc9dd37eaf699ccc9f757784aa"
+      },
+      "funding": {
+        "version": "V2_FUNDING_SCHEDULE_V1",
+        "available_at_ns": 0,
+        "expected_settlement_times_ns": [],
+        "explicit_zero_funding": true,
+        "source_ref": "bcc40b987a3f93f22099a91ea550ca9b0aedf25634c716dd30c6efe55cd37674"
+      },
+      "risk": {
+        "version": "ATLAS_RED_INDEPENDENT_RISK_PROFILE_V1",
+        "source_ref": "b04d806288f20865d8c6761dd0e98241a5e641ce82b4a737c495d6b29e4ebac8",
+        "product_ref": "30f79f01c6e41251d14568520cd94904c94bfd82478394bd7d823886317443ed",
+        "risk_policy_ref": "bdc25b4ee606e3173269ef96f0310ec2456e3cc1e24fa2f7fc56df5a2d772bd6",
+        "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+        "available_at_ns": 0,
+        "max_snapshot_age_ns": 86400000000000,
+        "normal_trade_limit_cash": "20",
+        "normal_total_limit_cash": "100",
+        "rolling_limit_cash": "100",
+        "stress_trade_limit_cash": "100",
+        "joint_stress_limit_cash": "200",
+        "gross_limit_cash": "2000",
+        "instrument_limit_cash": "1000",
+        "beta_limit_cash": "2000",
+        "allowed_leverages": [
+          "1",
+          "2"
+        ],
+        "tiers": [
+          {
+            "version": "ATLAS_RED_OFFLINE_MARGIN_TIER_V1",
+            "notional_ceiling_cash": "10000",
+            "initial_margin_fraction": "0.5",
+            "maintenance_fraction": "0.01",
+            "maintenance_deduction_cash": "0",
+            "leverage_limit": "2"
+          }
+        ],
+        "adverse_funding_per_unit_cash": "0",
+        "execution_loss_per_unit_cash": "0",
+        "impact_per_unit_squared_cash": "0",
+        "stress_exit_price": "90",
+        "liquidation_buffer_cash": "0",
+        "beta": "1",
+        "qualification_ref": "5c33a4a809272c9212e79450c1468ff0e86782ede528380322dc494195012373"
+      },
+      "model": {
+        "version": "ATLAS_RED_PREFIT_MEAN_MODEL_V1",
+        "estimator": "M0_MEAN_RIDGE_V1",
+        "compatibility_ref": "ca96e2cdf8e81648bdd7b5cb17679152c995ebb0e5df5685ffb68cce35017516",
+        "training_cutoff_ns": 34559999999999000,
+        "available_at_ns": 34559999999999100,
+        "expires_at_ns": 34646400000000000,
+        "provenance": "CAUSAL_REPLAY",
+        "training_refs": [
+          "7034e28b9ab4ce2cd7599426a0d4afa0649bea2582a80e77be5dcce1927fa0d2",
+          "9654f4f71b94100f9aca69291ed8589a4f5afe3c7819fe5df3fd27cdbb87de84",
+          "6c918dce9bbca4039cdf90077ebe75c7d29a905614a507d5d191688e81297a9d",
+          "b5f9f352992eed75e93592d98548c285b3f0511ba8f628ef7aaff348bc6a793a",
+          "834e69c9269a03ada35fff0e6c55ebde35ae14bdd4aa421311ade73dd63128d5",
+          "ede6197f45b299906f84154c9d96b85078db1817667ebfa2fc9f5f98d47029cf",
+          "791a47cdd4ffcfe7b7d19b6e10c119e5716dfff585a3ba40ce7aa92ac584f6fd",
+          "05089860cf007a0286144507f7cd9ccda99a2811cdbf951588b4b43094a5792a",
+          "c5fcbedf1cad9b9dfb7c5e070c4d7d7c533502abeb9dbe6b8be0a1d7c87d2600",
+          "74dc19cf56cf12207a0ed73dbfce33ffde3710f95d5c483d1cf534429622ab71",
+          "3d12cf10f293cbe519257d25123e9bf272f8b69def4249114e5c0ead13f9d068",
+          "b2266d85444a9f5c4618eafca4a4fb851f954d6776dd247a3f3d132e99ec4439",
+          "c00e47c04b9e8c754a1b0ebf4a680bd921069fe0bae59456c25307db0a461e4a",
+          "02eb1fab0d2bb8fdb6f48d58ea403fa3d9ecff79cdc010509f8b6d8251e1ac10",
+          "e2f17c8f109d73497dc2d59622fde6b2f9ed4e31d6612ae5355a48eb4d4cce2b",
+          "99b67ec63fc47bc9c7a8b05b9706316a2d2c2d9bb0638b3afcdefb8e10375f36",
+          "34a636042ce03c53c3978c8e86ecc6970e630033583e163c8ce65eb0c3709149",
+          "5ec56f40818820cbfe3d46f4f2de4978a78ba9fb4ec34eb2d367a66776750272",
+          "4e54a24f76720c4e860b2e7c4915c19260a46fbdca3688fcc0897ef70857092d",
+          "8f441e3259690e2b31864f11ba519aa859c6dc987ff80903805adda5228dd27a",
+          "d2b9516ba1844cb499a376df83ce0689a839b7b7e46aef5c745c21c3d2737533",
+          "7ebfdb15c7cd1ca992900b0ae61c25807a44f49a894fcf1b7bedff543b29525f",
+          "ec2dbca17fa442583f40d98023026da79adb281aeee020a63393b827f8833b54",
+          "48c040586ae59bf5f4dbbdc3426c9c78ef57375870db2063edb8ee4a9a92ac08",
+          "e7c4e759cacaadfb6e236727e258245ad1b58e8b719f805ef179d4295b69eb3a",
+          "1fe08925f1ea37897deb7bd25471094c08754fd14891d2e738324012d8bd1593",
+          "f1ee076cbeccbbc097ec9714cbd9060d10dd18b32903b3e3e37a339f2fdfbdc2",
+          "97d7a79f2fd260a6c56efd8f54f67fcf5f85ef3474d7e8ce4bdd68a2359005fb",
+          "1cedd6ba5e71cb746726a716705c5766e175238f2673639381567fe29a6cdcb7",
+          "096d628b24eb62c97923b8b67a06ecaa8222e2ed1a9204a2b88cd04a7895a382",
+          "f44fee3417c162f6eaf5bd35082d1f84ed221a0827e4d702fdd5f2d9a4401975",
+          "80003f8bc0315079cd33f4949c44fd4ee7331e1d0a0b80afaf6e403150adbb31",
+          "b05eb7e4e3c9176133ee8de72e216e9ed76b2c31faef29d43b6888e19a84181d",
+          "d7068188b27a1938cb55d691c548f5d5dfc2affbe259ea22c6bc2330f16001db",
+          "06d2c1bf9ce4e0cb9202c438bc6ca641b9380ab50e4a024fe88d60f411ac24f3",
+          "85b91bd6efb86db8c3711ebfa97753bfd89cc88b9840391b1ac30032891883dd",
+          "f8d8a0a09ec73c6400ad1cb2e653752678d2479ae0e8491cccd911ef57261a89",
+          "c02fabb6424f4dfcc86b0ff57585c2db74f5304834375650399f31033a284e15",
+          "89ee2e65d5dda8b58d0f9018b764d12b926e6ffc918c6396cbe73395eaba15d7",
+          "77c1515112d1c5e733bfdfaa99830622f5404bf9cede506e4ccfebae6da2e3fb"
+        ],
+        "feature_order": [
+          "side_long",
+          "log_notional",
+          "stop_fraction",
+          "horizon_hours",
+          "origin_rank",
+          "market_state"
+        ],
+        "centers": [
+          1.0,
+          7.0,
+          0.02,
+          4.0,
+          3.0,
+          0.5
+        ],
+        "scales": [
+          1e-09,
+          1.0,
+          0.009999999999999998,
+          2.0,
+          2.0,
+          0.5
+        ],
+        "support_min": [
+          1.0,
+          6.0,
+          0.01,
+          2.0,
+          1.0,
+          0.0
+        ],
+        "support_max": [
+          1.0,
+          8.0,
+          0.03,
+          6.0,
+          5.0,
+          1.0
+        ],
+        "parameters": {
+          "coefficients": [
+            9.0,
+            0.0,
+            -1.850371707708595e-17,
+            9.251858538542973e-17,
+            -1.8503717077085957e-17,
+            -1.8503717077085944e-17,
+            -1.850371707708595e-17
+          ],
+          "objective": "squared_loss",
+          "ridge": 1.0
+        },
+        "library_identity": "stdlib-float64-pivoted-solver",
+        "target": "EXACT_ACTION_INCREMENTAL_TRADING_CASH_USDT_COMMON_24H_V1"
+      },
+      "calibration": {
+        "version": "ATLAS_RED_SELECTED_POLICY_MEAN_CALIBRATION_V1",
+        "model_ref": "6477181d7b8e435c8423bac03ff5ee3d4ca4c4eaa0f481c279c32af5fb5eebf9",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "ca96e2cdf8e81648bdd7b5cb17679152c995ebb0e5df5685ffb68cce35017516",
+        "source_ref": "069f3090252a2532cd1e4be1a10628e36be888257747245ba215a8e21a5913a4",
+        "available_at_ns": 34559999999999300,
+        "expires_at_ns": 34646400000000000,
+        "block_ns": 604800000000000,
+        "effective_blocks": 20,
+        "calibration_refs": [
+          "f21fb554373bb4b2de1914efdc8a8c8f806b7edbe9ad169749f874a41dff70b5",
+          "bcbd3d23769e1eb5ab9369bd46035ac40b89dcbdbb8a138827c631635bd32f1d",
+          "972e640afd95422f6fd6663014e7cee7135c9b76556081cff3c0ff77800b2554",
+          "9da0b1f28cf6707d5106c52cf96683fdcfa78863ec079802d51fc060f746bf0b",
+          "13e9575c951d49973077607e90c289f4c0f80389c0fbc925fcde5959e655d1f4",
+          "271d101dba5fdef0ac95b7b8b1b9d8d7d3eb51fb10055cc37220141f74605d12",
+          "1024cf5317180d149bcb995a75f4a6145e5dfb426d57df0ec070839035b940b2",
+          "a1253f0f89535141914ec0a314bce98374d36b90bb6bb290471df3b1f0370e91",
+          "0c4e047206d04d89d9064d7a1ad9e53a70b895c03eab912bcfdd51c393bdcb05",
+          "9db83b233967c5c1be405d1aaccc17321360640f75c5296b0a772a30a694b16e",
+          "36f5a612b89a5377c845caae2536f3a0e9730a25e04f1bcac9832fcce8421bcd",
+          "09d9e88d3e99a4524efd8e67c89c16a6093fd6711eda7459a7c1e3085d8380b5",
+          "193dcfe4a73d250233228bf8e2d8a59e2edfd83279e030e6e19491f3d3c4a592",
+          "6eba44fb623f93889460174343d8f03eb7ba11ebccf2181ed12abc13d661b320",
+          "db2b0d66034ac404982a2fe1237c47cefa5bb168ea3e20252e1366b71e0f3050",
+          "064cc9d8761bd649e205d01b27fd7ff8c2a35918c8826bab293d6e1f4917b593",
+          "c4bec2111b1e646c93713ac3abe4becd1374eb81738eb47dfa1142c9d1bd7419",
+          "421a0c09cf8797747f83f127534fc74bb8119fcd9ee83bdd9e608a22115df3c7",
+          "4e9085a438bd302d1f06126284fb8de29bcda416799b2dd3fb732ee55b718f01",
+          "7d27ca45d8960b387dd9767c53a02b4f31bfc8efab43d27ab54da5e4e5439474"
+        ],
+        "allowance_cash": "0",
+        "status": "SUPPORTED_OFFLINE",
+        "conditional_scope": "REGISTERED_POLICY_COMPATIBLE_ACTION_SIZE_LIQUIDITY_CELL"
+      },
+      "scenarios": {
+        "version": "ATLAS_RED_QUALIFIED_COMMON_SCENARIOS_V1",
+        "product_ref": "30f79f01c6e41251d14568520cd94904c94bfd82478394bd7d823886317443ed",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "compatibility_ref": "ca96e2cdf8e81648bdd7b5cb17679152c995ebb0e5df5685ffb68cce35017516",
+        "source_ref": "7288ce233d52f8004f94176bdaa0823fa1699687341c0eff61bfe0313bde10c1",
+        "execution_ref": "e00aad0a14118199b299938f201409ca2a69aae50bbcecd5be59c2025c3f2337",
+        "calibration_ref": "4a3ccc348a6b6af7ec8342ddbbd16148ee47adfeb9098bfe2e654e8992cc4d8b",
+        "cutoff_ns": 34560000000000000,
+        "terminal_ns": 34646400000000000,
+        "source_available_at_ns": 34559999999999900,
+        "entry_delay_ns": 0,
+        "exit_delay_ns": 0,
+        "paths": [
+          {
+            "version": "ATLAS_RED_COMMON_MARKET_PATH_V1",
+            "common_path_id": "b08a775231addcb479c5e812c47632befc34c3d882b9d901e3ee011a2eb70140",
+            "probability": "1",
+            "background_pnl_cash": "0",
+            "points": [
+              {
+                "version": "ATLAS_RED_COMMON_EXECUTION_POINT_V1",
+                "at_ns": 34560000000000001,
+                "mark": "100",
+                "bid": "99.99",
+                "ask": "100.01",
+                "bid_quantity": "100",
+                "ask_quantity": "100",
+                "source_ref": "f1957e9ab841eb1ee83a2e9a89079d47bf3760c2daa213921136a74c8024b046",
+                "closed_m15_price": null
+              },
+              {
+                "version": "ATLAS_RED_COMMON_EXECUTION_POINT_V1",
+                "at_ns": 34574400000000000,
+                "mark": "102",
+                "bid": "101.99",
+                "ask": "102.01",
+                "bid_quantity": "100",
+                "ask_quantity": "100",
+                "source_ref": "e8179fa42dea73e155a04943e2447207d96af9c3607a965f55ada208f4adae51",
+                "closed_m15_price": null
+              }
+            ],
+            "funding": []
+          }
+        ],
+        "stress_ids": [
+          "joint-gap"
+        ],
+        "stress_exit_prices": [
+          "90"
+        ],
+        "probability_support": true,
+        "es_qualified": true,
+        "provenance": "CAUSAL_REPLAY"
+      },
+      "execution_bias": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "6477181d7b8e435c8423bac03ff5ee3d4ca4c4eaa0f481c279c32af5fb5eebf9",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "ca96e2cdf8e81648bdd7b5cb17679152c995ebb0e5df5685ffb68cce35017516",
+        "source_ref": "51db72fe99d9e6c05daa1343775f32fc8f358c188f86572fe29caad9aeaf1c29",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "RESIDUAL_EXECUTION_BIAS",
+        "cash": "0"
+      },
+      "numerical": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "6477181d7b8e435c8423bac03ff5ee3d4ca4c4eaa0f481c279c32af5fb5eebf9",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "ca96e2cdf8e81648bdd7b5cb17679152c995ebb0e5df5685ffb68cce35017516",
+        "source_ref": "e27088461ea495c037b40fe038455092e49c27c8d997789ff08fe96ed87df8dc",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "NUMERICAL_APPROXIMATION",
+        "cash": "0"
+      },
+      "incremental_programme": {
+        "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+        "model_ref": "6477181d7b8e435c8423bac03ff5ee3d4ca4c4eaa0f481c279c32af5fb5eebf9",
+        "policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+        "compatibility_ref": "ca96e2cdf8e81648bdd7b5cb17679152c995ebb0e5df5685ffb68cce35017516",
+        "source_ref": "56549b824a8b7cf47b9b7005d85cb31fa1eeaca9fd669c18046e400a76c950db",
+        "available_at_ns": 0,
+        "expires_at_ns": 34646400000000000,
+        "kind": "INCREMENTAL_FUTURE_PROGRAMME",
+        "cash": "0"
+      },
+      "context": {
+        "version": "ATLAS_RED_ORIGIN_KNOWN_ACTION_CONTEXT_V1",
+        "candidate_ref": "7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4",
+        "available_at_ns": 34560000000000000,
+        "source_ref": "7f45d37747b8eedc4ad9f582c6cd56fc917fc37d291e30ad0e9eaad7aae412ca",
+        "compatibility_ref": "ca96e2cdf8e81648bdd7b5cb17679152c995ebb0e5df5685ffb68cce35017516",
+        "market_state": 0.0,
+        "raw_source_available_at_ns": 34560000000000000,
+        "source_observed_at_ns": 34559999999999999,
+        "maximum_source_age_ns": 1000000000,
+        "setup_parameters": {},
+        "missing_reasons": []
+      }
+    }
+  },
+  "actions": [
+    {
+      "version": "ATLAS_RED_EXACT_ACTION_V1",
+      "candidate_id": "2fd55236ad1e5a91b0352cd868007ed920995f8e857a658ae76e5e351c0f7499",
+      "candidate_ref": "44cd3da4c16fce8a5c34403f1a610e8ae63948992174c083904b0fd1fec0483b",
+      "population_ref": "26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7",
+      "key": {
+        "schema_version": 1,
+        "venue": "BINANCE",
+        "environment": "TESTNET",
+        "product": "LINEAR_PERPETUAL",
+        "native_symbol": "COIN1USDT",
+        "base_asset_id": "coin1",
+        "quote_asset": "USDT",
+        "settlement_asset": "USDT",
+        "contract_revision": "13f0606462a27e5e989317a2b1ccf961aa5ca8dd0743399288d5bf8decc22af9"
+      },
+      "product_ref": "9ae0183105ed262b416ab07a050a416570913a8da3ca893691a40a79faa6ae0d",
+      "policy_ref": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+      "setup_ref": "0f0b9bf320f0ea43b1132021b4dabd40ccc68b8edbbf7d70710f488e81d61b46",
+      "cutoff_ns": 34560000000000000,
+      "deadline_ns": 34560005000000000,
+      "horizon_end_ns": 34574400000000000,
+      "terminal_ns": 34646400000000000,
+      "side": "LONG",
+      "quantity": "9.7",
+      "entry_reference": "100",
+      "entry_collar": "100.05",
+      "stop_price": "99",
+      "stop_basis": "MARK_PRICE",
+      "entry_trigger_basis": "CONFIRMED_CLOSE",
+      "stop_ref": "d0e34cd5c95c73b6dfc14452c70699ff5dcb07659f1c6bb6cf2e3648eec8db3e",
+      "entry_rule": {
+        "bbo_max_age_ns": 5000000000,
+        "candidate_deadline_offset_ns": 5000000000,
+        "confirmed_bar_max_lag_ns": 5000000000,
+        "mark_index_max_age_ns": 5000000000,
+        "no_same_epoch_reprice": true,
+        "order_type": "LIMIT",
+        "shadow_only": true,
+        "time_in_force": "IOC",
+        "trigger": "15M_close_breaks_prior_confirmed_15M_high_or_low"
+      },
+      "management_rule": {
+        "averaging": false,
+        "discretionary_trailing": false,
+        "fixed_stop": true,
+        "partial_tp": false,
+        "pyramiding": false,
+        "same_epoch_repricing": false
+      },
+      "exit_rule": {
+        "after_ns": 14400000000000,
+        "type": "TIME_EXIT"
+      },
+      "registered_setup": {},
+      "fill_policy": "ONE_IOC_PARTIAL_REMAINDER_CANCEL_NO_CHASE",
+      "sizing": {
+        "version": "ATLAS_RED_INDEPENDENT_SIZING_V1",
+        "candidate_ref": "44cd3da4c16fce8a5c34403f1a610e8ae63948992174c083904b0fd1fec0483b",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "profile_ref": "0c777e99f7ff66c4ba3a151ad42dafe8b7209a4eedfddd4ebaf445582cc2e8c7",
+        "product_ref": "9ae0183105ed262b416ab07a050a416570913a8da3ca893691a40a79faa6ae0d",
+        "fee_ref": "e6a9bae48fa03cd1ed29efef1c96f882ed5c5f9f89c45c70f0afae8f3c19a54b",
+        "quantity": "9.7",
+        "normal_loss_cash": "12.115785",
+        "stress_loss_cash": "99.328485",
+        "notional_cash": "970.485",
+        "margin_cash": "485.2425",
+        "leverage": "2",
+        "status": "SIZED",
+        "reasons": []
+      },
+      "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+      "risk_profile_ref": "0c777e99f7ff66c4ba3a151ad42dafe8b7209a4eedfddd4ebaf445582cc2e8c7",
+      "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+      "fee_ref": "e6a9bae48fa03cd1ed29efef1c96f882ed5c5f9f89c45c70f0afae8f3c19a54b",
+      "funding_ref": "2d06815a611ba70e4626818f78ab3203b7e1edcad3ea4fb0ac9a9b7b7a2032b3",
+      "execution_ref": "75aec81e9f4a53523f8645413a0f828cab476c5aacebf8f58c73219f6a7d72fd",
+      "model_ref": "40b1fddd1f290ea88dabcb8c0e6ca4074417d6d0ffda1b8af232a1170973c4fb",
+      "source_refs": [
+        "0f0b9bf320f0ea43b1132021b4dabd40ccc68b8edbbf7d70710f488e81d61b46",
+        "9c9cb10ff964542b06f8cd3d1234b8e46e09494e850ceda7ae07698e5ca16e91",
+        "b847d1aa49cb25880540561ca2b10549357ae52463223c1f38e9274906938ba2"
+      ]
+    },
+    {
+      "version": "ATLAS_RED_EXACT_ACTION_V1",
+      "candidate_id": "b17d75e60c336e9e2ae2406451462717b0e52f7be6e7746b369a97169e5c9bd7",
+      "candidate_ref": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001",
+      "population_ref": "26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7",
+      "key": {
+        "schema_version": 1,
+        "venue": "BINANCE",
+        "environment": "TESTNET",
+        "product": "LINEAR_PERPETUAL",
+        "native_symbol": "COIN2USDT",
+        "base_asset_id": "coin2",
+        "quote_asset": "USDT",
+        "settlement_asset": "USDT",
+        "contract_revision": "3106fbee70cbe5d87e8991a3aac2ccf18d0cb759ded24f4cdb04eb66f68a1e6d"
+      },
+      "product_ref": "6c8f337e605e3a5532ca453b33c1278395e1bd9e4cea4c1b531a2e3438a85c06",
+      "policy_ref": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+      "setup_ref": "3566592a025d2916a891974518cbdd0f8f6314544d731fdbcdc708b45b9139b0",
+      "cutoff_ns": 34560000000000000,
+      "deadline_ns": 34560005000000000,
+      "horizon_end_ns": 34574400000000000,
+      "terminal_ns": 34646400000000000,
+      "side": "LONG",
+      "quantity": "9.7",
+      "entry_reference": "100",
+      "entry_collar": "100.05",
+      "stop_price": "99",
+      "stop_basis": "MARK_PRICE",
+      "entry_trigger_basis": "CONFIRMED_CLOSE",
+      "stop_ref": "7328df16cc614df49cef80456ec1cbf5063fb840d8ca95ef06cdca2e55bce9e4",
+      "entry_rule": {
+        "bbo_max_age_ns": 5000000000,
+        "candidate_deadline_offset_ns": 5000000000,
+        "confirmed_bar_max_lag_ns": 5000000000,
+        "mark_index_max_age_ns": 5000000000,
+        "no_same_epoch_reprice": true,
+        "order_type": "LIMIT",
+        "shadow_only": true,
+        "time_in_force": "IOC",
+        "trigger": "15M_close_breaks_prior_confirmed_15M_high_or_low"
+      },
+      "management_rule": {
+        "averaging": false,
+        "discretionary_trailing": false,
+        "fixed_stop": true,
+        "partial_tp": false,
+        "pyramiding": false,
+        "same_epoch_repricing": false
+      },
+      "exit_rule": {
+        "after_ns": 14400000000000,
+        "type": "TIME_EXIT"
+      },
+      "registered_setup": {},
+      "fill_policy": "ONE_IOC_PARTIAL_REMAINDER_CANCEL_NO_CHASE",
+      "sizing": {
+        "version": "ATLAS_RED_INDEPENDENT_SIZING_V1",
+        "candidate_ref": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "profile_ref": "a6800e3c3bb4b7efcfeb76f95af9f6effcf33b0a514c52043e758409006b70ad",
+        "product_ref": "6c8f337e605e3a5532ca453b33c1278395e1bd9e4cea4c1b531a2e3438a85c06",
+        "fee_ref": "ba393a1d8d7d4b4ffa999b8ba94928852c62ab42605747ad6bdd2766ba411811",
+        "quantity": "9.7",
+        "normal_loss_cash": "12.115785",
+        "stress_loss_cash": "99.328485",
+        "notional_cash": "970.485",
+        "margin_cash": "485.2425",
+        "leverage": "2",
+        "status": "SIZED",
+        "reasons": []
+      },
+      "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+      "risk_profile_ref": "a6800e3c3bb4b7efcfeb76f95af9f6effcf33b0a514c52043e758409006b70ad",
+      "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+      "fee_ref": "ba393a1d8d7d4b4ffa999b8ba94928852c62ab42605747ad6bdd2766ba411811",
+      "funding_ref": "257110fe108c39d8788f0671ebf5d6e55a3a3ce2d2207b72d5c0f0c17a03f045",
+      "execution_ref": "1eb96ceafe5c4fa79657f9f2457bb7673cf21277bb9b9ec7ce866872d8a6c313",
+      "model_ref": "b86f70feadf38a796cd10199bd61014123a1fae862ac2af4bf3c112e721b8930",
+      "source_refs": [
+        "2cc88b6ad08b502035573a26c065be990188e6cc08feeb55664aa12784c13297",
+        "3566592a025d2916a891974518cbdd0f8f6314544d731fdbcdc708b45b9139b0",
+        "d08193701be8e6418824c1dacb4c47dd24f49324f9f9e9c3add0572b95cbf16d"
+      ]
+    },
+    {
+      "version": "ATLAS_RED_EXACT_ACTION_V1",
+      "candidate_id": "a5e3535c589f6553cc0342853f257955b487c3e2f8d6b462aa3664722ba6a985",
+      "candidate_ref": "7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4",
+      "population_ref": "26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7",
+      "key": {
+        "schema_version": 1,
+        "venue": "BINANCE",
+        "environment": "TESTNET",
+        "product": "LINEAR_PERPETUAL",
+        "native_symbol": "COIN4USDT",
+        "base_asset_id": "coin4",
+        "quote_asset": "USDT",
+        "settlement_asset": "USDT",
+        "contract_revision": "5f2a866bc8cd0dcda78999cc11e706beebe514e8a268ae8cc91309363d33994d"
+      },
+      "product_ref": "30f79f01c6e41251d14568520cd94904c94bfd82478394bd7d823886317443ed",
+      "policy_ref": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+      "setup_ref": "3709a71e1eb6c8b899d977b262278c44d2231b3815c5fa3435212f8f2d460a84",
+      "cutoff_ns": 34560000000000000,
+      "deadline_ns": 34560005000000000,
+      "horizon_end_ns": 34574400000000000,
+      "terminal_ns": 34646400000000000,
+      "side": "LONG",
+      "quantity": "9.7",
+      "entry_reference": "100",
+      "entry_collar": "100.05",
+      "stop_price": "99",
+      "stop_basis": "MARK_PRICE",
+      "entry_trigger_basis": "CONFIRMED_CLOSE",
+      "stop_ref": "84e9370918118cc31a47eba9c2fa4a9e1dbaa796632bb3d8aed9ba1992f0cbe9",
+      "entry_rule": {
+        "bbo_max_age_ns": 5000000000,
+        "candidate_deadline_offset_ns": 5000000000,
+        "confirmed_bar_max_lag_ns": 5000000000,
+        "mark_index_max_age_ns": 5000000000,
+        "no_same_epoch_reprice": true,
+        "order_type": "LIMIT",
+        "shadow_only": true,
+        "time_in_force": "IOC",
+        "trigger": "15M_close_breaks_prior_confirmed_15M_high_or_low"
+      },
+      "management_rule": {
+        "averaging": false,
+        "discretionary_trailing": false,
+        "fixed_stop": true,
+        "partial_tp": false,
+        "pyramiding": false,
+        "same_epoch_repricing": false
+      },
+      "exit_rule": {
+        "after_ns": 14400000000000,
+        "type": "TIME_EXIT"
+      },
+      "registered_setup": {},
+      "fill_policy": "ONE_IOC_PARTIAL_REMAINDER_CANCEL_NO_CHASE",
+      "sizing": {
+        "version": "ATLAS_RED_INDEPENDENT_SIZING_V1",
+        "candidate_ref": "7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "profile_ref": "b77ff40e7ea682b299f675098d8f4bc0ac22db50424e390439a0ade3927bc9a7",
+        "product_ref": "30f79f01c6e41251d14568520cd94904c94bfd82478394bd7d823886317443ed",
+        "fee_ref": "637fa6e7b61c5bce9e4b44d1fa59404065bc919ef1d103091ea1e2985d7829f6",
+        "quantity": "9.7",
+        "normal_loss_cash": "12.115785",
+        "stress_loss_cash": "99.328485",
+        "notional_cash": "970.485",
+        "margin_cash": "485.2425",
+        "leverage": "2",
+        "status": "SIZED",
+        "reasons": []
+      },
+      "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+      "risk_profile_ref": "b77ff40e7ea682b299f675098d8f4bc0ac22db50424e390439a0ade3927bc9a7",
+      "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+      "fee_ref": "637fa6e7b61c5bce9e4b44d1fa59404065bc919ef1d103091ea1e2985d7829f6",
+      "funding_ref": "71962287a896fa863e9f1b9a518ecb30a2ed12240f1f82bc8d18e083fb907780",
+      "execution_ref": "e00aad0a14118199b299938f201409ca2a69aae50bbcecd5be59c2025c3f2337",
+      "model_ref": "6477181d7b8e435c8423bac03ff5ee3d4ca4c4eaa0f481c279c32af5fb5eebf9",
+      "source_refs": [
+        "3709a71e1eb6c8b899d977b262278c44d2231b3815c5fa3435212f8f2d460a84",
+        "8ef5a86f5e8d9c2ff6d7499b2e0b522ddc1348dbbbcfd15a89aef62df46707d5",
+        "fb7021f80398da1d1477f003b5aac1fe6b2e865fa5d9c3583d44055094f43171"
+      ]
+    }
+  ],
+  "eligible_set": {
+    "version": "ATLAS_RED_ELIGIBLE_SET_OFFLINE_V1",
+    "population": {
+      "version": "ATLAS_RED_MEAN_ACTION_EVALUATION_V1",
+      "event_id": "synthetic-slot",
+      "slot_ns": 34560000000000000,
+      "cutoff_ns": 34560000000000000,
+      "deadline_ns": 34560005000000000,
+      "universe_ref": "9445a89b70c55da09e9828d559939ffe8c953f42456301607bb2489d060551b6",
+      "instrument_revision_ref": "82c7b051c1d5bea6d84a68e881c2acbbfe95f91c533696cc25c221063c16e00b",
+      "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+      "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+      "evaluation_policy_ref": "38258092e372f3d1a642e2227fc469f6993fb32ae2160cea37a544f69f4a258c",
+      "candidates": [
+        {
+          "version": "ATLAS_RED_EVALUATION_CANDIDATE_V1",
+          "candidate_id": "2fd55236ad1e5a91b0352cd868007ed920995f8e857a658ae76e5e351c0f7499",
+          "candidate_ref": "44cd3da4c16fce8a5c34403f1a610e8ae63948992174c083904b0fd1fec0483b",
+          "initial_rank": 1,
+          "source_refs": [
+            "9c9cb10ff964542b06f8cd3d1234b8e46e09494e850ceda7ae07698e5ca16e91",
+            "0f0b9bf320f0ea43b1132021b4dabd40ccc68b8edbbf7d70710f488e81d61b46"
+          ],
+          "inclusion_probability": "1",
+          "exploration": false,
+          "usefulness": "1",
+          "information_gain": "1",
+          "freshness": "1",
+          "uncertainty": "1",
+          "estimated_cpu_ns": 1,
+          "missing_reasons": [],
+          "proxy_cash": null,
+          "proxy_support_ref": null
+        },
+        {
+          "version": "ATLAS_RED_EVALUATION_CANDIDATE_V1",
+          "candidate_id": "b17d75e60c336e9e2ae2406451462717b0e52f7be6e7746b369a97169e5c9bd7",
+          "candidate_ref": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001",
+          "initial_rank": 2,
+          "source_refs": [
+            "d08193701be8e6418824c1dacb4c47dd24f49324f9f9e9c3add0572b95cbf16d",
+            "3566592a025d2916a891974518cbdd0f8f6314544d731fdbcdc708b45b9139b0"
+          ],
+          "inclusion_probability": "1",
+          "exploration": false,
+          "usefulness": "1",
+          "information_gain": "1",
+          "freshness": "1",
+          "uncertainty": "1",
+          "estimated_cpu_ns": 1,
+          "missing_reasons": [],
+          "proxy_cash": null,
+          "proxy_support_ref": null
+        },
+        {
+          "version": "ATLAS_RED_EVALUATION_CANDIDATE_V1",
+          "candidate_id": "2b673811c1fd2e973530e9e7b9b549309be941efc87f9333140170e3b1e7239e",
+          "candidate_ref": "ecb4063c0d9e1377427fc58e9bf1fa1cb8b0c28389ac5faf05a7138edc8e505b",
+          "initial_rank": 3,
+          "source_refs": [
+            "61d70a7c720fbd4b8b7b594b2958c80a943efc2394d4c00e21340f781f185f0f",
+            "fe7c63c9f56d157fcc90da7726380921342749734098438fcd7fa4b3c0920bc7"
+          ],
+          "inclusion_probability": "1",
+          "exploration": false,
+          "usefulness": "1",
+          "information_gain": "1",
+          "freshness": "1",
+          "uncertainty": "1",
+          "estimated_cpu_ns": 1,
+          "missing_reasons": [
+            "UNSUPPORTED_SOURCE"
+          ],
+          "proxy_cash": null,
+          "proxy_support_ref": null
+        },
+        {
+          "version": "ATLAS_RED_EVALUATION_CANDIDATE_V1",
+          "candidate_id": "a5e3535c589f6553cc0342853f257955b487c3e2f8d6b462aa3664722ba6a985",
+          "candidate_ref": "7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4",
+          "initial_rank": 4,
+          "source_refs": [
+            "fb7021f80398da1d1477f003b5aac1fe6b2e865fa5d9c3583d44055094f43171",
+            "3709a71e1eb6c8b899d977b262278c44d2231b3815c5fa3435212f8f2d460a84"
+          ],
+          "inclusion_probability": "1",
+          "exploration": false,
+          "usefulness": "1",
+          "information_gain": "1",
+          "freshness": "1",
+          "uncertainty": "1",
+          "estimated_cpu_ns": 1,
+          "missing_reasons": [],
+          "proxy_cash": null,
+          "proxy_support_ref": null
+        }
+      ],
+      "cpu_budget_ns": 10000000000,
+      "wall_budget_ns": 20000000000
+    },
+    "evaluations": [
+      {
+        "version": "ATLAS_RED_ACTION_EVALUATION_V1",
+        "population_ref": "26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7",
+        "candidate_ref": "44cd3da4c16fce8a5c34403f1a610e8ae63948992174c083904b0fd1fec0483b",
+        "action_ref": "7d6a9fc7cd8cc4c972984d0be688ebf20b9f5d87deb0b1bf6361a008cae31650",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "model_ref": "40b1fddd1f290ea88dabcb8c0e6ca4074417d6d0ffda1b8af232a1170973c4fb",
+        "calibration_ref": "d07586938748c46d05f1813a0f1c6db477f3093fb690d36d2b39ebb26411a696",
+        "scenario_ref": "ad255540eff00bf6333f51a3fe76cd232694fb95dde533752e9d9ce8ef739266",
+        "execution_bias_ref": "03f5f40932861f8f7229e2fc3517273133297e461d557e2b70e18ad3d32b8b7e",
+        "numerical_ref": "a41f78c9a26925c70745ad0e5f6be94e3eb90fda14cb18fd215e6703bed5dcac",
+        "incremental_programme_ref": "198384eecc8d63f304460cae8bc25a518c39ed05241445a45bceec49e7800c8a",
+        "mean_cash": "-2",
+        "mean_selection_allowance": "0",
+        "execution_bias_allowance": "0",
+        "numerical_allowance": "0",
+        "incremental_programme_cost": "0",
+        "score_cash": "-2",
+        "risk_increment_cash": "0",
+        "j_cash": "-2",
+        "available_at_ns": 34560000000000010,
+        "status": "INELIGIBLE",
+        "reasons": [
+          "NONPOSITIVE_OR_IMMATERIAL_ECONOMICS"
+        ]
+      },
+      {
+        "version": "ATLAS_RED_ACTION_EVALUATION_V1",
+        "population_ref": "26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7",
+        "candidate_ref": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001",
+        "action_ref": "8f7030be4887fc3172ba0959681e344c846302d13cfed0437703736678be9279",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "model_ref": "b86f70feadf38a796cd10199bd61014123a1fae862ac2af4bf3c112e721b8930",
+        "calibration_ref": "c91ac56a349f72f18153694a38cb8cb5185cd727e8afe19f146f99053166fb7d",
+        "scenario_ref": "93b8f2a29f21b3ec2be40153ba1b6c921e8323adcac7841c905fdf1b71fdef58",
+        "execution_bias_ref": "a1dbe779265af045ddd95ca6d0b4765a64d119a8c5494df0932eb9534e574c93",
+        "numerical_ref": "c3f25c9a6cfab19cd202fc37bd9d66b8da61ef6268a860009eeb411cf5cba742",
+        "incremental_programme_ref": "822a30ce41c0483d13a283770566caadde3a5086cc77b354a8cf568b5456498a",
+        "mean_cash": "5",
+        "mean_selection_allowance": "0",
+        "execution_bias_allowance": "0",
+        "numerical_allowance": "0",
+        "incremental_programme_cost": "0",
+        "score_cash": "5",
+        "risk_increment_cash": "0",
+        "j_cash": "5",
+        "available_at_ns": 34560000000000010,
+        "status": "ELIGIBLE",
+        "reasons": []
+      },
+      {
+        "version": "ATLAS_RED_ACTION_EVALUATION_V1",
+        "population_ref": "26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7",
+        "candidate_ref": "7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4",
+        "action_ref": "353b5b7f18a78700b938a1881c7df6b0f682dfe529e070f1cd2dfc5b85e70f8b",
+        "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+        "model_ref": "6477181d7b8e435c8423bac03ff5ee3d4ca4c4eaa0f481c279c32af5fb5eebf9",
+        "calibration_ref": "79946cc38402158cfb39aa55de4edcae100ad9083b99041da297f89e539a3ac3",
+        "scenario_ref": "ae841ed9e373e054df61ca016d450dd282b9ae5316e755778888f4624acef57d",
+        "execution_bias_ref": "7436e45739c39c2dc8c2f43e7e0a87d2b7be34cc3e39eed2b5592aff2e3b8ce4",
+        "numerical_ref": "cfcf6fe63b63fbf6f8fd77c93af75a1e3aca4f68795771c13326b2f76b6586ca",
+        "incremental_programme_ref": "fbca95ffbfe94d7aa36ef1b7c9ced77929a9ddc025fe6f2ea4644b7757980489",
+        "mean_cash": "9",
+        "mean_selection_allowance": "0",
+        "execution_bias_allowance": "0",
+        "numerical_allowance": "0",
+        "incremental_programme_cost": "0",
+        "score_cash": "9",
+        "risk_increment_cash": "0",
+        "j_cash": "9",
+        "available_at_ns": 34560000000000010,
+        "status": "ELIGIBLE",
+        "reasons": []
+      }
+    ],
+    "work": [
+      {
+        "version": "ATLAS_RED_EVALUATION_WORK_V1",
+        "candidate_ref": "44cd3da4c16fce8a5c34403f1a610e8ae63948992174c083904b0fd1fec0483b",
+        "attempt_index": 1,
+        "status": "EVALUATED",
+        "started_ns": 34560000000000010,
+        "finished_ns": 34560000000000010,
+        "cpu_ns": 43905811,
+        "sizing_ref": "d5c4a7f8c7da3597827a9b0f02c65fe404e562f5184cf5ff623dc60fe3f990a0",
+        "action_ref": "7d6a9fc7cd8cc4c972984d0be688ebf20b9f5d87deb0b1bf6361a008cae31650",
+        "evaluation_ref": "da1d218b52d9de7d111b9dc8f5b0b1e44e2ead5e9207e25157647c09be013419",
+        "reasons": []
+      },
+      {
+        "version": "ATLAS_RED_EVALUATION_WORK_V1",
+        "candidate_ref": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001",
+        "attempt_index": 2,
+        "status": "EVALUATED",
+        "started_ns": 34560000000000010,
+        "finished_ns": 34560000000000010,
+        "cpu_ns": 8786429,
+        "sizing_ref": "c52facaa2f20976cf932f67c96ca1ccc808fa9892662cc26e191137125d49fca",
+        "action_ref": "8f7030be4887fc3172ba0959681e344c846302d13cfed0437703736678be9279",
+        "evaluation_ref": "238dcb026f08b31d57e4b80f7225f4cb3b475ad99a4c95d29369332d178c0b66",
+        "reasons": []
+      },
+      {
+        "version": "ATLAS_RED_EVALUATION_WORK_V1",
+        "candidate_ref": "ecb4063c0d9e1377427fc58e9bf1fa1cb8b0c28389ac5faf05a7138edc8e505b",
+        "attempt_index": null,
+        "status": "UNAVAILABLE",
+        "started_ns": 34560000000000010,
+        "finished_ns": 34560000000000010,
+        "cpu_ns": 1312,
+        "sizing_ref": null,
+        "action_ref": null,
+        "evaluation_ref": null,
+        "reasons": [
+          "UNSUPPORTED_SOURCE"
+        ]
+      },
+      {
+        "version": "ATLAS_RED_EVALUATION_WORK_V1",
+        "candidate_ref": "7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4",
+        "attempt_index": 3,
+        "status": "EVALUATED",
+        "started_ns": 34560000000000010,
+        "finished_ns": 34560000000000010,
+        "cpu_ns": 9183149,
+        "sizing_ref": "3f7efb3883c9a6c57cc6b4f46ab32d0996ba0e32498c1ae1dbcd1f8b07ca093d",
+        "action_ref": "353b5b7f18a78700b938a1881c7df6b0f682dfe529e070f1cd2dfc5b85e70f8b",
+        "evaluation_ref": "522c41968d779e0e371296d1eb4e1cf42aaff628fbbdf4c7231c0a980ef26fb9",
+        "reasons": []
+      }
+    ],
+    "sealed_at_ns": 34560000000000010,
+    "cpu_used_ns": 62821434,
+    "wall_used_ns": 70620570
+  },
+  "request": {
+    "version": "ATLAS_RED_B_SELECTION_REQUEST_OFFLINE_V1",
+    "eligible_set_ref": "306be8fe5bcbee5343f11bbb43a1486a1a4de28c209734c6f38f6013850acbfe",
+    "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+    "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+    "source_prefix_ref": "82c7b051c1d5bea6d84a68e881c2acbbfe95f91c533696cc25c221063c16e00b",
+    "issued_at_ns": 34560000000000010,
+    "deadline_ns": 34560005000000000,
+    "nonce": "nonce",
+    "allowed_bundle_refs": [],
+    "operation_scope": "OFFLINE_SELECT_ONE"
+  },
+  "response": {
+    "version": "ATLAS_RED_B_SELECTION_RESPONSE_OFFLINE_V1",
+    "request_ref": "3ba765fe7ee817fa5134e332f39384d5b9aa188c48d561c401e3a409ea597b85",
+    "eligible_set_ref": "306be8fe5bcbee5343f11bbb43a1486a1a4de28c209734c6f38f6013850acbfe",
+    "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+    "permission_ref": "06408ac7ee9f1314e8884f2ec8ea1d1db24d32cbc9a904ab306b65171e374d0c",
+    "source_prefix_ref": "82c7b051c1d5bea6d84a68e881c2acbbfe95f91c533696cc25c221063c16e00b",
+    "response_id": "response",
+    "nonce": "nonce",
+    "decision": "SELECT_ONE",
+    "action_ref": "8f7030be4887fc3172ba0959681e344c846302d13cfed0437703736678be9279",
+    "returned_at_ns": 34560000000000011,
+    "claims": [],
+    "reason": "ordinary preference among eligible members",
+    "operation_scope": "OFFLINE_SELECT_ONE"
+  },
+  "result": {
+    "version": "ATLAS_RED_SELECTION_RESULT_OFFLINE_V1",
+    "request_ref": "3ba765fe7ee817fa5134e332f39384d5b9aa188c48d561c401e3a409ea597b85",
+    "eligible_set_ref": "306be8fe5bcbee5343f11bbb43a1486a1a4de28c209734c6f38f6013850acbfe",
+    "response_id": "response",
+    "decision": "SELECT_ONE",
+    "action_ref": "8f7030be4887fc3172ba0959681e344c846302d13cfed0437703736678be9279",
+    "validated_at_ns": 34560000000000012,
+    "authority": "OFFLINE_RESEARCH_ONLY"
+  },
+  "authority": "ZERO",
+  "capital_status": "NO-GO"
+}

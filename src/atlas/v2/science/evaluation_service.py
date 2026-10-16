@@ -472,3 +472,12 @@ def run_phase2_economic_evaluation(
         evaluation_ref,
         calendar_ref,
     )
+
+
+def run_mean_action_evaluation(*args, **kwargs):
+    """P1 offline mean-policy entry point; P4 owns production routing.
+
+    This route never calls legacy fit_m0 or selects a CandidateSet winner.
+    """
+    from atlas.v2.science.mean_evaluation import run_independent_mean_evaluation
+    return run_independent_mean_evaluation(*args, **kwargs)

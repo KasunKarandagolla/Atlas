@@ -1134,3 +1134,26 @@ def realized_risk_source(repo: OpsRepository, outcome: MaturedOutcomeV2, source:
         raise ValueError("actual risk source requires indexed exact outcome and close")
     _validate_actual_binding(repo, outcome)
     return source.content_hash
+
+
+def mean_training_row_from_cash(*, action, path, fee, funding_schedule, product,
+        compatibility_ref: str, features: tuple[float, ...], label_available_at_ns: int,
+        source_grade: str):
+    """Mature the new exact-action cash label without reinterpreting V2 labels.
+
+    Only actual reconciled paths can produce actual labels. Counterfactual
+    replay retains its own provenance and cannot enter realized-risk authority.
+    """
+    from atlas.v2.science.costs import value_mean_cash_path
+    from atlas.v2.science.mean_models import MeanTrainingRowV1
+    if label_available_at_ns < action.terminal_ns or product.content_hash != action.product_ref:
+        raise ValueError("IMMATURE_OR_INCOMPATIBLE_MEAN_OUTCOME")
+    value = value_mean_cash_path(action=action, path=path, fee=fee,
+        funding_schedule=funding_schedule, base_units_per_contract=product.base_units_per_contract)
+    if value.trading_cash is None:
+        raise ValueError("CENSORED_MEAN_OUTCOME")
+    state = ("NO_FILL" if value.filled_quantity == 0 else
+             "FULL_FILL" if value.filled_quantity == action.quantity else "PARTIAL_FILL")
+    return MeanTrainingRowV1(value.content_hash, action.content_hash, compatibility_ref,
+        action.cutoff_ns, action.cutoff_ns, action.terminal_ns, label_available_at_ns,
+        features, value.trading_cash, path.provenance, state, source_grade)

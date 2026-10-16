@@ -171,3 +171,167 @@ def freeze_action(repo: OpsRepository, *, candidate: CandidateActionV2, candidat
         repo.register_artifact(ArtifactIndexEntryV2(identity_ref, "ActionComputationIdentityV1",
             sha256_json(body), available, available, body))
     return artifact
+
+# The mean-action contract never requires a CandidateSet selected winner.
+from typing import ClassVar  # noqa: E402
+
+from atlas.v2.risk import IndependentSizingV1  # noqa: E402
+from atlas.v2.science.mean_common import DAY_NS, OfflineArtifact, positive, unique  # noqa: E402
+
+
+@dataclass(frozen=True)
+class ExactActionV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_EXACT_ACTION_V1"
+    candidate_id: str
+    candidate_ref: str
+    population_ref: str
+    key: InstrumentKeyV2
+    product_ref: str
+    policy_ref: str
+    setup_ref: str
+    cutoff_ns: int
+    deadline_ns: int
+    horizon_end_ns: int
+    terminal_ns: int
+    side: str
+    quantity: Decimal
+    entry_reference: Decimal
+    entry_collar: Decimal
+    stop_price: Decimal
+    stop_basis: str
+    entry_trigger_basis: str
+    stop_ref: str
+    entry_rule: FrozenMap
+    management_rule: FrozenMap
+    exit_rule: FrozenMap
+    registered_setup: FrozenMap
+    fill_policy: str
+    sizing: IndependentSizingV1
+    account_snapshot_ref: str
+    risk_profile_ref: str
+    permission_ref: str
+    fee_ref: str
+    funding_ref: str
+    execution_ref: str
+    model_ref: str
+    source_refs: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        positive(self.quantity, self.entry_reference, self.entry_collar, self.stop_price)
+        if (
+            not self.candidate_id
+            or self.side not in ("LONG", "SHORT")
+            or self.stop_basis != "MARK_PRICE"
+            or self.fill_policy != "ONE_IOC_PARTIAL_REMAINDER_CANCEL_NO_CHASE"
+            or not self.cutoff_ns < self.deadline_ns < self.horizon_end_ns <= self.terminal_ns
+            or self.terminal_ns != self.cutoff_ns + DAY_NS
+        ):
+            raise ValueError("invalid exact-action policy/time")
+        if (
+            self.sizing.status != "SIZED"
+            or self.quantity != self.sizing.quantity
+            or self.sizing.candidate_ref != self.candidate_ref
+            or self.sizing.product_ref != self.product_ref
+            or self.sizing.fee_ref != self.fee_ref
+            or self.sizing.profile_ref != self.risk_profile_ref
+            or self.sizing.account_snapshot_ref != self.account_snapshot_ref
+        ):
+            raise ValueError("exact-action sizing/evidence mismatch")
+        if (self.side == "LONG" and self.stop_price >= self.entry_collar) or (
+            self.side == "SHORT" and self.stop_price <= self.entry_collar
+        ):
+            raise ValueError("invalid protective stop")
+        unique(self.source_refs)
+        if not self.source_refs:
+            raise ValueError("action evidence required")
+        for ref in self.source_refs:
+            sha256_ref(ref, field="action evidence")
+
+
+_EMPTY_REGISTERED_SETUP = FrozenMap()
+
+
+def freeze_independent_action(
+    *,
+    candidate: CandidateActionV2,
+    population_ref: str,
+    sizing: IndependentSizingV1,
+    product: ProductContractV2,
+    policy: PolicySpecV2,
+    permission_ref: str,
+    funding_ref: str,
+    execution_ref: str,
+    model_ref: str,
+    source_refs: tuple[str, ...],
+    setup_parameters: FrozenMap = _EMPTY_REGISTERED_SETUP,
+) -> ExactActionV1:
+    if candidate.policy_hash != policy.policy_hash or candidate.key != product.key or candidate.quantity is not None:
+        raise ValueError("candidate/policy/product mismatch")
+    from atlas.v2.strategies.s1_trend import S1_POLICY
+    from atlas.v2.strategies.s2_breakout import S2_POLICY
+    from atlas.v2.strategies.s3_mean_reversion import S3_POLICY
+    from atlas.v2.strategies.s6_cross_section import S6_ACTION_POLICY
+
+    if policy.policy_hash not in {p.policy_hash for p in (S1_POLICY, S2_POLICY, S3_POLICY, S6_ACTION_POLICY)}:
+        raise ValueError("UNSUPPORTED_EXACT_ACTION_POLICY")
+    if candidate.horizon_end_ns != candidate.decision_at_ns + policy.max_hold_ns:
+        raise ValueError("SEALED_POLICY_HORIZON_MISMATCH")
+    maximum_ttl = policy.entry_rule.get(
+        "candidate_deadline_offset_ns", policy.expiry_rule.get("candidate_deadline_offset_ns")
+    )
+    if maximum_ttl is not None and candidate.deadline_ns > candidate.decision_at_ns + int(maximum_ttl):
+        raise ValueError("ORIGINAL_REGISTERED_DEADLINE_EXCEEDED")
+    if policy.policy_hash == S2_POLICY.policy_hash:
+        try:
+            low, high = Decimal(setup_parameters["range_low"]), Decimal(setup_parameters["range_high"])
+            positive(low, high)
+            if low >= high or not 0 <= setup_parameters["trigger_bar_close_ns"] <= candidate.decision_at_ns:
+                raise ValueError("invalid frozen S2 range")
+        except (KeyError, TypeError, ArithmeticError) as exc:
+            raise ValueError("S2_REGISTERED_RANGE_EVIDENCE_REQUIRED") from exc
+    if policy.policy_hash == S3_POLICY.policy_hash:
+        try:
+            target = Decimal(setup_parameters["vwap_target"])
+            positive(target)
+            if (candidate.side.value == "LONG" and target <= candidate.entry_collar) or (
+                candidate.side.value == "SHORT" and target >= candidate.entry_collar
+            ):
+                raise ValueError("S3_TARGET_NOT_FAVOURABLE")
+        except (KeyError, TypeError, ArithmeticError) as exc:
+            raise ValueError("S3_FROZEN_VWAP_EVIDENCE_REQUIRED") from exc
+    return ExactActionV1(
+        candidate.candidate_id,
+        candidate.content_hash,
+        population_ref,
+        candidate.key,
+        product.content_hash,
+        policy.policy_hash,
+        candidate.snapshot_hash,
+        candidate.decision_at_ns,
+        candidate.deadline_ns,
+        candidate.horizon_end_ns,
+        candidate.decision_at_ns + DAY_NS,
+        candidate.side.value,
+        sizing.quantity,
+        candidate.entry_reference,
+        candidate.entry_collar,
+        candidate.stop_price,
+        "MARK_PRICE",
+        policy.trigger_basis,
+        sha256_json({"candidate": candidate.content_hash, "stop": _c(candidate.stop_price), "basis": "MARK_PRICE"}),
+        policy.entry_rule,
+        policy.management_rule,
+        policy.time_exit_rule,
+        setup_parameters,
+        "ONE_IOC_PARTIAL_REMAINDER_CANCEL_NO_CHASE",
+        sizing,
+        sizing.account_snapshot_ref,
+        sizing.profile_ref,
+        permission_ref,
+        sizing.fee_ref,
+        funding_ref,
+        execution_ref,
+        model_ref,
+        tuple(sorted(set(source_refs))),
+    )

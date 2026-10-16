@@ -1,0 +1,80 @@
+........................................................................ [ 26%]
+........................................................................ [ 52%]
+................FF...................................................... [ 79%]
+........................................................                 [100%]
+=================================== FAILURES ===================================
+______ test_desktop_crash_disconnect_reconnect_and_evidence_immutability _______
+
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-27/test_desktop_crash_disconnect_0')
+
+    def test_desktop_crash_disconnect_reconnect_and_evidence_immutability(tmp_path):
+        db = tmp_path / "ops.sqlite"
+        _initialized_db(db)
+        token = secrets.token_urlsafe(48)
+        initial_db_hash = hashlib.sha256(db.read_bytes()).hexdigest()
+        service = ProjectionService(db, token)
+        service.start()
+        host, port = service.address
+        child_code = """
+    import os
+    from PySide6.QtWidgets import QApplication
+    from atlas.desktop.app import AtlasDesktop
+    from atlas.v2.desktop.ipc import ProjectionClient
+    app = QApplication([])
+    window = AtlasDesktop(ProjectionClient(os.environ['ATLAS_TEST_HOST'], int(os.environ['ATLAS_TEST_PORT']), os.environ['ATLAS_TEST_TOKEN']))
+    window.refresh()
+    names = [window.tabs.tabText(i) for i in range(window.tabs.count())]
+    assert names == ['Overview', 'Scanner', 'Chart', 'Watches', 'Evidence'], names
+    assert 'RESEARCH/SHADOW TEST GATE' in window.banner.text(), window.banner.text()
+    assert 'RESEARCH/SHADOW TEST GATE' in window.overview_summary.text(), window.overview_summary.text()
+    projected_statuses = {item.name: (item.state, item.value) for item in window.snapshot.overview.statuses}
+    assert projected_statuses['research_agent'] == ('DISABLED', 'PRODUCTION_AGENT_MODE_DISABLED')
+    assert projected_statuses['decision_brief'][0] == 'UNAVAILABLE'
+    assert projected_statuses['position_lifecycle'][0] == 'UNAVAILABLE'
+    assert projected_statuses['due_work'][0] == 'UNAVAILABLE'
+    assert projected_statuses['model_provider'][0] == 'UNAVAILABLE'
+    os.write(1, b'READ_ONLY_VIEWS_READY\\n')
+    os._exit(37)
+    """
+        environment = os.environ.copy()
+        environment.update({
+            "ATLAS_TEST_HOST": host,
+            "ATLAS_TEST_PORT": str(port),
+            "ATLAS_TEST_TOKEN": token,
+            "QT_QPA_PLATFORM": "offscreen",
+            "PYTHONPATH": os.pathsep.join((str(Path.cwd() / "src"), environment.get("PYTHONPATH", ""))),
+        })
+        process = subprocess.Popen([sys.executable, "-c", child_code], env=environment,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            stdout, stderr = process.communicate(timeout=30)
+>           assert b"READ_ONLY_VIEWS_READY" in stdout, (
+                "desktop did not reach its view-ready marker: " + stderr.decode("utf-8", "replace")[-1000:]
+            )
+E           AssertionError: desktop did not reach its view-ready marker: Traceback (most recent call last):
+E               File "<string>", line 3, in <module>
+E             ModuleNotFoundError: No module named 'PySide6'
+E
+E           assert b'READ_ONLY_VIEWS_READY' in b''
+
+tests/v2/test_session020_desktop_ipc.py:210: AssertionError
+___________ test_desktop_reports_clean_projection_unavailable_state ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f48c87b5790>
+
+    def test_desktop_reports_clean_projection_unavailable_state(monkeypatch):
+        monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+>       from PySide6.QtWidgets import QApplication
+E       ModuleNotFoundError: No module named 'PySide6'
+
+tests/v2/test_session020_desktop_ipc.py:238: ModuleNotFoundError
+=============================== warnings summary ===============================
+../.venvs/atlas/lib/python3.12/site-packages/_pytest/config/__init__.py:864
+  /workspace/.venvs/atlas/lib/python3.12/site-packages/_pytest/config/__init__.py:864: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; atlas_s49_offline_guard
+    self.import_plugin(arg, consider_entry_points=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/v2/test_session020_desktop_ipc.py::test_desktop_crash_disconnect_reconnect_and_evidence_immutability
+FAILED tests/v2/test_session020_desktop_ipc.py::test_desktop_reports_clean_projection_unavailable_state
+2 failed, 270 passed, 2 deselected, 1 warning in 19.82s

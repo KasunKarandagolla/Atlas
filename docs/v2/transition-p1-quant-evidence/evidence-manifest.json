@@ -1,0 +1,147 @@
+{
+  "version": "ATLAS_RED_P1_SANITIZED_EVIDENCE_MANIFEST_V1",
+  "base_sha": "3cb4f052472623381145573523c7077950de78fd",
+  "accepted_design_sha": "f9f8ef083ba5bafcad9bab4d07227676200a948f",
+  "candidate_branch": "impl/atlas-red-p1-quant-foundation-2026-10-16",
+  "source_build_hash": "81a268d4bbade5999b3057d9301411eacf4fa14752a2f09013bd918bc5e363a7",
+  "authority": "ZERO / OFFLINE_RESEARCH_ONLY",
+  "capital": "NO-GO",
+  "remote_receipt": "Exact final remote SHA returned in delivery; independent acceptance pending",
+  "artifacts": {
+    "actual-offline-fits.json": {
+      "sha256": "b7c674f2eb3305716a3707a5e8c46b3168817d759feb243200c6229858f64096",
+      "bytes": 28138
+    },
+    "affected-regressions.txt": {
+      "sha256": "a28dcbc1d3bad96724def83fd70bd6c87a5573afd0cef3f77d89d5987e1ed224",
+      "bytes": 825
+    },
+    "affected-regressions.xml": {
+      "sha256": "ed725845a8b3ce334bb65e198e02bcbf94484ee032e8469ca011fb9122aa4531",
+      "bytes": 38645
+    },
+    "baseline-mypy.txt": {
+      "sha256": "4e73c9cb12fba9c5d75af819ad4ebb01371970d35fef1fe7f7ddae3c780c73dd",
+      "bytes": 9771
+    },
+    "broad-regressions.txt": {
+      "sha256": "485ee486b88e1019828f34a78105b5bcd571697b6d32b36df22912378f3b8487",
+      "bytes": 1396
+    },
+    "broad-regressions.xml": {
+      "sha256": "b180eba8b05e6e0d4e7a50f831b02956d110204956b2219c476f42939537c55a",
+      "bytes": 116775
+    },
+    "capsule-replay.json": {
+      "sha256": "4e7b5fa9b4faccd5fbba4dd8e1839e96e0af22707d19419ff622cf53338d1882",
+      "bytes": 358
+    },
+    "compile-final.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "dependency-check.txt": {
+      "sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+      "bytes": 30
+    },
+    "diff-final.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "final-p1-tests.txt": {
+      "sha256": "181aee7fa97e23206ff3341a68ec6c29419ec06f90ad4e5191114e387878f1cf",
+      "bytes": 665
+    },
+    "final-p1-tests.xml": {
+      "sha256": "cbbd30f98efbd8b1a20c32d51e5c0b7e30215ca65c5de1080745dc73e7ab476e",
+      "bytes": 20130
+    },
+    "final-tests.txt": {
+      "sha256": "fbd8632cd9dd516d2bbc6185a31049945580e35c38c234fad445b81732180f0c",
+      "bytes": 1807
+    },
+    "final-tests.xml": {
+      "sha256": "07aadf5b8d6d791ef6107040ec41994100ee880f5f589b946083417a5aede009",
+      "bytes": 172419
+    },
+    "frozen-hashes.json": {
+      "sha256": "1b20be6fdfa0a73fd7332aa517a4150210b9dec1100c6f47fdf5ed2e6c8af85d",
+      "bytes": 427
+    },
+    "interface-inventory.json": {
+      "sha256": "89eac2f52b2472635afeda8d057f1186ab4fbc0015cb218c8dd391732458f6b0",
+      "bytes": 79869
+    },
+    "lock-check.txt": {
+      "sha256": "b7f1d2a6f077a8852539ea9f6a05dccbfdb3f0ecf503d5ddb00c5d4ee4c51468",
+      "bytes": 101
+    },
+    "mypy-final.txt": {
+      "sha256": "e20f243afcb01b3b1ae9b0644d9d4d31646544b48614edc0b42688c6df60a41c",
+      "bytes": 9771
+    },
+    "preservation-before-qt.txt": {
+      "sha256": "6061db5264669b4850cd4428296ef0d9d76ef3476d3a82f448aa6000434e7b6c",
+      "bytes": 4589
+    },
+    "preservation-before-qt.xml": {
+      "sha256": "2c416f2575a8341cef16ce5af73de76968433de450e13e01399207ccc07d1c8a",
+      "bytes": 45773
+    },
+    "preservation-tests.txt": {
+      "sha256": "6446efa37311f75606ffcf669d71a214303cb09454cbae3260c20e4b55203a8a",
+      "bytes": 839
+    },
+    "preservation-tests.xml": {
+      "sha256": "3392a230a91c5f111f11ef78398f968f8e2a2dc32e5ff9aa6c7928d143e5be99",
+      "bytes": 42166
+    },
+    "publication-checks.json": {
+      "sha256": "9b958fadacd923b12d1ea90cb02af0d89ad8c66f4d99802bfdb04c0229cf7bdc",
+      "bytes": 860
+    },
+    "red-oracle.txt": {
+      "sha256": "0848dcadd2b5bde985328d42c03b2f31c575285761308eef4bae7c0fc1e0bb3c",
+      "bytes": 1524
+    },
+    "review-capsule.json": {
+      "sha256": "8609835ab2f3ca8307b8ac8a219016b9dc14ab90ffcccd0fda5af942356f6bc6",
+      "bytes": 109676
+    },
+    "ruff-final.txt": {
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    },
+    "runtime.json": {
+      "sha256": "5d0fce8f14084dd53e5ba35b75f7f8c1fd1ae4505795ec1a6f509427296b039b",
+      "bytes": 704
+    },
+    "source-build.json": {
+      "sha256": "cd0abef004d213a85396e9d3e9eb36a7fc3c7c9bf1cff9e642238f46b34e508c",
+      "bytes": 3629
+    },
+    "verification.json": {
+      "sha256": "35cd6702d2e6521b4a16d176c0dd160ad21d40f05dc9e5fa6f8b3e4d03f1384a",
+      "bytes": 9429
+    }
+  },
+  "classification": {
+    "review-capsule.json": "SYNTHETIC_OFFLINE_INTEGRATION, hypothetical clock, fake identities; real code flow",
+    "actual-offline-fits.json": "ACTUAL_LOCAL_FIT_ON_SYNTHETIC_DATA; no market/provider inference evidence",
+    "runtime.json": "ACTUAL_CLOUD_TEST_ENVIRONMENT; owner-confirmed model, no independent model attestation",
+    "final-tests.xml": "ACTUAL_OFFLINE_TEST_RUN; preceding final additive new-path hardening",
+    "final-p1-tests.xml": "ACTUAL_FINAL_OFFLINE_TEST_RUN; final new-path hardening",
+    "preservation-tests.xml": "ACTUAL_FINAL_OFFLINE_TEST_RUN; two named long S3 exclusions",
+    "preservation-before-qt.xml": "ACTUAL_INITIAL_FAILURE_EVIDENCE, missing Qt; resolved by declared pinned dependencies",
+    "baseline-mypy.txt": "ACTUAL_VERIFIED_BASE_DIAGNOSTICS",
+    "mypy-final.txt": "ACTUAL_FINAL_DIAGNOSTICS; exact normalized baseline match"
+  },
+  "limitations": [
+    "Not a full repository suite",
+    "No genuine account/source/provider/model-image outcomes",
+    "No target-host or Windows/72h qualification",
+    "No economic or capital acceptance",
+    "No P2/P3/P4 operational implementation or activation"
+  ],
+  "publication_normalization": "Published text/XML logs remove trailing line whitespace and excess blank EOF lines only; test results, diagnostics and failure content retained. Raw execution logs remain in session work area."
+}

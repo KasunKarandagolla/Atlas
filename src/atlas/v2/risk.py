@@ -761,3 +761,315 @@ def size_selected_candidate(repo: OpsRepository, *, candidate_set: CandidateSetV
                    stressed=proposed_stress, notional=proposed_notional, margin=best_margin,
                    leverage=best_leverage, notional_price=notional_reference_price,
                    loss=loss, rolling=rolling_base + proposed_normal)
+
+# Snapshot-only P1 mathematics: no reconciliation, leases or reservations.
+from typing import ClassVar  # noqa: E402
+
+from atlas.v2.science.mean_common import OfflineArtifact, nonnegative, positive, unique  # noqa: E402
+
+
+@dataclass(frozen=True)
+class SnapshotExposureV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_OFFLINE_EXPOSURE_V1"
+    obligation_id: str
+    instrument_ref: str
+    kind: str
+    normal_loss_cash: Decimal
+    stress_loss_cash: Decimal
+    gross_notional_cash: Decimal
+    margin_cash: Decimal
+    beta_notional_cash: Decimal
+    margin_reflected_in_available: bool
+    bot_allocation_cash: Decimal
+    joint_stress_pnl_cash: tuple[Decimal, ...]
+    source_ref: str
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if not self.obligation_id or self.kind not in ("ACTUAL", "POSSIBLE", "RESERVED"):
+            raise ValueError("explicit exposure obligation identity/kind required")
+        nonnegative(self.normal_loss_cash, self.stress_loss_cash, self.gross_notional_cash,
+                    self.margin_cash, self.bot_allocation_cash)
+        if not self.joint_stress_pnl_cash:
+            raise ValueError("joint stress must include actual and possible exposure")
+
+
+@dataclass(frozen=True)
+class OfflineRiskSnapshotV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_OFFLINE_ACCOUNT_RISK_SNAPSHOT_V1"
+    account_scope_ref: str
+    venue: str
+    environment: str
+    product: str
+    account_revision: int
+    position_revision: int
+    order_revision: int
+    ownership_revision: int
+    permission_ref: str
+    risk_policy_ref: str
+    observed_at_ns: int
+    available_at_ns: int
+    expires_at_ns: int
+    source_ref: str
+    equity_cash: Decimal
+    exchange_available_cash: Decimal
+    bot_allocation_cash: Decimal
+    manual_reserve_cash: Decimal
+    uncertainty_reserve_cash: Decimal
+    rolling_loss_cash: Decimal
+    exposures: tuple[SnapshotExposureV1, ...]
+    stress_ids: tuple[str, ...]
+    complete: bool
+    status: str = "CURRENT"
+    mode: str = "OBSERVE"
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if not 0 <= self.observed_at_ns <= self.available_at_ns < self.expires_at_ns:
+            raise ValueError("snapshot chronology invalid")
+        if (self.venue not in ("BINANCE", "BYBIT") or self.environment not in ("MAINNET", "TESTNET", "DEMO")
+                or self.product != "LINEAR_PERPETUAL" or self.mode != "OBSERVE"
+                or self.status not in ("CURRENT", "STALE", "UNKNOWN", "CONFLICT")):
+            raise ValueError("unsupported offline account profile")
+        if min(self.account_revision, self.position_revision, self.order_revision, self.ownership_revision) < 0:
+            raise ValueError("negative account generation")
+        nonnegative(self.equity_cash, self.exchange_available_cash, self.bot_allocation_cash,
+                    self.manual_reserve_cash, self.uncertainty_reserve_cash, self.rolling_loss_cash)
+        unique(tuple(e.obligation_id for e in self.exposures))
+        unique(tuple(e.source_ref for e in self.exposures))
+        unique(self.stress_ids)
+        if not self.stress_ids or any(len(e.joint_stress_pnl_cash) != len(self.stress_ids) for e in self.exposures):
+            raise ValueError("common joint stress coverage required")
+
+    @property
+    def opening_cash_headroom(self) -> Decimal:
+        unreflected = sum((e.margin_cash for e in self.exposures if not e.margin_reflected_in_available), ZERO)
+        allocation = self.bot_allocation_cash - sum((e.bot_allocation_cash for e in self.exposures), ZERO)
+        return max(ZERO, min(allocation, self.exchange_available_cash - unreflected
+                            - self.manual_reserve_cash - self.uncertainty_reserve_cash))
+
+
+@dataclass(frozen=True)
+class MeanMarginTierV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_OFFLINE_MARGIN_TIER_V1"
+    notional_ceiling_cash: Decimal
+    initial_margin_fraction: Decimal
+    maintenance_fraction: Decimal
+    maintenance_deduction_cash: Decimal
+    leverage_limit: Decimal
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        positive(self.notional_ceiling_cash, self.initial_margin_fraction, self.leverage_limit)
+        nonnegative(self.maintenance_fraction, self.maintenance_deduction_cash)
+        if not self.maintenance_fraction < self.initial_margin_fraction <= 1:
+            raise ValueError("margin tier fractions invalid")
+
+
+@dataclass(frozen=True)
+class IndependentRiskProfileV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_INDEPENDENT_RISK_PROFILE_V1"
+    source_ref: str
+    product_ref: str
+    risk_policy_ref: str
+    permission_ref: str
+    available_at_ns: int
+    max_snapshot_age_ns: int
+    normal_trade_limit_cash: Decimal
+    normal_total_limit_cash: Decimal
+    rolling_limit_cash: Decimal
+    stress_trade_limit_cash: Decimal
+    joint_stress_limit_cash: Decimal
+    gross_limit_cash: Decimal
+    instrument_limit_cash: Decimal
+    beta_limit_cash: Decimal
+    allowed_leverages: tuple[Decimal, ...]
+    tiers: tuple[MeanMarginTierV1, ...]
+    adverse_funding_per_unit_cash: Decimal
+    execution_loss_per_unit_cash: Decimal
+    impact_per_unit_squared_cash: Decimal
+    stress_exit_price: Decimal
+    liquidation_buffer_cash: Decimal
+    beta: Decimal
+    qualification_ref: str
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        nonnegative(self.normal_trade_limit_cash, self.normal_total_limit_cash, self.rolling_limit_cash,
+                    self.stress_trade_limit_cash, self.joint_stress_limit_cash, self.gross_limit_cash,
+                    self.instrument_limit_cash, self.beta_limit_cash, self.adverse_funding_per_unit_cash,
+                    self.execution_loss_per_unit_cash, self.impact_per_unit_squared_cash, self.liquidation_buffer_cash)
+        positive(self.stress_exit_price)
+        if self.max_snapshot_age_ns <= 0 or not self.allowed_leverages or not self.tiers or len(self.tiers)>64 or len(self.allowed_leverages)>32:
+            raise ValueError("bounded freshness/leverage/margin evidence required")
+        for x in self.allowed_leverages:
+            positive(x)
+        unique(self.allowed_leverages)
+        if tuple(sorted(self.allowed_leverages)) != self.allowed_leverages:
+            raise ValueError("leverage order must be ascending")
+        ceilings = tuple(t.notional_ceiling_cash for t in self.tiers)
+        if tuple(sorted(set(ceilings))) != ceilings:
+            raise ValueError("ordered distinct margin tiers required")
+        if any(b.initial_margin_fraction < a.initial_margin_fraction or b.maintenance_fraction < a.maintenance_fraction
+               or b.leverage_limit > a.leverage_limit for a, b in zip(self.tiers, self.tiers[1:], strict=False)):
+            raise ValueError("nonmonotone tier schedule unsupported")
+
+
+@dataclass(frozen=True)
+class IndependentSizingV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_INDEPENDENT_SIZING_V1"
+    candidate_ref: str
+    account_snapshot_ref: str
+    profile_ref: str
+    product_ref: str
+    fee_ref: str
+    quantity: Decimal
+    normal_loss_cash: Decimal
+    stress_loss_cash: Decimal
+    notional_cash: Decimal
+    margin_cash: Decimal
+    leverage: Decimal
+    status: str
+    reasons: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        nonnegative(self.quantity, self.normal_loss_cash, self.stress_loss_cash, self.notional_cash,
+                    self.margin_cash, self.leverage)
+        if self.status not in ("SIZED", "INFEASIBLE", "UNAVAILABLE"):
+            raise ValueError("unknown sizing status")
+        if (self.status == "SIZED") != (self.quantity > 0 and self.leverage > 0 and not self.reasons):
+            raise ValueError("inconsistent sizing success fields")
+
+
+def size_independent_candidate(*, candidate: CandidateActionV2, product: ProductContractV2,
+        fee: FeeScheduleV2, snapshot: OfflineRiskSnapshotV1, profile: IndependentRiskProfileV1,
+        cutoff_ns: int, now_ns: int) -> IndependentSizingV1:
+    """Largest lot-feasible quantity, then lowest feasible allowed leverage.
+
+    Loss(q) includes convex impact; margin uses the final notional tier.
+    Separate candidates use the same snapshot without consuming headroom.
+    Reflected margin is already absent from exchange_available_cash.
+    """
+    def result(reason: str, *, unavailable: bool = False) -> IndependentSizingV1:
+        return IndependentSizingV1(candidate.content_hash, snapshot.content_hash, profile.content_hash,
+            product.content_hash, fee.content_hash, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO,
+            "UNAVAILABLE" if unavailable else "INFEASIBLE", (reason,))
+    if (not snapshot.complete or snapshot.status != "CURRENT" or snapshot.available_at_ns > cutoff_ns
+            or now_ns >= snapshot.expires_at_ns or now_ns - snapshot.observed_at_ns > profile.max_snapshot_age_ns):
+        return result("STALE_INCOMPLETE_OR_UNCERTAIN_SNAPSHOT", unavailable=True)
+    if (candidate.key != product.key or fee.key != product.key or profile.product_ref != product.content_hash
+            or snapshot.venue != product.key.venue.value or snapshot.environment != product.key.environment.value
+            or snapshot.product != product.key.product.value or snapshot.permission_ref != profile.permission_ref
+            or snapshot.risk_policy_ref != profile.risk_policy_ref):
+        return result("INCOMPATIBLE_REVISIONS", unavailable=True)
+    if (max(profile.available_at_ns, fee.available_at_ns, product.available_at_ns) > cutoff_ns
+            or candidate.quantity is not None or candidate.decision_at_ns != cutoff_ns
+            or now_ns >= candidate.deadline_ns or product.trading_status != TradingStatusV2.TRADING):
+        return result("UNAVAILABLE_OR_EXPIRED_INPUT", unavailable=True)
+    for price in (candidate.entry_reference, candidate.entry_collar, candidate.stop_price):
+        if price % product.tick_size:
+            return result("UNQUANTIZED_PRICE")
+    long = candidate.side == V2Side.LONG
+    entry = candidate.entry_collar
+    if (long and not profile.stress_exit_price <= candidate.stop_price < entry) or (
+            not long and not entry < candidate.stop_price <= profile.stress_exit_price):
+        return result("STOP_OR_STRESS_NOT_ADVERSE")
+    b = product.base_units_per_contract
+    reference = max(entry, candidate.entry_reference)
+    existing_normal = sum((e.normal_loss_cash for e in snapshot.exposures), ZERO)
+    existing_gross = sum((e.gross_notional_cash for e in snapshot.exposures), ZERO)
+    existing_symbol = sum((e.gross_notional_cash for e in snapshot.exposures if e.instrument_ref == product.key.content_hash), ZERO)
+    existing_beta = sum((abs(e.beta_notional_cash) for e in snapshot.exposures), ZERO)
+    per_normal = b * (abs(entry - candidate.stop_price) + entry * fee.entry_taker_rate
+                     + candidate.stop_price * fee.exit_taker_rate) + profile.adverse_funding_per_unit_cash + profile.execution_loss_per_unit_cash
+    per_stress = b * (abs(entry - profile.stress_exit_price) + entry * fee.entry_taker_rate
+                     + profile.stress_exit_price * fee.exit_taker_rate) + profile.adverse_funding_per_unit_cash + profile.execution_loss_per_unit_cash
+    cap = min(profile.normal_trade_limit_cash, profile.normal_total_limit_cash - existing_normal,
+              profile.rolling_limit_cash - snapshot.rolling_loss_cash - existing_normal)
+    upper = min(profile.gross_limit_cash - existing_gross, profile.instrument_limit_cash - existing_symbol,
+                profile.tiers[-1].notional_ceiling_cash) / (b * reference)
+    if product.max_qty is not None:
+        upper = min(upper, product.max_qty)
+    upper = min(upper, cap / per_normal) if per_normal > 0 else ZERO
+    if upper <= 0 or snapshot.opening_cash_headroom <= 0:
+        return result("NO_CASH_OR_RISK_HEADROOM")
+
+    def feasible(qty: Decimal, *, liquidation: bool = True) -> tuple[Decimal, Decimal, Decimal, Decimal, Decimal] | None:
+        notional = qty * b * reference
+        tier = next((t for t in profile.tiers if notional <= t.notional_ceiling_cash), None)
+        if tier is None:
+            return None
+        normal = qty * per_normal + profile.impact_per_unit_squared_cash * qty * qty
+        stress = qty * per_stress + profile.impact_per_unit_squared_cash * qty * qty
+        if (normal > cap or stress > profile.stress_trade_limit_cash
+                or existing_beta + abs(profile.beta) * notional > profile.beta_limit_cash
+                or any(stress - sum((e.joint_stress_pnl_cash[i] for e in snapshot.exposures), ZERO)
+                       > profile.joint_stress_limit_cash for i in range(len(snapshot.stress_ids)))):
+            return None
+        for leverage in profile.allowed_leverages:
+            if leverage > tier.leverage_limit:
+                continue
+            margin = max(notional / leverage, notional * tier.initial_margin_fraction)
+            maintenance = max(ZERO, qty * b * max(reference, profile.stress_exit_price) * tier.maintenance_fraction
+                              - tier.maintenance_deduction_cash)
+            fee_reserve = qty * b * (reference * fee.entry_taker_rate + profile.stress_exit_price * fee.exit_taker_rate)
+            if (margin + fee_reserve <= snapshot.opening_cash_headroom
+                    and (not liquidation or margin - stress >= maintenance + profile.liquidation_buffer_cash)):
+                return normal, stress, notional, margin, leverage
+        return None
+
+    lo, hi = 0, int(upper // product.qty_step)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if feasible(mid * product.qty_step, liquidation=False) is not None:
+            lo = mid
+        else:
+            hi = mid - 1
+    # Budget feasibility is downward closed. Liquidation-buffer feasibility
+    # can have a lower AND upper root; do not binary-search that predicate.
+    # Search the exact concave margin-minus-loss envelope per tier/leverage.
+    budget_upper = lo * product.qty_step
+    candidates = [budget_upper]
+    previous_ceiling = ZERO
+    for tier in profile.tiers:
+        tier_lower = previous_ceiling / (b * reference)
+        tier_upper = min(budget_upper, tier.notional_ceiling_cash / (b * reference))
+        previous_ceiling = tier.notional_ceiling_cash
+        for leverage in profile.allowed_leverages:
+            if leverage > tier.leverage_limit:
+                continue
+            margin_unit = max(b * reference / leverage, b * reference * tier.initial_margin_fraction)
+            fee_unit = b * (reference * fee.entry_taker_rate + profile.stress_exit_price * fee.exit_taker_rate)
+            qcap = min(tier_upper, snapshot.opening_cash_headroom / (margin_unit + fee_unit))
+            maintenance_unit = b * max(reference, profile.stress_exit_price) * tier.maintenance_fraction
+            threshold = tier.maintenance_deduction_cash / maintenance_unit if maintenance_unit else qcap
+            for maintenance_active in (False, True):
+                a = margin_unit - per_stress - (maintenance_unit if maintenance_active else ZERO)
+                c = (tier.maintenance_deduction_cash if maintenance_active else ZERO) - profile.liquidation_buffer_cash
+                qmax = qcap if maintenance_active else min(qcap, threshold)
+                qmin = max(tier_lower, threshold if maintenance_active else ZERO)
+                impact = profile.impact_per_unit_squared_cash
+                if impact:
+                    discriminant = a*a + 4*impact*c
+                    if discriminant < 0:
+                        continue
+                    qmax = min(qmax, (a + discriminant.sqrt()) / (2*impact))
+                    qmin = max(qmin, (a - discriminant.sqrt()) / (2*impact))
+                elif a < 0:
+                    qmax = min(qmax, -c/a)
+                elif a == 0 and c < 0:
+                    continue
+                elif a > 0:
+                    qmin = max(qmin, -c/a)
+                q = (qmax / product.qty_step).to_integral_value(rounding=ROUND_FLOOR) * product.qty_step
+                if q >= qmin and q > 0:
+                    candidates.extend((q, q-product.qty_step))
+    valid = [(q, feasible(q)) for q in candidates if q > 0]
+    valid = [(q, m) for q, m in valid if m is not None]
+    qty, metrics = max(valid, key=lambda pair: pair[0]) if valid else (ZERO, None)
+    if (metrics is None or qty < product.min_qty or (product.min_notional is not None
+            and qty * b * min(entry, candidate.entry_reference) < product.min_notional)):
+        return result("MINIMUM_LOT_OR_NOTIONAL_INFEASIBLE")
+    return IndependentSizingV1(candidate.content_hash, snapshot.content_hash, profile.content_hash,
+        product.content_hash, fee.content_hash, qty, metrics[0], metrics[1], metrics[2], metrics[3], metrics[4], "SIZED", ())

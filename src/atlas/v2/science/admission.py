@@ -1345,21 +1345,10 @@ class AmendedEvaluationArtifactV2:
 
 
 def empirical_es_decimal(losses: Sequence[Decimal], probabilities: Sequence[Decimal], confidence: Decimal) -> Decimal:
-    if not losses or len(losses) != len(probabilities) or sum(probabilities, ZERO) != Decimal(1) or not ZERO < confidence < Decimal(1):
-        raise ValueError("ES requires aligned common paths and confidence in (0,1)")
-    tail = Decimal(1) - confidence
-    rows = sorted(zip(losses, probabilities, strict=True), key=lambda item: item[0], reverse=True)
-    remaining = tail
-    weighted = ZERO
-    for loss, probability in rows:
-        mass = min(probability, remaining)
-        weighted += mass * loss
-        remaining -= mass
-        if remaining <= ZERO:
-            break
-    if remaining != ZERO:
-        raise ValueError("ES probability mass does not cover requested tail")
-    return weighted / tail
+    # Shared arithmetic owner for historical and mean-action paths; saved
+    # method/artifact identities and numerical behavior remain unchanged.
+    from atlas.v2.science.portfolio import empirical_es_cash
+    return empirical_es_cash(losses, probabilities, confidence)
 
 
 def make_outcome_distribution(scenario: PretradeExecutionScenarioV2,

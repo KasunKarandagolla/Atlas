@@ -1,0 +1,22 @@
+{
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "versions": {
+    "lightgbm": "4.7.0",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "pyarrow": "25.0.1",
+    "duckdb": "1.5.5",
+    "nautilus-trader": "2.0.0rc5",
+    "pytest": "9.1.1",
+    "ruff": "0.17.0",
+    "mypy": "2.4.0",
+    "hypothesis": "6.169.0",
+    "PySide6": "6.11.2",
+    "pyqtgraph": "0.14.0"
+  },
+  "model_confirmation": "Owner confirmed selected GPT-6.1 Sol and directed continuation; authoritative runtime model attestation unavailable.",
+  "subagents": false,
+  "source_build_hash": "81a268d4bbade5999b3057d9301411eacf4fa14752a2f09013bd918bc5e363a7",
+  "environment_grade": "CLOUD_OFFLINE_RESEARCH_NOT_TARGET_HOST_QUALIFICATION"
+}

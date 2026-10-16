@@ -1215,3 +1215,9 @@ def compare_m1_to_m0(*, action_hash: str, m1_prediction_ref: str, m0_prediction_
     return M1IncrementalComparisonV2(action_hash, m0_prediction_ref, m1_prediction_ref, common,
         m0_mae, m1_mae, m1_mae - m0_mae, None, None, None, "HISTORICAL_DIAGNOSTIC",
         "FORECAST_LOSS_ONLY_POLICY_VALUE_NOT_ESTIMABLE")
+
+
+def fit_mean_action_challenger(*args, **kwargs):
+    """Offline L2 challenger; historical L1 artifact identity is unchanged."""
+    from atlas.v2.science.mean_models import fit_m1_mean
+    return fit_m1_mean(*args, **kwargs)

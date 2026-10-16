@@ -118,3 +118,10 @@ Issue ENGINEERING_COMPLETE / OPERATIONALLY_QUALIFIED / BLOCKED with the unresolv
 | Package scripts/entry wrappers/docs | Frozen recipe | P3 Luna | Clean start/import/recover and no hidden downloads |
 
 No broad split of `production.py`, `admission.py`, `product.py` or `memory/repository.py` is required. Extract a small compatible evaluation reader, renderer or adapter only when the actual consumer boundary justifies it. No source module is retired merely because it looks old.
+
+
+## P1 offline implementation checkpoint — 2026-10-16 (review pending)
+
+Owner-authorized P1 candidate `impl/atlas-red-p1-quant-foundation-2026-10-16` is based on verified `3cb4f052472623381145573523c7077950de78fd`, descendant of accepted f9f8ef0. Functioning new offline route is owned by existing `science/evaluation_service.py` with focused `mean_evaluation`, `mean_models`, `mean_scenarios`, `mean_research` and research semantic modules. Reuses contracts/risk/action/costs/portfolio/OpsRepository/LightGBM owners; no second operational controller or store. Historical routes/readers remain. No SQL migration, live allocation/OMS/native lifecycle, renderer/weight loader or campaign runtime added.
+
+Source build `81a268d4bbade5999b3057d9301411eacf4fa14752a2f09013bd918bc5e363a7`; full source symbols, 52 versioned contracts, exact fields/units/clock/refusal rules and P2/P3/P4 fixture handoff: [P1 report](../docs/v2/ATLAS_RED_P1_HANDOFF.md) and [interface inventory](../docs/v2/transition-p1-quant-evidence/interface-inventory.json). Tests: combined 1,137 pass/1 skip, final P1+IPC 132 pass, preservation 272 pass/two long S3 exclusions; coverage union 1,420 pass/1 skip, not full-suite qualification. Mypy has exact baseline 53 errors/17 files. Acceptance CSV distinguishes tested P1 subsets from overall open rows. Actual pretrained/provider/renderer, operational native lifecycle, integrated prospective campaign and host/economic qualifications remain later gates. Independent exact-remote-SHA P1 review must precede P2. This append records progress only; canonical design/PDF/manual/proposed policy and accepted meanings are unchanged.

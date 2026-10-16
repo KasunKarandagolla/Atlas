@@ -1,5 +1,14 @@
 # ATLAS engineering log
 
+## Current checkpoint — P1 offline mean-action foundation — 2026-10-16
+
+**IMPLEMENTED / TESTED OFFLINE; INDEPENDENT REVIEW PENDING:** Owner authorized P1 and confirmed selected GPT-6.1 Sol; independent runtime model attestation unavailable, no subagents. Isolated `impl/atlas-red-p1-quant-foundation-2026-10-16` starts at verified remote `3cb4f052472623381145573523c7077950de78fd`, descendant of accepted design `f9f8ef083ba5bafcad9bab4d07227676200a948f` and R9. Adds functioning evaluation-before-selection, independently sized exact actions, actual squared-loss M0/L2 LightGBM mean fits/compact inference, cash/scenario risk, B contracts, offline management/statistics and downstream semantic contracts. Existing operational route/readers remain historical; no SQL migration.
+
+**EVIDENCE:** Final source build `81a268d4bbade5999b3057d9301411eacf4fa14752a2f09013bd918bc5e363a7`. Combined group 1,137 pass/1 skip; final P1+IPC 132 pass; preservation 272 pass/2 long S3 cases deselected. Deduplicated latest observations 1,420 pass/1 skip, not a full-suite run. Initial two missing-Qt failures resolved with declared pinned dependencies; original failures retained. Ruff/compile/pip/uv-lock/diff checks pass; mypy exact baseline 53 errors/17 files, zero normalized delta. Three freeze hashes unchanged. All economic/account evidence synthetic; real local empirical/ridge/LightGBM fits are not profitability evidence. See [P1 handoff](docs/v2/ATLAS_RED_P1_HANDOFF.md) and [evidence manifest](docs/v2/transition-p1-quant-evidence/evidence-manifest.json).
+
+**NEXT GATE:** Push isolated candidate, verify exact remote SHA in final delivery, then independent exact-build P1 acceptance before P2. No merge, deployment, provider/venue reads or orders, policy activation or capital. OBSERVE, paid allocation zero, capital NO-GO. Manual-account consent and operative amendment remain pending. Earlier checkpoints below are historical, not current authorization status.
+
+
 ## Current checkpoint — GitHub-live workflow migration — 2026-10-16
 
 **CONFIRMED:** The independently accepted final documentation/design publication is `f9f8ef083ba5bafcad9bab4d07227676200a948f`; underlying runtime remains R9 `96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd`. The acceptance record is published under `docs/project/` with explicit manual/adoption and operative-policy approval gates. Root `AGENTS.md` now routes substantive work to the verified live GitHub algorithm and separate historical freezes for replay. All three historic freeze SHA-256 values were rechecked against owner-source copies.

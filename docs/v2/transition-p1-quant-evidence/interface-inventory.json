@@ -1,0 +1,3495 @@
+{
+  "source_build_hash": "81a268d4bbade5999b3057d9301411eacf4fa14752a2f09013bd918bc5e363a7",
+  "serialization": "OfflineArtifact.to_dict/from_dict/from_json; strict exact versions, all fields required on wire, Decimal strings, finite floats, ordered tuples, canonical SHA256 content identities",
+  "contracts": [
+    {
+      "producer_module": "src/atlas/v2/contracts.py",
+      "symbol": "EvaluationCandidateV1",
+      "version": "ATLAS_RED_EVALUATION_CANDIDATE_V1",
+      "fields": [
+        {
+          "name": "candidate_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "candidate_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "initial_rank",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "source_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "inclusion_probability",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "exploration",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "usefulness",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "information_gain",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "freshness",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "uncertainty",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "estimated_cpu_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "missing_reasons",
+          "type": "tuple[str, ...]",
+          "default": "()"
+        },
+        {
+          "name": "proxy_cash",
+          "type": "Decimal | None",
+          "default": "None"
+        },
+        {
+          "name": "proxy_support_ref",
+          "type": "str | None",
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/contracts.py",
+      "symbol": "CandidateEvaluationSetV1",
+      "version": "ATLAS_RED_MEAN_ACTION_EVALUATION_V1",
+      "fields": [
+        {
+          "name": "event_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "slot_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "cutoff_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "deadline_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "universe_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "instrument_revision_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "permission_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "evaluation_policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "candidates",
+          "type": "tuple[EvaluationCandidateV1, ...]",
+          "default": null
+        },
+        {
+          "name": "cpu_budget_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "wall_budget_ns",
+          "type": "int",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/contracts.py",
+      "symbol": "EvaluationWorkV1",
+      "version": "ATLAS_RED_EVALUATION_WORK_V1",
+      "fields": [
+        {
+          "name": "candidate_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "attempt_index",
+          "type": "int | None",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "started_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "finished_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "cpu_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "sizing_ref",
+          "type": "str | None",
+          "default": null
+        },
+        {
+          "name": "action_ref",
+          "type": "str | None",
+          "default": null
+        },
+        {
+          "name": "evaluation_ref",
+          "type": "str | None",
+          "default": null
+        },
+        {
+          "name": "reasons",
+          "type": "tuple[str, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/contracts.py",
+      "symbol": "ActionEvaluationV1",
+      "version": "ATLAS_RED_ACTION_EVALUATION_V1",
+      "fields": [
+        {
+          "name": "population_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "candidate_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "action_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "model_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "calibration_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "scenario_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "execution_bias_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "numerical_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "incremental_programme_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "mean_cash",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "mean_selection_allowance",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "execution_bias_allowance",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "numerical_allowance",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "incremental_programme_cost",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "score_cash",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "risk_increment_cash",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "j_cash",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "reasons",
+          "type": "tuple[str, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/contracts.py",
+      "symbol": "EligibleSetV1",
+      "version": "ATLAS_RED_ELIGIBLE_SET_OFFLINE_V1",
+      "fields": [
+        {
+          "name": "population",
+          "type": "CandidateEvaluationSetV1",
+          "default": null
+        },
+        {
+          "name": "evaluations",
+          "type": "tuple[ActionEvaluationV1, ...]",
+          "default": null
+        },
+        {
+          "name": "work",
+          "type": "tuple[EvaluationWorkV1, ...]",
+          "default": null
+        },
+        {
+          "name": "sealed_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "cpu_used_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "wall_used_ns",
+          "type": "int",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/contracts.py",
+      "symbol": "SelectionResultV1",
+      "version": "ATLAS_RED_SELECTION_RESULT_OFFLINE_V1",
+      "fields": [
+        {
+          "name": "request_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "eligible_set_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "response_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "decision",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "action_ref",
+          "type": "str | None",
+          "default": null
+        },
+        {
+          "name": "validated_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "authority",
+          "type": "str",
+          "default": "'OFFLINE_RESEARCH_ONLY'"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/models/mean_timeseries.py",
+      "symbol": "NumericalModelManifestV1",
+      "version": "ATLAS_RED_RESEARCH_NUMERICAL_MODEL_MANIFEST_V1",
+      "fields": [
+        {
+          "name": "checkpoint",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "checkpoint_revision",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "weight_hashes",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "tokenizer",
+          "type": "str | None",
+          "default": null
+        },
+        {
+          "name": "tokenizer_revision",
+          "type": "str | None",
+          "default": null
+        },
+        {
+          "name": "tokenizer_hashes",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "runtime_lock_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "preprocessing_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "postprocessing_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "context_limit",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "horizon_limit",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "native_quantiles",
+          "type": "tuple[Decimal, ...]",
+          "default": null
+        },
+        {
+          "name": "input_channels",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "input_units",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "target_transform",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "quantile_mode",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "training_cutoff_ns",
+          "type": "int | None",
+          "default": null
+        },
+        {
+          "name": "contamination_class",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "sampling_seed",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "sampling_paths",
+          "type": "int",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/models/mean_timeseries.py",
+      "symbol": "TimeMajorResearchInputV1",
+      "version": "ATLAS_RED_TIME_MAJOR_RESEARCH_INPUT_V1",
+      "fields": [
+        {
+          "name": "manifest",
+          "type": "NumericalModelManifestV1",
+          "default": null
+        },
+        {
+          "name": "instrument_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "origin_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "cadence_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "close_times_ns",
+          "type": "tuple[int, ...]",
+          "default": null
+        },
+        {
+          "name": "available_times_ns",
+          "type": "tuple[int, ...]",
+          "default": null
+        },
+        {
+          "name": "values",
+          "type": "tuple[tuple[Decimal | None, ...], ...]",
+          "default": null
+        },
+        {
+          "name": "missing_mask",
+          "type": "tuple[tuple[bool, ...], ...]",
+          "default": null
+        },
+        {
+          "name": "past_covariate_names",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "past_covariates",
+          "type": "tuple[tuple[Decimal | None, ...], ...]",
+          "default": null
+        },
+        {
+          "name": "future_covariate_names",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "future_covariates",
+          "type": "tuple[tuple[Decimal, ...], ...]",
+          "default": null
+        },
+        {
+          "name": "future_known_at_ns",
+          "type": "tuple[int, ...]",
+          "default": null
+        },
+        {
+          "name": "horizon_steps",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "requested_quantiles",
+          "type": "tuple[Decimal, ...]",
+          "default": null
+        },
+        {
+          "name": "past_covariate_units",
+          "type": "tuple[str, ...]",
+          "default": "()"
+        },
+        {
+          "name": "future_covariate_units",
+          "type": "tuple[str, ...]",
+          "default": "()"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/models/mean_timeseries.py",
+      "symbol": "TimeMajorResearchOutputV1",
+      "version": "ATLAS_RED_TIME_MAJOR_RESEARCH_OUTPUT_V1",
+      "fields": [
+        {
+          "name": "request",
+          "type": "TimeMajorResearchInputV1",
+          "default": null
+        },
+        {
+          "name": "started_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "completed_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "deadline_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "quantiles",
+          "type": "tuple[Decimal, ...]",
+          "default": null
+        },
+        {
+          "name": "values",
+          "type": "tuple[tuple[Decimal, ...], ...]",
+          "default": null
+        },
+        {
+          "name": "output_unit",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "provenance",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_effort.py",
+      "symbol": "EffortContractV1",
+      "version": "ATLAS_RED_PROSPECTIVE_EFFORT_CONTRACT_V1",
+      "fields": [
+        {
+          "name": "requested",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "effective",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "changed_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "native_clock_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "mandatory_observation_ns",
+          "type": "int",
+          "default": "CHEAP_REFRESH_NS"
+        },
+        {
+          "name": "mandatory_outcomes",
+          "type": "bool",
+          "default": "True"
+        },
+        {
+          "name": "mandatory_safety",
+          "type": "bool",
+          "default": "True"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_effort.py",
+      "symbol": "VerifiedRescreenV1",
+      "version": "ATLAS_RED_VERIFIED_FUTURE_RESCREEN_V1",
+      "fields": [
+        {
+          "name": "event_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "asset_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "mapping_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "setup_episode_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "original_trigger_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "source_available_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "accepted_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "due_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "event_valid_until_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "parent_job_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "verified",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "recursion_depth",
+          "type": "int",
+          "default": "0"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_evidence.py",
+      "symbol": "NumericalFactV1",
+      "version": "ATLAS_RED_NUMERICAL_FACT_V1",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "instrument_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "value",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "unit",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "event_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "confirmation_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "missing_reason",
+          "type": "str | None",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_evidence.py",
+      "symbol": "MeanDecisionBriefV1",
+      "version": "ATLAS_RED_OFFLINE_MEAN_DECISION_BRIEF_V1",
+      "fields": [
+        {
+          "name": "eligible_set",
+          "type": "EligibleSetV1",
+          "default": null
+        },
+        {
+          "name": "facts",
+          "type": "tuple[NumericalFactV1, ...]",
+          "default": null
+        },
+        {
+          "name": "required_fact_names",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "context_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "model_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "memory_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "outcome_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "missing_reasons",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "scope",
+          "type": "str",
+          "default": "'OFFLINE_RESEARCH_ONLY'"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_evidence.py",
+      "symbol": "ChartBarV1",
+      "version": "ATLAS_RED_CHART_COMPLETED_BAR_V1",
+      "fields": [
+        {
+          "name": "open_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "close_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "open",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "high",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "low",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "close",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "base_volume",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_evidence.py",
+      "symbol": "ChartEvidenceBundleV1",
+      "version": "ATLAS_RED_CHART_EVIDENCE_V1",
+      "fields": [
+        {
+          "name": "job_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "eligible_set_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "action_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "key",
+          "type": "InstrumentKeyV2",
+          "default": null
+        },
+        {
+          "name": "product_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_health_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "indicator_definitions_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "template_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "model_manifest_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "bars",
+          "type": "tuple[ChartBarV1, ...]",
+          "default": null
+        },
+        {
+          "name": "facts",
+          "type": "tuple[NumericalFactV1, ...]",
+          "default": null
+        },
+        {
+          "name": "cutoff_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "deadline_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "strategy",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "price_basis",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "feed_kind",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "availability_class",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "disclosure",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "width",
+          "type": "int",
+          "default": "1280"
+        },
+        {
+          "name": "height",
+          "type": "int",
+          "default": "720"
+        },
+        {
+          "name": "action_side",
+          "type": "str",
+          "default": "'LONG'"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_evidence.py",
+      "symbol": "EvidenceClaimV1",
+      "version": "ATLAS_RED_NUMERICAL_EVIDENCE_CLAIM_V1",
+      "fields": [
+        {
+          "name": "bundle_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "fact_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "value",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "unit",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "observation",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "predicate_id",
+          "type": "str | None",
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_evidence.py",
+      "symbol": "RendererBenchmarkV1",
+      "version": "ATLAS_RED_RENDERER_BENCHMARK_V1",
+      "fields": [
+        {
+          "name": "bundle_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "route",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "os",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "target_host_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "cpu_class",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "ram_bytes",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "source_parity",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "privacy_pass",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "licence_pass",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "cold_p95_ms",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "warm_p95_ms",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "process_tree_peak_bytes",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "install_and_temp_peak_bytes",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "safety_p99_ms",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "end_to_end_p95_ms",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "actual_cost_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "encoded_bytes",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "samples",
+          "type": "int",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_management.py",
+      "symbol": "ManagementPositionV1",
+      "version": "ATLAS_RED_MANAGEMENT_POSITION_RESEARCH_V1",
+      "fields": [
+        {
+          "name": "product_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "fee_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "funding_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "ownership_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "permission_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "position_epoch",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "side",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "possible_closing_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "entry_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "current_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "stop_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "initial_stop_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "horizon_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "entry_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "cutoff_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "entry_fees_remaining_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "funding_debit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "future_slippage_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "sunk_realized_cash",
+          "type": "Decimal",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_management.py",
+      "symbol": "ManagementAlternativeV1",
+      "version": "ATLAS_RED_REGISTERED_MANAGEMENT_ALTERNATIVE_V1",
+      "fields": [
+        {
+          "name": "position_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "registry_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "close_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "stop_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "take_profit_price",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "trailing_fraction",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "horizon_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "trigger_price",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "authority",
+          "type": "str",
+          "default": "'OFFLINE_RESEARCH_ONLY'"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_management.py",
+      "symbol": "ManagementFutureValueV1",
+      "version": "ATLAS_RED_MANAGEMENT_FUTURE_VALUE_V1",
+      "fields": [
+        {
+          "name": "position_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "alternative_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "common_path_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "future_cash",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "residual_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "released_at_ns",
+          "type": "int | None",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_management.py",
+      "symbol": "RotationBranchV1",
+      "version": "ATLAS_RED_CONDITIONAL_ROTATION_RESEARCH_V1",
+      "fields": [
+        {
+          "name": "common_path_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "hold_a",
+          "type": "ManagementFutureValueV1",
+          "default": null
+        },
+        {
+          "name": "close_a",
+          "type": "ManagementFutureValueV1",
+          "default": null
+        },
+        {
+          "name": "replacement_action_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "replacement_cash",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "replacement_margin_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "released_margin_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "replacement_available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "replacement_expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "future_programme_cost_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_selection.py",
+      "symbol": "MeanSelectionRequestV1",
+      "version": "ATLAS_RED_B_SELECTION_REQUEST_OFFLINE_V1",
+      "fields": [
+        {
+          "name": "eligible_set_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "permission_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_prefix_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "issued_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "deadline_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "nonce",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "allowed_bundle_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "operation_scope",
+          "type": "str",
+          "default": "'OFFLINE_SELECT_ONE'"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_selection.py",
+      "symbol": "MeanSelectionResponseV1",
+      "version": "ATLAS_RED_B_SELECTION_RESPONSE_OFFLINE_V1",
+      "fields": [
+        {
+          "name": "request_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "eligible_set_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "permission_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_prefix_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "response_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "nonce",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "decision",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "action_ref",
+          "type": "str | None",
+          "default": null
+        },
+        {
+          "name": "returned_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "claims",
+          "type": "tuple[EvidenceClaimV1, ...]",
+          "default": null
+        },
+        {
+          "name": "reason",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "operation_scope",
+          "type": "str",
+          "default": "'OFFLINE_SELECT_ONE'"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_tools.py",
+      "symbol": "ResearchWorkBudgetV1",
+      "version": "ATLAS_RED_RESEARCH_WORK_BUDGET_V1",
+      "fields": [
+        {
+          "name": "maximum_rows",
+          "type": "int",
+          "default": "512"
+        },
+        {
+          "name": "maximum_bytes",
+          "type": "int",
+          "default": "65536"
+        },
+        {
+          "name": "cpu_budget_ns",
+          "type": "int",
+          "default": "20000000"
+        },
+        {
+          "name": "wall_budget_ns",
+          "type": "int",
+          "default": "50000000"
+        },
+        {
+          "name": "maximum_tool_calls",
+          "type": "int",
+          "default": "4"
+        },
+        {
+          "name": "maximum_model_calls",
+          "type": "int",
+          "default": "3"
+        },
+        {
+          "name": "supplementary_rounds",
+          "type": "int",
+          "default": "1"
+        },
+        {
+          "name": "paid_budget_cash",
+          "type": "Decimal",
+          "default": "Decimal(0)"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_tools.py",
+      "symbol": "RegisteredToolRequestV1",
+      "version": "ATLAS_RED_REGISTERED_TOOL_REQUEST_V1",
+      "fields": [
+        {
+          "name": "job_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "parent_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "population_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "action_ref",
+          "type": "str | None",
+          "default": null
+        },
+        {
+          "name": "family",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "operation",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "input_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "instrument_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "raw_cutoff_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "input_cutoff_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "deadline_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "budget",
+          "type": "ResearchWorkBudgetV1",
+          "default": null
+        },
+        {
+          "name": "missing_fact",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "intended_use",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "idempotency_key",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "protected_holdout",
+          "type": "bool",
+          "default": "False"
+        },
+        {
+          "name": "recursion_depth",
+          "type": "int",
+          "default": "0"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/research/mean_tools.py",
+      "symbol": "RegisteredToolReceiptV1",
+      "version": "ATLAS_RED_REGISTERED_TOOL_RECEIPT_V1",
+      "fields": [
+        {
+          "name": "request_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "input_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "calculation",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "started_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "finished_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "cpu_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "output",
+          "type": "FrozenMap",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "missing_reasons",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "output_hash",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/risk.py",
+      "symbol": "SnapshotExposureV1",
+      "version": "ATLAS_RED_OFFLINE_EXPOSURE_V1",
+      "fields": [
+        {
+          "name": "obligation_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "instrument_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "normal_loss_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "stress_loss_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "gross_notional_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "margin_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "beta_notional_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "margin_reflected_in_available",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "bot_allocation_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "joint_stress_pnl_cash",
+          "type": "tuple[Decimal, ...]",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/risk.py",
+      "symbol": "OfflineRiskSnapshotV1",
+      "version": "ATLAS_RED_OFFLINE_ACCOUNT_RISK_SNAPSHOT_V1",
+      "fields": [
+        {
+          "name": "account_scope_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "venue",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "environment",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "product",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_revision",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "position_revision",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "order_revision",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "ownership_revision",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "permission_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "risk_policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "observed_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "equity_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "exchange_available_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "bot_allocation_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "manual_reserve_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "uncertainty_reserve_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "rolling_loss_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "exposures",
+          "type": "tuple[SnapshotExposureV1, ...]",
+          "default": null
+        },
+        {
+          "name": "stress_ids",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "complete",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "default": "'CURRENT'"
+        },
+        {
+          "name": "mode",
+          "type": "str",
+          "default": "'OBSERVE'"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/risk.py",
+      "symbol": "MeanMarginTierV1",
+      "version": "ATLAS_RED_OFFLINE_MARGIN_TIER_V1",
+      "fields": [
+        {
+          "name": "notional_ceiling_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "initial_margin_fraction",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "maintenance_fraction",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "maintenance_deduction_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "leverage_limit",
+          "type": "Decimal",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/risk.py",
+      "symbol": "IndependentRiskProfileV1",
+      "version": "ATLAS_RED_INDEPENDENT_RISK_PROFILE_V1",
+      "fields": [
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "product_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "risk_policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "permission_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "max_snapshot_age_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "normal_trade_limit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "normal_total_limit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "rolling_limit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "stress_trade_limit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "joint_stress_limit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "gross_limit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "instrument_limit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "beta_limit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "allowed_leverages",
+          "type": "tuple[Decimal, ...]",
+          "default": null
+        },
+        {
+          "name": "tiers",
+          "type": "tuple[MeanMarginTierV1, ...]",
+          "default": null
+        },
+        {
+          "name": "adverse_funding_per_unit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "execution_loss_per_unit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "impact_per_unit_squared_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "stress_exit_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "liquidation_buffer_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "beta",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "qualification_ref",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/risk.py",
+      "symbol": "IndependentSizingV1",
+      "version": "ATLAS_RED_INDEPENDENT_SIZING_V1",
+      "fields": [
+        {
+          "name": "candidate_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "profile_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "product_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "fee_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "normal_loss_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "stress_loss_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "notional_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "margin_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "leverage",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "reasons",
+          "type": "tuple[str, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/action.py",
+      "symbol": "ExactActionV1",
+      "version": "ATLAS_RED_EXACT_ACTION_V1",
+      "fields": [
+        {
+          "name": "candidate_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "candidate_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "population_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "key",
+          "type": "InstrumentKeyV2",
+          "default": null
+        },
+        {
+          "name": "product_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "setup_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "cutoff_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "deadline_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "horizon_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "terminal_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "side",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "entry_reference",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "entry_collar",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "stop_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "stop_basis",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "entry_trigger_basis",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "stop_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "entry_rule",
+          "type": "FrozenMap",
+          "default": null
+        },
+        {
+          "name": "management_rule",
+          "type": "FrozenMap",
+          "default": null
+        },
+        {
+          "name": "exit_rule",
+          "type": "FrozenMap",
+          "default": null
+        },
+        {
+          "name": "registered_setup",
+          "type": "FrozenMap",
+          "default": null
+        },
+        {
+          "name": "fill_policy",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "sizing",
+          "type": "IndependentSizingV1",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "risk_profile_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "permission_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "fee_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "funding_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "execution_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "model_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/costs.py",
+      "symbol": "MeanCashFillV1",
+      "version": "ATLAS_RED_CASH_FILL_V1",
+      "fields": [
+        {
+          "name": "fill_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "leg",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "executable_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "prices_include_spread_impact_delay",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "additional_slippage_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/costs.py",
+      "symbol": "MeanFundingPaymentV1",
+      "version": "ATLAS_RED_MODELLED_OR_SETTLED_FUNDING_PAYMENT_V1",
+      "fields": [
+        {
+          "name": "at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "signed_rate",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "mark_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/costs.py",
+      "symbol": "MeanCashPathV1",
+      "version": "ATLAS_RED_CASH_PATH_V1",
+      "fields": [
+        {
+          "name": "action_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "common_path_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "provenance",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "fills",
+          "type": "tuple[MeanCashFillV1, ...]",
+          "default": null
+        },
+        {
+          "name": "funding",
+          "type": "tuple[MeanFundingPaymentV1, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/costs.py",
+      "symbol": "MeanCashValueV1",
+      "version": "ATLAS_RED_COMMON_TERMINAL_CASH_VALUE_V1",
+      "fields": [
+        {
+          "name": "action_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "path_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "terminal_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "trading_cash",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "fees_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "funding_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "slippage_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "filled_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "ioc_cancelled_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "residual_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "reasons",
+          "type": "tuple[str, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_evaluation.py",
+      "symbol": "MeanEvaluationPolicyV1",
+      "version": "ATLAS_RED_MEAN_EVALUATION_POLICY_OFFLINE_V1",
+      "fields": [
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "materiality_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "risk_lambda",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "require_es",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "portfolio_es_limit_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "es_confidence",
+          "type": "Decimal",
+          "default": "Decimal('0.975')"
+        },
+        {
+          "name": "authority",
+          "type": "str",
+          "default": "'OFFLINE_RESEARCH_ONLY'"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_evaluation.py",
+      "symbol": "CashAllowanceV1",
+      "version": "ATLAS_RED_CASH_ALLOWANCE_V1",
+      "fields": [
+        {
+          "name": "model_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "compatibility_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "cash",
+          "type": "Decimal",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_evaluation.py",
+      "symbol": "MeanContextV1",
+      "version": "ATLAS_RED_ORIGIN_KNOWN_ACTION_CONTEXT_V1",
+      "fields": [
+        {
+          "name": "candidate_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "compatibility_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "market_state",
+          "type": "float",
+          "default": null
+        },
+        {
+          "name": "raw_source_available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "source_observed_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "maximum_source_age_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "setup_parameters",
+          "type": "FrozenMap",
+          "default": "FrozenMap()"
+        },
+        {
+          "name": "missing_reasons",
+          "type": "tuple[str, ...]",
+          "default": "()"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_models.py",
+      "symbol": "MeanTrainingRowV1",
+      "version": "ATLAS_RED_MEAN_TRAINING_ROW_V1",
+      "fields": [
+        {
+          "name": "outcome_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "action_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "compatibility_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "feature_available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "origin_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "label_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "label_available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "features",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "target_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "provenance",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "execution_state",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_grade",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "revision",
+          "type": "int",
+          "default": "0"
+        },
+        {
+          "name": "target",
+          "type": "str",
+          "default": "MEAN_TARGET"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_models.py",
+      "symbol": "MeanSplitV1",
+      "version": "ATLAS_RED_PURGED_CALENDAR_SPLIT_V1",
+      "fields": [
+        {
+          "name": "train_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "calibration_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "test_end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "holdout_start_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "embargo_ns",
+          "type": "int",
+          "default": "DAY_NS"
+        },
+        {
+          "name": "embargo_justification_ref",
+          "type": "str | None",
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_models.py",
+      "symbol": "MeanModelV1",
+      "version": "ATLAS_RED_PREFIT_MEAN_MODEL_V1",
+      "fields": [
+        {
+          "name": "estimator",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "compatibility_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "training_cutoff_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "provenance",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "training_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "feature_order",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "centers",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "scales",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "support_min",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "support_max",
+          "type": "tuple[float, ...]",
+          "default": null
+        },
+        {
+          "name": "parameters",
+          "type": "FrozenMap",
+          "default": null
+        },
+        {
+          "name": "library_identity",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "target",
+          "type": "str",
+          "default": "MEAN_TARGET"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_research.py",
+      "symbol": "SelectedPolicyResidualV1",
+      "version": "ATLAS_RED_SELECTED_POLICY_MEAN_RESIDUAL_V1",
+      "fields": [
+        {
+          "name": "model_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "compatibility_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "outcome_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "origin_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "label_available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "prediction_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "target_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "execution_bias_already_charged",
+          "type": "bool",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_research.py",
+      "symbol": "MeanSelectionCalibrationV1",
+      "version": "ATLAS_RED_SELECTED_POLICY_MEAN_CALIBRATION_V1",
+      "fields": [
+        {
+          "name": "model_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "compatibility_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "block_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "effective_blocks",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "calibration_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "allowance_cash",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "conditional_scope",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_research.py",
+      "symbol": "ProgrammeProtocolV1",
+      "version": "ATLAS_RED_REGISTERED_PROGRAMME_PROTOCOL_V1",
+      "fields": [
+        {
+          "name": "registered_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "family",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "policy_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "ablations",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "planned_looks_ns",
+          "type": "tuple[int, ...]",
+          "default": null
+        },
+        {
+          "name": "block_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "block_sensitivities_ns",
+          "type": "tuple[int, ...]",
+          "default": null
+        },
+        {
+          "name": "minimum_blocks",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "materiality_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "maximum_interval_width_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "maximum_tail_loss_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "starting_capital_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "information_policy_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "holdout_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "total_alpha",
+          "type": "float",
+          "default": "0.05"
+        },
+        {
+          "name": "bootstrap_resamples",
+          "type": "int",
+          "default": "10000"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_research.py",
+      "symbol": "ProgrammeObservationV1",
+      "version": "ATLAS_RED_PUBLIC_OPPORTUNITY_PROGRAMME_CASH_V1",
+      "fields": [
+        {
+          "name": "opportunity_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "slot_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "label_available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "arm",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "trading_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "programme_cost_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "external_cashflow_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "missed_opportunity_cash",
+          "type": "Decimal | None",
+          "default": null
+        },
+        {
+          "name": "outcome",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "provenance",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "bill_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_research.py",
+      "symbol": "ResearchLedgerV1",
+      "version": "ATLAS_RED_EVOLVING_RESEARCH_LEDGER_V1",
+      "fields": [
+        {
+          "name": "arm",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "equity_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "allocation_ceiling_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "locked_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "cumulative_programme_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "external_cashflow_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "paid_bill_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "opportunity_ids",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "exposures",
+          "type": "tuple[ResearchExposureV1, ...]",
+          "default": "()"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_research.py",
+      "symbol": "ProtectedMeanHoldoutV1",
+      "version": "ATLAS_RED_PROTECTED_MEAN_HOLDOUT_V1",
+      "fields": [
+        {
+          "name": "family_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "compatibility_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "reserved_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "start_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "end_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "outcome_refs",
+          "type": "tuple[str, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_research.py",
+      "symbol": "ResearchExposureV1",
+      "version": "ATLAS_RED_RESEARCH_EXPOSURE_PROJECTION_V1",
+      "fields": [
+        {
+          "name": "instrument_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "position_epoch",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "signed_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "entry_price",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "margin_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "possible_increasing_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "reserved_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_scenarios.py",
+      "symbol": "MeanMarketPointV1",
+      "version": "ATLAS_RED_COMMON_EXECUTION_POINT_V1",
+      "fields": [
+        {
+          "name": "at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "mark",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "bid",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "ask",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "bid_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "ask_quantity",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "closed_m15_price",
+          "type": "Decimal | None",
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_scenarios.py",
+      "symbol": "MeanJointPathV1",
+      "version": "ATLAS_RED_COMMON_MARKET_PATH_V1",
+      "fields": [
+        {
+          "name": "common_path_id",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "probability",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "background_pnl_cash",
+          "type": "Decimal",
+          "default": null
+        },
+        {
+          "name": "points",
+          "type": "tuple[MeanMarketPointV1, ...]",
+          "default": null
+        },
+        {
+          "name": "funding",
+          "type": "tuple[MeanFundingPaymentV1, ...]",
+          "default": null
+        }
+      ]
+    },
+    {
+      "producer_module": "src/atlas/v2/science/mean_scenarios.py",
+      "symbol": "MeanScenarioSetV1",
+      "version": "ATLAS_RED_QUALIFIED_COMMON_SCENARIOS_V1",
+      "fields": [
+        {
+          "name": "product_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "account_snapshot_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "compatibility_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "source_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "execution_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "calibration_ref",
+          "type": "str",
+          "default": null
+        },
+        {
+          "name": "cutoff_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "terminal_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "source_available_at_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "entry_delay_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "exit_delay_ns",
+          "type": "int",
+          "default": null
+        },
+        {
+          "name": "paths",
+          "type": "tuple[MeanJointPathV1, ...]",
+          "default": null
+        },
+        {
+          "name": "stress_ids",
+          "type": "tuple[str, ...]",
+          "default": null
+        },
+        {
+          "name": "stress_exit_prices",
+          "type": "tuple[Decimal, ...]",
+          "default": null
+        },
+        {
+          "name": "probability_support",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "es_qualified",
+          "type": "bool",
+          "default": null
+        },
+        {
+          "name": "provenance",
+          "type": "str",
+          "default": null
+        }
+      ]
+    }
+  ]
+}

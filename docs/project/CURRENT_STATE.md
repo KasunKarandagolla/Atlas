@@ -10,11 +10,11 @@
 | **Independently accepted algorithm/design commit** | [`f9f8ef083ba5bafcad9bab4d07227676200a948f`](https://github.com/KasunKarandagolla/Atlas/commit/f9f8ef083ba5bafcad9bab4d07227676200a948f) |
 | Independent acceptance record | [ACCEPTANCE_F9F8EF_2026-10-16.md](ACCEPTANCE_F9F8EF_2026-10-16.md) |
 | Last verified implemented R9 branch/commit | `fix/red-r9-local-complete-cycle-2026-10-14` @ [`96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd`](https://github.com/KasunKarandagolla/Atlas/commit/96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd) |
-| This governance update | Documentation-only subsequent checkpoint; **not** a new trading design acceptance or runtime implementation |
+| P1 implementation candidate | `impl/atlas-red-p1-quant-foundation-2026-10-16`, from verified base `3cb4f052472623381145573523c7077950de78fd`; actual final remote SHA is in the delivery receipt, independent acceptance pending |
 | Repo default branch | `impl/session-001-foundation` (historical; **do not use as latest implementation**) |
 | Operating manual/account policy | `ATLAS_RED_SHARED_ACCOUNT_EXCLUSIVE_AGGREGATE_V1`: **PENDING OWNER APPROVAL** |
 | Operative policy amendment | `ATLAS_RED_ELIGIBLE_ACTION_COORDINATOR_V1`: **PROPOSED — NOT OPERATIONALLY EFFECTIVE** |
-| P1 Sol offline code/tests | **PENDING EXPLICIT OWNER SCOPE AUTHORIZATION**; no code start authorized by this status |
+| P1 Sol offline code/tests | **OWNER AUTHORIZED; IMPLEMENTED / TESTED OFFLINE**. Model owner-confirmed GPT-6.1 Sol; independent runtime attestation unavailable; no subagents |
 | Paid model, private venue, Demo/live, deployment, capital | **NOT AUTHORIZED**; capital **NO-GO** |
 | Economic qualification | **NOT ESTIMABLE**; no genuine proven after-cost edge |
 
@@ -26,9 +26,11 @@
 
 ## Engineering plan and truthfulness
 
-**Proposed minimum defensible work sequence** (not yet begun): **P1 GPT-6.1 Sol → P2 GPT-6.1 Sol → P3 GPT-6 Luna → P4 GPT-6.1 Sol → P5 fresh GPT-6.1 Sol.** Verify exact model including subagents. Sol owns finance, authority, protection and difficult integration; Luna only tested semantics-frozen mechanics. No P1 prompt or coding is created by this governance change.
+**Accepted planned sequence:** P1 GPT-6.1 Sol → P2 GPT-6.1 Sol → P3 GPT-6 Luna → P4 GPT-6.1 Sol → P5 fresh GPT-6.1 Sol. Owner authorized P1 offline work in this session; P1 is now a review candidate, not independently accepted. No P2 start is authorized by this status.
 
-Actual R9 implemented important causal/scanner/model/agent/execution/recovery primitives, but the new evaluation-before-selection and mean-action model are NOT IMPLEMENTED. The genuine production Brief chain is still BLOCKED; model/provider and venue native protection have not been qualified; storage and timing gates remain. Historical tests are not a fresh green suite. See R9 checkpoint in root log, [repository audit](../../algorithms/REPOSITORY_AUDIT.md) and [requirements](../../algorithms/REQUIREMENTS_AND_ACCEPTANCE.md).
+New evaluation-before-selection and mean-cash research route is implemented/tested offline; existing production remains historical pending P4 integration. Final source build `81a268d4bbade5999b3057d9301411eacf4fa14752a2f09013bd918bc5e363a7`. Combined checks 1,137 pass/1 skip, final P1+IPC 132 pass, preservation 272 pass/two long S3 exclusions; latest deduplicated coverage 1,420 pass/1 skip, not a full-suite run. Ruff/compile/pip/uv-lock/diff pass; mypy 53 baseline errors/17 files, zero normalized delta. Initial missing-Qt failures were resolved by declared pinned dependencies and retained in evidence. Three freezes, canonical design/PDF and policy bytes are unchanged.
+
+See [P1 handoff](../v2/ATLAS_RED_P1_HANDOFF.md), [verification](../v2/transition-p1-quant-evidence/verification.json), [interface inventory](../v2/transition-p1-quant-evidence/interface-inventory.json) and [evidence hashes](../v2/transition-p1-quant-evidence/evidence-manifest.json). Account/cash integration evidence is synthetic; real local model fits do not establish market edge. Actual account/native lifecycle, integrated production Brief/campaign, selected pretrained/provider/image conformance, Windows/minimum-host/storage/timing and prospective economics remain unqualified. No provider/venue/order/deployment/capital activity.
 
 ## Mandatory update discipline
 
@@ -38,4 +40,4 @@ After independent review, add an exact SHA acceptance/rejection record and advan
 
 ## Next gate
 
-**Await owner authorization of P1 offline GPT-6.1 Sol code scope**, with separate later owner decision on exact manual/adoption policy and separately accepted versioned operative authority. Before P1, independently check the latest pushed governance change and confirm no code changed, then use the source-anchored approved P1 scope if separately authorized. No paid/private/venue/order or capital activity.
+**Independent P1 review against the exact verified remote candidate SHA.** Inspect base→candidate source/tests, mathematical counterexamples, actual fit/inference, serialized contracts/replay, preserved readers, retained failures and limits. Record acceptance/rejection separately; only acceptance permits separately scoped dependent work. Do not self-accept or launch P2. Manual-account/adoption consent and operative policy approval remain separate pending owner decisions; capital NO-GO.

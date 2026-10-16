@@ -999,3 +999,9 @@ def index_m0_feature_vector(repo: OpsRepository, vector: M0FeatureVectorV2, avai
         raise ValueError("M0 vector cannot be available before cutoff")
     _index(repo, "M0FeatureVectorV2", vector.content_hash, available_at_ns, "feature_vector", vector.to_dict())
     return vector.content_hash
+
+
+def fit_mean_action_model(*args, **kwargs):
+    """Offline additive squared-loss target; historical Huber fit unchanged."""
+    from atlas.v2.science.mean_models import fit_m0_mean
+    return fit_m0_mean(*args, **kwargs)

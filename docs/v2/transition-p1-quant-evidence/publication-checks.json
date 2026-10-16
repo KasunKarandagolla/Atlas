@@ -1,0 +1,18 @@
+{
+  "source_build_hash": "81a268d4bbade5999b3057d9301411eacf4fa14752a2f09013bd918bc5e363a7",
+  "source_files_verified": 32,
+  "protected_base_files_identical": [
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md",
+    "algorithms/ATLAS_SYSTEM_DESIGN.md",
+    "algorithms/ATLAS_ALGORITHM.pdf",
+    "algorithms/SHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md",
+    "algorithms/ATLAS_OPERATIONAL_RECONCILIATION_AMENDMENT_PROPOSED.md",
+    "uv.lock",
+    "pyproject.toml"
+  ],
+  "acceptance_ids": 107,
+  "relative_document_links": "PASS",
+  "secrets_policy": "No account/provider payloads or private source documents included; synthetic fixtures explicitly labelled. Staged review follows."
+}

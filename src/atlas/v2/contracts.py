@@ -1164,3 +1164,200 @@ class OpportunityWatchV2:
             d["thesis_hash"], tuple(d["evidence_refs"]), d["required_next_event"], d["expires_at_ns"], d["last_evaluated_at_ns"],
             d.get("wake_at_ns"), tuple(d["invalidators"]), d.get("last_event_id"), d.get("parent_watch_id"), d.get("handoff_receipt"),
         )
+
+# New policy contracts are additive. CandidateSetV2 and its saved hashes above
+# retain their historical selected-first meaning.
+from atlas.v2.science.mean_common import OfflineArtifact, nonnegative, unique  # noqa: E402
+
+
+@dataclass(frozen=True)
+class EvaluationCandidateV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_EVALUATION_CANDIDATE_V1"
+    candidate_id: str
+    candidate_ref: str
+    initial_rank: int
+    source_refs: tuple[str, ...]
+    inclusion_probability: Decimal
+    exploration: bool
+    usefulness: Decimal
+    information_gain: Decimal
+    freshness: Decimal
+    uncertainty: Decimal
+    estimated_cpu_ns: int
+    missing_reasons: tuple[str, ...] = ()
+    proxy_cash: Decimal | None = None
+    proxy_support_ref: str | None = None
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if not self.candidate_id or self.initial_rank < 1 or not 0 < self.inclusion_probability <= 1:
+            raise ValueError("candidate identity/rank/inclusion invalid")
+        nonnegative(self.usefulness, self.information_gain, self.freshness, self.uncertainty)
+        if self.estimated_cpu_ns <= 0 or not self.source_refs:
+            raise ValueError("measured work estimate and source provenance required")
+        for ref in self.source_refs:
+            sha256_ref(ref, field="candidate source")
+        unique(self.source_refs)
+        if (self.proxy_cash is None) != (self.proxy_support_ref is None):
+            raise ValueError("unknown scheduling proxy cannot be a confidence bound")
+        if self.proxy_support_ref is not None and self.proxy_support_ref not in self.source_refs:
+            raise ValueError("training-only proxy support must be in origin provenance")
+
+
+@dataclass(frozen=True)
+class CandidateEvaluationSetV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_MEAN_ACTION_EVALUATION_V1"
+    event_id: str
+    slot_ns: int
+    cutoff_ns: int
+    deadline_ns: int
+    universe_ref: str
+    instrument_revision_ref: str
+    account_snapshot_ref: str
+    permission_ref: str
+    evaluation_policy_ref: str
+    candidates: tuple[EvaluationCandidateV1, ...]
+    cpu_budget_ns: int
+    wall_budget_ns: int
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if not self.event_id or not self.slot_ns <= self.cutoff_ns < self.deadline_ns:
+            raise ValueError("population original clock invalid")
+        if min(self.cpu_budget_ns, self.wall_budget_ns) <= 0:
+            raise ValueError("positive work budget required")
+        unique(tuple(x.candidate_id for x in self.candidates))
+        unique(tuple(x.candidate_ref for x in self.candidates))
+        unique(tuple(x.initial_rank for x in self.candidates))
+
+
+@dataclass(frozen=True)
+class EvaluationWorkV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_EVALUATION_WORK_V1"
+    candidate_ref: str
+    attempt_index: int | None
+    status: str
+    started_ns: int
+    finished_ns: int
+    cpu_ns: int
+    sizing_ref: str | None
+    action_ref: str | None
+    evaluation_ref: str | None
+    reasons: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.status not in ("EVALUATED", "UNAVAILABLE", "NOT_EVALUATED_RESOURCE", "NOT_EVALUATED_DEADLINE"):
+            raise ValueError("invalid work status")
+        if self.finished_ns < self.started_ns or (self.status != "EVALUATED" and not self.reasons):
+            raise ValueError("work time/refusal reason invalid")
+        if self.status == "EVALUATED" and (self.action_ref is None or self.evaluation_ref is None):
+            raise ValueError("evaluated work needs exact action/evaluation")
+
+
+@dataclass(frozen=True)
+class ActionEvaluationV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_ACTION_EVALUATION_V1"
+    population_ref: str
+    candidate_ref: str
+    action_ref: str
+    account_snapshot_ref: str
+    model_ref: str
+    calibration_ref: str
+    scenario_ref: str
+    execution_bias_ref: str
+    numerical_ref: str
+    incremental_programme_ref: str
+    mean_cash: Decimal | None
+    mean_selection_allowance: Decimal | None
+    execution_bias_allowance: Decimal | None
+    numerical_allowance: Decimal | None
+    incremental_programme_cost: Decimal | None
+    score_cash: Decimal | None
+    risk_increment_cash: Decimal | None
+    j_cash: Decimal | None
+    available_at_ns: int
+    status: str
+    reasons: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.status not in ("ELIGIBLE", "INELIGIBLE", "UNAVAILABLE"):
+            raise ValueError("invalid evaluation status")
+        if self.status == "ELIGIBLE":
+            terms = (self.mean_cash, self.mean_selection_allowance, self.execution_bias_allowance,
+                     self.numerical_allowance, self.incremental_programme_cost, self.risk_increment_cash, self.j_cash)
+            if any(x is None for x in terms) or self.score_cash is None or self.score_cash <= 0 or self.j_cash is None or self.j_cash <= 0 or self.reasons:
+                raise ValueError("incomplete positive eligible economics")
+        if self.score_cash is not None:
+            if any(x is None for x in (self.mean_cash, self.mean_selection_allowance,
+                   self.execution_bias_allowance, self.numerical_allowance, self.incremental_programme_cost)):
+                raise ValueError("score has missing terms")
+            assert self.mean_cash is not None and self.mean_selection_allowance is not None
+            assert self.execution_bias_allowance is not None and self.numerical_allowance is not None
+            assert self.incremental_programme_cost is not None
+            if self.score_cash != self.mean_cash - self.mean_selection_allowance - self.execution_bias_allowance - self.numerical_allowance - self.incremental_programme_cost:
+                raise ValueError("score arithmetic mismatch")
+        for value in (self.mean_selection_allowance, self.execution_bias_allowance,
+                      self.numerical_allowance, self.incremental_programme_cost):
+            if value is not None:
+                nonnegative(value)
+        if self.status != "ELIGIBLE" and not self.reasons:
+            raise ValueError("refusal must explain why")
+
+
+@dataclass(frozen=True)
+class EligibleSetV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_ELIGIBLE_SET_OFFLINE_V1"
+    population: CandidateEvaluationSetV1
+    evaluations: tuple[ActionEvaluationV1, ...]
+    work: tuple[EvaluationWorkV1, ...]
+    sealed_at_ns: int
+    cpu_used_ns: int
+    wall_used_ns: int
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        expected = tuple(x.candidate_ref for x in self.population.candidates)
+        if tuple(x.candidate_ref for x in self.work) != expected:
+            raise ValueError("work trace must preserve complete population order")
+        unique(tuple(x.action_ref for x in self.evaluations))
+        unique(tuple(x.candidate_ref for x in self.evaluations))
+        by_ref = {x.content_hash: x for x in self.evaluations}
+        traced = tuple(w.evaluation_ref for w in self.work if w.status == "EVALUATED")
+        if set(traced) != set(by_ref) or len(traced) != len(by_ref):
+            raise ValueError("evaluation trace is incomplete")
+        for w in self.work:
+            if w.status == "EVALUATED":
+                assert w.evaluation_ref is not None
+                e = by_ref[w.evaluation_ref]
+                if (e.candidate_ref != w.candidate_ref or e.action_ref != w.action_ref
+                        or e.population_ref != self.population.content_hash
+                        or e.account_snapshot_ref != self.population.account_snapshot_ref
+                        or e.available_at_ns > w.finished_ns):
+                    raise ValueError("evaluation population/trace binding mismatch")
+        if self.sealed_at_ns < max((w.finished_ns for w in self.work), default=self.population.cutoff_ns):
+            raise ValueError("seal precedes work")
+
+    @property
+    def members(self) -> tuple[ActionEvaluationV1, ...]:
+        return tuple(e for e in self.evaluations if e.status == "ELIGIBLE")
+
+
+@dataclass(frozen=True)
+class SelectionResultV1(OfflineArtifact):
+    VERSION: ClassVar[str] = "ATLAS_RED_SELECTION_RESULT_OFFLINE_V1"
+    request_ref: str
+    eligible_set_ref: str
+    response_id: str
+    decision: str
+    action_ref: str | None
+    validated_at_ns: int
+    authority: str = "OFFLINE_RESEARCH_ONLY"
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if (self.decision not in ("SELECT_ONE", "REJECT_ALL", "ABSTAIN") or not self.response_id
+                or (self.decision == "SELECT_ONE") != (self.action_ref is not None)
+                or self.authority != "OFFLINE_RESEARCH_ONLY"):
+            raise ValueError("invalid offline selection")
