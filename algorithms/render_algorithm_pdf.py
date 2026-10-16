@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import os
 import re
+import textwrap
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -66,7 +67,8 @@ BOLD = "AtlasSans-Bold" if FONT == "AtlasSans" else "Helvetica-Bold"
 MONO = "AtlasMono" if "AtlasMono" in pdfmetrics.getRegisteredFontNames() else "Courier"
 STYLES = {
     "body": ParagraphStyle("Body", fontName=FONT, fontSize=9.05, leading=12.6,
-                           textColor=INK, spaceAfter=7, splitLongWords=True),
+                           textColor=INK, spaceAfter=7, splitLongWords=True,
+                           allowWidows=0, allowOrphans=0),
     "small": ParagraphStyle("Small", fontName=FONT, fontSize=8.1, leading=11.4,
                             textColor=MUTED, spaceAfter=7),
     "title": ParagraphStyle("Title", fontName=BOLD, fontSize=35, leading=39,
@@ -124,7 +126,7 @@ def make_table(rows: list[list[str]]) -> Table:
         widths = [CW * 0.20, CW * 0.46, CW * 0.34]
     data = [[para(c, "head" if i == 0 else "cell") for c in row]
             for i, row in enumerate(rows)]
-    table = Table(data, colWidths=widths, repeatRows=1, hAlign="LEFT", splitInRow=1)
+    table = Table(data, colWidths=widths, repeatRows=1, hAlign="LEFT", splitInRow=0)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), NAVY),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT]),
@@ -168,7 +170,7 @@ def render(output: Path) -> None:
         canvas.line(LEFT, 35, W - RIGHT, 35)
         canvas.setFont(FONT, 7.0)
         canvas.setFillColor(MUTED)
-        canvas.drawString(LEFT, 22, "Final design. Qualification and capital gates remain mandatory.")
+        canvas.drawString(LEFT, 22, "Final target. Operative/manual approval and qualification gates remain open.")
         canvas.drawRightString(W - RIGHT, 22, str(doc.page))
         canvas.restoreState()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -186,7 +188,7 @@ def render(output: Path) -> None:
              Spacer(1, 17)]
     card = Table([[para("**Objective.** Maximum validated programme value within explicit risk, reliability, permission and resource limits.")],
                   [para("**Scope.** Preserve existing strengths. Implement every core requirement. No weaker MVP or core-feature backlog.")],
-                  [para("**Current authority.** Finalized design for implementation. No demonstrated after-cost edge or new capital permission.")]], colWidths=[CW])
+                  [para("**Current authority.** Final target for planning. Operative amendment proposed; manual-policy owner approval pending. No capital permission.")]], colWidths=[CW])
     card.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), LIGHT),
                               ("BOX", (0, 0), (-1, -1), 0.6, LINE),
                               ("LEFTPADDING", (0, 0), (-1, -1), 13),
@@ -196,7 +198,7 @@ def render(output: Path) -> None:
     story.extend([card, Spacer(1, 22), para("Prepared 16 October 2026 | Asia/Colombo", "small"),
                   para("R9 code baseline: 96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd", "small"),
                   para("Algorithm source SHA-256: " + digest, "small"),
-                  para("Implementation sequence: Sol S1-S4, Luna S5, Sol S6; later Sol evidence decision. Complete scopes and acceptance register accompany this PDF.", "small"),
+                  para("Implementation sequence: P1 Sol, P2 Sol, P3 Luna, P4 Sol, P5 fresh Sol; later evidence review if needed. Complete scopes and acceptance register accompany this PDF.", "small"),
                   PageBreak(), para("Contents", "h2")])
     toc = TableOfContents()
     toc.levelStyles = [STYLES["toc"]]
@@ -205,7 +207,7 @@ def render(output: Path) -> None:
     lines = source.splitlines()
     first_section = next(i for i, line in enumerate(lines) if line.startswith("## 1."))
     i = first_section
-    force_new = {1, 3, 4, 6, 7, 9, 10, 12, 14, 15, 16, 17, 18, 19}
+    force_new = {1, 17, 19}
     while i < len(lines):
         line = lines[i]
         if not line.strip():
@@ -232,16 +234,17 @@ def render(output: Path) -> None:
             i += 1
             code = []
             while i < len(lines) and not lines[i].startswith("```"):
-                code.append(Paragraph(escape(lines[i]).replace(" ", "&#160;"), STYLES["code"]))
+                for visual_line in textwrap.wrap(lines[i], width=100, replace_whitespace=False, drop_whitespace=False) or [" "]:
+                    code.append(Paragraph(escape(visual_line).replace(" ", "&#160;"), STYLES["code"]))
                 i += 1
             i += 1
-            box = Table([[code]], colWidths=[CW])
+            box = Table([[line] for line in code], colWidths=[CW], splitByRow=1)
             box.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), LIGHT),
                                      ("BOX", (0, 0), (-1, -1), .5, LINE),
                                      ("LEFTPADDING", (0, 0), (-1, -1), 10),
                                      ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-                                     ("TOPPADDING", (0, 0), (-1, -1), 10),
-                                     ("BOTTOMPADDING", (0, 0), (-1, -1), 10)]))
+                                     ("TOPPADDING", (0, 0), (-1, -1), 1),
+                                     ("BOTTOMPADDING", (0, 0), (-1, -1), 1)]))
             story.extend([box, Spacer(1, 10)])
         elif line.startswith("- "):
             story.append(para("- " + line[2:], "bullet"))

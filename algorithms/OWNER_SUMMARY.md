@@ -1,0 +1,17 @@
+# ATLAS RED - final documentation and owner gates
+
+**Target direction finalized; operative authority remains proposed.** The actual original owner decisions, target lock, transition, ADR-001 through ADR-011, runbook and three full freezes are now read/reconciled. The previous source gap is closed. All historical freeze bytes/hashes remain unchanged.
+
+**Clarifications in this pass:** B permits final SELECT_ONE of any independently eligible sealed exact action; no host argmax/10% band. DeepSeek remains the original preferred future candidate; Gemma's existing native research transport stays reusable, with one selected qualified route. Chart technology is selected only after same-evidence local/remote measurements on actual targets. Path B quarantine survives. Watch outbox/outcome queues retain their meanings; research tasks reuse namespaced persistence.
+
+**Manual-policy decision - PENDING OWNER APPROVAL:** prefer disjoint symbols and a whole-aggregate lease. Bind account/position/order/ownership A/P/O/W and actual/possible effects. Additions/reversals/ambiguous fills block new entries/optional management; proven reductions retain only explicitly accepted protection/time-risk duties. Stop edits invoke independent qualified repair only under proven mandate. No silent manual-order cancellation or adoption. Explicit adoption binds the entire current aggregate and one-use approval. MI01-MI12 cover quantities, unknown orders, stop/TP/fill races and restart.
+
+An existing close-all stop **can close newly added manual exposure before detection**. Explicit-quantity reduce-only orders still affect a fungible aggregate. Software cannot guarantee separate manual lots or perfect protection during an outage. Owner concurrence must explicitly accept those residual consequences before capital; this publication supplies no consent.
+
+**Plan unchanged:** five engineering sessions, **Sol -> Sol -> Luna -> Sol -> fresh Sol**. Quantitative contracts; capital/lifecycle; semantics-frozen mechanical/UI/packaging; real production/agent integration; independent review/qualification. P1/P2 publish tested complete interfaces before Luna. P4 cannot pass with a fake-only or permanently blocked pipeline. A justified sixth correction is allowed and counted honestly. Later prospective observation/economic review is separate.
+
+**Preserved:** one OMS/writer, causal S1-S8 and Path B research, ten-second breadth/native clocks, BTC/ETH/peers, model/economic diagnostics and selected real research runners, bounded tools/images/news/effort/memory, native protection/UNKNOWN/recovery, UI/IPC and V1 Bybit comparator. No source/dependency/schema/trading-code change occurs in this pass. The register retains 79 core, 12 preservation and 16 compound obligations plus manual subcases.
+
+**Remaining gates:** independent acceptance of the pushed documentation; explicit owner concurrence for the precise manual/adoption policy; exact operative amendment acceptance; subsequently approved P1 offline-code scope. Actual provider/venue/forecaster/72h host evidence and prospective after-cost profitability are unpassed. No paid call, private read, Demo/live order, deployment or capital permission is implied.
+
+**Next:** independently review the verified publication SHA, decide the exact owner-policy gates and approve P1's separate offline scope. The complete Sol P1 handoff is source-pinned after remote verification. Capital verdict remains **NO-GO**; no universal-profit or new runtime-pass claim is made.

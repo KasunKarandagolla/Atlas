@@ -1,0 +1,86 @@
+{
+  "status": "DOCUMENTATION_CHECKS_PASS; publication remote verification recorded separately after push",
+  "scope": "Documentation plus document-only PDF renderer and root checkpoint. No trading-code/test/dependency/schema/freeze/translog change.",
+  "parent_sha": "3436dde4ca5169d0cdec6befe8a485c0c0e992b2",
+  "runtime_ancestor": "96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd",
+  "source_reconciliation": "PASS: actual owner target/decisions, ADR-001-011, transition/runbook/signoff/trace/adversarial originals supplied/read/reconciled",
+  "original_freeze_hashes": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+  },
+  "original_packet_integrity": "PASS supplied CHECKSUMS.sha256; no original domain source missing; setup-only omissions explicit",
+  "requirement_checks": {
+    "core": 79,
+    "preservation": 12,
+    "compound": 16,
+    "manual_subcases": 12,
+    "unique_top_level_ids": 107,
+    "no_removed_prior_ids": true,
+    "csv_oracles_and_owners_equal_markdown": true,
+    "source_audit_columns": 12,
+    "all_source_anchors_verified": true
+  },
+  "pdf": {
+    "pages": 24,
+    "sha256": "0bdf5bf7cbf82b7a341915fff83faa26ebe1ae77a06ed8df6cf3975b13bfbf33",
+    "source_sha256": "384fc2914d227163ec94761d5eba8f5228786305432b5c620a6a4862d781678f",
+    "embedded_source_digest": true,
+    "body_vocabulary_coverage": 0.9997449413365074,
+    "missing_body_tokens": {
+      "work": 1,
+      "mapping": 1,
+      "text": 1
+    },
+    "deterministic_regeneration": true,
+    "rendered_all_pages": true,
+    "visual_review": "PASS: all 24 pages in three contact sheets; full-size manual/algorithm pages checked; no clipping/overlap/blank orphan page or unsupported glyph found",
+    "renderer": "PyMuPDF; bundled Poppler could not load libpoppler.so.160",
+    "links": 64,
+    "link_targets_and_relative_document_links": "PASS"
+  },
+  "stale_source_gap_statements": "NONE in active algorithms documents",
+  "markdown_fences_and_links": "PASS",
+  "relative_links_checked": 22,
+  "diff_whitespace_check": "PASS for text-only diff; standard PDF binary/xref whitespace validated separately by PDF readers and deterministic regeneration",
+  "new_delta_secret_pattern_scan": "PASS, no credential-like values matched; historical root content preserved",
+  "changed_paths_before_validation_manifest": [
+    "algorithms/ACCEPTANCE_REGISTER.csv",
+    "algorithms/ATLAS_ALGORITHM.pdf",
+    "algorithms/ATLAS_OPERATIONAL_RECONCILIATION_AMENDMENT_PROPOSED.md",
+    "algorithms/ATLAS_SYSTEM_DESIGN.md",
+    "algorithms/AUTHORITY_RECONCILIATION.md",
+    "algorithms/CAPABILITY_REUSE_AUDIT.csv",
+    "algorithms/CODEX_SESSION_PROMPTS.md",
+    "algorithms/DESIGN_DECISIONS.md",
+    "algorithms/IMPLEMENTATION_PLAN.md",
+    "algorithms/OWNER_SUMMARY.md",
+    "algorithms/README.md",
+    "algorithms/REPOSITORY_AUDIT.md",
+    "algorithms/REQUIREMENTS_AND_ACCEPTANCE.md",
+    "algorithms/SHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md",
+    "algorithms/SOURCE_AUTHORITY_MANIFEST.json",
+    "algorithms/SURGICAL_CHANGE_MAP.md",
+    "algorithms/render_algorithm_pdf.py",
+    "log.md"
+  ],
+  "runtime_tests_run_in_this_documentation_pass": false,
+  "historical_audit_result": "Prior selective run 80 cases: 69 pass/11 failures/0 skips; author-attributed dependency/snapshot blockers, not complete-green or independently proved harmless. R9 timing/resource/mypy and real qualification gates remain.",
+  "approval_gates": {
+    "target_direction": "CONDITIONAL DESIGN APPROVAL in supplied independent review",
+    "precise_manual_adoption_policy": "PENDING OWNER APPROVAL",
+    "operative_amendment": "PROPOSED - NOT OPERATIONALLY EFFECTIVE",
+    "independent_published_document_acceptance": "PENDING",
+    "P1_offline_implementation_scope": "SUBSEQUENT OWNER AUTHORIZATION REQUIRED",
+    "capital": "NO-GO"
+  },
+  "external_qualifications": "Actual provider/image/selected forecaster/native Demo/live profile/72h Windows-Linux/economic prospective evidence not passed here",
+  "calls": {
+    "paid_or_generation": 0,
+    "authenticated_venue_reads": 0,
+    "Demo_or_live_orders": 0,
+    "capital_or_deployment": 0,
+    "GitHub": "Authorized documentation publication only"
+  },
+  "working_state": "No existing local Git checkout in this workspace; earlier materialized snapshots untouched. Isolated documentation staging is based on exact verified remote blobs. GitHub tree creation preserves all unrelated blobs and branch update uses expected-head non-force lease."
+}

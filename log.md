@@ -1,5 +1,13 @@
 # ATLAS engineering log
 
+## Current checkpoint - Source-reconciled final documentation - 2026-10-16
+
+**CONFIRMED:** refreshed documentation head/parent `3436dde4ca5169d0cdec6befe8a485c0c0e992b2` and R9 runtime `96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd`. The supplied original owner decisions, target, ADR-001-011, transition/runbook and full freezes are now read/reconciled; previous source availability limitation is closed. Exact sources/sections/hashes are in `algorithms/AUTHORITY_RECONCILIATION.md` and `SOURCE_AUTHORITY_MANIFEST.json`.
+
+**DOCUMENTATION ONLY:** canonical algorithm/PDF, exact aggregate/manual transition policy and MI01-MI12, amendment identities, source audit/registers and five-session Sol/Sol/Luna/Sol/fresh-Sol plan are synchronized. Validation/checksums are `algorithms/DOCUMENTATION_VALIDATION.json` and `MANIFEST.sha256`; final pushed SHA is externally verified in the publication handoff. Historical entries below are retained.
+
+**OPEN:** precise manual/adoption policy PENDING OWNER APPROVAL; operative amendment PROPOSED - NOT OPERATIONALLY EFFECTIVE; independent pushed-document acceptance and subsequent P1 offline-code authorization required. Runtime/tests/dependencies/schemas/freezes/translog unchanged; no provider/private/venue/order/capital action. Native/provider/model/host/economic gates remain unpassed. Next: independent publication review, exact owner-policy decisions, then separately approved Sol P1.
+
 ## Current checkpoint - Final system design and implementation pack - 2026-10-16
 
 **CONFIRMED:** owner requested finalized documents, preservation of existing strengths, no weaker MVP or deferred core implementation, model-separated Codex scopes, and publication under `algorithms/`. Verified R9 branch remains at `96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd`; the documentation branch `docs/atlas-final-system-2026-10-16` starts from that exact commit. Repository default branch was not used. Historical freezes and trading source remain unchanged.

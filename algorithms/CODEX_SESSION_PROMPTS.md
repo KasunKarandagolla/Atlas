@@ -1,114 +1,146 @@
-# ATLAS - Copy-Ready Codex Session Prompts
+# ATLAS RED - model-separated implementation handoff
 
-**Use one prompt per session and select the stated model before starting. Never change models inside a session.**
+**P1 sole model: GPT-6.1 Sol.** Target direction and the five-session forecast have conditional design approval. This is a complete proposed offline implementation prompt, **not an instruction to start during the documentation pass**. Independent acceptance of the actual published SHA and subsequent owner approval of P1's code scope are required. New operative/manual authority remains unaccepted.
 
-Replace `<PREVIOUS_VERIFIED_SHA>` with the exact remote tip from the preceding handoff. Start S1 from the verified documentation branch `docs/atlas-final-system-2026-10-16`, descended from R9 `96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd`. Later sessions follow the immediately preceding verified implementation tip. Do not start from the older repository default branch.
+The final handoff supplied after remote verification replaces `EXPECTED_DOCUMENTATION_SHA` below with the actual immutable pushed SHA. The repository prompt cannot contain its own commit hash without a circular dependency; before use, obtain the separately verified SHA, set it once and reject a changed branch rather than silently following it. MANIFEST.sha256 independently binds this exact content. No unverified placeholder is an execution anchor.
 
-These prompts direct implementation work when the owner invokes them. They do not preauthorize paid calls, private account reads, Demo/live orders, merges or capital activation. Follow the actual scope in that session. Read the full linked plan; the short prompt is not a substitute.
-
-## S1 - GPT-6.1 Sol
+## Copy-ready P1 instruction body
 
 ```text
-Implement ATLAS session S1 using GPT-6.1 Sol only. Verify model selection from trusted metadata where available; never claim an unverified model identity.
+ATLAS RED P1 - GPT-6.1 Sol ONLY, including any explicitly authorized subagents.
 
-Repository: KasunKarandagolla/Atlas.
-Expected starting remote SHA: <PREVIOUS_VERIFIED_SHA>.
-Read AGENTS.md, current log.md, all three frozen authorities and all algorithms/ documents. Verify branch/tip/ancestry and preserve unrelated dirty work.
+EXPECTED_DOCUMENTATION_SHA: use the exact 40-hex SHA from the independently
+verified final documentation handoff, not the older 3436dde4 publication.
+EXPECTED_RUNTIME_ANCESTOR: 96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd
+REPOSITORY: KasunKarandagolla/Atlas
+DOCUMENTATION_BRANCH: docs/atlas-final-system-2026-10-16
 
-Execute the complete S1 scope in algorithms/IMPLEMENTATION_PLAN.md: evaluation-set versus selection migration through real callers; exact-action net-cash targets/labels/costs; empirical comparator, mean-target ridge and L2 LightGBM challenger; honest legacy diagnostics; offline fit/calibration/inference; causal support/uncertainty/holdout procedures; strategy research preservation; hold-versus-close research; and typed interfaces/oracles for all selected model runners, account/agent/runtime/UI seams.
+GATE BEFORE CODING
+Verify the owner has subsequently approved this P1 offline-code scope and an
+independent reviewer accepted the actual final documentation SHA/diff/checksums.
+If not, stop before editing. Verify actual model with trusted session metadata;
+if GPT-6.1 Sol is unavailable/unverifiable ask owner, never substitute. Use no
+subagents unless expressly authorized and same-model identity is verifiable.
+One model for the entire session; do not perform Luna's mechanical bulk scope.
 
-Do not build a weaker MVP, omit core features, invent standalone directional strategies from context signals, overwrite historical hashes or grant capital. Necessary technical identity/schema compatibility is required; no competing product-version ladder.
+Verify exact remote SHA, ancestry and actual working-tree state. Fetch current
+branch heads; a newer/unexpected tip requires diff review, not blind carry-forward.
+Create an isolated implementation branch/worktree preserving unrelated changes.
+Never force-push or start from the older default foundation branch.
 
-Close the S1 acceptance rows with meaningful tests, including rank-two winner, negative-mean skew, future/immature labels, no/partial fills, cost accounting and legacy replay. Record exact sources, commands, evidence classes and unresolved blockers. Finish the bounded scope, update the root log/register/handoff, commit, push and verify the exact remote SHA. Do not continue into a different-model task.
+Read AGENTS.md, root log.md and relevant append-only translog.md. Read all three
+historical freezes IN FULL and verify:
+V1 c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c
+V2 e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78
+Agent d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d
+Read algorithms/ATLAS_SYSTEM_DESIGN.md, DESIGN_DECISIONS.md,
+AUTHORITY_RECONCILIATION.md, SOURCE_AUTHORITY_MANIFEST.json,
+SHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md, operative amendment proposal,
+IMPLEMENTATION_PLAN.md, REQUIREMENTS_AND_ACCEPTANCE.md, both CSV registers,
+REPOSITORY_AUDIT.md and SURGICAL_CHANGE_MAP.md. Verify MANIFEST.sha256.
+Read original owner sources in the supplied read-only Red/reference set as
+identified by exact manifest hashes, especially target lock/OD section 1 and
+ADR-002 A.0, ADR-003/005/006/007/008/009/010/011, runbook sections 2-7.
+Original contents have been reconciled; do not invent missing-source claims.
+If this implementation environment lacks an exact file, identify it precisely.
+Keep Red read-only and do not upload original source ZIPs/private context.
+
+AUTHORITY
+ATLAS_RED_ELIGIBLE_ACTION_COORDINATOR_V1 remains PROPOSED - NOT OPERATIONALLY
+EFFECTIVE. The precise shared aggregate/manual policy is PENDING OWNER APPROVAL.
+Offline contract/quantitative code is permitted only within the subsequent P1
+authorization; no code change may activate a conflicting policy. Existing
+zero-authority roles and capital disables stay. No paid/provider generation,
+authenticated account reads, public-live venue experiments, Demo/live orders,
+account-mode changes, deployment, permission widening or capital activation.
+Use network-fenced fixtures and scrub credentials in child test environments.
+
+INSPECT REAL FUNCTIONS AND CALLERS BEFORE CHANGING THEM
+R9 ProductionOpsCyclePortV1.process_event selects CandidateSet before risk/action.
+size_selected_candidate, freeze_action and m0.action_features bind selected ID.
+run_phase2_economic_evaluation calls fit_m0 synchronously. M0._fit is Huber IRLS;
+M1 uses regression_l1. production_intelligence's missing-reader BLOCKED guard is
+intentional. Read their actual producers/readers/tests/serialization before edits.
+Preserve old path hashes, V1/Bybit comparators and historical readers; no generic
+rewrite or global deletion of selected-ID/authority checks.
+
+IMPLEMENT FULL P1 SCOPE
+1. Add immutable independently keyed CandidateEvaluationSet/work trace,
+   exact-action EvaluationRecord/EligibleSet and separate SelectionResult in
+   existing contracts/serializer owners. Preserve all population/refusal/miss
+   records; no singleton selected-set workaround or fixed-three search cutoff.
+2. Extend risk/action/M0/evaluation/outcome consumers with new per-action path
+   independent of prior final winner. Risk alone sizes exact quantity; all
+   material action fields bind economics/approval. Do not implement P2 native
+   control, ownership migration or dispatch in this pass.
+3. Implement arithmetic-mean net-action cash target, simple empirical comparator,
+   L2 ridge candidate and L2 LightGBM challenger with offline fit/calibration and
+   compact bounded prefit inference. Preserve Huber/L1 as historical location
+   diagnostics, mature provenance/holdout reservation and compatible arithmetic.
+   Never trim genuine losses to pass; unsupported/OOD economics NOT ESTIMABLE.
+4. Implement exact no/partial-fill, fee/funding/slippage-once/common-terminal
+   targets and finite HOLD-versus-management future-value contracts. Keep cash
+   uncertainty, joint risk/stress, support and programme external costs distinct.
+   No static bootstrap/path count is proof of selected conditional coverage.
+5. Implement accepted TARGET B interface: any independently eligible sealed E
+   member may be selected; Python owns all hard numerical/permission gates.
+   No argmax veto, arbitrary 10% band or failure fallback. Current exact E needs
+   a timely bound response; pre-trigger analysis is not future unseen authority.
+   A/C remain fair research controls with separate feasible evolving ledgers.
+6. Freeze tested complete downstream schemas/oracles for Brief dependencies,
+   bounded analysis/work receipts, raw versus derived chronology, future news
+   rescreens, prospective effort commands, A/P/O/W ownership/status projections,
+   exact finite management and UI/IPC. Manual-policy acceptance is not assumed;
+   P2 owns lifecycle implementation and its explicit pending activation gate.
+7. Freeze actual time-major target/covariate/horizon/quantile/units/manifests for
+   TiRex-2, Kronos-mini/tokenizer and Chronos-2-small. No fixture callback or flat
+   heterogeneous tuple qualifies real inference. One promoted mean, no voting.
+8. Freeze ChartEvidenceBundle, strategy-specific neutral questions/numerical
+   predicates, actual image-byte transport contract, cache/bytes/deadline bounds
+   and target local-versus-supplied-data-remote benchmark. Define metrics, pass
+   limits, privacy/spend/allowed dependencies and objective selection rule so
+   Luna's P3 harness/one selected renderer cannot invent safety semantics.
+   DeepSeek preference does not waive route capability tests; existing Gemma
+   transport remains reusable. No two compulsory production vendors.
+9. Preserve quarantined Path B, S1-S8 roles, causal analogues/features/memory and
+   all existing useful source/safety/desktop capabilities. Outcome due_work and
+   watch ops_outbox are not generic agent queues. Define smallest namespaced
+   research-task projection only if existing ledger cannot represent scope.
+10. Preregister whole-policy mean/support/selection uncertainty, matched A/B and
+    optional C, no-image/image and model ablations, search/holdout/analysis looks,
+    costs/tails/materiality/power. Keep actual, shadow and counterfactual grades
+    separate; no positive economic/capital claim without real future evidence.
+
+RED-TO-GREEN / NON-DEGRADATION
+Rank-one negative/rank-two positive; fourth-plus useful action; missing row.
+99 times +1/once -200 cannot become positive-mean admission from robust location.
+No new successful evaluation depends on selected_candidate_id; no fit/search on
+dispatch deadline. Future/immature/overlapping/revised/unsupported inputs refuse.
+Fees both legs, signed funding boundaries, no/partial fill and slippage once.
+Exact action/set/epoch change invalidates prior response/approval. Old golden
+hashes/readers remain unchanged; never relabel a Huber artifact as a mean.
+Test lower-ranked eligible B choice succeeds, failed/outside-E choice refuses,
+late/duplicate/changed-set/ref/tool/holdout requests cannot gain authority.
+Supply exact numerical fixtures for P2/P3/P4; Luna cannot fill semantic gaps.
+
+VERIFICATION AND HANDOFF
+Run focused changed-seam tests and actual consumers, V1 invariant/golden subset,
+prefix/causal/saved-reader tests, required Ruff/compile/baseline-aware mypy,
+dependency/lock/secret/diff and freeze checks. Use repository installed lock;
+do not install all heavy frameworks or call providers to manufacture a pass.
+The prior selective audit's 69 pass/11 failures is neither a green full suite
+nor proof every failure is harmless; R9 timing/storage/mypy gates stay visible.
+Broaden tests only for actual changed surface or required session gate.
+
+Root coordinator alone updates existing log.md and appends translog.md without
+rewriting history. Record exact start/commit/source/test/artifact hashes, actual
+counts and evidence grades, unresolved owner/provider/venue/hardware/economic
+gates, migration/rollback/consumer inventory and P2/P3 tested interfaces.
+Commit only authorized P1 scope, review staged diff/secrets, push and independently
+verify exact remote SHA. Do not merge/deploy/self-accept. Stop for independent
+ChatGPT review of actual pushed diff/evidence before dependent session.
 ```
 
-## S2 - GPT-6.1 Sol
+## Remaining model-only sessions
 
-```text
-Implement ATLAS session S2 using GPT-6.1 Sol only.
-Repository: KasunKarandagolla/Atlas.
-Expected starting remote SHA: <PREVIOUS_VERIFIED_SHA>.
-Read AGENTS.md, current log/handoff, all frozen authorities and algorithms/ documents. Verify ancestry and preserve unrelated work.
-
-Execute the complete S2 scope: real account bucket semantics, bot allocation/manual reserves, reflection/uncertainty/settlement, atomic reservations/episodes/ownership, manual conflict/adoption, concurrent positions through one writer, exact feasibility/risk/loss consumption, scoped permissions/revocation, durable execution/UNKNOWN, native protection/flat proof, restart and physical-owner replacement. Extend the current OMS/journal; create no duplicate retry/dispatch owner.
-
-Preserve existing capabilities and old replay. No default balance fiction, lot round-up, leverage loss-budget bypass, automatic occupied-account mode change, manual-order cancellation or claim of guaranteed stop loss. Protection and mandatory exits remain independent of the API coordinator.
-
-Run the account/order/permission/crash/compound test oracles in the plan/register, including two positions and manual interference. Use offline fixtures unless exact external actions are separately authorized. Keep absent venue evidence BLOCKED. Update log/register/handoff, commit, push and verify the SHA. No capital activation.
-```
-
-## S3 - GPT-6.1 Sol
-
-```text
-Implement ATLAS session S3 using GPT-6.1 Sol only.
-Repository: KasunKarandagolla/Atlas.
-Expected starting remote SHA: <PREVIOUS_VERIFIED_SHA>.
-Read AGENTS.md, current log/handoff, all frozen authorities and algorithms/ documents; verify remote ancestry.
-
-Complete typed production Brief readers and per-job analysis/capital dependencies. Implement one compulsory hosted Gemma coordinator on the existing native route with strict host validation, bounded tools, registered analysis, workflow/watch decisions, verified event mapping, host-rule candidate selection and qualified early-exit requests. Complete the real bounded protocol beyond the current tool-free smoke.
-
-Implement durable conditional/direct directives, one-use setup bindings, expiry/invalidators, approval integration, one budget ledger, possible-spend accounting, queue/call/token caps, outage/identity quarantine and fresh recovery. Do not bypass BLOCKED, give the LLM numeric risk/order authority, run competing coordinator loops or add automatic paid fallback. Preserve historical zero-authority records and existing protection.
-
-Prove malformed/fake/injected/late output refusal, correct required/optional evidence behavior, host argmax, quota/outage and stop independence. Real API conformance only within actual authorization. Update the acceptance record and handoff with evidence classes, commit/push and verify exact remote SHA. No capital activation.
-```
-
-## S4 - GPT-6.1 Sol
-
-```text
-Implement ATLAS session S4 using GPT-6.1 Sol only.
-Repository: KasunKarandagolla/Atlas.
-Expected starting remote SHA: <PREVIOUS_VERIFIED_SHA>.
-Read AGENTS.md, current log/handoff, all frozen authorities and algorithms/ documents; verify remote ancestry.
-
-Complete real periodic scanner composition, durable denominator, strategy/watch clocks, fair tiered data coverage, required S1-S8 research/context readers, cold-start outcome collection and account/due-work effort. Implement real isolated TiRex-2, Chronos-2-small and Kronos-mini/2k-tokenizer bridges, manifests, actual bounded inference evidence, serial admission and cancellation. A fake-only or permanently disabled adapter is not completion.
-
-Implement the full resource/storage contract: process-tree budgets, safety priority, bounded queues, explicit downloads/cache/install footprints, quota partitions, physical/emergency reserves, WAL/read lifetime, retention pins/grades and export atomicity. Audit locks/runtime/adapter recipes for target Windows/Linux without rewriting the stack. Implement frozen whole-policy research/campaign comparison and complete programme costs.
-
-Produce a genuine durable source-to-Brief-to-compulsory-agent shadow cycle and restart replay without inventing economics. Test source gaps/clocks/sleep, overload, disk/WAL/pinning/export failures and real worker limits. Keep unavailable required artifact/platform/provider evidence BLOCKED, not deferred or passed. Freeze interfaces and packaging recipes for Luna. Launch measured soak where possible. Update log/register/handoff, commit/push and verify exact SHA. No capital activation.
-```
-
-## S5 - GPT-6 Luna
-
-```text
-Implement ATLAS session S5 using GPT-6 Luna only.
-Repository: KasunKarandagolla/Atlas.
-Expected starting remote SHA: <PREVIOUS_VERIFIED_SHA>.
-Read AGENTS.md, current log/handoff, all frozen authorities and algorithms/ documents. Verify ancestry. Use only the Sol-frozen interfaces, validation behavior, display definitions and packaging recipes.
-
-Complete UI/IPC projections, accurate statuses and bounded charts, configuration wiring to existing validators, reports/exports, operator guidance and frozen platform packaging. Show allocation/manual conflict, actual/possible quantity, partial protection, lot feasibility, model/provider qualification/cost, refusal funnel, resource pressure and evidence grade honestly. Preserve headless and existing desktop functionality.
-
-Do not modify financial targets/uncertainty, balance/fee/risk/quantity logic, account/order state machines, permissions, migrations/authentication, native adapter, retries/UNKNOWN/protection/recovery or safety timers. Do not invent their test oracles. Return missing/ambiguous semantic interfaces to Sol; do not implement them in UI.
-
-Run meaningful presentation/projection/packaging checks, avoid unlimited read transactions and record unavailable platform evidence. Update root log/register/handoff, commit/push and verify exact SHA. S6 Sol reviews the diff before acceptance. No paid/exchange/capital actions.
-```
-
-## S6 - GPT-6.1 Sol
-
-```text
-Review and complete ATLAS session S6 using GPT-6.1 Sol only in a fresh context.
-Repository: KasunKarandagolla/Atlas.
-Expected starting remote SHA: <PREVIOUS_VERIFIED_SHA>.
-Read AGENTS.md, current log/handoffs, all frozen authorities and algorithms/ documents. Verify exact ancestry from the R9 baseline.
-
-Review the entire implementation diff, especially Luna wiring, financial semantics, compatibility/migrations and authority boundaries. Close every core acceptance row or report BLOCKED. Do not call stubs or omitted core features a completed optional release. Preserve existing research/execution/UI capabilities.
-
-Run required targeted/broad regression, static/lock/licence/secret checks; reproduce and correctly address baseline active-path timing/resource failures. Qualify exact ordinary/algo/child/native protection, lost ACK/partial/cancel/fill/UNKNOWN/restart/manual conflict and two concurrent Demo positions only within actual external authorization. Run the mandatory compound incident matrix and restoration-order variants. No silent threshold relaxation or fake venue receipts.
-
-Complete at least 72-hour measured target Windows/Linux 4 GB/Celeron admitted-workload qualification with startup/backfill, UI/headless, model work, safety incidents and retention rollover. Missing hardware or credentials remains BLOCKED. Freeze build/profile/search/holdout/analysis procedures and launch/continue forward collection. Distinguish engineering completion, operational qualification and economic value. Do not enable capital.
-
-Publish an exact-build acceptance/evidence manifest and concise handoff, update root log, commit/push and verify remote SHA. State the exact next evidence gate, not an unsupported profitability claim.
-```
-
-## E1 - GPT-6.1 Sol, after sufficient forward evidence
-
-```text
-Perform ATLAS evidence decision E1 using GPT-6.1 Sol only.
-Expected engineering build: <PREVIOUS_VERIFIED_SHA>.
-Read the finalized algorithm/plan/register and fixed prospective campaign manifest. Verify build/configuration/model/provider/data vintages and unchanged trial/holdout rules. Do not retrospectively choose the best period or variant.
-
-Evaluate actual complete-policy programme PnL, costs, feasible account lots, causal label grades, effective independent blocks, calibration, execution bias, drawdown/tails, agent yield/errors/abstention and operational incidents. Apply preregistered paired calendar-block and multiplicity rules against no-opening, deterministic R9 and simple empirical controls. Model error or API validity alone is not trading value.
-
-Issue GO / INCONCLUSIVE / NO-GO with exact evidence and limitations. Capital additionally requires all operational/venue/account/permission/residual-risk gates and actual authorization. Negative/inconclusive evidence does not authorize weaker gates or a claim that the system is most profitable. Preserve the completed capabilities and history; no automatic live promotion or new paid/exchange action.
-
-Record decision, immutable evidence hashes and next bounded action in the root log/register/handoff; commit/push and verify the exact remote SHA.
-```
+P2 Sol owns capital/ownership/native lifecycle and manual-policy tests. P3 Luna receives accepted executable P1/P2 meanings and does mechanical adapters/UI/packaging only. P4 Sol owns real causal source/scanner/Brief/provider/tool/forecaster/memory integration. P5 fresh Sol independently reviews actual code, corrective integration and exact-build qualification. Full scopes and exit gates are IMPLEMENTATION_PLAN.md. Later prompts must use actual accepted predecessor SHAs/interfaces, not invented future outputs. A justified sixth correction is preferable to false completion.
