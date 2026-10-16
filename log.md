@@ -1,6 +1,14 @@
 # ATLAS engineering log
 
-## Current checkpoint — R9 local API qualification and engineering gates — 2026-10-15
+## Current checkpoint - Final system design and implementation pack - 2026-10-16
+
+**CONFIRMED:** owner requested finalized documents, preservation of existing strengths, no weaker MVP or deferred core implementation, model-separated Codex scopes, and publication under `algorithms/`. Verified R9 branch remains at `96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd`; the documentation branch `docs/atlas-final-system-2026-10-16` starts from that exact commit. Repository default branch was not used. Historical freezes and trading source remain unchanged.
+
+**DOCUMENTED / VALIDATED:** complete algorithm (19-page PDF plus editable source), six-session implementation plan (Sol S1-S4, Luna S5, Sol S6), later Sol evidence decision, copy-ready prompts, and a register of 54 core requirements, 10 non-degradation checks and 10 compound incidents. Real selected forecaster integrations and early-exit analysis are included; missing runners cannot be called completed optional features. Checked Markdown links/fences, unique requirement IDs, model/session boundaries, quota totals, PDF source digest, extracted sections, page geometry and rendered layout. A reproducible document-only renderer and SHA-256 manifest accompany the pack.
+
+**NOT IMPLEMENTED / NOT QUALIFIED:** no trading/runtime/dependency changes, new repository test certification, API/private reads or orders. Historical R9 failures remain recorded below. Profitability, native lifecycle and minimum-host sustained capacity remain unestablished. Next: GPT-6.1 Sol S1 from the verified documentation tip, with current authority and acceptance register. Publication SHA is returned after remote verification.
+
+## Previous checkpoint — R9 local API qualification and engineering gates — 2026-10-15
 
 **CONFIRMED:** isolated `fix/red-r9-local-complete-cycle-2026-10-14` from exact R8 `ef40afb0bf7172f703ffd8016a3e0086396e845d`; the original checkout and its dirty files remain untouched. All three frozen authorities match their required SHA-256 values. API_SETUP_PASS is established: one genuine bounded Gemma 26B ABSTAIN response, signed read-only Binance Demo account access, and bounded public Binance REST/WebSocket observations. No account payload or raw public frame was saved; zero orders occurred.
 
@@ -381,3 +389,4 @@ R8 reports and sanitized evidence are under `docs/v2/ATLAS_RED_R8_*` and `docs/v
 ## ATLAS RED R9 local API setup qualification — 2026-10-14
 
 **API_SETUP_PASS:** isolated `fix/red-r9-local-complete-cycle-2026-10-14` from exact R8 SHA `ef40afb0bf7172f703ffd8016a3e0086396e845d`. Corrected the Gemma native adapter pin from 31B to the requested `gemma-4-26b-a4b-it` while preserving 31B historical job identity; the 17 focused adapter tests pass after red/green identity checks. One genuine synthetic Gemini generation returned HTTP 200 with valid schema-bound `ABSTAIN`; owner Free Tier/project binding is represented by the inherited `ATLAS_GEMINI_FREE_TIER_VERIFIED=true` marker. The read-only Binance Demo time/account/exchangeInfo sequence returned HTTP 200; no account payload was saved and zero orders were sent. The existing Binance public REST source observed real BTC/ETH/altcoin market records and the existing WebSocket source delivered 265 frames in a 12-second bounded run with zero queue loss. Demo probe tests pass 5/5. The production snapshot measured 5,185.917 ms against its 5,000 ms budget; enrichment was deferred and this is queued for performance review. Sanitized results: `docs/v2/ATLAS_RED_R9_LOCAL_API_QUALIFICATION.md` and `docs/v2/transition-r9-local-evidence/api-qualification.json`. Full end-to-end, scanner-calendar, economic, execution/protection and restart gates remain open; zero orders, no capital enablement, no merge or deployment.
+
