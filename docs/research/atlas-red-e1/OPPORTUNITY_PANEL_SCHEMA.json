@@ -1,0 +1,28 @@
+{
+  "schema_version": "ATLAS_RED_E1_OPPORTUNITY_PANEL_SCHEMA_V1",
+  "status": "SCHEMA_ONLY_NO_MARKET_ROWS",
+  "row_key": ["slot_id", "symbol", "instrument_revision", "policy_id"],
+  "row_count": 0,
+  "purpose": "Point-in-time opportunity and feature population; preserve no-signal, unavailable, missed and refused rows.",
+  "required_fields": {
+    "slot_id": "stable native slot identity",
+    "symbol": "venue-native symbol",
+    "instrument_revision": "exact contract revision identity or NULL with reason",
+    "policy_id": "unchanged policy identity",
+    "policy_version": "existing policy version/hash",
+    "slot_cutoff_utc": "decision information cutoff",
+    "event_at_utc": "source event time when known",
+    "bar_close_utc": "exclusive completed bar close boundary",
+    "reconstructed_available_at_utc": "historical availability estimate, never actual receipt time",
+    "source_grade": "RECONSTRUCTED_HISTORICAL, CONDITIONAL_DIAGNOSTIC, UNAVAILABLE or NOT_TESTED",
+    "state": "actual policy state or explicit UNAVAILABLE/NOT_RUN/DATA_MISSING",
+    "reason": "missing/rejected/unavailable/missed reason",
+    "raw_input_refs": "immutable source file and row identities",
+    "feature_values_json": "only computed observed values; unknowns remain null",
+    "feature_available_flags_json": "per-feature availability and source refs",
+    "decision_class": "EXACT_BASELINE, DIAGNOSTIC_PATTERN, NOT_RUN or UNAVAILABLE",
+    "exact_action_ref": "only when genuinely constructed from required inputs",
+    "holdout_partition": "development, calibration, reserved diagnostic or unknown exposure"
+  },
+  "instrument_contract": "No row may claim live receipt, executable eligibility, fill or historical provider output from an archive download timestamp."
+}

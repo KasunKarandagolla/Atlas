@@ -1,0 +1,28 @@
+{
+  "schema_version": "ATLAS_RED_E1_HELDOUT_OUTCOMES_SCHEMA_V1",
+  "status": "SCHEMA_ONLY_NO_OUTCOMES",
+  "row_key": ["slot_id", "symbol", "instrument_revision", "policy_id"],
+  "row_count": 0,
+  "partition": "Separate maturation table; never join labels into the decision-time panel before label_available_at.",
+  "required_fields": {
+    "slot_id": "joins to the opportunity panel row key",
+    "symbol": "venue-native symbol",
+    "instrument_revision": "contract revision used at origin",
+    "policy_id": "unchanged policy identity",
+    "origin_cutoff_utc": "decision cutoff",
+    "label_horizon_end_utc": "frozen policy or registered label horizon",
+    "label_available_at_utc": "earliest justified label availability",
+    "outcome_state": "mature, censored, revised, missing or not computed",
+    "fill_state": "actual reconciled, qualified modelled, no fill, partial, or unknown",
+    "net_cash_target": "NULL unless complete source-qualified action and economics exist",
+    "fees": "source or qualified model reference; NULL if unknown",
+    "funding": "signed sourced timeline; NULL if unknown",
+    "execution_grade": "actual, qualified modelled, diagnostic, not estimable or not computed",
+    "source_refs": "immutable raw rows, files, contracts and policy versions"
+  },
+  "seal": {
+    "outcome_comparisons_performed_in_e1": 0,
+    "holdout_accessed_in_e1": false,
+    "prior_2026_period_exposure": "UNVERIFIED; do not call untouched or prospective"
+  }
+}
