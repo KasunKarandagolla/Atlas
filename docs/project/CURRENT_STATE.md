@@ -60,3 +60,5 @@ A later retry retrieved one official BTCUSDT 1H daily ZIP and its .CHECKSUM (1,5
 Fixture retest at `2135d161ebb6d8e8d7741bd8257174d280720ae2`: scoped S1/S2/S3/S5/S6/S8 and prefix group 111/111 passed in 20.06s. Adding archive runtime yielded 111 passed / 4 pyarrow-missing failures (18.77s). These are existing fixture/code tests, not archive strategy outputs.
 
 Added a stdlib-only bounded sample refetcher that verifies official and pinned SHA-256, archive/member/schema and all 24 hourly timestamps, retaining no data. Local run passed; fresh-clone proof pending. It does not construct the research panel.
+
+Clean-clone fallback proof: from a fresh depth-1 clone at `2cabae9ea89d644c133ee2fcbd2a7974c7e9ca14`, `python docs/research/atlas-red-e1/refetch_sample.py` fetched the official ZIP/CHECKSUM, validated both hashes and all 24 rows, retained no archive, and left the clone clean. This is a one-sample proof only; full panel regeneration is not implemented.

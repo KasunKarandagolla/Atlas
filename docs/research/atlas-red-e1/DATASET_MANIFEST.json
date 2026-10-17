@@ -143,7 +143,7 @@
     "heldout_outcome_rows": 0,
     "panel_schema_only": true,
     "outcome_schema_only": true,
-    "clean_clone_refetch_and_regeneration": "Sample recipe implemented; clean clone execution pending. Recipe validates one archive sample only, not a policy panel.",
+    "clean_clone_refetch_and_regeneration": "CLEAN_CLONE_SAMPLE_REFETCH_TESTED; one sample only, no policy-panel regeneration.",
     "sample_refetch_recipe": "docs/research/atlas-red-e1/refetch_sample.py; Python standard library only; one command: python docs/research/atlas-red-e1/refetch_sample.py"
   },
   "verification": {
@@ -163,6 +163,14 @@
       "command": "python docs/research/atlas-red-e1/refetch_sample.py",
       "result": "SAMPLE_VERIFIED; 1,561-byte ZIP + 92-byte official CHECKSUM; SHA-256 matched; ZIP CRC/member/header/24 hourly timestamps validated; raw bytes retained false",
       "interpretation": "Local working-copy run only; clean-clone reproduction remains pending"
+    },
+    "clean_clone_sample_refetch": {
+      "clone_method": "git clone --depth 1 --branch research/atlas-red-binance-evidence-e1-recheck-2026-10-17 https://github.com/KasunKarandagolla/Atlas.git <fresh temporary directory>",
+      "tested_repository_sha": "2cabae9ea89d644c133ee2fcbd2a7974c7e9ca14",
+      "command": "python docs/research/atlas-red-e1/refetch_sample.py",
+      "result": "SAMPLE_VERIFIED; official GETs succeeded; published and pinned SHA-256 matched; ZIP CRC/member/schema and all 24 consecutive timestamps validated; output confirms archive_retained=false; clone working tree remained clean.",
+      "raw_cache_dependency": "none; clone did not contain the archive; script fetched into memory and temporary byte buffers only",
+      "limitation": "sample refetch only; not full panel, feature generation or strategy replay"
     }
   },
   "resource_accounting": {

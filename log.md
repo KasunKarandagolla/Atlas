@@ -466,3 +466,5 @@ A retry after the initial 403 recovered one genuine official BTCUSDT 1H daily ZI
 Final scoped fixture retest at source SHA `2135d161ebb6d8e8d7741bd8257174d280720ae2`: 111 passed in 20.06s. Broader run adding archive-runtime tests: 111 passed, 4 failed in 18.77s; all four require unavailable pyarrow. No source code or dependency changes.
 
 Added `docs/research/atlas-red-e1/refetch_sample.py`, a one-command standard-library refetch and fail-closed verifier for the single pinned Binance sample. Local run returned SAMPLE_VERIFIED; clean-clone proof pending. The script retains no raw data and does not generate strategy output. Ruff and compileall pass.
+
+Clean-clone sample refetch at `2cabae9ea89d644c133ee2fcbd2a7974c7e9ca14` succeeded from the pushed branch: official SHA/checksum, ZIP CRC/member, 12-field schema and 24 timestamps validated; no raw archive in clone, no archive retained by script, clean status afterward. This proves only the tiny sample recipe, not panel regeneration.
