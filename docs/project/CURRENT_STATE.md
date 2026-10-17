@@ -2,7 +2,7 @@
 
 ## R-E1B R1/R2 research-output correction candidate — 2026-10-17
 
-Isolated from the newly verified E1B research tip `fa6085bdbe456ffa07ac59ce8c51afacb65ecdc5` (parent `6e423d0196fe1f744456d169a136074f3f2453c4`) on `fix/atlas-red-e1b-signal-time-integrity-2026-10-18`. The correction is research-output-only; S1/S6 policy, coordinator, frozen authorities, and production readers are untouched. The correction branch's exact final pushed SHA and remote verification are recorded in the companion `E1B_R1_R2_CORRECTION_HANDOFF.md` after delivery.
+Isolated from the newly verified E1B research tip `fa6085bdbe456ffa07ac59ce8c51afacb65ecdc5` (parent `6e423d0196fe1f744456d169a136074f3f2453c4`) on `fix/atlas-red-e1b-signal-time-integrity-2026-10-18`. Implementation commit is `b217d5b38a6f36351be1773b80859ac0a40a4e3d`. The correction is research-output-only; S1/S6 policy, coordinator, frozen authorities, and production readers are untouched. Final metadata tip and remote verification are reported at delivery.
 
 R1 separates current precursor state, setup-event ID/cutoff/side/ref, originating trigger setup, every raw predicate, and one first-trigger event per setup ID. Previous setup ownership persists through its final fourth M15 opportunity across an H1 boundary. Every missing current M15 row and every missing/noncontiguous prior M15 input during an active window is SOURCE_MISSING. R2 uses a research-only `ResearchBar`, stable archive checksum/CSV row identities, UNKNOWN actual retrieval/receipt time, a distinct close+5s replay schedule, and ≥1s derived processing readiness. Exact-close feature predicates remain zero-lag descriptive and not replay-visible at the cutoff.
 

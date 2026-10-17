@@ -1,6 +1,6 @@
 # E1B R1/R2 correction handoff
 
-**Status:** IMPLEMENTED / TESTED on isolated research correction branch. Exact pushed SHA will be added after delivery. Model/effort attestation is **UNVERIFIED**. Independent ChatGPT acceptance is pending.
+**Status:** IMPLEMENTED / TESTED on isolated research correction branch. Implementation commit: `b217d5b38a6f36351be1773b80859ac0a40a4e3d`. This is the source/data correction commit; the final documentation follow-up and remote branch-tip SHA are reported separately at delivery. Model/effort attestation is **UNVERIFIED**. Independent ChatGPT acceptance is pending.
 
 ## Scope and result
 
