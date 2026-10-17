@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "docs/research/atlas-red-e1b"))
 
 import acquire_archives as archives  # noqa: E402
 import build_research_panel as panel  # noqa: E402
+
 from atlas.v2.strategies.s6_cross_section import _four_hour_context, _hourly_returns  # noqa: E402
 
 
@@ -34,7 +35,8 @@ def csv_zip(symbol: str, interval: str, month: str, rows: list[list[str]]) -> by
 def test_archive_checksum_duplicate_and_gap_checks(tmp_path, monkeypatch) -> None:
     symbol, interval, month = "BTCUSDT", "1h", "2024-01"
     start = 1_704_067_200_000
-    row = lambda t, p: [str(t), str(p), str(p + 1), str(p - 1), str(p), "10", str(t + 3_599_999), "100", "2", "5", "50", "0"]
+    def row(t, p):
+        return [str(t), str(p), str(p + 1), str(p - 1), str(p), "10", str(t + 3_599_999), "100", "2", "5", "50", "0"]
     data = csv_zip(symbol, interval, month, [row(start, 100), row(start + 3_600_000, 101), row(start + 10_800_000, 102)])
     digest = hashlib.sha256(data).hexdigest()
     name = f"{symbol}-{interval}-{month}.zip"

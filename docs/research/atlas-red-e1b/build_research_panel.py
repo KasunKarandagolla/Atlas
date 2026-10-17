@@ -8,6 +8,7 @@ manifests. It never computes forward labels or outcomes.
 from __future__ import annotations
 
 import bisect
+import contextlib
 import csv
 import gzip
 import hashlib
@@ -16,23 +17,22 @@ import json
 import math
 import pathlib
 import sys
-import contextlib
 from collections import defaultdict
 from decimal import Decimal
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 sys.path.insert(0, str(REPO / "src"))
+from acquire_archives import COHORT, COHORT_SHA256, MONTHS, run  # noqa: E402
+
 from atlas.v2.contracts import V2Side  # noqa: E402
 from atlas.v2.data.bars import BarIntervalV2, CausalBarV2  # noqa: E402
 from atlas.v2.data.raw import AvailabilityClassV2, RawObservationV2  # noqa: E402
-from atlas.v2.features.joins import JoinedBars  # noqa: E402
+from atlas.v2.features.joins import JoinedBars  # noqa: E402,F401
 from atlas.v2.features.technical import ema  # noqa: E402
 from atlas.v2.instruments import EnvironmentV2, InstrumentKeyV2, ProductTypeV2, VenueV2  # noqa: E402
-from atlas.v2.strategies.s1_trend import S1_POLICY, _regime, _setup  # noqa: E402
+from atlas.v2.strategies.s1_trend import S1_POLICY, _regime, _setup  # noqa: E402,F401
 from atlas.v2.strategies.s6_cross_section import S6_POLICY  # noqa: E402
-
-from acquire_archives import COHORT, MONTHS, COHORT_SHA256, run  # noqa: E402
 
 HOUR = BarIntervalV2.H1.duration_ns
 M15 = BarIntervalV2.M15.duration_ns
@@ -76,7 +76,6 @@ def deterministic_gzip_text(path: pathlib.Path):
 
 def parse_raw(scratch: pathlib.Path, manifests: list[dict[str, object]]) -> dict[str, dict[str, list[dict[str, object]]]]:
     source: dict[str, dict[str, list[dict[str, object]]]] = defaultdict(lambda: defaultdict(list))
-    by_name = {(r.get("symbol"), r.get("interval"), r.get("month")): r for r in manifests}
     for row in manifests:
         if row.get("status") != "VERIFIED":
             continue
@@ -128,8 +127,6 @@ def make_bars(symbol: str, interval_name: str, rows: list[dict[str, object]]) ->
 
 
 def h4_bars_from_h1(symbol: str, h1: list[CausalBarV2]) -> list[CausalBarV2]:
-    by_open = {b.open_at_ns: b for b in h1}
-    opens = sorted(by_open)
     result = []
     groups = defaultdict(list)
     for bar in h1:
@@ -163,7 +160,7 @@ def contiguous_tail(bars: list[CausalBarV2], cutoff: int, duration: int, wanted:
     if end < wanted:
         return ()
     tail = bars[end - wanted:end]
-    if any(b.open_at_ns != a.open_at_ns + duration for a, b in zip(tail, tail[1:])):
+    if any(b.open_at_ns != a.open_at_ns + duration for a, b in zip(tail, tail[1:], strict=False)):
         return ()
     return tuple(tail)
 
@@ -178,7 +175,7 @@ def contiguous_prefix(bars: list[CausalBarV2], cutoff: int, duration: int, begin
     if right <= left:
         return ()
     prefix_bars = bars[left:right]
-    if prefix_bars[0].open_at_ns != begin or any(b.open_at_ns != a.open_at_ns + duration for a, b in zip(prefix_bars, prefix_bars[1:])):
+    if prefix_bars[0].open_at_ns != begin or any(b.open_at_ns != a.open_at_ns + duration for a, b in zip(prefix_bars, prefix_bars[1:], strict=False)):
         return ()
     return tuple(prefix_bars)
 
@@ -245,7 +242,7 @@ def s1_cached_state(symbol: str, h1: list[CausalBarV2], h4: list[CausalBarV2], c
 
 def returns(bars: list[CausalBarV2]) -> tuple[list[int], list[float]]:
     times, values = [], []
-    for prev, cur in zip(bars, bars[1:]):
+    for prev, cur in zip(bars, bars[1:], strict=False):
         if cur.close_at_ns - prev.close_at_ns == HOUR:
             times.append(cur.close_at_ns)
             values.append(math.log(float(cur.close) / float(prev.close)))
@@ -271,9 +268,11 @@ def aligned_return_series(hourly: dict[str, list[CausalBarV2]]) -> dict[str, tup
         by_t = dict(zip(times, values, strict=True))
         common = sorted(btc_by_t.keys() & by_t.keys())
         x, y = [by_t[t] for t in common], [btc_by_t[t] for t in common]
-        sx, x2 = prefix(x); sy, y2 = prefix(y)
+        sx, x2 = prefix(x)
+        sy, y2 = prefix(y)
         xy = [0.0]
-        for a, b in zip(x, y, strict=True): xy.append(xy[-1] + a * b)
+        for a, b in zip(x, y, strict=True):
+            xy.append(xy[-1] + a * b)
         result[symbol] = (common, x, y, sx, x2, sy, y2, xy)
     return result
 
@@ -289,7 +288,7 @@ def s6_scores(keys: list[str], h4s: dict[str, list[CausalBarV2]], aligned: dict[
             continue
         common, xall, yall, sxall, x2all, syall, y2all, xyall = aligned.get(symbol, ([], [], [], [], [], [], [], []))
         left, right = bisect.bisect_right(common, start), bisect.bisect_right(common, end)
-        if right - left != 720 or any(b - a != HOUR for a, b in zip(common[left:right], common[left + 1:right])):
+        if right - left != 720 or any(b - a != HOUR for a, b in zip(common[left:right], common[left + 1:right], strict=False)):
             out[symbol] = {"state": "NOT_RANKABLE", "reason": "NEED_720_CONTIGUOUS_MATCHED_H1_RETURNS"}
             continue
         x, y = xall[left:right], yall[left:right]
@@ -574,7 +573,8 @@ def main() -> None:
         m15_months = [m for m in MONTHS if m[5:] != "01"]
         manifests = run("1h", COHORT, h1_months, args.scratch) + run("15m", COHORT, m15_months, args.scratch)
         with (args.scratch / "all-manifests.jsonl").open("w", encoding="utf-8") as f:
-            for row in manifests: f.write(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
+            for row in manifests:
+                f.write(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
     result = build(args.outdir, args.scratch, manifests, args.rejected_attempt)
     print(json.dumps(result, sort_keys=True))
 

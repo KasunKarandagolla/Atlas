@@ -21,4 +21,8 @@ The accepted, unique checksum-verified ZIP payload totals 55,549,936 bytes acros
 
 The 2024 and 2025 rows are reconstructed from files fetched after their historical dates. They do not prove original receipt times, historical eligibility, true fills, costs, profitability, or complete-market coverage. S1 outputs are bar-based precursor diagnostics; S6 outputs are price-only fixed-cohort ranks. See `COHORT_AND_SPLITS.md` for the frozen cohort, window boundaries, missing source detail, and inference limits.
 
-The independent model/effort attestation is recorded as `UNVERIFIED`. No clean-clone rebuild was performed in this session; the committed builder was run against a local cache of the checksum-verified public archives. The exact repository base and final pushed commit are recorded in the enclosing task report.
+The independent model/effort attestation is recorded as `UNVERIFIED`. A clean-clone rebuild is documented below. The exact repository base and final pushed commit are recorded in the enclosing task report.
+
+## Clean-clone rebuild proof
+
+A fresh depth-1 clone of commit `ff0d8882ed1359bc88aa35daf1c8de175c179532` was built with an empty scratch directory and the online one-command recipe above. It re-fetched and checksum-verified 757 archives, retained 13 official 404s, and reproduced the full panel exactly: 819,840 rows, 187,947,551 bytes, SHA-256 `d3955dcf2fdb42bed5b7ba3b8430e20d662405ec6cb1dfa6c20e1f718bef0cae`. The coverage output also matched exactly: 1,024,800 rows, 9,378,530 bytes, SHA-256 `eb74a6eb0379524f07eec8c2462e21a3cfa78c5be66cd01972e8c735f8b45a61`. The compact sample SHA-256 matched `b5ada9250a1f7cd09355e785e38fdee0211ce3ffcf1d6d19172496802e69ba4b`. The six research tests also passed in that clean clone. The final metadata commit records these results; it changes only this manifest and report, not builder or analysis code.

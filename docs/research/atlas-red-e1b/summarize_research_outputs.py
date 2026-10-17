@@ -13,8 +13,8 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from acquire_archives import COHORT, COHORT_SHA256  # noqa: E402
-from make_compact_sample import make_sample  # noqa: E402
 from build_research_panel import WINDOWS, ns  # noqa: E402
+from make_compact_sample import make_sample  # noqa: E402
 
 
 def digest(path: pathlib.Path) -> dict[str, object]:
