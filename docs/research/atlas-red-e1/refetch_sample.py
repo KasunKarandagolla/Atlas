@@ -10,6 +10,7 @@ import json
 import urllib.request
 import zipfile
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_EVEN, Decimal
 
 ZIP_URL = (
     "https://data.binance.vision/data/futures/um/daily/klines/"
@@ -35,6 +36,10 @@ def fetch(url: str) -> bytes:
         if response.status != 200:
             raise ValueError(f"unexpected HTTP status: {response.status}")
         return response.read()
+
+
+def percentage(value: Decimal) -> str:
+    return str(value.quantize(Decimal("0.000001"), rounding=ROUND_HALF_EVEN))
 
 
 def main() -> None:
@@ -74,21 +79,96 @@ def main() -> None:
     if any(int(row[6]) != int(row[0]) + 3_600_000 - 1 for row in data):
         raise ValueError("one or more kline close timestamps do not match the hourly interval")
 
-    print(json.dumps({
-        "status": "SAMPLE_VERIFIED",
-        "zip_url": ZIP_URL,
-        "checksum_url": CHECKSUM_URL,
-        "sha256": actual_sha,
-        "checksum_sha256": hashlib.sha256(checksum_bytes).hexdigest(),
-        "zip_bytes": len(archive),
-        "checksum_bytes": len(checksum_bytes),
-        "member": EXPECTED_MEMBER,
-        "rows": len(data),
-        "columns": len(EXPECTED_HEADER),
-        "first_open_utc": datetime.fromtimestamp(opens[0] / 1000, tz=UTC).isoformat(),
-        "last_open_utc": datetime.fromtimestamp(opens[-1] / 1000, tz=UTC).isoformat(),
+    traced_rows = []
+    previous_close: Decimal | None = None
+    fields = EXPECTED_HEADER
+    for index, values in enumerate(data, start=1):
+        record = dict(zip(fields, values, strict=True))
+        open_ms = int(record["open_time"])
+        close = Decimal(record["close"])
+        open_price = Decimal(record["open"])
+        row_features = {
+            "h1_full_range_pct_of_open": percentage(
+                (Decimal(record["high"]) - Decimal(record["low"])) / open_price * Decimal(100)
+            ),
+            "h1_close_to_close_pct": None if previous_close is None else percentage(
+                (close / previous_close - Decimal(1)) * Decimal(100)
+            ),
+            "h1_close_to_close_missing_reason": (
+                "no preceding in-sample H1 close for first row" if previous_close is None else None
+            ),
+        }
+        traced_rows.append({
+            "source_row_id": f"{EXPECTED_MEMBER}#data-row-{index}",
+            "event_open_at_utc": datetime.fromtimestamp(open_ms / 1000, tz=UTC).isoformat(),
+            "event_close_inclusive_at_utc": datetime.fromtimestamp(
+                int(record["close_time"]) / 1000, tz=UTC
+            ).isoformat(),
+            "market_available_at": None,
+            "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+            "raw_bar_fields": record,
+            "derived_features": row_features,
+            "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+        })
+        previous_close = close
+
+    trace = {
+        "trace_schema": "ATLAS_RED_E1_SINGLE_ARCHIVE_TRACE_V1",
+        "source": {
+            "url": ZIP_URL,
+            "member": EXPECTED_MEMBER,
+            "zip_sha256": actual_sha,
+            "official_checksum_url": CHECKSUM_URL,
+            "official_checksum_file_sha256": hashlib.sha256(checksum_bytes).hexdigest(),
+            "published_and_pinned_sha_match": True,
+            "instrument": "BTCUSDT",
+            "interval": "1h",
+            "event_date_utc": "2024-01-01",
+            "archive_download_bytes": len(archive),
+            "zip_member_rows": len(data),
+            "market_available_at": None,
+            "market_available_at_reason": "historical archive retrieval is not the original observation/receipt time",
+        },
+        "parsed_to_feature_rows": traced_rows,
+        "policy_gates": {
+            "S1_MTF_TREND_PULLBACK_1_0_0_shadow": {
+                "input_gate": "BLOCKED_INPUT",
+                "evaluation": "NOT_RUN",
+                "missing_requirements": [
+                    "aligned completed 4H bars and causal 4H regime",
+                    "confirmed 15M trigger bars",
+                    "ATR/volatility feature warmup and exact causal setup state",
+                    "fresh decision-time BBO and mark/index",
+                    "event gate and source-health evidence",
+                    "point-in-time contract/filter eligibility and action deadline",
+                ],
+                "signal_state": None,
+                "signal_state_reason": "policy consumer was not called; no signal/no-signal result inferred",
+            },
+            "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH_1_0_0_shadow_research": {
+                "input_gate": "BLOCKED_INPUT",
+                "evaluation": "NOT_RUN",
+                "available_in_sample_h1_bars": 24,
+                "available_in_sample_adjacent_h1_returns": 23,
+                "missing_requirements": [
+                    "720 consecutive completed H1 return observations (only 23 adjacent in-sample returns)",
+                    "aligned BTC/ETH/peer cohort and point-in-time eligible breadth of at least 20 symbols",
+                    "4H context and per-slot source-health/universe exclusions",
+                    "later 15M action bars, fresh BBO/mark, and historical contract/filter eligibility",
+                ],
+                "signal_state": None,
+                "signal_state_reason": "policy consumer was not called; no rank or signal/no-signal result inferred",
+            },
+        },
+        "outcomes": {
+            "label_rows": 0,
+            "future_outcomes_read_or_joined": False,
+            "profitability_or_win_rate_calculated": False,
+            "selection_or_holdout_comparison_performed": False,
+        },
         "archive_retained": False,
-    }, sort_keys=True))
+    }
+    print(json.dumps(trace, indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":

@@ -58,7 +58,8 @@
     "s1_diagnostic_outputs": 0,
     "s6_exact_outputs": 0,
     "s6_diagnostic_outputs": 0,
-    "strategy_calls_on_market_rows": 0
+    "strategy_calls_on_market_rows": 0,
+    "raw_to_deterministic_feature_to_blocker_traces": 1
   },
   "official_document_source": {
     "url": "https://raw.githubusercontent.com/binance/binance-public-data/master/README.md",
@@ -144,7 +145,10 @@
     "panel_schema_only": true,
     "outcome_schema_only": true,
     "clean_clone_refetch_and_regeneration": "CLEAN_CLONE_SAMPLE_REFETCH_TESTED; one sample only, no policy-panel regeneration.",
-    "sample_refetch_recipe": "docs/research/atlas-red-e1/refetch_sample.py; Python standard library only; one command: python docs/research/atlas-red-e1/refetch_sample.py"
+    "sample_refetch_recipe": "docs/research/atlas-red-e1/refetch_sample.py; Python standard library only; one command: python docs/research/atlas-red-e1/refetch_sample.py",
+    "sample_trace": "docs/research/atlas-red-e1/SAMPLE_TRACE.json",
+    "sample_trace_schema": "ATLAS_RED_E1_SINGLE_ARCHIVE_TRACE_V1; 24 parsed bar rows, 24 range features, 23 close-to-close features; S1 and S6 BLOCKED_INPUT/NOT_RUN; no policy calls or outcomes.",
+    "sample_trace_rows": 24
   },
   "verification": {
     "fixture_only_strategy_and_prefix_suite": {
@@ -168,9 +172,9 @@
       "clone_method": "git clone --depth 1 --branch research/atlas-red-binance-evidence-e1-recheck-2026-10-17 https://github.com/KasunKarandagolla/Atlas.git <fresh temporary directory>",
       "tested_repository_sha": "2cabae9ea89d644c133ee2fcbd2a7974c7e9ca14",
       "command": "python docs/research/atlas-red-e1/refetch_sample.py",
-      "result": "SAMPLE_VERIFIED; official GETs succeeded; published and pinned SHA-256 matched; ZIP CRC/member/schema and all 24 consecutive timestamps validated; output confirms archive_retained=false; clone working tree remained clean.",
+      "result": "SAMPLE_VERIFIED; official GETs succeeded; published and pinned SHA-256 matched; ZIP CRC/member/schema and all 24 consecutive timestamps validated; deterministic raw-to-feature-to-blocker trace emitted; archive_retained=false; clone working tree remained clean.",
       "raw_cache_dependency": "none; clone did not contain the archive; script fetched into memory and temporary byte buffers only",
-      "limitation": "sample refetch only; not full panel, feature generation or strategy replay"
+      "limitation": "Descriptive 1H feature/blocker trace only; S1/S6 policy consumers not called; not a full panel, signal output or strategy replay."
     }
   },
   "resource_accounting": {

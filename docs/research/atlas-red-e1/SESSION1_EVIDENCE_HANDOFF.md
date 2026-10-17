@@ -1,4 +1,4 @@
-> **Recheck update (2026-10-17 18:45 UTC):** The earlier 18:11–18:12 archive HEAD probes recorded below were proxy-denied at that time. A later anonymous GET succeeded for exactly one official BTCUSDT 1H daily archive and its sibling CHECKSUM. The ZIP is 1,561 bytes (SHA-256 `09a24635f090c9b2ab17f4a61aa3c4d262a7ccc88e96ff0199ce66a54a8ab66b`); the 92-byte CHECKSUM agrees. It parses as one 12-column header plus 24 consecutive UTC hourly rows for 2024-01-01. No raw ZIP is committed. This changes the claim from zero sample access to **one genuine checksum-verified sample only**. It does not establish the historical universe, S1 inputs, S6 breadth, any signal, or outcome. The root directory is an HTML landing page, the symbol directory returns 404, and a tested S3 listing route is proxy-blocked; no broad symbol inventory/as-of universe source was established. The existing zero-row panel and all zero strategy-output counts remain correct. Full historical evidence remains blocked at the cohort/data-sufficiency gate.
+> **Recheck update (2026-10-17 18:45 UTC):** The earlier 18:11–18:12 archive HEAD probes recorded below were proxy-denied at that time. A later anonymous GET succeeded for exactly one official BTCUSDT 1H daily archive and its sibling CHECKSUM. The ZIP is 1,561 bytes (SHA-256 `09a24635f090c9b2ab17f4a61aa3c4d262a7ccc88e96ff0199ce66a54a8ab66b`); the 92-byte CHECKSUM agrees. It parses as one 12-column header plus 24 consecutive UTC hourly rows for 2024-01-01. No raw ZIP is committed. This changes the claim from zero sample access to **one genuine checksum-verified sample only**. It does not establish the historical universe, S1 inputs, S6 breadth, any signal, or outcome. The root directory is an HTML landing page, the symbol directory returns 404, and a tested S3 listing route is proxy-blocked; no broad symbol inventory/as-of universe source was established. The zero-row opportunity panel and zero strategy-output counts remain correct. Full historical evidence remains blocked at the cohort/data-sufficiency gate.
 
 # ATLAS RED Session R-E1 — source-feasibility stop and handoff
 
@@ -28,6 +28,12 @@ These were time-specific failures: a later anonymous GET retrieved the exact ZIP
 
 The full role matrix is SOURCE_FEASIBILITY_AND_ROLE_MATRIX.csv. For roles whose source may exist but was not retrieved, UNAVAILABLE means unavailable to this session; NOT_TESTED means the underlying archive capability remains unverified. No inference is made that Binance lacks those files.
 
+## Verified sample trace
+
+`SAMPLE_TRACE.json` is reproducibly emitted by `refetch_sample.py` after both published and pinned SHA-256 checks pass. Each row links the archive member's CSV row ID and raw 12-field kline values to two deterministic, descriptive features: the H1 full-range percentage of open, and close-to-close H1 percentage (first row is null because this sample has no preceding in-file close). The feature grade is reconstructed historical; original per-row availability is unknown.
+
+The trace's final gate is explicit: S1 and S6 each have `BLOCKED_INPUT` and `NOT_RUN`, with missing requirements listed. No strategy call, signal/no-signal output, future label, or outcome comparison is present.
+
 ## Existing policy and code findings
 
 - The unchanged S1 consumer is src/atlas/v2/strategies/s1_trend.py, policy S1_MTF_TREND_PULLBACK 1.0.0-shadow. It requires final 4H/1H/15M bars, ATR/volatility, fresh BBO and mark/index, and a valid event gate. Bar-only setup state cannot qualify an exact action.
@@ -46,7 +52,7 @@ The manifest, as-of coverage row and panel schemas are deliberately explicit abo
 
 Existing S1/S2/S3/S5/S6/S8, prefix and archive tests were run only on their repository fixtures. The scoped strategy/prefix command passed **111 tests** in 20.06 seconds at source SHA `2135d161ebb6d8e8d7741bd8257174d280720ae2`. The broader attempted command including tests/data/test_archive_runtime.py had **111 passed and 4 failed** in 18.77 seconds, all because pyarrow is missing in the existing environment. No dependency was installed or changed. These fixture tests are code-contract evidence only, not genuine Binance observations or historical strategy output.
 
-No adapter or downloader was added. Consequently, there is no clean-clone archive refetch/regeneration proof, no pinned archive hash, no raw-to-feature-to-signal trace and no complete Sol replay command yet. The OPPORTUNITY_PANEL_SCHEMA.json and HELDOUT_OUTCOMES_SCHEMA.json are schema-only specifications, not populated datasets. Peak disk was not instrumented; no archive staging or extraction occurred. Bulk acquisition time was 0 minutes; USD spend was 0.
+A stdlib refetcher and clean-clone proof cover the single pinned archive only. `SAMPLE_TRACE.json` ties all 24 raw CSV rows to deterministic 1H range and close-to-close features, with historical market availability left unknown. It records S1 and S6 as `BLOCKED_INPUT` / `NOT_RUN` with exact missing inputs; the policy consumers were not called and no signal state is inferred. The opportunity panel and outcomes remain empty; their JSON files are schema-only. Peak disk was not instrumented. Bulk acquisition time was 0 minutes; USD spend was 0.
 
 ## Smallest factual remedy
 

@@ -1,0 +1,705 @@
+{
+  "archive_retained": false,
+  "outcomes": {
+    "future_outcomes_read_or_joined": false,
+    "label_rows": 0,
+    "profitability_or_win_rate_calculated": false,
+    "selection_or_holdout_comparison_performed": false
+  },
+  "parsed_to_feature_rows": [
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": "no preceding in-sample H1 close for first row",
+        "h1_close_to_close_pct": null,
+        "h1_full_range_pct_of_open": "0.741126"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T00:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T00:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42503.50",
+        "close_time": "1704070799999",
+        "count": "88278",
+        "high": "42603.20",
+        "ignore": "0",
+        "low": "42289.60",
+        "open": "42314.00",
+        "open_time": "1704067200000",
+        "quote_volume": "359196345.08716",
+        "taker_buy_quote_volume": "199033806.82405",
+        "taker_buy_volume": "4687.976",
+        "volume": "8459.477"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-1"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.339737",
+        "h1_full_range_pct_of_open": "0.870517"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T01:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T01:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42647.90",
+        "close_time": "1704074399999",
+        "count": "90351",
+        "high": "42832.00",
+        "ignore": "0",
+        "low": "42462.00",
+        "open": "42503.50",
+        "open_time": "1704070800000",
+        "quote_volume": "385970069.22236",
+        "taker_buy_quote_volume": "204180582.72378",
+        "taker_buy_volume": "4783.838",
+        "volume": "9043.411"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-2"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "-0.064481",
+        "h1_full_range_pct_of_open": "0.344448"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T02:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T02:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42620.40",
+        "close_time": "1704077999999",
+        "count": "52550",
+        "high": "42676.90",
+        "ignore": "0",
+        "low": "42530.00",
+        "open": "42647.90",
+        "open_time": "1704074400000",
+        "quote_volume": "198220641.34219",
+        "taker_buy_quote_volume": "91220775.72830",
+        "taker_buy_volume": "2141.259",
+        "volume": "4653.067"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-3"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "-0.587981",
+        "h1_full_range_pct_of_open": "0.844664"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T03:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T03:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42369.80",
+        "close_time": "1704081599999",
+        "count": "84345",
+        "high": "42630.00",
+        "ignore": "0",
+        "low": "42270.00",
+        "open": "42620.50",
+        "open_time": "1704078000000",
+        "quote_volume": "344422454.86880",
+        "taker_buy_quote_volume": "148472554.53870",
+        "taker_buy_volume": "3501.132",
+        "volume": "8119.880"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-4"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.157659",
+        "h1_full_range_pct_of_open": "0.482891"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T04:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T04:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42436.60",
+        "close_time": "1704085199999",
+        "count": "68026",
+        "high": "42439.80",
+        "ignore": "0",
+        "low": "42235.20",
+        "open": "42369.80",
+        "open_time": "1704081600000",
+        "quote_volume": "269146468.06440",
+        "taker_buy_quote_volume": "133634583.65040",
+        "taker_buy_volume": "3155.432",
+        "volume": "6356.536"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-5"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "-0.386459",
+        "h1_full_range_pct_of_open": "0.546934"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T05:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T05:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42272.60",
+        "close_time": "1704088799999",
+        "count": "52705",
+        "high": "42440.00",
+        "ignore": "0",
+        "low": "42207.90",
+        "open": "42436.60",
+        "open_time": "1704085200000",
+        "quote_volume": "175215160.58330",
+        "taker_buy_quote_volume": "71827449.35630",
+        "taker_buy_volume": "1696.938",
+        "volume": "4139.557"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-6"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.356496",
+        "h1_full_range_pct_of_open": "0.525636"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T06:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T06:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42423.30",
+        "close_time": "1704092399999",
+        "count": "49672",
+        "high": "42461.30",
+        "ignore": "0",
+        "low": "42239.10",
+        "open": "42272.60",
+        "open_time": "1704088800000",
+        "quote_volume": "166612744.39556",
+        "taker_buy_quote_volume": "97402647.33586",
+        "taker_buy_volume": "2299.336",
+        "volume": "3933.019"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-7"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.244441",
+        "h1_full_range_pct_of_open": "0.269427"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T07:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T07:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42527.00",
+        "close_time": "1704095999999",
+        "count": "50970",
+        "high": "42536.00",
+        "ignore": "0",
+        "low": "42421.70",
+        "open": "42423.40",
+        "open_time": "1704092400000",
+        "quote_volume": "189319260.25150",
+        "taker_buy_quote_volume": "88649535.71810",
+        "taker_buy_volume": "2086.176",
+        "volume": "4455.050"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-8"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.143909",
+        "h1_full_range_pct_of_open": "0.253721"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T08:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T08:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42588.20",
+        "close_time": "1704099599999",
+        "count": "47409",
+        "high": "42597.30",
+        "ignore": "0",
+        "low": "42489.40",
+        "open": "42527.10",
+        "open_time": "1704096000000",
+        "quote_volume": "156291085.19659",
+        "taker_buy_quote_volume": "76203008.49659",
+        "taker_buy_volume": "1791.092",
+        "volume": "3673.746"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-9"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.236216",
+        "h1_full_range_pct_of_open": "0.385553"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T09:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T09:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42688.80",
+        "close_time": "1704103199999",
+        "count": "66135",
+        "high": "42734.20",
+        "ignore": "0",
+        "low": "42570.00",
+        "open": "42588.20",
+        "open_time": "1704099600000",
+        "quote_volume": "246593471.27662",
+        "taker_buy_quote_volume": "120867357.60832",
+        "taker_buy_volume": "2833.179",
+        "volume": "5779.875"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-10"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.091125",
+        "h1_full_range_pct_of_open": "0.313665"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T10:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T10:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42727.70",
+        "close_time": "1704106799999",
+        "count": "67379",
+        "high": "42795.00",
+        "ignore": "0",
+        "low": "42661.10",
+        "open": "42688.80",
+        "open_time": "1704103200000",
+        "quote_volume": "248106239.29510",
+        "taker_buy_quote_volume": "124163066.93960",
+        "taker_buy_volume": "2905.872",
+        "volume": "5806.743"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-11"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "-0.000234",
+        "h1_full_range_pct_of_open": "0.379145"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T11:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T11:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42727.60",
+        "close_time": "1704110399999",
+        "count": "67461",
+        "high": "42800.00",
+        "ignore": "0",
+        "low": "42638.00",
+        "open": "42727.70",
+        "open_time": "1704106800000",
+        "quote_volume": "254818376.62847",
+        "taker_buy_quote_volume": "116111126.10389",
+        "taker_buy_volume": "2717.682",
+        "volume": "5965.038"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-12"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "-0.106723",
+        "h1_full_range_pct_of_open": "0.407464"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T12:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T12:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42682.00",
+        "close_time": "1704113999999",
+        "count": "67641",
+        "high": "42825.20",
+        "ignore": "0",
+        "low": "42651.10",
+        "open": "42727.70",
+        "open_time": "1704110400000",
+        "quote_volume": "272710994.37991",
+        "taker_buy_quote_volume": "140482284.87473",
+        "taker_buy_volume": "3286.256",
+        "volume": "6380.463"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-13"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.168455",
+        "h1_full_range_pct_of_open": "0.327070"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T13:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T13:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42753.90",
+        "close_time": "1704117599999",
+        "count": "44067",
+        "high": "42787.50",
+        "ignore": "0",
+        "low": "42647.90",
+        "open": "42682.00",
+        "open_time": "1704114000000",
+        "quote_volume": "139714168.52920",
+        "taker_buy_quote_volume": "75726341.55330",
+        "taker_buy_volume": "1772.190",
+        "volume": "3269.775"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-14"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "-0.253310",
+        "h1_full_range_pct_of_open": "0.330497"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T14:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T14:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42645.60",
+        "close_time": "1704121199999",
+        "count": "65715",
+        "high": "42755.80",
+        "ignore": "0",
+        "low": "42614.50",
+        "open": "42753.80",
+        "open_time": "1704117600000",
+        "quote_volume": "227567909.99080",
+        "taker_buy_quote_volume": "102050950.88360",
+        "taker_buy_volume": "2391.936",
+        "volume": "5333.959"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-15"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.404262",
+        "h1_full_range_pct_of_open": "0.632892"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T15:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T15:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42818.00",
+        "close_time": "1704124799999",
+        "count": "92607",
+        "high": "42887.50",
+        "ignore": "0",
+        "low": "42617.60",
+        "open": "42645.50",
+        "open_time": "1704121200000",
+        "quote_volume": "349732840.06249",
+        "taker_buy_quote_volume": "187652447.23899",
+        "taker_buy_volume": "4387.517",
+        "volume": "8176.630"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-16"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "-0.136158",
+        "h1_full_range_pct_of_open": "0.480639"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T16:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T16:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42759.70",
+        "close_time": "1704128399999",
+        "count": "85744",
+        "high": "42898.90",
+        "ignore": "0",
+        "low": "42693.10",
+        "open": "42818.00",
+        "open_time": "1704124800000",
+        "quote_volume": "305043132.95100",
+        "taker_buy_quote_volume": "148567141.05070",
+        "taker_buy_volume": "3470.444",
+        "volume": "7126.615"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-17"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.204164",
+        "h1_full_range_pct_of_open": "0.294670"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T17:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T17:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "42847.00",
+        "close_time": "1704131999999",
+        "count": "48715",
+        "high": "42860.80",
+        "ignore": "0",
+        "low": "42734.80",
+        "open": "42759.70",
+        "open_time": "1704128400000",
+        "quote_volume": "145972605.84790",
+        "taker_buy_quote_volume": "71481957.21020",
+        "taker_buy_volume": "1670.386",
+        "volume": "3411.019"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-18"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.702500",
+        "h1_full_range_pct_of_open": "0.982566"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T18:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T18:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "43148.00",
+        "close_time": "1704135599999",
+        "count": "184785",
+        "high": "43268.00",
+        "ignore": "0",
+        "low": "42847.00",
+        "open": "42847.00",
+        "open_time": "1704132000000",
+        "quote_volume": "814377162.55682",
+        "taker_buy_quote_volume": "441266988.14410",
+        "taker_buy_volume": "10240.301",
+        "volume": "18895.526"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-19"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.946046",
+        "h1_full_range_pct_of_open": "1.065866"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T19:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T19:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "43556.20",
+        "close_time": "1704139199999",
+        "count": "171283",
+        "high": "43593.20",
+        "ignore": "0",
+        "low": "43133.30",
+        "open": "43148.00",
+        "open_time": "1704135600000",
+        "quote_volume": "739344424.08290",
+        "taker_buy_quote_volume": "408614035.96080",
+        "taker_buy_volume": "9415.678",
+        "volume": "17037.283"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-20"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "0.452519",
+        "h1_full_range_pct_of_open": "0.842590"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T20:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T20:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "43753.30",
+        "close_time": "1704142799999",
+        "count": "217997",
+        "high": "43915.50",
+        "ignore": "0",
+        "low": "43548.50",
+        "open": "43556.20",
+        "open_time": "1704139200000",
+        "quote_volume": "1034474075.01745",
+        "taker_buy_quote_volume": "577785614.29074",
+        "taker_buy_volume": "13207.671",
+        "volume": "23648.197"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-21"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "-0.167987",
+        "h1_full_range_pct_of_open": "0.734118"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T21:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T21:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "43679.80",
+        "close_time": "1704146399999",
+        "count": "111303",
+        "high": "43853.00",
+        "ignore": "0",
+        "low": "43531.80",
+        "open": "43753.20",
+        "open_time": "1704142800000",
+        "quote_volume": "460297605.96579",
+        "taker_buy_quote_volume": "205893025.87540",
+        "taker_buy_volume": "4713.037",
+        "volume": "10536.944"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-22"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "-0.219552",
+        "h1_full_range_pct_of_open": "0.681781"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T22:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T22:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "43583.90",
+        "close_time": "1704149999999",
+        "count": "79628",
+        "high": "43723.80",
+        "ignore": "0",
+        "low": "43426.00",
+        "open": "43679.70",
+        "open_time": "1704146400000",
+        "quote_volume": "288856776.61484",
+        "taker_buy_quote_volume": "144332185.92450",
+        "taker_buy_volume": "3314.391",
+        "volume": "6632.907"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-23"
+    },
+    {
+      "derived_features": {
+        "h1_close_to_close_missing_reason": null,
+        "h1_close_to_close_pct": "1.482887",
+        "h1_full_range_pct_of_open": "1.565024"
+      },
+      "event_close_inclusive_at_utc": "2024-01-01T23:59:59.999000+00:00",
+      "event_open_at_utc": "2024-01-01T23:00:00+00:00",
+      "feature_grade": "CONDITIONAL_DIAGNOSTIC_RECONSTRUCTED_HISTORICAL",
+      "market_available_at": null,
+      "market_available_at_reason": "archive bars contain no original provider/system receive timestamp",
+      "raw_bar_fields": {
+        "close": "44230.20",
+        "close_time": "1704153599999",
+        "count": "242565",
+        "high": "44266.00",
+        "ignore": "0",
+        "low": "43583.90",
+        "open": "43584.00",
+        "open_time": "1704150000000",
+        "quote_volume": "1125553984.30731",
+        "taker_buy_quote_volume": "650474448.71751",
+        "taker_buy_volume": "14789.843",
+        "volume": "25589.427"
+      },
+      "source_row_id": "BTCUSDT-1h-2024-01-01.csv#data-row-24"
+    }
+  ],
+  "policy_gates": {
+    "S1_MTF_TREND_PULLBACK_1_0_0_shadow": {
+      "evaluation": "NOT_RUN",
+      "input_gate": "BLOCKED_INPUT",
+      "missing_requirements": [
+        "aligned completed 4H bars and causal 4H regime",
+        "confirmed 15M trigger bars",
+        "ATR/volatility feature warmup and exact causal setup state",
+        "fresh decision-time BBO and mark/index",
+        "event gate and source-health evidence",
+        "point-in-time contract/filter eligibility and action deadline"
+      ],
+      "signal_state": null,
+      "signal_state_reason": "policy consumer was not called; no signal/no-signal result inferred"
+    },
+    "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH_1_0_0_shadow_research": {
+      "available_in_sample_adjacent_h1_returns": 23,
+      "available_in_sample_h1_bars": 24,
+      "evaluation": "NOT_RUN",
+      "input_gate": "BLOCKED_INPUT",
+      "missing_requirements": [
+        "720 consecutive completed H1 return observations (only 23 adjacent in-sample returns)",
+        "aligned BTC/ETH/peer cohort and point-in-time eligible breadth of at least 20 symbols",
+        "4H context and per-slot source-health/universe exclusions",
+        "later 15M action bars, fresh BBO/mark, and historical contract/filter eligibility"
+      ],
+      "signal_state": null,
+      "signal_state_reason": "policy consumer was not called; no rank or signal/no-signal result inferred"
+    }
+  },
+  "source": {
+    "archive_download_bytes": 1561,
+    "event_date_utc": "2024-01-01",
+    "instrument": "BTCUSDT",
+    "interval": "1h",
+    "market_available_at": null,
+    "market_available_at_reason": "historical archive retrieval is not the original observation/receipt time",
+    "member": "BTCUSDT-1h-2024-01-01.csv",
+    "official_checksum_file_sha256": "5fef750be288b5457d17657d0c2fbfd2265d826d9619c46533b298f9c27e14ee",
+    "official_checksum_url": "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-01.zip.CHECKSUM",
+    "published_and_pinned_sha_match": true,
+    "url": "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-01.zip",
+    "zip_member_rows": 24,
+    "zip_sha256": "09a24635f090c9b2ab17f4a61aa3c4d262a7ccc88e96ff0199ce66a54a8ab66b"
+  },
+  "trace_schema": "ATLAS_RED_E1_SINGLE_ARCHIVE_TRACE_V1"
+}

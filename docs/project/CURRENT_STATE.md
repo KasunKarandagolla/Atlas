@@ -62,3 +62,5 @@ Fixture retest at `2135d161ebb6d8e8d7741bd8257174d280720ae2`: scoped S1/S2/S3/S5
 Added a stdlib-only bounded sample refetcher that verifies official and pinned SHA-256, archive/member/schema and all 24 hourly timestamps, retaining no data. Local run passed; fresh-clone proof pending. It does not construct the research panel.
 
 Clean-clone fallback proof: from a fresh depth-1 clone at `2cabae9ea89d644c133ee2fcbd2a7974c7e9ca14`, `python docs/research/atlas-red-e1/refetch_sample.py` fetched the official ZIP/CHECKSUM, validated both hashes and all 24 rows, retained no archive, and left the clone clean. This is a one-sample proof only; full panel regeneration is not implemented.
+
+Added `docs/research/atlas-red-e1/SAMPLE_TRACE.json`, emitted by the pinned refetch utility: 24 raw bar records map to deterministic H1 range features and 23 within-sample close returns. The feature trace preserves unknown historical availability. S1 and S6 are explicitly BLOCKED_INPUT / NOT_RUN; neither policy consumer was called and no signal state is inferred. Script lint/compile and trace consistency checks pass; final clean-clone trace equivalence pending.
