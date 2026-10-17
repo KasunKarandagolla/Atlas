@@ -27,16 +27,12 @@ No E1 outcome was calculated, but prior policy/data exposure is unverified. Trea
 
 ## Bounded sample reproduction
 
-The one sample is pinned in `DATASET_MANIFEST.json`. To re-fetch it from a clean checkout, run:
+The one sample is pinned in `DATASET_MANIFEST.json`. From a clean checkout, run this single command:
 
 ```sh
-base=https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-01.zip
-curl --fail --location --output BTCUSDT-1h-2024-01-01.zip "$base"
-curl --fail --location --output BTCUSDT-1h-2024-01-01.zip.CHECKSUM "$base.CHECKSUM"
-sha256sum --check BTCUSDT-1h-2024-01-01.zip.CHECKSUM
-unzip -t BTCUSDT-1h-2024-01-01.zip
+python docs/research/atlas-red-e1/refetch_sample.py
 ```
 
-This refetch command was documented but not rerun in a clean clone. No deterministic panel regeneration script or clean-clone replay was implemented or tested in E1. The test counts in the manifest are fixture-only code-contract checks, not market-source verification.
+The standard-library script downloads only the official ZIP and sibling CHECKSUM to memory, rejects unexpected redirect hosts, verifies published and pinned SHA-256 values, checks ZIP CRC/member/schema, and validates all 24 consecutive hourly timestamps. It retains no raw file. The clean-clone execution proof and its exact repository SHA are recorded in the manifest. This recipe re-fetches and validates the sample only; it does not regenerate a policy panel. The fixture test counts are code-contract checks, not market-source verification.
 
 Independent ChatGPT review of the exact pushed handoff is required before Sol's evaluation. This package does not authorize P2 or any trading, provider or capital action.

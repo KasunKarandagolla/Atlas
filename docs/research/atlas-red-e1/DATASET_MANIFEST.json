@@ -143,7 +143,8 @@
     "heldout_outcome_rows": 0,
     "panel_schema_only": true,
     "outcome_schema_only": true,
-    "clean_clone_refetch_and_regeneration": "NOT TESTED; one pinned sample URL/checksum is sufficient for a bounded fetch but no replay/parser artifact was added"
+    "clean_clone_refetch_and_regeneration": "Sample recipe implemented; clean clone execution pending. Recipe validates one archive sample only, not a policy panel.",
+    "sample_refetch_recipe": "docs/research/atlas-red-e1/refetch_sample.py; Python standard library only; one command: python docs/research/atlas-red-e1/refetch_sample.py"
   },
   "verification": {
     "fixture_only_strategy_and_prefix_suite": {
@@ -157,6 +158,11 @@
       "result": "111 passed; 4 failed (115 collected) in 18.77s; all four failures are tests/data/test_archive_runtime.py cases because pyarrow is missing from the existing environment",
       "interpretation": "Environment dependency gap; no dependency installation or lock change",
       "tested_repository_sha": "2135d161ebb6d8e8d7741bd8257174d280720ae2"
+    },
+    "sample_recipe_local_run": {
+      "command": "python docs/research/atlas-red-e1/refetch_sample.py",
+      "result": "SAMPLE_VERIFIED; 1,561-byte ZIP + 92-byte official CHECKSUM; SHA-256 matched; ZIP CRC/member/header/24 hourly timestamps validated; raw bytes retained false",
+      "interpretation": "Local working-copy run only; clean-clone reproduction remains pending"
     }
   },
   "resource_accounting": {
