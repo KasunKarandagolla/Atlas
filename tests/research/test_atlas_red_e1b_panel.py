@@ -16,8 +16,6 @@ sys.path.insert(0, str(ROOT / "docs/research/atlas-red-e1b"))
 import acquire_archives as archives  # noqa: E402
 import build_research_panel as panel  # noqa: E402
 
-from atlas.v2.strategies.s6_cross_section import _four_hour_context, _hourly_returns  # noqa: E402
-
 
 def csv_zip(symbol: str, interval: str, month: str, rows: list[list[str]]) -> bytes:
     name = f"{symbol}-{interval}-{month}.csv"
@@ -82,19 +80,22 @@ def test_s6_price_adapter_matches_existing_repository_return_and_rank_math() -> 
     assert breadth == 2
     assert scores["ETHUSDT"]["state"] == "S6_FIXED_COHORT_RANK_DIAGNOSTIC"
 
-    key = panel.key_for("BTCUSDT")
-    btc_rows = _hourly_returns(btc, key=key, cutoff_ns=cutoff, replay_view="RECONSTRUCTED_MARKET")
-    asset_rows = _hourly_returns(asset, key=panel.key_for("ETHUSDT"), cutoff_ns=cutoff, replay_view="RECONSTRUCTED_MARKET")
+    btc_times, btc_returns = panel.returns(btc)
+    asset_times, asset_returns = panel.returns(asset)
+    btc_rows, asset_rows = dict(zip(btc_times, btc_returns, strict=True)), dict(zip(asset_times, asset_returns, strict=True))
     end, begin = cutoff - cutoff % panel.HOUR, cutoff - cutoff % panel.HOUR - 30 * panel.DAY
     times = sorted(t for t in btc_rows.keys() & asset_rows.keys() if begin < t <= end)
-    x = [asset_rows[t][0] for t in times]
-    y = [btc_rows[t][0] for t in times]
+    x = [asset_rows[t] for t in times]
+    y = [btc_rows[t] for t in times]
     assert len(times) == 720
     beta = covariance(x, y) / (stdev(y) ** 2)
     residuals = [a - beta * b for a, b in zip(x, y, strict=True)]
     direct_score = sum(residuals[-4:]) / stdev(residuals)
     assert abs(float(scores["ETHUSDT"]["score"]) - direct_score) < 1e-8
-    expected_trend, _ = _four_hour_context(h4["ETHUSDT"], panel.key_for("ETHUSDT"), cutoff, "RECONSTRUCTED_MARKET")
+    h4_tail = panel.contiguous_tail(h4["ETHUSDT"], cutoff, panel.H4, 50)
+    closes = [float(b.close) for b in h4_tail]
+    e20, e50 = panel.ema(closes, 20)[-1], panel.ema(closes, 50)[-1]
+    expected_trend = "UP" if closes[-1] > e50 and e20 > e50 else "DOWN" if closes[-1] < e50 and e20 < e50 else "NEUTRAL"
     assert scores["ETHUSDT"]["own_4h_trend"] == expected_trend
 
 
@@ -214,3 +215,108 @@ def test_cached_s1_and_m15_trigger_match_verified_real_prefix() -> None:
     trigger = (setup[0].value == "LONG" and trigger_bar.close > previous_bar.high) or (
         setup[0].value == "SHORT" and trigger_bar.close < previous_bar.low)
     assert trigger
+
+
+def test_r1_hour_boundary_keeps_originating_setup_and_unique_first_trigger() -> None:
+    setup = {"state": "SETUP", "side": "LONG", "setup_extreme": "90", "s1_ref": "a" * 64}
+    setup_cutoff = 1_710_000_000_000_000_000
+    long_origin, first_event = panel.s1_setup_origin("ETHUSDT", setup_cutoff, setup,
+        {"state": "NO_SETUP"}, {})
+    assert first_event == 1
+    repeated_setup = {**setup, "s1_ref": "c" * 64}
+    carried_origin, repeated_event = panel.s1_setup_origin("ETHUSDT", setup_cutoff + panel.HOUR,
+        repeated_setup, setup, long_origin)
+    assert repeated_event == 0
+    assert carried_origin == long_origin
+    current_short = {"state": "SETUP", "side": "SHORT", "setup_extreme": "110", "s1_ref": "b" * 64}
+    short_origin, short_event = panel.s1_setup_origin("ETHUSDT", setup_cutoff + panel.HOUR,
+        current_short, setup, long_origin)
+    assert short_event == 1
+    source = panel.s1_trigger_source("ETHUSDT", setup_cutoff + panel.HOUR,
+                                     setup_cutoff + panel.HOUR, short_origin, carried_origin)
+    assert source["side"] == "LONG" and source["setup_extreme"] == "90"
+    assert panel.s1_trigger_source("ETHUSDT", setup_cutoff + panel.HOUR, setup_cutoff + panel.HOUR,
+                                   {}, carried_origin)["side"] == "LONG"
+    changed_extreme, changed_extreme_event = panel.s1_setup_origin("ETHUSDT", setup_cutoff + 2 * panel.HOUR,
+        {**setup, "setup_extreme": "91"}, setup, long_origin)
+    assert changed_extreme_event == 1 and changed_extreme["setup_cutoff_ns"] == setup_cutoff + 2 * panel.HOUR
+    assert changed_extreme["setup_id"] != long_origin["setup_id"]
+    # At 13:00 a newly computed SHORT setup is descriptive only; the 12:00
+    # LONG setup owns that final trigger opportunity.
+    predicate = panel.s1_trigger_predicate("LONG", "101", "100", "100", "99")
+    first = panel.s1_first_trigger(source, predicate, set(), setup_cutoff + panel.HOUR)
+    repeated = panel.s1_first_trigger(source, predicate, {source["setup_id"]}, setup_cutoff + panel.HOUR + panel.M15)
+    assert source["setup_id"] and source["side"] == "LONG"
+    assert first["first_trigger_event"] == 1
+    assert first["first_trigger_event_id"]
+    assert repeated["first_trigger_event_id"] == ""
+    assert repeated["first_trigger_event"] == 0
+    assert repeated["raw_trigger_predicate"] == 1
+    assert [panel.s1_setup_active(source, setup_cutoff + i * panel.M15) for i in range(1, 5)] == [True] * 4
+    assert not panel.s1_setup_active(source, setup_cutoff + 5 * panel.M15)
+    new_sequence, new_event = panel.s1_setup_origin("ETHUSDT", setup_cutoff + 2 * panel.HOUR,
+        setup, {"state": "NO_SETUP"}, {})
+    assert new_event == 1 and new_sequence["setup_id"] != source["setup_id"]
+
+
+def test_r1_missing_or_noncontiguous_previous_m15_is_not_no_trigger() -> None:
+    result = panel.s1_trigger_observation(
+        active=True, setup={"setup_id": "setup-1", "side": "LONG"},
+        current_present=True, previous_present=False, contiguous=False,
+        current_close="101", previous_high=None, current_low="99", previous_low=None)
+    assert result["state"] == "SOURCE_MISSING"
+    assert result["reason"] == "PREVIOUS_M15_MISSING_OR_NONCONTIGUOUS"
+    assert result["raw_trigger_predicate"] == 0
+    current_gap = panel.s1_trigger_observation(
+        active=False, setup={}, current_present=False, previous_present=True, contiguous=True,
+        current_close="0", previous_high="1", current_low="0", previous_low="1")
+    assert current_gap["state"] == "SOURCE_MISSING"
+    assert current_gap["reason"] == "CURRENT_M15_MISSING"
+
+
+def test_r1_pre_window_trigger_denominator_uses_only_verified_prior_bars() -> None:
+    setup_cutoff = panel.ns(2024, 3, 1)
+    setup = panel.s1_setup_identity("ETHUSDT", setup_cutoff,
+        {"state": "SETUP", "side": "LONG", "setup_extreme": "90", "s1_ref": "d" * 64})
+    rows = [
+        {"open_ns": setup_cutoff - panel.M15, "close_ns": setup_cutoff, "open": "100", "high": "100",
+         "low": "99", "close": "100", "volume": "1"},
+        {"open_ns": setup_cutoff, "close_ns": setup_cutoff + panel.M15, "open": "100", "high": "102",
+         "low": "99", "close": "101", "volume": "1"},
+    ]
+    bars = panel.make_bars("ETHUSDT", "15m", rows)
+    by_close = {bar.close_at_ns: bar for bar in bars}
+    assert panel.s1_prior_trigger_history(setup, setup_cutoff + 2 * panel.M15, by_close) == "TRIGGERED_BEFORE_WINDOW"
+    assert panel.s1_prior_trigger_history(setup, setup_cutoff + panel.M15, by_close) == "NO_PRIOR_MATCH"
+    assert panel.s1_prior_trigger_history(setup, setup_cutoff + 2 * panel.M15,
+        {bars[1].close_at_ns: bars[1]}) == "PRIOR_TRIGGER_HISTORY_MISSING"
+    unknown_first = panel.s1_first_trigger(setup, 1, set(), setup_cutoff + 2 * panel.M15,
+                                           {str(setup["setup_id"])})
+    assert unknown_first["first_trigger_event"] == 0
+    assert unknown_first["first_trigger_reason"] == "PRIOR_TRIGGER_HISTORY_MISSING"
+
+
+def test_r2_research_bars_separate_unknown_actual_receipt_from_replay_clock() -> None:
+    close = panel.ns(2024, 3, 1)
+    rows = [{"open_ns": close - panel.M15, "close_ns": close, "open": "100", "high": "102",
+             "low": "99", "close": "101", "volume": "1", "archive_sha256": "a" * 64,
+             "row_index": 7}]
+    bar = panel.make_bars("BTCUSDT", "15m", rows)[0]
+    rows[0]["retrieved_at_utc"] = "later-run-time-is-not-part-of-stable-source-identity"
+    rebuilt = panel.make_bars("BTCUSDT", "15m", rows)[0]
+    assert bar.actual_receipt_at_ns is None
+    assert bar.replay_available_at_ns == close + 5_000_000_000
+    assert bar.stable_source_row_id == "a" * 64 + ":7"
+    assert bar.stable_source_row_id == rebuilt.stable_source_row_id
+    assert bar.content_hash == rebuilt.content_hash
+    assert not hasattr(bar, "raw")
+    assert panel.bar_visible_at(bar, close) is False
+    assert panel.bar_visible_at(bar, close + 5_000_000_000) is True
+
+
+def test_r2_replay_sensitivities_and_feature_processing_are_explicit() -> None:
+    close = panel.ns(2024, 3, 1)
+    assert panel.replay_available_at(close, 5) == close + 5_000_000_000
+    assert panel.replay_available_at(close, 30) == close + 30_000_000_000
+    assert panel.replay_available_at(close, 60) == close + 60_000_000_000
+    assert panel.derived_replay_available_at([close + 5_000_000_000]) == close + 6_000_000_000

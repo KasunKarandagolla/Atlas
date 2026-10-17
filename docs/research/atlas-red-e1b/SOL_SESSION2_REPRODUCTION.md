@@ -4,9 +4,15 @@ This is a protocol for a later independent review, not permission to evaluate th
 
 ## Rebuild inputs
 
-Use the clean-clone recipe and checksums in `REPRODUCIBILITY.md`. Confirm the 35-symbol ordered cohort hash in `COHORT_AND_SPLITS.md`, UTC decision windows, `SOURCE_MANIFEST.jsonl`, full panel SHA-256 `d3955dcf2fdb42bed5b7ba3b8430e20d662405ec6cb1dfa6c20e1f718bef0cae`, coverage SHA-256 `eb74a6eb0379524f07eec8c2462e21a3cfa78c5be66cd01972e8c735f8b45a61`, and the exact boundary convention. Do not infer source availability from later archive presence.
+Use the recipe and checksums in `REPRODUCIBILITY.md`. Confirm the 35-symbol ordered cohort hash in `COHORT_AND_SPLITS.md`, UTC decision windows, `SOURCE_MANIFEST.jsonl`, corrected full panel SHA-256 `0cb67844a9a13110fba6628707d3be7a2be03ffa1fc156543b49ff8284e2f6cc`, coverage SHA-256 `eb74a6eb0379524f07eec8c2462e21a3cfa78c5be66cd01972e8c735f8b45a61`, and the exact boundary convention. Repeated SETUP states with unchanged side/extreme share an originating setup ID/cutoff; a changed side/extreme starts a new origin. Four subsequent M15 slots belong to that origin, and incomplete prior opportunity history is marked unknown rather than asserting first-trigger status. Do not infer source availability from later archive presence. The sample remains diagnostic; corrected-code clean-clone parity is unverified, and independent acceptance is pending.
 
 ## Same-slot comparisons
+
+### R1/R2 output contract at this candidate
+
+For R1, compare the current `s1_precursor_state` and `s1_setup_event_*` columns separately from `s1_trigger_setup_*`. At an exact hourly boundary, the prior setup owns the final 15-minute opportunity; a new current H1 setup must not overwrite its direction. Retain all `s1_raw_trigger_predicate` matches but count only `s1_first_trigger_event` once per `s1_trigger_setup_id`. `SOURCE_MISSING` must remain visible for every absent current M15 row and for a missing/noncontiguous previous M15 bar during an active setup. Reconcile setup states, setup events, raw predicates, first events, and missing reasons per window and symbol. Repeated setup states and quarter-hour rows are not independent trades or hourly ranks.
+
+For R2, archived actual receipt is `UNKNOWN_NOT_CAPTURED_AT_ACQUISITION`; do not construct actual receipt from a close, CSV mtime, or rebuild clock. `ResearchBar` is a research-only adapter and is not a `RawObservationV2` or production observation. The declared counterfactual default is bar close +5 seconds; +30/+60 are labeled sensitivities. Derived readiness adds at least one second after all dependencies. A bar closing at cutoff is not replay-visible then. Existing exact-close panel predicates are labeled zero-lag descriptive and must not be treated as delayed replay decisions.
 
 Join independent calculations to the diagnostic panel by the exact `(window, symbol, decision_cutoff_utc_ns)` key. Preserve every expected calendar slot, including missing and excluded states. Compare the independently reconstructed S1 precursor state, regime, side/setup extreme, and M15 trigger state to the panel values at the same cutoff. S1 comparison must use only completed bars available before that cutoff; the March 1 00:00 UTC slot is a required boundary check using its completed February 28 23:45 M15 seed and no future bar.
 

@@ -32,6 +32,16 @@ def run() -> dict[str, object]:
     panel_rows = collections.Counter()
     s1_states = collections.Counter()
     s1_triggers = collections.Counter()
+    s1_setup_state = collections.Counter()
+    s1_setup_event_count = collections.Counter()
+    s1_raw_predicates = collections.Counter()
+    s1_first_events = collections.Counter()
+    s1_trigger_source_missing = collections.Counter()
+    s1_trigger_missing_reason = collections.Counter()
+    s6_unique_hourly = collections.Counter()
+    s6_hourly_keys: set[tuple[str, str, int]] = set()
+    setup_ids: dict[tuple[str, str], set[str]] = collections.defaultdict(set)
+    first_trigger_ids: dict[tuple[str, str], set[str]] = collections.defaultdict(set)
     s6_states = collections.Counter()
     panel_missing = collections.Counter()
     with gzip.open(panel_path, "rt", encoding="utf-8", newline="") as f:
@@ -40,6 +50,25 @@ def run() -> dict[str, object]:
             panel_rows[window] += 1
             s1_states[(window, row["s1_precursor_state"])] += 1
             s1_triggers[(window, row["s1_trigger_state"])] += 1
+            s1_setup_state[(window, row["symbol"], row["s1_precursor_state"])] += 1
+            s1_setup_event_count[(window, row["symbol"])] += int(row["s1_setup_event"])
+            s1_raw_predicates[(window, row["symbol"])] += int(row["s1_raw_trigger_predicate"])
+            s1_first_events[(window, row["symbol"])] += int(row["s1_first_trigger_event"])
+            s1_trigger_source_missing[(window, row["symbol"])] += int(row["s1_trigger_state"] == "SOURCE_MISSING")
+            if row["s1_trigger_state"] == "SOURCE_MISSING":
+                s1_trigger_missing_reason[(window, row["symbol"], row["s1_first_trigger_reason"])] += 1
+            if row["s1_setup_event_id"]:
+                setup_ids[(window, row["symbol"])].add(row["s1_setup_event_id"])
+            if row["s1_first_trigger_event"] == "1":
+                event_key = (window, row["symbol"])
+                setup_id = row["s1_trigger_setup_id"]
+                if setup_id in first_trigger_ids[event_key]:
+                    raise ValueError(f"DUPLICATE_FIRST_TRIGGER_EVENT:{event_key}:{setup_id}")
+                first_trigger_ids[event_key].add(setup_id)
+            s6_key = (window, row["symbol"], int(row["decision_cutoff_utc_ns"]) // (60 * 60 * 1_000_000_000))
+            if s6_key not in s6_hourly_keys:
+                s6_hourly_keys.add(s6_key)
+                s6_unique_hourly[(window, row["symbol"], row["s6_state"])] += 1
             s6_states[(window, row["s6_state"])] += 1
             if row["source_status"] == "SOURCE_MISSING":
                 panel_missing[(window, row["source_missing_reason"])] += 1
@@ -102,6 +131,14 @@ def run() -> dict[str, object]:
             "rows_total": sum(panel_rows.values()),
             "s1_precursor_state_counts": {f"{w}:{s}": n for (w, s), n in sorted(s1_states.items())},
             "s1_trigger_state_counts": {f"{w}:{s}": n for (w, s), n in sorted(s1_triggers.items())},
+            "s1_setup_state_counts_by_window_symbol": {f"{w}:{symbol}:{state}": n for (w, symbol, state), n in sorted(s1_setup_state.items())},
+            "s1_setup_event_counts_by_window_symbol": {f"{w}:{symbol}": n for (w, symbol), n in sorted(s1_setup_event_count.items())},
+            "s1_unique_setup_id_counts_by_window_symbol": {f"{w}:{symbol}": len(ids) for (w, symbol), ids in sorted(setup_ids.items())},
+            "s1_raw_trigger_predicate_counts_by_window_symbol": {f"{w}:{symbol}": n for (w, symbol), n in sorted(s1_raw_predicates.items())},
+            "s1_first_trigger_event_counts_by_window_symbol": {f"{w}:{symbol}": n for (w, symbol), n in sorted(s1_first_events.items())},
+            "s1_trigger_source_missing_counts_by_window_symbol": {f"{w}:{symbol}": n for (w, symbol), n in sorted(s1_trigger_source_missing.items())},
+            "s1_trigger_source_missing_reason_counts_by_window_symbol": {f"{w}:{symbol}:{reason}": n for (w, symbol, reason), n in sorted(s1_trigger_missing_reason.items())},
+            "s6_unique_hourly_cutoff_state_counts": {f"{w}:{symbol}:{state}": n for (w, symbol, state), n in sorted(s6_unique_hourly.items())},
             "s6_state_counts": {f"{w}:{s}": n for (w, s), n in sorted(s6_states.items())},
             "m15_source_missing_counts": {f"{w}:{r}": n for (w, r), n in sorted(panel_missing.items())},
             "full_panel_git_status": "OMITTED_FROM_COMMIT: compressed full panel exceeds GitHub's 100 MiB per-file limit; regenerate with the command below",

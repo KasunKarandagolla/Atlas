@@ -1,5 +1,13 @@
 # R-E1B Session 1 evidence handoff
 
+## R1/R2 correction checkpoint — 2026-10-17
+
+The exact correction is described in [`E1B_R1_R2_CORRECTION_HANDOFF.md`](E1B_R1_R2_CORRECTION_HANDOFF.md). The current producer uses deterministic setup and originating-trigger identities, separately counts raw bar predicates and unique first-trigger events, preserves all missing M15 input rows, and does not emit fabricated `RawObservationV2` actual receipt fields. Historical receipt is unknown; a distinct +5s replay schedule and ≥1s feature processing delay are documented. Exact-close S1 values remain zero-lag descriptive diagnostics.
+
+The original counts below are the accepted E1B baseline and are retained as historical evidence. In the corrected panel, precursor states remain A 87,540 SETUP / 322,380 NO_SETUP and B 80,228 SETUP / 317,980 NO_SETUP / 11,712 SOURCE_MISSING. Transition-based setup-event counts are A 15,062 and B 13,124; raw trigger predicates are A 13,690 and B 12,003; unique first-trigger events are A 9,261 and B 7,899. All missing current M15 inputs remain SOURCE_MISSING (A 0, B 15,610); within active setup windows, 3,898 B EOS rows and 11,712 B MATIC rows lack a valid current/prior trigger pair. Current per-symbol and S6 unique-hour counts are in the dataset manifest. Full panel count remains 819,840; coverage remains 1,024,800 with unchanged hash. The corrected panel SHA-256 is `0cb67844a9a13110fba6628707d3be7a2be03ffa1fc156543b49ff8284e2f6cc` (205,348,124 bytes).
+
+Original exact-SHA clean-clone evidence applies to the prior E1B producer only; clean-clone parity for this correction was not rerun. Independent acceptance of the correction is pending.
+
 ## Delivered evidence
 
 Research candidate: branch `research/atlas-red-binance-cohort-e1b-2026-10-18`, code/data package SHA `9c872fb8e66a1396412453e132cc00bb576e9bcb` before this documentation-only follow-up. This is a research diagnostic, not an activated trading system. The ordered 35-symbol convenience cohort is frozen at SHA-256 `b51f4a360e60bbb62fae982e4120ff3681b12a13ef8cd4a0aff01d761f6f03b5` and covers decision cutoffs `[2024-03-01 00:00, 2024-07-01 00:00)` and `[2025-03-01 00:00, 2025-07-01 00:00)` UTC.

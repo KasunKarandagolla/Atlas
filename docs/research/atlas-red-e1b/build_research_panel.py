@@ -18,7 +18,10 @@ import math
 import pathlib
 import sys
 from collections import defaultdict
+from collections.abc import Callable
+from dataclasses import dataclass
 from decimal import Decimal
+from functools import cached_property
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[2]
@@ -26,8 +29,7 @@ sys.path.insert(0, str(REPO / "src"))
 from acquire_archives import COHORT, COHORT_SHA256, MONTHS, run  # noqa: E402
 
 from atlas.v2.contracts import V2Side  # noqa: E402
-from atlas.v2.data.bars import BarIntervalV2, CausalBarV2  # noqa: E402
-from atlas.v2.data.raw import AvailabilityClassV2, RawObservationV2  # noqa: E402
+from atlas.v2.data.bars import BarIntervalV2  # noqa: E402
 from atlas.v2.features.joins import JoinedBars  # noqa: E402,F401
 from atlas.v2.features.technical import ema  # noqa: E402
 from atlas.v2.instruments import EnvironmentV2, InstrumentKeyV2, ProductTypeV2, VenueV2  # noqa: E402
@@ -44,6 +46,159 @@ SIX_POLICY_ID = "S6_CROSS_SECTIONAL_RELATIVE_STRENGTH"
 SIX_POLICY_VERSION = "1.0.0-shadow-research"
 SIX_POLICY_HASH = S6_POLICY.policy_hash
 BAR_INDEX: dict[int, list[int]] = {}
+REPLAY_DEFAULT_LAG_NS = 5_000_000_000
+REPLAY_PROCESSING_LATENCY_NS = 1_000_000_000
+
+
+@dataclass(frozen=True)
+class ResearchBar:
+    """Diagnostic-only bar; deliberately cannot masquerade as RawObservationV2."""
+    interval: BarIntervalV2
+    open_at_ns: int
+    close_at_ns: int
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    volume: Decimal
+    final: bool
+    stable_source_row_id: str
+    actual_receipt_at_ns: int | None
+    replay_available_at_ns: int
+
+    @cached_property
+    def content_hash(self) -> str:
+        payload = {"interval": self.interval.value, "open_at_ns": self.open_at_ns,
+                   "close_at_ns": self.close_at_ns, "open": str(self.open), "high": str(self.high),
+                   "low": str(self.low), "close": str(self.close), "volume": str(self.volume),
+                   "source_row_id": self.stable_source_row_id}
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def replay_available_at(close_at_ns: int, lag_seconds: int = 5) -> int:
+    if lag_seconds not in (5, 30, 60):
+        raise ValueError("replay sensitivity must be 5, 30, or 60 seconds")
+    return close_at_ns + lag_seconds * 1_000_000_000
+
+
+def derived_replay_available_at(dependencies: list[int]) -> int:
+    if not dependencies:
+        raise ValueError("derived feature requires at least one dependency")
+    return max(dependencies) + REPLAY_PROCESSING_LATENCY_NS
+
+
+def bar_visible_at(bar: ResearchBar, cutoff_ns: int) -> bool:
+    return bar.replay_available_at_ns <= cutoff_ns
+
+
+def s1_setup_identity(symbol: str, setup_cutoff_ns: int, state: dict[str, object]) -> dict[str, object]:
+    if state.get("state") != "SETUP":
+        return {"setup_id": "", "setup_cutoff_ns": "", "side": "", "setup_extreme": "", "setup_ref": ""}
+    side = str(state.get("side", ""))
+    setup_ref = str(state.get("s1_ref", ""))
+    setup_id = hashlib.sha256(json.dumps([symbol, S1_POLICY.policy_id, S1_POLICY.version,
+        S1_POLICY.policy_hash, setup_cutoff_ns, side, str(state.get("setup_extreme", "")), setup_ref],
+        separators=(",", ":")).encode()).hexdigest()
+    return {"setup_id": setup_id, "setup_cutoff_ns": setup_cutoff_ns, "side": side,
+            "setup_extreme": str(state.get("setup_extreme", "")), "setup_ref": setup_ref}
+
+
+def s1_trigger_source(symbol: str, h1_cutoff_ns: int, decision_cutoff_ns: int,
+                      current_origin: dict[str, object], previous_origin: dict[str, object]) -> dict[str, object]:
+    del symbol
+    return previous_origin if decision_cutoff_ns == h1_cutoff_ns else current_origin
+
+
+def s1_setup_origin(symbol: str, setup_cutoff_ns: int, current_state: dict[str, object],
+                    previous_state: dict[str, object], previous_origin: dict[str, object]) -> tuple[dict[str, object], int]:
+    if current_state.get("state") != "SETUP":
+        return s1_setup_identity(symbol, setup_cutoff_ns, current_state), 0
+    if (previous_state.get("state") == "SETUP" and previous_origin.get("setup_id")
+            and previous_origin.get("side") == current_state.get("side")
+            and previous_origin.get("setup_extreme") == str(current_state.get("setup_extreme", ""))):
+        return previous_origin, 0
+    return s1_setup_identity(symbol, setup_cutoff_ns, current_state), 1
+
+
+def s1_origin_at(symbol: str, cutoff_ns: int,
+                 state_at: Callable[[int], dict[str, object]]) -> dict[str, object]:
+    """Find the first contiguous SETUP state before the first panel row."""
+    state = state_at(cutoff_ns)
+    if state.get("state") != "SETUP":
+        return s1_setup_identity(symbol, cutoff_ns, state)
+    origin_cutoff = cutoff_ns
+    while origin_cutoff - HOUR >= ns(__import__("datetime").datetime.fromtimestamp(cutoff_ns / 1e9, __import__("datetime").UTC).year, 1, 1):
+        prior = state_at(origin_cutoff - HOUR)
+        if (prior.get("state") != "SETUP" or prior.get("side") != state.get("side")
+                or str(prior.get("setup_extreme", "")) != str(state.get("setup_extreme", ""))):
+            break
+        origin_cutoff -= HOUR
+        state = prior
+    return s1_setup_identity(symbol, origin_cutoff, state)
+
+
+def s1_setup_active(setup: dict[str, object], decision_cutoff_ns: int) -> bool:
+    setup_cutoff = setup.get("setup_cutoff_ns")
+    return bool(setup.get("setup_id") and type(setup_cutoff) is int
+                and setup_cutoff < decision_cutoff_ns <= setup_cutoff + 4 * M15)
+
+
+def s1_trigger_predicate(side: str, current_close: object, previous_high: object | None,
+                         current_low: object, previous_low: object | None) -> int:
+    if side == V2Side.LONG.value:
+        return int(previous_high is not None and Decimal(str(current_close)) > Decimal(str(previous_high)))
+    if side == V2Side.SHORT.value:
+        return int(previous_low is not None and Decimal(str(current_close)) < Decimal(str(previous_low)))
+    return 0
+
+
+def s1_first_trigger(setup: dict[str, object], raw_predicate: int, seen_setup_ids: set[str],
+                     trigger_cutoff_ns: int, unknown_prior_setup_ids: set[str] | None = None) -> dict[str, object]:
+    setup_id = str(setup.get("setup_id", ""))
+    prior_unknown = bool(unknown_prior_setup_ids and setup_id in unknown_prior_setup_ids)
+    first = bool(raw_predicate and setup_id and setup_id not in seen_setup_ids and not prior_unknown)
+    event_id = hashlib.sha256(f"{setup_id}:{trigger_cutoff_ns}".encode()).hexdigest() if first else ""
+    return {"raw_trigger_predicate": int(bool(raw_predicate)), "first_trigger_event": int(first),
+            "first_trigger_event_id": event_id,
+            "first_trigger_reason": "FIRST_MATCH_FOR_SETUP" if first else
+                "PRIOR_TRIGGER_HISTORY_MISSING" if prior_unknown else
+                "REPEATED_MATCH_FOR_ALREADY_TRIGGERED_SETUP" if raw_predicate else "NO_MATCH"}
+
+
+def s1_prior_trigger_history(setup: dict[str, object], window_begin_ns: int,
+                             m15_by_close: dict[int, ResearchBar]) -> str:
+    """Reconstruct only prior M15 opportunities from verified archive rows."""
+    if not setup.get("setup_id"):
+        return "NO_SETUP"
+    setup_cutoff = int(setup["setup_cutoff_ns"])
+    current_cutoff = setup_cutoff + M15
+    unknown = False
+    while current_cutoff < window_begin_ns and current_cutoff <= setup_cutoff + 4 * M15:
+        current, previous = m15_by_close.get(current_cutoff), m15_by_close.get(current_cutoff - M15)
+        if (current is None or previous is None or previous.close_at_ns != current.close_at_ns - M15):
+            unknown = True
+        elif s1_trigger_predicate(str(setup.get("side", "")), current.close, previous.high,
+                                  current.low, previous.low):
+            return "TRIGGERED_BEFORE_WINDOW"
+        current_cutoff += M15
+    return "PRIOR_TRIGGER_HISTORY_MISSING" if unknown else "NO_PRIOR_MATCH"
+
+
+def s1_trigger_observation(*, active: bool, setup: dict[str, object], current_present: bool,
+                           previous_present: bool, contiguous: bool, current_close: object,
+                           previous_high: object | None, current_low: object,
+                           previous_low: object | None) -> dict[str, object]:
+    if not current_present:
+        return {"state": "SOURCE_MISSING", "reason": "CURRENT_M15_MISSING", "raw_trigger_predicate": 0}
+    if not active:
+        return {"state": "NOT_IN_TRIGGER_WINDOW", "reason": "", "raw_trigger_predicate": 0}
+    if not previous_present or not contiguous:
+        return {"state": "SOURCE_MISSING", "reason": "PREVIOUS_M15_MISSING_OR_NONCONTIGUOUS",
+                "raw_trigger_predicate": 0}
+    matched = s1_trigger_predicate(str(setup.get("side", "")), current_close, previous_high,
+                                   current_low, previous_low)
+    return {"state": "BAR_TRIGGER" if matched else "NO_TRIGGER", "reason": "",
+            "raw_trigger_predicate": matched}
 
 
 def ns(y: int, m: int, d: int) -> int:
@@ -109,24 +264,23 @@ def key_for(symbol: str) -> InstrumentKeyV2:
                            symbol, base, "USDT", "USDT", revision)
 
 
-def make_bars(symbol: str, interval_name: str, rows: list[dict[str, object]]) -> list[CausalBarV2]:
+def make_bars(symbol: str, interval_name: str, rows: list[dict[str, object]]) -> list[ResearchBar]:
     interval = INTERVALS[interval_name]
     result = []
     for row in rows:
         op, close = int(row["open_ns"]), int(row["close_ns"])
         payload = {k: row[k] for k in ("open", "high", "low", "close", "volume")}
-        raw = RawObservationV2.build(
-            instrument_revision=key_for(symbol).contract_revision, source_id="BINANCE_DATA_VISION_USDM_MONTHLY_KLINES",
-            event_type=f"BAR_{interval.value}", event_at_ns=close, received_at_ns=close,
-            ingested_at_ns=close, available_at_ns=close, replay_available_at_ns=close,
-            availability_class=AvailabilityClassV2.RECONSTRUCTED_MARKET,
-            translation_version="R-E1B_BINANCE_KLINES_12COL_V1", payload=payload)
-        result.append(CausalBarV2(raw, interval, op, close, *(Decimal(str(row[k])) for k in ("open", "high", "low", "close", "volume")), True))
+        source_id = (f"{row.get('archive_sha256')}:{row.get('row_index')}"
+                     if row.get("archive_sha256") and row.get("row_index") is not None else
+                     hashlib.sha256(json.dumps([symbol, interval_name, op, payload], sort_keys=True).encode()).hexdigest())
+        result.append(ResearchBar(interval, op, close,
+            *(Decimal(str(row[k])) for k in ("open", "high", "low", "close", "volume")), True,
+            source_id, None, replay_available_at(close)))
     BAR_INDEX[id(result)] = [bar.close_at_ns for bar in result]
     return result
 
 
-def h4_bars_from_h1(symbol: str, h1: list[CausalBarV2]) -> list[CausalBarV2]:
+def h4_bars_from_h1(symbol: str, h1: list[ResearchBar]) -> list[ResearchBar]:
     result = []
     groups = defaultdict(list)
     for bar in h1:
@@ -139,19 +293,15 @@ def h4_bars_from_h1(symbol: str, h1: list[CausalBarV2]) -> list[CausalBarV2]:
         fields = {"open": str(group[0].open), "high": str(max(x.high for x in group)),
                   "low": str(min(x.low for x in group)), "close": str(group[-1].close),
                   "volume": str(sum((x.volume for x in group), Decimal(0)))}
-        raw = RawObservationV2.build(
-            instrument_revision=key_for(symbol).contract_revision, source_id="RECONSTRUCTED_FROM_BINANCE_USDM_H1",
-            event_type="BAR_4H", event_at_ns=close, received_at_ns=close, ingested_at_ns=close,
-            available_at_ns=close, replay_available_at_ns=close,
-            availability_class=AvailabilityClassV2.RECONSTRUCTED_MARKET,
-            translation_version="R-E1B_EXACT_UTC_H1_TO_H4_V1", payload=fields)
-        result.append(CausalBarV2(raw, BarIntervalV2.H4, op, close,
-                                  *(Decimal(fields[k]) for k in ("open", "high", "low", "close", "volume")), True))
+        source_id = hashlib.sha256("|".join(x.stable_source_row_id for x in group).encode()).hexdigest()
+        result.append(ResearchBar(BarIntervalV2.H4, op, close,
+            *(Decimal(fields[k]) for k in ("open", "high", "low", "close", "volume")), True,
+            source_id, None, replay_available_at(close)))
     BAR_INDEX[id(result)] = [bar.close_at_ns for bar in result]
     return result
 
 
-def contiguous_tail(bars: list[CausalBarV2], cutoff: int, duration: int, wanted: int) -> tuple[CausalBarV2, ...]:
+def contiguous_tail(bars: list[ResearchBar], cutoff: int, duration: int, wanted: int) -> tuple[ResearchBar, ...]:
     times = BAR_INDEX.get(id(bars))
     if times is None:
         times = [b.close_at_ns for b in bars]
@@ -165,7 +315,7 @@ def contiguous_tail(bars: list[CausalBarV2], cutoff: int, duration: int, wanted:
     return tuple(tail)
 
 
-def contiguous_prefix(bars: list[CausalBarV2], cutoff: int, duration: int, begin: int) -> tuple[CausalBarV2, ...]:
+def contiguous_prefix(bars: list[ResearchBar], cutoff: int, duration: int, begin: int) -> tuple[ResearchBar, ...]:
     times = BAR_INDEX.get(id(bars))
     if times is None:
         times = [b.close_at_ns for b in bars]
@@ -180,14 +330,14 @@ def contiguous_prefix(bars: list[CausalBarV2], cutoff: int, duration: int, begin
     return tuple(prefix_bars)
 
 
-def gap_prefix(bars: list[CausalBarV2], duration: int) -> list[int]:
+def gap_prefix(bars: list[ResearchBar], duration: int) -> list[int]:
     counts = [0] * len(bars)
     for i in range(1, len(bars)):
         counts[i] = counts[i - 1] + int(bars[i].open_at_ns != bars[i - 1].open_at_ns + duration)
     return counts
 
 
-def s1_cached_state(symbol: str, h1: list[CausalBarV2], h4: list[CausalBarV2], cutoff: int,
+def s1_cached_state(symbol: str, h1: list[ResearchBar], h4: list[ResearchBar], cutoff: int,
                     h1_ema20: list[float | None], h1_ema50: list[float | None],
                     h4_ema20: list[float | None], h4_ema50: list[float | None],
                     h1_gaps: list[int], h4_gaps: list[int]) -> dict[str, object]:
@@ -240,7 +390,7 @@ def s1_cached_state(symbol: str, h1: list[CausalBarV2], h4: list[CausalBarV2], c
             "h4_trend": "UP" if side == V2Side.LONG else "DOWN" if side == V2Side.SHORT else "NEUTRAL"}
 
 
-def returns(bars: list[CausalBarV2]) -> tuple[list[int], list[float]]:
+def returns(bars: list[ResearchBar]) -> tuple[list[int], list[float]]:
     times, values = [], []
     for prev, cur in zip(bars, bars[1:], strict=False):
         if cur.close_at_ns - prev.close_at_ns == HOUR:
@@ -257,7 +407,7 @@ def prefix(values: list[float]) -> tuple[list[float], list[float]]:
     return sums, squares
 
 
-def aligned_return_series(hourly: dict[str, list[CausalBarV2]]) -> dict[str, tuple[list[int], list[float], list[float], list[float], list[float], list[float], list[float], list[float]]]:
+def aligned_return_series(hourly: dict[str, list[ResearchBar]]) -> dict[str, tuple[list[int], list[float], list[float], list[float], list[float], list[float], list[float], list[float]]]:
     btc_times, btc_values = returns(hourly.get("BTCUSDT", []))
     btc_by_t = dict(zip(btc_times, btc_values, strict=True))
     result = {}
@@ -277,7 +427,7 @@ def aligned_return_series(hourly: dict[str, list[CausalBarV2]]) -> dict[str, tup
     return result
 
 
-def s6_scores(keys: list[str], h4s: dict[str, list[CausalBarV2]], aligned: dict[str, tuple[list[int], list[float], list[float], list[float], list[float], list[float], list[float], list[float]]], cutoff: int) -> tuple[dict[str, dict[str, object]], int, str]:
+def s6_scores(keys: list[str], h4s: dict[str, list[ResearchBar]], aligned: dict[str, tuple[list[int], list[float], list[float], list[float], list[float], list[float], list[float], list[float]]], cutoff: int) -> tuple[dict[str, dict[str, object]], int, str]:
     end = cutoff - cutoff % HOUR
     start = end - 30 * DAY
     out: dict[str, dict[str, object]] = {}
@@ -359,10 +509,9 @@ def write_manifest(outdir: pathlib.Path, manifests: list[dict[str, object]], rej
         for row in manifests:
             row["attempt"] = 2 if rejected_path and row.get("interval") == "1h" else 1
             if row.get("status") == "VERIFIED":
-                csv_path = scratch / str(row["csv_scratch"])
-                import datetime as dt
-                row["csv_extraction_completed_at_utc"] = dt.datetime.fromtimestamp(csv_path.stat().st_mtime, dt.UTC).isoformat()
-                row["http_download_completed_at_utc"] = "NOT_CAPTURED_SEPARATELY; extraction follows successful HTTP download and validation"
+                row["actual_archive_retrieval_completed_at_utc"] = "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION"
+                row["csv_extraction_completed_at_utc"] = "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION"
+                row["http_download_completed_at_utc"] = "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION"
                 row["timestamp_unit"] = "milliseconds UTC epoch"
                 row["timestamp_resolution"] = "1 millisecond source; normalized bar boundaries are exact UTC intervals"
             f.write(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
@@ -414,9 +563,9 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
     raw = parse_raw(scratch, manifests)
     source: dict[str, dict[str, list[dict[str, object]]]] = raw
     slot_calendar(outdir, source, manifests)
-    bars_h1: dict[str, list[CausalBarV2]] = {}
-    bars_m15: dict[str, list[CausalBarV2]] = {}
-    bars_h4: dict[str, list[CausalBarV2]] = {}
+    bars_h1: dict[str, list[ResearchBar]] = {}
+    bars_m15: dict[str, list[ResearchBar]] = {}
+    bars_h4: dict[str, list[ResearchBar]] = {}
     s1_emas: dict[str, tuple[list[float | None], list[float | None], list[float | None], list[float | None], list[int], list[int]]] = {}
     for symbol in COHORT:
         bars_h1[symbol] = make_bars(symbol, "1h", raw.get(symbol, {}).get("1h", []))
@@ -439,11 +588,26 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                                              h1e20, h1e50, h4e20, h4e50, h1gaps, h4gaps)
         return states
 
+    s1_state_cache: dict[int, dict[str, dict[str, object]]] = {}
+
+    def cached_s1_states_at(hcut: int) -> dict[str, dict[str, object]]:
+        if hcut not in s1_state_cache:
+            s1_state_cache[hcut] = s1_states_at(hcut)
+        return s1_state_cache[hcut]
+
     fields = ("window", "symbol", "decision_cutoff_utc_ns", "native_interval", "source_timestamp_grade",
+              "actual_receipt_status", "actual_receipt_at_utc_ns", "m15_event_at_utc_ns",
+              "m15_replay_available_at_utc_ns", "feature_replay_available_at_utc_ns",
+              "replay_visibility_at_cutoff", "s1_diagnostic_timing_grade",
               "source_status", "source_missing_reason", "h1_archive_sha256", "h1_row_index", "m15_archive_sha256", "m15_row_index",
               "h1_source_status", "h1_source_missing_reason",
-              "h1_close", "h1_return", "h1_ema20", "h1_ema50", "h4_trend", "s1_precursor_state", "s1_setup_event",
-              "s1_trigger_state", "s1_reason", "s1_side", "s1_setup_ref", "s6_state", "s6_score", "s6_rank",
+              "h1_close", "h1_return", "h1_ema20", "h1_ema50", "h4_trend", "s1_precursor_state",
+              "s1_setup_event", "s1_setup_event_id", "s1_setup_event_cutoff_utc_ns", "s1_setup_event_side",
+              "s1_setup_event_ref", "s1_setup_event_extreme", "s1_trigger_state", "s1_reason", "s1_side", "s1_setup_ref",
+              "s1_trigger_setup_id", "s1_trigger_setup_cutoff_utc_ns", "s1_trigger_setup_side",
+              "s1_trigger_setup_ref", "s1_trigger_setup_extreme", "s1_trigger_m15_cutoff_utc_ns",
+              "s1_raw_trigger_predicate", "s1_first_trigger_event", "s1_first_trigger_event_id",
+              "s1_first_trigger_reason", "s6_state", "s6_score", "s6_rank",
               "s6_decile", "s6_beta_btc", "s6_residual_volatility", "s6_own_4h_trend", "s6_rankable_breadth",
               "s6_exclusion_reason", "btc_h1_return", "eth_h1_return", "btc_h4_trend", "eth_h4_trend",
               "eligibility_grade", "s1_diagnostic_grade", "s1_policy_id", "s1_policy_version", "s1_policy_hash",
@@ -464,12 +628,45 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
             cached_hcut = None
             current_s1: dict[str, dict[str, object]] = {}
             previous_s1: dict[str, dict[str, object]] = {}
+            current_setup_origins: dict[str, dict[str, object]] = {}
+            previous_setup_origins: dict[str, dict[str, object]] = {}
+            current_setup_event_flags: dict[str, int] = {}
+            seen_first_trigger_setup_ids: dict[str, set[str]] = defaultdict(set)
+            unknown_prior_trigger_setup_ids: dict[str, set[str]] = defaultdict(set)
             current_s6: tuple[dict[str, dict[str, object]], int, str] = ({}, 0, "")
             for cutoff in decision_cutoffs(begin, final):
                 hcut = cutoff - cutoff % HOUR
                 if hcut != cached_hcut:
-                    previous_s1 = current_s1 if cached_hcut is not None else s1_states_at(hcut - HOUR)
-                    current_s1 = s1_states_at(hcut)
+                    if cached_hcut is None:
+                        previous_s1 = cached_s1_states_at(hcut - HOUR)
+                        current_s1 = cached_s1_states_at(hcut)
+                        previous_setup_origins = {
+                            symbol: s1_origin_at(symbol, hcut - HOUR,
+                                lambda at, selected=symbol: cached_s1_states_at(at)[selected])
+                            for symbol in COHORT
+                        }
+                    else:
+                        previous_s1 = current_s1
+                        previous_setup_origins = current_setup_origins
+                        current_s1 = cached_s1_states_at(hcut)
+                    current_setup_origins = {}
+                    current_setup_event_flags = {}
+                    for symbol in COHORT:
+                        origin, is_new = s1_setup_origin(symbol, hcut, current_s1[symbol],
+                            previous_s1.get(symbol, {}), previous_setup_origins.get(symbol, {}))
+                        current_setup_origins[symbol] = origin
+                        current_setup_event_flags[symbol] = is_new
+                    if cached_hcut is None:
+                        for symbol in COHORT:
+                            origins = {str(origin.get("setup_id")): origin for origin in
+                                       (previous_setup_origins.get(symbol, {}), current_setup_origins.get(symbol, {}))
+                                       if origin.get("setup_id")}
+                            for setup_id, origin in origins.items():
+                                prior_status = s1_prior_trigger_history(origin, begin, bar_maps[symbol]["15m"])
+                                if prior_status == "TRIGGERED_BEFORE_WINDOW":
+                                    seen_first_trigger_setup_ids[symbol].add(setup_id)
+                                elif prior_status == "PRIOR_TRIGGER_HISTORY_MISSING":
+                                    unknown_prior_trigger_setup_ids[symbol].add(setup_id)
                     current_s6 = s6_scores(COHORT, bars_h4, aligned, hcut)
                     cached_hcut = hcut
                 s6state, breadth, breadth_note = current_s6
@@ -477,16 +674,26 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                     m15ref = source_maps[symbol]["15m"].get(cutoff)
                     m15 = bar_maps[symbol]["15m"].get(cutoff) if m15ref else None
                     s1 = current_s1[symbol]
-                    trigger_setup = previous_s1.get(symbol, s1) if cutoff == hcut else s1
-                    s1_active = trigger_setup["state"] == "SETUP" and cutoff > (hcut - HOUR if cutoff == hcut else hcut) and cutoff <= (hcut - HOUR if cutoff == hcut else hcut) + 4 * M15
+                    trigger_setup = s1_trigger_source(symbol, hcut, cutoff, current_setup_origins[symbol],
+                                                      previous_setup_origins.get(symbol, {}))
+                    current_setup = current_setup_origins[symbol] if current_setup_event_flags[symbol] and cutoff == hcut else {
+                        "setup_id": "", "setup_cutoff_ns": "", "side": "", "setup_extreme": "", "setup_ref": ""}
+                    s1_active = s1_setup_active(trigger_setup, cutoff)
                     prev_m15 = None
                     if m15:
                         prev_row = source_maps[symbol]["15m"].get(cutoff - M15)
                         if prev_row:
                             prev_m15 = bar_maps[symbol]["15m"].get(cutoff - M15)
-                    trigger = False
-                    if s1_active and m15 and prev_m15:
-                        trigger = (trigger_setup.get("side") == V2Side.LONG.value and m15.close > prev_m15.high) or (trigger_setup.get("side") == V2Side.SHORT.value and m15.close < prev_m15.low)
+                    contiguous_previous = bool(m15 and prev_m15 and prev_m15.close_at_ns == m15.close_at_ns - M15)
+                    trigger_obs = s1_trigger_observation(active=s1_active, setup=trigger_setup,
+                        current_present=bool(m15), previous_present=bool(prev_m15), contiguous=contiguous_previous,
+                        current_close=m15.close if m15 else "0", previous_high=prev_m15.high if prev_m15 else None,
+                        current_low=m15.low if m15 else "0", previous_low=prev_m15.low if prev_m15 else None)
+                    trigger = int(trigger_obs["raw_trigger_predicate"])
+                    first_trigger = s1_first_trigger(trigger_setup, trigger, seen_first_trigger_setup_ids[symbol], cutoff,
+                                                     unknown_prior_trigger_setup_ids[symbol])
+                    if first_trigger["first_trigger_event"]:
+                        seen_first_trigger_setup_ids[symbol].add(str(trigger_setup["setup_id"]))
                     slot_ok = bool(m15)
                     score = s6state.get(symbol, {})
                     latest_h1_ns = s1.get("h1_last_close_ns")
@@ -501,8 +708,20 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                     m15_missing = ("" if m15ref else "OFFICIAL_ARCHIVE_404" if m15_arc.get("status") == "MISSING_OBJECT_404"
                                    else "NATIVE_SLOT_GAP" if m15_arc.get("status") == "VERIFIED" else "ARCHIVE_STATUS_UNAVAILABLE")
                     e20, e50 = s1.get("h1_ema20"), s1.get("h1_ema50")
+                    h1_ready_i = bisect.bisect_right(BAR_INDEX[id(bars_h1[symbol])], cutoff) - 1
+                    h4_ready_i = bisect.bisect_right(BAR_INDEX[id(bars_h4[symbol])], cutoff) - 1
+                    replay_dependencies = ([bars_h1[symbol][h1_ready_i].replay_available_at_ns] if h1_ready_i >= 0 else [])
+                    replay_dependencies += ([bars_h4[symbol][h4_ready_i].replay_available_at_ns] if h4_ready_i >= 0 else [])
+                    if m15:
+                        replay_dependencies.append(m15.replay_available_at_ns)
                     row = {"window": label, "symbol": symbol, "decision_cutoff_utc_ns": cutoff,
                            "native_interval": "15m", "source_timestamp_grade": "RECONSTRUCTED_MARKET; no genuine historical receipt",
+                           "actual_receipt_status": "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION", "actual_receipt_at_utc_ns": "",
+                           "m15_event_at_utc_ns": cutoff if m15 else "",
+                           "m15_replay_available_at_utc_ns": replay_available_at(cutoff) if m15 else "",
+                           "feature_replay_available_at_utc_ns": derived_replay_available_at(replay_dependencies) if m15 and replay_dependencies else "",
+                           "replay_visibility_at_cutoff": "NOT_VISIBLE_UNDER_CLOSE_PLUS_5S",
+                           "s1_diagnostic_timing_grade": "ZERO_LAG_DESCRIPTIVE_BAR_PREDICATE; not a delayed replay decision",
                            "source_status": "OBSERVED" if slot_ok else "SOURCE_MISSING",
                            "source_missing_reason": m15_missing,
                            "h1_source_status": "OBSERVED" if h1ref else "SOURCE_MISSING",
@@ -515,9 +734,22 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                            "h1_return": s1.get("h1_last_return", "") if s1.get("h1_last_return") is not None else "",
                            "h1_ema20": e20 if e20 is not None else "", "h1_ema50": e50 if e50 is not None else "",
                            "h4_trend": s1.get("h4_trend", "UNAVAILABLE"),
-                           "s1_precursor_state": s1["state"], "s1_setup_event": int(s1["state"] == "SETUP" and cutoff == hcut),
-                           "s1_trigger_state": "SOURCE_MISSING" if not slot_ok else "BAR_TRIGGER" if trigger else "NO_TRIGGER" if s1_active else "NOT_IN_TRIGGER_WINDOW",
+                           "s1_precursor_state": s1["state"], "s1_setup_event": int(current_setup_event_flags[symbol] and cutoff == hcut),
+                           "s1_setup_event_id": current_setup["setup_id"],
+                           "s1_setup_event_cutoff_utc_ns": current_setup["setup_cutoff_ns"],
+                           "s1_setup_event_side": current_setup["side"], "s1_setup_event_ref": current_setup["setup_ref"],
+                           "s1_setup_event_extreme": current_setup["setup_extreme"],
+                           "s1_trigger_state": trigger_obs["state"],
                            "s1_reason": s1.get("reason", ""), "s1_side": s1.get("side", ""), "s1_setup_ref": s1.get("s1_ref", ""),
+                           "s1_trigger_setup_id": trigger_setup["setup_id"],
+                           "s1_trigger_setup_cutoff_utc_ns": trigger_setup["setup_cutoff_ns"],
+                           "s1_trigger_setup_side": trigger_setup["side"], "s1_trigger_setup_ref": trigger_setup["setup_ref"],
+                           "s1_trigger_setup_extreme": trigger_setup["setup_extreme"],
+                           "s1_trigger_m15_cutoff_utc_ns": cutoff,
+                           "s1_raw_trigger_predicate": trigger,
+                           "s1_first_trigger_event": first_trigger["first_trigger_event"],
+                           "s1_first_trigger_event_id": first_trigger["first_trigger_event_id"],
+                           "s1_first_trigger_reason": (trigger_obs["reason"] or first_trigger["first_trigger_reason"]),
                            "s1_diagnostic_grade": "S1_BAR_PRECURSOR_DIAGNOSTIC" if s1["state"] in ("SETUP", "NO_SETUP") else s1["state"],
                            "s6_state": score.get("state", "NOT_RANKABLE"), "s6_score": score.get("score", ""),
                            "s6_rank": score.get("rank", ""), "s6_decile": score.get("decile", ""),
@@ -540,7 +772,11 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                     w.writerow(row)
                     row_counts[(label, "slots")] += 1
                     row_counts[(label, "s1_setup")] += int(row["s1_setup_event"])
-                    row_counts[(label, "s1_trigger")] += int(trigger)
+                    row_counts[(label, "s1_raw_trigger_predicate")] += int(trigger)
+                    row_counts[(label, "s1_first_trigger_event")] += int(first_trigger["first_trigger_event"])
+                    row_counts[(label, "s1_trigger_source_missing")] += int(trigger_obs["state"] == "SOURCE_MISSING")
+                    row_counts[(label, f"s1_trigger_source_missing_reason:{trigger_obs['reason']}")] += int(trigger_obs["state"] == "SOURCE_MISSING")
+                    row_counts[(label, "s1_setup_state")] += int(s1["state"] == "SETUP")
                     row_counts[(label, "s1_no_setup")] += int(s1["state"] == "NO_SETUP")
                     row_counts[(label, "s1_unavailable")] += int(s1["state"] == "INSUFFICIENT_WARMUP_OR_GAP")
                     row_counts[(label, "s6_rankable")] += int(score.get("state") == "S6_FIXED_COHORT_RANK_DIAGNOSTIC")
