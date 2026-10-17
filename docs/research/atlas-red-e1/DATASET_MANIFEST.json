@@ -148,7 +148,8 @@
     "sample_refetch_recipe": "docs/research/atlas-red-e1/refetch_sample.py; Python standard library only; one command: python docs/research/atlas-red-e1/refetch_sample.py",
     "sample_trace": "docs/research/atlas-red-e1/SAMPLE_TRACE.json",
     "sample_trace_schema": "ATLAS_RED_E1_SINGLE_ARCHIVE_TRACE_V1; 24 parsed bar rows, 24 range features, 23 close-to-close features; S1 and S6 BLOCKED_INPUT/NOT_RUN; no policy calls or outcomes.",
-    "sample_trace_rows": 24
+    "sample_trace_rows": 24,
+    "sample_trace_emission_rows": 24
   },
   "verification": {
     "fixture_only_strategy_and_prefix_suite": {
@@ -166,13 +167,13 @@
     "sample_recipe_local_run": {
       "command": "python docs/research/atlas-red-e1/refetch_sample.py",
       "result": "SAMPLE_VERIFIED; 1,561-byte ZIP + 92-byte official CHECKSUM; SHA-256 matched; ZIP CRC/member/header/24 hourly timestamps validated; raw bytes retained false",
-      "interpretation": "Local working-copy run only; clean-clone reproduction remains pending"
+      "interpretation": "The script emits the deterministic parsed-row/feature/blocker trace; local output matched the checked-in SAMPLE_TRACE.json byte for byte."
     },
     "clean_clone_sample_refetch": {
       "clone_method": "git clone --depth 1 --branch research/atlas-red-binance-evidence-e1-recheck-2026-10-17 https://github.com/KasunKarandagolla/Atlas.git <fresh temporary directory>",
-      "tested_repository_sha": "2cabae9ea89d644c133ee2fcbd2a7974c7e9ca14",
+      "tested_repository_sha": "9e7744a9787bf340fd75ffabf6ac517b4ed3e3b7",
       "command": "python docs/research/atlas-red-e1/refetch_sample.py",
-      "result": "SAMPLE_VERIFIED; official GETs succeeded; published and pinned SHA-256 matched; ZIP CRC/member/schema and all 24 consecutive timestamps validated; deterministic raw-to-feature-to-blocker trace emitted; archive_retained=false; clone working tree remained clean.",
+      "result": "SAMPLE_VERIFIED; official GETs succeeded; published and pinned SHA-256 matched; ZIP CRC/member/schema and all 24 consecutive timestamps validated; emitted trace byte-matched checked-in SAMPLE_TRACE.json; archive_retained=false; clone working tree remained clean.",
       "raw_cache_dependency": "none; clone did not contain the archive; script fetched into memory and temporary byte buffers only",
       "limitation": "Descriptive 1H feature/blocker trace only; S1/S6 policy consumers not called; not a full panel, signal output or strategy replay."
     }
