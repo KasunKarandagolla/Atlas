@@ -1,7 +1,7 @@
 {
   "schema_version": "ATLAS_RED_E1_DATASET_MANIFEST_V1",
   "session": "ATLAS RED Session R-E1",
-  "source_grade": "BLOCKED_BY_ENVIRONMENT",
+  "source_grade": "PARTIAL_SOURCE_ACCESS; FULL_PANEL_BLOCKED_BY_ENVIRONMENT",
   "repository_base": {
     "branch": "fix/atlas-red-p1-evidence-integrity-2026-10-17",
     "sha": "f77f3aacbfdc2546e6f3ea2d78196b0905ceb613",
@@ -21,14 +21,38 @@
     "outcome_comparisons_performed": 0,
     "outcome_partition_accessed": false
   },
-  "archive_downloads": [],
+  "archive_downloads": [
+    {
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-01.zip",
+      "checksum_url": "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-01.zip.CHECKSUM",
+      "retrieved_at_utc": "2026-10-17T18:43:00Z (minute-level session observation; exact request timestamp not instrumented)",
+      "archive_name": "BTCUSDT-1h-2024-01-01.zip",
+      "archive_bytes": 1561,
+      "sha256": "09a24635f090c9b2ab17f4a61aa3c4d262a7ccc88e96ff0199ce66a54a8ab66b",
+      "checksum_file_bytes": 92,
+      "checksum_file_sha256": "5fef750be288b5457d17657d0c2fbfd2265d826d9619c46533b298f9c27e14ee",
+      "checksum_file_value": "09a24635f090c9b2ab17f4a61aa3c4d262a7ccc88e96ff0199ce66a54a8ab66b  BTCUSDT-1h-2024-01-01.zip",
+      "zip_member": "BTCUSDT-1h-2024-01-01.csv",
+      "zip_member_bytes": 3050,
+      "rows_excluding_header": 24,
+      "columns": 12,
+      "timestamp_unit": "milliseconds UTC epoch",
+      "open_time_first": "2024-01-01T00:00:00Z",
+      "open_time_last": "2024-01-01T23:00:00Z",
+      "timestamp_order": "strictly increasing, unique hourly opens",
+      "quality": "checksum matched; ZIP readable; 12-field rows; one BTCUSDT H1 day only; no derived policy output",
+      "raw_file_committed": false
+    }
+  ],
   "archive_coverage": {
-    "archive_file_count": 0,
-    "archive_bytes_downloaded": 0,
-    "symbols_observed": 0,
-    "market_rows_observed": 0,
-    "covered_market_dates": [],
-    "verified_archive_checksums": 0,
+    "archive_file_count": 1,
+    "archive_bytes_downloaded": 1561,
+    "symbols_observed": 1,
+    "market_rows_observed": 24,
+    "covered_market_dates": [
+      "2024-01-01 (BTCUSDT H1 only)"
+    ],
+    "verified_archive_checksums": 1,
     "raw_to_feature_to_signal_traces": 0,
     "s1_exact_outputs": 0,
     "s1_diagnostic_outputs": 0,
@@ -57,34 +81,69 @@
       "observed_at_utc": "2026-10-17T18:12:59Z",
       "result": "HTTP 403 from session proxy; CONNECT tunnel failed",
       "archive_bytes_received": 0
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-01.zip",
+      "method": "GET",
+      "observed_at_utc": "2026-10-17T18:43Z (minute only)",
+      "result": "HTTP 200; 1,561 bytes; ZIP/official checksum verified",
+      "archive_bytes_received": 1561
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-01.zip.CHECKSUM",
+      "method": "GET",
+      "observed_at_utc": "2026-10-17T18:43Z (minute only)",
+      "result": "HTTP 200; 92 bytes; expected SHA-256 matches ZIP",
+      "archive_bytes_received": 92
+    },
+    {
+      "url": "https://data.binance.vision/?prefix=data/futures/um/daily/klines/",
+      "method": "GET",
+      "observed_at_utc": "2026-10-17T18:44Z",
+      "result": "HTTP 200 HTML landing/catalog page; no symbol prefix inventory exposed",
+      "archive_bytes_received": 0
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/",
+      "method": "GET",
+      "observed_at_utc": "2026-10-17T18:44Z",
+      "result": "HTTP 404; no browsable symbol directory",
+      "archive_bytes_received": 0
+    },
+    {
+      "url": "https://data.binance.vision.s3.ap-northeast-1.amazonaws.com/?list-type=2&prefix=data/futures/um/daily/klines/&max-keys=1",
+      "method": "GET",
+      "observed_at_utc": "2026-10-17T18:44Z",
+      "result": "Proxy CONNECT HTTP 403; bucket listing unavailable through this route",
+      "archive_bytes_received": 0
     }
   ],
   "environment": {
     "network_policy_mode": "restricted",
     "reported_policy_state": "unknown",
     "official_archive_host_listed": false,
-    "direct_archive_probe": "HTTP 403 from proxy",
+    "direct_archive_probe": "Initial HEAD was HTTP 403; later anonymous GET of one official ZIP and sibling CHECKSUM succeeded (HTTP 200). Root is HTML, symbol directory 404, tested object-list endpoint proxy 403.",
     "no_policy_bypass_attempted": true,
     "no_binance_credentials_read_or_used": true
   },
   "data_quality": {
-    "timestamp_units_verified_from_market_file": false,
-    "zip_integrity_verified": false,
-    "binance_checksum_verified": false,
-    "row_schema_parsed": false,
-    "duplicates_or_missing_slots_measured": false,
+    "timestamp_units_verified_from_market_file": true,
+    "zip_integrity_verified": true,
+    "binance_checksum_verified": true,
+    "row_schema_parsed": true,
+    "duplicates_or_missing_slots_measured": true,
     "contract_revision_or_as_of_universe_verified": false,
     "source_availability_grade_for_future_archive_rows": "RECONSTRUCTED_HISTORICAL",
     "actual_historical_receive_times_claimed": false
   },
   "artifacts": {
     "source_matrix_rows": 21,
-    "asof_universe_rows": 1,
+    "asof_universe_rows": 2,
     "opportunity_panel_rows": 0,
     "heldout_outcome_rows": 0,
     "panel_schema_only": true,
     "outcome_schema_only": true,
-    "clean_clone_refetch_and_regeneration": "BLOCKED; no archive blob or immutable checksum was obtained"
+    "clean_clone_refetch_and_regeneration": "NOT TESTED; one pinned sample URL/checksum is sufficient for a bounded fetch but no replay/parser artifact was added"
   },
   "verification": {
     "fixture_only_strategy_and_prefix_suite": {
@@ -99,10 +158,10 @@
     }
   },
   "resource_accounting": {
-    "historical_market_bytes_downloaded": 0,
+    "historical_market_bytes_downloaded": 1653,
     "official_readme_bytes_downloaded": 5282,
-    "peak_disk_usage": "NOT_MEASURED; no market archive staging or extraction occurred",
-    "active_bulk_acquisition_time": "0 minutes",
+    "peak_disk_usage": "NOT_MEASURED; small 1,561-byte ZIP kept in scratch only",
+    "active_bulk_acquisition_time": "0 minutes; one-file probe only",
     "usd_spend": 0
   },
   "claims": {
@@ -110,6 +169,7 @@
     "actual_fills": "NOT OBSERVED",
     "live_provider_behavior": "NOT OBSERVED",
     "prospective_confirmation": "NOT ESTABLISHED",
-    "independent_chatgpt_review": "PENDING"
+    "independent_chatgpt_review": "PENDING",
+    "source_qualification": "One official archive sample was downloaded and checksum verified; this does not establish a market-wide or S1/S6-replayable panel."
   }
 }

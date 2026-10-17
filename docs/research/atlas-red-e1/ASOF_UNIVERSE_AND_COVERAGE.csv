@@ -1,2 +1,3 @@
-"record_type","period_utc","symbol","first_available_utc","last_available_utc","contract_revision","hours_observed","bars_observed","missing_or_excluded_reason","coverage_status"
-"DATASET","","","","","",0,0,"Official archive host denied by session proxy before a market file or checksum could be retrieved; symbol inventory and dates were not observed","NOT_OBSERVED"
+record_type,period_utc,symbol,first_available_utc,last_available_utc,contract_revision,hours_observed,bars_observed,missing_or_excluded_reason,coverage_status
+ARCHIVE_SAMPLE,2024-01-01,BTCUSDT,,,UNKNOWN,24,24,"Official daily 1H ZIP only; file existence does not prove contract existence, eligibility or point-in-time tradability",CHECKSUM_VERIFIED_SAMPLE
+UNIVERSE_INVENTORY,,,,,,0,0,No official symbol prefix/listing inventory was accessible; no new/delisted/not-yet-listed or historical contract/filter dates established,NOT_OBSERVED

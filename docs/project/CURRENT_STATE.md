@@ -52,3 +52,7 @@ Existing strategy/prefix fixture coverage is 111 passed; an attempted archive-ru
 ## Next gate
 
 **Independent ChatGPT review of the exact pushed N1–N3 evidence-integrity SHA and complete `81870a18`→correction diff.** Review code/tests, original producer/import trust limits, actual RED→GREEN proofs, genuine positives, complete final P1 and affected regressions, immutable readers/replay and retained gates. Record acceptance/rejection separately. P2 requires exact-SHA acceptance AND separate explicit owner authorization; do not start automatically. Manual/adoption consent and operative policy remain pending, capital NO-GO.
+
+## Session R-E1 archive probe correction — 2026-10-17
+
+A later retry retrieved one official BTCUSDT 1H daily ZIP and its .CHECKSUM (1,561 and 92 bytes); SHA-256 matched `09a24635f090c9b2ab17f4a61aa3c4d262a7ccc88e96ff0199ce66a54a8ab66b`. Parsed 24 consecutive rows on 2024-01-01. The earlier 403 was time-specific. No symbol prefix inventory or historical listing/contract revisions were obtained (symbol folder 404; tested S3 listing request proxy 403). No S1/S6 outputs, policy features, opportunity rows or outcomes were generated. Session remains stopped before bulk acquisition because an unbiased all-symbol/as-of cohort cannot be established from the evidence currently accessible. See the E1 handoff and manifest for the verified sample and exact source probes.

@@ -1,10 +1,12 @@
+> **Recheck update (2026-10-17 18:45 UTC):** The earlier 18:11–18:12 archive HEAD probes recorded below were proxy-denied at that time. A later anonymous GET succeeded for exactly one official BTCUSDT 1H daily archive and its sibling CHECKSUM. The ZIP is 1,561 bytes (SHA-256 `09a24635f090c9b2ab17f4a61aa3c4d262a7ccc88e96ff0199ce66a54a8ab66b`); the 92-byte CHECKSUM agrees. It parses as one 12-column header plus 24 consecutive UTC hourly rows for 2024-01-01. No raw ZIP is committed. This changes the claim from zero sample access to **one genuine checksum-verified sample only**. It does not establish the historical universe, S1 inputs, S6 breadth, any signal, or outcome. The root directory is an HTML landing page, the symbol directory returns 404, and a tested S3 listing route is proxy-blocked; no broad symbol inventory/as-of universe source was established. The existing zero-row panel and all zero strategy-output counts remain correct. Full historical evidence remains blocked at the cohort/data-sufficiency gate.
+
 # ATLAS RED Session R-E1 — source-feasibility stop and handoff
 
 ## Result
 
-**BLOCKED BY ENVIRONMENT at the first public-data sample.** The official Binance archive hostname is rejected by this session's HTTP proxy. No Binance market archive or checksum file was retrieved. The repository's strategy code and offline fixture tests were inspected, but no historical signal, opportunity, return, fill or label was generated.
+**PARTIAL SOURCE ACCESS; full panel blocked at source sufficiency.** One official BTCUSDT 1H daily ZIP and sibling checksum were later retrieved and verified. The repository strategy code and offline fixture tests were inspected, but no historical signal, opportunity, return, fill or label was generated.
 
-This is a factual source-access stop, not a conclusion about whether Binance has the requested historical files or whether ATLAS has economic value. The only official Binance content retrieved was the public archive README. It describes USD-M futures klines, trades and aggTrades, and says each ZIP has a sibling .CHECKSUM. It does not supply the files or prove point-in-time contract history, historical book completeness, fills or provider receipt chronology.
+This is a factual source-access stop, not a conclusion about whether Binance has the requested historical files or whether ATLAS has economic value. The official README and one BTCUSDT 1H market archive sample were retrieved. The README describes USD-M futures klines, trades and aggTrades, and says each ZIP has a sibling .CHECKSUM. Neither the README nor this sample proves point-in-time contract history, historical book completeness, fills or provider receipt chronology.
 
 ## Repository and authority preflight
 
@@ -17,12 +19,12 @@ This is a factual source-access stop, not a conclusion about whether Binance has
 
 Retrieved official documentation: https://raw.githubusercontent.com/binance/binance-public-data/master/README.md, 5,282 bytes, SHA-256 2e133d9945a9263a02781369078e72805eff074680f305cd5460016471c6caad. This is documentation, not market data.
 
-The following candidate public archive requests both failed at the proxy with HTTP 403 / CONNECT tunnel failed:
+The initial candidate public archive HEAD requests failed at the proxy with HTTP 403 / CONNECT tunnel failed at the times recorded here:
 
 - HEAD https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-01.zip at 2026-10-17 18:11:02 UTC.
 - HEAD https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2024-01-01.zip.CHECKSUM at 2026-10-17 18:12:59 UTC.
 
-The environment reports restricted policy with state unknown; data.binance.vision is not among the configured destinations shown. The proxy rejection was observed directly. No bypass was attempted. Market archive bytes downloaded: **0**. Verified archive checksums: **0**. Symbols, dates, rows, parser results and source coverage observed: **0**.
+These were time-specific failures: a later anonymous GET retrieved the exact ZIP and sibling checksum (see correction at the top). Current evidence is one official BTCUSDT 1H day, 24 rows, checksum verified; no bypass was attempted. This does not establish symbols beyond BTCUSDT, historical listing/filters or role-level sufficiency.
 
 The full role matrix is SOURCE_FEASIBILITY_AND_ROLE_MATRIX.csv. For roles whose source may exist but was not retrieved, UNAVAILABLE means unavailable to this session; NOT_TESTED means the underlying archive capability remains unverified. No inference is made that Binance lacks those files.
 
@@ -48,7 +50,7 @@ No adapter or downloader was added. Consequently, there is no clean-clone archiv
 
 ## Smallest factual remedy
 
-Use the managed environment's supported configuration review to permit anonymous HTTPS to the official data.binance.vision archive host, then repeat only the BTCUSDT 1H sample ZIP and sibling checksum probe. Do not add broader hosts until an official redirect or later channel request proves it necessary. Once one real file is checksum-verified, measure bytes and coverage before deciding whether a wider panel fits the 1 GiB / 4 GiB / 90-minute ceilings.
+Obtain an authoritative historical USD-M USDT-perpetual inventory manifest with official archive object keys and point-in-time listing, delisting, rename and contract/filter revision dates. This is required to measure unbiased coverage and S6 eligible breadth. Only after that source exists should a wider cohort be estimated against the 1 GiB / 4 GiB / 90-minute ceilings.
 
 ## Stop gate
 
