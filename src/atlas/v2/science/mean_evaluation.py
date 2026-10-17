@@ -598,6 +598,20 @@ def run_independent_mean_evaluation(
                 evaluation_ref = index_mean_artifact(
                     repo, evaluation, available_at_ns=finished, input_refs=(action_ref, population.content_hash)
                 )
+                if evaluation.status == "ELIGIBLE":
+                    from atlas.v2.science.mean_evaluation_validation import _publication_entry
+
+                    # Only this actual checked loop creates the ephemeral writer
+                    # capability. No callable publisher can stamp supplied values.
+                    # Public/imported requests independently reconstruct offline.
+                    with repo.atomic_composition():
+                        entry = _publication_entry(repo, evaluation, inp)
+                        prior = getattr(repo, "_mean_evaluation_writes", {})
+                        repo._mean_evaluation_writes = {**prior, entry.artifact_ref: entry}
+                        try:
+                            repo.register_artifact(entry)
+                        finally:
+                            repo._mean_evaluation_writes = prior
                 evaluations.append(evaluation)
                 if evaluation.status == "ELIGIBLE":
                     assert evaluation.score_cash is not None

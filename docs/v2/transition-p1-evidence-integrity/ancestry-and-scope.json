@@ -1,0 +1,17 @@
+{
+  "starting_sha": "81870a18a1f773e84ad1b0c82690dc8e4d677bb8",
+  "parent_parent": "215a0045d8203f23dbd4935639ef448556cc2353",
+  "branch": "fix/atlas-red-p1-evidence-integrity-2026-10-17",
+  "accepted_design": "f9f8ef083ba5bafcad9bab4d07227676200a948f",
+  "accepted_design_is_ancestor": true,
+  "freshly_fetched_remote_parent": "81870a18a1f773e84ad1b0c82690dc8e4d677bb8",
+  "remote_branches_containing_parent_before_push": [
+    "origin/fix/atlas-red-p1-bootstrap-integrity-2026-10-17"
+  ],
+  "original_checkout_dirty": "",
+  "translog_append_only": true,
+  "model": "owner-confirmed GPT-6.1 Sol selection; independent runtime attestation unavailable",
+  "subagents": 0,
+  "scope": "offline P1 evidence integrity only; explicit N3 original producer contract approved",
+  "activity": "No P2, API spending, private venue reads, orders, account-policy activation, deployment or capital"
+}

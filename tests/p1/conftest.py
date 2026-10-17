@@ -64,8 +64,7 @@ def training_rows(compatibility, *, cash=D("5"), count=40, start_day=1, constant
     )
 
 
-@pytest.fixture
-def case(tmp_path):
+def build_case(tmp_path):
     repo = OpsRepository(tmp_path / "mean.sqlite")
     policy = MeanEvaluationPolicyV1(H("evaluation-policy-source"), D("0"), D("0"), False, D("1000"))
     snapshot = OfflineRiskSnapshotV1(
@@ -305,3 +304,27 @@ def case(tmp_path):
         repo=repo, population=population, snapshot=snapshot, policy=policy, inputs=inputs, clock=clock
     )
     repo.close()
+
+
+@pytest.fixture(scope="session")
+def original_case(tmp_path_factory):
+    # Produce original synthetic records once using the real recorder/fit path.
+    # Each test below gets a distinct database through the checked import API.
+    yield from build_case(tmp_path_factory.mktemp("original-mean-evidence"))
+
+
+@pytest.fixture
+def case(tmp_path, original_case):
+    from atlas.v2.science.mean_population import import_population_evidence
+
+    original = original_case.repo
+    refs = tuple(r[0] for r in original._connection.execute("SELECT artifact_ref FROM artifact_index ORDER BY artifact_ref"))
+    entries = tuple(original.get_artifact(ref) for ref in refs)
+    repo = OpsRepository(tmp_path / "mean.sqlite")
+    import_population_evidence(repo, trusted_source=original, entries=entries)
+    result = SimpleNamespace(**{**vars(original_case), "repo": repo, "inputs": dict(original_case.inputs)})
+    try:
+        yield result
+    finally:
+        # Tests may legitimately close/reopen or switch to a fresh import.
+        result.repo.close()

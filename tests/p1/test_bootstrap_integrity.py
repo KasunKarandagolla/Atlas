@@ -10,56 +10,39 @@ import pytest
 from atlas.v2.science.mean_calibration import (
     EvidenceReader,
     MeanDependenceQualificationV1,
-    MeanEvidenceScopeV1,
-    MeanOOFPredictionV1,
-    MeanOriginEvidenceV1,
-    MeanOutcomeEvidenceV1,
-    calibrate_verified_selected_policy,
     dependence_diagnostics,
-    produce_verified_mean_oof,
     verify_mean_calibration,
     verify_oof_residuals,
 )
 from atlas.v2.science.mean_common import DAY_NS, ZERO
 from atlas.v2.science.mean_evaluation import index_mean_artifact
-from atlas.v2.science.mean_models import MeanTrainingRowV1
 
 from .conftest import H, T
-from .test_financial_evidence import a_chain, read
+from .test_financial_evidence import read
 from .test_mean_evaluation import run
 from .test_mean_selection import request_response, validate
 
 
 def uncertain_chain(case, *, unequal=False):
     """Actual causal M0 folds, fixed pre-origin training, never declared predictions."""
-    inp, _, protocol, original_residuals = a_chain(case)
-    protocol = replace(protocol, resamples=10000)
-    index_mean_artifact(case.repo, protocol, available_at_ns=protocol.registered_at_ns)
-    scope = read(case, protocol.scope_ref, MeanEvidenceScopeV1)
-    prediction = read(case, original_residuals[0].prediction_ref, MeanOOFPredictionV1)
-    training = tuple(read(case, r, MeanTrainingRowV1) for r in prediction.training_row_refs)
+    from .evidence_fixtures import verified_calibration, verified_scenarios
+
+    inp = list(case.inputs.values())[1]
     signs = [-1] * 15 + [1] * 15
     random.Random(1).shuffle(signs)
-    residuals = []
-    for k, sign in enumerate(signs):
-        # Additional actions share their actual weekly calendar block.
-        for j in range(3 if unequal and k % 3 == 0 else 1):
-            at = (100 + 7 * k) * DAY_NS + j
-            origin = MeanOriginEvidenceV1(scope.content_hash, f"bootstrap-{k}-{j}", at, at, training[0].features)
-            index_mean_artifact(case.repo, origin, available_at_ns=at)
-            evidence = MeanOutcomeEvidenceV1(
-                scope.content_hash, origin.content_hash, at, at + DAY_NS, at + DAY_NS + 1,
-                origin.features, D("5") - 10 * sign, "FULL_FILL",
-            )
-            index_mean_artifact(case.repo, evidence, available_at_ns=evidence.available_at_ns)
-            row = evidence.training_row(scope)
-            index_mean_artifact(case.repo, row, available_at_ns=row.label_available_at_ns)
-            residuals.extend(produce_verified_mean_oof(case.repo, (*training, row), protocol=protocol))
-    calibration = calibrate_verified_selected_policy(
-        case.repo, model=inp.model, protocol=protocol, residuals=tuple(residuals),
-        cutoff_ns=inp.calibration.available_at_ns, expires_at_ns=inp.calibration.expires_at_ns,
+    compat = H(f"preoutcome-bootstrap-cell-{unequal}")
+    model, calibration, scope, hold, protocol, residuals = verified_calibration(
+        case.repo, product=inp.product, policy=case.policy, compatibility_ref=compat, cash="5", now_ns=T,
+        residual_errors=tuple(D(10 * s) for s in signs), unequal=unequal,
     )
-    inp = replace(inp, calibration=calibration)
+    scenarios = verified_scenarios(case.repo, replace(inp.scenarios, compatibility_ref=compat),
+                                  scope=scope, hold=hold, policy=case.policy, snapshot=case.snapshot)
+    changes = {name: replace(getattr(inp, name), model_ref=model.content_hash, compatibility_ref=compat)
+               for name in ("execution_bias", "numerical", "incremental_programme")}
+    changes["context"] = replace(inp.context, compatibility_ref=compat)
+    for obj in changes.values():
+        index_mean_artifact(case.repo, obj, available_at_ns=obj.available_at_ns)
+    inp = replace(inp, model=model, calibration=calibration, scenarios=scenarios, **changes)
     case.inputs[inp.candidate.content_hash] = inp
     reader = EvidenceReader(case.repo, cutoff_ns=T, now_ns=T)
     _, values = verify_oof_residuals(reader, protocol, tuple(r.content_hash for r in residuals))
@@ -308,7 +291,8 @@ def snapshot_entries(repo):
 def test_fresh_database_import_recomputes_receipts_and_preserves_b_replay(case, tmp_path, monkeypatch):
     import atlas.v2.science.mean_calibration as calibration_module
     from atlas.v2.memory.repository import OpsRepository
-    from atlas.v2.science.mean_calibration_validation import MeanCalibrationValidationV1
+    from atlas.v2.science.mean_calibration_validation import MeanCalibrationValidationV2
+    from atlas.v2.science.mean_population import import_population_evidence
 
     inp, *_ = uncertain_chain(case)
     eligible, request, response = request_response(case)
@@ -323,9 +307,9 @@ def test_fresh_database_import_recomputes_receipts_and_preserves_b_replay(case, 
 
     monkeypatch.setattr(calibration_module, "selected_policy_upper_cash", counted)
     # Reverse dependency order intentionally, receipt first, in one atomic batch.
-    receipts = tuple(e for e in entries if e.artifact_type == MeanCalibrationValidationV1.__name__)
-    data = tuple(e for e in entries if e not in receipts)
-    fresh.register_artifacts(data)
+    receipts = tuple(e for e in entries if e.artifact_type == MeanCalibrationValidationV2.__name__)
+    data = tuple(e for e in entries if e not in receipts and e.artifact_type != "MeanEvaluationValidationV1")
+    import_population_evidence(fresh, trusted_source=case.repo, entries=data)
     saved = read(case, inp.calibration.content_hash, type(inp.calibration))
     assert saved == inp.calibration  # Old V2 bytes/meaning still decode.
     owner = case.repo
@@ -333,7 +317,7 @@ def test_fresh_database_import_recomputes_receipts_and_preserves_b_replay(case, 
     with pytest.raises(ValueError, match="VALIDATION_UNAVAILABLE"):
         verify(case, inp, saved)
     assert not run(case).members  # No silent promotion of old saved V2 artifacts.
-    fresh.register_artifacts((*receipts, *reversed(data)))
+    import_population_evidence(fresh, trusted_source=owner, entries=tuple(reversed(entries)))
     assert len(computed) == len(receipts) == 5
     assert any(c["resamples"] == 10000 for c in computed)
     fresh.close()
@@ -354,14 +338,17 @@ def test_fresh_database_import_recomputes_receipts_and_preserves_b_replay(case, 
 def test_self_declared_certificate_for_genuine_calibration_is_not_trust(case, tmp_path):
     from atlas.v2.memory.repository import OpsRepository
     from atlas.v2.science.mean_calibration_validation import (
-        MeanCalibrationValidationV1,
+        MeanCalibrationValidationV2,
         calibration_validation_entry,
     )
 
     inp, *_ = uncertain_chain(case)
+    from atlas.v2.science.mean_population import import_population_evidence
+
     fresh = OpsRepository(tmp_path / "untrusted-import.sqlite")
-    fresh.register_artifacts(tuple(e for e in snapshot_entries(case.repo)
-                                   if e.artifact_type != MeanCalibrationValidationV1.__name__))
+    import_population_evidence(fresh, trusted_source=case.repo,
+        entries=tuple(e for e in snapshot_entries(case.repo)
+                      if e.artifact_type != MeanCalibrationValidationV2.__name__))
     request = calibration_validation_entry(inp.calibration, D("0"))
     with pytest.raises(ValueError, match="VALIDATION_BINDING_CHANGED"):
         fresh.register_artifact(request)

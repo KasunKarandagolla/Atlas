@@ -1,0 +1,262 @@
+{
+  "starting_sha": "81870a18a1f773e84ad1b0c82690dc8e4d677bb8",
+  "counts": {
+    "production": 8,
+    "tests": 5,
+    "documentation_and_evidence": 50
+  },
+  "files": [
+    {
+      "status": "M",
+      "path": "algorithms/ACCEPTANCE_REGISTER.csv"
+    },
+    {
+      "status": "M",
+      "path": "algorithms/IMPLEMENTATION_PLAN.md"
+    },
+    {
+      "status": "M",
+      "path": "algorithms/MANIFEST.sha256"
+    },
+    {
+      "status": "M",
+      "path": "algorithms/SURGICAL_CHANGE_MAP.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/project/CURRENT_STATE.md"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/ATLAS_RED_P1_EVIDENCE_INTEGRITY_CORRECTION.md"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/ancestry-and-scope.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/broad-final.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/broad-final.xml"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/changed-files.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/compile-final.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/dependencies-and-licenses.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/design-manifest-status.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/evidence-manifest.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/exploratory-focused.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/exploratory-focused.xml"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/exploratory-refusal-order.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/exploratory-refusal-order.xml"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/final-p1.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/final-p1.xml"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/green-results.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/green-stdout.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/integrity_reproduction.py"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/interface-inventory.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/lock-final.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/measure_replay.py"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/mypy-baseline.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/mypy-delta.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/mypy-final.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/performance-and-replay.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/pip-final.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/positive_controls.py"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/preflight.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/protected-hashes.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/publication-checks.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/red-controls.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/red-results.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/red-stdout.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/refusal-order.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/refusal-order.xml"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/reproduce_green.py"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/ruff-final.txt"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/run_guarded.py"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/runtime.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/source-build.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/synthetic-capsule.json.gz"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/unchanged-algorithms.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/v2/transition-p1-evidence-integrity/verification.json"
+    },
+    {
+      "status": "M",
+      "path": "log.md"
+    },
+    {
+      "status": "M",
+      "path": "src/atlas/v2/memory/repository.py"
+    },
+    {
+      "status": "M",
+      "path": "src/atlas/v2/research/mean_selection.py"
+    },
+    {
+      "status": "M",
+      "path": "src/atlas/v2/science/mean_calibration.py"
+    },
+    {
+      "status": "M",
+      "path": "src/atlas/v2/science/mean_calibration_validation.py"
+    },
+    {
+      "status": "M",
+      "path": "src/atlas/v2/science/mean_common.py"
+    },
+    {
+      "status": "M",
+      "path": "src/atlas/v2/science/mean_evaluation.py"
+    },
+    {
+      "status": "A",
+      "path": "src/atlas/v2/science/mean_evaluation_validation.py"
+    },
+    {
+      "status": "A",
+      "path": "src/atlas/v2/science/mean_population.py"
+    },
+    {
+      "status": "M",
+      "path": "tests/p1/conftest.py"
+    },
+    {
+      "status": "M",
+      "path": "tests/p1/evidence_fixtures.py"
+    },
+    {
+      "status": "M",
+      "path": "tests/p1/test_bootstrap_integrity.py"
+    },
+    {
+      "status": "A",
+      "path": "tests/p1/test_evidence_integrity.py"
+    },
+    {
+      "status": "M",
+      "path": "tests/p1/test_financial_evidence.py"
+    },
+    {
+      "status": "M",
+      "path": "translog.md"
+    }
+  ]
+}

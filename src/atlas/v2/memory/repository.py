@@ -567,6 +567,7 @@ class OpsRepository:
         self.read_only = read_only
         self._lock = threading.RLock()
         self._savepoint_counter = 0
+        self._mean_evaluation_writes: dict[str, ArtifactIndexEntryV2] = {}
         self._public_extent_writer: Any = None
         self._public_index_cache: OrderedDict[Any, Any] = OrderedDict()
         self._public_stream_block_cache: OrderedDict[str, tuple[str, tuple[dict[str, Any], ...], int]] = OrderedDict()
@@ -583,6 +584,16 @@ class OpsRepository:
             self._writer_lease.acquire()
         try:
             self._open_connection()
+            # Pin file identity at repository startup, before a new-policy
+            # evaluation/B deadline. Missing packaged sources disable only
+            # the new checked-evidence capability, not historical readers.
+            from ..science.mean_calibration_validation import _implementation_sources
+
+            self._mean_integrity_startup_error = False
+            try:
+                _implementation_sources()
+            except OSError:
+                self._mean_integrity_startup_error = True
         except BaseException:
             connection = getattr(self, "_connection", None)
             if connection is not None:
@@ -1640,8 +1651,10 @@ class OpsRepository:
             # artifact authority. Imports follow the same offline check. Place
             # receipts last so a complete batch's dependencies are readable;
             # any failure rolls back the entire existing transaction.
+            priorities = {"MeanCalibrationValidationV1": 1, "MeanCalibrationValidationV2": 1,
+                          "MeanEvaluationValidationV1": 2}
             for entry, metadata_json, storage_json in sorted(
-                encoded.values(), key=lambda item: item[0].artifact_type == "MeanCalibrationValidationV1"
+                encoded.values(), key=lambda item: priorities.get(item[0].artifact_type, 0)
             ):
                 row = existing.get(entry.artifact_ref)
                 if row is not None:
@@ -1662,10 +1675,24 @@ class OpsRepository:
                     if stored_tuple != requested_tuple:
                         raise ValueError("artifact_ref already indexes different immutable content")
                     continue
-                if entry.artifact_type == "MeanCalibrationValidationV1":
+                if entry.artifact_type in ("MeanPopulationRegistrationV1", "MeanPopulationSlotV1", "MeanPopulationOutcomeV1"):
+                    from ..science.mean_population import validate_original_registration
+
+                    validate_original_registration(self, entry)
+                if entry.artifact_type == "MeanCalibrationValidationV2":
                     from ..science.mean_calibration_validation import validate_calibration_validation_registration
 
                     validate_calibration_validation_registration(self, entry)
+                if entry.artifact_type == "MeanCalibrationValidationV1":
+                    # Historical receipts remain readable/importable diagnostics;
+                    # the new consumer requires V2 and the current implementation.
+                    from ..science.mean_calibration_validation import MeanCalibrationValidationV1
+
+                    MeanCalibrationValidationV1.from_dict(entry.metadata["mean_artifact"])
+                if entry.artifact_type == "MeanEvaluationValidationV1":
+                    from ..science.mean_evaluation_validation import validate_evaluation_registration
+
+                    validate_evaluation_registration(self, entry)
                 connection.execute(
                     "INSERT INTO artifact_index(artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json) VALUES(?,?,?,?,?,?)",
                     (
@@ -1810,7 +1837,9 @@ class OpsRepository:
         supplied_batch = tuple(entries)
         if not supplied_batch or any(not isinstance(entry, ArtifactIndexEntryV2) for entry in supplied_batch):
             raise ValueError("complete stream publication must contain typed public evidence")
-        if any(entry.artifact_type == "MeanCalibrationValidationV1" for entry in supplied_batch):
+        if any(entry.artifact_type in ("MeanCalibrationValidationV1", "MeanCalibrationValidationV2",
+                                      "MeanEvaluationValidationV1", "MeanPopulationRegistrationV1",
+                                      "MeanPopulationSlotV1", "MeanPopulationOutcomeV1") for entry in supplied_batch):
             raise ValueError("calibration validation requires the checked offline artifact registration boundary")
         unique_entries: dict[str, ArtifactIndexEntryV2] = {}
         for entry in supplied_batch:

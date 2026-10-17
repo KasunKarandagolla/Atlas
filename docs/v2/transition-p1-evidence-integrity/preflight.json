@@ -1,0 +1,21 @@
+{
+  "source-build.json": {
+    "checked": 336,
+    "mismatches": []
+  },
+  "protected-hashes.json": {
+    "checked": 15,
+    "mismatches": [],
+    "historical_evidence_count_metadata": 57
+  },
+  "source_sha": "81870a18a1f773e84ad1b0c82690dc8e4d677bb8",
+  "source_dirty_after": "",
+  "original_checkout_dirty_after": "",
+  "accepted_design_is_ancestor": true,
+  "git_diff_check_exit": 0,
+  "freeze_sha256": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+  }
+}

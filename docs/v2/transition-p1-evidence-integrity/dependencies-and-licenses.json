@@ -1,0 +1,368 @@
+{
+  "dependency_change": "NONE",
+  "new_task_environment": "uv pip sync --python /workspace/work/atlas-p1-venv/bin/python requirements-lock.txt; unchanged hash-pinned file",
+  "review": "version and installed metadata consistency only; no new legal qualification",
+  "pinned_packages": 33,
+  "mismatches": [],
+  "installed": [
+    {
+      "name": "altgraph",
+      "pinned": "0.17.5",
+      "installed": "0.17.5",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "ast-serialize",
+      "pinned": "0.11.2",
+      "installed": "0.11.2",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE",
+        "crates/LICENSE"
+      ]
+    },
+    {
+      "name": "colorama",
+      "pinned": "0.4.6",
+      "installed": "0.4.6",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: BSD License"
+      ],
+      "license_files": [
+        "LICENSE.txt"
+      ]
+    },
+    {
+      "name": "duckdb",
+      "pinned": "1.5.5",
+      "installed": "1.5.5",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": []
+    },
+    {
+      "name": "hypothesis",
+      "pinned": "6.168.0",
+      "installed": "6.168.0",
+      "license_expression": "MPL-2.0",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE.txt"
+      ]
+    },
+    {
+      "name": "iniconfig",
+      "pinned": "2.3.0",
+      "installed": "2.3.0",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "librt",
+      "pinned": "0.15.0",
+      "installed": "0.15.0",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "lightgbm",
+      "pinned": "4.7.0",
+      "installed": "4.7.0",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "mypy",
+      "pinned": "2.3.1",
+      "installed": "2.3.1",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE",
+        "mypy/typeshed/LICENSE"
+      ]
+    },
+    {
+      "name": "mypy-extensions",
+      "pinned": "1.1.0",
+      "installed": "1.1.0",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "narwhals",
+      "pinned": "2.26.0",
+      "installed": "2.26.0",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE.md"
+      ]
+    },
+    {
+      "name": "nautilus-trader",
+      "pinned": "2.0.0rc5",
+      "installed": "2.0.0rc5",
+      "license_expression": "LGPL-3.0-only",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "numpy",
+      "pinned": "2.5.3",
+      "installed": "2.5.3",
+      "license_expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE.txt",
+        "numpy/_core/include/numpy/libdivide/LICENSE.txt",
+        "numpy/_core/src/common/pythoncapi-compat/COPYING",
+        "numpy/_core/src/highway/LICENSE",
+        "numpy/_core/src/multiarray/dragon4_LICENSE.txt",
+        "numpy/_core/src/npysort/x86-simd-sort/LICENSE.md",
+        "numpy/_core/src/umath/svml/LICENSE",
+        "numpy/fft/pocketfft/LICENSE.md",
+        "numpy/linalg/lapack_lite/LICENSE.txt",
+        "numpy/ma/LICENSE",
+        "numpy/random/LICENSE.md",
+        "numpy/random/src/distributions/LICENSE.md",
+        "numpy/random/src/mt19937/LICENSE.md",
+        "numpy/random/src/pcg64/LICENSE.md",
+        "numpy/random/src/philox/LICENSE.md",
+        "numpy/random/src/sfc64/LICENSE.md",
+        "numpy/random/src/splitmix64/LICENSE.md"
+      ]
+    },
+    {
+      "name": "packaging",
+      "pinned": "26.0",
+      "installed": "26.0",
+      "license_expression": "Apache-2.0 OR BSD-2-Clause",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE",
+        "LICENSE.APACHE",
+        "LICENSE.BSD"
+      ]
+    },
+    {
+      "name": "pathspec",
+      "pinned": "1.1.1",
+      "installed": "1.1.1",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "pluggy",
+      "pinned": "1.6.0",
+      "installed": "1.6.0",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "pyarrow",
+      "pinned": "25.0.1",
+      "installed": "25.0.1",
+      "license_expression": "Apache-2.0",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE.txt",
+        "NOTICE.txt"
+      ]
+    },
+    {
+      "name": "pygments",
+      "pinned": "2.21.0",
+      "installed": "2.21.0",
+      "license_expression": "BSD-2-Clause",
+      "license_classifiers": [],
+      "license_files": [
+        "AUTHORS",
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "pyinstaller",
+      "pinned": "6.22.3",
+      "installed": "6.22.3",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: GNU General Public License v2 (GPLv2)"
+      ],
+      "license_files": [
+        "COPYING.txt"
+      ]
+    },
+    {
+      "name": "pyinstaller-hooks-contrib",
+      "pinned": "2026.7",
+      "installed": "2026.7",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: GNU General Public License v2 (GPLv2)"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "pyqtgraph",
+      "pinned": "0.14.0",
+      "installed": "0.14.0",
+      "license_expression": null,
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE.txt"
+      ]
+    },
+    {
+      "name": "pyside6",
+      "pinned": "6.11.2",
+      "installed": "6.11.2",
+      "license_expression": null,
+      "license_classifiers": [],
+      "license_files": []
+    },
+    {
+      "name": "pyside6-addons",
+      "pinned": "6.11.2",
+      "installed": "6.11.2",
+      "license_expression": null,
+      "license_classifiers": [],
+      "license_files": []
+    },
+    {
+      "name": "pyside6-essentials",
+      "pinned": "6.11.2",
+      "installed": "6.11.2",
+      "license_expression": null,
+      "license_classifiers": [],
+      "license_files": []
+    },
+    {
+      "name": "pytest",
+      "pinned": "9.1.1",
+      "installed": "9.1.1",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "pyyaml",
+      "pinned": "6.0.3",
+      "installed": "6.0.3",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: MIT License"
+      ],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "ruff",
+      "pinned": "0.16.8",
+      "installed": "0.16.8",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "scipy",
+      "pinned": "1.18.1",
+      "installed": "1.18.1",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: BSD License"
+      ],
+      "license_files": []
+    },
+    {
+      "name": "setuptools",
+      "pinned": "84.0.0",
+      "installed": "84.0.0",
+      "license_expression": "MIT",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "shiboken6",
+      "pinned": "6.11.2",
+      "installed": "6.11.2",
+      "license_expression": null,
+      "license_classifiers": [],
+      "license_files": []
+    },
+    {
+      "name": "sortedcontainers",
+      "pinned": "2.4.0",
+      "installed": "2.4.0",
+      "license_expression": null,
+      "license_classifiers": [
+        "License :: OSI Approved :: Apache Software License"
+      ],
+      "license_files": []
+    },
+    {
+      "name": "typing-extensions",
+      "pinned": "4.15.0",
+      "installed": "4.15.0",
+      "license_expression": "PSF-2.0",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "websockets",
+      "pinned": "17.0.1",
+      "installed": "17.0.1",
+      "license_expression": "BSD-3-Clause",
+      "license_classifiers": [],
+      "license_files": [
+        "LICENSE"
+      ]
+    }
+  ]
+}

@@ -6,7 +6,6 @@ import pytest
 from atlas.v2.science.mean_calibration import (
     MeanCalibrationProtocolV1,
     MeanDependenceQualificationV1,
-    MeanEvidenceScopeV1,
     MeanOOFPredictionV1,
     MeanSelectionCalibrationV2,
     SelectedPolicyResidualV2,
@@ -234,7 +233,8 @@ def test_a_neg_05_dependence_is_verified_not_declared(case, fault):
             cutoff_ns=T,
             now_ns=T + 10,
         )
-    with pytest.raises(ValueError, match="SUPPORT"):
+    # A truncated selected cohort now fails completeness before statistical support.
+    with pytest.raises(ValueError, match="INCOMPLETE_OR_OUTCOME_CHOSEN_SELECTED_POPULATION"):
         calibrate_verified_selected_policy(
             case.repo,
             model=inp.model,
@@ -470,44 +470,17 @@ def test_weighted_selected_action_bootstrap_preserves_unequal_block_counts():
 
 
 def test_nonzero_allowance_from_actual_folds_not_declared_predictions(case):
-    from atlas.v2.science.mean_calibration import MeanOriginEvidenceV1, MeanOutcomeEvidenceV1, produce_verified_mean_oof
+    from .evidence_fixtures import verified_calibration
 
-    inp, _, protocol, residuals = a_chain(case)
-    scope = read(case, protocol.scope_ref, MeanEvidenceScopeV1)
-    original = read(case, residuals[0].prediction_ref, MeanOOFPredictionV1)
-    training = tuple(read(case, r, MeanTrainingRowV1) for r in original.training_row_refs)
-    verified = []
-    for k in range(30):
-        at = (100 + 7 * k) * DAY_NS
-        origin = MeanOriginEvidenceV1(scope.content_hash, f"positive-residual-{k}", at, at, training[0].features)
-        index_mean_artifact(case.repo, origin, available_at_ns=origin.available_at_ns)
-        evidence = MeanOutcomeEvidenceV1(
-            scope.content_hash,
-            origin.content_hash,
-            at,
-            at + DAY_NS,
-            at + DAY_NS + 1,
-            training[0].features,
-            D("4"),
-            "FULL_FILL",
-        )
-        index_mean_artifact(case.repo, evidence, available_at_ns=evidence.available_at_ns)
-        row = evidence.training_row(scope)
-        index_mean_artifact(case.repo, row, available_at_ns=row.label_available_at_ns)
-        verified.extend(produce_verified_mean_oof(case.repo, training + (row,), protocol=protocol))
-    calibration = calibrate_verified_selected_policy(
-        case.repo,
-        model=inp.model,
-        protocol=protocol,
-        residuals=tuple(verified),
-        cutoff_ns=inp.calibration.available_at_ns,
-        expires_at_ns=inp.calibration.expires_at_ns,
-    )
+    inp = list(case.inputs.values())[1]
+    model, calibration, *_ = verified_calibration(case.repo, product=inp.product, policy=case.policy,
+        compatibility_ref=H("original-nonzero-calibration-cell"), cash="5", now_ns=T,
+        residual_errors=(D("1"),) * 30)
     assert calibration.allowance_cash == 1
     verify_mean_calibration(
         case.repo,
         calibration,
-        model=inp.model,
+        model=model,
         policy_ref=case.policy.content_hash,
         product_ref=inp.product.content_hash,
         cutoff_ns=T,
@@ -519,11 +492,11 @@ def test_nonzero_allowance_from_actual_folds_not_declared_predictions(case):
     index_mean_artifact(case.repo, proof, available_at_ns=proof.available_at_ns)
     forged = replace(calibration, allowance_cash=D("0"), qualification_ref=proof.content_hash)
     index_mean_artifact(case.repo, forged, available_at_ns=forged.available_at_ns)
-    with pytest.raises(ValueError, match="BELOW_VERIFIED_MEAN"):
+    with pytest.raises(ValueError, match="VALIDATION_UNAVAILABLE"):
         verify_mean_calibration(
             case.repo,
             forged,
-            model=inp.model,
+            model=model,
             policy_ref=case.policy.content_hash,
             product_ref=inp.product.content_hash,
             cutoff_ns=T,

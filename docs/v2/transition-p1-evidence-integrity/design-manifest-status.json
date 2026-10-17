@@ -1,0 +1,22 @@
+{
+  "manifest_change": "Only three authorized progress annotation hashes refreshed; canonical design/PDF/authority bytes unchanged. No regeneration of design documents.",
+  "parent_all_entries_matched": true,
+  "current_all_entries_match": true,
+  "changed_entries": [
+    {
+      "path": "algorithms/ACCEPTANCE_REGISTER.csv",
+      "old_hash": "e6a6e162e5c90944e04ff726c303ed085982be3036f9241f9fb1c6019eeffde8",
+      "new_hash": "2ed0b9daabfdd5bcbf9c42263c37b144b658f0523579293e0cc0d48445d1bbe3"
+    },
+    {
+      "path": "algorithms/IMPLEMENTATION_PLAN.md",
+      "old_hash": "71610104c72739277dd69b27a16a7d9d9ddefff03aac44263bb5ac57e02f9f3d",
+      "new_hash": "67bb7b0c921a64981853cab7e24339d49c820b8cb07a6265c6a4095af09cd9a1"
+    },
+    {
+      "path": "algorithms/SURGICAL_CHANGE_MAP.md",
+      "old_hash": "e43f0fd934b3d4464419c5566ef8f52ec01656e6512342eb2b28e7cb74a06899",
+      "new_hash": "afd5c8095ce6ec2cb301be13121c9a858dc76e6539d56a042f4e8aafe977dd44"
+    }
+  ]
+}

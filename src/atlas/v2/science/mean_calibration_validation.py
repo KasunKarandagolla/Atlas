@@ -43,6 +43,12 @@ class MeanCalibrationValidationV1(OfflineArtifact):
             raise ValueError("INVALID_CALIBRATION_VALIDATION_INTERVAL")
 
 
+@dataclass(frozen=True)
+class MeanCalibrationValidationV2(MeanCalibrationValidationV1):
+    VERSION: ClassVar[str] = "ATLAS_RED_MEAN_CALIBRATION_VALIDATION_V2"
+    population_contract_ref: str
+
+
 @cache
 def _implementation_sources():
     # Binds the actual verifier, producer, model/codec and durable-write boundary.
@@ -54,6 +60,12 @@ def _implementation_sources():
         "science/mean_calibration_validation.py", "memory/repository.py",
         "memory/compressed_metadata.py", "memory/schema.py",
         "science/mean_evaluation.py", "research/mean_selection.py",
+        "science/mean_population.py", "science/mean_evaluation_validation.py",
+        "risk.py", "science/action.py", "science/costs.py", "science/mean_scenarios.py",
+        "science/mean_scenario_evidence.py", "science/portfolio.py", "science/m0.py",
+        "contracts.py", "instruments.py", "science/active_training.py",
+        "strategies/s1_trend.py", "strategies/s2_breakout.py",
+        "strategies/s3_mean_reversion.py", "strategies/s6_cross_section.py",
     )
     return {
         **{p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in paths},
@@ -65,7 +77,7 @@ def _implementation_sources():
 def validation_implementation_ref():
     context = getcontext()
     return sha256_json({
-        "validator": MeanCalibrationValidationV1.VERSION,
+        "validator": MeanCalibrationValidationV2.VERSION,
         "sources": _implementation_sources(),
         "decimal": [context.prec, context.rounding, context.Emin, context.Emax, context.clamp,
                     sorted(k.__name__ for k, enabled in context.traps.items() if enabled)],
@@ -80,13 +92,16 @@ def validation_ref(calibration_ref, implementation_ref):
 
 def calibration_validation_entry(calibration, required_allowance):
     """Constructing this request confers no trust; Ops must validate its insert."""
-    receipt = MeanCalibrationValidationV1(
+    from atlas.v2.science.mean_population import population_contract_ref
+
+    receipt = MeanCalibrationValidationV2(
         calibration.content_hash, validation_implementation_ref(), required_allowance,
         calibration.available_at_ns, calibration.expires_at_ns,
+        population_contract_ref(),
     )
     return ArtifactIndexEntryV2(
         validation_ref(receipt.calibration_ref, receipt.implementation_ref),
-        MeanCalibrationValidationV1.__name__, receipt.content_hash,
+        MeanCalibrationValidationV2.__name__, receipt.content_hash,
         receipt.available_at_ns, receipt.available_at_ns,
         {"mean_artifact": receipt.to_dict(), "authority": "ZERO"},
     )
@@ -109,15 +124,18 @@ def validate_calibration_validation_registration(repo, entry):
     from atlas.v2.science.mean_models import MeanModelV1
 
     try:
-        receipt = MeanCalibrationValidationV1.from_dict(entry.metadata["mean_artifact"])
+        receipt = MeanCalibrationValidationV2.from_dict(entry.metadata["mean_artifact"])
         cutoff = receipt.available_at_ns
         calibration = read_mean_artifact(repo, receipt.calibration_ref, MeanSelectionCalibrationV2, consumer_ns=cutoff)
         model = read_mean_artifact(repo, calibration.model_ref, MeanModelV1, consumer_ns=cutoff)
         scope = read_mean_artifact(repo, calibration.source_ref, MeanEvidenceScopeV1, consumer_ns=cutoff)
         _, _, protocol, values = _verify_mean_calibration_chain(
             repo, calibration, model=model, policy_ref=scope.policy_ref, product_ref=scope.product_ref,
-            cutoff_ns=cutoff, now_ns=cutoff,
+            cutoff_ns=cutoff, now_ns=cutoff, verify_fits=True,
         )
+        from atlas.v2.science.mean_population import verify_selected_population
+
+        verify_selected_population(repo, protocol, calibration.calibration_refs, cutoff_ns=cutoff)
         groups, _, _ = dependence_diagnostics(values, protocol)
         required = selected_policy_upper_cash(groups, alpha=protocol.alpha, resamples=protocol.resamples)
         if calibration.allowance_cash < required:
@@ -130,12 +148,14 @@ def validate_calibration_validation_registration(repo, entry):
 
 def require_calibration_validation(repo, calibration, *, cutoff_ns, now_ns):
     """One bounded immutable receipt lookup; no bootstrap, fit or OOF generation."""
+    if repo._mean_integrity_startup_error:
+        raise ValueError("CALIBRATION_IMPLEMENTATION_UNAVAILABLE_AT_STARTUP")
     implementation = validation_implementation_ref()
     entry = repo.get_artifact(validation_ref(calibration.content_hash, implementation))
-    if entry is None or entry.artifact_type != MeanCalibrationValidationV1.__name__:
+    if entry is None or entry.artifact_type != MeanCalibrationValidationV2.__name__:
         raise ValueError("CALIBRATION_OFFLINE_VALIDATION_UNAVAILABLE")
     try:
-        receipt = MeanCalibrationValidationV1.from_dict(entry.metadata["mean_artifact"])
+        receipt = MeanCalibrationValidationV2.from_dict(entry.metadata["mean_artifact"])
         if (
             entry != calibration_validation_entry(calibration, receipt.required_allowance_cash)
             or entry.available_at_ns > cutoff_ns

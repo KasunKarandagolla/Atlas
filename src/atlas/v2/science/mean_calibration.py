@@ -56,10 +56,12 @@ class MeanEvidenceScopeV1(OfflineArtifact):
 class EvidenceReader:
     """Per-consumption cache, never reused after return or across revisions."""
 
-    def __init__(self, repo, *, cutoff_ns, now_ns):
+    def __init__(self, repo, *, cutoff_ns, now_ns, verify_fits=False):
         self.repo, self.cutoff_ns, self.now_ns = repo, cutoff_ns, now_ns
         self.cache = {}
         self.verified_rows = set()
+        self.verify_fits = verify_fits
+        self.verified_fits = set()
 
     def read(self, ref, cls, *, by_ns=None, valid_at_ns=None):
         from atlas.v2.science.mean_evaluation import read_mean_artifact
@@ -240,6 +242,7 @@ def _row(reader, ref, scope, hold, *, by_ns):
         raise ValueError("HISTORICAL_ACTION_OR_FEATURE_PREFIX_CHANGED")
     if (
         row != evidence.training_row(scope)
+        or row.execution_state == "CENSORED"
         or any(not lo <= x <= hi for x, lo, hi in zip(row.features, scope.support_min, scope.support_max, strict=True))
         or row.outcome_ref in hold.outcome_refs
         or row.origin_ns >= hold.start_ns
@@ -297,6 +300,7 @@ def verify_oof_residuals(reader, protocol, residual_refs):
             )
         ):
             raise ValueError("OOF_TRAINING_MEMBERSHIP_OVERLAP_OR_EMBARGO")
+        _verify_fitted_model(reader, model, training)
         value = predict_mean(
             model,
             row.features,
@@ -337,12 +341,39 @@ def verify_serving_training(reader, model, scope, protocol):
     if model != stored or not 1 <= len(model.training_refs) <= 512:
         raise ValueError("SERVING_MODEL_MEMBERSHIP_INVALID")
     hold = _holdout(reader, protocol, scope)
+    training = []
     for ref in model.training_refs:
         evidence = reader.read(ref, MeanOutcomeEvidenceV1, by_ns=model.training_cutoff_ns)
         row = evidence.training_row(scope)
         verified = _row(reader, row.content_hash, scope, hold, by_ns=model.training_cutoff_ns)
         if verified.label_available_at_ns >= model.training_cutoff_ns:
             raise ValueError("SERVING_TRAINING_IMMATURE_OR_FUTURE")
+        training.append(verified)
+    _verify_fitted_model(reader, model, tuple(training))
+
+
+def _verify_fitted_model(reader, model, training):
+    """Reconstruct actual M0 fitting OFFLINE, never on admission/B deadlines.
+
+    The existing qualified protocol is M0-only. M1/empirical research models
+    cannot borrow this estimator's proof. Exact comparison binds preprocessing,
+    support, eligible sorted membership, coefficients and implementation identity.
+    """
+    if not reader.verify_fits or model.content_hash in reader.verified_fits:
+        return
+    from atlas.v2.science.mean_models import fit_m0_mean
+
+    if model.estimator != "M0_MEAN_RIDGE_V1":
+        raise ValueError("MODEL_FIT_ESTIMATOR_PROOF_UNAVAILABLE")
+    fitted = fit_m0_mean(
+        training, compatibility_ref=model.compatibility_ref,
+        cutoff_ns=model.training_cutoff_ns, available_at_ns=model.available_at_ns,
+        expires_at_ns=model.expires_at_ns, provenance=model.provenance,
+        ridge=model.parameters["ridge"], minimum_rows=2,
+    )
+    if fitted != model:
+        raise ValueError("MODEL_NOT_DERIVED_FROM_CLAIMED_TRAINING")
+    reader.verified_fits.add(model.content_hash)
 
 
 def selected_policy_upper_cash(groups, *, alpha, resamples):
@@ -369,6 +400,9 @@ def calibrate_verified_selected_policy(repo, *, model, protocol, residuals, cuto
 
     reader = EvidenceReader(repo, cutoff_ns=cutoff_ns, now_ns=cutoff_ns)
     protocol = reader.read(protocol.content_hash, MeanCalibrationProtocolV1)
+    from atlas.v2.science.mean_population import verify_selected_population
+
+    verify_selected_population(repo, protocol, tuple(r.content_hash for r in residuals), cutoff_ns=cutoff_ns)
     scope, values = verify_oof_residuals(reader, protocol, tuple(r.content_hash for r in residuals))
     reader.read(model.content_hash, MeanModelV1)
     if (
@@ -416,10 +450,11 @@ def calibrate_verified_selected_policy(repo, *, model, protocol, residuals, cuto
     return calibration
 
 
-def _verify_mean_calibration_chain(repo, calibration, *, model, policy_ref, product_ref, cutoff_ns, now_ns):
+def _verify_mean_calibration_chain(repo, calibration, *, model, policy_ref, product_ref, cutoff_ns, now_ns,
+                                   verify_fits=False):
     if not isinstance(calibration, MeanSelectionCalibrationV2):
         raise ValueError("UNVERIFIED_LEGACY_CALIBRATION")
-    reader = EvidenceReader(repo, cutoff_ns=cutoff_ns, now_ns=now_ns)
+    reader = EvidenceReader(repo, cutoff_ns=cutoff_ns, now_ns=now_ns, verify_fits=verify_fits)
     stored = reader.read(calibration.content_hash, MeanSelectionCalibrationV2)
     proof = reader.read(stored.qualification_ref, MeanDependenceQualificationV1)
     protocol = reader.read(proof.protocol_ref, MeanCalibrationProtocolV1)
@@ -459,14 +494,31 @@ def _verify_mean_calibration_chain(repo, calibration, *, model, policy_ref, prod
 
 
 def verify_mean_calibration(repo, calibration, *, model, policy_ref, product_ref, cutoff_ns, now_ns):
-    """Bounded admission: causal checks plus the writer-validated offline receipt."""
+    """Bounded admission: exact checked chain identities; no OOF/refit/bootstrap.
+
+    Full fitting, population and statistical checks belong at the reserved
+    writer receipt boundary. Its hash binds immutable inputs and current code;
+    repeating those offline checks at each deadline adds no source truth.
+    """
     from atlas.v2.science.mean_calibration_validation import require_calibration_validation
 
-    scope, _, _, _ = _verify_mean_calibration_chain(
-        repo, calibration, model=model, policy_ref=policy_ref, product_ref=product_ref,
-        cutoff_ns=cutoff_ns, now_ns=now_ns,
-    )
+    if not isinstance(calibration, MeanSelectionCalibrationV2):
+        raise ValueError("UNVERIFIED_LEGACY_CALIBRATION")
     require_calibration_validation(repo, calibration, cutoff_ns=cutoff_ns, now_ns=now_ns)
+    reader = EvidenceReader(repo, cutoff_ns=cutoff_ns, now_ns=now_ns)
+    stored = reader.read(calibration.content_hash, MeanSelectionCalibrationV2)
+    proof = reader.read(stored.qualification_ref, MeanDependenceQualificationV1)
+    protocol = reader.read(proof.protocol_ref, MeanCalibrationProtocolV1)
+    scope = reader.read(protocol.scope_ref, MeanEvidenceScopeV1)
+    indexed_model = reader.read(model.content_hash, MeanModelV1)
+    if (stored != calibration or model != indexed_model
+            or calibration.model_ref != model.content_hash or proof.serving_model_ref != model.content_hash
+            or scope.policy_ref != policy_ref or scope.product_ref != product_ref
+            or calibration.policy_ref != policy_ref or calibration.source_ref != scope.content_hash
+            or calibration.compatibility_ref != scope.compatibility_ref
+            or model.compatibility_ref != scope.compatibility_ref or model.provenance != scope.provenance
+            or calibration.status != "SUPPORTED_OFFLINE"):
+        raise ValueError("CALIBRATION_CHECKED_BINDING_CHANGED")
     return scope
 
 

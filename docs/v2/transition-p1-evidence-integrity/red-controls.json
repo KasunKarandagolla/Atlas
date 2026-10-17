@@ -1,0 +1,13 @@
+{
+  "negative_original_action": {
+    "mean_cash": "5",
+    "score_cash": "-0.333333333333333333333333333",
+    "b_refusal": "OUTSIDE_ELIGIBLE_SET"
+  },
+  "genuine_positive_action": {
+    "mean_cash": "9",
+    "score_cash": "9",
+    "b_decision": "SELECT_ONE",
+    "b_authority": "OFFLINE_RESEARCH_ONLY"
+  }
+}

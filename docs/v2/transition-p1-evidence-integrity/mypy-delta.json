@@ -1,0 +1,10 @@
+{
+  "baseline_errors": 53,
+  "current_errors": 53,
+  "baseline_files": 17,
+  "current_files": 17,
+  "added": [],
+  "removed": [],
+  "normalization": "remove workspace prefix and line/column only; compare full error path/message/code as multiset",
+  "status": "EXISTING FAILURES; ZERO NEW DIAGNOSTICS"
+}

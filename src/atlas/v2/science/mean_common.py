@@ -9,16 +9,25 @@ from __future__ import annotations
 import json
 import math
 import types
-from collections.abc import Mapping
+from collections.abc import Hashable, Mapping
 from dataclasses import fields
 from decimal import Decimal
-from typing import Any, ClassVar, Union, get_args, get_origin, get_type_hints
+from functools import lru_cache
+from typing import Any, ClassVar, Union, cast, get_args, get_origin, get_type_hints
 
 from atlas.v2._serialization import FrozenMap, decimal_value, json_value, sha256_json, sha256_ref, strict_fields
 
 ZERO = Decimal(0)
 DAY_NS = 86_400_000_000_000
 MEAN_TARGET = "EXACT_ACTION_INCREMENTAL_TRADING_CASH_USDT_COMMON_24H_V1"
+
+
+@lru_cache(maxsize=256)
+def _artifact_schema(cls):
+    # Contract classes belong to the trusted implementation. Repeated offline
+    # proof decoding must not recompile the same immutable type annotations for
+    # every source row. Wire validation and serialization remain identical.
+    return fields(cls), get_type_hints(cls)
 
 
 def _value(value: Any, kind: Any, *, wire: bool) -> Any:
@@ -63,8 +72,8 @@ class OfflineArtifact:
     VERSION: ClassVar[str]
 
     def __post_init__(self) -> None:
-        hints = get_type_hints(type(self))
-        for f in fields(self):  # type: ignore[arg-type]
+        schema, hints = _artifact_schema(cast(Hashable, type(self)))
+        for f in schema:
             value = _value(getattr(self, f.name), hints[f.name], wire=False)
             object.__setattr__(self, f.name, value)
             if f.name.endswith(("_ref", "_hash")) and value is not None:
@@ -82,11 +91,11 @@ class OfflineArtifact:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> Any:
-        names = {f.name for f in fields(cls)}  # type: ignore[arg-type]
+        schema, hints = _artifact_schema(cast(Hashable, cls))
+        names = {f.name for f in schema}
         d = strict_fields(data, expected=names | {"version"}, required=names | {"version"}, name=cls.__name__)
         if d["version"] != cls.VERSION:
             raise ValueError("unsupported offline contract version")
-        hints = get_type_hints(cls)
         return cls(**{k: _value(d[k], hints[k], wire=True) for k in names})
 
     @classmethod

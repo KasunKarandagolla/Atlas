@@ -1,0 +1,61 @@
+{
+  "classification": "synthetic cloud samples; NOT target-host, market or realtime qualification",
+  "implementation_ref": "a592d45e469c2769fb68f544be9112224e22e853c4ff71b8b392cd06cd6d0531",
+  "four_cell_fixture_offline_publication_wall_ns": 7666841534,
+  "four_cell_fixture_offline_publication_cpu_ns": 6285301635,
+  "calibration_receipt": {
+    "samples": 200,
+    "unit": "ns",
+    "median": 298217.5,
+    "p95": 892465,
+    "maximum": 2405255
+  },
+  "evaluation_receipt": {
+    "samples": 200,
+    "unit": "ns",
+    "median": 182715.0,
+    "p95": 505592,
+    "maximum": 1106704
+  },
+  "connected_evaluation": {
+    "samples": 5,
+    "unit": "ns",
+    "median": 263629204,
+    "p95": 284761279,
+    "maximum": 328497202
+  },
+  "evaluation_budget": {
+    "cpu_ns": 10000000000,
+    "wall_ns": 20000000000,
+    "observed_cpu_ns": 269052392,
+    "observed_wall_ns": 276868905
+  },
+  "connected_B": {
+    "samples": 10,
+    "unit": "ns",
+    "median": 122516933.0,
+    "maximum": 292389422
+  },
+  "trusted_import_ns": 3582303535,
+  "replay": {
+    "entries": 3223,
+    "calibration_receipts": 5,
+    "evaluation_receipts": 2,
+    "readonly_reopen": "READABLE",
+    "new_database_B": "IDENTICAL",
+    "second_reopen_duplicate": "REFUSED"
+  },
+  "numerical": {
+    "selected": 30,
+    "weekly_blocks": 30,
+    "effective": 30,
+    "lag_correlations": [
+      -0.16666666666666666,
+      -0.2,
+      -0.03333333333333333
+    ],
+    "allowance_cash": "3.333333333333333333333333333",
+    "genuine_eligible_score_cash": "1.666666666666666666666666667"
+  },
+  "process_peak_rss_kib": 68568
+}

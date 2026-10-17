@@ -170,6 +170,9 @@ def validate_offline_b_selection(
             allowance = read_mean_artifact(repo, ref, CashAllowanceV1, consumer_ns=now_ns)
             if now_ns >= allowance.expires_at_ns:
                 raise ValueError("ECONOMIC_EVIDENCE_EXPIRED")
+        from atlas.v2.science.mean_evaluation_validation import require_evaluation_validation
+
+        require_evaluation_validation(repo, evaluated_member, now_ns=now_ns)
     for obj in (request, eligible, snapshot):
         _require(repo, obj, now_ns)
     if response.decision == "SELECT_ONE":

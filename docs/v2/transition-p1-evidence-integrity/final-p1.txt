@@ -1,0 +1,11 @@
+........................................................................ [ 32%]
+........................................................................ [ 65%]
+........................................................................ [ 98%]
+....                                                                     [100%]
+=============================== warnings summary ===============================
+../atlas-p1-venv/lib/python3.12/site-packages/_pytest/config/__init__.py:864
+  /workspace/work/atlas-p1-venv/lib/python3.12/site-packages/_pytest/config/__init__.py:864: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; atlas_s49_offline_guard
+    self.import_plugin(arg, consider_entry_points=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+220 passed, 1 warning in 720.27s (0:12:00)

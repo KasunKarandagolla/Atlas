@@ -1,0 +1,20 @@
+{
+  "starting_sha": "81870a18a1f773e84ad1b0c82690dc8e4d677bb8",
+  "implementation_ref": "a592d45e469c2769fb68f544be9112224e22e853c4ff71b8b392cd06cd6d0531",
+  "attack_script_sha256": "b8441b582e0e12060835c04713c6c10ac42f6fff1ad84e0535d9353b8b84f22a",
+  "evidence_grade": "SYNTHETIC_OFFLINE_QUALIFIED_CONTRACT",
+  "note": "N2 also reaches B after explicit trusted import in test_evidence_integrity.py",
+  "N1": {
+    "status": "REFUSED",
+    "reason": "MODEL_NOT_DERIVED_FROM_CLAIMED_TRAINING"
+  },
+  "N2": {
+    "status": "REFUSED",
+    "reason": "ORIGINAL_POPULATION_REQUIRES_TRUSTED_RECORDER_OR_IMPORT"
+  },
+  "N3": {
+    "status": "REFUSED",
+    "reason": "RESIDUAL_NOT_ORIGINALLY_SELECTED_OR_IMMATURE"
+  },
+  "wall_seconds": 54.93835718700029
+}

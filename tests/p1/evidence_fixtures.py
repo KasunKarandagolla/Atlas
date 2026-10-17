@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from decimal import Decimal as D
+from unittest.mock import patch
 
 from atlas.v2._serialization import sha256_json
 from atlas.v2.science.mean_calibration import (
@@ -17,6 +18,11 @@ from atlas.v2.science.mean_calibration import (
 from atlas.v2.science.mean_common import DAY_NS
 from atlas.v2.science.mean_evaluation import index_mean_artifact
 from atlas.v2.science.mean_models import fit_m0_mean
+from atlas.v2.science.mean_population import (
+    record_population_outcome,
+    record_population_registration,
+    record_population_slot,
+)
 from atlas.v2.science.mean_research import ProtectedMeanHoldoutV1, reserve_mean_holdout
 from atlas.v2.science.mean_scenario_evidence import (
     ScenarioExecutionModelV1,
@@ -29,7 +35,26 @@ from atlas.v2.science.mean_scenario_evidence import (
 )
 
 
-def verified_calibration(repo, *, product, policy, compatibility_ref, cash, now_ns, model_expiry=None):
+def register_synthetic_population(repo, protocol, slots):
+    """Explicit synthetic-clock simulation; never historical market provenance."""
+    with patch("atlas.v2.science.mean_population._observed_now_ns", return_value=protocol.registered_at_ns):
+        return record_population_registration(repo, protocol=protocol,
+            slots=tuple((s, s, s + 1_000_000_000) for s in slots),
+            producer_id="P1_SYNTHETIC_PREOUTCOME_RECORDER")
+
+
+def record_synthetic_slot(repo, protocol, at, decisions):
+    with patch("atlas.v2.science.mean_population._observed_now_ns", return_value=at):
+        return record_population_slot(repo, protocol=protocol, slot_ns=at, decisions=decisions)
+
+
+def record_synthetic_outcome(repo, protocol, evidence):
+    with patch("atlas.v2.science.mean_population._observed_now_ns", return_value=evidence.available_at_ns):
+        return record_population_outcome(repo, protocol=protocol, outcome=evidence)
+
+
+def verified_calibration(repo, *, product, policy, compatibility_ref, cash, now_ns, model_expiry=None,
+                         residual_errors=None, unequal=False):
     scope = MeanEvidenceScopeV1(
         product.content_hash,
         policy.content_hash,
@@ -55,9 +80,14 @@ def verified_calibration(repo, *, product, policy, compatibility_ref, cash, now_
     )
     reserve_mean_holdout(repo, hold)
     protocol = MeanCalibrationProtocolV1(
-        scope.content_hash, hold.content_hash, DAY_NS // 2, 100 * DAY_NS, 320 * DAY_NS, resamples=100
+        scope.content_hash, hold.content_hash, DAY_NS // 2, 100 * DAY_NS, 320 * DAY_NS,
+        resamples=10000 if residual_errors is not None else 100
     )
     index_mean_artifact(repo, protocol, available_at_ns=protocol.registered_at_ns)
+    slots = tuple((100 + 7 * k) * DAY_NS for k in range(30))
+    registered_slots = tuple(at + j for k, at in enumerate(slots)
+        for j in range(3 if unequal and k % 3 == 0 else 1))
+    register_synthetic_population(repo, protocol, registered_slots)
     rows = []
     for i, day in enumerate(tuple(range(1, 41)) + tuple(100 + 7 * k for k in range(30))):
         features = (1.0, 6.0 + (i % 2) * 2, 0.01 + (i % 2) * 0.02, 2.0 + (i % 2) * 4, 1.0 + (i % 2) * 4, float(i % 2))
@@ -65,6 +95,11 @@ def verified_calibration(repo, *, product, policy, compatibility_ref, cash, now_
             scope.content_hash, f"synthetic-action-{day}", day * DAY_NS, day * DAY_NS, features
         )
         index_mean_artifact(repo, origin, available_at_ns=origin.available_at_ns)
+        if day >= 100 and residual_errors is None:
+            record_synthetic_slot(repo, protocol, origin.origin_ns,
+                                  ((origin.content_hash, "SELECTED", "original synthetic policy decision"),))
+        if day >= 100 and residual_errors is not None:
+            continue
         evidence = MeanOutcomeEvidenceV1(
             scope.content_hash,
             origin.content_hash,
@@ -76,10 +111,40 @@ def verified_calibration(repo, *, product, policy, compatibility_ref, cash, now_
             "FULL_FILL",
         )
         index_mean_artifact(repo, evidence, available_at_ns=evidence.available_at_ns)
+        if day >= 100:
+            record_synthetic_outcome(repo, protocol, evidence)
         row = evidence.training_row(scope)
         index_mean_artifact(repo, row, available_at_ns=row.label_available_at_ns)
         rows.append(row)
-    residuals = produce_verified_mean_oof(repo, rows, protocol=protocol)
+    training = tuple(rows)
+    if residual_errors is None:
+        residuals = produce_verified_mean_oof(repo, rows, protocol=protocol)
+    else:
+        residuals = []
+        # Separate fixture cell: the recorder observes all alternatives before
+        # outcomes are revealed. Its declared policy selects the variable action.
+        for k, error in enumerate(residual_errors):
+            at = slots[k]
+            for j in range(3 if unequal and k % 3 == 0 else 1):
+                origin = MeanOriginEvidenceV1(scope.content_hash, f"bootstrap-{k}-{j}", at+j, at+j,
+                                             training[0].features)
+                index_mean_artifact(repo, origin, available_at_ns=at+j)
+                # At j=0 the same source snapshot includes the ordinary candidate.
+                ordinary = MeanOriginEvidenceV1(scope.content_hash, f"synthetic-action-{100+7*k}",
+                    at, at, (1.0, 6.0 + (k % 2)*2, 0.01 + (k % 2)*0.02,
+                             2.0 + (k % 2)*4, 1.0 + (k % 2)*4, float(k % 2)))
+                decisions = ((origin.content_hash, "SELECTED", "original synthetic variable-policy decision"),)
+                if j == 0:
+                    decisions += ((ordinary.content_hash, "REJECTED", "pre-outcome reference candidate"),)
+                record_synthetic_slot(repo, protocol, at+j, decisions)
+                evidence = MeanOutcomeEvidenceV1(scope.content_hash, origin.content_hash, at+j, at+j + DAY_NS,
+                    at+j + DAY_NS + 1, origin.features, D(cash) - error, "FULL_FILL")
+                index_mean_artifact(repo, evidence, available_at_ns=evidence.available_at_ns)
+                record_synthetic_outcome(repo, protocol, evidence)
+                row = evidence.training_row(scope)
+                index_mean_artifact(repo, row, available_at_ns=row.label_available_at_ns)
+                residuals.extend(produce_verified_mean_oof(repo, (*training, row), protocol=protocol))
+        residuals = tuple(residuals)
     model = fit_m0_mean(
         rows,
         compatibility_ref=compatibility_ref,

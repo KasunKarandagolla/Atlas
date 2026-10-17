@@ -1,0 +1,307 @@
+......................................................FFFFFFF........... [ 32%]
+........................................................................ [ 65%]
+........................................................................ [ 98%]
+....                                                                     [100%]
+=================================== FAILURES ===================================
+__________ test_a_neg_05_dependence_is_verified_not_declared[missing] __________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f733b6ff1a0>, population=CandidateEvaluationSetV...p_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function build_case.<locals>.clock at 0x7f733bd58f40>)
+fault = 'missing'
+
+    @pytest.mark.parametrize("fault", ["missing", "stale", "future", "membership", "blocks", "acf", "allowance"])
+    def test_a_neg_05_dependence_is_verified_not_declared(case, fault):
+        inp, proof, protocol, residuals = a_chain(case)
+        changes = {"missing": {"qualification_ref": H("unindexed-dependence")}}
+        if fault == "missing":
+            calibration = replace(inp.calibration, **changes[fault])
+        else:
+            delta = {
+                "stale": {"expires_at_ns": T},
+                "future": {"available_at_ns": T + 1},
+                "membership": {"residual_refs": proof.residual_refs[:-1]},
+                "blocks": {"effective_blocks": 10000},
+                "acf": {"lag_correlations": (0.9, 0.9, 0.9)},
+                "allowance": {"allowance_cash": D("100")},
+            }[fault]
+            proof = replace(proof, **delta)
+            index_mean_artifact(case.repo, proof, available_at_ns=proof.available_at_ns)
+            calibration = replace(inp.calibration, qualification_ref=proof.content_hash)
+        index_mean_artifact(case.repo, calibration, available_at_ns=calibration.available_at_ns)
+        with pytest.raises(ValueError):
+            verify_mean_calibration(
+                case.repo,
+                calibration,
+                model=inp.model,
+                policy_ref=case.policy.content_hash,
+                product_ref=inp.product.content_hash,
+                cutoff_ns=T,
+                now_ns=T + 10,
+            )
+>       with pytest.raises(ValueError, match="SUPPORT"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'SUPPORT'
+E         Actual message: 'INCOMPLETE_OR_OUTCOME_CHOSEN_SELECTED_POPULATION'
+
+tests/p1/test_financial_evidence.py:236: AssertionError
+___________ test_a_neg_05_dependence_is_verified_not_declared[stale] ___________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f733bafd340>, population=CandidateEvaluationSetV...p_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function build_case.<locals>.clock at 0x7f733bd58f40>)
+fault = 'stale'
+
+    @pytest.mark.parametrize("fault", ["missing", "stale", "future", "membership", "blocks", "acf", "allowance"])
+    def test_a_neg_05_dependence_is_verified_not_declared(case, fault):
+        inp, proof, protocol, residuals = a_chain(case)
+        changes = {"missing": {"qualification_ref": H("unindexed-dependence")}}
+        if fault == "missing":
+            calibration = replace(inp.calibration, **changes[fault])
+        else:
+            delta = {
+                "stale": {"expires_at_ns": T},
+                "future": {"available_at_ns": T + 1},
+                "membership": {"residual_refs": proof.residual_refs[:-1]},
+                "blocks": {"effective_blocks": 10000},
+                "acf": {"lag_correlations": (0.9, 0.9, 0.9)},
+                "allowance": {"allowance_cash": D("100")},
+            }[fault]
+            proof = replace(proof, **delta)
+            index_mean_artifact(case.repo, proof, available_at_ns=proof.available_at_ns)
+            calibration = replace(inp.calibration, qualification_ref=proof.content_hash)
+        index_mean_artifact(case.repo, calibration, available_at_ns=calibration.available_at_ns)
+        with pytest.raises(ValueError):
+            verify_mean_calibration(
+                case.repo,
+                calibration,
+                model=inp.model,
+                policy_ref=case.policy.content_hash,
+                product_ref=inp.product.content_hash,
+                cutoff_ns=T,
+                now_ns=T + 10,
+            )
+>       with pytest.raises(ValueError, match="SUPPORT"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'SUPPORT'
+E         Actual message: 'INCOMPLETE_OR_OUTCOME_CHOSEN_SELECTED_POPULATION'
+
+tests/p1/test_financial_evidence.py:236: AssertionError
+__________ test_a_neg_05_dependence_is_verified_not_declared[future] ___________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f733c0316d0>, population=CandidateEvaluationSetV...p_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function build_case.<locals>.clock at 0x7f733bd58f40>)
+fault = 'future'
+
+    @pytest.mark.parametrize("fault", ["missing", "stale", "future", "membership", "blocks", "acf", "allowance"])
+    def test_a_neg_05_dependence_is_verified_not_declared(case, fault):
+        inp, proof, protocol, residuals = a_chain(case)
+        changes = {"missing": {"qualification_ref": H("unindexed-dependence")}}
+        if fault == "missing":
+            calibration = replace(inp.calibration, **changes[fault])
+        else:
+            delta = {
+                "stale": {"expires_at_ns": T},
+                "future": {"available_at_ns": T + 1},
+                "membership": {"residual_refs": proof.residual_refs[:-1]},
+                "blocks": {"effective_blocks": 10000},
+                "acf": {"lag_correlations": (0.9, 0.9, 0.9)},
+                "allowance": {"allowance_cash": D("100")},
+            }[fault]
+            proof = replace(proof, **delta)
+            index_mean_artifact(case.repo, proof, available_at_ns=proof.available_at_ns)
+            calibration = replace(inp.calibration, qualification_ref=proof.content_hash)
+        index_mean_artifact(case.repo, calibration, available_at_ns=calibration.available_at_ns)
+        with pytest.raises(ValueError):
+            verify_mean_calibration(
+                case.repo,
+                calibration,
+                model=inp.model,
+                policy_ref=case.policy.content_hash,
+                product_ref=inp.product.content_hash,
+                cutoff_ns=T,
+                now_ns=T + 10,
+            )
+>       with pytest.raises(ValueError, match="SUPPORT"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'SUPPORT'
+E         Actual message: 'INCOMPLETE_OR_OUTCOME_CHOSEN_SELECTED_POPULATION'
+
+tests/p1/test_financial_evidence.py:236: AssertionError
+________ test_a_neg_05_dependence_is_verified_not_declared[membership] _________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f733bbc45c0>, population=CandidateEvaluationSetV...p_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function build_case.<locals>.clock at 0x7f733bd58f40>)
+fault = 'membership'
+
+    @pytest.mark.parametrize("fault", ["missing", "stale", "future", "membership", "blocks", "acf", "allowance"])
+    def test_a_neg_05_dependence_is_verified_not_declared(case, fault):
+        inp, proof, protocol, residuals = a_chain(case)
+        changes = {"missing": {"qualification_ref": H("unindexed-dependence")}}
+        if fault == "missing":
+            calibration = replace(inp.calibration, **changes[fault])
+        else:
+            delta = {
+                "stale": {"expires_at_ns": T},
+                "future": {"available_at_ns": T + 1},
+                "membership": {"residual_refs": proof.residual_refs[:-1]},
+                "blocks": {"effective_blocks": 10000},
+                "acf": {"lag_correlations": (0.9, 0.9, 0.9)},
+                "allowance": {"allowance_cash": D("100")},
+            }[fault]
+            proof = replace(proof, **delta)
+            index_mean_artifact(case.repo, proof, available_at_ns=proof.available_at_ns)
+            calibration = replace(inp.calibration, qualification_ref=proof.content_hash)
+        index_mean_artifact(case.repo, calibration, available_at_ns=calibration.available_at_ns)
+        with pytest.raises(ValueError):
+            verify_mean_calibration(
+                case.repo,
+                calibration,
+                model=inp.model,
+                policy_ref=case.policy.content_hash,
+                product_ref=inp.product.content_hash,
+                cutoff_ns=T,
+                now_ns=T + 10,
+            )
+>       with pytest.raises(ValueError, match="SUPPORT"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'SUPPORT'
+E         Actual message: 'INCOMPLETE_OR_OUTCOME_CHOSEN_SELECTED_POPULATION'
+
+tests/p1/test_financial_evidence.py:236: AssertionError
+__________ test_a_neg_05_dependence_is_verified_not_declared[blocks] ___________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f733b5a45c0>, population=CandidateEvaluationSetV...p_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function build_case.<locals>.clock at 0x7f733bd58f40>)
+fault = 'blocks'
+
+    @pytest.mark.parametrize("fault", ["missing", "stale", "future", "membership", "blocks", "acf", "allowance"])
+    def test_a_neg_05_dependence_is_verified_not_declared(case, fault):
+        inp, proof, protocol, residuals = a_chain(case)
+        changes = {"missing": {"qualification_ref": H("unindexed-dependence")}}
+        if fault == "missing":
+            calibration = replace(inp.calibration, **changes[fault])
+        else:
+            delta = {
+                "stale": {"expires_at_ns": T},
+                "future": {"available_at_ns": T + 1},
+                "membership": {"residual_refs": proof.residual_refs[:-1]},
+                "blocks": {"effective_blocks": 10000},
+                "acf": {"lag_correlations": (0.9, 0.9, 0.9)},
+                "allowance": {"allowance_cash": D("100")},
+            }[fault]
+            proof = replace(proof, **delta)
+            index_mean_artifact(case.repo, proof, available_at_ns=proof.available_at_ns)
+            calibration = replace(inp.calibration, qualification_ref=proof.content_hash)
+        index_mean_artifact(case.repo, calibration, available_at_ns=calibration.available_at_ns)
+        with pytest.raises(ValueError):
+            verify_mean_calibration(
+                case.repo,
+                calibration,
+                model=inp.model,
+                policy_ref=case.policy.content_hash,
+                product_ref=inp.product.content_hash,
+                cutoff_ns=T,
+                now_ns=T + 10,
+            )
+>       with pytest.raises(ValueError, match="SUPPORT"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'SUPPORT'
+E         Actual message: 'INCOMPLETE_OR_OUTCOME_CHOSEN_SELECTED_POPULATION'
+
+tests/p1/test_financial_evidence.py:236: AssertionError
+____________ test_a_neg_05_dependence_is_verified_not_declared[acf] ____________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f733c2ae090>, population=CandidateEvaluationSetV...p_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function build_case.<locals>.clock at 0x7f733bd58f40>)
+fault = 'acf'
+
+    @pytest.mark.parametrize("fault", ["missing", "stale", "future", "membership", "blocks", "acf", "allowance"])
+    def test_a_neg_05_dependence_is_verified_not_declared(case, fault):
+        inp, proof, protocol, residuals = a_chain(case)
+        changes = {"missing": {"qualification_ref": H("unindexed-dependence")}}
+        if fault == "missing":
+            calibration = replace(inp.calibration, **changes[fault])
+        else:
+            delta = {
+                "stale": {"expires_at_ns": T},
+                "future": {"available_at_ns": T + 1},
+                "membership": {"residual_refs": proof.residual_refs[:-1]},
+                "blocks": {"effective_blocks": 10000},
+                "acf": {"lag_correlations": (0.9, 0.9, 0.9)},
+                "allowance": {"allowance_cash": D("100")},
+            }[fault]
+            proof = replace(proof, **delta)
+            index_mean_artifact(case.repo, proof, available_at_ns=proof.available_at_ns)
+            calibration = replace(inp.calibration, qualification_ref=proof.content_hash)
+        index_mean_artifact(case.repo, calibration, available_at_ns=calibration.available_at_ns)
+        with pytest.raises(ValueError):
+            verify_mean_calibration(
+                case.repo,
+                calibration,
+                model=inp.model,
+                policy_ref=case.policy.content_hash,
+                product_ref=inp.product.content_hash,
+                cutoff_ns=T,
+                now_ns=T + 10,
+            )
+>       with pytest.raises(ValueError, match="SUPPORT"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'SUPPORT'
+E         Actual message: 'INCOMPLETE_OR_OUTCOME_CHOSEN_SELECTED_POPULATION'
+
+tests/p1/test_financial_evidence.py:236: AssertionError
+_________ test_a_neg_05_dependence_is_verified_not_declared[allowance] _________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f733c3db0e0>, population=CandidateEvaluationSetV...p_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function build_case.<locals>.clock at 0x7f733bd58f40>)
+fault = 'allowance'
+
+    @pytest.mark.parametrize("fault", ["missing", "stale", "future", "membership", "blocks", "acf", "allowance"])
+    def test_a_neg_05_dependence_is_verified_not_declared(case, fault):
+        inp, proof, protocol, residuals = a_chain(case)
+        changes = {"missing": {"qualification_ref": H("unindexed-dependence")}}
+        if fault == "missing":
+            calibration = replace(inp.calibration, **changes[fault])
+        else:
+            delta = {
+                "stale": {"expires_at_ns": T},
+                "future": {"available_at_ns": T + 1},
+                "membership": {"residual_refs": proof.residual_refs[:-1]},
+                "blocks": {"effective_blocks": 10000},
+                "acf": {"lag_correlations": (0.9, 0.9, 0.9)},
+                "allowance": {"allowance_cash": D("100")},
+            }[fault]
+            proof = replace(proof, **delta)
+            index_mean_artifact(case.repo, proof, available_at_ns=proof.available_at_ns)
+            calibration = replace(inp.calibration, qualification_ref=proof.content_hash)
+        index_mean_artifact(case.repo, calibration, available_at_ns=calibration.available_at_ns)
+        with pytest.raises(ValueError):
+            verify_mean_calibration(
+                case.repo,
+                calibration,
+                model=inp.model,
+                policy_ref=case.policy.content_hash,
+                product_ref=inp.product.content_hash,
+                cutoff_ns=T,
+                now_ns=T + 10,
+            )
+>       with pytest.raises(ValueError, match="SUPPORT"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'SUPPORT'
+E         Actual message: 'INCOMPLETE_OR_OUTCOME_CHOSEN_SELECTED_POPULATION'
+
+tests/p1/test_financial_evidence.py:236: AssertionError
+=============================== warnings summary ===============================
+../atlas-p1-venv/lib/python3.12/site-packages/_pytest/config/__init__.py:864
+  /workspace/work/atlas-p1-venv/lib/python3.12/site-packages/_pytest/config/__init__.py:864: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; atlas_s49_offline_guard
+    self.import_plugin(arg, consider_entry_points=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/p1/test_financial_evidence.py::test_a_neg_05_dependence_is_verified_not_declared[missing]
+FAILED tests/p1/test_financial_evidence.py::test_a_neg_05_dependence_is_verified_not_declared[stale]
+FAILED tests/p1/test_financial_evidence.py::test_a_neg_05_dependence_is_verified_not_declared[future]
+FAILED tests/p1/test_financial_evidence.py::test_a_neg_05_dependence_is_verified_not_declared[membership]
+FAILED tests/p1/test_financial_evidence.py::test_a_neg_05_dependence_is_verified_not_declared[blocks]
+FAILED tests/p1/test_financial_evidence.py::test_a_neg_05_dependence_is_verified_not_declared[acf]
+FAILED tests/p1/test_financial_evidence.py::test_a_neg_05_dependence_is_verified_not_declared[allowance]
+7 failed, 213 passed, 1 warning in 988.58s (0:16:28)

@@ -1,0 +1,103 @@
+{
+  "new_contracts": [
+    {
+      "name": "MeanPopulationRegistrationV1",
+      "path": "src/atlas/v2/science/mean_population.py",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "fields": {
+        "protocol_ref": "str",
+        "scope_ref": "str",
+        "policy_ref": "str",
+        "producer_ref": "str",
+        "producer_id": "str",
+        "slots": "tuple[tuple[int, int, int], ...]",
+        "recorded_at_ns": "int",
+        "evidence_grade": "str"
+      },
+      "version": "ATLAS_RED_ORIGINAL_MEAN_POPULATION_REGISTRATION_V1"
+    },
+    {
+      "name": "MeanPopulationSlotV1",
+      "path": "src/atlas/v2/science/mean_population.py",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "fields": {
+        "registration_ref": "str",
+        "scope_ref": "str",
+        "policy_ref": "str",
+        "producer_ref": "str",
+        "slot_ns": "int",
+        "source_cutoff_ns": "int",
+        "deadline_ns": "int",
+        "recorded_at_ns": "int",
+        "origin_refs": "tuple[str, ...]",
+        "source_prefix_ref": "str",
+        "decisions": "tuple[tuple[str, str, str], ...]",
+        "slot_status": "str",
+        "reason": "str",
+        "evidence_grade": "str"
+      },
+      "version": "ATLAS_RED_ORIGINAL_MEAN_POPULATION_SLOT_V1"
+    },
+    {
+      "name": "MeanPopulationOutcomeV1",
+      "path": "src/atlas/v2/science/mean_population.py",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "fields": {
+        "registration_ref": "str",
+        "slot_ref": "str",
+        "origin_ref": "str",
+        "outcome_ref": "str",
+        "producer_ref": "str",
+        "recorded_at_ns": "int"
+      },
+      "version": "ATLAS_RED_ORIGINAL_MEAN_POPULATION_OUTCOME_V1"
+    },
+    {
+      "name": "MeanEvaluationInputsV1",
+      "path": "src/atlas/v2/science/mean_evaluation_validation.py",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "fields": {
+        "input_refs": "tuple[str, ...]"
+      },
+      "version": "ATLAS_RED_COMPLETE_MEAN_EVALUATION_INPUTS_V1"
+    },
+    {
+      "name": "MeanEvaluationValidationV1",
+      "path": "src/atlas/v2/science/mean_evaluation_validation.py",
+      "bases": [
+        "OfflineArtifact"
+      ],
+      "fields": {
+        "evaluation_ref": "str",
+        "inputs_ref": "str",
+        "implementation_ref": "str",
+        "available_at_ns": "int",
+        "expires_at_ns": "int"
+      },
+      "version": "ATLAS_RED_COMPLETE_MEAN_EVALUATION_VALIDATION_V1"
+    },
+    {
+      "name": "MeanCalibrationValidationV2",
+      "path": "src/atlas/v2/science/mean_calibration_validation.py",
+      "bases": [
+        "MeanCalibrationValidationV1"
+      ],
+      "fields": {
+        "population_contract_ref": "str"
+      },
+      "version": "ATLAS_RED_MEAN_CALIBRATION_VALIDATION_V2"
+    }
+  ],
+  "store": "existing Ops artifact_index; no SQL migration",
+  "units": "*_ns are integer UTC nanoseconds; cash Decimal USDT; refs lowercase sha256; grade synthetic offline only",
+  "historical": "V1 receipt remains diagnostic reader; V2 inherits all V1 fields",
+  "producers_consumers": "record_population_* -> Ops reserved originals -> verify_selected_population/validation V2 -> bounded admission; checked evaluator or offline reconstruction -> complete eval receipt -> B"
+}

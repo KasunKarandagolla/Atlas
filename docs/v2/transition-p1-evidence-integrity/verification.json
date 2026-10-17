@@ -1,0 +1,220 @@
+{
+  "starting_sha": "81870a18a1f773e84ad1b0c82690dc8e4d677bb8",
+  "branch": "fix/atlas-red-p1-evidence-integrity-2026-10-17",
+  "source_build_hash": "70d76d93573f81c42fd21ce14ca237dd87a487bf7e3707630181e89264603a04",
+  "implementation_ref": "a592d45e469c2769fb68f544be9112224e22e853c4ff71b8b392cd06cd6d0531",
+  "status": "IMPLEMENTED / TESTED OFFLINE; INDEPENDENT ACCEPTANCE PENDING",
+  "runs": [
+    {
+      "name": "final-p1",
+      "collected": 220,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 220,
+      "deselected": 0,
+      "command": "/workspace/work/atlas-p1-venv/bin/python scripts/atlas_p1_offline.py tests/p1 --junitxml=/workspace/work/atlas-p1-checks/final-p1.xml",
+      "source_stage": "after final production and P1 test changes; matches source-build.json",
+      "log": "final-p1.txt",
+      "junit": "final-p1.xml"
+    },
+    {
+      "name": "broad-final",
+      "collected": 1155,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 1154,
+      "deselected": 0,
+      "command": "/workspace/work/atlas-p1-venv/bin/python scripts/atlas_p1_offline.py tests/science tests/contract tests/data tests/persistence tests/runtime tests/unit tests/scanner tests/v2/test_session016_candidate_selection.py tests/v2/test_session017_action.py tests/v2/test_session017_replay.py tests/v2/test_session017_risk.py tests/v2/test_session019_admission.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session019_m0.py tests/v2/test_session019_scenarios.py tests/v2/test_session023_analogue.py tests/v2/test_session023_m1.py tests/v2/test_session023_selection_audits.py tests/v2/test_session037_action_outcome_producer.py tests/v2/test_session037_economic_binding.py tests/v2/test_session037_economic_sources.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session037_training_bounds.py tests/v2/test_session041_frozen_action_comparison.py tests/v2/test_session047_decision_brief.py tests/v2/test_session048_management_shadow.py tests/v2/test_session020_desktop_ipc.py tests/v2/test_memory.py tests/v2/test_session036_repository_ports.py tests/v2/test_session036_writer_broker_bounds.py tests/v2/test_session041_compressed_metadata.py tests/v2/test_session041_compression_review.py tests/v2/test_session041_recovery_adoption.py tests/v2/test_session041_stream_service_paging.py tests/v2/test_session038_transport_archive.py tests/v2/test_session039_public_archive_extents.py tests/v2/test_session037_collector_restart.py tests/v2/test_session032_public_stream_continuity.py --junitxml=/workspace/work/atlas-p1-checks/broad-final.xml",
+      "source_stage": "after final production and P1 test changes; matches final source-build.json",
+      "log": "broad-final.txt",
+      "junit": "broad-final.xml"
+    }
+  ],
+  "combined_affected": {
+    "collected": 1375,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 1374,
+    "deselected": 0
+  },
+  "overlap_cases": 0,
+  "not_a_full_repository_suite": true,
+  "skip": {
+    "id": "tests/runtime/test_safe_runtime.py::test_public_testnet_connectivity_opt_in",
+    "reason": "opt-in public testnet; no credentials/network required; offline scope retained"
+  },
+  "long_S3_tests": [
+    {
+      "id": "tests/v2/test_session021_data_s3.py::test_s3_production_setup_consumes_causal_seven_day_prefix_and_fails_residual_tampering",
+      "status": "TEST GATE / NOT RUN",
+      "reason": "Expensive seven-day unchanged-strategy replay; bounded affected suite preserves prior omission, no pass claimed"
+    },
+    {
+      "id": "tests/v2/test_session021_data_s3.py::test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_selector_zero",
+      "status": "TEST GATE / NOT RUN",
+      "reason": "Expensive seven-day unchanged-strategy replay; bounded affected suite preserves prior omission, no pass claimed"
+    }
+  ],
+  "red": {
+    "source_sha": "81870a18a1f773e84ad1b0c82690dc8e4d677bb8",
+    "stage": "before production and test edits; standalone, not pytest",
+    "N1": "REPRODUCED",
+    "N2": "REPRODUCED",
+    "N3": "REPRODUCED",
+    "result": "red-results.json",
+    "controls": "red-controls.json",
+    "script": "integrity_reproduction.py",
+    "recorded_script": "/workspace/work/atlas-p1-evidence/integrity_reproduction.py",
+    "recorded_arguments": [
+      "--output",
+      "/workspace/work/atlas-p1-evidence/red"
+    ],
+    "command_note": "Credential-scrubbed environment and socket/DNS refusal inside the preserved script. The portable equivalent uses run_guarded.py --repo <clean-81870a18-checkout> <absolute-script> --output <absolute-directory>."
+  },
+  "green": {
+    "command": "/workspace/work/atlas-p1-venv/bin/python docs/v2/transition-p1-evidence-integrity/run_guarded.py docs/v2/transition-p1-evidence-integrity/reproduce_green.py --work-dir /workspace/work/atlas-p1-green-release --result /workspace/work/atlas-p1-checks/green-release.json",
+    "result": "green-results.json",
+    "all_three": "REFUSED",
+    "N2_note": "Standalone preserved constructor refuses generic original-record import; connected suite also reaches B refusal after explicitly trusted fresh import/reopen."
+  },
+  "performance_replay": {
+    "command": "/workspace/work/atlas-p1-venv/bin/python docs/v2/transition-p1-evidence-integrity/run_guarded.py docs/v2/transition-p1-evidence-integrity/measure_replay.py --work-dir /workspace/work/atlas-p1-measured-release --output-dir /workspace/work/atlas-p1-checks/measured-release",
+    "result": "performance-and-replay.json",
+    "capsule": "synthetic-capsule.json.gz",
+    "classification": "Synthetic cloud samples overlapped offline work; not host, market, realtime or economic qualification"
+  },
+  "static_checks": {
+    "ruff": {
+      "status": "PASS",
+      "command": "/workspace/work/atlas-p1-venv/bin/ruff check src scripts tests docs/v2/transition-p1-evidence-integrity/run_guarded.py docs/v2/transition-p1-evidence-integrity/reproduce_green.py docs/v2/transition-p1-evidence-integrity/measure_replay.py",
+      "log": "ruff-final.txt",
+      "note": "Preserved original RED/control scripts are evidence bytes, not reformatted."
+    },
+    "mypy": {
+      "status": "EXISTING FAILURES; ZERO NEW DIAGNOSTICS",
+      "command": "/workspace/work/atlas-p1-venv/bin/mypy --cache-dir /workspace/work/atlas-p1-checks/mypy-cache src",
+      "baseline_command": "same installed mypy/config against clean parent source extracted with git archive; separate baseline cache",
+      "baseline_errors": 53,
+      "current_errors": 53,
+      "files_with_errors": 17,
+      "current_checked_sources": 303,
+      "added": [],
+      "removed": [],
+      "logs": [
+        "mypy-baseline.txt",
+        "mypy-final.txt",
+        "mypy-delta.json"
+      ]
+    },
+    "compileall": {
+      "status": "PASS",
+      "command": "/workspace/work/atlas-p1-venv/bin/python -m compileall -q src scripts tests docs/v2/transition-p1-evidence-integrity",
+      "log": "compile-final.txt"
+    },
+    "lock": {
+      "status": "PASS",
+      "command": "uv lock --check --offline",
+      "log": "lock-final.txt"
+    },
+    "dependencies": {
+      "status": "PASS",
+      "command": "uv pip check --python /workspace/work/atlas-p1-venv/bin/python",
+      "log": "pip-final.txt",
+      "metadata": "dependencies-and-licenses.json",
+      "note": "33 installed versions match unchanged hash-pinned requirements; no dependency/license change or new legal qualification"
+    },
+    "protected_hashes": {
+      "status": "PASS",
+      "files": 118,
+      "artifact": "protected-hashes.json",
+      "freeze_sha256": {
+        "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+        "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+        "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+      }
+    },
+    "design_manifest": {
+      "status": "PASS",
+      "artifact": "design-manifest-status.json",
+      "note": "Only three progress annotation hash rows refreshed; design/PDF/authority bytes unchanged"
+    },
+    "mathematics": {
+      "status": "UNCHANGED",
+      "artifact": "unchanged-algorithms.json"
+    },
+    "diff": {
+      "status": "PASS",
+      "command": "git diff --check; git diff --cached --check"
+    },
+    "secrets": {
+      "status": "PASS",
+      "artifact": "publication-checks.json",
+      "scope": "staged additions and all new evidence inspected for credential/private-key/private-account patterns; synthetic capsule decoded and inspected"
+    }
+  },
+  "exploratory_runs_not_final_certification": [
+    {
+      "name": "initial-green",
+      "result": "2 failures from fee/funding decoder integration; corrected before final production checks"
+    },
+    {
+      "name": "second-green",
+      "result": "2 passes; intermediate source only"
+    },
+    {
+      "name": "integrity-first",
+      "result": "13 passes; earlier narrow source/test stage only"
+    },
+    {
+      "name": "integrity-focused",
+      "result": "40 passed, 1 failed: missing DAY_NS test import already fixed; process loaded old module",
+      "artifacts": [
+        "exploratory-focused.xml",
+        "exploratory-focused.txt"
+      ]
+    },
+    {
+      "name": "full-p1-before-refusal-order-update",
+      "collected": 220,
+      "failed": 7,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 213,
+      "deselected": 0,
+      "result_note": "Seven old SUPPORT regex assertions reached the new stricter completeness refusal; exact new refusal assertion corrected; final full P1 rerun above",
+      "artifacts": [
+        "exploratory-refusal-order.xml",
+        "exploratory-refusal-order.txt"
+      ]
+    },
+    {
+      "name": "N2 private publisher review",
+      "result": "Removed unchecked private stamping helper; capability creation is now inside the actual checked loop only. Public forged publication added to connected negative. All final runs repeated after this change."
+    },
+    {
+      "name": "interrupted full/source polish attempts",
+      "result": "SIGINT by coordinator after type annotation/fixture changes; never counted as completed verification; scratch logs retained"
+    },
+    {
+      "name": "mypy-before-cache-type-cast",
+      "result": "two added annotation errors; fixed; final normalized comparison zero additions"
+    }
+  ],
+  "evidence_limits": [
+    "Only SYNTHETIC_OFFLINE_QUALIFIED_CONTRACT; simulated test clocks explicitly identified",
+    "Original producer/source/clock and application-chosen source Ops object are trusted; raw database/code/private writer-state replacement excluded. Only exact current producer build is supported; other builds require separately reviewed producer compatibility or genuinely new pre-outcome cohorts.",
+    "No genuine historical discretionary/provider selections invented; no unsupported historical deterministic replay qualified",
+    "Real prospective source completeness, provider/config identity and producer integration remain qualification gates",
+    "Old insufficient cohorts and current artifact-only original-record imports cannot gain authority"
+  ],
+  "remaining_gates": [
+    "Independent ChatGPT exact pushed-SHA acceptance; no self-acceptance",
+    "P2 separate explicit authorization only after that acceptance; NOT STARTED",
+    "Real provider/model/image/venue/native/host/storage/72h and genuine economic qualification UNVERIFIED / TEST GATE / NOT ESTIMABLE",
+    "Manual/adoption policy approval pending; operative amendment inactive; capital NO-GO"
+  ],
+  "stop": "Commit/push isolated branch, verify exact remote SHA, then STOP. No API spending/private exchange/orders/deployment/capital."
+}

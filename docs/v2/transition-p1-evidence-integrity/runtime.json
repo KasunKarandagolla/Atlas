@@ -1,0 +1,9 @@
+{
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "implementation_ref": "a592d45e469c2769fb68f544be9112224e22e853c4ff71b8b392cd06cd6d0531",
+  "network": {
+    "dns": "ATLAS_S49_OFFLINE_NETWORK_BLOCKED",
+    "socket": "ATLAS_S49_OFFLINE_NETWORK_BLOCKED"
+  },
+  "qualification": "cloud synthetic offline only; no target-host qualification"
+}

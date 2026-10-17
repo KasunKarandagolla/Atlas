@@ -1,0 +1,64 @@
+{
+  "source_sha": "81870a18a1f773e84ad1b0c82690dc8e4d677bb8",
+  "source_dirty_before": "",
+  "reproducer_sha256": "b8441b582e0e12060835c04713c6c10ac42f6fff1ad84e0535d9353b8b84f22a",
+  "evidence_grade": "SYNTHETIC_OFFLINE_QUALIFIED_CONTRACT",
+  "network": "socket and DNS refused",
+  "N1": {
+    "finding": "REPRODUCED",
+    "control": {
+      "mean_cash": "5.0",
+      "allowance_cash": "3.333333333333333333333333333",
+      "numerical_cash": "2",
+      "score_cash": "-0.333333333333333333333333333",
+      "status": "INELIGIBLE"
+    },
+    "forged_fold_count": 30,
+    "serving_model_unchanged": true,
+    "writer_accepted": true,
+    "allowance_cash": "0",
+    "evaluation_status": "ELIGIBLE",
+    "score_cash": "3.0"
+  },
+  "N2": {
+    "finding": "REPRODUCED",
+    "control": {
+      "mean_cash": "5.0",
+      "allowance_cash": "3.333333333333333333333333333",
+      "numerical_cash": "2",
+      "score_cash": "-0.333333333333333333333333333",
+      "status": "INELIGIBLE"
+    },
+    "forged_mean_cash": "100",
+    "forged_score_cash": "94.66666666666666666666666667",
+    "fresh_import_entries": 2476,
+    "readonly_reopen": true,
+    "current_evaluation_refs": "all mutually rehashed",
+    "b_decision": "SELECT_ONE",
+    "b_authority": "OFFLINE_RESEARCH_ONLY",
+    "duplicate_negative_control": "DUPLICATE_OR_CONSUMED_RESPONSE"
+  },
+  "N3": {
+    "finding": "REPRODUCED",
+    "control": {
+      "mean_cash": "5.0",
+      "allowance_cash": "3.333333333333333333333333333",
+      "numerical_cash": "2",
+      "score_cash": "-0.333333333333333333333333333",
+      "status": "INELIGIBLE"
+    },
+    "available_candidates": 60,
+    "weekly_positions": 30,
+    "genuine_fit_for_every_prediction": true,
+    "post_outcome_chosen_count": 30,
+    "chosen_allowance_cash": "0",
+    "complete_60_candidate_allowance_cash": "1.666666666666666666666666667",
+    "variable_30_candidate_allowance_cash": "3.333333333333333333333333333",
+    "policy_scope_protocol_unchanged": true,
+    "writer_accepted": true,
+    "evaluation_status": "ELIGIBLE",
+    "score_cash": "3.0",
+    "original_selection_or_complete_calendar_proof": "not required by existing verifier"
+  },
+  "wall_seconds": 81.39972952600004
+}
