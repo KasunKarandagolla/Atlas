@@ -56,3 +56,5 @@ Existing strategy/prefix fixture coverage is 111 passed; an attempted archive-ru
 ## Session R-E1 archive probe correction — 2026-10-17
 
 A later retry retrieved one official BTCUSDT 1H daily ZIP and its .CHECKSUM (1,561 and 92 bytes); SHA-256 matched `09a24635f090c9b2ab17f4a61aa3c4d262a7ccc88e96ff0199ce66a54a8ab66b`. Parsed 24 consecutive rows on 2024-01-01. The earlier 403 was time-specific. No symbol prefix inventory or historical listing/contract revisions were obtained (symbol folder 404; tested S3 listing request proxy 403). No S1/S6 outputs, policy features, opportunity rows or outcomes were generated. Session remains stopped before bulk acquisition because an unbiased all-symbol/as-of cohort cannot be established from the evidence currently accessible. See the E1 handoff and manifest for the verified sample and exact source probes.
+
+Fixture retest at `2135d161ebb6d8e8d7741bd8257174d280720ae2`: scoped S1/S2/S3/S5/S6/S8 and prefix group 111/111 passed in 20.06s. Adding archive runtime yielded 111 passed / 4 pyarrow-missing failures (18.77s). These are existing fixture/code tests, not archive strategy outputs.

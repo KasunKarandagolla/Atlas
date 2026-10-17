@@ -148,13 +148,15 @@
   "verification": {
     "fixture_only_strategy_and_prefix_suite": {
       "command": "/workspace/.venvs/atlas/bin/pytest tests/v2/test_session014_s1.py tests/v2/test_session016_s2.py tests/v2/test_session021_data_s3.py tests/v2/test_session021_s6.py tests/v2/test_session022_s5_context.py tests/v2/test_session023_discovery_s8.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_s6_action_contract.py tests/data/test_prefix_and_archive.py",
-      "result": "111 passed in 21.05s",
-      "interpretation": "Existing fixture tests only; not market rows, archive proof, or historical strategy outputs"
+      "result": "111 passed in 20.06s",
+      "interpretation": "Existing fixture tests only; not market rows, archive proof, or historical strategy outputs",
+      "tested_repository_sha": "2135d161ebb6d8e8d7741bd8257174d280720ae2"
     },
     "archive_runtime_attempt": {
       "command": "/workspace/.venvs/atlas/bin/pytest tests/v2/test_session014_s1.py tests/v2/test_session016_s2.py tests/v2/test_session021_data_s3.py tests/v2/test_session021_s6.py tests/v2/test_session022_s5_context.py tests/v2/test_session023_discovery_s8.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_s6_action_contract.py tests/data/test_prefix_and_archive.py tests/data/test_archive_runtime.py",
-      "result": "111 passed; 4 failed (115 collected); all four failures are tests/data/test_archive_runtime.py cases because pyarrow is missing from the existing environment",
-      "interpretation": "Environment dependency gap; no dependency installation or lock change"
+      "result": "111 passed; 4 failed (115 collected) in 18.77s; all four failures are tests/data/test_archive_runtime.py cases because pyarrow is missing from the existing environment",
+      "interpretation": "Environment dependency gap; no dependency installation or lock change",
+      "tested_repository_sha": "2135d161ebb6d8e8d7741bd8257174d280720ae2"
     }
   },
   "resource_accounting": {
