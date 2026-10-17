@@ -1,0 +1,1 @@
+slot_id,symbol,instrument_revision,policy_id,policy_version,slot_cutoff_utc,event_at_utc,bar_close_utc,reconstructed_available_at_utc,source_grade,state,reason,raw_input_refs,feature_values_json,feature_available_flags_json,decision_class,exact_action_ref,holdout_partition

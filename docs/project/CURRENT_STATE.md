@@ -43,6 +43,12 @@ At **every significant implementation push**, update this status **in the same p
 
 After independent review, add an exact SHA acceptance/rejection record and advance the accepted pointer only for what that review truly accepted. No self-approved operational policy, capital permission or fabricated passing test.
 
+## Session R-E1 historical-evidence source checkpoint — 2026-10-17
+
+Research-only worktree starts at f77f3aacbfdc2546e6f3ea2d78196b0905ceb613; its independent P1 acceptance remains pending. GitHub and official archive documentation were reachable, but both the candidate Binance USD-M BTCUSDT 1H ZIP and .CHECKSUM requests were rejected by the session proxy with HTTP 403. No market archive, symbol/date coverage, signal, label or holdout outcome was observed. See the [Session R-E1 handoff](../research/atlas-red-e1/SESSION1_EVIDENCE_HANDOFF.md), [source matrix](../research/atlas-red-e1/SOURCE_FEASIBILITY_AND_ROLE_MATRIX.csv) and [manifest](../research/atlas-red-e1/DATASET_MANIFEST.json).
+
+Existing strategy/prefix fixture coverage is 111 passed; an attempted archive-runtime group has four failures because pyarrow is unavailable in the existing environment. No dependency, production source, policy, authority or acceptance row changed. Source grade is BLOCKED BY ENVIRONMENT. The smallest remedy is managed review of anonymous HTTPS to the official data.binance.vision host, followed by one checksum-verified sample. Do not start Sol's evaluation until the exact research handoff receives independent ChatGPT review.
+
 ## Next gate
 
 **Independent ChatGPT review of the exact pushed N1–N3 evidence-integrity SHA and complete `81870a18`→correction diff.** Review code/tests, original producer/import trust limits, actual RED→GREEN proofs, genuine positives, complete final P1 and affected regressions, immutable readers/replay and retained gates. Record acceptance/rejection separately. P2 requires exact-SHA acceptance AND separate explicit owner authorization; do not start automatically. Manual/adoption consent and operative policy remain pending, capital NO-GO.
