@@ -1,0 +1,14 @@
+{
+  "parent_sha": "215a0045d8203f23dbd4935639ef448556cc2353",
+  "empirical_error_cash": "0",
+  "actual_bootstrap_bound_cash": "3.333333333333333333333333333",
+  "forged_allowance_cash": "0",
+  "connected_status": "ELIGIBLE",
+  "connected_score_cash": "3.0",
+  "effective_blocks": 30,
+  "lags": [
+    -0.16666666666666666,
+    -0.2,
+    -0.03333333333333333
+  ]
+}

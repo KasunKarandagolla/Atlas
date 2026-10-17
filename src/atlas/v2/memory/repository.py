@@ -1636,7 +1636,13 @@ class OpsRepository:
                 for key_ref, identity_json in identities.items():
                     register_identity(connection, key_ref=key_ref, canonical_key_json=identity_json)
 
-            for entry, metadata_json, storage_json in encoded.values():
+            # This reserved new receipt is writer-validated, never self-declared
+            # artifact authority. Imports follow the same offline check. Place
+            # receipts last so a complete batch's dependencies are readable;
+            # any failure rolls back the entire existing transaction.
+            for entry, metadata_json, storage_json in sorted(
+                encoded.values(), key=lambda item: item[0].artifact_type == "MeanCalibrationValidationV1"
+            ):
                 row = existing.get(entry.artifact_ref)
                 if row is not None:
                     stored_tuple = (
@@ -1656,6 +1662,10 @@ class OpsRepository:
                     if stored_tuple != requested_tuple:
                         raise ValueError("artifact_ref already indexes different immutable content")
                     continue
+                if entry.artifact_type == "MeanCalibrationValidationV1":
+                    from ..science.mean_calibration_validation import validate_calibration_validation_registration
+
+                    validate_calibration_validation_registration(self, entry)
                 connection.execute(
                     "INSERT INTO artifact_index(artifact_ref,artifact_type,content_hash,created_at_ns,available_at_ns,metadata_json) VALUES(?,?,?,?,?,?)",
                     (
@@ -1800,6 +1810,8 @@ class OpsRepository:
         supplied_batch = tuple(entries)
         if not supplied_batch or any(not isinstance(entry, ArtifactIndexEntryV2) for entry in supplied_batch):
             raise ValueError("complete stream publication must contain typed public evidence")
+        if any(entry.artifact_type == "MeanCalibrationValidationV1" for entry in supplied_batch):
+            raise ValueError("calibration validation requires the checked offline artifact registration boundary")
         unique_entries: dict[str, ArtifactIndexEntryV2] = {}
         for entry in supplied_batch:
             prior_entry = unique_entries.get(entry.artifact_ref)

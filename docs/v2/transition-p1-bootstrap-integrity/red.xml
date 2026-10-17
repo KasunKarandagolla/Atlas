@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="4" time="26.994" timestamp="2026-10-17T02:44:18.480018+00:00" hostname="89954d0c42eb"><testcase classname="tests.p1.test_bootstrap_integrity" name="test_rehashed_understatement_rejected[CAL-NEG-01-zero]" time="6.938"><failure message="Failed: DID NOT RAISE ValueError">case = namespace(repo=&lt;atlas.v2.memory.repository.OpsRepository object at 0x7f3bb5ce2c00&gt;, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=&lt;function case.&lt;locals&gt;.clock at 0x7f3bb596b560&gt;)
+fraction = Decimal('0')
+
+    @pytest.mark.parametrize("fraction", [D("0"), D(".5")], ids=["CAL-NEG-01-zero", "CAL-NEG-02-between"])
+    def test_rehashed_understatement_rejected(case, fraction):
+        inp, *_ = uncertain_chain(case)
+        forged = forge_allowance(case, inp, inp.calibration.allowance_cash * fraction)
+&gt;       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/p1/test_bootstrap_integrity.py:94: Failed</failure></testcase><testcase classname="tests.p1.test_bootstrap_integrity" name="test_rehashed_understatement_rejected[CAL-NEG-02-between]" time="6.066"><failure message="Failed: DID NOT RAISE ValueError">case = namespace(repo=&lt;atlas.v2.memory.repository.OpsRepository object at 0x7f3bb5ce5ac0&gt;, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=&lt;function case.&lt;locals&gt;.clock at 0x7f3bb5918e00&gt;)
+fraction = Decimal('0.5')
+
+    @pytest.mark.parametrize("fraction", [D("0"), D(".5")], ids=["CAL-NEG-01-zero", "CAL-NEG-02-between"])
+    def test_rehashed_understatement_rejected(case, fraction):
+        inp, *_ = uncertain_chain(case)
+        forged = forge_allowance(case, inp, inp.calibration.allowance_cash * fraction)
+&gt;       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/p1/test_bootstrap_integrity.py:94: Failed</failure></testcase><testcase classname="tests.p1.test_bootstrap_integrity" name="test_cal_neg_03_connected_evaluator_rejects_mutually_rehashed_claim" time="6.825"><failure message="AssertionError: assert '81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001' not in {'7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4', '81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001'}&#10; +  where '81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001' = CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='b17d75e60c336e9e2ae2406451462717b0e52f7be6e...('100.05'), stop_price=Decimal('99'), state_version=0, cost_model_ref='UNESTIMATED', quantity=None, account_scope=None).content_hash&#10; +    where CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='b17d75e60c336e9e2ae2406451462717b0e52f7be6e...('100.05'), stop_price=Decimal('99'), state_version=0, cost_model_ref='UNESTIMATED', quantity=None, account_scope=None) = CandidateMeanInputsV1(candidate=CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='b17d75e60c3..._at_ns=34559999999999999, maximum_source_age_ns=1000000000, setup_parameters=FrozenMap(_items=()), missing_reasons=())).candidate">case = namespace(repo=&lt;atlas.v2.memory.repository.OpsRepository object at 0x7f3bb5ce7bf0&gt;, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=&lt;function case.&lt;locals&gt;.clock at 0x7f3bb5897f60&gt;)
+
+    def test_cal_neg_03_connected_evaluator_rejects_mutually_rehashed_claim(case):
+        inp, *_ = uncertain_chain(case)
+        forged = forge_allowance(case, inp, D("0"))
+        case.inputs[inp.candidate.content_hash] = replace(inp, calibration=forged)
+        evaluated = run(case)
+&gt;       assert inp.candidate.content_hash not in {e.candidate_ref for e in evaluated.members}
+E       AssertionError: assert '81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001' not in {'7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4', '81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001'}
+E        +  where '81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001' = CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='b17d75e60c336e9e2ae2406451462717b0e52f7be6e...('100.05'), stop_price=Decimal('99'), state_version=0, cost_model_ref='UNESTIMATED', quantity=None, account_scope=None).content_hash
+E        +    where CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='b17d75e60c336e9e2ae2406451462717b0e52f7be6e...('100.05'), stop_price=Decimal('99'), state_version=0, cost_model_ref='UNESTIMATED', quantity=None, account_scope=None) = CandidateMeanInputsV1(candidate=CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='b17d75e60c3..._at_ns=34559999999999999, maximum_source_age_ns=1000000000, setup_parameters=FrozenMap(_items=()), missing_reasons=())).candidate
+
+tests/p1/test_bootstrap_integrity.py:103: AssertionError</failure></testcase><testcase classname="tests.p1.test_bootstrap_integrity" name="test_cal_neg_05_saved_b_refuses_substituted_proof" time="7.037"><failure message="Failed: DID NOT RAISE ValueError">case = namespace(repo=&lt;atlas.v2.memory.repository.OpsRepository object at 0x7f3bb59b54c0&gt;, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=&lt;function case.&lt;locals&gt;.clock at 0x7f3bb5931300&gt;)
+
+    def test_cal_neg_05_saved_b_refuses_substituted_proof(case):
+        inp, *_ = uncertain_chain(case)
+        eligible, request, response = request_response(case)
+        forged = forge_allowance(case, inp, D("0"))
+        eligible, request, response = substituted_selection(case, eligible, request, response, forged)
+&gt;       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/p1/test_bootstrap_integrity.py:133: Failed</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,71 @@
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+____________ test_rehashed_understatement_rejected[CAL-NEG-01-zero] ____________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f3bb5ce2c00>, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function case.<locals>.clock at 0x7f3bb596b560>)
+fraction = Decimal('0')
+
+    @pytest.mark.parametrize("fraction", [D("0"), D(".5")], ids=["CAL-NEG-01-zero", "CAL-NEG-02-between"])
+    def test_rehashed_understatement_rejected(case, fraction):
+        inp, *_ = uncertain_chain(case)
+        forged = forge_allowance(case, inp, inp.calibration.allowance_cash * fraction)
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/p1/test_bootstrap_integrity.py:94: Failed
+__________ test_rehashed_understatement_rejected[CAL-NEG-02-between] ___________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f3bb5ce5ac0>, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function case.<locals>.clock at 0x7f3bb5918e00>)
+fraction = Decimal('0.5')
+
+    @pytest.mark.parametrize("fraction", [D("0"), D(".5")], ids=["CAL-NEG-01-zero", "CAL-NEG-02-between"])
+    def test_rehashed_understatement_rejected(case, fraction):
+        inp, *_ = uncertain_chain(case)
+        forged = forge_allowance(case, inp, inp.calibration.allowance_cash * fraction)
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/p1/test_bootstrap_integrity.py:94: Failed
+_____ test_cal_neg_03_connected_evaluator_rejects_mutually_rehashed_claim ______
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f3bb5ce7bf0>, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function case.<locals>.clock at 0x7f3bb5897f60>)
+
+    def test_cal_neg_03_connected_evaluator_rejects_mutually_rehashed_claim(case):
+        inp, *_ = uncertain_chain(case)
+        forged = forge_allowance(case, inp, D("0"))
+        case.inputs[inp.candidate.content_hash] = replace(inp, calibration=forged)
+        evaluated = run(case)
+>       assert inp.candidate.content_hash not in {e.candidate_ref for e in evaluated.members}
+E       AssertionError: assert '81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001' not in {'7de177e4ee12754f683b4e8d9c407dfe9db50bd21af8ec4e9d93e3f38601a2d4', '81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001'}
+E        +  where '81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001' = CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='b17d75e60c336e9e2ae2406451462717b0e52f7be6e...('100.05'), stop_price=Decimal('99'), state_version=0, cost_model_ref='UNESTIMATED', quantity=None, account_scope=None).content_hash
+E        +    where CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='b17d75e60c336e9e2ae2406451462717b0e52f7be6e...('100.05'), stop_price=Decimal('99'), state_version=0, cost_model_ref='UNESTIMATED', quantity=None, account_scope=None) = CandidateMeanInputsV1(candidate=CandidateActionV2(envelope=ArtifactEnvelope(schema_version=1, artifact_id='b17d75e60c3..._at_ns=34559999999999999, maximum_source_age_ns=1000000000, setup_parameters=FrozenMap(_items=()), missing_reasons=())).candidate
+
+tests/p1/test_bootstrap_integrity.py:103: AssertionError
+______________ test_cal_neg_05_saved_b_refuses_substituted_proof _______________
+
+case = namespace(repo=<atlas.v2.memory.repository.OpsRepository object at 0x7f3bb59b54c0>, population=CandidateEvaluationSetV..., setup_parameters=FrozenMap(_items=()), missing_reasons=()))}, clock=<function case.<locals>.clock at 0x7f3bb5931300>)
+
+    def test_cal_neg_05_saved_b_refuses_substituted_proof(case):
+        inp, *_ = uncertain_chain(case)
+        eligible, request, response = request_response(case)
+        forged = forge_allowance(case, inp, D("0"))
+        eligible, request, response = substituted_selection(case, eligible, request, response, forged)
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/p1/test_bootstrap_integrity.py:133: Failed
+=============================== warnings summary ===============================
+../.venvs/atlas/lib/python3.12/site-packages/_pytest/config/__init__.py:864
+  /workspace/.venvs/atlas/lib/python3.12/site-packages/_pytest/config/__init__.py:864: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; atlas_s49_offline_guard
+    self.import_plugin(arg, consider_entry_points=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/p1/test_bootstrap_integrity.py::test_rehashed_understatement_rejected[CAL-NEG-01-zero]
+FAILED tests/p1/test_bootstrap_integrity.py::test_rehashed_understatement_rejected[CAL-NEG-02-between]
+FAILED tests/p1/test_bootstrap_integrity.py::test_cal_neg_03_connected_evaluator_rejects_mutually_rehashed_claim
+FAILED tests/p1/test_bootstrap_integrity.py::test_cal_neg_05_saved_b_refuses_substituted_proof
+4 failed, 1 warning in 27.00s

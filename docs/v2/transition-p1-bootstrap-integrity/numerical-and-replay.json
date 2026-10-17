@@ -1,0 +1,89 @@
+{
+  "source_build_hash": "fbe5dba51388c48ec0cc81303425eb7add4b11bc84f38d04d1bc55baffdf1c19",
+  "implementation_ref": "314034db58af612c6d5df197c74aabc99e74927be2760b2a42df9d90ffa10175",
+  "empirical_selected_action_error_cash": "0",
+  "calendar_blocks": 30,
+  "effective_blocks": 30,
+  "lag_correlations": [
+    -0.16666666666666666,
+    -0.2,
+    -0.03333333333333333
+  ],
+  "alpha": 0.05,
+  "resamples": 10000,
+  "seed": 6101,
+  "registered_bound_cash": "3.333333333333333333333333333",
+  "independent_reference_bound_cash": "3.333333333333333333333333333",
+  "forged": [
+    {
+      "allowance_cash": "0",
+      "admission": "CALIBRATION_OFFLINE_VALIDATION_UNAVAILABLE",
+      "offline_publish": "CALIBRATION_ALLOWANCE_BELOW_REGISTERED_BOOTSTRAP"
+    },
+    {
+      "allowance_cash": "1.666666666666666666666666666",
+      "admission": "CALIBRATION_OFFLINE_VALIDATION_UNAVAILABLE",
+      "offline_publish": "CALIBRATION_ALLOWANCE_BELOW_REGISTERED_BOOTSTRAP"
+    }
+  ],
+  "positive_evaluation": {
+    "version": "ATLAS_RED_ACTION_EVALUATION_V1",
+    "population_ref": "26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7",
+    "candidate_ref": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001",
+    "action_ref": "dbd15186b88081e9c623c388bc714e8c552557f998d0c8c2c72458a48c0631fb",
+    "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+    "model_ref": "04999fd3bca06db7a3482833aa1cdf8f0b658baea8e134aa1cfb23fde803b73d",
+    "calibration_ref": "0b23d120a113144d2833eabf2f4aec6e63f3ff6b8acf5f3856c8e6af5252f24e",
+    "scenario_ref": "2f813f863b40bf529d6d6ad834bfa1a906ea351aec5d6b033a2328976c3e7f11",
+    "execution_bias_ref": "7a663bc4efe01c96b9453e6528a04e60450d6dfd304a9949aa8e2a01de15131b",
+    "numerical_ref": "d9546e1d2166c5510765b3d459eddaae2286e617c53882b30c9c5d91d64ce539",
+    "incremental_programme_ref": "0320337ff4a3a3f1172dd1544ccdf2fe534d15d72ad7889add42714b159f4eb6",
+    "mean_cash": "5",
+    "mean_selection_allowance": "3.333333333333333333333333333",
+    "execution_bias_allowance": "0",
+    "numerical_allowance": "0",
+    "incremental_programme_cost": "0",
+    "score_cash": "1.666666666666666666666666667",
+    "risk_increment_cash": "0",
+    "j_cash": "1.666666666666666666666666667",
+    "available_at_ns": 34560000000000010,
+    "status": "ELIGIBLE",
+    "reasons": []
+  },
+  "nonpositive_evaluation": {
+    "version": "ATLAS_RED_ACTION_EVALUATION_V1",
+    "population_ref": "26cd0198717ba55997eeb32fd4008dd23db7e1bf55e16aaa44e1424bdbb4cde7",
+    "candidate_ref": "81dd7cd1d5109a338dac27dacc030c3beeba8e30a204f189e733482531059001",
+    "action_ref": "dbd15186b88081e9c623c388bc714e8c552557f998d0c8c2c72458a48c0631fb",
+    "account_snapshot_ref": "f7e1b9f85fbcf631a1c136e81d75d9979e4deceb0d9e9137a5810b789cf487b6",
+    "model_ref": "04999fd3bca06db7a3482833aa1cdf8f0b658baea8e134aa1cfb23fde803b73d",
+    "calibration_ref": "0b23d120a113144d2833eabf2f4aec6e63f3ff6b8acf5f3856c8e6af5252f24e",
+    "scenario_ref": "2f813f863b40bf529d6d6ad834bfa1a906ea351aec5d6b033a2328976c3e7f11",
+    "execution_bias_ref": "7a663bc4efe01c96b9453e6528a04e60450d6dfd304a9949aa8e2a01de15131b",
+    "numerical_ref": "3b10ba6203dc52bbcc742df6d6a2ef67bf505c681118226c83b70a6a95b7ffcc",
+    "incremental_programme_ref": "0320337ff4a3a3f1172dd1544ccdf2fe534d15d72ad7889add42714b159f4eb6",
+    "mean_cash": "5",
+    "mean_selection_allowance": "3.333333333333333333333333333",
+    "execution_bias_allowance": "0",
+    "numerical_allowance": "2",
+    "incremental_programme_cost": "0",
+    "score_cash": "-0.333333333333333333333333333",
+    "risk_increment_cash": "0",
+    "j_cash": "-0.333333333333333333333333333",
+    "available_at_ns": 34560000000000010,
+    "status": "INELIGIBLE",
+    "reasons": [
+      "NONPOSITIVE_OR_IMMATERIAL_ECONOMICS"
+    ]
+  },
+  "no_allowance_counterfactual_score_cash": "3.0",
+  "weighted_selected_count": 50,
+  "weighted_bound_cash": "4.210526315789473684210526316",
+  "incorrect_unweighted_bound_cash": "3.333333333333333333333333333",
+  "capsule_entries": 2514,
+  "import_revalidated_receipts": 5,
+  "new_database_reopen_B_result": "IDENTICAL",
+  "second_reopen_duplicate": "REFUSED",
+  "old_calibration_bytes": "unchanged V2 codec; absent validation receipt never grants new admission",
+  "capital": "NO-GO"
+}

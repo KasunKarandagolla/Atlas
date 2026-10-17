@@ -1,0 +1,40 @@
+{
+  "source_build_hash": "fbe5dba51388c48ec0cc81303425eb7add4b11bc84f38d04d1bc55baffdf1c19",
+  "contracts": [
+    {
+      "module": "src/atlas/v2/science/mean_calibration_validation.py",
+      "symbol": "MeanCalibrationValidationV1",
+      "version": "ATLAS_RED_MEAN_CALIBRATION_VALIDATION_V1",
+      "fields": [
+        {
+          "name": "calibration_ref",
+          "type": "str"
+        },
+        {
+          "name": "implementation_ref",
+          "type": "str"
+        },
+        {
+          "name": "required_allowance_cash",
+          "type": "Decimal"
+        },
+        {
+          "name": "available_at_ns",
+          "type": "int"
+        },
+        {
+          "name": "expires_at_ns",
+          "type": "int"
+        }
+      ]
+    }
+  ],
+  "store": "Existing OpsRepository.artifact_index; no SQL migration",
+  "writer": "OpsRepository.register_artifacts rechecks all initial reserved receipts; publish_stream_slice_v1 refuses reserved type",
+  "consumers": [
+    "verify_mean_calibration",
+    "mean_evaluation._evaluate_one",
+    "validate_offline_b_selection"
+  ],
+  "compatibility": "V1/V2 calibration and scenario wire bytes unchanged; old V2 without current validated receipt unavailable for new admission; source changes require explicit offline revalidation"
+}

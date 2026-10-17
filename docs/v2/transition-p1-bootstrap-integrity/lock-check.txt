@@ -1,0 +1,2 @@
+Using CPython 3.12.14 interpreter at: /workspace/.venvs/atlas/bin/python
+Resolved 39 packages in 1ms

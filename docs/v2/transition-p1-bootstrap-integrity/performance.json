@@ -1,0 +1,46 @@
+{
+  "receipt_check": {
+    "samples": 200,
+    "unit": "ns",
+    "minimum": 279990,
+    "median": 316325,
+    "p95": 491548,
+    "maximum": 2325092
+  },
+  "existing_causal_chain": {
+    "samples": 20,
+    "unit": "ns",
+    "minimum": 234198304,
+    "median": 267720253,
+    "p95": 282414030,
+    "maximum": 315638357
+  },
+  "complete_verifier": {
+    "samples": 20,
+    "unit": "ns",
+    "minimum": 230321431,
+    "median": 247584409,
+    "p95": 264234152,
+    "maximum": 275038205
+  },
+  "connected_evaluator": {
+    "samples": 5,
+    "unit": "ns",
+    "minimum": 938513215,
+    "median": 996579526,
+    "p95": 1031378851,
+    "maximum": 1031378851
+  },
+  "work_cpu_budget_ns": 10000000000,
+  "work_wall_budget_ns": 20000000000,
+  "observed_evaluator_cpu_ns": 1057901820,
+  "observed_evaluator_wall_ns": 1057939160,
+  "classification": "cloud warm isolated measurements; not target-host or real-time qualification",
+  "startup_source_fingerprint_ns": 932651,
+  "connected_B_ns": {
+    "samples": 10,
+    "median": 684591097,
+    "maximum": 759431542
+  },
+  "complete_capsule_import_ns": 1518676519
+}

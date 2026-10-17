@@ -1,0 +1,19 @@
+{
+  "source_build_hash": "fbe5dba51388c48ec0cc81303425eb7add4b11bc84f38d04d1bc55baffdf1c19",
+  "starting_sha": "215a0045d8203f23dbd4935639ef448556cc2353",
+  "branch": "fix/atlas-red-p1-bootstrap-integrity-2026-10-17",
+  "old_57_evidence_files_unchanged": "PASS",
+  "protected_freeze_design_policy_report_lock_hashes": "PASS",
+  "translog_append_only_and_root_log_history_preserved": "PASS",
+  "107_acceptance_IDs_and_original_authority_columns": "PASS",
+  "algorithm_manifest": "PASS",
+  "registered_bootstrap_algorithm_unchanged": "PASS",
+  "report_links": "PASS",
+  "source_build_matches_final_files": "PASS",
+  "authorized_files_only": "PASS",
+  "private_key_provider_token_scan_including_decoded_capsule": "PASS",
+  "no_database_checkpoints_or_private_source_packets": "PASS",
+  "stage_diff_check": "PASS; verified at final staging",
+  "model": "Owner-confirmed GPT-6.1 Sol; no independent runtime attestation; no subagents",
+  "gate": "P1 independent exact-SHA acceptance pending / P2 NOT STARTED / OPERATIVE POLICY INACTIVE / CAPITAL NO-GO"
+}

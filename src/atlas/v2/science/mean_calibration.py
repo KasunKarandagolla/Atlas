@@ -408,10 +408,15 @@ def calibrate_verified_selected_policy(repo, *, model, protocol, residuals, cuto
         qualification.content_hash,
     )
     index_mean_artifact(repo, calibration, available_at_ns=cutoff_ns)
+    from atlas.v2.science.mean_calibration_validation import calibration_validation_entry
+
+    # Reserved Ops registration independently rechecks the chain AND bootstrap.
+    # A caller-supplied or imported receipt takes exactly the same checked path.
+    repo.register_artifact(calibration_validation_entry(calibration, allowance))
     return calibration
 
 
-def verify_mean_calibration(repo, calibration, *, model, policy_ref, product_ref, cutoff_ns, now_ns):
+def _verify_mean_calibration_chain(repo, calibration, *, model, policy_ref, product_ref, cutoff_ns, now_ns):
     if not isinstance(calibration, MeanSelectionCalibrationV2):
         raise ValueError("UNVERIFIED_LEGACY_CALIBRATION")
     reader = EvidenceReader(repo, cutoff_ns=cutoff_ns, now_ns=now_ns)
@@ -450,6 +455,18 @@ def verify_mean_calibration(repo, calibration, *, model, policy_ref, product_ref
         or proof.expires_at_ns != calibration.expires_at_ns
     ):
         raise ValueError("CALIBRATION_PROOF_REVISIONS_CHANGED")
+    return scope, proof, protocol, values
+
+
+def verify_mean_calibration(repo, calibration, *, model, policy_ref, product_ref, cutoff_ns, now_ns):
+    """Bounded admission: causal checks plus the writer-validated offline receipt."""
+    from atlas.v2.science.mean_calibration_validation import require_calibration_validation
+
+    scope, _, _, _ = _verify_mean_calibration_chain(
+        repo, calibration, model=model, policy_ref=policy_ref, product_ref=product_ref,
+        cutoff_ns=cutoff_ns, now_ns=now_ns,
+    )
+    require_calibration_validation(repo, calibration, cutoff_ns=cutoff_ns, now_ns=now_ns)
     return scope
 
 

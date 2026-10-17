@@ -143,6 +143,8 @@ def validate_offline_b_selection(
             cutoff_ns=action.cutoff_ns,
             now_ns=now_ns,
         )
+        if evaluated_member.mean_selection_allowance != calibration.allowance_cash:
+            raise ValueError("SAVED_EVALUATION_CALIBRATION_ALLOWANCE_CHANGED")
         from atlas.v2.science.mean_scenario_evidence import ScenarioSourceV1
 
         scenario_source = read_mean_artifact(repo, scenarios.source_ref, ScenarioSourceV1, consumer_ns=now_ns)

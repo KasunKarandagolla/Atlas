@@ -1,6 +1,6 @@
 # ATLAS RED — live GitHub engineering status
 
-**Updated:** 2026-10-16  
+**Updated:** 2026-10-17
 **Purpose:** Mutable pointer to independently accepted **design**, actual **implementation**, separately authorized **operation** and the **next engineering gate**. Check GitHub refs and evidence on every new task; do not treat this file alone as proof of implementation or acceptance.
 
 | Dimension | Verified recorded state |
@@ -11,7 +11,8 @@
 | Independent acceptance record | [ACCEPTANCE_F9F8EF_2026-10-16.md](ACCEPTANCE_F9F8EF_2026-10-16.md) |
 | Last verified implemented R9 branch/commit | `fix/red-r9-local-complete-cycle-2026-10-14` @ [`96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd`](https://github.com/KasunKarandagolla/Atlas/commit/96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd) |
 | Original P1 candidate | `impl/atlas-red-p1-quant-foundation-2026-10-16` @ `8fc2109cda6fea6a8bea0f07d8e43999e9cee1c9`; owner-supplied independent review withheld acceptance for financial-evidence A/B |
-| P1 correction candidate | `fix/atlas-red-p1-financial-evidence-2026-10-16`, parent `8fc2109c…`; final verified remote SHA returned in delivery. **Independent acceptance pending** |
+| Prior P1 correction | `fix/atlas-red-p1-financial-evidence-2026-10-16` @ `215a0045d8203f23dbd4935639ef448556cc2353`; owner-supplied independent review still withholds acceptance for bootstrap-allowance integrity |
+| Current P1 correction candidate | `fix/atlas-red-p1-bootstrap-integrity-2026-10-17`, exact parent `215a0045…`; verified pushed SHA returned in delivery. **INDEPENDENT ACCEPTANCE PENDING** |
 | Repo default branch | `impl/session-001-foundation` (historical; **do not use as latest implementation**) |
 | Operating manual/account policy | `ATLAS_RED_SHARED_ACCOUNT_EXCLUSIVE_AGGREGATE_V1`: **PENDING OWNER APPROVAL** |
 | Operative policy amendment | `ATLAS_RED_ELIGIBLE_ACTION_COORDINATOR_V1`: **PROPOSED — NOT OPERATIONALLY EFFECTIVE** |
@@ -29,9 +30,11 @@
 
 **Accepted planned sequence:** P1 GPT-6.1 Sol → P2 GPT-6.1 Sol → P3 GPT-6 Luna → P4 GPT-6.1 Sol → P5 fresh GPT-6.1 Sol. Owner authorized P1 offline work in this session; P1 is now a review candidate, not independently accepted. No P2 start is authorized by this status.
 
-Phase A P1 correction is owner-authorized and implemented/tested offline. Verified chronological origin/OOF/fold/serving/dependence evidence and source/execution/probability/ES/background evidence now gate economic admission and B consumption. Source build `581c44bfd2ee7e9322d890c828d21cb2d7420ea4a381ffb6a64d665af388443c`. Broad affected group 1,200 pass/1 skip; final complete P1 group 179 pass, including all A/B and seven common-background/serving-training cases. Latest deduplicated coverage 1207 pass/1 skip, not a full repository suite. Final P1 follows the last serving-membership/background hardening; broad legacy coverage was observed before those isolated new-path guards. Ruff/compile/pip/uv-lock/diff pass; mypy exact 53-error/17-file pre-correction baseline. Protected freezes/design/PDF/policy/locks unchanged. No SQL migration or P2 work.
+The second P1 financial-evidence correction is explicitly owner-authorized: bootstrap-allowance integrity, offline tests/evidence/docs, commit and push. Registered bootstrap unchanged. The existing Ops writer independently checks the entire causal chain and complete registered bootstrap before any new reserved `MeanCalibrationValidationV1` receipt can be inserted, including generic imports. Admission/B require that durable exact source/model/protocol/qualification/build/expiry binding, and B matches the saved cash allowance. No fit/bootstrap on the hot path. Old V2 calibration bytes remain readable but cannot grant new admission without complete revalidation. No SQL migration, P2 work or scenario redesign.
 
-See [correction report](../v2/ATLAS_RED_P1_FINANCIAL_EVIDENCE_CORRECTION.md), [current verification](../v2/transition-p1-financial-evidence/verification.json), [new interfaces](../v2/transition-p1-financial-evidence/interface-inventory.json) and [evidence hashes](../v2/transition-p1-financial-evidence/evidence-manifest.json). The original [P1 report](../v2/ATLAS_RED_P1_HANDOFF.md) and its 1,420-pass coverage remain historical observations, not the current certification. All current source/probability/OOF qualification is explicitly synthetic/offline. Genuine calibration/provider/model/image/native/host/storage/economics remain unqualified; two long S3 cases remain TEST GATE / NOT RUN. No real provider/exchange/order/deployment/capital activity.
+Final complete P1: 200 passed, 0 failed/skipped/deselected (200 collected). Expanded broad legacy/Ops partition: 1,154 passed, 1 skipped, 0 failed/deselected (1,155 collected). Disjoint combined affected coverage: 1,354 passed, 1 skipped, 0 failed (1,355 collected). Both partitions follow the final source change. Ruff/compile/pip/offline lock/diff/freeze checks pass; mypy remains exact 53-error/17-file baseline, zero new diagnostics. Added receipt validation measured 0.316 ms median /0.492 ms p95, 2.325 ms maximum over 200 warm cloud samples; no target-host qualification. Source build `fbe5dba51388c48ec0cc81303425eb7add4b11bc84f38d04d1bc55baffdf1c19`. A 2,514-entry synthetic capsule recomputes all five receipts on fresh import, reproduces saved B after reopen and refuses duplicate consumption on a second reopen. All original freeze/design/PDF/policy/lock bytes, prior reports and 57 earlier evidence files preserved.
+
+See [second correction addendum](../v2/ATLAS_RED_P1_BOOTSTRAP_INTEGRITY_CORRECTION.md), [final commands/counts](../v2/transition-p1-bootstrap-integrity/verification.json), [numerical/replay evidence](../v2/transition-p1-bootstrap-integrity/numerical-and-replay.json), [performance](../v2/transition-p1-bootstrap-integrity/performance.json) and [SHA-256 evidence manifest](../v2/transition-p1-bootstrap-integrity/evidence-manifest.json). The [original P1 report](../v2/ATLAS_RED_P1_HANDOFF.md) and [first correction](../v2/ATLAS_RED_P1_FINANCIAL_EVIDENCE_CORRECTION.md) remain historical, unaccepted candidates. Two long seven-day S3 cases remain TEST GATE / NOT RUN. No paid/provider/private venue/order/deployment/capital activity. Genuine economic profitability remains NOT ESTIMABLE; all provider/venue/native/model/image/hardware/storage/72h gates remain separate.
 
 ## Mandatory update discipline
 
@@ -41,4 +44,4 @@ After independent review, add an exact SHA acceptance/rejection record and advan
 
 ## Next gate
 
-**Independent review of the exact pushed P1 correction SHA and parent→correction diff.** Review actual calibration/scenario evidence, counterexamples, immutable source/readers, complete final P1 and broad observed regressions, saved artifact replay and retained limits. Record acceptance/rejection separately. P2 requires that exact-SHA acceptance AND separate explicit owner authorization; do not start it automatically. Manual/adoption consent and operative policy remain pending, capital NO-GO.
+**Independent review of the exact pushed bootstrap-integrity correction SHA and `215a0045`→correction diff.** Review actual calibration/scenario evidence, counterexamples, immutable source/readers, complete final P1 and broad observed regressions, saved artifact replay and retained limits. Record acceptance/rejection separately. P2 requires that exact-SHA acceptance AND separate explicit owner authorization; do not start it automatically. Manual/adoption consent and operative policy remain pending, capital NO-GO.

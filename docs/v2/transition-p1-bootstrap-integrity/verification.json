@@ -1,0 +1,95 @@
+{
+  "source_build_hash": "fbe5dba51388c48ec0cc81303425eb7add4b11bc84f38d04d1bc55baffdf1c19",
+  "runs": [
+    {
+      "name": "final-p1",
+      "collected": 200,
+      "passed": 200,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "deselected": 0,
+      "command": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/p1 --junitxml=/workspace/work/p1-bootstrap/final-p1.xml",
+      "source_stage": "AFTER FINAL PRODUCTION AND TEST SOURCE CHANGE; source-build.json matches final bytes",
+      "junit": "final-p1.xml",
+      "log": "final-p1.txt"
+    },
+    {
+      "name": "final-broad",
+      "collected": 1155,
+      "passed": 1154,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 1,
+      "deselected": 0,
+      "command": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/science tests/contract tests/data tests/persistence tests/runtime tests/unit tests/scanner tests/v2/test_session016_candidate_selection.py tests/v2/test_session017_action.py tests/v2/test_session017_replay.py tests/v2/test_session017_risk.py tests/v2/test_session019_admission.py tests/v2/test_session019_evaluation_integration.py tests/v2/test_session019_m0.py tests/v2/test_session019_scenarios.py tests/v2/test_session023_analogue.py tests/v2/test_session023_m1.py tests/v2/test_session023_selection_audits.py tests/v2/test_session037_action_outcome_producer.py tests/v2/test_session037_economic_binding.py tests/v2/test_session037_economic_sources.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session037_training_bounds.py tests/v2/test_session041_frozen_action_comparison.py tests/v2/test_session047_decision_brief.py tests/v2/test_session048_management_shadow.py tests/v2/test_session020_desktop_ipc.py tests/v2/test_memory.py tests/v2/test_session036_repository_ports.py tests/v2/test_session036_writer_broker_bounds.py tests/v2/test_session041_compressed_metadata.py tests/v2/test_session041_compression_review.py tests/v2/test_session041_recovery_adoption.py tests/v2/test_session041_stream_service_paging.py tests/v2/test_session038_transport_archive.py tests/v2/test_session039_public_archive_extents.py tests/v2/test_session037_collector_restart.py tests/v2/test_session032_public_stream_continuity.py --junitxml=/workspace/work/p1-bootstrap/final-broad.xml",
+      "source_stage": "AFTER FINAL PRODUCTION AND TEST SOURCE CHANGE; source-build.json matches final bytes",
+      "junit": "final-broad.xml",
+      "log": "final-broad.txt"
+    }
+  ],
+  "combined_affected": {
+    "collected": 1355,
+    "passed": 1354,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "deselected": 0
+  },
+  "not_a_full_repository_suite": true,
+  "red": {
+    "parent_sha": "215a0045d8203f23dbd4935639ef448556cc2353",
+    "command": "/workspace/.venvs/atlas/bin/python scripts/atlas_p1_offline.py tests/p1/test_bootstrap_integrity.py --junitxml=/workspace/work/p1-bootstrap/red.xml",
+    "collected": 4,
+    "passed": 0,
+    "failed": 4,
+    "skipped": 0,
+    "deselected": 0,
+    "interpretation": "Required refusal assertions failed before production edits: verifier zero/midpoint, connected E, saved B"
+  },
+  "parent_numerical": {
+    "command": "/workspace/.venvs/atlas/bin/python /workspace/work/p1-bootstrap/parent/scripts/atlas_p1_offline.py tests/p1/test_bootstrap_integrity.py -k parent_numeric_capture --junitxml=/workspace/work/p1-bootstrap/parent-numerical.xml",
+    "collected": 22,
+    "passed": 1,
+    "failed": 0,
+    "deselected": 21,
+    "skipped": 0,
+    "interpretation": "Separate exact parent worktree confirms forged allowance produces connected +3 eligible action"
+  },
+  "checks": [
+    "ruff check src scripts tests",
+    "python -m compileall -q src scripts tests",
+    "mypy src: exact normalized 53-error/17-file baseline, zero new diagnostics",
+    "python -m pip check",
+    "uv lock --check --offline --python /workspace/.venvs/atlas/bin/python",
+    "git diff --check",
+    "protected-hashes.json",
+    "staged publication-checks.json"
+  ],
+  "mypy": "53 errors /17 files; 301 source files; normalized baseline equality, no additions",
+  "skipped": [
+    {
+      "id": "tests/runtime/test_safe_runtime.py::test_public_testnet_connectivity_opt_in",
+      "reason": "existing opt-in public testnet network check; not authorized or needed for offline verification"
+    }
+  ],
+  "long_S3_tests": [
+    {
+      "id": "tests/v2/test_session021_data_s3.py::test_s3_production_setup_consumes_causal_seven_day_prefix_and_fails_residual_tampering",
+      "status": "TEST GATE / NOT RUN",
+      "reason": "Expensive seven-day unchanged-strategy replay; bounded affected suite preserves prior omission, no pass claimed"
+    },
+    {
+      "id": "tests/v2/test_session021_data_s3.py::test_s3_subsequent_reversion_emits_unsized_candidate_with_frozen_vwap_and_selector_zero",
+      "status": "TEST GATE / NOT RUN",
+      "reason": "Expensive seven-day unchanged-strategy replay; bounded affected suite preserves prior omission, no pass claimed"
+    }
+  ],
+  "reproduce_command": "/workspace/.venvs/atlas/bin/python docs/v2/transition-p1-bootstrap-integrity/reproduce.py",
+  "retained_gates": [
+    "Exact pushed SHA independent P1 acceptance",
+    "P2 separate explicit GPT-6.1 Sol authorization after that acceptance",
+    "Genuine market/calibration/provider/checkpoint/image/venue/native/target-host/72h/storage/economic qualification",
+    "Manual adoption PENDING OWNER APPROVAL; operative policy PROPOSED and INACTIVE; CAPITAL NO-GO"
+  ]
+}

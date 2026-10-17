@@ -1,0 +1,70 @@
+{
+  "source_build_hash": "fbe5dba51388c48ec0cc81303425eb7add4b11bc84f38d04d1bc55baffdf1c19",
+  "validator_implementation_ref": "314034db58af612c6d5df197c74aabc99e74927be2760b2a42df9d90ffa10175",
+  "artifacts": {
+    "calibration": {
+      "artifact_ref": "0b23d120a113144d2833eabf2f4aec6e63f3ff6b8acf5f3856c8e6af5252f24e",
+      "content_sha256": "0b23d120a113144d2833eabf2f4aec6e63f3ff6b8acf5f3856c8e6af5252f24e",
+      "type": "MeanSelectionCalibrationV2"
+    },
+    "dependence_qualification": {
+      "artifact_ref": "8267f490972c5e2c1cffd1e947ccbe597fab8a4c59371907cb8168d570aca972",
+      "content_sha256": "8267f490972c5e2c1cffd1e947ccbe597fab8a4c59371907cb8168d570aca972",
+      "type": "MeanDependenceQualificationV1"
+    },
+    "registered_protocol": {
+      "artifact_ref": "7c70cdb3852f40245115c5c655c1e55421225cb34a068cf5220e19d219d1ee2d",
+      "content_sha256": "7c70cdb3852f40245115c5c655c1e55421225cb34a068cf5220e19d219d1ee2d",
+      "type": "MeanCalibrationProtocolV1"
+    },
+    "serving_model": {
+      "artifact_ref": "04999fd3bca06db7a3482833aa1cdf8f0b658baea8e134aa1cfb23fde803b73d",
+      "content_sha256": "04999fd3bca06db7a3482833aa1cdf8f0b658baea8e134aa1cfb23fde803b73d",
+      "type": "MeanModelV1"
+    },
+    "source_scope": {
+      "artifact_ref": "4345874ed8ff1a6ed510cf76303f4bad304df7a6ff9b301fa179dbf234b27d23",
+      "content_sha256": "4345874ed8ff1a6ed510cf76303f4bad304df7a6ff9b301fa179dbf234b27d23",
+      "type": "MeanEvidenceScopeV1"
+    },
+    "checked_writer_receipt": {
+      "artifact_ref": "3b55df772997d540bddd55da71f448b3d14c405f5526c07c064201bee865f9d8",
+      "content_sha256": "2d0920ef56e4a83e73217d1f9fa7c7962c34b724d27f0bdbe087c9bfcad6fbb9",
+      "type": "MeanCalibrationValidationV1"
+    }
+  },
+  "original_residual_refs": [
+    "fe59bba66d0925aba4c646d47d87ad0e8763cdaa3679f106b8bd8154a43f359d",
+    "b5230e3e2873e7d9780ac8a4e0a7c3e665c64c12d53ed69d951d7bb2df72b0f5",
+    "fc832824fa0c10b7869a5afb095d1d613e842121edb2d9ce216a6d539dcb81f1",
+    "0dee451964d218335d69abd7af1f941bc7bab6c8ab9c11d5fec16fdc7e8883be",
+    "b614c0c5f92f1216f614f554b4245e092f49c534bbc643ecc6c1ded648ae9018",
+    "f31714036d90dbce92ef4a9a5bfa945f85f79a41ebbd821676103fc92a383b69",
+    "c13287d8937f13f55e1e3e126461d25fa261190a33afa38bae26f5e2e3e6e43c",
+    "c97d48e754fe29ae9d5b5c37a502e5e2e208174479f9b7acf29c14d5c5d1e7ae",
+    "aec9b780ecb83bc2ef7586d42da7dd80cb03bf22d4445e0b738ba3875e44f851",
+    "0a13239ca212cb0cf182eb2b9b6281550b4047d99206bde6637512cd7faba36b",
+    "26dd7b1de6c67c6246fea1011edf93d5bbbd2f7043947222d1ed6e7ce24138b6",
+    "3ed4e4721b9ca982e5e8ea54ec1f95efaa42a527b5760c14435b015517ca56ed",
+    "9838d064db2577768f7a951864cf53cb56fa4ddcfccb7a9f29d9ff98f7b11bcf",
+    "ddb342aed9efff1e849bcc99446a8cefeabdbb161270083db8d500de3c8a1f30",
+    "d4b92f2b8837ce560f077862e190e24467d5460f93de944f8a4b575176884508",
+    "82a618bace7441483ec366b0bdf8f3513fe60284a3765bf388eef2792ff18cfb",
+    "1f712f6c7240efdfd97e9872392f9a8cb77d47208b42b4b6c59e68959a378214",
+    "795d745d87c99a7eeee70495bbd353014263175bcb88f8d39ba8ca0d1cb8d052",
+    "79feb45deb6c351fdffe3ce3884d283cda8cc2ebcf8e3badc628b6d8d989eb47",
+    "97129865b052f1b8c97ef5f3f3275337396457e73f0714035ef22045716888ae",
+    "c2f78badfd0aed13057b4e0a8371e7810968d95e209a2a47ed10cb415c9b38e6",
+    "1bcb2a97a3ade4d20fe89ab669498f976e9b7747a7e56ccf8de2bb6e1d236578",
+    "3d1b879e898bd61431a4c7f4304e1d209881fe65d7354235a9b2741f9e697ed7",
+    "32e5ab63ed91093dd8544cee59e24bd4ffbe2bf800b8be1725f2d0bf0b2e3145",
+    "1d6463a588d3f60ecdad3ff1a53b806f10b9b8a745403ac0244859f33d3cd29a",
+    "ec437dcd63f165bbdf33f3e54d5039329007227fc691f08dbb62576a25d78461",
+    "bfc215d4532fb22f0142157218514f546ccadf07697db5748058a5d250ae3adc",
+    "c0d0dd310e4d6581dc78b9bdfc908e53507744d925b7447092643180ef2a21a9",
+    "9c65b14bfdbcddc0b6be794308b5c9df6262d56c0a834e2e8b61681da83547ad",
+    "1e168fe2266d6d938bdb091987396a93eeac038443bf2bf9d790e9ce4b19d883"
+  ],
+  "capsule_sha256": "d13d2ab12ae9456a922c00b96e5218cd84205a43d1ee68d57f9f7d135292735d",
+  "note": "The validation receipt uses a deterministic named lookup ref distinct from its content SHA. Other mean artifact refs equal their body SHA."
+}
