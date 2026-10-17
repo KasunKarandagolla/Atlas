@@ -1,0 +1,3 @@
+# Full deterministic panel is regenerated from the bounded acquisition/build recipe;
+# commit the compact representative sample instead of a >100 MiB Git blob.
+DIAGNOSTIC_FEATURE_PANEL.csv.gz

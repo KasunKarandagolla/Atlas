@@ -1,0 +1,32 @@
+{
+  "schema_version": "ATLAS_RED_E1B_ASOF_COVERAGE_V1",
+  "file": "ASOF_COVERAGE.csv.gz",
+  "row_grain": "cohort symbol x native interval x decision cutoff in windows A/B",
+  "rows": 1024800,
+  "per_window": {
+    "1h": 102480,
+    "15m": 409920
+  },
+  "boundary_convention": "Decision cutoffs are UTC interval closes in [begin, final). Each slot_open_utc_ns equals decision_cutoff_utc_ns minus the native interval; the first M15 cutoff uses the preceding February 28 23:45 seed bar, and bars closing at/after final are outside the window.",
+  "columns": {
+    "window": "A (2024-03-01 through 2024-06-30 decision cutoffs) or B (2025 equivalent)",
+    "symbol": "member of the fixed 35-symbol cohort",
+    "interval": "native source interval, 1h or 15m",
+    "slot_open_utc_ns": "expected native bar open time; may precede the decision window by one interval at the left boundary",
+    "decision_cutoff_utc_ns": "exclusive native close/decision boundary for slot_open_utc_ns",
+    "expected_status": "OBSERVED or SOURCE_MISSING",
+    "reason": "empty if observed; OFFICIAL_ARCHIVE_404, NATIVE_SLOT_GAP, or ARCHIVE_STATUS_UNAVAILABLE otherwise",
+    "archive_url": "official monthly public data URL associated with the native slot",
+    "archive_sha256": "checksum-verified downloaded ZIP SHA-256 when the source slot exists",
+    "archive_member_row_index": "zero-based physical data-row index in the monthly CSV member",
+    "source_timestamp_grade": "RECONSTRUCTED_MARKET with no original historical receipt, or UNAVAILABLE"
+  },
+  "reconciliation": "The 15m rows per window equal the feature-panel rows; source-missing slot counts by reason reconcile exactly to the panel's source_status and source_missing_reason columns. H1 rows represent one completed H1 slot per hour cutoff; panel rows repeat the latest H1 as-of state across M15 decisions.",
+  "observed_missing_counts": {
+    "A": {"1h": {}, "15m": {}},
+    "B": {
+      "1h": {"OFFICIAL_ARCHIVE_404": 3647, "NATIVE_SLOT_GAP": 254},
+      "15m": {"OFFICIAL_ARCHIVE_404": 14591, "NATIVE_SLOT_GAP": 1019}
+    }
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "boundary_convention": "Decision cutoffs are native close boundaries in [begin, final); slot_open=decision_cutoff-native_interval. First cutoff includes the prior February seed bar; slots closing at/after final are excluded.",
+  "clean_clone_rebuild_tested": false,
+  "cohort_sha256": "b51f4a360e60bbb62fae982e4120ff3681b12a13ef8cd4a0aff01d761f6f03b5",
+  "cohort_symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "SOLUSDT",
+    "XRPUSDT",
+    "ADAUSDT",
+    "DOGEUSDT",
+    "AVAXUSDT",
+    "LINKUSDT",
+    "DOTUSDT",
+    "LTCUSDT",
+    "BCHUSDT",
+    "ETCUSDT",
+    "TRXUSDT",
+    "XLMUSDT",
+    "ATOMUSDT",
+    "NEARUSDT",
+    "APTUSDT",
+    "ARBUSDT",
+    "OPUSDT",
+    "FILUSDT",
+    "UNIUSDT",
+    "INJUSDT",
+    "SUIUSDT",
+    "SEIUSDT",
+    "RUNEUSDT",
+    "ICPUSDT",
+    "CRVUSDT",
+    "AAVEUSDT",
+    "LDOUSDT",
+    "FTMUSDT",
+    "MATICUSDT",
+    "EOSUSDT",
+    "ALGOUSDT",
+    "HBARUSDT"
+  ],
+  "compact_sample_command": "python3 docs/research/atlas-red-e1b/summarize_research_outputs.py",
+  "coverage": {
+    "artifact": {
+      "bytes": 9378530,
+      "path": "ASOF_COVERAGE.csv.gz",
+      "sha256": "eb74a6eb0379524f07eec8c2462e21a3cfa78c5be66cd01972e8c735f8b45a61"
+    },
+    "missing_counts": {
+      "B:15m:NATIVE_SLOT_GAP": 1019,
+      "B:15m:OFFICIAL_ARCHIVE_404": 14591,
+      "B:1h:NATIVE_SLOT_GAP": 254,
+      "B:1h:OFFICIAL_ARCHIVE_404": 3647
+    },
+    "rows_by_window_interval": {
+      "A:15m": 409920,
+      "A:1h": 102480,
+      "B:15m": 409920,
+      "B:1h": 102480
+    },
+    "rows_total": 1024800
+  },
+  "dataset": "ATLAS_RED_LUNA_MEDIUM_REAL_BINANCE_COHORT_R_E1B",
+  "full_rebuild_command": "python3 docs/research/atlas-red-e1b/build_research_panel.py --scratch /path/to/scratch/e1b --outdir docs/research/atlas-red-e1b",
+  "model_effort_attestation": "UNVERIFIED: no independent model/effort attestation was supplied",
+  "panel": {
+    "compact_sample_artifact": {
+      "bytes": 1543298,
+      "counts": {
+        "A": 3360,
+        "B": 3360
+      },
+      "path": "COMPACT_REAL_MULTI_SYMBOL_SAMPLE.csv.gz",
+      "rows": 6720,
+      "sha256": "b5ada9250a1f7cd09355e785e38fdee0211ce3ffcf1d6d19172496802e69ba4b"
+    },
+    "full_panel_artifact": {
+      "bytes": 187947551,
+      "path": "DIAGNOSTIC_FEATURE_PANEL.csv.gz",
+      "sha256": "d3955dcf2fdb42bed5b7ba3b8430e20d662405ec6cb1dfa6c20e1f718bef0cae"
+    },
+    "full_panel_git_status": "OMITTED_FROM_COMMIT: compressed full panel exceeds GitHub's 100 MiB per-file limit; regenerate with the command below",
+    "m15_source_missing_counts": {
+      "B:NATIVE_SLOT_GAP": 1019,
+      "B:OFFICIAL_ARCHIVE_404": 14591
+    },
+    "rows_by_window": {
+      "A": 409920,
+      "B": 409920
+    },
+    "rows_total": 819840,
+    "s1_precursor_state_counts": {
+      "A:NO_SETUP": 322380,
+      "A:SETUP": 87540,
+      "B:NO_SETUP": 317980,
+      "B:SETUP": 80228,
+      "B:SOURCE_MISSING": 11712
+    },
+    "s1_trigger_state_counts": {
+      "A:BAR_TRIGGER": 19970,
+      "A:NOT_IN_TRIGGER_WINDOW": 322383,
+      "A:NO_TRIGGER": 67567,
+      "B:BAR_TRIGGER": 17524,
+      "B:NOT_IN_TRIGGER_WINDOW": 317980,
+      "B:NO_TRIGGER": 58806,
+      "B:SOURCE_MISSING": 15610
+    },
+    "s6_state_counts": {
+      "A:BTC_REFERENCE_ANCHOR": 11712,
+      "A:S6_FIXED_COHORT_RANK_DIAGNOSTIC": 398208,
+      "B:BTC_REFERENCE_ANCHOR": 11712,
+      "B:NOT_RANKABLE": 27316,
+      "B:S6_FIXED_COHORT_RANK_DIAGNOSTIC": 370892
+    }
+  },
+  "source_acquisition": {
+    "archive_limits": {
+      "max_aggregate_archive_bytes": 1073741824,
+      "max_concurrent_fetches": 4,
+      "max_single_object_bytes": 20971520
+    },
+    "initial_parser_rejected_attempt_rows": 420,
+    "initial_parser_rejected_download_bytes": "NOT_CAPTURED; not added to accepted-archive byte totals",
+    "manifest_status_counts_including_prior_sample": {
+      "MISSING_OBJECT_404": 13,
+      "PARSER_REJECTED_PRECEDING_ATTEMPT": 420,
+      "RETAINED_FROM_E1": 1,
+      "VERIFIED": 757
+    },
+    "verified_archive_bytes_by_role": {
+      "H1": 13662312,
+      "M15_EVALUATION": 33891893,
+      "M15_PREWINDOW_SEED": 7995731
+    },
+    "verified_archive_counts_by_interval": {
+      "15m": 344,
+      "1h": 413
+    },
+    "verified_csv_rows": 1292663,
+    "verified_unique_archive_bytes_not_retry_deduplicated": 55549936
+  },
+  "source_manifest_artifact": {
+    "bytes": 1111486,
+    "path": "SOURCE_MANIFEST.jsonl",
+    "sha256": "3abf69341caf95e34a79762efb86e09dc76579c44249738e73896e0a9b18e01a"
+  },
+  "windows_utc": {
+    "A": {
+      "decision_cutoff_begin_ns": 1709251200000000000,
+      "decision_cutoff_final_exclusive_ns": 1719792000000000000
+    },
+    "B": {
+      "decision_cutoff_begin_ns": 1740787200000000000,
+      "decision_cutoff_final_exclusive_ns": 1751328000000000000
+    }
+  }
+}
