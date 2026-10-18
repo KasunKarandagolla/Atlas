@@ -1,0 +1,87 @@
+{
+  "24h_role": "contextual only, not S1 actual exit",
+  "A_selection": {
+    "candidate_rules": [
+      "P0",
+      "P1",
+      "P2"
+    ],
+    "freeze": "Save A-only objective/selection with protocol, population and A outcome hashes in an immutable Git checkpoint BEFORE computing B outcomes. No second selection on B.",
+    "objective": "maximize mean 4h gross proxy per common-matured original A event",
+    "tie_priority": [
+      "P0",
+      "P2",
+      "P1"
+    ],
+    "tie_tolerance_bps": 1e-12
+  },
+  "B_role": "Chronological development diagnostic, not untouched holdout; report all P0/P1/P2/P3 including negative results",
+  "boundaries": "Only P0/P1/P2/P3; no new thresholds/variants/ML/production change; <=3 evidence-grounded future research hypotheses; OBSERVE zero allocation/paid allowance capital NO-GO",
+  "cohort_sha256": "b51f4a360e60bbb62fae982e4120ff3681b12a13ef8cd4a0aff01d761f6f03b5",
+  "denominators": "One original source-qualified research population N. Report accepted/rejected/unavailable/censored per arm/horizon. On N, mean is NOT ESTIMABLE if any accepted outcome censored; never impute unknown outcome zero. Also compare ALL arms on the identical common outcome-complete original subset C_h, retaining zero hypothetical exposure for rejected/unavailable events. Per-accepted mean secondary. Report N and C_h explicitly.",
+  "evidence_grade": "HISTORICAL_PRICE_PROXY_NONEXECUTABLE",
+  "excursions": "Side-signed maximum favourable and minimum adverse OHLC movement after reference, bounded by zero; no intrabar ordering/stop/fill inference",
+  "friction": "Signed gross bps is movement margin. Positive break-even all-in friction budget exists only for gross>0; otherwise none. No fee/spread/funding/fill estimate",
+  "horizons_hours": [
+    1,
+    4,
+    24
+  ],
+  "maturity": "Reference and every native M15 through endpoint observed/contiguous; endpoint and replay maturity strictly before that window July-1 exclusive; never borrow July or another window; otherwise censored",
+  "mechanism_diagnostics": [
+    "coverage * accepted mean decomposition",
+    "analytic count-only random-thinning expectation and within-side, BTC-H4/ETH-H4 regime standardized contrasts; not an extra policy",
+    "fixed side/symbol/week/current-regime distributions",
+    "leave-one-symbol/week-out P1/P2 minus P0 ranges, no reselection",
+    "top 1 percent absolute 4h proxy contribution and removal sensitivity only; no winsorization/selection on sensitivity",
+    "A/B stability and source-quality/censor distribution",
+    "identical timing references across +5/+30/+60 when implied by native grid",
+    "fixed 1/4/24h durations, accepted opportunity-hours and overlap diagnostics; no portfolio claim"
+  ],
+  "policies": {
+    "P0": "All source-qualified S1 first events; ignore S6 for inclusion",
+    "P1": "Observed S6 TOP with LONG or BOTTOM with SHORT; unavailable rank => UNAVAILABLE/no hypothetical opening",
+    "P2": "Observed qualifying S6 rank; LONG unless BOTTOM, SHORT unless TOP; unavailable rank => UNAVAILABLE/no hypothetical opening",
+    "P3": "No-new-opening price-proxy reference; zero hypothetical exposure, not zero programme cost"
+  },
+  "population": "Unique independently verified S1 first-trigger IDs from corrected full calendar; primary excludes BTCUSDT and ETHUSDT; retain all exclusions and missingness",
+  "primary_horizon_hours": 4,
+  "processing_seconds": 1,
+  "production_deadline_seconds": 5,
+  "proxy": "10000 * side_sign * (end_close/reference_close - 1), simple price-change bps, not cash/PnL/quantity/fill; SHORT sign is -1",
+  "recorded_local": "2026-10-18T12:55:41.938134+05:30",
+  "reference": "First completed native M15 close STRICTLY AFTER T+lag+1; require trigger/reference observed and contiguous; normally T+15m; nonexecuted price reference",
+  "replay_lags_seconds": [
+    5,
+    30,
+    60
+  ],
+  "research_origins": [
+    "2024-01-01T00:00:00Z",
+    "2025-01-01T00:00:00Z"
+  ],
+  "source_checkpoint": "c29dfc2c2ae6cb903b53f72fdf2d457c9a5bb32d",
+  "uncertainty": {
+    "block_floor_note": "20 block equivalents is only a floor, not qualification; report insufficiency rather than inflate sample size",
+    "blocks_calendar_weeks": [
+      1,
+      2
+    ],
+    "method": "Paired resampling of common-matured weekly sums/counts, same block draws across arms; ratio of sums; percentile 2.5/97.5 exploratory intervals, no p-values/significance/profitability claim",
+    "resamples": 10000,
+    "rng_seed": 18102026,
+    "week_origin": "UTC Monday ISO weeks; partial first/last retained"
+  },
+  "validity_gate": "Independent PRIMARY S1, S6, anchor, physical-source and coverage comparisons have zero unexplained mismatches; complete declared finite-prefix H1/H4 bootstrap and observed current/prior M15; raw predicates alone never qualify",
+  "version": "ATLAS_E1B_S1_S6_PRICE_PROXY_PREREG_V1",
+  "windows": {
+    "A": [
+      "2024-03-01T00:00:00Z",
+      "2024-07-01T00:00:00Z"
+    ],
+    "B": [
+      "2025-03-01T00:00:00Z",
+      "2025-07-01T00:00:00Z"
+    ]
+  }
+}

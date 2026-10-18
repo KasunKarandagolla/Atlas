@@ -368,6 +368,35 @@ def gap_prefix(bars: list[ResearchBar], duration: int) -> list[int]:
     return counts
 
 
+def research_prefix_ema(bars: list[ResearchBar], period: int, origins: tuple[int, ...]) -> list[float | None]:
+    """Frozen EMA mathematics, bootstrapped only at explicit research origins.
+
+    Each diagnostic window is a separate finite-prefix experiment. This is not
+    a restart of a running production history or an invented old checkpoint.
+    Calendar years alone never reset an EMA. Gaps inside an origin's prefix are
+    not reseeded: s1_cached_state rejects those incomplete prefixes.
+    """
+    if not origins or tuple(sorted(set(origins))) != origins:
+        raise ValueError("RESEARCH_ORIGINS_MUST_BE_EXPLICIT_ORDERED_UNIQUE")
+    result: list[float | None] = [None] * len(bars)
+    times = [b.open_at_ns for b in bars]
+    for position, begin in enumerate(origins):
+        left = bisect.bisect_left(times, begin)
+        right = bisect.bisect_left(times, origins[position + 1]) if position + 1 < len(origins) else len(bars)
+        result[left:right] = list(ema([float(b.close) for b in bars[left:right]], period))
+    return result
+
+
+def research_number(value: object) -> float | str:
+    """Optional numeric research return: zero is observed; None is missing."""
+    if value is None:
+        return ""
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError("NONFINITE_RESEARCH_NUMBER")
+    return number
+
+
 def s1_cached_state(symbol: str, h1: list[ResearchBar], h4: list[ResearchBar], cutoff: int,
                     h1_ema20: list[float | None], h1_ema50: list[float | None],
                     h4_ema20: list[float | None], h4_ema50: list[float | None],
@@ -383,6 +412,8 @@ def s1_cached_state(symbol: str, h1: list[ResearchBar], h4: list[ResearchBar], c
     h4_right = bisect.bisect_right(h4_times, cutoff)
     if (h1_right - h1_left < 50 or h4_right - h4_left < 50
             or h1[h1_left].open_at_ns != year_begin or h4[h4_left].open_at_ns != year_begin
+            or h1[h1_right - 1].close_at_ns != cutoff - cutoff % HOUR
+            or h4[h4_right - 1].close_at_ns != cutoff - cutoff % H4
             or (h1_right - h1_left > 1 and h1_gaps[h1_right - 1] != h1_gaps[h1_left])
             or (h4_right - h4_left > 1 and h4_gaps[h4_right - 1] != h4_gaps[h4_left])):
         return {"state": "SOURCE_MISSING", "reason": "H1_OR_RECONSTRUCTED_H4_PREFIX_HAS_GAP_OR_INSUFFICIENT_WARMUP"}
@@ -602,10 +633,9 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
         bars_h1[symbol] = make_bars(symbol, "1h", raw.get(symbol, {}).get("1h", []))
         bars_m15[symbol] = make_bars(symbol, "15m", raw.get(symbol, {}).get("15m", []))
         bars_h4[symbol] = h4_bars_from_h1(symbol, bars_h1[symbol])
-        h1_closes = [float(b.close) for b in bars_h1[symbol]]
-        h4_closes = [float(b.close) for b in bars_h4[symbol]]
-        s1_emas[symbol] = (list(ema(h1_closes, 20)), list(ema(h1_closes, 50)),
-                           list(ema(h4_closes, 20)), list(ema(h4_closes, 50)),
+        origins = tuple(sorted({ns(sy, 1, 1) for _, sy, *_ in WINDOWS}))
+        s1_emas[symbol] = (research_prefix_ema(bars_h1[symbol], 20, origins), research_prefix_ema(bars_h1[symbol], 50, origins),
+                           research_prefix_ema(bars_h4[symbol], 20, origins), research_prefix_ema(bars_h4[symbol], 50, origins),
                            gap_prefix(bars_h1[symbol], HOUR), gap_prefix(bars_h4[symbol], H4))
     aligned = aligned_return_series(bars_h1)
     window_bounds = {label: (ns(sy, sm, sd), ns(ey, em, ed + 1)) for label, sy, sm, sd, ey, em, ed in WINDOWS}
@@ -746,8 +776,7 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                         trigger_setup_id, "NO_PRIOR_MATCH" if trigger_setup_id else "NO_SETUP")
                     slot_ok = bool(m15)
                     score = s6state.get(symbol, {})
-                    latest_h1_ns = s1.get("h1_last_close_ns")
-                    h1ref = source_maps[symbol]["1h"].get(latest_h1_ns) if latest_h1_ns else None
+                    h1ref = source_maps[symbol]["1h"].get(hcut)
                     import datetime as dt
                     h1_month = dt.datetime.fromtimestamp((hcut - HOUR) / 1e9, dt.UTC).strftime("%Y-%m")
                     h1_arc = archive_status.get((symbol, "1h", h1_month), {})
@@ -781,7 +810,7 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                            "m15_archive_sha256": m15ref.get("archive_sha256", "") if m15ref else "",
                            "m15_row_index": m15ref.get("row_index", "") if m15ref else "",
                            "h1_close": s1.get("h1_last_close", ""),
-                           "h1_return": s1.get("h1_last_return", "") if s1.get("h1_last_return") is not None else "",
+                           "h1_return": research_number(s1.get("h1_last_return")),
                            "h1_ema20": e20 if e20 is not None else "", "h1_ema50": e50 if e50 is not None else "",
                            "h4_trend": s1.get("h4_trend", "UNAVAILABLE"),
                            "s1_precursor_state": s1["state"], "s1_setup_event": int(current_setup_event_flags[symbol] and cutoff == hcut),
@@ -810,8 +839,8 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                            "s6_beta_btc": score.get("beta_btc", ""), "s6_residual_volatility": score.get("residual_volatility", ""),
                            "s6_own_4h_trend": score.get("own_4h_trend", ""), "s6_rankable_breadth": breadth,
                            "s6_exclusion_reason": score.get("reason", breadth_note),
-                           "btc_h1_return": current_s1.get("BTCUSDT", {}).get("h1_last_return") or "",
-                           "eth_h1_return": current_s1.get("ETHUSDT", {}).get("h1_last_return") or "",
+                           "btc_h1_return": research_number(current_s1.get("BTCUSDT", {}).get("h1_last_return")),
+                           "eth_h1_return": research_number(current_s1.get("ETHUSDT", {}).get("h1_last_return")),
                            "btc_h4_trend": current_s1.get("BTCUSDT", {}).get("h4_trend", "UNAVAILABLE"),
                            "eth_h4_trend": current_s1.get("ETHUSDT", {}).get("h4_trend", "UNAVAILABLE"),
                            "eligibility_grade": "UNIVERSE_UNVERIFIED; fixed convenience cohort only",

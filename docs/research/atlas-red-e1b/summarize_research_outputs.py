@@ -237,13 +237,14 @@ def clean_clone_rebuild_qualified(*, producer_commit_sha: str | None, scratch_em
                 and official_retrieval_and_checksum_verified)
 
 
-def run(*, clean_clone_code_sha: str | None = None, clean_scratch_empty_at_start: bool = False,
+def run(*, outdir: pathlib.Path | None = None, clean_clone_code_sha: str | None = None, clean_scratch_empty_at_start: bool = False,
         clean_output_empty_at_start: bool = False,
         official_anonymous_retrieval_verified: bool = False) -> dict[str, object]:
-    panel_path = HERE / "DIAGNOSTIC_FEATURE_PANEL.csv.gz"
-    coverage_path = HERE / "ASOF_COVERAGE.csv.gz"
-    source_path = HERE / "SOURCE_MANIFEST.jsonl"
-    sample_path = HERE / "COMPACT_REAL_MULTI_SYMBOL_SAMPLE.csv.gz"
+    directory = outdir or HERE
+    panel_path = directory / "DIAGNOSTIC_FEATURE_PANEL.csv.gz"
+    coverage_path = directory / "ASOF_COVERAGE.csv.gz"
+    source_path = directory / "SOURCE_MANIFEST.jsonl"
+    sample_path = directory / "COMPACT_REAL_MULTI_SYMBOL_SAMPLE.csv.gz"
     sample_info = make_sample(panel_path, sample_path)
 
     panel_rows = collections.Counter()
@@ -401,7 +402,17 @@ def run(*, clean_clone_code_sha: str | None = None, clean_scratch_empty_at_start
         "full_rebuild_command": "python3 docs/research/atlas-red-e1b/build_research_panel.py --scratch /path/to/scratch/e1b --outdir docs/research/atlas-red-e1b --rejected-attempt /path/to/prior-parser-rejected-attempts.jsonl",
         "compact_sample_command": "python3 docs/research/atlas-red-e1b/summarize_research_outputs.py",
     }
-    output = HERE / "DATASET_MANIFEST.json"
+    if outdir is not None:
+        report["dataset"] = "ATLAS_RED_E1B_CORRECTED_V3"
+        report["model_effort_attestation"] = "Owner-selected GPT-6.1 Sol, High preferred; runtime model/effort UNVERIFIED; no subagents"
+        report["research_history_initialization"] = {
+            "method": "SEPARATE_EXPLICIT_FINITE_PREFIX_BOOTSTRAP_PER_DIAGNOSTIC_WINDOW",
+            "origins_utc_ns": [ns(2024, 1, 1), ns(2025, 1, 1)],
+            "ema": "unchanged repository recurrence; first-20/50 arithmetic-mean seed",
+            "not_claimed": "original live EMA checkpoint or silent production restart",
+            "gap_behavior": "in-window incomplete prefixes remain SOURCE_MISSING; never reseed",
+        }
+    output = directory / "DATASET_MANIFEST.json"
     output.write_text(json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     return report
 
@@ -409,12 +420,13 @@ def run(*, clean_clone_code_sha: str | None = None, clean_scratch_empty_at_start
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument("--outdir", type=pathlib.Path)
     parser.add_argument("--clean-clone-code-sha")
     parser.add_argument("--clean-scratch-empty-at-start", action="store_true")
     parser.add_argument("--clean-output-empty-at-start", action="store_true")
     parser.add_argument("--official-anonymous-retrieval-verified", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(run(clean_clone_code_sha=args.clean_clone_code_sha,
+    print(json.dumps(run(outdir=args.outdir, clean_clone_code_sha=args.clean_clone_code_sha,
                          clean_scratch_empty_at_start=args.clean_scratch_empty_at_start,
                          clean_output_empty_at_start=args.clean_output_empty_at_start,
                          official_anonymous_retrieval_verified=args.official_anonymous_retrieval_verified),

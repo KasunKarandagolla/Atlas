@@ -705,20 +705,35 @@ def panel_calendar_key(row: dict, cohort: list[str], index: int) -> int:
 
 
 def main_run(
-    panel: pathlib.Path, cache: pathlib.Path, proof_file: pathlib.Path, scratch: pathlib.Path, outdir: pathlib.Path
+    panel: pathlib.Path,
+    cache: pathlib.Path,
+    proof_file: pathlib.Path,
+    scratch: pathlib.Path,
+    outdir: pathlib.Path,
+    artifact_config: pathlib.Path | None = None,
 ) -> dict:
     artifacts = {}
-    for name, expected in PINS.items():
-        path = panel if name == panel.name else HERE / name
+    config = json.loads(artifact_config.read_text()) if artifact_config else {}
+    pins = config.get("artifact_sha256", PINS)
+    directory = artifact_config.parent if artifact_config else HERE
+    paths = config.get("artifact_paths", {})
+
+    def artifact_path(name):
+        return panel if name == panel.name else directory / paths.get(name, name)
+
+    if set(pins) != set(PINS):
+        raise ValueError("REQUIRED_PIN_SET_CHANGED")
+    for name, expected in pins.items():
+        path = artifact_path(name)
         actual = sha_file(path)
         if actual != expected:
             raise ValueError("PINNED_ARTIFACT_MISMATCH:" + name)
         artifacts[name] = actual
-    dataset = json.loads((HERE / "DATASET_MANIFEST.json").read_text())
+    dataset = json.loads(artifact_path("DATASET_MANIFEST.json").read_text())
     cohort = dataset["cohort_symbols"]
     if hashlib.sha256(("\n".join(cohort) + "\n").encode()).hexdigest() != COHORT_SHA:
         raise ValueError("COHORT_CHANGED")
-    manifest = [json.loads(line) for line in (HERE / "SOURCE_MANIFEST.jsonl").read_text().splitlines()]
+    manifest = [json.loads(line) for line in artifact_path("SOURCE_MANIFEST.jsonl").read_text().splitlines()]
     proof_rows = [json.loads(line) for line in proof_file.read_text().splitlines()]
     proofs = {r["url"]: r for r in proof_rows if r["status"] == "INDEPENDENT_ZIP_CHECKSUM_AND_CSV_MATCH"}
     if len(proofs) != 757:
@@ -739,7 +754,7 @@ def main_run(
         reader = csv.DictReader(handle)
         fields = reader.fieldnames
         sample_handle = stack.enter_context(
-            gzip.open(HERE / "COMPACT_REAL_MULTI_SYMBOL_SAMPLE.csv.gz", "rt", newline="")
+            gzip.open(artifact_path("COMPACT_REAL_MULTI_SYMBOL_SAMPLE.csv.gz"), "rt", newline="")
         )
         sample_rows = iter(csv.DictReader(sample_handle))
         sample_matches = 0
@@ -866,7 +881,7 @@ def main_run(
         for r in manifest
         if r.get("status") in ("VERIFIED", "MISSING_OBJECT_404")
     }
-    with contextlib.ExitStack() as stack, gzip.open(HERE / "ASOF_COVERAGE.csv.gz", "rt", newline="") as handle:
+    with contextlib.ExitStack() as stack, gzip.open(artifact_path("ASOF_COVERAGE.csv.gz"), "rt", newline="") as handle:
         reader = csv.DictReader(handle)
         writers = {}
         for symbol in cohort:
@@ -1045,6 +1060,8 @@ def main_run(
     report = {
         "schema": "ATLAS_E1B_INDEPENDENT_SCIENCE_V1",
         "reviewed_e1b_sha": REVIEWED,
+        "validated_version": config.get("version", "REVIEWED_D339D845"),
+        "validated_producer_sha": dataset.get("producer_commit_sha", "04f05ab641457ab6deee8456da2c2a77d84f5149"),
         "model_effort_attestation": "Owner-selected GPT-6.1 Sol; independent runtime identity/effort unavailable; no subagents",
         "pinned_artifacts": artifacts,
         "cohort_sha256": COHORT_SHA,
@@ -1086,6 +1103,7 @@ if __name__ == "__main__":
     p.add_argument("--source-proof", type=pathlib.Path, required=True)
     p.add_argument("--scratch", type=pathlib.Path, required=True)
     p.add_argument("--outdir", type=pathlib.Path, required=True)
+    p.add_argument("--artifact-config", type=pathlib.Path)
     a = p.parse_args()
-    r = main_run(a.panel, a.csv_cache, a.source_proof, a.scratch, a.outdir)
+    r = main_run(a.panel, a.csv_cache, a.source_proof, a.scratch, a.outdir, a.artifact_config)
     print(canonical({"counts": r["counts"], "comparisons": r["comparisons"]}))
