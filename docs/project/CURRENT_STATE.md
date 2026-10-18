@@ -1,3 +1,9 @@
+# G0/G1 offline capture engineering authorized — 19 October 2026 (Asia/Colombo)
+
+Isolated `research/atlas-red-g0-g1-capture-qualification-2026-10-18` from exact `19a2d91ebc1b136722e7baf18ea32b4b4d4cbe81`. [External scoped acceptance](docs/project/ACCEPTANCE_FEASIBILITY_19A2D91_2026-10-18.md) records the supplied feasibility-only PASS; new engineering candidate remains unaccepted. G0 contract: `docs/research/atlas-red-g0-g1/G0_MEASUREMENT_CONTRACT.md`, committed before benchmark-driven changes. Offline temporary-file work only; source/host/native T+5 unqualified. No subagents. OBSERVE; zero allocation/paid allowance; CAPITAL NO-GO.
+
+---
+
 # Economic evidence feasibility gate — 2026-10-18 (Asia/Colombo)
 
 **Genuine historical programme evaluation: NO-GO / NOT ESTIMABLE. Primary recommendation: PROSPECTIVE_OBSERVATION_REQUIRED.** Isolated `research/atlas-red-economic-feasibility-gate-2026-10-18`, source exact `4f00fa8afca4ac15b1cbf64519adf1f684b0589f`. [External acceptance](ACCEPTANCE_CAUSAL_REPLAY_4F00FA8_2026-10-18.md) records only owner-supplied PASS limited to that scoped causal replay correction. This new economic-feasibility checkpoint requires separate exact-SHA independent review; final remote SHA is supplied at delivery.

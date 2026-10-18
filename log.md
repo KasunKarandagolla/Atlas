@@ -1,3 +1,9 @@
+# G0/G1 offline capture engineering authorized — 19 October 2026 (Asia/Colombo)
+
+Isolated `research/atlas-red-g0-g1-capture-qualification-2026-10-18` from exact `19a2d91ebc1b136722e7baf18ea32b4b4d4cbe81`. [External scoped acceptance](docs/project/ACCEPTANCE_FEASIBILITY_19A2D91_2026-10-18.md) records the supplied feasibility-only PASS; new engineering candidate remains unaccepted. G0 contract: `docs/research/atlas-red-g0-g1/G0_MEASUREMENT_CONTRACT.md`, committed before benchmark-driven changes. Offline temporary-file work only; source/host/native T+5 unqualified. No subagents. OBSERVE; zero allocation/paid allowance; CAPITAL NO-GO.
+
+---
+
 # ATLAS engineering log
 
 ## Current checkpoint — P1 N1–N3 evidence-integrity correction — 2026-10-17
