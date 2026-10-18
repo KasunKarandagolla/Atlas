@@ -1,0 +1,234 @@
+{
+  "arms": {
+    "EMPIRICAL": "Same population; supported calibrated empirical prediction >12 bps",
+    "NO_OPEN": "No hypothetical new opening; programme expense tracked separately, not assumed zero operational cost",
+    "RIDGE_CONTEXT": "Same population; supported calibrated S1+context ridge prediction >12 bps; declared primary ML contrast versus empirical and S1-only, no winner promotion",
+    "RIDGE_S1": "Same population; supported calibrated S1-only ridge prediction >12 bps",
+    "S1_ALL": "All source-qualified S1 altcoin events; no S6 inclusion mask",
+    "S1_S6": "Same population, LONG/TOP or SHORT/BOTTOM only; unavailable S6 refuses"
+  },
+  "authority": "OBSERVE; zero bot allocation and paid allowance; capital NO-GO; research-only; no production strategy edits/promotion/P2/private access/orders/generation",
+  "clocks": {
+    "delayed_sensitivity": "T+30m reference; same baseline reference+4h common terminal, no horizon extension; separate research timing identity; no frozen action is executed after expiry",
+    "derived_processing_seconds": 1,
+    "diagnostic_reference": "First native M15 close strictly after T+lag+1s, normally T+15m; not executable entry",
+    "frozen_policy": "BLOCKED wherever deadline/source/eligibility/action facts fail; never delayed-fill substitution",
+    "native": "UTC completed H1/H4 context; every native M15 cutoff \u00d7 all 35 cohort symbols, including no-event/missing/unavailable/anchor rows",
+    "outcome_maturity": "Every required M15 observed/contiguous; terminal and replay availability strictly before October-1. Missing/censored never imputed zero. Actual source receipt UNKNOWN_NOT_CAPTURED_AT_ACQUISITION.",
+    "policy_deadline_seconds": 5,
+    "raw_replay_lags_seconds": [
+      5,
+      30,
+      60
+    ]
+  },
+  "cohort": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "SOLUSDT",
+    "XRPUSDT",
+    "ADAUSDT",
+    "DOGEUSDT",
+    "AVAXUSDT",
+    "LINKUSDT",
+    "DOTUSDT",
+    "LTCUSDT",
+    "BCHUSDT",
+    "ETCUSDT",
+    "TRXUSDT",
+    "XLMUSDT",
+    "ATOMUSDT",
+    "NEARUSDT",
+    "APTUSDT",
+    "ARBUSDT",
+    "OPUSDT",
+    "FILUSDT",
+    "UNIUSDT",
+    "INJUSDT",
+    "SUIUSDT",
+    "SEIUSDT",
+    "RUNEUSDT",
+    "ICPUSDT",
+    "CRVUSDT",
+    "AAVEUSDT",
+    "LDOUSDT",
+    "FTMUSDT",
+    "MATICUSDT",
+    "EOSUSDT",
+    "ALGOUSDT",
+    "HBARUSDT"
+  ],
+  "economics": {
+    "adverse": "Assumed fee6 bps each leg, spread4 and additional slippage4 bps, adverse funding-charge5 bps; delayed T+30m reference; same common terminal; deterministic 20% no-fill by event-hash modulo5. No future-price-based fill selection.",
+    "fixed": "Assumed entry taker 4 bps + exit taker 4 bps on their actual reference notionals (reuse fee_cash); assumed round-trip spread2 bps + additional slippage2 bps. Funding unknown: report before funding and fixed +/-5 bps funding-charge grid, zero only explicitly assumed.",
+    "gross": "No charges optimistic movement benchmark",
+    "intrabar": "No stop/target execution from OHLC; report conditional MFE/MAE only. Unknown ordering blocks exact frozen stop/management outcomes; adverse-first/bounds negative controls, never favorable automatic fill.",
+    "programme_expense": "Separate assumed 0.02 bps of the unit notional per original opportunity, including rejected/no-fill; hypothetical operating sensitivity only, not an actual bill. No double-charge.",
+    "risk": "Existing numerical sizing/evaluation chain called only with genuine complete input contracts. Adapter exposes explicit missing CandidateMeanInputsV1 fields and cannot mint legal candidate/receipt/EligibleSet. No synthetic account or false precise portfolio drawdown.",
+    "scope": "Unit-notional fixed-horizon price/arithmetic cash sensitivities, not qualified frozen exact-action simulation. No quote/mark/filter/risk/agent/management facts fabricated. Actual programme cash/capital return/drawdown NOT ESTIMABLE.",
+    "unit_notional_USDT": "1 per accepted opportunity; independent hypothetical units, no reinvestment or capital/risk qualification; summed cash is a paper sensitivity, not return on an account"
+  },
+  "features": {
+    "baseline": [
+      "side_long",
+      "episode_age_m15",
+      "signed_own_h1_log_return",
+      "m15_close_position",
+      "signed_distance_from_setup_extreme",
+      "m15_log_range",
+      "own_24h_return_volatility"
+    ],
+    "context": [
+      "aligned_s6_score",
+      "aligned_extreme_decile",
+      "signed_btc_h1_return",
+      "signed_eth_h1_return",
+      "aligned_btc_h4_trend",
+      "aligned_eth_h4_trend"
+    ],
+    "definition": "All source-backed and known by T+lag+1; no outcome/current forming bar, fitted future regime or eligibility revision. Range-zero close position=0.5; genuine zero returns remain zero. 24h volatility from 24 contiguous completed H1 log returns. Coarse high/low volatility slice uses training median only."
+  },
+  "metrics": {
+    "economic": [
+      "original and accepted means",
+      "sum of unit-notional modeled arithmetic cash",
+      "fees/spread/slippage/funding-assumption/programme-expense decomposition",
+      "median/q01/q05/q95 and downside",
+      "NO_OPEN comparator",
+      "count-matched thinning vs discrimination",
+      "overlap and opportunity-hours, not actual capital risk"
+    ],
+    "predictive": [
+      "bias(prediction-target)",
+      "mean_error",
+      "MAE",
+      "RMSE",
+      "direction-sign agreement (not probability)",
+      "empirical residual interval coverage",
+      "missing/OOD/support counts",
+      "same-row paired squared error differences"
+    ],
+    "primary": "4h; secondary1h, contextual24h not S1 exits; no horizon winner selection",
+    "slices": [
+      "LONG/SHORT",
+      "symbol",
+      "UTC ISO week",
+      "BTC/ETH H4 trend",
+      "S1 regime",
+      "training-median high/low 24h volatility",
+      "S6 extreme/middle/opposed",
+      "model-supported/OOD",
+      "first/second calendar half"
+    ]
+  },
+  "models": {
+    "M1": "Locked lightgbm==4.7.0 absent: BLOCKED BY ENVIRONMENT; no install or mismatched substitute; not fitted. Track A also lacks qualified cash targets.",
+    "calibration": "Only validation-supported mature residuals; additive bias and empirical residual q05/q95, RMSE. Exploratory residual support, not calibrated probability/conditional confidence certification. Final model bytes frozen before test inference; actual creation time separate from replay model availability.",
+    "empirical": "Arithmetic training mean with validation-only additive mean-residual calibration; no probability output",
+    "grade": "PRICE_DIAGNOSTIC_ONLY; separate target/artifact identity; cannot enter capital or production training",
+    "optional_foundations": "Do not run without supported existing exact weights/runtime/revisions; absent/unknown means blocked. No new weights/frameworks or paid generation.",
+    "ridge_baseline": "Existing mean_models squared-loss train-only standardization and ridge=1.0; reuse m0._solve numeric primitive; 7 S1 features; no hyperparameter search",
+    "ridge_context": "Same method/ridge, 13 fixed features (7+6 context); no model winner selection",
+    "support": "Train-only min/max envelope per model; finite inputs; outside support explicitly OOD, no extrapolated qualified prediction. Paired model metrics on common support; separate model coverage.",
+    "target": "4h side-signed simple return bps from delayed research reference; not net action cash/probability"
+  },
+  "negative_conditions": [
+    "future access or immature fit hard failure",
+    "label crossing boundary excluded",
+    "no test-informed threshold/model choice",
+    "duplicate episode hard failure",
+    "missing not zero; valid zero preserved",
+    "unsupported legal action blocked",
+    "same-close readiness and TTL enforced",
+    "no T+15m frozen fill substitution",
+    "ambiguous OHLC ordering never favorable",
+    "costs once; no-fill programme expense separate",
+    "diagnostic rows cannot qualify cash ML",
+    "outcome process cannot mutate sealed decisions",
+    "absent model/provider explicit blocked",
+    "calendar/source/programme denominators reconcile",
+    "old production/freezes/artifacts unchanged"
+  ],
+  "ordered_cohort_sha256": "b51f4a360e60bbb62fae982e4120ff3681b12a13ef8cd4a0aff01d761f6f03b5",
+  "partitions": {
+    "calibrator_replay_available": "2025-06-29T00:00:01Z",
+    "embargo_hours": 48,
+    "fit_replay_cutoff": "2025-05-01T00:00:00Z",
+    "next_untouched_period": "October 2025 onward is not acquired or evaluated; no refitting on revealed test outcomes",
+    "test_origins": [
+      "2025-07-01T00:00:00Z",
+      "2025-10-01T00:00:00Z"
+    ],
+    "train_label_boundary": "Before each train interval exclusive end; retain only mature primary 4h labels; also purge final 48h origins of each train interval.",
+    "train_origins": [
+      [
+        "2024-03-01T00:00:00Z",
+        "2024-07-01T00:00:00Z"
+      ],
+      [
+        "2025-03-01T00:00:00Z",
+        "2025-05-01T00:00:00Z"
+      ]
+    ],
+    "validation_label_boundary": "2025-06-28T00:00:00Z exclusive; purge last 48h origins",
+    "validation_origins": [
+      "2025-05-03T00:00:00Z",
+      "2025-06-28T00:00:00Z"
+    ]
+  },
+  "period_selection": {
+    "candidate": "2025-07-01T00:00:00Z through 2025-10-01T00:00:00Z exclusive",
+    "rule": "First chronological quarter after previously inspected June 2025. If known outcome/selection exposure is found BEFORE acquisition, take earliest later entire quarter with no identified use; otherwise retain July\u2013September. Never inspect returns for selection. Audit found no such use. No fallback after outcomes."
+  },
+  "population": {
+    "denominators": "Original N and every inclusion/rejection/unavailable/no-fill/censor count. Full N means NOT ESTIMABLE with accepted censors; all arms also compared on identical common complete C. Model-paired predictive metrics on common support, and original-population controls with unsupported predictions refusing opening.",
+    "primary": "Source-complete altcoin first events, BTC/ETH anchors excluded from hypothetical actions. Requires full causal 24h own volatility feature and observed context for model comparisons. Never infer exchange eligibility.",
+    "roles": "S1 plus S6/BTC/ETH price context only; audit all S1\u2013S8/Path B/risk/management/B components. OHLC-capable but unintegrated mechanisms explicitly named; no complete-programme claim.",
+    "unit": "One verified unique S1 first-trigger event from accepted corrected finite-prefix rules; all native cutoffs retained in calendar ledger. All original events/anchors/missingness/refusals preserved. No repeated episode weight."
+  },
+  "registered_local": "2026-10-18T15:30:10.957067+05:30",
+  "seals": {
+    "decision_boundary": "Decision pure function receives only immutable availability-filtered prefix/snapshot and prefit model; no outcome callback/store/path. Attempts to request >T or >decision readiness hard fail. Source orchestration may hold archives but cannot expose later data through the decision interface.",
+    "one": "Commit/push protocol + prior-source pins before new test payload acquisition/outcome access. A metadata-only BTC July checksum was read at Gate A, no prices.",
+    "publication_limit": "Git sequence proves publication order, not absence of earlier human exposure. Code fixes before reveal require tests/new pre-outcome code seal; no scientific rule changes after reveal.",
+    "two": "Commit/push calculation entrypoint hashes, model artifacts, complete test decisions/refusals and calendar identity before separate outcome CLI runs. Outcome stage verifies committed hashes and cannot alter decision input/model/policy."
+  },
+  "source_scope": {
+    "July1_context": "Use Jan-1 2025 finite prefix continuously through Sep; no reseed at test boundary or in-window gap. Unknown original continuous-live checkpoint remains UNVERIFIED.",
+    "base": "https://data.binance.vision/data/futures/um/monthly/klines",
+    "checksum": "Exact official sibling .CHECKSUM SHA-256/name, ZIP CRC/member/schema, CSV SHA-256, duplicate/order/native calendar/finite OHLCV checks before accepted use",
+    "max_new_zip_objects": 210,
+    "maximum_attempts_per_URL": 2,
+    "maximum_new_payload_plus_metadata_bytes": 134217728,
+    "maximum_single_response_bytes": 20971520,
+    "native_intervals": [
+      "1h",
+      "15m"
+    ],
+    "new_months": [
+      "2025-07",
+      "2025-08",
+      "2025-09"
+    ],
+    "no_new_sources": [
+      "funding",
+      "OI",
+      "books",
+      "news",
+      "weights",
+      "private APIs"
+    ],
+    "reuse": "Existing 757 verified objects/proofs; H1 Jan\u2013June 2025 for current finite prefix, June M15 for test seed, 2024/2025 development as already retained. No later source expansion. Missing objects remain in original cohort.",
+    "venue": "BINANCE USD-M linear USDT klines",
+    "workers": 2
+  },
+  "source_sha": "918d233b2501319bc031d679b3d9f5647ae13156",
+  "stop_rule": "One frozen protocol; no test optimization/retraining, new periods or model variants; report all negatives/blocks, push exact-SHA candidate, independent review, STOP.",
+  "test_design_label": "SEALED_HISTORICAL_REPLAY; human prior exposure cannot be ruled out",
+  "uncertainty": {
+    "limitations": "Only one quarter, inspected development and possible human exposure; fewer than20 independent block equivalents is insufficient robust inference; report exploratory intervals only, no capital/value pass. Slices descriptive, no multiplicity-adjusted discovery claim.",
+    "method": "10000 paired calendar block resamples of original complete event sums/counts; same draws across arms; UTC Monday one-week and fixed two-week blocks; seed18102026. Ratio-of-sums means, same market calendar; not IID events."
+  },
+  "version": "ATLAS_SEALED_HISTORICAL_ML_PROTOCOL_V1"
+}

@@ -1,0 +1,73 @@
+{
+  "administrative_acceptance_sha": "3166f917102e319333b6a9b77188ec69bf4dcb12",
+  "anonymous_source_metadata_check": {
+    "anonymous": true,
+    "authorization_headers_supplied": false,
+    "https_status": 200,
+    "market_payload_read": false,
+    "published_checksum_and_name": "3f471677b97cd3c5c21e9c1420bd7d58c1fe4041a3d2e195369277298ca01ea2  BTCUSDT-1h-2025-07.zip",
+    "response_bytes": 89,
+    "response_sha256": "27154e1b2ad11a1d63f2776b00d3e05c6d954390eca78580ff965316c72fdc0b",
+    "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2025-07.zip.CHECKSUM"
+  },
+  "environment_modules": {
+    "lightgbm": "ABSENT",
+    "nautilus_trader": "ABSENT",
+    "numpy": "PRESENT",
+    "torch": "ABSENT",
+    "transformers": "ABSENT"
+  },
+  "exposure_audit": {
+    "human_exposure": "UNKNOWN; Git/history search cannot prove no person or model has seen public historical outcomes.",
+    "known_development": "March\u2013June 2024/2025 are previously inspected; authorized training/development only.",
+    "selection": "Use first candidate July\u2013September 2025; no identified prior research contamination requiring later fallback; no outcome values used in selection.",
+    "test_design_label": "SEALED_HISTORICAL_REPLAY; not demonstrably pristine untouched holdout",
+    "tracked_research_text_matches": "Only prior exclusive July-1 boundaries found; no July\u2013September 2025 study found. All live branch heads and related history reviewed. Existing workspace market/archive/weight filenames searched; no July\u2013September source/result files or real foundation weights found."
+  },
+  "freeze_read_scope": "All three original files read in full this session, in bounded line ranges; bytes and Git identity verified. Canonical/source authority and relevant implementation/evidence sections inspected; unavailable original private packets not claimed as read.",
+  "freeze_sha256": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+  },
+  "full_programme": "NOT ESTIMABLE: full universe, sources, original receipt, exact risk-sized action and management, qualified agent, execution and cash records missing.",
+  "pinned_prior_artifacts_and_reused_code": {
+    "docs/research/atlas-red-e1b/SOL_SOURCE_CHECKS.jsonl": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+    "docs/research/atlas-red-e1b/SOURCE_MANIFEST.jsonl": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+    "docs/research/atlas-red-e1b/build_research_panel.py": "de30c90461a16f4cdf8fea04df34d32c22dc2d4a41ada3fb04d9d160efe1651b",
+    "docs/research/atlas-red-e1b/independent_sol_reproduction.py": "ccb5c323d0e830c2ee68a64b6351fb574da548488ccc3ac4d3c4351c3be50a36",
+    "docs/research/atlas-red-e1b/study_s1_s6.py": "13f00da94fc597080326221bca10404183dd250ceccbfb1b346acec760d74ba8",
+    "docs/research/atlas-red-e1b/v3-corrected/A_PRICE_PROXIES.csv.gz": "130d8d5e8ed19cc6a4a1f7eb2468e9531fdba830a0dc278d94b79a439b19f2e1",
+    "docs/research/atlas-red-e1b/v3-corrected/B_PRICE_PROXIES.csv.gz": "e00ad707aee8f316270e3d14b8c35b86539291f7cb87228ed4a87421550673d8",
+    "docs/research/atlas-red-e1b/v3-corrected/DATASET_MANIFEST.json": "b7c7250af62057159359a26c3873f84b59eaf8223dd6f3de23cd84014977145e",
+    "docs/research/atlas-red-e1b/v3-corrected/FIRST_EVENT_FEATURES.csv.gz": "2874b7acde4bc6e895fa81fa64ddcb5ab7dc33bf27a2a1ed98b58656c0f31001",
+    "src/atlas/v2/science/costs.py": "1f6dc19d57a1e6d5454ce287291885b700c472ccc9418593ba09228e4a2a3dd1",
+    "src/atlas/v2/science/m0.py": "8554fce7f8cb30885584939e05e5f47f88b0b626d9057b8e2f311dfbcadd2c0a",
+    "src/atlas/v2/science/mean_calibration.py": "1cacdd788de111e68151ac47ce7e7f6f4433c53277a0b154859d737a15c08503",
+    "src/atlas/v2/science/mean_evaluation.py": "143814a009c16242f254530d901b2a3c46945252258908dbace96df3c62c42d7",
+    "src/atlas/v2/science/mean_evaluation_validation.py": "8aa31c6344a1d9434b0745bfde3d3a2cdf500bc8577a6f58c7f524ca84c4b9f6",
+    "src/atlas/v2/science/mean_models.py": "e8f4de520625262c6a54f4d7cb02ff8dade30cf34ae698537d789d1fd88c3da6",
+    "src/atlas/v2/science/mean_research.py": "d67e1ebcf40e6819f91d7f1e4c9503e76dbe60e125e2e808bfb07fda6558caf4",
+    "src/atlas/v2/science/mean_scenarios.py": "fbaa156390cfe7de1fb1f307bc7191072e8c95cfd286600ee35de0dd13131dcd",
+    "src/atlas/v2/science/outcomes.py": "49a60f03ef5142beeef76dec2649bb2784ed5ae0bce521e881091cba4be490d9"
+  },
+  "prior_source_binding_recheck": {
+    "archive_downloads": 0,
+    "archive_payload_bytes": 55549936,
+    "checksum_proof_sha256": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+    "historical_rejected_bytes": "UNKNOWN",
+    "network_requests": 0,
+    "retained_historical_404_objects": 13,
+    "retained_parser_rejected_attempts": 420,
+    "source_manifest_sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+    "verified_cached_zip_checksum_csv_objects": 757
+  },
+  "recorded_local": "2026-10-18T15:30:10.956460+05:30",
+  "runtime_attestation": "Owner-selected GPT-6.1 Sol / High; independent runtime identity/effort UNVERIFIED; no subagents.",
+  "starting_sha": "918d233b2501319bc031d679b3d9f5647ae13156",
+  "status": "Feasible bounded partial-programme sealed historical-price replay; complete frozen-policy executability blocked; no new test market payload read at this gate.",
+  "track_A": "NOT ESTIMABLE: no genuine exact-action cash/source/eligibility/fill/cost/validation population in E1B. Preserve MeanTrainingRowV1 refusals; no fake CAUSAL_REPLAY/QUALIFIED_MODELLED receipts.",
+  "track_B": "Feasible: separate price-only empirical/ridge diagnostics, existing squared-loss numerical method and pivoted solver, causal source features and delayed research target; no production model/target artifacts.",
+  "track_C": "BLOCKED BY ENVIRONMENT: no supported local weights/runtime/exact revisions demonstrated; unknown pretraining cutoff; no downloads/paid inference.",
+  "version": "ATLAS_HISTORICAL_BLIND_ML_GATE_A_V1"
+}
