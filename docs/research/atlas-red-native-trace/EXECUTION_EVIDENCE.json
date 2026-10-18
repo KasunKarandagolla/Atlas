@@ -1,0 +1,415 @@
+{
+  "authority": "ZERO",
+  "branch": "research/atlas-red-native-decision-trace-2026-10-18",
+  "checks": [
+    {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/ruff",
+        "check",
+        "src",
+        "tests/research",
+        "tests/p1/test_native_trace_bridge.py",
+        "docs/research/atlas-red-native-trace"
+      ],
+      "cwd": "/workspace/work/atlas-native-trace",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "All checks passed!\n"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "compileall",
+        "-q",
+        "src",
+        "tests/research",
+        "tests/p1/test_native_trace_bridge.py",
+        "docs/research/atlas-red-native-trace"
+      ],
+      "cwd": "/workspace/work/atlas-native-trace",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "lock",
+        "--check",
+        "--offline"
+      ],
+      "cwd": "/workspace/work/atlas-native-trace",
+      "exit_code": 0,
+      "stderr": "Using CPython 3.12.14 interpreter at: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\nResolved 39 packages in 1ms\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "pip",
+        "check",
+        "--python",
+        "/workspace/.venvs/atlas/bin/python"
+      ],
+      "cwd": "/workspace/work/atlas-native-trace",
+      "exit_code": 0,
+      "stderr": "Using Python 3.12.14 environment at: /workspace/.venvs/atlas\nChecked 17 packages in 0.38ms\nAll installed packages are compatible\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "sha256sum",
+        "-c",
+        "MANIFEST.sha256"
+      ],
+      "cwd": "/workspace/work/atlas-native-trace/algorithms",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "ACCEPTANCE_REGISTER.csv: OK\nATLAS_ALGORITHM.pdf: OK\nATLAS_OPERATIONAL_RECONCILIATION_AMENDMENT_PROPOSED.md: OK\nATLAS_SYSTEM_DESIGN.md: OK\nAUTHORITY_RECONCILIATION.md: OK\nCAPABILITY_REUSE_AUDIT.csv: OK\nCODEX_SESSION_PROMPTS.md: OK\nDESIGN_DECISIONS.md: OK\nDOCUMENTATION_VALIDATION.json: OK\nIMPLEMENTATION_PLAN.md: OK\nOWNER_SUMMARY.md: OK\nREADME.md: OK\nREPOSITORY_AUDIT.md: OK\nREQUIREMENTS_AND_ACCEPTANCE.md: OK\nSHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md: OK\nSOURCE_AUTHORITY_MANIFEST.json: OK\nSURGICAL_CHANGE_MAP.md: OK\nrender_algorithm_pdf.py: OK\n"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/workspace/work/atlas-native-trace",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "code_ref": "1ee8b1780a5e24b4defdbfa4302066de7d4a8b423915ff73f80bc3c3233c32a7",
+  "commands": {
+    "environment": {
+      "PYTHONPATH": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages"
+    },
+    "impacted_tests": [
+      "tests/v2/test_session014_core.py",
+      "tests/v2/test_session014_s1.py",
+      "tests/v2/test_session016_s2.py",
+      "tests/v2/test_session021_s6.py",
+      "tests/v2/test_session037_strategy_prefix.py",
+      "tests/v2/test_session037_feature_prefix.py",
+      "tests/v2/test_session041_strategy_surface.py",
+      "tests/v2/test_session041_s6_cohort.py",
+      "tests/v2/test_session041_s6_action_contract.py",
+      "tests/v2/test_session047_decision_brief.py",
+      "tests/p1/test_mean_evaluation.py",
+      "tests/p1/test_mean_risk_cash.py",
+      "tests/p1/test_mean_selection.py",
+      "tests/p1/test_evidence_integrity.py",
+      "tests/data/test_prefix_and_archive.py",
+      "tests/contract/test_v1_golden_baseline.py"
+    ],
+    "new_tests": [
+      "tests/research/test_atlas_native_trace.py",
+      "tests/p1/test_native_trace_bridge.py"
+    ],
+    "pytest_prefix": [
+      "/workspace/.venvs/atlas/bin/python",
+      "-m",
+      "pytest"
+    ],
+    "pytest_suffix": [
+      "-ra"
+    ]
+  },
+  "development_repairs": [
+    "Initial wrong verify_member import, missing historical rejected-row symbol guard and H4 source identity property were corrected before successful replay.",
+    "Initial negative fixture constructed an invalid raw final-bar timestamp before reaching its intended guard; corrected fixture. Subsequent missing helper import corrected.",
+    "P1 negative fixture attempted to mutate derived members property; changed to a genuine unindexed changed typed output.",
+    "Two audit-transport tests initially missed json import; corrected.",
+    "Leading-prefix enforcement added and tested before final regenerated seal. One intermediate multiline guard syntax error corrected before final run.",
+    "Development traces/seals were superseded during instrumentation verification, with no market/cash outcomes or new holdout evaluation."
+  ],
+  "external_acceptance": "Owner supplied PASS limited to causal historical price diagnostics, quarantined ML research and conditional cost sensitivities; exact f9de368 only",
+  "final_replay_resources": {
+    "adapter_started_actual_ns": 1792331924410677760,
+    "max_rss_kib": 625080,
+    "network_requests": 0,
+    "ops_sqlite_bytes": 60059648,
+    "output_bytes": 17984774,
+    "persistence_metrics": {
+      "active_phase": "IDLE",
+      "authority": "ZERO",
+      "begin_duration_ns": 3235,
+      "begin_failed": false,
+      "commit_duration_ns": 465314,
+      "max_commit_duration_ns": 23330282,
+      "phase_observed_at_ns": 1792332019400648378,
+      "phase_started_monotonic_ns": 69617432568809,
+      "rollback_duration_ns": 0,
+      "row_and_archive_duration_ns": 62081,
+      "transaction_count": 2803,
+      "transaction_failed": false,
+      "transaction_observed_at_ns": 1792332019401116346,
+      "version": "OPS_PERSISTENCE_TIMING_V1"
+    },
+    "publication_span_actual": {
+      "maximum_index_publication_ns": 1792332019400258424,
+      "minimum_index_publication_ns": 1792331924427750271
+    },
+    "wall_seconds": 100.08419254299952
+  },
+  "network": {
+    "GitHub_read_write": "AUTHORIZED_USED",
+    "credential_values_read": false,
+    "managed_policy": "restricted/enforced/current at start",
+    "market_http_requests": 0,
+    "paid_calls": 0,
+    "private_exchange_requests": 0
+  },
+  "observed_test_log_evidence": {
+    "native-trace-39-tests.log": {
+      "sha256": "7d89de9b0062fc3f14790738c5f2c4bd48e42ce522328ad7ed8b52e99d35deba",
+      "summary_lines": [
+        "39 passed in 12.98s"
+      ]
+    },
+    "native-trace-final-tests.log": {
+      "sha256": "bb87b49312265fe8079a0e51f9e0043f5c96d0bc27121e7acef4c35f9b20be86",
+      "summary_lines": [
+        "38 passed in 12.58s"
+      ]
+    },
+    "native-trace-impacted-tests.log": {
+      "sha256": "b98ffbe14a35cac18491ffc386030410412e29d594fd6454fdefa1ad13871cb3",
+      "summary_lines": [
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_native_public_locator_validates_raw_hash_and_exact_archive",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_actual_loader_preserves_native_history_and_services_compose",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_loader_reuses_exact_production_causal_bar_index",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_loader_binds_btc_proxy_to_prepared_same_venue_cohort",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_funding_alone_and_unqualified_flow_cannot_confirm",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s4_baseline_requires_three_qualified_prior_exact_samples",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s4_baseline_rejects_index_body_that_differs_from_typed_fit",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_prepared_s5_composes_with_actual_context_publication_and_receipt",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_prepared_s5_rejects_future_raw_source_despite_late_delivery",
+        "FAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+        "15 failed, 164 passed in 180.46s (0:03:00)"
+      ]
+    },
+    "native-trace-new-tests-green.log": {
+      "sha256": "521af6ec2cc6107f33790dbd4a3119ff329bf7c758ae477777818c022b46eb98",
+      "summary_lines": [
+        "34 passed in 10.18s"
+      ]
+    },
+    "native-trace-new-tests-with-audit.log": {
+      "sha256": "6464464aa833490251761a6e6707833ed52009f30e5b3e357e3d054e3a7429fe",
+      "summary_lines": [
+        "FAILED tests/research/test_atlas_native_trace.py::test_lossless_transport_assembly_and_bad_existing_file_refused",
+        "FAILED tests/research/test_atlas_native_trace.py::test_bad_sealed_code_and_missing_transport_part_fail_before_audit",
+        "2 failed, 36 passed in 13.39s"
+      ]
+    },
+    "native-trace-new-tests.log": {
+      "sha256": "81d62381e7db32d3c89c6ce40ef9869febf10184b33ecd7f0bb09fd1bdc93cfc",
+      "summary_lines": [
+        "FAILED tests/p1/test_native_trace_bridge.py::test_native_p1_forged_output_not_in_owning_index_refused",
+        "1 failed, 33 passed in 10.61s"
+      ]
+    },
+    "native-trace-parent-failures.log": {
+      "sha256": "3444733ddd93e073cf75773d0a979e8a1e2cd4b0f370f52ea98fa733bf90f239",
+      "summary_lines": [
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_native_public_locator_validates_raw_hash_and_exact_archive",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_actual_loader_preserves_native_history_and_services_compose",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_loader_reuses_exact_production_causal_bar_index",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_loader_binds_btc_proxy_to_prepared_same_venue_cohort",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_funding_alone_and_unqualified_flow_cannot_confirm",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s4_baseline_requires_three_qualified_prior_exact_samples",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s4_baseline_rejects_index_body_that_differs_from_typed_fit",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_prepared_s5_composes_with_actual_context_publication_and_receipt",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_prepared_s5_rejects_future_raw_source_despite_late_delivery",
+        "FAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+        "15 failed in 2.09s"
+      ]
+    },
+    "native-trace-tests-final.log": {
+      "sha256": "3f47a91ce46d78878610258ee7a8952deb0e4526e200a025dcb7411332bf8109",
+      "summary_lines": [
+        "FAILED tests/research/test_atlas_native_trace.py::test_future_incomplete_and_wrong_source_prefix_refused[future_close]",
+        "1 failed, 29 passed in 1.95s"
+      ]
+    },
+    "native-trace-tests.log": {
+      "sha256": "e7a7198be8d789ad65a557f348bf711595291dd09b3c701a57eee1fb88e915ac",
+      "summary_lines": [
+        "FAILED tests/research/test_atlas_native_trace.py::test_future_incomplete_and_wrong_source_prefix_refused[future_close]",
+        "1 failed, 29 passed in 2.34s"
+      ]
+    }
+  },
+  "owner_selected_model": "GPT-6.1 Sol High",
+  "parent_failure_node_ids": [
+    "tests/v2/test_session041_strategy_surface.py::test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication",
+    "tests/v2/test_session041_strategy_surface.py::test_native_public_locator_validates_raw_hash_and_exact_archive",
+    "tests/v2/test_session041_strategy_surface.py::test_actual_loader_preserves_native_history_and_services_compose",
+    "tests/v2/test_session041_strategy_surface.py::test_loader_reuses_exact_production_causal_bar_index",
+    "tests/v2/test_session041_strategy_surface.py::test_loader_binds_btc_proxy_to_prepared_same_venue_cohort",
+    "tests/v2/test_session041_strategy_surface.py::test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later",
+    "tests/v2/test_session041_strategy_surface.py::test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs",
+    "tests/v2/test_session041_strategy_surface.py::test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency",
+    "tests/v2/test_session041_strategy_surface.py::test_s5_funding_alone_and_unqualified_flow_cannot_confirm",
+    "tests/v2/test_session041_strategy_surface.py::test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason",
+    "tests/v2/test_session041_strategy_surface.py::test_s4_baseline_requires_three_qualified_prior_exact_samples",
+    "tests/v2/test_session041_strategy_surface.py::test_s4_baseline_rejects_index_body_that_differs_from_typed_fit",
+    "tests/v2/test_session041_strategy_surface.py::test_prepared_s5_composes_with_actual_context_publication_and_receipt",
+    "tests/v2/test_session041_strategy_surface.py::test_prepared_s5_rejects_future_raw_source_despite_late_delivery",
+    "tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures"
+  ],
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "preservation": {
+    "acceptance_state_columns_unchanged": true,
+    "all_preexisting_production_files_byte_identical": 308,
+    "append_only_log_prefixes": true,
+    "canonical_design_pdf_locks_unchanged": true,
+    "freeze_sha256": {
+      "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "sole_src_addition": "src/atlas/v2/runtime/native_research_trace.py"
+  },
+  "protocol_sha256": "725b76e66d690c6e5838faa52a4c4860a1c628f7d8e3dcb218d223b1bf749e2e",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "recorded_at": "2026-10-18T19:39:31.609144+05:30",
+  "remaining": [
+    "TEST GATE exact-SHA independent review and full qualified native integration",
+    "UNVERIFIED actual receipt/health/PIT eligibility/original live state and runtime/host identity",
+    "BLOCKED BY ENVIRONMENT PyArrow/Nautilus and optional ML runtimes",
+    "NOT ESTIMABLE qualified historical actions/Agent B/management/fills/costs/programme economics"
+  ],
+  "remote_tip_chronology_top6": [
+    {
+      "committed_at": "2026-10-18T16:29:12+05:30",
+      "epoch": 1792321152,
+      "ref": "refs/heads/research/atlas-red-historical-blind-ml-2026-10-18",
+      "sha": "f9de3686709123f2f9770a7d66ac52ca5450200a",
+      "subject": "research: report sealed historical ML and economic sensitivity evidence"
+    },
+    {
+      "committed_at": "2026-10-18T14:21:52+05:30",
+      "epoch": 1792313512,
+      "ref": "refs/heads/research/atlas-red-e1b-defects-synergy-2026-10-18",
+      "sha": "918d233b2501319bc031d679b3d9f5647ae13156",
+      "subject": "research: report bounded S1-S6 historical evidence and preserve economic gates"
+    },
+    {
+      "committed_at": "2026-10-18T11:23:35+05:30",
+      "epoch": 1792302815,
+      "ref": "refs/heads/research/atlas-red-e1b-sol-reproduction-2026-10-18",
+      "sha": "c29dfc2c2ae6cb903b53f72fdf2d457c9a5bb32d",
+      "subject": "research: reproduce E1B diagnostics and document scientific evidence gates"
+    },
+    {
+      "committed_at": "2026-10-18T10:30:36+05:30",
+      "epoch": 1792299636,
+      "ref": "refs/heads/fix/atlas-red-e1b-first-trigger-censoring-2026-10-18",
+      "sha": "d339d845a417e36b9a83c83b4f366e74fd207474",
+      "subject": "Record E1B trigger censor evidence and reconciliation"
+    },
+    {
+      "committed_at": "2026-10-17T20:59:33Z",
+      "epoch": 1792270773,
+      "ref": "refs/heads/fix/atlas-red-e1b-signal-time-integrity-2026-10-18",
+      "sha": "ab645e792fe6593d9fb206954585b2996673f96c",
+      "subject": "docs: log E1B R1 R2 correction evidence"
+    },
+    {
+      "committed_at": "2026-10-17T20:13:29Z",
+      "epoch": 1792268009,
+      "ref": "refs/heads/research/atlas-red-binance-cohort-e1b-2026-10-18",
+      "sha": "fa6085bdbe456ffa07ac59ce8c51afacb65ecdc5",
+      "subject": "docs: log E1B cohort research evidence"
+    }
+  ],
+  "repeat": {
+    "initial_wrapper": {
+      "arguments": [
+        "--old-csv",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--old-zip",
+        "/workspace/work/e1b-sol-official-zips",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache",
+        "--outdir",
+        "docs/research/atlas-red-native-trace/evidence",
+        "--db",
+        "/workspace/work/native-trace-pinned.sqlite"
+      ],
+      "entrypoint": "/workspace/work/atlas-native-trace/docs/research/atlas-red-native-trace/replay.py",
+      "exit_code": 0,
+      "max_rss_kib": 625080,
+      "user_seconds": 97.693916,
+      "wall_seconds": 100.50855161299114
+    },
+    "network_requests": 0,
+    "post_seal_audit_equal_except_actual_publication": true,
+    "repeat_wrapper": {
+      "arguments": [
+        "--old-csv",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--old-zip",
+        "/workspace/work/e1b-sol-official-zips",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache",
+        "--outdir",
+        "/workspace/work/native-trace-pinned-repeat",
+        "--db",
+        "/workspace/work/native-trace-pinned-repeat.sqlite"
+      ],
+      "entrypoint": "/workspace/work/atlas-native-trace/docs/research/atlas-red-native-trace/replay.py",
+      "exit_code": 0,
+      "max_rss_kib": 625100,
+      "user_seconds": 98.583632,
+      "wall_seconds": 100.88130549600464
+    },
+    "trace_and_seal_byte_identical": true,
+    "trace_sha256": "e4117caf8700f68987506d1cb6801fb1b6d262ac68d964d36092cea41d49e220"
+  },
+  "runtime_model_effort_attestation": "UNVERIFIED; no independent runtime identity/effort field",
+  "scope": "BOUNDED_NATIVE_READ_ONLY_TRACE_NOT_COMPLETE_QUALIFIED_ALGORITHM_REPLAY",
+  "source_object_states": {
+    "MISSING_OBJECT_404": 13,
+    "PARSER_REJECTED_PRECEDING_ATTEMPT": 210,
+    "VERIFIED": 302
+  },
+  "source_sha": "f9de3686709123f2f9770a7d66ac52ca5450200a",
+  "subagents_used": false,
+  "test_results": {
+    "full_suite": "NOT_RUN_NOT_CERTIFIED",
+    "impacted_existing": {
+      "failed": 15,
+      "passed": 164,
+      "skipped": 0,
+      "wall_seconds": 180.46
+    },
+    "new": {
+      "failed": 0,
+      "passed": 39,
+      "skipped": 0,
+      "wall_seconds": 12.98
+    },
+    "same_parent_failures": {
+      "failed": 15,
+      "nautilus_missing": 1,
+      "pyarrow_missing": 14,
+      "source_sha": "f9de3686709123f2f9770a7d66ac52ca5450200a",
+      "wall_seconds": 2.09
+    }
+  },
+  "trace_sha256": "e4117caf8700f68987506d1cb6801fb1b6d262ac68d964d36092cea41d49e220"
+}

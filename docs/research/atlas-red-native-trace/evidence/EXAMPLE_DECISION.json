@@ -1,0 +1,150 @@
+{
+  "authority": "ZERO",
+  "code_ref": "1ee8b1780a5e24b4defdbfa4302066de7d4a8b423915ff73f80bc3c3233c32a7",
+  "decision_id": "6db4eca2ba6f46ac3908876de3572c1d168033c81d2cf657c376adf03ae3a161",
+  "instrument_key": {
+    "base_asset_id": "BNB",
+    "contract_revision": "d4b545b2923eeb840116cfd49124d0716be39513604275eb4b758d9bd543e6db",
+    "environment": "MAINNET",
+    "native_symbol": "BNBUSDT",
+    "product": "LINEAR_PERPETUAL",
+    "quote_asset": "USDT",
+    "schema_version": 1,
+    "settlement_asset": "USDT",
+    "venue": "BINANCE"
+  },
+  "slot_ns": 1751328000000000000,
+  "source_ref": "3cab1c3f8518068e2046e0511da9992d85ff4afc1f929fbbc1ddd105951bdc4f",
+  "stages": {
+    "economics": {
+      "candidate_refs": [],
+      "cash_label": null,
+      "exact_actions": [],
+      "missing_CandidateMeanInputsV1": [
+        "candidate",
+        "product",
+        "policy",
+        "fees",
+        "funding",
+        "risk",
+        "model",
+        "calibration",
+        "scenarios",
+        "execution_bias",
+        "numerical",
+        "incremental_programme",
+        "context"
+      ],
+      "native_invoked": false,
+      "status": "NOT ESTIMABLE"
+    },
+    "features": {
+      "deadline_status": "MISSED",
+      "original_m15_deadline_ns": 1751328005000000000,
+      "price_observation_ref": "1951c0da0bbbf4c163c78845542a9b54b4017feba913e3cef1fa6cceda5f0923",
+      "ref": "cf54e1890cc34f3737e19e6b66a8decbb9ed567a2c2714b51210d4e060eadeb8",
+      "replay_processing_ready_ns": 1751328007000000000,
+      "status": "OBSERVED"
+    },
+    "management": {
+      "entry": null,
+      "management_policy": null,
+      "outcome_link": null,
+      "reason": "NO_ELIGIBLE_ACTION_OR_GENUINE_POSITION",
+      "status": "NOT ESTIMABLE",
+      "stop": null
+    },
+    "selection": {
+      "agent_decision": null,
+      "brief": null,
+      "eligible_set": null,
+      "fallback": null,
+      "reason": "NO_QUALIFIED_ELIGIBLE_SET_OR_AGENT_B",
+      "status": "SOURCE_UNAVAILABLE"
+    },
+    "source": {
+      "current_m15_replay_visible_ns": 1751328005000000000,
+      "current_m1_source_status": "NOT_CAPTURED",
+      "declared_raw_bar_delay_ns": 5000000000,
+      "instrument_revision_grade": "RESEARCH_ARCHIVE_SYMBOL_NOT_PIT_CONTRACT_PROOF",
+      "market_cutoff_ns": 1751328000000000000,
+      "original_receipt": "UNKNOWN_NOT_CAPTURED",
+      "ref": "3cab1c3f8518068e2046e0511da9992d85ff4afc1f929fbbc1ddd105951bdc4f",
+      "source_health": "UNVERIFIED"
+    },
+    "strategies": {
+      "PATH_B": {
+        "due": null,
+        "native_clock": "BOUNDED_REGISTERED_RESEARCH_SCREEN",
+        "native_invoked": false,
+        "reason": "REGISTERED_SCREEN_POPULATION_AND_ADMISSION_UNAVAILABLE",
+        "status": "SOURCE_UNAVAILABLE"
+      },
+      "S1": {
+        "due": true,
+        "native_clock": "CONFIRMED_15M_CLOSE",
+        "native_coordinator_invoked": false,
+        "origin_ref": "dd073b9a5c49f2b98647e0932640545c84296a9e6152862cda491e2128d035fa",
+        "policy_hash": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0",
+        "price_observation_ref": "1951c0da0bbbf4c163c78845542a9b54b4017feba913e3cef1fa6cceda5f0923",
+        "reason": "POINT_IN_TIME_UNIVERSE_HEALTH_EVENT_BBO_MARK_UNAVAILABLE",
+        "status": "SOURCE_UNAVAILABLE"
+      },
+      "S2": {
+        "due": true,
+        "native_clock": "CONFIRMED_15M_CLOSE",
+        "native_coordinator_invoked": false,
+        "origin_ref": "dd073b9a5c49f2b98647e0932640545c84296a9e6152862cda491e2128d035fa",
+        "policy_hash": "fbcdacd8ec6a79ea2595fa367d220b55b1d84c326ec3a28d787d23f356062dcd",
+        "price_observation_ref": "1951c0da0bbbf4c163c78845542a9b54b4017feba913e3cef1fa6cceda5f0923",
+        "reason": "POINT_IN_TIME_UNIVERSE_HEALTH_EVENT_BBO_MARK_UNAVAILABLE",
+        "status": "SOURCE_UNAVAILABLE"
+      },
+      "S3": {
+        "due": true,
+        "native_clock": "CONFIRMED_1M_CLOSE",
+        "native_coordinator_invoked": false,
+        "origin_ref": "67a95202d3f9c8a0f9c1823ea788c4ce0d206462377433160ed2b6f0f097c711",
+        "policy_hash": "b6a6ef283a5ca0b4dcbcb730b03adff92fb62c76c55fc66ef9268c906d8c62b6",
+        "reason": "M1_TRADES_VWAP_COMPLETENESS_BBO_UNAVAILABLE",
+        "status": "SOURCE_UNAVAILABLE"
+      },
+      "S4": {
+        "due": null,
+        "native_clock": "SEQUENCE_VALID_BOOK_TRADE_EVENT",
+        "native_invoked": false,
+        "reason": "L2_BBO_AGGRESSOR_SEQUENCE_HEALTH_UNAVAILABLE",
+        "status": "SOURCE_UNAVAILABLE"
+      },
+      "S5": {
+        "due": null,
+        "native_clock": "ASYNCHRONOUS_DERIVATIVE_STRUCTURAL_EVENT",
+        "native_invoked": false,
+        "reason": "OI_FUNDING_LIQUIDATION_FLOW_UNAVAILABLE",
+        "status": "SOURCE_UNAVAILABLE"
+      },
+      "S6": {
+        "due": true,
+        "native_clock": "COMPLETED_H1_RANK_AND_SUBSEQUENT_M15_WATCH",
+        "native_invoked": false,
+        "reason": "PIT_UNIVERSE_FUNDING_LIQUIDITY_AND_WATCH_UNAVAILABLE",
+        "status": "SOURCE_UNAVAILABLE"
+      },
+      "S7": {
+        "due": null,
+        "native_clock": "AUTHENTICATED_EVENT_AND_SUBSEQUENT_M5_CLOSE",
+        "native_invoked": false,
+        "reason": "AUTHENTICATED_EVENT_CALENDAR_REACTION_UNAVAILABLE",
+        "status": "SOURCE_UNAVAILABLE"
+      },
+      "S8": {
+        "due": true,
+        "native_clock": "HOURLY_OWNER_DEFINED_PAIR",
+        "native_invoked": false,
+        "reason": "PAIR_DEFINITION_BOTH_LEG_BOOK_FEES_FUNDING_UNAVAILABLE",
+        "status": "SOURCE_UNAVAILABLE"
+      }
+    }
+  },
+  "version": "NATIVE_ALGORITHM_RESEARCH_TRACE_V1"
+}

@@ -1,0 +1,44 @@
+{
+  "initial_wrapper": {
+    "arguments": [
+      "--old-csv",
+      "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+      "--old-zip",
+      "/workspace/work/e1b-sol-official-zips",
+      "--new-cache",
+      "/workspace/work/blind-ml-new-source-cache",
+      "--outdir",
+      "docs/research/atlas-red-native-trace/evidence",
+      "--db",
+      "/workspace/work/native-trace-pinned.sqlite"
+    ],
+    "entrypoint": "/workspace/work/atlas-native-trace/docs/research/atlas-red-native-trace/replay.py",
+    "exit_code": 0,
+    "max_rss_kib": 625080,
+    "user_seconds": 97.693916,
+    "wall_seconds": 100.50855161299114
+  },
+  "network_requests": 0,
+  "post_seal_audit_equal_except_actual_publication": true,
+  "repeat_wrapper": {
+    "arguments": [
+      "--old-csv",
+      "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+      "--old-zip",
+      "/workspace/work/e1b-sol-official-zips",
+      "--new-cache",
+      "/workspace/work/blind-ml-new-source-cache",
+      "--outdir",
+      "/workspace/work/native-trace-pinned-repeat",
+      "--db",
+      "/workspace/work/native-trace-pinned-repeat.sqlite"
+    ],
+    "entrypoint": "/workspace/work/atlas-native-trace/docs/research/atlas-red-native-trace/replay.py",
+    "exit_code": 0,
+    "max_rss_kib": 625100,
+    "user_seconds": 98.583632,
+    "wall_seconds": 100.88130549600464
+  },
+  "trace_and_seal_byte_identical": true,
+  "trace_sha256": "e4117caf8700f68987506d1cb6801fb1b6d262ac68d964d36092cea41d49e220"
+}

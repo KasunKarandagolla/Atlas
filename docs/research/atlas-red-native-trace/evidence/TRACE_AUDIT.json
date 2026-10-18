@@ -1,0 +1,1601 @@
+{
+  "actual_ops_publication": {
+    "max_ns": 1792332019400258424,
+    "min_ns": 1792331924427750271
+  },
+  "agent_calls": 0,
+  "artifact_count": 27343,
+  "artifact_types": {
+    "NATIVE_ALGORITHM_RESEARCH_TRACE_V1": 2100,
+    "NativeTraceBarBindingV1": 24930,
+    "NativeTraceCodeV1": 1,
+    "NativeTraceComponentsV1": 132,
+    "NativeTraceFeatureV1": 3,
+    "NativeTraceHealthLimitV1": 1,
+    "NativeTraceInstrumentSourceV1": 35,
+    "NativeTracePrefixV1": 132,
+    "NativeTracePriceBlockV1": 8,
+    "NativeTraceSourcesV1": 1
+  },
+  "authority": "ZERO",
+  "calendar_key_mismatches": 0,
+  "cash_outcomes": "NOT_ESTIMABLE",
+  "code_ref": "1ee8b1780a5e24b4defdbfa4302066de7d4a8b423915ff73f80bc3c3233c32a7",
+  "decision_bytes_unchanged": true,
+  "maximum_record_bytes": 566746,
+  "native_feature_dependencies_resolved": true,
+  "native_feature_field_counts": {
+    "AVAILABLE": 258,
+    "MISSING:CAUSAL_TRADES_UNAVAILABLE": 3,
+    "MISSING:EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT": 12,
+    "MISSING:FULL_UTC_DAY_COVERAGE_UNVERIFIED": 6,
+    "MISSING:PRIOR_DAY_INCOMPLETE_COVERAGE": 6,
+    "MISSING:TRADE_LOCATION_CONFIGURATION_UNAVAILABLE": 6
+  },
+  "native_full_feature_observations": [
+    {
+      "feature_set_version": "INTRADAY_CORE_GAP_QUALIFIED_V1",
+      "field_count": 97,
+      "key": {
+        "base_asset_id": "ETH",
+        "contract_revision": "8ba9f43dd25bf62a6940b70ad640f67fa33268ea6ff3a2d63fa1736ef78417af",
+        "environment": "MAINNET",
+        "native_symbol": "ETHUSDT",
+        "product": "LINEAR_PERPETUAL",
+        "quote_asset": "USDT",
+        "schema_version": 1,
+        "settlement_asset": "USDT",
+        "venue": "BINANCE"
+      },
+      "ref": "0b0eecd49b9bb6a1a0c445e8465740263549a81781e0b20e3a9109829c6bfe08",
+      "values": {
+        "candle.close_position": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.1478102189781022
+        },
+        "candle.gap": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 0.0
+        },
+        "candle.lower_wick_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.0885924733130237
+        },
+        "candle.range_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.5993663626609504
+        },
+        "candle.signed_body_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": -0.5107738893479267
+        },
+        "candle.upper_wick_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.0
+        },
+        "candle.volume_z": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": -0.4058612448629842
+        },
+        "fibonacci.0.382": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "2489.68458"
+        },
+        "fibonacci.0.5": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "2488.055"
+        },
+        "fibonacci.0.618": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "2486.42542"
+        },
+        "h1.adx14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 14.273741720527413
+        },
+        "h1.atr14": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 20.878597554374583
+        },
+        "h1.bollinger_width20": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.03119081068030278
+        },
+        "h1.donchian_breakout": {
+          "missing_reason": null,
+          "unit": "state",
+          "value": 0.0
+        },
+        "h1.donchian_high20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2521.59
+        },
+        "h1.donchian_low20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2431.87
+        },
+        "h1.ema20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2478.963125687117
+        },
+        "h1.ema50": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2465.1506706484483
+        },
+        "h1.ewma_variance": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 3.117077094319955e-05
+        },
+        "h1.macd": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 7.865434832934625
+        },
+        "h1.macd_signal": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 6.844494119038005
+        },
+        "h1.range": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 10.17
+        },
+        "h1.range20_mean": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 22.4435
+        },
+        "h1.realized_variance20": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 0.0009203004105431712
+        },
+        "h1.robust_slope20": {
+          "missing_reason": null,
+          "unit": "price/bar",
+          "value": 1.583999999999969
+        },
+        "h1.roc10": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.009377463209302883
+        },
+        "h1.rsi14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 53.14519253421223
+        },
+        "h4.adx14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 13.87136301399167
+        },
+        "h4.atr14": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 41.747837762650065
+        },
+        "h4.bollinger_width20": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.04845268809967924
+        },
+        "h4.donchian_breakout": {
+          "missing_reason": null,
+          "unit": "state",
+          "value": 0.0
+        },
+        "h4.donchian_high20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2524.41
+        },
+        "h4.donchian_low20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2387.01
+        },
+        "h4.ema20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2459.702743970661
+        },
+        "h4.ema50": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2443.884835088922
+        },
+        "h4.ewma_variance": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 0.00010420903725950102
+        },
+        "h4.macd": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 17.77704035164379
+        },
+        "h4.macd_signal": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 14.152450920077788
+        },
+        "h4.range": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 40.44
+        },
+        "h4.range20_mean": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 34.108
+        },
+        "h4.realized_variance20": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 0.0016394959228966499
+        },
+        "h4.robust_slope20": {
+          "missing_reason": null,
+          "unit": "price/bar",
+          "value": 3.751909090909079
+        },
+        "h4.roc10": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.01833102419268906
+        },
+        "h4.rsi14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 56.28781594086826
+        },
+        "location.anchored_vwap": {
+          "missing_reason": "TRADE_LOCATION_CONFIGURATION_UNAVAILABLE",
+          "unit": "price",
+          "value": null
+        },
+        "location.prior_day_high": {
+          "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+          "unit": "price",
+          "value": null
+        },
+        "location.prior_day_low": {
+          "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+          "unit": "price",
+          "value": null
+        },
+        "location.utc_day_trade_vwap": {
+          "missing_reason": "FULL_UTC_DAY_COVERAGE_UNVERIFIED",
+          "unit": "price",
+          "value": null
+        },
+        "location.utc_day_trade_vwap_complete_day": {
+          "missing_reason": "FULL_UTC_DAY_COVERAGE_UNVERIFIED",
+          "unit": "price",
+          "value": null
+        },
+        "location.utc_day_trade_vwap_partial_to_cutoff": {
+          "missing_reason": "CAUSAL_TRADES_UNAVAILABLE",
+          "unit": "price",
+          "value": null
+        },
+        "location.volume_profile": {
+          "missing_reason": "TRADE_LOCATION_CONFIGURATION_UNAVAILABLE",
+          "unit": "price",
+          "value": null
+        },
+        "m15.adx14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 19.976171299014393
+        },
+        "m15.atr14": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 9.142988898594442
+        },
+        "m15.bollinger_width20": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.01542730161986629
+        },
+        "m15.donchian_breakout": {
+          "missing_reason": null,
+          "unit": "state",
+          "value": 0.0
+        },
+        "m15.donchian_high20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2521.59
+        },
+        "m15.donchian_low20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2481.15
+        },
+        "m15.ema20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2490.846445081926
+        },
+        "m15.ema50": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2484.948285514037
+        },
+        "m15.ewma_variance": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 7.25669396031232e-06
+        },
+        "m15.macd": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 1.0682145621585732
+        },
+        "m15.macd_signal": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 3.4594245552081744
+        },
+        "m15.range": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 5.48
+        },
+        "m15.range20_mean": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 9.250499999999999
+        },
+        "m15.realized_variance20": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 9.606498449459969e-05
+        },
+        "m15.robust_slope20": {
+          "missing_reason": null,
+          "unit": "price/bar",
+          "value": -1.4674999999999727
+        },
+        "m15.roc10": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": -0.004132910555156855
+        },
+        "m15.rsi14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 45.35859138724096
+        },
+        "morphology.acceleration": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": -2.374074074074074e-12
+        },
+        "morphology.amplitude": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 13.81
+        },
+        "morphology.duration_ns": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 2700000000000.0
+        },
+        "morphology.extension_ratio": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.3189376443418014
+        },
+        "morphology.multi_scale_ratio": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.1415684264479754
+        },
+        "morphology.overlap": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 13.81
+        },
+        "morphology.retracement_ratio": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.3414935707220574
+        },
+        "morphology.volume_behavior": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.7074922528765825
+        },
+        "regime.crowding_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.event_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.liquidity_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.trend_state": {
+          "missing_reason": null,
+          "unit": "-1_down_0_mixed_1_up",
+          "value": 1
+        },
+        "regime.unknown_or_ood_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.volatility_state": {
+          "missing_reason": null,
+          "unit": "1_observed",
+          "value": 1
+        },
+        "structure.bos_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.bos_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.choch_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.choch_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.fvg_bear_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.fvg_bull_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.last_confirmed_high": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "2494.96"
+        },
+        "structure.last_confirmed_high_at_ns": {
+          "missing_reason": null,
+          "unit": "ns",
+          "value": 1751325300000000000
+        },
+        "structure.last_confirmed_low": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "2481.15"
+        },
+        "structure.last_confirmed_low_at_ns": {
+          "missing_reason": null,
+          "unit": "ns",
+          "value": 1751322600000000000
+        },
+        "structure.order_block_candidate_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.order_block_candidate_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.sweep_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.sweep_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.zone_version_count": {
+          "missing_reason": null,
+          "unit": "count",
+          "value": 1937
+        }
+      }
+    },
+    {
+      "feature_set_version": "INTRADAY_CORE_GAP_QUALIFIED_V1",
+      "field_count": 97,
+      "key": {
+        "base_asset_id": "BNB",
+        "contract_revision": "d4b545b2923eeb840116cfd49124d0716be39513604275eb4b758d9bd543e6db",
+        "environment": "MAINNET",
+        "native_symbol": "BNBUSDT",
+        "product": "LINEAR_PERPETUAL",
+        "quote_asset": "USDT",
+        "schema_version": 1,
+        "settlement_asset": "USDT",
+        "venue": "BINANCE"
+      },
+      "ref": "cf54e1890cc34f3737e19e6b66a8decbb9ed567a2c2714b51210d4e060eadeb8",
+      "values": {
+        "candle.close_position": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.6590909090909091
+        },
+        "candle.gap": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 0.0
+        },
+        "candle.lower_wick_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.3007383166736394
+        },
+        "candle.range_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.456292618401384
+        },
+        "candle.signed_body_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": -0.15555430172774454
+        },
+        "candle.upper_wick_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.0
+        },
+        "candle.volume_z": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": -0.7394589228588389
+        },
+        "fibonacci.0.382": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "658.06236"
+        },
+        "fibonacci.0.5": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "658.06"
+        },
+        "fibonacci.0.618": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "658.05764"
+        },
+        "h1.adx14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 26.106076312510833
+        },
+        "h1.atr14": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2.1060164303494444
+        },
+        "h1.bollinger_width20": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.014326714647344177
+        },
+        "h1.donchian_breakout": {
+          "missing_reason": null,
+          "unit": "state",
+          "value": 0.0
+        },
+        "h1.donchian_high20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 660.0
+        },
+        "h1.donchian_low20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 651.19
+        },
+        "h1.ema20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 655.6604860086894
+        },
+        "h1.ema50": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 652.7876570602571
+        },
+        "h1.ewma_variance": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 4.336846382318627e-06
+        },
+        "h1.macd": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 1.6758194010961915
+        },
+        "h1.macd_signal": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 1.6501038903449157
+        },
+        "h1.range": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 1.1
+        },
+        "h1.range20_mean": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 2.285
+        },
+        "h1.realized_variance20": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 0.00011821582299856442
+        },
+        "h1.robust_slope20": {
+          "missing_reason": null,
+          "unit": "price/bar",
+          "value": 0.2524999999999977
+        },
+        "h1.roc10": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.005894601463698468
+        },
+        "h1.rsi14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 57.51271717329443
+        },
+        "h4.adx14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 22.269575909202555
+        },
+        "h4.atr14": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 4.0869510123052315
+        },
+        "h4.bollinger_width20": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.02759659441843589
+        },
+        "h4.donchian_breakout": {
+          "missing_reason": null,
+          "unit": "state",
+          "value": 0.0
+        },
+        "h4.donchian_high20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 659.47
+        },
+        "h4.donchian_low20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 642.14
+        },
+        "h4.ema20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 651.4491549759497
+        },
+        "h4.ema50": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 646.9644860346641
+        },
+        "h4.ewma_variance": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 9.87456186260951e-06
+        },
+        "h4.macd": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 3.6365136760956602
+        },
+        "h4.macd_signal": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 3.025411243732544
+        },
+        "h4.range": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 3.37
+        },
+        "h4.range20_mean": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 3.2994999999999997
+        },
+        "h4.realized_variance20": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 0.00020402634960759003
+        },
+        "h4.robust_slope20": {
+          "missing_reason": null,
+          "unit": "price/bar",
+          "value": 0.7166071428571468
+        },
+        "h4.roc10": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.012170885393396835
+        },
+        "h4.rsi14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 64.33272943603342
+        },
+        "location.anchored_vwap": {
+          "missing_reason": "TRADE_LOCATION_CONFIGURATION_UNAVAILABLE",
+          "unit": "price",
+          "value": null
+        },
+        "location.prior_day_high": {
+          "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+          "unit": "price",
+          "value": null
+        },
+        "location.prior_day_low": {
+          "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+          "unit": "price",
+          "value": null
+        },
+        "location.utc_day_trade_vwap": {
+          "missing_reason": "FULL_UTC_DAY_COVERAGE_UNVERIFIED",
+          "unit": "price",
+          "value": null
+        },
+        "location.utc_day_trade_vwap_complete_day": {
+          "missing_reason": "FULL_UTC_DAY_COVERAGE_UNVERIFIED",
+          "unit": "price",
+          "value": null
+        },
+        "location.utc_day_trade_vwap_partial_to_cutoff": {
+          "missing_reason": "CAUSAL_TRADES_UNAVAILABLE",
+          "unit": "price",
+          "value": null
+        },
+        "location.volume_profile": {
+          "missing_reason": "TRADE_LOCATION_CONFIGURATION_UNAVAILABLE",
+          "unit": "price",
+          "value": null
+        },
+        "m15.adx14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 16.43834094154368
+        },
+        "m15.atr14": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 0.9642934868013754
+        },
+        "m15.bollinger_width20": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.005211259579043684
+        },
+        "m15.donchian_breakout": {
+          "missing_reason": null,
+          "unit": "state",
+          "value": 0.0
+        },
+        "m15.donchian_high20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 660.0
+        },
+        "m15.donchian_low20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 656.63
+        },
+        "m15.ema20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 657.5489274402113
+        },
+        "m15.ema50": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 656.6586988087456
+        },
+        "m15.ewma_variance": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 4.6389879108317374e-07
+        },
+        "m15.macd": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 0.09609174886293204
+        },
+        "m15.macd_signal": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 0.35468183061126135
+        },
+        "m15.range": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 0.44
+        },
+        "m15.range20_mean": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 0.9789999999999999
+        },
+        "m15.realized_variance20": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 1.5818509724592423e-05
+        },
+        "m15.robust_slope20": {
+          "missing_reason": null,
+          "unit": "price/bar",
+          "value": -0.1255681818181813
+        },
+        "m15.roc10": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": -0.0023991375252441216
+        },
+        "m15.rsi14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 46.57054339455766
+        },
+        "morphology.acceleration": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": -5.324074074074074e-13
+        },
+        "morphology.amplitude": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.02
+        },
+        "morphology.duration_ns": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 5400000000000.0
+        },
+        "morphology.extension_ratio": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.006493506493506494
+        },
+        "morphology.multi_scale_ratio": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.003976143141153081
+        },
+        "morphology.overlap": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.02
+        },
+        "morphology.retracement_ratio": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.010362694300518135
+        },
+        "morphology.volume_behavior": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.6566808113834163
+        },
+        "regime.crowding_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.event_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.liquidity_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.trend_state": {
+          "missing_reason": null,
+          "unit": "-1_down_0_mixed_1_up",
+          "value": 1
+        },
+        "regime.unknown_or_ood_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.volatility_state": {
+          "missing_reason": null,
+          "unit": "1_observed",
+          "value": 1
+        },
+        "structure.bos_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.bos_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.choch_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.choch_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.fvg_bear_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.fvg_bull_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.last_confirmed_high": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "658.07"
+        },
+        "structure.last_confirmed_high_at_ns": {
+          "missing_reason": null,
+          "unit": "ns",
+          "value": 1751325300000000000
+        },
+        "structure.last_confirmed_low": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "656.63"
+        },
+        "structure.last_confirmed_low_at_ns": {
+          "missing_reason": null,
+          "unit": "ns",
+          "value": 1751322600000000000
+        },
+        "structure.order_block_candidate_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.order_block_candidate_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.sweep_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.sweep_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.zone_version_count": {
+          "missing_reason": null,
+          "unit": "count",
+          "value": 1750
+        }
+      }
+    },
+    {
+      "feature_set_version": "INTRADAY_CORE_GAP_QUALIFIED_V1",
+      "field_count": 97,
+      "key": {
+        "base_asset_id": "BTC",
+        "contract_revision": "e9bfad9b9ad9aee37413eaf551e319e259187cdcc8c52fec50fe1aa80ac136d6",
+        "environment": "MAINNET",
+        "native_symbol": "BTCUSDT",
+        "product": "LINEAR_PERPETUAL",
+        "quote_asset": "USDT",
+        "schema_version": 1,
+        "settlement_asset": "USDT",
+        "venue": "BINANCE"
+      },
+      "ref": "d34e11ae921f1eee5ef4fdbbc0c88876a27898f6e6da0489bd0f597b635acfc3",
+      "values": {
+        "candle.close_position": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.7040723981900453
+        },
+        "candle.gap": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 0.0
+        },
+        "candle.lower_wick_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.433191344055937
+        },
+        "candle.range_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.6152653408506561
+        },
+        "candle.signed_body_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": -0.027283259458535884
+        },
+        "candle.upper_wick_atr": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.15479073733618318
+        },
+        "candle.volume_z": {
+          "missing_reason": null,
+          "unit": "ratio",
+          "value": 0.45016744967511346
+        },
+        "fibonacci.0.382": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "107108.6516"
+        },
+        "fibonacci.0.5": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "107061.9"
+        },
+        "fibonacci.0.618": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "107015.1484"
+        },
+        "h1.adx14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 24.473344199411716
+        },
+        "h1.atr14": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 423.6241765451144
+        },
+        "h1.bollinger_width20": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.01289325371614255
+        },
+        "h1.donchian_breakout": {
+          "missing_reason": null,
+          "unit": "state",
+          "value": 0.0
+        },
+        "h1.donchian_high20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 108547.4
+        },
+        "h1.donchian_low20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 106686.4
+        },
+        "h1.ema20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 107442.69376609742
+        },
+        "h1.ema50": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 107511.28279812238
+        },
+        "h1.ewma_variance": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 7.832617290534285e-06
+        },
+        "h1.macd": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": -150.85286649866612
+        },
+        "h1.macd_signal": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": -103.49914711031268
+        },
+        "h1.range": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 171.9
+        },
+        "h1.range20_mean": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 442.425
+        },
+        "h1.realized_variance20": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 0.00019749220714282287
+        },
+        "h1.robust_slope20": {
+          "missing_reason": null,
+          "unit": "price/bar",
+          "value": -30.054166666668607
+        },
+        "h1.roc10": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": -0.003670385432337886
+        },
+        "h1.rsi14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 42.70495575282147
+        },
+        "h4.adx14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 17.350913854018845
+        },
+        "h4.atr14": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 803.953789654103
+        },
+        "h4.bollinger_width20": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.016640180708271373
+        },
+        "h4.donchian_breakout": {
+          "missing_reason": null,
+          "unit": "state",
+          "value": 0.0
+        },
+        "h4.donchian_high20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 108783.9
+        },
+        "h4.donchian_low20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 106313.1
+        },
+        "h4.ema20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 107430.90426647346
+        },
+        "h4.ema50": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 106625.08156962285
+        },
+        "h4.ewma_variance": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 2.2120973489288836e-05
+        },
+        "h4.macd": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 298.8319509830035
+        },
+        "h4.macd_signal": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 427.9439508733635
+        },
+        "h4.range": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 851.1
+        },
+        "h4.range20_mean": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 661.725
+        },
+        "h4.realized_variance20": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 0.00039545879013865866
+        },
+        "h4.robust_slope20": {
+          "missing_reason": null,
+          "unit": "price/bar",
+          "value": 35.11714285714406
+        },
+        "h4.roc10": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": -0.002606010029133743
+        },
+        "h4.rsi14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 48.54294986232568
+        },
+        "location.anchored_vwap": {
+          "missing_reason": "TRADE_LOCATION_CONFIGURATION_UNAVAILABLE",
+          "unit": "price",
+          "value": null
+        },
+        "location.prior_day_high": {
+          "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+          "unit": "price",
+          "value": null
+        },
+        "location.prior_day_low": {
+          "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+          "unit": "price",
+          "value": null
+        },
+        "location.utc_day_trade_vwap": {
+          "missing_reason": "FULL_UTC_DAY_COVERAGE_UNVERIFIED",
+          "unit": "price",
+          "value": null
+        },
+        "location.utc_day_trade_vwap_complete_day": {
+          "missing_reason": "FULL_UTC_DAY_COVERAGE_UNVERIFIED",
+          "unit": "price",
+          "value": null
+        },
+        "location.utc_day_trade_vwap_partial_to_cutoff": {
+          "missing_reason": "CAUSAL_TRADES_UNAVAILABLE",
+          "unit": "price",
+          "value": null
+        },
+        "location.volume_profile": {
+          "missing_reason": "TRADE_LOCATION_CONFIGURATION_UNAVAILABLE",
+          "unit": "price",
+          "value": null
+        },
+        "m15.adx14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 21.781685990617536
+        },
+        "m15.atr14": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 179.597309751309
+        },
+        "m15.bollinger_width20": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": 0.007008100848422915
+        },
+        "m15.donchian_breakout": {
+          "missing_reason": null,
+          "unit": "state",
+          "value": 0.0
+        },
+        "m15.donchian_high20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 107748.7
+        },
+        "m15.donchian_low20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 106863.8
+        },
+        "m15.ema20": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 107244.83164756843
+        },
+        "m15.ema50": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 107389.29665251536
+        },
+        "m15.ewma_variance": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 1.3367331709946874e-06
+        },
+        "m15.macd": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": -94.62551239340974
+        },
+        "m15.macd_signal": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": -73.52820032550935
+        },
+        "m15.range": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 110.5
+        },
+        "m15.range20_mean": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": 170.99
+        },
+        "m15.realized_variance20": {
+          "missing_reason": null,
+          "unit": "log_return_squared",
+          "value": 2.5282653804755086e-05
+        },
+        "m15.robust_slope20": {
+          "missing_reason": null,
+          "unit": "price/bar",
+          "value": -27.547115384615047
+        },
+        "m15.roc10": {
+          "missing_reason": null,
+          "unit": "fraction",
+          "value": -0.001979500427773506
+        },
+        "m15.rsi14": {
+          "missing_reason": null,
+          "unit": "index",
+          "value": 41.704587948002114
+        },
+        "morphology.acceleration": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 2.3837962962962964e-11
+        },
+        "morphology.amplitude": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 396.2
+        },
+        "morphology.duration_ns": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 2700000000000.0
+        },
+        "morphology.extension_ratio": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.5735379270411117
+        },
+        "morphology.multi_scale_ratio": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.20092296769613063
+        },
+        "morphology.overlap": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 396.2
+        },
+        "morphology.retracement_ratio": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 0.4477342072550571
+        },
+        "morphology.volume_behavior": {
+          "missing_reason": null,
+          "unit": "research_measure",
+          "value": 1.0527069529406594
+        },
+        "regime.crowding_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.event_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.liquidity_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.trend_state": {
+          "missing_reason": null,
+          "unit": "-1_down_0_mixed_1_up",
+          "value": 1
+        },
+        "regime.unknown_or_ood_state": {
+          "missing_reason": "EXTERNAL_EVIDENCE_NOT_BOUND_TO_FEATURE_SNAPSHOT",
+          "unit": "state",
+          "value": null
+        },
+        "regime.volatility_state": {
+          "missing_reason": null,
+          "unit": "1_observed",
+          "value": 1
+        },
+        "structure.bos_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.bos_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.choch_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.choch_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.fvg_bear_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.fvg_bull_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.last_confirmed_high": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "107260"
+        },
+        "structure.last_confirmed_high_at_ns": {
+          "missing_reason": null,
+          "unit": "ns",
+          "value": 1751325300000000000
+        },
+        "structure.last_confirmed_low": {
+          "missing_reason": null,
+          "unit": "price",
+          "value": "106863.8"
+        },
+        "structure.last_confirmed_low_at_ns": {
+          "missing_reason": null,
+          "unit": "ns",
+          "value": 1751322600000000000
+        },
+        "structure.order_block_candidate_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.order_block_candidate_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.sweep_down_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.sweep_up_at_close": {
+          "missing_reason": null,
+          "unit": "boolean",
+          "value": 0
+        },
+        "structure.zone_version_count": {
+          "missing_reason": null,
+          "unit": "count",
+          "value": 1876
+        }
+      }
+    }
+  ],
+  "native_s1_precursor_observations": {
+    "NO_SETUP": 120,
+    "SETUP_OBSERVED": 12
+  },
+  "native_s6_context_observations": {
+    "DOWN": 8,
+    "MIXED": 8,
+    "UP": 116
+  },
+  "orders": 0,
+  "original_minute_observations": 2100,
+  "price_outcomes": "NOT_ESTIMABLE_NO_ELIGIBLE_ACTION",
+  "protocol_sha256": "725b76e66d690c6e5838faa52a4c4860a1c628f7d8e3dcb218d223b1bf749e2e",
+  "qualified_actions": 0,
+  "reasons": {
+    "PATH_B:REGISTERED_SCREEN_POPULATION_AND_ADMISSION_UNAVAILABLE": 2100,
+    "PRICE_PREFIX:native terminal interval missing": 8,
+    "S1:CURRENT_OR_PREFIX_PRICE_SOURCE_MISSING": 8,
+    "S1:NATIVE_CLOCK_NOT_DUE": 1960,
+    "S1:POINT_IN_TIME_UNIVERSE_HEALTH_EVENT_BBO_MARK_UNAVAILABLE": 132,
+    "S2:CURRENT_OR_PREFIX_PRICE_SOURCE_MISSING": 8,
+    "S2:NATIVE_CLOCK_NOT_DUE": 1960,
+    "S2:POINT_IN_TIME_UNIVERSE_HEALTH_EVENT_BBO_MARK_UNAVAILABLE": 132,
+    "S3:M1_TRADES_VWAP_COMPLETENESS_BBO_UNAVAILABLE": 2100,
+    "S4:L2_BBO_AGGRESSOR_SEQUENCE_HEALTH_UNAVAILABLE": 2100,
+    "S5:OI_FUNDING_LIQUIDATION_FLOW_UNAVAILABLE": 2100,
+    "S6:NATIVE_CLOCK_NOT_DUE": 1960,
+    "S6:PIT_UNIVERSE_FUNDING_LIQUIDITY_AND_WATCH_UNAVAILABLE": 140,
+    "S7:AUTHENTICATED_EVENT_CALENDAR_REACTION_UNAVAILABLE": 2100,
+    "S8:NATIVE_CLOCK_NOT_DUE": 2065,
+    "S8:PAIR_DEFINITION_BOTH_LEG_BOOK_FEES_FUNDING_UNAVAILABLE": 35
+  },
+  "source_objects": {
+    "MISSING_OBJECT_404": 13,
+    "PARSER_REJECTED_PRECEDING_ATTEMPT": 210,
+    "VERIFIED": 302
+  },
+  "strategy_surface_statuses": {
+    "PATH_B:SOURCE_UNAVAILABLE": 2100,
+    "S1:NOT_DUE": 1960,
+    "S1:SOURCE_UNAVAILABLE": 140,
+    "S2:NOT_DUE": 1960,
+    "S2:SOURCE_UNAVAILABLE": 140,
+    "S3:SOURCE_UNAVAILABLE": 2100,
+    "S4:SOURCE_UNAVAILABLE": 2100,
+    "S5:SOURCE_UNAVAILABLE": 2100,
+    "S6:NOT_DUE": 1960,
+    "S6:SOURCE_UNAVAILABLE": 140,
+    "S7:SOURCE_UNAVAILABLE": 2100,
+    "S8:NOT_DUE": 2065,
+    "S8:SOURCE_UNAVAILABLE": 35
+  },
+  "timing_misses": 132,
+  "trace_sha256": "e4117caf8700f68987506d1cb6801fb1b6d262ac68d964d36092cea41d49e220",
+  "version": "NATIVE_TRACE_POST_SEAL_AUDIT_V1"
+}

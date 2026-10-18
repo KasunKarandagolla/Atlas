@@ -1,3 +1,17 @@
+# Native algorithm trace candidate — 2026-10-18 (Asia/Colombo)
+
+**IMPLEMENTED / TESTED — bounded read-only native research instrumentation; full qualified historical algorithm path remains TEST GATE.** Isolated `research/atlas-red-native-decision-trace-2026-10-18`, source exact `f9de3686709123f2f9770a7d66ac52ca5450200a`. [External acceptance](ACCEPTANCE_HISTORICAL_F9DE368_2026-10-18.md) records only its owner-supplied scoped diagnostics/ML/cost-sensitivity PASS. This new candidate is independently unaccepted; exact pushed SHA is returned at delivery.
+
+[Report](../research/atlas-red-native-trace/NATIVE_TRACE_REPORT.md), [contract/map](../research/atlas-red-native-trace/TRACE_CONTRACT.md), [commands](../research/atlas-red-native-trace/REPRODUCIBILITY.md), [machine audit](../research/atlas-red-native-trace/evidence/TRACE_AUDIT.json) and [hash inventory](../research/atlas-red-native-trace/ARTIFACTS.sha256). Reused 302 official checksum/CSV-bound cached archives, zero market HTTP; fixed revealed July1 first-hour development interval, no October data. All35×60=2,100 research minute observations;140 M15 checks;132 complete native price-prefix results/8 EOS-MATIC terminal-source blocks. Actual native S1 precursor12 SETUP/120 NO_SETUP (repeated states, not unique triggers/trades); native S6 context only, no qualified ranks/eligible breadth. Three full native feature snapshots,97 fields each, preserve258 values/33 native missing results.27,343 immutable trace artifacts. T+7/T+6 readiness misses frozenT+5; no timing rescue or original receipt fabrication.
+
+New39 tests passed, zero skips/failures; impacted164passed/15failed, same15 reproduced at clean f9de368 (14 missing-PyArrow, one missing-Nautilus). No full-suite pass. Trace/seal repeats byte-identical; all dependencies/calendar reconcile; actual SQLite write-failure probe rolls back atomically. Existing native mathematical/policy owners unchanged; only a new read-only adapter under src. Native S2 and all genuine P1/risk/economic/Brief/AgentB/management paths remain precisely source/contract blocked. Full-S1–S8 integration, original actual receipt/live seeds/health/PIT eligibility and after-cost economics remain unverified/not estimable. Native prior-day reader's actual-availability seam is retained, not silently corrected. Synthetic complete S1/S2/P1/Brief interface tests are separately graded.
+
+Canonical design/PDF, all three freezes, prior evidence and locks remain unchanged. No policy/capital/model promotion, P2, agents, paid/private APIs, generation, orders or deployment. Owner-selected GPT-6.1 Sol High; runtime identity/effort UNVERIFIED. **STOP for independent exact-SHA ChatGPT review. OBSERVE; zero allocation/paid allowance; capital NO-GO.**
+
+# Native algorithm trace session authorized — 2026-10-18 (Asia/Colombo)
+
+[External scoped acceptance](ACCEPTANCE_HISTORICAL_F9DE368_2026-10-18.md) synchronizes exact f9de3686709123f2f9770a7d66ac52ca5450200a only. New branch `research/atlas-red-native-decision-trace-2026-10-18` instruments native owners without production/strategy-policy promotion. New exact-SHA review pending. OBSERVE; zero allocation/paid allowance; capital NO-GO. Older pending-review text remains historical for its own scope.
+
 # ATLAS RED — live GitHub engineering status
 
 ## Sealed historical replay / quarantined ML research candidate — 2026-10-18 (Asia/Colombo)

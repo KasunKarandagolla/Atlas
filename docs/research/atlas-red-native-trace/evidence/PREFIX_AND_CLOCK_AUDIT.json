@@ -1,0 +1,51 @@
+{
+  "missing_native_price_slots": [
+    {
+      "reason": "native terminal interval missing",
+      "slot_ns": 1751329800000000000,
+      "symbol": "EOSUSDT"
+    },
+    {
+      "reason": "native terminal interval missing",
+      "slot_ns": 1751329800000000000,
+      "symbol": "MATICUSDT"
+    },
+    {
+      "reason": "native terminal interval missing",
+      "slot_ns": 1751328900000000000,
+      "symbol": "MATICUSDT"
+    },
+    {
+      "reason": "native terminal interval missing",
+      "slot_ns": 1751328000000000000,
+      "symbol": "MATICUSDT"
+    },
+    {
+      "reason": "native terminal interval missing",
+      "slot_ns": 1751328000000000000,
+      "symbol": "EOSUSDT"
+    },
+    {
+      "reason": "native terminal interval missing",
+      "slot_ns": 1751330700000000000,
+      "symbol": "EOSUSDT"
+    },
+    {
+      "reason": "native terminal interval missing",
+      "slot_ns": 1751330700000000000,
+      "symbol": "MATICUSDT"
+    },
+    {
+      "reason": "native terminal interval missing",
+      "slot_ns": 1751328900000000000,
+      "symbol": "EOSUSDT"
+    }
+  ],
+  "no_original_live_state_claim": true,
+  "original_receipt": "UNKNOWN_NOT_CAPTURED",
+  "processing_readiness_seconds_after_original_close": {
+    "6": 99,
+    "7": 33
+  },
+  "source_grade": "RECONSTRUCTED_MARKET_DEVELOPMENT"
+}
