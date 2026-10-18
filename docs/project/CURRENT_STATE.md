@@ -1,5 +1,12 @@
 # ATLAS RED — live GitHub engineering status
 
+## E1B external acceptance synchronized / independent science authorized — 2026-10-18
+
+The owner supplied **PASS — scoped E1B engineering review** for exact `d339d845a417e36b9a83c83b4f366e74fd207474`. [Versioned external acceptance record](ACCEPTANCE_E1B_D339D845_2026-10-18.md) preserves its limitations: recorded operator tests/rebuild were not independently rerun by that reviewer, full-panel bytes were not independently recomputed, runtime identity was unavailable, and economic/receipt/eligibility evidence was not established. Codex records that external verdict; it does not self-accept this synchronization or future work.
+
+The owner separately authorized research-only S1/S6 scientific reproduction and economic-evidence feasibility from those pinned artifacts. [Current protocol](../research/atlas-red-e1b/SOL_SESSION2_REPRODUCTION.md) corrects stale references and preserves the earlier protocol. New scientific findings require another exact-SHA independent review. Last accepted target design remains `f9f8ef083ba5bafcad9bab4d07227676200a948f`; P2 and operative policies are not activated. OBSERVE; bot allocation zero; capital NO-GO. Owner-selected GPT-6.1 Sol; independent runtime model/effort metadata unavailable; no subagents.
+
+
 ## Latest E1B R1 first-trigger censoring candidate — 2026-10-18
 
 **IMPLEMENTED / TESTED — RESEARCH ONLY:** isolated branch `fix/atlas-red-e1b-first-trigger-censoring-2026-10-18` starts from reviewed correction SHA `ab645e792fe6593d9fb206954585b2996673f96c`; the original E1B source checkpoint `fa6085bdbe456ffa07ac59ce8c51afacb65ecdc5` is an ancestor. Corrected producer commit `04f05ab641457ab6deee8456da2c2a77d84f5149` is pushed and remote-verified; final evidence/documentation tip is recorded in the delivery. No newer independent E1B acceptance existed at start; independent ChatGPT review of the exact final tip is pending.
