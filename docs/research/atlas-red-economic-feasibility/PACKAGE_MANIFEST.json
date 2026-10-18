@@ -1,0 +1,27 @@
+{
+  "authority": "ZERO",
+  "branch": "research/atlas-red-economic-feasibility-gate-2026-10-18",
+  "files": {
+    "algorithms/ACCEPTANCE_REGISTER.csv": "175e1d24d2065c28434bd7a2bdfcf72c79f443d1be29e1840bd00fbfe046347e",
+    "algorithms/MANIFEST.sha256": "6cbaad74002284e7da3a7bca7ba540607e03b7158df5217ff9cd32d661b2246c",
+    "docs/project/ACCEPTANCE_CAUSAL_REPLAY_4F00FA8_2026-10-18.md": "8faa7145e88020abb5ea5352d1b0b978d10650b4c7515b60e5df4ab4c7310762",
+    "docs/project/CURRENT_STATE.md": "75886d9e7a3db4605088fe673da53a28f3dc890f9ad088ce360f6231ca10c869",
+    "docs/research/atlas-red-economic-feasibility/AUTHORITY.json": "fe23c49bf103c68f667ab515226209b139591c6d9ca93a9494d881482ba612ca",
+    "docs/research/atlas-red-economic-feasibility/ECONOMIC_FEASIBILITY_DECISION.md": "5535785d3766483c3466926bdb7e07432c9f91e310c65a0dec5b9e42b22c998b",
+    "docs/research/atlas-red-economic-feasibility/ECONOMIC_FEASIBILITY_VERDICT.json": "d7251c19a20d59f21eaa9fb4144e65eb08bb5375e249e799218af7f8d1877c85",
+    "docs/research/atlas-red-economic-feasibility/EXECUTION_EVIDENCE.json": "c22cb4c7e3d15c40a40761813cdb2a658b68843944c2c3a6e1c085d17a338da0",
+    "docs/research/atlas-red-economic-feasibility/PROSPECTIVE_OBSERVE_PROPOSAL.md": "9a53d8f15c4e6315badfbc7b7cdc986a79ac2cc85a52c05a2e2760c4e335c10f",
+    "docs/research/atlas-red-economic-feasibility/REPRODUCIBILITY.md": "df28d112e79c3a645168dd9f2ad8ffdc28277792e3c10f68436d86eb1830b96f",
+    "docs/research/atlas-red-economic-feasibility/evidence/CAPABILITY_AND_TIMING.json": "d62f82fbecf0a4ad6aa54b44846afd406fb80480ef99169fa4ea73585619396f",
+    "docs/research/atlas-red-economic-feasibility/evidence/LOCAL_OPS_INVENTORY.json": "79dcb583371a4db75f5b755a208e5c314a2bc50924a9f1e00e2f2201d024db63",
+    "docs/research/atlas-red-economic-feasibility/evidence/OFFLINE_INVENTORY.json": "e21a74ef5106cf91319e46156248497d7cffebb08f3bfcb9529c698b76d13f71",
+    "docs/research/atlas-red-economic-feasibility/inventory.py": "7bb5c2602c36024e8b000a9adb999c541b600ed728450226b9f4a3a74e1c4416",
+    "log.md": "cdb317666e31072294f471f6f34316535ee29eb3ceb23e9a21e87e604cd02763",
+    "tests/research/test_atlas_economic_feasibility.py": "523039167ec7ee69400975fb344c1c71974e9dd3ba0244e3aff6bfc7097193b0",
+    "translog.md": "0a441648efddbb2bdb851cbc751378c7ae5dc5ff2e4dd906bac9aebd287efcac"
+  },
+  "independent_review": "PENDING_EXACT_FINAL_REMOTE_SHA_AT_DELIVERY",
+  "primary_recommendation": "PROSPECTIVE_OBSERVATION_REQUIRED",
+  "source_sha": "4f00fa8afca4ac15b1cbf64519adf1f684b0589f",
+  "version": "ECONOMIC_FEASIBILITY_PACKAGE_MANIFEST_V1"
+}

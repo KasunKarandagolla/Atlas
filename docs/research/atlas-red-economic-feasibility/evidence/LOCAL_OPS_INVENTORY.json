@@ -1,0 +1,98 @@
+{
+  "offline_ops_inventory": [
+    {
+      "name": "causal-qualification-pinned.sqlite",
+      "bytes": 65523712,
+      "artifact_counts": {
+        "NATIVE_ALGORITHM_RESEARCH_TRACE_V1": 2100,
+        "NativeReplaySourceReadinessV1": 1,
+        "NativeTraceBarBindingV1": 24939,
+        "NativeTraceCodeV1": 1,
+        "NativeTraceComponentsV1": 132,
+        "NativeTraceFeatureV1": 12,
+        "NativeTraceHealthLimitV1": 1,
+        "NativeTraceInstrumentSourceV1": 35,
+        "NativeTracePrefixV1": 132,
+        "NativeTracePriceBlockV1": 8,
+        "NativeTraceSourcesV1": 1
+      },
+      "read_scope": "artifact type/count only; no account tables or private data read",
+      "database_sha256": "0523202285fe344f73506368cfd58835f04b57027509bbb776b713421e76ca5b"
+    },
+    {
+      "name": "causal-qualification-repeat.sqlite",
+      "bytes": 65523712,
+      "artifact_counts": {
+        "NATIVE_ALGORITHM_RESEARCH_TRACE_V1": 2100,
+        "NativeReplaySourceReadinessV1": 1,
+        "NativeTraceBarBindingV1": 24939,
+        "NativeTraceCodeV1": 1,
+        "NativeTraceComponentsV1": 132,
+        "NativeTraceFeatureV1": 12,
+        "NativeTraceHealthLimitV1": 1,
+        "NativeTraceInstrumentSourceV1": 35,
+        "NativeTracePrefixV1": 132,
+        "NativeTracePriceBlockV1": 8,
+        "NativeTraceSourcesV1": 1
+      },
+      "read_scope": "artifact type/count only; no account tables or private data read",
+      "database_sha256": "8bc0fb8e13669457b9dd11a277d4d845871a3fc23ed4ec932b84e514e7dd8ac9"
+    },
+    {
+      "name": "native-trace-pinned.sqlite",
+      "bytes": 60059648,
+      "artifact_counts": {
+        "NATIVE_ALGORITHM_RESEARCH_TRACE_V1": 2100,
+        "NativeTraceBarBindingV1": 24930,
+        "NativeTraceCodeV1": 1,
+        "NativeTraceComponentsV1": 132,
+        "NativeTraceFeatureV1": 3,
+        "NativeTraceHealthLimitV1": 1,
+        "NativeTraceInstrumentSourceV1": 35,
+        "NativeTracePrefixV1": 132,
+        "NativeTracePriceBlockV1": 8,
+        "NativeTraceSourcesV1": 1
+      },
+      "read_scope": "artifact type/count only; no account tables or private data read",
+      "database_sha256": "ab791186bfbcb3e55c26fbf22324c7717e4d7da8c082a7e3e15cf9354c1c8724"
+    },
+    {
+      "name": "native-trace-pinned-repeat.sqlite",
+      "bytes": 60059648,
+      "artifact_counts": {
+        "NATIVE_ALGORITHM_RESEARCH_TRACE_V1": 2100,
+        "NativeTraceBarBindingV1": 24930,
+        "NativeTraceCodeV1": 1,
+        "NativeTraceComponentsV1": 132,
+        "NativeTraceFeatureV1": 3,
+        "NativeTraceHealthLimitV1": 1,
+        "NativeTraceInstrumentSourceV1": 35,
+        "NativeTracePrefixV1": 132,
+        "NativeTracePriceBlockV1": 8,
+        "NativeTraceSourcesV1": 1
+      },
+      "read_scope": "artifact type/count only; no account tables or private data read",
+      "database_sha256": "ae1b6f6fd4dcf43878bd4409a82749f03735c6dab55e4a7c64cee4c21d3c85c4"
+    },
+    {
+      "name": "blind-ml-origin-ops.sqlite",
+      "bytes": 28610560,
+      "artifact_counts": {
+        "HistoricalPriceOriginDiagnosticV1": 6173
+      },
+      "read_scope": "artifact type/count only; no account tables or private data read",
+      "database_sha256": "2affed9020d7d13dac51f94b05738bd27d369ab96914d1842a5143481eaa60cf"
+    },
+    {
+      "name": "blind-ml-repeat-origin-ops.sqlite",
+      "bytes": 28659712,
+      "artifact_counts": {
+        "HistoricalPriceOriginDiagnosticV1": 6173
+      },
+      "read_scope": "artifact type/count only; no account tables or private data read",
+      "database_sha256": "44da722b230a7a64a70c1019d1bfb36a825077891b2ac65ad04e802d6e902dfb"
+    }
+  ],
+  "capture_journals_or_arrow_parquet_paths": [],
+  "limitations": "Workspace filename discovery is not an exchange-wide absence proof; duplicate checkouts/scratch are not independent source observations"
+}

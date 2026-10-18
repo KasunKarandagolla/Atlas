@@ -1,0 +1,631 @@
+{
+  "version": "ATLAS_ECONOMIC_FEASIBILITY_VERDICT_V1",
+  "source_github_sha": "4f00fa8afca4ac15b1cbf64519adf1f684b0589f",
+  "external_acceptance_scope": "PASS limited to scoped causal replay correction, owner supplied exact4f00fa8 only",
+  "scope": "OFFLINE_FEASIBILITY_PROOF_NO_NEW_HISTORICAL_REPLAY_OR_OUTCOME_GENERATION",
+  "inspected_evidence_sha256": {
+    "docs/research/atlas-red-causal-replay/SOURCE_READINESS.json": "c114c7ffa7b393dc1881afc273c0b53ea4ded7937b57e8586eb96dec5c58e5d0",
+    "docs/research/atlas-red-causal-replay/evidence/PARENT_COMPARISON.json": "86f77e5d2d21566c4842cfddcc29f51f353be8bfc2e7ec9241ad73f0fb70e8fa",
+    "docs/research/atlas-red-causal-replay/evidence/TRACE_AUDIT.json": "322c30ddc0600f2f9eaf28ab3b7ea68785cf075c7f4413a7edbcbaf2d7a60a9e",
+    "docs/research/atlas-red-causal-replay/evidence/TRACE_SEAL.json": "0f8fc0c9d902cbdc92589cec39a5675f2ef1b078b2079a5a4a73a6243130657b",
+    "docs/research/atlas-red-e1b/SOL_SOURCE_CHECKS.jsonl": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+    "docs/research/atlas-red-e1b/SOURCE_MANIFEST.jsonl": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+    "docs/research/atlas-red-historical-blind-ml/DECISION_SEAL.json": "eef9cfe7cc873d0e8965e7bf50ec99ea0f1afe97714a9fb0e6e0dfd66a9c2943",
+    "docs/research/atlas-red-historical-blind-ml/PROTOCOL.json": "d41d00ea63561d67604b912808e5417dcced4f39606c75ac9318dbd0379ebcdd",
+    "docs/research/atlas-red-historical-blind-ml/RESULTS.json": "29a0e4d61b27e319540ec933ed178a6a66d006136d46281003f01c8281ecaab8",
+    "docs/research/atlas-red-historical-blind-ml/SOURCE_OBJECTS.jsonl": "cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b",
+    "docs/v2/transition-r9-local-evidence/api-qualification.json": "66a9118bd40f7a1f33450253fd08d4b8138667942e9d86ea46ea69f21d101736",
+    "docs/v2/transition-r9-local-evidence/connected-fixture.json": "8bb372e1166296b80b835f8152d6f9d0543397ea26063b1af15dd05f0469c5d1",
+    "docs/v2/transition-r9-local-evidence/storage-preflight.json": "0b3e2cd922c660bd4bf61c9d9212e3059045ad75a7128c70b846cd59dc9fbe58",
+    "docs/research/atlas-red-economic-feasibility/evidence/CAPABILITY_AND_TIMING.json": "d62f82fbecf0a4ad6aa54b44846afd406fb80480ef99169fa4ea73585619396f"
+  },
+  "inspected_code_sha256": {
+    "src/atlas/v2/data/bars.py": "2f41e32049570363520c4ebfa2782cfc4ff8385051d65a73b455f49699dd732c",
+    "src/atlas/v2/data/health.py": "ff66479d5ee85696eb62d39a7ad86224a829d0dc0e23a7764b5272f4b4703cd4",
+    "src/atlas/v2/runtime/broad_universe.py": "b0490ad63b070cd7175fe2c70e12cb1db94a2d8945e23df65383b5072b0d8737",
+    "src/atlas/v2/data/binance.py": "273e9ca6c30283aedb819696c15b9e0b8f1c41ee5c7d89ad1e290d78829af8db",
+    "src/atlas/v2/science/costs.py": "1f6dc19d57a1e6d5454ce287291885b700c472ccc9418593ba09228e4a2a3dd1",
+    "src/atlas/v2/data/trade_completeness.py": "462b1935cc97ebcd7fa8817aaa6968e2924abf4217862f4e3146a7560a95b4eb",
+    "src/atlas/v2/data/microstructure.py": "fa151bb90ffc9a88658fa7bbbd594de7745ec21aee1a5dd79cbc5545ef3d255f",
+    "src/atlas/v2/strategies/s5_crowding.py": "d27e3fbb410f11d8c7ed4a88167585c4ae6501d1cd4576852f72a794e14ee181",
+    "src/atlas/v2/news/events.py": "370c4849cab0ebb0331df96215755f4d9cb1e0d8ac512fddde71f866802684b9",
+    "src/atlas/v2/science/mean_population.py": "ea11f6cdcd88036ac39900ef54ae80f34b29861938ca8001a73d43d79aebce2b",
+    "src/atlas/v2/science/mean_evaluation.py": "143814a009c16242f254530d901b2a3c46945252258908dbace96df3c62c42d7",
+    "src/atlas/v2/runtime/production_intelligence.py": "baa15e0dca84f24eae019215cc4cbc654bb32f785740e4d8b9102084d70b1fc6",
+    "src/atlas/v2/research/mean_selection.py": "cbfe5bcc1d78c7c44d95c870a51bc18d162532c43e167011420c6528793fdd8e",
+    "src/atlas/v2/runtime/action_outcome_producer.py": "20e823f86b941d1f10b4cac4b8874b1ed5043534089d8d7f0ef074edbf11ac9c",
+    "src/atlas/v2/strategies/s1_trend.py": "e85c3f1fbfd08f4d01f185773203a7e6cf27522fcb7b9fdd2e2c0be35f58834b",
+    "src/atlas/v2/strategies/s2_breakout.py": "6d2f92adc3e837f876d9c66f10480729436bf32ef095be8a0872773c727f6615",
+    "src/atlas/v2/strategies/s3_mean_reversion.py": "94b27684441ba8abf1cd8eef88ac38b239567a6bf44a0fed73ca28570e629fe0",
+    "src/atlas/v2/strategies/s6_cross_section.py": "0b56f92088e27ddce6f4d96e41263d66a48b7a562ca14db114d059038bd0ac84",
+    "src/atlas/v2/strategies/s8_pairs.py": "29ade8ef05c583ff2d4b9cc79420647afe296c192cc8c422d04fe93e83bbe499",
+    "src/atlas/v2/science/discovery.py": "f58cf1ca8aea25bf8c9ad8e7fff0909c47f396218852ee5a19b10f445ebe16af",
+    "src/atlas/v2/science/mean_calibration.py": "1cacdd788de111e68151ac47ce7e7f6f4433c53277a0b154859d737a15c08503",
+    "src/atlas/v2/runtime/active_history.py": "f98248c85cb643107e87aeb7800610df9a809a803830f5f2cef57c54b0b27d27",
+    "src/atlas/v2/data/active_history.py": "c96779c3aa6218e4710866ebf29562c90431314a10ede2d4ca959f9c474285f5",
+    "src/atlas/v2/data/capabilities.py": "fb571245623fa23f62480d3cec372eae9a260b4eacc114d768ed97c396599f81",
+    "src/atlas/v2/runtime/storage_preflight.py": "031c80a5801c3ebce243b2a7736286f93c74067fbb1e6d2d0e1f6f1c6855c7c0",
+    "src/atlas/v2/data/durable_public_capture.py": "25ac52107a07fb1ba5a0da866b14f8e1e2474b58d9e2cdc0f05dbf5fa04b0c48",
+    "src/atlas/v2/data/capture_receipts.py": "454e72300e02aa55ca0e6288ad5d810efd5528f3256312a06d68864f9ac26e24"
+  },
+  "A_complete_programme": {
+    "historical_evaluation": "NO_GO",
+    "status": "NOT_ESTIMABLE",
+    "reason": "Indispensable original source/eligibility/action/financial/agent/management/outcome contracts lack genuine evidence; full programme is not recoverable from price diagnostics",
+    "profitability_conclusion": "NONE; neither positive nor negative value is established"
+  },
+  "B_bounded_historical": {
+    "status": "PARTIAL_HISTORICAL_RESEARCH_ONLY",
+    "frozen_executable_subset_ready": false,
+    "available_now": "Reuse existing sealed E1B/S1-S6 finite-prefix diagnostics and existing July-Sep2025 nonexecuted fixed-reference conditional cost sensitivities; no rerun or new label",
+    "identifiable": "Declared completed-bar/episode quantities and the algebra of previously frozen reference prices minus assumed costs",
+    "assumption_dependent": [
+      "hypothetical fixed notional",
+      "declared delayed reference observation",
+      "flat fee/slippage/funding/no-fill scenarios",
+      "missing intrabar ordering and trading/source clocks"
+    ],
+    "not_identified": "Actual executable frozenS1/S2/S6 action cash, realistic fill likelihood, risk-sized portfolio cash or complete programme economics",
+    "new_economic_experiment_executed": false
+  },
+  "C_prospective_observe": {
+    "status": "PROPOSED_REQUIRES_QUALIFICATION_AND_OWNER_AUTHORIZATION",
+    "activated": false,
+    "design": "PROSPECTIVE_OBSERVE_PROPOSAL.md",
+    "observable": "Actual public source receipt/health/PIT context, original native opportunities/refusals/seals; later qualified shadow decisions if evidence permits",
+    "modelled_only": "No-order fill/stop/partial/no-fill/cost/outcome and programme cash estimates under separately reviewed model/uncertainty assumptions",
+    "actual_exchange_fill_proved_by_no_order_capture": false,
+    "implementation_frontier": "Existing capture/chronology/Ops/history/strategy/outcome owners are reusable; genuine P1 provenance/typed Brief integration and qualification must be reviewed, not relabelled"
+  },
+  "earliest_missing_indispensable_contract": {
+    "stage": "SOURCE_SNAPSHOT",
+    "contract": "Authentic cutoff-bound PublicSourceHealthV2 with original receipt/source continuity; followed by PIT product/universe revisions",
+    "classification": "SOURCE_MISSING",
+    "native_boundary": "asof_join without source health returns NOT_ESTIMABLE/SOURCE_HEALTH_UNKNOWN; archive limitation refs are not qualified health",
+    "recovery": "Essential original-time source observation requires prospective capture; missing unrecorded2025 receipt/health cannot be reconstructed"
+  },
+  "source_inventory": [
+    {
+      "source": "PRICE_BARS",
+      "owner": {
+        "path": "src/atlas/v2/data/bars.py",
+        "symbol": "CausalBarStoreV2",
+        "line": 109,
+        "sha256": "2f41e32049570363520c4ebfa2782cfc4ff8385051d65a73b455f49699dd732c"
+      },
+      "classification": "VERIFIED_RECONSTRUCTED_PRICE_ONLY",
+      "finding": "Official ZIP/CHECKSUM/CSV manifests and prior recorded verifications exist; original receipt is not in klines",
+      "recovery": "EXISTING_LOCAL_VERIFIED",
+      "limit": "Completed event time and declared replay lag known; original receipt/health/revisions unknown"
+    },
+    {
+      "source": "ORIGINAL_RECEIPT_HEALTH",
+      "owner": {
+        "path": "src/atlas/v2/data/health.py",
+        "symbol": "PublicSourceHealthV2",
+        "line": 26,
+        "sha256": "ff66479d5ee85696eb62d39a7ad86224a829d0dc0e23a7764b5272f4b4703cd4"
+      },
+      "classification": "SOURCE_MISSING",
+      "finding": "No original2024/2025 qualified source health/receipt chain in inspected caches; replay limitation records are not health grants",
+      "recovery": "PROSPECTIVE_ORIGINAL_TIME_CAPTURE",
+      "limit": "Cannot recreate an uncaptured original system observation by downloading archives"
+    },
+    {
+      "source": "PIT_UNIVERSE_FILTERS",
+      "owner": {
+        "path": "src/atlas/v2/runtime/broad_universe.py",
+        "symbol": "full_universe",
+        "line": 79,
+        "sha256": "b0490ad63b070cd7175fe2c70e12cb1db94a2d8945e23df65383b5072b0d8737"
+      },
+      "classification": "SOURCE_MISSING",
+      "finding": "Historical archive-symbol keys are not original PIT listings, contract/filter revisions or strategy eligibility",
+      "recovery": "NEW_HISTORICAL_PUBLIC_ACQUISITION_CONDITIONAL_OR_PROSPECTIVE_CAPTURE",
+      "limit": "Current R9 exchangeInfo summary is2026, lacks raw payload and cannot qualify2025"
+    },
+    {
+      "source": "BBO_MARK_LIQUIDITY",
+      "owner": {
+        "path": "src/atlas/v2/data/binance.py",
+        "symbol": "BinanceUsdMPublicReaderV2",
+        "line": 294,
+        "sha256": "273e9ca6c30283aedb819696c15b9e0b8f1c41ee5c7d89ad1e290d78829af8db"
+      },
+      "classification": "SOURCE_MISSING",
+      "finding": "Reader exists; cached research is candles. No original bid/ask/mark/index/turnover chain retained for research decisions",
+      "recovery": "PROSPECTIVE_ORIGINAL_TIME_CAPTURE_OR_VERIFIABLE_HISTORICAL_SOURCE_IF_LATER_FOUND",
+      "limit": "No such source acquisition is authorized or attempted here"
+    },
+    {
+      "source": "FEES_FUNDING",
+      "owner": {
+        "path": "src/atlas/v2/science/costs.py",
+        "symbol": "FeeScheduleV2",
+        "line": 22,
+        "sha256": "1f6dc19d57a1e6d5454ce287291885b700c472ccc9418593ba09228e4a2a3dd1"
+      },
+      "classification": "SOURCE_MISSING",
+      "finding": "Typed cash arithmetic/declarations exist; historical applicable fee tier and funding/source revisions are not proved",
+      "recovery": "NEW_HISTORICAL_PUBLIC_ACQUISITION_CONDITIONAL_AND_PREDECLARED_SHADOW_FEE_ASSUMPTIONS",
+      "limit": "Public published fees used as assumptions are not independently proved account fee tiers"
+    },
+    {
+      "source": "NATIVE_M1_TRADES",
+      "owner": {
+        "path": "src/atlas/v2/data/trade_completeness.py",
+        "symbol": "collect_exact_trade_window_v1",
+        "line": 304,
+        "sha256": "462b1935cc97ebcd7fa8817aaa6968e2924abf4217862f4e3146a7560a95b4eb"
+      },
+      "classification": "SOURCE_MISSING",
+      "finding": "No retained nativeM1/trade completeness proof in selected history; M15 cannot reconstruct trades or VWAP",
+      "recovery": "NEW_HISTORICAL_PUBLIC_ACQUISITION_CONDITIONAL_OR_PROSPECTIVE_CAPTURE",
+      "limit": "Any acquired old data would remain reconstructed as appropriate, not original receipt"
+    },
+    {
+      "source": "L2_FLOW_SEQUENCE",
+      "owner": {
+        "path": "src/atlas/v2/data/microstructure.py",
+        "symbol": "SequenceValidBookV2",
+        "line": 365,
+        "sha256": "fa151bb90ffc9a88658fa7bbbd594de7745ec21aee1a5dd79cbc5545ef3d255f"
+      },
+      "classification": "SOURCE_MISSING",
+      "finding": "Book/sequence/trade readers exist; no retained corresponding original historical book chain",
+      "recovery": "PROSPECTIVE_ORIGINAL_TIME_CAPTURE",
+      "limit": "Missing original gaps/order/receipt cannot be inferred from OHLC"
+    },
+    {
+      "source": "OI_LIQUIDATIONS",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s5_crowding.py",
+        "symbol": "S5ContinuationResearchV2",
+        "line": 110,
+        "sha256": "d27e3fbb410f11d8c7ed4a88167585c4ae6501d1cd4576852f72a794e14ee181"
+      },
+      "classification": "SOURCE_MISSING",
+      "finding": "OI/funding/liquidation/flow confirmation coverage absent; continuation and reversal stay distinct",
+      "recovery": "PROSPECTIVE_ORIGINAL_TIME_CAPTURE_OR_VERIFIABLE_HISTORICAL_SOURCE_IF_LATER_FOUND",
+      "limit": "Censored liquidation never becomes a passed confirmation"
+    },
+    {
+      "source": "EVENT_CALENDAR",
+      "owner": {
+        "path": "src/atlas/v2/news/events.py",
+        "symbol": "EventSafetyGateBuilderV2",
+        "line": 1122,
+        "sha256": "370c4849cab0ebb0331df96215755f4d9cb1e0d8ac512fddde71f866802684b9"
+      },
+      "classification": "SOURCE_MISSING",
+      "finding": "No original verified asset-mapped event/calendar-coverage/receipt chain; no retroactive CLEAR",
+      "recovery": "NEW_HISTORICAL_PUBLIC_ACQUISITION_CONDITIONAL_AND_PROSPECTIVE_CAPTURE",
+      "limit": "Publication timestamps alone do not prove the original observation or negative coverage"
+    },
+    {
+      "source": "MEAN_GENUINE_PROVENANCE",
+      "owner": {
+        "path": "src/atlas/v2/science/mean_population.py",
+        "symbol": "MeanPopulationRegistrationV1",
+        "line": 58,
+        "sha256": "ea11f6cdcd88036ac39900ef54ae80f34b29861938ca8001a73d43d79aebce2b"
+      },
+      "classification": "CONTRACT_BLOCKED",
+      "finding": "Original population and MeanEvidenceScopeV1 currently restrict GRADE to SYNTHETIC_OFFLINE_QUALIFIED_CONTRACT",
+      "recovery": "SOL_CONTRACT_PROPOSAL_AND_INDEPENDENT_REVIEW",
+      "limit": "Changing a constant, field or receipt to relabel actual/prospective evidence is not authorized"
+    },
+    {
+      "source": "MEAN_MODEL_COST_RISK",
+      "owner": {
+        "path": "src/atlas/v2/science/mean_evaluation.py",
+        "symbol": "run_independent_mean_evaluation",
+        "line": 455,
+        "sha256": "143814a009c16242f254530d901b2a3c46945252258908dbace96df3c62c42d7"
+      },
+      "classification": "CONTRACT_BLOCKED",
+      "finding": "All13 CandidateMeanInputsV1 exist as contracts; no genuine evidence-complete population, independent exact actions, cost/support/model/calibration/scenarios",
+      "recovery": "SOURCE_CAPTURE_PLUS_REVIEWED_GENUINE_PROVENANCE_AND_LABEL_PROTOCOL",
+      "limit": "Synthetic controls demonstrate interfaces only, never genuine cash qualification"
+    },
+    {
+      "source": "COMPLETE_BRIEF_READER",
+      "owner": {
+        "path": "src/atlas/v2/runtime/production_intelligence.py",
+        "symbol": "project_production_receipt",
+        "line": 524,
+        "sha256": "baa15e0dca84f24eae019215cc4cbc654bb32f785740e4d8b9102084d70b1fc6"
+      },
+      "classification": "READER_MISSING",
+      "finding": "Existing selected-key projection deliberately refuses complete production typed sections; target all-evaluated-action reader integration is incomplete",
+      "recovery": "SOL_REVIEWED_EXISTING_OWNER_INTEGRATION",
+      "limit": "Legacy selected-first economics is not a substitute for accepted independent evaluation and B choice"
+    },
+    {
+      "source": "AGENT_B_HISTORY",
+      "owner": {
+        "path": "src/atlas/v2/research/mean_selection.py",
+        "symbol": "validate_offline_b_selection",
+        "line": 82,
+        "sha256": "cbfe5bcc1d78c7c44d95c870a51bc18d162532c43e167011420c6528793fdd8e"
+      },
+      "classification": "SOURCE_MISSING",
+      "finding": "No original genuine historical qualified requests/responses/current-E decisions; validator does not generate a provider response",
+      "recovery": "PROSPECTIVE_QUALIFIED_SHADOW_DECISIONS_WITH_SEPARATE_OWNER_PROVIDER_AUTHORIZATION",
+      "limit": "Unmade2025 agent decisions cannot be recovered. New modern-model replay would be a new contaminated/conditional study, not recovered history"
+    },
+    {
+      "source": "MANAGEMENT_FILL_COST_OUTCOME",
+      "owner": {
+        "path": "src/atlas/v2/runtime/action_outcome_producer.py",
+        "symbol": "RetrospectiveActionOutcomeProducerV1",
+        "line": 368,
+        "sha256": "20e823f86b941d1f10b4cac4b8874b1ed5043534089d8d7f0ef074edbf11ac9c"
+      },
+      "classification": "ECONOMIC_OUTCOME_NOT_IDENTIFIABLE",
+      "finding": "No genuine action/entry/stop/management/fill/portfolio source chain; OHLC cannot determine executable price, queue, no-fill/partial-fill or intrabar stop ordering",
+      "recovery": "REVIEWED_SHADOW_EXECUTION_BOUNDS_AND_PROSPECTIVE_SOURCE_CAPTURE",
+      "limit": "No-order evidence can support modeled estimates only; actual absent exchange fills cannot be recovered"
+    }
+  ],
+  "strategies": [
+    {
+      "strategy": "S1",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s1_trend.py",
+        "symbol": "S1ShadowCoordinator",
+        "line": 251,
+        "sha256": "e85c3f1fbfd08f4d01f185773203a7e6cf27522fcb7b9fdd2e2c0be35f58834b"
+      },
+      "native_clock": "H1_SETUP_AND_FOUR_SUBSEQUENT_NATIVE_M15_OPPORTUNITIES",
+      "available_verified_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "missing_inputs": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "VERIFIED_CALENDAR_EVENT_GATE",
+        "QUALIFIED_WATCH_LIFECYCLE"
+      ],
+      "earliest_blocked_native_stage": "Qualified original source-health/event/universe before create_watch; no native watch/first-trigger provenance",
+      "qualified_opportunity_now": false,
+      "calculation_possible": "Native pure setup/regime already computed; no watch/action",
+      "recovery": "Required original-time records need prospective capture; other historical public sources conditional/unverified; no acquisition here"
+    },
+    {
+      "strategy": "S2",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s2_breakout.py",
+        "symbol": "S2ShadowCoordinator.on_trigger_close",
+        "line": 135,
+        "sha256": "6d2f92adc3e837f876d9c66f10480729436bf32ef095be8a0872773c727f6615"
+      },
+      "native_clock": "CONFIRMED_15M_CLOSE_T_PLUS_5",
+      "available_verified_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "missing_inputs": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS"
+      ],
+      "earliest_blocked_native_stage": "Original actual availability/source health; then mandatory BBO before compression",
+      "qualified_opportunity_now": false,
+      "calculation_possible": "No genuine compression branch reached under existing BBO contract",
+      "recovery": "Required original-time records need prospective capture; other historical public sources conditional/unverified; no acquisition here"
+    },
+    {
+      "strategy": "S3",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s3_mean_reversion.py",
+        "symbol": "S3ShadowCoordinator",
+        "line": 578,
+        "sha256": "94b27684441ba8abf1cd8eef88ac38b239567a6bf44a0fed73ca28570e629fe0"
+      },
+      "native_clock": "CONFIRMED_1M_CLOSE_AND_CONDITIONAL_SUBSEQUENT_M1_TRIGGER_WITHIN_NATIVE_WATCH_AGE",
+      "available_verified_inputs": [],
+      "missing_inputs": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "NATIVE_M1_AND_TRADE_COMPLETENESS",
+        "AR1_RESIDUAL_HISTORY"
+      ],
+      "earliest_blocked_native_stage": "NativeM1/trade completeness/VWAP/residual source history and health",
+      "qualified_opportunity_now": false,
+      "calculation_possible": "Only any previously documented supported subcomponents; required genuine chain absent",
+      "recovery": "Required original-time records need prospective capture; other historical public sources conditional/unverified; no acquisition here"
+    },
+    {
+      "strategy": "S4",
+      "owner": {
+        "path": "src/atlas/v2/data/microstructure.py",
+        "symbol": "s4_execution_quality_context",
+        "line": 1367,
+        "sha256": "fa151bb90ffc9a88658fa7bbbd594de7745ec21aee1a5dd79cbc5545ef3d255f"
+      },
+      "native_clock": "SEQUENCE_VALID_BOOK_TRADE_EVENTS",
+      "available_verified_inputs": [],
+      "missing_inputs": [
+        "HISTORICAL_L2_BBO_AGGRESSOR_SEQUENCE_HEALTH",
+        "THREE_QUALIFIED_PRIOR_BASELINE_SAMPLES"
+      ],
+      "earliest_blocked_native_stage": "Sequence-validL2/BBO/aggressor/health before context or absorption",
+      "qualified_opportunity_now": false,
+      "calculation_possible": "Only any previously documented supported subcomponents; required genuine chain absent",
+      "recovery": "Required original-time records need prospective capture; other historical public sources conditional/unverified; no acquisition here"
+    },
+    {
+      "strategy": "S5",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s5_crowding.py",
+        "symbol": "S5ContinuationResearchV2",
+        "line": 110,
+        "sha256": "d27e3fbb410f11d8c7ed4a88167585c4ae6501d1cd4576852f72a794e14ee181"
+      },
+      "native_clock": "ASYNCHRONOUS_DERIVATIVE_AND_STRUCTURAL_EVENT",
+      "available_verified_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "missing_inputs": [
+        "OI_FUNDING_LIQUIDATIONS_FLOW_ORIGINAL_COVERAGE"
+      ],
+      "earliest_blocked_native_stage": "Derivative/liquidation coverage and flow confirmation stages; continuation/reversal separate",
+      "qualified_opportunity_now": false,
+      "calculation_possible": "Only any previously documented supported subcomponents; required genuine chain absent",
+      "recovery": "Required original-time records need prospective capture; other historical public sources conditional/unverified; no acquisition here"
+    },
+    {
+      "strategy": "S6",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s6_cross_section.py",
+        "symbol": "S6ShadowCoordinator",
+        "line": 826,
+        "sha256": "0b56f92088e27ddce6f4d96e41263d66a48b7a562ca14db114d059038bd0ac84"
+      },
+      "native_clock": "COMPLETED_H1_RANK_THEN_CONDITIONAL_M15_WATCH",
+      "available_verified_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "missing_inputs": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "PIT_ELIGIBLE_COHORT_LIQUIDITY_TURNOVER"
+      ],
+      "earliest_blocked_native_stage": "PITeligible cohort/liquidity/funding/health before full ranking; pure H4 context is available",
+      "qualified_opportunity_now": false,
+      "calculation_possible": "Native pure completed-H1 returns/H4context already computed; no eligible ranking",
+      "recovery": "Required original-time records need prospective capture; other historical public sources conditional/unverified; no acquisition here"
+    },
+    {
+      "strategy": "S7",
+      "owner": {
+        "path": "src/atlas/v2/news/events.py",
+        "symbol": "S7DirectionalShadowV2",
+        "line": 1386,
+        "sha256": "370c4849cab0ebb0331df96215755f4d9cb1e0d8ac512fddde71f866802684b9"
+      },
+      "native_clock": "AUTHENTICATED_EVENT_THEN_M5_REACTION",
+      "available_verified_inputs": [],
+      "missing_inputs": [
+        "VERIFIED_EVENT_CALENDAR_RECEIPT",
+        "M1_M5_BTC_REACTION",
+        "HISTORICAL_BBO"
+      ],
+      "earliest_blocked_native_stage": "Verified event/calendar/coverage receipt before directionalM5 reaction or CLEAR gate",
+      "qualified_opportunity_now": false,
+      "calculation_possible": "Only any previously documented supported subcomponents; required genuine chain absent",
+      "recovery": "Required original-time records need prospective capture; other historical public sources conditional/unverified; no acquisition here"
+    },
+    {
+      "strategy": "S8",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s8_pairs.py",
+        "symbol": "build_research_basket_forecast",
+        "line": 234,
+        "sha256": "29ade8ef05c583ff2d4b9cc79420647afe296c192cc8c422d04fe93e83bbe499"
+      },
+      "native_clock": "HOURLY_OWNER_DEFINED_PAIR",
+      "available_verified_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "missing_inputs": [
+        "OWNER_DEFINED_PAIR_CATALOG",
+        "BOTH_LEG_BOOK_FEES_FUNDING"
+      ],
+      "earliest_blocked_native_stage": "Owner-defined pair catalog and synchronized both-leg source/cost evidence",
+      "qualified_opportunity_now": false,
+      "calculation_possible": "Only any previously documented supported subcomponents; required genuine chain absent",
+      "recovery": "Required original-time records need prospective capture; other historical public sources conditional/unverified; no acquisition here"
+    },
+    {
+      "strategy": "PATH_B",
+      "owner": {
+        "path": "src/atlas/v2/science/discovery.py",
+        "symbol": "register_discovery_experiment",
+        "line": 443,
+        "sha256": "f58cf1ca8aea25bf8c9ad8e7fff0909c47f396218852ee5a19b10f445ebe16af"
+      },
+      "native_clock": "REGISTERED_BOUNDED_RESEARCH_POPULATION",
+      "available_verified_inputs": [],
+      "missing_inputs": [
+        "REGISTERED_SCREEN_POPULATION_AND_ADMISSION"
+      ],
+      "earliest_blocked_native_stage": "Registered screen population/admission; Discovery Lab is not a replacement market detector",
+      "qualified_opportunity_now": false,
+      "calculation_possible": "Only any previously documented supported subcomponents; required genuine chain absent",
+      "recovery": "Required original-time records need prospective capture; other historical public sources conditional/unverified; no acquisition here"
+    }
+  ],
+  "decisive_gates": [
+    {
+      "id": "SOURCE_SNAPSHOT",
+      "classification": "SOURCE_MISSING",
+      "contract": "PublicSourceHealthV2 / asof_join",
+      "evidence_grade_or_reason": "Reconstructed OHLC verified; original receipt/health unknown; not a qualified actual snapshot"
+    },
+    {
+      "id": "INSTRUMENT_UNIVERSE",
+      "classification": "SOURCE_MISSING",
+      "contract": "ProductContractV2 / UniverseContractV2",
+      "evidence_grade_or_reason": "No complete original PIT contract/filter/eligibility manifest"
+    },
+    {
+      "id": "NATIVE_OPPORTUNITY",
+      "classification": "CONTRACT_BLOCKED",
+      "contract": "S1/S2/S6 existing coordinators",
+      "evidence_grade_or_reason": "Pure diagnostics do not satisfy watch/trigger/candidate prerequisites"
+    },
+    {
+      "id": "ORIGINAL_POPULATION",
+      "classification": "CONTRACT_BLOCKED",
+      "contract": "CandidateEvaluationSetV1 and original MeanPopulation records",
+      "evidence_grade_or_reason": "No actual original complete qualified action population; current receipt scope synthetic only"
+    },
+    {
+      "id": "EXACT_ACTION",
+      "classification": "SOURCE_MISSING",
+      "contract": "ExactActionV1 / IndependentRiskProfileV1 / OfflineRiskSnapshotV1",
+      "evidence_grade_or_reason": "No genuine independently sized exact plan with fees/filter/virtual research risk source"
+    },
+    {
+      "id": "COST_MODEL_RISK",
+      "classification": "CONTRACT_BLOCKED",
+      "contract": "CandidateMeanInputsV1 / calibration/scenario/allowances",
+      "evidence_grade_or_reason": "No qualified genuine mean/support/cost/fill/risk/scenario inputs or financial provenance bridge"
+    },
+    {
+      "id": "ELIGIBLE_SET",
+      "classification": "SOURCE_MISSING",
+      "contract": "EligibleSetV1 / checked evaluation receipt",
+      "evidence_grade_or_reason": "Zero genuine eligible members/receipts; generic metadata is insufficient"
+    },
+    {
+      "id": "BRIEF",
+      "classification": "READER_MISSING",
+      "contract": "DecisionBriefV1 / production typed readers",
+      "evidence_grade_or_reason": "Complete target typed reader chain not qualified; existing guard remains"
+    },
+    {
+      "id": "AGENT_B",
+      "classification": "SOURCE_MISSING",
+      "contract": "Qualified response bound to current exact E and original deadline",
+      "evidence_grade_or_reason": "No genuine historical response; missing provider gives no opening fallback"
+    },
+    {
+      "id": "MANAGEMENT",
+      "classification": "SOURCE_MISSING",
+      "contract": "Existing finite alternatives and sealed plan/position",
+      "evidence_grade_or_reason": "No genuine action/position to manage; no synthesized entry/stop"
+    },
+    {
+      "id": "MATURE_OUTCOME",
+      "classification": "ECONOMIC_OUTCOME_NOT_IDENTIFIABLE",
+      "contract": "ActionReplaySourceEvidenceV1 / outcome maturity",
+      "evidence_grade_or_reason": "No qualified minute/book/fill/cost/management provenance for a genuine action"
+    },
+    {
+      "id": "PROGRAMME_LEDGER",
+      "classification": "ECONOMIC_OUTCOME_NOT_IDENTIFIABLE",
+      "contract": "Original population, cash, exposure and comparator policies",
+      "evidence_grade_or_reason": "No complete programme decisions/actions/portfolio cash path; zero is not a missing-return substitute"
+    },
+    {
+      "id": "ORIGINAL_TIMING",
+      "classification": "TIMING_UNVERIFIED",
+      "contract": "actual receipt + maintained-state processing + qualified B completion before originalT+5",
+      "evidence_grade_or_reason": "Replay+5/+1 impliesT+6/+7; not actual measured production latency"
+    },
+    {
+      "id": "RUNTIME_DEPENDENCIES",
+      "classification": "BLOCKED_BY_ENVIRONMENT",
+      "contract": "PyArrow/Nautilus/optional model runtimes",
+      "evidence_grade_or_reason": "Missing packages block specific tests/readers; installing them cannot manufacture historical source/qualification data"
+    }
+  ],
+  "candidate_mean_input_fields": [
+    "candidate",
+    "product",
+    "policy",
+    "fees",
+    "funding",
+    "risk",
+    "model",
+    "calibration",
+    "scenarios",
+    "execution_bias",
+    "numerical",
+    "incremental_programme",
+    "context"
+  ],
+  "genuine_exact_action_now": {
+    "available": false,
+    "execution_attempted": false,
+    "immutable_evidence_chain": null,
+    "stopped_before": "SOURCE_SNAPSHOT; no fabricated universe/health/watch/candidate/financial receipt used"
+  },
+  "native_deadline": {
+    "frozen_delay_ns": 5000000000,
+    "assumed_replay_ready_ns_counts": {
+      "6000000000": 99,
+      "7000000000": 33
+    },
+    "historical_actual_receipt": "UNKNOWN_NOT_CAPTURED",
+    "target_environment_qualified": false,
+    "state_maintenance_implemented": true,
+    "existing_state_owner": "data.active_history.advance / runtime.active_history.maintain_history",
+    "maintained_state_implication": "Bounded128bar pages and exact persisted recursive seeds can avoid full-prefix recomputation; this is an architecture/parity fact, not a demonstrated latency pass",
+    "reported_R9_public_ws_latency_ms": {
+      "p50": 230.555,
+      "max": 445.884,
+      "seconds": 12,
+      "raw_retained": false
+    },
+    "reported_R9_rest_snapshot_ms": 5185.917,
+    "reported_R9_storage_preflight": "REJECTED; synthetic service means~309-337ms exceed200ms; broad capacity measurement absent",
+    "feasibility_status": "UNVERIFIED / TEST_GATE; no deadline extension or precomputed-state invention",
+    "required_measurement": "Actual synchronized source receive/ingest/available/persisted clocks, state checkpoint lineage, queue/compute/seal/provider return times through originalT+5 on exact target hardware, including restart/gap/load tails and all missed slots"
+  },
+  "dependency_installation_alone_sufficient": false,
+  "current_measurable_economic_quantity": "Only existing explicitly assumption-bound historical reference-cost sensitivities; no new return or PnL computed",
+  "not_estimable": [
+    "whole-programme arithmetic-mean after-cost cash",
+    "realized programme return/drawdown/capital use",
+    "full S1-S8/context/Agent B incremental economics",
+    "actual fill/slippage/no-fill/partial/stop outcomes absent order-level evidence"
+  ],
+  "minimum_next_evidence_set": [
+    "Actual durable public receipt/source-health/clock/continuity and PIT metadata/filter/eligibility snapshots",
+    "Executable-source BBO/mark/index/liquidity and source-qualified fee/funding/calendar coverage",
+    "Strategy-specificM1/trade/L2/OI/liquidation/events/pair evidence as required; preserve context-only roles",
+    "Reviewed genuine population/action/shadow-outcome provenance bridge, original candidate denominators and finite plans",
+    "Qualified compact mean/support/cost/risk/portfolio/Brief and permitted Agent B process; separate paid-provider authorization",
+    "Target-host storage/source/due-clock/nativeT+5 qualification before admitted campaign work"
+  ],
+  "next_authorized_action_recommendation": "Independent review of this feasibility verdict and the unactivated public-only OBSERVE proposal; then explicitly authorize bounded source-capture qualification using existing owners, with Sol review of genuine financial provenance before any qualified economic run",
+  "risks_and_restrictions": [
+    "No source acquisition or streaming in this session",
+    "No private exchange/account reads, provider calls/generation/model downloads/orders/deployment/capital",
+    "No threshold/model fit, new outcomes, October2025-onward holdout or repeated one-hour replay",
+    "Historical fixed cohort and revealed results do not identify unbiased whole-Binance programme value",
+    "No-order capture cannot prove actual live fills; execution-dependent effects stay modeled/bounded/censored",
+    "Existing P1 synthetic grade must not be promoted by renaming it",
+    "Source gaps, event populations and missing economic outcomes are never zero-filled",
+    "Design/operative/capital authority remain separate; future sessions are not started or promised"
+  ],
+  "qualified_actions_generated": 0,
+  "orders": 0,
+  "new_market_requests": 0,
+  "paid_allowance": 0,
+  "bot_allocation": 0,
+  "mode": "OBSERVE",
+  "capital": "NO_GO",
+  "prospective_feed_qualification_limit": "Binance aggTrade capability is UNVERIFIED and aggregate prints do not establish the S3 all-trades/prefix contract. Liquidation forceOrder capability is NOT_ESTIMABLE with no completeness proof. New capture alone does not guarantee complete S1-S8 economics; retain blocked roles if independently qualified sources cannot be obtained.",
+  "primary_recommendation": "PROSPECTIVE_OBSERVATION_REQUIRED"
+}

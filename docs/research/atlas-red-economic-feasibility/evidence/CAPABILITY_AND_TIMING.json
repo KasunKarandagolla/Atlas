@@ -1,0 +1,221 @@
+{
+  "version": "ECONOMIC_FEASIBILITY_SOURCE_CAPABILITY_TIMING_V1",
+  "authority": "ZERO",
+  "native_capabilities": [
+    {
+      "source_channel": "USD-M depth snapshot REST",
+      "status": "TEST GATE",
+      "permitted_uses": [
+        "snapshot initialization input for a sequence-reconciled book"
+      ],
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "coverage_censoring_limitations": "snapshot is point-in-time; does not certify continuous liquidity or hidden depth",
+      "repair_capability": "buffer depth events; fetch fresh REST snapshot L; discard u < L; accept first bridge only when U <= L <= u; after bridge require pu == previous accepted u; after mismatch require a fresh snapshot, valid bridge and declared S4 warmup"
+    },
+    {
+      "source_channel": "USD-M depth diff WS",
+      "status": "UNVERIFIED",
+      "permitted_uses": [
+        "sequence-valid displayed depth context after full snapshot/delta reconciliation"
+      ],
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "coverage_censoring_limitations": "public depth stream is bounded/censored to exchange-published levels",
+      "repair_capability": "buffer depth events; fetch fresh REST snapshot L; discard u < L; accept first bridge only when U <= L <= u; then require pu == previous accepted u; after mismatch require a fresh snapshot, valid bridge and declared S4 warmup"
+    },
+    {
+      "source_channel": "USD-M aggTrade WS",
+      "status": "UNVERIFIED",
+      "permitted_uses": [
+        "signed aggressive aggregate trade flow with explicitly labeled aggregation"
+      ],
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "coverage_censoring_limitations": "aggregate trades are not every individual matching-engine print; disconnect creates gaps",
+      "repair_capability": "no historical repair declared"
+    },
+    {
+      "source_channel": "USD-M REST mark/funding/open-interest",
+      "status": "TEST GATE",
+      "permitted_uses": [
+        "crowding context and observed economic-cost inputs with named missingness"
+      ],
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "coverage_censoring_limitations": "REST points omit intervals between requests; historical revisions do not rewrite actual receipt chronology",
+      "repair_capability": "no continuous sequence repair; archived originals remain append-only"
+    },
+    {
+      "source_channel": "USD-M forceOrder liquidation WS",
+      "status": "NOT ESTIMABLE",
+      "permitted_uses": [
+        "none until schema and coverage are qualified"
+      ],
+      "explicitly_unsupported_uses": [
+        "historical L2 reconstruction from candles",
+        "position ownership",
+        "trader leverage",
+        "exact liquidation levels/maps",
+        "complete forced-liquidation population",
+        "institutional intent"
+      ],
+      "coverage_censoring_limitations": "no feed completeness or population coverage claim",
+      "repair_capability": "no repair declared"
+    }
+  ],
+  "current_p1_evidence_grade": "SYNTHETIC_OFFLINE_QUALIFIED_CONTRACT",
+  "max_actual_history_advance_bars": 128,
+  "reported_R9_public_probe": {
+    "grade": "EXISTING_OPERATOR_REPORT_RAW_UNRETAINED_NOT_CURRENT_REPLICATION",
+    "observed_at_utc": "2026-10-14",
+    "rest": {
+      "host": "fapi.binance.com",
+      "source_path": "BroadPublicCycleSourceV2 / BinanceUsdMPublicReaderV2",
+      "credentials_used": false,
+      "server_time_http_status": 200,
+      "exchange_info_http_status": 200,
+      "exchange_info_rows": 927,
+      "exchange_info_status_counts": {
+        "PENDING_TRADING": 1,
+        "SETTLING": 133,
+        "TRADING": 793
+      },
+      "translated_usdt_linear_products": 658,
+      "translated_trading_products": 525,
+      "snapshot_complete": true,
+      "snapshot_records": 2366,
+      "snapshot_requests": 4,
+      "snapshot_successful_requests": 3,
+      "snapshot_duration_ms": 5185.917,
+      "declared_acquisition_budget_ms": 5000,
+      "duration_over_budget_ms": 185.917,
+      "snapshot_latest_receipt_age_ms": 2014.426,
+      "event_type_counts": {
+        "BOOK_TICKER": 525,
+        "MARK_INDEX_CURRENT_FUNDING": 658,
+        "PRODUCT_METADATA": 658,
+        "TICKER_24H": 525
+      },
+      "bar_and_history_enrichment": "DEFERRED_BY_ACQUISITION_BUDGET",
+      "raw_payload_saved": false,
+      "orders_submitted": false
+    },
+    "websocket": {
+      "host": "fstream.binance.com",
+      "existing_source": "PublicStreamSourceV2 / capture_public_frames",
+      "observation_seconds": 12,
+      "attempts": 1,
+      "reconnects": 0,
+      "frames_received_and_drained": 265,
+      "frames_by_symbol": {
+        "0GUSDT": 5,
+        "BTCUSDT": 110,
+        "ETHUSDT": 150
+      },
+      "event_to_receipt_latency_ms_p50": 230.555,
+      "event_to_receipt_latency_ms_max": 445.884,
+      "queue_rejections": 0,
+      "loss_latched": false,
+      "source_closed": true,
+      "raw_frames_saved": false,
+      "credentials_used": false,
+      "orders_submitted": false
+    }
+  },
+  "reported_R9_storage_preflight": {
+    "classification": "TEST GATE",
+    "run_component_result": "OWNER_STORAGE_PREFLIGHT_REJECTED",
+    "production_source_constructed": false,
+    "production_writer_opened": false,
+    "production_database_opened": false,
+    "capital_enabled": false,
+    "assisted_enabled": false,
+    "orders_submitted": 0,
+    "filesystem": "ext4",
+    "free_disk_bytes_observed": [
+      94070140928,
+      94070853632
+    ],
+    "disk_headroom_was_rejection_reason": false,
+    "probe": {
+      "temporary_probe_only": true,
+      "probe_removed": true,
+      "generated_frames": 1536,
+      "capture_receipts": 24,
+      "archive_extents": 24,
+      "generated_index_rows": 1561,
+      "archive_replay_exact": true,
+      "sqlite_integrity": "ok",
+      "sole_writer_lease_enforced": true,
+      "maximum_mean_batch_service_ns": 200000000,
+      "maximum_operation_ns": 800000000,
+      "attempts": [
+        {
+          "sustained_batches": 16,
+          "sustained_mean_ns": 336992055,
+          "sustained_max_ns": 523773964,
+          "burst_batches": 8,
+          "burst_mean_ns": 308588706,
+          "burst_max_ns": 384500887,
+          "archive_write_fsync_mean_ns": 62110338,
+          "capture_receipt_fsync_mean_ns": 28393207
+        },
+        {
+          "sustained_batches": 16,
+          "sustained_mean_ns": 326775336,
+          "sustained_max_ns": 604073695,
+          "burst_batches": 8,
+          "burst_mean_ns": 327812066,
+          "burst_max_ns": 393207097,
+          "archive_write_fsync_mean_ns": 66032213,
+          "capture_receipt_fsync_mean_ns": 25199035
+        }
+      ],
+      "maximum_breadth_cycle_bytes": null,
+      "broad_workload_measurement": "UNAVAILABLE_FAIL_CLOSED",
+      "reasons": [
+        "SUSTAINED_BATCH_SERVICE_CANNOT_SUSTAIN_DECLARED_RATE",
+        "BURST_BATCH_SERVICE_CANNOT_SUSTAIN_DECLARED_RATE",
+        "BROAD_WORKLOAD_CAPACITY_MEASUREMENT_UNAVAILABLE"
+      ],
+      "result": "TEST GATE"
+    },
+    "probe_data_class": "SYNTHETIC_STORAGE_FIXTURE",
+    "no_threshold_or_guard_changed": true
+  },
+  "owner_code_sha256": {
+    "src/atlas/v2/data/capabilities.py": "fb571245623fa23f62480d3cec372eae9a260b4eacc114d768ed97c396599f81",
+    "src/atlas/v2/data/trade_completeness.py": "462b1935cc97ebcd7fa8817aaa6968e2924abf4217862f4e3146a7560a95b4eb",
+    "src/atlas/v2/runtime/storage_preflight.py": "031c80a5801c3ebce243b2a7736286f93c74067fbb1e6d2d0e1f6f1c6855c7c0",
+    "src/atlas/v2/runtime/production_intelligence.py": "baa15e0dca84f24eae019215cc4cbc654bb32f785740e4d8b9102084d70b1fc6",
+    "src/atlas/v2/data/durable_public_capture.py": "25ac52107a07fb1ba5a0da866b14f8e1e2474b58d9e2cdc0f05dbf5fa04b0c48",
+    "src/atlas/v2/data/capture_receipts.py": "454e72300e02aa55ca0e6288ad5d810efd5528f3256312a06d68864f9ac26e24"
+  },
+  "timing_interpretation": "Existing bounded incremental histories can reduce recomputation; no actual historical receipt or qualified whole native action/agent T+5 trace is established. Archive+5/+1/+aggregation misses do not measure real production latency.",
+  "prospective_limit": "Public feed presence never proves complete all-trade or liquidation coverage; unsupported strategies must remain censored/unqualified unless an independently qualified source exists."
+}

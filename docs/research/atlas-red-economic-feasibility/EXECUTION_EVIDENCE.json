@@ -1,0 +1,348 @@
+{
+  "authority": "ZERO",
+  "bot_allocation": 0,
+  "branch": "research/atlas-red-economic-feasibility-gate-2026-10-18",
+  "capital": "NO_GO",
+  "commands": {
+    "capture_file_discovery": [
+      "rg",
+      "--files",
+      "--hidden",
+      "--no-ignore",
+      "-g",
+      "!**/.git/**",
+      "-g",
+      "!**/.venvs/**",
+      "-g",
+      "!**/__pycache__/**",
+      "-g",
+      "capture-*.bin",
+      "-g",
+      "*.arrow",
+      "-g",
+      "*.parquet",
+      "/workspace"
+    ],
+    "environment": {
+      "PYTHONPATH": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages"
+    },
+    "environment_probe": {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/python",
+        "-m",
+        "pytest",
+        "tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+        "tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+        "-ra",
+        "--junitxml=/workspace/work/economic-feasibility-environment.xml"
+      ],
+      "cwd": "/workspace/work/atlas-economic-feasibility"
+    },
+    "inventory": [
+      "/workspace/.venvs/atlas/bin/python",
+      "docs/research/atlas-red-economic-feasibility/inventory.py",
+      "--ops-root",
+      "/workspace/work",
+      "--output",
+      "docs/research/atlas-red-economic-feasibility/evidence/OFFLINE_INVENTORY.json"
+    ],
+    "new_tests": [
+      "/workspace/.venvs/atlas/bin/python",
+      "-m",
+      "pytest",
+      "tests/research/test_atlas_economic_feasibility.py",
+      "-ra",
+      "--junitxml=/workspace/work/economic-feasibility-new.xml"
+    ],
+    "parent_environment_probe": {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/python",
+        "-m",
+        "pytest",
+        "tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+        "tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+        "-ra",
+        "--junitxml=/workspace/work/economic-feasibility-parent-environment.xml"
+      ],
+      "cwd": "/workspace/work/atlas-causal-qualification",
+      "source_sha": "4f00fa8afca4ac15b1cbf64519adf1f684b0589f"
+    },
+    "selected_existing": {
+      "PYTHONPATH": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages",
+      "argv": [
+        "/workspace/.venvs/atlas/bin/python",
+        "-m",
+        "pytest",
+        "tests/research/test_atlas_native_trace.py::test_unavailable_inputs_preserve_native_or_adapter_reason",
+        "tests/research/test_atlas_native_trace.py::test_native_coordinator_exact_watch_and_refusal_parity",
+        "tests/research/test_atlas_native_trace.py::test_complete_synthetic_s2_native_candidate_is_identical",
+        "tests/research/test_atlas_native_trace.py::test_frozen_deadline_and_actual_replay_separation",
+        "tests/research/test_atlas_native_trace.py::test_native_clocks_deadline_and_complete_surface_accounting",
+        "tests/research/test_atlas_native_trace.py::test_adapter_has_no_outcome_loader_or_substitute_numerical_strategy",
+        "tests/v2/test_session037_active_history.py::test_exact_full_prefix_equivalence_beyond_two_tail_windows",
+        "tests/v2/test_session037_active_history.py::test_serialized_restart_preserves_seeds_exactly_and_hash_is_immutable",
+        "tests/v2/test_session037_active_history.py::test_reconstructed_market_and_forming_bars_never_enter_actual_state",
+        "tests/v2/test_session037_active_history.py::test_work_and_wire_budgets_identity_and_authority_are_strict",
+        "tests/v2/test_session037_active_history.py::test_gaps_are_retained_and_counted_without_manufacturing_bars_or_days",
+        "tests/v2/test_session036_m15_origin_accounting.py::test_each_missing_prerequisite_retains_explicit_causal_missingness",
+        "tests/v2/test_session036_m15_origin_accounting.py::test_boundary_is_inclusive_and_later_recovery_never_rescues_original_health",
+        "tests/v2/test_session036_m15_origin_accounting.py::test_revision_isolation_nonfinal_reconstructed_future_and_absent_origins",
+        "tests/p1/test_mean_models.py::test_future_immature_censored_diagnostic_and_incompatible_rows",
+        "tests/p1/test_evidence_integrity.py::test_original_ledger_retains_unavailable_empty_and_missed_slots_without_backdating",
+        "-ra",
+        "--junitxml=/workspace/work/economic-feasibility-targeted.xml"
+      ],
+      "cwd": "/workspace/work/atlas-economic-feasibility"
+    }
+  },
+  "decision": "PROSPECTIVE_OBSERVATION_REQUIRED",
+  "dependent_session_or_campaign_started": false,
+  "development_repairs": [
+    "Owner-symbol inventory resolver rejected nonexistent TradeCompletenessEvidenceV1 before publication; corrected to actual collect_exact_trade_window_v1",
+    "Initial new tests20pass/one failed before intended eligibility gate because synthetic universe retained old envelope hash; valid resealed synthetic envelope fixed it",
+    "Added native capability test initially25pass/one failed because canonical capability status is NOT ESTIMABLE with a space; enum/value assertion corrected. Separate failed-run file was not retained; observed console evidence only.",
+    "Final26new tests pass; no production source/contract/expected scientific result changed"
+  ],
+  "external_acceptance_scope": "Owner-supplied PASS limited to scoped causal replay correction, exact4f00fa8 only; no reviewer transcript/rerun or broader acceptance inferred",
+  "freeze_read_scope": "Complete original V1/V2/Agent freezes read earlier in this same conversation; unchanged full reading reused and exact current bytes freshly verified. No claim of a new independent audit.",
+  "inventory_repeat": {
+    "byte_identical": true,
+    "resource_grade": "CLOUD_INVENTORY_ONLY_NOT_TARGET_PIPELINE_QUALIFICATION",
+    "resources": {
+      "arguments": [
+        "--ops-root",
+        "/workspace/work",
+        "--output",
+        "/workspace/work/economic-feasibility-inventory-repeat.json"
+      ],
+      "entrypoint": "/workspace/work/atlas-economic-feasibility/docs/research/atlas-red-economic-feasibility/inventory.py",
+      "exit_code": 0,
+      "max_rss_kib": 23032,
+      "user_seconds": 0.23716199999999998,
+      "wall_seconds": 0.30359672001213767
+    }
+  },
+  "logs": {
+    "economic-feasibility-environment.log": {
+      "sha256": "12b95e9e1a2acd77b68cd18db9fcce2c018cf054efd0037aaff42781d48ee8c1",
+      "summary_lines": [
+        "FAILED tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+        "FAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+        "2 failed in 0.54s"
+      ]
+    },
+    "economic-feasibility-new-final.log": {
+      "sha256": "9455ecbb43ebe4928722914dd12f3243373739248260f91323d949e5aa7e4a90",
+      "summary_lines": [
+        "26 passed in 1.22s"
+      ]
+    },
+    "economic-feasibility-new-tests.log": {
+      "sha256": "1f53b85c8f21046d5dc7822dd2d80dbc5bfd980bcb4d3084f2493c43cf921741",
+      "summary_lines": [
+        "FAILED tests/research/test_atlas_economic_feasibility.py::test_native_s2_indispensable_source_refusals_survive_without_actions[eligibility]",
+        "1 failed, 20 passed in 2.05s"
+      ]
+    },
+    "economic-feasibility-parent-environment.log": {
+      "sha256": "8d48b66671b869a0830491a80d6f3c352f38835ac7e53fab40f6863cd43ae3d3",
+      "summary_lines": [
+        "FAILED tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+        "FAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+        "2 failed in 0.45s"
+      ]
+    },
+    "economic-feasibility-targeted.log": {
+      "sha256": "a9c51c982951cb15a42b3929e372b1feca09f2b542d43685346c78321eb1c846",
+      "summary_lines": [
+        "30 passed in 7.36s"
+      ]
+    }
+  },
+  "mode": "OBSERVE",
+  "network": {
+    "GitHub": "OWNER_AUTHORIZED_READ_WRITE",
+    "credential_values_read": false,
+    "market_requests": 0,
+    "model_downloads": 0,
+    "policy": "restricted/enforced/current",
+    "private_account_reads": 0,
+    "provider_calls": 0,
+    "public_streams": 0
+  },
+  "not_executed": [
+    "Full or one-hour historical replay",
+    "Market ML fitting/inference, threshold search, new action/outcome/cash labels",
+    "Genuine end-to-end path beyond first missing source gate",
+    "Public acquisition, provider/account/venue calls, orders, deployment, policy activation or dependent session"
+  ],
+  "owner_selected_model": "GPT-6.1 Sol High",
+  "paid_allowance": 0,
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "preservation": {
+    "acceptance_state_columns_unchanged": true,
+    "all_existing_tests_unchanged": true,
+    "all_src_unchanged": true,
+    "append_only_logs": true,
+    "canonical_design_pdf_locks_unchanged": true,
+    "freeze_sha256": {
+      "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "unchanged_existing_research_files": 154,
+    "unchanged_protected_production_design_dependency_files": 309
+  },
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "recorded_at_utc": "2026-10-18T16:31:25.643852+00:00",
+  "remaining": [
+    "Genuine historical whole-programme economics NOT ESTIMABLE",
+    "Original receipt/health/PIT source and targetT+5 UNVERIFIED/TEST GATE",
+    "Genuine P1 provenance and complete Brief/source integrations CONTRACT/READER BLOCKED",
+    "Public trade/liquidation completeness not qualified; future capture may remain insufficient",
+    "PyArrow/Nautilus and optional runtime qualification BLOCKED BY ENVIRONMENT",
+    "Prospective source/campaign/financial protocol and any provider generation need separate review and explicit owner authorization"
+  ],
+  "runtime_model_effort_attestation": "UNVERIFIED",
+  "source_sha": "4f00fa8afca4ac15b1cbf64519adf1f684b0589f",
+  "static_checks": [
+    {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/ruff",
+        "check",
+        "src",
+        "tests/research/test_atlas_economic_feasibility.py",
+        "docs/research/atlas-red-economic-feasibility"
+      ],
+      "cwd": "/workspace/work/atlas-economic-feasibility",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "All checks passed!\n"
+    },
+    {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/python",
+        "-m",
+        "compileall",
+        "-q",
+        "src",
+        "tests/research/test_atlas_economic_feasibility.py",
+        "docs/research/atlas-red-economic-feasibility"
+      ],
+      "cwd": "/workspace/work/atlas-economic-feasibility",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "lock",
+        "--check",
+        "--offline"
+      ],
+      "cwd": "/workspace/work/atlas-economic-feasibility",
+      "exit_code": 0,
+      "stderr": "Using CPython 3.12.14 interpreter at: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\nResolved 39 packages in 4ms\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "pip",
+        "check",
+        "--python",
+        "/workspace/.venvs/atlas/bin/python"
+      ],
+      "cwd": "/workspace/work/atlas-economic-feasibility",
+      "exit_code": 0,
+      "stderr": "Using Python 3.12.14 environment at: /workspace/.venvs/atlas\nChecked 17 packages in 0.79ms\nAll installed packages are compatible\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "sha256sum",
+        "-c",
+        "MANIFEST.sha256"
+      ],
+      "cwd": "/workspace/work/atlas-economic-feasibility/algorithms",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "ACCEPTANCE_REGISTER.csv: OK\nATLAS_ALGORITHM.pdf: OK\nATLAS_OPERATIONAL_RECONCILIATION_AMENDMENT_PROPOSED.md: OK\nATLAS_SYSTEM_DESIGN.md: OK\nAUTHORITY_RECONCILIATION.md: OK\nCAPABILITY_REUSE_AUDIT.csv: OK\nCODEX_SESSION_PROMPTS.md: OK\nDESIGN_DECISIONS.md: OK\nDOCUMENTATION_VALIDATION.json: OK\nIMPLEMENTATION_PLAN.md: OK\nOWNER_SUMMARY.md: OK\nREADME.md: OK\nREPOSITORY_AUDIT.md: OK\nREQUIREMENTS_AND_ACCEPTANCE.md: OK\nSHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md: OK\nSOURCE_AUTHORITY_MANIFEST.json: OK\nSURGICAL_CHANGE_MAP.md: OK\nrender_algorithm_pdf.py: OK\n"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "4f00fa8afca4ac15b1cbf64519adf1f684b0589f"
+      ],
+      "cwd": "/workspace/work/atlas-economic-feasibility",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "subagents_used": false,
+  "test_results": {
+    "environment": {
+      "failed": 2,
+      "failures": [
+        {
+          "node_id": "tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+          "reason": "assert (None is not None)"
+        }
+      ],
+      "passed": 0,
+      "pytest_wall_seconds": 0.54,
+      "skipped": 0,
+      "total": 2
+    },
+    "full_suite": "NOT_RUN_NOT_CERTIFIED",
+    "new": {
+      "failed": 0,
+      "failures": [],
+      "passed": 26,
+      "pytest_wall_seconds": 1.22,
+      "skipped": 0,
+      "total": 26
+    },
+    "same_parent_environment": {
+      "failed": 2,
+      "failures": [
+        {
+          "node_id": "tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+          "reason": "assert (None is not None)"
+        }
+      ],
+      "passed": 0,
+      "pytest_wall_seconds": 0.45,
+      "same_exact_nodes_and_reasons": true,
+      "skipped": 0,
+      "total": 2
+    },
+    "selected_existing": {
+      "failed": 0,
+      "failures": [],
+      "passed": 30,
+      "pytest_wall_seconds": 7.36,
+      "skipped": 0,
+      "total": 30
+    },
+    "unique_current_scope": {
+      "failed": 2,
+      "passed": 56,
+      "skipped": 0,
+      "total": 58
+    }
+  },
+  "version": "ECONOMIC_FEASIBILITY_EXECUTION_EVIDENCE_V1"
+}

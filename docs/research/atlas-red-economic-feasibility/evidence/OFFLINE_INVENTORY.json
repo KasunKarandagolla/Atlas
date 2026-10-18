@@ -1,0 +1,129 @@
+{
+  "absence_scope": "Named verified caches, selected local research Ops stores and public repository evidence; not exchange-wide or private-source absence",
+  "authority": "ZERO",
+  "existing_agent_calls": 0,
+  "existing_historical_grade": "PRICE_DIAGNOSTIC_ONLY",
+  "existing_historical_programme_cash": "NOT ESTIMABLE",
+  "existing_orders": 0,
+  "existing_qualified_actions": 0,
+  "existing_source_states": {
+    "MISSING_OBJECT_404": 13,
+    "PARSER_REJECTED_PRECEDING_ATTEMPT": 210,
+    "VERIFIED": 302
+  },
+  "inspected_evidence_sha256": {
+    "docs/research/atlas-red-causal-replay/SOURCE_READINESS.json": "c114c7ffa7b393dc1881afc273c0b53ea4ded7937b57e8586eb96dec5c58e5d0",
+    "docs/research/atlas-red-causal-replay/evidence/PARENT_COMPARISON.json": "86f77e5d2d21566c4842cfddcc29f51f353be8bfc2e7ec9241ad73f0fb70e8fa",
+    "docs/research/atlas-red-causal-replay/evidence/TRACE_AUDIT.json": "322c30ddc0600f2f9eaf28ab3b7ea68785cf075c7f4413a7edbcbaf2d7a60a9e",
+    "docs/research/atlas-red-causal-replay/evidence/TRACE_SEAL.json": "0f8fc0c9d902cbdc92589cec39a5675f2ef1b078b2079a5a4a73a6243130657b",
+    "docs/research/atlas-red-e1b/SOL_SOURCE_CHECKS.jsonl": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+    "docs/research/atlas-red-e1b/SOURCE_MANIFEST.jsonl": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+    "docs/research/atlas-red-historical-blind-ml/DECISION_SEAL.json": "eef9cfe7cc873d0e8965e7bf50ec99ea0f1afe97714a9fb0e6e0dfd66a9c2943",
+    "docs/research/atlas-red-historical-blind-ml/PROTOCOL.json": "d41d00ea63561d67604b912808e5417dcced4f39606c75ac9318dbd0379ebcdd",
+    "docs/research/atlas-red-historical-blind-ml/RESULTS.json": "29a0e4d61b27e319540ec933ed178a6a66d006136d46281003f01c8281ecaab8",
+    "docs/research/atlas-red-historical-blind-ml/SOURCE_OBJECTS.jsonl": "cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b",
+    "docs/v2/transition-r9-local-evidence/api-qualification.json": "66a9118bd40f7a1f33450253fd08d4b8138667942e9d86ea46ea69f21d101736",
+    "docs/v2/transition-r9-local-evidence/connected-fixture.json": "8bb372e1166296b80b835f8152d6f9d0543397ea26063b1af15dd05f0469c5d1",
+    "docs/v2/transition-r9-local-evidence/storage-preflight.json": "0b3e2cd922c660bd4bf61c9d9212e3059045ad75a7128c70b846cd59dc9fbe58"
+  },
+  "local_research_databases": [
+    {
+      "artifact_counts": {
+        "NATIVE_ALGORITHM_RESEARCH_TRACE_V1": 2100,
+        "NativeReplaySourceReadinessV1": 1,
+        "NativeTraceBarBindingV1": 24939,
+        "NativeTraceCodeV1": 1,
+        "NativeTraceComponentsV1": 132,
+        "NativeTraceFeatureV1": 12,
+        "NativeTraceHealthLimitV1": 1,
+        "NativeTraceInstrumentSourceV1": 35,
+        "NativeTracePrefixV1": 132,
+        "NativeTracePriceBlockV1": 8,
+        "NativeTraceSourcesV1": 1
+      },
+      "database_sha256": "0523202285fe344f73506368cfd58835f04b57027509bbb776b713421e76ca5b",
+      "name": "causal-qualification-pinned.sqlite",
+      "status": "READ_ONLY_TYPE_COUNT_QUERY"
+    },
+    {
+      "artifact_counts": {
+        "NATIVE_ALGORITHM_RESEARCH_TRACE_V1": 2100,
+        "NativeReplaySourceReadinessV1": 1,
+        "NativeTraceBarBindingV1": 24939,
+        "NativeTraceCodeV1": 1,
+        "NativeTraceComponentsV1": 132,
+        "NativeTraceFeatureV1": 12,
+        "NativeTraceHealthLimitV1": 1,
+        "NativeTraceInstrumentSourceV1": 35,
+        "NativeTracePrefixV1": 132,
+        "NativeTracePriceBlockV1": 8,
+        "NativeTraceSourcesV1": 1
+      },
+      "database_sha256": "8bc0fb8e13669457b9dd11a277d4d845871a3fc23ed4ec932b84e514e7dd8ac9",
+      "name": "causal-qualification-repeat.sqlite",
+      "status": "READ_ONLY_TYPE_COUNT_QUERY"
+    },
+    {
+      "artifact_counts": {
+        "NATIVE_ALGORITHM_RESEARCH_TRACE_V1": 2100,
+        "NativeTraceBarBindingV1": 24930,
+        "NativeTraceCodeV1": 1,
+        "NativeTraceComponentsV1": 132,
+        "NativeTraceFeatureV1": 3,
+        "NativeTraceHealthLimitV1": 1,
+        "NativeTraceInstrumentSourceV1": 35,
+        "NativeTracePrefixV1": 132,
+        "NativeTracePriceBlockV1": 8,
+        "NativeTraceSourcesV1": 1
+      },
+      "database_sha256": "ab791186bfbcb3e55c26fbf22324c7717e4d7da8c082a7e3e15cf9354c1c8724",
+      "name": "native-trace-pinned.sqlite",
+      "status": "READ_ONLY_TYPE_COUNT_QUERY"
+    },
+    {
+      "artifact_counts": {
+        "NATIVE_ALGORITHM_RESEARCH_TRACE_V1": 2100,
+        "NativeTraceBarBindingV1": 24930,
+        "NativeTraceCodeV1": 1,
+        "NativeTraceComponentsV1": 132,
+        "NativeTraceFeatureV1": 3,
+        "NativeTraceHealthLimitV1": 1,
+        "NativeTraceInstrumentSourceV1": 35,
+        "NativeTracePrefixV1": 132,
+        "NativeTracePriceBlockV1": 8,
+        "NativeTraceSourcesV1": 1
+      },
+      "database_sha256": "ae1b6f6fd4dcf43878bd4409a82749f03735c6dab55e4a7c64cee4c21d3c85c4",
+      "name": "native-trace-pinned-repeat.sqlite",
+      "status": "READ_ONLY_TYPE_COUNT_QUERY"
+    },
+    {
+      "artifact_counts": {
+        "HistoricalPriceOriginDiagnosticV1": 6173
+      },
+      "database_sha256": "2affed9020d7d13dac51f94b05738bd27d369ab96914d1842a5143481eaa60cf",
+      "name": "blind-ml-origin-ops.sqlite",
+      "status": "READ_ONLY_TYPE_COUNT_QUERY"
+    },
+    {
+      "artifact_counts": {
+        "HistoricalPriceOriginDiagnosticV1": 6173
+      },
+      "database_sha256": "44da722b230a7a64a70c1019d1bfb36a825077891b2ac65ad04e802d6e902dfb",
+      "name": "blind-ml-repeat-origin-ops.sqlite",
+      "status": "READ_ONLY_TYPE_COUNT_QUERY"
+    }
+  ],
+  "market_requests": 0,
+  "no_execution_or_new_outcomes": true,
+  "packages": {
+    "lightgbm": false,
+    "nautilus_trader": false,
+    "pyarrow": false,
+    "torch": false,
+    "transformers": false
+  },
+  "r9_public_rest_raw_retained": false,
+  "r9_public_ws_raw_retained": false,
+  "version": "ECONOMIC_FEASIBILITY_OFFLINE_INVENTORY_V1"
+}
