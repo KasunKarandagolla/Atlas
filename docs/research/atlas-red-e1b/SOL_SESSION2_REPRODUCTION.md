@@ -36,6 +36,10 @@ Preserve all three immutable freezes. Record independent method, source hashes, 
 
 Push one isolated research branch, verify exact remote SHA/parent/ancestry/diff, and stop for independent ChatGPT review. OBSERVE, zero bot allocation and capital NO-GO remain. P2, paid/private exchange access, model generation, deployment and orders require separate authorization.
 
+## Current execution candidate — 2026-10-18
+
+The owner-authorized independent session executed this protocol on the pinned panel and sources. See [the independent report](SOL_INDEPENDENT_REPRODUCTION_REPORT.md), [deterministic results](SOL_REPRODUCTION_RESULTS.json), [execution evidence](SOL_EXECUTION_EVIDENCE.json) and [future economic evidence predeclaration](SOL_ECONOMIC_EVIDENCE_FEASIBILITY.md). This is a research candidate awaiting another exact-SHA review, not a protocol approval or P2 session. S6 price-only comparisons reproduce; complete-prefix S1 has 15,604 B context/source/ownership discrepancies despite matching first-event totals; shared anchor context also erases three zero returns (D3: 140 A / 280 B rows). Preserve those TEST GATE findings; do not replace pins or force producer agreement. No outcome generation is authorized.
+
 ## Preserved historical protocol
 
 The prior text is preserved byte-for-byte in [SOL_SESSION2_REPRODUCTION_PRE_D339D845.md](SOL_SESSION2_REPRODUCTION_PRE_D339D845.md), SHA-256 `03def1bb31c27f83846ba606caf284bd800191e7f73717ef031fc37a3ec89119`. Its old `0cb67844…` panel, pending-acceptance and unverified-clean-clone references describe the superseded pre-censoring checkpoint. They are not current input identities.

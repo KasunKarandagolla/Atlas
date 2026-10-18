@@ -1,5 +1,7 @@
 # R-E1B reproduction and artifact handling
 
+Current independent scientific audit: [Sol reproduction report](SOL_INDEPENDENT_REPRODUCTION_REPORT.md) and [execution evidence](SOL_EXECUTION_EVIDENCE.json). The owner-supplied exact-d339d845 scoped engineering acceptance is recorded separately; full S1 context fidelity has unresolved D1/D2 gates plus shared zero-return serialization D3. Historical producer rebuild records below remain operator evidence from their respective sessions, not new reviewer reruns.
+
 ## Rebuild
 
 The full research feature panel is generated from checksum-verified anonymous monthly Binance USD-M public archives. Provide a scratch directory with at least 4 GiB free space; the builder caps each ZIP at 20 MiB, aggregate accepted archive bytes at 1 GiB, and network concurrency at four. It uses the environment's normal proxy configuration and TLS verification.

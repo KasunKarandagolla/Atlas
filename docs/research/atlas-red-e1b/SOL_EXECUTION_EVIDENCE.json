@@ -1,0 +1,329 @@
+{
+  "administrative_parent_sha": "eef20fd4379b15e06c7436f7f7cfdd2d72f884e9",
+  "authority": "OBSERVE; zero bot allocation; capital NO-GO; no outcomes, production changes, paid/private access, model generation, trades, P2 or activation",
+  "branch": "research/atlas-red-e1b-sol-reproduction-2026-10-18",
+  "checks": {
+    "algorithm_manifest": {
+      "command": "sha256sum -c MANIFEST.sha256",
+      "cwd": "algorithms",
+      "entries_passed": 18
+    },
+    "ancestry_at_administrative_parent": {
+      "04f05ab641457ab6deee8456da2c2a77d84f5149": true,
+      "d339d845a417e36b9a83c83b4f366e74fd207474": true,
+      "f77f3aacbfdc2546e6f3ea2d78196b0905ceb613": true,
+      "f9f8ef083ba5bafcad9bab4d07227676200a948f": true
+    },
+    "compileall": {
+      "command": "/workspace/.venvs/atlas/bin/python -m compileall -q src tests/research docs/research/atlas-red-e1b",
+      "exit_code": 0
+    },
+    "diff_check": {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    "freeze_hashes": {
+      "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": {
+        "git_blob": "b2a9c05d101c3018a44703588785e7e93eb0ba46",
+        "reviewed_input_blob_equal": true,
+        "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c"
+      },
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": {
+        "git_blob": "7f9d7376a729dacefa0ad1f5b25d75ced0e49ebb",
+        "reviewed_input_blob_equal": true,
+        "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78"
+      },
+      "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": {
+        "git_blob": "b9aa53d14acea65e30c9963cc75239c19749deb5",
+        "reviewed_input_blob_equal": true,
+        "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+      }
+    },
+    "full_repository_suite": "NOT RUN; selective scopes only",
+    "installed_dependency_compatibility": {
+      "command": "uv pip check --python /workspace/.venvs/atlas/bin/python",
+      "result": "Using Python 3.12.14 environment at: /workspace/.venvs/atlas\nChecked 17 packages in 32ms\nAll installed packages are compatible",
+      "scope": "17 installed packages only, not complete production lock qualification"
+    },
+    "lock": {
+      "command": "uv lock --check --offline",
+      "result": "Using CPython 3.12.14 interpreter at: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\nResolved 39 packages in 1ms"
+    },
+    "protected_diff": {
+      "command": "git diff --exit-code d339d845 -- src tests/v2 tests/data tests/contract uv.lock pyproject.toml requirements-lock.txt",
+      "exit_code": 0
+    },
+    "research_artifact_inventory": {
+      "command": "sha256sum -c docs/research/atlas-red-e1b/SOL_ARTIFACTS.sha256",
+      "entries_passed": 18
+    },
+    "ruff": {
+      "command": "/workspace/.venvs/atlas/bin/ruff check src tests/research docs/research/atlas-red-e1b",
+      "result": "All checks passed!"
+    }
+  },
+  "development_execution_notes": [
+    "Initial /usr/bin/time wrapper failed (exit 127): binary absent; replaced by stdlib resource wrapper.",
+    "Initial research-venv oracle startup failed before calculations because NumPy absent in that venv; existing managed runtime NumPy reused. No package or lock changed.",
+    "Exploratory full run 163.767s / 236380 KiB exposed S1 discrepancies; preliminary partition omitted certified pre-window nonmatches. Oracle partition corrected and regression added; producer untouched.",
+    "Expanded audit 184.005s / 239408 KiB reconciled all reference partitions. Superseded by final expanded context audit.",
+    "One preliminary context run stopped for lint cleanup before final evidence output; not counted as completed reproduction.",
+    "Expanded context run 194.923s / 267212 KiB exposed D3. Final utility adds explicit anchor-source references and its two final runs are recorded above.",
+    "Intermediate Ruff findings corrected; final scoped Ruff clean.",
+    "sha256sum -c algorithms/MANIFEST.sha256 from root failed because entries are relative to algorithms/. Correct-directory check passed all 18 entries.",
+    "Earlier focused raw logs were overwritten during development; counts/times above are preserved observed tool output. Final and regression stdout are embedded here."
+  ],
+  "earlier_focused_test_invocations": [
+    {
+      "command": "ATLAS_SOL_CSV_CACHE=/workspace/work/atlas-e1b-trigger-censor-qualified-scratch ATLAS_SOL_INPUT_RESULTS=docs/research/atlas-red-e1b/SOL_S6_INPUT_COMPARISON.json PYTHONPATH=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages /workspace/.venvs/atlas/bin/python -m pytest tests/research/test_atlas_red_e1b_sol.py -ra",
+      "failed": 0,
+      "passed": 28,
+      "pytest_wall_seconds": 0.77,
+      "revision": "early independent tests before all-window S6 input test",
+      "skipped": 0
+    },
+    {
+      "command": "ATLAS_SOL_CSV_CACHE=/workspace/work/atlas-e1b-trigger-censor-qualified-scratch ATLAS_SOL_INPUT_RESULTS=docs/research/atlas-red-e1b/SOL_S6_INPUT_COMPARISON.json PYTHONPATH=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages /workspace/.venvs/atlas/bin/python -m pytest tests/research/test_atlas_red_e1b_sol.py -ra",
+      "failed": 0,
+      "passed": 32,
+      "pytest_wall_seconds": 36.53,
+      "revision": "expanded with all-window S6 inputs",
+      "skipped": 0
+    },
+    {
+      "command": "ATLAS_SOL_CSV_CACHE=/workspace/work/atlas-e1b-trigger-censor-qualified-scratch ATLAS_SOL_INPUT_RESULTS=docs/research/atlas-red-e1b/SOL_S6_INPUT_COMPARISON.json PYTHONPATH=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages /workspace/.venvs/atlas/bin/python -m pytest tests/research/test_atlas_red_e1b_sol.py -ra",
+      "failed": 0,
+      "passed": 40,
+      "pytest_wall_seconds": 33.62,
+      "revision": "40-test version before final zero-versus-blank comparator assertion",
+      "skipped": 0
+    }
+  ],
+  "environment": {
+    "full_locked_runtime_qualified": false,
+    "locked_numpy": "2.5.3",
+    "nautilus_trader_available": false,
+    "new_dependencies_or_lock_changes": false,
+    "numpy": "2.3.5",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "pytest": "9.1.1",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "resource_method": "resource.getrusage(RUSAGE_SELF), ru_maxrss in KiB on Linux; monotonic wall clock",
+    "ruff": "0.17.0"
+  },
+  "external_review_scope": "Owner-supplied PASS scoped E1B engineering review for d339d845 only; recorder is not accepting reviewer; limitations in versioned acceptance record",
+  "final_full_runs": [
+    {
+      "argv": [
+        "independent_sol_reproduction.py",
+        "--panel",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-output/DIAGNOSTIC_FEATURE_PANEL.csv.gz",
+        "--csv-cache",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--source-proof",
+        "docs/research/atlas-red-e1b/SOL_SOURCE_CHECKS.jsonl",
+        "--scratch",
+        "/workspace/work/e1b-sol-accepted-run-scratch",
+        "--outdir",
+        "docs/research/atlas-red-e1b"
+      ],
+      "exit_code": 0,
+      "label": "primary operator run; no acceptance implied",
+      "resources": {
+        "max_rss_kib": 266096,
+        "system_seconds": 0.458447,
+        "user_seconds": 197.411211,
+        "wall_seconds": 216.64614831099607
+      },
+      "runner": "python3 -u -; runpy/resource wrapper in SOL_COMMANDS.md"
+    },
+    {
+      "argv": [
+        "independent_sol_reproduction.py",
+        "--panel",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-output/DIAGNOSTIC_FEATURE_PANEL.csv.gz",
+        "--csv-cache",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--source-proof",
+        "docs/research/atlas-red-e1b/SOL_SOURCE_CHECKS.jsonl",
+        "--scratch",
+        "/workspace/work/e1b-sol-repeat-run-scratch",
+        "--outdir",
+        "/workspace/work/e1b-sol-repeat-output"
+      ],
+      "exit_code": 0,
+      "label": "repeat operator run",
+      "resources": {
+        "max_rss_kib": 265224,
+        "system_seconds": 0.454777,
+        "user_seconds": 194.937152,
+        "wall_seconds": 213.89014025399956
+      },
+      "runner": "python3 -u -; same wrapper"
+    }
+  ],
+  "model": {
+    "owner_selection": "GPT-6.1 Sol",
+    "runtime_effort_attestation": "UNAVAILABLE",
+    "runtime_identity_attestation": "UNAVAILABLE",
+    "subagents_used": false
+  },
+  "recorded_utc": "2026-10-18T05:50:27.470315+00:00",
+  "repeat_artifacts": {
+    "SOL_MISMATCH_EXAMPLES.jsonl": {
+      "bytes": 22854,
+      "identical": true,
+      "sha256": "197a623f5722fbfd5a04aba51903dfa363a84468848cf96546277039f220fbb1"
+    },
+    "SOL_REPRODUCTION_RESULTS.json": {
+      "bytes": 88520,
+      "identical": true,
+      "sha256": "a040cd415a021b43cbb0a0a8ecddf638d39c22ef2a63d86a9c5c1bee47e6c333"
+    }
+  },
+  "schema": "ATLAS_E1B_SOL_EXECUTION_V1",
+  "setup_partition_reconciliation": {
+    "panel_setup_partitions": {
+      "A": {
+        "complete_observed_no_match": 5800,
+        "incomplete_or_unresolved": 1,
+        "verified_first_in_window": 9261
+      },
+      "B": {
+        "censored": 2,
+        "complete_observed_no_match": 5225,
+        "verified_first_in_window": 7899
+      }
+    },
+    "primary_complete_year_prefix_setup_partitions": {
+      "A": {
+        "complete_observed_no_match": 5800,
+        "incomplete_or_unresolved": 1,
+        "verified_first_in_window": 9261
+      },
+      "B": {
+        "censored": 2,
+        "complete_observed_no_match": 5225,
+        "verified_first_in_window": 7899
+      }
+    },
+    "secondary_observed_history_setup_partitions": {
+      "A": {
+        "complete_observed_no_match": 5800,
+        "incomplete_or_unresolved": 1,
+        "verified_first_in_window": 9261
+      },
+      "B": {
+        "censored": 2,
+        "complete_observed_no_match": 5225,
+        "verified_first_in_window": 7899
+      }
+    }
+  },
+  "source_sha": "d339d845a417e36b9a83c83b4f366e74fd207474",
+  "source_verification": {
+    "command": "/workspace/.venvs/atlas/bin/python -u docs/research/atlas-red-e1b/verify_sol_sources.py --manifest docs/research/atlas-red-e1b/SOURCE_MANIFEST.jsonl --cache /workspace/work/e1b-sol-official-zips --csv-cache /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --output docs/research/atlas-red-e1b/SOL_SOURCE_CHECKS.jsonl --execution /workspace/work/e1b-sol-source-execution.json",
+    "first": {
+      "archive_payload_bytes": 55549936,
+      "completed_utc": "2026-10-18T05:27:56.023983+00:00",
+      "current_run_receipt": "2026 independent acquisition; never historical receipt",
+      "historical_receipt": "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION",
+      "historical_rejected_download_bytes": "UNKNOWN",
+      "objects": 770,
+      "retained_historical_parser_rejects": 420,
+      "routes": {
+        "404": 13,
+        "FRESH_OFFICIAL_ZIP": 757
+      },
+      "source_proof_sha256": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+      "started_utc": "2026-10-18T05:25:33.159159+00:00",
+      "wall_seconds": 142.86482615800196
+    },
+    "repeat": {
+      "archive_payload_bytes": 55549936,
+      "completed_utc": "2026-10-18T05:35:54.761689+00:00",
+      "current_run_receipt": "2026 independent acquisition; never historical receipt",
+      "historical_receipt": "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION",
+      "historical_rejected_download_bytes": "UNKNOWN",
+      "objects": 770,
+      "retained_historical_parser_rejects": 420,
+      "routes": {
+        "404": 13,
+        "REUSED_PINNED_ZIP": 757
+      },
+      "source_proof_sha256": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+      "started_utc": "2026-10-18T05:35:52.673547+00:00",
+      "wall_seconds": 2.088153466997028
+    },
+    "repeat_command_output_paths": "--output /workspace/work/e1b-sol-source-repeat.jsonl --execution /workspace/work/e1b-sol-source-repeat-execution.json; other arguments unchanged",
+    "stable_proof_byte_identical": true
+  },
+  "tests": [
+    {
+      "command": "ATLAS_SOL_CSV_CACHE=/workspace/work/atlas-e1b-trigger-censor-qualified-scratch ATLAS_SOL_INPUT_RESULTS=docs/research/atlas-red-e1b/SOL_S6_INPUT_COMPARISON.json PYTHONPATH=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages /workspace/.venvs/atlas/bin/python -m pytest tests/research/test_atlas_red_e1b_sol.py -ra",
+      "failed": 0,
+      "passed": 40,
+      "resources": {
+        "max_rss_kib": 456328,
+        "system_seconds": 0.237535,
+        "user_seconds": 35.687267,
+        "wall_seconds": 53.16342526499648
+      },
+      "runner_note": "pytest.main with these arguments and the SOL_COMMANDS resource wrapper",
+      "scope": "final independent focused",
+      "skipped": 0,
+      "stdout": "........................................                                 [100%]\n40 passed in 52.66s\n"
+    },
+    {
+      "command": "/workspace/.venvs/atlas/bin/python -m pytest tests/research/test_atlas_red_e1b_panel.py tests/v2/test_session014_s1.py tests/v2/test_session021_s6.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_s6_action_contract.py tests/data/test_prefix_and_archive.py -ra",
+      "failed": 0,
+      "passed": 61,
+      "scope": "impacted (21 E1B plus 40 existing strategy/prefix/cohort/archive)",
+      "skipped": 0,
+      "stdout": ".............................................................            [100%]\n61 passed in 13.46s\n"
+    },
+    {
+      "command": "/workspace/.venvs/atlas/bin/python -m pytest tests/v2/test_session037_feature_prefix.py tests/v2/test_session034_causal_timing.py tests/science/test_prefix_invariance_phase4.py tests/contract/test_v1_golden_baseline.py -ra",
+      "failed": 1,
+      "failure_class": "BLOCKED BY ENVIRONMENT: nautilus_trader absent",
+      "passed": 12,
+      "scope": "additional feature-prefix/timing/science/V1 golden",
+      "skipped": 0,
+      "stdout": "............F                                                            [100%]\n=================================== FAILURES ===================================\n_______ test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures _______\n\n    def test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures() -> None:\n        baseline = json.loads(GOLDEN_PATH.read_text(encoding=\"utf-8\"))\n        assert baseline[\"source_commit\"] == BASELINE_COMMIT\n        assert baseline[\"contract_versions\"] == _contract_versions()\n        assert baseline[\"dependency_lock\"][\"sha256\"] == hashlib.sha256(\n            (ROOT / \"requirements-lock.txt\").read_bytes()\n        ).hexdigest()\n        expected_version, expected_wheel_hash = _lock_nautilus_pin()\n        assert expected_version == EXPECTED_NAUTILUS_VERSION\n        assert expected_wheel_hash == EXPECTED_NAUTILUS_WHEEL_SHA256\n        assert baseline[\"nautilus\"][\"expected\"][\"version\"] == expected_version\n        assert baseline[\"nautilus\"][\"expected\"][\"wheel_sha256\"] == expected_wheel_hash\n>       observed = _nautilus_observation()\n                   ^^^^^^^^^^^^^^^^^^^^^^^\n\ntests/contract/test_v1_golden_baseline.py:202: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def _nautilus_observation() -> dict[str, Any]:\n        spec = importlib.util.find_spec(\"nautilus_trader\")\n>       assert spec is not None and spec.origin is not None\nE       assert (None is not None)\n\ntests/contract/test_v1_golden_baseline.py:99: AssertionError\n=========================== short test summary info ============================\nFAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures\n1 failed, 12 passed in 1.31s\n"
+    },
+    {
+      "command": "/workspace/.venvs/atlas/bin/python -m pytest tests/contract/test_v1_golden_baseline.py -ra",
+      "cwd_sha": "d339d845a417e36b9a83c83b4f366e74fd207474",
+      "failed": 1,
+      "failure_class": "same missing nautilus_trader",
+      "passed": 0,
+      "scope": "reviewed-parent baseline confirmation",
+      "skipped": 0,
+      "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_______ test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures _______\n\n    def test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures() -> None:\n        baseline = json.loads(GOLDEN_PATH.read_text(encoding=\"utf-8\"))\n        assert baseline[\"source_commit\"] == BASELINE_COMMIT\n        assert baseline[\"contract_versions\"] == _contract_versions()\n        assert baseline[\"dependency_lock\"][\"sha256\"] == hashlib.sha256(\n            (ROOT / \"requirements-lock.txt\").read_bytes()\n        ).hexdigest()\n        expected_version, expected_wheel_hash = _lock_nautilus_pin()\n        assert expected_version == EXPECTED_NAUTILUS_VERSION\n        assert expected_wheel_hash == EXPECTED_NAUTILUS_WHEEL_SHA256\n        assert baseline[\"nautilus\"][\"expected\"][\"version\"] == expected_version\n        assert baseline[\"nautilus\"][\"expected\"][\"wheel_sha256\"] == expected_wheel_hash\n>       observed = _nautilus_observation()\n                   ^^^^^^^^^^^^^^^^^^^^^^^\n\ntests/contract/test_v1_golden_baseline.py:202: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def _nautilus_observation() -> dict[str, Any]:\n        spec = importlib.util.find_spec(\"nautilus_trader\")\n>       assert spec is not None and spec.origin is not None\nE       assert (None is not None)\n\ntests/contract/test_v1_golden_baseline.py:99: AssertionError\n=========================== short test summary info ============================\nFAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures\n1 failed in 0.21s\n"
+    }
+  ],
+  "unresolved": {
+    "BLOCKED BY ENVIRONMENT": [
+      "V1 golden requires absent Nautilus",
+      "original private decision packet source not available verbatim"
+    ],
+    "NOT ESTIMABLE": [
+      "independently executable trade counts from E1B",
+      "causal economic information contributions",
+      "complete ATLAS after-cost programme returns/profitability"
+    ],
+    "TEST GATE": [
+      "D1 EOS stale terminal prefix/source/ownership",
+      "D2 FTM disconnected EMA seed/history convention",
+      "D3 shared BTC/ETH zero-return serialization",
+      "exact final SHA independent review pending"
+    ],
+    "UNVERIFIED": [
+      "model/effort runtime attestation",
+      "full production locked runtime",
+      "historical actual receipts and source health",
+      "point-in-time eligibility and contract/funding/event/liquidity facts",
+      "genuine action/Agent B/fill/cost records"
+    ]
+  }
+}
