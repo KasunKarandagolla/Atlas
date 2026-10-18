@@ -1,0 +1,3 @@
+# Exact full calendar is losslessly reconstructed from calendar-parts/.
+CALENDAR.csv.gz
+*.assembly-tmp

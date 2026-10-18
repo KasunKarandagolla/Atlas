@@ -1,0 +1,15 @@
+{
+  "failed_validation_or_fetch": [],
+  "genuine_historical_actual_receipt": "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION",
+  "market_source_manifest_sha256": "cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b",
+  "network_requests": 408,
+  "network_response_bytes": 15560082,
+  "offline": false,
+  "requested_zip_objects": 210,
+  "status_counts": {
+    "MISSING_OBJECT_404": 12,
+    "VERIFIED": 198
+  },
+  "verified_archive_bytes": 15538049,
+  "verified_csv_rows": 364320
+}

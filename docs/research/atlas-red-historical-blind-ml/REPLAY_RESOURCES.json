@@ -1,0 +1,9 @@
+{
+  "actual_Ops_publication_ns": 1792319202077702912,
+  "actual_created_at": "2026-10-18T10:26:45.983841+00:00",
+  "max_rss_kib": 695524,
+  "pure_decision_count": 6173,
+  "pure_decision_max_seconds": 0.00226059300621273,
+  "pure_decision_total_seconds": 0.6772476709375042,
+  "wall_seconds": 33.87957455400465
+}

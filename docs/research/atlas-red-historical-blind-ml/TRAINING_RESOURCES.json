@@ -1,0 +1,14 @@
+{
+  "actual_training_created_at": "2026-10-18T10:29:02.029477+00:00",
+  "stages": [
+    {
+      "wall_seconds": 16.60539536300348,
+      "window": "A"
+    },
+    {
+      "wall_seconds": 15.38801225899806,
+      "window": "B"
+    }
+  ],
+  "wall_seconds": 36.55061496899725
+}

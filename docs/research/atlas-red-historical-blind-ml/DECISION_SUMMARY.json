@@ -1,0 +1,44 @@
+{
+  "P1_input_audit": {
+    "legal_candidate_or_EligibleSet": null,
+    "missing_required_P1_inputs": [
+      "candidate",
+      "product",
+      "policy",
+      "fees",
+      "funding",
+      "risk",
+      "model",
+      "calibration",
+      "scenarios",
+      "execution_bias",
+      "numerical",
+      "incremental_programme",
+      "context"
+    ],
+    "status": "NOT ESTIMABLE"
+  },
+  "begin_ns": 1751328000000000000,
+  "calendar_sha256": "3db6184fa97ed7fc53b6e3ff87e6918096384367a32930ccb0221c3021df4648",
+  "decisions_sha256": "29638920e0b61c82ba136b52bae5668e7c327cf25b09b2f4ffad3c3492c30d7b",
+  "evidence_grade": "PRICE_DIAGNOSTIC_ONLY",
+  "expected_native_symbol_slots": 309120,
+  "final_ns": 1759276800000000000,
+  "first_event_status_counts": {
+    "ANCHOR_CONTEXT_EXCLUDED": 380,
+    "SOURCE_QUALIFIED_ALT_EVENT": 5793
+  },
+  "frozen_approved_actions": 0,
+  "model_status_counts": {
+    "ANCHOR_CONTEXT_EXCLUDED": 1140,
+    "OOD_TRAIN_ONLY_ENVELOPE": 3,
+    "SUPPORTED": 17376
+  },
+  "models_sha256": "129dcb44ce9ff84d01ba23c723e224f1a5d5e78967894de23baf1e529daedc8d",
+  "original_first_events": 6173,
+  "outcomes_read": false,
+  "protocol_sha256": "d41d00ea63561d67604b912808e5417dcced4f39606c75ac9318dbd0379ebcdd",
+  "qualified_Agent_B_requests": 0,
+  "source_manifest_sha256": "cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b",
+  "version": "SEALED_HISTORICAL_DECISIONS_V1"
+}

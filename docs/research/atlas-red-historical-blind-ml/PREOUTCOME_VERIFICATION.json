@@ -1,0 +1,41 @@
+{
+  "market_acquisition_offline_repeat": {
+    "failed_validation_or_fetch": [],
+    "genuine_historical_actual_receipt": "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION",
+    "market_source_manifest_sha256": "cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b",
+    "network_requests": 0,
+    "network_response_bytes": 0,
+    "offline": true,
+    "requested_zip_objects": 210,
+    "status_counts": {
+      "MISSING_OBJECT_404": 12,
+      "VERIFIED": 198
+    },
+    "verified_archive_bytes": 15538049,
+    "verified_csv_rows": 364320
+  },
+  "model_and_decision_numeric_artifacts_ignore_actual_transport_processing_times": true,
+  "repeat_byte_identities": {
+    "CALENDAR.csv.gz": "3db6184fa97ed7fc53b6e3ff87e6918096384367a32930ccb0221c3021df4648",
+    "DECISIONS.csv.gz": "29638920e0b61c82ba136b52bae5668e7c327cf25b09b2f4ffad3c3492c30d7b",
+    "DECISION_SUMMARY.json": "5346d9c0e4722604991fb4303fe0698e69e1e9993dc79b37d12f60bbde107b6f",
+    "DEVELOPMENT_ROWS.csv.gz": "4f91a724e0d4d65f7acd5c421d3c8ee7c7ef1ef269e492b0d8ceaa8c2a27224f",
+    "PRICE_MODELS.json": "129dcb44ce9ff84d01ba23c723e224f1a5d5e78967894de23baf1e529daedc8d"
+  },
+  "test_outcomes_computed": false,
+  "whole_calendar_reconciliation": {
+    "counts": {
+      "S1:NO_SETUP": 234444,
+      "S1:SETUP": 57012,
+      "S1:SOURCE_MISSING": 17664,
+      "S6:BTC_REFERENCE_ANCHOR": 8832,
+      "S6:NOT_RANKABLE": 26496,
+      "S6:S6_FIXED_COHORT_RANK_DIAGNOSTIC": 273792,
+      "current_m15:OBSERVED": 291456,
+      "current_m15:SOURCE_MISSING": 17664
+    },
+    "join_mismatches": 0,
+    "native_symbol_slots": 309120,
+    "unique_first_events": 6173
+  }
+}
