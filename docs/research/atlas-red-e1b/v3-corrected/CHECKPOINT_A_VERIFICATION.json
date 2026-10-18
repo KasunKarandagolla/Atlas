@@ -1,0 +1,62 @@
+{
+  "actual_historical_receipt": "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION",
+  "counts": {
+    "A:first_events": 9261,
+    "A:missing_current_m15": 0,
+    "A:panel_rows": 409920,
+    "A:raw_positive_predicates": 13690,
+    "A:s6_hourly_symbol_rows": 102480,
+    "B:first_events": 7899,
+    "B:missing_current_m15": 15610,
+    "B:panel_rows": 409920,
+    "B:raw_positive_predicates": 12003,
+    "B:s6_hourly_symbol_rows": 102480
+  },
+  "coverage_rows": 1024800,
+  "economics": "NOT ESTIMABLE",
+  "full_continuous_original_live_EMA_checkpoint": "UNVERIFIED; not the finite-prefix research estimand",
+  "gate": "PASS_SCOPED_FINITE_PREFIX_RESEARCH; independent acceptance pending",
+  "independent_mathematical_ast_unchanged_test": "PASS; only version/path/pin plumbing changed",
+  "independent_report_sha256": "c0c9850ed01838678200d572a41adc2c85b8c969bc8b842b8b7418917b498fb5",
+  "legacy_secondary_interpretation": "Expected diagnostic of superseded disconnected EMA and stale-terminal convention; not the valid-prefix oracle",
+  "legacy_secondary_observed_history_mismatches": {
+    "s1_observed:B": 15604
+  },
+  "new_market_downloads": 0,
+  "old_new_diff_sha256": "b3258ab2aa942a66e75f1af89a6d24b5d2bb8e56cba811fc8ef1b78c444b350f",
+  "outcomes_computed": false,
+  "primary_or_source_or_context_or_s6_mismatches": {},
+  "producer_sha": "22913d753ef9e98536f56381e641365ed4021a71",
+  "producer_stdout_note": "Legacy s1_unavailable counter covers warmup state only; use authoritative complete precursor-state counts in DATASET_MANIFEST/SOL results, including SOURCE_MISSING.",
+  "production_authority": "ZERO; OBSERVE; capital NO-GO",
+  "protocol_sha256": "e643744f2f6915c1bb235170a3e900259b02aff8d154bc956d6f83f3b03f2b78",
+  "repeat_hash_checks": {
+    "ASOF_COVERAGE.csv.gz": {
+      "first_sha256": "eb74a6eb0379524f07eec8c2462e21a3cfa78c5be66cd01972e8c735f8b45a61",
+      "repeat_sha256": "eb74a6eb0379524f07eec8c2462e21a3cfa78c5be66cd01972e8c735f8b45a61"
+    },
+    "DIAGNOSTIC_FEATURE_PANEL.csv.gz": {
+      "first_sha256": "811ef7c972c69d1c6d26f9a8518e388fc64a5774ee801c141d45863959e0bce4",
+      "repeat_sha256": "811ef7c972c69d1c6d26f9a8518e388fc64a5774ee801c141d45863959e0bce4"
+    },
+    "SOURCE_MANIFEST.jsonl": {
+      "first_sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+      "repeat_sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b"
+    }
+  },
+  "setup_partitions": {
+    "A": {
+      "complete_observed_no_match": 5800,
+      "incomplete_or_unresolved": 1,
+      "verified_first_in_window": 9261
+    },
+    "B": {
+      "censored": 2,
+      "complete_observed_no_match": 5225,
+      "verified_first_in_window": 7899
+    }
+  },
+  "source_archive_count": 757,
+  "source_checkpoint": "c29dfc2c2ae6cb903b53f72fdf2d457c9a5bb32d",
+  "source_proof_sha256": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013"
+}

@@ -1,0 +1,2415 @@
+{
+  "all_first_event_status_counts": {
+    "ANCHOR_CONTEXT_EXCLUDED": 562,
+    "SOURCE_QUALIFIED_ALT_EVENT": 8699
+  },
+  "economic_status": "NOT ESTIMABLE; price proxies are not cash/PnL/actions/fills",
+  "evidence_grade": "HISTORICAL_PRICE_PROXY_NONEXECUTABLE",
+  "feature_population_sha256": "2874b7acde4bc6e895fa81fa64ddcb5ab7dc33bf27a2a1ed98b58656c0f31001",
+  "horizons": {
+    "1": {
+      "arms": {
+        "P0": {
+          "N_mean_status": "NOT_ESTIMABLE_CENSORED_ACCEPTED",
+          "accepted_censored": 2,
+          "accepted_matured": 8697,
+          "accepted_proxy_quantiles_bps": {
+            "q01": -363.31682061068557,
+            "q05": -182.15010807429354,
+            "q50": -3.3228110981897707,
+            "q95": 177.21300168785848,
+            "q99": 362.42632663347143
+          },
+          "decision_counts_on_N": {
+            "ACCEPTED": 8699
+          },
+          "delta_vs_P0_common_bps": 0.0,
+          "delta_vs_P3_common_bps": -2.797310981288075,
+          "fraction_observed_accepted_with_positive_friction_budget": 0.47234678624813153,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": null,
+          "mean_adverse_excursion_bps": -79.26197041119813,
+          "mean_bps_per_common_complete_original_C": -2.797310981288075,
+          "mean_bps_per_observed_accepted_secondary": -2.797310981288075,
+          "mean_bps_per_original_N": null,
+          "mean_favourable_excursion_bps": 80.99839711490563
+        },
+        "P1": {
+          "N_mean_status": "OBSERVED_PRICE_PROXY_ONLY",
+          "accepted_censored": 0,
+          "accepted_matured": 1568,
+          "accepted_proxy_quantiles_bps": {
+            "q01": -381.6119394074381,
+            "q05": -204.72438520805014,
+            "q50": -4.136064957938612,
+            "q95": 211.81683989941294,
+            "q99": 467.8458613551953
+          },
+          "decision_counts_on_N": {
+            "ACCEPTED": 1568,
+            "REJECTED": 7131
+          },
+          "delta_vs_P0_common_bps": 2.9042585559849607,
+          "delta_vs_P3_common_bps": 0.10694757469688573,
+          "fraction_observed_accepted_with_positive_friction_budget": 0.46938775510204084,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": 0.5931907252160811,
+          "mean_adverse_excursion_bps": -90.24872729119876,
+          "mean_bps_per_common_complete_original_C": 0.10694757469688573,
+          "mean_bps_per_observed_accepted_secondary": 0.5931907252160811,
+          "mean_bps_per_original_N": 0.10692298622126856,
+          "mean_favourable_excursion_bps": 94.90538257871309
+        },
+        "P2": {
+          "N_mean_status": "NOT_ESTIMABLE_CENSORED_ACCEPTED",
+          "accepted_censored": 1,
+          "accepted_matured": 8209,
+          "accepted_proxy_quantiles_bps": {
+            "q01": -362.7793345388499,
+            "q05": -181.6968812713129,
+            "q50": -3.316749585406953,
+            "q95": 176.00494146999046,
+            "q99": 362.0620115877138
+          },
+          "decision_counts_on_N": {
+            "ACCEPTED": 8210,
+            "REJECTED": 489
+          },
+          "delta_vs_P0_common_bps": 0.0783916634192261,
+          "delta_vs_P3_common_bps": -2.718919317868849,
+          "fraction_observed_accepted_with_positive_friction_budget": 0.47277378487026434,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": null,
+          "mean_adverse_excursion_bps": -78.95922922914286,
+          "mean_bps_per_common_complete_original_C": -2.718919317868849,
+          "mean_bps_per_observed_accepted_secondary": -2.8805507744555223,
+          "mean_bps_per_original_N": null,
+          "mean_favourable_excursion_bps": 80.2834945801325
+        },
+        "P3": {
+          "N_mean_status": "OBSERVED_PRICE_PROXY_ONLY",
+          "accepted_censored": 0,
+          "accepted_matured": 0,
+          "accepted_proxy_quantiles_bps": {},
+          "decision_counts_on_N": {
+            "REJECTED_NO_OPENING_REFERENCE": 8699
+          },
+          "delta_vs_P0_common_bps": 2.797310981288075,
+          "delta_vs_P3_common_bps": 0.0,
+          "fraction_observed_accepted_with_positive_friction_budget": null,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": null,
+          "mean_adverse_excursion_bps": null,
+          "mean_bps_per_common_complete_original_C": 0.0,
+          "mean_bps_per_observed_accepted_secondary": null,
+          "mean_bps_per_original_N": 0.0,
+          "mean_favourable_excursion_bps": null
+        }
+      },
+      "censored_original_N_minus_C": 2,
+      "common_complete_original_C": 8697,
+      "original_N": 8699,
+      "outcome_status_counts": {
+        "CENSORED_WINDOW_END": 2,
+        "OBSERVED": 8697
+      },
+      "paired_calendar_block_uncertainty": {
+        "1_calendar_week_blocks": {
+          "below_20_block_diagnostic_floor": true,
+          "calendar_blocks": 18,
+          "claim": "exploratory development uncertainty; no independent-event CI, significance or profitability inference",
+          "exploratory_intervals_per_original_common_event_bps": {
+            "P0": [
+              -7.66078024006075,
+              2.3250635758692284
+            ],
+            "P1": [
+              -1.738577403182655,
+              2.1933277413276016
+            ],
+            "P2": [
+              -7.575628018105809,
+              2.4901132250558957
+            ],
+            "P3": [
+              0.0,
+              0.0
+            ]
+          },
+          "nonempty_blocks": 18,
+          "nonempty_resamples": 10000,
+          "paired_delta_vs_P0_intervals_bps": {
+            "P0": [
+              0.0,
+              0.0
+            ],
+            "P1": [
+              -0.9378716791482031,
+              6.638514319013662
+            ],
+            "P2": [
+              -0.7391001899345253,
+              0.7777874398796818
+            ],
+            "P3": [
+              -2.3250635758692306,
+              7.660780240060748
+            ]
+          },
+          "resamples": 10000
+        },
+        "2_calendar_week_blocks": {
+          "below_20_block_diagnostic_floor": true,
+          "calendar_blocks": 9,
+          "claim": "exploratory development uncertainty; no independent-event CI, significance or profitability inference",
+          "exploratory_intervals_per_original_common_event_bps": {
+            "P0": [
+              -8.591053992998695,
+              2.452697121590754
+            ],
+            "P1": [
+              -2.087953493576699,
+              2.512297783082877
+            ],
+            "P2": [
+              -8.355717921264878,
+              2.725652861142799
+            ],
+            "P3": [
+              0.0,
+              0.0
+            ]
+          },
+          "nonempty_blocks": 9,
+          "nonempty_resamples": 10000,
+          "paired_delta_vs_P0_intervals_bps": {
+            "P0": [
+              0.0,
+              0.0
+            ],
+            "P1": [
+              -0.7397465559410998,
+              6.920570357783952
+            ],
+            "P2": [
+              -0.915203084956607,
+              0.8953976454322456
+            ],
+            "P3": [
+              -2.452697121590754,
+              8.591053992998692
+            ]
+          },
+          "resamples": 10000
+        }
+      }
+    },
+    "24": {
+      "arms": {
+        "P0": {
+          "N_mean_status": "NOT_ESTIMABLE_CENSORED_ACCEPTED",
+          "accepted_censored": 59,
+          "accepted_matured": 8640,
+          "accepted_proxy_quantiles_bps": {
+            "q01": -1315.6081434305192,
+            "q05": -778.9204899892171,
+            "q50": -24.942884676323885,
+            "q95": 914.8304416057068,
+            "q99": 1646.4447781152053
+          },
+          "decision_counts_on_N": {
+            "ACCEPTED": 8699
+          },
+          "delta_vs_P0_common_bps": 0.0,
+          "delta_vs_P3_common_bps": 2.0453249390935566,
+          "fraction_observed_accepted_with_positive_friction_budget": 0.46944444444444444,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": 2.0453249390935566,
+          "mean_adverse_excursion_bps": -393.28547928931,
+          "mean_bps_per_common_complete_original_C": 2.0453249390935566,
+          "mean_bps_per_observed_accepted_secondary": 2.0453249390935566,
+          "mean_bps_per_original_N": null,
+          "mean_favourable_excursion_bps": 433.54057913534876
+        },
+        "P1": {
+          "N_mean_status": "NOT_ESTIMABLE_CENSORED_ACCEPTED",
+          "accepted_censored": 14,
+          "accepted_matured": 1554,
+          "accepted_proxy_quantiles_bps": {
+            "q01": -1412.9839357242226,
+            "q05": -884.868576316141,
+            "q50": -30.564927821503662,
+            "q95": 896.9018009120124,
+            "q99": 1753.9353163969265
+          },
+          "decision_counts_on_N": {
+            "ACCEPTED": 1568,
+            "REJECTED": 7131
+          },
+          "delta_vs_P0_common_bps": -3.9182525468621265,
+          "delta_vs_P3_common_bps": -1.87292760776857,
+          "fraction_observed_accepted_with_positive_friction_budget": 0.4697554697554698,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": null,
+          "mean_adverse_excursion_bps": -423.7088825012801,
+          "mean_bps_per_common_complete_original_C": -1.87292760776857,
+          "mean_bps_per_observed_accepted_secondary": -10.41318824396425,
+          "mean_bps_per_original_N": null,
+          "mean_favourable_excursion_bps": 477.50534294870806
+        },
+        "P2": {
+          "N_mean_status": "NOT_ESTIMABLE_CENSORED_ACCEPTED",
+          "accepted_censored": 53,
+          "accepted_matured": 8157,
+          "accepted_proxy_quantiles_bps": {
+            "q01": -1321.874452581346,
+            "q05": -777.784763625379,
+            "q50": -23.861171366594824,
+            "q95": 912.5569235272385,
+            "q99": 1652.0456955448085
+          },
+          "decision_counts_on_N": {
+            "ACCEPTED": 8210,
+            "REJECTED": 489
+          },
+          "delta_vs_P0_common_bps": 1.5907112226819056,
+          "delta_vs_P3_common_bps": 3.636036161775462,
+          "fraction_observed_accepted_with_positive_friction_budget": 0.4713742797597156,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": 3.851336574444035,
+          "mean_adverse_excursion_bps": -391.3085939245777,
+          "mean_bps_per_common_complete_original_C": 3.636036161775462,
+          "mean_bps_per_observed_accepted_secondary": 3.851336574444035,
+          "mean_bps_per_original_N": null,
+          "mean_favourable_excursion_bps": 434.5908617882142
+        },
+        "P3": {
+          "N_mean_status": "OBSERVED_PRICE_PROXY_ONLY",
+          "accepted_censored": 0,
+          "accepted_matured": 0,
+          "accepted_proxy_quantiles_bps": {},
+          "decision_counts_on_N": {
+            "REJECTED_NO_OPENING_REFERENCE": 8699
+          },
+          "delta_vs_P0_common_bps": -2.0453249390935566,
+          "delta_vs_P3_common_bps": 0.0,
+          "fraction_observed_accepted_with_positive_friction_budget": null,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": null,
+          "mean_adverse_excursion_bps": null,
+          "mean_bps_per_common_complete_original_C": 0.0,
+          "mean_bps_per_observed_accepted_secondary": null,
+          "mean_bps_per_original_N": 0.0,
+          "mean_favourable_excursion_bps": null
+        }
+      },
+      "censored_original_N_minus_C": 59,
+      "common_complete_original_C": 8640,
+      "original_N": 8699,
+      "outcome_status_counts": {
+        "CENSORED_WINDOW_END": 59,
+        "OBSERVED": 8640
+      },
+      "paired_calendar_block_uncertainty": {
+        "1_calendar_week_blocks": {
+          "below_20_block_diagnostic_floor": true,
+          "calendar_blocks": 18,
+          "claim": "exploratory development uncertainty; no independent-event CI, significance or profitability inference",
+          "exploratory_intervals_per_original_common_event_bps": {
+            "P0": [
+              -44.928936276458586,
+              55.57374163978078
+            ],
+            "P1": [
+              -10.564030519197498,
+              8.709055316832682
+            ],
+            "P2": [
+              -41.91973457222743,
+              55.871950647514005
+            ],
+            "P3": [
+              0.0,
+              0.0
+            ]
+          },
+          "nonempty_blocks": 18,
+          "nonempty_resamples": 10000,
+          "paired_delta_vs_P0_intervals_bps": {
+            "P0": [
+              0.0,
+              0.0
+            ],
+            "P1": [
+              -49.53617763559449,
+              37.22210383855224
+            ],
+            "P2": [
+              -1.3361290494311473,
+              4.673617369853466
+            ],
+            "P3": [
+              -55.5737416397808,
+              44.92893627645858
+            ]
+          },
+          "resamples": 10000
+        },
+        "2_calendar_week_blocks": {
+          "below_20_block_diagnostic_floor": true,
+          "calendar_blocks": 9,
+          "claim": "exploratory development uncertainty; no independent-event CI, significance or profitability inference",
+          "exploratory_intervals_per_original_common_event_bps": {
+            "P0": [
+              -38.378990530973084,
+              48.95162750435719
+            ],
+            "P1": [
+              -9.214419661742106,
+              6.1678297497025705
+            ],
+            "P2": [
+              -36.20682360941262,
+              49.96932085139465
+            ],
+            "P3": [
+              0.0,
+              0.0
+            ]
+          },
+          "nonempty_blocks": 9,
+          "nonempty_resamples": 10000,
+          "paired_delta_vs_P0_intervals_bps": {
+            "P0": [
+              0.0,
+              0.0
+            ],
+            "P1": [
+              -44.070320579517436,
+              31.007947421058454
+            ],
+            "P2": [
+              -0.15133036464874478,
+              3.346108708292995
+            ],
+            "P3": [
+              -48.9516275043572,
+              38.378990530973084
+            ]
+          },
+          "resamples": 10000
+        }
+      }
+    },
+    "4": {
+      "arms": {
+        "P0": {
+          "N_mean_status": "NOT_ESTIMABLE_CENSORED_ACCEPTED",
+          "accepted_censored": 8,
+          "accepted_matured": 8691,
+          "accepted_proxy_quantiles_bps": {
+            "q01": -673.6069495769639,
+            "q05": -352.49072269169847,
+            "q50": -5.015548199418518,
+            "q95": 365.5439776430147,
+            "q99": 772.1366263104962
+          },
+          "decision_counts_on_N": {
+            "ACCEPTED": 8699
+          },
+          "delta_vs_P0_common_bps": 0.0,
+          "delta_vs_P3_common_bps": -0.7258322464591987,
+          "fraction_observed_accepted_with_positive_friction_budget": 0.4796916350247382,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": null,
+          "mean_adverse_excursion_bps": -158.64573370980918,
+          "mean_bps_per_common_complete_original_C": -0.7258322464591987,
+          "mean_bps_per_observed_accepted_secondary": -0.7258322464591987,
+          "mean_bps_per_original_N": null,
+          "mean_favourable_excursion_bps": 170.78580420352029
+        },
+        "P1": {
+          "N_mean_status": "NOT_ESTIMABLE_CENSORED_ACCEPTED",
+          "accepted_censored": 3,
+          "accepted_matured": 1565,
+          "accepted_proxy_quantiles_bps": {
+            "q01": -693.4079664523388,
+            "q05": -395.05627903948226,
+            "q50": 0.2297477369839207,
+            "q95": 430.89285415497653,
+            "q99": 969.6671276854652
+          },
+          "decision_counts_on_N": {
+            "ACCEPTED": 1568,
+            "REJECTED": 7131
+          },
+          "delta_vs_P0_common_bps": 3.8323556719430387,
+          "delta_vs_P3_common_bps": 3.10652342548384,
+          "fraction_observed_accepted_with_positive_friction_budget": 0.5003194888178913,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": 17.251626256153386,
+          "mean_adverse_excursion_bps": -171.54176136805998,
+          "mean_bps_per_common_complete_original_C": 3.10652342548384,
+          "mean_bps_per_observed_accepted_secondary": 17.251626256153386,
+          "mean_bps_per_original_N": null,
+          "mean_favourable_excursion_bps": 201.13398344814763
+        },
+        "P2": {
+          "N_mean_status": "NOT_ESTIMABLE_CENSORED_ACCEPTED",
+          "accepted_censored": 7,
+          "accepted_matured": 8203,
+          "accepted_proxy_quantiles_bps": {
+            "q01": -673.3296628500688,
+            "q05": -352.46061551968097,
+            "q50": -4.780876494023811,
+            "q95": 364.7126824635076,
+            "q99": 769.5794693886628
+          },
+          "decision_counts_on_N": {
+            "ACCEPTED": 8210,
+            "REJECTED": 489
+          },
+          "delta_vs_P0_common_bps": 0.527308505205772,
+          "delta_vs_P3_common_bps": -0.19852374125342678,
+          "fraction_observed_accepted_with_positive_friction_budget": 0.4800682677069365,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": null,
+          "mean_adverse_excursion_bps": -158.19813492006006,
+          "mean_bps_per_common_complete_original_C": -0.19852374125342678,
+          "mean_bps_per_observed_accepted_secondary": -0.21033400405138755,
+          "mean_bps_per_original_N": null,
+          "mean_favourable_excursion_bps": 170.18504679761773
+        },
+        "P3": {
+          "N_mean_status": "OBSERVED_PRICE_PROXY_ONLY",
+          "accepted_censored": 0,
+          "accepted_matured": 0,
+          "accepted_proxy_quantiles_bps": {},
+          "decision_counts_on_N": {
+            "REJECTED_NO_OPENING_REFERENCE": 8699
+          },
+          "delta_vs_P0_common_bps": 0.7258322464591987,
+          "delta_vs_P3_common_bps": 0.0,
+          "fraction_observed_accepted_with_positive_friction_budget": null,
+          "mean_accepted_all_in_friction_break_even_bps_if_positive": null,
+          "mean_adverse_excursion_bps": null,
+          "mean_bps_per_common_complete_original_C": 0.0,
+          "mean_bps_per_observed_accepted_secondary": null,
+          "mean_bps_per_original_N": 0.0,
+          "mean_favourable_excursion_bps": null
+        }
+      },
+      "censored_original_N_minus_C": 8,
+      "common_complete_original_C": 8691,
+      "original_N": 8699,
+      "outcome_status_counts": {
+        "CENSORED_WINDOW_END": 8,
+        "OBSERVED": 8691
+      },
+      "paired_calendar_block_uncertainty": {
+        "1_calendar_week_blocks": {
+          "below_20_block_diagnostic_floor": true,
+          "calendar_blocks": 18,
+          "claim": "exploratory development uncertainty; no independent-event CI, significance or profitability inference",
+          "exploratory_intervals_per_original_common_event_bps": {
+            "P0": [
+              -15.039406581655637,
+              14.017156911250021
+            ],
+            "P1": [
+              -1.0863471019504263,
+              8.037718880496266
+            ],
+            "P2": [
+              -13.932651368776277,
+              14.14060112879777
+            ],
+            "P3": [
+              0.0,
+              0.0
+            ]
+          },
+          "nonempty_blocks": 18,
+          "nonempty_resamples": 10000,
+          "paired_delta_vs_P0_intervals_bps": {
+            "P0": [
+              0.0,
+              0.0
+            ],
+            "P1": [
+              -8.212011543890878,
+              15.481345510512554
+            ],
+            "P2": [
+              -1.0866663769966358,
+              2.004040327260144
+            ],
+            "P3": [
+              -14.017156911250032,
+              15.039406581655635
+            ]
+          },
+          "resamples": 10000
+        },
+        "2_calendar_week_blocks": {
+          "below_20_block_diagnostic_floor": true,
+          "calendar_blocks": 9,
+          "claim": "exploratory development uncertainty; no independent-event CI, significance or profitability inference",
+          "exploratory_intervals_per_original_common_event_bps": {
+            "P0": [
+              -8.238028521357444,
+              6.935981922530398
+            ],
+            "P1": [
+              -0.782671208789268,
+              7.48638388978503
+            ],
+            "P2": [
+              -8.325207285322586,
+              8.112624455942086
+            ],
+            "P3": [
+              0.0,
+              0.0
+            ]
+          },
+          "nonempty_blocks": 9,
+          "nonempty_resamples": 10000,
+          "paired_delta_vs_P0_intervals_bps": {
+            "P0": [
+              0.0,
+              0.0
+            ],
+            "P1": [
+              -2.4085974714277647,
+              9.735205308701397
+            ],
+            "P2": [
+              -0.6027746794885874,
+              1.6838452673046649
+            ],
+            "P3": [
+              -6.935981922530398,
+              8.238028521357442
+            ]
+          },
+          "resamples": 10000
+        }
+      }
+    }
+  },
+  "mechanism_checks_4h": {
+    "P1": {
+      "avoided_negative_movement_per_original_bps": 63.65861405079363,
+      "count_only_random_thinning_expectation_bps": -0.1307015839038829,
+      "delta_vs_P0_bps": 3.832355671943039,
+      "extra_vs_count_only_expectation_bps": 3.237225009387723,
+      "foregone_positive_movement_per_original_bps": 59.82625837885059,
+      "mean_per_original_common_event_bps": 3.1065234254838403,
+      "removed_mean_bps": -4.674011106491292,
+      "retained_fraction": 0.18007133816591878,
+      "retained_mean_bps": 17.251626256153386,
+      "side_and_BTC_regime_count_matched_expectation_bps": 0.015709756421982135,
+      "side_and_BTC_regime_extra_vs_expectation_bps": 3.090813669061858,
+      "side_and_ETH_regime_count_matched_expectation_bps": -0.05188491261325917,
+      "side_and_ETH_regime_extra_vs_expectation_bps": 3.1584083380970993,
+      "side_count_matched_expectation_bps": -0.07761221122703497,
+      "side_extra_vs_expectation_bps": 3.184135636710875,
+      "symbol_concentration": {
+        "accepted_HHI": 0.03355959538221274,
+        "delta_contributions_bps": {
+          "AAVEUSDT": 0.3553985635560933,
+          "ADAUSDT": 0.15025446602508352,
+          "ALGOUSDT": -0.4120917377026509,
+          "APTUSDT": -0.1357568489815757,
+          "ARBUSDT": 0.3626592935141769,
+          "ATOMUSDT": 0.03315593312437531,
+          "AVAXUSDT": -0.2250285057378678,
+          "BCHUSDT": -0.9569857742457796,
+          "BNBUSDT": 0.09644391634251938,
+          "CRVUSDT": 0.7446461834277888,
+          "DOGEUSDT": 0.20022305963892115,
+          "DOTUSDT": -0.17644499101537067,
+          "EOSUSDT": -0.14278266588735525,
+          "ETCUSDT": 0.030492156562644247,
+          "FILUSDT": 0.14471900670934307,
+          "FTMUSDT": 0.07019812657261565,
+          "HBARUSDT": 1.0050767204837827,
+          "ICPUSDT": -0.4378737299341793,
+          "INJUSDT": 1.1621521705842839,
+          "LDOUSDT": 0.7745251963094553,
+          "LINKUSDT": -0.05501912420061053,
+          "LTCUSDT": 0.020159053059141535,
+          "MATICUSDT": -0.053106857319305506,
+          "NEARUSDT": 0.3255694363492218,
+          "OPUSDT": -0.6143793235616289,
+          "RUNEUSDT": 0.01928909000503413,
+          "SEIUSDT": 0.03575624187713396,
+          "SOLUSDT": 0.03712767668281085,
+          "SUIUSDT": 0.395772640679026,
+          "TRXUSDT": 0.05952984201625528,
+          "UNIUSDT": 0.9174710483543441,
+          "XLMUSDT": -0.3565413656608277,
+          "XRPUSDT": 0.4577467743161395
+        },
+        "leave_one_out_delta_vs_P0_min_max_bps": [
+          2.7376122012868858,
+          4.955847899610314
+        ],
+        "max_accepted_share": 0.05175718849840256
+      },
+      "top_1pct_absolute_proxy_sensitivity": {
+        "P0_mean_after_removal_bps": -5.494161461796085,
+        "delta_vs_P0_after_removal_bps": 6.234617604066205,
+        "not_used_for_selection": true,
+        "removed_events": 87
+      },
+      "week_concentration": {
+        "accepted_HHI": 0.05781543141197726,
+        "delta_contributions_bps": {
+          "2024-02-26": -2.059307060968512,
+          "2024-03-04": 1.9777130060168877,
+          "2024-03-11": 0.5922086676904407,
+          "2024-03-18": 1.4017145047027968,
+          "2024-03-25": 0.20985837501003865,
+          "2024-04-01": 0.5976509797877502,
+          "2024-04-08": -2.0326572606575186,
+          "2024-04-15": 3.7061824530495193,
+          "2024-04-22": 0.7459172567336608,
+          "2024-04-29": -1.5057280771275137,
+          "2024-05-06": -0.2382729739873402,
+          "2024-05-13": 1.0608245818356188,
+          "2024-05-20": -0.1114142059406076,
+          "2024-05-27": 1.3083448192168006,
+          "2024-06-03": 0.4589707743139078,
+          "2024-06-10": -1.3010424868919053,
+          "2024-06-17": -1.2625766011943764,
+          "2024-06-24": 0.28396892035339383
+        },
+        "leave_one_out_delta_vs_P0_min_max_bps": [
+          0.13474704416362437,
+          6.195044652069938
+        ],
+        "max_accepted_share": 0.07348242811501597
+      }
+    },
+    "P2": {
+      "avoided_negative_movement_per_original_bps": 4.838903881165825,
+      "count_only_random_thinning_expectation_bps": -0.6850767365901287,
+      "delta_vs_P0_bps": 0.5273085052057702,
+      "extra_vs_count_only_expectation_bps": 0.48655299533670004,
+      "foregone_positive_movement_per_original_bps": 4.311595375960054,
+      "mean_per_original_common_event_bps": -0.19852374125342867,
+      "removed_mean_bps": -9.391061923654435,
+      "retained_fraction": 0.9438499597284548,
+      "retained_mean_bps": -0.21033400405138755,
+      "side_and_BTC_regime_count_matched_expectation_bps": -0.5913272429864369,
+      "side_and_BTC_regime_extra_vs_expectation_bps": 0.39280350173300826,
+      "side_and_ETH_regime_count_matched_expectation_bps": -0.6205043771151311,
+      "side_and_ETH_regime_extra_vs_expectation_bps": 0.4219806358617024,
+      "side_count_matched_expectation_bps": -0.6957696509449919,
+      "side_extra_vs_expectation_bps": 0.49724590969156324,
+      "symbol_concentration": {
+        "accepted_HHI": 0.0306554502669217,
+        "delta_contributions_bps": {
+          "AAVEUSDT": 0.03694114587202933,
+          "ADAUSDT": -0.042621256509485145,
+          "ALGOUSDT": -0.08322537433065644,
+          "APTUSDT": -0.13144386672901948,
+          "ARBUSDT": 0.12586737921200747,
+          "ATOMUSDT": -0.14352746468331448,
+          "AVAXUSDT": -0.0671125915907969,
+          "BCHUSDT": -0.02271832637000213,
+          "BNBUSDT": 0.10216068855083901,
+          "CRVUSDT": 0.27676514373756683,
+          "DOGEUSDT": 0.006521673935675517,
+          "DOTUSDT": 0.062109902999819326,
+          "EOSUSDT": 0.021355512846948938,
+          "ETCUSDT": 0.1465973726278864,
+          "FILUSDT": -0.05694726001517039,
+          "FTMUSDT": -0.389953734628312,
+          "HBARUSDT": -0.003021483652609082,
+          "ICPUSDT": 0.02327947265521142,
+          "INJUSDT": 0.06708452219510087,
+          "LDOUSDT": -0.054961524161276726,
+          "LINKUSDT": 0.022957489879623653,
+          "LTCUSDT": -0.03942658403376444,
+          "MATICUSDT": -0.010638264929314953,
+          "NEARUSDT": 0.12882232257230022,
+          "OPUSDT": 0.054061336243542694,
+          "RUNEUSDT": 0.12979756305133397,
+          "SEIUSDT": 0.004422760303599672,
+          "SOLUSDT": 0.09808471779528616,
+          "SUIUSDT": 0.14094505800858476,
+          "TRXUSDT": 0.04043320824012508,
+          "UNIUSDT": -0.015497221034279269,
+          "XLMUSDT": 0.010688335377735224,
+          "XRPUSDT": 0.08950785176855697
+        },
+        "leave_one_out_delta_vs_P0_min_max_bps": [
+          0.2563843582385695,
+          0.9481358380587566
+        ],
+        "max_accepted_share": 0.035718639522126054
+      },
+      "top_1pct_absolute_proxy_sensitivity": {
+        "P0_mean_after_removal_bps": -5.494161461796085,
+        "delta_vs_P0_after_removal_bps": 0.795512480312236,
+        "not_used_for_selection": true,
+        "removed_events": 87
+      },
+      "week_concentration": {
+        "accepted_HHI": 0.05740598020701953,
+        "delta_contributions_bps": {
+          "2024-02-26": 0.012323153463120684,
+          "2024-03-04": -0.26840216375591397,
+          "2024-03-11": 0.11938666038393293,
+          "2024-03-18": 0.1464434155874402,
+          "2024-03-25": 0.003687454423215426,
+          "2024-04-01": 0.06251057448281686,
+          "2024-04-08": -0.5119415731902178,
+          "2024-04-15": 0.31096102448347435,
+          "2024-04-22": 0.21308332658425205,
+          "2024-04-29": 0.13710927116816746,
+          "2024-05-06": -0.04229334068965752,
+          "2024-05-13": -0.009411189463858521,
+          "2024-05-20": -0.095338922939711,
+          "2024-05-27": 0.16218207909042884,
+          "2024-06-03": 0.20032485099748892,
+          "2024-06-10": 0.029762644167313272,
+          "2024-06-17": -0.0834050530413104,
+          "2024-06-24": 0.14032629345479014
+        },
+        "leave_one_out_delta_vs_P0_min_max_bps": [
+          0.23104890083036234,
+          1.0977299989474414
+        ],
+        "max_accepted_share": 0.07582591734731196
+      }
+    }
+  },
+  "original_source_qualified_events": 8699,
+  "overlap_4h": {
+    "P0": {
+      "accepted_opportunity_hours": 34764,
+      "maximum_overlapping_reference_horizons": 77,
+      "not_portfolio_exposure_or_capital": true
+    },
+    "P1": {
+      "accepted_opportunity_hours": 6260,
+      "maximum_overlapping_reference_horizons": 15,
+      "not_portfolio_exposure_or_capital": true
+    },
+    "P2": {
+      "accepted_opportunity_hours": 32812,
+      "maximum_overlapping_reference_horizons": 73,
+      "not_portfolio_exposure_or_capital": true
+    },
+    "P3": {
+      "accepted_opportunity_hours": 0,
+      "maximum_overlapping_reference_horizons": 0,
+      "not_portfolio_exposure_or_capital": true
+    }
+  },
+  "price_proxy_ledger_sha256": "130d8d5e8ed19cc6a4a1f7eb2468e9531fdba830a0dc278d94b79a439b19f2e1",
+  "primary_4h_distributions": {
+    "btc_h4_trend": {
+      "DOWN": {
+        "arms": {
+          "P0": {
+            "accepted": 3890,
+            "mean_bps_per_accepted": -11.671638104003108,
+            "mean_bps_per_group_original": -11.671638104003108
+          },
+          "P1": {
+            "accepted": 635,
+            "mean_bps_per_accepted": -6.424302640967091,
+            "mean_bps_per_group_original": -1.0486972177414147
+          },
+          "P2": {
+            "accepted": 3655,
+            "mean_bps_per_accepted": -11.160549955522622,
+            "mean_bps_per_group_original": -10.486326500626012
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 3890
+      },
+      "NEUTRAL": {
+        "arms": {
+          "P0": {
+            "accepted": 1098,
+            "mean_bps_per_accepted": -0.8870724347710685,
+            "mean_bps_per_group_original": -0.8870724347710685
+          },
+          "P1": {
+            "accepted": 224,
+            "mean_bps_per_accepted": 8.343202668987407,
+            "mean_bps_per_group_original": 1.702074132835318
+          },
+          "P2": {
+            "accepted": 1037,
+            "mean_bps_per_accepted": -0.6312702875572103,
+            "mean_bps_per_group_original": -0.5961997160262542
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 1098
+      },
+      "UP": {
+        "arms": {
+          "P0": {
+            "accepted": 3703,
+            "mean_bps_per_accepted": 10.82054272319034,
+            "mean_bps_per_group_original": 10.82054272319034
+          },
+          "P1": {
+            "accepted": 706,
+            "mean_bps_per_accepted": 41.3730168130892,
+            "mean_bps_per_group_original": 7.888023189317034
+          },
+          "P2": {
+            "accepted": 3511,
+            "mean_bps_per_accepted": 11.313320290629017,
+            "mean_bps_per_group_original": 10.726726313907232
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 3703
+      }
+    },
+    "eth_h4_trend": {
+      "DOWN": {
+        "arms": {
+          "P0": {
+            "accepted": 4104,
+            "mean_bps_per_accepted": -11.845019334117877,
+            "mean_bps_per_group_original": -11.845019334117877
+          },
+          "P1": {
+            "accepted": 674,
+            "mean_bps_per_accepted": -4.75294472109234,
+            "mean_bps_per_group_original": -0.7805762041949896
+          },
+          "P2": {
+            "accepted": 3859,
+            "mean_bps_per_accepted": -11.63843046765594,
+            "mean_bps_per_group_original": -10.94364112443574
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 4104
+      },
+      "NEUTRAL": {
+        "arms": {
+          "P0": {
+            "accepted": 943,
+            "mean_bps_per_accepted": 5.931296622487033,
+            "mean_bps_per_group_original": 5.931296622487033
+          },
+          "P1": {
+            "accepted": 221,
+            "mean_bps_per_accepted": 34.5777757604961,
+            "mean_bps_per_group_original": 8.103593258822523
+          },
+          "P2": {
+            "accepted": 892,
+            "mean_bps_per_accepted": 7.996728978702619,
+            "mean_bps_per_group_original": 7.564244166492827
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 943
+      },
+      "UP": {
+        "arms": {
+          "P0": {
+            "accepted": 3644,
+            "mean_bps_per_accepted": 10.074242200394512,
+            "mean_bps_per_group_original": 10.074242200394512
+          },
+          "P1": {
+            "accepted": 670,
+            "mean_bps_per_accepted": 33.67252446242784,
+            "mean_bps_per_group_original": 6.191161193695568
+          },
+          "P2": {
+            "accepted": 3452,
+            "mean_bps_per_accepted": 10.44445280719815,
+            "mean_bps_per_group_original": 9.894141353031838
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 3644
+      }
+    },
+    "input_zero_volume": {
+      "NO": {
+        "arms": {
+          "P0": {
+            "accepted": 8691,
+            "mean_bps_per_accepted": -0.7258322464591987,
+            "mean_bps_per_group_original": -0.7258322464591987
+          },
+          "P1": {
+            "accepted": 1565,
+            "mean_bps_per_accepted": 17.251626256153386,
+            "mean_bps_per_group_original": 3.10652342548384
+          },
+          "P2": {
+            "accepted": 8203,
+            "mean_bps_per_accepted": -0.21033400405138755,
+            "mean_bps_per_group_original": -0.19852374125342678
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 8691
+      }
+    },
+    "s1_regime": {
+      "DOWN": {
+        "arms": {
+          "P0": {
+            "accepted": 5197,
+            "mean_bps_per_accepted": -1.7255060170695165,
+            "mean_bps_per_group_original": -1.7255060170695165
+          },
+          "P1": {
+            "accepted": 748,
+            "mean_bps_per_accepted": -1.0468833014780987,
+            "mean_bps_per_group_original": -0.15067706551964938
+          },
+          "P2": {
+            "accepted": 4943,
+            "mean_bps_per_accepted": -0.5423186753304322,
+            "mean_bps_per_group_original": -0.5158132022625219
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 5197
+      },
+      "NEUTRAL": {
+        "arms": {
+          "P0": {
+            "accepted": 2,
+            "mean_bps_per_accepted": 73.5497745596908,
+            "mean_bps_per_group_original": 73.5497745596908
+          },
+          "P1": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          },
+          "P2": {
+            "accepted": 2,
+            "mean_bps_per_accepted": 73.5497745596908,
+            "mean_bps_per_group_original": 73.5497745596908
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 2
+      },
+      "UP": {
+        "arms": {
+          "P0": {
+            "accepted": 3492,
+            "mean_bps_per_accepted": 0.7194006780108816,
+            "mean_bps_per_group_original": 0.7194006780108816
+          },
+          "P1": {
+            "accepted": 817,
+            "mean_bps_per_accepted": 34.00472925383803,
+            "mean_bps_per_group_original": 7.955860194841258
+          },
+          "P2": {
+            "accepted": 3258,
+            "mean_bps_per_accepted": 0.24806992873094322,
+            "mean_bps_per_group_original": 0.23144668608402436
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 3492
+      }
+    },
+    "side": {
+      "LONG": {
+        "arms": {
+          "P0": {
+            "accepted": 3493,
+            "mean_bps_per_accepted": 0.7419479874593893,
+            "mean_bps_per_group_original": 0.7419479874593893
+          },
+          "P1": {
+            "accepted": 817,
+            "mean_bps_per_accepted": 34.00472925383803,
+            "mean_bps_per_group_original": 7.953582536611988
+          },
+          "P2": {
+            "accepted": 3259,
+            "mean_bps_per_accepted": 0.2723807856357967,
+            "mean_bps_per_group_original": 0.2541336903484287
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 3493
+      },
+      "SHORT": {
+        "arms": {
+          "P0": {
+            "accepted": 5198,
+            "mean_bps_per_accepted": -1.71216475070653,
+            "mean_bps_per_group_original": -1.71216475070653
+          },
+          "P1": {
+            "accepted": 748,
+            "mean_bps_per_accepted": -1.0468833014780987,
+            "mean_bps_per_group_original": -0.15064807801185415
+          },
+          "P2": {
+            "accepted": 4944,
+            "mean_bps_per_accepted": -0.5285313138391168,
+            "mean_bps_per_group_original": -0.5027046586418995
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 5198
+      }
+    },
+    "symbol": {
+      "AAVEUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 283,
+            "mean_bps_per_accepted": -7.012943143755189,
+            "mean_bps_per_group_original": -7.012943143755189
+          },
+          "P1": {
+            "accepted": 50,
+            "mean_bps_per_accepted": 22.082120123665796,
+            "mean_bps_per_group_original": 3.9014346508243456
+          },
+          "P2": {
+            "accepted": 267,
+            "mean_bps_per_accepted": -6.2307393667000435,
+            "mean_bps_per_group_original": -5.878471416639264
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 283
+      },
+      "ADAUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 281,
+            "mean_bps_per_accepted": 6.557223468279908,
+            "mean_bps_per_group_original": 6.557223468279908
+          },
+          "P1": {
+            "accepted": 36,
+            "mean_bps_per_accepted": 87.45670441140709,
+            "mean_bps_per_group_original": 11.204417647013008
+          },
+          "P2": {
+            "accepted": 268,
+            "mean_bps_per_accepted": 5.493128560681786,
+            "mean_bps_per_group_original": 5.2389980578744435
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 281
+      },
+      "ALGOUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 231,
+            "mean_bps_per_accepted": 23.73408929412896,
+            "mean_bps_per_group_original": 23.73408929412896
+          },
+          "P1": {
+            "accepted": 36,
+            "mean_bps_per_accepted": 52.80792596027922,
+            "mean_bps_per_group_original": 8.229806643160398
+          },
+          "P2": {
+            "accepted": 222,
+            "mean_bps_per_accepted": 21.438121165027276,
+            "mean_bps_per_group_original": 20.602869691065173
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 231
+      },
+      "APTUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 307,
+            "mean_bps_per_accepted": 3.1902693631986643,
+            "mean_bps_per_group_original": 3.1902693631986643
+          },
+          "P1": {
+            "accepted": 57,
+            "mean_bps_per_accepted": -3.516668070120778,
+            "mean_bps_per_group_original": -0.6529318566673757
+          },
+          "P2": {
+            "accepted": 293,
+            "mean_bps_per_accepted": -0.5561977858017692,
+            "mean_bps_per_group_original": -0.5308337173938709
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 307
+      },
+      "ARBUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 279,
+            "mean_bps_per_accepted": -5.350153595743164,
+            "mean_bps_per_group_original": -5.350153595743164
+          },
+          "P1": {
+            "accepted": 25,
+            "mean_bps_per_accepted": 66.36716266877478,
+            "mean_bps_per_group_original": 5.946878375338242
+          },
+          "P2": {
+            "accepted": 263,
+            "mean_bps_per_accepted": -1.516271712854699,
+            "mean_bps_per_group_original": -1.4293170626551464
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 279
+      },
+      "ATOMUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 256,
+            "mean_bps_per_accepted": -3.3534403255605905,
+            "mean_bps_per_group_original": -3.3534403255605905
+          },
+          "P1": {
+            "accepted": 33,
+            "mean_bps_per_accepted": -17.282500259380768,
+            "mean_bps_per_group_original": -2.227822299060802
+          },
+          "P2": {
+            "accepted": 250,
+            "mean_bps_per_accepted": -8.423511675624788,
+            "mean_bps_per_group_original": -8.226085620727332
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 256
+      },
+      "AVAXUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 292,
+            "mean_bps_per_accepted": 14.862769768565137,
+            "mean_bps_per_group_original": 14.862769768565137
+          },
+          "P1": {
+            "accepted": 42,
+            "mean_bps_per_accepted": 56.76681021555264,
+            "mean_bps_per_group_original": 8.165089140593189
+          },
+          "P2": {
+            "accepted": 276,
+            "mean_bps_per_accepted": 13.611062459802188,
+            "mean_bps_per_group_original": 12.86525081816919
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 292
+      },
+      "BCHUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 292,
+            "mean_bps_per_accepted": 41.41839960760597,
+            "mean_bps_per_group_original": 41.41839960760597
+          },
+          "P1": {
+            "accepted": 66,
+            "mean_bps_per_accepted": 57.22741396137686,
+            "mean_bps_per_group_original": 12.934963429626277
+          },
+          "P2": {
+            "accepted": 265,
+            "mean_bps_per_accepted": 44.8933121167519,
+            "mean_bps_per_group_original": 40.74221818814813
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 292
+      },
+      "BNBUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 303,
+            "mean_bps_per_accepted": -6.418549545726776,
+            "mean_bps_per_group_original": -6.418549545726776
+          },
+          "P1": {
+            "accepted": 64,
+            "mean_bps_per_accepted": -17.29103805347465,
+            "mean_bps_per_group_original": -3.65223246013986
+          },
+          "P2": {
+            "accepted": 278,
+            "mean_bps_per_accepted": -3.8019495257549325,
+            "mean_bps_per_group_original": -3.4882573206596414
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 303
+      },
+      "CRVUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 198,
+            "mean_bps_per_accepted": -40.93887571751031,
+            "mean_bps_per_group_original": -40.93887571751031
+          },
+          "P1": {
+            "accepted": 35,
+            "mean_bps_per_accepted": -46.69078319703224,
+            "mean_bps_per_group_original": -8.253421272202669
+          },
+          "P2": {
+            "accepted": 183,
+            "mean_bps_per_accepted": -31.150445507343427,
+            "mean_bps_per_group_original": -28.790563271938623
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 198
+      },
+      "DOGEUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 285,
+            "mean_bps_per_accepted": -3.832040531562321,
+            "mean_bps_per_group_original": -3.832040531562321
+          },
+          "P1": {
+            "accepted": 51,
+            "mean_bps_per_accepted": 12.706020780913763,
+            "mean_bps_per_group_original": 2.273708981847726
+          },
+          "P2": {
+            "accepted": 259,
+            "mean_bps_per_accepted": -3.997882947182647,
+            "mean_bps_per_group_original": -3.6331638011238794
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 285
+      },
+      "DOTUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 260,
+            "mean_bps_per_accepted": 2.841147610968414,
+            "mean_bps_per_group_original": 2.841147610968414
+          },
+          "P1": {
+            "accepted": 28,
+            "mean_bps_per_accepted": -28.38517993081427,
+            "mean_bps_per_group_original": -3.0568655310107675
+          },
+          "P2": {
+            "accepted": 253,
+            "mean_bps_per_accepted": 5.053342078352638,
+            "mean_bps_per_group_original": 4.917290560858528
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 260
+      },
+      "EOSUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 196,
+            "mean_bps_per_accepted": -0.7128290601213945,
+            "mean_bps_per_group_original": -0.7128290601213945
+          },
+          "P1": {
+            "accepted": 21,
+            "mean_bps_per_accepted": -65.74469738146657,
+            "mean_bps_per_group_original": -7.044074719442846
+          },
+          "P2": {
+            "accepted": 191,
+            "mean_bps_per_accepted": 0.240242232298638,
+            "mean_bps_per_group_original": 0.23411360392367275
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 196
+      },
+      "ETCUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 263,
+            "mean_bps_per_accepted": -4.032969601172379,
+            "mean_bps_per_group_original": -4.032969601172379
+          },
+          "P1": {
+            "accepted": 39,
+            "mean_bps_per_accepted": -20.40163262621524,
+            "mean_bps_per_group_original": -3.0253371574995978
+          },
+          "P2": {
+            "accepted": 252,
+            "mean_bps_per_accepted": 0.846852223812004,
+            "mean_bps_per_group_original": 0.8114325490518061
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 263
+      },
+      "FILUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 259,
+            "mean_bps_per_accepted": 4.865798713928789,
+            "mean_bps_per_group_original": 4.865798713928789
+          },
+          "P1": {
+            "accepted": 36,
+            "mean_bps_per_accepted": 69.94429872829049,
+            "mean_bps_per_group_original": 9.721987468024933
+          },
+          "P2": {
+            "accepted": 246,
+            "mean_bps_per_accepted": 3.11102939071427,
+            "mean_bps_per_group_original": 2.9548773363540946
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 259
+      },
+      "FTMUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 283,
+            "mean_bps_per_accepted": 32.96277942750691,
+            "mean_bps_per_group_original": 32.96277942750691
+          },
+          "P1": {
+            "accepted": 63,
+            "mean_bps_per_accepted": 157.75489676233425,
+            "mean_bps_per_group_original": 35.11858125804614
+          },
+          "P2": {
+            "accepted": 253,
+            "mean_bps_per_accepted": 23.475805021066385,
+            "mean_bps_per_group_original": 20.987203782084084
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 283
+      },
+      "HBARUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 276,
+            "mean_bps_per_accepted": 2.0815169571491223,
+            "mean_bps_per_group_original": 2.0815169571491223
+          },
+          "P1": {
+            "accepted": 24,
+            "mean_bps_per_accepted": 387.9008524124047,
+            "mean_bps_per_group_original": 33.7305089054265
+          },
+          "P2": {
+            "accepted": 268,
+            "mean_bps_per_accepted": 2.045667782643031,
+            "mean_bps_per_group_original": 1.986373064305552
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 276
+      },
+      "ICPUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 301,
+            "mean_bps_per_accepted": 15.1893113380498,
+            "mean_bps_per_group_original": 15.1893113380498
+          },
+          "P1": {
+            "accepted": 42,
+            "mean_bps_per_accepted": 18.248145854643752,
+            "mean_bps_per_group_original": 2.546252909950291
+          },
+          "P2": {
+            "accepted": 291,
+            "mean_bps_per_accepted": 16.40654505016987,
+            "mean_bps_per_group_original": 15.861477108303761
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 301
+      },
+      "INJUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 214,
+            "mean_bps_per_accepted": -44.56999830031124,
+            "mean_bps_per_group_original": -44.56999830031124
+          },
+          "P1": {
+            "accepted": 54,
+            "mean_bps_per_accepted": 10.412682931137148,
+            "mean_bps_per_group_original": 2.627499431221523
+          },
+          "P2": {
+            "accepted": 206,
+            "mean_bps_per_accepted": -43.47062162072322,
+            "mean_bps_per_group_original": -41.84555165359338
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 214
+      },
+      "LDOUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 250,
+            "mean_bps_per_accepted": -23.694425510504093,
+            "mean_bps_per_group_original": -23.694425510504093
+          },
+          "P1": {
+            "accepted": 63,
+            "mean_bps_per_accepted": 12.822096880943679,
+            "mean_bps_per_group_original": 3.231168413997807
+          },
+          "P2": {
+            "accepted": 230,
+            "mean_bps_per_accepted": -27.83163906135513,
+            "mean_bps_per_group_original": -25.605107936446718
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 250
+      },
+      "LINKUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 280,
+            "mean_bps_per_accepted": -4.537227455229196,
+            "mean_bps_per_group_original": -4.537227455229196
+          },
+          "P1": {
+            "accepted": 47,
+            "mean_bps_per_accepted": -37.20414672109959,
+            "mean_bps_per_group_original": -6.244981771041718
+          },
+          "P2": {
+            "accepted": 270,
+            "mean_bps_per_accepted": -3.9662968256309847,
+            "mean_bps_per_group_original": -3.8246433675727354
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 280
+      },
+      "LTCUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 228,
+            "mean_bps_per_accepted": 2.679534567816623,
+            "mean_bps_per_group_original": 2.679534567816623
+          },
+          "P1": {
+            "accepted": 50,
+            "mean_bps_per_accepted": 15.722724231983797,
+            "mean_bps_per_group_original": 3.447965840347324
+          },
+          "P2": {
+            "accepted": 209,
+            "mean_bps_per_accepted": 1.2836241130370496,
+            "mean_bps_per_group_original": 1.1766554369506288
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 228
+      },
+      "MATICUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 262,
+            "mean_bps_per_accepted": -11.191724836044227,
+            "mean_bps_per_group_original": -11.191724836044227
+          },
+          "P1": {
+            "accepted": 50,
+            "mean_bps_per_accepted": -67.87567208011345,
+            "mean_bps_per_group_original": -12.953372534372795
+          },
+          "P2": {
+            "accepted": 253,
+            "mean_bps_per_accepted": -11.955292757091952,
+            "mean_bps_per_group_original": -11.544614761619327
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 262
+      },
+      "NEARUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 263,
+            "mean_bps_per_accepted": -18.107237290331735,
+            "mean_bps_per_group_original": -18.107237290331735
+          },
+          "P1": {
+            "accepted": 81,
+            "mean_bps_per_accepted": -23.860239951187157,
+            "mean_bps_per_group_original": -7.348591011582356
+          },
+          "P2": {
+            "accepted": 239,
+            "mean_bps_per_accepted": -15.241040175235925,
+            "mean_bps_per_group_original": -13.850222820841772
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 263
+      },
+      "OPUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 274,
+            "mean_bps_per_accepted": 11.894111974315786,
+            "mean_bps_per_group_original": 11.894111974315786
+          },
+          "P1": {
+            "accepted": 40,
+            "mean_bps_per_accepted": -52.014600502789804,
+            "mean_bps_per_group_original": -7.593372336173694
+          },
+          "P2": {
+            "accepted": 256,
+            "mean_bps_per_accepted": 14.5657568525592,
+            "mean_bps_per_group_original": 13.608882314799837
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 274
+      },
+      "RUNEUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 236,
+            "mean_bps_per_accepted": 14.614002204739261,
+            "mean_bps_per_group_original": 14.614002204739261
+          },
+          "P1": {
+            "accepted": 56,
+            "mean_bps_per_accepted": 64.58117859914672,
+            "mean_bps_per_group_original": 15.324347464204308
+          },
+          "P2": {
+            "accepted": 225,
+            "mean_bps_per_accepted": 20.342111736878262,
+            "mean_bps_per_group_original": 19.39396246100682
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 236
+      },
+      "SEIUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 269,
+            "mean_bps_per_accepted": -8.325884642898808,
+            "mean_bps_per_group_original": -8.325884642898808
+          },
+          "P1": {
+            "accepted": 54,
+            "mean_bps_per_accepted": -35.72047168121497,
+            "mean_bps_per_group_original": -7.17065230775319
+          },
+          "P2": {
+            "accepted": 253,
+            "mean_bps_per_accepted": -8.700493119135157,
+            "mean_bps_per_group_original": -8.18299166966987
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 269
+      },
+      "SOLUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 279,
+            "mean_bps_per_accepted": -7.7851089693238995,
+            "mean_bps_per_group_original": -7.7851089693238995
+          },
+          "P1": {
+            "accepted": 75,
+            "mean_bps_per_accepted": -24.658250191880793,
+            "mean_bps_per_group_original": -6.628561879537847
+          },
+          "P2": {
+            "accepted": 264,
+            "mean_bps_per_accepted": -4.9984512124338485,
+            "mean_bps_per_group_original": -4.729717276281491
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 279
+      },
+      "SUIUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 283,
+            "mean_bps_per_accepted": -18.39623138880693,
+            "mean_bps_per_group_original": -18.39623138880693
+          },
+          "P1": {
+            "accepted": 67,
+            "mean_bps_per_accepted": -26.365275565536514,
+            "mean_bps_per_group_original": -6.241955699261295
+          },
+          "P2": {
+            "accepted": 270,
+            "mean_bps_per_accepted": -14.745111051406491,
+            "mean_bps_per_group_original": -14.067773794628101
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 283
+      },
+      "TRXUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 220,
+            "mean_bps_per_accepted": -2.1365949723759545,
+            "mean_bps_per_group_original": -2.1365949723759545
+          },
+          "P1": {
+            "accepted": 75,
+            "mean_bps_per_accepted": 0.6309728405408623,
+            "mean_bps_per_group_original": 0.21510437745711214
+          },
+          "P2": {
+            "accepted": 199,
+            "mean_bps_per_accepted": -0.5962104578280547,
+            "mean_bps_per_group_original": -0.5392994595808313
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 220
+      },
+      "UNIUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 258,
+            "mean_bps_per_accepted": -16.273391946419714,
+            "mean_bps_per_group_original": -16.273391946419714
+          },
+          "P1": {
+            "accepted": 36,
+            "mean_bps_per_accepted": 104.86682664086993,
+            "mean_bps_per_group_original": 14.632580461516735
+          },
+          "P2": {
+            "accepted": 244,
+            "mean_bps_per_accepted": -17.75910438600495,
+            "mean_bps_per_group_original": -16.795432054981426
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 258
+      },
+      "XLMUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 270,
+            "mean_bps_per_accepted": 15.014988200096898,
+            "mean_bps_per_group_original": 15.014988200096898
+          },
+          "P1": {
+            "accepted": 38,
+            "mean_bps_per_accepted": 25.14067908073444,
+            "mean_bps_per_group_original": 3.53831779654781
+          },
+          "P2": {
+            "accepted": 261,
+            "mean_bps_per_accepted": 15.88865569652896,
+            "mean_bps_per_group_original": 15.359033839977997
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 270
+      },
+      "XRPUSDT": {
+        "arms": {
+          "P0": {
+            "accepted": 260,
+            "mean_bps_per_accepted": -13.468047738354702,
+            "mean_bps_per_group_original": -13.468047738354702
+          },
+          "P1": {
+            "accepted": 31,
+            "mean_bps_per_accepted": 15.373703342236992,
+            "mean_bps_per_group_original": 1.8330184754205645
+          },
+          "P2": {
+            "accepted": 246,
+            "mean_bps_per_accepted": -11.07227509045404,
+            "mean_bps_per_group_original": -10.476075662506513
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 260
+      }
+    },
+    "week": {
+      "2024-02-26": {
+        "arms": {
+          "P0": {
+            "accepted": 288,
+            "mean_bps_per_accepted": 95.87927747125727,
+            "mean_bps_per_group_original": 95.87927747125727
+          },
+          "P1": {
+            "accepted": 44,
+            "mean_bps_per_accepted": 220.81350556465352,
+            "mean_bps_per_group_original": 33.73539668348874
+          },
+          "P2": {
+            "accepted": 277,
+            "mean_bps_per_accepted": 100.07340230494611,
+            "mean_bps_per_group_original": 96.25115430024331
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 288
+      },
+      "2024-03-04": {
+        "arms": {
+          "P0": {
+            "accepted": 654,
+            "mean_bps_per_accepted": -31.370971942203077,
+            "mean_bps_per_group_original": -31.370971942203077
+          },
+          "P1": {
+            "accepted": 107,
+            "mean_bps_per_accepted": -31.105718830916302,
+            "mean_bps_per_group_original": -5.08916194940068
+          },
+          "P2": {
+            "accepted": 622,
+            "mean_bps_per_accepted": -36.73520716302807,
+            "mean_bps_per_group_original": -34.937765833950245
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 654
+      },
+      "2024-03-11": {
+        "arms": {
+          "P0": {
+            "accepted": 484,
+            "mean_bps_per_accepted": 11.234048500238664,
+            "mean_bps_per_group_original": 11.234048500238664
+          },
+          "P1": {
+            "accepted": 115,
+            "mean_bps_per_accepted": 92.03621743489681,
+            "mean_bps_per_group_original": 21.868109514489944
+          },
+          "P2": {
+            "accepted": 460,
+            "mean_bps_per_accepted": 14.07580204241799,
+            "mean_bps_per_group_original": 13.377828387422056
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 484
+      },
+      "2024-03-18": {
+        "arms": {
+          "P0": {
+            "accepted": 477,
+            "mean_bps_per_accepted": -15.885109730251658,
+            "mean_bps_per_group_original": -15.885109730251658
+          },
+          "P1": {
+            "accepted": 81,
+            "mean_bps_per_accepted": 56.85312863014771,
+            "mean_bps_per_group_original": 9.654304861723196
+          },
+          "P2": {
+            "accepted": 450,
+            "mean_bps_per_accepted": -14.00990581435466,
+            "mean_bps_per_group_original": -13.216892277693077
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 477
+      },
+      "2024-03-25": {
+        "arms": {
+          "P0": {
+            "accepted": 489,
+            "mean_bps_per_accepted": -5.006621380845423,
+            "mean_bps_per_group_original": -5.006621380845423
+          },
+          "P1": {
+            "accepted": 103,
+            "mean_bps_per_accepted": -6.06173512641909,
+            "mean_bps_per_group_original": -1.2768071943173134
+          },
+          "P2": {
+            "accepted": 468,
+            "mean_bps_per_accepted": -5.162799548806082,
+            "mean_bps_per_group_original": -4.941084230759195
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 489
+      },
+      "2024-04-01": {
+        "arms": {
+          "P0": {
+            "accepted": 474,
+            "mean_bps_per_accepted": -10.250916714660999,
+            "mean_bps_per_group_original": -10.250916714660999
+          },
+          "P1": {
+            "accepted": 73,
+            "mean_bps_per_accepted": 4.592467706657852,
+            "mean_bps_per_group_original": 0.7072787818270533
+          },
+          "P2": {
+            "accepted": 447,
+            "mean_bps_per_accepted": -9.654709440535015,
+            "mean_bps_per_group_original": -9.104757636960235
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 474
+      },
+      "2024-04-08": {
+        "arms": {
+          "P0": {
+            "accepted": 463,
+            "mean_bps_per_accepted": 43.046525511837906,
+            "mean_bps_per_group_original": 43.046525511837906
+          },
+          "P1": {
+            "accepted": 94,
+            "mean_bps_per_accepted": 24.092734676664413,
+            "mean_bps_per_group_original": 4.891397536946987
+          },
+          "P2": {
+            "accepted": 439,
+            "mean_bps_per_accepted": 35.2648225498514,
+            "mean_bps_per_group_original": 33.4368403874401
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 463
+      },
+      "2024-04-15": {
+        "arms": {
+          "P0": {
+            "accepted": 553,
+            "mean_bps_per_accepted": -73.0962103866259,
+            "mean_bps_per_group_original": -73.0962103866259
+          },
+          "P1": {
+            "accepted": 83,
+            "mean_bps_per_accepted": -98.93701981145485,
+            "mean_bps_per_group_original": -14.849498452713839
+          },
+          "P2": {
+            "accepted": 517,
+            "mean_bps_per_accepted": -72.9586887427819,
+            "mean_bps_per_group_original": -68.20911768538562
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 553
+      },
+      "2024-04-22": {
+        "arms": {
+          "P0": {
+            "accepted": 427,
+            "mean_bps_per_accepted": 5.279715919934424,
+            "mean_bps_per_group_original": 5.279715919934424
+          },
+          "P1": {
+            "accepted": 67,
+            "mean_bps_per_accepted": 130.40605337439172,
+            "mean_bps_per_group_original": 20.461839756637577
+          },
+          "P2": {
+            "accepted": 401,
+            "mean_bps_per_accepted": 10.240264062732503,
+            "mean_bps_per_group_original": 9.616735103409212
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 427
+      },
+      "2024-04-29": {
+        "arms": {
+          "P0": {
+            "accepted": 447,
+            "mean_bps_per_accepted": 27.391433071784046,
+            "mean_bps_per_group_original": 27.391433071784046
+          },
+          "P1": {
+            "accepted": 86,
+            "mean_bps_per_accepted": -9.794327153811121,
+            "mean_bps_per_group_original": -1.8843671929032582
+          },
+          "P2": {
+            "accepted": 425,
+            "mean_bps_per_accepted": 31.613146491317675,
+            "mean_bps_per_group_original": 30.05724218973157
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 447
+      },
+      "2024-05-06": {
+        "arms": {
+          "P0": {
+            "accepted": 508,
+            "mean_bps_per_accepted": 10.780045716556048,
+            "mean_bps_per_group_original": 10.780045716556048
+          },
+          "P1": {
+            "accepted": 89,
+            "mean_bps_per_accepted": 38.26328996726402,
+            "mean_bps_per_group_original": 6.703607887965547
+          },
+          "P2": {
+            "accepted": 486,
+            "mean_bps_per_accepted": 10.51171152279148,
+            "mean_bps_per_group_original": 10.056479921410746
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 508
+      },
+      "2024-05-13": {
+        "arms": {
+          "P0": {
+            "accepted": 440,
+            "mean_bps_per_accepted": -22.24405668422334,
+            "mean_bps_per_group_original": -22.24405668422334
+          },
+          "P1": {
+            "accepted": 68,
+            "mean_bps_per_accepted": -8.349389710660438,
+            "mean_bps_per_group_original": -1.2903602280111586
+          },
+          "P2": {
+            "accepted": 405,
+            "mean_bps_per_accepted": -24.368339725157195,
+            "mean_bps_per_group_original": -22.42994906520151
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 440
+      },
+      "2024-05-20": {
+        "arms": {
+          "P0": {
+            "accepted": 487,
+            "mean_bps_per_accepted": -1.711006075288065,
+            "mean_bps_per_group_original": -1.711006075288065
+          },
+          "P1": {
+            "accepted": 89,
+            "mean_bps_per_accepted": -20.242256432529334,
+            "mean_bps_per_group_original": -3.699303536950946
+          },
+          "P2": {
+            "accepted": 456,
+            "mean_bps_per_accepted": -3.6444090744173594,
+            "mean_bps_per_group_original": -3.41242410253453
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 487
+      },
+      "2024-05-27": {
+        "arms": {
+          "P0": {
+            "accepted": 635,
+            "mean_bps_per_accepted": -21.14568790363826,
+            "mean_bps_per_group_original": -21.14568790363826
+          },
+          "P1": {
+            "accepted": 114,
+            "mean_bps_per_accepted": -18.041113991202486,
+            "mean_bps_per_group_original": -3.238877157475722
+          },
+          "P2": {
+            "accepted": 599,
+            "mean_bps_per_accepted": -20.063417979024006,
+            "mean_bps_per_group_original": -18.925964361315557
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 635
+      },
+      "2024-06-03": {
+        "arms": {
+          "P0": {
+            "accepted": 351,
+            "mean_bps_per_accepted": -8.570184347883208,
+            "mean_bps_per_group_original": -8.570184347883208
+          },
+          "P1": {
+            "accepted": 85,
+            "mean_bps_per_accepted": 11.538591687707846,
+            "mean_bps_per_group_original": 2.7942458502996206
+          },
+          "P2": {
+            "accepted": 325,
+            "mean_bps_per_accepted": -3.8988043879625534,
+            "mean_bps_per_group_original": -3.61000406292829
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 351
+      },
+      "2024-06-10": {
+        "arms": {
+          "P0": {
+            "accepted": 588,
+            "mean_bps_per_accepted": 19.935403585630887,
+            "mean_bps_per_group_original": 19.935403585630887
+          },
+          "P1": {
+            "accepted": 105,
+            "mean_bps_per_accepted": 3.9491148073658358,
+            "mean_bps_per_group_original": 0.7051990727438993
+          },
+          "P2": {
+            "accepted": 550,
+            "mean_bps_per_accepted": 21.783062634198334,
+            "mean_bps_per_group_original": 20.37531368845082
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 588
+      },
+      "2024-06-17": {
+        "arms": {
+          "P0": {
+            "accepted": 527,
+            "mean_bps_per_accepted": 28.335097956440272,
+            "mean_bps_per_group_original": 28.335097956440272
+          },
+          "P1": {
+            "accepted": 86,
+            "mean_bps_per_accepted": 46.041202117019736,
+            "mean_bps_per_group_original": 7.513365051354264
+          },
+          "P2": {
+            "accepted": 493,
+            "mean_bps_per_accepted": 28.8189113733509,
+            "mean_bps_per_group_original": 26.959626768618584
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 527
+      },
+      "2024-06-24": {
+        "arms": {
+          "P0": {
+            "accepted": 399,
+            "mean_bps_per_accepted": -7.616706892586015,
+            "mean_bps_per_group_original": -7.616706892586015
+          },
+          "P1": {
+            "accepted": 76,
+            "mean_bps_per_accepted": -7.514370570400973,
+            "mean_bps_per_group_original": -1.4313086800763757
+          },
+          "P2": {
+            "accepted": 383,
+            "mean_bps_per_accepted": -4.750627242105062,
+            "mean_bps_per_group_original": -4.560125899063255
+          },
+          "P3": {
+            "accepted": 0,
+            "mean_bps_per_accepted": null,
+            "mean_bps_per_group_original": 0.0
+          }
+        },
+        "original_common_events": 399
+      }
+    }
+  },
+  "protocol_sha256": "e643744f2f6915c1bb235170a3e900259b02aff8d154bc956d6f83f3b03f2b78",
+  "source_checksum_proof_sha256": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+  "source_manifest_sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+  "study_code_sha256": "13f00da94fc597080326221bca10404183dd250ceccbfb1b346acec760d74ba8",
+  "timing_sensitivity": {
+    "derived_offsets_seconds": [
+      6,
+      31,
+      61
+    ],
+    "lags_seconds": [
+      5,
+      30,
+      60
+    ],
+    "nonexecuted": true,
+    "same_deadline_qualified_events": 0,
+    "same_reference_for_every_original_event": true
+  },
+  "window": "A"
+}

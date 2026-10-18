@@ -1,0 +1,528 @@
+{
+  "bounded_examples": [
+    {
+      "decision_cutoff_utc_ns": "1715814000000000000",
+      "field": "eth_h1_return",
+      "new": "0.0",
+      "old": "",
+      "source_m15_archive_sha256": "180775c3969d5e1a4f80dab6d62639945db50ed26b7fb240e66cc384d572295b",
+      "symbol": "BTCUSDT",
+      "window": "A"
+    },
+    {
+      "decision_cutoff_utc_ns": "1715814000000000000",
+      "field": "eth_h1_return",
+      "new": "0.0",
+      "old": "",
+      "source_m15_archive_sha256": "b29d1019e7c8e01eaf9ef096b7e85932918ec652e7b67afeee86e877de6453e6",
+      "symbol": "ETHUSDT",
+      "window": "A"
+    },
+    {
+      "decision_cutoff_utc_ns": "1740787200000000000",
+      "field": "h4_trend",
+      "new": "DOWN",
+      "old": "UP",
+      "source_m15_archive_sha256": "647e4335e08334968e29b0fdba2c85e44cde82ab1a914497c2724ab416174283",
+      "symbol": "FTMUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1740788100000000000",
+      "field": "h4_trend",
+      "new": "DOWN",
+      "old": "UP",
+      "source_m15_archive_sha256": "864a149b5cdec3b57e3dfb6ff5d3529a59ed7311db5b700879d24c39fcbc1eed",
+      "symbol": "FTMUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1746126000000000000",
+      "field": "eth_h1_return",
+      "new": "0.0",
+      "old": "",
+      "source_m15_archive_sha256": "303a174c2d15248fe00342ac2b01bec41bb4e11c4a5d26d480e2a382808bc020",
+      "symbol": "BTCUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1746126000000000000",
+      "field": "eth_h1_return",
+      "new": "0.0",
+      "old": "",
+      "source_m15_archive_sha256": "08a8b62945c67b1c6cb7852290865421033e6b629585d222d0120927938b3c0e",
+      "symbol": "ETHUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "h1_archive_sha256",
+      "new": "",
+      "old": "3adc7f5a4b8ecdb87541f86da858d4c41190cbf5d215b50122875b7f5b8f39b4",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "h1_row_index",
+      "new": "",
+      "old": "490",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "h1_source_status",
+      "new": "SOURCE_MISSING",
+      "old": "OBSERVED",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "h1_source_missing_reason",
+      "new": "NATIVE_SLOT_GAP",
+      "old": "",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "h1_close",
+      "new": "",
+      "old": "0.746",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "h1_return",
+      "new": "",
+      "old": "0.0",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "h1_ema20",
+      "new": "",
+      "old": "0.7724529642899172",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "h1_ema50",
+      "new": "",
+      "old": "0.7764245660375177",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "s1_precursor_state",
+      "new": "SOURCE_MISSING",
+      "old": "SETUP",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "s1_reason",
+      "new": "H1_OR_RECONSTRUCTED_H4_PREFIX_HAS_GAP_OR_INSUFFICIENT_WARMUP",
+      "old": "",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "s1_side",
+      "new": "",
+      "old": "SHORT",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "s1_setup_ref",
+      "new": "",
+      "old": "f40af71b4d788621f31776ff40831a1cbb257a181717178ed1291455cd16daf4",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "s1_diagnostic_grade",
+      "new": "SOURCE_MISSING",
+      "old": "S1_BAR_PRECURSOR_DIAGNOSTIC",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747825200000000000",
+      "field": "raw_source_refs",
+      "new": "{\"h1\":null,\"m15\":null,\"s1_prefix\":null,\"s6_window_start_ns\":null,\"s6_window_end_ns\":null}",
+      "old": "{\"h1\":\"3adc7f5a4b8ecdb87541f86da858d4c41190cbf5d215b50122875b7f5b8f39b4\",\"m15\":null,\"s1_prefix\":\"f40af71b4d788621f31776ff40831a1cbb257a181717178ed1291455cd16daf4\",\"s6_window_start_ns\":null,\"s6_window_end_ns\":null}",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "h1_archive_sha256",
+      "new": "",
+      "old": "3adc7f5a4b8ecdb87541f86da858d4c41190cbf5d215b50122875b7f5b8f39b4",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "h1_row_index",
+      "new": "",
+      "old": "490",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "h1_source_status",
+      "new": "SOURCE_MISSING",
+      "old": "OBSERVED",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "h1_source_missing_reason",
+      "new": "NATIVE_SLOT_GAP",
+      "old": "",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "h1_close",
+      "new": "",
+      "old": "0.746",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "h1_return",
+      "new": "",
+      "old": "0.0",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "h1_ema20",
+      "new": "",
+      "old": "0.7724529642899172",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "h1_ema50",
+      "new": "",
+      "old": "0.7764245660375177",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_precursor_state",
+      "new": "SOURCE_MISSING",
+      "old": "SETUP",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_reason",
+      "new": "H1_OR_RECONSTRUCTED_H4_PREFIX_HAS_GAP_OR_INSUFFICIENT_WARMUP",
+      "old": "",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_side",
+      "new": "",
+      "old": "SHORT",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_setup_ref",
+      "new": "",
+      "old": "f40af71b4d788621f31776ff40831a1cbb257a181717178ed1291455cd16daf4",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_trigger_setup_id",
+      "new": "",
+      "old": "6887088d33e873ea281522f8275a87e0f1e89f4e3339e489e22f3350783a91c4",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_trigger_setup_cutoff_utc_ns",
+      "new": "",
+      "old": "1747821600000000000",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_trigger_setup_side",
+      "new": "",
+      "old": "SHORT",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_trigger_setup_ref",
+      "new": "",
+      "old": "f40af71b4d788621f31776ff40831a1cbb257a181717178ed1291455cd16daf4",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_trigger_setup_extreme",
+      "new": "",
+      "old": "0.783",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_trigger_episode_status",
+      "new": "NO_SETUP",
+      "old": "CENSORED_ACTIVE",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_trigger_pre_window_history_status",
+      "new": "NO_SETUP",
+      "old": "NO_PRIOR_MATCH",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_first_trigger_reason",
+      "new": "NO_MATCH",
+      "old": "ACTIVE_TRIGGER_HISTORY_CENSORED",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "s1_diagnostic_grade",
+      "new": "SOURCE_MISSING",
+      "old": "S1_BAR_PRECURSOR_DIAGNOSTIC",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747826100000000000",
+      "field": "raw_source_refs",
+      "new": "{\"h1\":null,\"m15\":null,\"s1_prefix\":null,\"s6_window_start_ns\":null,\"s6_window_end_ns\":null}",
+      "old": "{\"h1\":\"3adc7f5a4b8ecdb87541f86da858d4c41190cbf5d215b50122875b7f5b8f39b4\",\"m15\":null,\"s1_prefix\":\"f40af71b4d788621f31776ff40831a1cbb257a181717178ed1291455cd16daf4\",\"s6_window_start_ns\":null,\"s6_window_end_ns\":null}",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747827000000000000",
+      "field": "s1_trigger_setup_id",
+      "new": "",
+      "old": "6887088d33e873ea281522f8275a87e0f1e89f4e3339e489e22f3350783a91c4",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747827000000000000",
+      "field": "s1_trigger_setup_cutoff_utc_ns",
+      "new": "",
+      "old": "1747821600000000000",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747827000000000000",
+      "field": "s1_trigger_setup_side",
+      "new": "",
+      "old": "SHORT",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747827000000000000",
+      "field": "s1_trigger_setup_ref",
+      "new": "",
+      "old": "f40af71b4d788621f31776ff40831a1cbb257a181717178ed1291455cd16daf4",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747827000000000000",
+      "field": "s1_trigger_setup_extreme",
+      "new": "",
+      "old": "0.783",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747827000000000000",
+      "field": "s1_trigger_episode_status",
+      "new": "NO_SETUP",
+      "old": "CENSORED_ACTIVE",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747827000000000000",
+      "field": "s1_trigger_pre_window_history_status",
+      "new": "NO_SETUP",
+      "old": "NO_PRIOR_MATCH",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1747827000000000000",
+      "field": "s1_first_trigger_reason",
+      "new": "NO_MATCH",
+      "old": "ACTIVE_TRIGGER_HISTORY_CENSORED",
+      "source_m15_archive_sha256": "",
+      "symbol": "EOSUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1748224800000000000",
+      "field": "btc_h1_return",
+      "new": "0.0",
+      "old": "",
+      "source_m15_archive_sha256": "303a174c2d15248fe00342ac2b01bec41bb4e11c4a5d26d480e2a382808bc020",
+      "symbol": "BTCUSDT",
+      "window": "B"
+    },
+    {
+      "decision_cutoff_utc_ns": "1748224800000000000",
+      "field": "btc_h1_return",
+      "new": "0.0",
+      "old": "",
+      "source_m15_archive_sha256": "08a8b62945c67b1c6cb7852290865421033e6b629585d222d0120927938b3c0e",
+      "symbol": "ETHUSDT",
+      "window": "B"
+    }
+  ],
+  "field_changes": {
+    "A:eth_h1_return": 140,
+    "B:btc_h1_return": 140,
+    "B:eth_h1_return": 140,
+    "B:h1_archive_sha256": 3892,
+    "B:h1_close": 3892,
+    "B:h1_ema20": 3892,
+    "B:h1_ema50": 3892,
+    "B:h1_return": 3892,
+    "B:h1_row_index": 3892,
+    "B:h1_source_missing_reason": 3892,
+    "B:h1_source_status": 3892,
+    "B:h4_trend": 15604,
+    "B:raw_source_refs": 3892,
+    "B:s1_diagnostic_grade": 3892,
+    "B:s1_first_trigger_reason": 3891,
+    "B:s1_precursor_state": 3892,
+    "B:s1_reason": 3892,
+    "B:s1_setup_ref": 3892,
+    "B:s1_side": 3892,
+    "B:s1_trigger_episode_status": 3891,
+    "B:s1_trigger_pre_window_history_status": 3891,
+    "B:s1_trigger_setup_cutoff_utc_ns": 3891,
+    "B:s1_trigger_setup_extreme": 3891,
+    "B:s1_trigger_setup_id": 3891,
+    "B:s1_trigger_setup_ref": 3891,
+    "B:s1_trigger_setup_side": 3891
+  },
+  "first_event_ordered_hashes": {
+    "new": "a11885c7ea9bb3ea207f7da375f17e75a8a00464aabd7831edc9c19b8d104ad0",
+    "old": "a11885c7ea9bb3ea207f7da375f17e75a8a00464aabd7831edc9c19b8d104ad0"
+  },
+  "new_counts": {
+    "A:s1_first_trigger_event": 9261,
+    "A:s1_raw_trigger_predicate": 13690,
+    "A:s1_setup_event": 15062,
+    "B:s1_first_trigger_event": 7899,
+    "B:s1_raw_trigger_predicate": 12003,
+    "B:s1_setup_event": 13124
+  },
+  "new_panel_sha256": "811ef7c972c69d1c6d26f9a8518e388fc64a5774ee801c141d45863959e0bce4",
+  "old_counts": {
+    "A:s1_first_trigger_event": 9261,
+    "A:s1_raw_trigger_predicate": 13690,
+    "A:s1_setup_event": 15062,
+    "B:s1_first_trigger_event": 7899,
+    "B:s1_raw_trigger_predicate": 12003,
+    "B:s1_setup_event": 13124
+  },
+  "old_panel_sha256": "68ee994b983f47de86cec2781c9469f6e992d03a03728517978790b571c9d682",
+  "rows": {
+    "A:changed_rows": 140,
+    "A:rows": 409920,
+    "B:changed_rows": 15872,
+    "B:rows": 409920
+  }
+}

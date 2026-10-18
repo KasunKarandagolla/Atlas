@@ -1,0 +1,17 @@
+{
+  "counts": {
+    "A:ANCHOR_CONTEXT_EXCLUDED": 562,
+    "A:SOURCE_QUALIFIED_ALT_EVENT": 8699,
+    "B:ANCHOR_CONTEXT_EXCLUDED": 542,
+    "B:SOURCE_QUALIFIED_ALT_EVENT": 7357
+  },
+  "duplicate_event_weights": 0,
+  "evidence_grade": "HISTORICAL_PRICE_PROXY_NONEXECUTABLE",
+  "feature_population_sha256": "2874b7acde4bc6e895fa81fa64ddcb5ab7dc33bf27a2a1ed98b58656c0f31001",
+  "historical_continuous_live_ema_state": "UNVERIFIED; explicit finite research origins only",
+  "outcomes_computed": false,
+  "panel_sha256": "811ef7c972c69d1c6d26f9a8518e388fc64a5774ee801c141d45863959e0bce4",
+  "protocol_sha256": "e643744f2f6915c1bb235170a3e900259b02aff8d154bc956d6f83f3b03f2b78",
+  "unique_first_events": 17160,
+  "validation_sha256": "c0c9850ed01838678200d572a41adc2c85b8c969bc8b842b8b7418917b498fb5"
+}

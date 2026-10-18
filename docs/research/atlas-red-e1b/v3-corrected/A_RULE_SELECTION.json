@@ -1,0 +1,16 @@
+{
+  "A_objective_values_bps": {
+    "P0": -0.7258322464591987,
+    "P1": 3.10652342548384,
+    "P2": -0.19852374125342678
+  },
+  "A_price_proxy_ledger_sha256": "130d8d5e8ed19cc6a4a1f7eb2468e9531fdba830a0dc278d94b79a439b19f2e1",
+  "B_used": false,
+  "evidence_grade": "HISTORICAL_PRICE_PROXY_NONEXECUTABLE",
+  "feature_population_sha256": "2874b7acde4bc6e895fa81fa64ddcb5ab7dc33bf27a2a1ed98b58656c0f31001",
+  "objective": "mean 4h proxy per common-matured original A event",
+  "protocol_sha256": "e643744f2f6915c1bb235170a3e900259b02aff8d154bc956d6f83f3b03f2b78",
+  "selected_rule": "P1",
+  "selection_window": "A",
+  "study_code_sha256": "13f00da94fc597080326221bca10404183dd250ceccbfb1b346acec760d74ba8"
+}
