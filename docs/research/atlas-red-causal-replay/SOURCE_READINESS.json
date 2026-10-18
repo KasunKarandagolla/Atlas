@@ -1,0 +1,731 @@
+{
+  "version": "NATIVE_REPLAY_SOURCE_READINESS_V1",
+  "source_sha": "f8d5d95f2492a9af959a4d48b0664233cf9aa123",
+  "authority": "ZERO",
+  "available_source_grade": "RECONSTRUCTED_MARKET",
+  "market_acquisition_authorized": false,
+  "original_receipt": "UNKNOWN_NOT_CAPTURED",
+  "original_source_health": "UNVERIFIED",
+  "scope": "FIXED_REVEALED_DEVELOPMENT_HOUR_NOT_BINANCE_UNIVERSE",
+  "rows": [
+    {
+      "id": "FEATURES",
+      "owner": {
+        "path": "src/atlas/v2/features/pipeline.py",
+        "symbol": "feature_snapshot",
+        "line": 44,
+        "sha256": "7dab8763537481b8615b97369400748156acb4c1d8eae3fe97438a984441c215"
+      },
+      "native_clock": "EXPLICIT_ASOF_CUTOFF",
+      "verified_cached_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "requirements": {
+        "indicator": [
+          "CAUSAL_BAR_PREFIX_BY_REQUESTED_VIEW"
+        ],
+        "setup": [],
+        "exact_action": [],
+        "economic_evaluation": [],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "TRADES_AND_REPLAY_TRADE_VISIBILITY",
+        "BOOK_FLOW_DERIVATIVES_EVENTS_PEER_INPUTS"
+      ],
+      "reader_contract_limitation": "Prior-day now follows explicit view; CausalTrade lacks replay clock; exact histories remain actual-system contracts",
+      "causal_run": "RECONSTRUCTED_PRICE_FEATURES_ONLY",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "TESTED",
+      "next_output": "FeatureArtifactV2; no source-health grant",
+      "minimum_to_advance": [
+        "TRADES_AND_REPLAY_TRADE_VISIBILITY",
+        "BOOK_FLOW_DERIVATIVES_EVENTS_PEER_INPUTS"
+      ],
+      "native_policy_hashes": {}
+    },
+    {
+      "id": "S1",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s1_trend.py",
+        "symbol": "S1ShadowCoordinator",
+        "line": 251,
+        "sha256": "e85c3f1fbfd08f4d01f185773203a7e6cf27522fcb7b9fdd2e2c0be35f58834b"
+      },
+      "native_clock": "H1_SETUP_AND_FOUR_SUBSEQUENT_NATIVE_M15_OPPORTUNITIES",
+      "verified_cached_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "requirements": {
+        "indicator": [
+          "COMPLETED_H1_H4_EMAS_ATR_M15"
+        ],
+        "setup": [
+          "NATIVE_SETUP_SIDE_EXTREME_REF",
+          "QUALIFIED_EVENT_GATE",
+          "ELIGIBLE_UNIVERSE",
+          "ORIGINAL_SETUP_OWNERSHIP"
+        ],
+        "exact_action": [
+          "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+          "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+          "BBO_MARK_INDEX",
+          "FEES_FILTERS_FUNDING_REVISIONS"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "VERIFIED_CALENDAR_EVENT_GATE",
+        "QUALIFIED_WATCH_LIFECYCLE"
+      ],
+      "reader_contract_limitation": "Pure _setup/_regime run; create_watch/on_bar cannot accept missing source contracts or extend original T+5",
+      "causal_run": "RESEARCH_SUBPATH_ONLY",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "S1Decision WATCH / NO_CANDIDATE / NOT_ESTIMABLE; conditional CandidateActionV2",
+      "minimum_to_advance": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "VERIFIED_CALENDAR_EVENT_GATE",
+        "QUALIFIED_WATCH_LIFECYCLE"
+      ],
+      "native_policy_hashes": {
+        "baseline": "c559659ace0239200f7d26d81a24b489a8a4ee0bc849b6954faf901126b5dff0"
+      }
+    },
+    {
+      "id": "S2",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s2_breakout.py",
+        "symbol": "S2ShadowCoordinator.on_trigger_close",
+        "line": 135,
+        "sha256": "6d2f92adc3e837f876d9c66f10480729436bf32ef095be8a0872773c727f6615"
+      },
+      "native_clock": "CONFIRMED_15M_CLOSE_T_PLUS_5",
+      "verified_cached_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "requirements": {
+        "indicator": [
+          "30_DAY_M15_PLUS_WARMUP",
+          "ATR_BOLLINGER_PRE_TRIGGER_HISTORY"
+        ],
+        "setup": [
+          "BBO_REQUIRED_BEFORE_NATIVE_COMPRESSION",
+          "ELIGIBLE_UNIVERSE",
+          "QUALIFIED_H1_H4_CONTEXT"
+        ],
+        "exact_action": [
+          "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+          "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+          "BBO_MARK_INDEX",
+          "FEES_FILTERS_FUNDING_REVISIONS"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS"
+      ],
+      "reader_contract_limitation": "Actual raw availability is checked before BBO; BBO gate precedes compression. No isolated qualified compression interface",
+      "causal_run": "BLOCKED_BEFORE_COMPRESSION",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "S2Decision; setup latch; conditional CandidateActionV2",
+      "minimum_to_advance": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS"
+      ],
+      "native_policy_hashes": {
+        "baseline": "fbcdacd8ec6a79ea2595fa367d220b55b1d84c326ec3a28d787d23f356062dcd"
+      }
+    },
+    {
+      "id": "S3",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s3_mean_reversion.py",
+        "symbol": "S3ShadowCoordinator",
+        "line": 578,
+        "sha256": "94b27684441ba8abf1cd8eef88ac38b239567a6bf44a0fed73ca28570e629fe0"
+      },
+      "native_clock": "CONFIRMED_1M_CLOSE_AND_CONDITIONAL_SUBSEQUENT_M1_TRIGGER_WITHIN_NATIVE_WATCH_AGE",
+      "verified_cached_inputs": [],
+      "requirements": {
+        "indicator": [
+          "NATIVE_M1",
+          "TRADE_VWAP_COMPLETENESS",
+          "SEVEN_DAY_RESIDUAL_AR1_HISTORY",
+          "H4_M15_CONTEXT"
+        ],
+        "setup": [
+          "ACTUAL_SOURCE_HEALTH",
+          "UNIVERSE",
+          "EVENT_GATE",
+          "BBO"
+        ],
+        "exact_action": [
+          "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+          "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+          "BBO_MARK_INDEX",
+          "FEES_FILTERS_FUNDING_REVISIONS"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "NATIVE_M1_AND_TRADE_COMPLETENESS",
+        "AR1_RESIDUAL_HISTORY"
+      ],
+      "reader_contract_limitation": "Existing forward evidence/warmup reader is actual source-bound; M15 interpolation is forbidden",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "S3DecisionV2 / watch / conditional CandidateActionV2",
+      "minimum_to_advance": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "NATIVE_M1_AND_TRADE_COMPLETENESS",
+        "AR1_RESIDUAL_HISTORY"
+      ],
+      "native_policy_hashes": {
+        "baseline": "b6a6ef283a5ca0b4dcbcb730b03adff92fb62c76c55fc66ef9268c906d8c62b6"
+      }
+    },
+    {
+      "id": "S4",
+      "owner": {
+        "path": "src/atlas/v2/data/microstructure.py",
+        "symbol": "s4_execution_quality_context",
+        "line": 1367,
+        "sha256": "fa151bb90ffc9a88658fa7bbbd594de7745ec21aee1a5dd79cbc5545ef3d255f"
+      },
+      "native_clock": "SEQUENCE_VALID_BOOK_TRADE_EVENTS",
+      "verified_cached_inputs": [],
+      "requirements": {
+        "indicator": [
+          "L2_SNAPSHOT_DELTA_SEQUENCE",
+          "BBO_AGGRESSOR_TRADES",
+          "COVERAGE_HEALTH"
+        ],
+        "setup": [
+          "QUALIFIED_RESPONSE_BASELINE_FOR_ABSORPTION"
+        ],
+        "exact_action": [
+          "NO_NEW_DIRECTIONAL_ACTION_POLICY"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "HISTORICAL_L2_BBO_AGGRESSOR_SEQUENCE_HEALTH",
+        "THREE_QUALIFIED_PRIOR_BASELINE_SAMPLES"
+      ],
+      "reader_contract_limitation": "Current reader can consume actual captured extents; cached kline manifests contain none",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "Execution context / separately scoped S4AbsorptionHypothesisV2",
+      "minimum_to_advance": [
+        "HISTORICAL_L2_BBO_AGGRESSOR_SEQUENCE_HEALTH",
+        "THREE_QUALIFIED_PRIOR_BASELINE_SAMPLES"
+      ],
+      "native_policy_hashes": {
+        "feature": "327c816792290ceaf64ef6dd6b6e90e0382c04782e1dc7d9ca5895ce7f2ae146",
+        "absorption": "fcd2e5b0f3643de92df8fb73e16ca924b3570b92285cc72eebb76ac03c964614",
+        "execution_context": "dae5c5519eb2d5c204607ca8e81f06fdc9b32ed07f69b6460b3fc6d46ccf995a"
+      }
+    },
+    {
+      "id": "S5",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s5_crowding.py",
+        "symbol": "S5ContinuationResearchV2",
+        "line": 110,
+        "sha256": "d27e3fbb410f11d8c7ed4a88167585c4ae6501d1cd4576852f72a794e14ee181"
+      },
+      "native_clock": "ASYNCHRONOUS_DERIVATIVE_AND_STRUCTURAL_EVENT",
+      "verified_cached_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "requirements": {
+        "indicator": [
+          "OI_FUNDING_LIQUIDATION_COVERAGE",
+          "STRUCTURE_AND_FLOW"
+        ],
+        "setup": [
+          "DISTINCT_CONTINUATION_AND_POST_CASCADE_REVERSAL_STAGES"
+        ],
+        "exact_action": [
+          "REGISTERED_EXACT_ACTION_REQUIRED"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "OI_FUNDING_LIQUIDATIONS_FLOW_ORIGINAL_COVERAGE"
+      ],
+      "reader_contract_limitation": "Continuation owner and evaluate_s5_reversal remain distinct; unknown liquidation coverage never becomes confirmation",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "S5ContinuationArtifactV2 / S5ReversalArtifactV2; no manufactured action",
+      "minimum_to_advance": [
+        "OI_FUNDING_LIQUIDATIONS_FLOW_ORIGINAL_COVERAGE"
+      ],
+      "native_policy_hashes": {
+        "continuation": "47c48f9d347957a3175523f7753531dbba5098c1c0cde7301200d4bb813f2fd2",
+        "reversal": "6e11389f7c06406acb8a8207d057f8b17edc56e4a9e619322fb64f5b083cf8c8"
+      }
+    },
+    {
+      "id": "S6",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s6_cross_section.py",
+        "symbol": "S6ShadowCoordinator",
+        "line": 826,
+        "sha256": "0b56f92088e27ddce6f4d96e41263d66a48b7a562ca14db114d059038bd0ac84"
+      },
+      "native_clock": "COMPLETED_H1_RANK_THEN_CONDITIONAL_M15_WATCH",
+      "verified_cached_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "requirements": {
+        "indicator": [
+          "720_ALIGNED_H1_RETURNS",
+          "BTC_BETA_RESIDUAL",
+          "50_CLOSED_H4_CONTEXT"
+        ],
+        "setup": [
+          "PIT_STRATEGY_ELIGIBLE_BREADTH_AT_LEAST_20",
+          "LIQUIDITY_FUNDING_HEALTH"
+        ],
+        "exact_action": [
+          "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+          "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+          "BBO_MARK_INDEX",
+          "FEES_FILTERS_FUNDING_REVISIONS",
+          "BOUND_RANK_STATE_AND_SUBSEQUENT_TRIGGER"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "PIT_ELIGIBLE_COHORT_LIQUIDITY_TURNOVER"
+      ],
+      "reader_contract_limitation": "Pure _four_hour_context/_hourly_returns run; price rankability does not prove eligible breadth",
+      "causal_run": "RESEARCH_SUBPATH_ONLY",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "S6DecisionV2/state/hypothesis; later separate qualified CandidateActionV2",
+      "minimum_to_advance": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "PIT_ELIGIBLE_COHORT_LIQUIDITY_TURNOVER"
+      ],
+      "native_policy_hashes": {
+        "ranking": "a8ec8cf56a06de32ebc7f92beb9f895dce6229dac87860b23528cca49069c029",
+        "action": "4cf5797068874ae5f0f2958243fcb1b53f4aa79a25cfb9a18c972e052ed44a3d"
+      }
+    },
+    {
+      "id": "S7",
+      "owner": {
+        "path": "src/atlas/v2/news/events.py",
+        "symbol": "S7DirectionalShadowV2",
+        "line": 1386,
+        "sha256": "370c4849cab0ebb0331df96215755f4d9cb1e0d8ac512fddde71f866802684b9"
+      },
+      "native_clock": "AUTHENTICATED_EVENT_THEN_M5_REACTION",
+      "verified_cached_inputs": [],
+      "requirements": {
+        "indicator": [
+          "VERIFIED_EVENT_ASSET_TIME_RECEIPT",
+          "PRE_EVENT_BETA",
+          "NATIVE_M1_TO_M5",
+          "BBO"
+        ],
+        "setup": [
+          "CALENDAR_COVERAGE_AND_BLACKOUT",
+          "EVENT_RESOLUTION"
+        ],
+        "exact_action": [
+          "EXPLICIT_DIRECTIONAL_RESEARCH_POLICY"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "VERIFIED_EVENT_CALENDAR_RECEIPT",
+        "M1_M5_BTC_REACTION",
+        "HISTORICAL_BBO"
+      ],
+      "reader_contract_limitation": "Existing EventSafetyGateBuilderV2 cannot infer CLEAR from absence of cached news",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "EventReactionArtifactV2 / separate scheduled gate; no action authority",
+      "minimum_to_advance": [
+        "VERIFIED_EVENT_CALENDAR_RECEIPT",
+        "M1_M5_BTC_REACTION",
+        "HISTORICAL_BBO"
+      ],
+      "native_policy_hashes": {
+        "reaction": "003a8a3ae35b2eeab0571fddf1e811c72ccb4a7e692059bacb889d654ef37099"
+      }
+    },
+    {
+      "id": "S8",
+      "owner": {
+        "path": "src/atlas/v2/strategies/s8_pairs.py",
+        "symbol": "build_research_basket_forecast",
+        "line": 234,
+        "sha256": "29ade8ef05c583ff2d4b9cc79420647afe296c192cc8c422d04fe93e83bbe499"
+      },
+      "native_clock": "HOURLY_OWNER_DEFINED_PAIR",
+      "verified_cached_inputs": [
+        "CHECKSUM_BOUND_M15_H1_AND_DERIVED_H4_COMPLETE_FINITE_PREFIX"
+      ],
+      "requirements": {
+        "indicator": [
+          "REGISTERED_PAIR",
+          "720_SYNCHRONIZED_H1_PAIRS",
+          "FROZEN_BETA"
+        ],
+        "setup": [
+          "BOTH_LEG_EVIDENCE"
+        ],
+        "exact_action": [
+          "RESEARCH_BASKET_NOT_SINGLE_ACTION"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO",
+          "TWO_LEG_ORPHAN_PARTIAL_FILL_COSTS"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "OWNER_DEFINED_PAIR_CATALOG",
+        "BOTH_LEG_BOOK_FEES_FUNDING"
+      ],
+      "reader_contract_limitation": "Hourly symbol observations cannot invent pair opportunities; reject_s8_single_action preserved",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "ResearchBasketForecastV2; no ordinary CandidateActionV2",
+      "minimum_to_advance": [
+        "OWNER_DEFINED_PAIR_CATALOG",
+        "BOTH_LEG_BOOK_FEES_FUNDING"
+      ],
+      "native_policy_hashes": {
+        "profile": "c118b1e3f6732cf8897efc4c08a2d21eef50cec63b78d5bb40787f9fa5b0f7fe"
+      }
+    },
+    {
+      "id": "PATH_B",
+      "owner": {
+        "path": "src/atlas/v2/science/discovery.py",
+        "symbol": "register_discovery_experiment",
+        "line": 443,
+        "sha256": "f58cf1ca8aea25bf8c9ad8e7fff0909c47f396218852ee5a19b10f445ebe16af"
+      },
+      "native_clock": "REGISTERED_BOUNDED_RESEARCH_POPULATION",
+      "verified_cached_inputs": [],
+      "requirements": {
+        "indicator": [
+          "REGISTERED_SCREEN_AND_ORIGIN_POPULATION"
+        ],
+        "setup": [
+          "CAUSAL_NOVELTY_EVIDENCE",
+          "PREREGISTERED_EXECUTABLE_SPEC"
+        ],
+        "exact_action": [
+          "NO_CAPITAL_OR_ORDER_AUTHORITY"
+        ],
+        "economic_evaluation": [
+          "SEPARATE_REVIEWED_EXPERIMENT_PROTOCOL"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "REGISTERED_SCREEN_POPULATION_AND_ADMISSION"
+      ],
+      "reader_contract_limitation": "Discovery Lab stores registered studies/attempts; it is not a ready generic market trigger. No new detector supplied",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "Quarantined experiment/attempt ledger; never a live candidate",
+      "minimum_to_advance": [
+        "REGISTERED_SCREEN_POPULATION_AND_ADMISSION"
+      ],
+      "native_policy_hashes": {
+        "discovery_lab": "846fd322e5d0a8d91a4ae659771f7e37f26bcff384508a5895f154a93b0cfac3"
+      }
+    },
+    {
+      "id": "P1",
+      "owner": {
+        "path": "src/atlas/v2/science/mean_evaluation.py",
+        "symbol": "run_independent_mean_evaluation",
+        "line": 455,
+        "sha256": "143814a009c16242f254530d901b2a3c46945252258908dbace96df3c62c42d7"
+      },
+      "native_clock": "SEALED_ORIGINAL_DUE_POPULATION",
+      "verified_cached_inputs": [],
+      "requirements": {
+        "indicator": [],
+        "setup": [
+          "REAL_NATIVE_CANDIDATE_POPULATION"
+        ],
+        "exact_action": [
+          "ALL_TYPED_CandidateMeanInputsV1",
+          "INDEPENDENT_RISK_SIZED_ACTION"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+        "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+        "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+      ],
+      "reader_contract_limitation": "Existing 13-field CandidateMeanInputsV1 cannot be populated from OHLC. Synthetic complete interface tests are separate",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "CandidateEvaluationSetV1 / ActionEvaluationV1 / EligibleSetV1",
+      "minimum_to_advance": [
+        "PIT_PRODUCT_UNIVERSE_ELIGIBILITY",
+        "ORIGINAL_RECEIPT_AND_SOURCE_HEALTH",
+        "BBO_MARK_INDEX",
+        "FEES_FILTERS_FUNDING_REVISIONS",
+        "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+        "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+        "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+      ],
+      "native_policy_hashes": {}
+    },
+    {
+      "id": "BRIEF",
+      "owner": {
+        "path": "src/atlas/v2/research/decision_brief.py",
+        "symbol": "build_decision_brief",
+        "line": 578,
+        "sha256": "1c08852ce0ebb1d2896beaf1cc92c0fd109e62b333a32fb4a3ecf9c0bcc085ff"
+      },
+      "native_clock": "CURRENT_EXACT_SET_BEFORE_ORIGINAL_DEADLINE",
+      "verified_cached_inputs": [],
+      "requirements": {
+        "indicator": [
+          "SOURCE_BOUND_TECHNICAL_FACTS"
+        ],
+        "setup": [
+          "GENUINE_ECONOMIC_AND_ELIGIBILITY_RECEIPTS"
+        ],
+        "exact_action": [
+          "VALID_EXACT_ACTIONS"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "QUALIFIED_ELIGIBLE_SET",
+        "VALID_BRIEF_SOURCE_BINDINGS"
+      ],
+      "reader_contract_limitation": "No fabricated COMPLETE Brief from a descriptive feature trace",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "DecisionBriefV1 / explicit blocked or expired status",
+      "minimum_to_advance": [
+        "QUALIFIED_ELIGIBLE_SET",
+        "VALID_BRIEF_SOURCE_BINDINGS"
+      ],
+      "native_policy_hashes": {}
+    },
+    {
+      "id": "AGENT_B",
+      "owner": {
+        "path": "src/atlas/v2/research/mean_selection.py",
+        "symbol": "validate_offline_b_selection",
+        "line": 82,
+        "sha256": "cbfe5bcc1d78c7c44d95c870a51bc18d162532c43e167011420c6528793fdd8e"
+      },
+      "native_clock": "QUALIFIED_RESPONSE_BOUND_TO_CURRENT_E_BEFORE_ORIGINAL_DEADLINE",
+      "verified_cached_inputs": [],
+      "requirements": {
+        "indicator": [],
+        "setup": [],
+        "exact_action": [
+          "QUALIFIED_ELIGIBLE_SET",
+          "QUALIFIED_PROVIDER_RESPONSE",
+          "VALID_DIRECTIVE_BUDGET_EXPIRY"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "GENUINE_ELIGIBLE_SET",
+        "QUALIFIED_AGENT_HISTORY"
+      ],
+      "reader_contract_limitation": "Offline validator does not provide an agent or authorize provider calls. No argmax fallback",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "SELECT_ONE within E / REJECT_ALL / ABSTAIN only from actual qualified response",
+      "minimum_to_advance": [
+        "GENUINE_ELIGIBLE_SET",
+        "QUALIFIED_AGENT_HISTORY"
+      ],
+      "native_policy_hashes": {}
+    },
+    {
+      "id": "MANAGEMENT",
+      "owner": {
+        "path": "src/atlas/v2/research/mean_management.py",
+        "symbol": "register_management_alternative",
+        "line": 111,
+        "sha256": "3fef432d3836a88fb9b682273434129f3d8d7c27ab43442bfd6ba06c6b8ce30b"
+      },
+      "native_clock": "REGISTERED_POSITION_REVIEW_AND_INDEPENDENT_RISK_EVENTS",
+      "verified_cached_inputs": [],
+      "requirements": {
+        "indicator": [
+          "GENUINE_POSITION_AND_PROTECTION_TRUTH"
+        ],
+        "setup": [
+          "EXISTING_REGISTERED_FINITE_ALTERNATIVES"
+        ],
+        "exact_action": [
+          "AUTHORITY_BOUND_POSITION_AND_REDUCING_PLAN"
+        ],
+        "economic_evaluation": [
+          "SEALED_EXACT_ACTION_QUANTITY_ENTRY_STOP_MANAGEMENT",
+          "FEES_SPREAD_SLIPPAGE_FUNDING_PARTIAL_NO_FILL",
+          "QUALIFIED_MEAN_SUPPORT_SCENARIOS_AND_PORTFOLIO"
+        ],
+        "live_authority": "SEPARATE_PROVIDER_VENUE_HOST_OPERATIVE_POLICY_AND_CAPITAL_APPROVAL"
+      },
+      "missing_historical_inputs": [
+        "GENUINE_EXACT_ACTION_OR_POSITION",
+        "ENTRY_STOP_MANAGEMENT_FILL_COST_EVIDENCE"
+      ],
+      "reader_contract_limitation": "No eligible action exists in this replay; no position or counterfactual cash invented",
+      "causal_run": "BLOCKED",
+      "output_grade": "RECONSTRUCTED_MARKET_RESEARCH_ONLY",
+      "status": "SOURCE_UNAVAILABLE",
+      "next_output": "ManagementAlternativeV1 / separate outcomes only when justified",
+      "minimum_to_advance": [
+        "GENUINE_EXACT_ACTION_OR_POSITION",
+        "ENTRY_STOP_MANAGEMENT_FILL_COST_EVIDENCE"
+      ],
+      "native_policy_hashes": {}
+    }
+  ],
+  "source_capabilities": {
+    "cached_manifest_inputs": [
+      "OFFICIAL_M15_H1_ZIP_CHECKSUM_CSV",
+      "ACCEPTED_H1_TO_H4_AGGREGATION"
+    ],
+    "no_cached_proof": [
+      "L2_ORDER_FLOW",
+      "BBO_SPREAD",
+      "NATIVE_M1_OR_TRADES",
+      "MARK_INDEX",
+      "OI_FUNDING_LIQUIDATIONS",
+      "PIT_UNIVERSE_FILTER_REVISIONS",
+      "VERIFIED_NEWS_EVENT_CALENDAR",
+      "ORIGINAL_RECEIPT_HEALTH",
+      "ORDERS_FILLS"
+    ],
+    "existing_readers": [
+      "data/public_archive_extents.py",
+      "data/public_evidence_preparation.py",
+      "data/trade_completeness.py",
+      "data/active_history.py",
+      "runtime/full_strategy_surface.py"
+    ],
+    "reader_presence_is_not_evidence": true
+  },
+  "acquisition_proposal_only": {
+    "requires_separate_owner_authorization": true,
+    "minimal_sources": [
+      "PIT_EXCHANGE_METADATA_FILTER_FEE_FUNDING_REVISIONS",
+      "TIMESTAMPED_BBO_MARK_INDEX_LIQUIDITY",
+      "ACTUAL_SOURCE_RECEIPT_CONTINUITY_HEALTH",
+      "VERIFIED_EVENT_CALENDAR_COVERAGE",
+      "NATIVE_M1_TRADES_COMPLETENESS_FOR_S3",
+      "L2_SEQUENCE_AGGRESSOR_TRADES_FOR_S4_S5"
+    ],
+    "rule": "No new market requests, streaming, orders, paid generation or holdout access in this session"
+  }
+}

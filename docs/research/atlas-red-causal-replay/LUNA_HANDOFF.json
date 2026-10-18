@@ -1,0 +1,126 @@
+{
+  "version": "CAUSAL_REPLAY_MECHANICAL_HANDOFF_V1",
+  "source_checkpoint": "f8d5d95f2492a9af959a4d48b0664233cf9aa123",
+  "review_gate": "INDEPENDENT_ACCEPTANCE_OF_EXACT_FINAL_REMOTE_SHA_REQUIRED",
+  "authority": "ZERO",
+  "required_mode": "OBSERVE",
+  "market_acquisition": false,
+  "outcome_generation": false,
+  "model_generation": false,
+  "tasks": [
+    {
+      "task_id": "L1",
+      "operation": "RENDER_SEALED_TRACE_INDEX",
+      "input_paths": [
+        "docs/research/atlas-red-causal-replay/PROTOCOL.json",
+        "docs/research/atlas-red-causal-replay/SOURCE_READINESS.json",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE_SEAL.json",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE_AUDIT.json",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part000",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part001",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part002",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part003"
+      ],
+      "output_paths": [
+        "docs/research/atlas-red-causal-replay-followup/"
+      ],
+      "acceptance": [
+        "Read sealed data only; no native computation, interpretation, ranking or source promotion",
+        "Render field values, exact missing reasons and clocks unchanged; retain all original observations",
+        "Never label a precursor as a watch, trigger, executable trade or economic result"
+      ]
+    },
+    {
+      "task_id": "L2",
+      "operation": "VERIFY_CACHED_SOURCE_INVENTORY",
+      "input_paths": [
+        "docs/research/atlas-red-causal-replay/SOURCE_READINESS.json",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE_SEAL.json",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part000",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part001",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part002",
+        "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part003"
+      ],
+      "output_paths": [
+        "docs/research/atlas-red-causal-replay-followup/"
+      ],
+      "acceptance": [
+        "Use only already present caches and sealed official manifest bindings",
+        "No acquisition, HTTP, streaming or reconstruction of missing data",
+        "Unavailable local cache stays BLOCKED BY ENVIRONMENT; archive presence does not prove eligibility"
+      ]
+    },
+    {
+      "task_id": "L3",
+      "operation": "PORT_FROZEN_TEST_COMMANDS",
+      "input_paths": [
+        "docs/research/atlas-red-causal-replay/PROTOCOL.json",
+        "docs/research/atlas-red-causal-replay/handoff.py",
+        "tests/research/test_atlas_causal_replay.py",
+        "tests/fixtures/causal-replay/actual_system_feature_v1.json"
+      ],
+      "output_paths": [
+        "docs/research/atlas-red-causal-replay-followup/",
+        "tests/research/test_frozen_trace_index.py"
+      ],
+      "acceptance": [
+        "Mechanical wrappers for published focused tests only; no assertion or expected-value edits",
+        "Use the documented interpreter and environment; report missing dependencies unchanged",
+        "No strategy/availability/risk/clock/Agent B/management semantics may be modified"
+      ]
+    }
+  ],
+  "input_sha256": [
+    [
+      "docs/research/atlas-red-causal-replay/PROTOCOL.json",
+      "42a795d46da7f7459a785430a4f6a556c5fa97c33e3c6afee4aeeb01021c8169"
+    ],
+    [
+      "docs/research/atlas-red-causal-replay/SOURCE_READINESS.json",
+      "c114c7ffa7b393dc1881afc273c0b53ea4ded7937b57e8586eb96dec5c58e5d0"
+    ],
+    [
+      "docs/research/atlas-red-causal-replay/evidence/TRACE_SEAL.json",
+      "0f8fc0c9d902cbdc92589cec39a5675f2ef1b078b2079a5a4a73a6243130657b"
+    ],
+    [
+      "docs/research/atlas-red-causal-replay/evidence/TRACE_AUDIT.json",
+      "322c30ddc0600f2f9eaf28ab3b7ea68785cf075c7f4413a7edbcbaf2d7a60a9e"
+    ],
+    [
+      "docs/research/atlas-red-causal-replay/handoff.py",
+      "faac9f8d31b8123b5ad9d984fbb12f22311ccb0fe6fd03853e26a64f0969f14c"
+    ],
+    [
+      "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part000",
+      "d47307c9a7ad21a55f28cae4d4170fad10584ccced693041df280a82d5d6fc70"
+    ],
+    [
+      "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part001",
+      "5e6fc20ef887cbe63fef4965273cf09a9457b92c5d897b0924c4ba85039fef78"
+    ],
+    [
+      "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part002",
+      "eb185728393d443970bbf31fdd7b07ab8a2ecc5ecc333e53025015f2897d7f5c"
+    ],
+    [
+      "docs/research/atlas-red-causal-replay/evidence/TRACE.jsonl.gz.part003",
+      "4e8d7278874bdc0ad3c1df7837da11528f44ab07c69722d7f3757c70fffa159b"
+    ],
+    [
+      "tests/research/test_atlas_causal_replay.py",
+      "2a5ac50bea012bb560ce85ff3388797d27c99d66408352ed9a490cb6021ac488"
+    ],
+    [
+      "tests/fixtures/causal-replay/actual_system_feature_v1.json",
+      "89d6c581622c3bd142151642c2a451f66eba3c038a51e038daa72ca85cca4c91"
+    ]
+  ],
+  "unresolved_for_sol": [
+    "Canonical availability or coordinator interface semantics",
+    "Point-in-time universe, eligibility and source-health qualification",
+    "Original T+5 feasibility and source receipt evidence",
+    "Exact-action sizing, economic/model/portfolio eligibility",
+    "Qualified Agent B, management, outcomes and all capital authority"
+  ]
+}

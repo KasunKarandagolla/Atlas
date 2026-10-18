@@ -11,6 +11,7 @@ from typing import Any
 from atlas.domain.money import ensure_positive_decimal
 from atlas.v2._serialization import nonblank, sha256_json, sha256_ref, timestamp
 from atlas.v2.data.bars import BarIntervalV2, CausalBarV2
+from atlas.v2.data.raw import AvailabilityClassV2
 from atlas.v2.instruments import InstrumentKeyV2, ProductContractV2
 
 DAY_NS = 86_400_000_000_000
@@ -103,11 +104,30 @@ def utc_day_vwap(trades: Sequence[CausalTrade], *, key: InstrumentKeyV2, cutoff_
             tuple(sorted(refs, key=lambda ref: (refs[ref].event_at_ns, ref))))
 
 
-def prior_utc_day_range(bars: Sequence[CausalBarV2], *, cutoff_ns: int) -> tuple[Decimal | None, Decimal | None, tuple[str, ...]]:
+def prior_utc_day_range(
+    bars: Sequence[CausalBarV2], *, cutoff_ns: int,
+    availability_class: AvailabilityClassV2 = AvailabilityClassV2.ACTUAL_SYSTEM,
+) -> tuple[Decimal | None, Decimal | None, tuple[str, ...]]:
+    """Complete prior UTC day in the explicitly requested availability view.
+
+    The default retains the original actual-availability calculation. Replay
+    requires separate reconstructed visibility; actual receipt is never edited
+    or used as a fallback. This price diagnostic grants no source qualification.
+    """
+    view = AvailabilityClassV2(availability_class)
+    if view not in (AvailabilityClassV2.ACTUAL_SYSTEM, AvailabilityClassV2.RECONSTRUCTED_MARKET):
+        raise ValueError("prior-day view must be actual or reconstructed")
+
+    def visible(bar: CausalBarV2) -> bool:
+        if view == AvailabilityClassV2.ACTUAL_SYSTEM:
+            return bar.raw.available_at_ns <= cutoff_ns
+        return (bar.raw.availability_class == view and bar.replay_available_at_ns is not None
+                and bar.replay_available_at_ns <= cutoff_ns)
+
     start = cutoff_ns // DAY_NS * DAY_NS - DAY_NS
     end = start + DAY_NS
     selected = [bar for bar in bars if bar.final and start <= bar.open_at_ns < end
-                and bar.close_at_ns <= end and bar.raw.available_at_ns <= cutoff_ns]
+                and bar.close_at_ns <= end and visible(bar)]
     if not selected or any(bar.interval != BarIntervalV2.M15 for bar in selected):
         return None, None, ()
     if len({bar.instrument_revision for bar in selected}) != 1:

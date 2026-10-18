@@ -1,0 +1,612 @@
+{
+  "allocation": 0,
+  "audit_wrapper": {
+    "arguments": [
+      "--evidence",
+      "docs/research/atlas-red-causal-replay/evidence",
+      "--db",
+      "/workspace/work/causal-qualification-pinned.sqlite",
+      "--output",
+      "docs/research/atlas-red-causal-replay/evidence/TRACE_AUDIT.json"
+    ],
+    "entrypoint": "/workspace/work/atlas-causal-qualification/docs/research/atlas-red-causal-replay/audit.py",
+    "exit_code": 0,
+    "max_rss_kib": 40964,
+    "user_seconds": 3.576818,
+    "wall_seconds": 3.7539869280008134
+  },
+  "authority": "ZERO",
+  "branch": "research/atlas-red-causal-replay-qualification-2026-10-18",
+  "capital": "NO_GO",
+  "checks": [
+    {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/ruff",
+        "check",
+        "src",
+        "tests/research/test_atlas_native_trace.py",
+        "tests/research/test_atlas_causal_replay.py",
+        "tests/p1/test_native_trace_bridge.py",
+        "docs/research/atlas-red-causal-replay"
+      ],
+      "cwd": "/workspace/work/atlas-causal-qualification",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "All checks passed!\n"
+    },
+    {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/python",
+        "-m",
+        "compileall",
+        "-q",
+        "src",
+        "tests",
+        "docs/research/atlas-red-causal-replay"
+      ],
+      "cwd": "/workspace/work/atlas-causal-qualification",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "lock",
+        "--check",
+        "--offline"
+      ],
+      "cwd": "/workspace/work/atlas-causal-qualification",
+      "exit_code": 0,
+      "stderr": "Using CPython 3.12.14 interpreter at: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\nResolved 39 packages in 1ms\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "pip",
+        "check",
+        "--python",
+        "/workspace/.venvs/atlas/bin/python"
+      ],
+      "cwd": "/workspace/work/atlas-causal-qualification",
+      "exit_code": 0,
+      "stderr": "Using Python 3.12.14 environment at: /workspace/.venvs/atlas\nChecked 17 packages in 0.63ms\nAll installed packages are compatible\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "sha256sum",
+        "-c",
+        "MANIFEST.sha256"
+      ],
+      "cwd": "/workspace/work/atlas-causal-qualification/algorithms",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "ACCEPTANCE_REGISTER.csv: OK\nATLAS_ALGORITHM.pdf: OK\nATLAS_OPERATIONAL_RECONCILIATION_AMENDMENT_PROPOSED.md: OK\nATLAS_SYSTEM_DESIGN.md: OK\nAUTHORITY_RECONCILIATION.md: OK\nCAPABILITY_REUSE_AUDIT.csv: OK\nCODEX_SESSION_PROMPTS.md: OK\nDESIGN_DECISIONS.md: OK\nDOCUMENTATION_VALIDATION.json: OK\nIMPLEMENTATION_PLAN.md: OK\nOWNER_SUMMARY.md: OK\nREADME.md: OK\nREPOSITORY_AUDIT.md: OK\nREQUIREMENTS_AND_ACCEPTANCE.md: OK\nSHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md: OK\nSOURCE_AUTHORITY_MANIFEST.json: OK\nSURGICAL_CHANGE_MAP.md: OK\nrender_algorithm_pdf.py: OK\n"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "f8d5d95f2492a9af959a4d48b0664233cf9aa123"
+      ],
+      "cwd": "/workspace/work/atlas-causal-qualification",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "code_ref": "b3d3c30a6b151507085646314113231a2a92da468799007b426383574b0da59a",
+  "commands": {
+    "current_probe": {
+      "PYTHONPATH": "src",
+      "argv": [
+        "/workspace/.venvs/atlas/bin/python",
+        "docs/research/atlas-red-causal-replay/probe.py"
+      ],
+      "cwd": "/workspace/work/atlas-causal-qualification"
+    },
+    "environment": {
+      "PYTHONPATH": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages"
+    },
+    "final_focused": [
+      "/workspace/.venvs/atlas/bin/python",
+      "-m",
+      "pytest",
+      "tests/research/test_atlas_causal_replay.py",
+      "tests/research/test_atlas_native_trace.py",
+      "tests/p1/test_native_trace_bridge.py",
+      "-ra",
+      "--junitxml=/workspace/work/causal-qualification-focused.xml"
+    ],
+    "parent_probe": {
+      "PYTHONPATH": "src",
+      "argv": [
+        "/workspace/.venvs/atlas/bin/python",
+        "/workspace/work/atlas-causal-qualification/docs/research/atlas-red-causal-replay/probe.py"
+      ],
+      "cwd": "/workspace/work/atlas-native-trace",
+      "source_sha": "f8d5d95f2492a9af959a4d48b0664233cf9aa123"
+    },
+    "post_seal_comparison": [
+      "/workspace/.venvs/atlas/bin/python",
+      "docs/research/atlas-red-causal-replay/compare.py",
+      "--parent",
+      "docs/research/atlas-red-native-trace/evidence",
+      "--current",
+      "docs/research/atlas-red-causal-replay/evidence",
+      "--output",
+      "docs/research/atlas-red-causal-replay/evidence/PARENT_COMPARISON.json"
+    ],
+    "regression": {
+      "PYTHONPATH": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages",
+      "argv": [
+        "/workspace/.venvs/atlas/bin/python",
+        "-m",
+        "pytest",
+        "tests/v2/test_session014_core.py",
+        "tests/v2/test_session014_s1.py",
+        "tests/v2/test_session016_s2.py",
+        "tests/v2/test_session021_s6.py",
+        "tests/v2/test_session037_strategy_prefix.py",
+        "tests/v2/test_session037_feature_prefix.py",
+        "tests/v2/test_session041_strategy_surface.py",
+        "tests/v2/test_session041_s6_cohort.py",
+        "tests/v2/test_session041_s6_action_contract.py",
+        "tests/v2/test_session047_decision_brief.py",
+        "tests/p1/test_mean_evaluation.py",
+        "tests/p1/test_mean_risk_cash.py",
+        "tests/p1/test_mean_selection.py",
+        "tests/p1/test_evidence_integrity.py",
+        "tests/data/test_prefix_and_archive.py",
+        "tests/contract/test_v1_golden_baseline.py",
+        "tests/v2/test_r1_surgical_correctness.py",
+        "tests/v2/test_session041_trade_location.py",
+        "tests/v2/test_data_runtime.py",
+        "tests/v2/test_session021_data_s3.py",
+        "-ra",
+        "--junitxml=/workspace/work/causal-qualification-regressions.xml"
+      ],
+      "cwd": "/workspace/work/atlas-causal-qualification"
+    },
+    "same_parent_failures": {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/python",
+        "-m",
+        "pytest",
+        "tests/v2/test_session041_strategy_surface.py::test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication",
+        "tests/v2/test_session041_strategy_surface.py::test_native_public_locator_validates_raw_hash_and_exact_archive",
+        "tests/v2/test_session041_strategy_surface.py::test_actual_loader_preserves_native_history_and_services_compose",
+        "tests/v2/test_session041_strategy_surface.py::test_loader_reuses_exact_production_causal_bar_index",
+        "tests/v2/test_session041_strategy_surface.py::test_loader_binds_btc_proxy_to_prepared_same_venue_cohort",
+        "tests/v2/test_session041_strategy_surface.py::test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later",
+        "tests/v2/test_session041_strategy_surface.py::test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs",
+        "tests/v2/test_session041_strategy_surface.py::test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency",
+        "tests/v2/test_session041_strategy_surface.py::test_s5_funding_alone_and_unqualified_flow_cannot_confirm",
+        "tests/v2/test_session041_strategy_surface.py::test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason",
+        "tests/v2/test_session041_strategy_surface.py::test_s4_baseline_requires_three_qualified_prior_exact_samples",
+        "tests/v2/test_session041_strategy_surface.py::test_s4_baseline_rejects_index_body_that_differs_from_typed_fit",
+        "tests/v2/test_session041_strategy_surface.py::test_prepared_s5_composes_with_actual_context_publication_and_receipt",
+        "tests/v2/test_session041_strategy_surface.py::test_prepared_s5_rejects_future_raw_source_despite_late_delivery",
+        "tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+        "tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+        "tests/v2/test_data_runtime.py::test_collector_conflict_gap_health_restart_and_watch_subscriptions",
+        "-ra",
+        "--junitxml=/workspace/work/causal-qualification-parent-regressions.xml"
+      ],
+      "cwd": "/workspace/work/atlas-native-trace",
+      "source_sha": "f8d5d95f2492a9af959a4d48b0664233cf9aa123"
+    }
+  },
+  "development_repairs": [
+    "Initial new test:20pass/one wrong-revision raw identity fixture invalid before guard; fixed using valid alternate-key source",
+    "Initial combined scope81pass/two absent ignored assembled gzip tests; lossless assembly and separately sealed active-current fixture now used; historical changed-code refusal remains explicit",
+    "Intermediate72pass; final74pass after parent-diff and fresh-CLI assertions",
+    "Ruff dict style/import order corrected before final checks"
+  ],
+  "environment_limits": [
+    "No PyArrow/Nautilus/qualified optional model runtimes",
+    "No dependency install or lock edit",
+    "Provided NumPy2.3.5 through PYTHONPATH differs from locked2.5.3",
+    "Local compatibility check is not complete locked-environment qualification"
+  ],
+  "external_acceptance": "Owner-supplied PASS restricted to native trace foundation, exact f8d5d95 only; no reviewer transcript/procedures/rerun inferred",
+  "freeze_reading": "Prior native-trace session in this same conversation; current exact-byte identities reverified",
+  "mode": "OBSERVE",
+  "network": {
+    "GitHub_read_write": "OWNER_AUTHORIZED",
+    "cloud_policy": "restricted/enforced/current",
+    "credential_values_read": false,
+    "market_requests": 0,
+    "models_downloaded": 0,
+    "paid_generation": 0,
+    "private_exchange_requests": 0,
+    "streaming": 0
+  },
+  "no_next_session_started": true,
+  "owner_selected_model": "GPT-6.1 Sol High",
+  "paid_allowance": 0,
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "preservation": {
+    "acceptance_state_columns_unchanged": true,
+    "append_only_logs": true,
+    "changed_source_files": [
+      "src/atlas/v2/features/candles.py",
+      "src/atlas/v2/features/pipeline.py"
+    ],
+    "design_pdf_locks_unchanged": true,
+    "freeze_sha256": {
+      "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+    },
+    "preexisting_protected_files": 309,
+    "strategy_owners_and_native_adapter_unchanged": true,
+    "unchanged_existing_research_files": 124,
+    "unchanged_protected_files": 307
+  },
+  "primary_wrapper": {
+    "arguments": [
+      "--old-csv",
+      "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+      "--old-zip",
+      "/workspace/work/e1b-sol-official-zips",
+      "--new-cache",
+      "/workspace/work/blind-ml-new-source-cache",
+      "--outdir",
+      "docs/research/atlas-red-causal-replay/evidence",
+      "--db",
+      "/workspace/work/causal-qualification-pinned.sqlite"
+    ],
+    "entrypoint": "/workspace/work/atlas-causal-qualification/docs/research/atlas-red-causal-replay/replay.py",
+    "exit_code": 0,
+    "max_rss_kib": 629272,
+    "user_seconds": 302.445469,
+    "wall_seconds": 308.96745198800636
+  },
+  "protocol_sha256": "42a795d46da7f7459a785430a4f6a556c5fa97c33e3c6afee4aeeb01021c8169",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "recorded_at_utc": "2026-10-18T15:24:09.696052+00:00",
+  "remaining": [
+    "TEST GATE exact final-SHA independent review and full qualified native integration",
+    "UNVERIFIED original receipt/health/PIT eligibility/live seeds/model identity and target host",
+    "BLOCKED BY ENVIRONMENT16PyArrow/oneNautilus regression prerequisites and unqualified optional model runtime",
+    "NOT ESTIMABLE genuine exact-action/Agent B/management/fill/cost/portfolio/programme economics"
+  ],
+  "repeat": {
+    "actual_publication_spans": [
+      {
+        "max_ns": 1792336226413808119,
+        "min_ns": 1792335923493158352
+      },
+      {
+        "max_ns": 1792336569110929973,
+        "min_ns": 1792336263059002160
+      }
+    ],
+    "authority": "ZERO",
+    "initial_wrapper": {
+      "arguments": [
+        "--old-csv",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--old-zip",
+        "/workspace/work/e1b-sol-official-zips",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache",
+        "--outdir",
+        "docs/research/atlas-red-causal-replay/evidence",
+        "--db",
+        "/workspace/work/causal-qualification-pinned.sqlite"
+      ],
+      "entrypoint": "/workspace/work/atlas-causal-qualification/docs/research/atlas-red-causal-replay/replay.py",
+      "exit_code": 0,
+      "max_rss_kib": 629272,
+      "user_seconds": 302.445469,
+      "wall_seconds": 308.96745198800636
+    },
+    "network_requests": 0,
+    "post_seal_audit_equal_except_actual_publication": true,
+    "repeat_native_resources": {
+      "adapter_started_actual_ns": 1792336263039362112,
+      "max_rss_kib": 629360,
+      "network_requests": 0,
+      "ops_sqlite_bytes": 65523712,
+      "output_bytes": 23568612,
+      "persistence_metrics": {
+        "active_phase": "IDLE",
+        "authority": "ZERO",
+        "begin_duration_ns": 3264,
+        "begin_failed": false,
+        "commit_duration_ns": 268926,
+        "max_commit_duration_ns": 12692716,
+        "phase_observed_at_ns": 1792336569111348598,
+        "phase_started_monotonic_ns": 74167143269009,
+        "rollback_duration_ns": 0,
+        "row_and_archive_duration_ns": 62171,
+        "transaction_count": 2822,
+        "transaction_failed": false,
+        "transaction_observed_at_ns": 1792336569111619026,
+        "version": "OPS_PERSISTENCE_TIMING_V1"
+      },
+      "publication_span_actual": {
+        "maximum_index_publication_ns": 1792336569110929973,
+        "minimum_index_publication_ns": 1792336263059002160
+      },
+      "wall_seconds": 311.72671926100156
+    },
+    "repeat_wrapper": {
+      "arguments": [
+        "--old-csv",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--old-zip",
+        "/workspace/work/e1b-sol-official-zips",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache",
+        "--outdir",
+        "/workspace/work/causal-qualification-repeat",
+        "--db",
+        "/workspace/work/causal-qualification-repeat.sqlite"
+      ],
+      "entrypoint": "/workspace/work/atlas-causal-qualification/docs/research/atlas-red-causal-replay/replay.py",
+      "exit_code": 0,
+      "max_rss_kib": 629360,
+      "user_seconds": 306.468304,
+      "wall_seconds": 312.2676165209996
+    },
+    "trace_and_seal_byte_identical": true,
+    "trace_sha256": "eea3aca6eb2029af641214cbd6516bdd6333b77d19edc4f873397760b243b227"
+  },
+  "runtime_identity_effort": "UNVERIFIED",
+  "source_object_states": {
+    "MISSING_OBJECT_404": 13,
+    "PARSER_REJECTED_PRECEDING_ATTEMPT": 210,
+    "VERIFIED": 302
+  },
+  "source_sha": "f8d5d95f2492a9af959a4d48b0664233cf9aa123",
+  "subagents": false,
+  "test_log_evidence": {
+    "causal-qualification-focused-final.log": {
+      "sha256": "ce9e304df5db757ac24f4c7af2f75f81b193c07229c6161976aebda771edc0a0",
+      "summary_lines": [
+        "74 passed in 16.67s"
+      ]
+    },
+    "causal-qualification-focused-tests.log": {
+      "sha256": "dbf5c8dae3b3946011ac32f89930facbb1f101efaf12619f1845e31429b4dad5",
+      "summary_lines": [
+        "FAILED tests/research/test_atlas_native_trace.py::test_whole_sealed_native_calendar_and_dependencies",
+        "FAILED tests/research/test_atlas_native_trace.py::test_real_checksum_backed_native_prefix_matches_saved_results",
+        "2 failed, 81 passed in 12.20s"
+      ]
+    },
+    "causal-qualification-new-tests.log": {
+      "sha256": "c66e649ad9a3e135c7aad9cfeac11702b01d8558581f08f2e311d98da26cecc4",
+      "summary_lines": [
+        "FAILED tests/research/test_atlas_causal_replay.py::test_incomplete_late_mixed_or_conflicting_prior_day_never_qualifies[wrong_revision]"
+      ]
+    },
+    "causal-qualification-parent-regressions.log": {
+      "sha256": "bc89c4dabf4d94777e59475250f9b6a8d3711984666cd500b1bb5f0ff32351fa",
+      "summary_lines": [
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_native_public_locator_validates_raw_hash_and_exact_archive",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_actual_loader_preserves_native_history_and_services_compose",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_loader_reuses_exact_production_causal_bar_index",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_loader_binds_btc_proxy_to_prepared_same_venue_cohort",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_funding_alone_and_unqualified_flow_cannot_confirm",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s4_baseline_requires_three_qualified_prior_exact_samples",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s4_baseline_rejects_index_body_that_differs_from_typed_fit",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_prepared_s5_composes_with_actual_context_publication_and_receipt",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_prepared_s5_rejects_future_raw_source_despite_late_delivery",
+        "FAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+        "FAILED tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+        "FAILED tests/v2/test_data_runtime.py::test_collector_conflict_gap_health_restart_and_watch_subscriptions",
+        "17 failed in 1.46s"
+      ]
+    },
+    "causal-qualification-regressions.log": {
+      "sha256": "130fe1b99f1e1a71bee635767358d26e18fff2e26d60b0f0c7d53bb7bf9341e5",
+      "summary_lines": [
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_native_public_locator_validates_raw_hash_and_exact_archive",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_actual_loader_preserves_native_history_and_services_compose",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_loader_reuses_exact_production_causal_bar_index",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_loader_binds_btc_proxy_to_prepared_same_venue_cohort",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_funding_alone_and_unqualified_flow_cannot_confirm",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s4_baseline_requires_three_qualified_prior_exact_samples",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_s4_baseline_rejects_index_body_that_differs_from_typed_fit",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_prepared_s5_composes_with_actual_context_publication_and_receipt",
+        "FAILED tests/v2/test_session041_strategy_surface.py::test_prepared_s5_rejects_future_raw_source_despite_late_delivery",
+        "FAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+        "FAILED tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+        "FAILED tests/v2/test_data_runtime.py::test_collector_conflict_gap_health_restart_and_watch_subscriptions",
+        "17 failed, 221 passed in 187.32s (0:03:07)"
+      ]
+    }
+  },
+  "test_results": {
+    "existing_regression": {
+      "collected": 238,
+      "failed": 17,
+      "failures": [
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_native_public_locator_validates_raw_hash_and_exact_archive",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_actual_loader_preserves_native_history_and_services_compose",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_loader_reuses_exact_production_causal_bar_index",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_loader_binds_btc_proxy_to_prepared_same_venue_cohort",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s5_funding_alone_and_unqualified_flow_cannot_confirm",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s4_baseline_requires_three_qualified_prior_exact_samples",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s4_baseline_rejects_index_body_that_differs_from_typed_fit",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_prepared_s5_composes_with_actual_context_publication_and_receipt",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_prepared_s5_rejects_future_raw_source_despite_late_delivery",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+          "reason": "assert (None is not None)"
+        },
+        {
+          "node_id": "tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_data_runtime.py::test_collector_conflict_gap_health_restart_and_watch_subscriptions",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        }
+      ],
+      "passed": 221,
+      "skipped": 0,
+      "wall_seconds": 187.32
+    },
+    "final_focused": {
+      "collected": 74,
+      "failed": 0,
+      "failures": [],
+      "passed": 74,
+      "skipped": 0,
+      "wall_seconds": 16.67
+    },
+    "full_suite": "NOT_RUN_NOT_CERTIFIED",
+    "same_parent": {
+      "collected": 17,
+      "failed": 17,
+      "failures": [
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s7_m5_aggregation_keeps_exact_native_m1_origins_and_late_publication",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_native_public_locator_validates_raw_hash_and_exact_archive",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_actual_loader_preserves_native_history_and_services_compose",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_loader_reuses_exact_production_causal_bar_index",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_loader_binds_btc_proxy_to_prepared_same_venue_cohort",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_native_m5_beta_uses_only_strict_pre_receipt_sources_and_publishes_later",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_binance_liquidity_retains_distinct_quote_turnover_and_funding_refs",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s5_actual_delivery_preserves_original_cutoff_and_restart_latency",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s5_funding_alone_and_unqualified_flow_cannot_confirm",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s5_reversal_retains_all_stages_and_missing_actual_liquidation_reason",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s4_baseline_requires_three_qualified_prior_exact_samples",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_s4_baseline_rejects_index_body_that_differs_from_typed_fit",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_prepared_s5_composes_with_actual_context_publication_and_receipt",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_session041_strategy_surface.py::test_prepared_s5_rejects_future_raw_source_despite_late_delivery",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures",
+          "reason": "assert (None is not None)"
+        },
+        {
+          "node_id": "tests/v2/test_data_runtime.py::test_import_keeps_actual_receipt_and_separate_reconstructed_availability",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        },
+        {
+          "node_id": "tests/v2/test_data_runtime.py::test_collector_conflict_gap_health_restart_and_watch_subscriptions",
+          "reason": "ModuleNotFoundError: No module named 'pyarrow'"
+        }
+      ],
+      "matching_exact_nodes_and_causes": true,
+      "passed": 0,
+      "skipped": 0,
+      "source_sha": "f8d5d95f2492a9af959a4d48b0664233cf9aa123",
+      "wall_seconds": 1.46
+    },
+    "unique_current_scope": {
+      "failed": 17,
+      "passed": 295,
+      "skipped": 0,
+      "total": 312
+    }
+  },
+  "trace_sha256": "eea3aca6eb2029af641214cbd6516bdd6333b77d19edc4f873397760b243b227",
+  "version": "CAUSAL_REPLAY_EXECUTION_EVIDENCE_V1"
+}

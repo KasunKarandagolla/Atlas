@@ -10,6 +10,7 @@ from atlas.v2.chronology import sample
 from atlas.v2.contracts import ArtifactEnvelope, FeatureArtifactV2, FeatureValueV2, ReplayViewV2
 from atlas.v2.data.active_history import ActiveCausalHistoryStateV1
 from atlas.v2.data.bars import BarIntervalV2
+from atlas.v2.data.raw import AvailabilityClassV2
 
 from .candles import (
     DAY_NS,
@@ -36,6 +37,8 @@ GAP_QUALIFIED_FEATURE_SET_VERSIONS = frozenset({
     EXACT_PREFIX_TRADE_LOCATION_FEATURE_SET_VERSION,
 })
 MAX_TRADE_LOCATION_INPUT_REFS = 64
+RECONSTRUCTED_FEATURE_SET_VERSION = "INTRADAY_CORE_GAP_QUALIFIED_REPLAY_DAY_RANGE_V2"
+RECONSTRUCTED_EXACT_PREFIX_FEATURE_SET_VERSION = "INTRADAY_CORE_EXACT_PREFIX_GAP_QUALIFIED_REPLAY_DAY_RANGE_V2"
 
 
 def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
@@ -105,7 +108,9 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
         geometry = dict.fromkeys(("signed_body_atr", "upper_wick_atr", "lower_wick_atr", "range_atr", "close_position", "gap", "volume_z"))
     for name, value in geometry.items():
         values[f"candle.{name}"] = FeatureValueV2(value, "ratio" if name != "gap" else "price", None if value is not None else "MISSING_DENOMINATOR_OR_HISTORY")
-    prior_high, prior_low, _ = prior_utc_day_range(join.m15, cutoff_ns=join.cutoff_ns)
+    prior_high, prior_low, _ = prior_utc_day_range(
+        join.m15, cutoff_ns=join.cutoff_ns, availability_class=AvailabilityClassV2(replay_view.value)
+    )
     prior_start = join.cutoff_ns // DAY_NS * DAY_NS - DAY_NS
     prior_end = prior_start + DAY_NS
     partial_prior_day = any(prior_start <= bar.open_at_ns < prior_end for bar in join.m15)
@@ -117,8 +122,14 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
         prior_low, "price", None if prior_low is not None else prior_missing_reason
     )
     try:
-        vwap, trade_refs = utc_day_vwap(trades, key=join.key, cutoff_ns=join.cutoff_ns)
-        vwap_missing_reason = "CAUSAL_TRADES_UNAVAILABLE"
+        # CausalTrade carries actual availability only. It cannot establish
+        # reconstructed trade visibility; do not infer it from event time.
+        vwap, trade_refs = utc_day_vwap(
+            trades if replay_view == ReplayViewV2.ACTUAL_SYSTEM else (),
+            key=join.key, cutoff_ns=join.cutoff_ns,
+        )
+        vwap_missing_reason = ("CAUSAL_TRADES_UNAVAILABLE" if replay_view == ReplayViewV2.ACTUAL_SYSTEM
+                               else "REPLAY_TRADE_AVAILABILITY_UNAVAILABLE")
     except ValueError as exc:
         if str(exc) != "CONFLICTING_TRADE_IDENTITY":
             raise
@@ -227,6 +238,9 @@ def feature_snapshot(join: JoinedBars, *, source_health_ref: str | None = None,
     else:
         version = (EXACT_PREFIX_TRADE_LOCATION_FEATURE_SET_VERSION if exact_histories is not None
                    else TRADE_LOCATION_FEATURE_SET_VERSION)
+    if replay_view == ReplayViewV2.RECONSTRUCTED_MARKET:
+        version = (RECONSTRUCTED_EXACT_PREFIX_FEATURE_SET_VERSION if exact_histories is not None
+                   else RECONSTRUCTED_FEATURE_SET_VERSION)
     refs = tuple(sorted({bar.content_hash for bar in all_bars} | {source_health_ref} | set(trade_refs)
                         | history_refs | location_refs))
     artifact_id = sha256_json({"feature_set": version, "key": join.key.to_dict(), "cutoff": join.cutoff_ns,

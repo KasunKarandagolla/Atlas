@@ -1,0 +1,158 @@
+{
+  "additional_full_feature_slots": 9,
+  "authority": "ZERO",
+  "bounded_field_examples": [
+    {
+      "fields": {
+        "location.prior_day_high": {
+          "current": {
+            "missing_reason": null,
+            "unit": "price",
+            "value": "2523.43"
+          },
+          "parent": {
+            "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+            "unit": "price",
+            "value": null
+          }
+        },
+        "location.prior_day_low": {
+          "current": {
+            "missing_reason": null,
+            "unit": "price",
+            "value": "2431.87"
+          },
+          "parent": {
+            "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+            "unit": "price",
+            "value": null
+          }
+        },
+        "location.utc_day_trade_vwap_partial_to_cutoff": {
+          "current": {
+            "missing_reason": "REPLAY_TRADE_AVAILABILITY_UNAVAILABLE",
+            "unit": "price",
+            "value": null
+          },
+          "parent": {
+            "missing_reason": "CAUSAL_TRADES_UNAVAILABLE",
+            "unit": "price",
+            "value": null
+          }
+        }
+      },
+      "slot_ns": 1751328000000000000,
+      "symbol": "ETHUSDT"
+    },
+    {
+      "fields": {
+        "location.prior_day_high": {
+          "current": {
+            "missing_reason": null,
+            "unit": "price",
+            "value": "660"
+          },
+          "parent": {
+            "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+            "unit": "price",
+            "value": null
+          }
+        },
+        "location.prior_day_low": {
+          "current": {
+            "missing_reason": null,
+            "unit": "price",
+            "value": "651.19"
+          },
+          "parent": {
+            "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+            "unit": "price",
+            "value": null
+          }
+        },
+        "location.utc_day_trade_vwap_partial_to_cutoff": {
+          "current": {
+            "missing_reason": "REPLAY_TRADE_AVAILABILITY_UNAVAILABLE",
+            "unit": "price",
+            "value": null
+          },
+          "parent": {
+            "missing_reason": "CAUSAL_TRADES_UNAVAILABLE",
+            "unit": "price",
+            "value": null
+          }
+        }
+      },
+      "slot_ns": 1751328000000000000,
+      "symbol": "BNBUSDT"
+    },
+    {
+      "fields": {
+        "location.prior_day_high": {
+          "current": {
+            "missing_reason": null,
+            "unit": "price",
+            "value": "108783.9"
+          },
+          "parent": {
+            "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+            "unit": "price",
+            "value": null
+          }
+        },
+        "location.prior_day_low": {
+          "current": {
+            "missing_reason": null,
+            "unit": "price",
+            "value": "106686.4"
+          },
+          "parent": {
+            "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+            "unit": "price",
+            "value": null
+          }
+        },
+        "location.utc_day_trade_vwap_partial_to_cutoff": {
+          "current": {
+            "missing_reason": "REPLAY_TRADE_AVAILABILITY_UNAVAILABLE",
+            "unit": "price",
+            "value": null
+          },
+          "parent": {
+            "missing_reason": "CAUSAL_TRADES_UNAVAILABLE",
+            "unit": "price",
+            "value": null
+          }
+        }
+      },
+      "slot_ns": 1751328000000000000,
+      "symbol": "BTCUSDT"
+    }
+  ],
+  "changed_fields": {
+    "location.prior_day_high": 3,
+    "location.prior_day_low": 3,
+    "location.utc_day_trade_vwap_partial_to_cutoff": 3
+  },
+  "comparison_grade": "NATIVE_DIAGNOSTIC_AND_CONTRACT_CORRECTION_NOT_ACTION_OR_ECONOMIC_ACCEPTANCE",
+  "current_trace_sha256": "eea3aca6eb2029af641214cbd6516bdd6333b77d19edc4f873397760b243b227",
+  "full_feature_budget_denominators": {
+    "DECLARED_FULL_FEATURE_RESOURCE_NOT_EVALUATED": 120,
+    "NATIVE_CLOCK_NOT_DUE": 1960,
+    "OBSERVED": 12,
+    "SOURCE_UNAVAILABLE": 8
+  },
+  "matched_full_feature_slots": 3,
+  "matched_native_price_prefixes": 132,
+  "original_m15_deadline_delay_ns": 5000000000,
+  "parent_trace_sha256": "e4117caf8700f68987506d1cb6801fb1b6d262ac68d964d36092cea41d49e220",
+  "prefix_mismatches": 0,
+  "replay_processing_delay_ns": {
+    "6000000000": 99,
+    "7000000000": 33
+  },
+  "s1_s6_native_component_mismatches": 0,
+  "same_original_minute_observation_keys": 2100,
+  "same_source_blocks": 8,
+  "version": "CAUSAL_REPLAY_PARENT_COMPARISON_V1"
+}

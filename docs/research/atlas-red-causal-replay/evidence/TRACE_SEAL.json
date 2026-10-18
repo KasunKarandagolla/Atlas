@@ -1,0 +1,74 @@
+{
+  "authority": "ZERO",
+  "code_hashes": {
+    "docs/research/atlas-red-causal-replay/PROTOCOL.json": "42a795d46da7f7459a785430a4f6a556c5fa97c33e3c6afee4aeeb01021c8169",
+    "docs/research/atlas-red-causal-replay/SOURCE_READINESS.json": "c114c7ffa7b393dc1881afc273c0b53ea4ded7937b57e8586eb96dec5c58e5d0",
+    "docs/research/atlas-red-causal-replay/audit.py": "d151d511b6cbb928269ac294c4f4c96f6eb9ce2bc7011d3b1eca58ca76a0ed14",
+    "docs/research/atlas-red-causal-replay/replay.py": "7ee3bb1316ccc1d65f25780cd045ff4ab77d5233e4b4b50e144107ad2da5c40f",
+    "docs/research/atlas-red-historical-blind-ml/causal_replay.py": "d0cce7239984f040c33e7845ac4d630764aa31693141ed9d7a1d4afb2e901f66",
+    "docs/research/atlas-red-historical-blind-ml/common.py": "004db8ff8045aaddc050a298513bfdf647b28067d3dfb9b665a83ddbdf738157",
+    "docs/research/atlas-red-native-trace/PROTOCOL.json": "725b76e66d690c6e5838faa52a4c4860a1c628f7d8e3dcb218d223b1bf749e2e",
+    "docs/research/atlas-red-native-trace/audit.py": "47307094352daebb576030ebedb1bdfb3b01d696f61f0c1798ce3d4ba7c783be",
+    "docs/research/atlas-red-native-trace/replay.py": "cece3560ef5e7c87cc53965da21077e04a33b47590cd5a3124091bdb47f1b331",
+    "src/atlas/v2/_serialization.py": "ab84892fa86dd8e7327da9b2a60d0a2fdc72c01e7233df96b7ef8a0ce46d5d8d",
+    "src/atlas/v2/contracts.py": "b36a3e4f29c6929fa40c6e687283ec9af1b9898a441c7973e308152d074eed52",
+    "src/atlas/v2/data/bars.py": "2f41e32049570363520c4ebfa2782cfc4ff8385051d65a73b455f49699dd732c",
+    "src/atlas/v2/data/microstructure.py": "fa151bb90ffc9a88658fa7bbbd594de7745ec21aee1a5dd79cbc5545ef3d255f",
+    "src/atlas/v2/data/raw.py": "f4a98bd281b4f8f83cd72a889694e4a04f989144b44cf03e3a8f117f19638823",
+    "src/atlas/v2/features/candles.py": "33792d426d380063e357473e447bfbbe2422be8b22ef879106aecbdc32c7261c",
+    "src/atlas/v2/features/joins.py": "65f3984d47dc82c262d748a5b49aa1df26c5b591d9f9c3400b2ffc141b069b3e",
+    "src/atlas/v2/features/pipeline.py": "7dab8763537481b8615b97369400748156acb4c1d8eae3fe97438a984441c215",
+    "src/atlas/v2/features/structure.py": "c208d6c7eb64ada878933d7d7d9f21097ebe76dbe8ffa6297f8cb5d484f458e9",
+    "src/atlas/v2/features/technical.py": "82bfd6bcc5e13e0293d985990383584a269d6691633b00560f2da385f912e1d4",
+    "src/atlas/v2/memory/repository.py": "ffac6c1f7d4407fd7a64e1b0757af3e4dae4518f740b07d00fbcf392c0b5512a",
+    "src/atlas/v2/news/events.py": "370c4849cab0ebb0331df96215755f4d9cb1e0d8ac512fddde71f866802684b9",
+    "src/atlas/v2/research/decision_brief.py": "1c08852ce0ebb1d2896beaf1cc92c0fd109e62b333a32fb4a3ecf9c0bcc085ff",
+    "src/atlas/v2/runtime/full_strategy_surface.py": "1ca081fe5bb030ac00e377f033320830e0a484b231699007bc52171e4b9fdc4e",
+    "src/atlas/v2/runtime/native_research_trace.py": "fccb989d647f89d78cd9ade3aaa8bfb9b569b033dc94967d8afff87577c587aa",
+    "src/atlas/v2/runtime/s3_native_cadence.py": "715ecf8c481691ac5062a8018f56931c52f7cfdafe427e098c68b5ef7b74a890",
+    "src/atlas/v2/science/m15_origin_accounting.py": "2915966c55808fd8f2eb3500bf4709d0ca1f4b110c0abf655225c7e7c7dfc3a4",
+    "src/atlas/v2/science/mean_evaluation.py": "143814a009c16242f254530d901b2a3c46945252258908dbace96df3c62c42d7",
+    "src/atlas/v2/strategies/s1_trend.py": "e85c3f1fbfd08f4d01f185773203a7e6cf27522fcb7b9fdd2e2c0be35f58834b",
+    "src/atlas/v2/strategies/s2_breakout.py": "6d2f92adc3e837f876d9c66f10480729436bf32ef095be8a0872773c727f6615",
+    "src/atlas/v2/strategies/s3_mean_reversion.py": "94b27684441ba8abf1cd8eef88ac38b239567a6bf44a0fed73ca28570e629fe0",
+    "src/atlas/v2/strategies/s5_crowding.py": "d27e3fbb410f11d8c7ed4a88167585c4ae6501d1cd4576852f72a794e14ee181",
+    "src/atlas/v2/strategies/s6_cross_section.py": "0b56f92088e27ddce6f4d96e41263d66a48b7a562ca14db114d059038bd0ac84",
+    "src/atlas/v2/strategies/s8_pairs.py": "29ade8ef05c583ff2d4b9cc79420647afe296c192cc8c422d04fe93e83bbe499"
+  },
+  "code_ref": "b3d3c30a6b151507085646314113231a2a92da468799007b426383574b0da59a",
+  "decision_slots": 2100,
+  "full_native_feature_calls": 12,
+  "native_price_prefixes": {
+    "complete": 132,
+    "unavailable": 8
+  },
+  "outcomes": "NOT_STARTED",
+  "protocol_sha256": "42a795d46da7f7459a785430a4f6a556c5fa97c33e3c6afee4aeeb01021c8169",
+  "rows": 27362,
+  "source_manifest_ref": "411ac6565ce1940773167f3a583145e90dc9f899a614f98130a835a61eb9a2b7",
+  "source_sha": "f8d5d95f2492a9af959a4d48b0664233cf9aa123",
+  "trace_sha256": "eea3aca6eb2029af641214cbd6516bdd6333b77d19edc4f873397760b243b227",
+  "transport_parts": [
+    {
+      "bytes": 3000000,
+      "path": "TRACE.jsonl.gz.part000",
+      "sha256": "d47307c9a7ad21a55f28cae4d4170fad10584ccced693041df280a82d5d6fc70"
+    },
+    {
+      "bytes": 3000000,
+      "path": "TRACE.jsonl.gz.part001",
+      "sha256": "5e6fc20ef887cbe63fef4965273cf09a9457b92c5d897b0924c4ba85039fef78"
+    },
+    {
+      "bytes": 3000000,
+      "path": "TRACE.jsonl.gz.part002",
+      "sha256": "eb185728393d443970bbf31fdd7b07ab8a2ecc5ecc333e53025015f2897d7f5c"
+    },
+    {
+      "bytes": 2784306,
+      "path": "TRACE.jsonl.gz.part003",
+      "sha256": "4e8d7278874bdc0ad3c1df7837da11528f44ab07c69722d7f3757c70fffa159b"
+    }
+  ],
+  "version": "NATIVE_TRACE_SEAL_V1"
+}

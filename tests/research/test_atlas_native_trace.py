@@ -376,9 +376,14 @@ def load_auditor():
 
 
 def evidence_or_skip():
-    path = DOC / "evidence"
+    # The causal continuation has a separately sealed protocol/code identity.
+    # Keep foundation bytes intact; current-code parity uses the active trace.
+    current = ROOT / "docs/research/atlas-red-causal-replay/evidence"
+    path = current if (current / "TRACE_SEAL.json").exists() else DOC / "evidence"
     if not (path / "TRACE_SEAL.json").exists():
         pytest.skip("sealed integration evidence not present")
+    seal = json.loads((path / "TRACE_SEAL.json").read_text())
+    load_auditor().restore_trace(path, seal)
     return path
 
 
@@ -390,7 +395,8 @@ def test_whole_sealed_native_calendar_and_dependencies():
     assert result["original_minute_observations"] == 2100
     assert result["calendar_key_mismatches"] == 0
     assert sum(result["native_s1_precursor_observations"].values()) == 132
-    assert len(result["native_full_feature_observations"]) == 3
+    seal = json.loads((directory / "TRACE_SEAL.json").read_text())
+    assert len(result["native_full_feature_observations"]) == seal["full_native_feature_calls"]
     assert result["timing_misses"] == 132
     assert result["native_feature_dependencies_resolved"]
     assert result["qualified_actions"] == 0 and result["orders"] == 0

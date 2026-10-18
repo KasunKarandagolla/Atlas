@@ -1,0 +1,625 @@
+{
+  "source_sha": "f8d5d95f2492a9af959a4d48b0664233cf9aa123",
+  "remote_heads": [
+    {
+      "sha": "f8d5d95f2492a9af959a4d48b0664233cf9aa123",
+      "ref": "refs/heads/research/atlas-red-native-decision-trace-2026-10-18",
+      "epoch": 1792332811,
+      "committed_at": "2026-10-18T19:43:31+05:30",
+      "subject": "research: instrument native algorithm replay with immutable decision traces"
+    },
+    {
+      "sha": "f9de3686709123f2f9770a7d66ac52ca5450200a",
+      "ref": "refs/heads/research/atlas-red-historical-blind-ml-2026-10-18",
+      "epoch": 1792321152,
+      "committed_at": "2026-10-18T16:29:12+05:30",
+      "subject": "research: report sealed historical ML and economic sensitivity evidence"
+    },
+    {
+      "sha": "918d233b2501319bc031d679b3d9f5647ae13156",
+      "ref": "refs/heads/research/atlas-red-e1b-defects-synergy-2026-10-18",
+      "epoch": 1792313512,
+      "committed_at": "2026-10-18T14:21:52+05:30",
+      "subject": "research: report bounded S1-S6 historical evidence and preserve economic gates"
+    },
+    {
+      "sha": "c29dfc2c2ae6cb903b53f72fdf2d457c9a5bb32d",
+      "ref": "refs/heads/research/atlas-red-e1b-sol-reproduction-2026-10-18",
+      "epoch": 1792302815,
+      "committed_at": "2026-10-18T11:23:35+05:30",
+      "subject": "research: reproduce E1B diagnostics and document scientific evidence gates"
+    },
+    {
+      "sha": "d339d845a417e36b9a83c83b4f366e74fd207474",
+      "ref": "refs/heads/fix/atlas-red-e1b-first-trigger-censoring-2026-10-18",
+      "epoch": 1792299636,
+      "committed_at": "2026-10-18T10:30:36+05:30",
+      "subject": "Record E1B trigger censor evidence and reconciliation"
+    },
+    {
+      "sha": "ab645e792fe6593d9fb206954585b2996673f96c",
+      "ref": "refs/heads/fix/atlas-red-e1b-signal-time-integrity-2026-10-18",
+      "epoch": 1792270773,
+      "committed_at": "2026-10-17T20:59:33Z",
+      "subject": "docs: log E1B R1 R2 correction evidence"
+    },
+    {
+      "sha": "fa6085bdbe456ffa07ac59ce8c51afacb65ecdc5",
+      "ref": "refs/heads/research/atlas-red-binance-cohort-e1b-2026-10-18",
+      "epoch": 1792268009,
+      "committed_at": "2026-10-17T20:13:29Z",
+      "subject": "docs: log E1B cohort research evidence"
+    },
+    {
+      "sha": "f4fd91aed1746fdb81b6ffefa06533d091a3cef4",
+      "ref": "refs/heads/research/atlas-red-binance-evidence-e1-recheck-2026-10-17",
+      "epoch": 1792263145,
+      "committed_at": "2026-10-17T18:52:25Z",
+      "subject": "docs: record E1 sample trace replay proof"
+    },
+    {
+      "sha": "fdebcf17e30a5abf8150483e0ac2779226d9b3e2",
+      "ref": "refs/heads/research/atlas-red-binance-evidence-e1-2026-10-17",
+      "epoch": 1792261114,
+      "committed_at": "2026-10-17T18:18:34Z",
+      "subject": "docs: record Atlas RED E1 Binance source gate"
+    },
+    {
+      "sha": "f77f3aacbfdc2546e6f3ea2d78196b0905ceb613",
+      "ref": "refs/heads/fix/atlas-red-p1-evidence-integrity-2026-10-17",
+      "epoch": 1792220715,
+      "committed_at": "2026-10-17T07:05:15Z",
+      "subject": "fix: bind P1 calibration and saved evaluations to checked evidence"
+    },
+    {
+      "sha": "81870a18a1f773e84ad1b0c82690dc8e4d677bb8",
+      "ref": "refs/heads/fix/atlas-red-p1-bootstrap-integrity-2026-10-17",
+      "epoch": 1792206441,
+      "committed_at": "2026-10-17T03:07:21Z",
+      "subject": "fix: verify registered P1 bootstrap bounds at Ops publication"
+    },
+    {
+      "sha": "215a0045d8203f23dbd4935639ef448556cc2353",
+      "ref": "refs/heads/fix/atlas-red-p1-financial-evidence-2026-10-16",
+      "epoch": 1792175511,
+      "committed_at": "2026-10-16T18:31:51Z",
+      "subject": "fix: verify P1 OOF calibration and scenario financial evidence"
+    },
+    {
+      "sha": "8fc2109cda6fea6a8bea0f07d8e43999e9cee1c9",
+      "ref": "refs/heads/impl/atlas-red-p1-quant-foundation-2026-10-16",
+      "epoch": 1792160344,
+      "committed_at": "2026-10-16T14:19:04Z",
+      "subject": "feat: implement offline P1 mean-action quantitative foundation"
+    },
+    {
+      "sha": "3cb4f052472623381145573523c7077950de78fd",
+      "ref": "refs/heads/docs/atlas-final-system-2026-10-16",
+      "epoch": 1792153056,
+      "committed_at": "2026-10-16T17:47:36+05:30",
+      "subject": "docs: establish GitHub-live Atlas status, accepted target and Codex guidance"
+    },
+    {
+      "sha": "96fc24a83bc90dd0b0e91eb69d55c23d85d4eefd",
+      "ref": "refs/heads/fix/red-r9-local-complete-cycle-2026-10-14",
+      "epoch": 1792006942,
+      "committed_at": "2026-10-15T01:12:22+05:30",
+      "subject": "docs: record R9 push verification"
+    },
+    {
+      "sha": "ef40afb0bf7172f703ffd8016a3e0086396e845d",
+      "ref": "refs/heads/fix/red-r8-complete-integration-and-recovery-2026-10-14",
+      "epoch": 1791949963,
+      "committed_at": "2026-10-14T03:52:43Z",
+      "subject": "docs(r8): finalize push receipt in manifest"
+    },
+    {
+      "sha": "beb69d242dad9f5103ad1bb6d8804a650b11d744",
+      "ref": "refs/heads/fix/red-r7-api-adapter-corrections-2026-10-14",
+      "epoch": 1791923421,
+      "committed_at": "2026-10-14T02:00:21+05:30",
+      "subject": "docs: record R7 push verification"
+    },
+    {
+      "sha": "e402e4e81d1d6983d5065a816934f70f66e2c9c0",
+      "ref": "refs/heads/fix/red-r6-full-workflow-demo-qualification-2026-10-13",
+      "epoch": 1791916615,
+      "committed_at": "2026-10-13T18:36:55Z",
+      "subject": "Record R6 evidence push verification"
+    },
+    {
+      "sha": "9c92aad2331e138e165553497f511c562a6ebcf5",
+      "ref": "refs/heads/impl/red-r5-integrated-engineering-completion-2026-10-13",
+      "epoch": 1791908011,
+      "committed_at": "2026-10-13T16:13:31Z",
+      "subject": "Record Atlas Red R5 delivery verification"
+    },
+    {
+      "sha": "4e9df8f93ee317232171158751fde2c144360ca4",
+      "ref": "refs/heads/impl/red-r4-gemma-demo-integration-2026-10-13",
+      "epoch": 1791899654,
+      "committed_at": "2026-10-13T13:54:14Z",
+      "subject": "Implement R4 Gemma and Futures Demo boundaries"
+    },
+    {
+      "sha": "acc98d36770f44fbffc247225e352d216231e627",
+      "ref": "refs/heads/review/independent-trader-logic-2026-10-13",
+      "epoch": 1791898885,
+      "committed_at": "2026-10-13T19:11:25+05:30",
+      "subject": "docs: add independent trader logic review"
+    },
+    {
+      "sha": "685ee2f276cc4e4027f76e406a5073e3901b4f0e",
+      "ref": "refs/heads/review/atlas-independent-trader-logic-2026-10-13",
+      "epoch": 1791898681,
+      "committed_at": "2026-10-13T19:08:01+05:30",
+      "subject": "docs(review): add independent Atlas trader logic assessment"
+    },
+    {
+      "sha": "4faf9a065eb00df705694bc107401c41c0b322b2",
+      "ref": "refs/heads/fix/red-r3a-completion-2026-10-13",
+      "epoch": 1791893145,
+      "committed_at": "2026-10-13T12:05:45Z",
+      "subject": "docs: verify R3A completion evidence receipt"
+    },
+    {
+      "sha": "3f675572797e88850997d32bdcb96226360ff174",
+      "ref": "refs/heads/impl/red-r3a-production-brief-memory-2026-10-13",
+      "epoch": 1791883187,
+      "committed_at": "2026-10-13T09:19:47Z",
+      "subject": "docs: record verified R3A branch push"
+    },
+    {
+      "sha": "67442118d5ffef818541e1b6f83d7fa6bae45293",
+      "ref": "refs/heads/fix/red-r2-mixed-source-delivery-2026-10-13",
+      "epoch": 1791876713,
+      "committed_at": "2026-10-13T07:31:53Z",
+      "subject": "docs: recover missing R2 evidence artifacts"
+    },
+    {
+      "sha": "81ebc2ae67d9e52a79557e01a96517a4956daa64",
+      "ref": "refs/heads/fix/red-r1-final-correctness-2026-10-13",
+      "epoch": 1791870296,
+      "committed_at": "2026-10-13T05:44:56Z",
+      "subject": "docs: record R1 correctness closeout push"
+    },
+    {
+      "sha": "8b77c76b2ef0581cc453bc4f806693884e763cb4",
+      "ref": "refs/heads/fix/red-r1-v1-snapshot-compat-2026-10-13",
+      "epoch": 1791865798,
+      "committed_at": "2026-10-13T04:29:58Z",
+      "subject": "docs: finalize R1 compatibility delivery evidence"
+    },
+    {
+      "sha": "85a4174cd5d373f0217c46c9944f6ed35f4c0a2b",
+      "ref": "refs/heads/impl/red-r1-surgical-correctness-2026-10-13",
+      "epoch": 1791862369,
+      "committed_at": "2026-10-13T03:32:49Z",
+      "subject": "Record ATLAS RED R1 push verification"
+    },
+    {
+      "sha": "e2d3451a071c124375fa2a8869a4217273686652",
+      "ref": "refs/heads/audit/red-six-reviewer-2026-10-13",
+      "epoch": 1791855376,
+      "committed_at": "2026-10-13T01:36:16Z",
+      "subject": "Add Atlas RED audit report bundle"
+    },
+    {
+      "sha": "a73c92d83ca8b2fe5163e636b2c9732361b35e23",
+      "ref": "refs/heads/impl/session-049-final-integration-release",
+      "epoch": 1791838403,
+      "committed_at": "2026-10-13T02:23:23+05:30",
+      "subject": "docs: record S49 implementation identity"
+    },
+    {
+      "sha": "52d9c149cfa1a1bc3f9a955ad94629300d00a7a7",
+      "ref": "refs/heads/impl/session-048-position-lifecycle-protection",
+      "epoch": 1791818651,
+      "committed_at": "2026-10-12T20:54:11+05:30",
+      "subject": "Record S48 implementation push and independent review handoff"
+    },
+    {
+      "sha": "b0db7d0527e68c737eefd564a87f740f5929c5f6",
+      "ref": "refs/heads/impl/session-047-economics-agent-decision-brief",
+      "epoch": 1791811791,
+      "committed_at": "2026-10-12T18:59:51+05:30",
+      "subject": "docs: record verified S47 implementation push and review scope"
+    },
+    {
+      "sha": "95efa393e50f5e71646c409a3b4ff83cf5acb6a2",
+      "ref": "refs/heads/impl/session-046-causal-features-peer-context",
+      "epoch": 1791795724,
+      "committed_at": "2026-10-12T14:32:04+05:30",
+      "subject": "Record S46 push verification"
+    },
+    {
+      "sha": "ce5f67031e7c5184da91aff416ec4aca18b14bbb",
+      "ref": "refs/heads/fix/session-045-outcome-and-design-closure",
+      "epoch": 1791773656,
+      "committed_at": "2026-10-12T08:24:16+05:30",
+      "subject": "docs: record S45 push verification and handoff"
+    },
+    {
+      "sha": "46eb72d2611475d1e38444db287557c8154c5216",
+      "ref": "refs/heads/qualification/tq01-linux-2026-10-11",
+      "epoch": 1791760398,
+      "committed_at": "2026-10-12T04:43:18+05:30",
+      "subject": "Finalize TQ-01 five-hour translog"
+    },
+    {
+      "sha": "8961b032b108376bfbcd15e2ed8dc8fcbd48a645",
+      "ref": "refs/heads/fix/session-044-practical-trading-delivery",
+      "epoch": 1791724645,
+      "committed_at": "2026-10-11T18:47:25+05:30",
+      "subject": "docs: record S44 tested source checkpoint"
+    },
+    {
+      "sha": "a6475ee9f629b0cb86a4a8a670e2813a540ace6e",
+      "ref": "refs/heads/fix/session-043-first-trading-value",
+      "epoch": 1791712909,
+      "committed_at": "2026-10-11T15:31:49+05:30",
+      "subject": "Bind V2 public context to selected venues"
+    },
+    {
+      "sha": "6e69ef07afb0743f3505d92ad1ccb487555fe84c",
+      "ref": "refs/heads/review/session-042-trading-workload-value",
+      "epoch": 1791709751,
+      "committed_at": "2026-10-11T14:39:11+05:30",
+      "subject": "docs: review S42 trading workload value and lean operating choices"
+    },
+    {
+      "sha": "be8abff16c631f8ccea3df96c2a200fa4d0d590e",
+      "ref": "refs/heads/review/session-041-accelerated-stability-closure",
+      "epoch": 1791703385,
+      "committed_at": "2026-10-11T12:53:05+05:30",
+      "subject": "docs: specify bounded S41 stability comparison"
+    },
+    {
+      "sha": "1184ae1c613c6f191d94a28015f1f5259e9dcc0e",
+      "ref": "refs/heads/review/session-041-offline-commissioning-gate",
+      "epoch": 1791691493,
+      "committed_at": "2026-10-11T09:34:53+05:30",
+      "subject": "docs: record offline commissioning gate evidence"
+    },
+    {
+      "sha": "82a6f6e7df03889bd044991c4e47bd7339e03536",
+      "ref": "refs/heads/fix/session-041-linux-binance-commissioning",
+      "epoch": 1791689211,
+      "committed_at": "2026-10-11T08:56:51+05:30",
+      "subject": "docs: record S41 telemetry qualification checkpoint"
+    },
+    {
+      "sha": "dfe6bd4e21698454982f0e5e04ad93c2ef6f51ef",
+      "ref": "refs/heads/review/session-041-binance-final-reconciliation",
+      "epoch": 1791653386,
+      "committed_at": "2026-10-10T22:59:46+05:30",
+      "subject": "docs: reconcile S41 Binance qualification amendment"
+    },
+    {
+      "sha": "eed7f849da5c8ff418c52fbc8cb0f0fd583d6422",
+      "ref": "refs/heads/review/session-041-binance-linux-qualification-proposal",
+      "epoch": 1791651712,
+      "committed_at": "2026-10-10T22:31:52+05:30",
+      "subject": "docs: propose S41 Binance Linux qualification profile"
+    },
+    {
+      "sha": "dcb5d9dbe6ec58ee337b29accb48f96ef174ec1d",
+      "ref": "refs/heads/fix/session-041-final-v2-recovery",
+      "epoch": 1791650149,
+      "committed_at": "2026-10-10T22:05:49+05:30",
+      "subject": "docs: record Binance-only Linux workload investigation"
+    },
+    {
+      "sha": "1ed578f503aca1d5e61eeab5439f7b606d7fb15a",
+      "ref": "refs/heads/review/session-041-f1-throughput-correction",
+      "epoch": 1791629158,
+      "committed_at": "2026-10-10T16:15:58+05:30",
+      "subject": "docs(v2): specify focused F1 throughput correction"
+    },
+    {
+      "sha": "eaf51d367dea1e13be544f7de23a6626279f7ad9",
+      "ref": "refs/heads/review/session-041-recovery-architecture",
+      "epoch": 1791592803,
+      "committed_at": "2026-10-10T06:10:03+05:30",
+      "subject": "docs: apply final S41 R1 coordinating review corrections"
+    },
+    {
+      "sha": "9bfcfa5ea45388cecf2081e753930e3287828871",
+      "ref": "refs/heads/review/session-041-paused-v2-2026-10-09",
+      "epoch": 1791538501,
+      "committed_at": "2026-10-09T15:05:01+05:30",
+      "subject": "docs(session-041): preserve paused V2 review snapshot and blockers"
+    },
+    {
+      "sha": "55ccd6f371caa660ba4d3c7a6ad4759d2d3b6393",
+      "ref": "refs/heads/fix/session-040-owner-runtime-resilience-preflight-health",
+      "epoch": 1791305987,
+      "committed_at": "2026-10-06T22:29:47+05:30",
+      "subject": "docs(session-040): close runtime resilience evidence"
+    },
+    {
+      "sha": "c0a290ec89f66507d155f2975976ba49132cab18",
+      "ref": "refs/heads/fix/session-039-long-run-evidence-reliability",
+      "epoch": 1791194134,
+      "committed_at": "2026-10-05T15:25:34+05:30",
+      "subject": "docs(v2): record S39 native package and scoped reliability evidence"
+    },
+    {
+      "sha": "efd75ca4e0cb432c79e0a090b363ca09b87e9099",
+      "ref": "refs/heads/fix/session-038-public-stream-reliability",
+      "epoch": 1791136244,
+      "committed_at": "2026-10-04T23:20:44+05:30",
+      "subject": "docs: close S38 offline and native public stream remediation gates"
+    },
+    {
+      "sha": "a51a302e09bda84449ab3867d28df545d39445f2",
+      "ref": "refs/heads/impl/session-037-final-engineering-intelligence-closure",
+      "epoch": 1791099013,
+      "committed_at": "2026-10-04T13:00:13+05:30",
+      "subject": "docs: record independently verified ready-ledger Windows package"
+    },
+    {
+      "sha": "b3e9f0f2b19bdb6c1f4e0f7a49d7b383b6cbd9b7",
+      "ref": "refs/heads/impl/session-036-final-development-closure-windows-tune-ready",
+      "epoch": 1790991611,
+      "committed_at": "2026-10-03T07:10:11+05:30",
+      "subject": "docs: record final offline and native Windows evidence with open engineering blockers"
+    },
+    {
+      "sha": "702325b44ad487e699c60e682ad06031f4ecdb86",
+      "ref": "refs/heads/impl/session-035-public-host-source-qualification",
+      "epoch": 1790864125,
+      "committed_at": "2026-10-01T19:45:25+05:30",
+      "subject": "Record Session 035 public qualification evidence"
+    },
+    {
+      "sha": "e13994752f165ad8b42f7f7c441076078d4388cc",
+      "ref": "refs/heads/impl/session-034-native-s3-m1-warmup-readiness",
+      "epoch": 1790857055,
+      "committed_at": "2026-10-01T17:47:35+05:30",
+      "subject": "docs: record S34 scientific calendar closure"
+    },
+    {
+      "sha": "486a513dd873d53ac2bfef0e710f0b6332650537",
+      "ref": "refs/heads/impl/session-033-continuous-matured-outcome-production",
+      "epoch": 1790826428,
+      "committed_at": "2026-10-01T09:17:08+05:30",
+      "subject": "docs: record session 033 independent review remediation"
+    },
+    {
+      "sha": "ccc5a42b30bd43a9ebad05ef2eba9d28c528f135",
+      "ref": "refs/heads/impl/session-032-public-stream-continuity-recovery",
+      "epoch": 1790788688,
+      "committed_at": "2026-09-30T22:48:08+05:30",
+      "subject": "Document public stream continuity engineering gate"
+    },
+    {
+      "sha": "cd0cf72fa1dedca765c298a281633ee1b7056614",
+      "ref": "refs/heads/impl/session-031-public-shadow-campaign-readiness-evidence-controls",
+      "epoch": 1790781906,
+      "committed_at": "2026-09-30T20:55:06+05:30",
+      "subject": "Record S31 independent review remediation"
+    },
+    {
+      "sha": "8ed124c4127c94c2c6e394a2bf6f941c3a5f6b57",
+      "ref": "refs/heads/impl/session-030-agent-prospective-shadow-runtime-readiness",
+      "epoch": 1790715298,
+      "committed_at": "2026-09-30T02:24:58+05:30",
+      "subject": "Record Session 030 prospective shadow runtime gate"
+    },
+    {
+      "sha": "a875401615612f4354fbe8afbf69acb4fa8d4bda",
+      "ref": "refs/heads/impl/session-029-agent-hidden-shadow-action-critic",
+      "epoch": 1790702955,
+      "committed_at": "2026-09-29T22:59:15+05:30",
+      "subject": "Record Session 029 hidden critic validation and gate"
+    },
+    {
+      "sha": "20ee0ae92def34103facfeb464c976b15b92a85c",
+      "ref": "refs/heads/impl/session-028-agent-provider-deepseek-v41-amendment",
+      "epoch": 1790685949,
+      "committed_at": "2026-09-29T18:15:49+05:30",
+      "subject": "docs(session-028): qualify direct smoke credential boundary"
+    },
+    {
+      "sha": "81ee4c1edbe0156691863b90daf3174168fa387b",
+      "ref": "refs/heads/impl/session-027-v2-continuous-ops-supervisor",
+      "epoch": 1790679206,
+      "committed_at": "2026-09-29T16:23:26+05:30",
+      "subject": "Document final Session-027 remediation"
+    },
+    {
+      "sha": "8f915f85798ff5777592e7f187641ad5684699ff",
+      "ref": "refs/heads/impl/session-026-agent-intelligence-offline-infrastructure",
+      "epoch": 1790581878,
+      "committed_at": "2026-09-28T13:21:18+05:30",
+      "subject": "docs(session-026): record single-writer validation"
+    },
+    {
+      "sha": "21055dcb5496665aaf165bde1e4f7e73db773192",
+      "ref": "refs/heads/impl/session-025-v2-release-engineering-shadow-closure",
+      "epoch": 1790547298,
+      "committed_at": "2026-09-28T03:44:58+05:30",
+      "subject": "docs: close Atlas V2 Session 025 release gate"
+    },
+    {
+      "sha": "f7e0cb7de3f7cfcdee51c4d42842f6d06094467f",
+      "ref": "refs/heads/impl/session-024-v2-venue-qualification-capital-bridge-hardening",
+      "epoch": 1790542302,
+      "committed_at": "2026-09-28T02:21:42+05:30",
+      "subject": "Fix V2 live evidence source lookup"
+    },
+    {
+      "sha": "665f44e3ecd99f7228cb5736b15f00f6ff6d1985",
+      "ref": "refs/heads/impl/session-023-v2-m1-analogue-discovery-selection-gate",
+      "epoch": 1790527090,
+      "committed_at": "2026-09-27T22:08:10+05:30",
+      "subject": "fix(science): bind discovery holdout population from evidence"
+    },
+    {
+      "sha": "09efb89ff99e156fb39c7c0a89c5a86f639ccf47",
+      "ref": "refs/heads/impl/session-022-v2-s4-s5-microstructure-crowding-context",
+      "epoch": 1790500151,
+      "committed_at": "2026-09-27T14:39:11+05:30",
+      "subject": "Correct S4 policy identity for Binance snapshot sync"
+    },
+    {
+      "sha": "266ef1fe88da2bc4e37cda44c9a9c089c01883b7",
+      "ref": "refs/heads/impl/session-021-v2-s3-s6-s7-context-alerts",
+      "epoch": 1790465713,
+      "committed_at": "2026-09-27T05:05:13+05:30",
+      "subject": "fix: close Session-021 S3 and S7 evidence gaps"
+    },
+    {
+      "sha": "9dc828f061584372702fd94236b1d3a733709846",
+      "ref": "refs/heads/impl/session-020-v2-desktop-ipc-phase2-gate",
+      "epoch": 1790447256,
+      "committed_at": "2026-09-26T23:57:36+05:30",
+      "subject": "fix(v2): make causal archive reconstruction deterministic"
+    },
+    {
+      "sha": "3d491d5fa4ed2fee1bd575c893d16b33994d60cf",
+      "ref": "refs/heads/impl/session-019-v2-m0-scenario-evaluator-shadow-plan",
+      "epoch": 1790417940,
+      "committed_at": "2026-09-26T15:49:00+05:30",
+      "subject": "Remediate Session 019 evidence binding"
+    },
+    {
+      "sha": "8c2686f346d3b97e194a0b29050afe8689f2c296",
+      "ref": "refs/heads/impl/session-018-v2-evidence-outcomes-pretrade-contracts",
+      "epoch": 1790392380,
+      "committed_at": "2026-09-26T08:43:00+05:30",
+      "subject": "fix(v2): bind decision state and joint scenario paths"
+    },
+    {
+      "sha": "f0833199d444f23b90336a3fdeff389e41ff1a42",
+      "ref": "refs/heads/impl/session-017-v2-risk-action-replay",
+      "epoch": 1790341728,
+      "committed_at": "2026-09-25T18:38:48+05:30",
+      "subject": "Close Session 017 risk and replay correctness gaps"
+    },
+    {
+      "sha": "cf4ac5a6d4c71495d5a925aea4d42aa69101c89e",
+      "ref": "refs/heads/impl/session-016-v2-s2-candidateset-selection",
+      "epoch": 1790311545,
+      "committed_at": "2026-09-25T10:15:45+05:30",
+      "subject": "Bind S2 warmup and scanner selection source evidence"
+    },
+    {
+      "sha": "110518b4989f1d672d04e1b3431f3a142734e3ff",
+      "ref": "refs/heads/impl/session-015-v2-phase2a-instrument-identity-fix",
+      "epoch": 1790305622,
+      "committed_at": "2026-09-25T08:37:02+05:30",
+      "subject": "Correct V2 public-bar instrument revision joins"
+    },
+    {
+      "sha": "eed9f0e2581a06ec09eab3c0fec7b4d232cba8f9",
+      "ref": "refs/heads/impl/session-014-v2-core-intelligence-s1",
+      "epoch": 1790285238,
+      "committed_at": "2026-09-25T02:57:18+05:30",
+      "subject": "Implement V2 causal intraday core and S1 shadow policy"
+    },
+    {
+      "sha": "3490eed6ab3911059548eb7fceb21162577bc56e",
+      "ref": "refs/heads/impl/session-013-v2-phase1-worker-isolation-gate",
+      "epoch": 1790281424,
+      "committed_at": "2026-09-25T01:53:44+05:30",
+      "subject": "Enforce Bubblewrap isolation for V2 local model workers"
+    },
+    {
+      "sha": "6d7d966842390cefdc4ec0782f1820d9a68044e8",
+      "ref": "refs/heads/impl/session-012-v2-phase1-data-model-core",
+      "epoch": 1790278220,
+      "committed_at": "2026-09-25T01:00:20+05:30",
+      "subject": "Implement V2 Phase 1B data and model core"
+    },
+    {
+      "sha": "a2d79569b57004dcfb63215e1babd1a9962c62c1",
+      "ref": "refs/heads/impl/session-011-v2-foundation-contracts-memory",
+      "epoch": 1790267243,
+      "committed_at": "2026-09-24T21:57:23+05:30",
+      "subject": "docs: record session 011 contract fix"
+    },
+    {
+      "sha": "729b6413d0dfc63dba888f7bff98ad8daa9edf1f",
+      "ref": "refs/heads/impl/session-010-v2-transition-audit",
+      "epoch": 1790263044,
+      "committed_at": "2026-09-24T20:47:24+05:30",
+      "subject": "docs: record session 010 v1 exit audit"
+    },
+    {
+      "sha": "146bae0a2f10e2f794cbed3441123071c55a2baf",
+      "ref": "refs/heads/impl/session-009-v1-phase0-6-stabilization",
+      "epoch": 1790105605,
+      "committed_at": "2026-09-23T01:03:25+05:30",
+      "subject": "docs: record session 009 v1 acceptance handoff"
+    },
+    {
+      "sha": "9e36f9870bebe82f4f59e5c16efac5f327f03602",
+      "ref": "refs/heads/impl/session-008-phase6-assisted-control-shell",
+      "epoch": 1790104197,
+      "committed_at": "2026-09-23T00:39:57+05:30",
+      "subject": "docs: record final phase 6 control invariant handoff"
+    },
+    {
+      "sha": "248879b60d81877aa5dba295e1d8243637609a7c",
+      "ref": "refs/heads/impl/session-007-phase5-continuous-scanner-alert",
+      "epoch": 1790101569,
+      "committed_at": "2026-09-22T23:56:09+05:30",
+      "subject": "fix: finalize phase 5 scanner runner semantics"
+    },
+    {
+      "sha": "f4f082fa5be50db4f770027a33aec1be1ab34087",
+      "ref": "refs/heads/impl/session-006-phase4-baseline-science-risk",
+      "epoch": 1790096964,
+      "committed_at": "2026-09-22T22:39:24+05:30",
+      "subject": "fix: make bootstrap oof lookup timestamp causal"
+    },
+    {
+      "sha": "055b2f7e790af0f01e80260e5ed5ec2dac685809",
+      "ref": "refs/heads/impl/session-005-phase3-causal-data-foundation",
+      "epoch": 1790064798,
+      "committed_at": "2026-09-22T13:43:18+05:30",
+      "subject": "docs: record schema v6 migration validation"
+    },
+    {
+      "sha": "3ca43f7ff270d617cb1a4dd98863e0a6e7cd3a57",
+      "ref": "refs/heads/impl/session-004-phase2-completion",
+      "epoch": 1790023648,
+      "committed_at": "2026-09-22T02:17:28+05:30",
+      "subject": "docs: record phase 2 integration handoff"
+    },
+    {
+      "sha": "94fb52a393d908a6eede6f4da9ac0fbc428003c5",
+      "ref": "refs/heads/impl/session-003-phase2-offline-qualification",
+      "epoch": 1790023232,
+      "committed_at": "2026-09-22T02:10:32+05:30",
+      "subject": "docs: record truthful phase 2 repair handoff"
+    },
+    {
+      "sha": "64ff1793841905dced0632968540175bbd21484b",
+      "ref": "refs/heads/impl/session-002-safe-runtime",
+      "epoch": 1790017219,
+      "committed_at": "2026-09-22T00:30:19+05:30",
+      "subject": "fix: close phase 1 runtime recovery gates"
+    },
+    {
+      "sha": "bac8b16e767e7a253cc41c4e73f16ac1c6658319",
+      "ref": "refs/heads/impl/session-001-foundation",
+      "epoch": 1790010900,
+      "committed_at": "2026-09-21T22:45:00+05:30",
+      "subject": "fix: session 001 review repairs (dispatch UNKNOWN, versions, transitions, atomicity, placeholders, decimals, composite keys, pragmas, py312)"
+    }
+  ],
+  "freeze_sha256": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+  },
+  "prior_full_freeze_read": "Prior native-trace session in this same conversation; current exact-byte identities reverified",
+  "owner_selected_model": "GPT-6.1 Sol High",
+  "runtime_identity_effort": "UNVERIFIED",
+  "subagents": false,
+  "authority": "ZERO",
+  "request_sha256": "aa41182e74371b1c4de57b8870f54158cec0e948738fb5e7d59959d6b304c223"
+}

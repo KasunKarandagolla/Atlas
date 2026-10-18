@@ -1,0 +1,26 @@
+{
+  "authority": "ZERO",
+  "deadline_not_extended_ns": 5000000000,
+  "future_dependency_refused": "feature input unavailable at cutoff",
+  "grade": "SYNTHETIC_OFFLINE",
+  "native_feature_version": "INTRADAY_CORE_GAP_QUALIFIED_V1",
+  "receipt_unchanged": true,
+  "source_receipt_after_historical_cutoff": true,
+  "values": {
+    "location.prior_day_high": {
+      "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+      "unit": "price",
+      "value": null
+    },
+    "location.prior_day_low": {
+      "missing_reason": "PRIOR_DAY_INCOMPLETE_COVERAGE",
+      "unit": "price",
+      "value": null
+    },
+    "location.utc_day_trade_vwap_partial_to_cutoff": {
+      "missing_reason": null,
+      "unit": "price",
+      "value": "10"
+    }
+  }
+}
