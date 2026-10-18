@@ -10,11 +10,14 @@ import sys
 import zipfile
 from statistics import covariance, stdev
 
+import pytest
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "docs/research/atlas-red-e1b"))
 
 import acquire_archives as archives  # noqa: E402
 import build_research_panel as panel  # noqa: E402
+import summarize_research_outputs as summary  # noqa: E402
 
 
 def csv_zip(symbol: str, interval: str, month: str, rows: list[list[str]]) -> bytes:
@@ -320,3 +323,217 @@ def test_r2_replay_sensitivities_and_feature_processing_are_explicit() -> None:
     assert panel.replay_available_at(close, 30) == close + 30_000_000_000
     assert panel.replay_available_at(close, 60) == close + 60_000_000_000
     assert panel.derived_replay_available_at([close + 5_000_000_000]) == close + 6_000_000_000
+
+
+def _build_active_trigger_gap_case(tmp_path, monkeypatch, side: str, *, scenario: str = "missing_before",
+                                   append_future: bool = False):
+    setup_cutoff = panel.ns(2024, 3, 1) + 12 * panel.HOUR
+    opportunities = [setup_cutoff + i * panel.M15 for i in range(1, 5)]
+    monkeypatch.setattr(panel, "COHORT", ("BTCUSDT",))
+    monkeypatch.setattr(panel, "WINDOWS", (("A", 2024, 3, 1, 2024, 3, 1),))
+    monkeypatch.setattr(panel, "decision_cutoffs", lambda _begin, _final: iter(opportunities))
+    monkeypatch.setattr(panel, "write_manifest", lambda *_args: None)
+    monkeypatch.setattr(panel, "slot_calendar", lambda *_args: None)
+
+    def row(cutoff: int, high: str, low: str, close: str, row_index: int) -> dict[str, object]:
+        return {"open_ns": cutoff - panel.M15, "close_ns": cutoff, "open": close,
+                "high": high, "low": low, "close": close, "volume": "1",
+                "archive_url": "https://data.binance.vision/synthetic-test-row",
+                "archive_sha256": f"{row_index:064x}", "row_index": row_index}
+
+    if scenario == "missing_before" and side == "LONG":
+        observed = [row(opportunities[1], "100", "99", "100", 2),
+                    row(opportunities[2], "102", "99", "101", 3),
+                    row(opportunities[3], "104", "100", "103", 4)]
+    elif scenario == "missing_before":
+        observed = [row(opportunities[1], "101", "100", "100", 2),
+                    row(opportunities[2], "101", "98", "99", 3),
+                    row(opportunities[3], "100", "96", "97", 4)]
+    elif scenario == "known_first_then_gap" and side == "LONG":
+        observed = [row(setup_cutoff, "100", "99", "100", 1),
+                    row(opportunities[0], "101", "99", "101", 2),
+                    row(opportunities[2], "104", "100", "103", 4),
+                    row(opportunities[3], "106", "101", "105", 5)]
+    elif scenario == "known_first_then_gap":
+        observed = [row(setup_cutoff, "101", "100", "100", 1),
+                    row(opportunities[0], "101", "99", "99", 2),
+                    row(opportunities[2], "100", "96", "97", 4),
+                    row(opportunities[3], "99", "94", "95", 5)]
+    elif scenario == "observed_nonmatch_until_match" and side == "LONG":
+        observed = [row(setup_cutoff, "100", "99", "100", 1),
+                    row(opportunities[0], "100", "99", "100", 2),
+                    row(opportunities[1], "100", "99", "100", 3),
+                    row(opportunities[2], "100", "99", "100", 4),
+                    row(opportunities[3], "102", "99", "101", 5)]
+    elif scenario == "observed_nonmatch_until_match":
+        observed = [row(setup_cutoff, "101", "100", "100", 1),
+                    row(opportunities[0], "101", "100", "100", 2),
+                    row(opportunities[1], "101", "100", "100", 3),
+                    row(opportunities[2], "101", "100", "100", 4),
+                    row(opportunities[3], "101", "98", "99", 5)]
+    else:
+        raise ValueError(f"unsupported scenario {scenario}")
+    if append_future:
+        observed.append(row(opportunities[3] + panel.M15, "110", "90", "105", 5))
+    monkeypatch.setattr(panel, "parse_raw", lambda *_args: {"BTCUSDT": {"1h": [], "15m": observed}})
+    monkeypatch.setattr(panel, "aligned_return_series", lambda *_args: {})
+    monkeypatch.setattr(panel, "s6_scores", lambda keys, *_args: (
+        {symbol: {"state": "NOT_RANKABLE", "reason": "TEST_FIXTURE"} for symbol in keys}, 0, "TEST_FIXTURE"))
+
+    def fake_s1_state(symbol, _h1, _h4, cutoff, *_args):
+        is_setup = cutoff == setup_cutoff
+        state = {"state": "SETUP" if is_setup else "NO_SETUP",
+                 "side": side if is_setup else "", "setup_extreme": "100" if is_setup else "",
+                 "s1_ref": "c" * 64 if is_setup else "", "reason": "",
+                 "h1_last_close_ns": None, "h1_last_close": "", "h1_last_return": None,
+                 "h1_ema20": None, "h1_ema50": None, "h4_trend": "UNAVAILABLE"}
+        assert symbol == "BTCUSDT"
+        return state
+
+    monkeypatch.setattr(panel, "s1_cached_state", fake_s1_state)
+    built = panel.build(tmp_path / f"out-{side}", tmp_path / f"scratch-{side}", [])
+    output = panel.HERE / "DIAGNOSTIC_FEATURE_PANEL.csv.gz"
+    output = tmp_path / f"out-{side}" / output.name
+    with gzip.open(output, "rt", encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+    assert len(rows) == 4
+    assert built["panel_sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()
+    return rows, output.read_bytes()
+
+
+@pytest.mark.parametrize("side", ["LONG", "SHORT"])
+def test_r1_producer_censors_later_match_after_missing_active_m15_opportunities(
+    tmp_path, monkeypatch, side: str
+) -> None:
+    rows, _ = _build_active_trigger_gap_case(tmp_path, monkeypatch, side)
+    assert [row["s1_trigger_state"] for row in rows[:2]] == ["SOURCE_MISSING", "SOURCE_MISSING"]
+    assert [row["s1_raw_trigger_predicate"] for row in rows[2:]] == ["1", "1"]
+    assert not any(row["s1_first_trigger_event"] == "1" for row in rows)
+    assert rows[2]["s1_first_trigger_reason"] in {
+        "ACTIVE_TRIGGER_HISTORY_CENSORED", "PREWINDOW_AND_ACTIVE_HISTORY_CENSORED"}
+
+
+def test_r1_producer_missing_gap_does_not_retroactively_censor_known_first(tmp_path, monkeypatch) -> None:
+    rows, _ = _build_active_trigger_gap_case(tmp_path, monkeypatch, "LONG", scenario="known_first_then_gap")
+    assert rows[0]["s1_first_trigger_event"] == "1"
+    assert [row["s1_trigger_state"] for row in rows[1:3]] == ["SOURCE_MISSING", "SOURCE_MISSING"]
+    assert rows[3]["s1_raw_trigger_predicate"] == "1"
+    assert rows[3]["s1_first_trigger_event"] == "0"
+    assert rows[3]["s1_trigger_episode_status"] == "TRIGGER_ALREADY_ESTABLISHED"
+
+
+@pytest.mark.parametrize("side", ["LONG", "SHORT"])
+def test_r1_observed_nonmatches_then_known_first_event(tmp_path, monkeypatch, side: str) -> None:
+    rows, _ = _build_active_trigger_gap_case(
+        tmp_path, monkeypatch, side, scenario="observed_nonmatch_until_match")
+    assert [row["s1_trigger_state"] for row in rows] == ["NO_TRIGGER"] * 3 + ["BAR_TRIGGER"]
+    assert [row["s1_first_trigger_event"] for row in rows] == ["0", "0", "0", "1"]
+
+
+def test_r1_future_rows_do_not_change_first_event_or_identity(tmp_path, monkeypatch) -> None:
+    with monkeypatch.context() as scoped:
+        rows, output = _build_active_trigger_gap_case(tmp_path, scoped, "LONG")
+    with monkeypatch.context() as scoped:
+        future_rows, future_output = _build_active_trigger_gap_case(
+            tmp_path, scoped, "LONG", append_future=True)
+    assert rows == future_rows
+    assert output == future_output
+
+
+def test_r1_censoring_is_scoped_to_setup_identity() -> None:
+    setup_a = {"setup_id": "setup-a", "side": "LONG"}
+    setup_b = {"setup_id": "setup-b", "side": "LONG"}
+    unknown = {"setup-a"}
+    censored = panel.s1_first_trigger(setup_a, 1, set(), 4, unknown)
+    verified = panel.s1_first_trigger(setup_b, 1, set(), 4, unknown)
+    assert censored["first_trigger_event"] == 0
+    assert censored["trigger_episode_status"] == "CENSORED_PREWINDOW"
+    assert verified["first_trigger_event"] == 1
+    assert verified["trigger_episode_status"] == "VERIFIED_FIRST_TRIGGER"
+
+
+def test_r1_setup_and_m15_denominators_reconcile_by_exclusive_outcome() -> None:
+    begin, final, m15 = 1_000, 1_060, 15
+
+    def row(setup_id: str, origin: int, cutoff: int, *, state: str, raw: int = 0,
+            status: str = "OBSERVED_NO_MATCH", pre: str = "NO_PRIOR_MATCH",
+            first: int = 0, event_id: str = "", missing_reason: str = "",
+            active: bool = True) -> dict[str, str]:
+        return {
+            "window": "A", "symbol": "BTCUSDT", "decision_cutoff_utc_ns": str(cutoff),
+            "s1_raw_trigger_predicate": str(raw), "s1_trigger_state": state,
+            "s1_trigger_window_active": "1" if active else "0", "s1_trigger_setup_id": setup_id,
+            "s1_trigger_setup_cutoff_utc_ns": str(origin), "s1_trigger_setup_side": "LONG",
+            "s1_trigger_setup_extreme": "100", "s1_trigger_setup_ref": f"ref-{setup_id}",
+            "s1_trigger_pre_window_history_status": pre, "s1_trigger_episode_status": status,
+            "s1_trigger_source_missing_reason": missing_reason,
+            "s1_first_trigger_event": str(first),
+            "s1_first_trigger_event_id": event_id,
+            "s1_setup_event_id": "", "s1_setup_event_cutoff_utc_ns": "",
+            "s1_setup_event_side": "", "s1_setup_event_extreme": "", "s1_setup_event_ref": "",
+        }
+
+    rows = []
+    # Fully observed nonmatches before one verified first predicate.
+    rows += [row("known-first", 985, cutoff, state="BAR_TRIGGER" if i == 4 else "NO_TRIGGER", raw=int(i == 4),
+                  status="VERIFIED_FIRST_TRIGGER" if i == 4 else "OBSERVED_NO_MATCH",
+                  first=int(i == 4), event_id="event-known-first" if i == 4 else "")
+             for i, cutoff in enumerate((1_000, 1_015, 1_030, 1_045), start=1)]
+    # Two missing active opportunities, then visible positive matches remain censored.
+    rows += [row("active-gap", 985, cutoff, state="SOURCE_MISSING" if i <= 2 else "BAR_TRIGGER",
+                  raw=int(i >= 3), status="CENSORED_ACTIVE", missing_reason="CURRENT_M15_MISSING"
+                  if i == 1 else "PREVIOUS_M15_MISSING_OR_NONCONTIGUOUS" if i == 2 else "")
+             for i, cutoff in enumerate((1_000, 1_015, 1_030, 1_045), start=1)]
+    # Missing pre-window history is an independent censor reason.
+    rows += [row("prior-gap", 970, cutoff, state="BAR_TRIGGER" if i <= 3 else "NOT_IN_TRIGGER_WINDOW",
+                  raw=int(i <= 3), active=i <= 3,
+                  status="CENSORED_PREWINDOW", pre="PRIOR_TRIGGER_HISTORY_MISSING")
+             for i, cutoff in enumerate((1_000, 1_015, 1_030, 1_045), start=1)]
+    # A trigger verified before the window stays established across a missing row.
+    rows += [row("prior-trigger", 970, cutoff,
+                  state="SOURCE_MISSING" if i == 1 else "NOT_IN_TRIGGER_WINDOW" if i == 4 else "NO_TRIGGER",
+                  active=i <= 3, status="TRIGGERED_BEFORE_WINDOW", pre="TRIGGERED_BEFORE_WINDOW",
+                  missing_reason="CURRENT_M15_MISSING" if i == 1 else "")
+             for i, cutoff in enumerate((1_000, 1_015, 1_030, 1_045), start=1)]
+    # Four fully observed nonmatches are a complete no-match setup.
+    rows += [row("no-match", 985, cutoff, state="NO_TRIGGER")
+             for cutoff in (1_000, 1_015, 1_030, 1_045)]
+    # A setup near the window end has opportunities outside the available window.
+    rows.append(row("window-end", 1_045, 1_045, state="NOT_IN_TRIGGER_WINDOW", status="NO_MATCH", active=False))
+
+    result = summary.reconcile_s1_trigger_rows(rows, {"A": (begin, final)}, m15)["A:BTCUSDT"]
+    assert result["m15_row_counts"]["raw_positive_predicates"] == 6
+    assert result["m15_row_counts"]["observed_positive_predicates_after_censorship"] == 5
+    assert result["m15_row_counts"]["source_missing_trigger_rows_by_reason"] == {
+        "CURRENT_M15_MISSING": 2, "PREVIOUS_M15_MISSING_OR_NONCONTIGUOUS": 1}
+    assert result["setup_counts"] == {
+        "unique_setup_identities": 6,
+        "verified_first_trigger_events": 1,
+        "censored_by_missing_pre_window_history": 1,
+        "censored_by_missing_active_window_observation": 1,
+        "censored_by_either_missing_history": 2,
+        "complete_observation_no_match": 1,
+        "previously_established_trigger": 1,
+        "exclusive_outcome_partition": {
+            "censored": 2, "complete_observed_no_match": 1, "incomplete_or_unresolved": 1,
+            "triggered_before_window": 1, "verified_first_in_window": 1,
+        },
+        "exclusive_outcome_partition_total": 6,
+        "exclusive_outcome_partition_reconciles": True,
+    }
+
+    duplicate_first_rows = [dict(item) for item in rows]
+    repeated_first = dict(next(item for item in rows if item["s1_first_trigger_event"] == "1"))
+    repeated_first["decision_cutoff_utc_ns"] = "1050"
+    duplicate_first_rows.append(repeated_first)
+    with pytest.raises(ValueError, match="MULTIPLE_VERIFIED_FIRST_EVENTS_PER_SETUP"):
+        summary.reconcile_s1_trigger_rows(duplicate_first_rows, {"A": (begin, final)}, m15)
+
+    censored_first_rows = [dict(item) for item in rows]
+    false_first = next(item for item in censored_first_rows if item["s1_trigger_setup_id"] == "active-gap"
+                       and item["s1_raw_trigger_predicate"] == "1")
+    false_first["s1_first_trigger_event"] = "1"
+    false_first["s1_first_trigger_event_id"] = "censored-false-first"
+    false_first["s1_trigger_episode_status"] = "VERIFIED_FIRST_TRIGGER"
+    with pytest.raises(ValueError, match="CENSORED_SETUP_HAS_VERIFIED_FIRST_EVENT"):
+        summary.reconcile_s1_trigger_rows(censored_first_rows, {"A": (begin, final)}, m15)

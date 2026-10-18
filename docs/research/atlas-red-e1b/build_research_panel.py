@@ -153,16 +153,47 @@ def s1_trigger_predicate(side: str, current_close: object, previous_high: object
 
 
 def s1_first_trigger(setup: dict[str, object], raw_predicate: int, seen_setup_ids: set[str],
-                     trigger_cutoff_ns: int, unknown_prior_setup_ids: set[str] | None = None) -> dict[str, object]:
+                     trigger_cutoff_ns: int, unknown_prior_setup_ids: set[str] | None = None,
+                     unknown_active_setup_ids: set[str] | None = None,
+                     established_before_window_setup_ids: set[str] | None = None) -> dict[str, object]:
     setup_id = str(setup.get("setup_id", ""))
     prior_unknown = bool(unknown_prior_setup_ids and setup_id in unknown_prior_setup_ids)
-    first = bool(raw_predicate and setup_id and setup_id not in seen_setup_ids and not prior_unknown)
+    active_unknown = bool(unknown_active_setup_ids and setup_id in unknown_active_setup_ids)
+    first = bool(raw_predicate and setup_id and setup_id not in seen_setup_ids
+                 and not prior_unknown and not active_unknown)
     event_id = hashlib.sha256(f"{setup_id}:{trigger_cutoff_ns}".encode()).hexdigest() if first else ""
+    if first:
+        reason = "FIRST_MATCH_FOR_SETUP"
+    elif setup_id and setup_id in seen_setup_ids:
+        reason = "REPEATED_MATCH_FOR_ALREADY_TRIGGERED_SETUP" if raw_predicate else "FIRST_ALREADY_ESTABLISHED"
+    elif prior_unknown and active_unknown:
+        reason = "PREWINDOW_AND_ACTIVE_HISTORY_CENSORED"
+    elif prior_unknown:
+        reason = "PRIOR_TRIGGER_HISTORY_MISSING"
+    elif active_unknown:
+        reason = "ACTIVE_TRIGGER_HISTORY_CENSORED"
+    else:
+        reason = "NO_MATCH" if not raw_predicate else "NO_SETUP_ID_FOR_MATCH"
+    if not setup_id:
+        episode_status = "NO_SETUP"
+    elif setup_id in seen_setup_ids:
+        episode_status = "TRIGGERED_BEFORE_WINDOW" if (
+            established_before_window_setup_ids and setup_id in established_before_window_setup_ids
+        ) else "TRIGGER_ALREADY_ESTABLISHED"
+    elif prior_unknown and active_unknown:
+        episode_status = "CENSORED_PREWINDOW_AND_ACTIVE"
+    elif prior_unknown:
+        episode_status = "CENSORED_PREWINDOW"
+    elif active_unknown:
+        episode_status = "CENSORED_ACTIVE"
+    elif first:
+        episode_status = "VERIFIED_FIRST_TRIGGER"
+    else:
+        episode_status = "OBSERVED_NO_MATCH"
     return {"raw_trigger_predicate": int(bool(raw_predicate)), "first_trigger_event": int(first),
             "first_trigger_event_id": event_id,
-            "first_trigger_reason": "FIRST_MATCH_FOR_SETUP" if first else
-                "PRIOR_TRIGGER_HISTORY_MISSING" if prior_unknown else
-                "REPEATED_MATCH_FOR_ALREADY_TRIGGERED_SETUP" if raw_predicate else "NO_MATCH"}
+            "first_trigger_reason": reason, "trigger_episode_status": episode_status,
+            "censored_pre_window": int(prior_unknown), "censored_active_window": int(active_unknown)}
 
 
 def s1_prior_trigger_history(setup: dict[str, object], window_begin_ns: int,
@@ -606,6 +637,8 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
               "s1_setup_event_ref", "s1_setup_event_extreme", "s1_trigger_state", "s1_reason", "s1_side", "s1_setup_ref",
               "s1_trigger_setup_id", "s1_trigger_setup_cutoff_utc_ns", "s1_trigger_setup_side",
               "s1_trigger_setup_ref", "s1_trigger_setup_extreme", "s1_trigger_m15_cutoff_utc_ns",
+              "s1_trigger_window_active", "s1_trigger_episode_status", "s1_trigger_source_missing_reason",
+              "s1_trigger_pre_window_history_status",
               "s1_raw_trigger_predicate", "s1_first_trigger_event", "s1_first_trigger_event_id",
               "s1_first_trigger_reason", "s6_state", "s6_score", "s6_rank",
               "s6_decile", "s6_beta_btc", "s6_residual_volatility", "s6_own_4h_trend", "s6_rankable_breadth",
@@ -633,6 +666,9 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
             current_setup_event_flags: dict[str, int] = {}
             seen_first_trigger_setup_ids: dict[str, set[str]] = defaultdict(set)
             unknown_prior_trigger_setup_ids: dict[str, set[str]] = defaultdict(set)
+            unknown_active_trigger_setup_ids: dict[str, set[str]] = defaultdict(set)
+            established_before_window_setup_ids: dict[str, set[str]] = defaultdict(set)
+            prior_trigger_history_status: dict[str, dict[str, str]] = defaultdict(dict)
             current_s6: tuple[dict[str, dict[str, object]], int, str] = ({}, 0, "")
             for cutoff in decision_cutoffs(begin, final):
                 hcut = cutoff - cutoff % HOUR
@@ -663,10 +699,16 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                                        if origin.get("setup_id")}
                             for setup_id, origin in origins.items():
                                 prior_status = s1_prior_trigger_history(origin, begin, bar_maps[symbol]["15m"])
+                                prior_trigger_history_status[symbol][setup_id] = prior_status
                                 if prior_status == "TRIGGERED_BEFORE_WINDOW":
                                     seen_first_trigger_setup_ids[symbol].add(setup_id)
+                                    established_before_window_setup_ids[symbol].add(setup_id)
                                 elif prior_status == "PRIOR_TRIGGER_HISTORY_MISSING":
                                     unknown_prior_trigger_setup_ids[symbol].add(setup_id)
+                    for symbol in COHORT:
+                        setup_id = str(current_setup_origins[symbol].get("setup_id", ""))
+                        if setup_id and setup_id not in prior_trigger_history_status[symbol]:
+                            prior_trigger_history_status[symbol][setup_id] = "NO_PRIOR_MATCH"
                     current_s6 = s6_scores(COHORT, bars_h4, aligned, hcut)
                     cached_hcut = hcut
                 s6state, breadth, breadth_note = current_s6
@@ -690,10 +732,18 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                         current_close=m15.close if m15 else "0", previous_high=prev_m15.high if prev_m15 else None,
                         current_low=m15.low if m15 else "0", previous_low=prev_m15.low if prev_m15 else None)
                     trigger = int(trigger_obs["raw_trigger_predicate"])
-                    first_trigger = s1_first_trigger(trigger_setup, trigger, seen_first_trigger_setup_ids[symbol], cutoff,
-                                                     unknown_prior_trigger_setup_ids[symbol])
+                    trigger_setup_id = str(trigger_setup.get("setup_id", ""))
+                    if (s1_active and trigger_obs["state"] == "SOURCE_MISSING" and trigger_setup_id
+                            and trigger_setup_id not in seen_first_trigger_setup_ids[symbol]):
+                        unknown_active_trigger_setup_ids[symbol].add(trigger_setup_id)
+                    first_trigger = s1_first_trigger(
+                        trigger_setup, trigger, seen_first_trigger_setup_ids[symbol], cutoff,
+                        unknown_prior_trigger_setup_ids[symbol], unknown_active_trigger_setup_ids[symbol],
+                        established_before_window_setup_ids[symbol])
                     if first_trigger["first_trigger_event"]:
-                        seen_first_trigger_setup_ids[symbol].add(str(trigger_setup["setup_id"]))
+                        seen_first_trigger_setup_ids[symbol].add(trigger_setup_id)
+                    trigger_history_status = prior_trigger_history_status[symbol].get(
+                        trigger_setup_id, "NO_PRIOR_MATCH" if trigger_setup_id else "NO_SETUP")
                     slot_ok = bool(m15)
                     score = s6state.get(symbol, {})
                     latest_h1_ns = s1.get("h1_last_close_ns")
@@ -746,10 +796,14 @@ def build(outdir: pathlib.Path, scratch: pathlib.Path, manifests: list[dict[str,
                            "s1_trigger_setup_side": trigger_setup["side"], "s1_trigger_setup_ref": trigger_setup["setup_ref"],
                            "s1_trigger_setup_extreme": trigger_setup["setup_extreme"],
                            "s1_trigger_m15_cutoff_utc_ns": cutoff,
+                           "s1_trigger_window_active": int(s1_active),
+                           "s1_trigger_episode_status": first_trigger["trigger_episode_status"],
+                           "s1_trigger_source_missing_reason": trigger_obs["reason"],
+                           "s1_trigger_pre_window_history_status": trigger_history_status,
                            "s1_raw_trigger_predicate": trigger,
                            "s1_first_trigger_event": first_trigger["first_trigger_event"],
                            "s1_first_trigger_event_id": first_trigger["first_trigger_event_id"],
-                           "s1_first_trigger_reason": (trigger_obs["reason"] or first_trigger["first_trigger_reason"]),
+                           "s1_first_trigger_reason": first_trigger["first_trigger_reason"],
                            "s1_diagnostic_grade": "S1_BAR_PRECURSOR_DIAGNOSTIC" if s1["state"] in ("SETUP", "NO_SETUP") else s1["state"],
                            "s6_state": score.get("state", "NOT_RANKABLE"), "s6_score": score.get("score", ""),
                            "s6_rank": score.get("rank", ""), "s6_decile": score.get("decile", ""),

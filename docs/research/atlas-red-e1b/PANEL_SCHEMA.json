@@ -1,5 +1,5 @@
 {
-  "schema_version": "ATLAS_RED_E1B_DIAGNOSTIC_FEATURE_PANEL_V2_R1_R2",
+  "schema_version": "ATLAS_RED_E1B_DIAGNOSTIC_FEATURE_PANEL_V3_R1_R2_FIRST_TRIGGER_CENSORING",
   "file": "DIAGNOSTIC_FEATURE_PANEL.csv.gz",
   "row_grain": "one frozen-cohort symbol x native 15m decision cutoff in windows A and B",
   "row_count": "written in DATASET_MANIFEST.json after build",
@@ -56,10 +56,14 @@
     "s1_trigger_setup_ref": "causal prefix digest of the originating setup",
     "s1_trigger_setup_extreme": "originating three-bar H1 setup extreme, USDT per native contract unit",
     "s1_trigger_m15_cutoff_utc_ns": "M15 trigger observation cutoff, UTC epoch nanoseconds",
-    "s1_raw_trigger_predicate": "1 for every matching close-vs-prior-high/low bar predicate while setup is active; not independent events",
-    "s1_first_trigger_event": "1 only for the earliest raw matching predicate per unique setup ID; later matches remain separately visible",
+    "s1_trigger_window_active": "1 when this decision cutoff is one of the setup's four subsequent native M15 opportunities; otherwise 0",
+    "s1_trigger_episode_status": "OBSERVED_NO_MATCH, VERIFIED_FIRST_TRIGGER, TRIGGERED_BEFORE_WINDOW, TRIGGER_ALREADY_ESTABLISHED, CENSORED_PREWINDOW, CENSORED_ACTIVE, CENSORED_PREWINDOW_AND_ACTIVE, or NO_SETUP; unknown prior opportunities censor only their own setup ID",
+    "s1_trigger_pre_window_history_status": "TRIGGERED_BEFORE_WINDOW, PRIOR_TRIGGER_HISTORY_MISSING, NO_PRIOR_MATCH, or NO_SETUP; prior opportunities are evaluated only from verified archive bars",
+    "s1_trigger_source_missing_reason": "CURRENT_M15_MISSING or PREVIOUS_M15_MISSING_OR_NONCONTIGUOUS; populated when s1_trigger_state is SOURCE_MISSING",
+    "s1_raw_trigger_predicate": "1 for every observed matching close-vs-prior-high/low bar predicate while setup is active; 0 on SOURCE_MISSING is a schema placeholder, not an observed nonmatch; raw positives after censoring remain visible",
+    "s1_first_trigger_event": "1 only when the earliest raw match is verified after every earlier relevant opportunity is observed and nonmatching; later or censored positives remain visible but are not first events",
     "s1_first_trigger_event_id": "deterministic SHA-256 of originating setup ID and first matching M15 cutoff",
-    "s1_first_trigger_reason": "FIRST_MATCH_FOR_SETUP, REPEATED_MATCH_FOR_ALREADY_TRIGGERED_SETUP, PRIOR_TRIGGER_HISTORY_MISSING, NO_MATCH, CURRENT_M15_MISSING, or PREVIOUS_M15_MISSING_OR_NONCONTIGUOUS",
+    "s1_first_trigger_reason": "FIRST_MATCH_FOR_SETUP, REPEATED_MATCH_FOR_ALREADY_TRIGGERED_SETUP, FIRST_ALREADY_ESTABLISHED, PRIOR_TRIGGER_HISTORY_MISSING, ACTIVE_TRIGGER_HISTORY_CENSORED, PREWINDOW_AND_ACTIVE_HISTORY_CENSORED, NO_MATCH, or NO_SETUP_ID_FOR_MATCH",
     "s1_diagnostic_grade": "S1_BAR_PRECURSOR_DIAGNOSTIC when pure existing setup/regime methods ran",
     "s1_policy_id": "existing S1 policy identity",
     "s1_policy_version": "existing S1 policy version",
@@ -83,6 +87,7 @@
     "h1_source_status": "OBSERVED or SOURCE_MISSING for the latest completed H1 source slot used by the current decision cutoff",
     "h1_source_missing_reason": "empty when observed; OFFICIAL_ARCHIVE_404, NATIVE_SLOT_GAP, or ARCHIVE_STATUS_UNAVAILABLE when missing"
   },
-  "missingness": "ASOF_COVERAGE.csv.gz holds every native H1 and M15 slot expected on the same close/decision calendar, including both native slot-open and decision-cutoff keys. M15 missing counts reconcile exactly to the panel; H1 slots are one per hour and H1 as-of states repeat across M15 panel rows. Active S1 trigger opportunities with missing/noncontiguous current or prior M15 input are SOURCE_MISSING, never NO_TRIGGER.",
+  "trigger_reconciliation": "DATASET_MANIFEST.json reports M15-row counts separately from setup-level counts per window and symbol. Each unique setup is assigned exactly one exclusive outcome: triggered before window, verified first trigger in window, censored, complete observed no-match, or incomplete/unresolved. The partition total must equal unique setup identities. Censor subcause counts may overlap; raw positives after censoring are counted as observed M15 rows.",
+  "missingness": "ASOF_COVERAGE.csv.gz holds every native H1 and M15 slot expected on the same close/decision calendar, including both native slot-open and decision-cutoff keys. M15 missing counts reconcile exactly to the panel; H1 slots are one per hour and H1 as-of states repeat across M15 panel rows. Active S1 trigger opportunities with missing/noncontiguous current or prior M15 input are SOURCE_MISSING, never NO_TRIGGER. The numeric raw-predicate value 0 on a missing row preserves the existing schema and must not be read as an observed nonmatch; use state and reason fields to distinguish censoring.",
   "boundary_convention": "Decision cutoffs are UTC close boundaries in [begin, final), including 00:00. Each M15 source slot opens decision_cutoff_utc_ns minus 15 minutes; the first decision uses the preceding month seed; no bar closing at or after final is included."
 }
