@@ -1,0 +1,476 @@
+{
+  "acceptance_sync_sha": "3166f917102e319333b6a9b77188ec69bf4dcb12",
+  "authority": "OBSERVE; bot allocation0; paid allowance0; capitalNO-GO; no production/strategy/policy promotion, P2, orders, deployment, new weights, auto-merge or dependent session",
+  "before_outcome_remote_verification": {
+    "all_committed_file_hashes_verified_before_test_outcome_stage": true,
+    "decision_seal_commit": "94dfe762cc11c58b394fcfa057f85a943606a049",
+    "parent": "9fa877b5e137d1e32be447336ed54a5f1d20d301",
+    "protocol_sha256": "d41d00ea63561d67604b912808e5417dcced4f39606c75ac9318dbd0379ebcdd",
+    "test_outcome_stage_started": false,
+    "verified_actual_at": "2026-10-18T10:40:22.474759+00:00"
+  },
+  "development_runs_and_failures": [
+    "First focused36 passed6.49s. Expanded one misplaced test assertion caused NameError:43 passed/1 failed6.32s; moved assertion to its proper preservation test before any test outcomes.",
+    "Synthetic full-pipeline fixture initially omitted pinned PROTOCOL.json in its temporary checkout:44 passed/1 failed6.84s; copied exact protocol bytes, without weakening production guard.",
+    "Then48 passed7.55s,50 passed7.38s, repeat50 passed7.38s, final transport51 passed7.17s. Individual invocations/logs retained; not summed.",
+    "Ruff initially found style/import-order issues; automatic sorting exposed a fresh-CLI acquire_archives path import failure during offline source repeat. Explicit import ordering restored and three fresh-process CLI help tests added before the seal. Offline source repeat then passed0requests.",
+    "Training was repeated after a source-provenance metadata correction: development source identities no longer include unrelated test-archive bindings. No parameter/target/feature threshold changed; all final model/development bytes repeat exactly. Prior validation targets only were read.",
+    "Single14,788,948-byte calendar GitHub blob upload did not return the expected blob SHA and failed before a commit/ref update. Exact bytes split into five <=3,000,000-byte parts with original combined hash; assembly/mismatch test added and preoutcome seal updated before publication. No scientific output changed."
+  ],
+  "environment": {
+    "lock_limit": "NumPy2.5.3 locked, provided2.3.5 observed; full locked/native runtime UNVERIFIED; compatibility check covers17 installed venv packages only",
+    "missing": [
+      "lightgbm==4.7.0",
+      "nautilus_trader",
+      "torch",
+      "transformers"
+    ],
+    "no_dependency_install_or_lock_change": true,
+    "numpy": "2.3.5 provided runtime",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "pytest": "9.1.1",
+    "python": "3.12.14",
+    "ruff": "0.17.0",
+    "venv": "/workspace/.venvs/atlas"
+  },
+  "executed_commands": {
+    "final_new_tests": "PYTHONPATH=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages /workspace/.venvs/atlas/bin/python -m pytest tests/research/test_atlas_historical_blind_ml.py -ra",
+    "impacted_preseal": "PYTHONPATH=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages ATLAS_SOL_CSV_CACHE=/workspace/work/atlas-e1b-trigger-censor-qualified-scratch /workspace/.venvs/atlas/bin/python -m pytest tests/research/test_atlas_historical_blind_ml.py tests/research/test_atlas_red_e1b_panel.py tests/research/test_atlas_red_e1b_corrections.py tests/research/test_atlas_red_e1b_study.py tests/p1/test_mean_models.py tests/p1/test_mean_risk_cash.py tests/p1/test_mean_evaluation.py tests/p1/test_mean_research_management.py tests/p1/test_mean_selection.py tests/p1/test_evidence_integrity.py tests/v2/test_session014_s1.py tests/v2/test_session021_s6.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_s6_action_contract.py tests/data/test_prefix_and_archive.py tests/contract/test_v1_golden_baseline.py -ra",
+    "new_acquisition": "python3 docs/research/atlas-red-historical-blind-ml/acquire_sources.py --cache /workspace/work/blind-ml-new-source-cache",
+    "new_acquisition_repeat": "python3 docs/research/atlas-red-historical-blind-ml/acquire_sources.py --cache /workspace/work/blind-ml-new-source-cache --offline",
+    "old_cache_recheck": "python3 docs/research/atlas-red-e1b/corrected_research.py prepare --zip-cache /workspace/work/e1b-sol-official-zips --csv-cache /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --scratch /workspace/work/blind-ml-inputs",
+    "parent_environment_failures": "PYTHONPATH=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages /workspace/.venvs/atlas/bin/python -m pytest tests/p1/test_mean_models.py::test_actual_lightgbm_l2_fit_compact_inference_and_serialization tests/p1/test_mean_models.py::test_m1_nonlinear_prediction_matches_native_booster tests/contract/test_v1_golden_baseline.py -ra (cwd clean source918d worktree)",
+    "stage_resource_entrypoints": "Exact script/arguments in resources; measured wrapper inserts script directory into sys.path and runpy.run_path with unchanged sys.argv. Redirection writes named work logs; scientific entrypoints/arguments are reproducible without wrapper."
+  },
+  "external_verdict": "PASS \u2014 scoped finite-prefix E1B research correction and nonexecuted S1\u00d7S6 historical study; exact 918d233b only; Codex records, does not self-accept or expand reviewer procedures",
+  "final_check_results": [
+    {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/ruff",
+        "check",
+        "src",
+        "tests/research",
+        "docs/research/atlas-red-historical-blind-ml"
+      ],
+      "cwd": "/workspace/work/atlas-historical-blind-ml",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "All checks passed!\n"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "compileall",
+        "-q",
+        "src",
+        "tests/research",
+        "docs/research/atlas-red-historical-blind-ml"
+      ],
+      "cwd": "/workspace/work/atlas-historical-blind-ml",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "lock",
+        "--check",
+        "--offline"
+      ],
+      "cwd": "/workspace/work/atlas-historical-blind-ml",
+      "exit_code": 0,
+      "stderr": "Using CPython 3.12.14 interpreter at: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\nResolved 39 packages in 1ms\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "pip",
+        "check",
+        "--python",
+        "/workspace/.venvs/atlas/bin/python"
+      ],
+      "cwd": "/workspace/work/atlas-historical-blind-ml",
+      "exit_code": 0,
+      "stderr": "Using Python 3.12.14 environment at: /workspace/.venvs/atlas\nChecked 17 packages in 0.43ms\nAll installed packages are compatible\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "sha256sum",
+        "-c",
+        "MANIFEST.sha256"
+      ],
+      "cwd": "/workspace/work/atlas-historical-blind-ml/algorithms",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "ACCEPTANCE_REGISTER.csv: OK\nATLAS_ALGORITHM.pdf: OK\nATLAS_OPERATIONAL_RECONCILIATION_AMENDMENT_PROPOSED.md: OK\nATLAS_SYSTEM_DESIGN.md: OK\nAUTHORITY_RECONCILIATION.md: OK\nCAPABILITY_REUSE_AUDIT.csv: OK\nCODEX_SESSION_PROMPTS.md: OK\nDESIGN_DECISIONS.md: OK\nDOCUMENTATION_VALIDATION.json: OK\nIMPLEMENTATION_PLAN.md: OK\nOWNER_SUMMARY.md: OK\nREADME.md: OK\nREPOSITORY_AUDIT.md: OK\nREQUIREMENTS_AND_ACCEPTANCE.md: OK\nSHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md: OK\nSOURCE_AUTHORITY_MANIFEST.json: OK\nSURGICAL_CHANGE_MAP.md: OK\nrender_algorithm_pdf.py: OK\n"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/workspace/work/atlas-historical-blind-ml",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--exit-code",
+        "918d233b2501319bc031d679b3d9f5647ae13156",
+        "--",
+        "src",
+        "pyproject.toml",
+        "uv.lock",
+        "requirements-lock.txt",
+        "algorithms/ATLAS_SYSTEM_DESIGN.md",
+        "algorithms/ATLAS_ALGORITHM.pdf"
+      ],
+      "cwd": "/workspace/work/atlas-historical-blind-ml",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--exit-code",
+        "94dfe762cc11c58b394fcfa057f85a943606a049",
+        "--",
+        "docs/research/atlas-red-historical-blind-ml/*.py",
+        "tests/research/test_atlas_historical_blind_ml.py"
+      ],
+      "cwd": "/workspace/work/atlas-historical-blind-ml",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "measurement_method": "Python monotonic/getrusage wrappers, maxRSSKiB process high-water. /usr/bin/time absent; not a minimum-host/production/historical-latency qualification.",
+  "model_owner_selection": "GPT-6.1 Sol / High",
+  "network_scope": "198 new public ZIPs plus198 sibling checksums and12 checksum404s;408 acquisition requests /15,560,082 response-body bytes; Gate A separately1 request/89bytes; HTTP/TLS headers not counted. Repeat0 requests. No private exchange/account reads, paid APIs or provider generation.",
+  "observed_price_oracle": {
+    "cases": 270,
+    "checked_csv_objects": 90,
+    "fields_per_case": 3,
+    "maximum_absolute_error_bps": 2.2737367544323206e-13,
+    "method": "Fixed first/middle/last source-backed raw CSV cases per symbol/horizon; 50-digit Decimal return/MFE/MAE; full native path hashes/clocks",
+    "mismatches": 0,
+    "tolerance_bps": 1e-08
+  },
+  "old_source_reuse": {
+    "archive_downloads": 0,
+    "archive_payload_bytes": 55549936,
+    "checksum_proof_sha256": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+    "historical_rejected_bytes": "UNKNOWN",
+    "network_requests": 0,
+    "retained_historical_404_objects": 13,
+    "retained_parser_rejected_attempts": 420,
+    "source_manifest_sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+    "verified_cached_zip_checksum_csv_objects": 757
+  },
+  "outcome_repeat_byte_identities": {
+    "OUTCOMES.csv.gz": "3c7a54cd70c399e38a86013b60392293d68a88ce3023e6764ad2b16ce49086fc",
+    "RESULTS.json": "29a0e4d61b27e319540ec933ed178a6a66d006136d46281003f01c8281ecaab8"
+  },
+  "preoutcome_decision_sha": "94dfe762cc11c58b394fcfa057f85a943606a049",
+  "preoutcome_repeat_and_calendar": {
+    "market_acquisition_offline_repeat": {
+      "failed_validation_or_fetch": [],
+      "genuine_historical_actual_receipt": "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION",
+      "market_source_manifest_sha256": "cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b",
+      "network_requests": 0,
+      "network_response_bytes": 0,
+      "offline": true,
+      "requested_zip_objects": 210,
+      "status_counts": {
+        "MISSING_OBJECT_404": 12,
+        "VERIFIED": 198
+      },
+      "verified_archive_bytes": 15538049,
+      "verified_csv_rows": 364320
+    },
+    "model_and_decision_numeric_artifacts_ignore_actual_transport_processing_times": true,
+    "repeat_byte_identities": {
+      "CALENDAR.csv.gz": "3db6184fa97ed7fc53b6e3ff87e6918096384367a32930ccb0221c3021df4648",
+      "DECISIONS.csv.gz": "29638920e0b61c82ba136b52bae5668e7c327cf25b09b2f4ffad3c3492c30d7b",
+      "DECISION_SUMMARY.json": "5346d9c0e4722604991fb4303fe0698e69e1e9993dc79b37d12f60bbde107b6f",
+      "DEVELOPMENT_ROWS.csv.gz": "4f91a724e0d4d65f7acd5c421d3c8ee7c7ef1ef269e492b0d8ceaa8c2a27224f",
+      "PRICE_MODELS.json": "129dcb44ce9ff84d01ba23c723e224f1a5d5e78967894de23baf1e529daedc8d"
+    },
+    "test_outcomes_computed": false,
+    "whole_calendar_reconciliation": {
+      "counts": {
+        "S1:NO_SETUP": 234444,
+        "S1:SETUP": 57012,
+        "S1:SOURCE_MISSING": 17664,
+        "S6:BTC_REFERENCE_ANCHOR": 8832,
+        "S6:NOT_RANKABLE": 26496,
+        "S6:S6_FIXED_COHORT_RANK_DIAGNOSTIC": 273792,
+        "current_m15:OBSERVED": 291456,
+        "current_m15:SOURCE_MISSING": 17664
+      },
+      "join_mismatches": 0,
+      "native_symbol_slots": 309120,
+      "unique_first_events": 6173
+    }
+  },
+  "protocol_sha": "9fa877b5e137d1e32be447336ed54a5f1d20d301",
+  "recorded_local": "2026-10-18T16:23:56.939283+05:30",
+  "remaining": {
+    "M1_Nautilus_real_forecasters": "BLOCKED BY ENVIRONMENT; actual missing-library test failures retained",
+    "action_cash_M0_M1": "NOT ESTIMABLE: price diagnostic target is not an eligible exact-action cash row",
+    "frozen_policy_execution": "NOT ESTIMABLE / blocked: reconstructedT+6 readiness exceedsT+5 and required action inputs missing",
+    "full_programme_economics": "NOT ESTIMABLE: no complete S1\u2013S8 action/management/execution/portfolio/Agent B evidence",
+    "historical_receipt_health_liveEMA_universe_eligibility_funding_quotes_agent": "UNVERIFIED / missing; no substitute facts invented",
+    "identity_effort_complete_lock_venue_host": "UNVERIFIED",
+    "new_independent_acceptance": "TEST GATE: exact final candidate review pending",
+    "original_N_accepted_censors": "NOT ESTIMABLE where accepted outcomes censored; common complete comparisons explicitly retained",
+    "statistical_qualification": "TEST GATE:14weekly/7two-week blocks, human exposure unknown,4context accepts in1week, no untouched prospective qualification"
+  },
+  "resources": {
+    "decisions": {
+      "arguments": [
+        "--old-cache",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache",
+        "--outdir",
+        "docs/research/atlas-red-historical-blind-ml",
+        "--ops-path",
+        "/workspace/work/blind-ml-origin-ops.sqlite"
+      ],
+      "entrypoint": "/workspace/work/atlas-historical-blind-ml/docs/research/atlas-red-historical-blind-ml/decisions.py",
+      "exit_code": 0,
+      "max_rss_kib": 695524,
+      "user_seconds": 31.693701,
+      "wall_seconds": 34.11470848900353
+    },
+    "decisions-repeat": {
+      "arguments": [
+        "--old-cache",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache",
+        "--outdir",
+        "/workspace/work/blind-ml-decision-repeat",
+        "--ops-path",
+        "/workspace/work/blind-ml-repeat-origin-ops.sqlite"
+      ],
+      "entrypoint": "/workspace/work/atlas-historical-blind-ml/docs/research/atlas-red-historical-blind-ml/decisions.py",
+      "exit_code": 0,
+      "max_rss_kib": 695520,
+      "user_seconds": 31.245043,
+      "wall_seconds": 33.405111400999886
+    },
+    "outcomes": {
+      "arguments": [
+        "--decision-commit",
+        "94dfe762cc11c58b394fcfa057f85a943606a049",
+        "--old-cache",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache",
+        "--outdir",
+        "docs/research/atlas-red-historical-blind-ml"
+      ],
+      "entrypoint": "/workspace/work/atlas-historical-blind-ml/docs/research/atlas-red-historical-blind-ml/evaluate_outcomes.py",
+      "exit_code": 0,
+      "max_rss_kib": 144656,
+      "user_seconds": 11.153351,
+      "wall_seconds": 11.350984112003061
+    },
+    "outcomes-repeat": {
+      "arguments": [
+        "--decision-commit",
+        "94dfe762cc11c58b394fcfa057f85a943606a049",
+        "--old-cache",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache",
+        "--outdir",
+        "/workspace/work/blind-ml-outcome-repeat"
+      ],
+      "entrypoint": "/workspace/work/atlas-historical-blind-ml/docs/research/atlas-red-historical-blind-ml/evaluate_outcomes.py",
+      "exit_code": 0,
+      "max_rss_kib": 144700,
+      "user_seconds": 10.902398999999999,
+      "wall_seconds": 11.099764691003656
+    },
+    "training-final": {
+      "arguments": [
+        "--old-cache",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache"
+      ],
+      "entrypoint": "/workspace/work/atlas-historical-blind-ml/docs/research/atlas-red-historical-blind-ml/diagnostic_models.py",
+      "exit_code": 0,
+      "max_rss_kib": 672552,
+      "user_seconds": 36.363934,
+      "wall_seconds": 36.792769642001076
+    },
+    "training-repeat": {
+      "arguments": [
+        "--old-cache",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache"
+      ],
+      "entrypoint": "/workspace/work/atlas-historical-blind-ml/docs/research/atlas-red-historical-blind-ml/diagnostic_models.py",
+      "exit_code": 0,
+      "max_rss_kib": 672552,
+      "user_seconds": 36.110564,
+      "wall_seconds": 36.7812582369952
+    },
+    "training-sealed": {
+      "arguments": [
+        "--old-cache",
+        "/workspace/work/atlas-e1b-trigger-censor-qualified-scratch",
+        "--new-cache",
+        "/workspace/work/blind-ml-new-source-cache"
+      ],
+      "entrypoint": "/workspace/work/atlas-historical-blind-ml/docs/research/atlas-red-historical-blind-ml/diagnostic_models.py",
+      "exit_code": 0,
+      "max_rss_kib": 672552,
+      "user_seconds": 37.824542,
+      "wall_seconds": 38.81469268300134
+    }
+  },
+  "runtime_model_effort_attestation": "UNVERIFIED; no independent runtime identity/effort field available",
+  "scope": "One bounded sealed historical partial-programme replay/ML/economic-sensitivity session; not a full-suite/production/profitability acceptance",
+  "source_acquisition": {
+    "failed_validation_or_fetch": [],
+    "genuine_historical_actual_receipt": "UNKNOWN_NOT_CAPTURED_AT_ACQUISITION",
+    "market_source_manifest_sha256": "cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b",
+    "network_requests": 408,
+    "network_response_bytes": 15560082,
+    "offline": false,
+    "requested_zip_objects": 210,
+    "status_counts": {
+      "MISSING_OBJECT_404": 12,
+      "VERIFIED": 198
+    },
+    "verified_archive_bytes": 15538049,
+    "verified_csv_rows": 364320
+  },
+  "source_metadata_gate": {
+    "anonymous": true,
+    "authorization_headers_supplied": false,
+    "https_status": 200,
+    "market_payload_read": false,
+    "published_checksum_and_name": "3f471677b97cd3c5c21e9c1420bd7d58c1fe4041a3d2e195369277298ca01ea2  BTCUSDT-1h-2025-07.zip",
+    "response_bytes": 89,
+    "response_sha256": "27154e1b2ad11a1d63f2776b00d3e05c6d954390eca78580ff965316c72fdc0b",
+    "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2025-07.zip.CHECKSUM"
+  },
+  "source_sha": "918d233b2501319bc031d679b3d9f5647ae13156",
+  "subagents_used": false,
+  "test_and_stage_log_evidence": {
+    "acquisition": {
+      "sha256": "7e2568d63631f2be0c3cebb39dc0bf166ab13a9a10419ddc31af95cfc86cf34c",
+      "stdout_stderr": "{\"failed_validation_or_fetch\":[],\"genuine_historical_actual_receipt\":\"UNKNOWN_NOT_CAPTURED_AT_ACQUISITION\",\"market_source_manifest_sha256\":\"cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b\",\"network_requests\":408,\"network_response_bytes\":15560082,\"offline\":false,\"requested_zip_objects\":210,\"status_counts\":{\"MISSING_OBJECT_404\":12,\"VERIFIED\":198},\"verified_archive_bytes\":15538049,\"verified_csv_rows\":364320}\n"
+    },
+    "acquisition-repeat": {
+      "sha256": "deeaea68822536d9d018c6c97033a152dfde384ba4a98160a8d4d7ffd12d52b5",
+      "stdout_stderr": "{\"failed_validation_or_fetch\":[],\"genuine_historical_actual_receipt\":\"UNKNOWN_NOT_CAPTURED_AT_ACQUISITION\",\"market_source_manifest_sha256\":\"cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b\",\"network_requests\":0,\"network_response_bytes\":0,\"offline\":true,\"requested_zip_objects\":210,\"status_counts\":{\"MISSING_OBJECT_404\":12,\"VERIFIED\":198},\"verified_archive_bytes\":15538049,\"verified_csv_rows\":364320}\n"
+    },
+    "decisions": {
+      "sha256": "f1421948b67df9804dcf74c35f4745cf8a8e6d93dd03e3ddd511aad10317fb83",
+      "stdout_stderr": "{\"P1_input_audit\":{\"legal_candidate_or_EligibleSet\":null,\"missing_required_P1_inputs\":[\"candidate\",\"product\",\"policy\",\"fees\",\"funding\",\"risk\",\"model\",\"calibration\",\"scenarios\",\"execution_bias\",\"numerical\",\"incremental_programme\",\"context\"],\"status\":\"NOT ESTIMABLE\"},\"begin_ns\":1751328000000000000,\"calendar_sha256\":\"3db6184fa97ed7fc53b6e3ff87e6918096384367a32930ccb0221c3021df4648\",\"decisions_sha256\":\"29638920e0b61c82ba136b52bae5668e7c327cf25b09b2f4ffad3c3492c30d7b\",\"evidence_grade\":\"PRICE_DIAGNOSTIC_ONLY\",\"expected_native_symbol_slots\":309120,\"final_ns\":1759276800000000000,\"first_event_status_counts\":{\"ANCHOR_CONTEXT_EXCLUDED\":380,\"SOURCE_QUALIFIED_ALT_EVENT\":5793},\"frozen_approved_actions\":0,\"model_status_counts\":{\"ANCHOR_CONTEXT_EXCLUDED\":1140,\"OOD_TRAIN_ONLY_ENVELOPE\":3,\"SUPPORTED\":17376},\"models_sha256\":\"129dcb44ce9ff84d01ba23c723e224f1a5d5e78967894de23baf1e529daedc8d\",\"original_first_events\":6173,\"outcomes_read\":false,\"protocol_sha256\":\"d41d00ea63561d67604b912808e5417dcced4f39606c75ac9318dbd0379ebcdd\",\"qualified_Agent_B_requests\":0,\"source_manifest_sha256\":\"cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b\",\"version\":\"SEALED_HISTORICAL_DECISIONS_V1\"}\n"
+    },
+    "decisions-repeat": {
+      "sha256": "f1421948b67df9804dcf74c35f4745cf8a8e6d93dd03e3ddd511aad10317fb83",
+      "stdout_stderr": "{\"P1_input_audit\":{\"legal_candidate_or_EligibleSet\":null,\"missing_required_P1_inputs\":[\"candidate\",\"product\",\"policy\",\"fees\",\"funding\",\"risk\",\"model\",\"calibration\",\"scenarios\",\"execution_bias\",\"numerical\",\"incremental_programme\",\"context\"],\"status\":\"NOT ESTIMABLE\"},\"begin_ns\":1751328000000000000,\"calendar_sha256\":\"3db6184fa97ed7fc53b6e3ff87e6918096384367a32930ccb0221c3021df4648\",\"decisions_sha256\":\"29638920e0b61c82ba136b52bae5668e7c327cf25b09b2f4ffad3c3492c30d7b\",\"evidence_grade\":\"PRICE_DIAGNOSTIC_ONLY\",\"expected_native_symbol_slots\":309120,\"final_ns\":1759276800000000000,\"first_event_status_counts\":{\"ANCHOR_CONTEXT_EXCLUDED\":380,\"SOURCE_QUALIFIED_ALT_EVENT\":5793},\"frozen_approved_actions\":0,\"model_status_counts\":{\"ANCHOR_CONTEXT_EXCLUDED\":1140,\"OOD_TRAIN_ONLY_ENVELOPE\":3,\"SUPPORTED\":17376},\"models_sha256\":\"129dcb44ce9ff84d01ba23c723e224f1a5d5e78967894de23baf1e529daedc8d\",\"original_first_events\":6173,\"outcomes_read\":false,\"protocol_sha256\":\"d41d00ea63561d67604b912808e5417dcced4f39606c75ac9318dbd0379ebcdd\",\"qualified_Agent_B_requests\":0,\"source_manifest_sha256\":\"cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b\",\"version\":\"SEALED_HISTORICAL_DECISIONS_V1\"}\n"
+    },
+    "impacted-preseal": {
+      "sha256": "07fc44dd6c09dfb9c463ce070fe05c653ce0440b25c3941d27d953325800b3d3",
+      "stdout_stderr": "........................................................................ [ 26%]\n...........................................FF........................... [ 53%]\n........................................................................ [ 80%]\n..................................................F                      [100%]\n=================================== FAILURES ===================================\n_______ test_actual_lightgbm_l2_fit_compact_inference_and_serialization ________\n\ncls = <class 'importlib.metadata.Distribution'>, name = 'lightgbm'\n\n    @classmethod\n    def from_name(cls, name: str):\n        \"\"\"Return the Distribution for the given package name.\n    \n        :param name: The name of the distribution package to search for.\n        :return: The Distribution instance (or subclass thereof) for the named\n            package, if found.\n        :raises PackageNotFoundError: When the named package's distribution\n            metadata cannot be found.\n        :raises ValueError: When an invalid value is supplied for name.\n        \"\"\"\n        if not name:\n            raise ValueError(\"A distribution name is required.\")\n        try:\n>           return next(cls.discover(name=name))\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE           StopIteration\n\n/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/metadata/__init__.py:397: StopIteration\n\nDuring handling of the above exception, another exception occurred:\n\ntmp_path = PosixPath('/tmp/pytest-of-agent/pytest-68/test_actual_lightgbm_l2_fit_co0')\n\n    def test_actual_lightgbm_l2_fit_compact_inference_and_serialization(tmp_path):\n        compat = H(\"m1-cell\")\n        rows = list(training_rows(compat, cash=D(\"1\"), count=100, constant=True))\n        rows[-1] = replace(rows[-1], target_cash=D(\"-200\"))\n        validation = training_rows(compat, cash=D(\"-1.01\"), count=10, start_day=200, constant=True)\n>       model = fit_m1_mean(\n            rows,\n            compatibility_ref=compat,\n            cutoff_ns=T - 100,\n            available_at_ns=T - 99,\n            expires_at_ns=T + DAY_NS,\n            provenance=\"CAUSAL_REPLAY\",\n            validation_rows=validation,\n        )\n\ntests/p1/test_mean_models.py:45: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \nsrc/atlas/v2/science/mean_models.py:324: in fit_m1_mean\n    if importlib.metadata.version(\"lightgbm\") != \"4.7.0\":\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/metadata/__init__.py:889: in version\n    return distribution(distribution_name).version\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/metadata/__init__.py:862: in distribution\n    return Distribution.from_name(distribution_name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\ncls = <class 'importlib.metadata.Distribution'>, name = 'lightgbm'\n\n    @classmethod\n    def from_name(cls, name: str):\n        \"\"\"Return the Distribution for the given package name.\n    \n        :param name: The name of the distribution package to search for.\n        :return: The Distribution instance (or subclass thereof) for the named\n            package, if found.\n        :raises PackageNotFoundError: When the named package's distribution\n            metadata cannot be found.\n        :raises ValueError: When an invalid value is supplied for name.\n        \"\"\"\n        if not name:\n            raise ValueError(\"A distribution name is required.\")\n        try:\n            return next(cls.discover(name=name))\n        except StopIteration:\n>           raise PackageNotFoundError(name)\nE           importlib.metadata.PackageNotFoundError: No package metadata was found for lightgbm\n\n/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/metadata/__init__.py:399: PackageNotFoundError\n_____________ test_m1_nonlinear_prediction_matches_native_booster ______________\n\n    def test_m1_nonlinear_prediction_matches_native_booster():\n>       import lightgbm as lgb\nE       ModuleNotFoundError: No module named 'lightgbm'\n\ntests/p1/test_mean_models.py:75: ModuleNotFoundError\n_______ test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures _______\n\n    def test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures() -> None:\n        baseline = json.loads(GOLDEN_PATH.read_text(encoding=\"utf-8\"))\n        assert baseline[\"source_commit\"] == BASELINE_COMMIT\n        assert baseline[\"contract_versions\"] == _contract_versions()\n        assert baseline[\"dependency_lock\"][\"sha256\"] == hashlib.sha256(\n            (ROOT / \"requirements-lock.txt\").read_bytes()\n        ).hexdigest()\n        expected_version, expected_wheel_hash = _lock_nautilus_pin()\n        assert expected_version == EXPECTED_NAUTILUS_VERSION\n        assert expected_wheel_hash == EXPECTED_NAUTILUS_WHEEL_SHA256\n        assert baseline[\"nautilus\"][\"expected\"][\"version\"] == expected_version\n        assert baseline[\"nautilus\"][\"expected\"][\"wheel_sha256\"] == expected_wheel_hash\n>       observed = _nautilus_observation()\n                   ^^^^^^^^^^^^^^^^^^^^^^^\n\ntests/contract/test_v1_golden_baseline.py:202: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def _nautilus_observation() -> dict[str, Any]:\n        spec = importlib.util.find_spec(\"nautilus_trader\")\n>       assert spec is not None and spec.origin is not None\nE       assert (None is not None)\n\ntests/contract/test_v1_golden_baseline.py:99: AssertionError\n=========================== short test summary info ============================\nFAILED tests/p1/test_mean_models.py::test_actual_lightgbm_l2_fit_compact_inference_and_serialization\nFAILED tests/p1/test_mean_models.py::test_m1_nonlinear_prediction_matches_native_booster\nFAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures\n3 failed, 264 passed in 201.48s (0:03:21)\n"
+    },
+    "new-tests-final": {
+      "sha256": "7b4070e43e516f06dd81f4be1736193f084b9a6d60210d71f0f1fb2ff34772a7",
+      "stdout_stderr": "............................................F                            [100%]\n=================================== FAILURES ===================================\n___ test_complete_synthetic_outcome_pipeline_preserves_decisions_and_censors ___\n\ntmp_path = PosixPath('/tmp/pytest-of-agent/pytest-69/test_complete_synthetic_outcom0')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fd645022db0>\n\n    def test_complete_synthetic_outcome_pipeline_preserves_decisions_and_censors(tmp_path, monkeypatch):\n        # Synthetic fixtures exercise accounting plumbing; never real-model/fill evidence.\n        monkeypatch.setitem(globals(), \"T\", common.ns(\"2025-07-01T00:00:00Z\"))\n        bundle = {\"models\": {n: fitted(n) for n in decisions.MODELS}, \"training_volatility_median\": 1.0}\n        for m in bundle[\"models\"].values():\n            m.update(residual_q05_bps=-200.0, residual_q95_bps=200.0)\n        snap = snapshot()\n        orig = Origin(\"SOLUSDT\", T - common.M15, \"LONG\", \"99\", common.digest(\"origin\"))\n        row = decisions.decide(snap, orig, bundle)\n        second = {**row, \"symbol\": \"BNBUSDT\", \"event_id\": common.digest(\"second\")}\n        late_at = common.ns(\"2025-09-30T23:45:00Z\")\n        late = {\n            **row,\n            \"event_id\": common.digest(\"late\"),\n            \"cutoff_ns\": late_at,\n            \"ready_ns\": late_at + 6 * common.SECOND,\n            \"reference_ns\": late_at + common.M15,\n            \"delayed_reference_ns\": late_at + 2 * common.M15,\n        }\n        common.write_csv(tmp_path / \"DECISIONS.csv.gz\", [row, second, late])\n        common.save(tmp_path / \"PRICE_MODELS.json\", bundle)\n        before = common.sha(tmp_path / \"DECISIONS.csv.gz\")\n        bars = [bar(t, \"101\" if t > T + common.M15 else \"100\") for t in range(T, T + 26 * common.HOUR, common.M15)]\n        monkeypatch.setattr(common, \"HERE\", tmp_path)\n        monkeypatch.setattr(outcomes, \"verify_seal\", lambda commit: {\"synthetic_seal\": True})\n        monkeypatch.setattr(outcomes, \"calendar_check\", lambda *args: {\"synthetic_calendar\": True})\n        monkeypatch.setattr(outcomes, \"load_native\", lambda *args: bars)\n>       result = outcomes.evaluate(\"SYNTHETIC_ONLY\", tmp_path, tmp_path, tmp_path / \"output\")\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\ntests/research/test_atlas_historical_blind_ml.py:607: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ndocs/research/atlas-red-historical-blind-ml/evaluate_outcomes.py:507: in evaluate\n    out.sort(key=lambda r: (int(r[\"cutoff_ns\"]), common.protocol()[\"cohort\"].index(r[\"symbol\"])))\ndocs/research/atlas-red-historical-blind-ml/evaluate_outcomes.py:507: in <lambda>\n    out.sort(key=lambda r: (int(r[\"cutoff_ns\"]), common.protocol()[\"cohort\"].index(r[\"symbol\"])))\n                                                 ^^^^^^^^^^^^^^^^^\ndocs/research/atlas-red-historical-blind-ml/common.py:53: in protocol\n    if sha(HERE / \"PROTOCOL.json\") != PROTOCOL_SHA:\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^\ndocs/research/atlas-red-historical-blind-ml/common.py:30: in sha\n    with pathlib.Path(path).open(\"rb\") as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = PosixPath('/tmp/pytest-of-agent/pytest-69/test_complete_synthetic_outcom0/PROTOCOL.json')\nmode = 'rb', buffering = -1, encoding = None, errors = None, newline = None\n\n    def open(self, mode='r', buffering=-1, encoding=None,\n             errors=None, newline=None):\n        \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-agent/pytest-69/test_complete_synthetic_outcom0/PROTOCOL.json'\n\n/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py:1013: FileNotFoundError\n=========================== short test summary info ============================\nFAILED tests/research/test_atlas_historical_blind_ml.py::test_complete_synthetic_outcome_pipeline_preserves_decisions_and_censors\n1 failed, 44 passed in 6.84s\n"
+    },
+    "new-tests-final2": {
+      "sha256": "ab9cf844314d38a825653305bc5857dca035749ff3c1c1bfba7e94910d7802c9",
+      "stdout_stderr": "................................................                         [100%]\n48 passed in 7.55s\n"
+    },
+    "new-tests-first": {
+      "sha256": "88a2e6cc9701da257aa7cb8673d5f4b9ed8e3015aeb79c58055b98cdf69c4e0a",
+      "stdout_stderr": "....................................                                     [100%]\n36 passed in 6.49s\n"
+    },
+    "new-tests-preseal": {
+      "sha256": "e7f74194270a4bd5d78cf3f7b30db89b7040295ebe0e28cee2c3dab537e8bdce",
+      "stdout_stderr": "...........................................F                             [100%]\n=================================== FAILURES ===================================\n____ test_real_prefix_matches_pure_production_math_without_future_fallback _____\n\nreal_market = <causal_replay.Market object at 0x7fa49e3df950>\n\n    def test_real_prefix_matches_pure_production_math_without_future_fallback(real_market):\n        from atlas.v2.features.joins import JoinedBars\n        from atlas.v2.strategies.s1_trend import _regime, _setup\n    \n        at = common.ns(\"2025-04-01T00:00:00Z\")\n        s = \"SOLUSDT\"\n        h1 = tuple(b for b in real_market.h1[s] if b.end <= at)\n        h4 = tuple(b for b in real_market.h4[s] if b.close_at_ns <= at)\n        join = JoinedBars(accepted.key_for(s), at, h4, h1, (), \"AVAILABLE\", None, None)\n        regime = _regime(join)\n        setup = _setup(join)\n        state = real_market.state(s, at)\n        assert state[\"regime\"] == (regime.value if regime else \"NEUTRAL\")\n        assert (state[\"state\"] == \"SETUP\") == bool(setup)\n        if setup:\n            assert setup[0].value == state[\"side\"] and str(setup[1]) == state[\"setup_extreme\"]\n>       for name, expected in gate[\"pinned_prior_artifacts_and_reused_code\"].items():\n                              ^^^^\nE       NameError: name 'gate' is not defined\n\ntests/research/test_atlas_historical_blind_ml.py:576: NameError\n=========================== short test summary info ============================\nFAILED tests/research/test_atlas_historical_blind_ml.py::test_real_prefix_matches_pure_production_math_without_future_fallback\n1 failed, 43 passed in 6.32s\n"
+    },
+    "new-tests-seal": {
+      "sha256": "07484f4395fe3abdc40b7f631ae9b677390106915f723435a9bf70eecec55675",
+      "stdout_stderr": "..................................................                       [100%]\n50 passed in 7.38s\n"
+    },
+    "new-tests-seal-final": {
+      "sha256": "07484f4395fe3abdc40b7f631ae9b677390106915f723435a9bf70eecec55675",
+      "stdout_stderr": "..................................................                       [100%]\n50 passed in 7.38s\n"
+    },
+    "new-tests-transport-final": {
+      "sha256": "df4022b8c4e19f39043fb8685190562699194f31b1d5aafadd15a12751b1cd86",
+      "stdout_stderr": "...................................................                      [100%]\n51 passed in 7.17s\n"
+    },
+    "outcomes": {
+      "sha256": "5a4bab60c34360d1f35da262111a5ccbd0e030fc4f0ceb7ff69438bc59f06675",
+      "stdout_stderr": "{\"censor_counts\":{\"1\":{\"OBSERVED\":5793},\"24\":{\"CENSORED_WINDOW_END\":65,\"OBSERVED\":5728},\"4\":{\"CENSORED_WINDOW_END\":1,\"OBSERVED\":5792}},\"original_qualified_altcoin_N\":5793,\"outcomes_sha256\":\"3c7a54cd70c399e38a86013b60392293d68a88ce3023e6764ad2b16ce49086fc\",\"results_sha256\":\"29a0e4d61b27e319540ec933ed178a6a66d006136d46281003f01c8281ecaab8\"}\n"
+    },
+    "outcomes-repeat": {
+      "sha256": "5a4bab60c34360d1f35da262111a5ccbd0e030fc4f0ceb7ff69438bc59f06675",
+      "stdout_stderr": "{\"censor_counts\":{\"1\":{\"OBSERVED\":5793},\"24\":{\"CENSORED_WINDOW_END\":65,\"OBSERVED\":5728},\"4\":{\"CENSORED_WINDOW_END\":1,\"OBSERVED\":5792}},\"original_qualified_altcoin_N\":5793,\"outcomes_sha256\":\"3c7a54cd70c399e38a86013b60392293d68a88ce3023e6764ad2b16ce49086fc\",\"results_sha256\":\"29a0e4d61b27e319540ec933ed178a6a66d006136d46281003f01c8281ecaab8\"}\n"
+    },
+    "parent-environment-failures": {
+      "sha256": "480f1ae47b908256de746acbcec20877f4ec24c9ba86b7f8b2138e216825a6df",
+      "stdout_stderr": "FFF                                                                      [100%]\n=================================== FAILURES ===================================\n_______ test_actual_lightgbm_l2_fit_compact_inference_and_serialization ________\n\ncls = <class 'importlib.metadata.Distribution'>, name = 'lightgbm'\n\n    @classmethod\n    def from_name(cls, name: str):\n        \"\"\"Return the Distribution for the given package name.\n    \n        :param name: The name of the distribution package to search for.\n        :return: The Distribution instance (or subclass thereof) for the named\n            package, if found.\n        :raises PackageNotFoundError: When the named package's distribution\n            metadata cannot be found.\n        :raises ValueError: When an invalid value is supplied for name.\n        \"\"\"\n        if not name:\n            raise ValueError(\"A distribution name is required.\")\n        try:\n>           return next(cls.discover(name=name))\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE           StopIteration\n\n/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/metadata/__init__.py:397: StopIteration\n\nDuring handling of the above exception, another exception occurred:\n\ntmp_path = PosixPath('/tmp/pytest-of-agent/pytest-70/test_actual_lightgbm_l2_fit_co0')\n\n    def test_actual_lightgbm_l2_fit_compact_inference_and_serialization(tmp_path):\n        compat = H(\"m1-cell\")\n        rows = list(training_rows(compat, cash=D(\"1\"), count=100, constant=True))\n        rows[-1] = replace(rows[-1], target_cash=D(\"-200\"))\n        validation = training_rows(compat, cash=D(\"-1.01\"), count=10, start_day=200, constant=True)\n>       model = fit_m1_mean(\n            rows,\n            compatibility_ref=compat,\n            cutoff_ns=T - 100,\n            available_at_ns=T - 99,\n            expires_at_ns=T + DAY_NS,\n            provenance=\"CAUSAL_REPLAY\",\n            validation_rows=validation,\n        )\n\ntests/p1/test_mean_models.py:45: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \nsrc/atlas/v2/science/mean_models.py:324: in fit_m1_mean\n    if importlib.metadata.version(\"lightgbm\") != \"4.7.0\":\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/metadata/__init__.py:889: in version\n    return distribution(distribution_name).version\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/metadata/__init__.py:862: in distribution\n    return Distribution.from_name(distribution_name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\ncls = <class 'importlib.metadata.Distribution'>, name = 'lightgbm'\n\n    @classmethod\n    def from_name(cls, name: str):\n        \"\"\"Return the Distribution for the given package name.\n    \n        :param name: The name of the distribution package to search for.\n        :return: The Distribution instance (or subclass thereof) for the named\n            package, if found.\n        :raises PackageNotFoundError: When the named package's distribution\n            metadata cannot be found.\n        :raises ValueError: When an invalid value is supplied for name.\n        \"\"\"\n        if not name:\n            raise ValueError(\"A distribution name is required.\")\n        try:\n            return next(cls.discover(name=name))\n        except StopIteration:\n>           raise PackageNotFoundError(name)\nE           importlib.metadata.PackageNotFoundError: No package metadata was found for lightgbm\n\n/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/metadata/__init__.py:399: PackageNotFoundError\n_____________ test_m1_nonlinear_prediction_matches_native_booster ______________\n\n    def test_m1_nonlinear_prediction_matches_native_booster():\n>       import lightgbm as lgb\nE       ModuleNotFoundError: No module named 'lightgbm'\n\ntests/p1/test_mean_models.py:75: ModuleNotFoundError\n_______ test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures _______\n\n    def test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures() -> None:\n        baseline = json.loads(GOLDEN_PATH.read_text(encoding=\"utf-8\"))\n        assert baseline[\"source_commit\"] == BASELINE_COMMIT\n        assert baseline[\"contract_versions\"] == _contract_versions()\n        assert baseline[\"dependency_lock\"][\"sha256\"] == hashlib.sha256(\n            (ROOT / \"requirements-lock.txt\").read_bytes()\n        ).hexdigest()\n        expected_version, expected_wheel_hash = _lock_nautilus_pin()\n        assert expected_version == EXPECTED_NAUTILUS_VERSION\n        assert expected_wheel_hash == EXPECTED_NAUTILUS_WHEEL_SHA256\n        assert baseline[\"nautilus\"][\"expected\"][\"version\"] == expected_version\n        assert baseline[\"nautilus\"][\"expected\"][\"wheel_sha256\"] == expected_wheel_hash\n>       observed = _nautilus_observation()\n                   ^^^^^^^^^^^^^^^^^^^^^^^\n\ntests/contract/test_v1_golden_baseline.py:202: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def _nautilus_observation() -> dict[str, Any]:\n        spec = importlib.util.find_spec(\"nautilus_trader\")\n>       assert spec is not None and spec.origin is not None\nE       assert (None is not None)\n\ntests/contract/test_v1_golden_baseline.py:99: AssertionError\n=========================== short test summary info ============================\nFAILED tests/p1/test_mean_models.py::test_actual_lightgbm_l2_fit_compact_inference_and_serialization\nFAILED tests/p1/test_mean_models.py::test_m1_nonlinear_prediction_matches_native_booster\nFAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures\n3 failed in 0.33s\n"
+    },
+    "training": {
+      "sha256": "90f30550dba7ae0696149b6171c713e13f01f3917c33173e5caac19154f5cbbb",
+      "stdout_stderr": "{\"counts\":{\"PURGED_OR_OUTSIDE\":667,\"TRAIN\":12349,\"UNAVAILABLE\":14,\"VALIDATION\":3026},\"model_sha256\":\"758474f26651db804d8a143a68e991babe2525e22e137c739fecbc7919ff7848\",\"wall_seconds\":35.58362286599731}\n"
+    },
+    "training-final": {
+      "sha256": "8cec4faf87c43477e2bfbb4542aa057737a46261f4cba9ccc69727b4b2e8d92c",
+      "stdout_stderr": "{\"counts\":{\"PURGED_OR_OUTSIDE\":667,\"TRAIN\":12349,\"UNAVAILABLE\":14,\"VALIDATION\":3026},\"model_sha256\":\"c9e5de47a486650cf33e1d06982cb380696e2335b2fd79701ca68cf224502949\",\"wall_seconds\":36.47424701599812}\n"
+    },
+    "training-repeat": {
+      "sha256": "381686b9126ff7dd76038a30aedc38981c9093922e72a24c9ea578f59d9e9ace",
+      "stdout_stderr": "{\"counts\":{\"PURGED_OR_OUTSIDE\":667,\"TRAIN\":12349,\"UNAVAILABLE\":14,\"VALIDATION\":3026},\"model_sha256\":\"129dcb44ce9ff84d01ba23c723e224f1a5d5e78967894de23baf1e529daedc8d\",\"wall_seconds\":36.55077114899905}\n"
+    },
+    "training-sealed": {
+      "sha256": "fbf3decb2e29c47a361d8e831fba6720758c52b55141dec3c34dc78eb163ba8b",
+      "stdout_stderr": "{\"counts\":{\"PURGED_OR_OUTSIDE\":667,\"TRAIN\":12349,\"UNAVAILABLE\":14,\"VALIDATION\":3026},\"model_sha256\":\"129dcb44ce9ff84d01ba23c723e224f1a5d5e78967894de23baf1e529daedc8d\",\"wall_seconds\":38.5185690770013}\n"
+    }
+  },
+  "test_results": {
+    "final_new": {
+      "failed": 0,
+      "passed": 51,
+      "pytest_seconds": 7.17,
+      "skipped": 0
+    },
+    "impacted_preseal": {
+      "failed": 3,
+      "passed": 264,
+      "pytest_seconds": 201.48,
+      "skipped": 0
+    },
+    "parent_environment_failures": {
+      "failed": 3,
+      "passed": 0,
+      "pytest_seconds": 0.33,
+      "skipped": 0
+    },
+    "scope_note": "Groups overlap; no aggregate independent/full-suite total. Final new cases include later source-oracle, fresh-process import and calendar transport negatives; production unchanged. No skip/assertion weakening/alternate library to conceal missing native/model dependencies."
+  }
+}

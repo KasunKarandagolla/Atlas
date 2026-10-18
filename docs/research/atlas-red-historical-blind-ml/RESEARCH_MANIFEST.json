@@ -1,0 +1,220 @@
+{
+  "acceptance_sync_sha": "3166f917102e319333b6a9b77188ec69bf4dcb12",
+  "authority": "OBSERVE; bot allocation0; paid allowance0; capitalNO-GO; no production/strategy/policy promotion, P2, orders, deployment, new weights, auto-merge or dependent session",
+  "cohort_sha256": "b51f4a360e60bbb62fae982e4120ff3681b12a13ef8cd4a0aff01d761f6f03b5",
+  "context_anchor_events": 380,
+  "decision_seal_sha": "94dfe762cc11c58b394fcfa057f85a943606a049",
+  "external_acceptance": "918d233b exact scoped finite-prefix/nonexecuted study only; versioned owner-supplied record",
+  "independent_review": "TEST GATE",
+  "limitations": {
+    "M1_Nautilus_real_forecasters": "BLOCKED BY ENVIRONMENT; actual missing-library test failures retained",
+    "action_cash_M0_M1": "NOT ESTIMABLE: price diagnostic target is not an eligible exact-action cash row",
+    "frozen_policy_execution": "NOT ESTIMABLE / blocked: reconstructedT+6 readiness exceedsT+5 and required action inputs missing",
+    "full_programme_economics": "NOT ESTIMABLE: no complete S1\u2013S8 action/management/execution/portfolio/Agent B evidence",
+    "historical_receipt_health_liveEMA_universe_eligibility_funding_quotes_agent": "UNVERIFIED / missing; no substitute facts invented",
+    "identity_effort_complete_lock_venue_host": "UNVERIFIED",
+    "new_independent_acceptance": "TEST GATE: exact final candidate review pending",
+    "original_N_accepted_censors": "NOT ESTIMABLE where accepted outcomes censored; common complete comparisons explicitly retained",
+    "statistical_qualification": "TEST GATE:14weekly/7two-week blocks, human exposure unknown,4context accepts in1week, no untouched prospective qualification"
+  },
+  "lossless_assembled_calendar": {
+    "docs/research/atlas-red-historical-blind-ml/CALENDAR.csv.gz": {
+      "bytes": 14788948,
+      "parts": [
+        "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part000",
+        "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part001",
+        "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part002",
+        "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part003",
+        "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part004"
+      ],
+      "sha256": "3db6184fa97ed7fc53b6e3ff87e6918096384367a32930ccb0221c3021df4648"
+    }
+  },
+  "market_source_vs_transport": "SOURCE_OBJECTS market identities stable; ACQUISITION actual2026transport observations, TRAINING/REPLAY/OUTCOME resources timing variable. Historical exchange receipt unknown.",
+  "model_train_validation_counts": {
+    "purged_or_outside": 667,
+    "train": 12349,
+    "unavailable": 14,
+    "validation": 3026
+  },
+  "native_calendar_rows": 309120,
+  "new_acquisition_response_bytes": 15560082,
+  "new_archive404": 12,
+  "new_source_archives_verified": 198,
+  "old_source_archives_verified": 757,
+  "original_altcoin_N": 5793,
+  "primary_complete_N": 5792,
+  "protocol_sha": "9fa877b5e137d1e32be447336ed54a5f1d20d301",
+  "protocol_sha256": "d41d00ea63561d67604b912808e5417dcced4f39606c75ac9318dbd0379ebcdd",
+  "review_scope": "Inspect final remote SHA and complete918d\u2192candidate diff; protocol-before-source and model/decisions-before-outcome ancestry; causal APIs, all denominators, actual source/ML/cost provenance, adverse/negative/sparse results and environment gates. No self-acceptance.",
+  "same_row_ML_complete_N": 5791,
+  "scientific_entrypoints_unchanged_after_outcome_seal": true,
+  "source_sha": "918d233b2501319bc031d679b3d9f5647ae13156",
+  "stable_artifact_pins": {
+    "docs/research/atlas-red-historical-blind-ml/.gitignore": {
+      "bytes": 103,
+      "sha256": "63e3f826540ac40cd4299b09fed92fe00f5ce2d31641f9e024aac8fc508d5703"
+    },
+    "docs/research/atlas-red-historical-blind-ml/ACQUISITION.jsonl": {
+      "bytes": 125204,
+      "sha256": "c24b0e748a816b47a52e27978f649060ac658edc77a1f8f555b8b85d4c7a213c"
+    },
+    "docs/research/atlas-red-historical-blind-ml/BLIND_DATA_DECLARATION.md": {
+      "bytes": 2401,
+      "sha256": "3308895ef9eac5e0d7a81cf930eb4078c8d57800c4aecc292c6c84a45b0470be"
+    },
+    "docs/research/atlas-red-historical-blind-ml/CAPABILITY_AND_MODEL_AUDIT.md": {
+      "bytes": 8692,
+      "sha256": "b486e42f11bbd9e08f62e70392d41fbee7f4e69facae5b7fe862ad0dca16a756"
+    },
+    "docs/research/atlas-red-historical-blind-ml/DECISIONS.csv.gz": {
+      "bytes": 2061791,
+      "sha256": "29638920e0b61c82ba136b52bae5668e7c327cf25b09b2f4ffad3c3492c30d7b"
+    },
+    "docs/research/atlas-red-historical-blind-ml/DECISION_SEAL.json": {
+      "bytes": 8532,
+      "sha256": "eef9cfe7cc873d0e8965e7bf50ec99ea0f1afe97714a9fb0e6e0dfd66a9c2943"
+    },
+    "docs/research/atlas-red-historical-blind-ml/DECISION_SUMMARY.json": {
+      "bytes": 1409,
+      "sha256": "5346d9c0e4722604991fb4303fe0698e69e1e9993dc79b37d12f60bbde107b6f"
+    },
+    "docs/research/atlas-red-historical-blind-ml/DEVELOPMENT_ROWS.csv.gz": {
+      "bytes": 2665294,
+      "sha256": "4f91a724e0d4d65f7acd5c421d3c8ee7c7ef1ef269e492b0d8ceaa8c2a27224f"
+    },
+    "docs/research/atlas-red-historical-blind-ml/EXECUTION_EVIDENCE.json": {
+      "bytes": 46300,
+      "sha256": "f18c7dfe4327ae522a122482d59e3fc63a91e115773f2baf3b3f4759d974d42d"
+    },
+    "docs/research/atlas-red-historical-blind-ml/GATE_A_FEASIBILITY.json": {
+      "bytes": 6366,
+      "sha256": "962011ac03106e2c7e724cdc9323465abb89e7e63e1f772da5b173b3d24664aa"
+    },
+    "docs/research/atlas-red-historical-blind-ml/OUTCOMES.csv.gz": {
+      "bytes": 3548471,
+      "sha256": "3c7a54cd70c399e38a86013b60392293d68a88ce3023e6764ad2b16ce49086fc"
+    },
+    "docs/research/atlas-red-historical-blind-ml/OUTCOME_RESOURCES.json": {
+      "bytes": 66,
+      "sha256": "c7d4897469dabfaeca25edcd6bc19948479bcb6a8265fb4f08ab692d5ace3717"
+    },
+    "docs/research/atlas-red-historical-blind-ml/PREOUTCOME_VERIFICATION.json": {
+      "bytes": 1622,
+      "sha256": "9b0990238d493cc23e7786226f5141ddfdfef5c56db6289850d5cfca69a65666"
+    },
+    "docs/research/atlas-red-historical-blind-ml/PRICE_MODELS.json": {
+      "bytes": 9327,
+      "sha256": "129dcb44ce9ff84d01ba23c723e224f1a5d5e78967894de23baf1e529daedc8d"
+    },
+    "docs/research/atlas-red-historical-blind-ml/PROTOCOL.json": {
+      "bytes": 13828,
+      "sha256": "d41d00ea63561d67604b912808e5417dcced4f39606c75ac9318dbd0379ebcdd"
+    },
+    "docs/research/atlas-red-historical-blind-ml/REPLAY_RESOURCES.json": {
+      "bytes": 312,
+      "sha256": "dc5ade10266df96d8cb29644fd0f36bd322c52d33d8705e6a025104cc53e02fe"
+    },
+    "docs/research/atlas-red-historical-blind-ml/REPRODUCIBILITY.md": {
+      "bytes": 10062,
+      "sha256": "d6bc0782743b93562864a9f4ba2df362a7d3e5750628a6ae787b35cdbebdbe4f"
+    },
+    "docs/research/atlas-red-historical-blind-ml/RESEARCH_REPORT.md": {
+      "bytes": 21438,
+      "sha256": "2ef160cafa7980e49a45ee5752b67f484ce1b0b138cb95513a3d54c47fd6c197"
+    },
+    "docs/research/atlas-red-historical-blind-ml/RESULTS.json": {
+      "bytes": 456224,
+      "sha256": "29a0e4d61b27e319540ec933ed178a6a66d006136d46281003f01c8281ecaab8"
+    },
+    "docs/research/atlas-red-historical-blind-ml/SOURCE_ACQUISITION_SUMMARY.json": {
+      "bytes": 482,
+      "sha256": "dcf522d84f59a148bd49599abf20b4c93346974893fdea3c856263041d64497d"
+    },
+    "docs/research/atlas-red-historical-blind-ml/SOURCE_OBJECTS.jsonl": {
+      "bytes": 178175,
+      "sha256": "cb16b5994cb72859113aae55bd4a8d50f92c11e27e894db6c88265dc5619727b"
+    },
+    "docs/research/atlas-red-historical-blind-ml/TRAINING_RESOURCES.json": {
+      "bytes": 274,
+      "sha256": "a4e37462cc189eb43641c14723a153eae0105cabe10f6e89ae19f766e87921d1"
+    },
+    "docs/research/atlas-red-historical-blind-ml/acquire_sources.py": {
+      "bytes": 6062,
+      "sha256": "ee428d1037cae50f5d6f5b96080d5a91819d4397d58247ddc6cf63381353a85c"
+    },
+    "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part000": {
+      "bytes": 3000000,
+      "sha256": "d15161622f6f00210d20bac41c83c73d34fefb628f70188657013988bdec0d3e"
+    },
+    "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part001": {
+      "bytes": 3000000,
+      "sha256": "b324cf4b60724a156ace233ecfce9abeddec1e43de292e6c05821789eece8479"
+    },
+    "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part002": {
+      "bytes": 3000000,
+      "sha256": "94276bb9acb4843c7a90c65171966b03525a97580fa4c61a7168e8cf95bb444b"
+    },
+    "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part003": {
+      "bytes": 3000000,
+      "sha256": "4f285907dcda19a5456f8b6c2ea4d8b52983e30a874d9d524261ef90ab766d3e"
+    },
+    "docs/research/atlas-red-historical-blind-ml/calendar-parts/CALENDAR.csv.gz.part004": {
+      "bytes": 2788948,
+      "sha256": "7fbef0c834b9df88b63c3be1409c9702b3cfcc8f15e50131a98393a541eb1fe2"
+    },
+    "docs/research/atlas-red-historical-blind-ml/causal_replay.py": {
+      "bytes": 14832,
+      "sha256": "d0cce7239984f040c33e7845ac4d630764aa31693141ed9d7a1d4afb2e901f66"
+    },
+    "docs/research/atlas-red-historical-blind-ml/common.py": {
+      "bytes": 2825,
+      "sha256": "004db8ff8045aaddc050a298513bfdf647b28067d3dfb9b665a83ddbdf738157"
+    },
+    "docs/research/atlas-red-historical-blind-ml/decisions.py": {
+      "bytes": 8960,
+      "sha256": "4a5ce40e4d99b48bff25e3c584271b232f69ac2621ae6c92f86466557d325bed"
+    },
+    "docs/research/atlas-red-historical-blind-ml/diagnostic_models.py": {
+      "bytes": 10680,
+      "sha256": "7cfa715f0c937b6de8cb10632bba0427002ff6afed6e981f472bce2a9a9e4155"
+    },
+    "docs/research/atlas-red-historical-blind-ml/economics.py": {
+      "bytes": 3227,
+      "sha256": "ddc1b582148755a8d288d7635e5f43a3349501d4b0170f857ef65e56c96ee324"
+    },
+    "docs/research/atlas-red-historical-blind-ml/evaluate_outcomes.py": {
+      "bytes": 29243,
+      "sha256": "4f931c80b7934320d24ef03fbb1bc5a1c1669f1e712a23a180de2878d6d378ea"
+    }
+  },
+  "status": "TESTED",
+  "unique_first_events": 6173,
+  "version": "ATLAS_SEALED_HISTORICAL_ML_RESEARCH_V1",
+  "windows_and_partitions": {
+    "calibrator_replay_available": "2025-06-29T00:00:01Z",
+    "embargo_hours": 48,
+    "fit_replay_cutoff": "2025-05-01T00:00:00Z",
+    "next_untouched_period": "October 2025 onward is not acquired or evaluated; no refitting on revealed test outcomes",
+    "test_origins": [
+      "2025-07-01T00:00:00Z",
+      "2025-10-01T00:00:00Z"
+    ],
+    "train_label_boundary": "Before each train interval exclusive end; retain only mature primary 4h labels; also purge final 48h origins of each train interval.",
+    "train_origins": [
+      [
+        "2024-03-01T00:00:00Z",
+        "2024-07-01T00:00:00Z"
+      ],
+      [
+        "2025-03-01T00:00:00Z",
+        "2025-05-01T00:00:00Z"
+      ]
+    ],
+    "validation_label_boundary": "2025-06-28T00:00:00Z exclusive; purge last 48h origins",
+    "validation_origins": [
+      "2025-05-03T00:00:00Z",
+      "2025-06-28T00:00:00Z"
+    ]
+  }
+}
