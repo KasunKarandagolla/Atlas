@@ -1,5 +1,11 @@
 # ATLAS RED — live GitHub engineering status
 
+## External E1B v3 acceptance synchronized / historical replay research authorized — 2026-10-18
+
+[External acceptance v1](ACCEPTANCE_E1B_918D233B_2026-10-18.md) records the owner-supplied **PASS — scoped finite-prefix E1B research correction and nonexecuted S1×S6 historical study** against exact `918d233b2501319bc031d679b3d9f5647ae13156`. No economic, live-state, complete-programme, production or capital acceptance follows. Earlier pending-review text below is historical for that exact reviewed scope only.
+
+One isolated branch `research/atlas-red-historical-blind-ml-2026-10-18` starts from the verified remote SHA. New source/protocol/decision/model/result evidence will require a fresh exact-SHA independent review. Preserve all prior artifacts, production code, canonical algorithm/PDF and freezes. Owner-selected GPT-6.1 Sol / High; independent runtime identity/effort UNVERIFIED; no subagents. OBSERVE, zero bot allocation/paid allowance, capital NO-GO. No P2, paid/private access, orders, deployment or policy promotion.
+
 ## E1B v3 corrected finite-prefix research and S1×S6 historical study — 2026-10-18 (Asia/Colombo)
 
 **SCOPED RESEARCH TESTED / NEW EXACT-SHA INDEPENDENT REVIEW PENDING.** Isolated branch `research/atlas-red-e1b-defects-synergy-2026-10-18` starts from `c29dfc2c2ae6cb903b53f72fdf2d457c9a5bb32d`. [External scientific acceptance v1](ACCEPTANCE_E1B_C29DFC2C_2026-10-18.md) records only the owner-supplied c29 **PASS — scoped scientific reproduction and defect discovery**, including no independently rerun full rebuild/suite and no acceptance of replacement producer, full causal live state, trades or economics. Earlier status sections are historical; current authority and limits are here.
