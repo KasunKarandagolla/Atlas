@@ -1,6 +1,12 @@
 {
+  "A_rule": "P1",
+  "A_selection_freeze_commit": "d1bd9f38b2dd2a8784f1f2bf5e007ba7d7490799",
+  "A_selection_sha256": "852bb522951bce03a54f80e120f2c20d218fb8831c6414e694559e188caf444f",
   "A_started_local": "2026-10-18T13:12:17.896935+05:30",
   "B_outcomes_absent_at_A_start": true,
+  "B_started_after_A_commit": true,
+  "B_started_local": "2026-10-18T13:16:12.617763+05:30",
   "protocol_source_commit": "22913d753ef9e98536f56381e641365ed4021a71",
-  "study_code_sha256_before_A": "13f00da94fc597080326221bca10404183dd250ceccbfb1b346acec760d74ba8"
+  "study_code_sha256_before_A": "13f00da94fc597080326221bca10404183dd250ceccbfb1b346acec760d74ba8",
+  "study_code_unchanged_between_A_and_B": true
 }

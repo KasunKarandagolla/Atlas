@@ -1,0 +1,393 @@
+{
+  "A_only_freeze_sha": "d1bd9f38b2dd2a8784f1f2bf5e007ba7d7490799",
+  "D2_affected_B_FTM_first_events": 0,
+  "authority": "OBSERVE; zero bot allocation and paid allowance; capital NO-GO; no production/algorithm/dependency/freeze edits, private venue access, orders, paid calls or model generation",
+  "build_repeat": {
+    "ASOF_COVERAGE.csv.gz": {
+      "first_sha256": "eb74a6eb0379524f07eec8c2462e21a3cfa78c5be66cd01972e8c735f8b45a61",
+      "repeat_sha256": "eb74a6eb0379524f07eec8c2462e21a3cfa78c5be66cd01972e8c735f8b45a61"
+    },
+    "DIAGNOSTIC_FEATURE_PANEL.csv.gz": {
+      "first_sha256": "811ef7c972c69d1c6d26f9a8518e388fc64a5774ee801c141d45863959e0bce4",
+      "repeat_sha256": "811ef7c972c69d1c6d26f9a8518e388fc64a5774ee801c141d45863959e0bce4"
+    },
+    "SOURCE_MANIFEST.jsonl": {
+      "first_sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+      "repeat_sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b"
+    }
+  },
+  "checks_commands": [
+    "/workspace/.venvs/atlas/bin/ruff check src tests/research docs/research/atlas-red-e1b",
+    "python3 -m compileall -q src tests/research docs/research/atlas-red-e1b",
+    "uv lock --check --offline",
+    "uv pip check --python /workspace/.venvs/atlas/bin/python",
+    "sha256sum -c MANIFEST.sha256 (cwd algorithms)",
+    "sha256sum -c docs/research/atlas-red-e1b/v3-corrected/ARTIFACTS.sha256",
+    "git diff --check",
+    "git diff --exit-code c29dfc2c2ae6cb903b53f72fdf2d457c9a5bb32d -- src uv.lock pyproject.toml requirements-lock.txt"
+  ],
+  "delivery_branch": "research/atlas-red-e1b-defects-synergy-2026-10-18",
+  "earlier_test_invocations": [
+    {
+      "result": "11 failed, 1 passed in 0.42s; absent helper/actual terminal-history failures",
+      "scope": "initial focused correction RED"
+    },
+    {
+      "result": "2 failed, 1 passed, 12 deselected in 0.24s",
+      "scope": "actual builder D1/D3 RED"
+    },
+    {
+      "result": "36 passed; development runs 0.73s and 0.56s",
+      "scope": "correction plus legacy initial GREEN"
+    },
+    {
+      "result": "42 passed in 1.29s",
+      "scope": "expanded correction/production/source GREEN"
+    },
+    {
+      "result": "25 passed in 0.43s",
+      "scope": "initial study oracles"
+    },
+    {
+      "result": "27 passed in 0.44s",
+      "scope": "final study oracles including decomposition"
+    },
+    {
+      "result": "40 passed in 9.92s",
+      "scope": "six affected legacy files"
+    },
+    {
+      "result": "40 passed in 35.04s",
+      "scope": "independent validator tests"
+    },
+    {
+      "result": "12 passed, 1 failed in 1.32s",
+      "scope": "feature-prefix/timing/science plus V1 golden"
+    },
+    {
+      "result": "1 failed in 0.18s",
+      "scope": "exact c29 parent V1 golden"
+    }
+  ],
+  "environment": {
+    "full_locked_runtime": "UNVERIFIED; locked NumPy 2.5.3 differs, Nautilus absent; no dependency edits",
+    "numpy": "2.3.5",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "pytest": "9.1.1",
+    "python": "3.12.14",
+    "ruff": "0.17.0",
+    "venv": "/workspace/.venvs/atlas"
+  },
+  "final_check_results": [
+    {
+      "argv": [
+        "/workspace/.venvs/atlas/bin/ruff",
+        "check",
+        "src",
+        "tests/research",
+        "docs/research/atlas-red-e1b"
+      ],
+      "cwd": "/workspace/work/atlas-e1b-defects-synergy",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "All checks passed!\n"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "compileall",
+        "-q",
+        "src",
+        "tests/research",
+        "docs/research/atlas-red-e1b"
+      ],
+      "cwd": "/workspace/work/atlas-e1b-defects-synergy",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "lock",
+        "--check",
+        "--offline"
+      ],
+      "cwd": "/workspace/work/atlas-e1b-defects-synergy",
+      "exit_code": 0,
+      "stderr": "Using CPython 3.12.14 interpreter at: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\nResolved 39 packages in 1ms\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "uv",
+        "pip",
+        "check",
+        "--python",
+        "/workspace/.venvs/atlas/bin/python"
+      ],
+      "cwd": "/workspace/work/atlas-e1b-defects-synergy",
+      "exit_code": 0,
+      "stderr": "Using Python 3.12.14 environment at: /workspace/.venvs/atlas\nChecked 17 packages in 0.54ms\nAll installed packages are compatible\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "sha256sum",
+        "-c",
+        "MANIFEST.sha256"
+      ],
+      "cwd": "/workspace/work/atlas-e1b-defects-synergy/algorithms",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "ACCEPTANCE_REGISTER.csv: OK\nATLAS_ALGORITHM.pdf: OK\nATLAS_OPERATIONAL_RECONCILIATION_AMENDMENT_PROPOSED.md: OK\nATLAS_SYSTEM_DESIGN.md: OK\nAUTHORITY_RECONCILIATION.md: OK\nCAPABILITY_REUSE_AUDIT.csv: OK\nCODEX_SESSION_PROMPTS.md: OK\nDESIGN_DECISIONS.md: OK\nDOCUMENTATION_VALIDATION.json: OK\nIMPLEMENTATION_PLAN.md: OK\nOWNER_SUMMARY.md: OK\nREADME.md: OK\nREPOSITORY_AUDIT.md: OK\nREQUIREMENTS_AND_ACCEPTANCE.md: OK\nSHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md: OK\nSOURCE_AUTHORITY_MANIFEST.json: OK\nSURGICAL_CHANGE_MAP.md: OK\nrender_algorithm_pdf.py: OK\n"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/workspace/work/atlas-e1b-defects-synergy",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--exit-code",
+        "c29dfc2c2ae6cb903b53f72fdf2d457c9a5bb32d",
+        "--",
+        "src",
+        "uv.lock",
+        "pyproject.toml",
+        "requirements-lock.txt"
+      ],
+      "cwd": "/workspace/work/atlas-e1b-defects-synergy",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "sha256sum",
+        "-c",
+        "docs/research/atlas-red-e1b/SOL_ARTIFACTS.sha256"
+      ],
+      "cwd": "/workspace/work/atlas-e1b-sol-reproduction",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "docs/project/ACCEPTANCE_E1B_D339D845_2026-10-18.md: OK\ndocs/research/atlas-red-e1b/ASOF_COVERAGE.csv.gz: OK\ndocs/research/atlas-red-e1b/COMPACT_REAL_MULTI_SYMBOL_SAMPLE.csv.gz: OK\ndocs/research/atlas-red-e1b/DATASET_MANIFEST.json: OK\ndocs/research/atlas-red-e1b/SOL_COMMANDS.md: OK\ndocs/research/atlas-red-e1b/SOL_ECONOMIC_EVIDENCE_FEASIBILITY.md: OK\ndocs/research/atlas-red-e1b/SOL_EXECUTION_EVIDENCE.json: OK\ndocs/research/atlas-red-e1b/SOL_INDEPENDENT_REPRODUCTION_REPORT.md: OK\ndocs/research/atlas-red-e1b/SOL_MISMATCH_EXAMPLES.jsonl: OK\ndocs/research/atlas-red-e1b/SOL_REPRODUCTION_RESULTS.json: OK\ndocs/research/atlas-red-e1b/SOL_S6_INPUT_COMPARISON.json: OK\ndocs/research/atlas-red-e1b/SOL_SESSION2_REPRODUCTION.md: OK\ndocs/research/atlas-red-e1b/SOL_SESSION2_REPRODUCTION_PRE_D339D845.md: OK\ndocs/research/atlas-red-e1b/SOL_SOURCE_CHECKS.jsonl: OK\ndocs/research/atlas-red-e1b/SOURCE_MANIFEST.jsonl: OK\ndocs/research/atlas-red-e1b/independent_sol_reproduction.py: OK\ndocs/research/atlas-red-e1b/verify_sol_sources.py: OK\ntests/research/test_atlas_red_e1b_sol.py: OK\n"
+    }
+  ],
+  "final_scoped_test_command": "ATLAS_SOL_CSV_CACHE=/workspace/work/atlas-e1b-trigger-censor-qualified-scratch PYTHONPATH=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages /workspace/.venvs/atlas/bin/python -m pytest -q tests/research/test_atlas_red_e1b_panel.py tests/research/test_atlas_red_e1b_corrections.py tests/research/test_atlas_red_e1b_sol.py tests/research/test_atlas_red_e1b_study.py tests/v2/test_session014_s1.py tests/v2/test_session021_s6.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session041_s6_cohort.py tests/v2/test_session041_s6_action_contract.py tests/data/test_prefix_and_archive.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session034_causal_timing.py tests/science/test_prefix_invariance_phase4.py tests/contract/test_v1_golden_baseline.py -ra",
+  "final_scoped_test_result": {
+    "failed": 1,
+    "failure": "tests/contract/test_v1_golden_baseline.py; missing nautilus_trader; unchanged-parent failure also reproduced",
+    "passed": 161,
+    "pytest_seconds": 44.55,
+    "skipped": 0
+  },
+  "freeze_checks": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": {
+      "sha256": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+      "unchanged_git_object": true
+    },
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": {
+      "sha256": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+      "unchanged_git_object": true
+    },
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": {
+      "sha256": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+      "unchanged_git_object": true
+    }
+  },
+  "measurements": {
+    "build": {
+      "max_rss_kib": 2984468,
+      "user_seconds": 115.872139,
+      "wall_seconds": 117.4777437369994
+    },
+    "build-repeat": {
+      "max_rss_kib": 2984404,
+      "user_seconds": 123.245747,
+      "wall_seconds": 144.69683629099745
+    },
+    "final-scoped-tests": {
+      "argv": [
+        "-q",
+        "tests/research/test_atlas_red_e1b_panel.py",
+        "tests/research/test_atlas_red_e1b_corrections.py",
+        "tests/research/test_atlas_red_e1b_sol.py",
+        "tests/research/test_atlas_red_e1b_study.py",
+        "tests/v2/test_session014_s1.py",
+        "tests/v2/test_session021_s6.py",
+        "tests/v2/test_session037_strategy_prefix.py",
+        "tests/v2/test_session041_s6_cohort.py",
+        "tests/v2/test_session041_s6_action_contract.py",
+        "tests/data/test_prefix_and_archive.py",
+        "tests/v2/test_session037_feature_prefix.py",
+        "tests/v2/test_session034_causal_timing.py",
+        "tests/science/test_prefix_invariance_phase4.py",
+        "tests/contract/test_v1_golden_baseline.py",
+        "-ra"
+      ],
+      "exit_code": 1,
+      "max_rss_kib": 481128,
+      "user_seconds": 44.541688,
+      "wall_seconds": 44.89233699599572
+    },
+    "independent": {
+      "max_rss_kib": 265884,
+      "user_seconds": 201.869602,
+      "wall_seconds": 222.76480990099662
+    },
+    "repeat-A": {
+      "max_rss_kib": 164436,
+      "user_seconds": 12.414559,
+      "wall_seconds": 12.531062246001966
+    },
+    "repeat-B": {
+      "max_rss_kib": 160688,
+      "user_seconds": 11.964785,
+      "wall_seconds": 12.147329389998049
+    },
+    "study-A": {
+      "max_rss_kib": 165524,
+      "user_seconds": 12.478697,
+      "wall_seconds": 12.430779137997888
+    },
+    "study-B": {
+      "max_rss_kib": 160212,
+      "user_seconds": 11.314534,
+      "wall_seconds": 11.31358008299867
+    }
+  },
+  "model_selection": "Owner-selected GPT-6.1 Sol; High preferred",
+  "producer_and_protocol_sha": "22913d753ef9e98536f56381e641365ed4021a71",
+  "recorded_local": "2026-10-18T13:39:02.152901+05:30",
+  "remaining_gates": {
+    "V1_golden": "BLOCKED BY ENVIRONMENT; Nautilus absent, one observed failure retained",
+    "block_uncertainty": "TEST GATE for robust inference; only 18/19 weeks, 9/10 two-week blocks, inspected B",
+    "complete_universe_full_S6_eligibility": "UNVERIFIED",
+    "continuous_live_ema_state": "UNVERIFIED; explicitly not the finite-prefix estimand",
+    "executable_and_whole_programme_after_cost_cash": "NOT ESTIMABLE; source/action/fill/cost/portfolio/provider records absent",
+    "fresh_online_rebuild": "UNVERIFIED this session; exact existing-source rebuild/repeat only",
+    "full_locked_runtime": "UNVERIFIED; installed-package compatibility only",
+    "full_original_N_mean_with_accepted_censors": "NOT ESTIMABLE; common complete subset explicitly reported",
+    "new_independent_acceptance": "TEST GATE; exact final SHA review pending",
+    "original_actual_receipt_source_health": "UNVERIFIED / UNKNOWN_NOT_CAPTURED_AT_ACQUISITION"
+  },
+  "resource_measurement": "Python monotonic/getrusage; max RSS KiB, process high-water mark; /usr/bin/time absent",
+  "runtime_model_effort_attestation": "UNVERIFIED; environment provides no independent runtime model/effort attestation",
+  "scope": "One research-only offline correction and preregistered historical-price study; not independent acceptance or full-suite certification",
+  "selection_sequence": {
+    "A_rule": "P1",
+    "A_selection_freeze_commit": "d1bd9f38b2dd2a8784f1f2bf5e007ba7d7490799",
+    "A_selection_sha256": "852bb522951bce03a54f80e120f2c20d218fb8831c6414e694559e188caf444f",
+    "A_started_local": "2026-10-18T13:12:17.896935+05:30",
+    "B_outcomes_absent_at_A_start": true,
+    "B_started_after_A_commit": true,
+    "B_started_local": "2026-10-18T13:16:12.617763+05:30",
+    "protocol_source_commit": "22913d753ef9e98536f56381e641365ed4021a71",
+    "study_code_sha256_before_A": "13f00da94fc597080326221bca10404183dd250ceccbfb1b346acec760d74ba8",
+    "study_code_unchanged_between_A_and_B": true
+  },
+  "source_price_check": {
+    "checked_csv_objects": 197,
+    "comparisons": 576,
+    "max_absolute_error_bps": 2.8705926524708048e-12,
+    "method": "exact verified CSV rows; independent 50-digit Decimal return/MFE/MAE; complete native-path identities; no outcome-value sampling",
+    "mismatches": 0,
+    "numeric_fields_per_comparison": 3,
+    "tolerance_absolute_bps": 1e-08
+  },
+  "source_reuse": {
+    "archive_downloads": 0,
+    "archive_payload_bytes": 55549936,
+    "checksum_proof_sha256": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+    "historical_rejected_bytes": "UNKNOWN",
+    "network_requests": 0,
+    "retained_historical_404_objects": 13,
+    "retained_parser_rejected_attempts": 420,
+    "source_manifest_sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+    "verified_cached_zip_checksum_csv_objects": 757
+  },
+  "stage_commands_equivalent_to_executed_entrypoints": {
+    "build": "python3 docs/research/atlas-red-e1b/build_research_panel.py --scratch /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --outdir /workspace/work/e1b-synergy-build --offline-manifests /workspace/work/e1b-synergy-inputs/H1.jsonl /workspace/work/e1b-synergy-inputs/M15.jsonl --rejected-attempt /workspace/work/e1b-synergy-inputs/REJECTED.jsonl",
+    "build-repeat": "python3 docs/research/atlas-red-e1b/build_research_panel.py --scratch /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --outdir /workspace/work/e1b-synergy-build-repeat --offline-manifests /workspace/work/e1b-synergy-inputs/H1.jsonl /workspace/work/e1b-synergy-inputs/M15.jsonl --rejected-attempt /workspace/work/e1b-synergy-inputs/REJECTED.jsonl",
+    "independent": "python3 docs/research/atlas-red-e1b/independent_sol_reproduction.py --panel /workspace/work/e1b-synergy-build/DIAGNOSTIC_FEATURE_PANEL.csv.gz --csv-cache /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --source-proof docs/research/atlas-red-e1b/SOL_SOURCE_CHECKS.jsonl --artifact-config docs/research/atlas-red-e1b/v3-corrected/VALIDATION_INPUTS.json --scratch /workspace/work/e1b-synergy-independent-scratch --outdir docs/research/atlas-red-e1b/v3-corrected",
+    "mechanism": "python3 docs/research/atlas-red-e1b/summarize_synergy_evidence.py --csv-cache /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --directory docs/research/atlas-red-e1b/v3-corrected",
+    "old-new": "python3 docs/research/atlas-red-e1b/corrected_research.py compare --old /workspace/work/atlas-e1b-trigger-censor-qualified-output/DIAGNOSTIC_FEATURE_PANEL.csv.gz --new /workspace/work/e1b-synergy-build/DIAGNOSTIC_FEATURE_PANEL.csv.gz",
+    "package": "python3 docs/research/atlas-red-e1b/corrected_research.py package --builddir /workspace/work/e1b-synergy-build",
+    "population": "python3 docs/research/atlas-red-e1b/study_s1_s6.py extract --panel /workspace/work/e1b-synergy-build/DIAGNOSTIC_FEATURE_PANEL.csv.gz --validation docs/research/atlas-red-e1b/v3-corrected/SOL_REPRODUCTION_RESULTS.json --destination docs/research/atlas-red-e1b/v3-corrected/FIRST_EVENT_FEATURES.csv.gz",
+    "prepare": "python3 docs/research/atlas-red-e1b/corrected_research.py prepare --zip-cache /workspace/work/e1b-sol-official-zips --csv-cache /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --scratch /workspace/work/e1b-synergy-inputs",
+    "repeat-A": "python3 docs/research/atlas-red-e1b/study_s1_s6.py outcomes --features docs/research/atlas-red-e1b/v3-corrected/FIRST_EVENT_FEATURES.csv.gz --csv-cache /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --window A --outdir /workspace/work/e1b-synergy-study-repeat",
+    "repeat-B": "python3 docs/research/atlas-red-e1b/study_s1_s6.py outcomes --features docs/research/atlas-red-e1b/v3-corrected/FIRST_EVENT_FEATURES.csv.gz --csv-cache /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --window B --outdir /workspace/work/e1b-synergy-study-repeat --selection-file docs/research/atlas-red-e1b/v3-corrected/A_RULE_SELECTION.json --selection-sha 852bb522951bce03a54f80e120f2c20d218fb8831c6414e694559e188caf444f",
+    "study-A": "python3 docs/research/atlas-red-e1b/study_s1_s6.py outcomes --features docs/research/atlas-red-e1b/v3-corrected/FIRST_EVENT_FEATURES.csv.gz --csv-cache /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --window A --outdir docs/research/atlas-red-e1b/v3-corrected",
+    "study-B": "python3 docs/research/atlas-red-e1b/study_s1_s6.py outcomes --features docs/research/atlas-red-e1b/v3-corrected/FIRST_EVENT_FEATURES.csv.gz --csv-cache /workspace/work/atlas-e1b-trigger-censor-qualified-scratch --window B --outdir docs/research/atlas-red-e1b/v3-corrected --selection-file docs/research/atlas-red-e1b/v3-corrected/A_RULE_SELECTION.json --selection-sha 852bb522951bce03a54f80e120f2c20d218fb8831c6414e694559e188caf444f"
+  },
+  "starting_sha": "c29dfc2c2ae6cb903b53f72fdf2d457c9a5bb32d",
+  "study_repeat": {
+    "A_PRICE_PROXIES.csv.gz": "130d8d5e8ed19cc6a4a1f7eb2468e9531fdba830a0dc278d94b79a439b19f2e1",
+    "A_RULE_SELECTION.json": "852bb522951bce03a54f80e120f2c20d218fb8831c6414e694559e188caf444f",
+    "A_STUDY_RESULTS.json": "3df925d14206edab30c70ad4b3455ec1e1b79807198e7ef7ea7f9bf0abd2ea7d",
+    "B_PRICE_PROXIES.csv.gz": "e00ad707aee8f316270e3d14b8c35b86539291f7cb87228ed4a87421550673d8",
+    "B_STUDY_RESULTS.json": "869ab336c6530bee443d0492cfeb2768eb6663d559c3a70a57ff96bb1ce7d90e"
+  },
+  "subagents_used": false,
+  "test_log_evidence": {
+    "additional-tests": {
+      "sha256": "4fd2e64398cb165bf27a04bfa14ac8bf956ddf14feb6511cfd21b24baa9cbadf",
+      "stdout_stderr": "............F                                                            [100%]\n=================================== FAILURES ===================================\n_______ test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures _______\n\n    def test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures() -> None:\n        baseline = json.loads(GOLDEN_PATH.read_text(encoding=\"utf-8\"))\n        assert baseline[\"source_commit\"] == BASELINE_COMMIT\n        assert baseline[\"contract_versions\"] == _contract_versions()\n        assert baseline[\"dependency_lock\"][\"sha256\"] == hashlib.sha256(\n            (ROOT / \"requirements-lock.txt\").read_bytes()\n        ).hexdigest()\n        expected_version, expected_wheel_hash = _lock_nautilus_pin()\n        assert expected_version == EXPECTED_NAUTILUS_VERSION\n        assert expected_wheel_hash == EXPECTED_NAUTILUS_WHEEL_SHA256\n        assert baseline[\"nautilus\"][\"expected\"][\"version\"] == expected_version\n        assert baseline[\"nautilus\"][\"expected\"][\"wheel_sha256\"] == expected_wheel_hash\n>       observed = _nautilus_observation()\n                   ^^^^^^^^^^^^^^^^^^^^^^^\n\ntests/contract/test_v1_golden_baseline.py:202: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def _nautilus_observation() -> dict[str, Any]:\n        spec = importlib.util.find_spec(\"nautilus_trader\")\n>       assert spec is not None and spec.origin is not None\nE       assert (None is not None)\n\ntests/contract/test_v1_golden_baseline.py:99: AssertionError\n=========================== short test summary info ============================\nFAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures\n1 failed, 12 passed in 1.32s\n"
+    },
+    "builder-red": {
+      "sha256": "0f9269054666d36c4170cf39422f0aa5f5da7cde8529520952823cf51ab2f57f",
+      "stdout_stderr": "F.F                                                                      [100%]\n=================================== FAILURES ===================================\n_______________ test_d3_actual_builder_anchor_serialization[0.0] _______________\n\ntmp_path = PosixPath('/tmp/pytest-of-agent/pytest-57/test_d3_actual_builder_anchor_0')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f08b7a5eba0>\nvalue = 0.0\n\n    @pytest.mark.parametrize(\"value\", [0., None])\n    def test_d3_actual_builder_anchor_serialization(tmp_path, monkeypatch, value):\n        monkeypatch.setattr(producer,\"COHORT\",[\"BTCUSDT\",\"ETHUSDT\"])\n        monkeypatch.setattr(producer,\"WINDOWS\",((\"A\",2024,3,1,2024,3,1),))\n        begin=producer.ns(2024,3,1)\n        monkeypatch.setattr(producer,\"decision_cutoffs\",lambda *_: (begin,))\n        monkeypatch.setattr(producer,\"parse_raw\",lambda *_: {})\n        def no_setup(*_):\n            return dict(state=\"NO_SETUP\",reason=\"\",h1_last_return=value)\n        monkeypatch.setattr(producer,\"s1_cached_state\",no_setup)\n        producer.build(tmp_path,tmp_path,[])\n        with gzip.open(tmp_path/\"DIAGNOSTIC_FEATURE_PANEL.csv.gz\",\"rt\") as f:\n            rows=list(csv.DictReader(f))\n        assert len(rows)==2\n        for row in rows:\n            for anchor in (\"btc\",\"eth\"):\n>               assert row[anchor+\"_h1_return\"]==(\"\" if value is None else \"0.0\")\nE               AssertionError: assert '' == '0.0'\nE                 \nE                 - 0.0\n\ntests/research/test_atlas_red_e1b_corrections.py:113: AssertionError\n____ test_d1_actual_builder_physical_h1_identity_is_independent_of_context _____\n\ntmp_path = PosixPath('/tmp/pytest-of-agent/pytest-57/test_d1_actual_builder_physica0')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f08b7a5d8b0>\n\n    def test_d1_actual_builder_physical_h1_identity_is_independent_of_context(tmp_path,monkeypatch):\n        monkeypatch.setattr(producer,\"COHORT\",[\"BTCUSDT\"])\n        monkeypatch.setattr(producer,\"WINDOWS\",((\"A\",2024,3,1,2024,3,1),))\n        begin=producer.ns(2024,3,1)\n        monkeypatch.setattr(producer,\"decision_cutoffs\",lambda *_: (begin,))\n        raw=[]\n        for i,end in enumerate((begin-producer.HOUR,begin),1):\n            raw.append(dict(open_ns=end-producer.HOUR,close_ns=end,open=\"100\",high=\"101\",low=\"99\",close=\"100\",volume=\"1\",\n                            archive_sha256=\"a\"*64,row_index=i,archive_url=\"fixture\",archive_bytes=1))\n        monkeypatch.setattr(producer,\"parse_raw\",lambda *_: {\"BTCUSDT\":{\"1h\":raw}})\n        monkeypatch.setattr(producer,\"s1_cached_state\",lambda *_: dict(state=\"SOURCE_MISSING\",reason=\"TEST_CONTEXT_MISSING\",h1_last_close_ns=begin-producer.HOUR))\n        producer.build(tmp_path,tmp_path,[])\n        with gzip.open(tmp_path/\"DIAGNOSTIC_FEATURE_PANEL.csv.gz\",\"rt\") as f:\n            row=next(csv.DictReader(f))\n>       assert row[\"h1_row_index\"]==\"2\"\nE       AssertionError: assert '1' == '2'\nE         \nE         - 2\nE         + 1\n\ntests/research/test_atlas_red_e1b_corrections.py:130: AssertionError\n=========================== short test summary info ============================\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d3_actual_builder_anchor_serialization[0.0]\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d1_actual_builder_physical_h1_identity_is_independent_of_context\n2 failed, 1 passed, 12 deselected in 0.24s\n"
+    },
+    "corrections-green": {
+      "sha256": "6946b27a7a1a0fd237d5db5744be66ae33de66d72e39d117c6946a4231142515",
+      "stdout_stderr": "..........................................                               [100%]\n42 passed in 1.29s\n"
+    },
+    "corrections-red": {
+      "sha256": "94f214a1abd71effd362456255dc7da9415ed3cbcb7e3ad5199660b9f83064a3",
+      "stdout_stderr": "FFFF.FFFFFFF                                                             [100%]\n=================================== FAILURES ===================================\n__________________ test_d1_rejects_stale_native_terminal[H1] ___________________\n\nframe = 'H1'\n\n    @pytest.mark.parametrize(\"frame\",[\"H1\",\"H4\"])\n    def test_d1_rejects_stale_native_terminal(frame):\n        h1=hourly(2025)\n        h4=producer.h4_bars_from_h1(\"TESTUSDT\",h1)\n        cutoff=h1[-1].close_at_ns\n        assert state(h1,h4,cutoff)[\"state\"] in (\"SETUP\",\"NO_SETUP\")\n        if frame==\"H1\":\n            h1=h1[:-1]\n            producer.BAR_INDEX[id(h1)]=[b.close_at_ns for b in h1]\n        else:\n            h4=h4[:-1]\n            producer.BAR_INDEX[id(h4)]=[b.close_at_ns for b in h4]\n>       assert state(h1,h4,cutoff)[\"state\"]==\"SOURCE_MISSING\"\nE       AssertionError: assert 'SETUP' == 'SOURCE_MISSING'\nE         \nE         - SOURCE_MISSING\nE         + SETUP\n\ntests/research/test_atlas_red_e1b_corrections.py:48: AssertionError\n__________________ test_d1_rejects_stale_native_terminal[H4] ___________________\n\nframe = 'H4'\n\n    @pytest.mark.parametrize(\"frame\",[\"H1\",\"H4\"])\n    def test_d1_rejects_stale_native_terminal(frame):\n        h1=hourly(2025)\n        h4=producer.h4_bars_from_h1(\"TESTUSDT\",h1)\n        cutoff=h1[-1].close_at_ns\n        assert state(h1,h4,cutoff)[\"state\"] in (\"SETUP\",\"NO_SETUP\")\n        if frame==\"H1\":\n            h1=h1[:-1]\n            producer.BAR_INDEX[id(h1)]=[b.close_at_ns for b in h1]\n        else:\n            h4=h4[:-1]\n            producer.BAR_INDEX[id(h4)]=[b.close_at_ns for b in h4]\n>       assert state(h1,h4,cutoff)[\"state\"]==\"SOURCE_MISSING\"\nE       AssertionError: assert 'SETUP' == 'SOURCE_MISSING'\nE         \nE         - SOURCE_MISSING\nE         + SETUP\n\ntests/research/test_atlas_red_e1b_corrections.py:48: AssertionError\n____________ test_d2_explicit_origins_do_not_carry_disconnected_ema ____________\n\n    def test_d2_explicit_origins_do_not_carry_disconnected_ema():\n        a,b=hourly(2024,initial=10.),hourly(2025,initial=200.)\n        origin_a,origin_b=producer.ns(2024,1,1),producer.ns(2025,1,1)\n>       actual=producer.research_prefix_ema(a+b,50,(origin_a,origin_b))\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       AttributeError: module 'build_research_panel' has no attribute 'research_prefix_ema'\n\ntests/research/test_atlas_red_e1b_corrections.py:54: AttributeError\n_______ test_d2_calendar_year_does_not_itself_reset_a_contiguous_history _______\n\n    def test_d2_calendar_year_does_not_itself_reset_a_contiguous_history():\n        h1=hourly(2024,count=9000)\n        expected=list(producer.ema([float(b.close) for b in h1],50))\n>       assert producer.research_prefix_ema(h1,50,(producer.ns(2024,1,1),))==expected\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       AttributeError: module 'build_research_panel' has no attribute 'research_prefix_ema'\n\ntests/research/test_atlas_red_e1b_corrections.py:63: AttributeError\n___________ test_d3_optional_numeric_preserves_zero_and_missing[0.0] ___________\n\nvalue = 0.0\n\n    @pytest.mark.parametrize(\"value\",[0.,0, None])\n    def test_d3_optional_numeric_preserves_zero_and_missing(value):\n>       got=producer.research_number(value)\n            ^^^^^^^^^^^^^^^^^^^^^^^^\nE       AttributeError: module 'build_research_panel' has no attribute 'research_number'\n\ntests/research/test_atlas_red_e1b_corrections.py:76: AttributeError\n____________ test_d3_optional_numeric_preserves_zero_and_missing[0] ____________\n\nvalue = 0\n\n    @pytest.mark.parametrize(\"value\",[0.,0, None])\n    def test_d3_optional_numeric_preserves_zero_and_missing(value):\n>       got=producer.research_number(value)\n            ^^^^^^^^^^^^^^^^^^^^^^^^\nE       AttributeError: module 'build_research_panel' has no attribute 'research_number'\n\ntests/research/test_atlas_red_e1b_corrections.py:76: AttributeError\n__________ test_d3_optional_numeric_preserves_zero_and_missing[None] ___________\n\nvalue = None\n\n    @pytest.mark.parametrize(\"value\",[0.,0, None])\n    def test_d3_optional_numeric_preserves_zero_and_missing(value):\n>       got=producer.research_number(value)\n            ^^^^^^^^^^^^^^^^^^^^^^^^\nE       AttributeError: module 'build_research_panel' has no attribute 'research_number'\n\ntests/research/test_atlas_red_e1b_corrections.py:76: AttributeError\n______________________ test_d3_nonfinite_is_not_zero[nan] ______________________\n\nvalue = nan\n\n    @pytest.mark.parametrize(\"value\",[math.nan,math.inf,-math.inf])\n    def test_d3_nonfinite_is_not_zero(value):\n        with pytest.raises(ValueError,match=\"NONFINITE\"):\n>           producer.research_number(value)\n            ^^^^^^^^^^^^^^^^^^^^^^^^\nE           AttributeError: module 'build_research_panel' has no attribute 'research_number'\n\ntests/research/test_atlas_red_e1b_corrections.py:83: AttributeError\n______________________ test_d3_nonfinite_is_not_zero[inf] ______________________\n\nvalue = inf\n\n    @pytest.mark.parametrize(\"value\",[math.nan,math.inf,-math.inf])\n    def test_d3_nonfinite_is_not_zero(value):\n        with pytest.raises(ValueError,match=\"NONFINITE\"):\n>           producer.research_number(value)\n            ^^^^^^^^^^^^^^^^^^^^^^^^\nE           AttributeError: module 'build_research_panel' has no attribute 'research_number'\n\ntests/research/test_atlas_red_e1b_corrections.py:83: AttributeError\n_____________________ test_d3_nonfinite_is_not_zero[-inf] ______________________\n\nvalue = -inf\n\n    @pytest.mark.parametrize(\"value\",[math.nan,math.inf,-math.inf])\n    def test_d3_nonfinite_is_not_zero(value):\n        with pytest.raises(ValueError,match=\"NONFINITE\"):\n>           producer.research_number(value)\n            ^^^^^^^^^^^^^^^^^^^^^^^^\nE           AttributeError: module 'build_research_panel' has no attribute 'research_number'\n\ntests/research/test_atlas_red_e1b_corrections.py:83: AttributeError\n________ test_d2_declared_seed_matches_pure_production_flat_equal_case _________\n\n    def test_d2_declared_seed_matches_pure_production_flat_equal_case():\n        from atlas.v2.strategies.s1_trend import _regime\n        h1=hourly(2025,initial=100.,increment=0.)\n        h4=producer.h4_bars_from_h1(\"TESTUSDT\",h1)\n        assert _regime(SimpleNamespace(h1=h1,h4=h4)) is None\n>       values=producer.research_prefix_ema(h4,50,(producer.ns(2025,1,1),))\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       AttributeError: module 'build_research_panel' has no attribute 'research_prefix_ema'\n\ntests/research/test_atlas_red_e1b_corrections.py:91: AttributeError\n=========================== short test summary info ============================\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d1_rejects_stale_native_terminal[H1]\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d1_rejects_stale_native_terminal[H4]\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d2_explicit_origins_do_not_carry_disconnected_ema\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d2_calendar_year_does_not_itself_reset_a_contiguous_history\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d3_optional_numeric_preserves_zero_and_missing[0.0]\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d3_optional_numeric_preserves_zero_and_missing[0]\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d3_optional_numeric_preserves_zero_and_missing[None]\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d3_nonfinite_is_not_zero[nan]\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d3_nonfinite_is_not_zero[inf]\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d3_nonfinite_is_not_zero[-inf]\nFAILED tests/research/test_atlas_red_e1b_corrections.py::test_d2_declared_seed_matches_pure_production_flat_equal_case\n11 failed, 1 passed in 0.42s\n"
+    },
+    "dependencies": {
+      "sha256": "e4c803bb583b8aea190c373a838113dfb902691ed3fd55d17306d18c2c55796b",
+      "stdout_stderr": "Using Python 3.12.14 environment at: /workspace/.venvs/atlas\nChecked 17 packages in 0.56ms\nAll installed packages are compatible\n"
+    },
+    "final-scoped-tests": {
+      "sha256": "0cd6df71199860816dee683c2a1a135df2b15df255974b77c8e0059cf938add9",
+      "stdout_stderr": "........................................................................ [ 44%]\n........................................................................ [ 88%]\n.................F                                                       [100%]\n=================================== FAILURES ===================================\n_______ test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures _______\n\n    def test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures() -> None:\n        baseline = json.loads(GOLDEN_PATH.read_text(encoding=\"utf-8\"))\n        assert baseline[\"source_commit\"] == BASELINE_COMMIT\n        assert baseline[\"contract_versions\"] == _contract_versions()\n        assert baseline[\"dependency_lock\"][\"sha256\"] == hashlib.sha256(\n            (ROOT / \"requirements-lock.txt\").read_bytes()\n        ).hexdigest()\n        expected_version, expected_wheel_hash = _lock_nautilus_pin()\n        assert expected_version == EXPECTED_NAUTILUS_VERSION\n        assert expected_wheel_hash == EXPECTED_NAUTILUS_WHEEL_SHA256\n        assert baseline[\"nautilus\"][\"expected\"][\"version\"] == expected_version\n        assert baseline[\"nautilus\"][\"expected\"][\"wheel_sha256\"] == expected_wheel_hash\n>       observed = _nautilus_observation()\n                   ^^^^^^^^^^^^^^^^^^^^^^^\n\ntests/contract/test_v1_golden_baseline.py:202: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def _nautilus_observation() -> dict[str, Any]:\n        spec = importlib.util.find_spec(\"nautilus_trader\")\n>       assert spec is not None and spec.origin is not None\nE       assert (None is not None)\n\ntests/contract/test_v1_golden_baseline.py:99: AssertionError\n=========================== short test summary info ============================\nFAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures\n1 failed, 161 passed in 44.55s\n"
+    },
+    "impacted-tests": {
+      "sha256": "b60d966293ae12822f42e8f09e40282520404ab4e3ffdb3ccd454203548327e5",
+      "stdout_stderr": "........................................                                 [100%]\n40 passed in 9.92s\n"
+    },
+    "independent-tests": {
+      "sha256": "f0a66489c3d834610b3637326a1204d2c87193ad479de257c62fde1554273902",
+      "stdout_stderr": "........................................                                 [100%]\n40 passed in 35.04s\n"
+    },
+    "lock": {
+      "sha256": "82f027db0866b0fc45296cff3b862759d8658e05dcfde958c7409c46623a8a85",
+      "stdout_stderr": "Using CPython 3.12.14 interpreter at: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\nResolved 39 packages in 1ms\n"
+    },
+    "parent-golden-baseline": {
+      "sha256": "7553b29d83101091f6f6fdc4137709aa9e6e52fca57ac6428f1843ecd3545675",
+      "stdout_stderr": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_______ test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures _______\n\n    def test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures() -> None:\n        baseline = json.loads(GOLDEN_PATH.read_text(encoding=\"utf-8\"))\n        assert baseline[\"source_commit\"] == BASELINE_COMMIT\n        assert baseline[\"contract_versions\"] == _contract_versions()\n        assert baseline[\"dependency_lock\"][\"sha256\"] == hashlib.sha256(\n            (ROOT / \"requirements-lock.txt\").read_bytes()\n        ).hexdigest()\n        expected_version, expected_wheel_hash = _lock_nautilus_pin()\n        assert expected_version == EXPECTED_NAUTILUS_VERSION\n        assert expected_wheel_hash == EXPECTED_NAUTILUS_WHEEL_SHA256\n        assert baseline[\"nautilus\"][\"expected\"][\"version\"] == expected_version\n        assert baseline[\"nautilus\"][\"expected\"][\"wheel_sha256\"] == expected_wheel_hash\n>       observed = _nautilus_observation()\n                   ^^^^^^^^^^^^^^^^^^^^^^^\n\ntests/contract/test_v1_golden_baseline.py:202: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def _nautilus_observation() -> dict[str, Any]:\n        spec = importlib.util.find_spec(\"nautilus_trader\")\n>       assert spec is not None and spec.origin is not None\nE       assert (None is not None)\n\ntests/contract/test_v1_golden_baseline.py:99: AssertionError\n=========================== short test summary info ============================\nFAILED tests/contract/test_v1_golden_baseline.py::test_v1_golden_baseline_recomputes_from_frozen_code_and_fixtures\n1 failed in 0.18s\n"
+    },
+    "ruff": {
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "stdout_stderr": "All checks passed!\n"
+    },
+    "study-tests": {
+      "sha256": "9cee0a98eeb773b9083a010280f88bb875952c8b2929a5e31494ec0d25f9e736",
+      "stdout_stderr": "...........................                                              [100%]\n27 passed in 0.44s\n"
+    }
+  },
+  "wrapper_note": "Measured invocations used runpy.run_path under Python with sys.argv and research directory inserted into sys.path. Entry points/arguments above reproduce the calculations; shell wrapper text is not represented as source attestation. Initial runpy startup failed on acquire_archives import before calculations and was corrected by adding sys.path. Study A/B wrappers additionally checked the recorded unchanged core-code/selection bytes."
+}

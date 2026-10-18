@@ -253,3 +253,28 @@ def test_deterministic_csv_bytes_and_explicit_grade(tmp_path):
     study.write_csv(b, [event()])
     assert a.read_bytes() == b.read_bytes()
     assert study.GRADE == "HISTORICAL_PRICE_PROXY_NONEXECUTABLE"
+
+
+def test_registered_count_decomposition_matches_paired_bootstrap():
+    import summarize_synergy_evidence as diagnostic
+
+    rows = ledger_fixture()[:2]
+    extra = diagnostic.decomposition_intervals(rows, "A")
+    paired = study.paired_blocks(rows, "A", 4, study.protocol())
+    for name, value in extra.items():
+        for p in ("P1", "P2"):
+            assert value["arms"][p]["raw_delta_interval_bps"] == pytest.approx(
+                paired[name]["paired_delta_vs_P0_intervals_bps"][p]
+            )
+        assert value["arms"]["P1"]["extra_vs_count_only_interval_bps"] == pytest.approx([2.25, 2.25])
+
+
+def test_count_decomposition_does_not_change_selection_or_add_policy():
+    import summarize_synergy_evidence as diagnostic
+
+    rows = ledger_fixture()[:2]
+    before = copy.deepcopy(rows)
+    first = diagnostic.decomposition_intervals(rows, "A")
+    assert rows == before
+    assert first == diagnostic.decomposition_intervals(rows, "A")
+    assert set(first["1_calendar_week_blocks"]["arms"]) == {"P1", "P2"}

@@ -1,0 +1,243 @@
+{
+  "A_only_freeze_commit_before_B": "d1bd9f38b2dd2a8784f1f2bf5e007ba7d7490799",
+  "D2_affected_B_FTM_first_events": 0,
+  "authority": "OBSERVE; zero bot allocation and paid allowance; capital NO-GO; no production/algorithm/dependency/freeze edits, private venue access, orders, paid calls or model generation",
+  "cohort_symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "SOLUSDT",
+    "XRPUSDT",
+    "ADAUSDT",
+    "DOGEUSDT",
+    "AVAXUSDT",
+    "LINKUSDT",
+    "DOTUSDT",
+    "LTCUSDT",
+    "BCHUSDT",
+    "ETCUSDT",
+    "TRXUSDT",
+    "XLMUSDT",
+    "ATOMUSDT",
+    "NEARUSDT",
+    "APTUSDT",
+    "ARBUSDT",
+    "OPUSDT",
+    "FILUSDT",
+    "UNIUSDT",
+    "INJUSDT",
+    "SUIUSDT",
+    "SEIUSDT",
+    "RUNEUSDT",
+    "ICPUSDT",
+    "CRVUSDT",
+    "AAVEUSDT",
+    "LDOUSDT",
+    "FTMUSDT",
+    "MATICUSDT",
+    "EOSUSDT",
+    "ALGOUSDT",
+    "HBARUSDT"
+  ],
+  "counts": {
+    "A_4h_complete_censored": [
+      8691,
+      8
+    ],
+    "A_altcoin_N": 8699,
+    "B_4h_complete_censored": [
+      7351,
+      6
+    ],
+    "B_altcoin_N": 7357,
+    "compact_sample": 6720,
+    "coverage": 1024800,
+    "first_events_including_context_anchors": 17160
+  },
+  "external_full_panel": {
+    "bytes": 205272516,
+    "name": "DIAGNOSTIC_FEATURE_PANEL.csv.gz",
+    "rows": 819840,
+    "sha256": "811ef7c972c69d1c6d26f9a8518e388fc64a5774ee801c141d45863959e0bce4",
+    "storage": "Outside Git; >100 MiB GitHub limit; rebuild from pinned source producer/caches"
+  },
+  "initialization_scope": "Explicit independent finite experiments; frozen EMA recurrence; no in-window restart or live checkpoint invention. Unknown continuous-live EMA state UNVERIFIED.",
+  "legacy_dataset_recipe_fields": {
+    "reason": "Inherited historical root-output layout. Dataset frozen before outcomes is preserved; versioned REPRODUCIBILITY.md gives authoritative v3 commands and exact producer checkout.",
+    "superseded": [
+      "full_rebuild_command",
+      "compact_sample_command"
+    ]
+  },
+  "ordered_cohort_sha256": "b51f4a360e60bbb62fae982e4120ff3681b12a13ef8cd4a0aff01d761f6f03b5",
+  "pinned_repository_artifacts": [
+    {
+      "bytes": 98591,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/DATASET_MANIFEST.json",
+      "sha256": "b7c7250af62057159359a26c3873f84b59eaf8223dd6f3de23cd84014977145e"
+    },
+    {
+      "bytes": 723,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/VALIDATION_INPUTS.json",
+      "sha256": "88676c2a82e473d371adada07ad77ae7294d7b1f1bd53cab15b1bf6cac58f920"
+    },
+    {
+      "bytes": 1706315,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/COMPACT_REAL_MULTI_SYMBOL_SAMPLE.csv.gz",
+      "sha256": "558a3c650383cd18f038dc4cfc63dc6ac7e9cb9373d4d256a8d023ff0a2287aa"
+    },
+    {
+      "bytes": 82175,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/SOL_REPRODUCTION_RESULTS.json",
+      "sha256": "c0c9850ed01838678200d572a41adc2c85b8c969bc8b842b8b7418917b498fb5"
+    },
+    {
+      "bytes": 2882,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/CHECKPOINT_A_VERIFICATION.json",
+      "sha256": "92906e849f5fb3e6deac936442a2d263a31d32155585e7e11c915a07f8a5acd4"
+    },
+    {
+      "bytes": 15841,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/OLD_NEW_DIFF.json",
+      "sha256": "b3258ab2aa942a66e75f1af89a6d24b5d2bb8e56cba811fc8ef1b78c444b350f"
+    },
+    {
+      "bytes": 5035,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/STUDY_PROTOCOL.json",
+      "sha256": "e643744f2f6915c1bb235170a3e900259b02aff8d154bc956d6f83f3b03f2b78"
+    },
+    {
+      "bytes": 3252830,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/FIRST_EVENT_FEATURES.csv.gz",
+      "sha256": "2874b7acde4bc6e895fa81fa64ddcb5ab7dc33bf27a2a1ed98b58656c0f31001"
+    },
+    {
+      "bytes": 795,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/POPULATION_FREEZE.json",
+      "sha256": "c5ff8dfd3e5060f62be815c62bb38f60e1993c0ba65e79b76c8f81c2820fe7cf"
+    },
+    {
+      "bytes": 707,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/A_RULE_SELECTION.json",
+      "sha256": "852bb522951bce03a54f80e120f2c20d218fb8831c6414e694559e188caf444f"
+    },
+    {
+      "bytes": 4106203,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/A_PRICE_PROXIES.csv.gz",
+      "sha256": "130d8d5e8ed19cc6a4a1f7eb2468e9531fdba830a0dc278d94b79a439b19f2e1"
+    },
+    {
+      "bytes": 79921,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/A_STUDY_RESULTS.json",
+      "sha256": "3df925d14206edab30c70ad4b3455ec1e1b79807198e7ef7ea7f9bf0abd2ea7d"
+    },
+    {
+      "bytes": 3481426,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/B_PRICE_PROXIES.csv.gz",
+      "sha256": "e00ad707aee8f316270e3d14b8c35b86539291f7cb87228ed4a87421550673d8"
+    },
+    {
+      "bytes": 78699,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/B_STUDY_RESULTS.json",
+      "sha256": "869ab336c6530bee443d0492cfeb2768eb6663d559c3a70a57ff96bb1ce7d90e"
+    },
+    {
+      "bytes": 304049,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/MECHANISM_AND_PRICE_CHECKS.json",
+      "sha256": "a7b2c549a550977822ff325437f34c27948473b9f5056d3d4e1916e7dc7226f0"
+    },
+    {
+      "bytes": 598,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/STUDY_EXECUTION_SEQUENCE.json",
+      "sha256": "942d6dcc86fdac4ed4b045ffc169e33393cf6c8baa702782e5ed6909be0c5cc2"
+    },
+    {
+      "bytes": 38453,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/EXECUTION_EVIDENCE.json",
+      "sha256": "08bce625253ff6b91cac85169592f3520d9ada3f3004d4eb9e81f0ddfc0170ea"
+    },
+    {
+      "bytes": 9646,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/REPRODUCIBILITY.md",
+      "sha256": "53c1964715deb9637f76d44f15e148480902d946af155a3473797c7300e38a64"
+    },
+    {
+      "bytes": 19827,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/HISTORICAL_S1_S6_FINDINGS.md",
+      "sha256": "4da3faf723f156fa02a9e2c83517bbd28bcaab2cf3a5b09035d68e75d700454a"
+    },
+    {
+      "bytes": 12897,
+      "path": "docs/research/atlas-red-e1b/v3-corrected/INTEGRATED_PROGRAMME_EVIDENCE_MAP.md",
+      "sha256": "d4324a2a1303b492fcccb62f723f98e0672ebd9f4e167c8b2db10708b26698b7"
+    },
+    {
+      "bytes": 1139495,
+      "path": "docs/research/atlas-red-e1b/SOURCE_MANIFEST.jsonl",
+      "sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b"
+    },
+    {
+      "bytes": 9378530,
+      "path": "docs/research/atlas-red-e1b/ASOF_COVERAGE.csv.gz",
+      "sha256": "eb74a6eb0379524f07eec8c2462e21a3cfa78c5be66cd01972e8c735f8b45a61"
+    },
+    {
+      "bytes": 419754,
+      "path": "docs/research/atlas-red-e1b/SOL_SOURCE_CHECKS.jsonl",
+      "sha256": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013"
+    },
+    {
+      "bytes": 54851,
+      "path": "docs/research/atlas-red-e1b/build_research_panel.py",
+      "sha256": "de30c90461a16f4cdf8fea04df34d32c22dc2d4a41ada3fb04d9d160efe1651b"
+    },
+    {
+      "bytes": 27812,
+      "path": "docs/research/atlas-red-e1b/study_s1_s6.py",
+      "sha256": "13f00da94fc597080326221bca10404183dd250ceccbfb1b346acec760d74ba8"
+    }
+  ],
+  "producer_and_preregistration_commit": "22913d753ef9e98536f56381e641365ed4021a71",
+  "remaining_gates": {
+    "V1_golden": "BLOCKED BY ENVIRONMENT; Nautilus absent, one observed failure retained",
+    "block_uncertainty": "TEST GATE for robust inference; only 18/19 weeks, 9/10 two-week blocks, inspected B",
+    "complete_universe_full_S6_eligibility": "UNVERIFIED",
+    "continuous_live_ema_state": "UNVERIFIED; explicitly not the finite-prefix estimand",
+    "executable_and_whole_programme_after_cost_cash": "NOT ESTIMABLE; source/action/fill/cost/portfolio/provider records absent",
+    "fresh_online_rebuild": "UNVERIFIED this session; exact existing-source rebuild/repeat only",
+    "full_locked_runtime": "UNVERIFIED; installed-package compatibility only",
+    "full_original_N_mean_with_accepted_censors": "NOT ESTIMABLE; common complete subset explicitly reported",
+    "new_independent_acceptance": "TEST GATE; exact final SHA review pending",
+    "original_actual_receipt_source_health": "UNVERIFIED / UNKNOWN_NOT_CAPTURED_AT_ACQUISITION"
+  },
+  "research_origins": [
+    "2024-01-01T00:00:00Z",
+    "2025-01-01T00:00:00Z"
+  ],
+  "selection": "P1 selected on A by frozen four-hour objective; committed before B, no B reselection",
+  "source_checkpoint": "c29dfc2c2ae6cb903b53f72fdf2d457c9a5bb32d",
+  "source_reuse": {
+    "archive_downloads": 0,
+    "archive_payload_bytes": 55549936,
+    "checksum_proof_sha256": "65b973415cd3fc8131312b3f80e3217aeb538230b9a16c2efbcbedb0e7a8d013",
+    "historical_rejected_bytes": "UNKNOWN",
+    "network_requests": 0,
+    "retained_historical_404_objects": 13,
+    "retained_parser_rejected_attempts": 420,
+    "source_manifest_sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b",
+    "verified_cached_zip_checksum_csv_objects": 757
+  },
+  "status": "TESTED_SCOPED_RESEARCH; independent acceptance pending",
+  "timing_grade": "RECONSTRUCTED_MARKET / HISTORICAL_PRICE_PROXY_NONEXECUTABLE; historical actual receipt unknown; +5/+30/+60 raw lag plus 1s derived processing imply T+15m reference; no same T+5 deadline qualification",
+  "version": "ATLAS_RED_E1B_CORRECTED_V3",
+  "windows": {
+    "A": [
+      "2024-03-01T00:00:00Z",
+      "2024-07-01T00:00:00Z"
+    ],
+    "B": [
+      "2025-03-01T00:00:00Z",
+      "2025-07-01T00:00:00Z"
+    ]
+  }
+}
