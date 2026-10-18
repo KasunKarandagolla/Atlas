@@ -1,6 +1,13 @@
 {
   "boundary_convention": "Decision cutoffs are native close boundaries in [begin, final); slot_open=decision_cutoff-native_interval. First cutoff includes the prior February seed bar; slots closing at/after final are excluded.",
-  "clean_clone_rebuild_tested": false,
+  "clean_clone_rebuild": {
+    "clone_depth": 1,
+    "official_anonymous_retrieval_and_checksum_verification": true,
+    "output_empty_at_start": true,
+    "producer_commit_sha": "04f05ab641457ab6deee8456da2c2a77d84f5149",
+    "scratch_empty_at_start": true
+  },
+  "clean_clone_rebuild_tested": true,
   "cohort_sha256": "b51f4a360e60bbb62fae982e4120ff3681b12a13ef8cd4a0aff01d761f6f03b5",
   "cohort_symbols": [
     "BTCUSDT",
@@ -61,23 +68,23 @@
     "rows_total": 1024800
   },
   "dataset": "ATLAS_RED_LUNA_MEDIUM_REAL_BINANCE_COHORT_R_E1B",
-  "full_rebuild_command": "python3 docs/research/atlas-red-e1b/build_research_panel.py --scratch /path/to/scratch/e1b --outdir docs/research/atlas-red-e1b",
-  "model_effort_attestation": "UNVERIFIED: no independent model/effort attestation was supplied",
+  "full_rebuild_command": "python3 docs/research/atlas-red-e1b/build_research_panel.py --scratch /path/to/scratch/e1b --outdir docs/research/atlas-red-e1b --rejected-attempt /path/to/prior-parser-rejected-attempts.jsonl",
+  "model_effort_attestation": "USER CONFIRMED GPT-6 Luna, Medium selection; runtime model/effort metadata is not exposed here for independent verification",
   "panel": {
     "compact_sample_artifact": {
-      "bytes": 1701039,
+      "bytes": 1706325,
       "counts": {
         "A": 3360,
         "B": 3360
       },
       "path": "COMPACT_REAL_MULTI_SYMBOL_SAMPLE.csv.gz",
       "rows": 6720,
-      "sha256": "79e4fbd8551623c957501bd099fcc5075e70398e32fe1e2c101bc810a1fbac6f"
+      "sha256": "f678dce748d7f7ac4402067088ce9b970e6fe7b2ba02b4c607f31537b73e2608"
     },
     "full_panel_artifact": {
-      "bytes": 205348124,
+      "bytes": 206171887,
       "path": "DIAGNOSTIC_FEATURE_PANEL.csv.gz",
-      "sha256": "0cb67844a9a13110fba6628707d3be7a2be03ffa1fc156543b49ff8284e2f6cc"
+      "sha256": "68ee994b983f47de86cec2781c9469f6e992d03a03728517978790b571c9d682"
     },
     "full_panel_git_status": "OMITTED_FROM_COMMIT: compressed full panel exceeds GitHub's 100 MiB per-file limit; regenerate with the command below",
     "m15_source_missing_counts": {
@@ -240,6 +247,7 @@
       "B:XLMUSDT": 412,
       "B:XRPUSDT": 353
     },
+    "s1_reconciliation_count_notes": "M15 rows and setup identities use separate denominators. The exclusive outcome partition is mutually exclusive and must reconcile to unique setup identities; censor subcauses and previously-established-trigger diagnostics can overlap that partition.",
     "s1_setup_event_counts_by_window_symbol": {
       "A:AAVEUSDT": 439,
       "A:ADAUSDT": 456,
@@ -451,6 +459,1902 @@
       "B:XLMUSDT:SETUP": 2572,
       "B:XRPUSDT:NO_SETUP": 9312,
       "B:XRPUSDT:SETUP": 2400
+    },
+    "s1_trigger_reconciliation_by_window_symbol": {
+      "A:AAVEUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 425,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 155,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 155,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 284
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 439,
+          "previously_established_trigger": 263,
+          "unique_setup_identities": 439,
+          "verified_first_trigger_events": 284
+        }
+      },
+      "A:ADAUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 404,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 175,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 175,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 281
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 456,
+          "previously_established_trigger": 256,
+          "unique_setup_identities": 456,
+          "verified_first_trigger_events": 281
+        }
+      },
+      "A:ALGOUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 348,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 175,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 175,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 232
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 407,
+          "previously_established_trigger": 206,
+          "unique_setup_identities": 407,
+          "verified_first_trigger_events": 232
+        }
+      },
+      "A:APTUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 464,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 188,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 188,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 307
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 495,
+          "previously_established_trigger": 278,
+          "unique_setup_identities": 495,
+          "verified_first_trigger_events": 307
+        }
+      },
+      "A:ARBUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 384,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 179,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 179,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 279
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 458,
+          "previously_established_trigger": 249,
+          "unique_setup_identities": 458,
+          "verified_first_trigger_events": 279
+        }
+      },
+      "A:ATOMUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 400,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 172,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 172,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 256
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 428,
+          "previously_established_trigger": 236,
+          "unique_setup_identities": 428,
+          "verified_first_trigger_events": 256
+        }
+      },
+      "A:AVAXUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 439,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 161,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 161,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 292
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 453,
+          "previously_established_trigger": 264,
+          "unique_setup_identities": 453,
+          "verified_first_trigger_events": 292
+        }
+      },
+      "A:BCHUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 414,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 182,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 182,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 292
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 474,
+          "previously_established_trigger": 263,
+          "unique_setup_identities": 474,
+          "verified_first_trigger_events": 292
+        }
+      },
+      "A:BNBUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 448,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 151,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 151,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 303
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 454,
+          "previously_established_trigger": 262,
+          "unique_setup_identities": 454,
+          "verified_first_trigger_events": 303
+        }
+      },
+      "A:BTCUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 447,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 184,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 184,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 311
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 495,
+          "previously_established_trigger": 277,
+          "unique_setup_identities": 495,
+          "verified_first_trigger_events": 311
+        }
+      },
+      "A:CRVUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 263,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 242,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 242,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 198
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 440,
+          "previously_established_trigger": 182,
+          "unique_setup_identities": 440,
+          "verified_first_trigger_events": 198
+        }
+      },
+      "A:DOGEUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 400,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 170,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 170,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 285
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 455,
+          "previously_established_trigger": 251,
+          "unique_setup_identities": 455,
+          "verified_first_trigger_events": 285
+        }
+      },
+      "A:DOTUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 377,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 152,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 152,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 262
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 414,
+          "previously_established_trigger": 229,
+          "unique_setup_identities": 414,
+          "verified_first_trigger_events": 262
+        }
+      },
+      "A:EOSUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 284,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 194,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 194,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 196
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 390,
+          "previously_established_trigger": 187,
+          "unique_setup_identities": 390,
+          "verified_first_trigger_events": 196
+        }
+      },
+      "A:ETCUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 387,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 164,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 164,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 263
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 427,
+          "previously_established_trigger": 236,
+          "unique_setup_identities": 427,
+          "verified_first_trigger_events": 263
+        }
+      },
+      "A:ETHUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 366,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 176,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 176,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 251
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 427,
+          "previously_established_trigger": 221,
+          "unique_setup_identities": 427,
+          "verified_first_trigger_events": 251
+        }
+      },
+      "A:FILUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 386,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 172,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 172,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 259
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 431,
+          "previously_established_trigger": 239,
+          "unique_setup_identities": 431,
+          "verified_first_trigger_events": 259
+        }
+      },
+      "A:FTMUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 424,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 176,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 176,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 283
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 459,
+          "previously_established_trigger": 254,
+          "unique_setup_identities": 459,
+          "verified_first_trigger_events": 283
+        }
+      },
+      "A:HBARUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 429,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 173,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 173,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 276
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 449,
+          "previously_established_trigger": 247,
+          "unique_setup_identities": 449,
+          "verified_first_trigger_events": 276
+        }
+      },
+      "A:ICPUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 437,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 178,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 178,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 301
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 479,
+          "previously_established_trigger": 271,
+          "unique_setup_identities": 479,
+          "verified_first_trigger_events": 301
+        }
+      },
+      "A:INJUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 322,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 159,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 159,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 216
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 375,
+          "previously_established_trigger": 195,
+          "unique_setup_identities": 375,
+          "verified_first_trigger_events": 216
+        }
+      },
+      "A:LDOUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 369,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 146,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 146,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 250
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 396,
+          "previously_established_trigger": 230,
+          "unique_setup_identities": 396,
+          "verified_first_trigger_events": 250
+        }
+      },
+      "A:LINKUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 436,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 168,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 168,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 280
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 448,
+          "previously_established_trigger": 255,
+          "unique_setup_identities": 448,
+          "verified_first_trigger_events": 280
+        }
+      },
+      "A:LTCUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 325,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 159,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 159,
+            "incomplete_or_unresolved": 1,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 230
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 390,
+          "previously_established_trigger": 206,
+          "unique_setup_identities": 390,
+          "verified_first_trigger_events": 230
+        }
+      },
+      "A:MATICUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 398,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 137,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 137,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 262
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 399,
+          "previously_established_trigger": 243,
+          "unique_setup_identities": 399,
+          "verified_first_trigger_events": 262
+        }
+      },
+      "A:NEARUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 390,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 149,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 149,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 263
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 412,
+          "previously_established_trigger": 239,
+          "unique_setup_identities": 412,
+          "verified_first_trigger_events": 263
+        }
+      },
+      "A:OPUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 409,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 168,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 168,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 274
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 442,
+          "previously_established_trigger": 252,
+          "unique_setup_identities": 442,
+          "verified_first_trigger_events": 274
+        }
+      },
+      "A:RUNEUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 360,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 132,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 132,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 236
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 368,
+          "previously_established_trigger": 207,
+          "unique_setup_identities": 368,
+          "verified_first_trigger_events": 236
+        }
+      },
+      "A:SEIUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 394,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 155,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 155,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 269
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 424,
+          "previously_established_trigger": 250,
+          "unique_setup_identities": 424,
+          "verified_first_trigger_events": 269
+        }
+      },
+      "A:SOLUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 407,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 162,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 162,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 279
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 441,
+          "previously_established_trigger": 252,
+          "unique_setup_identities": 441,
+          "verified_first_trigger_events": 279
+        }
+      },
+      "A:SUIUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 434,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 130,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 130,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 283
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 413,
+          "previously_established_trigger": 257,
+          "unique_setup_identities": 413,
+          "verified_first_trigger_events": 283
+        }
+      },
+      "A:TRXUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 341,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 127,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 127,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 220
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 347,
+          "previously_established_trigger": 201,
+          "unique_setup_identities": 347,
+          "verified_first_trigger_events": 220
+        }
+      },
+      "A:UNIUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 387,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 150,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 150,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 258
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 408,
+          "previously_established_trigger": 226,
+          "unique_setup_identities": 408,
+          "verified_first_trigger_events": 258
+        }
+      },
+      "A:XLMUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 407,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 148,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 148,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 270
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 418,
+          "previously_established_trigger": 243,
+          "unique_setup_identities": 418,
+          "verified_first_trigger_events": 270
+        }
+      },
+      "A:XRPUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 385,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 191,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 191,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 260
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 451,
+          "previously_established_trigger": 242,
+          "unique_setup_identities": 451,
+          "verified_first_trigger_events": 260
+        }
+      },
+      "B:AAVEUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 463,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 174,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 174,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 289
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 463,
+          "previously_established_trigger": 267,
+          "unique_setup_identities": 463,
+          "verified_first_trigger_events": 289
+        }
+      },
+      "B:ADAUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 370,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 150,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 150,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 243
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 393,
+          "previously_established_trigger": 219,
+          "unique_setup_identities": 393,
+          "verified_first_trigger_events": 243
+        }
+      },
+      "B:ALGOUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 320,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 152,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 152,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 215
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 367,
+          "previously_established_trigger": 199,
+          "unique_setup_identities": 367,
+          "verified_first_trigger_events": 215
+        }
+      },
+      "B:APTUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 400,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 157,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 157,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 258
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 415,
+          "previously_established_trigger": 239,
+          "unique_setup_identities": 415,
+          "verified_first_trigger_events": 258
+        }
+      },
+      "B:ARBUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 342,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 149,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 149,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 214
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 363,
+          "previously_established_trigger": 200,
+          "unique_setup_identities": 363,
+          "verified_first_trigger_events": 214
+        }
+      },
+      "B:ATOMUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 375,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 164,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 164,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 247
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 411,
+          "previously_established_trigger": 231,
+          "unique_setup_identities": 411,
+          "verified_first_trigger_events": 247
+        }
+      },
+      "B:AVAXUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 376,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 153,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 153,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 241
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 394,
+          "previously_established_trigger": 223,
+          "unique_setup_identities": 394,
+          "verified_first_trigger_events": 241
+        }
+      },
+      "B:BCHUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 333,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 189,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 189,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 225
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 414,
+          "previously_established_trigger": 208,
+          "unique_setup_identities": 414,
+          "verified_first_trigger_events": 225
+        }
+      },
+      "B:BNBUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 378,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 156,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 156,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 251
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 407,
+          "previously_established_trigger": 227,
+          "unique_setup_identities": 407,
+          "verified_first_trigger_events": 251
+        }
+      },
+      "B:BTCUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 410,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 162,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 162,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 290
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 452,
+          "previously_established_trigger": 256,
+          "unique_setup_identities": 452,
+          "verified_first_trigger_events": 290
+        }
+      },
+      "B:CRVUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 318,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 207,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 207,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 228
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 435,
+          "previously_established_trigger": 208,
+          "unique_setup_identities": 435,
+          "verified_first_trigger_events": 228
+        }
+      },
+      "B:DOGEUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 327,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 155,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 155,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 212
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 367,
+          "previously_established_trigger": 191,
+          "unique_setup_identities": 367,
+          "verified_first_trigger_events": 212
+        }
+      },
+      "B:DOTUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 366,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 153,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 153,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 249
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 402,
+          "previously_established_trigger": 234,
+          "unique_setup_identities": 402,
+          "verified_first_trigger_events": 249
+        }
+      },
+      "B:EOSUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 188,
+          "rows": 11712,
+          "source_missing_trigger_rows": 3898,
+          "source_missing_trigger_rows_by_reason": {
+            "CURRENT_M15_MISSING": 3898
+          }
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 2,
+          "censored_by_missing_active_window_observation": 2,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 152,
+          "exclusive_outcome_partition": {
+            "censored": 2,
+            "complete_observed_no_match": 152,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 141
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 295,
+          "previously_established_trigger": 129,
+          "unique_setup_identities": 295,
+          "verified_first_trigger_events": 141
+        }
+      },
+      "B:ETCUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 333,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 129,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 129,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 208
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 337,
+          "previously_established_trigger": 198,
+          "unique_setup_identities": 337,
+          "verified_first_trigger_events": 208
+        }
+      },
+      "B:ETHUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 377,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 188,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 188,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 252
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 440,
+          "previously_established_trigger": 228,
+          "unique_setup_identities": 440,
+          "verified_first_trigger_events": 252
+        }
+      },
+      "B:FILUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 343,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 164,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 164,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 225
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 389,
+          "previously_established_trigger": 212,
+          "unique_setup_identities": 389,
+          "verified_first_trigger_events": 225
+        }
+      },
+      "B:FTMUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 0,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 0,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 0,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 0
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 0,
+          "previously_established_trigger": 0,
+          "unique_setup_identities": 0,
+          "verified_first_trigger_events": 0
+        }
+      },
+      "B:HBARUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 360,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 148,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 148,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 228
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 376,
+          "previously_established_trigger": 211,
+          "unique_setup_identities": 376,
+          "verified_first_trigger_events": 228
+        }
+      },
+      "B:ICPUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 340,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 123,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 123,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 222
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 345,
+          "previously_established_trigger": 202,
+          "unique_setup_identities": 345,
+          "verified_first_trigger_events": 222
+        }
+      },
+      "B:INJUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 389,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 158,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 158,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 251
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 409,
+          "previously_established_trigger": 229,
+          "unique_setup_identities": 409,
+          "verified_first_trigger_events": 251
+        }
+      },
+      "B:LDOUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 406,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 160,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 160,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 257
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 417,
+          "previously_established_trigger": 242,
+          "unique_setup_identities": 417,
+          "verified_first_trigger_events": 257
+        }
+      },
+      "B:LINKUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 360,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 140,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 140,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 235
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 375,
+          "previously_established_trigger": 211,
+          "unique_setup_identities": 375,
+          "verified_first_trigger_events": 235
+        }
+      },
+      "B:LTCUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 354,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 172,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 172,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 233
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 405,
+          "previously_established_trigger": 212,
+          "unique_setup_identities": 405,
+          "verified_first_trigger_events": 233
+        }
+      },
+      "B:MATICUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 0,
+          "rows": 11712,
+          "source_missing_trigger_rows": 11712,
+          "source_missing_trigger_rows_by_reason": {
+            "CURRENT_M15_MISSING": 11712
+          }
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 0,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 0,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 0
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 0,
+          "previously_established_trigger": 0,
+          "unique_setup_identities": 0,
+          "verified_first_trigger_events": 0
+        }
+      },
+      "B:NEARUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 396,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 150,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 150,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 255
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 405,
+          "previously_established_trigger": 238,
+          "unique_setup_identities": 405,
+          "verified_first_trigger_events": 255
+        }
+      },
+      "B:OPUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 377,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 146,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 146,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 244
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 390,
+          "previously_established_trigger": 223,
+          "unique_setup_identities": 390,
+          "verified_first_trigger_events": 244
+        }
+      },
+      "B:RUNEUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 364,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 174,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 174,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 250
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 424,
+          "previously_established_trigger": 221,
+          "unique_setup_identities": 424,
+          "verified_first_trigger_events": 250
+        }
+      },
+      "B:SEIUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 360,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 149,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 149,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 232
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 381,
+          "previously_established_trigger": 218,
+          "unique_setup_identities": 381,
+          "verified_first_trigger_events": 232
+        }
+      },
+      "B:SOLUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 382,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 148,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 148,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 245
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 393,
+          "previously_established_trigger": 228,
+          "unique_setup_identities": 393,
+          "verified_first_trigger_events": 245
+        }
+      },
+      "B:SUIUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 313,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 172,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 172,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 214
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 386,
+          "previously_established_trigger": 180,
+          "unique_setup_identities": 386,
+          "verified_first_trigger_events": 214
+        }
+      },
+      "B:TRXUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 425,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 154,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 154,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 268
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 422,
+          "previously_established_trigger": 241,
+          "unique_setup_identities": 422,
+          "verified_first_trigger_events": 268
+        }
+      },
+      "B:UNIUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 393,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 143,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 143,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 260
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 403,
+          "previously_established_trigger": 236,
+          "unique_setup_identities": 403,
+          "verified_first_trigger_events": 260
+        }
+      },
+      "B:XLMUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 412,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 153,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 153,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 273
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 426,
+          "previously_established_trigger": 249,
+          "unique_setup_identities": 426,
+          "verified_first_trigger_events": 273
+        }
+      },
+      "B:XRPUSDT": {
+        "m15_row_counts": {
+          "observed_positive_predicates_after_censorship": 0,
+          "raw_positive_predicates": 353,
+          "rows": 11712,
+          "source_missing_trigger_rows": 0,
+          "source_missing_trigger_rows_by_reason": {}
+        },
+        "setup_counts": {
+          "censored_by_either_missing_history": 0,
+          "censored_by_missing_active_window_observation": 0,
+          "censored_by_missing_pre_window_history": 0,
+          "complete_observation_no_match": 181,
+          "exclusive_outcome_partition": {
+            "censored": 0,
+            "complete_observed_no_match": 181,
+            "incomplete_or_unresolved": 0,
+            "triggered_before_window": 0,
+            "verified_first_in_window": 244
+          },
+          "exclusive_outcome_partition_reconciles": true,
+          "exclusive_outcome_partition_total": 425,
+          "previously_established_trigger": 214,
+          "unique_setup_identities": 425,
+          "verified_first_trigger_events": 244
+        }
+      }
     },
     "s1_trigger_source_missing_counts_by_window_symbol": {
       "A:AAVEUSDT": 0,
@@ -688,14 +2592,25 @@
       "B:XRPUSDT:S6_FIXED_COHORT_RANK_DIAGNOSTIC": 2928
     }
   },
+  "prior_parser_rejected_attempts_extraction_command": "git show ab645e792fe6593d9fb206954585b2996673f96c:docs/research/atlas-red-e1b/SOURCE_MANIFEST.jsonl | python3 -c 'import json,sys; [print(json.dumps(r,sort_keys=True,separators=(\",\",\":\"))) for r in map(json.loads,sys.stdin) if r.get(\"status\")==\"PARSER_REJECTED_PRECEDING_ATTEMPT\"]' > /path/to/prior-parser-rejected-attempts.jsonl",
+  "producer_code_sha256": "8f6418eeeeee841f11784172eddd7d573d11a61b4f96b7b7c830e71e401dfd96",
   "source_acquisition": {
     "archive_limits": {
       "max_aggregate_archive_bytes": 1073741824,
       "max_concurrent_fetches": 4,
       "max_single_object_bytes": 20971520
     },
-    "initial_parser_rejected_attempt_rows": 420,
-    "initial_parser_rejected_download_bytes": "NOT_CAPTURED; not added to accepted-archive byte totals",
+    "current_source_manifest_parser_rejected_attempt_rows": 420,
+    "historical_initial_parser_rejected_attempt_rows": 420,
+    "historical_initial_parser_rejected_download_bytes": "NOT_CAPTURED_BY_REJECTED_PARSER",
+    "historical_prior_checkpoint": {
+      "commit": "ab645e792fe6593d9fb206954585b2996673f96c",
+      "dataset_manifest_sha256": "f22f7e16ab8fd9d92b84b8df51cf9d6e662d1ffc03465acdcc5d9e7c8aa89e0e",
+      "official_404_objects": 13,
+      "parser_rejected_attempt_download_bytes": "NOT_CAPTURED_BY_REJECTED_PARSER",
+      "parser_rejected_attempt_rows": 420,
+      "verified_archives": 757
+    },
     "manifest_status_counts_including_prior_sample": {
       "MISSING_OBJECT_404": 13,
       "PARSER_REJECTED_PRECEDING_ATTEMPT": 420,
@@ -717,8 +2632,9 @@
   "source_manifest_artifact": {
     "bytes": 1139495,
     "path": "SOURCE_MANIFEST.jsonl",
-    "sha256": "8d510aee5fde7843fe44f74979680d10baef5daae199aed53311fcedfe4f9709"
+    "sha256": "c64a12c3aa5e4c500f0b431fe65c14fc07e45f18bc30100b6298f539f4c80d7b"
   },
+  "summarizer_code_sha256": "4a0c54f6689b4af56457703e42e9882b448805329f0235d04ca4d7977710c55e",
   "windows_utc": {
     "A": {
       "decision_cutoff_begin_ns": 1709251200000000000,

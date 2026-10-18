@@ -407,6 +407,9 @@ def test_r1_producer_censors_later_match_after_missing_active_m15_opportunities(
 ) -> None:
     rows, _ = _build_active_trigger_gap_case(tmp_path, monkeypatch, side)
     assert [row["s1_trigger_state"] for row in rows[:2]] == ["SOURCE_MISSING", "SOURCE_MISSING"]
+    assert [row["s1_trigger_source_missing_reason"] for row in rows[:2]] == [
+        "CURRENT_M15_MISSING", "PREVIOUS_M15_MISSING_OR_NONCONTIGUOUS"]
+    assert [row["s1_raw_trigger_predicate"] for row in rows[:2]] == ["0", "0"]
     assert [row["s1_raw_trigger_predicate"] for row in rows[2:]] == ["1", "1"]
     assert not any(row["s1_first_trigger_event"] == "1" for row in rows)
     assert rows[2]["s1_first_trigger_reason"] in {
@@ -457,7 +460,7 @@ def test_r1_setup_and_m15_denominators_reconcile_by_exclusive_outcome() -> None:
 
     def row(setup_id: str, origin: int, cutoff: int, *, state: str, raw: int = 0,
             status: str = "OBSERVED_NO_MATCH", pre: str = "NO_PRIOR_MATCH",
-            first: int = 0, event_id: str = "", missing_reason: str = "",
+            first: int = 0, missing_reason: str = "",
             active: bool = True) -> dict[str, str]:
         return {
             "window": "A", "symbol": "BTCUSDT", "decision_cutoff_utc_ns": str(cutoff),
@@ -468,7 +471,8 @@ def test_r1_setup_and_m15_denominators_reconcile_by_exclusive_outcome() -> None:
             "s1_trigger_pre_window_history_status": pre, "s1_trigger_episode_status": status,
             "s1_trigger_source_missing_reason": missing_reason,
             "s1_first_trigger_event": str(first),
-            "s1_first_trigger_event_id": event_id,
+            "s1_first_trigger_event_id": hashlib.sha256(f"{setup_id}:{cutoff}".encode()).hexdigest()
+            if first else "",
             "s1_setup_event_id": "", "s1_setup_event_cutoff_utc_ns": "",
             "s1_setup_event_side": "", "s1_setup_event_extreme": "", "s1_setup_event_ref": "",
         }
@@ -477,7 +481,7 @@ def test_r1_setup_and_m15_denominators_reconcile_by_exclusive_outcome() -> None:
     # Fully observed nonmatches before one verified first predicate.
     rows += [row("known-first", 985, cutoff, state="BAR_TRIGGER" if i == 4 else "NO_TRIGGER", raw=int(i == 4),
                   status="VERIFIED_FIRST_TRIGGER" if i == 4 else "OBSERVED_NO_MATCH",
-                  first=int(i == 4), event_id="event-known-first" if i == 4 else "")
+                  first=int(i == 4))
              for i, cutoff in enumerate((1_000, 1_015, 1_030, 1_045), start=1)]
     # Two missing active opportunities, then visible positive matches remain censored.
     rows += [row("active-gap", 985, cutoff, state="SOURCE_MISSING" if i <= 2 else "BAR_TRIGGER",
@@ -525,6 +529,8 @@ def test_r1_setup_and_m15_denominators_reconcile_by_exclusive_outcome() -> None:
     duplicate_first_rows = [dict(item) for item in rows]
     repeated_first = dict(next(item for item in rows if item["s1_first_trigger_event"] == "1"))
     repeated_first["decision_cutoff_utc_ns"] = "1050"
+    repeated_first["s1_first_trigger_event_id"] = hashlib.sha256(
+        f"{repeated_first['s1_trigger_setup_id']}:1050".encode()).hexdigest()
     duplicate_first_rows.append(repeated_first)
     with pytest.raises(ValueError, match="MULTIPLE_VERIFIED_FIRST_EVENTS_PER_SETUP"):
         summary.reconcile_s1_trigger_rows(duplicate_first_rows, {"A": (begin, final)}, m15)
@@ -533,7 +539,33 @@ def test_r1_setup_and_m15_denominators_reconcile_by_exclusive_outcome() -> None:
     false_first = next(item for item in censored_first_rows if item["s1_trigger_setup_id"] == "active-gap"
                        and item["s1_raw_trigger_predicate"] == "1")
     false_first["s1_first_trigger_event"] = "1"
-    false_first["s1_first_trigger_event_id"] = "censored-false-first"
+    false_first["s1_first_trigger_event_id"] = hashlib.sha256(
+        f"{false_first['s1_trigger_setup_id']}:{false_first['decision_cutoff_utc_ns']}".encode()).hexdigest()
     false_first["s1_trigger_episode_status"] = "VERIFIED_FIRST_TRIGGER"
     with pytest.raises(ValueError, match="CENSORED_SETUP_HAS_VERIFIED_FIRST_EVENT"):
         summary.reconcile_s1_trigger_rows(censored_first_rows, {"A": (begin, final)}, m15)
+
+
+def test_research_summary_preserves_prior_checkpoint_parser_attempt_facts() -> None:
+    assert summary.PRIOR_CHECKPOINT["commit"] == "ab645e792fe6593d9fb206954585b2996673f96c"
+    assert summary.PRIOR_CHECKPOINT["dataset_manifest_sha256"] == (
+        "f22f7e16ab8fd9d92b84b8df51cf9d6e662d1ffc03465acdcc5d9e7c8aa89e0e")
+    assert summary.PRIOR_CHECKPOINT["verified_archives"] == 757
+    assert summary.PRIOR_CHECKPOINT["official_404_objects"] == 13
+    assert summary.PRIOR_CHECKPOINT["parser_rejected_attempt_rows"] == 420
+    assert summary.PRIOR_CHECKPOINT["parser_rejected_attempt_download_bytes"] == "NOT_CAPTURED_BY_REJECTED_PARSER"
+
+
+def test_clean_clone_rebuild_attestation_requires_empty_scratch_and_output() -> None:
+    base = {
+        "producer_commit_sha": "04f05ab641457ab6deee8456da2c2a77d84f5149",
+        "scratch_empty": True,
+        "output_empty": True,
+        "official_retrieval_and_checksum_verified": True,
+    }
+    assert summary.clean_clone_rebuild_qualified(**base)
+    assert not summary.clean_clone_rebuild_qualified(**{**base, "scratch_empty": False})
+    assert not summary.clean_clone_rebuild_qualified(**{**base, "output_empty": False})
+    assert not summary.clean_clone_rebuild_qualified(
+        **{**base, "official_retrieval_and_checksum_verified": False})
+    assert not summary.clean_clone_rebuild_qualified(**{**base, "producer_commit_sha": None})

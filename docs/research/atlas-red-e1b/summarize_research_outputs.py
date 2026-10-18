@@ -17,6 +17,15 @@ from acquire_archives import COHORT, COHORT_SHA256  # noqa: E402
 from build_research_panel import WINDOWS, ns  # noqa: E402
 from make_compact_sample import make_sample  # noqa: E402
 
+PRIOR_CHECKPOINT = {
+    "commit": "ab645e792fe6593d9fb206954585b2996673f96c",
+    "dataset_manifest_sha256": "f22f7e16ab8fd9d92b84b8df51cf9d6e662d1ffc03465acdcc5d9e7c8aa89e0e",
+    "verified_archives": 757,
+    "official_404_objects": 13,
+    "parser_rejected_attempt_rows": 420,
+    "parser_rejected_attempt_download_bytes": "NOT_CAPTURED_BY_REJECTED_PARSER",
+}
+
 
 def reconcile_s1_trigger_rows(
     rows: Iterable[dict[str, str]],
@@ -112,6 +121,9 @@ def reconcile_s1_trigger_rows(
                 required = (setup_id, origin_cutoff, *lineage, event_id)
                 if not all(required) or trigger_row.get("s1_trigger_window_active") != "1":
                     raise ValueError(f"FIRST_TRIGGER_LINEAGE_INCOMPLETE:{key}:{cutoff}:{required}")
+                expected_event_id = hashlib.sha256(f"{setup_id}:{cutoff}".encode()).hexdigest()
+                if event_id != expected_event_id:
+                    raise ValueError(f"FIRST_TRIGGER_EVENT_ID_MISMATCH:{key}:{cutoff}:{event_id}")
                 if trigger_row["s1_trigger_state"] != "BAR_TRIGGER" or raw != 1:
                     raise ValueError(f"FIRST_TRIGGER_WITHOUT_RAW_OBSERVED_MATCH:{key}:{cutoff}")
                 if episode != "VERIFIED_FIRST_TRIGGER":
@@ -219,7 +231,15 @@ def digest(path: pathlib.Path) -> dict[str, object]:
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
 
 
-def run() -> dict[str, object]:
+def clean_clone_rebuild_qualified(*, producer_commit_sha: str | None, scratch_empty: bool,
+                                 output_empty: bool, official_retrieval_and_checksum_verified: bool) -> bool:
+    return bool(producer_commit_sha and scratch_empty and output_empty
+                and official_retrieval_and_checksum_verified)
+
+
+def run(*, clean_clone_code_sha: str | None = None, clean_scratch_empty_at_start: bool = False,
+        clean_output_empty_at_start: bool = False,
+        official_anonymous_retrieval_verified: bool = False) -> dict[str, object]:
     panel_path = HERE / "DIAGNOSTIC_FEATURE_PANEL.csv.gz"
     coverage_path = HERE / "ASOF_COVERAGE.csv.gz"
     source_path = HERE / "SOURCE_MANIFEST.jsonl"
@@ -290,6 +310,8 @@ def run() -> dict[str, object]:
     source_rows = [json.loads(line) for line in source_path.read_text().splitlines() if line]
     statuses = collections.Counter(row.get("status") for row in source_rows)
     archives = [row for row in source_rows if row.get("status") == "VERIFIED"]
+    if any(row.get("downloaded_sha256") != row.get("published_sha256") for row in archives):
+        raise ValueError("VERIFIED_ARCHIVE_CHECKSUM_IDENTITY_MISMATCH")
     archive_counts = collections.Counter(row["interval"] for row in archives)
     archive_bytes = sum(int(row["archive_bytes"]) for row in archives)
     archive_bytes_by_role = collections.Counter()
@@ -297,7 +319,7 @@ def run() -> dict[str, object]:
         role = "H1" if row["interval"] == "1h" else "M15_EVALUATION" if row["month"][5:] != "02" else "M15_PREWINDOW_SEED"
         archive_bytes_by_role[role] += int(row["archive_bytes"])
     archive_rows = sum(int(row["rows"]) for row in archives)
-    rejected = statuses["PARSER_REJECTED_PRECEDING_ATTEMPT"]
+    current_manifest_rejected = statuses["PARSER_REJECTED_PRECEDING_ATTEMPT"]
 
     expected_panel = len(COHORT) * sum((ns(ey, em, ed + 1) - ns(sy, sm, sd)) // (15 * 60 * 1_000_000_000)
                                      for _, sy, sm, sd, ey, em, ed in WINDOWS)
@@ -313,6 +335,8 @@ def run() -> dict[str, object]:
     report = {
         "dataset": "ATLAS_RED_LUNA_MEDIUM_REAL_BINANCE_COHORT_R_E1B",
         "model_effort_attestation": "USER CONFIRMED GPT-6 Luna, Medium selection; runtime model/effort metadata is not exposed here for independent verification",
+        "producer_code_sha256": hashlib.sha256((HERE / "build_research_panel.py").read_bytes()).hexdigest(),
+        "summarizer_code_sha256": hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),
         "cohort_sha256": COHORT_SHA256,
         "cohort_symbols": COHORT,
         "windows_utc": {label: {"decision_cutoff_begin_ns": ns(sy, sm, sd),
@@ -325,8 +349,10 @@ def run() -> dict[str, object]:
             "verified_unique_archive_bytes_not_retry_deduplicated": archive_bytes,
             "verified_archive_bytes_by_role": dict(sorted(archive_bytes_by_role.items())),
             "verified_csv_rows": archive_rows,
-            "initial_parser_rejected_attempt_rows": rejected,
-            "initial_parser_rejected_download_bytes": "NOT_CAPTURED; not added to accepted-archive byte totals",
+            "historical_prior_checkpoint": PRIOR_CHECKPOINT,
+            "historical_initial_parser_rejected_attempt_rows": PRIOR_CHECKPOINT["parser_rejected_attempt_rows"],
+            "current_source_manifest_parser_rejected_attempt_rows": current_manifest_rejected,
+            "historical_initial_parser_rejected_download_bytes": PRIOR_CHECKPOINT["parser_rejected_attempt_download_bytes"],
             "archive_limits": {"max_single_object_bytes": 20 * 1024 * 1024,
                                 "max_aggregate_archive_bytes": 1024 * 1024 * 1024,
                                 "max_concurrent_fetches": 4},
@@ -344,6 +370,7 @@ def run() -> dict[str, object]:
             "s1_trigger_source_missing_counts_by_window_symbol": {f"{w}:{symbol}": n for (w, symbol), n in sorted(s1_trigger_source_missing.items())},
             "s1_trigger_source_missing_reason_counts_by_window_symbol": {f"{w}:{symbol}:{reason}": n for (w, symbol, reason), n in sorted(s1_trigger_missing_reason.items())},
             "s1_trigger_reconciliation_by_window_symbol": trigger_reconciliation,
+            "s1_reconciliation_count_notes": "M15 rows and setup identities use separate denominators. The exclusive outcome partition is mutually exclusive and must reconcile to unique setup identities; censor subcauses and previously-established-trigger diagnostics can overlap that partition.",
             "s6_unique_hourly_cutoff_state_counts": {f"{w}:{symbol}:{state}": n for (w, symbol, state), n in sorted(s6_unique_hourly.items())},
             "s6_state_counts": {f"{w}:{s}": n for (w, s), n in sorted(s6_states.items())},
             "m15_source_missing_counts": {f"{w}:{r}": n for (w, r), n in sorted(panel_missing.items())},
@@ -358,8 +385,20 @@ def run() -> dict[str, object]:
             "artifact": digest(coverage_path),
         },
         "source_manifest_artifact": digest(source_path),
-        "clean_clone_rebuild_tested": False,
-        "full_rebuild_command": "python3 docs/research/atlas-red-e1b/build_research_panel.py --scratch /path/to/scratch/e1b --outdir docs/research/atlas-red-e1b",
+        "clean_clone_rebuild_tested": clean_clone_rebuild_qualified(
+            producer_commit_sha=clean_clone_code_sha,
+            scratch_empty=clean_scratch_empty_at_start,
+            output_empty=clean_output_empty_at_start,
+            official_retrieval_and_checksum_verified=official_anonymous_retrieval_verified),
+        "clean_clone_rebuild": {
+            "producer_commit_sha": clean_clone_code_sha or "NOT_RECORDED",
+            "clone_depth": 1 if clean_clone_code_sha else None,
+            "scratch_empty_at_start": clean_scratch_empty_at_start,
+            "output_empty_at_start": clean_output_empty_at_start,
+            "official_anonymous_retrieval_and_checksum_verification": official_anonymous_retrieval_verified,
+        },
+        "prior_parser_rejected_attempts_extraction_command": "git show ab645e792fe6593d9fb206954585b2996673f96c:docs/research/atlas-red-e1b/SOURCE_MANIFEST.jsonl | python3 -c 'import json,sys; [print(json.dumps(r,sort_keys=True,separators=(\",\",\":\"))) for r in map(json.loads,sys.stdin) if r.get(\"status\")==\"PARSER_REJECTED_PRECEDING_ATTEMPT\"]' > /path/to/prior-parser-rejected-attempts.jsonl",
+        "full_rebuild_command": "python3 docs/research/atlas-red-e1b/build_research_panel.py --scratch /path/to/scratch/e1b --outdir docs/research/atlas-red-e1b --rejected-attempt /path/to/prior-parser-rejected-attempts.jsonl",
         "compact_sample_command": "python3 docs/research/atlas-red-e1b/summarize_research_outputs.py",
     }
     output = HERE / "DATASET_MANIFEST.json"
@@ -368,4 +407,15 @@ def run() -> dict[str, object]:
 
 
 if __name__ == "__main__":
-    print(json.dumps(run(), sort_keys=True))
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--clean-clone-code-sha")
+    parser.add_argument("--clean-scratch-empty-at-start", action="store_true")
+    parser.add_argument("--clean-output-empty-at-start", action="store_true")
+    parser.add_argument("--official-anonymous-retrieval-verified", action="store_true")
+    args = parser.parse_args()
+    print(json.dumps(run(clean_clone_code_sha=args.clean_clone_code_sha,
+                         clean_scratch_empty_at_start=args.clean_scratch_empty_at_start,
+                         clean_output_empty_at_start=args.clean_output_empty_at_start,
+                         official_anonymous_retrieval_verified=args.official_anonymous_retrieval_verified),
+                     sort_keys=True))
