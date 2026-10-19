@@ -1,0 +1,423 @@
+{
+  "command": "measure_bounded_cycles(root, per_venue=2048, cycles=3)",
+  "environment": {
+    "cpu_count": 3,
+    "dependencies": {
+      "duckdb": "1.5.5",
+      "nautilus-trader": "2.0.0rc5",
+      "pyarrow": "25.0.1"
+    },
+    "filesystem_free_bytes_at_recording": 29948235776,
+    "machine": "x86_64",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]"
+  },
+  "fixture_path": "tests/v2/test_session041_scale_review.py",
+  "fixture_sha256": "4cd32057fef745c39718aeabfb3a382cff2a311b26b2f61d522c9c6bfe5501d3",
+  "measurement_commit": "fb50479c2125cef55bfe8b490ad72e763f922aad",
+  "metrics": {
+    "archive_file_count": 384,
+    "cadence_seconds": 10,
+    "cycles": 3,
+    "db_baseline_bytes": 7897088,
+    "db_final_file_bytes": 122454016,
+    "dbstat_bytes": {
+      "active_history_head": 4096,
+      "artifact_actual_binding_action_lookup": 4096,
+      "artifact_diagnostic_decision_lookup": 4096,
+      "artifact_index": 42012672,
+      "artifact_latest_available": 4993024,
+      "artifact_outcome_decision_lookup": 4096,
+      "artifact_outcome_status_decision_lookup": 4096,
+      "artifact_policy_payoff_action_lookup": 4096,
+      "artifact_type_created_order": 5361664,
+      "artifact_type_insertion_lookup": 1404928,
+      "collector_cursor_head": 4096,
+      "created_metadata_000d6949d8998126": 4096,
+      "created_metadata_0c4dc2455c12ac73": 4096,
+      "created_metadata_0f0be79161999164": 4096,
+      "created_metadata_1549bc062104eb07": 4096,
+      "created_metadata_1bb934dff9ef8092": 4096,
+      "created_metadata_1d00cf05da12b61e": 4096,
+      "created_metadata_246f0f2b9081f6bb": 4096,
+      "created_metadata_2564d1b4a8934829": 4096,
+      "created_metadata_347f33fac8185a74": 4096,
+      "created_metadata_36f4de70a9f22fef": 4096,
+      "created_metadata_3a6fc8d98b19ed66": 4096,
+      "created_metadata_3fb01026416c6c08": 4096,
+      "created_metadata_434ddc4e3d1c5ff2": 4096,
+      "created_metadata_7b1605ed90551f48": 4096,
+      "created_metadata_7c611fbc5161ff1d": 4096,
+      "created_metadata_7d68744e60744acd": 4096,
+      "created_metadata_7ef2faa3910523e8": 4096,
+      "created_metadata_807813458acf15d7": 4096,
+      "created_metadata_9e82b7881cd03945": 4096,
+      "created_metadata_9f77396d8f579ccf": 4096,
+      "created_metadata_a3ff9c41bdb5ec8a": 4096,
+      "created_metadata_a7531cffb7ebf7ea": 4096,
+      "created_metadata_aca1669ff8d6827b": 4096,
+      "created_metadata_b7980f033398d7df": 4096,
+      "created_metadata_c07d4df4f0410f1b": 4096,
+      "created_metadata_c2c48640226a3618": 770048,
+      "created_metadata_c2e3cfc81a10edfb": 4096,
+      "created_metadata_c90b45207c9eaff1": 4096,
+      "created_metadata_cec26df71bd835ea": 4096,
+      "created_metadata_d569cf88682020de": 4096,
+      "created_metadata_d6e04acdcf18e596": 4096,
+      "created_metadata_d757c7207420d349": 4096,
+      "created_metadata_dd8a31cfe1f8a092": 4096,
+      "created_metadata_e14c46dafc9ad155": 4096,
+      "created_metadata_fd1750a1f4c92152": 4096,
+      "decision_event_trigger_record_lookup": 4096,
+      "due_work": 4096,
+      "due_work_discovery": 4096,
+      "due_work_oldest": 4096,
+      "due_work_pressure": 4096,
+      "due_work_quarantine_pressure": 4096,
+      "due_work_ready": 4096,
+      "l2_archive_restart_lookup": 4096,
+      "latest_metadata_000d6949d8998126": 4096,
+      "latest_metadata_0c4dc2455c12ac73": 4096,
+      "latest_metadata_0f0be79161999164": 4096,
+      "latest_metadata_1549bc062104eb07": 4096,
+      "latest_metadata_1bb934dff9ef8092": 4096,
+      "latest_metadata_1d00cf05da12b61e": 4096,
+      "latest_metadata_246f0f2b9081f6bb": 4096,
+      "latest_metadata_2564d1b4a8934829": 4096,
+      "latest_metadata_347f33fac8185a74": 4096,
+      "latest_metadata_36f4de70a9f22fef": 4096,
+      "latest_metadata_3a6fc8d98b19ed66": 4096,
+      "latest_metadata_3fb01026416c6c08": 4096,
+      "latest_metadata_434ddc4e3d1c5ff2": 4096,
+      "latest_metadata_7b1605ed90551f48": 4096,
+      "latest_metadata_7c611fbc5161ff1d": 4096,
+      "latest_metadata_7d68744e60744acd": 4096,
+      "latest_metadata_7ef2faa3910523e8": 4096,
+      "latest_metadata_807813458acf15d7": 4096,
+      "latest_metadata_9e82b7881cd03945": 4096,
+      "latest_metadata_9f77396d8f579ccf": 4096,
+      "latest_metadata_a3ff9c41bdb5ec8a": 4096,
+      "latest_metadata_a7531cffb7ebf7ea": 4096,
+      "latest_metadata_aca1669ff8d6827b": 4096,
+      "latest_metadata_b7980f033398d7df": 4096,
+      "latest_metadata_c07d4df4f0410f1b": 4096,
+      "latest_metadata_c2c48640226a3618": 708608,
+      "latest_metadata_c2e3cfc81a10edfb": 4096,
+      "latest_metadata_c90b45207c9eaff1": 4096,
+      "latest_metadata_cec26df71bd835ea": 4096,
+      "latest_metadata_d569cf88682020de": 4096,
+      "latest_metadata_d6e04acdcf18e596": 4096,
+      "latest_metadata_d757c7207420d349": 4096,
+      "latest_metadata_dd8a31cfe1f8a092": 4096,
+      "latest_metadata_e14c46dafc9ad155": 4096,
+      "latest_metadata_fd1750a1f4c92152": 4096,
+      "m15_accounting_origin_lookup": 4096,
+      "m15_checkpoint_exact_generation": 4096,
+      "m15_checkpoint_key_generation_lookup": 4096,
+      "model_registry": 4096,
+      "native_m1_checkpoint_exact_generation": 4096,
+      "native_m1_checkpoint_key_generation_lookup": 4096,
+      "native_m1_event_id_lookup": 4096,
+      "native_m1_event_origin_lookup": 4096,
+      "native_m1_gate_origin_lookup": 4096,
+      "native_origin_window": 4096,
+      "native_origin_window_head": 4096,
+      "ops_decision_event_available_order": 4096,
+      "ops_outbox": 4096,
+      "ops_receipt_event_id_lookup": 4096,
+      "outbox_pending_order": 4096,
+      "public_adoption_cursor_v2": 4096,
+      "public_archive_history_lookup_v2": 7745536,
+      "public_bar_repair_head": 4096,
+      "public_evidence_block_v2": 4096,
+      "public_evidence_locator_feed_time_v2": 4096,
+      "public_evidence_locator_trade_id_v2": 4096,
+      "public_evidence_locator_v2": 4096,
+      "public_evidence_publication_block_v2": 4096,
+      "public_evidence_publication_observation_v2": 4096,
+      "public_evidence_publication_v2": 4096,
+      "public_evidence_stage_v2": 4096,
+      "public_exact_receipt_key_actual_lookup_v2": 9433088,
+      "public_exact_receipt_key_replay_lookup_v2": 9125888,
+      "public_exact_receipt_revision_actual_lookup_v2": 7397376,
+      "public_exact_receipt_revision_replay_lookup_v2": 7106560,
+      "public_instrument_identity_v1": 1773568,
+      "public_observation_metadata_block_v1": 4943872,
+      "public_observation_metadata_locator_v1": 2043904,
+      "public_observation_source_id_lookup": 868352,
+      "public_origin_discovery_lookup_v2": 5337088,
+      "public_reconciliation_source_id_lookup": 4096,
+      "public_stream_archive_locator_v1": 4096,
+      "public_stream_archive_trade_window_v1": 4096,
+      "public_stream_continuity_head_v1_progress": 4096,
+      "public_stream_continuity_head_v2_progress": 4096,
+      "public_stream_generic_source_lookup": 5070848,
+      "public_stream_invalidation_window": 4096,
+      "public_stream_trade_event_window": 4096,
+      "public_trade_identity_coverage_v2": 4096,
+      "public_trade_identity_v2": 4096,
+      "research_prediction_checkpoint_run_lookup": 4096,
+      "research_prediction_outcome_identity_lookup": 4096,
+      "s3_residual_context_window": 4096,
+      "s3_vwap_context_window": 4096,
+      "scheduled_event_time_v1": 4096,
+      "schema_meta": 4096,
+      "source_health": 4096,
+      "source_health_available_lookup": 4096,
+      "source_health_gap_lookup": 4096,
+      "source_health_state_lookup": 4096,
+      "sqlite_autoindex_active_history_head_1": 4096,
+      "sqlite_autoindex_artifact_index_1": 3436544,
+      "sqlite_autoindex_collector_cursor_head_1": 4096,
+      "sqlite_autoindex_due_work_1": 4096,
+      "sqlite_autoindex_due_work_discovery_1": 4096,
+      "sqlite_autoindex_due_work_pressure_1": 4096,
+      "sqlite_autoindex_due_work_quarantine_pressure_1": 4096,
+      "sqlite_autoindex_model_registry_1": 4096,
+      "sqlite_autoindex_native_origin_window_1": 4096,
+      "sqlite_autoindex_native_origin_window_head_1": 4096,
+      "sqlite_autoindex_ops_outbox_1": 4096,
+      "sqlite_autoindex_ops_outbox_2": 4096,
+      "sqlite_autoindex_public_adoption_cursor_v2_1": 4096,
+      "sqlite_autoindex_public_bar_repair_head_1": 4096,
+      "sqlite_autoindex_public_evidence_block_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_locator_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_publication_block_v2_2": 4096,
+      "sqlite_autoindex_public_evidence_publication_observation_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_publication_observation_v2_2": 4096,
+      "sqlite_autoindex_public_evidence_publication_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_publication_v2_2": 4096,
+      "sqlite_autoindex_public_evidence_stage_v2_1": 4096,
+      "sqlite_autoindex_public_observation_metadata_locator_v1_2": 2207744,
+      "sqlite_autoindex_schema_meta_1": 4096,
+      "sqlite_autoindex_source_health_1": 4096,
+      "sqlite_autoindex_watch_1": 4096,
+      "sqlite_autoindex_watch_transition_1": 4096,
+      "sqlite_schema": 69632,
+      "watch": 4096,
+      "watch_active_order": 4096,
+      "watch_created_order": 4096,
+      "watch_transition": 4096,
+      "watch_transition_time_order": 4096
+    },
+    "excluded": [
+      "network",
+      "streams",
+      "enrichment",
+      "scheduler state",
+      "reports",
+      "decision work"
+    ],
+    "integrity": {
+      "all_artifact_domain_metadata_verified_after_restart": 40977,
+      "compression_roundtrip": "EXACT_CANONICAL_BYTES",
+      "cutoff_worksets_verified_after_restart": 3,
+      "exact_index_metadata_verified_after_restart": 24576,
+      "exact_raw_rows_verified": 24576,
+      "source_receipt_refs_verified": 24576
+    },
+    "population": 4096,
+    "process_storage_write_bytes_total": 2945761280,
+    "samples": [
+      {
+        "adoption_seconds": 18.79924229700191,
+        "adoption_service": {
+          "calls": 465,
+          "max_gap_seconds": 0.9236960199996247
+        },
+        "archive_cumulative_bytes": 3113139,
+        "cycle": 1,
+        "db_growth_bytes": 39391232,
+        "db_logical_bytes": 47288320,
+        "metadata_by_type_cumulative": {
+          "BroadPublicAcquisitionReceiptV2": {
+            "bytes": 549662,
+            "rows": 1
+          },
+          "BroadUniverseWorksetV2": {
+            "bytes": 1058859,
+            "rows": 1
+          },
+          "OpsPublicSourceReconciliationV1": {
+            "bytes": 549349,
+            "rows": 2
+          },
+          "ProductContractV2": {
+            "bytes": 3215016,
+            "rows": 4096
+          },
+          "PublicObservationIndexV2": {
+            "bytes": 5128192,
+            "rows": 8192
+          },
+          "PublicSourceHealthV2": {
+            "bytes": 617,
+            "rows": 2
+          },
+          "UniverseContractV2": {
+            "bytes": 905047,
+            "rows": 1
+          },
+          "UniverseObservationV2": {
+            "bytes": 1994752,
+            "rows": 4096
+          }
+        },
+        "process_storage_write_bytes_cycle": 823414784,
+        "publication_service": {
+          "calls": 1546,
+          "max_gap_seconds": 0.5053697850016761
+        },
+        "raw_payload_bytes": 1959592,
+        "record_count": 8192,
+        "wal_sample_bytes": 7992832,
+        "workset_publication_seconds": 2.4651861900019867,
+        "zlib_metadata_bytes_by_type_cycle": {
+          "BroadPublicAcquisitionReceiptV2": 316439,
+          "BroadUniverseWorksetV2": 790828,
+          "OpsPublicSourceReconciliationV1": 316314,
+          "PublicObservationIndexV2": 1152871,
+          "PublicSourceHealthV2": 292,
+          "UniverseContractV2": 694531,
+          "UniverseObservationV2": 388203
+        }
+      },
+      {
+        "adoption_seconds": 19.827313876001426,
+        "adoption_service": {
+          "calls": 466,
+          "max_gap_seconds": 0.35001288799685426
+        },
+        "archive_cumulative_bytes": 6227145,
+        "cycle": 2,
+        "db_growth_bytes": 37580800,
+        "db_logical_bytes": 84869120,
+        "metadata_by_type_cumulative": {
+          "BroadPublicAcquisitionReceiptV2": {
+            "bytes": 1099324,
+            "rows": 2
+          },
+          "BroadUniverseWorksetV2": {
+            "bytes": 2115734,
+            "rows": 2
+          },
+          "OpsPublicSourceReconciliationV1": {
+            "bytes": 1098698,
+            "rows": 4
+          },
+          "ProductContractV2": {
+            "bytes": 3215016,
+            "rows": 4096
+          },
+          "PublicObservationIndexV2": {
+            "bytes": 10256384,
+            "rows": 16384
+          },
+          "PublicSourceHealthV2": {
+            "bytes": 617,
+            "rows": 2
+          },
+          "UniverseContractV2": {
+            "bytes": 1810174,
+            "rows": 2
+          },
+          "UniverseObservationV2": {
+            "bytes": 3989504,
+            "rows": 8192
+          }
+        },
+        "process_storage_write_bytes_cycle": 1037234176,
+        "publication_service": {
+          "calls": 1547,
+          "max_gap_seconds": 0.4622123279987136
+        },
+        "raw_payload_bytes": 1959592,
+        "record_count": 8192,
+        "wal_sample_bytes": 7992832,
+        "workset_publication_seconds": 3.2782181209986447,
+        "zlib_metadata_bytes_by_type_cycle": {
+          "BroadPublicAcquisitionReceiptV2": 316532,
+          "BroadUniverseWorksetV2": 788080,
+          "OpsPublicSourceReconciliationV1": 316403,
+          "PublicObservationIndexV2": 1153431,
+          "UniverseContractV2": 694600,
+          "UniverseObservationV2": 387790
+        }
+      },
+      {
+        "adoption_seconds": 20.9966342359985,
+        "adoption_service": {
+          "calls": 468,
+          "max_gap_seconds": 0.3535173170021153
+        },
+        "archive_cumulative_bytes": 9341119,
+        "cycle": 3,
+        "db_growth_bytes": 37584896,
+        "db_logical_bytes": 122454016,
+        "metadata_by_type_cumulative": {
+          "BroadPublicAcquisitionReceiptV2": {
+            "bytes": 1648986,
+            "rows": 3
+          },
+          "BroadUniverseWorksetV2": {
+            "bytes": 3172641,
+            "rows": 3
+          },
+          "OpsPublicSourceReconciliationV1": {
+            "bytes": 1648047,
+            "rows": 6
+          },
+          "ProductContractV2": {
+            "bytes": 3215016,
+            "rows": 4096
+          },
+          "PublicObservationIndexV2": {
+            "bytes": 15384576,
+            "rows": 24576
+          },
+          "PublicSourceHealthV2": {
+            "bytes": 617,
+            "rows": 2
+          },
+          "UniverseContractV2": {
+            "bytes": 2715257,
+            "rows": 3
+          },
+          "UniverseObservationV2": {
+            "bytes": 5984256,
+            "rows": 12288
+          }
+        },
+        "process_storage_write_bytes_cycle": 1085112320,
+        "publication_service": {
+          "calls": 1547,
+          "max_gap_seconds": 0.497618727000372
+        },
+        "raw_payload_bytes": 1959592,
+        "record_count": 8192,
+        "wal_sample_bytes": 7992832,
+        "workset_publication_seconds": 3.53482505500142,
+        "zlib_metadata_bytes_by_type_cycle": {
+          "BroadPublicAcquisitionReceiptV2": 316390,
+          "BroadUniverseWorksetV2": 788230,
+          "OpsPublicSourceReconciliationV1": 316263,
+          "PublicObservationIndexV2": 1153431,
+          "UniverseContractV2": 694540,
+          "UniverseObservationV2": 392213
+        }
+      }
+    ],
+    "source_shape": "one Bybit ticker and three Binance bulk market rows per symbol"
+  },
+  "mode": "A_UNMODIFIED_G1_HELPER",
+  "network_or_child_attempts": 0,
+  "source_checkpoint": "e75a83226cea2cf8dfee10823541848e8ffb0de4",
+  "source_git_blobs_at_e75a832": {
+    "src/atlas/v2/data/collector.py": "03d3e04d72ee4ec3434bf35ddff582327992e770",
+    "src/atlas/v2/data/history.py": "48d2ab7c6a5128793b2d0655fd0c5b0774ae1626",
+    "src/atlas/v2/memory/repository.py": "106b0e1df2f71c41214e786937ccdccd8b6d9acb",
+    "src/atlas/v2/runtime/production.py": "a0a8fcd4259d14ccac6d11034f933153b027b8f4",
+    "tests/v2/test_session041_scale_review.py": "81eddfe07e356fecbe4ea5c44c48a3ce277558bd"
+  },
+  "whole_helper_elapsed_ns": 99055062630
+}
