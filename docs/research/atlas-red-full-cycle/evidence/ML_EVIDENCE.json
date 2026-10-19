@@ -1,0 +1,170 @@
+{
+  "comparison": {
+    "feature_names": [
+      "atr14_bps",
+      "realized_vol_bps",
+      "adx14",
+      "trend_score",
+      "compression_ratio",
+      "spread_bps",
+      "turnover_log10_usd",
+      "funding_rate_bps",
+      "corr_btc",
+      "beta_btc",
+      "s6_relative_strength_score",
+      "hour_of_day_utc",
+      "return_bps",
+      "regime_ema_separation"
+    ],
+    "generated_at_ns": 1792449517654994594,
+    "label_definition": "net_cash_per_notional_bps",
+    "label_states": {
+      "CENSORED_PENDING": 31,
+      "MATURED_NET_CASH": 29
+    },
+    "ml_ready_rows_persisted": true,
+    "models": {
+      "EMPIRICAL_MEAN": {
+        "kind": "BASELINE",
+        "test_mean_bps": -21.772305786177082,
+        "test_rmse_bps": 36.411218904801544,
+        "train_mean_bps": 3.973776230125168
+      },
+      "LIGHTGBM_L2_CASH_MEAN": {
+        "kind": "CHALLENGER",
+        "reason": "LightGBMError: scikit-learn is required for lightgbm.sklearn. You must install scikit-learn and restart your session to use this module.",
+        "status": "BLOCKED_BY_ENVIRONMENT"
+      }
+    },
+    "n_matured": 29,
+    "n_rows": 60,
+    "row_count": 60,
+    "split": {
+      "test": 6,
+      "train": 17,
+      "validation": 6
+    },
+    "split_sizes": {
+      "test": 6,
+      "train": 17,
+      "validation": 6
+    },
+    "status": "ESTIMATED",
+    "target_name": "net_cash_per_notional_bps",
+    "version": "ATLAS_RED_FULL_CYCLE_ML_V1"
+  },
+  "inventory": [
+    {
+      "checkpoint": null,
+      "detail": {
+        "kind": "IN_REPOSITORY_STATISTICAL_MODEL",
+        "owner": "atlas.v2.science.m0"
+      },
+      "inference_status": "NOT_APPLICABLE",
+      "load_status": "IN_REPOSITORY",
+      "model_id": "M0_ARITHMETIC_MEAN_NET_ACTION",
+      "revision": null,
+      "role": "ARITHMETIC_MEAN_NET_ACTION_MODEL"
+    },
+    {
+      "checkpoint": null,
+      "detail": {
+        "kind": "IN_REPOSITORY_EMPIRICAL_BASELINE",
+        "owner": "atlas.v2.science.mean_evaluation"
+      },
+      "inference_status": "NOT_APPLICABLE",
+      "load_status": "IN_REPOSITORY",
+      "model_id": "EMPIRICAL_PAYOFF_COMPARATOR",
+      "revision": null,
+      "role": "EMPIRICAL_BASELINE_COMPARATOR"
+    },
+    {
+      "checkpoint": null,
+      "detail": {
+        "kind": "IN_REPOSITORY_STATISTICAL_MODEL",
+        "owner": "atlas.v2.science.m1"
+      },
+      "inference_status": "NOT_APPLICABLE",
+      "load_status": "IN_REPOSITORY",
+      "model_id": "M1_LIGHTGBM_L2_CASH_MEAN",
+      "revision": null,
+      "role": "LIGHTGBM_L2_CASH_MEAN_CHALLENGER"
+    },
+    {
+      "checkpoint": "NX-AI/TiRex-2",
+      "detail": {
+        "download": "NOT_ATTEMPTED",
+        "identity": {
+          "checkpoint": "NX-AI/TiRex-2",
+          "license_ref": null,
+          "revision": "",
+          "source_ref": "huggingface:NX-AI/TiRex-2@",
+          "total_bytes": 0,
+          "weight_files": []
+        }
+      },
+      "inference_status": "NOT_RUN",
+      "load_status": "NOT_ACQUIRED",
+      "model_id": "TIREX_2",
+      "revision": null,
+      "role": "FOUNDATION_TIME_SERIES_FORECASTER"
+    },
+    {
+      "checkpoint": "autogluon/chronos-2-small",
+      "detail": {
+        "download": "NOT_ATTEMPTED",
+        "identity": {
+          "checkpoint": "autogluon/chronos-2-small",
+          "license_ref": null,
+          "revision": "",
+          "source_ref": "huggingface:autogluon/chronos-2-small@",
+          "total_bytes": 0,
+          "weight_files": []
+        }
+      },
+      "inference_status": "NOT_RUN",
+      "load_status": "NOT_ACQUIRED",
+      "model_id": "CHRONOS_2_SMALL",
+      "revision": null,
+      "role": "FOUNDATION_TIME_SERIES_FORECASTER"
+    },
+    {
+      "checkpoint": "NeoQuasar/Kronos-mini",
+      "detail": {
+        "download": "NOT_ATTEMPTED",
+        "identity": {
+          "checkpoint": "NeoQuasar/Kronos-mini",
+          "license_ref": null,
+          "revision": "",
+          "source_ref": "huggingface:NeoQuasar/Kronos-mini@",
+          "total_bytes": 0,
+          "weight_files": []
+        }
+      },
+      "inference_status": "NOT_RUN",
+      "load_status": "NOT_ACQUIRED",
+      "model_id": "KRONOS_MINI",
+      "revision": null,
+      "role": "FOUNDATION_TIME_SERIES_FORECASTER"
+    },
+    {
+      "checkpoint": "NeoQuasar/Kronos-Tokenizer-2k",
+      "detail": {
+        "download": "NOT_ATTEMPTED",
+        "identity": {
+          "checkpoint": "NeoQuasar/Kronos-Tokenizer-2k",
+          "license_ref": null,
+          "revision": "",
+          "source_ref": "huggingface:NeoQuasar/Kronos-Tokenizer-2k@",
+          "total_bytes": 0,
+          "weight_files": []
+        }
+      },
+      "inference_status": "NOT_RUN",
+      "load_status": "NOT_ACQUIRED",
+      "model_id": "KRONOS_TOKENIZER_2K",
+      "revision": null,
+      "role": "FOUNDATION_TIME_SERIES_TOKENIZER"
+    }
+  ]
+}

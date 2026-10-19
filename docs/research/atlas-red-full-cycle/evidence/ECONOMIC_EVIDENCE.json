@@ -1,0 +1,270 @@
+{
+  "applicability": {
+    "by_strategy": {
+      "PATH_B": {
+        "RESOURCE_NOT_EVALUATED:NOVELTY_SCREEN_NOT_EVALUATED": 60
+      },
+      "S1": {
+        "NO_SETUP:SETUP_RULE_FAILED": 1169,
+        "NO_SETUP:TRIGGER_RULE_FAILED": 685,
+        "RESEARCH_ACTION:TRIGGER_CONFIRMED": 181
+      },
+      "S2": {
+        "NO_SETUP:COMPRESSION_RULE_FAILED": 32,
+        "SOURCE_UNAVAILABLE:INSUFFICIENT_30_DAY_HISTORY_AFTER_WARMUP": 608
+      },
+      "S3": {
+        "SOURCE_UNAVAILABLE:EXACT_NATIVE_TRADE_POPULATION_UNAVAILABLE": 8,
+        "SOURCE_UNAVAILABLE:M1_HISTORY_UNAVAILABLE": 52
+      },
+      "S4": {
+        "CONTEXT_ONLY:ORDER_FLOW_CONTEXT_AVAILABLE_NO_STANDALONE_DIRECTIONAL_SIGNAL": 6,
+        "SOURCE_UNAVAILABLE:ORDER_BOOK_EVIDENCE_UNAVAILABLE": 54
+      },
+      "S5": {
+        "SOURCE_UNAVAILABLE:DERIVATIVES_EVIDENCE_INCOMPLETE": 60
+      },
+      "S6": {
+        "RESEARCH_ACTION:RELATIVE_STRENGTH_STATE_AVAILABLE": 46,
+        "SOURCE_UNAVAILABLE:INSUFFICIENT_30_DAY_HOURLY_RETURNS": 14
+      },
+      "S7": {
+        "SOURCE_UNAVAILABLE:EVENT_CALENDAR_COVERAGE_UNVERIFIED": 60
+      },
+      "S8": {
+        "NOT_DUE:NO_REGISTERED_PAIR_FOR_SYMBOL": 60
+      }
+    },
+    "total_records": 3095,
+    "totals": {
+      "PATH_B": 60,
+      "S1": 2035,
+      "S2": 640,
+      "S3": 60,
+      "S4": 60,
+      "S5": 60,
+      "S6": 60,
+      "S7": 60,
+      "S8": 60
+    }
+  },
+  "collection": {
+    "bar_rows": 437470,
+    "collection_window_seconds": 3999.59314608,
+    "cycles": 32,
+    "discovery_population_rows": 24076,
+    "distinct_symbols_observed": 926,
+    "eligible_symbols": 124,
+    "endpoint_coverage": [
+      {
+        "bytes": 104308651,
+        "endpoint": "/fapi/v1/klines",
+        "event_type": "BAR_4H",
+        "first_received_at_ns": 1792437310370945790,
+        "last_received_at_ns": 1792442004504998247,
+        "records": 527,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 54611728,
+        "endpoint": "/fapi/v1/klines",
+        "event_type": "BAR_1H",
+        "first_received_at_ns": 1792437309753267392,
+        "last_received_at_ns": 1792442012135869068,
+        "records": 527,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 54368166,
+        "endpoint": "/fapi/v1/klines",
+        "event_type": "BAR_15M",
+        "first_received_at_ns": 1792437309076914973,
+        "last_received_at_ns": 1792442009360445498,
+        "records": 400,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 29933540,
+        "endpoint": "/fapi/v1/exchangeInfo",
+        "event_type": "EXCHANGE_INFO",
+        "first_received_at_ns": 1792437246507203787,
+        "last_received_at_ns": 1792441233366308476,
+        "records": 26,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 7643755,
+        "endpoint": "/fapi/v1/ticker/24hr",
+        "event_type": "TICKER_24H",
+        "first_received_at_ns": 1792437247397906715,
+        "last_received_at_ns": 1792441236964553662,
+        "records": 26,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 5366237,
+        "endpoint": "/fapi/v1/premiumIndex",
+        "event_type": "PREMIUM_INDEX",
+        "first_received_at_ns": 1792437247799406693,
+        "last_received_at_ns": 1792441238656557638,
+        "records": 26,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 3119107,
+        "endpoint": "/fapi/v1/ticker/bookTicker",
+        "event_type": "BOOK_TICKER",
+        "first_received_at_ns": 1792437248539864964,
+        "last_received_at_ns": 1792441240170791550,
+        "records": 26,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 1646054,
+        "endpoint": "/fapi/v1/klines",
+        "event_type": "BAR_1M",
+        "first_received_at_ns": 1792437365076706471,
+        "last_received_at_ns": 1792440139926023258,
+        "records": 24,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 173259,
+        "endpoint": "/fapi/v1/aggTrades",
+        "event_type": "AGG_TRADES",
+        "first_received_at_ns": 1792437369733503049,
+        "last_received_at_ns": 1792440144351821063,
+        "records": 16,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 69167,
+        "endpoint": "/fapi/v1/depth",
+        "event_type": "DEPTH",
+        "first_received_at_ns": 1792437369401958675,
+        "last_received_at_ns": 1792440144077972365,
+        "records": 16,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 39309,
+        "endpoint": "/fapi/v1/fundingRate",
+        "event_type": "FUNDING_HISTORY",
+        "first_received_at_ns": 1792437370320366141,
+        "last_received_at_ns": 1792440144977351951,
+        "records": 16,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 1097,
+        "endpoint": "/fapi/v1/openInterest",
+        "event_type": "OPEN_INTEREST",
+        "first_received_at_ns": 1792437369996355586,
+        "last_received_at_ns": 1792440144646409775,
+        "records": 16,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      },
+      {
+        "bytes": 728,
+        "endpoint": "/fapi/v1/time",
+        "event_type": "SERVER_TIME",
+        "first_received_at_ns": 1792437245357682941,
+        "last_received_at_ns": 1792441230774065783,
+        "records": 26,
+        "source_id": "BINANCE_USDM_PUBLIC_HTTP",
+        "venue": "BINANCE"
+      }
+    ],
+    "first_cycle_started_at_ns": 1792437245432076789,
+    "last_cycle_completed_at_ns": 1792441245025222869,
+    "raw_payload_bytes": 261280798,
+    "source_observation_rows": 1672
+  },
+  "generated_at_ns": 1792449522982755280,
+  "lifecycle": {
+    "by_management_kind": {
+      "CLOSE": 55,
+      "HOLD": 60,
+      "REGISTERED_TRAIL": 55,
+      "TIGHTEN": 55
+    },
+    "mean_net_cash_by_management_kind": {
+      "CLOSE": "-19.68822958299619801454545455",
+      "HOLD": "-12.66484071533818151333333333",
+      "REGISTERED_TRAIL": "-13.81218220493981501747573775",
+      "TIGHTEN": "-20.07403712361437983272727273"
+    },
+    "rows": 225
+  },
+  "missingness": [
+    {
+      "count": 4,
+      "reason_code": "SOURCE_UNAVAILABLE",
+      "scope": "KLINE"
+    }
+  ],
+  "ml": {
+    "comparison_status": "ESTIMATED",
+    "row_count": 60
+  },
+  "outcomes": {
+    "by_strategy": {
+      "S1": {
+        "mean_net_cash": "-2.406288602084623820689655172",
+        "n": 29
+      }
+    },
+    "censored_or_pending": 31,
+    "censoring_reasons": {
+      "HORIZON_NOT_YET_MATURED": 31
+    },
+    "matured": 29,
+    "matured_symbols": 5,
+    "mean_net_cash_per_notional_bps": "-6.949914003165418256304978586",
+    "rows": 60
+  },
+  "research_actions": {
+    "by_strategy": {
+      "S1": 60
+    },
+    "count": 60,
+    "distinct_symbols": 5,
+    "hard_refusals": 0,
+    "symbols": [
+      "1000BONKUSDT",
+      "1000SHIBUSDT",
+      "ADAUSDT",
+      "AKEUSDT",
+      "ALGOUSDT"
+    ]
+  },
+  "table_counts": {
+    "bar": 437470,
+    "cycle": 32,
+    "discovery_population": 24076,
+    "lifecycle_evidence": 225,
+    "market_context": 221,
+    "mature_outcome": 60,
+    "missingness": 4,
+    "ml_provenance": 2,
+    "model_inventory": 7,
+    "product_metadata": 17108,
+    "research_action": 60,
+    "source_observation": 1672,
+    "store_meta": 4,
+    "strategy_applicability": 3095
+  },
+  "version": "ATLAS_RED_FULL_CYCLE_ECONOMIC_REPORT_V1"
+}
