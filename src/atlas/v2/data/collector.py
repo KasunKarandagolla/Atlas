@@ -580,6 +580,7 @@ class PublicCollectorV2:
         snapshot_refs: tuple[str, ...] = (), recovery_epoch_ref: str | None = None,
         repair_certificate_refs: tuple[str, ...] = (),
         service_callback: Callable[[], None] | None = None,
+        _verified_snapshot_index_entries: Mapping[str, Mapping[str, Any]] | None = None,
     ) -> PublicSourceHealthV2:
         healthy = complete_snapshot and missed_interval_repaired
         state = PublicSourceStateV2.HEALTHY_CURRENT if healthy else PublicSourceStateV2.INCOMPLETE_SNAPSHOT
@@ -619,11 +620,16 @@ class PublicCollectorV2:
         if recovery_epoch_ref is not None and healthy and not refs:
             raise ValueError("healthy reconnect reconciliation requires exact observation refs")
         if healthy and refs:
+            if (_verified_snapshot_index_entries is not None
+                    and set(_verified_snapshot_index_entries) != set(refs)):
+                raise ValueError("verified snapshot index entries must exactly match reconciliation refs")
             for offset in range(0, len(refs), MAX_RECONCILIATION_REFS_PER_PAGE_V1):
                 if service_callback is not None:
                     service_callback()
                 page_refs = refs[offset:offset + MAX_RECONCILIATION_REFS_PER_PAGE_V1]
-                indexed = self.repository.get_artifact_metadata_by_refs(page_refs)
+                indexed = (self.repository.get_artifact_metadata_by_refs(page_refs)
+                    if _verified_snapshot_index_entries is None else
+                    {ref: _verified_snapshot_index_entries[ref] for ref in page_refs})
                 for ref in page_refs:
                     entry = indexed.get(ref)
                     metadata = entry.get("metadata") if entry is not None else None

@@ -1,0 +1,641 @@
+{
+  "command": "measure_bounded_cycles for one cycle with a wrapper only on get_artifact_metadata_by_refs",
+  "fixture_sha256": "4cd32057fef745c39718aeabfb3a382cff2a311b26b2f61d522c9c6bfe5501d3",
+  "lookup_call_count": 36,
+  "lookup_calls": [
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 441241,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 128
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 400891,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 0,
+      "found_types": {},
+      "line": 3206,
+      "requested": 64
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 193861,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 64
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 199690,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 0,
+      "found_types": {},
+      "line": 3206,
+      "requested": 64
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 168943,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 64
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 167311,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 0,
+      "found_types": {},
+      "line": 3206,
+      "requested": 64
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 217015,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 64
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 170926,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 0,
+      "found_types": {},
+      "line": 3206,
+      "requested": 64
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 227561,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 64
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 5358151,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 32,
+      "found_types": {
+        "PublicObservationIndexV2": 32
+      },
+      "line": 3206,
+      "requested": 32
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 1073329,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 32,
+      "found_types": {
+        "PublicObservationIndexV2": 32
+      },
+      "line": 3206,
+      "requested": 32
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 5027785,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 32,
+      "found_types": {
+        "PublicObservationIndexV2": 32
+      },
+      "line": 3206,
+      "requested": 32
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 907109,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 32,
+      "found_types": {
+        "PublicObservationIndexV2": 32
+      },
+      "line": 3206,
+      "requested": 32
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 3731844,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 32,
+      "found_types": {
+        "PublicObservationIndexV2": 32
+      },
+      "line": 3206,
+      "requested": 32
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 1101691,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 32,
+      "found_types": {
+        "PublicObservationIndexV2": 32
+      },
+      "line": 3206,
+      "requested": 32
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 3739165,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 32,
+      "found_types": {
+        "PublicObservationIndexV2": 32
+      },
+      "line": 3206,
+      "requested": 32
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 870885,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 32,
+      "found_types": {
+        "PublicObservationIndexV2": 32
+      },
+      "line": 3206,
+      "requested": 32
+    },
+    {
+      "caller": "_persist_broad_public_snapshot",
+      "elapsed_ns": 4597,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "found": 0,
+      "found_types": {},
+      "line": 3206,
+      "requested": 0
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 172728,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 1
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 25879,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 1
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 24337,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 1
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 24096,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 1
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 75974,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 1
+    },
+    {
+      "caller": "measure_bounded_cycles",
+      "elapsed_ns": 7523788,
+      "file": "<repo>/tests/v2/test_session041_scale_review.py",
+      "found": 256,
+      "found_types": {
+        "PublicObservationIndexV2": 256
+      },
+      "line": 95,
+      "requested": 256
+    },
+    {
+      "caller": "publish_broad_workset",
+      "elapsed_ns": 181232,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "found": 0,
+      "found_types": {},
+      "line": 175,
+      "requested": 32
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 66259,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 32
+    },
+    {
+      "caller": "publish_broad_workset",
+      "elapsed_ns": 90386,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "found": 0,
+      "found_types": {},
+      "line": 175,
+      "requested": 32
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 67892,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 32
+    },
+    {
+      "caller": "publish_broad_workset",
+      "elapsed_ns": 98558,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "found": 0,
+      "found_types": {},
+      "line": 175,
+      "requested": 32
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 74542,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 32
+    },
+    {
+      "caller": "publish_broad_workset",
+      "elapsed_ns": 83194,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "found": 0,
+      "found_types": {},
+      "line": 175,
+      "requested": 32
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 63836,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 32
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 81973,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 1
+    },
+    {
+      "caller": "register_artifacts",
+      "elapsed_ns": 50506,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "found": 0,
+      "found_types": {},
+      "line": 1511,
+      "requested": 1
+    },
+    {
+      "caller": "measure_bounded_cycles",
+      "elapsed_ns": 21422760,
+      "file": "<repo>/tests/v2/test_session041_scale_review.py",
+      "found": 256,
+      "found_types": {
+        "PublicObservationIndexV2": 256
+      },
+      "line": 95,
+      "requested": 256
+    },
+    {
+      "caller": "measure_bounded_cycles",
+      "elapsed_ns": 29371484,
+      "file": "<repo>/tests/v2/test_session041_scale_review.py",
+      "found": 519,
+      "found_types": {
+        "BroadPublicAcquisitionReceiptV2": 1,
+        "BroadUniverseWorksetV2": 1,
+        "OpsPublicSourceReconciliationV1": 2,
+        "ProductContractV2": 128,
+        "PublicObservationIndexV2": 256,
+        "PublicSourceHealthV2": 2,
+        "UniverseContractV2": 1,
+        "UniverseObservationV2": 128
+      },
+      "line": 95,
+      "requested": 519
+    }
+  ],
+  "lookup_latency_ns": {
+    "count": 36,
+    "max": 29371484,
+    "p50": 176980,
+    "p95": 7523788,
+    "p99": 21422760
+  },
+  "metrics": {
+    "archive_file_count": 4,
+    "cadence_seconds": 10,
+    "cycles": 1,
+    "db_baseline_bytes": 1015808,
+    "db_final_file_bytes": 2240512,
+    "dbstat_bytes": {
+      "active_history_head": 4096,
+      "artifact_actual_binding_action_lookup": 4096,
+      "artifact_diagnostic_decision_lookup": 4096,
+      "artifact_index": 540672,
+      "artifact_latest_available": 65536,
+      "artifact_outcome_decision_lookup": 4096,
+      "artifact_outcome_status_decision_lookup": 4096,
+      "artifact_policy_payoff_action_lookup": 4096,
+      "artifact_type_created_order": 69632,
+      "artifact_type_insertion_lookup": 20480,
+      "collector_cursor_head": 4096,
+      "created_metadata_000d6949d8998126": 4096,
+      "created_metadata_0c4dc2455c12ac73": 4096,
+      "created_metadata_0f0be79161999164": 4096,
+      "created_metadata_1549bc062104eb07": 4096,
+      "created_metadata_1bb934dff9ef8092": 4096,
+      "created_metadata_1d00cf05da12b61e": 4096,
+      "created_metadata_246f0f2b9081f6bb": 4096,
+      "created_metadata_2564d1b4a8934829": 4096,
+      "created_metadata_347f33fac8185a74": 4096,
+      "created_metadata_36f4de70a9f22fef": 4096,
+      "created_metadata_3a6fc8d98b19ed66": 4096,
+      "created_metadata_3fb01026416c6c08": 4096,
+      "created_metadata_434ddc4e3d1c5ff2": 4096,
+      "created_metadata_7b1605ed90551f48": 4096,
+      "created_metadata_7c611fbc5161ff1d": 4096,
+      "created_metadata_7d68744e60744acd": 4096,
+      "created_metadata_7ef2faa3910523e8": 4096,
+      "created_metadata_807813458acf15d7": 4096,
+      "created_metadata_9e82b7881cd03945": 4096,
+      "created_metadata_9f77396d8f579ccf": 4096,
+      "created_metadata_a3ff9c41bdb5ec8a": 4096,
+      "created_metadata_a7531cffb7ebf7ea": 4096,
+      "created_metadata_aca1669ff8d6827b": 4096,
+      "created_metadata_b7980f033398d7df": 4096,
+      "created_metadata_c07d4df4f0410f1b": 4096,
+      "created_metadata_c2c48640226a3618": 28672,
+      "created_metadata_c2e3cfc81a10edfb": 4096,
+      "created_metadata_c90b45207c9eaff1": 4096,
+      "created_metadata_cec26df71bd835ea": 4096,
+      "created_metadata_d569cf88682020de": 4096,
+      "created_metadata_d6e04acdcf18e596": 4096,
+      "created_metadata_d757c7207420d349": 4096,
+      "created_metadata_dd8a31cfe1f8a092": 4096,
+      "created_metadata_e14c46dafc9ad155": 4096,
+      "created_metadata_fd1750a1f4c92152": 4096,
+      "decision_event_trigger_record_lookup": 4096,
+      "due_work": 4096,
+      "due_work_discovery": 4096,
+      "due_work_oldest": 4096,
+      "due_work_pressure": 4096,
+      "due_work_quarantine_pressure": 4096,
+      "due_work_ready": 4096,
+      "l2_archive_restart_lookup": 4096,
+      "latest_metadata_000d6949d8998126": 4096,
+      "latest_metadata_0c4dc2455c12ac73": 4096,
+      "latest_metadata_0f0be79161999164": 4096,
+      "latest_metadata_1549bc062104eb07": 4096,
+      "latest_metadata_1bb934dff9ef8092": 4096,
+      "latest_metadata_1d00cf05da12b61e": 4096,
+      "latest_metadata_246f0f2b9081f6bb": 4096,
+      "latest_metadata_2564d1b4a8934829": 4096,
+      "latest_metadata_347f33fac8185a74": 4096,
+      "latest_metadata_36f4de70a9f22fef": 4096,
+      "latest_metadata_3a6fc8d98b19ed66": 4096,
+      "latest_metadata_3fb01026416c6c08": 4096,
+      "latest_metadata_434ddc4e3d1c5ff2": 4096,
+      "latest_metadata_7b1605ed90551f48": 4096,
+      "latest_metadata_7c611fbc5161ff1d": 4096,
+      "latest_metadata_7d68744e60744acd": 4096,
+      "latest_metadata_7ef2faa3910523e8": 4096,
+      "latest_metadata_807813458acf15d7": 4096,
+      "latest_metadata_9e82b7881cd03945": 4096,
+      "latest_metadata_9f77396d8f579ccf": 4096,
+      "latest_metadata_a3ff9c41bdb5ec8a": 4096,
+      "latest_metadata_a7531cffb7ebf7ea": 4096,
+      "latest_metadata_aca1669ff8d6827b": 4096,
+      "latest_metadata_b7980f033398d7df": 4096,
+      "latest_metadata_c07d4df4f0410f1b": 4096,
+      "latest_metadata_c2c48640226a3618": 28672,
+      "latest_metadata_c2e3cfc81a10edfb": 4096,
+      "latest_metadata_c90b45207c9eaff1": 4096,
+      "latest_metadata_cec26df71bd835ea": 4096,
+      "latest_metadata_d569cf88682020de": 4096,
+      "latest_metadata_d6e04acdcf18e596": 4096,
+      "latest_metadata_d757c7207420d349": 4096,
+      "latest_metadata_dd8a31cfe1f8a092": 4096,
+      "latest_metadata_e14c46dafc9ad155": 4096,
+      "latest_metadata_fd1750a1f4c92152": 4096,
+      "m15_accounting_origin_lookup": 4096,
+      "m15_checkpoint_exact_generation": 4096,
+      "m15_checkpoint_key_generation_lookup": 4096,
+      "model_registry": 4096,
+      "native_m1_checkpoint_exact_generation": 4096,
+      "native_m1_checkpoint_key_generation_lookup": 4096,
+      "native_m1_event_id_lookup": 4096,
+      "native_m1_event_origin_lookup": 4096,
+      "native_m1_gate_origin_lookup": 4096,
+      "native_origin_window": 4096,
+      "native_origin_window_head": 4096,
+      "ops_decision_event_available_order": 4096,
+      "ops_outbox": 4096,
+      "ops_receipt_event_id_lookup": 4096,
+      "outbox_pending_order": 4096,
+      "public_adoption_cursor_v2": 4096,
+      "public_archive_history_lookup_v2": 86016,
+      "public_bar_repair_head": 4096,
+      "public_evidence_block_v2": 4096,
+      "public_evidence_locator_feed_time_v2": 4096,
+      "public_evidence_locator_trade_id_v2": 4096,
+      "public_evidence_locator_v2": 4096,
+      "public_evidence_publication_block_v2": 4096,
+      "public_evidence_publication_observation_v2": 4096,
+      "public_evidence_publication_v2": 4096,
+      "public_evidence_stage_v2": 4096,
+      "public_exact_receipt_key_actual_lookup_v2": 102400,
+      "public_exact_receipt_key_replay_lookup_v2": 98304,
+      "public_exact_receipt_revision_actual_lookup_v2": 86016,
+      "public_exact_receipt_revision_replay_lookup_v2": 73728,
+      "public_instrument_identity_v1": 53248,
+      "public_observation_metadata_block_v1": 53248,
+      "public_observation_metadata_locator_v1": 24576,
+      "public_observation_source_id_lookup": 12288,
+      "public_origin_discovery_lookup_v2": 53248,
+      "public_reconciliation_source_id_lookup": 4096,
+      "public_stream_archive_locator_v1": 4096,
+      "public_stream_archive_trade_window_v1": 4096,
+      "public_stream_continuity_head_v1_progress": 4096,
+      "public_stream_continuity_head_v2_progress": 4096,
+      "public_stream_generic_source_lookup": 57344,
+      "public_stream_invalidation_window": 4096,
+      "public_stream_trade_event_window": 4096,
+      "public_trade_identity_coverage_v2": 4096,
+      "public_trade_identity_v2": 4096,
+      "research_prediction_checkpoint_run_lookup": 4096,
+      "research_prediction_outcome_identity_lookup": 4096,
+      "s3_residual_context_window": 4096,
+      "s3_vwap_context_window": 4096,
+      "scheduled_event_time_v1": 4096,
+      "schema_meta": 4096,
+      "source_health": 4096,
+      "source_health_available_lookup": 4096,
+      "source_health_gap_lookup": 4096,
+      "source_health_state_lookup": 4096,
+      "sqlite_autoindex_active_history_head_1": 4096,
+      "sqlite_autoindex_artifact_index_1": 49152,
+      "sqlite_autoindex_collector_cursor_head_1": 4096,
+      "sqlite_autoindex_due_work_1": 4096,
+      "sqlite_autoindex_due_work_discovery_1": 4096,
+      "sqlite_autoindex_due_work_pressure_1": 4096,
+      "sqlite_autoindex_due_work_quarantine_pressure_1": 4096,
+      "sqlite_autoindex_model_registry_1": 4096,
+      "sqlite_autoindex_native_origin_window_1": 4096,
+      "sqlite_autoindex_native_origin_window_head_1": 4096,
+      "sqlite_autoindex_ops_outbox_1": 4096,
+      "sqlite_autoindex_ops_outbox_2": 4096,
+      "sqlite_autoindex_public_adoption_cursor_v2_1": 4096,
+      "sqlite_autoindex_public_bar_repair_head_1": 4096,
+      "sqlite_autoindex_public_evidence_block_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_locator_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_publication_block_v2_2": 4096,
+      "sqlite_autoindex_public_evidence_publication_observation_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_publication_observation_v2_2": 4096,
+      "sqlite_autoindex_public_evidence_publication_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_publication_v2_2": 4096,
+      "sqlite_autoindex_public_evidence_stage_v2_1": 4096,
+      "sqlite_autoindex_public_observation_metadata_locator_v1_2": 24576,
+      "sqlite_autoindex_schema_meta_1": 4096,
+      "sqlite_autoindex_source_health_1": 4096,
+      "sqlite_autoindex_watch_1": 4096,
+      "sqlite_autoindex_watch_transition_1": 4096,
+      "sqlite_schema": 69632,
+      "watch": 4096,
+      "watch_active_order": 4096,
+      "watch_created_order": 4096,
+      "watch_transition": 4096,
+      "watch_transition_time_order": 4096
+    },
+    "excluded": [
+      "network",
+      "streams",
+      "enrichment",
+      "scheduler state",
+      "reports",
+      "decision work"
+    ],
+    "integrity": {
+      "all_artifact_domain_metadata_verified_after_restart": 519,
+      "compression_roundtrip": "EXACT_CANONICAL_BYTES",
+      "cutoff_worksets_verified_after_restart": 1,
+      "exact_index_metadata_verified_after_restart": 256,
+      "exact_raw_rows_verified": 256,
+      "source_receipt_refs_verified": 256
+    },
+    "population": 128,
+    "process_storage_write_bytes_total": 5791744,
+    "samples": [
+      {
+        "adoption_seconds": 0.4039979740009585,
+        "adoption_service": {
+          "calls": 16,
+          "max_gap_seconds": 0.30952731399884215
+        },
+        "archive_cumulative_bytes": 97269,
+        "cycle": 1,
+        "db_growth_bytes": 1224704,
+        "db_logical_bytes": 2240512,
+        "metadata_by_type_cumulative": {
+          "BroadPublicAcquisitionReceiptV2": {
+            "bytes": 17950,
+            "rows": 1
+          },
+          "BroadUniverseWorksetV2": {
+            "bytes": 36830,
+            "rows": 1
+          },
+          "OpsPublicSourceReconciliationV1": {
+            "bytes": 17637,
+            "rows": 2
+          },
+          "ProductContractV2": {
+            "bytes": 100056,
+            "rows": 128
+          },
+          "PublicObservationIndexV2": {
+            "bytes": 160256,
+            "rows": 256
+          },
+          "PublicSourceHealthV2": {
+            "bytes": 617,
+            "rows": 2
+          },
+          "UniverseContractV2": {
+            "bytes": 29450,
+            "rows": 1
+          },
+          "UniverseObservationV2": {
+            "bytes": 62336,
+            "rows": 128
+          }
+        },
+        "process_storage_write_bytes_cycle": 5791744,
+        "publication_service": {
+          "calls": 58,
+          "max_gap_seconds": 0.00907301000188454
+        },
+        "raw_payload_bytes": 60824,
+        "record_count": 256,
+        "wal_sample_bytes": 4148872,
+        "workset_publication_seconds": 0.06082377799975802,
+        "zlib_metadata_bytes_by_type_cycle": {
+          "BroadPublicAcquisitionReceiptV2": 10647,
+          "BroadUniverseWorksetV2": 27929,
+          "OpsPublicSourceReconciliationV1": 10380,
+          "PublicObservationIndexV2": 36652,
+          "PublicSourceHealthV2": 292,
+          "UniverseContractV2": 22526,
+          "UniverseObservationV2": 12414
+        }
+      }
+    ],
+    "source_shape": "one Bybit ticker and three Binance bulk market rows per symbol"
+  },
+  "mode": "B_LOOKUP_CALL_COUNTS_WITH_PER_CALL_TIMER",
+  "source_checkpoint": "e75a83226cea2cf8dfee10823541848e8ffb0de4",
+  "source_diff_sha256": "57b94d7a9fa21794218c4f94aa84aeac7514ba47f34f18898d4a717b600bf9ca",
+  "whole_helper_elapsed_ns": 751658507
+}

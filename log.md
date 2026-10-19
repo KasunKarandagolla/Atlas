@@ -1,3 +1,19 @@
+# Current checkpoint — G1-B broad observation performance correction — 2026-10-19
+
+**OFFLINE IMPLEMENTATION COMPLETE; INDEPENDENT EXACT-SHA REVIEW PENDING.** Isolated `research/atlas-red-g1-broad-performance-2026-10-19` from reviewed e75a83226cea2cf8dfee10823541848e8ffb0de4. This candidate does not inherit acceptance beyond that parent. Runtime model/effort attestation is not independently available; no subagents.
+
+**CHANGE:** The broad-adoption exact index readback is now reused for the immediately following collector reconciliation. The collector checks the complete reference set and revalidates type, hash shape, availability and source identity; callback servicing remains before each original bounded page. Other call sites retain repository reads. No schema, clock, cadence, durability, capacity, population, health/grade, retention or trading behavior changed.
+
+**A/B/C EVIDENCE:** A unchanged G1 helper remains 21.264/23.106/24.531 s for its existing adoption/workset timer. Corrected B production boundaries are 9.364/9.775/9.734 s for the same maximum fixture, with receipt lookup and workset publication measured inside the boundary. All 24,576 raw/index records and 40,977 domain artifacts survive restart; all 384 archive hashes and logical-store/raw/reference identities equal the unmodified run. Before the change, 64 reconnect pages repeated 8,192 index reads and 8,192 metadata decodes, taking 12.471 s aggregate. After, those repeated reads/decodes are absent. The legacy 50 ms resource sampler materially perturbs the pre-change service; cProfile also adds large overhead, so only low-overhead B supports the cadence result. The 4,096-product Binance-only case retains its 12,288 source rows but correctly fails the frozen per-venue workset cap. `S41_MAX_BREADTH_BYTES_PER_CYCLE_V2` remains `None`.
+
+**LIMIT:** Existing S41 formula gives a conditional 48-hour growth requirement of 1,377,141,631,200 bytes; recorded cloud preflight has 30,218,625,024 free against 62,930,192,327 required. Actual target host, Windows resource path, live-source continuity, native T+5, endurance/retention and economics remain TEST GATE / UNVERIFIED / NOT ESTIMABLE. No public observation was started. Overall G1 remains TEST GATE despite the tested service correction.
+
+**REGRESSION:** Focused G1-B tests pass; exact counts, reproduction commands and hashes are in `docs/research/atlas-red-g1-broad-performance/G1B_REPRODUCIBILITY.md`. The selected broad regression run has 185 passed and one missing-`pyqtgraph` failure in the Phase 2 desktop test; exact test also fails on clean e75 at the same import. The focused G1-B selection passed 16/16. This does not establish a full-suite pass. Ruff, compile, lock, freeze and manifest checks are recorded in the package.
+
+[Report](docs/research/atlas-red-g1-broad-performance/G1B_PERFORMANCE_REPORT.md), [target-host retest](docs/research/atlas-red-g1-broad-performance/G1B_TARGET_HOST_RETEST.md), [reproducibility](docs/research/atlas-red-g1-broad-performance/G1B_REPRODUCIBILITY.md). STOP after verified remote push for independent ChatGPT review of the exact SHA; no merge or dependent work. OBSERVE / zero allocation and paid allowance / CAPITAL NO-GO.
+
+---
+
 # G0/G1 offline capture candidate — 19 October 2026 (Asia/Colombo)
 
 **OFFLINE_CAPTURE_TEST_GATE.** Isolated `research/atlas-red-g0-g1-capture-qualification-2026-10-18` from exact `19a2d91ebc1b136722e7baf18ea32b4b4d4cbe81`; G0 contract committed before measurements at `402648d`. The final engineering commit is the new review candidate; exact remote SHA is returned at delivery, not self-accepted. External PASS applies only to the supplied feasibility investigation at19a2d91.

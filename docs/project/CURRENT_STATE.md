@@ -1,4 +1,18 @@
-# G0/G1 offline capture candidate — 19 October 2026 (Asia/Colombo)
+# G1-B broad observation performance correction — 19 October 2026 (independent review pending)
+
+**IMPLEMENTED / TESTED OFFLINE: G1_SERVICE_CORRECTED on the registered synthetic maximum; overall G1 remains TEST GATE.** Isolated `research/atlas-red-g1-broad-performance-2026-10-19` from externally reviewed exact parent `e75a83226cea2cf8dfee10823541848e8ffb0de4`. The parent review does not accept this candidate. The final candidate SHA will be bound after push; independent exact-SHA review is required before dependent work.
+
+Reuses the exact public artifact-index values already read back from durable storage during broad adoption for the immediately following bounded reconnect reconciliation. It avoids 64 duplicate exact-reference queries and 8,192 duplicate metadata decodes per maximum cycle. Service boundary remains adoption, receipt lookup and full workset publication. All three 4,096-product two-venue synthetic cycles complete in 9.364, 9.775 and 9.734 seconds, below the unchanged ten-second limit. Exact 24,576 three-cycle raw/index records and 40,977 domain artifacts, archive hashes, logical-store identity, raw/reference-ID hashes and restart worksets match baseline. No capacity/retention constant, population, durability setting, callback schedule or clock/policy/freeze identity changed.
+
+The focused stream paging/adoption/scale/public-runtime tests pass (16 passed). The broader affected regression selection has 185 passed and one same-parent failure: `test_session020_phase2_e2e.py::test_phase2_s1_s2_persistence_ipc_and_matured_outcome` imports absent `pyqtgraph`; the exact same failure was reproduced on e75. This is not a full repository-suite claim. Ruff, compilation, lock/manifest/freeze checks and the packaged benchmark/diagnostic-driver smoke results are recorded in the G1-B report package.
+
+Storage remains the independent blocker: the existing conditional S41 projection is 1,377,141,631,200 bytes for the fixed 48-hour synthetic formula, while the recorded cloud host-path preflight has 30,218,625,024 free bytes against a 62,930,192,327-byte minimum. The unchanged capacity override stays `None`. The actual 4 GB Windows/Linux target, live source, native decision-to-T+5, endurance/retention and economics remain unqualified. See [performance report](../research/atlas-red-g1-broad-performance/G1B_PERFORMANCE_REPORT.md), [retest procedure](../research/atlas-red-g1-broad-performance/G1B_TARGET_HOST_RETEST.md), and [reproducibility record](../research/atlas-red-g1-broad-performance/G1B_REPRODUCIBILITY.md).
+
+Next: push and verify the exact remote candidate, then stop for independent ChatGPT review of that SHA. No merge, public collection, OBSERVE activation, policy change, capital activity or dependent work. G2 genuine P1 provenance and typed-reader work remains separate Sol-owned work. OBSERVE / zero allocation and paid allowance / CAPITAL NO-GO.
+
+---
+
+# Prior checkpoint — G0/G1 offline capture candidate — 19 October 2026 (Asia/Colombo)
 
 **OFFLINE_CAPTURE_TEST_GATE.** Isolated `research/atlas-red-g0-g1-capture-qualification-2026-10-18` from exact `19a2d91ebc1b136722e7baf18ea32b4b4d4cbe81`; G0 contract committed before measurements at `402648d`. The final engineering commit is the new review candidate; exact remote SHA is returned at delivery, not self-accepted. External PASS applies only to the supplied feasibility investigation at19a2d91.
 

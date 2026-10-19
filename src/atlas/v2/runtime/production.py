@@ -3212,6 +3212,7 @@ class ProductionOpsCyclePortV1:
         prior_clock = collector.clock_ns
         rejected_indexes: list[int] = []
         refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
+        verified_indexes_by_source: dict[str, dict[str, Mapping[str, Any]]] = {}
         pending_refs: dict[str, str] = {}
         manifest = snapshot.source_snapshot.get("metadata", {})
         source_by_venue = {
@@ -3383,6 +3384,7 @@ class ProductionOpsCyclePortV1:
                             and isinstance(entry.get("metadata"), Mapping)
                             and entry["metadata"].get("source_id") == source_id):
                         refs_by_source.setdefault(source_id, set()).add(ref)
+                        verified_indexes_by_source.setdefault(source_id, {})[ref] = entry
                     else:
                         accepted = False
                         accepted_by_source[source_id] = False
@@ -3422,9 +3424,13 @@ class ProductionOpsCyclePortV1:
             prior_gap = collector.health.had_unhealthy_after_healthy(source_id)
             ready = accepted_by_source.get(source_id, False) and bool(snapshot_refs) and not prior_gap
             if ready:
+                verified_indexes = verified_indexes_by_source.get(source_id, {})
+                if set(verified_indexes) != snapshot_refs:
+                    raise ValueError("BROAD_PUBLIC_RECONCILIATION_INDEX_SET_MISMATCH")
                 collector.reconcile_after_reconnect(source_id, at_ns=publication,
                     complete_snapshot=True, missed_interval_repaired=True,
                     snapshot_refs=tuple(sorted(snapshot_refs)), recovery_epoch_ref=collector.required_recovery_epoch_ref,
+                    _verified_snapshot_index_entries=verified_indexes,
                     service_callback=lambda: self.service_public_stream(repository))
             else:
                 collector.mark_incomplete_snapshot(source_id, at_ns=publication,

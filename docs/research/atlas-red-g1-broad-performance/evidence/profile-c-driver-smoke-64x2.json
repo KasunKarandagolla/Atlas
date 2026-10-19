@@ -1,0 +1,1837 @@
+{
+  "command": "measure_bounded_cycles with cProfile enabled only in input construction, broad adoption, and workset publication; /proc sampler runs concurrently",
+  "environment": {
+    "cpu_count": 3,
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]"
+  },
+  "fixture_sha256": "4cd32057fef745c39718aeabfb3a382cff2a311b26b2f61d522c9c6bfe5501d3",
+  "functions_by_cumulative": [
+    {
+      "calls": 4,
+      "cumulative_seconds": 0.606922748,
+      "file": "<repo>/src/atlas/v2/data/collector.py",
+      "function": "flush_archive",
+      "line": 478,
+      "primitive_calls": 4,
+      "self_seconds": 0.001178716
+    },
+    {
+      "calls": 4,
+      "cumulative_seconds": 0.494370905,
+      "file": "<repo>/src/atlas/v2/data/history.py",
+      "function": "write_observation_chunk",
+      "line": 318,
+      "primitive_calls": 4,
+      "self_seconds": 0.003062621
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 0.151796454,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "publish_broad_workset",
+      "line": 175,
+      "primitive_calls": 1,
+      "self_seconds": 0.004914849000000001
+    },
+    {
+      "calls": 6824,
+      "cumulative_seconds": 0.15099236600000002,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "canonical_json",
+      "line": 164,
+      "primitive_calls": 6824,
+      "self_seconds": 0.004529841000000001
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 0.124195335,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "function": "_persist_broad_public_snapshot",
+      "line": 3206,
+      "primitive_calls": 1,
+      "self_seconds": 0.0015602230000000001
+    },
+    {
+      "calls": 15,
+      "cumulative_seconds": 0.12241786800000001,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "register_artifacts",
+      "line": 1511,
+      "primitive_calls": 15,
+      "self_seconds": 0.003133804
+    },
+    {
+      "calls": 114283,
+      "cumulative_seconds": 0.114184799,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "json_value",
+      "line": 136,
+      "primitive_calls": 6828,
+      "self_seconds": 0.055032657000000006
+    },
+    {
+      "calls": 3859,
+      "cumulative_seconds": 0.080101198,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "sha256_json",
+      "line": 168,
+      "primitive_calls": 3859,
+      "self_seconds": 0.0035645150000000003
+    },
+    {
+      "calls": 32,
+      "cumulative_seconds": 0.051971707000000006,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "get_artifact_metadata_by_refs",
+      "line": 2904,
+      "primitive_calls": 32,
+      "self_seconds": 0.0013891790000000002
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.042795914000000004,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "artifact_entry_from_storage_row",
+      "line": 2859,
+      "primitive_calls": 256,
+      "self_seconds": 0.0011740300000000002
+    },
+    {
+      "calls": 519,
+      "cumulative_seconds": 0.035645826000000005,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "__post_init__",
+      "line": 209,
+      "primitive_calls": 519,
+      "self_seconds": 0.0010171820000000002
+    },
+    {
+      "calls": 2328,
+      "cumulative_seconds": 0.031397388000000005,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "from_json",
+      "line": 70,
+      "primitive_calls": 519,
+      "self_seconds": 0.012452021
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.031152611000000004,
+      "file": "<repo>/src/atlas/v2/data/compact_observation_index.py",
+      "function": "decode_metadata",
+      "line": 155,
+      "primitive_calls": 256,
+      "self_seconds": 0.002435978
+    },
+    {
+      "calls": 18435,
+      "cumulative_seconds": 0.02563071,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "_freeze_canonical_json",
+      "line": 90,
+      "primitive_calls": 4871,
+      "self_seconds": 0.005814807
+    },
+    {
+      "calls": 7,
+      "cumulative_seconds": 0.023782888000000002,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "register_artifact",
+      "line": 1508,
+      "primitive_calls": 7,
+      "self_seconds": 3.1977e-05
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 0.022373145,
+      "file": "<repo>/tests/v2/test_session041_scale_review.py",
+      "function": "_records",
+      "line": 52,
+      "primitive_calls": 1,
+      "self_seconds": 0.0007615090000000001
+    },
+    {
+      "calls": 15,
+      "cumulative_seconds": 0.021805304,
+      "file": "<repo>/src/atlas/v2/data/compact_observation_index.py",
+      "function": "encode_blocks",
+      "line": 84,
+      "primitive_calls": 15,
+      "self_seconds": 0.0018824730000000002
+    },
+    {
+      "calls": 512,
+      "cumulative_seconds": 0.021012492,
+      "file": "<repo>/src/atlas/v2/data/raw.py",
+      "function": "__post_init__",
+      "line": 78,
+      "primitive_calls": 512,
+      "self_seconds": 0.0031211520000000003
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 0.019190004,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "build_snapshot",
+      "line": 183,
+      "primitive_calls": 1,
+      "self_seconds": 6.8117e-05
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.01914893,
+      "file": "<repo>/src/atlas/v2/data/compact_observation_index.py",
+      "function": "compact_projection",
+      "line": 69,
+      "primitive_calls": 256,
+      "self_seconds": 0.0013421940000000001
+    },
+    {
+      "calls": 93127,
+      "cumulative_seconds": 0.018598918000000002,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "<genexpr>",
+      "line": 152,
+      "primitive_calls": 93127,
+      "self_seconds": 0.013716335000000001
+    },
+    {
+      "calls": 512,
+      "cumulative_seconds": 0.018134375,
+      "file": "<repo>/src/atlas/v2/data/raw.py",
+      "function": "content_hash",
+      "line": 188,
+      "primitive_calls": 512,
+      "self_seconds": 0.000332783
+    },
+    {
+      "calls": 17,
+      "cumulative_seconds": 0.01645145,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "__exit__",
+      "line": 842,
+      "primitive_calls": 17,
+      "self_seconds": 0.000185489
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.016311029,
+      "file": "<repo>/src/atlas/v2/data/raw.py",
+      "function": "build",
+      "line": 117,
+      "primitive_calls": 256,
+      "self_seconds": 0.0011389640000000001
+    },
+    {
+      "calls": 3,
+      "cumulative_seconds": 0.015813793,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "artifact_wire",
+      "line": 172,
+      "primitive_calls": 3,
+      "self_seconds": 1.6906e-05
+    },
+    {
+      "calls": 768,
+      "cumulative_seconds": 0.015596904000000002,
+      "file": "<repo>/src/atlas/v2/data/raw.py",
+      "function": "_identity",
+      "line": 40,
+      "primitive_calls": 768,
+      "self_seconds": 0.00038363000000000004
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 0.01392427,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "__post_init__",
+      "line": 504,
+      "primitive_calls": 2,
+      "self_seconds": 0.000319934
+    },
+    {
+      "calls": 386,
+      "cumulative_seconds": 0.01255523,
+      "file": "<repo>/src/atlas/v2/data/compact_observation_index.py",
+      "function": "instrument_identity_ref",
+      "line": 56,
+      "primitive_calls": 386,
+      "self_seconds": 0.0005029450000000001
+    },
+    {
+      "calls": 2868,
+      "cumulative_seconds": 0.011698736000000001,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "<genexpr>",
+      "line": 104,
+      "primitive_calls": 2356,
+      "self_seconds": 0.0005686850000000001
+    },
+    {
+      "calls": 384,
+      "cumulative_seconds": 0.011321497000000002,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "__init__",
+      "line": 27,
+      "primitive_calls": 384,
+      "self_seconds": 0.004558913
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.010688965,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "content_hash",
+      "line": 113,
+      "primitive_calls": 256,
+      "self_seconds": 0.0007458920000000001
+    },
+    {
+      "calls": 2200,
+      "cumulative_seconds": 0.010516402000000001,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "to_dict",
+      "line": 67,
+      "primitive_calls": 647,
+      "self_seconds": 0.004548918
+    },
+    {
+      "calls": 15239,
+      "cumulative_seconds": 0.010035016,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "__getitem__",
+      "line": 41,
+      "primitive_calls": 15239,
+      "self_seconds": 0.007854661
+    },
+    {
+      "calls": 391,
+      "cumulative_seconds": 0.009235101,
+      "file": "<repo>/src/atlas/v2/memory/compressed_metadata.py",
+      "function": "encode_metadata_json",
+      "line": 32,
+      "primitive_calls": 391,
+      "self_seconds": 0.000186901
+    },
+    {
+      "calls": 3994,
+      "cumulative_seconds": 0.007767373,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "sha256_ref",
+      "line": 200,
+      "primitive_calls": 3994,
+      "self_seconds": 0.0019327390000000002
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 0.006839881000000001,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "to_dict",
+      "line": 536,
+      "primitive_calls": 1,
+      "self_seconds": 3.9939000000000005e-05
+    },
+    {
+      "calls": 9408,
+      "cumulative_seconds": 0.006457887000000001,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "nonblank",
+      "line": 194,
+      "primitive_calls": 9408,
+      "self_seconds": 0.003940707
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.0064523160000000005,
+      "file": "<repo>/src/atlas/v2/data/collector.py",
+      "function": "ingest",
+      "line": 195,
+      "primitive_calls": 256,
+      "self_seconds": 0.0015043550000000002
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 0.005835758000000001,
+      "file": "<repo>/src/atlas/v2/data/collector.py",
+      "function": "reconcile_after_reconnect",
+      "line": 578,
+      "primitive_calls": 2,
+      "self_seconds": 0.000381622
+    },
+    {
+      "calls": 3,
+      "cumulative_seconds": 0.004795267000000001,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "_body",
+      "line": 524,
+      "primitive_calls": 3,
+      "self_seconds": 7.740000000000001e-05
+    },
+    {
+      "calls": 384,
+      "cumulative_seconds": 0.004717867000000001,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "to_dict",
+      "line": 443,
+      "primitive_calls": 384,
+      "self_seconds": 0.0010384180000000002
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.004604165,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "__post_init__",
+      "line": 415,
+      "primitive_calls": 256,
+      "self_seconds": 0.0007554450000000001
+    },
+    {
+      "calls": 5120,
+      "cumulative_seconds": 0.003813673,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "freeze_json",
+      "line": 118,
+      "primitive_calls": 5120,
+      "self_seconds": 0.00201293
+    },
+    {
+      "calls": 772,
+      "cumulative_seconds": 0.003327842,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "string_tuple",
+      "line": 232,
+      "primitive_calls": 772,
+      "self_seconds": 0.0011957760000000002
+    },
+    {
+      "calls": 1576,
+      "cumulative_seconds": 0.003043202,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "to_canonical_json",
+      "line": 94,
+      "primitive_calls": 1576,
+      "self_seconds": 0.00024910000000000004
+    },
+    {
+      "calls": 4268,
+      "cumulative_seconds": 0.0029080440000000003,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "timestamp",
+      "line": 207,
+      "primitive_calls": 4268,
+      "self_seconds": 0.0009745540000000001
+    },
+    {
+      "calls": 128,
+      "cumulative_seconds": 0.0026426180000000002,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "_canonical_json",
+      "line": 97,
+      "primitive_calls": 128,
+      "self_seconds": 7.9978e-05
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 0.0025980540000000002,
+      "file": "<repo>/src/atlas/v2/data/collector.py",
+      "function": "_record_health",
+      "line": 164,
+      "primitive_calls": 2,
+      "self_seconds": 3.4661e-05
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.0022493590000000003,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "_from_storage_row",
+      "line": 175,
+      "primitive_calls": 256,
+      "self_seconds": 0.0006458280000000001
+    },
+    {
+      "calls": 128,
+      "cumulative_seconds": 0.002109836,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "__post_init__",
+      "line": 79,
+      "primitive_calls": 128,
+      "self_seconds": 0.00065523
+    },
+    {
+      "calls": 4268,
+      "cumulative_seconds": 0.0019334900000000002,
+      "file": "<repo>/src/atlas/domain/time.py",
+      "function": "ensure_utc_ns",
+      "line": 10,
+      "primitive_calls": 4268,
+      "self_seconds": 0.0012443360000000002
+    },
+    {
+      "calls": 2824,
+      "cumulative_seconds": 0.0017112660000000001,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "<genexpr>",
+      "line": 235,
+      "primitive_calls": 2824,
+      "self_seconds": 0.000532184
+    },
+    {
+      "calls": 1280,
+      "cumulative_seconds": 0.0016996930000000002,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "<genexpr>",
+      "line": 433,
+      "primitive_calls": 1280,
+      "self_seconds": 0.00036311300000000003
+    },
+    {
+      "calls": 1024,
+      "cumulative_seconds": 0.001373749,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "_decimal",
+      "line": 135,
+      "primitive_calls": 1024,
+      "self_seconds": 0.001056049
+    },
+    {
+      "calls": 12672,
+      "cumulative_seconds": 0.001362076,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "<genexpr>",
+      "line": 59,
+      "primitive_calls": 12672,
+      "self_seconds": 0.001362076
+    },
+    {
+      "calls": 4,
+      "cumulative_seconds": 0.001244593,
+      "file": "<repo>/src/atlas/v2/contracts.py",
+      "function": "__post_init__",
+      "line": 106,
+      "primitive_calls": 4,
+      "self_seconds": 2.6164000000000002e-05
+    },
+    {
+      "calls": 16474,
+      "cumulative_seconds": 0.001233217,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "<lambda>",
+      "line": 86,
+      "primitive_calls": 16474,
+      "self_seconds": 0.001233217
+    },
+    {
+      "calls": 33,
+      "cumulative_seconds": 0.001179817,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "_storage_rows_in_decode_order",
+      "line": 3065,
+      "primitive_calls": 33,
+      "self_seconds": 0.000245195
+    },
+    {
+      "calls": 384,
+      "cumulative_seconds": 0.001165418,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "_field_receipt",
+      "line": 146,
+      "primitive_calls": 384,
+      "self_seconds": 0.00035025400000000004
+    },
+    {
+      "calls": 768,
+      "cumulative_seconds": 0.0011622210000000002,
+      "file": "<repo>/src/atlas/v2/data/raw.py",
+      "function": "to_dict",
+      "line": 167,
+      "primitive_calls": 768,
+      "self_seconds": 0.000870964
+    },
+    {
+      "calls": 512,
+      "cumulative_seconds": 0.00108547,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "__post_init__",
+      "line": 384,
+      "primitive_calls": 512,
+      "self_seconds": 0.00033083
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 0.001076724,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "record_source_health",
+      "line": 1197,
+      "primitive_calls": 2,
+      "self_seconds": 1.2822e-05
+    },
+    {
+      "calls": 130,
+      "cumulative_seconds": 0.0010078720000000002,
+      "file": "<repo>/src/atlas/v2/data/compact_observation_index.py",
+      "function": "register_identity",
+      "line": 129,
+      "primitive_calls": 130,
+      "self_seconds": 0.000212639
+    },
+    {
+      "calls": 391,
+      "cumulative_seconds": 0.0009743600000000001,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "_due_source_lane",
+      "line": 303,
+      "primitive_calls": 391,
+      "self_seconds": 0.000251846
+    },
+    {
+      "calls": 512,
+      "cumulative_seconds": 0.0009706650000000001,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "to_dict",
+      "line": 81,
+      "primitive_calls": 512,
+      "self_seconds": 0.000515547
+    },
+    {
+      "calls": 1536,
+      "cumulative_seconds": 0.000923403,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "to_dict",
+      "line": 391,
+      "primitive_calls": 1536,
+      "self_seconds": 0.000525446
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 0.0008138900000000001,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "seal_envelope",
+      "line": 182,
+      "primitive_calls": 2,
+      "self_seconds": 1.2026000000000001e-05
+    },
+    {
+      "calls": 1896,
+      "cumulative_seconds": 0.0007590600000000001,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "__hash__",
+      "line": 105,
+      "primitive_calls": 1896,
+      "self_seconds": 0.0007590600000000001
+    },
+    {
+      "calls": 261,
+      "cumulative_seconds": 0.0005218880000000001,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "function": "adoption_clock",
+      "line": 3232,
+      "primitive_calls": 261,
+      "self_seconds": 0.00011134500000000001
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.000516534,
+      "file": "<repo>/src/atlas/v2/data/history.py",
+      "function": "__post_init__",
+      "line": 73,
+      "primitive_calls": 256,
+      "self_seconds": 0.000350121
+    },
+    {
+      "calls": 512,
+      "cumulative_seconds": 0.00046381400000000006,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "_contiguous_count",
+      "line": 155,
+      "primitive_calls": 512,
+      "self_seconds": 0.00018475000000000002
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.00044862000000000005,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "decimal_value",
+      "line": 211,
+      "primitive_calls": 256,
+      "self_seconds": 7.8211e-05
+    },
+    {
+      "calls": 262,
+      "cumulative_seconds": 0.00041434800000000004,
+      "file": "<repo>/src/atlas/v2/chronology.py",
+      "function": "sample",
+      "line": 53,
+      "primitive_calls": 262,
+      "self_seconds": 0.000161502
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 0.00039895800000000004,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "<genexpr>",
+      "line": 352,
+      "primitive_calls": 1,
+      "self_seconds": 0.000132613
+    },
+    {
+      "calls": 512,
+      "cumulative_seconds": 0.000395038,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "_enum",
+      "line": 52,
+      "primitive_calls": 512,
+      "self_seconds": 0.00016501700000000002
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.00037040900000000004,
+      "file": "<repo>/src/atlas/domain/money.py",
+      "function": "ensure_decimal",
+      "line": 10,
+      "primitive_calls": 256,
+      "self_seconds": 0.000207435
+    },
+    {
+      "calls": 17,
+      "cumulative_seconds": 0.00036215600000000003,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "_transaction",
+      "line": 806,
+      "primitive_calls": 17,
+      "self_seconds": 4.4000000000000006e-05
+    },
+    {
+      "calls": 640,
+      "cumulative_seconds": 0.00034542300000000003,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "<genexpr>",
+      "line": 103,
+      "primitive_calls": 640,
+      "self_seconds": 0.00034542300000000003
+    },
+    {
+      "calls": 5120,
+      "cumulative_seconds": 0.000328025,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "<lambda>",
+      "line": 39,
+      "primitive_calls": 5120,
+      "self_seconds": 0.000328025
+    },
+    {
+      "calls": 17,
+      "cumulative_seconds": 0.00032177100000000005,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "__enter__",
+      "line": 817,
+      "primitive_calls": 17,
+      "self_seconds": 0.000118634
+    },
+    {
+      "calls": 64,
+      "cumulative_seconds": 0.00029642700000000004,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<lambda>",
+      "line": 363,
+      "primitive_calls": 64,
+      "self_seconds": 0.00011597400000000001
+    },
+    {
+      "calls": 1152,
+      "cumulative_seconds": 0.000281208,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "__iter__",
+      "line": 58,
+      "primitive_calls": 1152,
+      "self_seconds": 0.000281208
+    },
+    {
+      "calls": 909,
+      "cumulative_seconds": 0.000280801,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "service_chunk",
+      "line": 184,
+      "primitive_calls": 909,
+      "self_seconds": 0.000192356
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.000272462,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "contains_key",
+      "line": 308,
+      "primitive_calls": 256,
+      "self_seconds": 0.00014066300000000002
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 0.000229904,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "__post_init__",
+      "line": 142,
+      "primitive_calls": 1,
+      "self_seconds": 7.444e-05
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 0.00022926400000000002,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "latest_workset",
+      "line": 39,
+      "primitive_calls": 1,
+      "self_seconds": 7.202000000000001e-06
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 0.000218287,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "latest_artifact_entries",
+      "line": 3131,
+      "primitive_calls": 1,
+      "self_seconds": 1.286e-05
+    },
+    {
+      "calls": 1063,
+      "cumulative_seconds": 0.00021646500000000002,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 2907,
+      "primitive_calls": 1063,
+      "self_seconds": 0.000155663
+    },
+    {
+      "calls": 74,
+      "cumulative_seconds": 0.000177368,
+      "file": "<repo>/tests/v2/test_session041_scale_review.py",
+      "function": "service",
+      "line": 116,
+      "primitive_calls": 74,
+      "self_seconds": 0.00012903
+    },
+    {
+      "calls": 807,
+      "cumulative_seconds": 0.00015877800000000002,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 2959,
+      "primitive_calls": 807,
+      "self_seconds": 0.00015877800000000002
+    },
+    {
+      "calls": 264,
+      "cumulative_seconds": 0.000155188,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 3090,
+      "primitive_calls": 264,
+      "self_seconds": 0.00011429
+    },
+    {
+      "calls": 391,
+      "cumulative_seconds": 0.000142076,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<lambda>",
+      "line": 1657,
+      "primitive_calls": 391,
+      "self_seconds": 7.9047e-05
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 0.000129251,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<lambda>",
+      "line": 3092,
+      "primitive_calls": 256,
+      "self_seconds": 9.371600000000001e-05
+    },
+    {
+      "calls": 257,
+      "cumulative_seconds": 0.00011218500000000001,
+      "file": "<repo>/src/atlas/v2/data/collector.py",
+      "function": "archive_flush_generation",
+      "line": 473,
+      "primitive_calls": 257,
+      "self_seconds": 0.00011218500000000001
+    },
+    {
+      "calls": 260,
+      "cumulative_seconds": 0.000112145,
+      "file": "<repo>/src/atlas/v2/data/compact_observation_index.py",
+      "function": "<genexpr>",
+      "line": 121,
+      "primitive_calls": 260,
+      "self_seconds": 7.6605e-05
+    },
+    {
+      "calls": 640,
+      "cumulative_seconds": 0.00010288900000000001,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "<genexpr>",
+      "line": 107,
+      "primitive_calls": 640,
+      "self_seconds": 0.00010288900000000001
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 9.711600000000001e-05,
+      "file": "<repo>/src/atlas/v2/data/health.py",
+      "function": "to_ops_record",
+      "line": 79,
+      "primitive_calls": 2,
+      "self_seconds": 7.914e-06
+    },
+    {
+      "calls": 406,
+      "cumulative_seconds": 9.6507e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 1532,
+      "primitive_calls": 406,
+      "self_seconds": 9.6507e-05
+    },
+    {
+      "calls": 51,
+      "cumulative_seconds": 9.322100000000001e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "_persistence_phase",
+      "line": 796,
+      "primitive_calls": 51,
+      "self_seconds": 7.7385e-05
+    },
+    {
+      "calls": 258,
+      "cumulative_seconds": 9.1062e-05,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "<genexpr>",
+      "line": 513,
+      "primitive_calls": 258,
+      "self_seconds": 6.927700000000001e-05
+    },
+    {
+      "calls": 406,
+      "cumulative_seconds": 8.8155e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 1514,
+      "primitive_calls": 406,
+      "self_seconds": 6.5981e-05
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 8.177600000000001e-05,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<genexpr>",
+      "line": 265,
+      "primitive_calls": 256,
+      "self_seconds": 6.7686e-05
+    },
+    {
+      "calls": 1062,
+      "cumulative_seconds": 7.773900000000001e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 2921,
+      "primitive_calls": 1062,
+      "self_seconds": 7.773900000000001e-05
+    },
+    {
+      "calls": 128,
+      "cumulative_seconds": 6.5578e-05,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "<lambda>",
+      "line": 397,
+      "primitive_calls": 128,
+      "self_seconds": 4.1777e-05
+    },
+    {
+      "calls": 128,
+      "cumulative_seconds": 6.2452e-05,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<lambda>",
+      "line": 384,
+      "primitive_calls": 128,
+      "self_seconds": 3.8838e-05
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 5.4292e-05,
+      "file": "<repo>/src/atlas/v2/data/broad_public_source.py",
+      "function": "__post_init__",
+      "line": 62,
+      "primitive_calls": 256,
+      "self_seconds": 5.4292e-05
+    },
+    {
+      "calls": 798,
+      "cumulative_seconds": 4.8546000000000006e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 2967,
+      "primitive_calls": 798,
+      "self_seconds": 4.8546000000000006e-05
+    },
+    {
+      "calls": 258,
+      "cumulative_seconds": 4.7338e-05,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "<genexpr>",
+      "line": 511,
+      "primitive_calls": 258,
+      "self_seconds": 3.3681000000000005e-05
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 4.685e-05,
+      "file": "<repo>/src/atlas/v2/data/health.py",
+      "function": "content_hash",
+      "line": 49,
+      "primitive_calls": 2,
+      "self_seconds": 2.694e-06
+    },
+    {
+      "calls": 512,
+      "cumulative_seconds": 4.6304e-05,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<genexpr>",
+      "line": 156,
+      "primitive_calls": 512,
+      "self_seconds": 4.6304e-05
+    },
+    {
+      "calls": 260,
+      "cumulative_seconds": 4.4493e-05,
+      "file": "<repo>/src/atlas/v2/data/collector.py",
+      "function": "<genexpr>",
+      "line": 493,
+      "primitive_calls": 260,
+      "self_seconds": 4.4493e-05
+    },
+    {
+      "calls": 262,
+      "cumulative_seconds": 3.5909000000000005e-05,
+      "file": "<repo>/tests/v2/test_session041_scale_review.py",
+      "function": "<lambda>",
+      "line": 133,
+      "primitive_calls": 262,
+      "self_seconds": 3.5909000000000005e-05
+    },
+    {
+      "calls": 406,
+      "cumulative_seconds": 3.4134e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 1550,
+      "primitive_calls": 406,
+      "self_seconds": 3.4134e-05
+    },
+    {
+      "calls": 406,
+      "cumulative_seconds": 3.1691e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 1598,
+      "primitive_calls": 406,
+      "self_seconds": 3.1691e-05
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 3.0165000000000003e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "__post_init__",
+      "line": 146,
+      "primitive_calls": 2,
+      "self_seconds": 3.2240000000000004e-06
+    },
+    {
+      "calls": 264,
+      "cumulative_seconds": 2.964e-05,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "function": "<genexpr>",
+      "line": 3379,
+      "primitive_calls": 264,
+      "self_seconds": 2.964e-05
+    },
+    {
+      "calls": 132,
+      "cumulative_seconds": 2.7279e-05,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<genexpr>",
+      "line": 310,
+      "primitive_calls": 132,
+      "self_seconds": 2.7279e-05
+    },
+    {
+      "calls": 128,
+      "cumulative_seconds": 2.6523e-05,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<lambda>",
+      "line": 379,
+      "primitive_calls": 128,
+      "self_seconds": 2.6523e-05
+    },
+    {
+      "calls": 17,
+      "cumulative_seconds": 2.4568000000000003e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "Transaction",
+      "line": 810,
+      "primitive_calls": 17,
+      "self_seconds": 2.4568000000000003e-05
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 2.4224e-05,
+      "file": "<repo>/src/atlas/v2/_serialization.py",
+      "function": "<genexpr>",
+      "line": 130,
+      "primitive_calls": 256,
+      "self_seconds": 2.4224e-05
+    },
+    {
+      "calls": 17,
+      "cumulative_seconds": 2.2932e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "__init__",
+      "line": 811,
+      "primitive_calls": 17,
+      "self_seconds": 2.2932e-05
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 2.0651000000000003e-05,
+      "file": "<repo>/src/atlas/v2/data/health.py",
+      "function": "__post_init__",
+      "line": 36,
+      "primitive_calls": 2,
+      "self_seconds": 8.682000000000001e-06
+    },
+    {
+      "calls": 260,
+      "cumulative_seconds": 2.0189000000000003e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 1630,
+      "primitive_calls": 260,
+      "self_seconds": 2.0189000000000003e-05
+    },
+    {
+      "calls": 15,
+      "cumulative_seconds": 1.915e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 1518,
+      "primitive_calls": 15,
+      "self_seconds": 1.915e-05
+    },
+    {
+      "calls": 264,
+      "cumulative_seconds": 1.893e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 3089,
+      "primitive_calls": 264,
+      "self_seconds": 1.893e-05
+    },
+    {
+      "calls": 129,
+      "cumulative_seconds": 1.8416e-05,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<genexpr>",
+      "line": 330,
+      "primitive_calls": 129,
+      "self_seconds": 1.8416e-05
+    },
+    {
+      "calls": 129,
+      "cumulative_seconds": 1.7575e-05,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<genexpr>",
+      "line": 346,
+      "primitive_calls": 129,
+      "self_seconds": 1.7575e-05
+    },
+    {
+      "calls": 260,
+      "cumulative_seconds": 1.7402e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 1627,
+      "primitive_calls": 260,
+      "self_seconds": 1.7402e-05
+    },
+    {
+      "calls": 65,
+      "cumulative_seconds": 1.6962e-05,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<genexpr>",
+      "line": 362,
+      "primitive_calls": 65,
+      "self_seconds": 1.6962e-05
+    },
+    {
+      "calls": 256,
+      "cumulative_seconds": 1.6455e-05,
+      "file": "<repo>/src/atlas/v2/data/compact_observation_index.py",
+      "function": "<lambda>",
+      "line": 86,
+      "primitive_calls": 256,
+      "self_seconds": 1.6455e-05
+    },
+    {
+      "calls": 6,
+      "cumulative_seconds": 1.3762000000000001e-05,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "publication_clock",
+      "line": 190,
+      "primitive_calls": 6,
+      "self_seconds": 1.0346e-05
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 1.0576e-05,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "_valid_artifact_entries_from_storage_rows",
+      "line": 3100,
+      "primitive_calls": 1,
+      "self_seconds": 5.969000000000001e-06
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 1.0036e-05,
+      "file": "<repo>/src/atlas/v2/data/health.py",
+      "function": "append",
+      "line": 101,
+      "primitive_calls": 2,
+      "self_seconds": 7.179e-06
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 9.945e-06,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "_remember_universe",
+      "line": 124,
+      "primitive_calls": 1,
+      "self_seconds": 7.1100000000000005e-06
+    },
+    {
+      "calls": 3,
+      "cumulative_seconds": 9.355000000000001e-06,
+      "file": "<repo>/src/atlas/v2/runtime/production.py",
+      "function": "<lambda>",
+      "line": 3434,
+      "primitive_calls": 3,
+      "self_seconds": 2.204e-06
+    },
+    {
+      "calls": 8,
+      "cumulative_seconds": 8.303e-06,
+      "file": "<repo>/src/atlas/v2/data/history.py",
+      "function": "<genexpr>",
+      "line": 360,
+      "primitive_calls": 8,
+      "self_seconds": 8.303e-06
+    },
+    {
+      "calls": 3,
+      "cumulative_seconds": 8.253e-06,
+      "file": "<repo>/src/atlas/v2/contracts.py",
+      "function": "to_dict",
+      "line": 122,
+      "primitive_calls": 3,
+      "self_seconds": 8.253e-06
+    },
+    {
+      "calls": 4,
+      "cumulative_seconds": 7.801e-06,
+      "file": "<repo>/src/atlas/v2/data/health.py",
+      "function": "to_dict",
+      "line": 57,
+      "primitive_calls": 4,
+      "self_seconds": 5.599e-06
+    },
+    {
+      "calls": 14,
+      "cumulative_seconds": 7.121e-06,
+      "file": "<repo>/src/atlas/v2/data/compact_observation_index.py",
+      "function": "<genexpr>",
+      "line": 240,
+      "primitive_calls": 14,
+      "self_seconds": 7.121e-06
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 6.650000000000001e-06,
+      "file": "<repo>/src/atlas/v2/runtime/broad_universe.py",
+      "function": "<lambda>",
+      "line": 360,
+      "primitive_calls": 2,
+      "self_seconds": 3.396e-06
+    },
+    {
+      "calls": 4,
+      "cumulative_seconds": 5.239e-06,
+      "file": "<repo>/src/atlas/v2/data/collector.py",
+      "function": "pending_archive_count",
+      "line": 468,
+      "primitive_calls": 4,
+      "self_seconds": 4.427e-06
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 4.697e-06,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "__init__",
+      "line": 158,
+      "primitive_calls": 1,
+      "self_seconds": 4.697e-06
+    },
+    {
+      "calls": 6,
+      "cumulative_seconds": 3.4160000000000004e-06,
+      "file": "<repo>/tests/v2/test_session041_scale_review.py",
+      "function": "<lambda>",
+      "line": 182,
+      "primitive_calls": 6,
+      "self_seconds": 3.4160000000000004e-06
+    },
+    {
+      "calls": 5,
+      "cumulative_seconds": 2.9850000000000002e-06,
+      "file": "<repo>/src/atlas/v2/instruments.py",
+      "function": "content_hash",
+      "line": 532,
+      "primitive_calls": 5,
+      "self_seconds": 2.9850000000000002e-06
+    },
+    {
+      "calls": 15,
+      "cumulative_seconds": 2.4730000000000003e-06,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 1604,
+      "primitive_calls": 15,
+      "self_seconds": 2.4730000000000003e-06
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 1.9820000000000003e-06,
+      "file": "<repo>/src/atlas/v2/data/health.py",
+      "function": "latest",
+      "line": 118,
+      "primitive_calls": 2,
+      "self_seconds": 1.562e-06
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 1.5830000000000001e-06,
+      "file": "<repo>/src/atlas/v2/data/health.py",
+      "function": "had_unhealthy_after_healthy",
+      "line": 98,
+      "primitive_calls": 2,
+      "self_seconds": 1.5830000000000001e-06
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 1.1720000000000002e-06,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "to_dict",
+      "line": 156,
+      "primitive_calls": 2,
+      "self_seconds": 1.1720000000000002e-06
+    },
+    {
+      "calls": 3,
+      "cumulative_seconds": 9.12e-07,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "<genexpr>",
+      "line": 221,
+      "primitive_calls": 3,
+      "self_seconds": 9.12e-07
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 6.720000000000001e-07,
+      "file": "<repo>/src/atlas/v2/data/health.py",
+      "function": "data_eligible",
+      "line": 53,
+      "primitive_calls": 2,
+      "self_seconds": 6.720000000000001e-07
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 2.5000000000000004e-07,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "<genexpr>",
+      "line": 360,
+      "primitive_calls": 1,
+      "self_seconds": 2.5000000000000004e-07
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 1.71e-07,
+      "file": "<repo>/src/atlas/v2/data/universe.py",
+      "function": "<genexpr>",
+      "line": 322,
+      "primitive_calls": 1,
+      "self_seconds": 1.71e-07
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 1.6e-07,
+      "file": "<repo>/src/atlas/v2/memory/repository.py",
+      "function": "<genexpr>",
+      "line": 3111,
+      "primitive_calls": 1,
+      "self_seconds": 1.6e-07
+    }
+  ],
+  "interpretation": "Instrumented diagnostic only; compare observer overhead with the matching low-overhead B run.",
+  "mode": "C_CPROFILE_AND_100MS_PROC_SAMPLER",
+  "original_helper_metrics": {
+    "archive_file_count": 4,
+    "cadence_seconds": 10,
+    "cycles": 1,
+    "db_baseline_bytes": 1015808,
+    "db_final_file_bytes": 2240512,
+    "dbstat_bytes": {
+      "active_history_head": 4096,
+      "artifact_actual_binding_action_lookup": 4096,
+      "artifact_diagnostic_decision_lookup": 4096,
+      "artifact_index": 540672,
+      "artifact_latest_available": 65536,
+      "artifact_outcome_decision_lookup": 4096,
+      "artifact_outcome_status_decision_lookup": 4096,
+      "artifact_policy_payoff_action_lookup": 4096,
+      "artifact_type_created_order": 69632,
+      "artifact_type_insertion_lookup": 20480,
+      "collector_cursor_head": 4096,
+      "created_metadata_000d6949d8998126": 4096,
+      "created_metadata_0c4dc2455c12ac73": 4096,
+      "created_metadata_0f0be79161999164": 4096,
+      "created_metadata_1549bc062104eb07": 4096,
+      "created_metadata_1bb934dff9ef8092": 4096,
+      "created_metadata_1d00cf05da12b61e": 4096,
+      "created_metadata_246f0f2b9081f6bb": 4096,
+      "created_metadata_2564d1b4a8934829": 4096,
+      "created_metadata_347f33fac8185a74": 4096,
+      "created_metadata_36f4de70a9f22fef": 4096,
+      "created_metadata_3a6fc8d98b19ed66": 4096,
+      "created_metadata_3fb01026416c6c08": 4096,
+      "created_metadata_434ddc4e3d1c5ff2": 4096,
+      "created_metadata_7b1605ed90551f48": 4096,
+      "created_metadata_7c611fbc5161ff1d": 4096,
+      "created_metadata_7d68744e60744acd": 4096,
+      "created_metadata_7ef2faa3910523e8": 4096,
+      "created_metadata_807813458acf15d7": 4096,
+      "created_metadata_9e82b7881cd03945": 4096,
+      "created_metadata_9f77396d8f579ccf": 4096,
+      "created_metadata_a3ff9c41bdb5ec8a": 4096,
+      "created_metadata_a7531cffb7ebf7ea": 4096,
+      "created_metadata_aca1669ff8d6827b": 4096,
+      "created_metadata_b7980f033398d7df": 4096,
+      "created_metadata_c07d4df4f0410f1b": 4096,
+      "created_metadata_c2c48640226a3618": 28672,
+      "created_metadata_c2e3cfc81a10edfb": 4096,
+      "created_metadata_c90b45207c9eaff1": 4096,
+      "created_metadata_cec26df71bd835ea": 4096,
+      "created_metadata_d569cf88682020de": 4096,
+      "created_metadata_d6e04acdcf18e596": 4096,
+      "created_metadata_d757c7207420d349": 4096,
+      "created_metadata_dd8a31cfe1f8a092": 4096,
+      "created_metadata_e14c46dafc9ad155": 4096,
+      "created_metadata_fd1750a1f4c92152": 4096,
+      "decision_event_trigger_record_lookup": 4096,
+      "due_work": 4096,
+      "due_work_discovery": 4096,
+      "due_work_oldest": 4096,
+      "due_work_pressure": 4096,
+      "due_work_quarantine_pressure": 4096,
+      "due_work_ready": 4096,
+      "l2_archive_restart_lookup": 4096,
+      "latest_metadata_000d6949d8998126": 4096,
+      "latest_metadata_0c4dc2455c12ac73": 4096,
+      "latest_metadata_0f0be79161999164": 4096,
+      "latest_metadata_1549bc062104eb07": 4096,
+      "latest_metadata_1bb934dff9ef8092": 4096,
+      "latest_metadata_1d00cf05da12b61e": 4096,
+      "latest_metadata_246f0f2b9081f6bb": 4096,
+      "latest_metadata_2564d1b4a8934829": 4096,
+      "latest_metadata_347f33fac8185a74": 4096,
+      "latest_metadata_36f4de70a9f22fef": 4096,
+      "latest_metadata_3a6fc8d98b19ed66": 4096,
+      "latest_metadata_3fb01026416c6c08": 4096,
+      "latest_metadata_434ddc4e3d1c5ff2": 4096,
+      "latest_metadata_7b1605ed90551f48": 4096,
+      "latest_metadata_7c611fbc5161ff1d": 4096,
+      "latest_metadata_7d68744e60744acd": 4096,
+      "latest_metadata_7ef2faa3910523e8": 4096,
+      "latest_metadata_807813458acf15d7": 4096,
+      "latest_metadata_9e82b7881cd03945": 4096,
+      "latest_metadata_9f77396d8f579ccf": 4096,
+      "latest_metadata_a3ff9c41bdb5ec8a": 4096,
+      "latest_metadata_a7531cffb7ebf7ea": 4096,
+      "latest_metadata_aca1669ff8d6827b": 4096,
+      "latest_metadata_b7980f033398d7df": 4096,
+      "latest_metadata_c07d4df4f0410f1b": 4096,
+      "latest_metadata_c2c48640226a3618": 28672,
+      "latest_metadata_c2e3cfc81a10edfb": 4096,
+      "latest_metadata_c90b45207c9eaff1": 4096,
+      "latest_metadata_cec26df71bd835ea": 4096,
+      "latest_metadata_d569cf88682020de": 4096,
+      "latest_metadata_d6e04acdcf18e596": 4096,
+      "latest_metadata_d757c7207420d349": 4096,
+      "latest_metadata_dd8a31cfe1f8a092": 4096,
+      "latest_metadata_e14c46dafc9ad155": 4096,
+      "latest_metadata_fd1750a1f4c92152": 4096,
+      "m15_accounting_origin_lookup": 4096,
+      "m15_checkpoint_exact_generation": 4096,
+      "m15_checkpoint_key_generation_lookup": 4096,
+      "model_registry": 4096,
+      "native_m1_checkpoint_exact_generation": 4096,
+      "native_m1_checkpoint_key_generation_lookup": 4096,
+      "native_m1_event_id_lookup": 4096,
+      "native_m1_event_origin_lookup": 4096,
+      "native_m1_gate_origin_lookup": 4096,
+      "native_origin_window": 4096,
+      "native_origin_window_head": 4096,
+      "ops_decision_event_available_order": 4096,
+      "ops_outbox": 4096,
+      "ops_receipt_event_id_lookup": 4096,
+      "outbox_pending_order": 4096,
+      "public_adoption_cursor_v2": 4096,
+      "public_archive_history_lookup_v2": 86016,
+      "public_bar_repair_head": 4096,
+      "public_evidence_block_v2": 4096,
+      "public_evidence_locator_feed_time_v2": 4096,
+      "public_evidence_locator_trade_id_v2": 4096,
+      "public_evidence_locator_v2": 4096,
+      "public_evidence_publication_block_v2": 4096,
+      "public_evidence_publication_observation_v2": 4096,
+      "public_evidence_publication_v2": 4096,
+      "public_evidence_stage_v2": 4096,
+      "public_exact_receipt_key_actual_lookup_v2": 102400,
+      "public_exact_receipt_key_replay_lookup_v2": 98304,
+      "public_exact_receipt_revision_actual_lookup_v2": 86016,
+      "public_exact_receipt_revision_replay_lookup_v2": 73728,
+      "public_instrument_identity_v1": 53248,
+      "public_observation_metadata_block_v1": 53248,
+      "public_observation_metadata_locator_v1": 24576,
+      "public_observation_source_id_lookup": 12288,
+      "public_origin_discovery_lookup_v2": 53248,
+      "public_reconciliation_source_id_lookup": 4096,
+      "public_stream_archive_locator_v1": 4096,
+      "public_stream_archive_trade_window_v1": 4096,
+      "public_stream_continuity_head_v1_progress": 4096,
+      "public_stream_continuity_head_v2_progress": 4096,
+      "public_stream_generic_source_lookup": 57344,
+      "public_stream_invalidation_window": 4096,
+      "public_stream_trade_event_window": 4096,
+      "public_trade_identity_coverage_v2": 4096,
+      "public_trade_identity_v2": 4096,
+      "research_prediction_checkpoint_run_lookup": 4096,
+      "research_prediction_outcome_identity_lookup": 4096,
+      "s3_residual_context_window": 4096,
+      "s3_vwap_context_window": 4096,
+      "scheduled_event_time_v1": 4096,
+      "schema_meta": 4096,
+      "source_health": 4096,
+      "source_health_available_lookup": 4096,
+      "source_health_gap_lookup": 4096,
+      "source_health_state_lookup": 4096,
+      "sqlite_autoindex_active_history_head_1": 4096,
+      "sqlite_autoindex_artifact_index_1": 49152,
+      "sqlite_autoindex_collector_cursor_head_1": 4096,
+      "sqlite_autoindex_due_work_1": 4096,
+      "sqlite_autoindex_due_work_discovery_1": 4096,
+      "sqlite_autoindex_due_work_pressure_1": 4096,
+      "sqlite_autoindex_due_work_quarantine_pressure_1": 4096,
+      "sqlite_autoindex_model_registry_1": 4096,
+      "sqlite_autoindex_native_origin_window_1": 4096,
+      "sqlite_autoindex_native_origin_window_head_1": 4096,
+      "sqlite_autoindex_ops_outbox_1": 4096,
+      "sqlite_autoindex_ops_outbox_2": 4096,
+      "sqlite_autoindex_public_adoption_cursor_v2_1": 4096,
+      "sqlite_autoindex_public_bar_repair_head_1": 4096,
+      "sqlite_autoindex_public_evidence_block_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_locator_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_publication_block_v2_2": 4096,
+      "sqlite_autoindex_public_evidence_publication_observation_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_publication_observation_v2_2": 4096,
+      "sqlite_autoindex_public_evidence_publication_v2_1": 4096,
+      "sqlite_autoindex_public_evidence_publication_v2_2": 4096,
+      "sqlite_autoindex_public_evidence_stage_v2_1": 4096,
+      "sqlite_autoindex_public_observation_metadata_locator_v1_2": 24576,
+      "sqlite_autoindex_schema_meta_1": 4096,
+      "sqlite_autoindex_source_health_1": 4096,
+      "sqlite_autoindex_watch_1": 4096,
+      "sqlite_autoindex_watch_transition_1": 4096,
+      "sqlite_schema": 69632,
+      "watch": 4096,
+      "watch_active_order": 4096,
+      "watch_created_order": 4096,
+      "watch_transition": 4096,
+      "watch_transition_time_order": 4096
+    },
+    "excluded": [
+      "network",
+      "streams",
+      "enrichment",
+      "scheduler state",
+      "reports",
+      "decision work"
+    ],
+    "integrity": {
+      "all_artifact_domain_metadata_verified_after_restart": 519,
+      "compression_roundtrip": "EXACT_CANONICAL_BYTES",
+      "cutoff_worksets_verified_after_restart": 1,
+      "exact_index_metadata_verified_after_restart": 256,
+      "exact_raw_rows_verified": 256,
+      "source_receipt_refs_verified": 256
+    },
+    "population": 128,
+    "process_storage_write_bytes_total": 5787648,
+    "samples": [
+      {
+        "adoption_seconds": 0.7060945729972445,
+        "adoption_service": {
+          "calls": 16,
+          "max_gap_seconds": 0.5195646159991156
+        },
+        "archive_cumulative_bytes": 97269,
+        "cycle": 1,
+        "db_growth_bytes": 1224704,
+        "db_logical_bytes": 2240512,
+        "metadata_by_type_cumulative": {
+          "BroadPublicAcquisitionReceiptV2": {
+            "bytes": 17950,
+            "rows": 1
+          },
+          "BroadUniverseWorksetV2": {
+            "bytes": 36830,
+            "rows": 1
+          },
+          "OpsPublicSourceReconciliationV1": {
+            "bytes": 17637,
+            "rows": 2
+          },
+          "ProductContractV2": {
+            "bytes": 100056,
+            "rows": 128
+          },
+          "PublicObservationIndexV2": {
+            "bytes": 160256,
+            "rows": 256
+          },
+          "PublicSourceHealthV2": {
+            "bytes": 617,
+            "rows": 2
+          },
+          "UniverseContractV2": {
+            "bytes": 29450,
+            "rows": 1
+          },
+          "UniverseObservationV2": {
+            "bytes": 62336,
+            "rows": 128
+          }
+        },
+        "process_storage_write_bytes_cycle": 5787648,
+        "publication_service": {
+          "calls": 58,
+          "max_gap_seconds": 0.023940263999975286
+        },
+        "raw_payload_bytes": 60824,
+        "record_count": 256,
+        "wal_sample_bytes": 4148872,
+        "workset_publication_seconds": 0.15225303000261192,
+        "zlib_metadata_bytes_by_type_cycle": {
+          "BroadPublicAcquisitionReceiptV2": 10647,
+          "BroadUniverseWorksetV2": 27929,
+          "OpsPublicSourceReconciliationV1": 10380,
+          "PublicObservationIndexV2": 36652,
+          "PublicSourceHealthV2": 292,
+          "UniverseContractV2": 22526,
+          "UniverseObservationV2": 12414
+        }
+      }
+    ],
+    "source_shape": "one Bybit ticker and three Binance bulk market rows per symbol"
+  },
+  "profiled_function_count": 153,
+  "resource_sampler": {
+    "interval_ns": 100000000,
+    "process_system_cpu_seconds": 0.064918,
+    "process_user_cpu_seconds": 1.113142,
+    "sample_count": 11,
+    "samples": [
+      {
+        "RssAnon": 29483008,
+        "RssFile": 5169152,
+        "RssShmem": 0,
+        "VmHWM": 34652160,
+        "VmRSS": 34652160,
+        "cpu_ticks": 40,
+        "rchar": 7457227,
+        "read_bytes": 0,
+        "sample_at_ns": 23652755448681,
+        "wake_lag_ns": 541,
+        "wchar": 0,
+        "write_bytes": 8192
+      },
+      {
+        "RssAnon": 37502976,
+        "RssFile": 27103232,
+        "RssShmem": 0,
+        "VmHWM": 64606208,
+        "VmRSS": 64606208,
+        "cpu_ticks": 49,
+        "rchar": 8513034,
+        "read_bytes": 0,
+        "sample_at_ns": 23652855888197,
+        "wake_lag_ns": 439516,
+        "wchar": 1075860,
+        "write_bytes": 1150976
+      },
+      {
+        "RssAnon": 45203456,
+        "RssFile": 33763328,
+        "RssShmem": 0,
+        "VmHWM": 78966784,
+        "VmRSS": 78966784,
+        "cpu_ticks": 65,
+        "rchar": 10895547,
+        "read_bytes": 0,
+        "sample_at_ns": 23652969521175,
+        "wake_lag_ns": 13632978,
+        "wchar": 1075860,
+        "write_bytes": 1155072
+      },
+      {
+        "RssAnon": 62345216,
+        "RssFile": 43417600,
+        "RssShmem": 0,
+        "VmHWM": 106692608,
+        "VmRSS": 105762816,
+        "cpu_ticks": 76,
+        "rchar": 12589894,
+        "read_bytes": 0,
+        "sample_at_ns": 23653086235421,
+        "wake_lag_ns": 16714246,
+        "wchar": 1075860,
+        "write_bytes": 1155072
+      },
+      {
+        "RssAnon": 65089536,
+        "RssFile": 44544000,
+        "RssShmem": 0,
+        "VmHWM": 109633536,
+        "VmRSS": 109633536,
+        "cpu_ticks": 86,
+        "rchar": 15721636,
+        "read_bytes": 0,
+        "sample_at_ns": 23653187798647,
+        "wake_lag_ns": 1563226,
+        "wchar": 1075860,
+        "write_bytes": 1155072
+      },
+      {
+        "RssAnon": 73310208,
+        "RssFile": 45420544,
+        "RssShmem": 0,
+        "VmHWM": 118730752,
+        "VmRSS": 118730752,
+        "cpu_ticks": 96,
+        "rchar": 18902661,
+        "read_bytes": 0,
+        "sample_at_ns": 23653288980316,
+        "wake_lag_ns": 1181669,
+        "wchar": 1075860,
+        "write_bytes": 1155072
+      },
+      {
+        "RssAnon": 84635648,
+        "RssFile": 50724864,
+        "RssShmem": 0,
+        "VmHWM": 135360512,
+        "VmRSS": 135360512,
+        "cpu_ticks": 106,
+        "rchar": 19553417,
+        "read_bytes": 0,
+        "sample_at_ns": 23653389334105,
+        "wake_lag_ns": 353789,
+        "wchar": 2049015,
+        "write_bytes": 2138112
+      },
+      {
+        "RssAnon": 85774336,
+        "RssFile": 50753536,
+        "RssShmem": 0,
+        "VmHWM": 136527872,
+        "VmRSS": 136527872,
+        "cpu_ticks": 117,
+        "rchar": 19554982,
+        "read_bytes": 0,
+        "sample_at_ns": 23653489473281,
+        "wake_lag_ns": 139176,
+        "wchar": 3661609,
+        "write_bytes": 3764224
+      },
+      {
+        "RssAnon": 87769088,
+        "RssFile": 50814976,
+        "RssShmem": 0,
+        "VmHWM": 138584064,
+        "VmRSS": 138584064,
+        "cpu_ticks": 131,
+        "rchar": 21657796,
+        "read_bytes": 0,
+        "sample_at_ns": 23653594780364,
+        "wake_lag_ns": 5307083,
+        "wchar": 6623969,
+        "write_bytes": 6770688
+      },
+      {
+        "RssAnon": 89702400,
+        "RssFile": 50823168,
+        "RssShmem": 0,
+        "VmHWM": 140525568,
+        "VmRSS": 140525568,
+        "cpu_ticks": 140,
+        "rchar": 21659362,
+        "read_bytes": 0,
+        "sample_at_ns": 23653735813307,
+        "wake_lag_ns": 41032943,
+        "wchar": 6784649,
+        "write_bytes": 6938624
+      },
+      {
+        "RssAnon": 91930624,
+        "RssFile": 50917376,
+        "RssShmem": 0,
+        "VmHWM": 142848000,
+        "VmRSS": 142848000,
+        "cpu_ticks": 150,
+        "rchar": 34716089,
+        "read_bytes": 0,
+        "sample_at_ns": 23653837974674,
+        "wake_lag_ns": 2161367,
+        "wchar": 7054993,
+        "write_bytes": 7241728
+      }
+    ]
+  },
+  "service_phase_instrumented_wall_samples_ns": {
+    "broad_controller_adoption": [
+      706089785
+    ],
+    "broad_workset_publication": [
+      152244306
+    ],
+    "synthetic_input_construction": [
+      22492364
+    ]
+  },
+  "source_checkpoint": "e75a83226cea2cf8dfee10823541848e8ffb0de4",
+  "source_diff_sha256": "57b94d7a9fa21794218c4f94aa84aeac7514ba47f34f18898d4a717b600bf9ca",
+  "whole_helper_elapsed_ns": 1149233806
+}
