@@ -1,0 +1,508 @@
+........................................................................ [ 37%]
+...............................................................F........ [ 74%]
+..................................................                       [100%]
+=================================== FAILURES ===================================
+____________ test_phase2_s1_s2_persistence_ipc_and_matured_outcome _____________
+
+tmp_path = PosixPath('<pytest-tmp>/test_phase2_s1_s2_persistence_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f188bec0b00>
+
+    def test_phase2_s1_s2_persistence_ipc_and_matured_outcome(tmp_path, monkeypatch):
+        from atlas.v2.desktop.ipc import ProjectionClient, ProjectionService
+        from atlas.v2.desktop.projection import (
+            DesktopChartSeriesV2,
+            DesktopSnapshotV2,
+            project_chart_series,
+            project_snapshot,
+        )
+    
+        db = tmp_path / "ops.sqlite"
+        _initialized_db(db)
+        writer_state = {"active": False, "opens": 0, "readers": 0}
+        original_init = OpsRepository.__init__
+        original_close = OpsRepository.close
+    
+        def guarded_init(self, path, *args, **kwargs):
+            same_db = Path(path).resolve() == db.resolve()
+            read_only = kwargs.get("read_only", False)
+            if read_only:
+                assert same_db, "desktop reader must use the decision graph's ops.sqlite"
+                writer_state["readers"] += 1
+            else:
+                if writer_state["active"] or writer_state["opens"]:
+                    raise AssertionError("a second write-capable OpsRepository was opened")
+                if not same_db:
+                    raise AssertionError("Phase-2 orchestration opened an alternate ops database")
+                writer_state["active"] = True
+                writer_state["opens"] += 1
+            original_init(self, path, *args, **kwargs)
+    
+        def guarded_close(self):
+            same_db = Path(self.path).resolve() == db.resolve()
+            was_writer = same_db and not self.read_only
+            try:
+                original_close(self)
+            finally:
+                if was_writer:
+                    writer_state["active"] = False
+    
+        monkeypatch.setattr(OpsRepository, "__init__", guarded_init)
+        monkeypatch.setattr(OpsRepository, "close", guarded_close)
+    
+        base_ns = (time.time_ns() // H4_NS) * H4_NS - 31 * DAY_NS
+        setup_cutoff = base_ns + HISTORY_BARS * M15_NS
+        target_cutoff = setup_cutoff + M15_NS
+        archive_root = tmp_path / "archive"
+        with OpsRepository(db) as repo:
+            info_payload = {
+                "retCode": 0,
+                "result": {
+                    "list": [
+                        {
+                            "contractType": "LinearPerpetual",
+                            "quoteCoin": "USDT",
+                            "settleCoin": "USDT",
+                            "symbol": "BTCUSDT",
+                            "baseCoin": "BTC",
+                            "status": "Trading",
+                            "priceFilter": {"tickSize": "0.01"},
+                            "lotSizeFilter": {
+                                "qtyStep": "0.1",
+                                "minOrderQty": "0.1",
+                                "minNotionalValue": "10",
+                                "maxOrderQty": "1000",
+                            },
+                            "launchTime": str(base_ns // 1_000_000),
+                        }
+                    ]
+                },
+            }
+            (product,) = translate_instrument_info(
+                info_payload,
+                environment=EnvironmentV2.TESTNET,
+                observed_at_ns=base_ns,
+                available_at_ns=base_ns,
+            )
+            key = product.key
+            registry = InstrumentRegistryV2()
+            registry.register(product)
+            risk_module.index_research_evidence(
+                repo,
+                "BybitInstrumentInfoFixtureV1",
+                product.metadata_ref,
+                product.available_at_ns,
+                info_payload["result"]["list"][0],
+            )
+            risk_module.index_risk_evidence(repo, product)
+            archive = ParquetObservationArchiveV2(archive_root)
+            collector = PublicCollectorV2(
+                repository=repo,
+                registry=registry,
+                clock_ns=lambda: base_ns + M15_NS + 1,
+                archive=archive,
+            )
+    
+            # Establish 30 days of synthetic venue payloads through the Bybit translator and collector.
+            for interval, count in ((BarIntervalV2.M15, HISTORY_BARS), (BarIntervalV2.H1, 725), (BarIntervalV2.H4, 181)):
+                for index in range(count):
+                    _ingest_bar(collector, key=key, interval=interval, index=index, base_ns=base_ns)
+            first_archive_path = collector.flush_archive()
+            assert first_archive_path is not None and Path(first_archive_path).is_file()
+            health_setup = collector.reconcile_after_reconnect(
+                SOURCE_ID,
+                at_ns=setup_cutoff,
+                complete_snapshot=True,
+                missed_interval_repaired=True,
+            )
+            assert health_setup.state == PublicSourceStateV2.HEALTHY_CURRENT
+    
+            setup_store, setup_evidence = _reconstruct(repo, archive_root, key, setup_cutoff)
+            setup_m15 = tuple(item.bar for item in setup_evidence[BarIntervalV2.M15])
+            assert len(setup_m15) == HISTORY_BARS
+            assert setup_m15[-1].close_at_ns == setup_cutoff
+            assert setup_m15[-1].raw.available_at_ns == setup_cutoff
+            universe_setup = _universe_from_public_evidence(
+                repo,
+                product=product,
+                bars_by_interval=setup_evidence,
+                health=health_setup,
+                cutoff_ns=setup_cutoff,
+            )
+            setup_join = asof_join(setup_store, key, cutoff_ns=setup_cutoff, source_health=health_setup)
+            assert setup_join.status == "AVAILABLE"
+            setup_feature_join = replace(setup_join, m15=setup_join.m15[-60:])
+            setup_feature = feature_snapshot(setup_feature_join)
+            assert setup_feature.envelope.input_refs
+            setup_feature_inputs = {
+                bar.content_hash for bar in setup_feature_join.h4 + setup_feature_join.h1 + setup_feature_join.m15
+            }
+            assert setup_feature_inputs.issubset(set(setup_feature.envelope.input_refs))
+            coordinator = S1ShadowCoordinator(repo)
+            setup_gate = EventGate(
+                EventState.CLEAR, setup_cutoff, sha256_json({"event_gate": setup_cutoff}), "EVENT_GATE_V1"
+            )
+            watch_result = coordinator.create_watch(
+                setup_join,
+                setup_feature,
+                event_gate=setup_gate,
+                universe=universe_setup,
+            )
+            assert watch_result.status == "WATCH", watch_result.reason
+            assert watch_result.watch is not None
+    
+            # The trigger candle is ingested only after the point-in-time universe and S1 watch exist.
+            trigger_bar = _ingest_bar(
+                collector,
+                key=key,
+                interval=BarIntervalV2.M15,
+                index=HISTORY_BARS,
+                base_ns=base_ns,
+            )
+            assert trigger_bar.close_at_ns == target_cutoff
+            assert trigger_bar.raw.available_at_ns == target_cutoff
+            trigger_archive_path = collector.flush_archive()
+            assert trigger_archive_path is not None and Path(trigger_archive_path).is_file()
+            collector.on_disconnect(SOURCE_ID, at_ns=target_cutoff - 3)
+            collector.begin_reconnect(SOURCE_ID, attempt=0, at_ns=target_cutoff - 2)
+            collector.reconnected(SOURCE_ID, at_ns=target_cutoff - 1)
+            health_target = collector.reconcile_after_reconnect(
+                SOURCE_ID,
+                at_ns=target_cutoff,
+                complete_snapshot=True,
+                missed_interval_repaired=True,
+            )
+            assert health_target.available_at_ns == target_cutoff
+            target_store, target_evidence = _reconstruct(repo, archive_root, key, target_cutoff)
+            assert len(target_evidence[BarIntervalV2.M15]) == HISTORY_BARS + 1
+            trigger_index = next(
+                item for item in target_evidence[BarIntervalV2.M15] if item.bar.content_hash == trigger_bar.content_hash
+            )
+            trigger_entry = repo.get_artifact(trigger_index.observation_index_ref)
+            assert trigger_entry is not None
+            assert trigger_entry.metadata["event_at_ns"] == target_cutoff
+            assert trigger_entry.available_at_ns == target_cutoff
+            assert trigger_entry.metadata["instrument_key_json"] == key.to_canonical_json()
+    
+            target_join = asof_join(
+                target_store,
+                key,
+                cutoff_ns=target_cutoff,
+                trigger_ref=trigger_bar.content_hash,
+                source_health=health_target,
+            )
+            assert target_join.status == "AVAILABLE"
+            assert target_join.m15[-1].content_hash == trigger_bar.content_hash
+            assert all(
+                item.raw.available_at_ns <= target_cutoff for item in target_join.m15 + target_join.h1 + target_join.h4
+            )
+            trigger_feature_join = replace(target_join, m15=target_join.m15[-60:])
+            trigger_feature = feature_snapshot(trigger_feature_join)
+            required_trigger_refs = {
+                trigger_bar.content_hash,
+                target_join.h1[-1].content_hash,
+                target_join.h4[-1].content_hash,
+                health_target.content_hash,
+            }
+            assert required_trigger_refs.issubset(set(trigger_feature.envelope.input_refs))
+    
+            quote = ExecutableQuote(
+                key,
+                Decimal("100.59"),
+                Decimal("100.61"),
+                target_cutoff,
+                target_cutoff,
+                sha256_json({"synthetic_bbo": target_cutoff, "key": key.to_dict()}),
+            )
+            mark = MarkIndexEvidence(
+                key,
+                Decimal("100.6"),
+                Decimal("100.6"),
+                target_cutoff,
+                sha256_json({"synthetic_mark_index": target_cutoff, "key": key.to_dict()}),
+            )
+            trigger_gate = EventGate(
+                EventState.CLEAR, target_cutoff, sha256_json({"event_gate": target_cutoff}), "EVENT_GATE_V1"
+            )
+            s1_result = coordinator.on_bar(
+                watch_result.watch.watch_id,
+                target_join,
+                trigger_feature,
+                event_gate=trigger_gate,
+                bbo=quote,
+                mark_index=mark,
+            )
+            assert s1_result.status == "CANDIDATE", s1_result.reason
+            assert s1_result.candidate is not None
+            candidate = s1_result.candidate
+            assert candidate.snapshot_hash == trigger_feature.content_hash
+            assert candidate.envelope.input_refs
+            assert trigger_bar.content_hash in candidate.envelope.input_refs
+    
+            universe_target = _universe_from_public_evidence(
+                repo,
+                product=product,
+                bars_by_interval=target_evidence,
+                health=health_target,
+                cutoff_ns=target_cutoff,
+            )
+            assert trigger_index.observation_index_ref not in universe_setup.envelope.input_refs
+            assert trigger_index.observation_index_ref in universe_target.envelope.input_refs
+            s2_feature = feature_snapshot(trigger_feature_join)
+            s2_result = S2ShadowCoordinator(repo).on_trigger_close(
+                target_join,
+                s2_feature,
+                universe=universe_target,
+                bbo=quote,
+            )
+            assert s2_result.status == "CANDIDATE", s2_result.reason
+            assert s2_result.candidate is not None
+            assert s2_result.candidate.policy_hash == S2_POLICY.policy_hash
+            assert candidate.policy_hash == S1_POLICY.policy_hash
+            setup_entry = repo.get_artifact(s2_result.setup_ref)
+            assert setup_entry is not None and setup_entry.artifact_type == "S2SetupEvidenceV1"
+            later_bars = tuple(
+                _ingest_bar(
+                    collector,
+                    key=key,
+                    interval=BarIntervalV2.M15,
+                    index=HISTORY_BARS + offset,
+                    base_ns=base_ns,
+                    values_override=("100", "100.2", "99.8", "100", "1"),
+                )
+                for offset in (1, 2)
+            )
+            assert collector.flush_archive() is not None
+            later_evidence = tuple(
+                item.bar
+                for item in _complete_archive_reconstruction(
+                    repo,
+                    archive_root,
+                    key=key,
+                    interval=BarIntervalV2.M15,
+                    cutoff_ns=later_bars[-1].close_at_ns,
+                )
+                if item.bar.open_at_ns >= later_bars[0].open_at_ns
+            )
+            failed_ref = failed_break_exit(s2_result.candidate, setup_entry.metadata.to_dict(), later_evidence)
+            assert failed_ref == later_evidence[0].content_hash
+            assert canonical_json(S2_POLICY.management_rule) != canonical_json(S1_POLICY.management_rule)
+    
+            # The risk fixture supplies only typed engineering risk inputs. The exact S1/S2 candidates and
+            # collector-derived point-in-time universe continue through the shared production CandidateSet.
+            case = risk_module.risk_case(
+                repo,
+                cutoff_ns=target_cutoff,
+                universe_override=universe_target,
+                product_override=product,
+                candidate_override=candidate,
+                additional_candidates=(s2_result.candidate,),
+            )
+            assert case.candidate_set.selected_candidate_id == candidate.candidate_id
+            s2_member = next(
+                item for item in case.candidate_set.candidates if item.candidate_id == s2_result.candidate.candidate_id
+            )
+            assert s2_member.policy_id == S2_POLICY.policy_id
+            assert s2_member.eligibility_status == EligibilityStatusV2.ELIGIBLE
+            assert s2_member.rank == 2
+            assert case.candidate_set.selected_candidate_id == candidate.candidate_id
+            assert case.candidate_set.selected_candidate_id != s2_result.candidate.candidate_id
+            s2_calendar = DecisionCalendarEntryV2(
+                case.candidate_set.content_hash,
+                s2_result.candidate.content_hash,
+                S2_POLICY.policy_id,
+                S2_POLICY.version,
+                S2_POLICY.policy_hash,
+                target_cutoff,
+                SelectionStateV2.UNSELECTED,
+                AdmissionStateV2.NOT_APPLICABLE,
+                None,
+                None,
+                DecisionSourceStageV2.CANDIDATE_SET,
+                (),
+                case.candidate_set.content_hash,
+                case.candidate_set.envelope.available_at_ns,
+                case.candidate_set.envelope.available_at_ns,
+            )
+            index_decision_calendar_entry(repo, s2_calendar)
+            receipt = accept_research_candidates(
+                repo,
+                case.candidate_set,
+                (candidate, s2_result.candidate),
+                accepted_at_ns=target_cutoff,
+            )[candidate.candidate_id]
+            handed = coordinator.accept_handoff(
+                watch_result.watch.watch_id,
+                candidate.content_hash,
+                pipeline_acceptance_ref=receipt,
+                accepted_at_ns=target_cutoff,
+            )
+            assert handed.state.value == "HANDED_OFF"
+    
+            sizing = risk_module.size(repo, case)
+            assert sizing.status.value == "SIZED"
+            action = freeze_action(
+                repo,
+                candidate=candidate,
+                candidate_set=case.candidate_set,
+                sizing=sizing,
+                product=product,
+                policy=S1_POLICY,
+                v1=case.v1,
+                v2=case.v2,
+            )
+            admission_policy = _admission_policy()
+            evaluated = run_phase2_economic_evaluation(
+                repo,
+                action=action,
+                candidate=candidate,
+                candidate_set=case.candidate_set,
+                sizing=sizing,
+                product=product,
+                risk_policy=case.v1,
+                risk_policy_v2=case.v2,
+                account=case.account,
+                fee=case.fee,
+                admission_policy=admission_policy,
+                capability=_capability_for_action(action, case, target_cutoff),
+                model_input=_causal_input(repo, "Session020ModelFixtureV1", target_cutoff),
+                calibration_input=_causal_input(repo, "Session020CalibrationFixtureV1", target_cutoff),
+                execution_model_input=_causal_input(repo, "Session020ExecutionModelFixtureV1", target_cutoff),
+                available_at_ns=target_cutoff + 10,
+                scenario_seed=2001,
+                scenario_count=100,
+            )
+            assert evaluated.evaluation.decision.value == "NOT_ESTIMABLE"
+            assert evaluated.evaluation.reason_codes
+            assert evaluated.calendar_ref
+            calendar_entry = repo.get_artifact(evaluated.calendar_ref)
+            assert calendar_entry is not None and calendar_entry.artifact_type == "DecisionCalendarEntryV2"
+            original_calendar_wire = canonical_json(calendar_entry.metadata["decision_entry"])
+            assert (
+                calendar_entry.metadata["decision_entry"]["source_stage"] == DecisionSourceStageV2.ECONOMIC_EVALUATION.value
+            )
+            assert evaluated.evaluation.candidate_ref == candidate.content_hash
+            assert evaluated.evaluation.action_hash == action.action.action_hash
+    
+            subject_refs = {
+                product.content_hash,
+                universe_setup.content_hash,
+                universe_target.content_hash,
+                candidate.content_hash,
+                candidate.snapshot_hash,
+                case.candidate_set.content_hash,
+                s2_result.candidate.content_hash,
+                s2_result.setup_ref,
+                s2_result.trigger_ref,
+                action.content_hash,
+                evaluated.evaluation_ref,
+                evaluated.calendar_ref,
+                *(item.bar.content_hash for values in target_evidence.values() for item in values),
+                *(item.observation_index_ref for values in target_evidence.values() for item in values),
+            }
+            _persist_synthetic_marker(repo, subject_refs, target_cutoff + 10)
+            with OpsRepository(db, read_only=True) as projection_reader:
+                before_maturity = project_snapshot(projection_reader, now_ns=target_cutoff + 11)
+            assert writer_state["active"] and writer_state["opens"] == 1 and writer_state["readers"] == 1
+            assert all(row.available_at_ns <= before_maturity.generated_at_ns for row in before_maturity.evidence)
+            s1_row = next(row for row in before_maturity.scanner_rows if row.policy_hash == S1_POLICY.policy_hash)
+            s2_row = next(row for row in before_maturity.scanner_rows if row.policy_hash == S2_POLICY.policy_hash)
+            assert s1_row.evaluation_decision == "NOT_ESTIMABLE"
+            assert s1_row.frozen_action_ref == action.content_hash and s1_row.synthetic_fixture
+            assert s2_row.selection_state == "UNSELECTED"
+            assert s2_row.synthetic_fixture
+            assert not any(row.artifact_type == "MaturedOutcomeV2" for row in before_maturity.evidence)
+            assert not before_maturity.evidence_truncated
+            evidence_types = {row.artifact_type for row in before_maturity.evidence}
+            assert {
+                "UniverseContractV2",
+                "ProductContractV2",
+                "FeatureArtifactV2",
+                "CandidateSetV2",
+                "SizingDecisionV2",
+                "ActionArtifactV2",
+                "EvaluationArtifactV2",
+                "DecisionCalendarEntryV2",
+                "S2SetupEvidenceV1",
+                "S2TriggerEvidenceV1",
+            }.issubset(evidence_types)
+            universe_summary = next(
+                row for row in before_maturity.evidence if row.content_ref == universe_setup.content_hash
+            )
+            assert len(universe_summary.input_refs) == 64
+            assert "DESKTOP_INPUT_REFS_BOUNDED" in universe_summary.reason_codes
+            assert {item.observation_index_ref for values in setup_evidence.values() for item in values}.issubset(
+                set(universe_setup.envelope.input_refs)
+            )
+    
+            with OpsRepository(db, read_only=True) as chart_reader:
+                chart = project_chart_series(
+                    chart_reader,
+                    key_json=key.to_canonical_json(),
+                    interval="1H",
+                    information_cutoff_ns=before_maturity.generated_at_ns,
+                    archive_root=archive_root,
+                    limit=3,
+                )
+                assert chart.state == "AVAILABLE" and chart.bars and chart.synthetic_fixture
+                assert chart.reason_code == "SERIES_LIMIT_APPLIED"
+                wrong_identity = key.to_dict()
+                wrong_identity["venue"] = "BINANCE"
+                wrong_identity_json = canonical_json(wrong_identity)
+                mismatched_chart = project_chart_series(
+                    chart_reader,
+                    key_json=wrong_identity_json,
+                    interval="1H",
+                    information_cutoff_ns=before_maturity.generated_at_ns,
+                    archive_root=archive_root,
+                    limit=3,
+                )
+                assert mismatched_chart.state == "UNAVAILABLE" and not mismatched_chart.bars
+    
+            # A read-only desktop sees the terminal decision while one writer remains open.
+            token = secrets.token_urlsafe(48)
+            service = ProjectionService(db, token, archive_root=archive_root)
+            service.start()
+            host, port = service.address
+            try:
+                ipc = ProjectionClient(host, port, token)
+                projected = DesktopSnapshotV2.from_dict(ipc.request("snapshot"))
+                assert projected.freshness_state == "CURRENT"
+                assert any(row.content_ref == evaluated.calendar_ref for row in projected.evidence)
+                assert token not in projected.to_canonical_json()
+                desktop_chart = ipc.request(
+                    "chart",
+                    {
+                        "key_json": key.to_canonical_json(),
+                        "interval": "1H",
+                        "information_cutoff_ns": before_maturity.generated_at_ns,
+                        "availability_view": "ACTUAL_SYSTEM",
+                        "limit": 3,
+                    },
+                )
+                assert desktop_chart["state"] == "AVAILABLE" and desktop_chart["synthetic_fixture"] is True
+                monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+                from PySide6.QtWidgets import QApplication
+    
+>               from atlas.desktop.app import AtlasDesktop
+
+tests/v2/test_session020_phase2_e2e.py:810: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    """PySide6 observer window. It has no runtime, order, or risk control handles."""
+    
+    from __future__ import annotations
+    
+    import json
+    import sys
+    import time
+    from datetime import UTC, datetime
+    from decimal import Decimal
+    from typing import Any
+    
+>   import pyqtgraph as pg
+E   ModuleNotFoundError: No module named 'pyqtgraph'
+
+src/atlas/desktop/app.py:12: ModuleNotFoundError
+=========================== short test summary info ============================
+FAILED tests/v2/test_session020_phase2_e2e.py::test_phase2_s1_s2_persistence_ipc_and_matured_outcome
+1 failed, 193 passed in 335.81s (0:05:35)

@@ -1,0 +1,42 @@
+[Ruff changed Python files] exit=0
+All checks passed!
+
+[Python compileall] exit=0
+(no output)
+
+[uv lock --check] exit=0
+Resolved 39 packages in 1ms
+
+[git diff --check] exit=0
+(no output)
+
+[git diff --cached --check] exit=0
+(no output)
+
+[algorithm manifest] exit=0
+ACCEPTANCE_REGISTER.csv: OK
+ATLAS_ALGORITHM.pdf: OK
+ATLAS_OPERATIONAL_RECONCILIATION_AMENDMENT_PROPOSED.md: OK
+ATLAS_SYSTEM_DESIGN.md: OK
+AUTHORITY_RECONCILIATION.md: OK
+CAPABILITY_REUSE_AUDIT.csv: OK
+CODEX_SESSION_PROMPTS.md: OK
+DESIGN_DECISIONS.md: OK
+DOCUMENTATION_VALIDATION.json: OK
+IMPLEMENTATION_PLAN.md: OK
+OWNER_SUMMARY.md: OK
+README.md: OK
+REPOSITORY_AUDIT.md: OK
+REQUIREMENTS_AND_ACCEPTANCE.md: OK
+SHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md: OK
+SOURCE_AUTHORITY_MANIFEST.json: OK
+SURGICAL_CHANGE_MAP.md: OK
+render_algorithm_pdf.py: OK
+
+[frozen hash] ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md: OK c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c
+
+[frozen hash] ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md: OK e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78
+
+[frozen hash] docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md: OK d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d
+
+[environment] CPython 3.12.14; pytest 9.1.1; Ruff 0.17.0; PyArrow 25.0.1; DuckDB 1.5.5; Nautilus Trader 2.0.0rc5

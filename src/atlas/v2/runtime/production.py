@@ -3229,6 +3229,61 @@ class ProductionOpsCyclePortV1:
             product.key: product for product in cast(Any, self.public_source).current_products
         }
         metadata_bindings: dict[str, tuple[str, str, Mapping[str, Any]]] = {}
+
+        def durable_index_matches(entry: Any, raw: RawObservationV2, instrument_key: InstrumentKeyV2,
+                                  *, bar_content_hash: str | None,
+                                  expected_payload_hash: str | None) -> bool:
+            if not isinstance(entry, Mapping):
+                return False
+            metadata = entry.get("metadata")
+            content_hash = entry.get("content_hash")
+            available_at_ns = entry.get("available_at_ns")
+            quality_flags = metadata.get("quality_flags") if isinstance(metadata, Mapping) else None
+            if (entry.get("artifact_type") != "PublicObservationIndexV2"
+                    or not isinstance(metadata, Mapping)
+                    or type(available_at_ns) is not int or available_at_ns > publication
+                    or not isinstance(content_hash, str) or len(content_hash) != 64
+                    or any(character not in "0123456789abcdef" for character in content_hash)
+                    or not isinstance(quality_flags, (list, tuple))
+                    or not isinstance(bar_content_hash, str) or len(bar_content_hash) != 64
+                    or any(character not in "0123456789abcdef" for character in bar_content_hash)):
+                return False
+            indexed_payload_hash = metadata.get("raw_payload_hash")
+            if (not isinstance(indexed_payload_hash, str) or len(indexed_payload_hash) != 64
+                    or any(character not in "0123456789abcdef" for character in indexed_payload_hash)):
+                return False
+            return (
+                metadata.get("record_id") == raw.record_id
+                and metadata.get("source_id") == raw.source_id
+                and metadata.get("instrument_revision") == raw.instrument_revision
+                and metadata.get("event_type") == raw.event_type
+                and metadata.get("instrument_key_json") == instrument_key.to_canonical_json()
+                and metadata.get("event_at_ns") == raw.event_at_ns
+                and metadata.get("published_at_ns") == raw.published_at_ns
+                and metadata.get("translation_version") == raw.translation_version
+                and metadata.get("revision_of") == raw.revision_of
+                and tuple(quality_flags) == raw.quality_flags
+                and metadata.get("availability_class") == raw.availability_class.value
+                and metadata.get("replay_available_at_ns") == raw.replay_available_at_ns
+                and (expected_payload_hash is None or indexed_payload_hash == expected_payload_hash)
+                and metadata.get("bar_content_hash") == bar_content_hash
+            )
+
+        def reject_durable_duplicate(index: int, raw: RawObservationV2, ref: str, *, reason: str) -> None:
+            nonlocal accepted
+            accepted = False
+            accepted_by_source[raw.source_id] = False
+            rejected_indexes.append(index)
+            body = {"version": "BROAD_PUBLIC_ADOPTION_REJECTION_V1",
+                "record_id": raw.record_id, "observation_hash": raw.content_hash,
+                "source_id": raw.source_id, "observed_at_ns": publication,
+                "index_ref": ref, "reason": reason, "authority": "ZERO"}
+            rejection_ref = sha256_json(body)
+            if repository.get_artifact(rejection_ref) is None:
+                repository.register_artifact(ArtifactIndexEntryV2(rejection_ref,
+                    "BroadPublicAdoptionRejectionV1", rejection_ref, publication, publication,
+                    {"rejection": body}))
+
         def adoption_clock() -> int:
             nonlocal publication
             publication = sample(self.clock_ns, floor_ns=publication)
@@ -3311,7 +3366,19 @@ class ProductionOpsCyclePortV1:
                         (original_ref, source_raw.source_id, row))
                 prior = prefetched_indexes.get(original_ref)
                 prior_metadata = prior.get("metadata") if prior is not None else None
-                if item.bar is not None and prior_metadata is not None:
+                if item.bar is not None and prior is not None:
+                    if (not isinstance(prior_metadata, Mapping)
+                            or not durable_index_matches(prior, source_raw, item.instrument_key,
+                            bar_content_hash=prior_metadata.get("bar_content_hash"),
+                            expected_payload_hash=None)):
+                        reason = ("DURABLE_DUPLICATE_INDEX_UNAVAILABLE"
+                            if isinstance(prior, Mapping)
+                            and type(prior.get("available_at_ns")) is int
+                            and prior.get("available_at_ns") > publication
+                            else "DURABLE_DUPLICATE_INDEX_MISMATCH")
+                        reject_durable_duplicate(index, source_raw, original_ref,
+                            reason=reason)
+                        continue
                     if prior_metadata.get("raw_payload_hash") != source_raw.raw_payload_hash:
                         # A corrected venue-final bar appends a causal revision.
                         # Its actual new receipt is retained, never backdated.
@@ -3332,6 +3399,17 @@ class ProductionOpsCyclePortV1:
                         prefetched_indexes[observed_ref] = found.get(observed_ref)
                     known = prefetched_indexes[observed_ref]
                     known_metadata = known.get("metadata") if known is not None else None
+                    expected_bar = replace(item.bar, raw=source_raw)
+                    if known is not None and not durable_index_matches(known, source_raw, item.instrument_key,
+                            bar_content_hash=expected_bar.content_hash,
+                            expected_payload_hash=source_raw.raw_payload_hash):
+                        reason = ("DURABLE_DUPLICATE_INDEX_UNAVAILABLE"
+                            if isinstance(known, Mapping)
+                            and type(known.get("available_at_ns")) is int
+                            and known.get("available_at_ns") > publication
+                            else "DURABLE_DUPLICATE_INDEX_MISMATCH")
+                        reject_durable_duplicate(index, source_raw, observed_ref, reason=reason)
+                        continue
                     if known_metadata is not None and known_metadata.get("raw_payload_hash") == source_raw.raw_payload_hash:
                         body = {"version": "BROAD_PUBLIC_DUPLICATE_RECEIPT_V2", "original_ref": observed_ref,
                             "raw_payload_hash": source_raw.raw_payload_hash,
@@ -3343,6 +3421,7 @@ class ProductionOpsCyclePortV1:
                                 "BroadPublicDuplicateReceiptV2", duplicate_ref, publication, publication,
                                 {"receipt": body}))
                         refs_by_source.setdefault(source_raw.source_id, set()).add(observed_ref)
+                        verified_indexes_by_source.setdefault(source_raw.source_id, {})[observed_ref] = known
                         continue
                 raw = replace(source_raw, ingested_at_ns=max(source_raw.ingested_at_ns, publication),
                     available_at_ns=max(source_raw.available_at_ns, publication))

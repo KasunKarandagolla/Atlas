@@ -1,0 +1,304 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.7.0 -- <test-python>
+hypothesis profile 'default'
+rootdir: <repo>
+configfile: pyproject.toml
+plugins: hypothesis-6.169.0, anyio-4.14.2
+collecting ... collected 1 item
+
+tests/v2/test_session041_production_breadth.py::test_repeated_durable_completed_bar_reconciles_on_actual_production_path completed_bar_duplicate_reproducer {'source_id': 'BYBIT_PUBLIC_HTTP', 'record_id': '855b2896193ac61561fbce949c27e9c9766546392f547b85ad631ab006e2061e', 'index_ref': '7a3d8403afe806a8932ff18a65bfdf0b4fbfd6d7f8f97e23c91f7be730193f00', 'raw_payload_hash': '4705b577827a0f2d29c09782f4afacc2f67f833cb495b8c38abdf59d33442920', 'first_health': 'HEALTHY_CURRENT', 'first_received_at_ns': 1800000000000000000, 'duplicate_received_at_ns': 1800000010000000000}
+FAILED
+
+=================================== FAILURES ===================================
+___ test_repeated_durable_completed_bar_reconciles_on_actual_production_path ___
+
+tmp_path = PosixPath('<pytest-tmp>/test_repeated_durable_complete0')
+
+    def test_repeated_durable_completed_bar_reconciles_on_actual_production_path(tmp_path):
+        p = product(941, VenueV2.BYBIT)
+    
+        class SingleVenueBarSource:
+            enabled_venues = (VenueV2.BYBIT,)
+            required_source_ids = ("BYBIT_PUBLIC_HTTP",)
+            current_products = (p,)
+    
+            def bootstrap_products(self, *, now_ns):
+                return self.current_products
+    
+            def acquire_snapshot(self, *, now_ns):
+                return _completed_bar_snapshot(_completed_bybit_bar(p, now_ns), now_ns)
+    
+            def export_state(self):
+                return {"version": "SINGLE_VENUE_COMPLETED_BAR_REPRODUCER_V1"}
+    
+        clock = [NOW]
+        port = BroadProductionOpsCyclePortV2(public_source=SingleVenueBarSource(),
+            broad_runtime=FakeBroadRuntime(), clock_ns=lambda: clock[0])
+        try:
+            with OpsRepository(tmp_path / "completed-bar.sqlite") as repo:
+                port.recover(repo, now_ns=NOW)
+                first_record = _completed_bybit_bar(p, NOW)
+                assert port._persist_broad_public_snapshot(repo,
+                    _completed_bar_snapshot(first_record, NOW), now_ns=NOW)
+                first_health = repo.latest_source_health_at("BYBIT_PUBLIC_HTTP", as_of_ns=NOW)
+                assert first_health is not None and first_health.status == "HEALTHY_CURRENT"
+    
+                clock[0] = NOW + 10_000_000_000
+                duplicate = _completed_bybit_bar(p, clock[0])
+                assert duplicate.observation.record_id == first_record.observation.record_id
+                assert duplicate.observation.raw_payload_hash == first_record.observation.raw_payload_hash
+                print("completed_bar_duplicate_reproducer", {
+                    "source_id": duplicate.observation.source_id,
+                    "record_id": duplicate.observation.record_id,
+                    "index_ref": sha256_json({"artifact_type": "PublicObservationIndexV2",
+                        "record_id": duplicate.observation.record_id}),
+                    "raw_payload_hash": duplicate.observation.raw_payload_hash,
+                    "first_health": first_health.status,
+                    "first_received_at_ns": first_record.observation.received_at_ns,
+                    "duplicate_received_at_ns": duplicate.observation.received_at_ns,
+                })
+>               assert port._persist_broad_public_snapshot(repo,
+                    _completed_bar_snapshot(duplicate, clock[0]), now_ns=clock[0])
+
+tests/v2/test_session041_production_breadth.py:448: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/atlas/v2/runtime/production.py:6448: in _persist_broad_public_snapshot
+    ready = super()._persist_broad_public_snapshot(repository, snapshot, now_ns=now_ns)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <atlas.v2.runtime.production.BroadProductionOpsCyclePortV2 object at 0x7fc241d1e630>
+repository = <atlas.v2.memory.repository.OpsRepository object at 0x7fc241d1e6f0>
+snapshot = BroadPublicSnapshotV2(records=(PublicInputRecordV2(observation=RawObservationV2(record_id='855b2896193ac61561fbce949c2...: mappingproxy({'market_status': 'BULK_MARKET_COMPLETE', 'received_at_ns': 1800000010000000000})})}), request_limit=32)
+now_ns = 1800000010000000000
+
+    def _persist_broad_public_snapshot(self, repository: OpsRepository, snapshot: Any, *, now_ns: int) -> bool:
+        """Adopt both venues on the sole writer without inventing history completeness."""
+        collector = cast(ProductionCollectorRecoveryV1, self._collector_recovery).collector
+        publication = sample(self.clock_ns, floor_ns=now_ns)
+        if max(snapshot.observed_at_ns, snapshot.latest_received_at_ns) > publication:
+            raise ValueError("BROAD_PUBLIC_SNAPSHOT_FUTURE_RECEIPT")
+        prior_clock = collector.clock_ns
+        rejected_indexes: list[int] = []
+        refs_by_source: dict[str, set[str]] = {source: set() for source in self.public_source.required_source_ids}
+        verified_indexes_by_source: dict[str, dict[str, Mapping[str, Any]]] = {}
+        pending_refs: dict[str, str] = {}
+        manifest = snapshot.source_snapshot.get("metadata", {})
+        source_by_venue = {
+            VenueV2.BYBIT: BYBIT_HTTP_SOURCE_ID,
+            VenueV2.BINANCE: BINANCE_HTTP_SOURCE_ID,
+        }
+        accepted_by_source = {
+            source_by_venue[venue]: manifest.get(venue.value, {}).get("market_status") == "BULK_MARKET_COMPLETE"
+            and venue.value not in snapshot.source_snapshot.get("metadata_stale", ())
+            for venue in cast(Any, self.public_source).enabled_venues
+        }
+        accepted = all(accepted_by_source.values())
+        current_products_by_key = {
+            product.key: product for product in cast(Any, self.public_source).current_products
+        }
+        metadata_bindings: dict[str, tuple[str, str, Mapping[str, Any]]] = {}
+        def adoption_clock() -> int:
+            nonlocal publication
+            publication = sample(self.clock_ns, floor_ns=publication)
+            return publication
+    
+        collector.clock_ns = adoption_clock
+        prefetched_indexes: dict[str, Mapping[str, Any] | None] = {}
+        prefetched_generation = collector.archive_flush_generation
+        last_stream_service_started_ns = 0
+        try:
+            for index, item in enumerate(snapshot.records):
+                # Bound the time spent on REST universe adoption between stream
+                # service turns. A fixed row count lets slow repositories leave
+                # the capture handoff unattended for several seconds.
+                service_started_ns = time.monotonic_ns()
+                if (index == 0 or service_started_ns - last_stream_service_started_ns
+                        >= BROAD_PUBLIC_ADOPTION_STREAM_SERVICE_INTERVAL_NS_V1):
+                    last_stream_service_started_ns = service_started_ns
+                    self.service_public_stream(repository)
+                if index % BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1 == 0:
+                    # Seal a small archive page before reading exact identities.
+                    # Its references are prefetched only after that publication,
+                    # so no in-page flush can turn a recorded absence into a
+                    # durable duplicate. Service immediately after the
+                    # indivisible Parquet/index write.
+                    if collector.pending_archive_count:
+                        collector.flush_archive()
+                        self.service_public_stream(repository)
+                    chunk_size = min(BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1,
+                        len(snapshot.records) - index)
+                    refs = tuple({sha256_json({"artifact_type": "PublicObservationIndexV2",
+                        "record_id": record.observation.record_id})
+                        for record in snapshot.records[index:index + chunk_size]})
+                    found = repository.get_artifact_metadata_by_refs(refs)
+                    prefetched_indexes = {ref: found.get(ref) for ref in refs}
+                    prefetched_generation = collector.archive_flush_generation
+                elif prefetched_generation != collector.archive_flush_generation:
+                    # A serviced stream may have published exact indexes since
+                    # the last lookup page. Refresh only the remaining portion
+                    # of this bounded archive page before using absence proofs.
+                    page_start = index - index % BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1
+                    page_end = min(page_start + BROAD_PUBLIC_ADOPTION_ARCHIVE_PAGE_ROWS_V1,
+                        len(snapshot.records))
+                    refs = tuple({sha256_json({"artifact_type": "PublicObservationIndexV2",
+                        "record_id": record.observation.record_id})
+                        for record in snapshot.records[index:page_end]})
+                    found = repository.get_artifact_metadata_by_refs(refs)
+                    prefetched_indexes = {ref: found.get(ref) for ref in refs}
+                    prefetched_generation = collector.archive_flush_generation
+                adoption_clock()
+                source_raw = item.observation
+                if max(source_raw.received_at_ns, source_raw.ingested_at_ns,
+                       source_raw.available_at_ns, source_raw.event_at_ns or 0,
+                       source_raw.published_at_ns or 0) > publication:
+                    accepted = False
+                    accepted_by_source[source_raw.source_id] = False
+                    rejected_indexes.append(index)
+                    body = {"version": "BROAD_PUBLIC_ADOPTION_REJECTION_V1",
+                        "record_id": source_raw.record_id, "observation_hash": source_raw.content_hash,
+                        "source_id": source_raw.source_id, "observed_at_ns": publication,
+                        "reason": "FUTURE_SOURCE_CHRONOLOGY", "authority": "ZERO"}
+                    rejection_ref = sha256_json(body)
+                    repository.register_artifact(ArtifactIndexEntryV2(rejection_ref,
+                        "BroadPublicAdoptionRejectionV1", rejection_ref, publication, publication,
+                        {"rejection": body}))
+                    continue
+                original_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                           "record_id": item.observation.record_id})
+                if source_raw.event_type == "PRODUCT_METADATA":
+                    product = current_products_by_key.get(item.instrument_key)
+                    row = json.loads(item.raw_payload)
+                    if (product is None or not isinstance(row, Mapping)
+                            or product.metadata_ref != source_raw.raw_payload_hash
+                            or sha256_json(row) != product.metadata_ref):
+                        accepted = False
+                        accepted_by_source[source_raw.source_id] = False
+                        rejected_indexes.append(index)
+                        continue
+                    metadata_bindings.setdefault(product.metadata_ref,
+                        (original_ref, source_raw.source_id, row))
+                prior = prefetched_indexes.get(original_ref)
+                prior_metadata = prior.get("metadata") if prior is not None else None
+                if item.bar is not None and prior_metadata is not None:
+                    if prior_metadata.get("raw_payload_hash") != source_raw.raw_payload_hash:
+                        # A corrected venue-final bar appends a causal revision.
+                        # Its actual new receipt is retained, never backdated.
+                        source_raw = RawObservationV2.build(
+                            instrument_revision=source_raw.instrument_revision,
+                            source_id=source_raw.source_id, event_type=source_raw.event_type,
+                            event_at_ns=source_raw.event_at_ns, published_at_ns=source_raw.published_at_ns,
+                            received_at_ns=source_raw.received_at_ns, ingested_at_ns=source_raw.ingested_at_ns,
+                            available_at_ns=source_raw.available_at_ns, payload=item.raw_payload,
+                            translation_version=source_raw.translation_version,
+                            sequence=source_raw.sequence, revision_of=source_raw.record_id,
+                            quality_flags=source_raw.quality_flags,
+                            availability_class=source_raw.availability_class)
+                    observed_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                                              "record_id": source_raw.record_id})
+                    if observed_ref not in prefetched_indexes:
+                        found = repository.get_artifact_metadata_by_refs((observed_ref,))
+                        prefetched_indexes[observed_ref] = found.get(observed_ref)
+                    known = prefetched_indexes[observed_ref]
+                    known_metadata = known.get("metadata") if known is not None else None
+                    if known_metadata is not None and known_metadata.get("raw_payload_hash") == source_raw.raw_payload_hash:
+                        body = {"version": "BROAD_PUBLIC_DUPLICATE_RECEIPT_V2", "original_ref": observed_ref,
+                            "raw_payload_hash": source_raw.raw_payload_hash,
+                            "received_at_ns": source_raw.received_at_ns, "available_at_ns": publication,
+                            "source_id": source_raw.source_id, "authority": "ZERO"}
+                        duplicate_ref = sha256_json(body)
+                        if repository.get_artifact(duplicate_ref) is None:
+                            repository.register_artifact(ArtifactIndexEntryV2(duplicate_ref,
+                                "BroadPublicDuplicateReceiptV2", duplicate_ref, publication, publication,
+                                {"receipt": body}))
+                        refs_by_source.setdefault(source_raw.source_id, set()).add(observed_ref)
+                        continue
+                raw = replace(source_raw, ingested_at_ns=max(source_raw.ingested_at_ns, publication),
+                    available_at_ns=max(source_raw.available_at_ns, publication))
+                bar = replace(item.bar, raw=raw) if item.bar is not None else None
+                try:
+                    result = collector.ingest(raw, raw_payload=item.raw_payload,
+                        instrument_key=item.instrument_key, bar=bar, retain_in_memory=False,
+                        update_source_health=False,
+                        persisted_public_index_rows_by_ref=prefetched_indexes,
+                        persisted_public_index_generation=prefetched_generation)
+                    if result.persistent_conflict or result.append.status.value == "CONFLICT_QUARANTINED":
+                        accepted = False
+                        accepted_by_source[raw.source_id] = False
+                        rejected_indexes.append(index)
+                    ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": raw.record_id})
+                    if not result.persistent_conflict and result.append.status.value != "CONFLICT_QUARANTINED":
+                        pending_refs[ref] = raw.source_id
+                except (ValueError, RuntimeError):
+                    accepted = False
+                    accepted_by_source[raw.source_id] = False
+                    rejected_indexes.append(index)
+            collector.flush_archive()
+            adoption_clock()
+            pending_items = tuple(pending_refs.items())
+            reconciliation_page_rows = min(
+                MAX_RECONCILIATION_REFS_PER_PAGE_V1,
+                BROAD_PUBLIC_ADOPTION_RECONCILIATION_PAGE_ROWS_V1,
+            )
+            for offset in range(0, len(pending_items), reconciliation_page_rows):
+                # Full-universe exact-reference hydration can take seconds. Keep
+                # the sole-writer stream lane moving between smaller bounded pages.
+                self.service_public_stream(repository)
+                page = pending_items[offset:offset + reconciliation_page_rows]
+                persisted = repository.get_artifact_metadata_by_refs(tuple(ref for ref, _ in page))
+                for ref, source_id in page:
+                    entry = persisted.get(ref)
+                    if (entry is not None and entry.get("artifact_type") == "PublicObservationIndexV2"
+                            and entry["available_at_ns"] <= publication
+                            and isinstance(entry.get("metadata"), Mapping)
+                            and entry["metadata"].get("source_id") == source_id):
+                        refs_by_source.setdefault(source_id, set()).add(ref)
+                        verified_indexes_by_source.setdefault(source_id, {})[ref] = entry
+                    else:
+                        accepted = False
+                        accepted_by_source[source_id] = False
+            # ProductContractV2.metadata_ref is the exact hash of its raw
+            # exchange metadata row. Publish that causal lookup only after its
+            # source observation has crossed the durable archive/index boundary.
+            metadata_refs = tuple(sorted({observation_ref
+                for observation_ref, _source_id, _row in metadata_bindings.values()}))
+            metadata_indexes = repository.get_artifact_metadata_by_refs(metadata_refs)
+            for metadata_ref, (observation_ref, source_id, row) in sorted(metadata_bindings.items()):
+                indexed = metadata_indexes.get(observation_ref)
+                metadata_ok = (indexed is not None
+                    and indexed.get("artifact_type") == "PublicObservationIndexV2"
+                    and indexed.get("available_at_ns") <= publication
+                    and indexed.get("metadata", {}).get("source_id") == source_id
+                    and indexed.get("metadata", {}).get("raw_payload_hash") == metadata_ref)
+                if not metadata_ok:
+                    accepted = False
+                    accepted_by_source[source_id] = False
+                    continue
+                prior_metadata = repository.get_artifact(metadata_ref)
+                metadata_body = {"metadata": dict(row), "input_refs": (observation_ref,),
+                    "source_id": source_id, "source_observation_ref": observation_ref}
+                if prior_metadata is None:
+                    repository.register_artifact(ArtifactIndexEntryV2(metadata_ref,
+                        "ProductMetadataEvidenceV1", metadata_ref, publication, publication, metadata_body))
+                elif (prior_metadata.artifact_type != "ProductMetadataEvidenceV1"
+                      or prior_metadata.content_hash != metadata_ref
+                      or canonical_json(prior_metadata.metadata.get("metadata")) != canonical_json(row)):
+                    raise ValueError("PRODUCT_METADATA_REF_CONFLICT")
+        finally:
+            collector.clock_ns = prior_clock
+        # Current bulk observations prove only their declared scope. A prior
+        # unhealthy interval is not erased by a metadata/ticker refresh.
+        health_ready = accepted
+        for source_id, snapshot_refs in sorted(refs_by_source.items()):
+            prior_gap = collector.health.had_unhealthy_after_healthy(source_id)
+            ready = accepted_by_source.get(source_id, False) and bool(snapshot_refs) and not prior_gap
+            if ready:
+                verified_indexes = verified_indexes_by_source.get(source_id, {})
+                if set(verified_indexes) != snapshot_refs:
+>                   raise ValueError("BROAD_PUBLIC_RECONCILIATION_INDEX_SET_MISMATCH")
+E                   ValueError: BROAD_PUBLIC_RECONCILIATION_INDEX_SET_MISMATCH
+
+src/atlas/v2/runtime/production.py:3429: ValueError
+=========================== short test summary info ============================
+FAILED tests/v2/test_session041_production_breadth.py::test_repeated_durable_completed_bar_reconciles_on_actual_production_path - ValueError: BROAD_PUBLIC_RECONCILIATION_INDEX_SET_MISMATCH
+============================== 1 failed in 1.38s ===============================

@@ -120,3 +120,26 @@ def test_reconnect_reconciliation_revalidates_reused_entries_and_rejects_mismatc
                 _verified_snapshot_index_entries=verified)
         monkeypatch.setattr(repository, "get_artifact_metadata_by_refs", original_lookup)
         assert repository.artifact_entries("OpsPublicSourceReconciliationV1") == ()
+
+
+def test_reconnect_reconciliation_rejects_incomplete_verified_index_set(tmp_path, monkeypatch) -> None:
+    with OpsRepository(tmp_path / "ops.sqlite") as repository:
+        collector = PublicCollectorV2(repository=repository, registry=InstrumentRegistryV2(),
+            clock_ns=lambda: NOW)
+        record_id = "incomplete-verified-reconciliation-record"
+        ref = sha256_json({"artifact_type": "PublicObservationIndexV2", "record_id": record_id})
+        repository.register_artifact(ArtifactIndexEntryV2(ref, "PublicObservationIndexV2",
+            sha256_json({"observation": record_id}), NOW - 1, NOW - 1,
+            {"record_id": record_id, "source_id": SOURCE}))
+        verified = repository.get_artifact_metadata_by_refs((ref,))
+        verified.clear()
+
+        def unexpected_lookup(_refs):
+            raise AssertionError("an incomplete verified set must fail before any readback")
+
+        monkeypatch.setattr(repository, "get_artifact_metadata_by_refs", unexpected_lookup)
+        with pytest.raises(ValueError, match="verified snapshot index entries must exactly match"):
+            collector.reconcile_after_reconnect(SOURCE, at_ns=NOW,
+                complete_snapshot=True, missed_interval_repaired=True, snapshot_refs=(ref,),
+                _verified_snapshot_index_entries=verified)
+        assert repository.artifact_entries("OpsPublicSourceReconciliationV1") == ()

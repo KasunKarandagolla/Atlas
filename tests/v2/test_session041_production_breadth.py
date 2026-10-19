@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from atlas.v2._serialization import canonical_json, sha256_json
+from atlas.v2.data.bars import BarIntervalV2, CausalBarV2
 from atlas.v2.data.broad_public_source import BroadPublicSnapshotV2, PublicInputRecordV2
 from atlas.v2.data.raw import RawObservationV2
 from atlas.v2.instruments import (
@@ -377,6 +378,323 @@ def test_same_venue_research_cohort_has_twenty_keys_within_global_history_bound(
         assert len(active_products(repo, cutoff_ns=NOW)) <= 24
         assert set(keys).issubset({item.key for item in active_products(repo, cutoff_ns=NOW)})
         assert len(full_universe(repo, cutoff_ns=NOW).entries) == 50
+
+
+def _completed_bybit_bar(p: ProductContractV2, received_at_ns: int, *, high: str = "102",
+                         close: str = "101") -> PublicInputRecordV2:
+    interval = BarIntervalV2.M1
+    open_at_ns = (NOW // interval.duration_ns - 1) * interval.duration_ns
+    close_at_ns = open_at_ns + interval.duration_ns
+    payload = canonical_json({"open": "100", "high": high, "low": "99",
+        "close": close, "volume": "7"}).encode()
+    raw = RawObservationV2.build(instrument_revision=p.key.contract_revision,
+        source_id="BYBIT_PUBLIC_HTTP", event_type="BAR_1M", event_at_ns=close_at_ns,
+        published_at_ns=None, received_at_ns=received_at_ns, ingested_at_ns=received_at_ns,
+        available_at_ns=received_at_ns, payload=payload, translation_version="bybit-public-v1",
+        sequence="completed-bar-duplicate-reproducer")
+    bar = CausalBarV2(raw, interval, open_at_ns, close_at_ns, Decimal("100"), Decimal(high),
+        Decimal("99"), Decimal(close), Decimal("7"), True)
+    return PublicInputRecordV2(raw, payload, p.key, bar)
+
+
+def _bybit_snapshot(record: PublicInputRecordV2, at_ns: int) -> BroadPublicSnapshotV2:
+    return BroadPublicSnapshotV2((record,), True, None, None, record.observation.received_at_ns,
+        at_ns, 1, 1, 0, 0, 0, {"metadata": {"BYBIT": {
+            "market_status": "BULK_MARKET_COMPLETE", "received_at_ns": at_ns}}})
+
+
+def _ticker_record(p: ProductContractV2, received_at_ns: int, *, bid: str) -> PublicInputRecordV2:
+    payload = canonical_json({"bidPrice": bid, "askPrice": "101", "quoteVolume": "20000000"}).encode()
+    raw = RawObservationV2.build(instrument_revision=p.key.contract_revision, source_id="BYBIT_PUBLIC_HTTP",
+        event_type="TICKER_24H", event_at_ns=NOW, published_at_ns=None,
+        received_at_ns=received_at_ns, ingested_at_ns=received_at_ns, available_at_ns=received_at_ns,
+        payload=payload, translation_version="bybit-public-v1", sequence="ticker-conflict-reproducer")
+    return PublicInputRecordV2(raw, payload, p.key)
+
+
+class SingleVenueBarSource:
+    enabled_venues = (VenueV2.BYBIT,)
+    required_source_ids = ("BYBIT_PUBLIC_HTTP",)
+
+    def __init__(self, p: ProductContractV2):
+        self.current_products = (p,)
+        self._state = {"version": "SINGLE_VENUE_COMPLETED_BAR_REPRODUCER_V1"}
+
+    def bootstrap_products(self, *, now_ns):
+        return self.current_products
+
+    def acquire_snapshot(self, *, now_ns):
+        return _bybit_snapshot(_completed_bybit_bar(self.current_products[0], now_ns), now_ns)
+
+    def export_state(self):
+        return self._state
+
+    def restore_state(self, state):
+        if state.get("version") != "SINGLE_VENUE_COMPLETED_BAR_REPRODUCER_V1":
+            raise ValueError("unexpected completed-bar source state")
+        self._state = state
+
+
+def _bar_port(p: ProductContractV2, clock: list[int]) -> BroadProductionOpsCyclePortV2:
+    return BroadProductionOpsCyclePortV2(public_source=SingleVenueBarSource(p),
+        broad_runtime=FakeBroadRuntime(), clock_ns=lambda: clock[0])
+
+
+def test_repeated_durable_completed_bar_reconciles_on_actual_production_path(tmp_path):
+    p = product(941, VenueV2.BYBIT)
+    path = tmp_path / "completed-bar.sqlite"
+    clock = [NOW]
+    port = _bar_port(p, clock)
+    try:
+        with OpsRepository(path) as repo:
+            port.recover(repo, now_ns=NOW)
+            first_record = _completed_bybit_bar(p, NOW)
+            assert port._persist_broad_public_snapshot(repo,
+                _bybit_snapshot(first_record, NOW), now_ns=NOW)
+            first_health = repo.latest_source_health_at("BYBIT_PUBLIC_HTTP", as_of_ns=NOW)
+            assert first_health is not None and first_health.status == "HEALTHY_CURRENT"
+            expected_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                "record_id": first_record.observation.record_id})
+            first_index = repo.get_artifact(expected_ref)
+            assert first_index is not None
+
+            clock[0] = NOW + 10_000_000_000
+            duplicate = _completed_bybit_bar(p, clock[0])
+            assert duplicate.observation.record_id == first_record.observation.record_id
+            assert duplicate.observation.raw_payload_hash == first_record.observation.raw_payload_hash
+            print("completed_bar_duplicate_reproducer", {
+                "source_id": duplicate.observation.source_id,
+                "record_id": duplicate.observation.record_id,
+                "index_ref": expected_ref,
+                "raw_payload_hash": duplicate.observation.raw_payload_hash,
+                "first_health": first_health.status,
+                "first_received_at_ns": first_record.observation.received_at_ns,
+                "duplicate_received_at_ns": duplicate.observation.received_at_ns,
+            })
+            assert port._persist_broad_public_snapshot(repo,
+                _bybit_snapshot(duplicate, clock[0]), now_ns=clock[0])
+            duplicate_index = repo.get_artifact(expected_ref)
+            assert duplicate_index == first_index
+            receipt = repo.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
+                as_of_ns=clock[0], limit=1).entries[0].metadata["receipt"]
+            assert receipt["source_health_current"]
+            assert list(receipt["source_observation_refs"]["BYBIT_PUBLIC_HTTP"]) == [expected_ref]
+            duplicate_receipts = repo.artifact_entries("BroadPublicDuplicateReceiptV2")
+            assert len(duplicate_receipts) == 1
+            duplicate_receipt = duplicate_receipts[0].metadata["receipt"]
+            assert duplicate_receipt["original_ref"] == expected_ref
+            assert duplicate_receipt["source_id"] == "BYBIT_PUBLIC_HTTP"
+            assert duplicate_receipt["received_at_ns"] == duplicate.observation.received_at_ns
+            assert duplicate_receipt["available_at_ns"] == clock[0]
+            second_health = repo.latest_source_health_at("BYBIT_PUBLIC_HTTP", as_of_ns=clock[0])
+            assert second_health is not None and second_health.status == "HEALTHY_CURRENT"
+    finally:
+        port.close()
+
+    # A fresh collector after process restart must read the same immutable index
+    # and complete reconciliation without trying to archive the duplicate again.
+    clock[0] = NOW + 20_000_000_000
+    restarted = _bar_port(p, clock)
+    try:
+        with OpsRepository(path) as repo:
+            restarted.recover(repo, now_ns=clock[0])
+            repeated = _completed_bybit_bar(p, clock[0])
+            assert not restarted._persist_broad_public_snapshot(repo,
+                _bybit_snapshot(repeated, clock[0]), now_ns=clock[0])
+            assert repo.get_artifact(expected_ref) == first_index
+            assert len(repo.artifact_entries("BroadPublicDuplicateReceiptV2")) == 2
+            receipt = repo.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
+                as_of_ns=clock[0], limit=1).entries[0].metadata["receipt"]
+            assert not receipt["source_health_current"]
+            assert receipt["source_ingestion_complete"]["BYBIT_PUBLIC_HTTP"]
+            assert list(receipt["source_observation_refs"]["BYBIT_PUBLIC_HTTP"]) == [expected_ref]
+            health = repo.latest_source_health_at("BYBIT_PUBLIC_HTTP", as_of_ns=clock[0])
+            assert health is not None and health.status == "INCOMPLETE_SNAPSHOT"
+    finally:
+        restarted.close()
+
+
+def test_corrected_completed_bar_appends_distinct_causal_revision(tmp_path):
+    p = product(942, VenueV2.BYBIT)
+    clock = [NOW]
+    port = _bar_port(p, clock)
+    try:
+        with OpsRepository(tmp_path / "bar-correction.sqlite") as repo:
+            port.recover(repo, now_ns=NOW)
+            original = _completed_bybit_bar(p, NOW)
+            assert port._persist_broad_public_snapshot(repo, _bybit_snapshot(original, NOW), now_ns=NOW)
+            clock[0] = NOW + 10_000_000_000
+            corrected = _completed_bybit_bar(p, clock[0], high="103", close="102")
+            assert corrected.observation.record_id == original.observation.record_id
+            assert corrected.observation.raw_payload_hash != original.observation.raw_payload_hash
+            assert port._persist_broad_public_snapshot(repo,
+                _bybit_snapshot(corrected, clock[0]), now_ns=clock[0])
+            revision_id = RawObservationV2.build(
+                instrument_revision=p.key.contract_revision, source_id=corrected.observation.source_id,
+                event_type=corrected.observation.event_type, event_at_ns=corrected.observation.event_at_ns,
+                published_at_ns=corrected.observation.published_at_ns,
+                received_at_ns=corrected.observation.received_at_ns,
+                ingested_at_ns=corrected.observation.ingested_at_ns,
+                available_at_ns=corrected.observation.available_at_ns, payload=corrected.raw_payload,
+                translation_version=corrected.observation.translation_version,
+                sequence=corrected.observation.sequence, revision_of=original.observation.record_id,
+                quality_flags=corrected.observation.quality_flags,
+                availability_class=corrected.observation.availability_class,
+            )
+            revision_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                "record_id": revision_id.record_id})
+            indexed = repo.get_artifact(revision_ref)
+            assert indexed is not None and indexed.metadata["revision_of"] == original.observation.record_id
+            assert indexed.metadata["record_id"] != original.observation.record_id
+            assert repo.get_artifact(sha256_json({"artifact_type": "PublicObservationIndexV2",
+                "record_id": original.observation.record_id})) is not None
+            receipt = repo.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
+                as_of_ns=clock[0], limit=1).entries[0].metadata["receipt"]
+            assert list(receipt["source_observation_refs"]["BYBIT_PUBLIC_HTTP"]) == [revision_ref]
+            assert receipt["source_health_current"]
+    finally:
+        port.close()
+
+
+def test_conflicting_nonbar_duplicate_payload_is_quarantined_and_incomplete(tmp_path):
+    p = product(943, VenueV2.BYBIT)
+    clock = [NOW]
+    port = _bar_port(p, clock)
+    try:
+        with OpsRepository(tmp_path / "ticker-conflict.sqlite") as repo:
+            port.recover(repo, now_ns=NOW)
+            first = _ticker_record(p, NOW, bid="100")
+            assert port._persist_broad_public_snapshot(repo, _bybit_snapshot(first, NOW), now_ns=NOW)
+            clock[0] = NOW + 10_000_000_000
+            conflict = _ticker_record(p, clock[0], bid="99")
+            assert conflict.observation.record_id == first.observation.record_id
+            assert conflict.observation.raw_payload_hash != first.observation.raw_payload_hash
+            assert not port._persist_broad_public_snapshot(repo,
+                _bybit_snapshot(conflict, clock[0]), now_ns=clock[0])
+            conflicts = repo.artifact_entries("PublicDuplicateConflictV2")
+            assert len(conflicts) == 1
+            assert conflicts[0].metadata["record_id"] == first.observation.record_id
+            receipt = repo.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
+                as_of_ns=clock[0], limit=1).entries[0].metadata["receipt"]
+            assert list(receipt["rejected_record_indexes"]) == [0]
+            assert not receipt["source_health_current"]
+            health = repo.latest_source_health_at("BYBIT_PUBLIC_HTTP", as_of_ns=clock[0])
+            assert health is not None and health.status == "INCOMPLETE_SNAPSHOT"
+    finally:
+        port.close()
+
+
+@pytest.mark.parametrize("corruption,expected_reason", [
+    ("source", "DURABLE_DUPLICATE_INDEX_MISMATCH"),
+    ("availability", "DURABLE_DUPLICATE_INDEX_UNAVAILABLE"),
+    ("bar-content-hash", "DURABLE_DUPLICATE_INDEX_MISMATCH"),
+])
+def test_completed_bar_duplicate_rejects_mismatched_or_future_durable_index(
+    tmp_path, monkeypatch, corruption, expected_reason,
+):
+    p = product(944, VenueV2.BYBIT)
+    clock = [NOW]
+    port = _bar_port(p, clock)
+    try:
+        with OpsRepository(tmp_path / f"bar-invalid-index-{corruption}.sqlite") as repo:
+            port.recover(repo, now_ns=NOW)
+            first = _completed_bybit_bar(p, NOW)
+            assert port._persist_broad_public_snapshot(repo, _bybit_snapshot(first, NOW), now_ns=NOW)
+            ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                "record_id": first.observation.record_id})
+            original_lookup = repo.get_artifact_metadata_by_refs
+            clock[0] = NOW + 10_000_000_000
+
+            def altered_lookup(refs):
+                found = original_lookup(refs)
+                if ref not in found:
+                    return found
+                result = dict(found)
+                entry = dict(result[ref])
+                if corruption == "source":
+                    entry["metadata"] = {**entry["metadata"], "source_id": "OTHER_PUBLIC_SOURCE"}
+                elif corruption == "availability":
+                    entry["available_at_ns"] = clock[0] + 1
+                else:
+                    entry["metadata"] = {**entry["metadata"], "bar_content_hash": "e" * 64}
+                result[ref] = entry
+                return result
+
+            monkeypatch.setattr(repo, "get_artifact_metadata_by_refs", altered_lookup)
+            duplicate = _completed_bybit_bar(p, clock[0])
+            assert not port._persist_broad_public_snapshot(repo,
+                _bybit_snapshot(duplicate, clock[0]), now_ns=clock[0])
+            monkeypatch.setattr(repo, "get_artifact_metadata_by_refs", original_lookup)
+            receipt = repo.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
+                as_of_ns=clock[0], limit=1).entries[0].metadata["receipt"]
+            assert list(receipt["rejected_record_indexes"]) == [0]
+            assert list(receipt["source_observation_refs"]["BYBIT_PUBLIC_HTTP"]) == []
+            assert not receipt["source_health_current"]
+            rejection = repo.artifact_entries("BroadPublicAdoptionRejectionV1")[-1]
+            assert rejection.metadata["rejection"]["reason"] == expected_reason
+            assert repo.artifact_entries("BroadPublicDuplicateReceiptV2") == ()
+            health = repo.latest_source_health_at("BYBIT_PUBLIC_HTTP", as_of_ns=clock[0])
+            assert health is not None and health.status == "INCOMPLETE_SNAPSHOT"
+    finally:
+        port.close()
+
+
+def test_completed_bar_duplicate_rejects_incorrect_persisted_payload_hash(tmp_path, monkeypatch):
+    p = product(945, VenueV2.BYBIT)
+    clock = [NOW]
+    port = _bar_port(p, clock)
+    try:
+        with OpsRepository(tmp_path / "bar-invalid-payload-hash.sqlite") as repo:
+            port.recover(repo, now_ns=NOW)
+            original = _completed_bybit_bar(p, NOW)
+            assert port._persist_broad_public_snapshot(repo, _bybit_snapshot(original, NOW), now_ns=NOW)
+
+            clock[0] = NOW + 10_000_000_000
+            corrected = _completed_bybit_bar(p, clock[0], high="103", close="102")
+            assert port._persist_broad_public_snapshot(repo,
+                _bybit_snapshot(corrected, clock[0]), now_ns=clock[0])
+            corrected_revision = RawObservationV2.build(
+                instrument_revision=p.key.contract_revision, source_id=corrected.observation.source_id,
+                event_type=corrected.observation.event_type, event_at_ns=corrected.observation.event_at_ns,
+                published_at_ns=corrected.observation.published_at_ns,
+                received_at_ns=corrected.observation.received_at_ns,
+                ingested_at_ns=corrected.observation.ingested_at_ns,
+                available_at_ns=corrected.observation.available_at_ns, payload=corrected.raw_payload,
+                translation_version=corrected.observation.translation_version,
+                sequence=corrected.observation.sequence, revision_of=original.observation.record_id,
+                quality_flags=corrected.observation.quality_flags,
+                availability_class=corrected.observation.availability_class,
+            )
+            revision_ref = sha256_json({"artifact_type": "PublicObservationIndexV2",
+                "record_id": corrected_revision.record_id})
+            original_lookup = repo.get_artifact_metadata_by_refs
+            clock[0] = NOW + 20_000_000_000
+
+            def altered_lookup(refs):
+                found = original_lookup(refs)
+                if revision_ref not in found:
+                    return found
+                result = dict(found)
+                entry = dict(result[revision_ref])
+                entry["metadata"] = {**entry["metadata"], "raw_payload_hash": "f" * 64}
+                result[revision_ref] = entry
+                return result
+
+            monkeypatch.setattr(repo, "get_artifact_metadata_by_refs", altered_lookup)
+            repeated_correction = _completed_bybit_bar(p, clock[0], high="103", close="102")
+            assert not port._persist_broad_public_snapshot(repo,
+                _bybit_snapshot(repeated_correction, clock[0]), now_ns=clock[0])
+            monkeypatch.setattr(repo, "get_artifact_metadata_by_refs", original_lookup)
+            assert repo.get_artifact(revision_ref).metadata["raw_payload_hash"] == corrected.observation.raw_payload_hash
+            rejection = repo.artifact_entries("BroadPublicAdoptionRejectionV1")[-1]
+            assert rejection.metadata["rejection"]["reason"] == "DURABLE_DUPLICATE_INDEX_MISMATCH"
+            assert repo.artifact_entries("BroadPublicDuplicateReceiptV2") == ()
+            receipt = repo.latest_artifact_entries("BroadPublicAcquisitionReceiptV2",
+                as_of_ns=clock[0], limit=1).entries[0].metadata["receipt"]
+            assert list(receipt["rejected_record_indexes"]) == [0]
+            assert not receipt["source_health_current"]
+    finally:
+        port.close()
 
 
 def test_adoption_waits_for_durable_archive_before_proving_current_source_health(tmp_path):
