@@ -29,8 +29,11 @@ logs and the worktree.
 | --- | --- |
 | ATLAS-managed baseline at session start (all `atlas*` trees, venvs, worktrees, caches) | 15,802,662,779 |
 | ATLAS-managed baseline after reclaim (see §4) | 2,811,588,608 |
-| Workspace occupancy at report time | 490,782,720 |
-| **Total ATLAS-managed occupancy at report time** | **≈ 3,302,371,328** |
+| Workspace filesystem occupancy at report time (live data) | 490,913,792 |
+| Backing image file allocated blocks on the host (high-water mark; freed ext4 blocks are not punched back to the host file) | 1,872,072,704 |
+| **Total ATLAS-managed bytes actually occupied on the host at report time** | **4,684,222,464** |
+| Guard's logical accounting (external baseline + live workspace usage) | 3,303,063,552 |
+| Residual headroom under the 5,000,000,000-byte ceiling | 315,777,536 |
 | Guard protective write-stop threshold | 4,800,000,000 |
 | Absolute ceiling | 5,000,000,000 |
 | Maximum occupied bytes observed this session | 4,676,318,464 (immediately before the workspace cache reclaim) |
@@ -88,7 +91,26 @@ untracked paths) was never touched.
 * The `data/storage_manifest.json` file records the guard state, the limits,
   the peak occupancy, the peak reservation and the pause reasons.
 
-## 6. Remaining gate
+## 6. Reclaiming the backing image
+
+The backing image keeps the blocks that the filesystem has freed, because the
+loop device does not punch holes back into the file. The image therefore
+occupies its high-water mark (1,872,072,704 bytes) even though the live
+workspace only holds 490,913,792 bytes. The following procedure returns the
+difference without touching the evidence; it is not run automatically because
+it rewrites the backing store:
+
+```bash
+# 1. stop every writer, 2. copy the live workspace, 3. rebuild a sparse image
+truncate -s 1900000000 /home/kasun/Music/atlas-red-ws/volume.sparse.img
+losetup -f --show /home/kasun/Music/atlas-red-ws/volume.sparse.img
+mkfs.ext4 -q -m 0 -F -E discard <loop>
+mount <loop> /mnt
+rsync -a /home/kasun/Music/atlas-red-ws/mnt/ /mnt/
+# 4. verify the research store, then swap the image and re-mount
+```
+
+## 7. Remaining gate
 
 The boundary is **verified for this session**. It is not a standing guarantee
 for other ATLAS activity: the pre-existing ATLAS-managed footprint outside this
