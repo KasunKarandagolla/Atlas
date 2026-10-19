@@ -1,0 +1,29 @@
+TESTED ()
+         1943799 function calls (1747069 primitive calls) in 7.633 seconds
+
+   Ordered by: cumulative time
+   List reduced from 2532 to 22 due to restriction <22>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        2    0.935    0.468    7.232    3.616 tuning_export.py:1607(groups)
+       15    5.399    0.360    5.399    0.360 {built-in method time.sleep}
+       69    0.001    0.000    0.930    0.013 __init__.py:1(<module>)
+   499/10    0.002    0.000    0.404    0.040 <frozen importlib._bootstrap>:1349(_find_and_load)
+   499/10    0.002    0.000    0.404    0.040 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+   483/10    0.001    0.000    0.403    0.040 <frozen importlib._bootstrap>:911(_load_unlocked)
+   410/10    0.001    0.000    0.403    0.040 <frozen importlib._bootstrap_external>:993(exec_module)
+  1148/20    0.001    0.000    0.400    0.020 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+   631/10    0.021    0.000    0.400    0.040 {built-in method builtins.exec}
+      137    0.002    0.000    0.390    0.003 storage_preflight.py:369(measured)
+        8    0.000    0.000    0.230    0.029 api.py:1(<module>)
+     6449    0.005    0.000    0.227    0.000 _serialization.py:164(canonical_json)
+   423/51    0.000    0.000    0.191    0.004 {built-in method builtins.__import__}
+       25    0.004    0.000    0.159    0.006 repository.py:1511(register_artifacts)
+       24    0.000    0.000    0.159    0.007 storage_preflight.py:491(commit)
+191858/8083    0.071    0.000    0.153    0.000 _serialization.py:136(json_value)
+  713/391    0.001    0.000    0.126    0.000 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+     5105    0.116    0.000    0.116    0.000 {method 'execute' of 'sqlite3.Connection' objects}
+       24    0.015    0.001    0.112    0.005 public_archive_extents.py:117(seal)
+    62/35    0.000    0.000    0.111    0.003 <frozen importlib._bootstrap_external>:1299(exec_module)
+    62/35    0.024    0.000    0.111    0.003 {built-in method _imp.exec_dynamic}
+        3    0.000    0.000    0.095    0.032 generic.py:1(<module>)

@@ -1,0 +1,14 @@
+{
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "system": "Linux",
+  "architecture": "x86_64",
+  "git_parent": "19a2d91ebc1b136722e7baf18ea32b4b4d4cbe81",
+  "G0_contract_commit": "402648d",
+  "tools_environment": "isolated /workspace/work/atlas-g1-env; no repository dependency edits",
+  "prior_dependency_blockers": "PyArrow and Nautilus absent at session start; isolated exact-pin installation enabled verification; first storage-only dependency attempt also found missing LightGBM; Qt installed to run original runtime smoke tests",
+  "genuine_cached_public_evidence": "No retained market ZIP/CHECKSUM/Parquet/Arrow/capture journal found in scoped /workspace/shared,/workspace/scratch,/workspace/Atlas,/workspace/library-files; audit repository ZIP only, not promoted to market evidence",
+  "target_host": "UNVERIFIED",
+  "subagents": 0,
+  "model_effort_attestation": "UNVERIFIED; owner-selected Sol High"
+}

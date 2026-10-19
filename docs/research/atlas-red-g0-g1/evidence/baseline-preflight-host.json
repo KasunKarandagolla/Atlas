@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "version": "StoragePreflightResultV1",
+  "selected_path": "TEMPORARY_G1_PROBE",
+  "identity_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "started_at_ns": 1792367611384679681,
+  "completed_at_ns": 1792367611385071378,
+  "elapsed_ns": 391336,
+  "status": "TEST GATE",
+  "allowed": false,
+  "reasons": [
+    "INSUFFICIENT_DISK_HEADROOM"
+  ],
+  "limits": {
+    "queue_capacity_frames": 512,
+    "sustained_frames_per_second": 160,
+    "burst_frames_per_second": 320,
+    "safety_margin": 2,
+    "batch_frames": 64,
+    "sustained_batches": 16,
+    "burst_batches": 8,
+    "payload_bytes_per_frame": 4096,
+    "measured_48h_projection_bytes": 50344153861,
+    "storage_reserve_numerator": 5,
+    "storage_reserve_denominator": 4,
+    "total_budget_seconds": 30,
+    "maximum_operation_ns": 800000000,
+    "maximum_mean_service_ns": 200000000,
+    "minimum_free_bytes": 62930192327,
+    "projection_class": "MEASURED_S39_SHORT_RUN_ESTIMATE_NOT_GUARANTEED",
+    "projection_source": "SESSION039_PUBLIC_EVIDENCE_RELIABILITY_LEDGER.json:capacity_projection_48h",
+    "reserve_scope": "DB_WAL_ARCHIVES_REPORTS_FUTURE_EVIDENCE_AND_SAFETY_MARGIN"
+  },
+  "measurements": [
+    {
+      "operation": "DISK_HEADROOM",
+      "count": 1,
+      "minimum_ns": 18317,
+      "maximum_ns": 18317,
+      "mean_ns": 18317,
+      "p95_ns": 18317,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "FILESYSTEM_LOCALITY",
+      "count": 1,
+      "minimum_ns": 313400,
+      "maximum_ns": 313400,
+      "mean_ns": 313400,
+      "p95_ns": 313400,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "PATH_CREATE",
+      "count": 1,
+      "minimum_ns": 6910,
+      "maximum_ns": 6910,
+      "mean_ns": 6910,
+      "p95_ns": 6910,
+      "bytes_processed": 0
+    }
+  ],
+  "facts": {
+    "filesystem_type": "overlay",
+    "free_disk_bytes": 31167729664,
+    "probe_removed": false,
+    "real_run_database_opened": false,
+    "temporary_probe_only": true
+  },
+  "probe_mode": "HOST_PATH",
+  "authority": "ZERO",
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "live_source_qualification": "TEST GATE",
+  "endurance_qualification": "TEST GATE",
+  "content_hash": "db22e30ca1295d588a7931182fbb0470c109721794a32b8b250a170af4abe274"
+}

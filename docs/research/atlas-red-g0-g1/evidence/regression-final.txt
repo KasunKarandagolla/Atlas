@@ -1,0 +1,106 @@
+........................................................................ [ 21%]
+........................................................................ [ 42%]
+.......................................F................................ [ 63%]
+........................................................................ [ 84%]
+...............................F...................                      [100%]
+=================================== FAILURES ===================================
+___ test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture ___
+
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-4/test_real_binance_stream_runti0')
+
+    def test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture(tmp_path):
+        from atlas.v2.runtime.broad_public_runtime import BroadPublicRuntimeV2
+
+        now_ns = time.time_ns()
+        revision = sha256_json({"fixture": "binance-btc-revision"})
+        key = InstrumentKeyV2(VenueV2.BINANCE, EnvironmentV2.MAINNET,
+            ProductTypeV2.LINEAR_PERPETUAL, "BTCUSDT", "BTC", "USDT", "USDT", revision)
+        product = ProductContractV2(key, now_ns, now_ns, now_ns, Decimal("0.001"), Decimal("0.01"),
+            Decimal("0.001"), Decimal("0.001"), TradingStatusV2.TRADING, revision)
+
+        async def frames():
+            trade_id = 1
+            while True:
+                received = time.time_ns()
+                payload = json.dumps({"stream": "btcusdt@aggTrade", "data": {
+                    "e": "aggTrade", "E": received // 1_000_000,
+                    "s": "BTCUSDT", "a": trade_id, "p": "100.01", "q": "0.01",
+                    "T": received // 1_000_000, "m": False}}, separators=(",", ":")).encode()
+                yield CapturedPublicFrameV2(VenueV2.BINANCE, "BINANCE_MARKET_PUBLIC_WS_BROAD_V2",
+                    "btcusdt@aggTrade", payload, hashlib.sha256(payload).hexdigest(), received, received, 1)
+                trade_id += 1
+                await asyncio.sleep(0.025)
+
+        runtime = BroadPublicRuntimeV2(stream_factories={"BINANCE_MARKET": frames},
+            capture_payload_metrics=True)
+        run_root = tmp_path / "fixture-run"
+        run_root.mkdir()
+        try:
+            with OpsRepository(run_root / "ops.sqlite") as repository:
+>               runtime.recover(repository, run_root=run_root, products=(product,), tiers={},
+                    now_ns=now_ns, benchmark_keys=(key,))
+
+tests/v2/test_session041_binance_qualification.py:670:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/atlas/v2/runtime/broad_public_runtime.py:323: in recover
+    self._preparation_worker.start(run_root)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <atlas.v2.data.public_evidence_preparation.PublicEvidencePreparationWorkerV2 object at 0x7f22f2b26330>
+run_root = PosixPath('/tmp/pytest-of-agent/pytest-4/test_real_binance_stream_runti0/fixture-run')
+
+    def start(self, run_root: str | Path) -> None:
+        """Spawn and warm the fixed worker before any measured service call."""
+        root = str(Path(run_root).resolve())
+        if self._process is not None and self._process.is_alive() and self._run_root == root:
+            return
+        self._terminate()
+        self._start(root)
+        assert self._connection is not None and self._process is not None
+        deadline = time.monotonic() + MAX_PREPARATION_STARTUP_SECONDS_V2
+        while time.monotonic() < deadline:
+            if self._connection.poll(0.01):
+                try:
+                    ready = json.loads(self._connection.recv_bytes(16 * 1024))
+                except (EOFError, OSError, json.JSONDecodeError) as exc:
+                    self._terminate()
+                    raise PublicEvidencePreparationError("preparation worker warmup pipe failed") from exc
+                if ready != {"phase": "READY", "run_root": root}:
+                    self._terminate()
+                    raise PublicEvidencePreparationError("preparation worker warmup binding mismatch")
+                return
+            if not self._process.is_alive():
+                code = self._process.exitcode
+                self._terminate()
+                raise PublicEvidencePreparationError(f"preparation worker exited during warmup (exit={code})")
+        self._terminate()
+>       raise PublicEvidencePreparationTimeout(
+            f"preparation worker warmup exceeded {MAX_PREPARATION_STARTUP_SECONDS_V2:g} s")
+E       atlas.v2.data.public_evidence_preparation.PublicEvidencePreparationTimeout: preparation worker warmup exceeded 15 s
+
+src/atlas/v2/data/public_evidence_preparation.py:383: PublicEvidencePreparationTimeout
+----------------------------- Captured stdout call -----------------------------
+...............................................................
+_________ test_property_valid_sequence_never_moves_update_id_backwards _________
+
+    @given(st.lists(st.integers(min_value=1, max_value=3), min_size=1, max_size=30))
+>   def test_property_valid_sequence_never_moves_update_id_backwards(increments: list[int]) -> None:
+                   ^^^
+E   hypothesis.errors.FailedHealthCheck: Input generation is slow: Hypothesis only generated 3 valid inputs after 1.11 seconds (1 inputs which exceeded the maximum allowed entropy).
+E
+E                  count | fraction |    slowest draws (seconds)
+E     increments |    4  |    100%  |      --      --      --      --   1.109
+E
+E   This could be for a few reasons:
+E   1. This strategy could be generating too much data per input. Try decreasing the amount of data generated, for example by decreasing the minimum size of collection strategies like st.lists().
+E   2. Some other expensive computation could be running during input generation. For example, if @st.composite or st.data() is interspersed with an expensive computation, HealthCheck.too_slow is likely to trigger. If this computation is unrelated to input generation, move it elsewhere. Otherwise, try making it more efficient, or disable this health check if that is not possible.
+E
+E   If you expect input generation to take this long, you can disable this health check with @settings(suppress_health_check=[HealthCheck.too_slow]). See https://hypothesis.readthedocs.io/en/latest/reference/api.html#hypothesis.HealthCheck for details.
+
+tests/v2/test_session022_s4_microstructure.py:549: FailedHealthCheck
+----------------------------- Captured stdout call -----------------------------
+You can reproduce this failure by adding @seed(34436534714957775508005278245403480402) to this test.
+=========================== short test summary info ============================
+FAILED tests/v2/test_session041_binance_qualification.py::test_real_binance_stream_runtime_commits_and_reads_only_observed_fixture
+FAILED tests/v2/test_session022_s4_microstructure.py::test_property_valid_sequence_never_moves_update_id_backwards
+2 failed, 337 passed in 58.16s

@@ -1,0 +1,156 @@
+{
+  "decision": "OFFLINE_CAPTURE_TEST_GATE",
+  "base_sha": "19a2d91ebc1b136722e7baf18ea32b4b4d4cbe81",
+  "immediate_parent_G0_sha": "402648d73a73b8641ac77d2d8fe1453fdfc1ece4",
+  "branch": "research/atlas-red-g0-g1-capture-qualification-2026-10-18",
+  "final_sha": "Returned after remote verification; a commit cannot embed its own hash",
+  "external_acceptance_scope": "PASS — scoped economic-feasibility investigation only; exact19a2d91; supplied by owner,not self-accepted",
+  "G0_contract_sha256": "f6374954fee12ec6e7d639e9f087a7e943a4433e15028ad4197e7cab46100d77",
+  "production_changes": [
+    "src/atlas/v2/data/durable_public_capture.py",
+    "src/atlas/v2/runtime/storage_preflight.py"
+  ],
+  "commands": {
+    "final_regression": "/workspace/work/atlas-g1-env/bin/python /workspace/work/atlas-g1-run/offline_pytest.py tests/v2/test_g1_capture_integrity.py tests/v2/test_g1_qualification_harness.py tests/v2/test_session040_storage_preflight.py tests/v2/test_session041_broad_storage_preflight.py tests/v2/test_session040_capture_receipts.py tests/v2/test_session040_durable_capture.py tests/v2/test_session039_public_archive_extents.py tests/v2/test_session041_capture_pressure_reserve.py tests/v2/test_session041_capture_delivery_batching.py tests/v2/test_session032_public_stream_continuity.py tests/v2/test_session032_public_stream_source.py tests/v2/test_session032_public_stream_integration.py tests/v2/test_session041_broad_public_source.py tests/v2/test_session041_broad_stream_source.py tests/v2/test_session041_binance_qualification.py tests/v2/test_session040_live_health.py tests/v2/test_session041_dynamic_universe.py tests/v2/test_data_runtime.py tests/v2/test_session022_s4_microstructure.py tests/v2/test_session037_chronology.py tests/contract/test_v1_golden_baseline.py --junitxml=/workspace/work/atlas-g1-run/regression-verified.xml",
+    "harness": "/workspace/work/atlas-g1-env/bin/python scripts/qualify_public_observation.py --storage-path /workspace/work/atlas-g1-run/host-probe --output /workspace/work/atlas-g1-run/qualification-final.json --maximum-breadth",
+    "missing_input_checks": "/workspace/work/atlas-g1-env/bin/python /workspace/work/atlas-g1-run/offline_pytest.py tests/v2/test_session031_public_shadow_readiness.py::test_readiness_fails_closed_on_missing_s1_context_and_required_health tests/v2/test_session031_public_shadow_readiness.py::test_s3_missing_trade_vwap_residual_and_one_second_bbo_stays_not_estimable tests/v2/test_session021_s6.py::test_s6_20_instruments_calculate_ranked_betas_scores_and_deciles --junitxml=/workspace/work/atlas-g1-run/missing-inputs.xml",
+    "static": "Ruff changed source/tests/script; compileall src and new files; uv lock --check --offline; pip check; algorithms sha256sum -c MANIFEST.sha256; git diff --check"
+  },
+  "tests": {
+    "baseline-regression.xml": {
+      "tests": 83,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "red-counterexamples.xml": {
+      "tests": 5,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "green-counterexamples.xml": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "regression-final.xml": {
+      "tests": 339,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "corrected-runner.xml": {
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "regression-verified.xml": {
+      "tests": 339,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "missing-inputs.xml": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "test_interpretation": {
+    "final_corrected_regression": {
+      "passed": 339,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 41.39
+    },
+    "additional_missing_inputs": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 1.38
+    },
+    "unique_final_coverage": 342,
+    "new_G1_cases": 18,
+    "full_repository_suite": false,
+    "earlier_run_failure": "Temporary pytest launcher missing __main__ multiprocessing guard:337pass/2fail retained; corrected20pass plus single complete339pass. No source deadlines or Hypothesis checks changed."
+  },
+  "protected_sha256": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d",
+    "algorithms/ATLAS_SYSTEM_DESIGN.md": "384fc2914d227163ec94761d5eba8f5228786305432b5c620a6a4862d781678f",
+    "algorithms/ATLAS_ALGORITHM.pdf": "0bdf5bf7cbf82b7a341915fff83faa26ebe1ae77a06ed8df6cf3975b13bfbf33",
+    "algorithms/REQUIREMENTS_AND_ACCEPTANCE.md": "c64c28f2eacc51e41b09d00dcdf2c81a835c6f5921269c86e13d17064ed136f5",
+    "algorithms/SHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md": "1047af424714b5bad755208e49e833cdb4bb0e89a2c06cb67c4e7e80af05e7cf",
+    "algorithms/ATLAS_OPERATIONAL_RECONCILIATION_AMENDMENT_PROPOSED.md": "d23aed0f53566137fdcf3030d47ae611ce9026553b30def890ee8b782278747c",
+    "pyproject.toml": "1027697c586b9a8a39ca7b482057d3187e48e643902f05518ecfd141d8ed7933",
+    "requirements-lock.txt": "711c2abda6c2152b3acf98ba151bf62bf7e13ab6a4259e5c99034d2fa3abba2b",
+    "requirements-windows-lock.txt": "984be9a8ae0454540a3a585e6a80effaf84083434a72b15bf1816781985404b5",
+    "uv.lock": "8a3a1d14b7c4774b7189f18c7cc1c9086496135a34f86a7021ba7ff726898d61"
+  },
+  "protection_checks": {
+    "all_protected_bytes_equal_base": true,
+    "translog_append_only": true,
+    "root_log_history_retained": true,
+    "CURRENT_STATE_history_retained": true,
+    "acceptance_107_rows_and_state_columns_unchanged": true,
+    "feature_strategy_policy_and_untouched_source_owners_unchanged": true,
+    "final_measurement_source_hashes_match_current_tree": true,
+    "new_artifact_secret_shape_scan": true,
+    "source_capacity_constant": "UNCHANGED None",
+    "original_checkout": "/workspace/Atlas work@bac8b16 left unchanged; isolated worktree only"
+  },
+  "measurement": {
+    "environment": "CLOUD DEVELOPMENT MEASUREMENTS",
+    "primary_artifact": "evidence/qualification-final.json",
+    "primary_content_hash": "f264ca9eb605ded494a710a481f1c034f8b18d4854f58f396bb0f26281024054",
+    "host_preflight_reasons": [
+      "INSUFFICIENT_DISK_HEADROOM"
+    ],
+    "diagnostic_mode": "FAULT_INJECTION",
+    "diagnostic_overrides": [
+      "free_bytes=1000000000000 (injected, not observed)",
+      "storage-only dependencies; full runtime smoke NOT qualified"
+    ],
+    "max_cycle_bytes": 42504371,
+    "required_48h_projected_bytes": 1377141631200,
+    "breadth_integrity": {
+      "exact_raw_rows_verified": 24576,
+      "exact_index_metadata_verified_after_restart": 24576,
+      "all_artifact_domain_metadata_verified_after_restart": 40977,
+      "source_receipt_refs_verified": 24576,
+      "cutoff_worksets_verified_after_restart": 3,
+      "compression_roundtrip": "EXACT_CANONICAL_BYTES"
+    },
+    "peak_process_tree_hwm_bytes": 945475584,
+    "resource_samples": 2272,
+    "cpu_seconds": 114.339731998,
+    "capacity_qualified": false,
+    "target_host": "UNVERIFIED",
+    "full_native_Tplus5": "UNVERIFIED",
+    "endurance": "UNVERIFIED",
+    "programme_economics": "NOT ESTIMABLE",
+    "max_breadth_cadence": "TEST GATE:19–21s adoption plus2–3s workset exceeds10s"
+  },
+  "zero_execution": {
+    "new_market_requests": 0,
+    "public_websocket_collection": false,
+    "private_account_access": false,
+    "provider_calls": 0,
+    "model_generation_or_download": false,
+    "orders": 0,
+    "deployment": false,
+    "policy_or_capital_activation": false,
+    "worker_network_or_child_attempts": {
+      "network_denied": 0,
+      "subprocess_denied": 0
+    },
+    "unit_test_refusal_probes": "2 blocked socket/DNS and1 blocked child launch using synthetic variables; no outbound traffic",
+    "subagents": 0
+  },
+  "next_gate": "Independent exact-SHA review; profile/correct existing broad service then actual host offline qualification. Separate bounded public authorization required; no G2 launched."
+}

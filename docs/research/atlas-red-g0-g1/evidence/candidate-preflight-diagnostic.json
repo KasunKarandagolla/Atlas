@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "version": "StoragePreflightResultV1",
+  "selected_path": "TEMPORARY_G1_PROBE",
+  "identity_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "started_at_ns": 1792367692897168844,
+  "completed_at_ns": 1792367699745592589,
+  "elapsed_ns": 6848423315,
+  "status": "TESTED",
+  "allowed": true,
+  "reasons": [],
+  "limits": {
+    "queue_capacity_frames": 512,
+    "sustained_frames_per_second": 160,
+    "burst_frames_per_second": 320,
+    "safety_margin": 2,
+    "batch_frames": 64,
+    "sustained_batches": 16,
+    "burst_batches": 8,
+    "payload_bytes_per_frame": 4096,
+    "measured_48h_projection_bytes": 50344153861,
+    "storage_reserve_numerator": 5,
+    "storage_reserve_denominator": 4,
+    "total_budget_seconds": 30,
+    "maximum_operation_ns": 800000000,
+    "maximum_mean_service_ns": 200000000,
+    "minimum_free_bytes": 62930192327,
+    "projection_class": "MEASURED_S39_SHORT_RUN_ESTIMATE_NOT_GUARANTEED",
+    "projection_source": "SESSION039_PUBLIC_EVIDENCE_RELIABILITY_LEDGER.json:capacity_projection_48h",
+    "reserve_scope": "DB_WAL_ARCHIVES_REPORTS_FUTURE_EVIDENCE_AND_SAFETY_MARGIN"
+  },
+  "measurements": [
+    {
+      "operation": "ARCHIVE_REPLAY",
+      "count": 24,
+      "minimum_ns": 1436714,
+      "maximum_ns": 3026075,
+      "mean_ns": 1802583,
+      "p95_ns": 2458194,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "ARCHIVE_WRITE_FSYNC",
+      "count": 24,
+      "minimum_ns": 3778265,
+      "maximum_ns": 10597109,
+      "mean_ns": 4698306,
+      "p95_ns": 6063246,
+      "bytes_processed": 6322176
+    },
+    {
+      "operation": "BURST_BATCH_SERVICE",
+      "count": 8,
+      "minimum_ns": 16887422,
+      "maximum_ns": 21874510,
+      "mean_ns": 18030206,
+      "p95_ns": 21874510,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "CAPTURE_RECEIPT_FSYNC",
+      "count": 24,
+      "minimum_ns": 358938,
+      "maximum_ns": 2097894,
+      "mean_ns": 583136,
+      "p95_ns": 860890,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "CAPTURE_RECEIPT_REOPEN",
+      "count": 1,
+      "minimum_ns": 504576,
+      "maximum_ns": 504576,
+      "mean_ns": 504576,
+      "p95_ns": 504576,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "DISK_HEADROOM",
+      "count": 1,
+      "minimum_ns": 2073,
+      "maximum_ns": 2073,
+      "mean_ns": 2073,
+      "p95_ns": 2073,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "FILESYSTEM_LOCALITY",
+      "count": 1,
+      "minimum_ns": 613509,
+      "maximum_ns": 613509,
+      "mean_ns": 613509,
+      "p95_ns": 613509,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "FILESYSTEM_WRITE_FLUSH_READ_RENAME_DELETE",
+      "count": 1,
+      "minimum_ns": 1964364,
+      "maximum_ns": 1964364,
+      "mean_ns": 1964364,
+      "p95_ns": 1964364,
+      "bytes_processed": 4096
+    },
+    {
+      "operation": "PATH_CREATE",
+      "count": 1,
+      "minimum_ns": 20751,
+      "maximum_ns": 20751,
+      "mean_ns": 20751,
+      "p95_ns": 20751,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "PROBE_CREATE",
+      "count": 1,
+      "minimum_ns": 137947,
+      "maximum_ns": 137947,
+      "mean_ns": 137947,
+      "p95_ns": 137947,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "REOPEN_ARCHIVE_REPLAY",
+      "count": 24,
+      "minimum_ns": 1265137,
+      "maximum_ns": 1586238,
+      "mean_ns": 1380152,
+      "p95_ns": 1463665,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "RUNTIME_DEPENDENCIES",
+      "count": 1,
+      "minimum_ns": 1653,
+      "maximum_ns": 1653,
+      "mean_ns": 1653,
+      "p95_ns": 1653,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "SQLITE_CREATE",
+      "count": 1,
+      "minimum_ns": 15588059,
+      "maximum_ns": 15588059,
+      "mean_ns": 15588059,
+      "p95_ns": 15588059,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "SQLITE_FULL_MODE",
+      "count": 1,
+      "minimum_ns": 6490,
+      "maximum_ns": 6490,
+      "mean_ns": 6490,
+      "p95_ns": 6490,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "SQLITE_INSPECTION",
+      "count": 1,
+      "minimum_ns": 3205,
+      "maximum_ns": 3205,
+      "mean_ns": 3205,
+      "p95_ns": 3205,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "SQLITE_INTEGRITY",
+      "count": 1,
+      "minimum_ns": 2250835,
+      "maximum_ns": 2250835,
+      "mean_ns": 2250835,
+      "p95_ns": 2250835,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "SQLITE_PASSIVE_CHECKPOINT",
+      "count": 2,
+      "minimum_ns": 1310445,
+      "maximum_ns": 2245958,
+      "mean_ns": 1778201,
+      "p95_ns": 2245958,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "SQLITE_READONLY_REOPEN",
+      "count": 1,
+      "minimum_ns": 1186238,
+      "maximum_ns": 1186238,
+      "mean_ns": 1186238,
+      "p95_ns": 1186238,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "SQLITE_SECOND_WRITER_REJECTION",
+      "count": 1,
+      "minimum_ns": 167801,
+      "maximum_ns": 167801,
+      "mean_ns": 167801,
+      "p95_ns": 167801,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "SQLITE_TRANSACTION_COMMIT",
+      "count": 25,
+      "minimum_ns": 643134,
+      "maximum_ns": 11494636,
+      "mean_ns": 6390593,
+      "p95_ns": 10167786,
+      "bytes_processed": 6291456
+    },
+    {
+      "operation": "SQLITE_WAL_MODE",
+      "count": 1,
+      "minimum_ns": 16385,
+      "maximum_ns": 16385,
+      "mean_ns": 16385,
+      "p95_ns": 16385,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "STRICT_READONLY_EXPORT",
+      "count": 1,
+      "minimum_ns": 534786776,
+      "maximum_ns": 534786776,
+      "mean_ns": 534786776,
+      "p95_ns": 534786776,
+      "bytes_processed": 0
+    },
+    {
+      "operation": "SUSTAINED_BATCH_SERVICE",
+      "count": 16,
+      "minimum_ns": 17713364,
+      "maximum_ns": 279992244,
+      "mean_ns": 36876114,
+      "p95_ns": 279992244,
+      "bytes_processed": 0
+    }
+  ],
+  "facts": {
+    "capture_receipt_bytes": 20590,
+    "capture_receipt_reopen_exact": true,
+    "capture_receipts_written": 24,
+    "database_bytes": 8761344,
+    "dependencies": {
+      "scope": "STORAGE_ONLY_NO_QT_RUNTIME_SMOKE"
+    },
+    "export_smoke": {
+      "has_more": false,
+      "partition": "partitions/3f66d5e81b4f608e732776365941dc421b003ceb7ad640fcdfdfed60d1f3e891.parquet",
+      "status": "TESTED",
+      "validation_failures": {}
+    },
+    "filesystem_type": "overlay",
+    "free_disk_bytes": 1000000000000,
+    "generated_archive_extents": 24,
+    "generated_frame_count": 1536,
+    "generated_index_rows": 1561,
+    "pinned_reader_checkpoint": [
+      0,
+      761,
+      754
+    ],
+    "probe_removed": true,
+    "raw_archive_bytes": 3163598,
+    "real_run_database_opened": false,
+    "sole_writer_lease_enforced": true,
+    "sqlite_integrity": "ok",
+    "sqlite_journal_mode": "wal",
+    "sqlite_synchronous": 2,
+    "temporary_probe_only": true,
+    "wal_bytes": 4507312,
+    "wal_checkpoint": [
+      0,
+      761,
+      761
+    ]
+  },
+  "probe_mode": "FAULT_INJECTION",
+  "authority": "ZERO",
+  "capital_enabled": false,
+  "assisted_enabled": false,
+  "live_source_qualification": "TEST GATE",
+  "endurance_qualification": "TEST GATE",
+  "content_hash": "0d944111a105d76158fe4bbe8a4870fbc157ec7f56290989d0dcc140ad019dd5"
+}

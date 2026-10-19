@@ -1,3 +1,17 @@
+# G0/G1 offline capture candidate — 19 October 2026 (Asia/Colombo)
+
+**OFFLINE_CAPTURE_TEST_GATE.** Isolated `research/atlas-red-g0-g1-capture-qualification-2026-10-18` from exact `19a2d91ebc1b136722e7baf18ea32b4b4d4cbe81`; G0 contract committed before measurements at `402648d`. The final engineering commit is the new review candidate; exact remote SHA is returned at delivery, not self-accepted. External PASS applies only to the supplied feasibility investigation at19a2d91.
+
+[Report](docs/research/atlas-red-g0-g1/G1_STATUS_REPORT.md), [G0 contract](docs/research/atlas-red-g0-g1/G0_MEASUREMENT_CONTRACT.md), [procedure](docs/research/atlas-red-g0-g1/TARGET_HOST_PROCEDURE.md), [external feasibility acceptance](docs/project/ACCEPTANCE_FEASIBILITY_19A2D91_2026-10-18.md).
+
+Corrected atomic extent+batch adoption and decreasing lifetime payload maximum; reused the existing batch registration API to remove preflight per-row/savepoint overhead. Original WAL/FULL,fsync,queues,200/800ms limits,ten-second cadence,T+5,retention and all trading/strategy/feature/policy/freeze identities remain. Final corrected focused/regression selection339passed,0failed/skipped; separate missing-input checks recorded in execution evidence. Prior faulty-launcher337pass/2fail is retained,followed by20pass and the complete corrected339pass run. No full repository-suite claim.
+
+Final cloud max-breadth fixture:4096products×3cycles,24,576raw/index rows and40,977domain artifacts verified after restart. Maximum measured DB+archive cycle growth42,504,371bytes; native adoption19.033–20.691s plus2.463–3.009s workset exceeds10s cadence. Original selected-path preflight rejects disk reserve. Diagnostic preflight passes only with explicitly labelled hooks; it is not host admission. Harness peakRSS945,475,584bytes includes verification maps; not actual4GB certification. Constantcapacity remainsNone; whole programme economics NOT ESTIMABLE. Genuine sources,target host,native decision T+5,72h/retention and G2 P1 provenance remain gates.
+
+Next: independent exact-SHA review,profile/correct measured broad owner-path service and run the offline harness on the actual selected host. Public qualification requires a separately bounded owner request after original profile/path/service gates; no collection or OBSERVE activation follows here. G2 genuine financial provenance/typed readers is separate Sol-owned work. No subagents; runtime model/High attestation UNVERIFIED. No market/private/provider/model/order/deployment/policy/capital action. **OBSERVE / zero allocation and paid allowance / CAPITAL NO-GO. STOP after verified push; no merge or dependent session.**
+
+---
+
 # G0/G1 offline capture engineering authorized — 19 October 2026 (Asia/Colombo)
 
 Isolated `research/atlas-red-g0-g1-capture-qualification-2026-10-18` from exact `19a2d91ebc1b136722e7baf18ea32b4b4d4cbe81`. [External scoped acceptance](docs/project/ACCEPTANCE_FEASIBILITY_19A2D91_2026-10-18.md) records the supplied feasibility-only PASS; new engineering candidate remains unaccepted. G0 contract: `docs/research/atlas-red-g0-g1/G0_MEASUREMENT_CONTRACT.md`, committed before benchmark-driven changes. Offline temporary-file work only; source/host/native T+5 unqualified. No subagents. OBSERVE; zero allocation/paid allowance; CAPITAL NO-GO.

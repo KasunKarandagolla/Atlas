@@ -1,0 +1,29 @@
+TESTED ()
+         2039813 function calls (1843076 primitive calls) in 8.151 seconds
+
+   Ordered by: cumulative time
+   List reduced from 2534 to 22 due to restriction <22>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        2    1.205    0.603    7.630    3.815 tuning_export.py:1607(groups)
+       14    5.162    0.369    5.162    0.369 {built-in method time.sleep}
+       69    0.003    0.000    1.386    0.020 __init__.py:1(<module>)
+   499/10    0.003    0.000    0.636    0.064 <frozen importlib._bootstrap>:1349(_find_and_load)
+   499/10    0.002    0.000    0.636    0.064 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+   483/10    0.001    0.000    0.635    0.063 <frozen importlib._bootstrap>:911(_load_unlocked)
+   410/10    0.001    0.000    0.634    0.063 <frozen importlib._bootstrap_external>:993(exec_module)
+  1159/24    0.001    0.000    0.630    0.026 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+   631/10    0.021    0.000    0.604    0.060 {built-in method builtins.exec}
+      137    0.002    0.000    0.577    0.004 storage_preflight.py:369(measured)
+        8    0.000    0.000    0.371    0.046 api.py:1(<module>)
+       24    0.001    0.000    0.294    0.012 storage_preflight.py:491(commit)
+   423/51    0.000    0.000    0.291    0.006 {built-in method builtins.__import__}
+     6449    0.006    0.000    0.267    0.000 _serialization.py:164(canonical_json)
+     1561    0.002    0.000    0.253    0.000 repository.py:1508(register_artifact)
+     1561    0.025    0.000    0.252    0.000 repository.py:1511(register_artifacts)
+      410    0.002    0.000    0.201    0.000 <frozen importlib._bootstrap_external>:1066(get_code)
+191858/8083    0.083    0.000    0.178    0.000 _serialization.py:136(json_value)
+  713/391    0.001    0.000    0.177    0.000 <frozen importlib._bootstrap>:1390(_handle_fromlist)
+    62/35    0.000    0.000    0.175    0.005 <frozen importlib._bootstrap_external>:1299(exec_module)
+    62/35    0.043    0.001    0.175    0.005 {built-in method _imp.exec_dynamic}
+    12833    0.159    0.000    0.159    0.000 {method 'execute' of 'sqlite3.Connection' objects}

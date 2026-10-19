@@ -300,3 +300,8 @@ New26+selected30 tests pass; two explicit missingPyArrow/Nautilus probes fail id
 ## 2026-10-19 — G0 measurement contract / bounded G1 authorization
 
 Fresh remote discovery pins parent19a2d91; supplied external PASS synchronized only for its scoped feasibility investigation. New isolated branch, no subagents; all three freezes read in full and canonical hashes verified. G0 contract precedes implementation/benchmarks; no thresholds,capacity constants or operating authority changed. Private originals unavailable and not claimed read. Offline G1 only; new exact-SHA independent review required.
+
+
+## 2026-10-19 — G1 offline capture engineering candidate / service TEST GATE
+
+G0contract402648d precedes fixes/benchmarks on isolated branch from19a2d91. Two red capture defects fixed:atomic standalone extent+batch publication and lifetime payload maximum. Preflight reuses existing atomic batch registration for identical65rows/FULL durability; raw bounded latency samples added. No thresholds,queues,breadth,cadence,retention,algorithm or policy changes. Final corrected339test selection passes; first337pass/2fail launcher error,corrected20pass and final complete339pass retained. Final maximum-breadth3cycle4096product probe verifies24,576raw/index and40,977domain artifacts after restart;42,504,371max cycle bytes. Adoption19.033–20.691s+workset2.463–3.009s fails10s cadence; selected cloud path fails original disk reserve. Diagnostic hooks stay fault injection. Linux offline harness and separately uninvoked public procedure documented; target4GB/nativeT+5/real sources/G2 provenance unverified. No self-acceptance,market/private/provider/model/order/deployment or capital activation. Final remote SHA returned at delivery; STOP for independent review.

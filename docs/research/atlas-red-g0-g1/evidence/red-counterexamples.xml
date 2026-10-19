@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="5" time="0.452" timestamp="2026-10-18T23:54:20.596732+00:00" hostname="d9ed8a942d88"><testcase classname="tests.v2.test_g1_capture_integrity" name="test_transport_adoption_is_atomic_even_without_outer_composition" time="0.298"><failure message="AssertionError: assert ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57', artifact_type='P...a256', 'ed2824b61af98132e341c9b48c576b7afe54d4654486133a39ddd5cac8023186'), ('version', 'PublicArchiveExtentV1')))),))) is None&#10; +  where ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57', artifact_type='P...a256', 'ed2824b61af98132e341c9b48c576b7afe54d4654486133a39ddd5cac8023186'), ('version', 'PublicArchiveExtentV1')))),))) = get_artifact('6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57')&#10; +    where get_artifact = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f2cc2333cb0&gt;.get_artifact&#10; +    and   '6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57' = ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57', artifact_type='P...a256', 'ed2824b61af98132e341c9b48c576b7afe54d4654486133a39ddd5cac8023186'), ('version', 'PublicArchiveExtentV1')))),))).artifact_ref&#10; +      where ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57', artifact_type='P...a256', 'ed2824b61af98132e341c9b48c576b7afe54d4654486133a39ddd5cac8023186'), ('version', 'PublicArchiveExtentV1')))),))) = SealedPublicTransportV1(extent=ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f...), ('frame_count', 1), ('last_received_at_ns', 100), ('version', 'PublicStreamTransportBatchV2')))),))), frame_count=1).extent">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-1/test_transport_adoption_is_ato0')
+
+    def test_transport_adoption_is_atomic_even_without_outer_composition(tmp_path):
+        _, batch, frame = sealed(tmp_path)
+        with OpsRepository(tmp_path / 'ops.sqlite') as repo:
+            repo._connection.execute("""CREATE TEMP TRIGGER reject_batch BEFORE INSERT ON artifact_index
+                WHEN NEW.artifact_type='PublicStreamTransportBatchV2'
+                BEGIN SELECT RAISE(ABORT, 'injected batch failure'); END""")
+            with pytest.raises(sqlite3.IntegrityError):
+                batch.adopt(repo)
+&gt;           assert repo.get_artifact(batch.extent.artifact_ref) is None
+E           AssertionError: assert ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57', artifact_type='P...a256', 'ed2824b61af98132e341c9b48c576b7afe54d4654486133a39ddd5cac8023186'), ('version', 'PublicArchiveExtentV1')))),))) is None
+E            +  where ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57', artifact_type='P...a256', 'ed2824b61af98132e341c9b48c576b7afe54d4654486133a39ddd5cac8023186'), ('version', 'PublicArchiveExtentV1')))),))) = get_artifact('6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57')
+E            +    where get_artifact = &lt;atlas.v2.memory.repository.OpsRepository object at 0x7f2cc2333cb0&gt;.get_artifact
+E            +    and   '6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57' = ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57', artifact_type='P...a256', 'ed2824b61af98132e341c9b48c576b7afe54d4654486133a39ddd5cac8023186'), ('version', 'PublicArchiveExtentV1')))),))).artifact_ref
+E            +      where ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f526ad6770e57', artifact_type='P...a256', 'ed2824b61af98132e341c9b48c576b7afe54d4654486133a39ddd5cac8023186'), ('version', 'PublicArchiveExtentV1')))),))) = SealedPublicTransportV1(extent=ArtifactIndexEntryV2(artifact_ref='6d05c0b048909b77afb082973e45c918d134e9d48a10ddb4807f...), ('frame_count', 1), ('last_received_at_ns', 100), ('version', 'PublicStreamTransportBatchV2')))),))), frame_count=1).extent
+
+tests/v2/test_g1_capture_integrity.py:40: AssertionError</failure></testcase><testcase classname="tests.v2.test_g1_capture_integrity" name="test_capture_payload_maximum_never_decreases_across_batches" time="0.002"><failure message="assert 1 == 4096&#10; +  where 1 = &lt;atlas.v2.data.durable_public_capture.DurablePublicCaptureV1 object at 0x7f2cb810c890&gt;._payload_size_max">tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-1/test_capture_payload_maximum_n0')
+
+    def test_capture_payload_maximum_never_decreases_across_batches(tmp_path):
+        capture, batch, frame = sealed(tmp_path, payload=b'x'*4096)
+        capture._record_captured_batch(batch, (frame,), started=0, record_archive_metrics=False)
+        smaller = replace(frame, raw_payload_bytes=b'x', raw_payload_hash=hashlib.sha256(b'x').hexdigest())
+        capture._record_captured_batch(batch, (smaller,), started=0, record_archive_metrics=False)
+&gt;       assert capture._payload_size_max == 4096
+E       assert 1 == 4096
+E        +  where 1 = &lt;atlas.v2.data.durable_public_capture.DurablePublicCaptureV1 object at 0x7f2cb810c890&gt;._payload_size_max
+
+tests/v2/test_g1_capture_integrity.py:57: AssertionError</failure></testcase><testcase classname="tests.v2.test_g1_capture_integrity" name="test_failed_storage_does_not_publish_a_transport_batch[disk_full]" time="0.007" /><testcase classname="tests.v2.test_g1_capture_integrity" name="test_failed_storage_does_not_publish_a_transport_batch[fsync]" time="0.002" /><testcase classname="tests.v2.test_g1_capture_integrity" name="test_failed_storage_does_not_publish_a_transport_batch[commit]" time="0.010" /></testsuite></testsuites>

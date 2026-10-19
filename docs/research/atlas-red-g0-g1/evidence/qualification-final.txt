@@ -1,0 +1,1 @@
+TEST GATE: offline measurements complete; actual host/source/native timing unqualified

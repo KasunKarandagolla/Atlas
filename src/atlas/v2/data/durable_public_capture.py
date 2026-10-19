@@ -93,8 +93,9 @@ class SealedPublicTransportV1:
     ) -> tuple[CapturedPublicFrameV2, ...]:
         """Publish a descriptor after its exact raw extent was verified outside SQL."""
         self.verify_unpublished_frames(frames)
-        repository.register_artifact(self.extent)
-        repository.register_artifact(self.batch)
+        # One controller publication boundary, including callers without an
+        # enclosing composition. Raw files survive a failed SQL transaction.
+        repository.register_artifacts((self.extent, self.batch))
         return frames
 
 
@@ -614,7 +615,7 @@ class DurablePublicCaptureV1:
                 self._payload_bytes_written += payload_bytes
                 self._payload_size_min = min(sizes) if self._payload_size_min is None else min(
                     self._payload_size_min, *sizes)
-                self._payload_size_max = max(sizes)
+                self._payload_size_max = max(self._payload_size_max, *sizes)
                 batch_histogram = [0] * (len(_PAYLOAD_SIZE_BUCKETS) + 1)
                 for size in sizes:
                     matched = False

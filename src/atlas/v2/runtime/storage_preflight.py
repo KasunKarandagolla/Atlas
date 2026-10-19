@@ -489,10 +489,10 @@ def qualify_storage_path(
                     entries.append(ArtifactIndexEntryV2(ref, "ResearchResourceSampleV1", ref, at, at, body))
 
                 def commit(entries: list[ArtifactIndexEntryV2] = entries, entry: ArtifactIndexEntryV2 = entry) -> None:
-                    with repository.atomic_composition():
-                        repository.register_artifact(entry)
-                        for sample in entries:
-                            repository.register_artifact(sample)
+                    # Reuse the sole writer's atomic batch API: the same 65
+                    # rows and FULL commit without 65 nested savepoints and
+                    # repeated exact-ref queries per diagnostic batch.
+                    repository.register_artifacts((entry, *entries))
 
                 measured("SQLITE_TRANSACTION_COMMIT", commit,
                          bytes_processed=selected_limits.batch_frames * selected_limits.payload_bytes_per_frame)
@@ -577,6 +577,9 @@ def qualify_storage_path(
         reasons.append("PREFLIGHT_CLOCK_REGRESSION")
     if elapsed > selected_limits.total_budget_seconds * 1_000_000_000:
         reasons.append("PREFLIGHT_TIME_BUDGET_EXCEEDED")
+    # Bounded raw durations permit independent p50/p95/p99/max validation.
+    # Preserve the existing measurement schema and all rejection thresholds.
+    facts["latency_samples_ns"] = {name: tuple(values) for name, values in metrics.durations.items()}
     return StoragePreflightResultV1(str(root), identity_sha256, started, completed, max(0, elapsed),
         "TEST GATE" if reasons else "TESTED", tuple(dict.fromkeys(reasons)), selected_limits,
         metrics.finish(), FrozenMap(facts), "FAULT_INJECTION" if hooks is not None else "HOST_PATH")
