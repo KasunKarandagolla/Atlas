@@ -1,0 +1,2792 @@
+[
+  {
+    "archive_bytes": 847,
+    "archive_sha256": "acab0593c1452660ce74a6c239fb215c1192b0a9c6e8c1689e6495de40a0174b",
+    "info": {
+      "csv_sha256": "60d8e545d10334fec77b28b698b694f5c2b968a1b37e68d0a909c5dd0417a138",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "acab0593c1452660ce74a6c239fb215c1192b0a9c6e8c1689e6495de40a0174b",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+        "received_at_ns": 1792571263558107143,
+        "requested_at_ns": 1792571262239238060,
+        "sha256": "5eee0e27e0f394d2f849d6abc82ecf00c41c30cb1bc46dc6c0fb7535118b65e6",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 847,
+        "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+        "received_at_ns": 1792571264879980272,
+        "requested_at_ns": 1792571263558137028,
+        "sha256": "acab0593c1452660ce74a6c239fb215c1192b0a9c6e8c1689e6495de40a0174b",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "BTCUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 82229,
+    "archive_sha256": "b288ce4ae420cbe03c8f41737a84872c8a0640bec87a03c325984ce95fa7ad6b",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 292407,
+      "csv_sha256": "094d2e3d160fc1c91bf84bccfdd02798bc61de84b490443ab1935cda417b6933",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "BTCUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "b288ce4ae420cbe03c8f41737a84872c8a0640bec87a03c325984ce95fa7ad6b",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Sat, 17 Aug 2024 13:39:48 GMT",
+        "received_at_ns": 1792571263923680090,
+        "requested_at_ns": 1792571262239636166,
+        "sha256": "5067773a83177d47e75d2858e9f8b7c4d5405aac3f0f03de5258ec0a5572a630",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 82229,
+        "last_modified": "Sat, 17 Aug 2024 13:39:48 GMT",
+        "received_at_ns": 1792571265371964127,
+        "requested_at_ns": 1792571263923715253,
+        "sha256": "b288ce4ae420cbe03c8f41737a84872c8a0640bec87a03c325984ce95fa7ad6b",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "BTCUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 904,
+    "archive_sha256": "7003d29a43dd5f9357f838da8766834954939e22c1d80af682d9f33984f67b71",
+    "info": {
+      "csv_sha256": "5031f1d1dde94295b621afcd52b5c4bd5c93cebaadcc0a984c9c0ed0f1324367",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "7003d29a43dd5f9357f838da8766834954939e22c1d80af682d9f33984f67b71",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Mon, 16 Sep 2024 13:09:57 GMT",
+        "received_at_ns": 1792571264076973026,
+        "requested_at_ns": 1792571262240511134,
+        "sha256": "355639b55739e305489c7707667f76944feaf6d2aee3d0274727924c093c3f2d",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 904,
+        "last_modified": "Mon, 16 Sep 2024 13:09:57 GMT",
+        "received_at_ns": 1792571265746225226,
+        "requested_at_ns": 1792571264077012946,
+        "sha256": "7003d29a43dd5f9357f838da8766834954939e22c1d80af682d9f33984f67b71",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "BTCUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 81718,
+    "archive_sha256": "3c4664c4b75e98a85ec8b619062e94a71dcec77a4062f120a9988d1ae1ee9ed2",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 291507,
+      "csv_sha256": "e4b999942b305551debfd09a868a3749e6ee572cc8087dad180d12f305e9136e",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "BTCUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "3c4664c4b75e98a85ec8b619062e94a71dcec77a4062f120a9988d1ae1ee9ed2",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Tue, 17 Sep 2024 13:58:58 GMT",
+        "received_at_ns": 1792571263698757405,
+        "requested_at_ns": 1792571262241659351,
+        "sha256": "3ba28693cd48e4914878e028e1e12134f6c668ca1ab0afbd0f314617e7e59b1e",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 81718,
+        "last_modified": "Tue, 17 Sep 2024 13:58:58 GMT",
+        "received_at_ns": 1792571265454301226,
+        "requested_at_ns": 1792571263698784836,
+        "sha256": "3c4664c4b75e98a85ec8b619062e94a71dcec77a4062f120a9988d1ae1ee9ed2",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "BTCUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 924,
+    "archive_sha256": "6ef23b02392b481ef9c3855434bf3644289fb6e228b4f7d9a0dfc6d3cdff1116",
+    "info": {
+      "csv_sha256": "5ba49e01519e554a26aa68bf57e94d745b504de738ff522cdd0781542efc626f",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "6ef23b02392b481ef9c3855434bf3644289fb6e228b4f7d9a0dfc6d3cdff1116",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Wed, 16 Oct 2024 12:57:27 GMT",
+        "received_at_ns": 1792571265520375290,
+        "requested_at_ns": 1792571264881109251,
+        "sha256": "9dfe18bbcaf29bb6f9dd81eee59d2988ccb1364a40e90690d18ba778ef2cd8b8",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 924,
+        "last_modified": "Wed, 16 Oct 2024 12:57:27 GMT",
+        "received_at_ns": 1792571266815142045,
+        "requested_at_ns": 1792571265520400848,
+        "sha256": "6ef23b02392b481ef9c3855434bf3644289fb6e228b4f7d9a0dfc6d3cdff1116",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "BTCUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 77797,
+    "archive_sha256": "eca5dcacc7bf7ac6118c72bc19c2826893463ff5bcef6b0246fe20230da658c7",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 281229,
+      "csv_sha256": "38459935086d584d65c801ef6dba3f80f488a6e0b00580e0ba6ac0ae2baa4e32",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "BTCUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "eca5dcacc7bf7ac6118c72bc19c2826893463ff5bcef6b0246fe20230da658c7",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Thu, 17 Oct 2024 15:20:06 GMT",
+        "received_at_ns": 1792571266489500931,
+        "requested_at_ns": 1792571265380731748,
+        "sha256": "756f102ce101f0b7e97e45b2c7bc0a176943495b1ef2bd0a8c03354857cda155",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 77797,
+        "last_modified": "Thu, 17 Oct 2024 15:20:06 GMT",
+        "received_at_ns": 1792571268152419850,
+        "requested_at_ns": 1792571266489528242,
+        "sha256": "eca5dcacc7bf7ac6118c72bc19c2826893463ff5bcef6b0246fe20230da658c7",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "BTCUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-09.zip"
+  },
+  {
+    "archive_bytes": 831,
+    "archive_sha256": "9d236281ab6430250ad2b472cbbf03812a40aed42e73c8339fc6be55a2417a82",
+    "info": {
+      "csv_sha256": "32bdbd3ea7c5b67adb052a55461e683cd9fc8b0b6183243897dd397f10a6a655",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "9d236281ab6430250ad2b472cbbf03812a40aed42e73c8339fc6be55a2417a82",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+        "received_at_ns": 1792571267225590216,
+        "requested_at_ns": 1792571265461591197,
+        "sha256": "66cbc897b9b49fbd98306f3248f4088f7c2b0e9ecfcbac84641e56c33d85f670",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 831,
+        "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+        "received_at_ns": 1792571268528139729,
+        "requested_at_ns": 1792571267225617737,
+        "sha256": "9d236281ab6430250ad2b472cbbf03812a40aed42e73c8339fc6be55a2417a82",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ETHUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 76217,
+    "archive_sha256": "fe7cfd6031b0b6887f6845c06d5f6f001cd5a14d3e34591648485900ccaeae71",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 289287,
+      "csv_sha256": "86e86089591ce7ce88442c48da448021317ba9a96cfc6ff8499e6cf68ccd0f76",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "ETHUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "fe7cfd6031b0b6887f6845c06d5f6f001cd5a14d3e34591648485900ccaeae71",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Sat, 17 Aug 2024 13:39:57 GMT",
+        "received_at_ns": 1792571266808458581,
+        "requested_at_ns": 1792571265746839494,
+        "sha256": "076975a5798b4a5d33aee857a92ff3781dde9b193a451684ff9e4198073030b0",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/15m/ETHUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 76217,
+        "last_modified": "Sat, 17 Aug 2024 13:39:57 GMT",
+        "received_at_ns": 1792571269300331304,
+        "requested_at_ns": 1792571266808484099,
+        "sha256": "fe7cfd6031b0b6887f6845c06d5f6f001cd5a14d3e34591648485900ccaeae71",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/15m/ETHUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ETHUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/15m/ETHUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 944,
+    "archive_sha256": "e17684bc761924eb5e1912c52cfa997eddeb99da303e68e28f6f37369f672b9d",
+    "info": {
+      "csv_sha256": "69f71f0c8a87d5bda2e1810c3757fe6a40be2cb5243883ec27442ce9a78f43ae",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "e17684bc761924eb5e1912c52cfa997eddeb99da303e68e28f6f37369f672b9d",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Mon, 16 Sep 2024 13:09:58 GMT",
+        "received_at_ns": 1792571268127954280,
+        "requested_at_ns": 1792571266815871866,
+        "sha256": "ae8bac0a585edb0847658fa6f5f907e69ea882a4ec9eb8e61837cffcb0edd078",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 944,
+        "last_modified": "Mon, 16 Sep 2024 13:09:58 GMT",
+        "received_at_ns": 1792571269404978654,
+        "requested_at_ns": 1792571268127981130,
+        "sha256": "e17684bc761924eb5e1912c52cfa997eddeb99da303e68e28f6f37369f672b9d",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ETHUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 76343,
+    "archive_sha256": "bd05db60176d23bed16463558891a4fac1e4449c97f94624213f3f13dcf5452e",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 289098,
+      "csv_sha256": "b704ffe1e4e06b3c9cef50e285ca1c19cbaddd294cbf1895e325a5eaa96cd884",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "ETHUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "bd05db60176d23bed16463558891a4fac1e4449c97f94624213f3f13dcf5452e",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Tue, 17 Sep 2024 13:59:07 GMT",
+        "received_at_ns": 1792571269686414710,
+        "requested_at_ns": 1792571268163612947,
+        "sha256": "ba4b4b62f8484c356881a9f4ebfd1e8560759e8d0cf6941910725bb8a7567e96",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/15m/ETHUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 76343,
+        "last_modified": "Tue, 17 Sep 2024 13:59:07 GMT",
+        "received_at_ns": 1792571272018964716,
+        "requested_at_ns": 1792571269686442202,
+        "sha256": "bd05db60176d23bed16463558891a4fac1e4449c97f94624213f3f13dcf5452e",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/15m/ETHUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ETHUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/15m/ETHUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 908,
+    "archive_sha256": "ffb6e7441053137cb7ca81cc83bcdd996612f7dbb15aa2e168a7ee521f8cbbca",
+    "info": {
+      "csv_sha256": "fd880d5b9364768b9b3772d1608bae4890246d036ec0a01a9236b8937ab650b6",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "ffb6e7441053137cb7ca81cc83bcdd996612f7dbb15aa2e168a7ee521f8cbbca",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Wed, 16 Oct 2024 12:57:28 GMT",
+        "received_at_ns": 1792571269118415680,
+        "requested_at_ns": 1792571268528928979,
+        "sha256": "3e8e33b9b21793d1ff4765bb326bd10d5a45dcadc7e7e4ab140c407000f60cdf",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 908,
+        "last_modified": "Wed, 16 Oct 2024 12:57:28 GMT",
+        "received_at_ns": 1792571270177540935,
+        "requested_at_ns": 1792571269118442981,
+        "sha256": "ffb6e7441053137cb7ca81cc83bcdd996612f7dbb15aa2e168a7ee521f8cbbca",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ETHUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 72183,
+    "archive_sha256": "09d1bef18c7462532d3d561c2c366545d5137732030f7b33628026d9464505f6",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 279960,
+      "csv_sha256": "a6f273497f43615b8e6de301fb83a15e89dfa936404dfcc02940a61e6e624ac9",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "ETHUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "09d1bef18c7462532d3d561c2c366545d5137732030f7b33628026d9464505f6",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Thu, 17 Oct 2024 15:20:18 GMT",
+        "received_at_ns": 1792571270948372617,
+        "requested_at_ns": 1792571269307734675,
+        "sha256": "25a0525d19a67f7122952c0af29c84b5f3d90ae488235afaebd0f9f15618c0be",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/15m/ETHUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 72183,
+        "last_modified": "Thu, 17 Oct 2024 15:20:18 GMT",
+        "received_at_ns": 1792571272700848044,
+        "requested_at_ns": 1792571270948397384,
+        "sha256": "09d1bef18c7462532d3d561c2c366545d5137732030f7b33628026d9464505f6",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/15m/ETHUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ETHUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/15m/ETHUSDT-15m-2024-09.zip"
+  },
+  {
+    "archive_bytes": 850,
+    "archive_sha256": "2585a0db933c70b62c87cac509de42ac09b98d370238c0d8c68249a20bd2b9a3",
+    "info": {
+      "csv_sha256": "0a7de0bd5ebff08f0f38d6076ddcbe55c80b48b91c4da745216ef89e30cefece",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "2585a0db933c70b62c87cac509de42ac09b98d370238c0d8c68249a20bd2b9a3",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Fri, 16 Aug 2024 12:57:49 GMT",
+        "received_at_ns": 1792571270738170281,
+        "requested_at_ns": 1792571269405718480,
+        "sha256": "95f15d7acad050c14534f1cc1ad32f71392a096b62719a978328c0362c8d12c3",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 850,
+        "last_modified": "Fri, 16 Aug 2024 12:57:49 GMT",
+        "received_at_ns": 1792571272179912748,
+        "requested_at_ns": 1792571270738192655,
+        "sha256": "2585a0db933c70b62c87cac509de42ac09b98d370238c0d8c68249a20bd2b9a3",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "SOLUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 75348,
+    "archive_sha256": "92e324844b567cc63c6e1b3a56279e1c9a9c36e1dcefa94ca792ad1e56bc2711",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 279597,
+      "csv_sha256": "260aae70f5910d313c4016c801850b2236784573d4d95bc4a717aaff4fea4392",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "SOLUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "92e324844b567cc63c6e1b3a56279e1c9a9c36e1dcefa94ca792ad1e56bc2711",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Sat, 17 Aug 2024 13:40:23 GMT",
+        "received_at_ns": 1792571271503870356,
+        "requested_at_ns": 1792571270178224898,
+        "sha256": "91070c26c51a64f13f1c703aaa1cf2668e5eeee47466a13ea7a73cb13cfe764b",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SOLUSDT/15m/SOLUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 75348,
+        "last_modified": "Sat, 17 Aug 2024 13:40:23 GMT",
+        "received_at_ns": 1792571273730085800,
+        "requested_at_ns": 1792571271503900391,
+        "sha256": "92e324844b567cc63c6e1b3a56279e1c9a9c36e1dcefa94ca792ad1e56bc2711",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SOLUSDT/15m/SOLUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "SOLUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SOLUSDT/15m/SOLUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 940,
+    "archive_sha256": "ef076200aab768d33f71449957f6cd9c96c0da696708a5f561b97e7a0995e8d2",
+    "info": {
+      "csv_sha256": "77dbd58ee7ed1935f724605a532d8cf65ca07baae31b665e8b4509adbdcb0b89",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "ef076200aab768d33f71449957f6cd9c96c0da696708a5f561b97e7a0995e8d2",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Mon, 16 Sep 2024 13:10:00 GMT",
+        "received_at_ns": 1792571273370595887,
+        "requested_at_ns": 1792571272028297735,
+        "sha256": "6a97f2ae3897511986f23fe1ba00d6e673ac2d1bb50e23310ffcf534f84282d3",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 940,
+        "last_modified": "Mon, 16 Sep 2024 13:10:00 GMT",
+        "received_at_ns": 1792571273952898695,
+        "requested_at_ns": 1792571273370629768,
+        "sha256": "ef076200aab768d33f71449957f6cd9c96c0da696708a5f561b97e7a0995e8d2",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "SOLUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 75059,
+    "archive_sha256": "3977f7aec3bdace23436590e3d16b7f1db275f201315a2af3ce7744817d6c088",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 279624,
+      "csv_sha256": "8190a602572e73529e4c04022064e80f60716c3a8330814fa7729d08efe32047",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "SOLUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "3977f7aec3bdace23436590e3d16b7f1db275f201315a2af3ce7744817d6c088",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Tue, 17 Sep 2024 13:59:31 GMT",
+        "received_at_ns": 1792571273263716096,
+        "requested_at_ns": 1792571272180692094,
+        "sha256": "45e49c974282d9180dbebac76e5904d65a66960bfc1c75dab36369afce026bc1",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SOLUSDT/15m/SOLUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 75059,
+        "last_modified": "Tue, 17 Sep 2024 13:59:31 GMT",
+        "received_at_ns": 1792571274831296121,
+        "requested_at_ns": 1792571273263809285,
+        "sha256": "3977f7aec3bdace23436590e3d16b7f1db275f201315a2af3ce7744817d6c088",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SOLUSDT/15m/SOLUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "SOLUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SOLUSDT/15m/SOLUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 880,
+    "archive_sha256": "7666e4d3e6ea6dd28011c508cf01421007521e98e96ea551f809836441b43ca0",
+    "info": {
+      "csv_sha256": "a765eaf7581492b7e6459ea9aa6771f73e6a22479eb113f2d50fb41be2506bac",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "7666e4d3e6ea6dd28011c508cf01421007521e98e96ea551f809836441b43ca0",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Wed, 16 Oct 2024 12:57:30 GMT",
+        "received_at_ns": 1792571274061553177,
+        "requested_at_ns": 1792571272707426353,
+        "sha256": "ebb00180a77cc7f5c9028cbaa269a502470014a8e78d9957636e7d97442a513d",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 880,
+        "last_modified": "Wed, 16 Oct 2024 12:57:30 GMT",
+        "received_at_ns": 1792571274710031499,
+        "requested_at_ns": 1792571274061576141,
+        "sha256": "7666e4d3e6ea6dd28011c508cf01421007521e98e96ea551f809836441b43ca0",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "SOLUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 70778,
+    "archive_sha256": "0d91b5ca8e2b742db292b165579582f1572b4b74a2332e7ee1fb2deb5861aaa8",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 270645,
+      "csv_sha256": "5a4536bf184e9f9fb381a0f7ae83215081bf937b01a9eea54268cca2456c8f89",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "SOLUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "0d91b5ca8e2b742db292b165579582f1572b4b74a2332e7ee1fb2deb5861aaa8",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Thu, 17 Oct 2024 15:20:53 GMT",
+        "received_at_ns": 1792571275087461472,
+        "requested_at_ns": 1792571273736862956,
+        "sha256": "959314a99d4a6dae0134958d9563447072d888f54cc7355b58b9ddc4f3b34d63",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SOLUSDT/15m/SOLUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 70778,
+        "last_modified": "Thu, 17 Oct 2024 15:20:53 GMT",
+        "received_at_ns": 1792571276628492992,
+        "requested_at_ns": 1792571275087490416,
+        "sha256": "0d91b5ca8e2b742db292b165579582f1572b4b74a2332e7ee1fb2deb5861aaa8",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SOLUSDT/15m/SOLUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "SOLUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SOLUSDT/15m/SOLUSDT-15m-2024-09.zip"
+  },
+  {
+    "archive_bytes": 809,
+    "archive_sha256": "986115e7ee969c0a174dccd47d2e0b19aad56a44b7b1b7980dc41845f8f27f84",
+    "info": {
+      "csv_sha256": "5101b290a477e5aa0991cf67182fd6eddcaf87f322289cd81c479e625903acb4",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "986115e7ee969c0a174dccd47d2e0b19aad56a44b7b1b7980dc41845f8f27f84",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Fri, 16 Aug 2024 12:57:49 GMT",
+        "received_at_ns": 1792571275343739391,
+        "requested_at_ns": 1792571273953581807,
+        "sha256": "ae108f7eaf0561fa7c35deb0cd832ba8ab133a09a3596a2d2ac3d70744a79378",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/UNIUSDT/UNIUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 809,
+        "last_modified": "Fri, 16 Aug 2024 12:57:49 GMT",
+        "received_at_ns": 1792571277228790192,
+        "requested_at_ns": 1792571275343848404,
+        "sha256": "986115e7ee969c0a174dccd47d2e0b19aad56a44b7b1b7980dc41845f8f27f84",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/UNIUSDT/UNIUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "UNIUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/UNIUSDT/UNIUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 66283,
+    "archive_sha256": "c6bfb1a616117a09bebb11d806f097e93ceca56590b43c2eb31c44f0fb810165",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 255969,
+      "csv_sha256": "63321bac44ca776d4cec71e8f5cd709b30a74faa794f274d612402be496cd1cf",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "UNIUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "c6bfb1a616117a09bebb11d806f097e93ceca56590b43c2eb31c44f0fb810165",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Sat, 17 Aug 2024 13:40:29 GMT",
+        "received_at_ns": 1792571276035410434,
+        "requested_at_ns": 1792571274710710194,
+        "sha256": "2cc9bf86d34f089cd07d8c0c6225cd2de3fd3e2328268ec44aecb6bf37d63030",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/UNIUSDT/15m/UNIUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 66283,
+        "last_modified": "Sat, 17 Aug 2024 13:40:29 GMT",
+        "received_at_ns": 1792571277504773978,
+        "requested_at_ns": 1792571276035439667,
+        "sha256": "c6bfb1a616117a09bebb11d806f097e93ceca56590b43c2eb31c44f0fb810165",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/UNIUSDT/15m/UNIUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "UNIUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/UNIUSDT/15m/UNIUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 927,
+    "archive_sha256": "ceb7dec6d5c172a39d2463ed99b84d57ea56d7af0ca083d992d15c7894f8090f",
+    "info": {
+      "csv_sha256": "9536f2ed86d9541c175e8620ba910357fe14a993734c361ffc896d26a9d2dc62",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "ceb7dec6d5c172a39d2463ed99b84d57ea56d7af0ca083d992d15c7894f8090f",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Mon, 16 Sep 2024 13:10:00 GMT",
+        "received_at_ns": 1792571275427062914,
+        "requested_at_ns": 1792571274838321208,
+        "sha256": "ec115a64608a5ea5b8b5071af4d455a8b9f6dd5942b8d304d71ebba93613d413",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/UNIUSDT/UNIUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 927,
+        "last_modified": "Mon, 16 Sep 2024 13:10:00 GMT",
+        "received_at_ns": 1792571277115168816,
+        "requested_at_ns": 1792571275427082553,
+        "sha256": "ceb7dec6d5c172a39d2463ed99b84d57ea56d7af0ca083d992d15c7894f8090f",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/UNIUSDT/UNIUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "UNIUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/UNIUSDT/UNIUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 65482,
+    "archive_sha256": "8a7beb98414d74db32e4523d170562243e01e63758c0fef4249cc77e0c2bd1e3",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256041,
+      "csv_sha256": "36c7ac72d2eb414a992c8695e22d4bb0b6d885605b3410ae50a86028b0e83675",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "UNIUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "8a7beb98414d74db32e4523d170562243e01e63758c0fef4249cc77e0c2bd1e3",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Tue, 17 Sep 2024 13:59:37 GMT",
+        "received_at_ns": 1792571278489066034,
+        "requested_at_ns": 1792571276635418629,
+        "sha256": "0c5042ef6d9fe0495d0278c0036974eaa416f4d593ba22e8bfff9704231ce4be",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/UNIUSDT/15m/UNIUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 65482,
+        "last_modified": "Tue, 17 Sep 2024 13:59:37 GMT",
+        "received_at_ns": 1792571280072211454,
+        "requested_at_ns": 1792571278489084251,
+        "sha256": "8a7beb98414d74db32e4523d170562243e01e63758c0fef4249cc77e0c2bd1e3",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/UNIUSDT/15m/UNIUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "UNIUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/UNIUSDT/15m/UNIUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 869,
+    "archive_sha256": "bff8a5cd2f0e408d6ac27823892e246507f674bff2fe3536b47858949bea3c95",
+    "info": {
+      "csv_sha256": "a391170c7e3b68a0155840b59fbc46a6ac7abb1fbe94f65d2770bd1acdc54a2c",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "bff8a5cd2f0e408d6ac27823892e246507f674bff2fe3536b47858949bea3c95",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Wed, 16 Oct 2024 12:57:30 GMT",
+        "received_at_ns": 1792571277746217131,
+        "requested_at_ns": 1792571277115921732,
+        "sha256": "2a5aa90840086bce76504129b723147a96722a168043fc59d46fd42c3b2a81f3",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/UNIUSDT/UNIUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 869,
+        "last_modified": "Wed, 16 Oct 2024 12:57:30 GMT",
+        "received_at_ns": 1792571279061276790,
+        "requested_at_ns": 1792571277746237011,
+        "sha256": "bff8a5cd2f0e408d6ac27823892e246507f674bff2fe3536b47858949bea3c95",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/UNIUSDT/UNIUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "UNIUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/UNIUSDT/UNIUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 61964,
+    "archive_sha256": "1d202dc30d69935829700890d5dc7039f566042a4f28602a490a915d14124cb7",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 247785,
+      "csv_sha256": "eb3f3e9bcfc0abb34405224bba36be2a97b4dae2e7a1b4f74a3ef111e4fc6552",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "UNIUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "1d202dc30d69935829700890d5dc7039f566042a4f28602a490a915d14124cb7",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Thu, 17 Oct 2024 15:21:02 GMT",
+        "received_at_ns": 1792571278429274345,
+        "requested_at_ns": 1792571277229283870,
+        "sha256": "207a0af8ca989ccf1efed779da54740908e101883add56a74dfbb754213852d2",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/UNIUSDT/15m/UNIUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 61964,
+        "last_modified": "Thu, 17 Oct 2024 15:21:01 GMT",
+        "received_at_ns": 1792571279267037016,
+        "requested_at_ns": 1792571278429297220,
+        "sha256": "1d202dc30d69935829700890d5dc7039f566042a4f28602a490a915d14124cb7",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/UNIUSDT/15m/UNIUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "UNIUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/UNIUSDT/15m/UNIUSDT-15m-2024-09.zip"
+  },
+  {
+    "archive_bytes": 817,
+    "archive_sha256": "eafc31a92fc6f2d4b8561d4ba8e4ff9530d9a6ba98801bb12b0e0241aed1974a",
+    "info": {
+      "csv_sha256": "d50a7ad99d8592f27fd557ab20030c825264888ec846c68b189f2f626686a4ae",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "eafc31a92fc6f2d4b8561d4ba8e4ff9530d9a6ba98801bb12b0e0241aed1974a",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Fri, 16 Aug 2024 12:57:46 GMT",
+        "received_at_ns": 1792571278166701466,
+        "requested_at_ns": 1792571277511515791,
+        "sha256": "2ec6f181f2a90d8811257591d24000f0a29b4046456438c9e3fa311347aa661c",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ARBUSDT/ARBUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 817,
+        "last_modified": "Fri, 16 Aug 2024 12:57:46 GMT",
+        "received_at_ns": 1792571279480826086,
+        "requested_at_ns": 1792571278166727835,
+        "sha256": "eafc31a92fc6f2d4b8561d4ba8e4ff9530d9a6ba98801bb12b0e0241aed1974a",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ARBUSDT/ARBUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ARBUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ARBUSDT/ARBUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 64621,
+    "archive_sha256": "3a3642f8b0a0c2a9ac57e921bfa4beb09f1f416c1cd1902ef736d2d8513c60ce",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "bb8e467d947e7f7b3916c11d0b21f6f2a0e76200e7a816d85d7291e71c347c8e",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "ARBUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "3a3642f8b0a0c2a9ac57e921bfa4beb09f1f416c1cd1902ef736d2d8513c60ce",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Sat, 17 Aug 2024 13:39:41 GMT",
+        "received_at_ns": 1792571280520635209,
+        "requested_at_ns": 1792571279061915155,
+        "sha256": "6b52a805c0c95dfe16c2dbf1b3598a27d4a032199c7375a7ad9d9bbc48405ec9",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ARBUSDT/15m/ARBUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 64621,
+        "last_modified": "Sat, 17 Aug 2024 13:39:41 GMT",
+        "received_at_ns": 1792571282221876324,
+        "requested_at_ns": 1792571280520662700,
+        "sha256": "3a3642f8b0a0c2a9ac57e921bfa4beb09f1f416c1cd1902ef736d2d8513c60ce",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ARBUSDT/15m/ARBUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ARBUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ARBUSDT/15m/ARBUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 903,
+    "archive_sha256": "e0f3d91f7133b8d73083364d15cc3f5e246b03ded33497555abbed846cdcc494",
+    "info": {
+      "csv_sha256": "db214751ca8c4e5e00eec1db5fad0a5848ce571404c6f8883ee9283e03e6769f",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "e0f3d91f7133b8d73083364d15cc3f5e246b03ded33497555abbed846cdcc494",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Mon, 16 Sep 2024 13:09:57 GMT",
+        "received_at_ns": 1792571280586848419,
+        "requested_at_ns": 1792571279273626002,
+        "sha256": "adcf1b99345b4d51802252797d39f68bce0a31e98c551af7234a8a1d6f78b2f2",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ARBUSDT/ARBUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 903,
+        "last_modified": "Mon, 16 Sep 2024 13:09:57 GMT",
+        "received_at_ns": 1792571281699352737,
+        "requested_at_ns": 1792571280586870271,
+        "sha256": "e0f3d91f7133b8d73083364d15cc3f5e246b03ded33497555abbed846cdcc494",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ARBUSDT/ARBUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ARBUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ARBUSDT/ARBUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 63375,
+    "archive_sha256": "e89013226b1e6e3d0f301c3ff2dc8c8993d729f72134873166a9a765231f2e0d",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "5b22ebeea5cd97f8f773510c0367cc6a27f9a572a31f588f4c4b6dd8d5f3cc26",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "ARBUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "e89013226b1e6e3d0f301c3ff2dc8c8993d729f72134873166a9a765231f2e0d",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Tue, 17 Sep 2024 13:58:51 GMT",
+        "received_at_ns": 1792571280064280977,
+        "requested_at_ns": 1792571279481617610,
+        "sha256": "0e36da3877113e1272194eb673156fe5e5f3e21af7b78c87499fbc648533ae7e",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ARBUSDT/15m/ARBUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 63375,
+        "last_modified": "Tue, 17 Sep 2024 13:58:51 GMT",
+        "received_at_ns": 1792571280956605804,
+        "requested_at_ns": 1792571280064318022,
+        "sha256": "e89013226b1e6e3d0f301c3ff2dc8c8993d729f72134873166a9a765231f2e0d",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ARBUSDT/15m/ARBUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ARBUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ARBUSDT/15m/ARBUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 844,
+    "archive_sha256": "382fa8d6fd4ee99346a641eb7be9d1ddd4606657ba94d822e1c006c620fa01f9",
+    "info": {
+      "csv_sha256": "7082db120922a8eacf5b069641c2ce4a81cc51843e72679af41c1a48cdfb67df",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "382fa8d6fd4ee99346a641eb7be9d1ddd4606657ba94d822e1c006c620fa01f9",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Wed, 16 Oct 2024 12:57:27 GMT",
+        "received_at_ns": 1792571281872484573,
+        "requested_at_ns": 1792571280079020320,
+        "sha256": "bc45214ba6531b3845e53ed21d70458a5c13fab80f0a2571e177428d0217f101",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ARBUSDT/ARBUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 844,
+        "last_modified": "Wed, 16 Oct 2024 12:57:27 GMT",
+        "received_at_ns": 1792571282929897454,
+        "requested_at_ns": 1792571281872514117,
+        "sha256": "382fa8d6fd4ee99346a641eb7be9d1ddd4606657ba94d822e1c006c620fa01f9",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ARBUSDT/ARBUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ARBUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ARBUSDT/ARBUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 60570,
+    "archive_sha256": "9de57341399d520b455e8592111c73d7bc0792aa2c86c23ed4f9b615b36a0ba7",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 247794,
+      "csv_sha256": "de86dc5c72b3491308fe70c865436d39508a0259de7e96b4221faca8e5d0cb81",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "ARBUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "9de57341399d520b455e8592111c73d7bc0792aa2c86c23ed4f9b615b36a0ba7",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Thu, 17 Oct 2024 15:19:56 GMT",
+        "received_at_ns": 1792571282018327001,
+        "requested_at_ns": 1792571280963544254,
+        "sha256": "048d7f9e806c7689999875c2f74b8b0bd4c86fc5c7fa8795d8522a72ad2b4928",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ARBUSDT/15m/ARBUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 60570,
+        "last_modified": "Thu, 17 Oct 2024 15:19:56 GMT",
+        "received_at_ns": 1792571282772265815,
+        "requested_at_ns": 1792571282018351178,
+        "sha256": "9de57341399d520b455e8592111c73d7bc0792aa2c86c23ed4f9b615b36a0ba7",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ARBUSDT/15m/ARBUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ARBUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ARBUSDT/15m/ARBUSDT-15m-2024-09.zip"
+  },
+  {
+    "archive_bytes": 823,
+    "archive_sha256": "59af675d9829f3abf87ab64732ded8ab3062d82759ab624a21387ea750c41bec",
+    "info": {
+      "csv_sha256": "e5bfa90b70cc522abc848b7787a5e5dd225a274e0ec529705c293a8e947deb2e",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "59af675d9829f3abf87ab64732ded8ab3062d82759ab624a21387ea750c41bec",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 99,
+        "last_modified": "Fri, 16 Aug 2024 12:57:46 GMT",
+        "received_at_ns": 1792571282671661500,
+        "requested_at_ns": 1792571281700083260,
+        "sha256": "edf7846044b57bb31bdb66453f61b6f335e487439321d80261a047928c544953",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ATOMUSDT/ATOMUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 823,
+        "last_modified": "Fri, 16 Aug 2024 12:57:46 GMT",
+        "received_at_ns": 1792571283792843745,
+        "requested_at_ns": 1792571282671686177,
+        "sha256": "59af675d9829f3abf87ab64732ded8ab3062d82759ab624a21387ea750c41bec",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ATOMUSDT/ATOMUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ATOMUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ATOMUSDT/ATOMUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 63689,
+    "archive_sha256": "afe5c6b7761b59b420c80000043b32eca0ca096e5fad87161906369bd576e1ec",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256023,
+      "csv_sha256": "6aa0bb49bc86acd694e0ff568c9b5c67205ef52fdb265262836d045dc7ef6026",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "ATOMUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "afe5c6b7761b59b420c80000043b32eca0ca096e5fad87161906369bd576e1ec",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 91,
+        "last_modified": "Sat, 17 Aug 2024 13:39:42 GMT",
+        "received_at_ns": 1792571283287584374,
+        "requested_at_ns": 1792571282228767673,
+        "sha256": "9ace4e5c78a24e6c75abcc2bbf033563d6239a079ce77e701efc6e6ad0057d33",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ATOMUSDT/15m/ATOMUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 63689,
+        "last_modified": "Sat, 17 Aug 2024 13:39:42 GMT",
+        "received_at_ns": 1792571284754495691,
+        "requested_at_ns": 1792571283287612265,
+        "sha256": "afe5c6b7761b59b420c80000043b32eca0ca096e5fad87161906369bd576e1ec",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ATOMUSDT/15m/ATOMUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ATOMUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ATOMUSDT/15m/ATOMUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 954,
+    "archive_sha256": "408a6adf67394339ec2d632633c58443f7ded52b06e5d5b3ee76d6fe34e81306",
+    "info": {
+      "csv_sha256": "f4b90c704a99ab969b6e45c4462a6ebbe2d31ecccd73190b4a6f70ee0625906e",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "408a6adf67394339ec2d632633c58443f7ded52b06e5d5b3ee76d6fe34e81306",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 99,
+        "last_modified": "Mon, 16 Sep 2024 13:09:57 GMT",
+        "received_at_ns": 1792571283448868857,
+        "requested_at_ns": 1792571282778726571,
+        "sha256": "e84057ef900dadf8f31ff1a80abfb61fcb72ecae8bd2098861608d34c39fc89d",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ATOMUSDT/ATOMUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 954,
+        "last_modified": "Mon, 16 Sep 2024 13:09:57 GMT",
+        "received_at_ns": 1792571285236561542,
+        "requested_at_ns": 1792571283448893244,
+        "sha256": "408a6adf67394339ec2d632633c58443f7ded52b06e5d5b3ee76d6fe34e81306",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ATOMUSDT/ATOMUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ATOMUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ATOMUSDT/ATOMUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 62087,
+    "archive_sha256": "6e533bb00907d84fbdd19959c71b6de505a6d39bd2c10352b4dbddfef7695bec",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 255978,
+      "csv_sha256": "cfa2db5b9e61c77c922e160d83dfc0a52d1475949790cbc1c995eb08324f710b",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "ATOMUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "6e533bb00907d84fbdd19959c71b6de505a6d39bd2c10352b4dbddfef7695bec",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 91,
+        "last_modified": "Tue, 17 Sep 2024 13:58:52 GMT",
+        "received_at_ns": 1792571284027018747,
+        "requested_at_ns": 1792571282930727556,
+        "sha256": "d1a13aea52d9e76dbce2f1b75a898aacbe0bdcc412ea5eee25e0864fd241d804",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ATOMUSDT/15m/ATOMUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 62087,
+        "last_modified": "Tue, 17 Sep 2024 13:58:52 GMT",
+        "received_at_ns": 1792571284981943299,
+        "requested_at_ns": 1792571284027050264,
+        "sha256": "6e533bb00907d84fbdd19959c71b6de505a6d39bd2c10352b4dbddfef7695bec",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ATOMUSDT/15m/ATOMUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ATOMUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ATOMUSDT/15m/ATOMUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 892,
+    "archive_sha256": "e5ca6a207f6435ab34d0c5e7f4e7d179618c8c238dfd2589f6e085a094851263",
+    "info": {
+      "csv_sha256": "180ecac87f73e592650b3e582006f1bc38760ec6381b6873d0e45cb71a1ab77e",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "e5ca6a207f6435ab34d0c5e7f4e7d179618c8c238dfd2589f6e085a094851263",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 99,
+        "last_modified": "Wed, 16 Oct 2024 12:57:27 GMT",
+        "received_at_ns": 1792571284427863938,
+        "requested_at_ns": 1792571283793609471,
+        "sha256": "9fd361a577ca423b14e5ea341dd5304af1b3e976636f9966d66d64f24bbc760f",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ATOMUSDT/ATOMUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 892,
+        "last_modified": "Wed, 16 Oct 2024 12:57:27 GMT",
+        "received_at_ns": 1792571285746374029,
+        "requested_at_ns": 1792571284427891499,
+        "sha256": "e5ca6a207f6435ab34d0c5e7f4e7d179618c8c238dfd2589f6e085a094851263",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ATOMUSDT/ATOMUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ATOMUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ATOMUSDT/ATOMUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 59332,
+    "archive_sha256": "ca0926997656043c029daf02d2793b1ebf4c1b93751ef1a0f3693efb933663c2",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 247713,
+      "csv_sha256": "1bfe9a0ce826df3ff9e108ca1c6d19a51ddc1f304f37b0b1c48c03125221fe67",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "ATOMUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "ca0926997656043c029daf02d2793b1ebf4c1b93751ef1a0f3693efb933663c2",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 91,
+        "last_modified": "Thu, 17 Oct 2024 15:19:58 GMT",
+        "received_at_ns": 1792571286172743428,
+        "requested_at_ns": 1792571284765131922,
+        "sha256": "9349db623c3fef800204165a1c4f71e9c38103f68ec126ec21a24c2358fa955e",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ATOMUSDT/15m/ATOMUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 59332,
+        "last_modified": "Thu, 17 Oct 2024 15:19:58 GMT",
+        "received_at_ns": 1792571287559625565,
+        "requested_at_ns": 1792571286172770729,
+        "sha256": "ca0926997656043c029daf02d2793b1ebf4c1b93751ef1a0f3693efb933663c2",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ATOMUSDT/15m/ATOMUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "ATOMUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ATOMUSDT/15m/ATOMUSDT-15m-2024-09.zip"
+  },
+  {
+    "archive_bytes": 836,
+    "archive_sha256": "93a3e70ae75cd667bb0bf7b0ae34ec78366973daf69641ed91d385f68a8067df",
+    "info": {
+      "csv_sha256": "f8190fb0d8b794849c47d1ae5d0052898b6e7f996c0dcb0306df7f47b5a154e7",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "93a3e70ae75cd667bb0bf7b0ae34ec78366973daf69641ed91d385f68a8067df",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Fri, 16 Aug 2024 12:57:50 GMT",
+        "received_at_ns": 1792571285624626985,
+        "requested_at_ns": 1792571284988671614,
+        "sha256": "b0ab6dd2c8136ce78814ba6aa76efd693eeb3553da2331780e3d7176517a2b25",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XLMUSDT/XLMUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 836,
+        "last_modified": "Fri, 16 Aug 2024 12:57:50 GMT",
+        "received_at_ns": 1792571286912467527,
+        "requested_at_ns": 1792571285624657150,
+        "sha256": "93a3e70ae75cd667bb0bf7b0ae34ec78366973daf69641ed91d385f68a8067df",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XLMUSDT/XLMUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "XLMUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XLMUSDT/XLMUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 60869,
+    "archive_sha256": "8d4b7ff21f7760e70c6dce45baa1b8d253998ab34d47608303981e1b2de6368c",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "214fddae9e0e42ea39cb8bcec609407837eef2550036fbea6e675c449b079d42",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "XLMUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "8d4b7ff21f7760e70c6dce45baa1b8d253998ab34d47608303981e1b2de6368c",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Sat, 17 Aug 2024 13:40:31 GMT",
+        "received_at_ns": 1792571286365908116,
+        "requested_at_ns": 1792571285237222691,
+        "sha256": "b29b49463a53d73a9b1dd3e012528ea54fc379a0c08a956992840b4dec75883b",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLMUSDT/15m/XLMUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 60869,
+        "last_modified": "Sat, 17 Aug 2024 13:40:31 GMT",
+        "received_at_ns": 1792571287553688807,
+        "requested_at_ns": 1792571286365929538,
+        "sha256": "8d4b7ff21f7760e70c6dce45baa1b8d253998ab34d47608303981e1b2de6368c",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLMUSDT/15m/XLMUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "XLMUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLMUSDT/15m/XLMUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 869,
+    "archive_sha256": "a1ff44a1d6a11c7a666348ed467c1031364950f48a58a762a2f36af075204919",
+    "info": {
+      "csv_sha256": "0a422d729c6591a08b57c8abab6b5e40977ba6b72757abd23668db85b7691d1c",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "a1ff44a1d6a11c7a666348ed467c1031364950f48a58a762a2f36af075204919",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Mon, 16 Sep 2024 13:10:01 GMT",
+        "received_at_ns": 1792571286347628517,
+        "requested_at_ns": 1792571285747035098,
+        "sha256": "fe5f68ceb689e1292145cfa2b1860edf8e03e8483676fb72442781a88c81a28b",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XLMUSDT/XLMUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 869,
+        "last_modified": "Mon, 16 Sep 2024 13:10:01 GMT",
+        "received_at_ns": 1792571287009896948,
+        "requested_at_ns": 1792571286347655858,
+        "sha256": "a1ff44a1d6a11c7a666348ed467c1031364950f48a58a762a2f36af075204919",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XLMUSDT/XLMUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "XLMUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XLMUSDT/XLMUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 60590,
+    "archive_sha256": "cef25669d3e8d8e7e87a7e561cd06272d2dba454dff5b183da1e2d8e2f73d892",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "edee430092c17d388ccce539516ec73c6771e50328c5c040f1fdf5832646d69d",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "XLMUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "cef25669d3e8d8e7e87a7e561cd06272d2dba454dff5b183da1e2d8e2f73d892",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Tue, 17 Sep 2024 13:59:40 GMT",
+        "received_at_ns": 1792571287616138719,
+        "requested_at_ns": 1792571286913140533,
+        "sha256": "68cf4529598a16b47c165bf076adaf3960e7f1c3d6d86f97a9bfdf946b289097",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLMUSDT/15m/XLMUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 60590,
+        "last_modified": "Tue, 17 Sep 2024 13:59:40 GMT",
+        "received_at_ns": 1792571289033018357,
+        "requested_at_ns": 1792571287616159621,
+        "sha256": "cef25669d3e8d8e7e87a7e561cd06272d2dba454dff5b183da1e2d8e2f73d892",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLMUSDT/15m/XLMUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "XLMUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLMUSDT/15m/XLMUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 853,
+    "archive_sha256": "a8d54748ca385e84ee6027ac0776939c42089967440eb8fc585d6ec3324c02a4",
+    "info": {
+      "csv_sha256": "92c17a6f44b2ddf350fba927ac0d595c36401f26b5fe8d55b56afe6a0a3977eb",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "a8d54748ca385e84ee6027ac0776939c42089967440eb8fc585d6ec3324c02a4",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Wed, 16 Oct 2024 12:57:31 GMT",
+        "received_at_ns": 1792571288182159565,
+        "requested_at_ns": 1792571287010449093,
+        "sha256": "b7638f4d1ad0d777b730dca12ad07644c12c359df32498dc9b2ab67c164210fd",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XLMUSDT/XLMUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 853,
+        "last_modified": "Wed, 16 Oct 2024 12:57:31 GMT",
+        "received_at_ns": 1792571288762843518,
+        "requested_at_ns": 1792571288182189781,
+        "sha256": "a8d54748ca385e84ee6027ac0776939c42089967440eb8fc585d6ec3324c02a4",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XLMUSDT/XLMUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "XLMUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XLMUSDT/XLMUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 57522,
+    "archive_sha256": "e14ab987e5220290e14cf142a808a47466346ee1c04da1402182ce5cbaf073db",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 247794,
+      "csv_sha256": "52c920621935271414f33c81cdf0fb940e05cc0434d0b2a5dbb47a3e017dcee0",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "XLMUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "e14ab987e5220290e14cf142a808a47466346ee1c04da1402182ce5cbaf073db",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Thu, 17 Oct 2024 15:21:05 GMT",
+        "received_at_ns": 1792571288388412148,
+        "requested_at_ns": 1792571287560447702,
+        "sha256": "e6798dc92e8844ec1a7a83c88d3c66c55410d14552a6cf5d9a665f9304a71cbe",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLMUSDT/15m/XLMUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 57522,
+        "last_modified": "Thu, 17 Oct 2024 15:21:05 GMT",
+        "received_at_ns": 1792571289055016311,
+        "requested_at_ns": 1792571288388436595,
+        "sha256": "e14ab987e5220290e14cf142a808a47466346ee1c04da1402182ce5cbaf073db",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLMUSDT/15m/XLMUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "XLMUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLMUSDT/15m/XLMUSDT-15m-2024-09.zip"
+  },
+  {
+    "archive_bytes": 864,
+    "archive_sha256": "da68248c47c73089fd229911866831ef27073958413d0268f7dabdd91fdbeaeb",
+    "info": {
+      "csv_sha256": "a0f706669e77ce487be6fb4cad03eb160d6a269298cfc187bda2507abc6c4dda",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "da68248c47c73089fd229911866831ef27073958413d0268f7dabdd91fdbeaeb",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 100,
+        "last_modified": "Fri, 16 Aug 2024 12:57:48 GMT",
+        "received_at_ns": 1792571288353913463,
+        "requested_at_ns": 1792571287565920215,
+        "sha256": "641fd7d8b4be0997ca2491447ffea100118607f1a7c460948b345e7e3aa3e352",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/MATICUSDT/MATICUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 864,
+        "last_modified": "Fri, 16 Aug 2024 12:57:48 GMT",
+        "received_at_ns": 1792571288971709210,
+        "requested_at_ns": 1792571288353942837,
+        "sha256": "da68248c47c73089fd229911866831ef27073958413d0268f7dabdd91fdbeaeb",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/MATICUSDT/MATICUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "MATICUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/MATICUSDT/MATICUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 62006,
+    "archive_sha256": "14ed7a6bf0830e724509f5aa2caae8ace80b030f4a48565e153001db522c8632",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "da415d62d48f77e9e53b87127da96ed4cee72a4cf220f62173a950f735cd8d12",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "MATICUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "14ed7a6bf0830e724509f5aa2caae8ace80b030f4a48565e153001db522c8632",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 92,
+        "last_modified": "Sat, 17 Aug 2024 13:40:10 GMT",
+        "received_at_ns": 1792571289948950812,
+        "requested_at_ns": 1792571288763655724,
+        "sha256": "bc5224243a845efbd720ce8d7bb5d5c7d679af2290c7010c3147f11162a692e9",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MATICUSDT/15m/MATICUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 62006,
+        "last_modified": "Sat, 17 Aug 2024 13:40:10 GMT",
+        "received_at_ns": 1792571290791025281,
+        "requested_at_ns": 1792571289949001878,
+        "sha256": "14ed7a6bf0830e724509f5aa2caae8ace80b030f4a48565e153001db522c8632",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MATICUSDT/15m/MATICUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "MATICUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MATICUSDT/15m/MATICUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 895,
+    "archive_sha256": "7f01c137e537b4b2eddea37d3e8c5523a7f262daf7a8edefeedc37fbea02615e",
+    "info": {
+      "csv_sha256": "bdf3f3a48c685a23819a1ff19f8cd1eda6ff930531de6fee189b3927edceade4",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "7f01c137e537b4b2eddea37d3e8c5523a7f262daf7a8edefeedc37fbea02615e",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 100,
+        "last_modified": "Mon, 16 Sep 2024 13:09:59 GMT",
+        "received_at_ns": 1792571289614873730,
+        "requested_at_ns": 1792571288972538011,
+        "sha256": "34388d33b41192866fd31a932b720627325ab3f7f18463ae01c4e27841c6410c",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/MATICUSDT/MATICUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 895,
+        "last_modified": "Mon, 16 Sep 2024 13:09:59 GMT",
+        "received_at_ns": 1792571290913017220,
+        "requested_at_ns": 1792571289614901331,
+        "sha256": "7f01c137e537b4b2eddea37d3e8c5523a7f262daf7a8edefeedc37fbea02615e",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/MATICUSDT/MATICUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "MATICUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/MATICUSDT/MATICUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 62682,
+    "archive_sha256": "844a1b296f008cbc32e119a38c1ccf3e18422d72ce0e843bc8a088de80aadaac",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "1fdab2a5a89ac0c631cb501e0e6a20e97074e46562db63ce8b05ff7fef542f88",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "MATICUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "844a1b296f008cbc32e119a38c1ccf3e18422d72ce0e843bc8a088de80aadaac",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 92,
+        "last_modified": "Tue, 17 Sep 2024 13:59:19 GMT",
+        "received_at_ns": 1792571289671274660,
+        "requested_at_ns": 1792571289039566537,
+        "sha256": "72a914fe535d3cd7e696bb11f8795de39343d80ac644a67db956a3bca5c48c13",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MATICUSDT/15m/MATICUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 62682,
+        "last_modified": "Tue, 17 Sep 2024 13:59:19 GMT",
+        "received_at_ns": 1792571290351605503,
+        "requested_at_ns": 1792571289671300038,
+        "sha256": "844a1b296f008cbc32e119a38c1ccf3e18422d72ce0e843bc8a088de80aadaac",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MATICUSDT/15m/MATICUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "MATICUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MATICUSDT/15m/MATICUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 667,
+    "archive_sha256": "1c621a47b0bea78d8e2b0c2b79ebc1fe3d7c2f49657981b25a33d3b137941017",
+    "info": {
+      "csv_sha256": "a5eedf10c45bd2abe29e9e0df52b3926590f772cb945341f7bce5c8015238b18",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "1c621a47b0bea78d8e2b0c2b79ebc1fe3d7c2f49657981b25a33d3b137941017",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 100,
+        "last_modified": "Wed, 16 Oct 2024 12:57:29 GMT",
+        "received_at_ns": 1792571289699096694,
+        "requested_at_ns": 1792571289061099524,
+        "sha256": "bf43ed32e6accf8ee423a9cb132afabecb31f72623457e31fe47ffd767a39cd4",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/MATICUSDT/MATICUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 667,
+        "last_modified": "Wed, 16 Oct 2024 12:57:29 GMT",
+        "received_at_ns": 1792571291498323974,
+        "requested_at_ns": 1792571289699112347,
+        "sha256": "1c621a47b0bea78d8e2b0c2b79ebc1fe3d7c2f49657981b25a33d3b137941017",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/MATICUSDT/MATICUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "MATICUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/MATICUSDT/MATICUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 49351,
+    "archive_sha256": "a35cdbb953490fc823809e334e4a2a707f7e0c21c9fdffea0e35f6abf3ae1c03",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 247794,
+      "csv_sha256": "015a3889386e8f76a0e0b8d9a1b451e31e0ca049435ae60344bde1cd18fcb865",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "MATICUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "a35cdbb953490fc823809e334e4a2a707f7e0c21c9fdffea0e35f6abf3ae1c03",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 92,
+        "last_modified": "Thu, 17 Oct 2024 15:20:36 GMT",
+        "received_at_ns": 1792571290949316061,
+        "requested_at_ns": 1792571290358403540,
+        "sha256": "839dec71facae9d97220d5429127a14f946e92721115459325fb9a42a4f6f9e5",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MATICUSDT/15m/MATICUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 49351,
+        "last_modified": "Thu, 17 Oct 2024 15:20:36 GMT",
+        "received_at_ns": 1792571292505466551,
+        "requested_at_ns": 1792571290949347227,
+        "sha256": "a35cdbb953490fc823809e334e4a2a707f7e0c21c9fdffea0e35f6abf3ae1c03",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MATICUSDT/15m/MATICUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "MATICUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MATICUSDT/15m/MATICUSDT-15m-2024-09.zip"
+  },
+  {
+    "archive_bytes": 738,
+    "archive_sha256": "9ef13ffde34adc03294961e4a668289343dee9053b41c13cd5cb31d45f7a3ef1",
+    "info": {
+      "csv_sha256": "a19f55c4142aea4bd997d7696635073bc16410f6e4b6439f78fb48fee336d8a1",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "9ef13ffde34adc03294961e4a668289343dee9053b41c13cd5cb31d45f7a3ef1",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+        "received_at_ns": 1792571292582766701,
+        "requested_at_ns": 1792571290797789127,
+        "sha256": "b06fe48e762a3d5152ea9676cba77259cc4ffb40e8cd119178b163674863b549",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/EOSUSDT/EOSUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 738,
+        "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+        "received_at_ns": 1792571293222483423,
+        "requested_at_ns": 1792571292582793381,
+        "sha256": "9ef13ffde34adc03294961e4a668289343dee9053b41c13cd5cb31d45f7a3ef1",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/EOSUSDT/EOSUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "EOSUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/EOSUSDT/EOSUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 64276,
+    "archive_sha256": "0c26bc7aa0965bbbae87078c45231bab96037ee11098314937b47c0945d24a17",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "9fd1a390527d3cd2d972dfe886ca1f2db359adc20c8e09822ca686c3f732780a",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "EOSUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "0c26bc7aa0965bbbae87078c45231bab96037ee11098314937b47c0945d24a17",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Sat, 17 Aug 2024 13:39:56 GMT",
+        "received_at_ns": 1792571291991131083,
+        "requested_at_ns": 1792571290913885048,
+        "sha256": "4659e021c4ef18ee524615aa5bdcda32a12df6a9ac0e25e26aee5176cf42dfa0",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EOSUSDT/15m/EOSUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 64276,
+        "last_modified": "Sat, 17 Aug 2024 13:39:56 GMT",
+        "received_at_ns": 1792571293365218869,
+        "requested_at_ns": 1792571291991162129,
+        "sha256": "0c26bc7aa0965bbbae87078c45231bab96037ee11098314937b47c0945d24a17",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EOSUSDT/15m/EOSUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "EOSUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EOSUSDT/15m/EOSUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 841,
+    "archive_sha256": "a0ca8c2cd89fe7401589413a659276ce627a75c9ac3995ba905b7da086422b9c",
+    "info": {
+      "csv_sha256": "3f4ff33d8ec9839ce32a1dd41523130eeab975a2df1b669133ce4034614baebe",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "a0ca8c2cd89fe7401589413a659276ce627a75c9ac3995ba905b7da086422b9c",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Mon, 16 Sep 2024 13:09:58 GMT",
+        "received_at_ns": 1792571292827008826,
+        "requested_at_ns": 1792571291498960676,
+        "sha256": "2048bba6a2192cdf1e29cb820eadd1994d582be849ce041517260b9595c81115",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/EOSUSDT/EOSUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 841,
+        "last_modified": "Mon, 16 Sep 2024 13:09:58 GMT",
+        "received_at_ns": 1792571293457725907,
+        "requested_at_ns": 1792571292827036166,
+        "sha256": "a0ca8c2cd89fe7401589413a659276ce627a75c9ac3995ba905b7da086422b9c",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/EOSUSDT/EOSUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "EOSUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/EOSUSDT/EOSUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 61985,
+    "archive_sha256": "975ec89391ab50113ea25a9d0898f02bc8aa2e21702948551b58a2b827af0224",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "2a09e8ae608aa69d2c43e99d434417985f1f8d37aede1fca6cb3a83a623e6825",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "EOSUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "975ec89391ab50113ea25a9d0898f02bc8aa2e21702948551b58a2b827af0224",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Tue, 17 Sep 2024 13:59:06 GMT",
+        "received_at_ns": 1792571293142880479,
+        "requested_at_ns": 1792571292512322435,
+        "sha256": "6d40d526e77cd0e8c3d271e8ec8fd0d0f8b04a637c257c91284e5a8e9ec79900",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EOSUSDT/15m/EOSUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 61985,
+        "last_modified": "Tue, 17 Sep 2024 13:59:06 GMT",
+        "received_at_ns": 1792571294711283445,
+        "requested_at_ns": 1792571293142913689,
+        "sha256": "975ec89391ab50113ea25a9d0898f02bc8aa2e21702948551b58a2b827af0224",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EOSUSDT/15m/EOSUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "EOSUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EOSUSDT/15m/EOSUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 851,
+    "archive_sha256": "f1def66ceb7b4a496151e81eaf4e05a54aed3a68495e8f49c0f049ecaa439251",
+    "info": {
+      "csv_sha256": "82d6f817a928f7a8677808a13ba498af2800c0e654d4ff68b381aad2011f5e3c",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "f1def66ceb7b4a496151e81eaf4e05a54aed3a68495e8f49c0f049ecaa439251",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Wed, 16 Oct 2024 12:57:28 GMT",
+        "received_at_ns": 1792571294877161799,
+        "requested_at_ns": 1792571293223171813,
+        "sha256": "89e09aeec8ed131ef5d00fada27a220311bbe2f9b44d8502466cc087fd4c5b95",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/EOSUSDT/EOSUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 851,
+        "last_modified": "Wed, 16 Oct 2024 12:57:28 GMT",
+        "received_at_ns": 1792571295516838495,
+        "requested_at_ns": 1792571294877187187,
+        "sha256": "f1def66ceb7b4a496151e81eaf4e05a54aed3a68495e8f49c0f049ecaa439251",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/EOSUSDT/EOSUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "EOSUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/EOSUSDT/EOSUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 58721,
+    "archive_sha256": "a9b975fa38744282e5294be6a015d9dc624852a40918370f16d98891bdf76266",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 247794,
+      "csv_sha256": "ceead8f87906cf5bf1c32e8a335bfc37c40610e4b14f4c76ef541a6fb97b6258",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "EOSUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "a9b975fa38744282e5294be6a015d9dc624852a40918370f16d98891bdf76266",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Thu, 17 Oct 2024 15:20:16 GMT",
+        "received_at_ns": 1792571294975443561,
+        "requested_at_ns": 1792571293371847383,
+        "sha256": "0d5a1d08923fcedc1ec21155ac90318d83f4ae5b3272ed61e8d21c6ec45227dd",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EOSUSDT/15m/EOSUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 58721,
+        "last_modified": "Thu, 17 Oct 2024 15:20:16 GMT",
+        "received_at_ns": 1792571295933411099,
+        "requested_at_ns": 1792571294975476701,
+        "sha256": "a9b975fa38744282e5294be6a015d9dc624852a40918370f16d98891bdf76266",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EOSUSDT/15m/EOSUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "EOSUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EOSUSDT/15m/EOSUSDT-15m-2024-09.zip"
+  },
+  {
+    "archive_bytes": 830,
+    "archive_sha256": "0c4abb8b110201c56b9eafd48739219850c15c0d4bc908a91e080f06117a4f25",
+    "info": {
+      "csv_sha256": "aa8010aa877cc1ca90ba66dcf1308ffc49b9587a2de08d801065118b7e1c651e",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1719792000000,
+      "last_calc_time_ms": 1722441600000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-07",
+    "official_sha256": "0c4abb8b110201c56b9eafd48739219850c15c0d4bc908a91e080f06117a4f25",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+        "received_at_ns": 1792571294579914521,
+        "requested_at_ns": 1792571293458462809,
+        "sha256": "9c4cf77500a3583497d2e88a14d7129248c3c9fd6c57f29815c93c06028d8318",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/FTMUSDT/FTMUSDT-fundingRate-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 830,
+        "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+        "received_at_ns": 1792571295180438957,
+        "requested_at_ns": 1792571294579941802,
+        "sha256": "0c4abb8b110201c56b9eafd48739219850c15c0d4bc908a91e080f06117a4f25",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/FTMUSDT/FTMUSDT-fundingRate-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "FTMUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/FTMUSDT/FTMUSDT-fundingRate-2024-07.zip"
+  },
+  {
+    "archive_bytes": 63447,
+    "archive_sha256": "992a31c004a70d62d09a48cc7059b193afde99c5cbb80174e42dc9e627ab4e86",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "830c52e7a3f8f44855363f740751b75df1cb886d8049e8af6a53f33a96eac962",
+      "duplicate_rows": 0,
+      "first_open_ms": 1719792000000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1722470399999,
+      "member": "FTMUSDT-15m-2024-07.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-07",
+    "official_sha256": "992a31c004a70d62d09a48cc7059b193afde99c5cbb80174e42dc9e627ab4e86",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Sat, 17 Aug 2024 13:39:59 GMT",
+        "received_at_ns": 1792571295282365148,
+        "requested_at_ns": 1792571294717699872,
+        "sha256": "b2d894e1169bfa714cbb72dcfd88ddcec90045d6133f90052ba0cc15aa3872fe",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/FTMUSDT/15m/FTMUSDT-15m-2024-07.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 63447,
+        "last_modified": "Sat, 17 Aug 2024 13:39:59 GMT",
+        "received_at_ns": 1792571296840016190,
+        "requested_at_ns": 1792571295282398669,
+        "sha256": "992a31c004a70d62d09a48cc7059b193afde99c5cbb80174e42dc9e627ab4e86",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/FTMUSDT/15m/FTMUSDT-15m-2024-07.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "FTMUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/FTMUSDT/15m/FTMUSDT-15m-2024-07.zip"
+  },
+  {
+    "archive_bytes": 893,
+    "archive_sha256": "83bbd4af4ee237bd179d06cc450d0c8dc55ebd83fd19b221be4a4396c6968855",
+    "info": {
+      "csv_sha256": "c63c9800935311da9c9ad18c34037fb060dfebeb2fdf9f0cf0e626b0bcaa15e8",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1722470400000,
+      "last_calc_time_ms": 1725120000000,
+      "rows": 93,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-08",
+    "official_sha256": "83bbd4af4ee237bd179d06cc450d0c8dc55ebd83fd19b221be4a4396c6968855",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Mon, 16 Sep 2024 13:09:58 GMT",
+        "received_at_ns": 1792571295818742106,
+        "requested_at_ns": 1792571295181123873,
+        "sha256": "0e0be4438b12f3f6cce21c6cc09b91302e6c050b557579243777e824f6028add",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/FTMUSDT/FTMUSDT-fundingRate-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 893,
+        "last_modified": "Mon, 16 Sep 2024 13:09:58 GMT",
+        "received_at_ns": 1792571296943575080,
+        "requested_at_ns": 1792571295818766262,
+        "sha256": "83bbd4af4ee237bd179d06cc450d0c8dc55ebd83fd19b221be4a4396c6968855",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/FTMUSDT/FTMUSDT-fundingRate-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "FTMUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/FTMUSDT/FTMUSDT-fundingRate-2024-08.zip"
+  },
+  {
+    "archive_bytes": 63018,
+    "archive_sha256": "64cb1c3180d75678c8a8056fba8862129cf7a43a428852a541515ea72dd87e7d",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 256050,
+      "csv_sha256": "f6d8643cc9cdccfef549f1718523b12c573b7017872cf8bd3039e1697537d3a2",
+      "duplicate_rows": 0,
+      "first_open_ms": 1722470400000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1725148799999,
+      "member": "FTMUSDT-15m-2024-08.csv",
+      "missing_month_slots": 0,
+      "rows": 2976,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-08",
+    "official_sha256": "64cb1c3180d75678c8a8056fba8862129cf7a43a428852a541515ea72dd87e7d",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Tue, 17 Sep 2024 13:59:09 GMT",
+        "received_at_ns": 1792571296666209560,
+        "requested_at_ns": 1792571295517615549,
+        "sha256": "3d83c68c8f41fa947fb45d11b6f018803a48fac2b48cff6b93b6f771e50e674a",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/FTMUSDT/15m/FTMUSDT-15m-2024-08.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 63018,
+        "last_modified": "Tue, 17 Sep 2024 13:59:09 GMT",
+        "received_at_ns": 1792571297780944734,
+        "requested_at_ns": 1792571296666235830,
+        "sha256": "64cb1c3180d75678c8a8056fba8862129cf7a43a428852a541515ea72dd87e7d",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/FTMUSDT/15m/FTMUSDT-15m-2024-08.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "FTMUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/FTMUSDT/15m/FTMUSDT-15m-2024-08.zip"
+  },
+  {
+    "archive_bytes": 865,
+    "archive_sha256": "edebb97fb509d1bac623ee2306293df9930d077180f406dff22356f1becd023a",
+    "info": {
+      "csv_sha256": "5fe6bf08f595b4b221ad41afc36eac139fa525c9e181f08704026c58cd71592a",
+      "fields": [
+        "calc_time",
+        "funding_interval_hours",
+        "last_funding_rate"
+      ],
+      "first_calc_time_ms": 1725148800000,
+      "last_calc_time_ms": 1727712000000,
+      "rows": 90,
+      "timestamp_unit": "UTC milliseconds; original 0/1ms offsets preserved"
+    },
+    "month": "2024-09",
+    "official_sha256": "edebb97fb509d1bac623ee2306293df9930d077180f406dff22356f1becd023a",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 98,
+        "last_modified": "Wed, 16 Oct 2024 12:57:28 GMT",
+        "received_at_ns": 1792571296541916687,
+        "requested_at_ns": 1792571295943298128,
+        "sha256": "d445778941725adddb1a19a6419795869f1ea6e578b68d7102368ba6c1a5f0cd",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/FTMUSDT/FTMUSDT-fundingRate-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 865,
+        "last_modified": "Wed, 16 Oct 2024 12:57:28 GMT",
+        "received_at_ns": 1792571297637763974,
+        "requested_at_ns": 1792571296541949166,
+        "sha256": "edebb97fb509d1bac623ee2306293df9930d077180f406dff22356f1becd023a",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/FTMUSDT/FTMUSDT-fundingRate-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "FTMUSDT",
+    "type": "fundingRate",
+    "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/FTMUSDT/FTMUSDT-fundingRate-2024-09.zip"
+  },
+  {
+    "archive_bytes": 61296,
+    "archive_sha256": "dc806d92fd28fd55897ef1caaf1f502d94a1430dbeef4e58eef24b470ece2449",
+    "info": {
+      "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+      "csv_bytes": 247794,
+      "csv_sha256": "31f3f98e958e1b0f0d83536a4ca2e0831b3538b1b60b146facfffe2952ab1d81",
+      "duplicate_rows": 0,
+      "first_open_ms": 1725148800000,
+      "internal_missing_slots": 0,
+      "last_close_ms": 1727740799999,
+      "member": "FTMUSDT-15m-2024-09.csv",
+      "missing_month_slots": 0,
+      "rows": 2880,
+      "timestamp_unit": "UTC Unix milliseconds"
+    },
+    "month": "2024-09",
+    "official_sha256": "dc806d92fd28fd55897ef1caaf1f502d94a1430dbeef4e58eef24b470ece2449",
+    "requests": [
+      {
+        "byte_limit": 4096,
+        "bytes": 90,
+        "last_modified": "Thu, 17 Oct 2024 15:20:21 GMT",
+        "received_at_ns": 1792571297443277734,
+        "requested_at_ns": 1792571296850166614,
+        "sha256": "80dc1140e1e1a5c7554700026146e0fd9a4850c64db8d3859d69773642c5afed",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/FTMUSDT/15m/FTMUSDT-15m-2024-09.zip.CHECKSUM"
+      },
+      {
+        "byte_limit": 2000000,
+        "bytes": 61296,
+        "last_modified": "Thu, 17 Oct 2024 15:20:21 GMT",
+        "received_at_ns": 1792571298391911469,
+        "requested_at_ns": 1792571297443310122,
+        "sha256": "dc806d92fd28fd55897ef1caaf1f502d94a1430dbeef4e58eef24b470ece2449",
+        "status": 200,
+        "timeout_seconds": 25,
+        "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/FTMUSDT/15m/FTMUSDT-15m-2024-09.zip"
+      }
+    ],
+    "status": "VERIFIED",
+    "symbol": "FTMUSDT",
+    "type": "markPriceKlines",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/FTMUSDT/15m/FTMUSDT-15m-2024-09.zip"
+  }
+]

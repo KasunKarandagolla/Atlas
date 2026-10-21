@@ -1,0 +1,56 @@
+{
+  "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-07.zip",
+  "requests": [
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-07.zip.CHECKSUM",
+      "status": 200,
+      "bytes": 90,
+      "requested_at_ns": 1792571212800913570,
+      "received_at_ns": 1792571214691412239,
+      "sha256": "5067773a83177d47e75d2858e9f8b7c4d5405aac3f0f03de5258ec0a5572a630",
+      "last_modified": "Sat, 17 Aug 2024 13:39:48 GMT",
+      "timeout_seconds": 25,
+      "byte_limit": 4096
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/15m/BTCUSDT-15m-2024-07.zip",
+      "status": 200,
+      "bytes": 82229,
+      "requested_at_ns": 1792571214691444838,
+      "received_at_ns": 1792571217416888883,
+      "sha256": "b288ce4ae420cbe03c8f41737a84872c8a0640bec87a03c325984ce95fa7ad6b",
+      "last_modified": "Sat, 17 Aug 2024 13:39:48 GMT",
+      "timeout_seconds": 25,
+      "byte_limit": 2000000
+    }
+  ],
+  "verified": true,
+  "archive_sha256": "b288ce4ae420cbe03c8f41737a84872c8a0640bec87a03c325984ce95fa7ad6b",
+  "info": {
+    "csv_sha256": "094d2e3d160fc1c91bf84bccfdd02798bc61de84b490443ab1935cda417b6933",
+    "csv_bytes": 292407,
+    "rows": 2976,
+    "first_open_ms": 1719792000000,
+    "last_close_ms": 1722470399999,
+    "internal_missing_slots": 0,
+    "missing_month_slots": 0,
+    "duplicate_rows": 0,
+    "timestamp_unit": "UTC Unix milliseconds",
+    "bar_close_semantics": "exclusive close = archive close_time + 1ms",
+    "member": "BTCUSDT-15m-2024-07.csv"
+  },
+  "first_row": [
+    "1719792000000",
+    "62766",
+    "62809.40000000",
+    "62569.29390780",
+    "62621.90000000",
+    "0",
+    "1719792899999",
+    "0",
+    "900",
+    "0",
+    "0",
+    "0"
+  ]
+}

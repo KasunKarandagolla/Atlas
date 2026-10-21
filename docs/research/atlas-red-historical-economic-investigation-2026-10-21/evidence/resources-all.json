@@ -1,0 +1,12 @@
+{
+  "external_temporary_reservation_bytes": 200000000,
+  "measured_peak_is_sampled": true,
+  "permanent_root": "/workspace/shared/atlas-historical-2026-10-21",
+  "physical_free_min_bytes": 31342837760,
+  "physical_reserve_bytes": 2000000000,
+  "raw_root": "/workspace/shared/atlas-historical-2026-10-21/raw",
+  "sample_interval_seconds": 0.1,
+  "samples": 1407,
+  "tmpfs_capacity_bytes": 256000000,
+  "tmpfs_peak_used_bytes": 94208
+}

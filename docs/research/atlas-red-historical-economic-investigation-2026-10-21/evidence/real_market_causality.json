@@ -1,0 +1,11 @@
+{
+  "july_action_paths_unchanged_by_august_extension": 6759,
+  "july_economic_rows_byte_value_equal": 54,
+  "positive_s2_real_native_prefix_parity": {
+    "symbol": "BTCUSDT",
+    "cutoff_ns": 1719822600000000000,
+    "price_trigger_confirmed": true,
+    "native_universe_gate_preserved": true
+  },
+  "source": "genuine checksum-verified archives; not unit fixtures"
+}

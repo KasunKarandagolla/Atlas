@@ -1,0 +1,221 @@
+{
+  "frame": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "SOLUSDT",
+    "XRPUSDT",
+    "ADAUSDT",
+    "DOGEUSDT",
+    "AVAXUSDT",
+    "LINKUSDT",
+    "DOTUSDT",
+    "LTCUSDT",
+    "BCHUSDT",
+    "ETCUSDT",
+    "TRXUSDT",
+    "XLMUSDT",
+    "ATOMUSDT",
+    "NEARUSDT",
+    "APTUSDT",
+    "ARBUSDT",
+    "OPUSDT",
+    "FILUSDT",
+    "UNIUSDT",
+    "INJUSDT",
+    "SUIUSDT",
+    "SEIUSDT",
+    "RUNEUSDT",
+    "ICPUSDT",
+    "CRVUSDT",
+    "AAVEUSDT",
+    "LDOUSDT",
+    "FTMUSDT",
+    "MATICUSDT",
+    "EOSUSDT",
+    "ALGOUSDT",
+    "HBARUSDT"
+  ],
+  "frame_sha256": "b51f4a360e60bbb62fae982e4120ff3681b12a13ef8cd4a0aff01d761f6f03b5",
+  "not_a_point_in_time_full_universe": true,
+  "ranked_june_2024_quote_turnover": [
+    {
+      "quote_turnover": "53725619567.1540",
+      "rank": 1,
+      "symbol": "SOLUSDT"
+    },
+    {
+      "quote_turnover": "16690914818.17790",
+      "rank": 2,
+      "symbol": "BNBUSDT"
+    },
+    {
+      "quote_turnover": "13422822608.346130",
+      "rank": 3,
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "quote_turnover": "9471203282.84108",
+      "rank": 4,
+      "symbol": "XRPUSDT"
+    },
+    {
+      "quote_turnover": "6796720561.0650",
+      "rank": 5,
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "quote_turnover": "6307295086.1308",
+      "rank": 6,
+      "symbol": "FILUSDT"
+    },
+    {
+      "quote_turnover": "5753996250.9214000",
+      "rank": 7,
+      "symbol": "INJUSDT"
+    },
+    {
+      "quote_turnover": "5646779053.2173",
+      "rank": 8,
+      "symbol": "CRVUSDT"
+    },
+    {
+      "quote_turnover": "5450363090.5310",
+      "rank": 9,
+      "symbol": "UNIUSDT"
+    },
+    {
+      "quote_turnover": "5185803842.3890",
+      "rank": 10,
+      "symbol": "NEARUSDT"
+    },
+    {
+      "quote_turnover": "5015587025.865500",
+      "rank": 11,
+      "symbol": "LDOUSDT"
+    },
+    {
+      "quote_turnover": "4907055684.42650",
+      "rank": 12,
+      "symbol": "ADAUSDT"
+    },
+    {
+      "quote_turnover": "4823550495.56242",
+      "rank": 13,
+      "symbol": "LINKUSDT"
+    },
+    {
+      "quote_turnover": "4344596469.24800",
+      "rank": 14,
+      "symbol": "MATICUSDT"
+    },
+    {
+      "quote_turnover": "4250891421.15552",
+      "rank": 15,
+      "symbol": "BCHUSDT"
+    },
+    {
+      "quote_turnover": "4141499626.061200",
+      "rank": 16,
+      "symbol": "FTMUSDT"
+    },
+    {
+      "quote_turnover": "3757874619.2279100",
+      "rank": 17,
+      "symbol": "ARBUSDT"
+    },
+    {
+      "quote_turnover": "3740808148.6414",
+      "rank": 18,
+      "symbol": "DOTUSDT"
+    },
+    {
+      "quote_turnover": "3731074463.20481000",
+      "rank": 19,
+      "symbol": "OPUSDT"
+    },
+    {
+      "quote_turnover": "3321106958.90524",
+      "rank": 20,
+      "symbol": "LTCUSDT"
+    },
+    {
+      "quote_turnover": "3154885168.6644400",
+      "rank": 21,
+      "symbol": "SUIUSDT"
+    },
+    {
+      "quote_turnover": "3146866457.19363",
+      "rank": 22,
+      "symbol": "ETCUSDT"
+    },
+    {
+      "quote_turnover": "1940306778.596100",
+      "rank": 23,
+      "symbol": "APTUSDT"
+    },
+    {
+      "quote_turnover": "1932630608.0333",
+      "rank": 24,
+      "symbol": "EOSUSDT"
+    },
+    {
+      "quote_turnover": "1752070722.53894",
+      "rank": 25,
+      "symbol": "ATOMUSDT"
+    },
+    {
+      "quote_turnover": "1613836969.4779000",
+      "rank": 26,
+      "symbol": "SEIUSDT"
+    },
+    {
+      "quote_turnover": "1290676670.2800",
+      "rank": 27,
+      "symbol": "AAVEUSDT"
+    },
+    {
+      "quote_turnover": "1244597622.75849",
+      "rank": 28,
+      "symbol": "TRXUSDT"
+    },
+    {
+      "quote_turnover": "1226573746.5250",
+      "rank": 29,
+      "symbol": "RUNEUSDT"
+    },
+    {
+      "quote_turnover": "1209924948.952000",
+      "rank": 30,
+      "symbol": "ICPUSDT"
+    },
+    {
+      "quote_turnover": "654523484.25190",
+      "rank": 31,
+      "symbol": "ALGOUSDT"
+    },
+    {
+      "quote_turnover": "654123474.63881",
+      "rank": 32,
+      "symbol": "HBARUSDT"
+    },
+    {
+      "quote_turnover": "562062275.63904",
+      "rank": 33,
+      "symbol": "XLMUSDT"
+    }
+  ],
+  "selected": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "UNIUSDT",
+    "ARBUSDT",
+    "ATOMUSDT",
+    "XLMUSDT",
+    "MATICUSDT",
+    "EOSUSDT",
+    "FTMUSDT"
+  ],
+  "selection_rules": "PROTOCOL.md; ranks 1,9,17,25,33 plus BTC/ETH/MATIC/EOS/FTM"
+}

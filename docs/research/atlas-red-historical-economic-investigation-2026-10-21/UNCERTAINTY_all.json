@@ -1,0 +1,182 @@
+{
+  "S1_ALL": {
+    "1_week": {
+      "calendar_blocks": 9,
+      "exploratory_95pct_total_cash_interval": [
+        -12272.960683482594,
+        7238.325243918469
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    },
+    "2_week": {
+      "calendar_blocks": 5,
+      "exploratory_95pct_total_cash_interval": [
+        -14433.120331279717,
+        7652.175789720858
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    }
+  },
+  "S1_AUGUST_HOLDOUT": {
+    "1_week": {
+      "calendar_blocks": 5,
+      "exploratory_95pct_total_cash_interval": [
+        -6172.421760344356,
+        6437.505529919333
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    },
+    "2_week": {
+      "calendar_blocks": 3,
+      "exploratory_95pct_total_cash_interval": [
+        -6206.09786211069,
+        4040.2681650549266
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    }
+  },
+  "S1_JULY_DEVELOPMENT": {
+    "1_week": {
+      "calendar_blocks": 5,
+      "exploratory_95pct_total_cash_interval": [
+        -7407.984034155981,
+        3216.3161622043517
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    },
+    "2_week": {
+      "calendar_blocks": 3,
+      "exploratory_95pct_total_cash_interval": [
+        -10733.295967723327,
+        3209.8259241931005
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    }
+  },
+  "S2_ALL": {
+    "1_week": {
+      "calendar_blocks": 9,
+      "exploratory_95pct_total_cash_interval": [
+        -3767.6107834950353,
+        9.154763497004197
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    },
+    "2_week": {
+      "calendar_blocks": 5,
+      "exploratory_95pct_total_cash_interval": [
+        -4129.970831031999,
+        354.9851329728857
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    }
+  },
+  "S2_AUGUST_HOLDOUT": {
+    "1_week": {
+      "calendar_blocks": 5,
+      "exploratory_95pct_total_cash_interval": [
+        -1694.9043062363126,
+        1855.4509872866968
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    },
+    "2_week": {
+      "calendar_blocks": 3,
+      "exploratory_95pct_total_cash_interval": [
+        -2001.7024842087365,
+        1291.2976228376847
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    }
+  },
+  "S2_JULY_DEVELOPMENT": {
+    "1_week": {
+      "calendar_blocks": 5,
+      "exploratory_95pct_total_cash_interval": [
+        -2572.473154997474,
+        -1037.0157634688321
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    },
+    "2_week": {
+      "calendar_blocks": 3,
+      "exploratory_95pct_total_cash_interval": [
+        -2624.0131011431527,
+        -570.0578365796341
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    }
+  },
+  "S2_RAW_RANGE_ALL": {
+    "1_week": {
+      "calendar_blocks": 9,
+      "exploratory_95pct_total_cash_interval": [
+        -4683.572481963802,
+        914.7520791192331
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    },
+    "2_week": {
+      "calendar_blocks": 5,
+      "exploratory_95pct_total_cash_interval": [
+        -4731.015804944737,
+        1187.1146545730212
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    }
+  },
+  "S2_RAW_RANGE_AUGUST_HOLDOUT": {
+    "1_week": {
+      "calendar_blocks": 5,
+      "exploratory_95pct_total_cash_interval": [
+        -1619.3918184077218,
+        2168.7430929048683
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    },
+    "2_week": {
+      "calendar_blocks": 3,
+      "exploratory_95pct_total_cash_interval": [
+        -1482.874779758863,
+        1459.162910500768
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    }
+  },
+  "S2_RAW_RANGE_JULY_DEVELOPMENT": {
+    "1_week": {
+      "calendar_blocks": 5,
+      "exploratory_95pct_total_cash_interval": [
+        -3498.542305701552,
+        -97.2979785915486
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    },
+    "2_week": {
+      "calendar_blocks": 3,
+      "exploratory_95pct_total_cash_interval": [
+        -2937.0466783893708,
+        -364.51773289091034
+      ],
+      "reason": "fewer than 20 independent weeks; fixed incomplete cohort, execution uncertainty, multiple descriptive comparisons",
+      "significance": "NOT ESTIMABLE"
+    }
+  }
+}

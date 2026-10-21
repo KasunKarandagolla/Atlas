@@ -1,0 +1,16 @@
+[
+  {
+    "file": "EVALUATIONS_july.jsonl.gz",
+    "permanent_path": "/workspace/shared/atlas-historical-2026-10-21/outputs/EVALUATIONS_july.jsonl.gz",
+    "bytes": 6350777,
+    "sha256": "b6955c4ecdcdc2c794260639e2dfc48f94efe4f8626a42063b9e05b98f351971",
+    "reproducible_by": "scripts/atlas_red_historical_economics.py"
+  },
+  {
+    "file": "EVALUATIONS_all.jsonl.gz",
+    "permanent_path": "/workspace/shared/atlas-historical-2026-10-21/outputs/EVALUATIONS_all.jsonl.gz",
+    "bytes": 12723301,
+    "sha256": "5241c44d3aa97d3c33f74efeb9d7adf0520a328b293feea1f27eb837c545604e",
+    "reproducible_by": "scripts/atlas_red_historical_economics.py"
+  }
+]

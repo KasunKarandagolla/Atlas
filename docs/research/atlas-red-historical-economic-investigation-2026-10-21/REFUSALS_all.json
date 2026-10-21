@@ -1,0 +1,44 @@
+[
+  {
+    "strategy": "S1",
+    "split": "AUGUST_HOLDOUT",
+    "scenario": "BASE",
+    "reason": "STOP_DISTANCE_OUTSIDE_0.5_TO_3_ATR",
+    "count": 442
+  },
+  {
+    "strategy": "S1",
+    "split": "AUGUST_HOLDOUT",
+    "scenario": "HIGH",
+    "reason": "STOP_DISTANCE_OUTSIDE_0.5_TO_3_ATR",
+    "count": 442
+  },
+  {
+    "strategy": "S1",
+    "split": "AUGUST_HOLDOUT",
+    "scenario": "LOW",
+    "reason": "STOP_DISTANCE_OUTSIDE_0.5_TO_3_ATR",
+    "count": 442
+  },
+  {
+    "strategy": "S1",
+    "split": "JULY_DEVELOPMENT",
+    "scenario": "BASE",
+    "reason": "STOP_DISTANCE_OUTSIDE_0.5_TO_3_ATR",
+    "count": 504
+  },
+  {
+    "strategy": "S1",
+    "split": "JULY_DEVELOPMENT",
+    "scenario": "HIGH",
+    "reason": "STOP_DISTANCE_OUTSIDE_0.5_TO_3_ATR",
+    "count": 504
+  },
+  {
+    "strategy": "S1",
+    "split": "JULY_DEVELOPMENT",
+    "scenario": "LOW",
+    "reason": "STOP_DISTANCE_OUTSIDE_0.5_TO_3_ATR",
+    "count": 504
+  }
+]

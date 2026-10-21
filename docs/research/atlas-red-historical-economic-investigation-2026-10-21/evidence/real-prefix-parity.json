@@ -1,0 +1,25 @@
+{
+  "source": "genuine checksum-verified BTCUSDT archives",
+  "direct_vs_windowed_precomputed_native_s2": [
+    {
+      "date": "2024-07-01",
+      "bar_prefix": 5856,
+      "predicate_reason": "COMPRESSION_RULE_FAILED",
+      "all_native_indicator_values_exact": true
+    },
+    {
+      "date": "2024-07-10",
+      "bar_prefix": 6720,
+      "predicate_reason": "COMPRESSION_RULE_FAILED",
+      "all_native_indicator_values_exact": true
+    },
+    {
+      "date": "2024-07-20",
+      "bar_prefix": 7680,
+      "predicate_reason": "COMPRESSION_RULE_FAILED",
+      "all_native_indicator_values_exact": true
+    }
+  ],
+  "actual_receipts_remain_today": true,
+  "no_august_prices_consumed": true
+}

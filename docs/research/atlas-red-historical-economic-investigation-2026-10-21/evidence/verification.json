@@ -1,0 +1,107 @@
+{
+  "accepted_design_sha": "f9f8ef083ba5bafcad9bab4d07227676200a948f",
+  "additional_golden_test": {
+    "failed": 1,
+    "passed": 0,
+    "reason": "nautilus_trader is absent",
+    "same_clean_base_failure": true
+  },
+  "all_run_resource": {
+    "external_temporary_reservation_bytes": 200000000,
+    "measured_peak_is_sampled": true,
+    "permanent_root": "/workspace/shared/atlas-historical-2026-10-21",
+    "physical_free_min_bytes": 31342837760,
+    "physical_reserve_bytes": 2000000000,
+    "raw_root": "/workspace/shared/atlas-historical-2026-10-21/raw",
+    "sample_interval_seconds": 0.1,
+    "samples": 1407,
+    "tmpfs_capacity_bytes": 256000000,
+    "tmpfs_peak_used_bytes": 94208
+  },
+  "analysis_sha": "9487123316f2411fd9725f99c0d0f6b70a463b1f",
+  "base_sha": "924a26f2a6a85f6468d4d4f6a44069c332c4096e",
+  "correction_candidate_sha": "75fca65e8352bd10c4b17033d90dd96cfc18f8e9",
+  "current_fapi_probe": "NOT RUN; configured host list omits fapi.binance.com",
+  "dependencies": "Standard library for acquisition/analysis; existing local ATLAS pure owners. No dependency installation.",
+  "earlier_attempts": [
+    {
+      "failed": 1,
+      "focused_passed": 11,
+      "reason": "new test fixture imported nonexistent NS; corrected test only"
+    },
+    {
+      "failed": 0,
+      "focused_passed": 12
+    },
+    {
+      "july_first_run": "Decimal serialization binding failed in research SQLite; fixed adapter before completed July and before August code freeze"
+    }
+  ],
+  "execution_categories": {
+    "actual_venue_executions": "UNAVAILABLE",
+    "conditional_modeled_cash": "COMPUTED_UNQUALIFIED",
+    "native_eligible_actions": "UNAVAILABLE",
+    "price_diagnostics": "OBSERVED",
+    "prospective_sealed_actions": "UNAVAILABLE"
+  },
+  "external_temp_inventory_bytes": {
+    "home_agent_cache": 41,
+    "original_hypothesis": 6661,
+    "original_mypy_cache": 8052960,
+    "original_pytest_cache": 7946,
+    "original_ruff_cache": 2458,
+    "research_ruff_cache_at_inventory": 834,
+    "tmp": 852
+  },
+  "final_focused_tests": {
+    "failed": 0,
+    "passed": 13,
+    "skipped": 0
+  },
+  "freezes_sha256": {
+    "ATLAS_FINAL_IMPLEMENTATION_CLARIFICATION_AND_V1_FREEZE_COMPLETED.md": "c13cad1ba2f3f8c250d55099017770f5144c6cfd71be4bee1e65c5f075806a5c",
+    "ATLAS_V2_FINAL_INTRADAY_INTELLIGENCE_IMPLEMENTATION_FREEZE_AMENDED_2026-09-25.md": "e868e3e25230fb7fe334e769949bd0d8892edcf66804b0b773cd37ebb2d8fe78",
+    "docs/v2/ATLAS_AGENT_INTELLIGENCE_EXTENSION_FREEZE_V1.md": "d3e7b0b3da8a2a776db5dd05c656dbc5f04f3d8b1dfaaaec3fbd66966931682d"
+  },
+  "model_runtime_attestation": "UNVERIFIED; owner requested GPT-6.1 Sol High; no subagents",
+  "physical_reserve_required": 2000000000,
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "protected_algorithms_and_freezes_unchanged": true,
+  "protocol_sha": "97233b6cc66d9b17a0f3c5ca08d4b2d4e9051d43",
+  "publication_manifest_check": "Initial wrong-directory command failed; repeated from algorithms/ passed",
+  "publication_metadata_changes": [
+    "Four acceptance evidence links and their manifest checksum, without requirement/status/design/policy changes"
+  ],
+  "python_executable": "/workspace/.venvs/atlas/bin/python",
+  "python_version": "Python 3.12.14",
+  "qualified_outcomes": 0,
+  "real_market_causality_checks": {
+    "july_action_paths_unchanged_by_august_extension": 6759,
+    "july_economic_rows_byte_value_equal": 54,
+    "positive_s2_real_native_prefix_parity": {
+      "cutoff_ns": 1719822600000000000,
+      "native_universe_gate_preserved": true,
+      "price_trigger_confirmed": true,
+      "symbol": "BTCUSDT"
+    },
+    "source": "genuine checksum-verified archives; not unit fixtures"
+  },
+  "reporting_checks": "Ruff and ast.parse passed; no trading math changes",
+  "source_sha256": {
+    "scripts/atlas_red_historical_economics.py": "9b2455374a6496d443896f8ae6183681d963ec4ec2f285a4e0e0fc2b0c23b646",
+    "scripts/atlas_red_historical_funding.py": "7a69c29f9aed8bbcf876849128bf055b9f626e8dcc402c9c5eeffce328e1f0aa",
+    "src/atlas/v2/features/technical.py": "82bfd6bcc5e13e0293d985990383584a269d6691633b00560f2da385f912e1d4",
+    "src/atlas/v2/research/full_cycle/actions.py": "d6e68ab2ae1e2a4893d4adf1bfa2fd8c6f463579955548ac2f9292d9a53860ce",
+    "src/atlas/v2/research/full_cycle/applicability.py": "2f6111163a891916879aaf676a228f735d0b8ec62ea90a6b3dd7cad2366ed534",
+    "src/atlas/v2/research/full_cycle/historical_archive.py": "d748992d7f77a62b3613ff6bbb4859fca1c53742375f12a4997ec0e89057a0f4",
+    "src/atlas/v2/research/full_cycle/historical_economics.py": "a997b57757fb37a017badbccccc05ec10ceb955e9a61b9a0153f985f39a38b2a",
+    "src/atlas/v2/research/full_cycle/store.py": "0139ba3d9215b4793aeba74081c71f0142797efd85bf8e4bb54a804df7685378",
+    "src/atlas/v2/science/costs.py": "1f6dc19d57a1e6d5454ce287291885b700c472ccc9418593ba09228e4a2a3dd1",
+    "src/atlas/v2/strategies/s1_trend.py": "e85c3f1fbfd08f4d01f185773203a7e6cf27522fcb7b9fdd2e2c0be35f58834b",
+    "src/atlas/v2/strategies/s2_breakout.py": "6d2f92adc3e837f876d9c66f10480729436bf32ef095be8a0872773c727f6615",
+    "src/atlas/v2/strategies/s3_mean_reversion.py": "94b27684441ba8abf1cd8eef88ac38b239567a6bf44a0fed73ca28570e629fe0"
+  },
+  "sqlite_integrity": "ok",
+  "temporary_bound_note": "256 MB kernel tmpfs plus 200 MB conservative external allowance and 4096 margin, below 5 billion. Peak is sampled, not mathematically exact. No owner artifacts reclaimed.",
+  "temporary_capacity_plus_external_and_margin": 456004096
+}

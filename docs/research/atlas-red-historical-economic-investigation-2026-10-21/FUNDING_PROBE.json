@@ -1,0 +1,29 @@
+{
+  "requests": [
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-07.zip.CHECKSUM",
+      "status": 200,
+      "bytes": 98,
+      "requested_at_ns": 1792571026263922988,
+      "received_at_ns": 1792571027762182176,
+      "sha256": "5eee0e27e0f394d2f849d6abc82ecf00c41c30cb1bc46dc6c0fb7535118b65e6",
+      "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+      "timeout_seconds": 25,
+      "byte_limit": 4096
+    },
+    {
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-07.zip",
+      "status": 200,
+      "bytes": 847,
+      "requested_at_ns": 1792571027762213082,
+      "received_at_ns": 1792571028341886619,
+      "sha256": "acab0593c1452660ce74a6c239fb215c1192b0a9c6e8c1689e6495de40a0174b",
+      "last_modified": "Fri, 16 Aug 2024 12:57:47 GMT",
+      "timeout_seconds": 25,
+      "byte_limit": 2000000
+    }
+  ],
+  "verified": true,
+  "schema_sample": "calc_time,funding_interval_hours,last_funding_rate\n1719792000000,8,0.00010000\n1719820800000,8,0.00010000\n1719849600001,8,0.00010000\n1719878400000,8,0.00010000\n1719907200000,8,0.00010000\n1719936000000,8,0.00010000\n1719964800000,8,0.00010000\n1719993600001,8,0.00010000\n1720022400000,8,0.00010000\n1720051200000,8,0.00010000\n1720080000000,8,0.00010000\n1720108800000,8,0.00010000\n1720137600000,8,0.0001000",
+  "archive_sha256": "acab0593c1452660ce74a6c239fb215c1192b0a9c6e8c1689e6495de40a0174b"
+}
