@@ -153,14 +153,14 @@ _____________________ test_l2_challenger_is_mean_objective _____________________
         source = inspect.getsource(ml.fit_and_compare)
 >       assert 'objective="regression_l1"' not in source
 E       assert 'objective="regression_l1"' not in 'def fit_and...urn result\n'
-E         
+E
 E         'objective="regression_l1"' is contained here:
 E                     objective="regression_l1", n_estimators=120, learning_rate=0.05,
 E         ?           +++++++++++++++++++++++++
 E                       num_leaves=15, min_child_samples=5, random_state=seed, n_jobs=1, verbose=-1)
 E                   booster.fit(np.array(train_x), np.array(train_y))
 E                   predictions = booster.predict(np.array(test_x))...
-E         
+E
 E         ...Full output truncated (17 lines hidden), use '-vv' to show
 
 /tmp/atlas-red-probe-bs9x_hpq/test_red_probe.py:108: AssertionError

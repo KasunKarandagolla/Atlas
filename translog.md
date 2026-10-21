@@ -347,3 +347,5 @@ CPU PyTorch and all selected numerical/foundation libraries actually import in i
 Exact commands, final counts/source hashes, intermediate failures and remaining gates: `docs/research/atlas-red-integrity/REPORT.md`, `RUNBOOK.md`, `evidence/verification.json`. Status CORRECTION_TEST_GATE; independent exact-pushed-SHA review required. No campaign, private reads, orders, paid inference, deployment, policy activation, merge or capital. OBSERVE; zero allocation/paid budget; CAPITAL NO-GO.
 
 2026-10-21 final source checkpoint `56bcbcb54aab6043832f35ab97c4098e721d174f`: final disjoint affected checks **452 passed / 0 failed / 0 skipped** (322 + 130); full-cycle focused 61 included. Repeated clean-baseline red probe again 15 failures. Ruff/compile/primary lock/two hash-lock dry-run syncs/pip checks/freeze/document checks pass. No new economic or source/host/model qualification; CORRECTION_TEST_GATE.
+
+2026-10-21 publication check: four whitespace-only pytest error lines found during staged diff review; exact original red logs retained as deterministic gzip, readable views normalized, checksums and final candidate diff check repeated. No source/test behavior changed.

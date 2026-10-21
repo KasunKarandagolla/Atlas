@@ -93,6 +93,7 @@
   "owner_local_database_available": false,
   "owner_loop_workspace_available": false,
   "private_exchange_access": false,
+  "publication_check_correction": "Initial staged diff check found four whitespace-only pytest error lines; exact raw bytes retained in red.txt.gz/repeated-red.txt.gz and readable views normalized, without changing test results. Final full candidate diff check repeated.",
   "python": "3.12.14",
   "remaining_gates": [
     "Independent exact-tip review",

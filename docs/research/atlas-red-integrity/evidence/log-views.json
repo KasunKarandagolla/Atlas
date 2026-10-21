@@ -1,0 +1,16 @@
+[
+  {
+    "raw_copy": "red.txt.gz",
+    "raw_sha256": "f824f5de6b1fcb1d7a95d89d61426d8974925397361e5080c18dc0a4035d9e49",
+    "transform": "Remove trailing whitespace in readable view; exact pytest bytes retained in deterministic gzip",
+    "view": "red.txt",
+    "view_sha256": "1faae5c598efc0edfe0320602855facf308fb3f9879b18363be4a45cbd41554a"
+  },
+  {
+    "raw_copy": "repeated-red.txt.gz",
+    "raw_sha256": "60ccba0f97ee9209854261d790ba18e0f5b0a76ef23a14e795f8b154a25fd64e",
+    "transform": "Remove trailing whitespace in readable view; exact pytest bytes retained in deterministic gzip",
+    "view": "repeated-red.txt",
+    "view_sha256": "a4888fa253e1ebb1e65ceef8b48a84122f9d1e7adb6a2a83f7090484e4cd3391"
+  }
+]
