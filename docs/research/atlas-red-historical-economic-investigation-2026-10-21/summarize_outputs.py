@@ -174,3 +174,7 @@ for suffix in ("july", "all"):
                 record = json.loads(line)
                 writer.writerow({k: record[k] for k in fields})
 print(json.dumps({"conditional_paths": len(paths), "regime_slices": len(regimes), "reporting_only": True}))
+
+# Publication-only newline convention; numeric CSV values are unchanged.
+for csv_path in p.glob("*.csv"):
+    csv_path.write_bytes(csv_path.read_bytes().replace(b"\r\n", b"\n"))

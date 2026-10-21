@@ -381,3 +381,8 @@ Existing native strategy, lifecycle, cash, costs and research store owners reuse
 Full analysis 143.93s / 111,924 KiB peak process RSS. 256 MB kernel tmpfs + 200 MB external allowance + margin below 5 GB; sampled temporary peak 94,208 bytes, minimum physical free 31,342,837,760 bytes above 2 GB reserve. Permanent raw/SQLite and bulky full ledgers retained outside git; source/output hashes, commands, cost assumptions, all decisions/actions and report: [research package](docs/research/atlas-red-historical-economic-investigation-2026-10-21/RESEARCH_REPORT.md).
 
 Exact final publication SHA is returned in handoff, not self-accepted. Next: independent review of native clock/first-event/execution assumptions and actual pushed artifacts; qualify original execution/health/product/universe/calendar evidence and separately authorize any prospective campaign. OBSERVE; zero allocation/paid budget; **CAPITAL NO-GO**. No merge, deployment or policy activation.
+
+
+## Historical pilot publication packaging correction — 21 October 2026
+
+The first publication b6da03f omitted raw .log files under existing ignore rules and CSV CRLF endings failed the whitespace check. Exact logs are now deterministic .log.gz, plain CSVs use LF, source/published hashes are retained in publication-normalization.json, and every checksum entry is verified against tracked Git paths. Economic values and analysis code are unchanged; no backtest/test suite repeated. Independent final-tip review remains pending; OBSERVE / zero allocation and paid budget / CAPITAL NO-GO.

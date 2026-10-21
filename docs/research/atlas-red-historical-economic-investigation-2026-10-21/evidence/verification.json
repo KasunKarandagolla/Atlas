@@ -68,6 +68,7 @@
   "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
   "protected_algorithms_and_freezes_unchanged": true,
   "protocol_sha": "97233b6cc66d9b17a0f3c5ca08d4b2d4e9051d43",
+  "publication_correction": "Initial b6da03f ignored .log paths and CRLF whitespace failure; exact logs published as .log.gz and CSV newlines normalized. All checksum entries checked against tracked files. No numeric change.",
   "publication_manifest_check": "Initial wrong-directory command failed; repeated from algorithms/ passed",
   "publication_metadata_changes": [
     "Four acceptance evidence links and their manifest checksum, without requirement/status/design/policy changes"

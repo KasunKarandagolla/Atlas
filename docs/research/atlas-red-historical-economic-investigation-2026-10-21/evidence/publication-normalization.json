@@ -1,0 +1,164 @@
+[
+  {
+    "file": "ECONOMIC_RESULTS_july.csv",
+    "original_sha256": "4fe0457ab382bbc43f5cda2b32a23ffe30b2484904a8ddc62e385489c06d4055",
+    "published_sha256": "1fc0c5b5c4a15da60e26a908a48ab79db7d6e483794db64e24025d96cde97fea",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "SYMBOL_DIRECTION_july.csv",
+    "original_sha256": "dbb292d722c5cfc4528d26bd4702694190647812a44c05697a3d8ef7b32c6eea",
+    "published_sha256": "912bb6dbc4b129cf2ca78a4f7c9bebe0a182a7cd6b7db85ca761068bdd8ac91b",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "STRATEGY_RESULTS_july.csv",
+    "original_sha256": "600fb3e428a5510bade3be8b8042053da16fff1d2e7873c0d7f1d5599f4d043b",
+    "published_sha256": "7d6d0d2c70450f93ab345e0628369300c6f280360348b2cf3df1c2e84c46c6fd",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "EXPOSURE.csv",
+    "original_sha256": "847b0f3a4b0dd35e2427b8e9e6ce845c21d833e33cc42754520c1c2dd91579a8",
+    "published_sha256": "3e42e7ba6fa69fc842016c768474822eeaead3ff15e8bd1e8689ea3462975d8d",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "ECONOMIC_RESULTS.csv",
+    "original_sha256": "1e181e8963c0c379ba29675dcf589ccee6338834e4ec73dfec0629223a77fa35",
+    "published_sha256": "26d4ef925b02224c2ef45d60b6642024e3835816825273a77149c04e3a7750cd",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "SYMBOL_DIRECTION_all.csv",
+    "original_sha256": "d609170c1197b874c60fecf2dd9577092c482f0ad401bf9f6cf14265bb6827f8",
+    "published_sha256": "788107678ac38aa63d0b0bb90fa78d249e1f9344f129752568089e50a34bcceb",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "STRATEGY_RESULTS.csv",
+    "original_sha256": "bb9516923c5abe895475079ab9733c693832aab84374c4e628dba41047ac4caa",
+    "published_sha256": "8e8cd58e3280da2aa4661a02ef3269ddba52d4996171eaec6537205359e4928f",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "REGIME_RESULTS.csv",
+    "original_sha256": "0c0b95b50617f6256499aa79ca91f07e2485ba2dac46427730ee1b551ba13385",
+    "published_sha256": "b604c4ab186a5ea1aa7cb2c2931499d7d7713edae3449c4dc9f3f2b7576c28fa",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "CALENDAR_RESULTS.csv",
+    "original_sha256": "fcbc8c5c4134c9469504531ed9c4597645dfb97fa5d1a73575ebde6192cde9f2",
+    "published_sha256": "74d0b4e20a04f35f2703e440962d0ed633001e97b2df9582a06a6a472bbc3a5c",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "MECHANISMS.csv",
+    "original_sha256": "faebe60e95037f98799159432d95abf77e6187ab17a4506d1b837d55b089ec3d",
+    "published_sha256": "358d3d895027f2201d15fd7f33150ed92364a005ffdac65e085d8988ac293fb9",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "FUNDING_RESULTS.csv",
+    "original_sha256": "f4fb19632f8fd0291b0b440c4cb735a19ef2a41e25fd484198a815a3d01f1bc7",
+    "published_sha256": "00d00f8d27cf48be8b69326b9d31c4d3f8485a957fae0659dc3cbd1128d9672a",
+    "only_change": "CRLF to LF; parsed CSV values identical"
+  },
+  {
+    "file": "evidence/accepted-manifest-check.log.gz",
+    "decompressed_original_sha256": "bf280216f22b0ab3c23ebd184454fc044672c6af0a3f9ffd7404393bf028ce99",
+    "published_sha256": "73e1fe715d3b2e6370092cb0260c8469c4812685bd248279cf909172ebe154e1",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/acquisition.log.gz",
+    "decompressed_original_sha256": "e3a42af4d6fa1e2c1780e183fafc529a2a59536daa0e9cb1d4d3864286f3f899",
+    "published_sha256": "aaf737752606bc9c8254ff0eefe3cc6f3083df38b018fc22c497232ce2e1ff86",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/all.log.gz",
+    "decompressed_original_sha256": "38ae2ad549158fdac742693e9d41b35f509cd2ac0374e7b6d97da3e80ef243db",
+    "published_sha256": "91926d3a01f03da5eca26d95a703bbfbddcc01c9d504e1f721cd7284f0a079c0",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/auxiliary-cached-cli.log.gz",
+    "decompressed_original_sha256": "d6a3c8c3d9379b445671857c34d6bb59eb6bf75192643cb1f44d3cebd317f660",
+    "published_sha256": "562e3ec90935e70fa354dade8a2b4e33d2e9109a19ea3f16056e871f50e9ff71",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/auxiliary.log.gz",
+    "decompressed_original_sha256": "d6a3c8c3d9379b445671857c34d6bb59eb6bf75192643cb1f44d3cebd317f660",
+    "published_sha256": "562e3ec90935e70fa354dade8a2b4e33d2e9109a19ea3f16056e871f50e9ff71",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/july-attempt1-binding-error.log.gz",
+    "decompressed_original_sha256": "cb6856da046a26040354506999500ac3092268e74dc390cb94a9bf5c9572805d",
+    "published_sha256": "fc581ab0690ef0a9210b152bdc5bcdf3eb5b9b704fffe792d4f7d276e17800c1",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/july.log.gz",
+    "decompressed_original_sha256": "1659198feb68288e3807b04357f961bbc2f7d3c4cf0b42171b05ea7d315a40bb",
+    "published_sha256": "53bf2cdd6cda7037eb08070d0e7f86f270c824e05eb1f265d2449a203000e450",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/lint-final.log.gz",
+    "decompressed_original_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "published_sha256": "47f394a1497b1873bc6e6d6f9bb92aa51b990821f1ddd7770a933ffd29c456cd",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/manifest-final.log.gz",
+    "decompressed_original_sha256": "bf280216f22b0ab3c23ebd184454fc044672c6af0a3f9ffd7404393bf028ce99",
+    "published_sha256": "73e1fe715d3b2e6370092cb0260c8469c4812685bd248279cf909172ebe154e1",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/summary-final.log.gz",
+    "decompressed_original_sha256": "f21864df4e98b18b9d322cc4d35b0206f0423cdde3753c8c256c57364e7c6bee",
+    "published_sha256": "14f59fc1ef6dc622da5eea718add338b5aa727c1428c10878b7cd13d2d3b009d",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/summary.log.gz",
+    "decompressed_original_sha256": "f21864df4e98b18b9d322cc4d35b0206f0423cdde3753c8c256c57364e7c6bee",
+    "published_sha256": "14f59fc1ef6dc622da5eea718add338b5aa727c1428c10878b7cd13d2d3b009d",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/tests-attempt1.log.gz",
+    "decompressed_original_sha256": "2ef798593ef080a42184bfedc4004a3bd40171464a22c955ad2539f9b21dd11d",
+    "published_sha256": "e795a11170b3dcbc61a93885df73e8841e7ebdda41247fe9330a09765ada2960",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/tests-attempt2.log.gz",
+    "decompressed_original_sha256": "fc05f5cc250b146f86c108a9eb1f3166bf9c628d6a432377f56a8673a8eac18e",
+    "published_sha256": "62731f12f15aea18ab6e28718a642cf278bcd9c01a60cdcf381911afcbe07189",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/tests-final.log.gz",
+    "decompressed_original_sha256": "6adde25cbc2bad6b02c7a00071a6cbeb636b7919276acdfb6b1d7b85109bf9b3",
+    "published_sha256": "46e6cf00665311298557fdd830c21b7e76d78dab35cf3b8f4d8b2f6d9ea4d955",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/v1-golden-clean-base.log.gz",
+    "decompressed_original_sha256": "d0ecaff68c57f6cba44cd0138f55d2b9b9d3eab54f49cd4e5c470912f8171129",
+    "published_sha256": "a3ea0b5ddcea59c0086ee14325589dfba65bd816a9f0a09f8184858023465917",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  },
+  {
+    "file": "evidence/v1-golden.log.gz",
+    "decompressed_original_sha256": "350e6edad07ca3ce786aab6304b0720962cb0ebad553a99c18e59a6f0390b18b",
+    "published_sha256": "4078d78bd527801e1cd2b04d74b1a77cbd2cdb8272fb4d1587f8b16c89702d29",
+    "only_change": "Exact original bytes in deterministic gzip, no ignored .log dependency"
+  }
+]

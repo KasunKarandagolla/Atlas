@@ -1,3 +1,7 @@
+## Historical pilot publication packaging correction — 21 October 2026
+
+The first publication b6da03f omitted raw .log files under existing ignore rules and CSV CRLF endings failed the whitespace check. Exact logs are now deterministic .log.gz, plain CSVs use LF, source/published hashes are retained in publication-normalization.json, and every checksum entry is verified against tracked Git paths. Economic values and analysis code are unchanged; no backtest/test suite repeated. Independent final-tip review remains pending; OBSERVE / zero allocation and paid budget / CAPITAL NO-GO.
+
 ## Historical economic investigation complete — 21 October 2026
 
 **PARTIAL_HISTORICAL_ECONOMIC_EVIDENCE; independent review pending.** Isolated `research/atlas-red-historical-economic-investigation-2026-10-21` from exact base `924a26f2a6a85f6468d4d4f6a44069c332c4096e`, containing candidate correction `75fca65e8352bd10c4b17033d90dd96cfc18f8e9`. Accepted design stays `f9f8ef083ba5bafcad9bab4d07227676200a948f`; correction acceptance is not inferred. Protocol `97233b6` and analysis/cost freeze `9487123` precede August holdout. Original checkout preserved; no subagents, model provisioning, paid/private exchange access, orders or service start.
