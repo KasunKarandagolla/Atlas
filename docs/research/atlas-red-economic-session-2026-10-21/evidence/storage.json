@@ -11,6 +11,8 @@
   },
   "regression_runner": {
     "temporary_capacity_bytes": 2800000000,
+    "actual_tmpfs_peak_usage_bytes": null,
+    "actual_tmpfs_peak_note": "not sampled; kernel-enforced capacity is the upper bound",
     "external_temporary_reservation_bytes": 2150000000,
     "wrapper_margin_bytes": 4096,
     "combined_hard_bound_bytes": 4950004096,

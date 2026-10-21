@@ -86,6 +86,8 @@
     "combined_regression_temporary_bound_bytes": 4950004096,
     "temporary_limit_bytes": 5000000000,
     "workspace_temporary_bytes_at_measurement": 2091910083,
+    "actual_capped_tmpfs_peak_bytes": null,
+    "actual_peak_measurement_note": "not sampled; bounded regression tmpfs hard limit was 2800000000 bytes",
     "workspace_temporary_components_bytes": {
       "isolated_checkout": 215383485,
       "locked_test_venv": 687947044,

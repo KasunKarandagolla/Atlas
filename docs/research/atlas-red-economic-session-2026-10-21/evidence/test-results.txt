@@ -6,7 +6,7 @@ All pytest commands ran through scripts/atlas_red_bounded_run.sh with:
   ATLAS_TEMP_CAPACITY_BYTES=2800000000
   ATLAS_EXTERNAL_TEMPORARY_BYTES=2150000000
   bounded temp and cache roots under /workspace/work/atlas-capped-regression
-The registered bound was 4,950,004,096 bytes including the 4,096-byte wrapper margin.
+The registered bound was 4,950,004,096 bytes including the 4,096-byte wrapper margin. Exact tmpfs occupancy peak was not sampled; the enforceable tmpfs upper bound was 2,800,000,000 bytes.
 
 1) Focused correction/P1/native group
 Command:
