@@ -331,7 +331,7 @@ class BoundedPublicResearchAcquisitionV1:
             if server_time_ns < close_at_ns:
                 continue  # forming bar is not a policy-ready observation
             bar_id = hashlib.sha256(
-                f"{symbol}|{interval.value}|{open_at_ns}".encode()).hexdigest()
+                f"{symbol}|{interval.value}|{open_at_ns}|{observation_id}".encode()).hexdigest()
             rows.append({
                 "bar_id": bar_id,
                 "cycle_id": cycle_id,

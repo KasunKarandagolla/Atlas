@@ -231,11 +231,13 @@ def test_action_records_that_take_profit_is_not_in_the_registered_policy():
 
 # --- 6. lifecycle ----------------------------------------------------------
 def test_lifecycle_reports_no_fill_and_management_alternatives():
-    action = _action()
-    bars = [_bar("rev", BASE_NS, "100"), _bar("rev", BASE_NS + 900_000_000_000, "101"),
-            _bar("rev", BASE_NS + 1_800_000_000_000, "102", high="103", low="99")]
-    outcomes = evaluate_lifecycle(action, future_bars=bars, spread_bps=Decimal("4"),
-                                  atr_value=Decimal("2"))
+    action = _action(decision_at_ns=BASE_NS - 900_000_000_000, sealed_at_ns=BASE_NS - 900_000_000_000)
+    bars = [
+        _bar("rev", BASE_NS, "100"),
+        _bar("rev", BASE_NS + 900_000_000_000, "101"),
+        _bar("rev", BASE_NS + 1_800_000_000_000, "102", high="103", low="99"),
+    ]
+    outcomes = evaluate_lifecycle(action, future_bars=bars, spread_bps=Decimal("4"), atr_value=Decimal("2"))
     kinds = {outcome.management_kind for outcome in outcomes}
     assert "HOLD" in kinds and "CLOSE" in kinds and "TIGHTEN" in kinds
     hold = next(outcome for outcome in outcomes if outcome.management_kind == "HOLD")
@@ -243,7 +245,7 @@ def test_lifecycle_reports_no_fill_and_management_alternatives():
 
 
 def test_lifecycle_reports_no_fill_when_the_open_is_beyond_the_collar():
-    action = _action()
+    action = _action(decision_at_ns=BASE_NS - 900_000_000_000, sealed_at_ns=BASE_NS - 900_000_000_000)
     bars = [_bar("rev", BASE_NS, "200")]
     outcomes = evaluate_lifecycle(action, future_bars=bars, spread_bps=Decimal("4"))
     assert outcomes[0].entry_state == "NO_FILL"
@@ -276,12 +278,23 @@ def test_ml_rows_do_not_invent_labels(tmp_path):
 
 
 def test_chronological_split_keeps_order_and_embargo():
-    rows = [{"information_cutoff_ns": index * 1_000_000_000, "label_state": "MATURED_NET_CASH",
-             "label_bps": 1.0, "features": {}} for index in range(100)]
-    split = chronological_split(rows)
+    rows = [
+        {
+            "information_cutoff_ns": index * 1_000_000_000,
+            "horizon_end_ns": index * 1_000_000_000,
+            "label_available_at_ns": index * 1_000_000_000,
+            "opportunity_id": str(index),
+            "label_state": "MATURED_NET_CASH",
+            "label_bps": 1.0,
+            "features": {},
+        }
+        for index in range(100)
+    ]
+    split = chronological_split(rows, embargo_ns=1_000_000_000)
     assert split["train"] and split["test"]
-    assert max(int(row["information_cutoff_ns"]) for row in split["train"]) <= \
-        min(int(row["information_cutoff_ns"]) for row in split["validation"])
+    assert max(int(row["information_cutoff_ns"]) for row in split["train"]) <= min(
+        int(row["information_cutoff_ns"]) for row in split["validation"]
+    )
     assert len(FEATURE_NAMES) >= 10
 
 

@@ -240,3 +240,129 @@ def measure_tree_bytes(paths: Iterable[Path]) -> int:
                     continue
                 total += stat.st_blocks * 512
     return total
+
+
+@dataclass(frozen=True)
+class StorageLayoutV2:
+    """Owner clarification: only temporary bytes consume the strict 5 GB cap.
+
+    A dedicated kernel bounded volume is required for a strict-cap claim.
+    Permanent evidence, SQLite WAL and final models use a disjoint durable root.
+    """
+
+    temporary_root: Path
+    permanent_root: Path
+    physical_free_floor_bytes: int = 2_000_000_000
+    external_temporary_bytes: int = 0
+
+    def __post_init__(self) -> None:
+        temporary, permanent = self.temporary_root.resolve(), self.permanent_root.resolve()
+        if temporary == permanent or temporary in permanent.parents or permanent in temporary.parents:
+            raise ValueError("TEMPORARY_PERMANENT_PATHS_OVERLAP")
+        if self.external_temporary_bytes < 0 or self.physical_free_floor_bytes < 0:
+            raise ValueError("NEGATIVE_STORAGE_RESERVE")
+        object.__setattr__(self, "temporary_root", temporary)
+        object.__setattr__(self, "permanent_root", permanent)
+
+    def verify(self, *, require_quota: bool = True) -> dict[str, Any]:
+        if not self.temporary_root.is_dir() or not self.permanent_root.is_dir():
+            raise ValueError("STORAGE_ROOT_MISSING")
+        stats = os.statvfs(self.temporary_root)
+        capacity = stats.f_blocks * stats.f_frsize
+        fragments = sum(p.stat().st_size for p in self.permanent_root.rglob("*.atlas-part") if p.is_file())
+        fragments += sum(measure_tree_bytes([p]) for p in self.permanent_root.rglob("*.atlas-publishing") if p.is_dir())
+        # Atomic publication fragments on the permanent filesystem remain TEMPORARY.
+        # A mount's capacity, including filesystem rounding, is the hard bound.
+        bounded = (
+            os.path.ismount(self.temporary_root)
+            and capacity + self.external_temporary_bytes + fragments < ABSOLUTE_CEILING_BYTES
+        )
+        if require_quota and not bounded:
+            raise StorageBudgetExceeded("TEMPORARY_KERNEL_QUOTA_UNVERIFIED")
+        self.reserve_physical(0)
+        return {
+            "policy": "ATLAS_TEMPORARY_ONLY_BELOW_5GB_V2",
+            "kernel_quota_verified": bounded,
+            "temporary_capacity_bytes": capacity,
+            "external_temporary_bytes": self.external_temporary_bytes,
+            "publication_temporary_bytes": fragments,
+            "permanent_root": str(self.permanent_root),
+            "temporary_root": str(self.temporary_root),
+            "physical_free_floor_bytes": self.physical_free_floor_bytes,
+        }
+
+    def reserve_physical(self, worst_case_additional_bytes: int) -> None:
+        if worst_case_additional_bytes < 0:
+            raise ValueError("NEGATIVE_WRITE_ESTIMATE")
+        stats = os.statvfs(self.permanent_root)
+        free = stats.f_bavail * stats.f_frsize
+        if free - worst_case_additional_bytes < self.physical_free_floor_bytes:
+            raise StorageBudgetExceeded("PHYSICAL_FREE_SPACE_FLOOR")
+
+    def staged_copy(self, source: Path, destination: Path, *, expected_sha256: str, expected_bytes: int) -> Path:
+        """Bounded resumable final placement; never remove source/owner data.
+
+        A single .part is durable incomplete download state, never a checkpoint.
+        Only verified complete bytes are atomically published. Interrupted .part
+        files are retained for inspection/resume, counted against physical space.
+        """
+        import hashlib
+
+        destination = destination.resolve()
+        if self.permanent_root not in destination.parents:
+            raise ValueError("FINAL_DESTINATION_OUTSIDE_PERMANENT_ROOT")
+        self.reserve_physical(expected_bytes)
+        stats = os.statvfs(self.temporary_root)
+        temporary_bound = (
+            stats.f_blocks * stats.f_frsize
+            if os.path.ismount(self.temporary_root)
+            else measure_tree_bytes([self.temporary_root])
+        )
+        if temporary_bound + self.external_temporary_bytes + expected_bytes >= ABSOLUTE_CEILING_BYTES:
+            raise StorageBudgetExceeded("ATOMIC_PUBLICATION_TEMPORARY_RESERVATION_DENIED")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        part = destination.with_name(destination.name + ".atlas-part")
+        if destination.exists():
+            if destination.stat().st_size != expected_bytes or _file_digest(destination) != expected_sha256:
+                raise ValueError("EXISTING_PERMANENT_FILE_CONFLICT")
+            return destination
+        offset = part.stat().st_size if part.exists() else 0
+        if offset > expected_bytes:
+            raise ValueError("INTERRUPTED_FRAGMENT_TOO_LARGE")
+        # Resume only if every preserved prefix byte matches the genuine source.
+        with source.open("rb") as src:
+            if offset:
+                with part.open("rb") as previous:
+                    left = offset
+                    while left:
+                        count = min(left, 1 << 20)
+                        if src.read(count) != previous.read(count):
+                            raise ValueError("INTERRUPTED_FRAGMENT_PREFIX_CONFLICT")
+                        left -= count
+            with part.open("ab") as output:
+                written = offset
+                while block := src.read(1 << 20):
+                    written += len(block)
+                    if written > expected_bytes:
+                        raise StorageBudgetExceeded("DOWNLOAD_EXCEEDS_RESERVED_BYTES")
+                    output.write(block)
+                output.flush()
+                os.fsync(output.fileno())
+        digest = hashlib.sha256()
+        with part.open("rb") as handle:
+            while block := handle.read(1 << 20):
+                digest.update(block)
+        if written != expected_bytes or digest.hexdigest() != expected_sha256:
+            raise ValueError("CHECKPOINT_INTEGRITY_MISMATCH")
+        part.replace(destination)
+        return destination
+
+
+def _file_digest(path: Path) -> str:
+    import hashlib
+
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while block := handle.read(1 << 20):
+            digest.update(block)
+    return digest.hexdigest()

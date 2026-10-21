@@ -26,34 +26,39 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", required=True)
     parser.add_argument("--model-cache", default=None)
-    parser.add_argument("--download", action="store_true",
-                        help="attempt the bounded checkpoint download for the selected models")
+    parser.add_argument(
+        "--download", action="store_true", help="attempt the bounded checkpoint download for the selected models"
+    )
     parser.add_argument("--output", default=None)
     args = parser.parse_args(argv)
 
     workspace = Path(args.workspace).resolve()
     store = ResearchStoreV1.open(workspace / "data" / "research.sqlite")
+    if args.download:
+        parser.error("Use atlas_red_provision_models.py with separate permanent/temp roots and pinned identities")
     cache_root = Path(args.model_cache) if args.model_cache else workspace / "models" / "hf"
 
     inventory = foundation_inventory(cache_root, download=bool(args.download))
     now = time.time_ns()
     for entry in inventory:
-        store.record_model({
-            "model_id": entry["model_id"],
-            "checkpoint": entry["checkpoint"] or f"in-repository:{entry['model_id']}",
-            "revision": entry.get("revision"),
-            "role": entry["role"],
-            "weight_sha256": None,
-            "tokenizer": None,
-            "tokenizer_revision": None,
-            "tokenizer_sha256": None,
-            "disk_bytes": entry.get("detail", {}).get("identity", {}).get("total_bytes"),
-            "runtime": "ATLAS_REPOSITORY" if entry["checkpoint"] is None else "HF_CHECKPOINT",
-            "load_status": entry["load_status"],
-            "inference_status": entry["inference_status"],
-            "detail": entry.get("detail", {}),
-            "updated_at_ns": now,
-        })
+        store.record_model(
+            {
+                "model_id": entry["model_id"] + "@" + str(now),
+                "checkpoint": entry["checkpoint"] or f"in-repository:{entry['model_id']}",
+                "revision": entry.get("revision"),
+                "role": entry["role"],
+                "weight_sha256": None,
+                "tokenizer": None,
+                "tokenizer_revision": None,
+                "tokenizer_sha256": None,
+                "disk_bytes": entry.get("detail", {}).get("identity", {}).get("total_bytes"),
+                "runtime": "ATLAS_REPOSITORY" if entry["checkpoint"] is None else "HF_CHECKPOINT",
+                "load_status": entry["load_status"],
+                "inference_status": entry["inference_status"],
+                "detail": entry.get("detail", {}),
+                "updated_at_ns": now,
+            }
+        )
 
     rows = build_ml_rows(store)
     comparison = fit_and_compare(rows)
@@ -70,24 +75,26 @@ def main(argv: list[str] | None = None) -> int:
     store.set_meta("ml_comparison", json.dumps(comparison, sort_keys=True, default=str))
     store.set_meta("ml_row_count", str(len(rows)))
 
-    if comparison.get("status") == "ESTIMATED":
-        store.record_provenance({
-            "provenance_id": f"MLP-{int(time.time())}",
-            "experiment_id": "ATLAS_RED_FULL_CYCLE_CHRONOLOGICAL_ML_V1",
-            "model_id": "M1_LIGHTGBM_L2_CASH_MEAN",
-            "information_cutoff_ns": now,
-            "split_name": "CHRONOLOGICAL_60_20_20_WITH_24H_EMBARGO",
-            "feature_names": list(FEATURE_NAMES),
-            "target_name": TARGET_NAME,
-            "n_rows": comparison["n_rows"],
-            "n_matured": comparison["n_matured"],
-            "metric_name": "TEST_RMSE_BPS",
-            "metric_value": str(comparison["models"].get("LIGHTGBM_L2_CASH_MEAN", {}).get("test_rmse_bps")),
-            "comparator_name": "EMPIRICAL_MEAN",
-            "comparator_value": str(comparison["models"].get("EMPIRICAL_MEAN", {}).get("test_rmse_bps")),
-            "detail": comparison,
-            "created_at_ns": now,
-        })
+    if comparison.get("status") == "HISTORICAL_DIAGNOSTIC":
+        store.record_provenance(
+            {
+                "provenance_id": f"MLP-{int(time.time())}",
+                "experiment_id": "ATLAS_RED_FULL_CYCLE_CHRONOLOGICAL_ML_V1",
+                "model_id": "M1_LIGHTGBM_L2_CASH_MEAN",
+                "information_cutoff_ns": now,
+                "split_name": "CHRONOLOGICAL_60_20_20_WITH_24H_EMBARGO",
+                "feature_names": list(FEATURE_NAMES),
+                "target_name": TARGET_NAME,
+                "n_rows": comparison["n_rows"],
+                "n_matured": comparison["n_matured"],
+                "metric_name": "TEST_RMSE_BPS",
+                "metric_value": str(comparison["models"].get("LIGHTGBM_L2_CASH_MEAN", {}).get("test_rmse_bps")),
+                "comparator_name": "EMPIRICAL_MEAN",
+                "comparator_value": str(comparison["models"].get("EMPIRICAL_MEAN", {}).get("test_rmse_bps")),
+                "detail": comparison,
+                "created_at_ns": now,
+            }
+        )
 
     payload = {"inventory": inventory, "comparison": comparison}
     print(json.dumps(payload, indent=2, sort_keys=True, default=str))

@@ -35,13 +35,7 @@ from atlas.v2.instruments import (  # noqa: E402
     ProductTypeV2,
     VenueV2,
 )
-from atlas.v2.research.full_cycle.actions import (  # noqa: E402
-    evaluate_lifecycle,
-    maturity_status,
-    seal_research_action,
-)
 from atlas.v2.research.full_cycle.analysis import (  # noqa: E402
-    ApplicabilityStatusV1,
     causal_bars_from_rows,
     compute_market_context,
 )
@@ -58,7 +52,7 @@ from atlas.v2.research.full_cycle.applicability import (  # noqa: E402
 )
 from atlas.v2.research.full_cycle.store import ResearchStoreV1  # noqa: E402
 
-EVALUATION_VERSION = "ATLAS_RED_FULL_CYCLE_EVALUATION_V1"
+EVALUATION_VERSION = "ATLAS_RED_FULL_CYCLE_EVALUATION_V2_RECONSTRUCTED"
 M15_NS = BarIntervalV2.M15.duration_ns
 HOUR_NS = BarIntervalV2.H1.duration_ns
 
@@ -66,9 +60,7 @@ HOUR_NS = BarIntervalV2.H1.duration_ns
 def _cache_key(symbol: str, interval: str, rows: Sequence[Mapping[str, Any]]) -> str:
     import hashlib
 
-    if not rows:
-        return "empty"
-    payload = f"{symbol}|{interval}|{len(rows)}|{rows[0]['bar_id']}|{rows[-1]['bar_id']}"
+    payload = json.dumps([symbol, interval, list(rows)], sort_keys=True, default=str)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -109,12 +101,14 @@ def main(argv: list[str] | None = None) -> int:
     products = store.query(
         "SELECT symbol, base_asset, metadata_ref, tick_size, qty_step, min_qty, min_notional, "
         "trading_status FROM product_metadata WHERE observed_at_ns = "
-        "(SELECT MAX(observed_at_ns) FROM product_metadata)")
+        "(SELECT MAX(observed_at_ns) FROM product_metadata)"
+    )
     product_by_symbol = {row["symbol"]: row for row in products}
     bars = store.query(
         "SELECT bar_id, symbol, interval, open_at_ns, close_at_ns, open, high, low, close, volume, "
         "quote_volume, trades, available_at_ns, received_at_ns, raw_row_json, source_observation_id "
-        "FROM bar ORDER BY symbol, interval, close_at_ns")
+        "FROM bar ORDER BY symbol, interval, close_at_ns"
+    )
     by_symbol: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for row in bars:
         by_symbol.setdefault(row["symbol"], {}).setdefault(row["interval"], []).append(row)
@@ -122,14 +116,16 @@ def main(argv: list[str] | None = None) -> int:
     latest_population = store.query(
         "SELECT d.* FROM discovery_population d JOIN "
         "(SELECT symbol, MAX(cycle_id) AS mc FROM discovery_population GROUP BY symbol) m "
-        "ON d.symbol = m.symbol AND d.cycle_id = m.mc")
+        "ON d.symbol = m.symbol AND d.cycle_id = m.mc"
+    )
     eligible = {row["symbol"]: row for row in latest_population if row["eligible"]}
     observed = {row["symbol"]: row for row in latest_population}
 
     cache_path = workspace / "data" / "bar_cache.pkl"
-    bar_cache = _load_cache(cache_path)
-    deep_symbols = sorted(symbol for symbol, intervals in by_symbol.items()
-                          if "15M" in intervals and len(intervals["15M"]) > 200)
+    bar_cache = {}  # V1 cache omitted availability/revision identities; never trust it.
+    deep_symbols = sorted(
+        symbol for symbol, intervals in by_symbol.items() if "15M" in intervals and len(intervals["15M"]) > 200
+    )
     server_time_ns = int(store.scalar("SELECT MAX(server_time_ns) FROM cycle") or time.time_ns())
     context_rows: list[dict[str, Any]] = []
     applicability_rows: list[dict[str, Any]] = []
@@ -182,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
         score = sum(recent) / residual_vol
         s6_scores[symbol] = (score, beta, len(matched))
 
-    # ---- per symbol evaluation ----
+    # ---- per symbol evaluation (reconstructed grade throughout) ----
     for symbol in sorted(by_symbol):
         product = product_by_symbol.get(symbol)
         if product is None:
@@ -193,17 +189,17 @@ def main(argv: list[str] | None = None) -> int:
         h1_rows = intervals.get("1H", [])
         h4_rows = intervals.get("4H", [])
         m1_rows = intervals.get("1M", [])
-        cutoff = int(m15_rows[-1]["close_at_ns"]) if m15_rows else server_time_ns
+        cutoff = server_time_ns
         is_eligible = symbol in eligible
         population = observed.get(symbol, {})
 
-        def series(interval: BarIntervalV2, rows: Sequence[Mapping[str, Any]],
-                   symbol: str = symbol, key: Any = key) -> tuple[list[Any], list[int]]:
+        def series(
+            interval: BarIntervalV2, rows: Sequence[Mapping[str, Any]], symbol: str = symbol, key: Any = key
+        ) -> tuple[list[Any], list[int]]:
             cache_key = _cache_key(symbol, interval.value, rows)
             cached = bar_cache.get(cache_key)
             if cached is None:
-                cached = list(causal_bars_from_rows(rows, key=key, interval=interval,
-                                                   server_time_ns=server_time_ns))
+                cached = list(causal_bars_from_rows(rows, key=key, interval=interval, server_time_ns=server_time_ns))
                 bar_cache[cache_key] = cached
             return list(cached), [int(bar.close_at_ns) for bar in cached]
 
@@ -214,30 +210,47 @@ def main(argv: list[str] | None = None) -> int:
 
         # market context
         context = compute_market_context(
-            cycle_id=f"CTX-{symbol}-{cutoff}", symbol=symbol,
-            series_by_interval={"M15": BarSeriesShim(m15_bars), "H1": BarSeriesShim(h1_bars),
-                                "H4": BarSeriesShim(h4_bars)},
+            cycle_id=f"CTX-V2-{symbol}-{cutoff}-{time.time_ns()}",
+            symbol=symbol,
+            series_by_interval={
+                "M15": BarSeriesShim(m15_bars),
+                "H1": BarSeriesShim(h1_bars),
+                "H4": BarSeriesShim(h4_bars),
+            },
             btc_series=BarSeriesShim(series(BarIntervalV2.H1, by_symbol.get(btc_symbol, {}).get("1H", []))[0])
-            if btc_symbol else None,
+            if btc_symbol
+            else None,
             eth_series=None,
             spread_bps=Decimal(population["spread_bps"]) if population.get("spread_bps") else None,
-            turnover_24h_usd=Decimal(population["quote_volume_24h_usd"]) if population.get("quote_volume_24h_usd") else None,
+            turnover_24h_usd=Decimal(population["quote_volume_24h_usd"])
+            if population.get("quote_volume_24h_usd")
+            else None,
             funding_rate=Decimal(population["funding_rate"]) if population.get("funding_rate") else None,
             oi_change_15m=None,
-            computed_at_ns=time.time_ns())
+            computed_at_ns=time.time_ns(),
+        )
         if context.get("bars_used"):
             context_rows.append(context)
 
         # S1: registered watch lifecycle over the observed 15M sequence
         if m15_bars:
             applicability_rows.extend(
-                row.as_row() for row in evaluate_s1_watch_lifecycle(
-                    cycle_id=f"S1-{symbol}", symbol=symbol, key=key, m15=m15_bars,
-                    h1=h1_bars, h4=h4_bars, universe_eligible=is_eligible, setup_cache={},
-                    max_trigger_bars=int(args.max_closes_per_symbol) * 2))
+                row.as_row()
+                for row in evaluate_s1_watch_lifecycle(
+                    cycle_id=f"S1-{symbol}",
+                    symbol=symbol,
+                    key=key,
+                    m15=m15_bars,
+                    h1=h1_bars,
+                    h4=h4_bars,
+                    universe_eligible=is_eligible,
+                    setup_cache={},
+                    max_trigger_bars=int(args.max_closes_per_symbol) * 2,
+                )
+            )
 
         # S2: compression breakout evaluated at each confirmed close
-        closes = m15_times[-args.max_closes_per_symbol:] if m15_times else []
+        closes = m15_times[-args.max_closes_per_symbol :] if m15_times else []
         s2_atr: list[float | None] = []
         s2_widths: list[float] = []
         s2_closes: list[float] = []
@@ -249,162 +262,137 @@ def main(argv: list[str] | None = None) -> int:
             s2_atr = list(atr(m15_bars, 14))
             s2_widths = [0.0] * len(s2_closes)
             for index in range(19, len(s2_closes)):
-                window = s2_closes[index - 19:index + 1]
+                window = s2_closes[index - 19 : index + 1]
                 s2_widths[index] = 4 * _pstdev(window) / (_math.fsum(window) / 20)
         for close_ns in closes:
             setup_h1 = _slice_until(h1_bars, h1_times, close_ns)
             setup_h4 = _slice_until(h4_bars, h4_times, close_ns)
             setup_m15 = _slice_until(m15_bars, m15_times, close_ns)
-            record = evaluate_s2(cycle_id=f"S2-{symbol}-{close_ns}", symbol=symbol, key=key,
-                                 cutoff_ns=close_ns, h4=setup_h4, h1=setup_h1, m15=setup_m15,
-                                 universe_eligible=is_eligible,
-                                 precomputed_atr=s2_atr or None,
-                                 precomputed_widths=s2_widths or None,
-                                 precomputed_closes=s2_closes or None)
+            record = evaluate_s2(
+                cycle_id=f"S2-V2-{symbol}-{close_ns}",
+                symbol=symbol,
+                key=key,
+                cutoff_ns=close_ns,
+                h4=setup_h4,
+                h1=setup_h1,
+                m15=setup_m15,
+                universe_eligible=is_eligible,
+                precomputed_atr=s2_atr or None,
+                precomputed_widths=s2_widths or None,
+                precomputed_closes=s2_closes or None,
+            )
             applicability_rows.append(record.as_row())
 
         # S3: native 1-minute clock, exact trade population unavailable
-        s3 = evaluate_s3(cycle_id=f"S3-{symbol}", symbol=symbol, key=key,
-                         cutoff_ns=m1_times[-1] if m1_times else cutoff, m1=m1_bars,
-                         universe_eligible=is_eligible, exact_trade_population=False)
+        s3 = evaluate_s3(
+            cycle_id=f"S3-V2-{symbol}-{cutoff}",
+            symbol=symbol,
+            key=key,
+            cutoff_ns=m1_times[-1] if m1_times else cutoff,
+            m1=m1_bars,
+            universe_eligible=is_eligible,
+            exact_trade_population=False,
+        )
         applicability_rows.append(s3.as_row())
 
-        depth_available = bool(store.scalar(
-            "SELECT COUNT(*) FROM source_observation WHERE instrument_symbol=? AND event_type='DEPTH'", (symbol,)))
-        trade_available = bool(store.scalar(
-            "SELECT COUNT(*) FROM source_observation WHERE instrument_symbol=? AND event_type='AGG_TRADES'", (symbol,)))
-        applicability_rows.append(evaluate_s4(
-            cycle_id=f"S4-{symbol}", symbol=symbol, cutoff_ns=cutoff,
-            depth_available=depth_available, trade_evidence_available=trade_available,
-            universe_eligible=is_eligible).as_row())
+        depth_available = bool(
+            store.scalar(
+                "SELECT COUNT(*) FROM source_observation WHERE instrument_symbol=? AND event_type='DEPTH'", (symbol,)
+            )
+        )
+        trade_available = bool(
+            store.scalar(
+                "SELECT COUNT(*) FROM source_observation WHERE instrument_symbol=? AND event_type='AGG_TRADES'",
+                (symbol,),
+            )
+        )
+        applicability_rows.append(
+            evaluate_s4(
+                cycle_id=f"S4-V2-{symbol}-{cutoff}",
+                symbol=symbol,
+                cutoff_ns=cutoff,
+                depth_available=depth_available,
+                trade_evidence_available=trade_available,
+                universe_eligible=is_eligible,
+            ).as_row()
+        )
 
-        oi_available = bool(store.scalar(
-            "SELECT COUNT(*) FROM source_observation WHERE instrument_symbol=? AND event_type='OPEN_INTEREST'", (symbol,)))
-        funding_available = bool(store.scalar(
-            "SELECT COUNT(*) FROM source_observation WHERE instrument_symbol=? AND event_type='FUNDING_HISTORY'", (symbol,)))
-        applicability_rows.append(evaluate_s5(
-            cycle_id=f"S5-{symbol}", symbol=symbol, cutoff_ns=cutoff, oi_available=oi_available,
-            funding_available=funding_available, liquidation_population_complete=False,
-            universe_eligible=is_eligible).as_row())
+        oi_available = bool(
+            store.scalar(
+                "SELECT COUNT(*) FROM source_observation WHERE instrument_symbol=? AND event_type='OPEN_INTEREST'",
+                (symbol,),
+            )
+        )
+        funding_available = bool(
+            store.scalar(
+                "SELECT COUNT(*) FROM source_observation WHERE instrument_symbol=? AND event_type='FUNDING_HISTORY'",
+                (symbol,),
+            )
+        )
+        applicability_rows.append(
+            evaluate_s5(
+                cycle_id=f"S5-V2-{symbol}-{cutoff}",
+                symbol=symbol,
+                cutoff_ns=cutoff,
+                oi_available=oi_available,
+                funding_available=funding_available,
+                liquidation_population_complete=False,
+                universe_eligible=is_eligible,
+            ).as_row()
+        )
 
         score_tuple = s6_scores.get(symbol)
-        applicability_rows.append(evaluate_s6(
-            cycle_id=f"S6-{symbol}", symbol=symbol, cutoff_ns=cutoff,
-            eligible_breadth=len(eligible_with_h1), hours_used=score_tuple[2] if score_tuple else 0,
-            score=score_tuple[0] if score_tuple else None, beta_btc=score_tuple[1] if score_tuple else None,
-            universe_eligible=is_eligible).as_row())
+        applicability_rows.append(
+            evaluate_s6(
+                cycle_id=f"S6-V2-{symbol}-{cutoff}",
+                symbol=symbol,
+                cutoff_ns=cutoff,
+                eligible_breadth=len(eligible_with_h1),
+                hours_used=score_tuple[2] if score_tuple else 0,
+                score=score_tuple[0] if score_tuple else None,
+                beta_btc=score_tuple[1] if score_tuple else None,
+                universe_eligible=is_eligible,
+            ).as_row()
+        )
 
-        applicability_rows.append(evaluate_s7(
-            cycle_id=f"S7-{symbol}", symbol=symbol, cutoff_ns=cutoff,
-            event_calendar_available=False, universe_eligible=is_eligible).as_row())
+        applicability_rows.append(
+            evaluate_s7(
+                cycle_id=f"S7-V2-{symbol}-{cutoff}",
+                symbol=symbol,
+                cutoff_ns=cutoff,
+                event_calendar_available=False,
+                universe_eligible=is_eligible,
+            ).as_row()
+        )
 
-        applicability_rows.append(evaluate_s8(
-            cycle_id=f"S8-{symbol}", symbol=symbol, cutoff_ns=cutoff, pair_defined=False,
-            hours_used=0, universe_eligible=is_eligible).as_row())
+        applicability_rows.append(
+            evaluate_s8(
+                cycle_id=f"S8-V2-{symbol}-{cutoff}",
+                symbol=symbol,
+                cutoff_ns=cutoff,
+                pair_defined=False,
+                hours_used=0,
+                universe_eligible=is_eligible,
+            ).as_row()
+        )
 
-        applicability_rows.append(evaluate_path_b(
-            cycle_id=f"PATHB-{symbol}", symbol=symbol, cutoff_ns=cutoff, eligible=is_eligible,
-            novelty_score=None, universe_eligible=is_eligible).as_row())
+        applicability_rows.append(
+            evaluate_path_b(
+                cycle_id=f"PATHB-V2-{symbol}-{cutoff}",
+                symbol=symbol,
+                cutoff_ns=cutoff,
+                eligible=is_eligible,
+                novelty_score=None,
+                universe_eligible=is_eligible,
+            ).as_row()
+        )
 
-    # ---- research actions from confirmed S1/S2 candidates ----
-    for row in applicability_rows:
-        if row["status"] not in (ApplicabilityStatusV1.RESEARCH_ACTION.value,
-                                 ApplicabilityStatusV1.CANDIDATE.value):
-            continue
-        if row["strategy"] not in ("S1", "S2"):
-            continue
-        symbol = row["symbol"]
-        product = product_by_symbol.get(symbol)
-        if product is None:
-            continue
-        population = observed.get(symbol, {})
-        spread_bps = Decimal(population["spread_bps"]) if population.get("spread_bps") else Decimal("0")
-        triggers = row["trigger_predicates"]
-        setup = row["setup_predicates"]
-        indicators = row["indicator_values"]
-        side = setup.get("setup_side") or triggers.get("breakout_side")
-        if side not in ("LONG", "SHORT"):
-            continue
-
-        def _num(value: Any) -> Decimal | None:
-            try:
-                if value in (None, ""):
-                    return None
-                return Decimal(str(value))
-            except Exception:
-                return None
-
-        close = _num(triggers.get("close")) or _num(triggers.get("trigger_close")) \
-            or _num(indicators.get("trigger_close"))
-        atr_value = _num(triggers.get("atr15m")) or _num(indicators.get("atr15m")) \
-            or _num(indicators.get("latest_atr14"))
-        extreme = _num(setup.get("setup_extreme")) or _num(indicators.get("range_low")) \
-            or _num(indicators.get("range_high"))
-        if close is None or atr_value is None or extreme is None or atr_value <= 0:
-            continue
-        buffer = Decimal("0.25")
-        stop = extreme - buffer * atr_value if side == "LONG" else extreme + buffer * atr_value
-        distance_atr = abs(close - stop) / atr_value if atr_value > 0 else Decimal("0")
-        if not (Decimal("0.5") <= distance_atr <= Decimal("3")):
-            missing_rows.append({
-                "missing_id": f"REFUSAL|{row['applicability_id']}", "cycle_id": row["cycle_id"],
-                "symbol": symbol, "scope": "RESEARCH_ACTION",
-                "reason_code": "STOP_DISTANCE_OUTSIDE_REGISTERED_BAND",
-                "detail": {"distance_atr": str(distance_atr)}, "recorded_at_ns": time.time_ns()})
-            continue
-        max_hold = 4 * HOUR_NS if row["strategy"] == "S1" else 2 * HOUR_NS
-        action = seal_research_action(
-            cycle_id=row["cycle_id"], symbol=symbol, strategy=row["strategy"],
-            policy_id=row["policy_id"], policy_hash=row["policy_hash"], side=side,
-            entry_reference=close, stop_price=stop,
-            stop_basis=("S1_SETUP_EXTREME_MINUS_0.25_ATR15M" if row["strategy"] == "S1"
-                        else "S2_FROZEN_RANGE_BOUNDARY"),
-            qty_step=Decimal(product["qty_step"]), tick_size=Decimal(product["tick_size"]),
-            min_notional=Decimal(product["min_notional"]) if product.get("min_notional") else None,
-            spread_bps=spread_bps, atr_value=atr_value, max_hold_ns=max_hold,
-            decision_at_ns=int(row["information_cutoff_ns"]), deadline_offset_ns=5_000_000_000,
-            evidence_refs=[row["applicability_id"]], sealed_at_ns=time.time_ns())
-        action_rows.append(action.as_row())
-        # lifecycle over genuinely observed future bars
-        future = [bar for bar in m15_bars if bar.close_at_ns > int(row["information_cutoff_ns"])]
-        if future:
-            lifecycle = evaluate_lifecycle(
-                action, future_bars=future, spread_bps=spread_bps,
-                funding_rate=Decimal(population["funding_rate"]) if population.get("funding_rate") else None,
-                mark_price=Decimal(population["mark_price"]) if population.get("mark_price") else None,
-                atr_value=atr_value)
-            for outcome in lifecycle:
-                lifecycle_rows.append({
-                    "lifecycle_id": f"{outcome.path_id}|{outcome.management_kind}",
-                    "action_id": outcome.path_id, "management_kind": outcome.management_kind,
-                    "path_id": outcome.path_id, "entry_state": outcome.entry_state,
-                    "exit_state": outcome.exit_state, "exit_reason": outcome.exit_reason,
-                    "gross_cash": str(outcome.gross_cash), "cost_cash": str(outcome.cost_cash),
-                    "net_cash": str(outcome.net_cash), "horizon_end_ns": outcome.horizon_end_ns,
-                    "uncertainty": outcome.uncertainty, "detail": dict(outcome.detail)})
-            status, censoring, horizon = maturity_status(action=action, future_bars=future,
-                                                         evaluated_at_ns=server_time_ns)
-            hold = next((item for item in lifecycle if item.management_kind == "HOLD"), None)
-            outcome_rows.append({
-                "action_id": action.action_id, "cycle_id": action.cycle_id, "symbol": symbol,
-                "strategy": action.strategy, "maturity_status": status, "horizon_ns": horizon,
-                "net_cash": None if hold is None else str(hold.net_cash),
-                "return_bps": None if hold is None or action.notional_usd == 0 else
-                str((hold.net_cash / action.notional_usd) * Decimal(10_000)),
-                "max_favorable_bps": None, "max_adverse_bps": None,
-                "censoring_reason": censoring, "evaluated_at_ns": server_time_ns,
-                "evaluation_version": EVALUATION_VERSION})
-        else:
-            outcome_rows.append({
-                "action_id": action.action_id, "cycle_id": action.cycle_id, "symbol": symbol,
-                "strategy": action.strategy, "maturity_status": "PENDING", "horizon_ns": action.horizon_end_ns,
-                "net_cash": None, "return_bps": None, "max_favorable_bps": None, "max_adverse_bps": None,
-                "censoring_reason": "NO_FUTURE_OBSERVATION_YET", "evaluated_at_ns": server_time_ns,
-                "evaluation_version": EVALUATION_VERSION})
-
+    # This offline CLI produces reconstructed diagnostics only. It cannot mint
+    # original-time plans from later-acquired historical price prefixes.
     for row in context_rows:
         store.record_context([row])
     for row in applicability_rows:
+        row["source_grade"] = "RECONSTRUCTED_HISTORICAL_RESEARCH"
         store.record_applicability(row)
     for row in action_rows:
         store.record_action(row)

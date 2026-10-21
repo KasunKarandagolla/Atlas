@@ -117,25 +117,27 @@ def build_discovery_population(
         attention = None
         if quote_volume is not None and change_pct is not None:
             attention = math.log10(1.0 + float(quote_volume)) * (1.0 + abs(float(change_pct)) / 100.0)
-        rows.append({
-            "cycle_id": cycle_id,
-            "symbol": symbol,
-            "observed": 1 if observed else 0,
-            "eligible": 1 if eligible else 0,
-            "exclusion_reason": ";".join(reasons) if reasons else None,
-            "quote_volume_24h_usd": None if quote_volume is None else str(quote_volume),
-            "turnover_24h_usd": None if quote_volume is None else str(quote_volume),
-            "price_change_pct_24h": None if change_pct is None else str(change_pct),
-            "last_price": None if ticker is None else ticker.get("last_price"),
-            "spread_bps": None if spread_bps is None else str(spread_bps),
-            "mark_price": premium_row.get("mark_price"),
-            "funding_rate": premium_row.get("funding_rate"),
-            "next_funding_at_ns": premium_row.get("next_funding_at_ns"),
-            "discovery_score": None if attention is None else f"{attention:.10f}",
-            "compute_tier": "DEEP" if symbol in deep else "CHEAP",
-            "deep_cohort": 1 if symbol in deep else 0,
-            "selection_probability": None,
-        })
+        rows.append(
+            {
+                "cycle_id": cycle_id,
+                "symbol": symbol,
+                "observed": 1 if observed else 0,
+                "eligible": 1 if eligible else 0,
+                "exclusion_reason": ";".join(reasons) if reasons else None,
+                "quote_volume_24h_usd": None if quote_volume is None else str(quote_volume),
+                "turnover_24h_usd": None if quote_volume is None else str(quote_volume),
+                "price_change_pct_24h": None if change_pct is None else str(change_pct),
+                "last_price": None if ticker is None else ticker.get("last_price"),
+                "spread_bps": None if spread_bps is None else str(spread_bps),
+                "mark_price": premium_row.get("mark_price"),
+                "funding_rate": premium_row.get("funding_rate"),
+                "next_funding_at_ns": premium_row.get("next_funding_at_ns"),
+                "discovery_score": None if attention is None else f"{attention:.10f}",
+                "compute_tier": "DEEP" if symbol in deep else "CHEAP",
+                "deep_cohort": 1 if symbol in deep else 0,
+                "selection_probability": None,
+            }
+        )
     ranked = sorted(
         (row for row in rows if row["discovery_score"] is not None),
         key=lambda row: (-float(row["discovery_score"]), row["symbol"]),
@@ -157,25 +159,35 @@ def build_discovery_population(
         attention = None
         if quote_volume is not None and change_pct is not None:
             attention = math.log10(1.0 + float(quote_volume)) * (1.0 + abs(float(change_pct)) / 100.0)
-        rows.append({
-            "cycle_id": cycle_id,
-            "symbol": symbol,
-            "observed": 1,
-            "eligible": 0,
-            "exclusion_reason": "NOT_IN_ADMITTED_PRODUCT_UNIVERSE",
-            "quote_volume_24h_usd": None if quote_volume is None else str(quote_volume),
-            "turnover_24h_usd": None if quote_volume is None else str(quote_volume),
-            "price_change_pct_24h": None if change_pct is None else str(change_pct),
-            "last_price": ticker.get("last_price"),
-            "spread_bps": (books.get(symbol) or {}).get("spread_bps"),
-            "mark_price": (premium.get(symbol) or {}).get("mark_price"),
-            "funding_rate": (premium.get(symbol) or {}).get("funding_rate"),
-            "next_funding_at_ns": (premium.get(symbol) or {}).get("next_funding_at_ns"),
-            "discovery_score": None if attention is None else f"{attention:.10f}",
-            "compute_tier": "OUT_OF_UNIVERSE",
-            "deep_cohort": 0,
-            "selection_probability": None,
-        })
+        rows.append(
+            {
+                "cycle_id": cycle_id,
+                "symbol": symbol,
+                "observed": 1,
+                "eligible": 0,
+                "exclusion_reason": "NOT_IN_ADMITTED_PRODUCT_UNIVERSE",
+                "quote_volume_24h_usd": None if quote_volume is None else str(quote_volume),
+                "turnover_24h_usd": None if quote_volume is None else str(quote_volume),
+                "price_change_pct_24h": None if change_pct is None else str(change_pct),
+                "last_price": ticker.get("last_price"),
+                "spread_bps": (books.get(symbol) or {}).get("spread_bps"),
+                "mark_price": (premium.get(symbol) or {}).get("mark_price"),
+                "funding_rate": (premium.get(symbol) or {}).get("funding_rate"),
+                "next_funding_at_ns": (premium.get(symbol) or {}).get("next_funding_at_ns"),
+                "discovery_score": None if attention is None else f"{attention:.10f}",
+                "compute_tier": "OUT_OF_UNIVERSE",
+                "deep_cohort": 0,
+                "selection_probability": None,
+            }
+        )
+    for row in rows:
+        row.update(
+            canonical_discovery_score=None,
+            canonical_discovery_ref=None,
+            canonical_unavailable_reason="NATIVE_DISCOVERY_INPUTS_AND_POLICY_RECEIPT_UNAVAILABLE",
+            discovery_policy_id="RESEARCH_LIQUIDITY_ATTENTION_PROXY_V1",
+            information_cutoff_ns=cutoff_ns,
+        )
     return rows
 
 
@@ -221,7 +233,12 @@ class BarSeriesV1:
 
 
 def causal_bars_from_rows(
-    rows: Sequence[Mapping[str, Any]], *, key: Any, interval: BarIntervalV2, server_time_ns: int
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    key: Any,
+    interval: BarIntervalV2,
+    server_time_ns: int,
+    availability_cutoff_ns: int | None = None,
 ) -> tuple[Any, ...]:
     """Rebuild canonical causal bars with the production Binance translator.
 
@@ -230,16 +247,33 @@ def causal_bars_from_rows(
     re-implementation.
     """
 
+    from dataclasses import replace
+
     from ...data.binance import translate_kline
 
-    selected = [row for row in rows if row["interval"] == interval.value]
-    selected.sort(key=lambda row: int(row["open_at_ns"]))
+    cutoff = server_time_ns if availability_cutoff_ns is None else availability_cutoff_ns
+    versions = {}
+    for row in rows:
+        if row["interval"] != interval.value or int(row["available_at_ns"]) > cutoff:
+            continue
+        boundary = int(row["open_at_ns"])
+        prior = versions.get(boundary)
+        if prior is None or (
+            row["raw_row_json"] != prior["raw_row_json"] and int(row["available_at_ns"]) > int(prior["available_at_ns"])
+        ):
+            versions[boundary] = row
+    selected = [versions[t] for t in sorted(versions)]
     bars: list[Any] = []
     for row in selected:
         raw_row = json.loads(row["raw_row_json"])
         raw, values, open_at_ns, final = translate_kline(
-            raw_row, key=key, interval=interval,
-            received_at_ns=int(row["received_at_ns"]), server_time_ns=server_time_ns)
+            raw_row,
+            key=key,
+            interval=interval,
+            received_at_ns=int(row["received_at_ns"]),
+            server_time_ns=server_time_ns,
+        )
+        raw = replace(raw, available_at_ns=max(raw.available_at_ns, int(row["available_at_ns"])))
         if not final:
             continue
         bar = CausalBarV2(
@@ -312,7 +346,7 @@ def compute_market_context(
         if len(rets) >= 10:
             mean = sum(rets) / len(rets)
             variance = sum((value - mean) ** 2 for value in rets) / (len(rets) - 1)
-            realized_vol_bps = math.sqrt(variance) * math.sqrt(24 * 60) * 10_000
+            realized_vol_bps = math.sqrt(variance) * math.sqrt(24) * 10_000
         ema_values = ema(closes, 20)
         ema20 = ema_values[-1] if ema_values else None
         ema50_values = ema(closes, 50)
@@ -347,18 +381,20 @@ def compute_market_context(
                 older_range = max(older) - min(older)
                 if older_range > 0:
                     compression_ratio = recent_range / older_range
-        row.update({
-            "bars_used": h1.count,
-            "realized_vol_bps": None if realized_vol_bps is None else f"{realized_vol_bps:.6f}",
-            "atr14_abs": None if atr14_abs is None else f"{atr14_abs:.12f}",
-            "atr14_bps": None if atr14_bps is None else f"{atr14_bps:.6f}",
-            "ema20_h1": None if ema20 is None else f"{ema20:.12f}",
-            "ema50_h1": None if ema50 is None else f"{ema50:.12f}",
-            "trend_score": None if trend_score is None else f"{trend_score:.10f}",
-            "adx14": None if adx14 is None else f"{adx14:.6f}",
-            "compression_ratio": None if compression_ratio is None else f"{compression_ratio:.8f}",
-            "classification": classification,
-        })
+        row.update(
+            {
+                "bars_used": h1.count,
+                "realized_vol_bps": None if realized_vol_bps is None else f"{realized_vol_bps:.6f}",
+                "atr14_abs": None if atr14_abs is None else f"{atr14_abs:.12f}",
+                "atr14_bps": None if atr14_bps is None else f"{atr14_bps:.6f}",
+                "ema20_h1": None if ema20 is None else f"{ema20:.12f}",
+                "ema50_h1": None if ema50 is None else f"{ema50:.12f}",
+                "trend_score": None if trend_score is None else f"{trend_score:.10f}",
+                "adx14": None if adx14 is None else f"{adx14:.6f}",
+                "compression_ratio": None if compression_ratio is None else f"{compression_ratio:.8f}",
+                "classification": classification,
+            }
+        )
         window = min(60, len(rets))
         if window >= 10:
             row["return_bps"] = f"{(math.log(closes[-1] / closes[-1 - window]) * 10_000):.6f}"
@@ -396,3 +432,38 @@ def _correlation(left: BarSeriesV1 | None, right: BarSeriesV1 | None) -> tuple[f
     correlation = cov / math.sqrt(var_x * var_y)
     beta = cov / var_x
     return correlation, beta
+
+
+def paired_management_comparisons(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Compare only matching original actions and identical observed future paths."""
+    groups = {}
+    for row in rows:
+        detail = row.get("detail") or {}
+        if isinstance(detail, str):
+            detail = json.loads(detail)
+        signature = (
+            row["action_id"],
+            row["path_id"],
+            detail.get("model_version"),
+            tuple(detail.get("future_source_refs", ())),
+        )
+        groups.setdefault(signature, {}).setdefault(row["management_kind"], []).append(row)
+    result = {}
+    for group in groups.values():
+        hold = group.get("HOLD", [])
+        if len(hold) != 1:
+            continue
+        for kind, alternatives in group.items():
+            if kind == "HOLD" or len(alternatives) != 1:
+                continue
+            base, alt = hold[0], alternatives[0]
+            if base["exit_state"] not in ("CLOSED", "NO_POSITION") or alt["exit_state"] not in (
+                "CLOSED",
+                "NO_POSITION",
+            ):
+                continue
+            bucket = result.setdefault(kind, {"paired_n": 0, "cash_deltas": [], "action_ids": []})
+            bucket["paired_n"] += 1
+            bucket["cash_deltas"].append(str(Decimal(alt["net_cash"]) - Decimal(base["net_cash"])))
+            bucket["action_ids"].append(base["action_id"])
+    return result

@@ -25,12 +25,12 @@ from typing import Any
 from ...contracts import V2Side
 from ...data.bars import CausalBarV2
 from ...features.joins import JoinedBars
-from ...features.technical import atr, ema
+from ...features.technical import atr, ema, interval_coverage_complete
 from ...instruments import InstrumentKeyV2
 from ...strategies import s1_trend, s2_breakout, s3_mean_reversion
 from ..full_cycle.analysis import STRATEGY_NATIVE_CLOCK, ApplicabilityStatusV1
 
-APPLICABILITY_VERSION = "ATLAS_RED_FULL_CYCLE_APPLICABILITY_V1"
+APPLICABILITY_VERSION = "ATLAS_RED_FULL_CYCLE_APPLICABILITY_V2"
 
 
 @dataclass(frozen=True)
@@ -55,9 +55,12 @@ class ApplicabilityRecordV1:
 
     @property
     def applicability_id(self) -> str:
+        import json
+        from dataclasses import asdict
+
         return hashlib.sha256(
-            "|".join([self.cycle_id, self.symbol, self.strategy, self.native_due_at_ns.__str__(),
-                      self.status, self.reason_code]).encode("utf-8")).hexdigest()
+            json.dumps({"version": APPLICABILITY_VERSION, **asdict(self)}, sort_keys=True, default=str).encode()
+        ).hexdigest()
 
     def as_row(self) -> dict[str, Any]:
         return {
@@ -82,131 +85,127 @@ class ApplicabilityRecordV1:
         }
 
 
-def evaluate_s1_watch_lifecycle(*, cycle_id: str, symbol: str, key: InstrumentKeyV2,
-                                m15: Sequence[CausalBarV2], h1: Sequence[CausalBarV2],
-                                h4: Sequence[CausalBarV2], universe_eligible: bool,
-                                setup_cache: dict[int, Any],
-                                max_trigger_bars: int = 32) -> list[ApplicabilityRecordV1]:
-    """Evaluate the registered S1 watch lifecycle over the observed 15M sequence.
+def evaluate_s1_watch_lifecycle(
+    *,
+    cycle_id: str,
+    symbol: str,
+    key: InstrumentKeyV2,
+    m15: Sequence[CausalBarV2],
+    h1: Sequence[CausalBarV2],
+    h4: Sequence[CausalBarV2],
+    universe_eligible: bool,
+    setup_cache: dict[int, Any],
+    max_trigger_bars: int = 32,
+) -> list[ApplicabilityRecordV1]:
+    """Reconstructed price diagnostics: one first event per H1 setup owner.
 
-    The production coordinator creates a watch on a confirmed 15M close and
-    triggers it on a later confirmed 15M close that breaks the *immediately
-    prior* confirmed 15M high/low, with a four-bar expiry. This reproduces
-    that lifecycle on genuine bars, and records the probe gaps (no original
-    executable BBO, no event-gate identity) explicitly.
+    Replay the full supplied prefix before limiting emitted records. Tail slicing
+    cannot reset consumed watches or silently repair a missing first opportunity.
+    Original source/health/deadline qualification belongs to the native coordinator.
     """
-
-    records: list[ApplicabilityRecordV1] = []
-    if len(m15) < 2:
-        return records
-    if max_trigger_bars and len(m15) > max_trigger_bars + 8:
-        m15 = m15[-(max_trigger_bars + 8):]
-    m15_times = [int(bar.close_at_ns) for bar in m15]
-    h1_times = [int(bar.close_at_ns) for bar in h1]
-    h4_times = [int(bar.close_at_ns) for bar in h4]
-
-    def _setup_at(index: int) -> Any:
-        if index in setup_cache:
-            return setup_cache[index]
-        cutoff = m15_times[index]
-        join = _joined(key, cutoff,
-                       _slice(h4, h4_times, cutoff), _slice(h1, h1_times, cutoff),
-                       _slice(m15, m15_times, cutoff))
-        value: Any = None
-        if len(join.h4) >= 50 and len(join.h1) >= 50:
-            value = s1_trend._setup(join)
-        setup_cache[index] = value
-        return value
-
-    for trigger_index in range(1, len(m15)):
-        trigger_bar = m15[trigger_index]
-        previous = m15[trigger_index - 1]
-        cutoff = m15_times[trigger_index]
-        join = _joined(key, cutoff, _slice(h4, h4_times, cutoff), _slice(h1, h1_times, cutoff),
-                       _slice(m15, m15_times, cutoff))
-        regime = s1_trend._regime(join) if len(join.h4) >= 50 else None
-        atr_values = atr(list(m15[: trigger_index + 1]), 14)
-        atr15 = atr_values[-1] if atr_values else None
-        for offset in range(1, 5):
-            setup_index = trigger_index - offset
-            if setup_index < 0:
+    records = []
+    active = None
+    seen = set()
+    h1_times = [b.close_at_ns for b in h1]
+    h4_times = [b.close_at_ns for b in h4]
+    start_output = max(0, len(m15) - max_trigger_bars) if max_trigger_bars else 0
+    for i, bar in enumerate(m15):
+        cutoff = bar.close_at_ns
+        join = _joined(
+            key,
+            cutoff,
+            _slice(h4, h4_times, cutoff, reconstructed=True),
+            _slice(h1, h1_times, cutoff, reconstructed=True),
+            list(m15[: i + 1]),
+        )
+        status, reason, detail, indicators, setup_values, trigger_values = (
+            ApplicabilityStatusV1.NO_SETUP,
+            "SETUP_RULE_FAILED",
+            {},
+            {},
+            {},
+            {},
+        )
+        if active is not None:
+            origin, side, extreme, refs, owner = active
+            detail.update(setup_at_ns=origin, watch_id=owner, setup_refs=list(refs), trigger_close_at_ns=cutoff)
+            setup_values.update(setup_side=side.value, setup_extreme=str(extreme))
+            gap = not i or m15[i - 1].close_at_ns + bar.interval.duration_ns != cutoff
+            if gap:
+                status, reason = ApplicabilityStatusV1.SOURCE_UNAVAILABLE, "FIRST_TRIGGER_CENSORED_HISTORY_GAP"
+                active = None
+            elif cutoff > origin + 4 * bar.interval.duration_ns:
+                reason, active = "FOUR_BAR_EXPIRY", None
+            elif s1_trend._regime(join) != side:
+                reason, active = "CONTRARY_CONFIRMED_4H_REGIME", None
+            else:
+                previous = m15[i - 1]
+                crossed = bar.close > previous.high if side == V2Side.LONG else bar.close < previous.low
+                av = atr(list(m15[: i + 1]), 14)[-1]
+                indicators.update(atr15m=av, trigger_close=str(bar.close))
+                trigger_values.update(
+                    close=str(bar.close),
+                    breakout_confirmed=crossed,
+                    prior_15m_high=str(previous.high),
+                    prior_15m_low=str(previous.low),
+                )
+                reason = "TRIGGER_RULE_FAILED"
+                if crossed:
+                    status = (
+                        ApplicabilityStatusV1.RESEARCH_ACTION if universe_eligible else ApplicabilityStatusV1.INELIGIBLE
+                    )
+                    reason = "TRIGGER_CONFIRMED" if universe_eligible else "UNIVERSE_INELIGIBLE"
+                    detail["trigger_ref"] = bar.content_hash
+                    active = None  # consume first native event even if downstream refuses
+                elif cutoff == origin + 4 * bar.interval.duration_ns:
+                    reason, active = "FOUR_BAR_EXPIRY", None
+        if i >= start_output:
+            records.append(
+                ApplicabilityRecordV1(
+                    f"{cycle_id}-V2-{cutoff}",
+                    symbol,
+                    "S1",
+                    STRATEGY_NATIVE_CLOCK["S1"],
+                    cutoff,
+                    cutoff,
+                    universe_eligible,
+                    status,
+                    reason,
+                    detail=detail,
+                    indicator_values=indicators,
+                    setup_predicates=setup_values,
+                    trigger_predicates=trigger_values,
+                    unavailable_evidence=(
+                        "ORIGINAL_SOURCE_HEALTH",
+                        "EXECUTABLE_BBO_AT_ORIGINAL_INSTANT",
+                        "EVENT_GATE_IDENTITY",
+                        "MARK_INDEX_IDENTITY",
+                    ),
+                    source_grade="RECONSTRUCTED_HISTORICAL_RESEARCH",
+                    policy_id=s1_trend.POLICY_ID,
+                    policy_hash=s1_trend.S1_POLICY.policy_hash,
+                )
+            )
+        if active is None and len(join.h1) >= 50 and len(join.h4) >= 50:
+            if not all(interval_coverage_complete(bs) for bs in (join.h1, join.h4, join.m15)):
                 continue
-            setup = _setup_at(setup_index)
-            setup_at_ns = m15_times[setup_index]
-            record_cycle = f"{cycle_id}-T{cutoff}-S{setup_at_ns}"
-            if setup is None:
-                records.append(ApplicabilityRecordV1(
-                    record_cycle, symbol, "S1", STRATEGY_NATIVE_CLOCK["S1"], setup_at_ns, setup_at_ns,
-                    universe_eligible, ApplicabilityStatusV1.NO_SETUP, "SETUP_RULE_FAILED",
-                    detail={"watch_offset_bars": offset, "trigger_close_at_ns": cutoff},
-                    source_grade="QUALIFIED_PRICE_PREDICATES",
-                    policy_id=s1_trend.POLICY_ID, policy_hash=s1_trend.S1_POLICY.policy_hash))
-                continue
-            side, extreme, setup_refs = setup
-            indicators = {
-                "h4_close": str(join.h4[-1].close),
-                "h4_ema20": str(_ema_value(join.h4, 20)),
-                "h4_ema50": str(_ema_value(join.h4, 50)),
-                "atr15m": atr15,
-                "trigger_close": str(trigger_bar.close),
-                "prior_15m_high": str(previous.high),
-                "prior_15m_low": str(previous.low),
-            }
-            setup_predicates = {
-                "regime_side_at_setup": side.value,
-                "regime_side_at_trigger": regime.value if regime is not None else None,
-                "setup_side": side.value,
-                "setup_extreme": str(extreme),
-                "pullback_touched_and_reclaimed": True,
-                "watch_offset_bars": offset,
-            }
-            crossed = (trigger_bar.close > previous.high) if side == V2Side.LONG else (
-                trigger_bar.close < previous.low)
-            trigger_predicates = {
-                "prior_15m_high": str(previous.high),
-                "prior_15m_low": str(previous.low),
-                "close": float(trigger_bar.close),
-                "breakout_confirmed": crossed,
-            }
-            if regime is not None and regime != side:
-                records.append(ApplicabilityRecordV1(
-                    record_cycle, symbol, "S1", STRATEGY_NATIVE_CLOCK["S1"], setup_at_ns, setup_at_ns,
-                    universe_eligible, ApplicabilityStatusV1.NO_SETUP, "CONTRARY_CONFIRMED_4H_REGIME",
-                    indicator_values=indicators, setup_predicates=setup_predicates,
-                    trigger_predicates=trigger_predicates,
-                    source_grade="QUALIFIED_PRICE_PREDICATES",
-                    policy_id=s1_trend.POLICY_ID, policy_hash=s1_trend.S1_POLICY.policy_hash))
-                continue
-            if not crossed:
-                records.append(ApplicabilityRecordV1(
-                    record_cycle, symbol, "S1", STRATEGY_NATIVE_CLOCK["S1"], setup_at_ns, setup_at_ns,
-                    universe_eligible, ApplicabilityStatusV1.NO_SETUP, "TRIGGER_RULE_FAILED",
-                    indicator_values=indicators, setup_predicates=setup_predicates,
-                    trigger_predicates=trigger_predicates,
-                    source_grade="QUALIFIED_PRICE_PREDICATES",
-                    policy_id=s1_trend.POLICY_ID, policy_hash=s1_trend.S1_POLICY.policy_hash))
-                continue
-            status = (ApplicabilityStatusV1.RESEARCH_ACTION if universe_eligible
-                      else ApplicabilityStatusV1.INELIGIBLE)
-            reason = "TRIGGER_CONFIRMED" if universe_eligible else "UNIVERSE_INELIGIBLE"
-            records.append(ApplicabilityRecordV1(
-                record_cycle, symbol, "S1", STRATEGY_NATIVE_CLOCK["S1"], setup_at_ns, setup_at_ns,
-                universe_eligible, status, reason,
-                detail={"setup_refs": list(setup_refs), "side": side.value,
-                        "trigger_close_at_ns": cutoff, "watch_offset_bars": offset},
-                indicator_values=indicators, setup_predicates=setup_predicates,
-                trigger_predicates=trigger_predicates,
-                unavailable_evidence=("EXECUTABLE_BBO_AT_ORIGINAL_INSTANT", "EVENT_GATE_IDENTITY",
-                                      "MARK_INDEX_IDENTITY"),
-                source_grade="QUALIFIED_PRICE_PREDICATES_PROBE_GAPS",
-                policy_id=s1_trend.POLICY_ID, policy_hash=s1_trend.S1_POLICY.policy_hash))
+            setup = s1_trend._setup(join)
+            if setup:
+                side, extreme, refs = setup
+                owner = _hash(symbol, s1_trend.S1_POLICY.policy_hash, side.value, *refs)
+                if owner not in seen:
+                    seen.add(owner)
+                    active = (cutoff, side, extreme, refs, owner)
     return records
 
 
-def _slice(bars: Sequence[CausalBarV2], times: Sequence[int], cutoff_ns: int) -> list[CausalBarV2]:
+def _slice(
+    bars: Sequence[CausalBarV2], times: Sequence[int], cutoff_ns: int, *, reconstructed: bool = False
+) -> list[CausalBarV2]:
     import bisect
 
-    return list(bars[: bisect.bisect_right(times, cutoff_ns)])
+    prefix = list(bars[: bisect.bisect_right(times, cutoff_ns)])
+    return prefix if reconstructed else [b for b in prefix if b.raw.available_at_ns <= cutoff_ns]
 
 
 def _hash(*parts: str) -> str:
@@ -219,26 +218,52 @@ def _joined(key: InstrumentKeyV2, cutoff_ns: int, h4: Sequence[CausalBarV2],
                       status="AVAILABLE", reason=None, source_health_ref=None)
 
 
-def evaluate_s1(*, cycle_id: str, symbol: str, key: InstrumentKeyV2, cutoff_ns: int,
-                h4: Sequence[CausalBarV2], h1: Sequence[CausalBarV2],
-                m15: Sequence[CausalBarV2], universe_eligible: bool) -> ApplicabilityRecordV1:
+def evaluate_s1(
+    *,
+    cycle_id: str,
+    symbol: str,
+    key: InstrumentKeyV2,
+    cutoff_ns: int,
+    h4: Sequence[CausalBarV2],
+    h1: Sequence[CausalBarV2],
+    m15: Sequence[CausalBarV2],
+    universe_eligible: bool,
+) -> ApplicabilityRecordV1:
     """S1 multi-timeframe trend pullback, native clock CONFIRMED_15M_CLOSE."""
 
     due = m15[-1].close_at_ns if m15 else cutoff_ns
-    unavailable: list[str] = []
     if not m15:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S1", STRATEGY_NATIVE_CLOCK["S1"], cutoff_ns, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "M15_HISTORY_UNAVAILABLE", unavailable_evidence=("M15_BARS",),
-                                     policy_id=s1_trend.POLICY_ID, policy_hash=s1_trend.S1_POLICY.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S1",
+            STRATEGY_NATIVE_CLOCK["S1"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "M15_HISTORY_UNAVAILABLE",
+            unavailable_evidence=("M15_BARS",),
+            policy_id=s1_trend.POLICY_ID,
+            policy_hash=s1_trend.S1_POLICY.policy_hash,
+        )
     join = _joined(key, cutoff_ns, h4, h1, m15)
     if len(join.h4) < 50 or len(join.h1) < 50:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S1", STRATEGY_NATIVE_CLOCK["S1"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "EMA_WARMUP_MISSING",
-                                     detail={"h4_bars": len(join.h4), "h1_bars": len(join.h1)},
-                                     unavailable_evidence=("H4_EMA50_WARMUP", "H1_EMA50_WARMUP"),
-                                     policy_id=s1_trend.POLICY_ID, policy_hash=s1_trend.S1_POLICY.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S1",
+            STRATEGY_NATIVE_CLOCK["S1"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "EMA_WARMUP_MISSING",
+            detail={"h4_bars": len(join.h4), "h1_bars": len(join.h1)},
+            unavailable_evidence=("H4_EMA50_WARMUP", "H1_EMA50_WARMUP"),
+            policy_id=s1_trend.POLICY_ID,
+            policy_hash=s1_trend.S1_POLICY.policy_hash,
+        )
     regime = s1_trend._regime(join)
     setup = s1_trend._setup(join)
     indicators = {
@@ -254,59 +279,39 @@ def evaluate_s1(*, cycle_id: str, symbol: str, key: InstrumentKeyV2, cutoff_ns: 
         "setup_side": setup[0].value if setup is not None else None,
         "setup_extreme": str(setup[1]) if setup is not None else None,
     }
-    trigger_predicates: dict[str, Any] = {}
     if setup is None:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S1", STRATEGY_NATIVE_CLOCK["S1"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.NO_SETUP, "SETUP_RULE_FAILED",
-                                     indicator_values=indicators, setup_predicates=setup_predicates,
-                                     source_grade="QUALIFIED_PRICE_PREDICATES",
-                                     policy_id=s1_trend.POLICY_ID, policy_hash=s1_trend.S1_POLICY.policy_hash)
-    side, extreme, setup_refs = setup
-    # Registered trigger: the confirmed 15M close breaks the prior confirmed
-    # 15M high/low; the stop band is 0.5-3 ATR(15M) around the setup extreme.
-    m15_closes = [float(bar.close) for bar in join.m15]
-    m15_closes[-1] = float(join.m15[-1].close)
-    atr_values = atr(list(join.m15), 14)
-    atr15 = atr_values[-1] if atr_values else None
-    trigger_high = max(float(bar.high) for bar in join.m15[-2:]) if len(join.m15) >= 2 else None
-    trigger_low = min(float(bar.low) for bar in join.m15[-2:]) if len(join.m15) >= 2 else None
-    close = float(join.m15[-1].close)
-    triggered = False
-    if side == V2Side.LONG and trigger_high is not None:
-        triggered = close > trigger_high
-    elif side == V2Side.SHORT and trigger_low is not None:
-        triggered = close < trigger_low
-    stop_distance_atr = None
-    if atr15:
-        stop_distance_atr = abs(float(extreme) - close) / atr15
-    trigger_predicates = {
-        "prior_15m_high": trigger_high,
-        "prior_15m_low": trigger_low,
-        "close": close,
-        "atr15m": atr15,
-        "breakout_confirmed": triggered,
-        "stop_distance_atr": stop_distance_atr,
-        "stop_band_valid": None if stop_distance_atr is None else bool(0.5 <= stop_distance_atr <= 3.0),
-    }
-    indicators["atr15m"] = atr15
-    if not triggered:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S1", STRATEGY_NATIVE_CLOCK["S1"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.NO_SETUP, "TRIGGER_RULE_FAILED",
-                                     indicator_values=indicators, setup_predicates=setup_predicates,
-                                     trigger_predicates=trigger_predicates,
-                                     source_grade="QUALIFIED_PRICE_PREDICATES",
-                                     policy_id=s1_trend.POLICY_ID, policy_hash=s1_trend.S1_POLICY.policy_hash)
-    status = (ApplicabilityStatusV1.RESEARCH_ACTION if universe_eligible
-              else ApplicabilityStatusV1.INELIGIBLE)
-    reason = "TRIGGER_CONFIRMED" if universe_eligible else "UNIVERSE_INELIGIBLE"
-    unavailable = ["EXECUTABLE_BBO_AT_ORIGINAL_INSTANT", "EVENT_GATE_IDENTITY", "SOURCE_HEALTH_IDENTITY"]
-    return ApplicabilityRecordV1(cycle_id, symbol, "S1", STRATEGY_NATIVE_CLOCK["S1"], due, cutoff_ns,
-                                 universe_eligible, status, reason,
-                                 detail={"setup_refs": list(setup_refs), "side": side.value},
-                                 indicator_values=indicators, setup_predicates=setup_predicates,
-                                 trigger_predicates=trigger_predicates, unavailable_evidence=tuple(unavailable),
-                                 source_grade="QUALIFIED_PRICE_PREDICATES_PROBE_GAPS",
-                                 policy_id=s1_trend.POLICY_ID, policy_hash=s1_trend.S1_POLICY.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S1",
+            STRATEGY_NATIVE_CLOCK["S1"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.NO_SETUP,
+            "SETUP_RULE_FAILED",
+            indicator_values=indicators,
+            setup_predicates=setup_predicates,
+            source_grade="RECONSTRUCTED_HISTORICAL_RESEARCH",
+            policy_id=s1_trend.POLICY_ID,
+            policy_hash=s1_trend.S1_POLICY.policy_hash,
+        )
+    return ApplicabilityRecordV1(
+        cycle_id,
+        symbol,
+        "S1",
+        STRATEGY_NATIVE_CLOCK["S1"],
+        due,
+        cutoff_ns,
+        universe_eligible,
+        ApplicabilityStatusV1.NO_SETUP,
+        "SUBSEQUENT_TRIGGER_WATCH_REQUIRED",
+        indicator_values=indicators,
+        setup_predicates=setup_predicates,
+        source_grade="RECONSTRUCTED_HISTORICAL_RESEARCH",
+        policy_id=s1_trend.POLICY_ID,
+        policy_hash=s1_trend.S1_POLICY.policy_hash,
+    )
 
 
 def _ema_value(bars: Sequence[CausalBarV2], period: int) -> Any:
@@ -314,34 +319,100 @@ def _ema_value(bars: Sequence[CausalBarV2], period: int) -> Any:
     return values[-1] if values else None
 
 
-def evaluate_s2(*, cycle_id: str, symbol: str, key: InstrumentKeyV2, cutoff_ns: int,
-                h4: Sequence[CausalBarV2], h1: Sequence[CausalBarV2],
-                m15: Sequence[CausalBarV2], universe_eligible: bool,
-                precomputed_atr: Sequence[float | None] | None = None,
-                precomputed_widths: Sequence[float] | None = None,
-                precomputed_closes: Sequence[float] | None = None) -> ApplicabilityRecordV1:
+def evaluate_s2(
+    *,
+    cycle_id: str,
+    symbol: str,
+    key: InstrumentKeyV2,
+    cutoff_ns: int,
+    h4: Sequence[CausalBarV2],
+    h1: Sequence[CausalBarV2],
+    m15: Sequence[CausalBarV2],
+    universe_eligible: bool,
+    precomputed_atr: Sequence[float | None] | None = None,
+    precomputed_widths: Sequence[float] | None = None,
+    precomputed_closes: Sequence[float] | None = None,
+) -> ApplicabilityRecordV1:
     """S2 compression breakout, native clock CONFIRMED_15M_CLOSE."""
 
     policy = s2_breakout.S2_POLICY
+    if any(b.close_at_ns > cutoff_ns for b in (*h4, *h1, *m15)) or (
+        key is not None and any(b.raw.instrument_revision != key.contract_revision for b in (*h4, *h1, *m15))
+    ):
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "FUTURE_EVENT_OR_REVISION_MISMATCH",
+            policy_id=policy.policy_id,
+            policy_hash=policy.policy_hash,
+        )
+    if m15 and not interval_coverage_complete(m15):
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "BAR_INTERVAL_COVERAGE_GAP",
+            policy_id=policy.policy_id,
+            policy_hash=policy.policy_hash,
+        )
     due = m15[-1].close_at_ns if m15 else cutoff_ns
     if not m15:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], cutoff_ns, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "M15_HISTORY_UNAVAILABLE", unavailable_evidence=("M15_BARS",),
-                                     policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "M15_HISTORY_UNAVAILABLE",
+            unavailable_evidence=("M15_BARS",),
+            policy_id=s2_breakout.POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
     if len(m15) < s2_breakout.SAMPLE_SIZE + 21:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "INSUFFICIENT_30_DAY_HISTORY_AFTER_WARMUP",
-                                     detail={"m15_bars": len(m15), "required": s2_breakout.SAMPLE_SIZE + 21},
-                                     unavailable_evidence=("M15_30_DAY_COMPARISON_SAMPLE",),
-                                     policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "INSUFFICIENT_30_DAY_HISTORY_AFTER_WARMUP",
+            detail={"m15_bars": len(m15), "required": s2_breakout.SAMPLE_SIZE + 21},
+            unavailable_evidence=("M15_30_DAY_COMPARISON_SAMPLE",),
+            policy_id=s2_breakout.POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
     if not h1 or not h4:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "MISSING_1H_OR_4H_CONTEXT",
-                                     unavailable_evidence=("H1_CONTEXT", "H4_CONTEXT"),
-                                     policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "MISSING_1H_OR_4H_CONTEXT",
+            unavailable_evidence=("H1_CONTEXT", "H4_CONTEXT"),
+            policy_id=s2_breakout.POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
     pre = list(m15[:-1])
     if precomputed_atr is not None and precomputed_closes is not None:
         atr_values = list(precomputed_atr[: len(pre)])
@@ -353,22 +424,40 @@ def evaluate_s2(*, cycle_id: str, symbol: str, key: InstrumentKeyV2, cutoff_ns: 
     start = len(pre) - s2_breakout.SAMPLE_SIZE - 1
     sample_atr = atr_values[start:-1]
     if latest_atr is None or any(value is None or not math.isfinite(value) for value in sample_atr):
-        return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "ATR_HISTORY_UNAVAILABLE",
-                                     policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "ATR_HISTORY_UNAVAILABLE",
+            policy_id=s2_breakout.POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
     if precomputed_widths is not None:
-        widths = list(precomputed_widths[start:len(pre)])
+        widths = list(precomputed_widths[start : len(pre)])
     else:
         widths = []
         for index in range(start, len(pre)):
-            window = closes[index - 19:index + 1]
+            window = closes[index - 19 : index + 1]
             widths.append(4 * pstdev(window) / (math.fsum(window) / 20))
     if len(widths) != s2_breakout.SAMPLE_SIZE + 1:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "BOLLINGER_HISTORY_UNAVAILABLE",
-                                     policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "BOLLINGER_HISTORY_UNAVAILABLE",
+            policy_id=s2_breakout.POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
     width_threshold = s2_breakout.empirical_quantile(tuple(widths[:-1]), 0.20)
     atr_threshold = float(median([float(value) for value in sample_atr if value is not None]))
     compression = s2_breakout.compression_passes(widths[-1], width_threshold, latest_atr, atr_threshold)
@@ -403,74 +492,164 @@ def evaluate_s2(*, cycle_id: str, symbol: str, key: InstrumentKeyV2, cutoff_ns: 
         "volume_above_median": volume_ok,
     }
     if not compression:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.NO_SETUP, "COMPRESSION_RULE_FAILED",
-                                     indicator_values=indicators, setup_predicates=setup_predicates,
-                                     trigger_predicates=trigger_predicates,
-                                     source_grade="QUALIFIED_PRICE_PREDICATES",
-                                     policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.NO_SETUP,
+            "COMPRESSION_RULE_FAILED",
+            indicator_values=indicators,
+            setup_predicates=setup_predicates,
+            trigger_predicates=trigger_predicates,
+            source_grade="RECONSTRUCTED_HISTORICAL_RESEARCH",
+            policy_id=s2_breakout.POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
     if not width_valid:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.NO_SETUP,
-                                     "RANGE_WIDTH_OUTSIDE_0.5_TO_3_ATR",
-                                     indicator_values=indicators, setup_predicates=setup_predicates,
-                                     trigger_predicates=trigger_predicates,
-                                     source_grade="QUALIFIED_PRICE_PREDICATES",
-                                     policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.NO_SETUP,
+            "RANGE_WIDTH_OUTSIDE_0.5_TO_3_ATR",
+            indicator_values=indicators,
+            setup_predicates=setup_predicates,
+            trigger_predicates=trigger_predicates,
+            source_grade="RECONSTRUCTED_HISTORICAL_RESEARCH",
+            policy_id=s2_breakout.POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
     if side is None:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.NO_SETUP, "TRIGGER_RULE_FAILED",
-                                     indicator_values=indicators, setup_predicates=setup_predicates,
-                                     trigger_predicates=trigger_predicates,
-                                     source_grade="QUALIFIED_PRICE_PREDICATES",
-                                     policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.NO_SETUP,
+            "TRIGGER_RULE_FAILED",
+            indicator_values=indicators,
+            setup_predicates=setup_predicates,
+            trigger_predicates=trigger_predicates,
+            source_grade="RECONSTRUCTED_HISTORICAL_RESEARCH",
+            policy_id=s2_breakout.POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
     if not volume_ok:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.NO_SETUP, "VOLUME_RULE_FAILED",
-                                     indicator_values=indicators, setup_predicates=setup_predicates,
-                                     trigger_predicates=trigger_predicates,
-                                     source_grade="QUALIFIED_PRICE_PREDICATES",
-                                     policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
-    status = (ApplicabilityStatusV1.RESEARCH_ACTION if universe_eligible
-              else ApplicabilityStatusV1.INELIGIBLE)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S2",
+            STRATEGY_NATIVE_CLOCK["S2"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.NO_SETUP,
+            "VOLUME_RULE_FAILED",
+            indicator_values=indicators,
+            setup_predicates=setup_predicates,
+            trigger_predicates=trigger_predicates,
+            source_grade="RECONSTRUCTED_HISTORICAL_RESEARCH",
+            policy_id=s2_breakout.POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
+    status = ApplicabilityStatusV1.RESEARCH_ACTION if universe_eligible else ApplicabilityStatusV1.INELIGIBLE
     reason = "TRIGGER_CONFIRMED" if universe_eligible else "UNIVERSE_INELIGIBLE"
-    return ApplicabilityRecordV1(cycle_id, symbol, "S2", STRATEGY_NATIVE_CLOCK["S2"], due, cutoff_ns,
-                                 universe_eligible, status, reason,
-                                 indicator_values=indicators, setup_predicates=setup_predicates,
-                                 trigger_predicates=trigger_predicates,
-                                 unavailable_evidence=("EXECUTABLE_BBO_AT_ORIGINAL_INSTANT",),
-                                 source_grade="QUALIFIED_PRICE_PREDICATES_PROBE_GAPS",
-                                 policy_id=s2_breakout.POLICY_ID, policy_hash=policy.policy_hash)
+    return ApplicabilityRecordV1(
+        cycle_id,
+        symbol,
+        "S2",
+        STRATEGY_NATIVE_CLOCK["S2"],
+        due,
+        cutoff_ns,
+        universe_eligible,
+        status,
+        reason,
+        indicator_values=indicators,
+        setup_predicates=setup_predicates,
+        trigger_predicates=trigger_predicates,
+        unavailable_evidence=("EXECUTABLE_BBO_AT_ORIGINAL_INSTANT",),
+        source_grade="RECONSTRUCTED_HISTORICAL_RESEARCH",
+        policy_id=s2_breakout.POLICY_ID,
+        policy_hash=policy.policy_hash,
+    )
 
 
-def evaluate_s3(*, cycle_id: str, symbol: str, key: InstrumentKeyV2, cutoff_ns: int,
-                m1: Sequence[CausalBarV2], universe_eligible: bool,
-                exact_trade_population: bool) -> ApplicabilityRecordV1:
+def evaluate_s3(
+    *,
+    cycle_id: str,
+    symbol: str,
+    key: InstrumentKeyV2,
+    cutoff_ns: int,
+    m1: Sequence[CausalBarV2],
+    universe_eligible: bool,
+    exact_trade_population: bool,
+) -> ApplicabilityRecordV1:
     """S3 VWAP/AR(1) reversion, native clock CONFIRMED_1M_CLOSE."""
 
     policy = s3_mean_reversion.policy_spec()
     due = m1[-1].close_at_ns if m1 else cutoff_ns
     if not m1:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S3", STRATEGY_NATIVE_CLOCK["S3"], cutoff_ns, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "M1_HISTORY_UNAVAILABLE", unavailable_evidence=("M1_BARS",),
-                                     policy_id=policy.policy_id, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S3",
+            STRATEGY_NATIVE_CLOCK["S3"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "M1_HISTORY_UNAVAILABLE",
+            unavailable_evidence=("M1_BARS",),
+            policy_id=policy.policy_id,
+            policy_hash=policy.policy_hash,
+        )
     if not exact_trade_population:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S3", STRATEGY_NATIVE_CLOCK["S3"], due, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "EXACT_NATIVE_TRADE_POPULATION_UNAVAILABLE",
-                                     detail={"m1_bars": len(m1),
-                                             "note": "aggregated trades are not the every-trade population "
-                                                     "required by the registered S3 VWAP contract"},
-                                     unavailable_evidence=("EVERY_TRADE_VWAP_WINDOW", "TRADE_VWAP_SNAPSHOT"),
-                                     source_grade="SOURCE_UNAVAILABLE",
-                                     policy_id=policy.policy_id, policy_hash=policy.policy_hash)
-    return ApplicabilityRecordV1(cycle_id, symbol, "S3", STRATEGY_NATIVE_CLOCK["S3"], due, cutoff_ns,
-                                 universe_eligible, ApplicabilityStatusV1.RESEARCH_ACTION,
-                                 "SETUP_EVALUATED_WITH_EXACT_TRADE_POPULATION",
-                                 unavailable_evidence=(),
-                                 source_grade="QUALIFIED",
-                                 policy_id=policy.policy_id, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S3",
+            STRATEGY_NATIVE_CLOCK["S3"],
+            due,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "EXACT_NATIVE_TRADE_POPULATION_UNAVAILABLE",
+            detail={
+                "m1_bars": len(m1),
+                "note": "aggregated trades are not the every-trade population "
+                "required by the registered S3 VWAP contract",
+            },
+            unavailable_evidence=("EVERY_TRADE_VWAP_WINDOW", "TRADE_VWAP_SNAPSHOT"),
+            source_grade="SOURCE_UNAVAILABLE",
+            policy_id=policy.policy_id,
+            policy_hash=policy.policy_hash,
+        )
+    return ApplicabilityRecordV1(
+        cycle_id,
+        symbol,
+        "S3",
+        STRATEGY_NATIVE_CLOCK["S3"],
+        due,
+        cutoff_ns,
+        universe_eligible,
+        ApplicabilityStatusV1.RESOURCE_NOT_EVALUATED,
+        "NATIVE_S3_EVALUATION_REQUIRED",
+        unavailable_evidence=(),
+        source_grade="QUALIFIED",
+        policy_id=policy.policy_id,
+        policy_hash=policy.policy_hash,
+    )
 
 
 def evaluate_s4(*, cycle_id: str, symbol: str, cutoff_ns: int, depth_available: bool,
@@ -516,9 +695,17 @@ def evaluate_s5(*, cycle_id: str, symbol: str, cutoff_ns: int, oi_available: boo
                                  source_grade="QUALIFIED_CONTEXT", policy_id=policy_id)
 
 
-def evaluate_s6(*, cycle_id: str, symbol: str, cutoff_ns: int, eligible_breadth: int,
-                hours_used: int, score: float | None, beta_btc: float | None,
-                universe_eligible: bool) -> ApplicabilityRecordV1:
+def evaluate_s6(
+    *,
+    cycle_id: str,
+    symbol: str,
+    cutoff_ns: int,
+    eligible_breadth: int,
+    hours_used: int,
+    score: float | None,
+    beta_btc: float | None,
+    universe_eligible: bool,
+) -> ApplicabilityRecordV1:
     """S6 cross-sectional relative strength, native clock CONFIRMED_1H_CLOSE."""
 
     from ...strategies.s6_cross_section import MIN_BREADTH
@@ -526,32 +713,57 @@ def evaluate_s6(*, cycle_id: str, symbol: str, cutoff_ns: int, eligible_breadth:
 
     policy = s6_cross_section_policy()
     if eligible_breadth < MIN_BREADTH:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S6", STRATEGY_NATIVE_CLOCK["S6"], cutoff_ns, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "ELIGIBLE_BREADTH_BELOW_REGISTERED_MINIMUM",
-                                     detail={"eligible_breadth": eligible_breadth, "minimum": MIN_BREADTH},
-                                     unavailable_evidence=("CROSS_SECTION_BREADTH",),
-                                     source_grade="SOURCE_UNAVAILABLE",
-                                     policy_id=S6_POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S6",
+            STRATEGY_NATIVE_CLOCK["S6"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "ELIGIBLE_BREADTH_BELOW_REGISTERED_MINIMUM",
+            detail={"eligible_breadth": eligible_breadth, "minimum": MIN_BREADTH},
+            unavailable_evidence=("CROSS_SECTION_BREADTH",),
+            source_grade="SOURCE_UNAVAILABLE",
+            policy_id=S6_POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
     if hours_used < 720:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S6", STRATEGY_NATIVE_CLOCK["S6"], cutoff_ns, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "INSUFFICIENT_30_DAY_HOURLY_RETURNS",
-                                     detail={"hours_used": hours_used, "required": 720},
-                                     unavailable_evidence=("TRAILING_720_HOURLY_RETURNS",),
-                                     source_grade="SOURCE_UNAVAILABLE",
-                                     policy_id=S6_POLICY_ID, policy_hash=policy.policy_hash)
-    status = (ApplicabilityStatusV1.RESEARCH_ACTION if score is not None and universe_eligible
-              else ApplicabilityStatusV1.CONTEXT_ONLY)
-    reason = ("RELATIVE_STRENGTH_STATE_AVAILABLE" if score is not None
-              else "RELATIVE_STRENGTH_NOT_COMPUTED")
-    return ApplicabilityRecordV1(cycle_id, symbol, "S6", STRATEGY_NATIVE_CLOCK["S6"], cutoff_ns, cutoff_ns,
-                                 universe_eligible, status, reason,
-                                 detail={"score": score, "beta_btc": beta_btc,
-                                         "eligible_breadth": eligible_breadth, "hours_used": hours_used},
-                                 unavailable_evidence=("S6_EXACT_ACTION_CONTRACT",),
-                                 source_grade="QUALIFIED_PRICE_PREDICATES_PROBE_GAPS",
-                                 policy_id=S6_POLICY_ID, policy_hash=policy.policy_hash)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S6",
+            STRATEGY_NATIVE_CLOCK["S6"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "INSUFFICIENT_30_DAY_HOURLY_RETURNS",
+            detail={"hours_used": hours_used, "required": 720},
+            unavailable_evidence=("TRAILING_720_HOURLY_RETURNS",),
+            source_grade="SOURCE_UNAVAILABLE",
+            policy_id=S6_POLICY_ID,
+            policy_hash=policy.policy_hash,
+        )
+    status = ApplicabilityStatusV1.CONTEXT_ONLY
+    reason = "RELATIVE_STRENGTH_STATE_AVAILABLE" if score is not None else "RELATIVE_STRENGTH_NOT_COMPUTED"
+    return ApplicabilityRecordV1(
+        cycle_id,
+        symbol,
+        "S6",
+        STRATEGY_NATIVE_CLOCK["S6"],
+        cutoff_ns,
+        cutoff_ns,
+        universe_eligible,
+        status,
+        reason,
+        detail={"score": score, "beta_btc": beta_btc, "eligible_breadth": eligible_breadth, "hours_used": hours_used},
+        unavailable_evidence=("S6_EXACT_ACTION_CONTRACT",),
+        source_grade="RECONSTRUCTED_HISTORICAL_RESEARCH",
+        policy_id=S6_POLICY_ID,
+        policy_hash=policy.policy_hash,
+    )
 
 
 def s6_cross_section_policy() -> Any:
@@ -577,51 +789,107 @@ def evaluate_s7(*, cycle_id: str, symbol: str, cutoff_ns: int,
                                  "EVENT_CONTEXT_AVAILABLE", source_grade="QUALIFIED_CONTEXT", policy_id=policy_id)
 
 
-def evaluate_s8(*, cycle_id: str, symbol: str, cutoff_ns: int, pair_defined: bool,
-                hours_used: int, universe_eligible: bool) -> ApplicabilityRecordV1:
+def evaluate_s8(
+    *, cycle_id: str, symbol: str, cutoff_ns: int, pair_defined: bool, hours_used: int, universe_eligible: bool
+) -> ApplicabilityRecordV1:
     """S8 registered pairs research basket. Two-leg, never a single-instrument signal."""
 
     from ...strategies.s8_pairs import S8_PROFILE_ID as S8_POLICY_ID
 
     policy_id = S8_POLICY_ID
     if not pair_defined:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S8", STRATEGY_NATIVE_CLOCK["S8"], cutoff_ns, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.NOT_DUE,
-                                     "NO_REGISTERED_PAIR_FOR_SYMBOL",
-                                     unavailable_evidence=("REGISTERED_PAIR_CATALOG",),
-                                     source_grade="NOT_APPLICABLE", policy_id=policy_id)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S8",
+            STRATEGY_NATIVE_CLOCK["S8"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.NOT_DUE,
+            "NO_REGISTERED_PAIR_FOR_SYMBOL",
+            unavailable_evidence=("REGISTERED_PAIR_CATALOG",),
+            source_grade="NOT_APPLICABLE",
+            policy_id=policy_id,
+        )
     if hours_used < 720:
-        return ApplicabilityRecordV1(cycle_id, symbol, "S8", STRATEGY_NATIVE_CLOCK["S8"], cutoff_ns, cutoff_ns,
-                                     universe_eligible, ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
-                                     "INSUFFICIENT_PAIR_FIT_HISTORY",
-                                     detail={"hours_used": hours_used, "required": 720},
-                                     unavailable_evidence=("SYNCHRONIZED_PAIR_HISTORY_720H",),
-                                     source_grade="SOURCE_UNAVAILABLE", policy_id=policy_id)
-    return ApplicabilityRecordV1(cycle_id, symbol, "S8", STRATEGY_NATIVE_CLOCK["S8"], cutoff_ns, cutoff_ns,
-                                 universe_eligible, ApplicabilityStatusV1.RESEARCH_ACTION,
-                                 "TWO_LEG_RESEARCH_BASKET_AVAILABLE",
-                                 unavailable_evidence=(),
-                                 source_grade="QUALIFIED", policy_id=policy_id)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "S8",
+            STRATEGY_NATIVE_CLOCK["S8"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.SOURCE_UNAVAILABLE,
+            "INSUFFICIENT_PAIR_FIT_HISTORY",
+            detail={"hours_used": hours_used, "required": 720},
+            unavailable_evidence=("SYNCHRONIZED_PAIR_HISTORY_720H",),
+            source_grade="SOURCE_UNAVAILABLE",
+            policy_id=policy_id,
+        )
+    return ApplicabilityRecordV1(
+        cycle_id,
+        symbol,
+        "S8",
+        STRATEGY_NATIVE_CLOCK["S8"],
+        cutoff_ns,
+        cutoff_ns,
+        universe_eligible,
+        ApplicabilityStatusV1.RESOURCE_NOT_EVALUATED,
+        "NATIVE_TWO_LEG_EVALUATION_REQUIRED",
+        unavailable_evidence=(),
+        source_grade="QUALIFIED",
+        policy_id=policy_id,
+    )
 
 
-def evaluate_path_b(*, cycle_id: str, symbol: str, cutoff_ns: int, eligible: bool,
-                    novelty_score: float | None, universe_eligible: bool) -> ApplicabilityRecordV1:
+def evaluate_path_b(
+    *, cycle_id: str, symbol: str, cutoff_ns: int, eligible: bool, novelty_score: float | None, universe_eligible: bool
+) -> ApplicabilityRecordV1:
     """Path B bounded anomaly/novelty exploration (registered discovery surrogate)."""
 
     policy_id = "PATH_B_BOUNDED_ANOMALY_EXPLORATION_V1"
     if not eligible:
-        return ApplicabilityRecordV1(cycle_id, symbol, "PATH_B", STRATEGY_NATIVE_CLOCK["PATH_B"], cutoff_ns,
-                                     cutoff_ns, universe_eligible, ApplicabilityStatusV1.INELIGIBLE,
-                                     "NOT_IN_ELIGIBLE_DISCOVERY_POPULATION",
-                                     source_grade="NOT_APPLICABLE", policy_id=policy_id)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "PATH_B",
+            STRATEGY_NATIVE_CLOCK["PATH_B"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.INELIGIBLE,
+            "NOT_IN_ELIGIBLE_DISCOVERY_POPULATION",
+            source_grade="NOT_APPLICABLE",
+            policy_id=policy_id,
+        )
     if novelty_score is None:
-        return ApplicabilityRecordV1(cycle_id, symbol, "PATH_B", STRATEGY_NATIVE_CLOCK["PATH_B"], cutoff_ns,
-                                     cutoff_ns, universe_eligible, ApplicabilityStatusV1.RESOURCE_NOT_EVALUATED,
-                                     "NOVELTY_SCREEN_NOT_EVALUATED",
-                                     unavailable_evidence=("NOVELTY_SCREEN",),
-                                     source_grade="UNQUALIFIED", policy_id=policy_id)
-    return ApplicabilityRecordV1(cycle_id, symbol, "PATH_B", STRATEGY_NATIVE_CLOCK["PATH_B"], cutoff_ns,
-                                 cutoff_ns, universe_eligible, ApplicabilityStatusV1.RESEARCH_ACTION,
-                                 "BOUNDED_NOVELTY_SCREEN_ELIGIBLE",
-                                 detail={"novelty_score": novelty_score},
-                                 source_grade="RESEARCH_EXPLORATION", policy_id=policy_id)
+        return ApplicabilityRecordV1(
+            cycle_id,
+            symbol,
+            "PATH_B",
+            STRATEGY_NATIVE_CLOCK["PATH_B"],
+            cutoff_ns,
+            cutoff_ns,
+            universe_eligible,
+            ApplicabilityStatusV1.RESOURCE_NOT_EVALUATED,
+            "NOVELTY_SCREEN_NOT_EVALUATED",
+            unavailable_evidence=("NOVELTY_SCREEN",),
+            source_grade="UNQUALIFIED",
+            policy_id=policy_id,
+        )
+    return ApplicabilityRecordV1(
+        cycle_id,
+        symbol,
+        "PATH_B",
+        STRATEGY_NATIVE_CLOCK["PATH_B"],
+        cutoff_ns,
+        cutoff_ns,
+        universe_eligible,
+        ApplicabilityStatusV1.RESOURCE_NOT_EVALUATED,
+        "REGISTERED_PATH_B_EVALUATION_REQUIRED",
+        detail={"novelty_score": novelty_score},
+        source_grade="RESEARCH_EXPLORATION",
+        policy_id=policy_id,
+    )

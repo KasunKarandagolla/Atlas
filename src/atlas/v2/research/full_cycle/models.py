@@ -3,14 +3,12 @@
 Model acquisition and inference qualification are different results and are
 recorded separately. A download alone never counts as integration. Checkpoints
 are fetched serially into a controlled cache, are never executed as remote code,
-and are removed from the cache once their inference evidence, provenance and
-reproducibility record are preserved.
+and retained in a permanent cache. Temporary staging is accounted separately.
 """
 
 from __future__ import annotations
 
 import hashlib
-import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -120,7 +118,10 @@ def resolve_checkpoint_identity(checkpoint: str, cache_root: Path) -> Checkpoint
     total = 0
     license_ref: str | None = None
     if snapshots.is_dir():
-        for snapshot in sorted(snapshots.iterdir()):
+        candidates = sorted(p for p in snapshots.iterdir() if p.is_dir())
+        if len(candidates) > 1:
+            raise ValueError("AMBIGUOUS_CHECKPOINT_REVISIONS_REQUIRE_EXACT_SELECTION")
+        for snapshot in candidates:
             if not snapshot.is_dir():
                 continue
             revision = revision or snapshot.name
@@ -133,43 +134,26 @@ def resolve_checkpoint_identity(checkpoint: str, cache_root: Path) -> Checkpoint
                     weight_files.append((str(path.relative_to(snapshot)), sha256_file(path)))
                     total += path.stat().st_size
     return CheckpointIdentityV1(
-        checkpoint=checkpoint, revision=revision, weight_files=tuple(weight_files),
-        total_bytes=total, license_ref=license_ref,
-        source_ref=f"huggingface:{checkpoint}@{revision}")
+        checkpoint=checkpoint,
+        revision=revision,
+        weight_files=tuple(weight_files),
+        total_bytes=total,
+        license_ref=license_ref,
+        source_ref=f"huggingface:{checkpoint}@{revision}",
+    )
 
 
-def download_checkpoint(checkpoint: str, cache_root: Path, *, revision: str | None = None,
-                        timeout_s: int = 900) -> dict[str, Any]:
+def download_checkpoint(
+    checkpoint: str, cache_root: Path, *, revision: str | None = None, timeout_s: int = 900
+) -> dict[str, Any]:
     """Download one checkpoint into the controlled cache. No remote code is executed."""
 
-    from huggingface_hub import snapshot_download
-
-    cache_root.mkdir(parents=True, exist_ok=True)
-    patterns = FOUNDATION_ALLOW_PATTERNS.get(checkpoint, ("config.json", "*.safetensors"))
-    started = time.time()
-    try:
-        path = snapshot_download(
-            repo_id=checkpoint, revision=revision, cache_dir=str(cache_root),
-            allow_patterns=list(patterns), local_files_only=False, max_workers=2)
-        status = "DOWNLOADED"
-        error = None
-    except Exception as exc:  # bounded: a failed download is recorded, not hidden
-        path = None
-        status = "BLOCKED"
-        error = f"{type(exc).__name__}: {exc}"
-    return {
-        "checkpoint": checkpoint,
-        "requested_revision": revision,
-        "status": status,
-        "error": error,
-        "local_path": path,
-        "elapsed_seconds": round(time.time() - started, 3),
-        "allow_patterns": list(patterns),
-    }
+    raise ValueError("USE_PINNED_QUOTA_CHECKED_atlas_red_provision_models.py")
 
 
-def bounded_inference_probe(checkpoint: str, local_path: str | None, *,
-                            context: int = 64, horizon: int = 8) -> dict[str, Any]:
+def bounded_inference_probe(
+    checkpoint: str, local_path: str | None, *, context: int = 64, horizon: int = 8
+) -> dict[str, Any]:
     """One bounded real inference invocation when the runtime allows it.
 
     Unreviewed remote model code is never executed: ``trust_remote_code`` is
@@ -177,34 +161,11 @@ def bounded_inference_probe(checkpoint: str, local_path: str | None, *,
     BLOCKED BY ENVIRONMENT rather than silently substituted.
     """
 
-    if not local_path:
-        return {"status": "BLOCKED_BY_ENVIRONMENT", "reason": "NO_LOCAL_CHECKPOINT"}
-    try:
-        import torch  # noqa: PLC0415
-        from transformers import AutoModel  # noqa: PLC0415
-    except Exception as exc:
-        return {"status": "BLOCKED_BY_ENVIRONMENT",
-                "reason": f"INFERENCE_RUNTIME_UNAVAILABLE:{type(exc).__name__}:{exc}"}
-    try:
-        model = AutoModel.from_pretrained(local_path, trust_remote_code=False)
-        model.eval()
-        torch.set_num_threads(1)
-        inputs = torch.zeros(1, context, 1, dtype=torch.float32)
-        with torch.no_grad():
-            output = model(inputs)
-        shape = list(getattr(output, "shape", []) or [])
-        return {
-            "status": "INFERENCE_VERIFIED",
-            "context": context,
-            "horizon": horizon,
-            "output_shape": shape,
-            "parameter_count": int(sum(p.numel() for p in model.parameters())),
-            "dtype": str(next(model.parameters()).dtype),
-        }
-    except Exception as exc:
-        return {"status": "BLOCKED_BY_ENVIRONMENT",
-                "reason": f"{type(exc).__name__}: {exc}",
-                "note": "no substitute checkpoint was used"}
+    return {
+        "status": "BLOCKED_BY_ENVIRONMENT",
+        "reason": "MODEL_SPECIFIC_VERIFIED_LOCAL_RUNNER_REQUIRED",
+        "command": "scripts/atlas_red_model_smoke.py",
+    }
 
 
 def foundation_input_unit_check(sample_values: Sequence[float]) -> dict[str, Any]:
