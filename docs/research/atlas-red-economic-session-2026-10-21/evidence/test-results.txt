@@ -1,0 +1,46 @@
+ATLAS RED prospective economic test — execution record
+Date: 2026-10-21
+Source/test base: 75fca65e8352bd10c4b17033d90dd96cfc18f8e9
+Environment: Python 3.12.14; pinned numerical-linux-py312.lock; pytest 9.1.1
+All pytest commands ran through scripts/atlas_red_bounded_run.sh with:
+  ATLAS_TEMP_CAPACITY_BYTES=2800000000
+  ATLAS_EXTERNAL_TEMPORARY_BYTES=2150000000
+  bounded temp and cache roots under /workspace/work/atlas-capped-regression
+The registered bound was 4,950,004,096 bytes including the 4,096-byte wrapper margin.
+
+1) Focused correction/P1/native group
+Command:
+  PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 scripts/atlas_red_bounded_run.sh /workspace/work/atlas-economic-test-venv/bin/python -m pytest -q -o addopts='' -p no:cacheprovider --basetemp=/workspace/work/atlas-capped-regression/temp/pytest-a tests/p1 tests/v2/test_session014_s1.py tests/v2/test_session014_core.py tests/v2/test_session016_s2.py tests/v2/test_session016_candidate_selection.py tests/v2/test_atlas_red_full_cycle.py tests/v2/test_full_cycle_integrity.py
+Result: 322 passed in 627.67s. Failed: 0. Skipped: 0.
+
+2) Financial/source/prefix group
+Command:
+  PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 scripts/atlas_red_bounded_run.sh /workspace/work/atlas-economic-test-venv/bin/python -m pytest -q -o addopts='' -p no:cacheprovider --basetemp=/workspace/work/atlas-capped-regression/temp/pytest-b tests/v2/test_session017_*.py tests/v2/test_session018_*.py tests/v2/test_session019_*.py tests/v2/test_session037_chronology.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session036_economic_chronology.py tests/data/test_prefix_and_archive.py
+Result: 130 passed in 22.44s. Failed: 0. Skipped: 0.
+
+Total affected tests: 452 passed, 0 failed, 0 skipped. This is not a full repository suite.
+
+3) Hash-pinned numerical dependencies
+Command:
+  TMPDIR=/workspace/work/atlas-test-tmp UV_CACHE_DIR=/workspace/work/atlas-test-tmp/cache UV_NO_CACHE=1 uv pip sync --python /workspace/work/atlas-economic-test-venv/bin/python --require-hashes --no-cache --no-build configs/research/numerical-linux-py312.lock
+Result: 20 locked packages installed from wheels; no source builds or cache.
+
+4) Numerical import smoke
+Imports: NumPy 2.4.6; scikit-learn 1.8.0; LightGBM 4.7.0; PyArrow 25.0.1; DuckDB 1.5.5; NautilusTrader 2.0.0rc5.
+Result: PASS. No estimator was fit and no foundation checkpoint was loaded or inferred.
+
+5) Static and integrity checks
+- /workspace/work/atlas-economic-test-venv/bin/python -m compileall -q src scripts tests/v2/test_full_cycle_integrity.py — PASS.
+- /workspace/work/atlas-economic-test-venv/bin/ruff check src/atlas/v2/research/full_cycle scripts/atlas_red_full_cycle*.py scripts/atlas_red_{model_smoke,provision_models,recompute,storage_check}.py tests/v2/test_full_cycle_integrity.py tests/v2/test_atlas_red_full_cycle.py — PASS.
+- uv lock --check — PASS.
+- (cd algorithms && sha256sum -c MANIFEST.sha256) — all listed files OK.
+- bash -n scripts/atlas_red_bounded_run.sh scripts/atlas_red_setup_models.sh — PASS.
+- numerical venv python -m pip check — No broken requirements.
+- The three immutable freeze digests matched the canonical V1/V2/Agent SHA-256 values recorded in the correction report.
+- git diff --check — PASS after report and pointer edits.
+- No full repository suite, owner-host test, market acquisition, actual model inference, or profitability qualification is claimed.
+
+6) Kernel storage probe
+Command:
+  ATLAS_TEMP_ROOT=/workspace/work/atlas-quota-test/temp ATLAS_PERMANENT_ROOT=/workspace/work/atlas-quota-test/permanent ATLAS_TEMP_CAPACITY_BYTES=16777216 ATLAS_EXTERNAL_TEMPORARY_BYTES=2150000000 scripts/atlas_red_bounded_run.sh /workspace/work/atlas-economic-test-venv/bin/python scripts/atlas_red_storage_check.py --exercise-small-quota
+Result: kernel quota verified; 16,723,968 bytes were written before ENOSPC; over-quota write rejected; committed SQLite WAL recovery passed; physical free-space floor 2,000,000,000 bytes passed.

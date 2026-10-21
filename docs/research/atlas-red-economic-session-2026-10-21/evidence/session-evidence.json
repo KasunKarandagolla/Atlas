@@ -1,0 +1,115 @@
+{
+  "session_date": "2026-10-21",
+  "status": "COMPLETE_PROGRAMME_TEST_GATE",
+  "repository": "KasunKarandagolla/Atlas",
+  "starting_sha": "75fca65e8352bd10c4b17033d90dd96cfc18f8e9",
+  "starting_parent": "72c40f4fa5d3963ba5e4b2b09dec5ed03cc9aa32",
+  "implementation_checkpoint": "56bcbcb54aab6043832f35ab97c4098e721d174f",
+  "branch": "research/atlas-red-prospective-economic-test-2026-10-21",
+  "source_or_test_changes": 0,
+  "subagents": 0,
+  "runtime_model_effort_attestation": "UNVERIFIED",
+  "market_data": {
+    "collection_attempted": false,
+    "new_raw_receipts": 0,
+    "new_payload_bytes": 0,
+    "new_instruments_observed": 0,
+    "new_products_admitted": 0,
+    "actual_acquisition_window": null,
+    "original_database_available": false,
+    "source_gaps": [
+      "exact-tip independent review pending",
+      "original database and loop absent",
+      "current restricted egress allowlist omits fapi.binance.com used by the collector",
+      "existing collector is not a complete collector-to-native source-health and decision chain"
+    ],
+    "previous_reported_probe_not_revalidated": {
+      "cycles": 32,
+      "raw_receipts": 1672,
+      "payload_bytes": 261280798,
+      "causal_bars": 437470,
+      "latest_cycle_symbols": 926,
+      "admitted_products": 658,
+      "discovery_population_rows": 24076
+    },
+    "uploaded_audit_archive": {
+      "sha256": "68ccae94fbb6401af82bbab14ac40f2130af6179c9e8421a034713c9a1cf009e",
+      "bytes": 234772,
+      "static_code_symbol_inventory_rows": 9745,
+      "market_data_bytes": 0
+    }
+  },
+  "strategies": {
+    "session_evaluations": 0,
+    "interpretation": "not evaluated; not NO_SETUP or negative evidence",
+    "historical_reported_applicability_records_not_revalidated": {
+      "S1": 2035,
+      "S2": 640,
+      "S3": 60,
+      "S4": 60,
+      "S5": 60,
+      "S6": 60,
+      "S7": 60,
+      "S8": 60,
+      "Path B": 60
+    },
+    "new_candidates": 0,
+    "new_sealed_actions": 0,
+    "new_matured_outcomes": 0
+  },
+  "economic_results": {
+    "new_qualified_cash_outcomes": 0,
+    "whole_programme_economics": "NOT ESTIMABLE",
+    "historical_approximately_minus_6_95_bps_for_29_actions": "UNQUALIFIED_HISTORICAL_DIAGNOSTIC"
+  },
+  "models": {
+    "numerical_lock_packages": 20,
+    "numerical_import_smoke": "PASS",
+    "m0_fitted": false,
+    "lightgbm_fitted": false,
+    "foundation_model_loaded": false,
+    "foundation_inference_run": false,
+    "qualified_training_labels": 0,
+    "checkpoint_hashes": []
+  },
+  "storage": {
+    "kernel_tmpfs_verified": true,
+    "quota_test_capacity_bytes": 16777216,
+    "quota_test_overflow_result": "REJECTED_ENOSPC",
+    "sqlite_wal_recovery": "PASS_COMMITTED_ONLY",
+    "physical_free_floor_bytes": 2000000000,
+    "physical_free_at_measurement_bytes": 29903818752,
+    "filesystem_capacity_bytes": 33770192896,
+    "bounded_regression_tmpfs_capacity_bytes": 2800000000,
+    "external_temporary_reservation_bytes": 2150000000,
+    "wrapper_margin_bytes": 4096,
+    "combined_regression_temporary_bound_bytes": 4950004096,
+    "temporary_limit_bytes": 5000000000,
+    "workspace_temporary_bytes_at_measurement": 2091910083,
+    "workspace_temporary_components_bytes": {
+      "isolated_checkout": 215383485,
+      "locked_test_venv": 687947044,
+      "pytest_scratch": 1188579554
+    },
+    "permanent_market_or_model_bytes": 0,
+    "owner_host_qualification": false
+  },
+  "tests": {
+    "first_group_passed": 322,
+    "second_group_passed": 130,
+    "total_affected_passed": 452,
+    "failed": 0,
+    "skipped": 0,
+    "full_repository_suite_claimed": false,
+    "run_inside_bounded_wrapper": true
+  },
+  "operating_controls": {
+    "orders": 0,
+    "private_exchange_reads": 0,
+    "paid_inference": 0,
+    "deployment": 0,
+    "capital": 0,
+    "policy_activation": false,
+    "automatic_merge": false
+  }
+}

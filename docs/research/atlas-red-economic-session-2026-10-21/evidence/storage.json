@@ -1,0 +1,40 @@
+{
+  "policy": "ATLAS_TEMPORARY_ONLY_BELOW_5GB_V2",
+  "kernel_quota_verified": true,
+  "storage_probe": {
+    "temporary_capacity_bytes": 16777216,
+    "external_temporary_reservation_bytes": 2150000000,
+    "written_before_enospc_bytes": 16723968,
+    "kernel_overquota_write": "REJECTED_ENOSPC",
+    "sqlite_wal_crash_recovery": "PASS_COMMITTED_ONLY",
+    "physical_free_floor_bytes": 2000000000
+  },
+  "regression_runner": {
+    "temporary_capacity_bytes": 2800000000,
+    "external_temporary_reservation_bytes": 2150000000,
+    "wrapper_margin_bytes": 4096,
+    "combined_hard_bound_bytes": 4950004096,
+    "required_strict_limit_bytes": 5000000000,
+    "within_limit": true,
+    "temporary_mount": "kernel-backed tmpfs created by unshare -Ur -m",
+    "regression_groups": {
+      "first_group_passed": 322,
+      "second_group_passed": 130,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "measured_external_workspace": {
+    "bytes": 2091910083,
+    "checkout_bytes": 215383485,
+    "locked_test_venv_bytes": 687947044,
+    "pytest_scratch_bytes": 1188579554
+  },
+  "filesystem_at_measurement": {
+    "capacity_bytes": 33770192896,
+    "available_bytes": 29903818752,
+    "overlay_used_bytes": 2131611648
+  },
+  "permanent_market_or_model_bytes": 0,
+  "owner_host_qualified": false
+}

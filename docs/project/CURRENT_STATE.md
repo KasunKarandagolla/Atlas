@@ -1,3 +1,9 @@
+## Latest prospective economic test — 21 October 2026
+
+**COMPLETE_PROGRAMME_TEST_GATE.** Fresh branch research/atlas-red-prospective-economic-test-2026-10-21 starts from exact candidate 75fca65e8352bd10c4b17033d90dd96cfc18f8e9; independent exact-tip review remains pending. The capped runner passed 452 affected tests (322 + 130), and the 16 MiB kernel storage probe verified ENOSPC refusal and committed-WAL recovery. No new source collection, native actions, model inference, or economic outcomes were produced; whole-programme economics remain NOT ESTIMABLE. See the [session report](../research/atlas-red-economic-session-2026-10-21/REPORT.md), [verification record](../research/atlas-red-economic-session-2026-10-21/evidence/session-evidence.json), [test results](../research/atlas-red-economic-session-2026-10-21/evidence/test-results.txt), and [storage record](../research/atlas-red-economic-session-2026-10-21/evidence/storage.json).
+
+This session makes documentation/evidence changes only. It does not change the algorithm, code acceptance, source authority, operating policy, or capital status. OBSERVE; zero allocation, orders, private access, and paid inference; CAPITAL NO-GO.
+
 ## Latest research correction candidate — 21 October 2026
 
 **CORRECTION_TEST_GATE / independent review pending.** Fresh `fix/atlas-red-economic-evidence-integrity-ml-2026-10-21` from verified `7ee561210180f9e0ffa3297a520d35e4857bfe98`, descendant of `7dcf68d85135f94fb47343a9fc8dced9a4557358`. Final pushed SHA is returned at handoff; no self-acceptance. [Report](../research/atlas-red-integrity/REPORT.md), [erratum](../research/atlas-red-integrity/ERRATUM_V2.md), [runbook](../research/atlas-red-integrity/RUNBOOK.md) and [actual verification](../research/atlas-red-integrity/evidence/verification.json).
