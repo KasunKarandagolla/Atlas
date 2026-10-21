@@ -96,6 +96,7 @@ def evaluate_s1_watch_lifecycle(
     universe_eligible: bool,
     setup_cache: dict[int, Any],
     max_trigger_bars: int = 32,
+    precomputed_atr: Sequence[float | None] | None = None,
 ) -> list[ApplicabilityRecordV1]:
     """Reconstructed price diagnostics: one first event per H1 setup owner.
 
@@ -108,6 +109,13 @@ def evaluate_s1_watch_lifecycle(
     seen = set()
     h1_times = [b.close_at_ns for b in h1]
     h4_times = [b.close_at_ns for b in h4]
+    # Pure native predicates change only when their own closed inputs change.
+    # Local caches cannot carry state across symbols, revisions or replay runs.
+    native_setups = {}
+    native_regimes = {}
+    whole_prefix_contiguous = all(interval_coverage_complete(bs) for bs in (h1, h4, m15))
+    if precomputed_atr is not None and len(precomputed_atr) != len(m15):
+        raise ValueError("ATR_PREFIX_LENGTH_MISMATCH")
     start_output = max(0, len(m15) - max_trigger_bars) if max_trigger_bars else 0
     for i, bar in enumerate(m15):
         cutoff = bar.close_at_ns
@@ -118,6 +126,9 @@ def evaluate_s1_watch_lifecycle(
             _slice(h1, h1_times, cutoff, reconstructed=True),
             list(m15[: i + 1]),
         )
+        regime_key = len(join.h4)
+        if regime_key not in native_regimes:
+            native_regimes[regime_key] = s1_trend._regime(join)
         status, reason, detail, indicators, setup_values, trigger_values = (
             ApplicabilityStatusV1.NO_SETUP,
             "SETUP_RULE_FAILED",
@@ -136,12 +147,12 @@ def evaluate_s1_watch_lifecycle(
                 active = None
             elif cutoff > origin + 4 * bar.interval.duration_ns:
                 reason, active = "FOUR_BAR_EXPIRY", None
-            elif s1_trend._regime(join) != side:
+            elif native_regimes[regime_key] != side:
                 reason, active = "CONTRARY_CONFIRMED_4H_REGIME", None
             else:
                 previous = m15[i - 1]
                 crossed = bar.close > previous.high if side == V2Side.LONG else bar.close < previous.low
-                av = atr(list(m15[: i + 1]), 14)[-1]
+                av = precomputed_atr[i] if precomputed_atr is not None else atr(list(m15[: i + 1]), 14)[-1]
                 indicators.update(atr15m=av, trigger_close=str(bar.close))
                 trigger_values.update(
                     close=str(bar.close),
@@ -187,9 +198,14 @@ def evaluate_s1_watch_lifecycle(
                 )
             )
         if active is None and len(join.h1) >= 50 and len(join.h4) >= 50:
-            if not all(interval_coverage_complete(bs) for bs in (join.h1, join.h4, join.m15)):
+            if not whole_prefix_contiguous and not all(
+                interval_coverage_complete(bs) for bs in (join.h1, join.h4, join.m15)
+            ):
                 continue
-            setup = s1_trend._setup(join)
+            setup_key = (len(join.h1), len(join.h4))
+            if setup_key not in native_setups:
+                native_setups[setup_key] = s1_trend._setup(join)
+            setup = native_setups[setup_key]
             if setup:
                 side, extreme, refs = setup
                 owner = _hash(symbol, s1_trend.S1_POLICY.policy_hash, side.value, *refs)
