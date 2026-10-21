@@ -334,3 +334,16 @@ New research package `src/atlas/v2/research/full_cycle/` and CLIs `scripts/atlas
 Storage: the session ran in a kernel-enforced, size-capped ext4 workspace (hard cap 1,830,981,632 bytes). The pre-existing ATLAS-managed baseline already exceeded the 5,000,000,000-byte ceiling, so ATLAS-owned regenerable artefacts (package caches, pytest/build scratch, 22 clean already-pushed worktrees with restore commands recorded) were reclaimed; no owner data, raw receipt, immutable artefact or protected test artefact was deleted. Total ATLAS-managed occupancy at report time ≈ 3,302,371,328 bytes. The guard paused the collector on `PROTECTIVE_WRITE_STOP` and refused an oversized synthetic write.
 
 Exact remote SHA is returned at handoff and requires independent review; no merge, no policy promotion, no collection authorisation, no capital. OBSERVE; zero allocation/paid allowance; CAPITAL NO-GO.
+
+
+## 2026-10-21 — Research economic integrity correction / review gate
+
+Isolated `fix/atlas-red-economic-evidence-integrity-ml-2026-10-21` from verified `7ee561210180f9e0ffa3297a520d35e4857bfe98`, containing G1-B `7dcf68d85135f94fb47343a9fc8dced9a4557358`; no newer relevant remote correction found. Existing original checkout preserved. No subagents; requested runtime model/High identity independently UNVERIFIED.
+
+Fifteen executable red failures reproduced before code edits. Research-only fixes cover original-time grades/late seal, native S1 trigger ownership, policy persistence/action identity, immutable evidence/additive outcome revisions, exposure-correct cash/fees/signed irregular funding, censored OHLC execution, causal purged/embargoed ML and actual L2 objective, separate temporary/permanent paths and physical reserve. The original three freeze hashes remain exact; production strategy and operative policy unchanged. Existing 60/225/29/31 economic claims are retained but superseded for qualification by the new erratum.
+
+CPU PyTorch and all selected numerical/foundation libraries actually import in isolated environments; exact selected weight metadata/download/inference is blocked by the session's Hugging Face CONNECT 403. Hash locks, pinned Kronos source, model-specific serial offline runners and automated local provisioning are delivered without claiming its unverified post-download path. No original local database/loop or owner minimum host is accessible. Actual 16 MiB kernel quota ENOSPC and SQLite committed-WAL crash recovery probes pass.
+
+Exact commands, final counts/source hashes, intermediate failures and remaining gates: `docs/research/atlas-red-integrity/REPORT.md`, `RUNBOOK.md`, `evidence/verification.json`. Status CORRECTION_TEST_GATE; independent exact-pushed-SHA review required. No campaign, private reads, orders, paid inference, deployment, policy activation, merge or capital. OBSERVE; zero allocation/paid budget; CAPITAL NO-GO.
+
+2026-10-21 final source checkpoint `56bcbcb54aab6043832f35ab97c4098e721d174f`: final disjoint affected checks **452 passed / 0 failed / 0 skipped** (322 + 130); full-cycle focused 61 included. Repeated clean-baseline red probe again 15 failures. Ruff/compile/primary lock/two hash-lock dry-run syncs/pip checks/freeze/document checks pass. No new economic or source/host/model qualification; CORRECTION_TEST_GATE.

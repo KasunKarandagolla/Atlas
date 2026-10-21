@@ -1,0 +1,11 @@
+{
+  "destination_sha256": "08137d5655a7f739e28ce934132c4c39bc3fde41dc1202926dd910aaa9d3c784",
+  "evaluation_version": "ATLAS_RED_FULL_CYCLE_RECOMPUTE_V2",
+  "input_grade": "SYNTHETIC_LEGACY_SCHEMA_FIXTURE",
+  "legacy_actions_excluded": 0,
+  "modeled_paths": 0,
+  "original_actions": 0,
+  "original_source_unchanged": true,
+  "programme_economics": "NOT ESTIMABLE",
+  "schema_integrity": "ok"
+}

@@ -1,0 +1,108 @@
+{
+  "actual_market_acquisition": false,
+  "base_sha": "7ee561210180f9e0ffa3297a520d35e4857bfe98",
+  "commands": [
+    {
+      "artifact": "evidence/final-regression.txt",
+      "command": "ATLAS_TEMP_ROOT=/workspace/work/bounded-temp ATLAS_PERMANENT_ROOT=/workspace/shared/atlas-integrity ATLAS_EXTERNAL_TEMPORARY_BYTES=1800000000 PYTHONPATH=src scripts/atlas_red_bounded_run.sh /workspace/work/integrity-venv/bin/python -m pytest -q -o addopts='' -p no:cacheprovider tests/p1 tests/v2/test_session014_s1.py tests/v2/test_session014_core.py tests/v2/test_session016_s2.py tests/v2/test_session016_candidate_selection.py tests/v2/test_atlas_red_full_cycle.py tests/v2/test_full_cycle_integrity.py --junitxml=docs/research/atlas-red-integrity/evidence/final-regression.xml",
+      "failed": 0,
+      "passed": 322,
+      "skipped": 0
+    },
+    {
+      "artifact": "evidence/financial-source.txt",
+      "command": "ATLAS_TEMP_ROOT=/workspace/work/source-test-temp ATLAS_PERMANENT_ROOT=/workspace/shared/atlas-integrity ATLAS_TEMP_CAPACITY_BYTES=1000000000 ATLAS_EXTERNAL_TEMPORARY_BYTES=1800000000 PYTHONPATH=src scripts/atlas_red_bounded_run.sh /workspace/work/integrity-venv/bin/python -m pytest -q -o addopts='' -p no:cacheprovider tests/v2/test_session017_*.py tests/v2/test_session018_*.py tests/v2/test_session019_*.py tests/v2/test_session037_chronology.py tests/v2/test_session037_feature_prefix.py tests/v2/test_session037_strategy_prefix.py tests/v2/test_session036_economic_chronology.py tests/data/test_prefix_and_archive.py --junitxml=docs/research/atlas-red-integrity/evidence/financial-source.xml",
+      "failed": 0,
+      "passed": 130,
+      "skipped": 0
+    },
+    {
+      "artifact": "evidence/repeated-red.txt",
+      "command": "/workspace/work/integrity-venv/bin/python docs/research/atlas-red-integrity/reproduce_red.py --baseline-root /workspace/work/integrity-red-baseline --output docs/research/atlas-red-integrity/evidence/repeated-red.txt",
+      "expected_failed": 15
+    },
+    {
+      "artifact": "evidence/storage.json",
+      "command": "ATLAS_TEMP_ROOT=/workspace/work/bounded-temp ATLAS_PERMANENT_ROOT=/workspace/shared/atlas-integrity ATLAS_TEMP_CAPACITY_BYTES=16777216 ATLAS_EXTERNAL_TEMPORARY_BYTES=1800000000 scripts/atlas_red_bounded_run.sh /workspace/work/integrity-venv/bin/python scripts/atlas_red_storage_check.py --exercise-small-quota",
+      "result": "ENOSPC_AND_WAL_RECOVERY_VERIFIED"
+    },
+    {
+      "artifact": "evidence/imports.json",
+      "command": "ATLAS_TEMP_ROOT=/workspace/work/bounded-temp ATLAS_PERMANENT_ROOT=/workspace/shared/atlas-integrity ATLAS_EXTERNAL_TEMPORARY_BYTES=1800000000 scripts/atlas_red_bounded_run.sh scripts/atlas_red_setup_models.sh --imports-only",
+      "result": "LIBRARY_IMPORTS_VERIFIED_NO_WEIGHT_INFERENCE"
+    },
+    {
+      "artifact": "evidence/primary-lock.txt",
+      "command": "uv lock --check",
+      "result": "PASS"
+    },
+    {
+      "artifact": "evidence/foundation-lock-validation.txt",
+      "command": "uv pip sync --dry-run --python /workspace/shared/atlas-integrity/env/foundation/bin/python --require-hashes configs/research/foundation-linux-py312.lock --extra-index-url https://download.pytorch.org/whl/cpu",
+      "result": "53_PACKAGES_NO_CHANGES"
+    },
+    {
+      "artifact": "evidence/numerical-lock-validation.txt",
+      "command": "uv pip sync --dry-run --python /workspace/work/integrity-venv/bin/python --require-hashes configs/research/numerical-linux-py312.lock",
+      "result": "20_PACKAGES_NO_CHANGES"
+    },
+    {
+      "command": "/workspace/work/integrity-venv/bin/python -m compileall -q src scripts tests/v2/test_full_cycle_integrity.py",
+      "result": "PASS"
+    },
+    {
+      "artifact": "evidence/ruff.txt",
+      "command": "/workspace/work/integrity-venv/bin/ruff check src/atlas/v2/research/full_cycle scripts/atlas_red_full_cycle*.py scripts/atlas_red_{model_smoke,provision_models,recompute,storage_check}.py tests/v2/test_full_cycle_integrity.py tests/v2/test_atlas_red_full_cycle.py",
+      "result": "PASS"
+    },
+    {
+      "command": "/workspace/work/integrity-venv/bin/pip check; /workspace/shared/atlas-integrity/env/foundation/bin/pip check",
+      "result": "NO_BROKEN_REQUIREMENTS"
+    },
+    {
+      "artifact": "evidence/document-manifest.txt",
+      "command": "(cd algorithms && sha256sum -c MANIFEST.sha256)",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check; bash -n scripts/atlas_red_{bounded_run,setup_models}.sh",
+      "result": "PASS"
+    }
+  ],
+  "evidence_grade": "SYNTHETIC_ENGINEERING_CASES_PLUS_ACTUAL_LIBRARY_IMPORTS_AND_KERNEL_STORAGE_PROBE",
+  "final_unique_affected_tests": {
+    "failed": 0,
+    "focused_full_cycle_included": 61,
+    "passed": 452,
+    "skipped": 0
+  },
+  "foundation_actual_inference": 0,
+  "foundation_weight_downloads": 0,
+  "full_repository_suite_claimed": false,
+  "implementation_source_sha": "56bcbcb54aab6043832f35ab97c4098e721d174f",
+  "initial_red_cases": 15,
+  "intermediate_run": {
+    "cause": "source-inspection linecache while source edited; retained, superseded by final 322-pass frozen-source run",
+    "failed": 1,
+    "passed": 315
+  },
+  "model_and_effort_attestation": "UNVERIFIED",
+  "operating_state": "OBSERVE_ZERO_ALLOCATION_ZERO_PAID_CAPITAL_NO_GO",
+  "orders": 0,
+  "owner_4gb_host_qualified": false,
+  "owner_local_database_available": false,
+  "owner_loop_workspace_available": false,
+  "private_exchange_access": false,
+  "python": "3.12.14",
+  "remaining_gates": [
+    "Independent exact-tip review",
+    "Original native source-health/universe/product/feature/action observations and complete collector-to-native-chain integration",
+    "Supported execution/funding evidence for point-identified labels; OHLC bounds censored",
+    "Pinned HF checkpoint acquisition and actual model inference (proxy CONNECT 403)",
+    "Owner original DB/loop readback and target host qualification"
+  ],
+  "repeated_baseline_red_cases": 15,
+  "source_build_sha256": "c5c40477bab191e1677bf0b574339b84d785a15778d24033de5ef2808cc1fb5c",
+  "subagents": 0,
+  "terminal_status": "CORRECTION_TEST_GATE"
+}

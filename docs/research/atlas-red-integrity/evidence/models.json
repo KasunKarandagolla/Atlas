@@ -1,0 +1,40 @@
+{
+  "checkpoints": {
+    "NX-AI/TiRex-2": {
+      "downloaded": false,
+      "inference": "NOT_RUN",
+      "loaded": false,
+      "revision": null
+    },
+    "NeoQuasar/Kronos-Tokenizer-2k": {
+      "downloaded": false,
+      "inference": "NOT_RUN",
+      "loaded": false,
+      "revision": null
+    },
+    "NeoQuasar/Kronos-mini": {
+      "downloaded": false,
+      "inference": "NOT_RUN",
+      "loaded": false,
+      "revision": null
+    },
+    "autogluon/chronos-2-small": {
+      "downloaded": false,
+      "inference": "NOT_RUN",
+      "loaded": false,
+      "revision": null
+    }
+  },
+  "cloud_permanent_root": "/workspace/shared/atlas-integrity",
+  "economic_authority": "NONE",
+  "import_note": "Kronos imported from exact source commit; CPU torch 2.8.0+cpu, tirex-2 0.4.0, chronos 2.3.2",
+  "imports": "ACTUALLY_VERIFIED",
+  "owner_local_installation": "NOT_PERFORMED",
+  "reason": "Hugging Face CONNECT proxy returned HTTP 403; no checkpoint revisions or weights resolved",
+  "source_revisions": {
+    "Kronos": "67b630e67f6a18c9e9be918d9b4337c960db1e9a",
+    "chronos-forecasting": "1224fafa91e1ecd6674f5204066b159e40b5e4a1",
+    "tirex-2": "614f46fd7c60e332d8a32e525403b341c2c1ce1e"
+  },
+  "status": "BLOCKED_BY_ENVIRONMENT"
+}

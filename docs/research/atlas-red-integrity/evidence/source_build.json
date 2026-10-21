@@ -1,0 +1,144 @@
+{
+  "aggregate_sha256": "c5c40477bab191e1677bf0b574339b84d785a15778d24033de5ef2808cc1fb5c",
+  "base_sha": "7ee561210180f9e0ffa3297a520d35e4857bfe98",
+  "implementation_source_sha": "56bcbcb54aab6043832f35ab97c4098e721d174f",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "source_files": [
+    {
+      "bytes": 116365,
+      "path": "configs/research/foundation-linux-py312.lock",
+      "sha256": "f1a168e8e8d4c4b8819b107349fc524c6bebd8a419537cd3b7b8f9304a469278"
+    },
+    {
+      "bytes": 908,
+      "path": "configs/research/foundation-linux-py312.txt",
+      "sha256": "6254071b1de0c32c54bae9de5ae232de9317b24b5c9bb3b350792496a3f6ebb1"
+    },
+    {
+      "bytes": 40752,
+      "path": "configs/research/numerical-linux-py312.lock",
+      "sha256": "0c9d165930e13249e31bf9c1dab61c0295de9b221d0c64e7119857d231039a66"
+    },
+    {
+      "bytes": 339,
+      "path": "configs/research/numerical-linux-py312.txt",
+      "sha256": "26346983e9e70e663bfa8035ff9aa0339525156b637e0853a8f2b4b61ec82f89"
+    },
+    {
+      "bytes": 1377,
+      "path": "scripts/atlas_red_bounded_run.sh",
+      "sha256": "8a791efc7601c6dcdedea46353b4b6c8e652debbed10e1f11fc8b4b27c4a4436"
+    },
+    {
+      "bytes": 2768,
+      "path": "scripts/atlas_red_full_cycle_actions.py",
+      "sha256": "c68cffff57754ac9f6b36cc919182cc277ad3a1cc1b2c30525d395266a7f4c6b"
+    },
+    {
+      "bytes": 13378,
+      "path": "scripts/atlas_red_full_cycle_collect.py",
+      "sha256": "1d1cff5eb55b0a0ff509604d50ae383c6ec43808eee406636af421a3f41cccae"
+    },
+    {
+      "bytes": 17589,
+      "path": "scripts/atlas_red_full_cycle_evaluate.py",
+      "sha256": "5868e43504bfcb041ff5d839e99de759fc727497d6575655f0be24eaa3cf94cd"
+    },
+    {
+      "bytes": 4592,
+      "path": "scripts/atlas_red_full_cycle_ml.py",
+      "sha256": "9d8062236756b07c1f31e73f0efdd3488f9ae3566c31a68c97a7ff6ec005237a"
+    },
+    {
+      "bytes": 10170,
+      "path": "scripts/atlas_red_full_cycle_report.py",
+      "sha256": "48859b422cc285bde308d2f51f68c2162fd0a81af4e11666ce48114e5e8d6ae2"
+    },
+    {
+      "bytes": 5032,
+      "path": "scripts/atlas_red_model_smoke.py",
+      "sha256": "9d60a6c546163cc4debad83a17eb17388c909383bceccacc2f9b0579e20c5906"
+    },
+    {
+      "bytes": 8494,
+      "path": "scripts/atlas_red_provision_models.py",
+      "sha256": "01d42c61acab0a9afa69128cd91f79ed607298b3bc772334edc95d878e116951"
+    },
+    {
+      "bytes": 4775,
+      "path": "scripts/atlas_red_recompute.py",
+      "sha256": "b8ef31481d643c1159cdb67bb991e1277569c643df8acee007cec070d7bbd5ed"
+    },
+    {
+      "bytes": 1688,
+      "path": "scripts/atlas_red_setup_models.sh",
+      "sha256": "1d6b6c48d7e2744b314543af42f0f30c0bb7a9c32c2ed342e8c9da279d118652"
+    },
+    {
+      "bytes": 2637,
+      "path": "scripts/atlas_red_storage_check.py",
+      "sha256": "e0cc11526e597be87ebd29256dc9abbb1a8bba6d2063f3dc540bdbc4d7fc3dfe"
+    },
+    {
+      "bytes": 17525,
+      "path": "src/atlas/v2/research/full_cycle/acquisition.py",
+      "sha256": "2128c98049d52ef0779b23044611673b19d782324c2d33624cf0924e9ae5c392"
+    },
+    {
+      "bytes": 22908,
+      "path": "src/atlas/v2/research/full_cycle/actions.py",
+      "sha256": "d6e68ab2ae1e2a4893d4adf1bfa2fd8c6f463579955548ac2f9292d9a53860ce"
+    },
+    {
+      "bytes": 18996,
+      "path": "src/atlas/v2/research/full_cycle/analysis.py",
+      "sha256": "b38c571b6910393554200aa760242d0f295580e15e7682aeedd11d201e373581"
+    },
+    {
+      "bytes": 34210,
+      "path": "src/atlas/v2/research/full_cycle/applicability.py",
+      "sha256": "6ca2c4ec66cf11a0e798a604f795873b7abf26c5f2772dfdc3d1035a2858b53f"
+    },
+    {
+      "bytes": 3915,
+      "path": "src/atlas/v2/research/full_cycle/causality.py",
+      "sha256": "f74e24d6a185985700b93728da13743ef75f94c5ff27827d8241062c329ee222"
+    },
+    {
+      "bytes": 14998,
+      "path": "src/atlas/v2/research/full_cycle/ml.py",
+      "sha256": "138fe5c312a5eb07fe8a3df36aadd92e1904add777c77b89849238235695401f"
+    },
+    {
+      "bytes": 6682,
+      "path": "src/atlas/v2/research/full_cycle/models.py",
+      "sha256": "72faf8d7581abf9e85bccd43b2cab971fc62319253dced57fe25a8b42a4e7537"
+    },
+    {
+      "bytes": 8169,
+      "path": "src/atlas/v2/research/full_cycle/native.py",
+      "sha256": "e9060630eef9fae0aa850f8a18f3441d832f5ed0684200aaf208889029f516c0"
+    },
+    {
+      "bytes": 16497,
+      "path": "src/atlas/v2/research/full_cycle/storage.py",
+      "sha256": "8a201aaba10a2217dae89e69d7298bd27bcfa07a30a29e3351c6ddea3e652354"
+    },
+    {
+      "bytes": 23011,
+      "path": "src/atlas/v2/research/full_cycle/store.py",
+      "sha256": "0139ba3d9215b4793aeba74081c71f0142797efd85bf8e4bb54a804df7685378"
+    },
+    {
+      "bytes": 15706,
+      "path": "tests/v2/test_atlas_red_full_cycle.py",
+      "sha256": "412732a28db7f44c62668f63da5dce320c49880827ee3a546697fd818ad42ce1"
+    },
+    {
+      "bytes": 22629,
+      "path": "tests/v2/test_full_cycle_integrity.py",
+      "sha256": "28ea282cf6fcd11e9d8fb0cb5355da6b09b10bef058068870b6ff5ce484b8c3f"
+    }
+  ]
+}

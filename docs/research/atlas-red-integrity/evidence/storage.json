@@ -1,0 +1,13 @@
+{
+  "external_temporary_bytes": 1800000000,
+  "kernel_overquota_write": "REJECTED_ENOSPC",
+  "kernel_quota_verified": true,
+  "permanent_root": "/workspace/shared/atlas-integrity",
+  "physical_free_floor_bytes": 2000000000,
+  "policy": "ATLAS_TEMPORARY_ONLY_BELOW_5GB_V2",
+  "publication_temporary_bytes": 0,
+  "sqlite_wal_crash_recovery": "PASS_COMMITTED_ONLY",
+  "temporary_capacity_bytes": 16777216,
+  "temporary_root": "/workspace/work/bounded-temp",
+  "written_before_enospc_bytes": 16723968
+}

@@ -215,3 +215,10 @@ AUTHORITY_RECONCILIATION.md and SOURCE_AUTHORITY_MANIFEST.json close the origina
 MI01-MI12 in SHARED_ACCOUNT_MANUAL_INTERFERENCE_POLICY.md are explicit AC/EX/RB/compound subcases, not substitutes or additional top-level core requirements. The 107 existing top-level IDs remain: 79 core, 12 preservation and 16 compound. Every prior acceptance row is retained; none is silently removed. A proof that close-all can never affect new manual exposure is impossible under the aggregate model and is replaced with an explicit counterexample, current-scope command gates and owner residual-risk concurrence.
 
 DeepSeek is the original preferred future candidate; existing Gemma native research transport is reusable, not silently promoted. Exact selected route/model, OpenAI-compatible capabilities, actual image bytes and budget/identity/privacy remain AG02/AG05/CH04 gates. Quarantined Path B remains ST03/TL01/NG03/NG07 scope. Watch-specific ops_outbox and outcome due_work are not repurposed as agent queues; typed research work reuses namespaced persistence only.
+
+
+## Research measurement correction — 21 October 2026
+
+The owner-authorized correction candidate from `7ee561210180f9e0ffa3297a520d35e4857bfe98` repairs the research-only causal/action/cash/ML/store/storage seams. [Correction report](../docs/research/atlas-red-integrity/REPORT.md) and [erratum](../docs/research/atlas-red-integrity/ERRATUM_V2.md) preserve and regrade the old 29 economic labels. The temporary-only storage clarification is owner-authorized; it does not activate the proposed trading policy. Existing canonical strategy/policy/freezes/PDF remain unchanged.
+
+Status: CORRECTION_TEST_GATE, independent review pending. Fixtures and library imports do not close original source, native execution, checkpoint inference, minimum-host or programme economics obligations. Affected acceptance rows link actual evidence without closing overall requirements. Complete prospective programme value remains NOT ESTIMABLE.

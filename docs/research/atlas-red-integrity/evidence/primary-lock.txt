@@ -1,0 +1,2 @@
+Using CPython 3.12.14 interpreter at: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3
+Resolved 39 packages in 3ms

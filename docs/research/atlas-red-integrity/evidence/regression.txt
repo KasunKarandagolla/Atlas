@@ -1,0 +1,18 @@
+........................................................................ [ 22%]
+........................................................................ [ 45%]
+........................................................................ [ 68%]
+........................................................................ [ 91%]
+....F.......................                                             [100%]
+=================================== FAILURES ===================================
+_____________________ test_l2_challenger_is_mean_objective _____________________
+
+        "received_at_ns": T,
+        "available_at_ns": T,
+    }
+>   s.record_observation(r)
+E   assert 'objective="regression_l2"' in '    ordered = sorted(rows, key=lambda row: int(row["information_cutoff_ns"]))\n'
+
+tests/v2/test_full_cycle_integrity.py:78: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v2/test_full_cycle_integrity.py::test_l2_challenger_is_mean_objective
+1 failed, 315 passed in 359.03s (0:05:59)

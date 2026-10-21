@@ -1,0 +1,4 @@
+Using Python 3.12.14 environment at: /workspace/work/integrity-venv
+Resolved 20 packages in 192ms
+Checked 20 packages in 0.18ms
+Would make no changes

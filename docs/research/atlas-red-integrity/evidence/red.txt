@@ -1,0 +1,188 @@
+FFFFFFFFFFFFFFF                                                          [100%]
+=================================== FAILURES ===================================
+__________________ test_published_bonk_cannot_be_prospective ___________________
+
+    def test_published_bonk_cannot_be_prospective():
+        a = _action(symbol='1000BONKUSDT', decision_at_ns=T-NS, sealed_at_ns=T+6*3600*10**9)
+>       assert a.hard_refusal_reason == 'MISSED_ORIGINAL_DEADLINE'
+E       AssertionError: assert None == 'MISSED_ORIGINAL_DEADLINE'
+E        +  where None = ResearchActionV1(action_id='aa28e3925fc1ed2128e785517eb9c09049d532e8222676c80ee26d0008135d68', cycle_id='c1', symbol='...TIME', slippage_bps=Decimal('2.0'), hard_refusal_reason=None, evidence_refs=('ref',), sealed_at_ns=1792447200000000000).hard_refusal_reason
+
+tests/v2/test_full_cycle_integrity.py:18: AssertionError
+_____________________ test_policy_changes_action_identity ______________________
+
+    def test_policy_changes_action_identity():
+>       assert _action(policy_hash='a'*64).action_id != _action(policy_hash='b'*64).action_id
+E       AssertionError: assert 'b4c73a209587807e620ce075bb8b39bee5c19dd83d818378269530446a8b34f2' != 'b4c73a209587807e620ce075bb8b39bee5c19dd83d818378269530446a8b34f2'
+E        +  where 'b4c73a209587807e620ce075bb8b39bee5c19dd83d818378269530446a8b34f2' = ResearchActionV1(action_id='b4c73a209587807e620ce075bb8b39bee5c19dd83d818378269530446a8b34f2', cycle_id='c1', symbol='...DECISION_TIME', slippage_bps=Decimal('2.0'), hard_refusal_reason=None, evidence_refs=('ref',), sealed_at_ns=1000000000).action_id
+E        +    where ResearchActionV1(action_id='b4c73a209587807e620ce075bb8b39bee5c19dd83d818378269530446a8b34f2', cycle_id='c1', symbol='...DECISION_TIME', slippage_bps=Decimal('2.0'), hard_refusal_reason=None, evidence_refs=('ref',), sealed_at_ns=1000000000) = _action(policy_hash=('a' * 64))
+E        +  and   'b4c73a209587807e620ce075bb8b39bee5c19dd83d818378269530446a8b34f2' = ResearchActionV1(action_id='b4c73a209587807e620ce075bb8b39bee5c19dd83d818378269530446a8b34f2', cycle_id='c1', symbol='...DECISION_TIME', slippage_bps=Decimal('2.0'), hard_refusal_reason=None, evidence_refs=('ref',), sealed_at_ns=1000000000).action_id
+E        +    where ResearchActionV1(action_id='b4c73a209587807e620ce075bb8b39bee5c19dd83d818378269530446a8b34f2', cycle_id='c1', symbol='...DECISION_TIME', slippage_bps=Decimal('2.0'), hard_refusal_reason=None, evidence_refs=('ref',), sealed_at_ns=1000000000) = _action(policy_hash=('b' * 64))
+
+tests/v2/test_full_cycle_integrity.py:22: AssertionError
+____________________ test_missing_policy_refused[policy_id] ____________________
+
+field = 'policy_id'
+
+    @pytest.mark.parametrize('field', ['policy_id', 'policy_hash'])
+    def test_missing_policy_refused(field):
+>       with pytest.raises(ValueError, match='POLICY'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/v2/test_full_cycle_integrity.py:27: Failed
+___________________ test_missing_policy_refused[policy_hash] ___________________
+
+field = 'policy_hash'
+
+    @pytest.mark.parametrize('field', ['policy_id', 'policy_hash'])
+    def test_missing_policy_refused(field):
+>       with pytest.raises(ValueError, match='POLICY'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/v2/test_full_cycle_integrity.py:27: Failed
+________________________ test_wrong_stop_side_rejected _________________________
+
+    def test_wrong_stop_side_rejected():
+>       with pytest.raises(ValueError, match='STOP'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/v2/test_full_cycle_integrity.py:32: Failed
+__________________ test_applicability_policy_survives_reopen ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-0/test_applicability_policy_surv0')
+
+    def test_applicability_policy_survives_reopen(tmp_path):
+        s = ResearchStoreV1.open(tmp_path/'r.sqlite')
+        r = applicability.evaluate_s7(cycle_id='c', symbol='X', cutoff_ns=T, event_calendar_available=False, universe_eligible=True)
+        s.record_applicability(r.as_row())
+        read = ResearchStoreV1.open(s.path).query('select * from strategy_applicability')[0]
+>       assert read['policy_id'] == r.policy_id
+               ^^^^^^^^^^^^^^^^^
+E       KeyError: 'policy_id'
+
+tests/v2/test_full_cycle_integrity.py:41: KeyError
+____________________ test_conflicting_applicability_refused ____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-0/test_conflicting_applicability0')
+
+    def test_conflicting_applicability_refused(tmp_path):
+        s = ResearchStoreV1.open(tmp_path/'r.sqlite')
+        r = applicability.evaluate_s7(cycle_id='c', symbol='X', cutoff_ns=T, event_calendar_available=False, universe_eligible=True).as_row()
+        s.record_applicability(r)
+        s.record_applicability(r)
+>       with pytest.raises(ValueError, match='IMMUTABLE'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/v2/test_full_cycle_integrity.py:49: Failed
+_____________________ test_conflicting_raw_receipt_refused _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-0/test_conflicting_raw_receipt_r0')
+
+    def test_conflicting_raw_receipt_refused(tmp_path):
+        s = ResearchStoreV1.open(tmp_path/'r.sqlite')
+        r = dict(observation_id='o', cycle_id='c', venue='BINANCE', source_id='s', endpoint='p', event_type='BAR', request_sha256='a'*64, payload_sha256='b'*64, payload_bytes=2, payload_zlib=b'xx', received_at_ns=T, available_at_ns=T)
+        s.record_observation(r)
+>       with pytest.raises(ValueError, match='IMMUTABLE'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/v2/test_full_cycle_integrity.py:57: Failed
+____________________ test_ml_purge_outcome_crosses_boundary ____________________
+
+    def test_ml_purge_outcome_crosses_boundary():
+        rows = [dict(information_cutoff_ns=i*100, horizon_end_ns=i*100+250, label_available_at_ns=i*100+251, opportunity_id=str(i)) for i in range(100)]
+        split = ml.chronological_split(rows, embargo_ns=200)
+>       assert max(r['label_available_at_ns'] for r in split['train']) + 200 < min(r['information_cutoff_ns'] for r in split['validation'])
+E       assert (6151 + 200) < 6000
+E        +  where 6151 = max(<generator object test_ml_purge_outcome_crosses_boundary.<locals>.<genexpr> at 0x7f7ad2e20450>)
+E        +  and   6000 = min(<generator object test_ml_purge_outcome_crosses_boundary.<locals>.<genexpr> at 0x7f7ad2e21e50>)
+
+tests/v2/test_full_cycle_integrity.py:64: AssertionError
+______________ test_ml_repeated_opportunities_do_not_cross_folds _______________
+
+    def test_ml_repeated_opportunities_do_not_cross_folds():
+        rows = [dict(information_cutoff_ns=i*100, horizon_end_ns=i*100, label_available_at_ns=i*100, opportunity_id='same' if i%3==0 else str(i)) for i in range(100)]
+        s = ml.chronological_split(rows, embargo_ns=0)
+        sets = [set(r['opportunity_id'] for r in s[k]) for k in ('train', 'validation', 'test')]
+>       assert not sets[0]&sets[1] and not sets[0]&sets[2] and not sets[1]&sets[2]
+E       AssertionError: assert (not ({'1', '10', '11', '13', '14', '16', ...} & {'61', '62', '64', '65', '67', '68', ...}))
+
+tests/v2/test_full_cycle_integrity.py:72: AssertionError
+_____________________ test_l2_challenger_is_mean_objective _____________________
+
+    def test_l2_challenger_is_mean_objective():
+        source = inspect.getsource(ml.fit_and_compare)
+>       assert 'objective="regression_l1"' not in source
+E       assert 'objective="regression_l1"' not in 'def fit_and...urn result\n'
+E         
+E         'objective="regression_l1"' is contained here:
+E                     objective="regression_l1", n_estimators=120, learning_rate=0.05,
+E         ?           +++++++++++++++++++++++++
+E                       num_leaves=15, min_child_samples=5, random_state=seed, n_jobs=1, verbose=-1)
+E                   booster.fit(np.array(train_x), np.array(train_y))
+E                   predictions = booster.predict(np.array(test_x))...
+E         
+E         ...Full output truncated (17 lines hidden), use '-vv' to show
+
+tests/v2/test_full_cycle_integrity.py:77: AssertionError
+_______________ test_maturity_refuses_gaps_and_early_evaluation ________________
+
+    def test_maturity_refuses_gaps_and_early_evaluation():
+        a = _action(decision_at_ns=T, sealed_at_ns=T, max_hold_ns=4*NS)
+        future = [_bar('rev', T+NS, '100'), _bar('rev', T+4*NS, '100')]
+>       assert actions.maturity_status(action=a, future_bars=future, evaluated_at_ns=T+4*NS)[0] != 'MATURED'
+E       AssertionError: assert 'MATURED' != 'MATURED'
+
+tests/v2/test_full_cycle_integrity.py:84: AssertionError
+_____________________ test_unknown_funding_not_silent_zero _____________________
+
+    def test_unknown_funding_not_silent_zero():
+        a = _action(decision_at_ns=T, sealed_at_ns=T, max_hold_ns=4*NS)
+        future = [_bar('rev', T+i*NS, '100') for i in range(1,5)]
+        hold = actions.evaluate_lifecycle(a, future_bars=future, spread_bps=D('4'))[0]
+>       assert 'FUNDING_UNOBSERVABLE' in hold.uncertainty
+E       AssertionError: assert 'FUNDING_UNOBSERVABLE' in 'MODELLED_PATH_INTRABAR_SEQUENCE_UNOBSERVABLE'
+E        +  where 'MODELLED_PATH_INTRABAR_SEQUENCE_UNOBSERVABLE' = LifecycleOutcomeV1(management_kind='HOLD', path_id='58b0b8f1b3a8f838acbca5d2bf08725bbd8c11dc3590ef120aabb44ae3783d5d',...e': '0.500100000', 'exit_fee': '0.5000000', 'funding_cash': '0', 'quantity': '10.000', 'remaining_quantity': '10.000'}).uncertainty
+
+tests/v2/test_full_cycle_integrity.py:93: AssertionError
+__________________ test_stop_exit_records_actual_exposure_end __________________
+
+    def test_stop_exit_records_actual_exposure_end():
+        a = _action(decision_at_ns=T, sealed_at_ns=T, max_hold_ns=4*NS)
+        bars = [_bar('rev', T+i*NS, '90' if i==1 else '110') for i in range(1,5)]
+        hold = actions.evaluate_lifecycle(a, future_bars=bars, spread_bps=D('4'))[0]
+>       assert hold.detail['exit_at_ns'] == T+NS
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'exit_at_ns'
+
+tests/v2/test_full_cycle_integrity.py:100: KeyError
+______________ test_discovery_proxy_never_claims_canonical_score _______________
+
+    def test_discovery_proxy_never_claims_canonical_score():
+        rows = analysis.build_discovery_population(cycle_id='c', cutoff_ns=T, products=[], tickers={'X':{'quote_volume_24h_usd':'100','price_change_pct_24h':'1'}}, premium={}, books={}, deep_symbols=[])
+>       assert rows[0]['canonical_discovery_score'] is None
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'canonical_discovery_score'
+
+tests/v2/test_full_cycle_integrity.py:105: KeyError
+=========================== short test summary info ============================
+FAILED tests/v2/test_full_cycle_integrity.py::test_published_bonk_cannot_be_prospective
+FAILED tests/v2/test_full_cycle_integrity.py::test_policy_changes_action_identity
+FAILED tests/v2/test_full_cycle_integrity.py::test_missing_policy_refused[policy_id]
+FAILED tests/v2/test_full_cycle_integrity.py::test_missing_policy_refused[policy_hash]
+FAILED tests/v2/test_full_cycle_integrity.py::test_wrong_stop_side_rejected
+FAILED tests/v2/test_full_cycle_integrity.py::test_applicability_policy_survives_reopen
+FAILED tests/v2/test_full_cycle_integrity.py::test_conflicting_applicability_refused
+FAILED tests/v2/test_full_cycle_integrity.py::test_conflicting_raw_receipt_refused
+FAILED tests/v2/test_full_cycle_integrity.py::test_ml_purge_outcome_crosses_boundary
+FAILED tests/v2/test_full_cycle_integrity.py::test_ml_repeated_opportunities_do_not_cross_folds
+FAILED tests/v2/test_full_cycle_integrity.py::test_l2_challenger_is_mean_objective
+FAILED tests/v2/test_full_cycle_integrity.py::test_maturity_refuses_gaps_and_early_evaluation
+FAILED tests/v2/test_full_cycle_integrity.py::test_unknown_funding_not_silent_zero
+FAILED tests/v2/test_full_cycle_integrity.py::test_stop_exit_records_actual_exposure_end
+FAILED tests/v2/test_full_cycle_integrity.py::test_discovery_proxy_never_claims_canonical_score
+15 failed in 0.55s

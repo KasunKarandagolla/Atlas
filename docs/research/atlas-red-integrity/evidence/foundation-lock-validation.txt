@@ -1,0 +1,4 @@
+Using Python 3.12.14 environment at: /workspace/shared/atlas-integrity/env/foundation
+Resolved 53 packages in 1.33s
+Checked 53 packages in 0.80ms
+Would make no changes
